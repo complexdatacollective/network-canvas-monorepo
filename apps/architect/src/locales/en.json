@@ -55,16 +55,8 @@
     "defaultMessage": "If the problem persists, reach out on our <ExternalLink> community website. </ExternalLink>",
     "description": "Visible text in components / protocolOpenDialogs."
   },
-  "architect.additional.protocolOpenDialogs.ifYouChooseToMigrateThe": {
-    "defaultMessage": "If you choose to migrate, the following actions will be automatically performed on your protocol. Read these notes carefully, as these actions may affect your data.",
-    "description": "Visible text in components / protocolOpenDialogs."
-  },
   "architect.additional.protocolOpenDialogs.inOrderToOpenItYou": {
     "defaultMessage": "In order to open it, you will need to install a version of Architect that supports schema version {value1}.",
-    "description": "Visible text in components / protocolOpenDialogs."
-  },
-  "architect.additional.protocolOpenDialogs.itCanBeAutomaticallyUpgradedTo": {
-    "defaultMessage": "It can be automatically upgraded to schema version {value1} using our migration feature.",
     "description": "Visible text in components / protocolOpenDialogs."
   },
   "architect.additional.protocolOpenDialogs.migratingToSchemaVersionWill": {
@@ -105,10 +97,6 @@
   },
   "architect.additional.protocolOpenDialogs.thisProtocolIsNotCompatibleWith": {
     "defaultMessage": "This protocol is not compatible with the current version of Architect.",
-    "description": "Visible text in components / protocolOpenDialogs."
-  },
-  "architect.additional.protocolOpenDialogs.thisProtocolUsesSchemaVersion": {
-    "defaultMessage": "This protocol uses schema version {value1}, which is not compatible with this version of Architect.",
     "description": "Visible text in components / protocolOpenDialogs."
   },
   "architect.additional.protocolOpenDialogs.upgradeToContinue": {
@@ -1735,10 +1723,6 @@
     "defaultMessage": "Upgrade to schema {version}",
     "description": "Button and menu item that creates an upgraded copy of an older protocol at the current schema version and opens it. {version} is the current schema version number (for example 9)."
   },
-  "architect.legacyProtocol.upgradedBadge": {
-    "defaultMessage": "Has an upgraded copy",
-    "description": "Short badge on an older protocol in the home screen library, shown when an upgraded copy of it has already been made in the current version of Architect: it says that such a copy exists. The older protocol carrying the badge is itself unchanged; it is not the copy."
-  },
   "architect.library.metadata.justNow": {
     "defaultMessage": "< 1 min ago",
     "description": "Researcher-facing Architect control or feedback."
@@ -2599,17 +2583,25 @@
     "defaultMessage": "How do you want to open this protocol?",
     "description": "Title of the dialog shown when a researcher opens a protocol made for an older schema and Architect offers two ways forward: upgrade a copy to the current schema, or keep editing the protocol unchanged in the previous version of Architect."
   },
-  "architect.protocolOpenDialogs.keepEditingInLegacyArchitect": {
-    "defaultMessage": "You can also keep editing it as a schema {version} protocol in Architect {version}, which is included with this version of Architect.",
-    "description": "Paragraph in the dialog offering to upgrade an older protocol, shown only when the previous version of Architect is available. {version} is that previous version's number (for example 8): the protocol can stay at schema {version} and be edited in Architect {version}, which is served alongside the current Architect."
+  "architect.protocolOpenDialogs.olderSchemaKeepOrUpgrade": {
+    "defaultMessage": "This protocol uses an older version of the Network Canvas protocol schema (more information <ExternalLink>here</ExternalLink>). You can either open and edit it as normal, or you can upgrade it to the latest version, which will unlock new features and functionality.",
+    "description": "First paragraph of the dialog shown when a researcher opens a protocol made for an older schema, when Architect can still edit it unchanged (in the previous version of Architect, served alongside this one). \"Open and edit it as normal\" means keeping the protocol at its older schema. <ExternalLink> wraps a link to the documentation page about protocol schemas."
+  },
+  "architect.protocolOpenDialogs.olderSchemaUpgrade": {
+    "defaultMessage": "This protocol uses an older version of the Network Canvas protocol schema (more information <ExternalLink>here</ExternalLink>). You can upgrade it to the latest version, which will unlock new features and functionality.",
+    "description": "First paragraph of the dialog shown when a researcher opens a protocol made for an older schema, in a build of Architect that can only offer to upgrade it. <ExternalLink> wraps a link to the documentation page about protocol schemas."
   },
   "architect.protocolOpenDialogs.technicalDetails": {
     "defaultMessage": "Technical details (English)",
     "description": "Visible text in components / protocolOpenDialogs."
   },
-  "architect.protocolOpenDialogs.upgradeCreatesACopy": {
-    "defaultMessage": "If you upgrade, an upgraded copy of your protocol will be created and then opened. Your original protocol will not be changed. Please see our <ExternalLink>documentation on protocol schemas</ExternalLink> for more information on this topic.",
-    "description": "Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy and leaves the original protocol as it was. <ExternalLink> wraps a link to the documentation page about protocol schemas."
+  "architect.protocolOpenDialogs.upgradeAffectsInterviews": {
+    "defaultMessage": "<strong>Please note:</strong> upgrading may change the interview experience for participants, and will require you to also use the latest version of Interviewer or Fresco.",
+    "description": "Paragraph in the dialog offering to upgrade an older protocol to the current schema. Warns that interviews may look or behave differently after upgrading, and that the upgraded protocol only runs in the latest versions of Interviewer and Fresco (the apps that run interviews). <strong> wraps the opening words, shown in bold."
+  },
+  "architect.protocolOpenDialogs.upgradeChangesList": {
+    "defaultMessage": "If you upgrade, the following changes will be made to your protocol:",
+    "description": "Sentence in the dialog offering to upgrade an older protocol, introducing the box below it that lists every change the upgrade makes to the protocol."
   },
   "architect.protocolSummary.asset.english": {
     "defaultMessage": "English",
