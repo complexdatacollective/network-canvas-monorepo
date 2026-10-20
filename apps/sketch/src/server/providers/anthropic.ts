@@ -4,6 +4,11 @@
 // helper moves `enum` and `const` into description text, so the stage
 // discriminators and option enums would not constrain generation.
 // No assistant prefill (400 on current models) and no `thinking` field.
+//
+// A schema too big for constrained decoding (the study design) is rejected
+// with "The compiled grammar is too large". Such a schema is then sent as
+// guidance instead: in the system prompt, with the reply parsed as JSON and
+// checked against the schema by the caller, like any other answer.
 
 import Anthropic from '@anthropic-ai/sdk';
 import type {
@@ -29,27 +34,64 @@ export type AnthropicClientLike = {
   };
 };
 
+const schemaGuidance = (request: StructuredRequest) =>
+  [
+    `Reply with one JSON object that matches the JSON Schema below (named "${request.schemaName}").`,
+    'Output only the JSON: no prose before or after it, and no code fences.',
+    'Every property in the schema is required, and enum values must match exactly.',
+    '',
+    JSON.stringify(request.schema),
+  ].join('\n');
+
 const buildAnthropicParams = (
   request: StructuredRequest,
+  constrained = true,
 ): MessageCreateParamsNonStreaming => ({
   model: request.model,
   max_tokens: request.maxTokens,
-  system: [
-    {
-      type: 'text',
-      text: request.system,
-      cache_control: { type: 'ephemeral' },
-    },
-  ],
+  system: constrained
+    ? [
+        {
+          type: 'text',
+          text: request.system,
+          cache_control: { type: 'ephemeral' },
+        },
+      ]
+    : [
+        { type: 'text', text: request.system },
+        {
+          type: 'text',
+          text: schemaGuidance(request),
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
   messages: request.messages.map((m) => ({
     role: m.role,
     content: m.content,
   })),
   output_config: {
-    format: { type: 'json_schema', schema: request.schema },
+    ...(constrained
+      ? { format: { type: 'json_schema' as const, schema: request.schema } }
+      : {}),
     ...(request.effort ? { effort: request.effort } : {}),
   },
 });
+
+// The one 400 that a smaller request can avoid.
+const isGrammarTooLarge = (error: unknown) =>
+  error instanceof Anthropic.BadRequestError &&
+  /grammar is too large/i.test(error.message);
+
+// Guided replies sometimes arrive fenced or with a stray sentence around them.
+const extractJson = (text: string): unknown => {
+  const direct = parseJsonOrNull(text);
+  if (direct !== null) return direct;
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  return start >= 0 && end > start
+    ? parseJsonOrNull(text.slice(start, end + 1))
+    : null;
+};
 
 const toStopReason = (reason: Message['stop_reason']): StopReason => {
   switch (reason) {
@@ -75,7 +117,7 @@ const readAnthropicMessage = (message: Message): StructuredResponse => {
     .flatMap((block) => (block.type === 'text' ? [block.text] : []))
     .join('');
   return {
-    json: parseJsonOrNull(rawText),
+    json: extractJson(rawText),
     stopReason: toStopReason(message.stop_reason),
     rawText,
     usage: {
@@ -98,6 +140,8 @@ export const createAnthropicAdapter = (
 ): ProviderAdapter => {
   const apiKey = () => options.apiKey ?? process.env.ANTHROPIC_API_KEY ?? '';
   let client = options.client;
+  // Schemas the API refused to compile, sent as guidance from then on.
+  const unconstrained = new Set<string>();
   const getClient = (): AnthropicClientLike => {
     client ??= new Anthropic({ apiKey: apiKey(), maxRetries: 0 });
     return client;
@@ -106,16 +150,26 @@ export const createAnthropicAdapter = (
     provider: 'anthropic',
     isConfigured: () => Boolean(options.client) || apiKey().length > 0,
     generateStructured: async (request) => {
-      const message = await getClient().messages.create(
-        buildAnthropicParams(request),
-        // No SDK retries: each would get the full timeout again, multiplying
-        // it past the background function's limit. The pipeline retries.
-        {
-          maxRetries: 0,
-          ...(request.timeoutMs ? { timeout: request.timeoutMs } : {}),
-        },
-      );
-      return readAnthropicMessage(message);
+      // No SDK retries: each would get the full timeout again, multiplying
+      // it past the background function's limit. The pipeline retries.
+      const send = (constrained: boolean) =>
+        getClient().messages.create(
+          buildAnthropicParams(request, constrained),
+          {
+            maxRetries: 0,
+            ...(request.timeoutMs ? { timeout: request.timeoutMs } : {}),
+          },
+        );
+      if (unconstrained.has(request.schemaName)) {
+        return readAnthropicMessage(await send(false));
+      }
+      try {
+        return readAnthropicMessage(await send(true));
+      } catch (error) {
+        if (!isGrammarTooLarge(error)) throw error;
+        unconstrained.add(request.schemaName);
+        return readAnthropicMessage(await send(false));
+      }
     },
   };
 };

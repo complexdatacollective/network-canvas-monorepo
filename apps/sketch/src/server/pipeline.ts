@@ -118,6 +118,14 @@ const providerAnswered = (error: unknown) =>
   'status' in error &&
   typeof error.status === 'number';
 
+// A 4xx other than timeout, conflict or rate limit: the provider will reject
+// the same request again, so retrying it only wastes the job's time.
+const providerRejected = (error: unknown) =>
+  providerAnswered(error) &&
+  (error as { status: number }).status >= 400 &&
+  (error as { status: number }).status < 500 &&
+  ![408, 409, 429].includes((error as { status: number }).status);
+
 type PipelineInput = {
   description: string;
   provider: Provider;
@@ -211,6 +219,9 @@ const DESIGN_FAILED =
 
 const DESIGN_UNREACHABLE =
   'The design model could not be reached. Please try again in a few minutes.';
+
+const DESIGN_REJECTED =
+  "The design model turned down Sketch's request. This is a problem with Sketch, not with your description, and it has been logged.";
 
 export const PIPELINE_FAILURE_MESSAGE =
   'Something went wrong while Sketch was working on your study. Please try again.';
@@ -332,6 +343,9 @@ export const runPipeline = async (
     return { ...sum, costUsd: Math.round(sum.costUsd * 1e6) / 1e6 };
   };
 
+  // Set by call() when the provider rejected the request outright.
+  let lastCallRejected = false;
+
   // Calls the provider and records usage. Returns null when the call threw.
   const call = async (
     role: CallRole,
@@ -360,6 +374,7 @@ export const runPipeline = async (
       });
       return null;
     }
+    lastCallRejected = false;
     try {
       const response = await adapter.generateStructured({
         ...request,
@@ -377,6 +392,7 @@ export const runPipeline = async (
       });
       return response;
     } catch (error) {
+      lastCallRejected = providerRejected(error);
       log.calls.push({
         role,
         attempt,
@@ -470,7 +486,7 @@ export const runPipeline = async (
           ok: false;
           rawText: string;
           feedback: string;
-          reason: 'unparseable' | 'unreachable';
+          reason: 'unparseable' | 'unreachable' | 'rejected';
         };
 
     const runAttempt = async (
@@ -504,7 +520,7 @@ export const runPipeline = async (
           ok: false,
           rawText: '',
           feedback: UNPARSEABLE_FEEDBACK,
-          reason: 'unreachable',
+          reason: lastCallRejected ? 'rejected' : 'unreachable',
         };
       }
       const parsed =
@@ -561,6 +577,9 @@ export const runPipeline = async (
 
     if (first.ok && !first.build.retry) {
       chosen = { raw: first.raw, build: first.build };
+    } else if (!first.ok && first.reason === 'rejected') {
+      // The same request would be rejected again: do not spend the retry.
+      return failActive(DESIGN_REJECTED);
     } else {
       const count = problemCount(first);
       await setStep(
@@ -607,6 +626,8 @@ export const runPipeline = async (
         log.tags.push('firstAttemptShipped');
       } else if (!second.ok && second.reason === 'unreachable') {
         return failActive(DESIGN_UNREACHABLE);
+      } else if (!second.ok && second.reason === 'rejected') {
+        return failActive(DESIGN_REJECTED);
       } else {
         return failActive(
           second.ok && second.build.fatal ? second.build.fatal : DESIGN_FAILED,

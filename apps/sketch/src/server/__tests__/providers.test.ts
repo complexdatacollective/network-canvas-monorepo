@@ -1,4 +1,5 @@
 // @vitest-environment node
+import Anthropic from '@anthropic-ai/sdk';
 import type { Message } from '@anthropic-ai/sdk/resources/messages/messages';
 import type { Response } from 'openai/resources/responses/responses';
 import { describe, expect, it, vi } from 'vitest';
@@ -128,6 +129,76 @@ describe('anthropic adapter', () => {
       maxRetries: 0,
       timeout: 90_000,
     });
+  });
+
+  it('sends a schema too large to compile as guidance, then keeps doing so', async () => {
+    const tooLarge = new Anthropic.BadRequestError(
+      400,
+      {
+        type: 'error',
+        error: {
+          type: 'invalid_request_error',
+          message:
+            'The compiled grammar is too large. Simplify your tool schemas.',
+        },
+      },
+      undefined,
+      new Headers(),
+    );
+    const create = vi
+      .fn()
+      .mockRejectedValueOnce(tooLarge)
+      .mockResolvedValue(
+        anthropicMessage({
+          content: [
+            {
+              type: 'text',
+              text: '```json\n{"ok":true}\n```',
+              citations: null,
+            },
+          ],
+        }),
+      );
+    const client = { messages: { create } } as unknown as AnthropicClientLike;
+    const adapter = createAnthropicAdapter({ client });
+
+    await expect(adapter.generateStructured(request)).resolves.toMatchObject({
+      json: { ok: true },
+      stopReason: 'complete',
+    });
+    await adapter.generateStructured(request);
+    expect(create).toHaveBeenCalledTimes(3);
+    const calls = create.mock.calls as unknown as Record<string, unknown>[][];
+    const guided = calls[1]![0] as {
+      system: { text: string }[];
+      output_config: Record<string, unknown>;
+    };
+    expect(guided.output_config).toEqual({ effort: 'medium' });
+    expect(guided.system[0]?.text).toBe('SYSTEM PROMPT');
+    expect(guided.system[1]?.text).toContain(JSON.stringify(schema));
+    // The second request went straight to guidance.
+    expect(
+      (calls[2]![0] as { output_config: object }).output_config,
+    ).not.toHaveProperty('format');
+  });
+
+  it('passes other rejections through', async () => {
+    const create = vi.fn().mockRejectedValue(
+      new Anthropic.BadRequestError(
+        400,
+        {
+          type: 'error',
+          error: { type: 'invalid_request_error', message: 'bad model' },
+        },
+        undefined,
+        new Headers(),
+      ),
+    );
+    const client = { messages: { create } } as unknown as AnthropicClientLike;
+    await expect(
+      createAnthropicAdapter({ client }).generateStructured(request),
+    ).rejects.toThrow(/bad model/);
+    expect(create).toHaveBeenCalledTimes(1);
   });
 
   it('is configured only with a key', () => {

@@ -251,6 +251,22 @@ describe('runPipeline', () => {
     expect(outcome.error).toMatch(/could not be reached/);
   });
 
+  it('does not repeat a design request the provider rejected', async () => {
+    const rejected = Object.assign(new Error('invalid_request_error'), {
+      status: 400,
+    });
+    const { adapters, requests } = scriptedAdapter({
+      screening: [reply(STUDY_SCREENING)],
+      study_design: [rejected, reply(friendshipDesign)],
+    });
+    const { outcome } = await run(adapters);
+    expect(outcome.status).toBe('failed');
+    expect(outcome.error).toMatch(/problem with Sketch/);
+    expect(
+      requests.filter((r) => r.schemaName === 'study_design'),
+    ).toHaveLength(1);
+  });
+
   it('ships the first design when the revision is unusable', async () => {
     const { adapters } = scriptedAdapter({
       screening: [reply(STUDY_SCREENING)],
