@@ -335,6 +335,11 @@ const syncProtocolHistoryMarker = (
 // the protocol and pushing the target path truncates all protocol entries from
 // the forward stack. A direct-load session has no in-app entry before it, so
 // its first protocol entry is replaced before the final push instead.
+//
+// Architect 8 inside Architect 9 leaves the protocol only for its start
+// screen, which goes back to Architect 9 in place of its own entry. There the
+// session collapses onto that one entry with nothing pushed after it, so the
+// tab's history holds no empty /v8/ page for Back from Architect 9 to land on.
 export const collapseProtocolHistory = (
   targetPath: string,
   replaceCurrentEntry: () => void,
@@ -348,14 +353,15 @@ export const collapseProtocolHistory = (
     return;
   }
 
+  const target = IS_SUBPATH_BUILD ? toBrowserPath('/') : targetPath;
   return new Promise<void>((resolve) => {
     window.addEventListener(
       'popstate',
       () => {
         if (!hasAppEntryBeforeProtocol) {
-          history.replaceState(null, '', targetPath);
+          history.replaceState(null, '', target);
         }
-        history.pushState(null, '', targetPath);
+        if (!IS_SUBPATH_BUILD) history.pushState(null, '', target);
         resolve();
       },
       { once: true },
