@@ -43,7 +43,7 @@ export const legacyProtocolMessages = defineMessages({
     id: 'interviewer.legacyProtocol.notReadyOffline',
     defaultMessage: 'Not ready offline',
     description:
-      'Accessible name and tooltip of a status icon inside the “Requires Internet” badge on an older protocol’s card on the home screen: the previous version of Interviewer, which runs this protocol, has not finished downloading for use without an internet connection, so the protocol cannot be used offline yet.',
+      'Accessible name and tooltip of a status icon inside the “Schema 8” badge on an older protocol’s card on the home screen: the previous version of Interviewer, which runs this protocol, has not finished downloading for use without an internet connection, so the protocol cannot be used offline yet.',
   },
 });
 

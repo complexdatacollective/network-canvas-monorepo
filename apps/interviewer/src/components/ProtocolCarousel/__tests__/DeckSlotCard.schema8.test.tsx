@@ -128,12 +128,14 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
     expect(screen.queryByText(/Interviewer 8/)).not.toBeInTheDocument();
   });
 
-  it('says it needs the internet, and why, while Interviewer 8 is not ready offline', () => {
+  it('marks the schema badge while Interviewer 8 is not ready offline', () => {
     renderCard(makeActions({ offline: 'not-ready' }));
-    const badge = screen.getByText('Requires Internet');
+    const badge = screen.getByText('Schema 8');
     expect(
       within(badge).getByRole('img', { name: 'Not ready offline' }),
     ).toBeInTheDocument();
+    // Requires Internet is only for protocols that always need it.
+    expect(screen.queryByText('Requires Internet')).not.toBeInTheDocument();
   });
 
   it('starts no interview, and says why, when Interviewer 8 is not bundled', async () => {

@@ -129,12 +129,7 @@ function slotCardProps(
       protocol: entry.protocol,
       isActive,
       sessionCount,
-      // A schema 8 protocol also needs the internet while Interviewer 8,
-      // which runs its interviews, is not yet saved for offline use.
-      requiresInternetConnection:
-        protocolRequiresInternet(entry.protocol) ||
-        schema8Props?.requiresInternetStatus != null,
-      requiresInternetStatus: schema8Props?.requiresInternetStatus,
+      requiresInternetConnection: protocolRequiresInternet(entry.protocol),
       onActivate: activate,
       // While the case-ID form is open it takes over the card: the
       // controls row, description, and metadata animate out (their exits
@@ -258,7 +253,7 @@ function schema8CardProps(
     schema8,
   }: Pick<DeckSlotCardProps, 'isActive' | 'onDeleteProtocol' | 'schema8'>,
   intl: IntlShape,
-): Pick<DeckCardProps, 'badges' | 'menu' | 'requiresInternetStatus'> & {
+): Pick<DeckCardProps, 'badges' | 'menu'> & {
   unavailableFooter: DeckCardProps['footer'];
 } {
   const interviewer = schema8?.interviewer ?? null;
@@ -284,7 +279,26 @@ function schema8CardProps(
   return {
     badges: (
       <>
-        <DeckCardBadge tone="info">
+        <DeckCardBadge
+          tone="info"
+          // While Interviewer 8, which runs its interviews, is not yet saved
+          // for offline use, the protocol cannot be used offline either.
+          status={
+            interviewer && schema8?.offline === 'not-ready' ? (
+              <CloudOff
+                role="img"
+                aria-label={intl.formatMessage(
+                  legacyProtocolMessages.notReadyOffline,
+                )}
+                className={iconClassName}
+              >
+                <title>
+                  {intl.formatMessage(legacyProtocolMessages.notReadyOffline)}
+                </title>
+              </CloudOff>
+            ) : undefined
+          }
+        >
           {intl.formatMessage(legacyProtocolMessages.schemaBadge, {
             version: protocol.schemaVersion,
           })}
@@ -299,20 +313,6 @@ function schema8CardProps(
         )}
       </>
     ),
-    requiresInternetStatus:
-      interviewer && schema8?.offline === 'not-ready' ? (
-        <CloudOff
-          role="img"
-          aria-label={intl.formatMessage(
-            legacyProtocolMessages.notReadyOffline,
-          )}
-          className={iconClassName}
-        >
-          <title>
-            {intl.formatMessage(legacyProtocolMessages.notReadyOffline)}
-          </title>
-        </CloudOff>
-      ) : undefined,
     menu: (
       <DeckCardMenu
         label={intl.formatMessage(legacyProtocolMessages.protocolActions, {
