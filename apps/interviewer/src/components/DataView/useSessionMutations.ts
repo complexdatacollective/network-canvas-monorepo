@@ -527,9 +527,7 @@ export function useSessionMutations({
       setMarkingUnfinishedId(session.id);
       try {
         // `stages` are those of the session's protocol as listed.
-        await markSessionUnfinished(session.id, stages, {
-          protocolHash: session.protocolHash,
-        });
+        await markSessionUnfinished(session.id, stages);
         toast.add({
           title: createElement(AppMessage, {
             message: messages.interviewMarkedUnfinished,

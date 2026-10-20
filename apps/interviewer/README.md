@@ -59,7 +59,8 @@ Lint and format with the monorepo root `pnpm lint` / `pnpm lint:fix` (oxlint + o
 +--------------------------------------------------------------+
         |
         v
-  IndexedDB (Dexie, DB name "interviewer")
+  IndexedDB (Dexie, DB name "interviewer-v9"; Interviewer 8's
+  "interviewer" is only read)
   Sensitive fields (session network/stageMetadata, protocol
   protocol/codebook, asset data) stored as AES-GCM ciphertext
   when a secured vault mode is enrolled; index fields (caseId,

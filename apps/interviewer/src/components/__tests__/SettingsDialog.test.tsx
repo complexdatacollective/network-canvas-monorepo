@@ -56,6 +56,13 @@ const {
   mockConfirm: vi.fn<(options: ConfirmCall) => Promise<boolean | null>>(),
 }));
 
+const legacyOffline = vi.hoisted(() => ({
+  current: 'not-bundled' as 'not-bundled' | 'checking' | 'ready' | 'not-ready',
+}));
+vi.mock('~/lib/pwa/legacyInterviewerOffline', () => ({
+  useLegacyInterviewerOffline: () => legacyOffline.current,
+}));
+
 vi.mock('~/lib/storage', async () => {
   const actual =
     await vi.importActual<typeof import('~/lib/storage')>('~/lib/storage');
@@ -166,6 +173,34 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  legacyOffline.current = 'not-bundled';
+});
+
+describe('SettingsDialog Interviewer 8 offline', () => {
+  const findAbout = () =>
+    waitFor(
+      () =>
+        expect(screen.getAllByText(/offline storage/i).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 5000 },
+    );
+
+  it('says whether Interviewer 8 is ready offline', async () => {
+    legacyOffline.current = 'not-ready';
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await findAbout();
+    expect(screen.getByText('Interviewer 8 offline')).toBeInTheDocument();
+    expect(screen.getByTestId('legacy-offline-setting')).toHaveTextContent(
+      'Not ready',
+    );
+  });
+
+  it('has no such row in a build without Interviewer 8', async () => {
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await findAbout();
+    expect(screen.queryByText('Interviewer 8 offline')).not.toBeInTheDocument();
+  });
 });
 
 describe('SettingsDialog storage durability', () => {

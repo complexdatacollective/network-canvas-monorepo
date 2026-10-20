@@ -34,6 +34,9 @@ export default defineConfig({
   // stub it here so modules reading APP_VERSION can be imported under test.
   define: {
     __APP_VERSION__: JSON.stringify('0.0.0-test'),
+    // No Interviewer 8 is bundled under test; a test that needs one mocks
+    // `getBundledLegacyInterviewer`.
+    __INTERVIEWER_V8__: 'null',
   },
   test: {
     exclude: ['**/node_modules/**', '**/dist/**', '**/storybook-static/**'],

@@ -256,6 +256,8 @@ jobs:
           # bundle; this lane ships only the newest line, so that is a hotfix
           # released before 9.0.
           ARCHITECT_REQUIRE_LEGACY_V8: ${{ inputs.app == 'architect' && hashFiles('apps/architect/legacy-architect.json') != '' && 'true' || '' }}
+          # The same for an Interviewer tree that bundles Interviewer 8.
+          INTERVIEWER_REQUIRE_LEGACY_V8: ${{ inputs.app == 'interviewer' && hashFiles('apps/interviewer/legacy-interviewer.json') != '' && 'true' || '' }}
         run: pnpm exec turbo run build --filter="@codaco/$APP"
 
       # Checked outside the turbo cache too, before the tag is claimed or
@@ -266,6 +268,16 @@ jobs:
           for file in index.html sw.js dist-info.json; do
             if [[ ! -f "apps/architect/dist/v8/$file" ]]; then
               echo "::error::apps/architect/dist/v8/$file is missing; production must serve Architect 8 at /v8/." >&2
+              exit 1
+            fi
+          done
+
+      - name: Check Interviewer 8 is bundled
+        if: inputs.app == 'interviewer' && hashFiles('apps/interviewer/legacy-interviewer.json') != ''
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/interviewer/dist/v8/$file" ]]; then
+              echo "::error::apps/interviewer/dist/v8/$file is missing; production must serve Interviewer 8 at /v8/." >&2
               exit 1
             fi
           done

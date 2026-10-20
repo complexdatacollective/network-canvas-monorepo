@@ -1,78 +1,71 @@
 import Dexie, { type Table } from 'dexie';
 
-import type { VersionedProtocol } from '@codaco/protocol-validation';
-
+import { readLegacyDeviceSettings } from './legacySettings';
 import type {
   StoredAssetRow,
   StoredProtocolRow,
   StoredSessionRow,
 } from './recordCrypto';
+import { DB_NAME } from './storageNames';
 import { DEFAULT_SETTINGS, type StoredSettings } from './types';
 
 /**
- * A durable record that a schema migration re-keyed a stored protocol from
- * `previousHash` to `hash`. Written in the same transaction as the re-keying,
- * and deleted only with the protocol the chain of records leads to. The launch
- * sweep follows these records to heal any session a legacy writer (a tab still
- * running the pre-update bundle) wrote back under a superseded hash after the
- * migration ran.
+ * That a schema 8 protocol in Interviewer 8's database was upgraded into this
+ * one, under a new hash. Written with the upgraded copy, so the deck can say
+ * so and a second upgrade opens the existing copy instead of making another.
  */
-export type StoredProtocolMigrationRecord = {
-  previousHash: string;
-  hash: string;
-  migratedAt: string;
+export type LegacyUpgradeRecord = {
+  /** The hash of the schema 8 protocol in Interviewer 8's database. */
+  legacyHash: string;
+  /** The hash of the schema 9 copy in this database. */
+  upgradedHash: string;
   /**
-   * The protocol row the migration replaced, exactly as it was stored
-   * (encrypted when the vault is secured), and the schema version it was
-   * migrated to. A session written back under `previousHash` holds data in
-   * that row's schema, so healing replays the migration's session migrator
-   * from it rather than only repointing the session.
-   *
-   * Absent on records written before sessions were migrated with their
-   * protocol (Interviewer 8.3 and earlier). Those migrations repointed every
-   * session without changing it, so healing does the same for them.
+   * The schema 8 protocol's `importedAt` when the copy was made. Interviewer 8
+   * re-imports a file with the same hash in place (new name, description or
+   * assets keep the hash) and gives the row a new `importedAt`, so a copy made
+   * before that no longer matches its original.
    */
-  source?: {
-    row: StoredProtocolRow;
-    toVersion: VersionedProtocol['schemaVersion'];
-  };
+  legacyImportedAt: string;
+  /** ISO timestamp, like every other timestamp this app stores. */
+  upgradedAt: string;
 };
 
-class InterviewerV8DB extends Dexie {
+/** Whether `record` was made from the schema 8 protocol as it is now. */
+export const isCurrentUpgrade = (
+  record: LegacyUpgradeRecord,
+  legacy: { hash: string; importedAt: string },
+): boolean =>
+  record.legacyHash === legacy.hash &&
+  record.legacyImportedAt === legacy.importedAt;
+
+/**
+ * The stores of `DB_NAME`. Its own database, separate from Interviewer 8's
+ * (`interviewer`), and so a fresh `version(1)`: none of Interviewer 8's version
+ * history applies to it. The indexes are those Interviewer 8's tables have.
+ */
+const DB_SCHEMA = {
+  protocols: 'id, hash, name, importedAt',
+  sessions:
+    'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, isSynthetic',
+  assets: 'id, protocolHash, assetId',
+  settings: 'id',
+  legacyUpgrades: 'legacyHash',
+} as const;
+
+class InterviewerDB extends Dexie {
   protocols!: Table<StoredProtocolRow, string>;
   sessions!: Table<StoredSessionRow, string>;
   assets!: Table<StoredAssetRow, string>;
   settings!: Table<StoredSettings, 'device'>;
-  protocolMigrations!: Table<StoredProtocolMigrationRecord, string>;
+  legacyUpgrades!: Table<LegacyUpgradeRecord, string>;
 
   constructor() {
-    super('interviewer');
-    this.version(1).stores({
-      protocols: 'id, hash, name, importedAt',
-      sessions:
-        'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt',
-      assets: 'id, protocolHash, assetId',
-      settings: 'id',
-    });
-    // v2 adds the isSynthetic index so synthetic-data count/bulk-delete can
-    // hit the index instead of scanning. Existing rows have no value for the
-    // field; Dexie treats them as undefined which sorts/filters as non-true.
-    this.version(2).stores({
-      sessions:
-        'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, isSynthetic',
-    });
-    // v3 adds the durable record of every schema-migration re-keying
-    // (previous hash → new hash). The launch sweep uses it to heal sessions a
-    // legacy writer — a tab still running the pre-update bundle, whose
-    // updateSession predates the commit-time hash guard — pointed back at a
-    // superseded hash after the migration ran.
-    this.version(3).stores({
-      protocolMigrations: 'previousHash',
-    });
+    super(DB_NAME);
+    this.version(1).stores(DB_SCHEMA);
   }
 }
 
-export const db = new InterviewerV8DB();
+export const db = new InterviewerDB();
 
 /**
  * The settings-table row recording that this device's vault has been
@@ -100,13 +93,35 @@ export async function isDatabaseSecured(): Promise<boolean> {
   return (await securedMarkers().get('secured')) !== undefined;
 }
 
+const withDefaults = (row: StoredSettings): StoredSettings => ({
+  ...DEFAULT_SETTINGS,
+  ...row,
+  id: 'device',
+});
+
+/**
+ * This device's settings. The first time this database has none, they start
+ * from Interviewer 8's (see `legacySettings`) over the defaults.
+ */
 export async function getSettings(): Promise<StoredSettings> {
   const existing = await db.settings.get('device');
-  if (existing) {
-    return { ...DEFAULT_SETTINGS, ...existing, id: 'device' };
-  }
-  await db.settings.put(DEFAULT_SETTINGS);
-  return DEFAULT_SETTINGS;
+  if (existing) return withDefaults(existing);
+
+  // Read before the write transaction: it is another database, and the await
+  // would let this one's transaction commit.
+  const initial: StoredSettings = {
+    ...DEFAULT_SETTINGS,
+    ...(await readLegacyDeviceSettings()),
+    id: 'device',
+  };
+  return db.transaction('rw', db.settings, async () => {
+    // Another caller may have written the row meanwhile, perhaps already
+    // changed by the user: theirs stands.
+    const written = await db.settings.get('device');
+    if (written) return withDefaults(written);
+    await db.settings.put(initial);
+    return initial;
+  });
 }
 
 export async function updateSettings(

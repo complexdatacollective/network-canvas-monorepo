@@ -146,9 +146,7 @@ if (failures.length > 0) {
   any session of a protocol fails, the host writes neither the protocol nor
   any of its sessions. Fresco, which migrates every protocol in one database
   transaction at deploy, aborts that transaction and stops starting up,
-  naming each failed interview. Interviewer leaves that protocol and all its
-  sessions exactly as stored, reports the protocol as unable to update, and
-  tries again at the next launch.
+  naming each failed interview.
 - **Pure.** The migrator is deterministic and never modifies the session it is
   given, so it can be called for each session in any order, and inside a
   transaction. `changed` is false when the result equals the input, so the
@@ -156,9 +154,10 @@ if (failures.length > 0) {
 - **Already current.** When the protocol is already at the target version,
   the migrator only validates.
 
-Fresco (`apps/fresco/scripts/migrate-protocols.ts`) and Interviewer
-(`apps/interviewer/src/lib/db/migrateStoredProtocols.ts`) are the reference
-hosts.
+Fresco (`apps/fresco/scripts/migrate-protocols.ts`) is the reference host.
+Interviewer never migrates stored protocols or interviews: schema 8 ones stay
+in Interviewer 8, and upgrading a protocol makes a new schema 9 copy with no
+interviews.
 
 ### Writing a migration step
 

@@ -63,9 +63,8 @@ vi.mock('../recordCrypto', async (importOriginal) => {
 
 // Import AFTER the mock so the code under test binds the wrapped functions.
 const { db } = await import('../db');
-const { migrateStoredProtocols } = await import('../migrateStoredProtocols');
 const { saveProtocol } = await import('../protocols');
-const { decryptSession, encryptProtocol, encryptSession, DeviceSecuredError } =
+const { encryptProtocol, encryptSession, DeviceSecuredError } =
   await import('../recordCrypto');
 const { setSessionDek } = await import('../sessionKey');
 const { createSession, markSessionFinished, updateSession } =
@@ -176,12 +175,6 @@ async function plaintextRows(): Promise<string[]> {
   for (const row of await db.assets.toArray()) {
     if (!row._enc || row.data !== undefined) found.push(`asset ${row.id}`);
   }
-  for (const record of await db.protocolMigrations.toArray()) {
-    const source = record.source?.row;
-    if (source && (!source._enc || source.protocol !== undefined)) {
-      found.push(`re-keying record ${record.previousHash}`);
-    }
-  }
   return found;
 }
 
@@ -191,8 +184,7 @@ const network: NcNetwork = {
   edges: [],
 };
 
-// Migrating drops the empty form at stage 0, so a session at stage 1 moves to
-// stage 0: its migration re-encrypts it.
+// A schema 7 study; `saveProtocol` stores it migrated to the current schema.
 const formStudy = (): Record<string, unknown> => ({
   schemaVersion: 7,
   codebook: { node: {}, edge: {}, ego: {} },
@@ -281,101 +273,11 @@ describe.each<VaultView>(['stale', 'current'])(
       await clearAll();
     });
 
-    // The migration cannot finish in this tab once the device is secured:
-    // this tab holds no key. Unlocking it starts the sweep again.
-    async function unlockAndMigrate() {
-      setSessionDek(dek);
-      return migrateStoredProtocols();
-    }
-
-    it('re-keying migration: commits no plaintext, and migrates once unlocked', async () => {
-      await seed('old-hash', formStudy(), ['s1'], ['key-1']);
-
-      const outcome = await secureAfter('encryptAsset', dek, view, () =>
-        migrateStoredProtocols(),
-      );
-
-      expect(outcome).toEqual({
-        status: 'fulfilled',
-        value: { migrated: [], failed: [] },
-      });
-      expect(await plaintextRows()).toEqual([]);
-      expect(await db.protocols.get('old-hash')).toBeDefined();
-
-      const retried = await unlockAndMigrate();
-      expect(retried.failed).toEqual([]);
-      expect(retried.migrated).toHaveLength(1);
-      expect(await plaintextRows()).toEqual([]);
-      const row = await db.sessions.get('s1');
-      if (!row) throw new Error('expected the session to survive');
-      expect(row.protocolHash).toBe(retried.migrated[0]?.hash);
-      expect((await decryptSession(row)).currentStep).toBe(0);
-    });
-
-    it('in-place migration: commits no plaintext, and migrates once unlocked', async () => {
-      const document = formStudy();
-      const hash = hashProtocol(
-        migrateProtocol(document, COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
-          name: 'Form Study',
-        }),
-      );
-      await seed(hash, document, ['s1']);
-
-      const outcome = await secureAfter('encryptSession', dek, view, () =>
-        migrateStoredProtocols(),
-      );
-
-      expect(outcome).toEqual({
-        status: 'fulfilled',
-        value: { migrated: [], failed: [] },
-      });
-      expect(await plaintextRows()).toEqual([]);
-      expect((await db.protocols.get(hash))?.schemaVersion).toBe(7);
-
-      const retried = await unlockAndMigrate();
-      expect(retried.failed).toEqual([]);
-      expect(retried.migrated).toHaveLength(1);
-      expect(await plaintextRows()).toEqual([]);
-      const row = await db.sessions.get('s1');
-      if (!row) throw new Error('expected the session to survive');
-      expect((await decryptSession(row)).currentStep).toBe(0);
-    });
-
-    it('healing a late session: commits no plaintext, and heals once unlocked', async () => {
-      await seed('old-hash', formStudy(), []);
-      const first = await migrateStoredProtocols();
-      const hash = first.migrated[0]?.hash;
-      if (!hash) throw new Error('expected the protocol to migrate');
-      // A tab still running against the old protocol writes its session back.
-      await db.sessions.put(
-        await encryptSession(storedSession('late', 'old-hash')),
-      );
-
-      const outcome = await secureAfter('encryptSession', dek, view, () =>
-        migrateStoredProtocols(),
-      );
-
-      expect(outcome).toEqual({
-        status: 'fulfilled',
-        value: { migrated: [], failed: [] },
-      });
-      expect(await plaintextRows()).toEqual([]);
-      expect((await db.sessions.get('late'))?.protocolHash).toBe('old-hash');
-
-      const retried = await unlockAndMigrate();
-      expect(retried.failed).toEqual([]);
-      expect(await plaintextRows()).toEqual([]);
-      const row = await db.sessions.get('late');
-      if (!row) throw new Error('expected the session to survive');
-      expect(row.protocolHash).toBe(hash);
-      expect((await decryptSession(row)).currentStep).toBe(0);
-    });
-
     it('updateSession: refuses the plaintext write and keeps the stored session', async () => {
       await seed('h1', formStudy(), ['s1']);
 
       const outcome = await secureAfter('encryptSession', dek, view, () =>
-        updateSession('s1', { caseId: 'renamed' }, { protocolHash: 'h1' }),
+        updateSession('s1', { caseId: 'renamed' }),
       );
 
       expect(outcome.status).toBe('rejected');

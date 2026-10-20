@@ -227,4 +227,96 @@ describe('useProtocolImport', () => {
       }),
     );
   });
+
+  describe('a file below this app’s schema', () => {
+    const migrationRequired = {
+      success: false as const,
+      error: 'migration-required' as const,
+      schemaVersion: 8 as const,
+      message: 'This protocol could not be upgraded to the current version.',
+      localizedMessage: {
+        descriptor: {
+          id: 'interviewer.protocolImport.cannotUpgrade',
+          defaultMessage:
+            'This protocol could not be upgraded to the current version.',
+        },
+      },
+    };
+    const file = new File([new Uint8Array()], 'older.netcanvas');
+
+    const runImport = async (
+      onMigrationRequired?: Parameters<
+        typeof useProtocolImport
+      >[0]['onMigrationRequired'],
+      allowMigration?: boolean,
+    ) => {
+      const { result } = renderHook(() =>
+        useProtocolImport({ onInstalled: () => {}, onMigrationRequired }),
+      );
+      await act(async () => {
+        await result.current.startImport({
+          source: 'file',
+          file,
+          label: 'older.netcanvas',
+          allowMigration,
+        });
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600);
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+      return result;
+    };
+
+    it('hands the choice to the caller, with nothing saved and no error', async () => {
+      vi.mocked(importProtocolFromFile).mockResolvedValueOnce(
+        migrationRequired,
+      );
+      const onMigrationRequired = vi.fn();
+
+      const result = await runImport(onMigrationRequired);
+
+      expect(importProtocolFromFile).toHaveBeenCalledWith(
+        file,
+        expect.any(Function),
+        undefined,
+        { allowMigration: false },
+      );
+      expect(onMigrationRequired).toHaveBeenCalledWith({
+        file,
+        label: 'older',
+        schemaVersion: 8,
+      });
+      expect(toastAdd).not.toHaveBeenCalled();
+      expect(result.current.pendingImports).toEqual([]);
+    });
+
+    it('refuses with a message when no caller offers the choice', async () => {
+      vi.mocked(importProtocolFromFile).mockResolvedValueOnce(
+        migrationRequired,
+      );
+
+      await runImport();
+
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: renderedMessage('Import failed'),
+          description: renderedMessage(
+            'This protocol could not be upgraded to the current version.',
+          ),
+          variant: 'destructive',
+        }),
+      );
+    });
+
+    it('passes the researcher’s choice to upgrade through to the import', async () => {
+      await runImport(vi.fn(), true);
+      expect(importProtocolFromFile).toHaveBeenCalledWith(
+        file,
+        expect.any(Function),
+        undefined,
+        { allowMigration: true },
+      );
+    });
+  });
 });

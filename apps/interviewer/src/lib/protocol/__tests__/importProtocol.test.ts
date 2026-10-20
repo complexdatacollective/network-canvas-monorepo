@@ -138,7 +138,12 @@ describe('importProtocolFromFile error reporting', () => {
       ),
     );
 
-    const result = await importProtocolFromFile(asFile(bytes));
+    const result = await importProtocolFromFile(
+      asFile(bytes),
+      undefined,
+      undefined,
+      { allowMigration: true },
+    );
 
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -199,5 +204,87 @@ describe('importProtocolFromFile error reporting', () => {
       ).toContain(expectedGuidance);
     }
     expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('importing a file below this app’s schema', () => {
+  const schema8 = {
+    schemaVersion: 8,
+    name: 'Older study',
+    description: '',
+    stages: [],
+    codebook: { node: {}, edge: {}, ego: {} },
+    assetManifest: {},
+  };
+
+  beforeEach(() => {
+    saveProtocolMock.mockReset();
+    saveProtocolMock.mockResolvedValue(undefined);
+  });
+
+  it('never migrates on its own: it asks for the researcher’s choice', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(schema8),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result).toMatchObject({
+      success: false,
+      error: 'migration-required',
+      schemaVersion: 8,
+    });
+    if (result.success) return;
+    expect(result.message).toBe(
+      'This protocol could not be upgraded to the current version.',
+    );
+    expect(result.message).not.toMatch(IMPLEMENTATION_DETAIL);
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+
+  it('migrates, validates, hashes and saves it once the researcher chose to upgrade', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(schema8),
+    });
+
+    const result = await importProtocolFromFile(
+      asFile(bytes),
+      undefined,
+      undefined,
+      { allowMigration: true },
+    );
+
+    expect(result).toMatchObject({ success: true, migrated: true });
+    if (!result.success) return;
+    expect(result.protocol.schemaVersion).toBe(
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    );
+    expect(saveProtocolMock).toHaveBeenCalledWith(
+      result.protocol,
+      result.hash,
+      [],
+    );
+  });
+
+  it('imports a file at this app’s schema without asking', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(schema8),
+    });
+    const upgraded = await importProtocolFromFile(
+      asFile(bytes),
+      undefined,
+      undefined,
+      { allowMigration: true },
+    );
+    if (!upgraded.success) throw new Error('expected the upgrade to succeed');
+    saveProtocolMock.mockClear();
+
+    const current = await buildArchive({
+      'protocol.json': JSON.stringify(upgraded.protocol),
+    });
+    const result = await importProtocolFromFile(asFile(current));
+
+    expect(result).toMatchObject({ success: true, migrated: false });
+    expect(saveProtocolMock).toHaveBeenCalledTimes(1);
   });
 });

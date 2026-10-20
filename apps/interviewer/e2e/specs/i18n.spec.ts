@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 import JSZip from 'jszip';
 
+import { DB_NAME } from '../../src/lib/db/storageNames.js';
 import { expect, test } from '../fixtures/test.js';
 import { clickWhenDeckSettles } from '../helpers/deck.js';
 import {
@@ -87,10 +88,10 @@ async function typePin(field: Locator, code: string) {
 
 async function storedResearch(page: Page) {
   return page.evaluate(
-    () =>
+    (dbName) =>
       new Promise<{ protocols: unknown[]; sessions: unknown[] }>(
         (resolve, reject) => {
-          const request = indexedDB.open('interviewer');
+          const request = indexedDB.open(dbName);
           request.onerror = () => reject(request.error);
           request.onsuccess = () => {
             const database = request.result;
@@ -114,6 +115,7 @@ async function storedResearch(page: Page) {
           };
         },
       ),
+    DB_NAME,
   );
 }
 

@@ -1,6 +1,6 @@
 // fake-indexeddb must be imported before Dexie opens a database.
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
@@ -10,7 +10,6 @@ import {
 } from '@codaco/shared-consts';
 
 import { db } from '../db';
-import { reencryptProtocolMigration } from '../protocols';
 import {
   decryptAsset,
   decryptProtocol,
@@ -22,23 +21,6 @@ import {
 import { reencryptAllRecords } from '../reencrypt';
 import { setSessionDek } from '../sessionKey';
 import type { StoredAsset, StoredProtocol, StoredSession } from '../types';
-
-const duringProtocolEncrypt = vi.hoisted(
-  (): { run: (() => Promise<void>) | undefined } => ({ run: undefined }),
-);
-
-vi.mock('../recordCrypto', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../recordCrypto')>();
-  return {
-    ...original,
-    encryptProtocol: async (
-      ...args: Parameters<typeof original.encryptProtocol>
-    ) => {
-      await duringProtocolEncrypt.run?.();
-      return original.encryptProtocol(...args);
-    },
-  };
-});
 
 async function makeDek(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
@@ -120,7 +102,6 @@ async function clearAll(): Promise<void> {
   await db.sessions.clear();
   await db.protocols.clear();
   await db.assets.clear();
-  await db.protocolMigrations.clear();
 }
 
 // Write each row in the PLAINTEXT (mode-none) shape: no DEK held, so the
@@ -179,61 +160,6 @@ describe('reencryptAllRecords — sweep after enrolment', () => {
     expect(backProtocol.protocol.name).toBe('Study');
     const backAsset = await decryptAsset(assetRow);
     expect(backAsset.data).toBe('secret-token');
-  });
-
-  // A re-keying record keeps the protocol row its migration replaced, as it
-  // was stored; written before the device was secured, that copy is
-  // plaintext like every other row.
-  it('encrypts the protocol row a re-keying record keeps', async () => {
-    setSessionDek(null);
-    await db.protocolMigrations.put({
-      previousHash: 'h1',
-      hash: 'h2',
-      migratedAt: '2026-01-03T00:00:00.000Z',
-      source: { row: await encryptProtocol(protocol), toVersion: 9 },
-    });
-    expect((await db.protocolMigrations.get('h1'))?.source?.row._enc).toBe(
-      undefined,
-    );
-
-    setSessionDek(await makeDek());
-    const result = await reencryptAllRecords();
-
-    expect(result).toEqual({ total: 1, failed: 0 });
-    const record = await db.protocolMigrations.get('h1');
-    if (!record?.source) throw new Error('expected the record to survive');
-    expect(record.source.row._enc?.protocol).toBeDefined();
-    expect(record.source.row.protocol).toBeUndefined();
-    expect(record.source.row.codebook).toBeUndefined();
-    expect(record.source.toVersion).toBe(9);
-    expect((await decryptProtocol(record.source.row)).protocol).toEqual(
-      protocol.protocol,
-    );
-  });
-
-  // The sweep re-encrypts outside a transaction; another tab deleting the
-  // protocol meanwhile removes the record, and the sweep must not restore it.
-  it('does not bring back a re-keying record deleted while it was re-encrypted', async () => {
-    setSessionDek(null);
-    await db.protocolMigrations.put({
-      previousHash: 'h1',
-      hash: 'h2',
-      migratedAt: '2026-01-03T00:00:00.000Z',
-      source: { row: await encryptProtocol(protocol), toVersion: 9 },
-    });
-    setSessionDek(await makeDek());
-
-    // Another tab deletes the protocol while the row is being encrypted.
-    duringProtocolEncrypt.run = async () => {
-      await db.protocolMigrations.delete('h1');
-    };
-    try {
-      await reencryptProtocolMigration('h1');
-    } finally {
-      duringProtocolEncrypt.run = undefined;
-    }
-
-    expect(await db.protocolMigrations.get('h1')).toBeUndefined();
   });
 
   it('leaves rows already encrypted under the DEK intact (round-trips a stored blob)', async () => {

@@ -1,4 +1,10 @@
-import { HardDrive, ShieldAlert, ShieldCheck } from 'lucide-react';
+import {
+  CloudCheck,
+  CloudOff,
+  HardDrive,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import type React from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -14,7 +20,12 @@ import {
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
+import { LEGACY_INTERVIEWER_MAJOR } from '~/lib/legacyInterviewer';
 import { isRunningInstalled } from '~/lib/pwa/isRunningInstalled';
+import {
+  type LegacyInterviewerOffline,
+  useLegacyInterviewerOffline,
+} from '~/lib/pwa/legacyInterviewerOffline';
 import {
   estimateStorage,
   formatBytes,
@@ -23,6 +34,7 @@ import {
 } from '~/lib/storage';
 
 import AppUpdatePill from './AppUpdate/AppUpdatePill';
+import { legacyOfflineMessages } from './legacyProtocolMessages';
 
 const messages = defineMessages({
   interviewerAPPVERSION: {
@@ -289,6 +301,7 @@ export function StatusRowView({
   mode,
   durability,
   installed,
+  legacyOffline = 'not-bundled',
   versionSlot,
 }: {
   protocolCount: number;
@@ -296,9 +309,13 @@ export function StatusRowView({
   mode: AuthMode | undefined;
   durability: Durability | null;
   installed: boolean;
+  // Whether the bundled Interviewer 8 works offline; no chip without one, or
+  // until it is known.
+  legacyOffline?: LegacyInterviewerOffline;
   versionSlot?: React.ReactNode;
 }) {
   const intl = useAppIntl();
+  const legacyVersion = { version: LEGACY_INTERVIEWER_MAJOR };
   return (
     <motion.div
       variants={variants}
@@ -412,6 +429,38 @@ export function StatusRowView({
             )}
           </StatusChipPopover>
         ) : null}
+        {legacyOffline === 'ready' || legacyOffline === 'not-ready' ? (
+          <StatusChipPopover
+            testId="legacy-offline-status-trigger"
+            className={`${statusTriggerClassName} ${
+              legacyOffline === 'ready' ? 'text-primary' : 'text-warning'
+            }`}
+            chip={
+              <>
+                {legacyOffline === 'ready' ? (
+                  <CloudCheck className={statusIconClassName} />
+                ) : (
+                  <CloudOff className={statusIconClassName} />
+                )}
+                <span className={compactLabelClassName}>
+                  {intl.formatMessage(
+                    legacyOffline === 'ready'
+                      ? legacyOfflineMessages.readyChip
+                      : legacyOfflineMessages.notReadyChip,
+                    legacyVersion,
+                  )}
+                </span>
+              </>
+            }
+          >
+            {intl.formatMessage(
+              legacyOffline === 'ready'
+                ? legacyOfflineMessages.readyHelp
+                : legacyOfflineMessages.notReadyHelp,
+              legacyVersion,
+            )}
+          </StatusChipPopover>
+        ) : null}
         {versionSlot ?? (
           <span>
             {intl.formatMessage(messages.interviewerAPPVERSION, {
@@ -441,6 +490,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
   // Static per page load, like InstallBanner: installing mid-session still
   // requires launching the installed app.
   const [installed] = useState(isRunningInstalled);
+  const legacyOffline = useLegacyInterviewerOffline();
 
   useEffect(() => {
     let active = true;
@@ -495,6 +545,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
       mode={displayMode}
       durability={durability}
       installed={installed}
+      legacyOffline={legacyOffline}
       versionSlot={<AppUpdatePill />}
     />
   );

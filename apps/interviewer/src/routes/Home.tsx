@@ -1,5 +1,12 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { createElement, useCallback, useMemo, useState } from 'react';
+import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation } from 'wouter';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -11,14 +18,17 @@ import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { InstallBanner } from '~/components/InstallBanner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
-import { ResumePill } from '~/components/ResumePill';
+import { pickResumable, ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
-import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
+import {
+  type ImportRequest,
+  useProtocolImport,
+} from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
 
@@ -28,6 +38,7 @@ import {
   protocolsContainerVariants,
 } from './homeAnimations';
 import { useHomeData } from './useHomeData';
+import { useLegacyProtocolActions } from './useLegacyProtocolActions';
 
 const messages = defineMessages({
   deleteThisProtocol: {
@@ -65,10 +76,33 @@ function viewFromLocation(location: string): View {
 }
 
 export function HomeRoute() {
-  const { protocols, sessions, settings, reload } = useHomeData();
+  const {
+    protocols,
+    sessions,
+    settings,
+    legacyProtocols,
+    legacySessions,
+    upgradedLegacyHashes,
+    reload,
+  } = useHomeData();
+  // The choice an older file gets upgrades it through the import, which
+  // itself asks for that choice: the ref closes the loop.
+  const startImportRef = useRef<((request: ImportRequest) => void) | null>(
+    null,
+  );
+  const legacyActions = useLegacyProtocolActions({
+    reload,
+    startImport: useCallback((request: ImportRequest) => {
+      startImportRef.current?.(request);
+    }, []),
+  });
   const { pendingImports, startImport } = useProtocolImport({
     onInstalled: reload,
+    onMigrationRequired: legacyActions.onMigrationRequired,
   });
+  useEffect(() => {
+    startImportRef.current = (request) => void startImport(request);
+  }, [startImport]);
   // OS-launched .netcanvas files (installed-PWA file handler) import through
   // the same pipeline as the import dialog.
   useLaunchedProtocolImport(startImport);
@@ -93,10 +127,14 @@ export function HomeRoute() {
     pendingProtocolHash !== null &&
     protocols.some((p) => p.hash === pendingProtocolHash);
 
-  // Mirrors ResumePill's own render predicate (an in-progress session exists).
-  // When it does, the pill occupies the band just below the header in
-  // portrait, so the protocols column reserves top space to clear it.
-  const hasResumableSession = sessions.some((s) => s.finishedAt === null);
+  const legacyInterviewer = legacyActions.legacy.interviewer;
+  // Mirrors ResumePill's own render predicate (an in-progress session exists,
+  // this app's or, when it is bundled, Interviewer 8's). When it does, the
+  // pill occupies the band just below the header in portrait, so the
+  // protocols column reserves top space to clear it.
+  const hasResumableSession =
+    pickResumable(sessions, legacySessions, legacyInterviewer !== null) !==
+    undefined;
   const showResumePill =
     view === 'protocols' && !newSessionActive && hasResumableSession;
 
@@ -265,7 +303,12 @@ export function HomeRoute() {
         <div className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-[calc(1rem+env(safe-area-inset-top))] landscape:translate-y-0">
           <AnimatePresence>
             {showResumePill ? (
-              <ResumePill key="resume-pill" sessions={sessions} />
+              <ResumePill
+                key="resume-pill"
+                sessions={sessions}
+                legacySessions={legacySessions}
+                legacyInterviewer={legacyInterviewer}
+              />
             ) : null}
           </AnimatePresence>
         </div>
@@ -306,6 +349,10 @@ export function HomeRoute() {
               onInstallSample={handleInstallSample}
               onDismissSample={handleDismissSample}
               onInstallDevelopment={handleInstallDevelopment}
+              legacyProtocols={legacyProtocols}
+              upgradedLegacyHashes={upgradedLegacyHashes}
+              legacy={legacyActions.legacy}
+              focusRequest={legacyActions.focusRequest}
               newSessionProtocolHash={pendingProtocolHash}
               onCancelNewSession={closeNewSession}
               onSessionCreated={handleSessionCreated}
@@ -322,6 +369,8 @@ export function HomeRoute() {
           <DataView
             key="data"
             protocols={protocols}
+            legacyInterviewCount={legacySessions.length}
+            onOpenLegacyData={legacyActions.onOpenLegacyData}
             onReload={reload}
             refreshKey={dataRefreshKey}
           />

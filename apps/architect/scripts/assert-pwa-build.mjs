@@ -18,19 +18,23 @@ import { loadEnv } from 'vite';
 import { assertNoDevelopmentProtocol } from '../../../scripts/buildtime/assert-no-development-protocol.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
 import {
-  assertLegacyArchitectOutput,
+  assertLegacyAppOutput,
   assertLegacyRedirects,
   assertLegacyRouteExclusions,
   findLegacyPrecacheEntries,
   routeMatcherAt,
-} from './legacy-architect-assertions.ts';
-import { loadLegacyArchitectV8 } from './legacy-architect.ts';
+} from '../../../scripts/buildtime/legacy-app-assertions.ts';
+import {
+  legacyApp,
+  loadLegacyAppV8,
+} from '../../../scripts/buildtime/legacy-app.ts';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
 const dist = path.join(appRoot, 'dist');
+const legacyArchitect = legacyApp('architect');
 
 const fail = (msg) => {
   console.error(`PWA build assertion failed: ${msg}`);
@@ -38,8 +42,9 @@ const fail = (msg) => {
 };
 
 // Architect 8 is served at /v8/ from this deploy (dist/v8, see
-// legacy-architect.ts), so its stable entry points and hashed assets are held
-// to the same contract as this app's, whether or not this build bundles it.
+// scripts/buildtime/legacy-app.ts), so its stable entry points and hashed
+// assets are held to the same contract as this app's, whether or not this
+// build bundles it.
 try {
   assertPwaCacheHeaders({
     additionalStablePaths: [
@@ -50,7 +55,10 @@ try {
     nestedBases: ['/v8/'],
     text: readFileSync(path.join(dist, '_headers'), 'utf8'),
   });
-  assertLegacyRedirects(readFileSync(path.join(dist, '_redirects'), 'utf8'));
+  assertLegacyRedirects(
+    legacyArchitect,
+    readFileSync(path.join(dist, '_redirects'), 'utf8'),
+  );
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
 }
@@ -213,12 +221,14 @@ if (strayMaps.length > 0) {
 // dist/v8 holds exactly the pinned Architect 8 (or nothing), under the cache
 // prefix the reclaimer was checked above to leave alone. The recursive
 // source-map check above covers it too.
-const legacyArchitectV8 = loadLegacyArchitectV8(
+const legacyArchitectV8 = loadLegacyAppV8(
+  legacyArchitect,
   appRoot,
   loadEnv('production', appRoot, ''),
 );
 try {
-  assertLegacyArchitectOutput({
+  assertLegacyAppOutput({
+    app: legacyArchitect,
     dist,
     resolution: legacyArchitectV8,
     foreignCachePrefixes: expectedForeignCachePrefixes,
@@ -312,9 +322,13 @@ for (const stableIconPath of [
 }
 try {
   assertLegacyRouteExclusions({
+    app: legacyArchitect,
     freshShell: routeMatcherAt(sw, freshShellRoute.index),
     image: routeMatcherAt(sw, imageRouteIndex),
     font: routeMatcherAt(sw, imageRouteEnd),
+    // Architect's image route has always matched every origin; only its font
+    // route is held to same-origin requests.
+    sameOriginRoutes: ['font'],
   });
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));

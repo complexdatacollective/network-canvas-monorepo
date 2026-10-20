@@ -40,6 +40,14 @@ const architectContract = {
   nestedBases: ['/v8/'],
 };
 
+// Interviewer serves Interviewer 8 at /v8/ from the same deploy, so its
+// contract covers that app's entry points and hashed assets too (the same
+// options as apps/interviewer/scripts/assert-pwa-build.mjs).
+const interviewerContract = {
+  additionalStablePaths: ['/interviewer-icon.png'],
+  nestedBases: ['/v8/'],
+};
+
 describe('PWA cache headers', () => {
   it('protects every stable Architect entry point and keeps hashed assets immutable', () => {
     assert.doesNotThrow(() =>
@@ -95,6 +103,54 @@ describe('PWA cache headers', () => {
         additionalStablePaths: ['/interviewer-icon.png'],
         text: sourceHeaders('interviewer'),
       }),
+    );
+  });
+
+  it('holds the bundled Interviewer 8 at /v8/ to the same contract', () => {
+    assert.doesNotThrow(() =>
+      assertPwaCacheHeaders({
+        ...interviewerContract,
+        text: sourceHeaders('interviewer'),
+      }),
+    );
+  });
+
+  it('rejects an Interviewer deploy that leaves a nested Interviewer 8 icon cacheable', () => {
+    const broken = sourceHeaders('interviewer').replace(
+      '/v8/interviewer-icon.png\n  Cache-Control: no-store, no-cache, max-age=0, must-revalidate\n',
+      '',
+    );
+    assert.notEqual(broken, sourceHeaders('interviewer'));
+
+    assert.throws(
+      () => assertPwaCacheHeaders({ ...interviewerContract, text: broken }),
+      /missing Cache-Control for \/v8\/interviewer-icon\.png/,
+    );
+  });
+
+  it('rejects an Interviewer deploy whose nested Interviewer 8 assets are not immutable', () => {
+    const broken = sourceHeaders('interviewer').replace(
+      '/v8/assets/*\n  Cache-Control: public, max-age=31536000, immutable',
+      '/v8/assets/*\n  Cache-Control: no-store, no-cache, max-age=0, must-revalidate',
+    );
+    assert.notEqual(broken, sourceHeaders('interviewer'));
+
+    assert.throws(
+      () => assertPwaCacheHeaders({ ...interviewerContract, text: broken }),
+      /invalid Cache-Control for \/v8\/assets\/\*/,
+    );
+  });
+
+  it('rejects an Interviewer deploy that leaves the nested Interviewer 8 worker cacheable', () => {
+    const broken = sourceHeaders('interviewer').replace(
+      '/v8/sw.js\n  Cache-Control: no-store, no-cache, max-age=0, must-revalidate\n',
+      '',
+    );
+    assert.notEqual(broken, sourceHeaders('interviewer'));
+
+    assert.throws(
+      () => assertPwaCacheHeaders({ ...interviewerContract, text: broken }),
+      /missing Cache-Control for \/v8\/sw\.js/,
     );
   });
 

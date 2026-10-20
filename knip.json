@@ -53,6 +53,9 @@
         "scripts/release-test/interviewer-classic-cordova-upgrade.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
         "scripts/buildtime/posthog-cli-upload-stub.mjs",
+        // Spawned by path from the apps' legacy e2e fixtures
+        // (apps/*/e2e/fixtures/legacy-*.ts); nothing imports it.
+        "scripts/buildtime/preview-with-legacy-app.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
         // Codex (.codex/hooks.json) and .husky/pre-push, which knip cannot
         // parse. Only the executables are entries, so the shared library's
