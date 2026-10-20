@@ -18,7 +18,8 @@ const DYNAMIC_VALUE_PATH = 'dynamicValuePath' as const;
  *   heading, an Information screen): the participant and the interview;
  * - `prompt`, a stage's question, shown while its interface is on one active
  *   entity where it has one (the pair a Dyad Census asks about, the focal
- *   node of a one-to-many census, the node a Geospatial stage is placing);
+ *   node of a one-to-many census, the node a Geospatial stage is placing,
+ *   the node a bin stage in select mode is placing);
  * - `formField`, a form field's caption, shown while the form describes one
  *   entity: a node or edge form's fields, and the question a Categorical Bin
  *   asks about the node just put in its "other" bin.
@@ -226,6 +227,32 @@ const DYAD_STAGE_TYPES: ReadonlySet<string> = new Set([
   'TieStrengthCensus',
 ]);
 
+/** Stages that can place one node at a time, in select mode. */
+const BIN_STAGE_TYPES: ReadonlySet<string> = new Set([
+  'CategoricalBin',
+  'OrdinalBin',
+]);
+
+/**
+ * What of a stage decides which values its text can show: its type and, for
+ * a bin stage, its behaviours (raw protocol data, so read loosely).
+ */
+export type DynamicValueStage = Readonly<{
+  type: string;
+  behaviours?: unknown;
+}>;
+
+/**
+ * Whether a bin stage places one node at a time: in select mode the node
+ * being placed is active, and its prompt is shown about it.
+ */
+const placesOneNodeAtATime = (stage: DynamicValueStage): boolean =>
+  BIN_STAGE_TYPES.has(stage.type) &&
+  typeof stage.behaviours === 'object' &&
+  stage.behaviours !== null &&
+  'interactionMode' in stage.behaviours &&
+  stage.behaviours.interactionMode === 'select';
+
 /**
  * What a form field's form describes: its entity, and whether that is the
  * stage's own subject. Only then can text name the entity's attributes: a
@@ -248,21 +275,23 @@ export type DynamicValueForm = Readonly<{
  * focal node, the node a Geospatial stage is placing. A form field adds the
  * entity its form describes, when that is the stage's own subject, and an
  * edge form adds the two nodes its edge joins, by label. An interface that
- * shows many nodes at once exposes none of theirs.
+ * shows many nodes at once exposes none of theirs, except a bin stage in
+ * select mode, whose prompt is shown about the one node it is placing.
  */
 export const dynamicValueRolesAt = (
-  stageType: string,
+  stage: DynamicValueStage,
   site: DynamicValueSite,
   form: DynamicValueForm | undefined,
 ): ReadonlySet<DynamicValueRole> => {
   const roles = new Set<DynamicValueRole>(['ego']);
   if (site === 'prompt') {
-    if (DYAD_STAGE_TYPES.has(stageType)) {
+    if (DYAD_STAGE_TYPES.has(stage.type)) {
       roles.add('dyadSource');
       roles.add('dyadTarget');
     }
-    if (stageType === 'OneToManyDyadCensus') roles.add('focal');
-    if (stageType === 'Geospatial') roles.add('node');
+    if (stage.type === 'OneToManyDyadCensus') roles.add('focal');
+    if (stage.type === 'Geospatial') roles.add('node');
+    if (placesOneNodeAtATime(stage)) roles.add('node');
   }
   if (site === 'formField' && form !== undefined) {
     if (form.entity === 'node' && form.isStageSubject) roles.add('node');
@@ -274,6 +303,20 @@ export const dynamicValueRolesAt = (
   }
   return roles;
 };
+
+/**
+ * The roles a site can show that may have no entity on screen while its text
+ * shows: a bin stage in select mode has no node to place once every node has
+ * been placed. Even a node's label can then be missing, so text showing it
+ * needs a version for when it is.
+ */
+export const dynamicValueAbsentRolesAt = (
+  stage: DynamicValueStage,
+  site: DynamicValueSite,
+): ReadonlySet<DynamicValueRole> =>
+  new Set<DynamicValueRole>(
+    site === 'prompt' && placesOneNodeAtATime(stage) ? ['node'] : [],
+  );
 
 /** Variable types a dynamic value can be. */
 export const DYNAMIC_VALUE_VARIABLE_TYPES: ReadonlySet<VariableType> =
@@ -360,6 +403,11 @@ export type DynamicValueStatus =
 export type DynamicValueSiteContext = Readonly<{
   roles: ReadonlySet<DynamicValueRole>;
   /**
+   * The roles among `roles` that may have nothing on screen while the text
+   * shows (`dynamicValueAbsentRolesAt`); absent, every role is on screen.
+   */
+  absentRoles?: ReadonlySet<DynamicValueRole>;
+  /**
    * The variables of each role's entity, or undefined where the role names
    * no codebook entity (a node role on a stage with no node subject).
    */
@@ -407,11 +455,16 @@ export const dynamicValueStatus = (
       reason: `values about ${ROLE_NAMES[parsed.role]} cannot be shown here`,
     };
   }
-  // A node on screen always shows a label, its type's name at least.
+  // A node on screen always shows a label, its type's name at least, but
+  // there may be no node on screen.
   if (parsed.kind === 'label') {
     return {
       status: 'available',
-      argument: { cases: [], numeric: false, optional: false },
+      argument: {
+        cases: [],
+        numeric: false,
+        optional: context.absentRoles?.has(parsed.role) ?? false,
+      },
     };
   }
   const variables = context.variablesFor(parsed.role);

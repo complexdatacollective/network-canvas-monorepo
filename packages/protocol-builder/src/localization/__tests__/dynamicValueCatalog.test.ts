@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type DynamicValueSiteContext,
+  dynamicValueContextFor,
   dynamicValueRolesAt,
   type MessageNode,
 } from '@codaco/protocol-validation';
@@ -49,7 +50,7 @@ const contextFor = (
   withNode = false,
 ): DynamicValueSiteContext => ({
   roles: dynamicValueRolesAt(
-    stageType,
+    { type: stageType },
     site,
     withNode ? { entity: 'node', isStageSubject: true } : undefined,
   ),
@@ -123,7 +124,7 @@ describe('dynamicValueChoices', () => {
 
   it('offers an edge form both ends of its edge by label alone', () => {
     const context: DynamicValueSiteContext = {
-      roles: dynamicValueRolesAt('AlterEdgeForm', 'formField', {
+      roles: dynamicValueRolesAt({ type: 'AlterEdgeForm' }, 'formField', {
         entity: 'edge',
         isStageSubject: true,
       }),
@@ -133,6 +134,26 @@ describe('dynamicValueChoices', () => {
     expect(paths).toContain('edge.from.$label');
     expect(paths).toContain('edge.to.$label');
     expect(paths.some((path) => path.startsWith('node.'))).toBe(false);
+  });
+
+  it('offers a bin prompt in tap-to-place mode the node being placed, whose label can be missing', () => {
+    const context = dynamicValueContextFor({
+      codebook: {
+        ego: { variables: EGO },
+        node: { person: { variables: NODE } },
+      },
+      stage: {
+        type: 'OrdinalBin',
+        subject: { entity: 'node', type: 'person' },
+        behaviours: { interactionMode: 'select' },
+      },
+      sitePath: ['prompts', 0, 'text'],
+      site: 'prompt',
+    });
+    const label = dynamicValueChoices(context).find(
+      (choice) => choice.path === 'node.$label',
+    );
+    expect(label).toMatchObject({ kind: 'label', optional: true });
   });
 
   it('offers no label where no single node is on screen', () => {
