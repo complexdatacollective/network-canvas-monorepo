@@ -23,6 +23,7 @@ type ProtocolOverrides = {
   description?: string;
   hash?: string;
   importedAt?: string;
+  geospatial?: boolean;
 };
 
 function makeProtocol({
@@ -30,6 +31,7 @@ function makeProtocol({
   description = 'A study exploring the structure of personal support networks among recent migrants.',
   hash = 'story-protocol-hash',
   importedAt = '2026-05-20T10:00:00.000Z',
+  geospatial = false,
 }: ProtocolOverrides = {}): ProtocolWithCounts {
   const protocol: CurrentProtocol = {
     name,
@@ -37,7 +39,10 @@ function makeProtocol({
     schemaVersion: 9,
     localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
-    stages: [],
+    // Only its type matters here: a Geospatial stage needs the internet.
+    stages: geospatial
+      ? [{ id: 'map', type: 'Geospatial' } as CurrentProtocol['stages'][number]]
+      : [],
   };
 
   return {
@@ -83,7 +88,8 @@ type StoryArgs = {
   // bundled Interviewer 8.
   legacyBundled: boolean;
   legacyOffline: Exclude<LegacyInterviewerOffline, 'not-bundled'>;
-  // kind="schema8" only: the protocol has a stage that needs the internet.
+  // kind="protocol" or "schema8": the protocol has a stage that needs the
+  // internet.
   geospatial: boolean;
 };
 
@@ -104,7 +110,7 @@ function entryForKind(
 ): Exclude<DeckEntry, { kind: 'import' }> {
   switch (kind) {
     case 'protocol':
-      return { kind: 'protocol', protocol: makeProtocol() };
+      return { kind: 'protocol', protocol: makeProtocol({ geospatial }) };
     case 'schema8': {
       const { id, hash, name, description, importedAt } = makeProtocol({
         name: 'Wave One Support Networks',
@@ -233,6 +239,11 @@ type Story = StoryObj<StoryArgs>;
  */
 export const Default: Story = {};
 
+/** A protocol with a stage that always needs the internet. */
+export const RequiresInternet: Story = {
+  args: { geospatial: true },
+};
+
 export const SampleTeaser: Story = {
   args: { kind: 'sample' },
 };
@@ -260,8 +271,8 @@ export const SchemaEightProtocol: Story = {
 };
 
 /**
- * Interviewer 8 is not yet saved for offline use, so the protocol needs the
- * internet: a status icon in the requires-internet badge says why.
+ * Interviewer 8 is not yet saved for offline use, so the protocol cannot be
+ * used offline yet: a status icon in the schema badge says so.
  */
 export const SchemaEightNotReadyOffline: Story = {
   args: { kind: 'schema8', legacyOffline: 'not-ready' },
