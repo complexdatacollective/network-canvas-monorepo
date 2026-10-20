@@ -18,8 +18,6 @@ in the background, after it has finished loading itself.
   protocol, open it in Architect 8, download it as a `.netcanvas` file or show
   its details. Architect remembers when you chose to keep a protocol in
   Architect 8 and opens it there next time.
-- From inside Architect 8, "Upgrade to schema 9" brings the protocol back to
-  Architect 9 as an upgraded copy.
 - Architect 9 keeps its own library, separate from Architect 8's. It never
   changes or deletes a protocol saved in Architect 8, and **Clear all**
   removes only what is saved in Architect 9.

@@ -260,53 +260,6 @@ test('/?import= leaves a file staged for Architect 8 alone and says it could not
   });
 });
 
-test('/?upgrade= from Architect 8 asks before upgrading, and Cancel writes nothing', async ({
-  architectPage,
-}) => {
-  await seedLegacyStudy(architectPage);
-  const before = await readLegacyLibraryFingerprint(architectPage);
-
-  await architectPage.goto(`/?upgrade=${LEGACY_ID}`);
-  // Taken out of the address at startup, so a reload does not ask again.
-  await expect(architectPage).toHaveURL(/\/$/);
-  const dialog = architectPage.getByRole('dialog', {
-    name: 'Upgrade to continue',
-  });
-  await expect(dialog).toContainText('This protocol uses schema version 8,');
-  await expect(dialog).toContainText('Changes in schema version 9:');
-  await expect(
-    dialog.getByRole('button', { name: 'Upgrade to schema 9' }),
-  ).toBeFocused();
-  // Upgrade-only: the researcher chose to upgrade in Architect 8.
-  await expect(
-    dialog.getByRole('button', { name: 'Keep editing as schema 8' }),
-  ).toHaveCount(0);
-
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(architectPage).toHaveURL(/\/$/);
-  expect(await readStoreCounts(architectPage)).toEqual({
-    protocols: 0,
-    assets: 0,
-  });
-  expect(await readLibraryRows(architectPage, 'legacyProtocolChoices')).toEqual(
-    [],
-  );
-  expect(await readLegacyLibraryFingerprint(architectPage)).toBe(before);
-
-  // The same request, confirmed, makes the copy.
-  await architectPage.goto(`/?upgrade=${LEGACY_ID}`);
-  await architectPage
-    .getByRole('dialog', { name: 'Upgrade to continue' })
-    .getByRole('button', { name: 'Upgrade to schema 9' })
-    .click();
-  await expect(architectPage).toHaveURL(/\/protocol$/);
-  await expect(
-    architectPage.getByRole('textbox', { name: 'Protocol name' }),
-  ).toHaveValue(LEGACY_NAME);
-  expect(await readLegacyLibraryFingerprint(architectPage)).toBe(before);
-});
-
 test('Clear all removes this library and leaves Architect 8’s alone', async ({
   architectPage,
   seed,

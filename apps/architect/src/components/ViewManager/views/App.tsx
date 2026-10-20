@@ -12,10 +12,7 @@ import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
 import ProtocolLockBanner from '~/components/ProtocolLockBanner';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
-import {
-  confirmLegacyProtocolUpgrade,
-  openNetcanvasFile,
-} from '~/components/protocolOpenFlow';
+import { openNetcanvasFile } from '~/components/protocolOpenFlow';
 import ProtocolValidationDialogReporter from '~/components/ProtocolValidationDialogReporter';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
@@ -36,7 +33,6 @@ import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
-import { takeUpgradeRequest } from '~/utils/urlEntryRequests';
 const messages = defineMessages({
   couldNotOpenFile: {
     id: 'architect.viewManager.views.app.couldNotOpenFile',
@@ -174,22 +170,6 @@ const LaunchedProtocolOpener = () => {
   return null;
 };
 
-// Architect 8's "Upgrade to schema 9" arrives as `/?upgrade=<id>`, captured
-// before React mounted (see `urlEntryRequests`). Mounted app-wide rather than
-// in Home: a restored session can put this page anywhere.
-const LegacyUpgradeRequestOpener = () => {
-  const dispatch = useAppDispatch();
-  const { openDialog } = useDialog();
-
-  useEffect(() => {
-    const legacyId = takeUpgradeRequest();
-    if (!legacyId) return;
-    void confirmLegacyProtocolUpgrade({ legacyId, dispatch, openDialog });
-  }, [dispatch, openDialog]);
-
-  return null;
-};
-
 const AppContents = () => {
   const [location] = useLocation();
 
@@ -217,7 +197,6 @@ const AppContents = () => {
       <AutosaveFailureReporter />
       <StartupProtocolFailureReporter />
       <LaunchedProtocolOpener />
-      <LegacyUpgradeRequestOpener />
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be
           open over the Codebook or Resources just as easily, and that is
