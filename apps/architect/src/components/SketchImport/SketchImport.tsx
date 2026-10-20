@@ -212,7 +212,9 @@ export default function SketchImport() {
     if (!opener) setLocation('/', { replace: true });
   }, [opener, setLocation]);
 
-  const goHome = () => setLocation('/');
+  // Replace rather than push: Back must not return to this one-shot route,
+  // which would wait for a handoff Sketch has already finished.
+  const goHome = () => setLocation('/', { replace: true });
 
   if (!opener) return null;
 

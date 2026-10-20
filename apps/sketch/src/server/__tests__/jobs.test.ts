@@ -18,6 +18,7 @@ import {
   addSpend,
   BUDGET_EXCEEDED_MESSAGE,
   checkBudget,
+  claimJob,
   dailyBudgetUsd,
   type JobRecord,
   type LogEntry,
@@ -262,6 +263,27 @@ describe('POST /api/jobs', () => {
     });
     expect(response.status).toBe(502);
     expect((await readJob(jobs, 'job-2'))?.status).toBe('failed');
+  });
+
+  it('keeps a job the background function claimed before its response was lost', async () => {
+    const jobs = memoryStore();
+    const response = await handleCreateJob(post(validRequest), {
+      jobs,
+      adapters: scriptedAdapter({}).adapters,
+      startBackground: async (jobId) => {
+        await claimJob(jobs, jobId, NOW);
+        throw new Error('connection reset');
+      },
+      newId: () => 'job-3',
+      now: () => NOW,
+    });
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({ jobId: 'job-3' });
+    expect((await readJob(jobs, 'job-3'))?.status).toBe('running');
+    // The running job keeps its reservation.
+    expect(
+      (jobs.data.get('spend/2026-10-20') as { pendingUsd: number }).pendingUsd,
+    ).toBeGreaterThan(0);
   });
 });
 

@@ -69,6 +69,8 @@ type CardProps = {
   onlyHere: ReadonlySet<string>;
   preferred: boolean;
   preferDisabled: boolean;
+  // The other design is not ready, so there is nothing to compare yet.
+  awaitingOther: boolean;
   onPrefer: () => void;
   onRetry: () => void;
 };
@@ -79,6 +81,7 @@ const RunCard = ({
   onlyHere,
   preferred,
   preferDisabled,
+  awaitingOther,
   onPrefer,
   onRetry,
 }: CardProps) => {
@@ -202,12 +205,17 @@ const RunCard = ({
             <button
               type="button"
               aria-pressed={preferred}
-              disabled={preferDisabled}
+              disabled={preferDisabled || awaitingOther}
               onClick={onPrefer}
               className={`${paperButton} self-start ${preferred ? 'border-night-raised bg-night-raised hover:bg-night-raised text-white' : ''}`}
             >
               {preferred ? 'Preferred' : 'Prefer this one'}
             </button>
+            {awaitingOther && (
+              <span className="text-ink-muted text-sm">
+                You can choose once both designs are ready.
+              </span>
+            )}
           </div>
         </>
       ) : failure ? (
@@ -386,6 +394,7 @@ export const CompareScreen = ({
                 onlyHere={uniqueTypes(mine, theirs)}
                 preferred={run.jobId !== null && run.jobId === preferredJobId}
                 preferDisabled={preferenceState === 'saving'}
+                awaitingOther={theirs === null}
                 onPrefer={() => void prefer(run.jobId)}
                 onRetry={() => {
                   if (seeded === config.provider) setSeeded(null);

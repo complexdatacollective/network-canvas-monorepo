@@ -304,7 +304,7 @@ describe('SketchImport', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Return to Start Screen' }),
     );
-    expect(setLocation).toHaveBeenCalledWith('/');
+    expect(setLocation).toHaveBeenCalledWith('/', { replace: true });
   });
 
   it('sends a visitor who did not come from Sketch to the start screen', () => {

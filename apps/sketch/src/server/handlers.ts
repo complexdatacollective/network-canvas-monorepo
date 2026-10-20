@@ -14,6 +14,7 @@ import {
 } from '../shared/api.ts';
 import {
   claimJob,
+  failQueuedJob,
   dayKey,
   failStaleJob,
   isStaleJob,
@@ -151,12 +152,23 @@ export const handleCreateJob = async (
   try {
     await deps.startBackground(jobId);
   } catch {
-    await writeJob(deps.jobs, {
-      ...record,
-      status: 'failed',
-      error: 'Sketch could not start working on your study. Please try again.',
-      finishedAt: new Date().toISOString(),
-    });
+    // The invocation may have been accepted even though its response was
+    // lost. Fail the job only while it is still queued; once the background
+    // function has claimed it, it is running and the client should follow it.
+    let failed: JobRecord | null = null;
+    try {
+      failed = await failQueuedJob(
+        deps.jobs,
+        jobId,
+        'Sketch could not start working on your study. Please try again.',
+        new Date(),
+      );
+    } catch {
+      // Unknown state: leave the job and its reservation alone. A job that
+      // never starts is failed by the stale-job check when it is next read.
+      return apiError('Sketch could not start the job. Please try again.', 502);
+    }
+    if (!failed) return json({ jobId } satisfies CreateJobResponse, 202);
     // Nothing ran: hand the reservation back. If this write fails, the
     // reservation stays counted for the day, which errs on the safe side.
     try {

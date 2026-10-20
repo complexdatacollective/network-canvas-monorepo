@@ -164,6 +164,28 @@ export const claimJob = async (
   return isJobRecord(written) ? written : null;
 };
 
+// Atomically fails a job that never left the queue. Resolves to the failed
+// record, or null when the job has already been claimed (or is unknown), so a
+// background run that did start is never overwritten.
+export const failQueuedJob = async (
+  store: JsonStore,
+  id: string,
+  error: string,
+  now: Date,
+): Promise<JobRecord | null> => {
+  const written = await store.updateJSON(jobKey(id), (current) =>
+    isJobRecord(current) && current.status === 'queued'
+      ? ({
+          ...current,
+          status: 'failed',
+          error,
+          finishedAt: now.toISOString(),
+        } satisfies JobRecord)
+      : undefined,
+  );
+  return isJobRecord(written) ? written : null;
+};
+
 // generate-background is killed at 15 minutes. A job still queued or running
 // well after that will never finish: nothing is left to write its outcome.
 export const STALE_JOB_MS = 16 * 60_000;
