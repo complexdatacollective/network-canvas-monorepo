@@ -322,6 +322,7 @@ export const compile = (
           c.attributeId,
           c.operator,
           c.value,
+          askedInForm.has(`node:${t}/${c.attributeId}`),
         ),
       )
       .filter((r): r is ResolvedRule => typeof r !== 'string')
@@ -354,6 +355,7 @@ export const compile = (
           c.attributeId,
           c.operator,
           c.value,
+          askedInForm.has(`${scope}/${c.attributeId}`),
         );
       })
       .filter((r): r is ResolvedRule => typeof r !== 'string')

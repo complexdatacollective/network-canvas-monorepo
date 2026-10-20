@@ -199,6 +199,9 @@ export const resolveCondition = (
   attributeId: string,
   operator: Operator,
   rawValue: string,
+  // A yes_no asked in a form stores an explicit false for No, so a blank
+  // answer must not count as No. Tags and highlights are only ever set to true.
+  askedInForm = false,
 ): ResolvedRule | string => {
   if (operator === 'any_exist' || operator === 'none_exist') {
     if (entity === 'ego')
@@ -235,13 +238,18 @@ export const resolveCondition = (
         (!!a.options[1] && raw.toLowerCase() === a.options[1].toLowerCase());
       if (!yes && !no)
         return `a yes_no value must be "yes" or "no" (got "${raw}").`;
-      // Always compare against true: tags and highlights are only ever set to true, so a
-      // never-set attribute must count as "no" (EXACTLY false would match nobody).
-      const isYes =
-        operator === 'is' ? yes : operator === 'is_not' ? !yes : null;
-      if (isYes !== null)
-        return { ...base, operator: isYes ? 'EXACTLY' : 'NOT', value: true };
-      return notFor('yes_no', 'is / is_not');
+      if (operator !== 'is' && operator !== 'is_not')
+        return notFor('yes_no', 'is / is_not');
+      if (askedInForm)
+        return {
+          ...base,
+          operator: operator === 'is' ? 'EXACTLY' : 'NOT',
+          value: yes,
+        };
+      // Tags and highlights are only ever set to true, so a never-set attribute must
+      // count as "no" (EXACTLY false would match nobody): compare against true.
+      const isYes = operator === 'is' ? yes : !yes;
+      return { ...base, operator: isYes ? 'EXACTLY' : 'NOT', value: true };
     }
     case 'text':
     case 'long_text':

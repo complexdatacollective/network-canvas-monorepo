@@ -209,6 +209,22 @@ export const failStaleJob = (record: JobRecord, now: Date): JobRecord => ({
   finishedAt: now.toISOString(),
 });
 
+// Atomically fails a job that is still stale when the write lands. Resolves to
+// the failed record, or null when the job has moved on (a delayed background
+// run claimed it, or it finished) so that newer state is never overwritten.
+export const failJobIfStale = async (
+  store: JsonStore,
+  id: string,
+  now: Date,
+): Promise<JobRecord | null> => {
+  const written = await store.updateJSON(jobKey(id), (current) =>
+    isJobRecord(current) && isStaleJob(current, now)
+      ? failStaleJob(current, now)
+      : undefined,
+  );
+  return isJobRecord(written) ? written : null;
+};
+
 export const toJobStatus = (record: JobRecord): JobStatus => {
   const {
     description: _description,

@@ -455,6 +455,115 @@ describe('compiler review fixes', () => {
     },
   );
 
+  it.each([
+    ['is', 'no', 'EXACTLY', false],
+    ['is_not', 'yes', 'NOT', true],
+    ['is', 'yes', 'EXACTLY', true],
+    ['is_not', 'no', 'NOT', false],
+  ])(
+    'compiles a form yes_no %s "%s" literally, so a blank answer is not no',
+    async (operator, value, compiled, compiledValue) => {
+      const r = await build(
+        design({
+          egoAttributes: [A('drinks', 'yes_no', 'Do you drink?')],
+          stages: [
+            { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
+            {
+              kind: 'information',
+              ...c('i'),
+              role: 'transition',
+              content: 'Thanks.',
+              skipLogic: {
+                mode: 'show_only_if',
+                whenSkipped: 'next_stage',
+                match: 'all',
+                conditions: [
+                  {
+                    about: 'participant',
+                    typeId: '',
+                    attributeId: 'drinks',
+                    operator,
+                    value,
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(
+        stageById(r.stages, 'i').skipLogic?.filter.rules[0]?.options,
+      ).toMatchObject({ operator: compiled, value: compiledValue });
+    },
+  );
+
+  it('removes a narrative whose only map has skip conditions', async () => {
+    const map = (id: string, skipLogic: Json) => ({
+      kind: 'sociogram',
+      ...c(id),
+      skipLogic,
+      nodeTypeId: 'person',
+      filter: noFilter,
+      prompts: [
+        {
+          task: 'position',
+          text: 'Place them.',
+          relationshipId: '',
+          attributeId: '',
+        },
+      ],
+    });
+    const story = {
+      kind: 'narrative',
+      ...c('story'),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      views: [
+        {
+          label: 'Everyone',
+          groupByAttributeId: '',
+          relationshipIds: [],
+          highlightAttributeIds: [],
+        },
+      ],
+    };
+    const conditional = {
+      mode: 'skip_if',
+      whenSkipped: 'next_stage',
+      match: 'all',
+      conditions: [
+        {
+          about: 'participant',
+          typeId: '',
+          attributeId: 'drinks',
+          operator: 'is',
+          value: 'no',
+        },
+      ],
+    };
+    const withMap = (mapSkip: Json) =>
+      build(
+        design({
+          egoAttributes: [A('drinks', 'yes_no', 'Do you drink?')],
+          stages: [
+            { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
+            ng(),
+            map('map', mapSkip),
+            story,
+          ],
+        }),
+      );
+
+    const skipped = await withMap(conditional);
+    expect(skipped.codes).toContain('NARRATIVE_WITHOUT_MAP');
+    expect(skipped.stages.some((s) => s.id === 'story')).toBe(false);
+
+    const shown = await withMap(always);
+    expect(shown.codes).not.toContain('NARRATIVE_WITHOUT_MAP');
+    expect(shown.stages.some((s) => s.id === 'story')).toBe(true);
+  });
+
   it('reports a strengthless prompt removed from a mixed with_strength census', async () => {
     const r = await build(
       design({

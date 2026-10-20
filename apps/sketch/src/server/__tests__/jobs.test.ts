@@ -433,6 +433,25 @@ describe('generate-background and GET /api/jobs/:id', () => {
     expect((await readJob(jobs, 'job-9'))?.status).toBe('failed');
   });
 
+  it('keeps a stale job that a delayed background run claims mid-check', async () => {
+    const { jobs } = await setup();
+    const late = new Date(NOW.getTime() + STALE_JOB_MS + 1);
+    // The background run claims the queued job between the stale check's
+    // read and its write.
+    const racing: typeof jobs = {
+      ...jobs,
+      updateJSON: async (key, next) => {
+        await claimJob(jobs, 'job-9', late);
+        return jobs.updateJSON(key, next);
+      },
+    };
+    const status = (await (
+      await handleGetJob('job-9', { jobs: racing, now: () => late })
+    ).json()) as JobStatus;
+    expect(status.status).toBe('running');
+    expect((await readJob(jobs, 'job-9'))?.status).toBe('running');
+  });
+
   it('records a preference against the compared job', async () => {
     const { jobs, log, generate } = await setup();
     await generate();

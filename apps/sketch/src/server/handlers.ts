@@ -16,6 +16,7 @@ import {
   claimJob,
   failQueuedJob,
   dayKey,
+  failJobIfStale,
   failStaleJob,
   isStaleJob,
   type JobRecord,
@@ -197,13 +198,16 @@ export const handleGetJob = async (
   const now = deps.now?.() ?? new Date();
   if (isStaleJob(record, now)) {
     // The background run was killed or crashed without writing an outcome.
-    const failed = failStaleJob(record, now);
     try {
-      await writeJob(deps.jobs, failed);
+      const failed = await failJobIfStale(deps.jobs, id, now);
+      if (failed) return json(toJobStatus(failed));
+      // A delayed background run claimed it in the meantime: report that.
+      const current = await readJob(deps.jobs, id);
+      if (current) return json(toJobStatus(current));
     } catch {
-      // Reported as failed either way; the next poll tries the write again.
+      // Reported as failed; the next poll tries the write again.
     }
-    return json(toJobStatus(failed));
+    return json(toJobStatus(failStaleJob(record, now)));
   }
   return json(toJobStatus(record));
 };
