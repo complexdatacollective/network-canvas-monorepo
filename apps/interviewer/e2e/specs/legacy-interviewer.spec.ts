@@ -711,7 +711,7 @@ test('when Interviewer 8 cannot be loaded into the frame, it says so and does no
   ).toBeVisible();
   await expect(
     page.getByText(
-      /^Interviewer 8, which runs schema 8 protocols, has not finished downloading/,
+      /^Interviewer has not finished downloading for use without an internet connection/,
     ),
   ).toBeVisible();
   await expect(page.getByTestId('interviewer-8-frame')).toHaveCount(0);
