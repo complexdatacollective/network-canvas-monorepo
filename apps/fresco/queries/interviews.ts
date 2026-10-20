@@ -1,4 +1,5 @@
 import 'server-only';
+import { CodebookSchema as LegacyCodebookSchema } from 'fresco-schema-8/protocol-validation';
 import { cacheLife } from 'next/cache';
 import { stringify } from 'superjson';
 
@@ -12,6 +13,7 @@ import type { InterviewsSearchParams } from '~/app/dashboard/_components/Intervi
 import { safeCacheTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { Prisma } from '~/lib/db/generated/client';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 
 type NetworkSummaryEntry = {
   type: string;
@@ -162,7 +164,7 @@ export async function getInterviewFilterOptions() {
   safeCacheTag('getProtocols');
 
   const protocols = await prisma.protocol.findMany({
-    select: { name: true, codebook: true },
+    select: { name: true, codebook: true, schemaVersion: true },
   });
 
   const protocolNames = [...new Set(protocols.map((p) => p.name))].toSorted();
@@ -173,7 +175,11 @@ export async function getInterviewFilterOptions() {
     // Options only narrow the list, so a codebook that does not parse offers
     // no types rather than failing the dashboard. Every path that would use
     // the protocol refuses it, and reports it there.
-    const codebook = CodebookSchema.safeParse(p.codebook);
+    const codebook = (
+      isLegacySchemaVersion(p.schemaVersion)
+        ? LegacyCodebookSchema
+        : CodebookSchema
+    ).safeParse(p.codebook);
     if (!codebook.success) continue;
 
     for (const [type, def] of Object.entries(codebook.data.node ?? {})) {
