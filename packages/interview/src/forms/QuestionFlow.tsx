@@ -247,9 +247,15 @@ type QuestionFlowProps = {
    * Called when a chosen option answers the last question still waiting in
    * the whole form, once the answer has shown for a moment, so the form can
    * be saved and the next one shown. Changing an answer already given never
-   * calls it.
+   * calls it, and changing one during the pause calls it off.
    */
   onComplete?: () => void;
+  /**
+   * Hands the focus to the first question still waiting once the form
+   * shows, as when the form before it moved on by itself and took the
+   * focused answer away with it.
+   */
+  focusFirst?: boolean;
 };
 
 /**
@@ -283,6 +289,7 @@ export default function QuestionFlow({
   navigation,
   finish,
   onComplete,
+  focusFirst = false,
 }: QuestionFlowProps) {
   const intl = useAppIntl();
   const store = useContext(FormStoreContext);
@@ -306,6 +313,7 @@ export default function QuestionFlow({
   const [, animate] = useSafeAnimate();
   const saving = useRef(false);
   const advanceTimer = useRef<number | undefined>(undefined);
+  const completeTimer = useRef<number | undefined>(undefined);
   const completed = useRef(onComplete);
   useLayoutEffect(() => {
     completed.current = onComplete;
@@ -506,6 +514,7 @@ export default function QuestionFlow({
       // still shows its earlier answer. Changing an answer already given,
       // as when going back to review a step, does not move the form on.
       const changedAnswer = !isUnanswered(field, read);
+      if (changedAnswer) window.clearTimeout(completeTimer.current);
       requestAnimationFrame(() => {
         if (!field.isConnected || isUnanswered(field, read)) return;
         const [next] = waitingAfter(root, field, read);
@@ -544,9 +553,9 @@ export default function QuestionFlow({
           (!stepped || isLast) &&
           isComplete(root, read)
         ) {
-          window.clearTimeout(advanceTimer.current);
+          window.clearTimeout(completeTimer.current);
           // Checked again when the pause ends, as for a step.
-          advanceTimer.current = window.setTimeout(() => {
+          completeTimer.current = window.setTimeout(() => {
             if (root.isConnected && isComplete(root, read)) {
               completed.current?.();
             }
@@ -558,7 +567,24 @@ export default function QuestionFlow({
     return () => root.removeEventListener('click', onClick);
   }, [root, stepped, step, isLast, index, goTo, read]);
 
-  useEffect(() => () => window.clearTimeout(advanceTimer.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(advanceTimer.current);
+      window.clearTimeout(completeTimer.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!root || !focusFirst) return;
+    // Once the fields have registered their answers with the form.
+    const frame = requestAnimationFrame(() => {
+      const field =
+        firstWaiting(root, read) ?? root.querySelector(FIELD_SELECTOR);
+      if (field) controlOf(field)?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [root, focusFirst, read]);
 
   // Enter in a typed answer continues to the next step rather than saving
   // the form from its first page.

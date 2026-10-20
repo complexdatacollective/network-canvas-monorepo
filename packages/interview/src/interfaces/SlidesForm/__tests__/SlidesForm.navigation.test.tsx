@@ -10,6 +10,7 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -809,7 +810,7 @@ describe('SlidesForm moving on from a complete form', () => {
     fields: [{ variable: 'closeness' as never, prompt: { en: 'How close?' } }],
   };
 
-  function renderClosenessSlides(nodes: NcNode[]) {
+  function renderClosenessSlides(nodes: NcNode[], saveTakes = 0) {
     const store = configureStore({
       reducer: { session, protocol, ui },
       preloadedState: {
@@ -866,10 +867,18 @@ describe('SlidesForm moving on from a complete form', () => {
       middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({ serializableCheck: false }),
     });
-    const updateItem = vi.fn().mockResolvedValue({ success: true });
+    const updateItem = vi.fn(
+      () =>
+        new Promise<FormSubmissionResult>((resolve) =>
+          setTimeout(() => resolve({ success: true }), saveTakes),
+        ),
+    );
+    const onStepChange = vi.fn();
+    let next: (() => Promise<void>) | undefined;
 
     function Harness() {
       const navigation = useInterviewNavigation(0);
+      next = navigation.moveForward;
       return (
         <StageMetadataProvider value={navigation.registerBeforeNext}>
           <SlidesForm
@@ -892,7 +901,7 @@ describe('SlidesForm moving on from a complete form', () => {
     render(
       <TestProtocolLocalization>
         <Provider store={store}>
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
             <DialogProvider>
               <Harness />
             </DialogProvider>
@@ -901,7 +910,7 @@ describe('SlidesForm moving on from a complete form', () => {
       </TestProtocolLocalization>,
     );
 
-    return { updateItem };
+    return { updateItem, onStepChange, next: () => next?.() };
   }
 
   const unanswered = (id: string): NcNode => ({
@@ -922,6 +931,38 @@ describe('SlidesForm moving on from a complete form', () => {
       expect(screen.getByTestId('slide-header')).toHaveTextContent('person-2'),
     );
     expect(updateItem).toHaveBeenCalledWith('person-1', expect.anything());
+  });
+
+  it('hands the focus to the next person once it has moved on', async () => {
+    renderClosenessSlides([unanswered('person-1'), unanswered('person-2')]);
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('slide-header')).toHaveTextContent('person-2'),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'Not close' })).toHaveFocus(),
+    );
+  });
+
+  it('moves on once when Next is pressed during the pause', async () => {
+    // Saving outlasts the pause, so the form completes while Next is still
+    // saving it.
+    const { updateItem, onStepChange, next } = renderClosenessSlides(
+      [unanswered('person-1'), unanswered('person-2'), unanswered('person-3')],
+      600,
+    );
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
+    await act(async () => {
+      await next();
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    expect(screen.getByTestId('slide-header')).toHaveTextContent('person-2');
+    expect(updateItem).toHaveBeenCalledTimes(1);
+    expect(onStepChange).not.toHaveBeenCalled();
   });
 
   it('stays on the person when an answer already given is changed', async () => {
