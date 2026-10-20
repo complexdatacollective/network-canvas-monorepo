@@ -1014,6 +1014,34 @@ describe('compiler review fixes', () => {
     );
   });
 
+  it('keeps two map questions apart when the location id is taken by another attribute', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [person([A('country', 'text', 'Which country?')])],
+        stages: [
+          ng('ng'),
+          {
+            kind: 'geospatial',
+            ...c('g'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            mapRegion: 'world',
+            prompts: [
+              { text: 'Where were they born?', locationAttributeId: 'country' },
+              { text: 'Where do they live?', locationAttributeId: 'country' },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    const map = stageById(r.stages, 'g') as unknown as {
+      prompts: { variable: string }[];
+    };
+    const vars = map.prompts.map((p) => p.variable);
+    expect(new Set(vars).size).toBe(2);
+  });
+
   it('keeps a map a narrative reuses when its only highlight moves to a form', async () => {
     const r = await build(
       design({

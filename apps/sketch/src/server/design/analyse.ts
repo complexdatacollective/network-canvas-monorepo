@@ -1469,12 +1469,16 @@ export const analyse = (
             }
             const ex = listOf(scope).find((a) => a.id === loc);
             if (ex && ex.kind !== 'location') {
-              // The first `<loc>_map[_n]` id that is free or already a
-              // location attribute.
+              // The first `<loc>_map[_n]` id that is free or a location
+              // attribute no other map question records.
               let x = `${loc}_map`;
               for (let n = 2; ; n++) {
                 const taken = listOf(scope).find((a) => a.id === x);
-                if (!taken || taken.kind === 'location') break;
+                if (
+                  (!taken || taken.kind === 'location') &&
+                  !mappedLocations.has(`${scope}/${x}`)
+                )
+                  break;
                 x = `${loc}_map_${n}`;
               }
               add(
