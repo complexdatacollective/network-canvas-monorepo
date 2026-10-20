@@ -734,4 +734,125 @@ describe('compiler review fixes', () => {
       'Who do you ask for **advice**?',
     ]);
   });
+
+  it('reads a tag as unset until the form that asks it has run', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([A('age', 'number', 'Age?'), A('close', 'yes_no', 'Close?')]),
+        ],
+        stages: [
+          ng('ng', {
+            prompts: [
+              { text: 'Who are you close to?', tagAttributeId: 'close' },
+            ],
+          }),
+          {
+            kind: 'alterForm',
+            ...c('early'),
+            nodeTypeId: 'person',
+            filter: {
+              match: 'all',
+              conditions: [
+                { attributeId: 'close', operator: 'is', value: 'no' },
+              ],
+            },
+            attributeIds: ['age'],
+          },
+          {
+            kind: 'alterForm',
+            ...c('ask'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['close'],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(
+      stageById(r.stages, 'early').filter?.rules[0]?.options,
+    ).toMatchObject({ operator: 'NOT', value: true });
+  });
+
+  it('removes a narrative view attribute that no earlier stage collects', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('close', 'yes_no', 'Close?'),
+            A('group', 'single_choice', 'Group?', {
+              options: ['A', 'B'],
+            }),
+          ]),
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'sociogram',
+            ...c('map'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            prompts: [
+              {
+                task: 'position',
+                text: 'Place them.',
+                relationshipId: '',
+                attributeId: '',
+              },
+            ],
+          },
+          {
+            kind: 'narrative',
+            ...c('story'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            views: [
+              {
+                label: 'Groups',
+                groupByAttributeId: 'group',
+                relationshipIds: [],
+                highlightAttributeIds: ['close'],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(
+      r.codes.filter((x) => x === 'VIEW_ATTRIBUTE_NOT_COLLECTED'),
+    ).toHaveLength(2);
+  });
+
+  it('renames a reserved attribute to an id nothing else uses', async () => {
+    const r = await build(
+      design({
+        egoAttributes: [
+          A('name_value', 'text', 'Nickname?'),
+          A('name', 'text', 'Full name?'),
+        ],
+        stages: [
+          { kind: 'egoForm', ...c('e'), attributeIds: ['name_value', 'name'] },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    const fields = (
+      stageById(r.stages, 'e') as Stage & {
+        form: { fields: { prompt: string }[] };
+      }
+    ).form.fields.map((f) => f.prompt);
+    expect(fields).toEqual(['Nickname?', 'Full name?']);
+  });
+
+  it('generates enough placeholder rows for a roster minimum', async () => {
+    const r = await build(
+      design({
+        stages: [ng('roster', { method: 'roster', minNodes: 15 })],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(JSON.stringify(r.protocol)).toContain('15 example rows');
+  });
 });

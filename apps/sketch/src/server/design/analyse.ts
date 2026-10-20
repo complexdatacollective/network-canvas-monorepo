@@ -230,7 +230,11 @@ export const analyse = (
         a.id === 'layout' ||
         (scope === 'ego' && a.id === 'consent')
       ) {
-        const r = `${a.id}_value`;
+        // a replacement no other attribute here already uses
+        const taken = (x: string) =>
+          seen.has(x) || list.some((o) => o !== a && slug(o.id) === x);
+        let r = `${a.id}_value`;
+        for (let n = 2; taken(r); n++) r = `${a.id}_value_${n}`;
         nameAlias.set(`${scope}/${a.id}`, r);
         add(
           'adjusted',
@@ -1309,23 +1313,40 @@ export const analyse = (
                 'View without label got a default.',
               );
             }
+            // a view can only group or highlight by values an earlier stage collects
+            const collectedHere = (attr: string, field: string) => {
+              if (!attr || collected.has(`${scope}/${attr}`)) return attr;
+              add(
+                'degraded',
+                'VIEW_ATTRIBUTE_NOT_COLLECTED',
+                `${pv}.${field}`,
+                `No earlier stage collects "${attr}"; removed from the view.`,
+              );
+              return '';
+            };
             v.groupByAttributeId = v.groupByAttributeId
-              ? resolveAttr(
-                  v.groupByAttributeId,
-                  scope,
-                  `${pv}.groupByAttributeId`,
-                  ['single_choice', 'multi_choice'],
-                  'Group attribute',
+              ? collectedHere(
+                  resolveAttr(
+                    v.groupByAttributeId,
+                    scope,
+                    `${pv}.groupByAttributeId`,
+                    ['single_choice', 'multi_choice'],
+                    'Group attribute',
+                  ),
+                  'groupByAttributeId',
                 )
               : '';
             v.highlightAttributeIds = v.highlightAttributeIds
               .map((h, j) =>
-                resolveAttr(
-                  h,
-                  scope,
-                  `${pv}.highlightAttributeIds[${j}]`,
-                  ['yes_no'],
-                  'Highlight attribute',
+                collectedHere(
+                  resolveAttr(
+                    h,
+                    scope,
+                    `${pv}.highlightAttributeIds[${j}]`,
+                    ['yes_no'],
+                    'Highlight attribute',
+                  ),
+                  `highlightAttributeIds[${j}]`,
                 ),
               )
               .filter(Boolean);

@@ -147,23 +147,28 @@ export const compile = (
   d.nodeTypes.forEach((n) => nodeKey.set(n.id, claimType(n.id)));
   d.relationships.forEach((r) => relKey.set(r.id, claimType(r.id)));
 
-  const askedInForm = new Set<string>();
-  for (const s of d.stages) {
+  // "scope/attr" -> index of the first stage that asks it in a form. A
+  // condition reads a yes_no as a form answer only once that form has run;
+  // before then, a tag or highlight leaves "no" unset.
+  const formFrom = new Map<string, number>();
+  const askAt = (k: string, i: number) => {
+    if (!formFrom.has(k)) formFrom.set(k, i);
+  };
+  d.stages.forEach((s, i) => {
     if (s.kind === 'egoForm')
-      s.attributeIds.forEach((a) => askedInForm.add(`ego/${a}`));
+      s.attributeIds.forEach((a) => askAt(`ego/${a}`, i));
     if (
       s.kind === 'alterForm' ||
       (s.kind === 'nameGenerator' && s.method === 'form')
     )
-      s.attributeIds.forEach((a) =>
-        askedInForm.add(`node:${s.nodeTypeId}/${a}`),
-      );
+      s.attributeIds.forEach((a) => askAt(`node:${s.nodeTypeId}/${a}`, i));
     if (s.kind === 'relationshipForm')
-      s.attributeIds.forEach((a) =>
-        askedInForm.add(`rel:${s.relationshipId}/${a}`),
-      );
-  }
-  if (d.includeConsent) askedInForm.add('ego/consent');
+      s.attributeIds.forEach((a) => askAt(`rel:${s.relationshipId}/${a}`, i));
+  });
+  if (d.includeConsent) formFrom.set('ego/consent', -1);
+  const askedInForm = { has: (k: string) => formFrom.has(k) };
+  const askedBefore = (k: string, s: NStage) =>
+    (formFrom.get(k) ?? Infinity) < d.stages.indexOf(s);
   const needsLayout = new Set(
     d.stages
       .filter((s) => s.kind === 'sociogram' || s.kind === 'narrative')
@@ -322,7 +327,7 @@ export const compile = (
           c.attributeId,
           c.operator,
           c.value,
-          askedInForm.has(`node:${t}/${c.attributeId}`),
+          askedBefore(`node:${t}/${c.attributeId}`, s),
         ),
       )
       .filter((r): r is ResolvedRule => typeof r !== 'string')
@@ -355,7 +360,7 @@ export const compile = (
           c.attributeId,
           c.operator,
           c.value,
-          askedInForm.has(`${scope}/${c.attributeId}`),
+          askedBefore(`${scope}/${c.attributeId}`, s),
         );
       })
       .filter((r): r is ResolvedRule => typeof r !== 'string')
@@ -698,7 +703,9 @@ export const compile = (
         } else {
           const assetId = `${st.id}_roster`;
           const cols = ['name', ...s.attributeIds]; // variable NAMES: the interview maps CSV headers by name, then key
-          const rows = Array.from({ length: 12 }, (_, i) => [
+          // at least as many rows as the stage requires the participant to pick
+          const rowCount = Math.max(12, s.minNodes);
+          const rows = Array.from({ length: rowCount }, (_, i) => [
             `${n.singular} ${String(i + 1).padStart(2, '0')}`,
             ...s.attributeIds.map((aid) => {
               const a = attrIn(scope, aid)!;
@@ -728,7 +735,7 @@ export const compile = (
             source: `${assetId}.csv`,
           };
           placeholderNotes.push(
-            `**Placeholder roster.** Stage "${st.label}" picks ${n.plural.toLowerCase()} from a generated list of 12 example rows (${assetId}.csv). Replace it in Architect with your real list before fielding, keeping the column headers: ${cols.join(', ')}.`,
+            `**Placeholder roster.** Stage "${st.label}" picks ${n.plural.toLowerCase()} from a generated list of ${rowCount} example rows (${assetId}.csv). Replace it in Architect with your real list before fielding, keeping the column headers: ${cols.join(', ')}.`,
           );
           push(
             {
