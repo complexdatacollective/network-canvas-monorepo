@@ -597,12 +597,13 @@ export function SettingsDialog({
     ]);
     if (seq !== reloadSyntheticSeq.current) return;
     // Synthetic interviews are generated for schema 9 protocols only.
-    setProtocols(ps.filter(isCurrentProtocol));
+    const current = ps.filter(isCurrentProtocol);
+    setProtocols(current);
     setSyntheticCount(n);
     // Default to the first protocol when none is selected yet.
-    setSelectedProtocolHash((current) => {
-      if (current && ps.some((p) => p.hash === current)) return current;
-      return ps[0]?.hash ?? '';
+    setSelectedProtocolHash((selected) => {
+      if (selected && current.some((p) => p.hash === selected)) return selected;
+      return current[0]?.hash ?? '';
     });
   }, []);
 

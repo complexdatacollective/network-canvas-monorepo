@@ -375,6 +375,33 @@ describe('SettingsDialog synthetic tab — protocol import race', () => {
     expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
   });
 
+  it('defaults to a schema 9 protocol when the newest protocol is schema 8', async () => {
+    const schema8 = {
+      ...makeProtocol('Schema 8 Protocol', 'hash-8'),
+      schemaVersion: 8,
+    } as unknown as ProtocolWithCounts;
+    mockListProtocols.mockResolvedValue([
+      schema8,
+      makeProtocol('Schema 9 Protocol', 'hash-9'),
+    ]);
+
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-9',
+      );
+    });
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+    await waitFor(() =>
+      expect(mockGenerateSyntheticSessions).toHaveBeenCalledWith(
+        expect.objectContaining({ protocolHash: 'hash-9' }),
+      ),
+    );
+  });
+
   it('reports an initial synthetic-data refresh failure instead of leaving an unhandled rejection', async () => {
     mockListProtocols.mockRejectedValueOnce(
       new Error('the database connection was closed'),
