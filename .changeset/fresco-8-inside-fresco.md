@@ -6,11 +6,10 @@ Fresco now keeps schema 8 protocols and their interviews as they are, and runs
 them in the schema 8 interview, which comes with Fresco. Studies running a
 schema 8 protocol carry on exactly as before.
 
-- Importing a protocol made for schema 8 or earlier asks how to import it.
-  **Keep schema 8** imports it unchanged (a schema 7 protocol is brought up to
-  schema 8, as Fresco 4 did), and **Upgrade to schema 9** imports an upgraded
-  copy, after showing what the upgrade changes. Your protocol file
-  is never changed. Fresco no longer upgrades a protocol without asking.
+- Fresco never upgrades a protocol. A schema 8 protocol is imported exactly as
+  it is, and a schema 9 protocol likewise. A schema 7 protocol is no longer
+  accepted: open it in Architect, which upgrades it, and import the saved
+  file.
 - Updating Fresco no longer upgrades the protocols and interviews it already
   holds. A schema 8 protocol is marked with its schema version in the protocols
   table, and its interviews open in the schema 8 interview, at

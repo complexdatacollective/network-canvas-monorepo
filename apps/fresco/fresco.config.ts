@@ -14,12 +14,13 @@ import pkg from './package.json';
 export const PROTOCOL_EXTENSION = '.netcanvas';
 
 /**
- * The oldest protocol schema version Fresco accepts for upload. Files at or
- * above this version but below the compatible version are migrated during
- * import (`lib/protocol/validateAndMigrateProtocol.ts`); anything older is
- * rejected outright. This floor is a product decision, so it stays explicit.
+ * The oldest protocol schema version Fresco accepts for upload. Fresco never
+ * upgrades a protocol: each accepted version is stored as it is, a schema 8
+ * protocol running in the schema 8 interview Fresco bundles. Anything older is
+ * refused, and opening it in Architect upgrades it. This floor is a product
+ * decision, so it stays explicit.
  */
-const OLDEST_SUPPORTED_SCHEMA_VERSION = 7;
+const OLDEST_SUPPORTED_SCHEMA_VERSION = 8;
 
 /**
  * Every protocol schema version Fresco accepts for upload, inclusive.

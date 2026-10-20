@@ -131,7 +131,7 @@
         // Server actions for passkey password management — UI not yet wired
         "actions/webauthn.ts": ["exports"],
         // Pre-existing unused type exports
-        "lib/protocol/validateAndMigrateProtocol.ts": ["types"]
+        "lib/protocol/validateImportedProtocol.ts": ["types"]
       }
     },
     "packages/interview": {

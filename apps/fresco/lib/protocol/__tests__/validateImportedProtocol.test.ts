@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { VersionedProtocol } from '@codaco/protocol-validation';
-
-import { validateAndMigrateProtocol } from '../validateAndMigrateProtocol';
+import { validateImportedProtocol } from '../validateImportedProtocol';
 
 const protocolWithRawColor = {
   name: 'Invalid color protocol',
@@ -20,16 +18,29 @@ const protocolWithRawColor = {
   },
   stages: [],
   assetManifest: {},
-} as unknown as VersionedProtocol;
+};
 
-describe('validateAndMigrateProtocol', () => {
+describe('validateImportedProtocol', () => {
   it('rejects raw colors in a current-version protocol', async () => {
-    const result = await validateAndMigrateProtocol(protocolWithRawColor);
+    const result = await validateImportedProtocol(protocolWithRawColor);
 
     expect(result.success).toBe(false);
     if (result.success) {
       throw new Error('Expected raw protocol colors to fail validation');
     }
     expect(result.error).toBe('validation-failed');
+  });
+
+  it('refuses a schema 8 protocol rather than upgrading it', async () => {
+    const result = await validateImportedProtocol({
+      ...protocolWithRawColor,
+      schemaVersion: 8,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: 'unsupported-version',
+      version: 8,
+    });
   });
 });

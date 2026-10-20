@@ -671,7 +671,7 @@ lib/
 ├── cache/          # Typesafe cache-tag wrappers
 ├── db/             # Prisma schema, client, migrations
 ├── export/         # Export orchestration (@codaco/network-exporters)
-├── protocol/       # Protocol import and migration
+├── protocol/       # Protocol import
 ├── storage/        # S3 / UploadThing asset storage
 └── uploadthing/
 ```
@@ -697,8 +697,9 @@ lib/
   declares any other schema. `lib/schema-8/version.ts` decides which route an
   interview takes. Nothing under `/v8` but the interview and its thank-you
   page: listing, export, the API and every dashboard page stay in the current
-  app and read schema 8 rows with the pinned schemas. A researcher upgrades a
-  protocol only when importing it, by choosing to in the import dialog.
+  app and read schema 8 rows with the pinned schemas. Import never upgrades
+  either: a schema 8 or schema 9 protocol is stored as it is, and anything
+  older is refused (`OLDEST_SUPPORTED_SCHEMA_VERSION` in `fresco.config.ts`).
   `migrate-and-start.sh` runs `scripts/setup-database.ts`, which applies the
   Prisma migrations and a categorical-answer clean-up, in one transaction. The
   pinned packages and the vendoring overrides of the release test and hotfix
