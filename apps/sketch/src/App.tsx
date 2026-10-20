@@ -26,7 +26,11 @@ import type {
 
 type View =
   | { name: 'describe'; refusal: { hint: string | null } | null }
-  | { name: 'generating'; request: CreateJobRequest }
+  | {
+      name: 'generating';
+      request: CreateJobRequest;
+      resumeJobId: string | null;
+    }
   | {
       name: 'ready';
       job: JobStatus;
@@ -61,6 +65,12 @@ export const App = () => {
   const [view, setView] = useState<View>({ name: 'describe', refusal: null });
   const [config, setConfig] = useState<ConfigState>({ status: 'loading' });
   const [configAttempt, setConfigAttempt] = useState(0);
+  // A job left running when the researcher went back. Generating the same
+  // study again follows it instead of paying for another run.
+  const [unfinished, setUnfinished] = useState<{
+    request: CreateJobRequest;
+    jobId: string;
+  } | null>(null);
   // Once the researcher has moved between screens, each new screen takes focus.
   const [navigated, setNavigated] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -119,6 +129,12 @@ export const App = () => {
     backToDescribe();
   };
 
+  const resumableFor = (description: string, provider: Provider) =>
+    unfinished?.request.description === description &&
+    unfinished.request.provider === provider
+      ? unfinished
+      : null;
+
   const generate = () => {
     const description = composeStudyText(form);
     const bothAvailable = providers.filter((p) => p.available).length >= 2;
@@ -131,9 +147,11 @@ export const App = () => {
       });
       return;
     }
+    const resume = resumableFor(description, form.provider);
     go({
       name: 'generating',
-      request: { description, provider: form.provider },
+      request: resume?.request ?? { description, provider: form.provider },
+      resumeJobId: resume?.jobId ?? null,
     });
   };
 
@@ -166,25 +184,38 @@ export const App = () => {
           }}
           refusal={view.refusal}
           onGenerate={generate}
+          resumable={
+            !form.compare &&
+            resumableFor(composeStudyText(form), form.provider) !== null
+          }
           focusHeading={navigated}
         />
       );
       break;
     case 'generating': {
-      const { request } = view;
+      const { request, resumeJobId } = view;
       screen = (
         <GeneratingScreen
           request={request}
+          resumeJobId={resumeJobId}
+          onStarted={(jobId) => setUnfinished({ request, jobId })}
           expectedLabels={
             providerConfig(request.provider)?.models.labels ?? null
           }
           onCancel={backToDescribe}
           onReady={(job) => {
+            setUnfinished(null);
             if (job.result)
               go({ name: 'ready', job, result: job.result, request });
           }}
-          onRefused={(hint) => go({ name: 'describe', refusal: { hint } })}
-          onFailed={(message) => go({ name: 'failed', message, request })}
+          onRefused={(hint) => {
+            setUnfinished(null);
+            go({ name: 'describe', refusal: { hint } });
+          }}
+          onFailed={(message) => {
+            setUnfinished(null);
+            go({ name: 'failed', message, request });
+          }}
         />
       );
       break;
@@ -217,7 +248,11 @@ export const App = () => {
           description={view.request.description}
           onEdit={backToDescribe}
           onRetry={() =>
-            go({ name: 'generating', request: { ...view.request } })
+            go({
+              name: 'generating',
+              request: { ...view.request },
+              resumeJobId: null,
+            })
           }
         />
       );

@@ -49,6 +49,8 @@ type Props = {
   // Set when the last description was refused as not a study.
   refusal: { hint: string | null } | null;
   onGenerate: () => void;
+  // A run of this exact study is still going; Generate picks it up again.
+  resumable: boolean;
   focusHeading: boolean;
 };
 
@@ -110,6 +112,7 @@ export const DescribeScreen = ({
   onRetryConfig,
   refusal,
   onGenerate,
+  resumable,
   focusHeading,
 }: Props) => {
   const questionsHintId = useId();
@@ -610,7 +613,11 @@ export const DescribeScreen = ({
                   disabled={!ready}
                   className={`${ctaButton} w-full sm:w-auto`}
                 >
-                  {comparing ? 'Generate with both' : 'Generate protocol'}
+                  {comparing
+                    ? 'Generate with both'
+                    : resumable
+                      ? 'Back to your sketch'
+                      : 'Generate protocol'}
                   <ArrowRightIcon />
                 </button>
               </div>

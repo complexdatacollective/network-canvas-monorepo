@@ -15,6 +15,10 @@ import type { CreateJobRequest, JobModels, JobStatus } from '../shared/api.ts';
 
 type Props = {
   request: CreateJobRequest;
+  // A job already running for this request, picked up instead of a new one.
+  resumeJobId: string | null;
+  // The job keeps running when the researcher leaves, so the app keeps its id.
+  onStarted: (jobId: string) => void;
   // Model labels from /api/config, shown until the job reports its own.
   expectedLabels: JobModels | null;
   onCancel: () => void;
@@ -25,13 +29,15 @@ type Props = {
 
 export const GeneratingScreen = ({
   request,
+  resumeJobId,
+  onStarted,
   expectedLabels,
   onCancel,
   onReady,
   onRefused,
   onFailed,
 }: Props) => {
-  const run = useJobRun(request);
+  const run = useJobRun(request, { resumeJobId });
   const [startedAt] = useState(() => Date.now());
   const job = run.job;
   const succeeded = job?.status === 'succeeded' && job.result !== null;
@@ -42,6 +48,13 @@ export const GeneratingScreen = ({
   const labels = job?.modelLabels ?? expectedLabels;
   const progress = stepProgress(steps);
   const activeStep = steps.find((step) => step.state === 'active');
+
+  // Before the outcome effect below, so a job that finishes in the same render
+  // is recorded and then cleared, not left recorded.
+  const started = useEffectEvent((jobId: string) => onStarted(jobId));
+  useEffect(() => {
+    if (run.jobId) started(run.jobId);
+  }, [run.jobId]);
 
   // Hand terminal outcomes to the app.
   const settle = useEffectEvent((current: typeof run) => {
@@ -70,7 +83,7 @@ export const GeneratingScreen = ({
         onHome={onCancel}
         action={
           <button type="button" onClick={onCancel} className={ghostButton}>
-            Cancel
+            Back
           </button>
         }
       />
@@ -88,7 +101,7 @@ export const GeneratingScreen = ({
             <p aria-live="polite" className="text-night-text m-0 text-lg">
               {succeeded
                 ? 'It passed validation and is ready to open in Architect.'
-                : 'Hang on while Sketch designs, writes and checks your protocol. You can keep this tab in the background.'}
+                : 'Hang on while Sketch designs, writes and checks your protocol. You can keep this tab in the background, or go back and pick it up again without changing your study.'}
             </p>
           </div>
 

@@ -625,8 +625,8 @@ export const analyse = (
   const stageIds = new Set<string>();
   const named = new Set<string>(); // node types named by an earlier stage
   const createdRels = new Set<string>();
-  const sociogramTypes = new Set<string>(); // node types with an always-shown map
-  const conditionalSociogramTypes = new Set<string>();
+  const sociogramTypes = new Set<string>(); // node types with a map that places every node
+  const partialSociogramTypes = new Set<string>();
   const collected = new Set<string>(); // "scope/attr" collected by an earlier stage
   const markCollected = (scope: string, id: string) =>
     id && collected.add(`${scope}/${id}`);
@@ -1159,10 +1159,11 @@ export const analyse = (
             drop('NO_PROMPTS', `sociogram "${id}" has no usable prompts.`);
             continue;
           }
-          // A narrative can only reuse a map every participant reaches: one
-          // with skip conditions may leave its nodes without positions.
-          if (s.skipLogic.mode === 'always_show') sociogramTypes.add(t);
-          else conditionalSociogramTypes.add(t);
+          // A narrative can only reuse a map that places every node: one with
+          // skip conditions or a filter may leave nodes without positions.
+          if (s.skipLogic.mode === 'always_show' && !s.filter.conditions.length)
+            sociogramTypes.add(t);
+          else partialSociogramTypes.add(t);
         } else if (s.kind === 'relationshipCensus') {
           s.prompts = s.prompts.filter((p, i) => {
             const pp = `${path}.prompts[${i}]`;
@@ -1257,8 +1258,8 @@ export const analyse = (
           if (!sociogramTypes.has(t)) {
             drop(
               'NARRATIVE_WITHOUT_MAP',
-              conditionalSociogramTypes.has(t)
-                ? `narrative "${id}" reuses the positions of an EARLIER sociogram of node type "${t}", but every such sociogram has skip conditions, so participants who skip it would see an empty map. Give one of them always_show, or remove the narrative.`
+              partialSociogramTypes.has(t)
+                ? `narrative "${id}" reuses the positions of an EARLIER sociogram of node type "${t}", but every such sociogram has skip conditions or a filter, so some nodes would have no position and the narrative map would be partly or wholly empty. Give one of them always_show and no filter, or remove the narrative.`
                 : `narrative "${id}" needs an EARLIER sociogram of node type "${t}" (it reuses that map's positions). Add one, or remove the narrative.`,
             );
             continue;

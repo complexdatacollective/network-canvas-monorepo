@@ -498,13 +498,13 @@ describe('compiler review fixes', () => {
     },
   );
 
-  it('removes a narrative whose only map has skip conditions', async () => {
-    const map = (id: string, skipLogic: Json) => ({
+  it('removes a narrative whose only map has skip conditions or a filter', async () => {
+    const map = (id: string, skipLogic: Json, filter: Json) => ({
       kind: 'sociogram',
       ...c(id),
       skipLogic,
       nodeTypeId: 'person',
-      filter: noFilter,
+      filter,
       prompts: [
         {
           task: 'position',
@@ -542,14 +542,19 @@ describe('compiler review fixes', () => {
         },
       ],
     };
-    const withMap = (mapSkip: Json) =>
+    const adults = {
+      match: 'all',
+      conditions: [{ attributeId: 'age', operator: 'at_least', value: '18' }],
+    };
+    const withMap = (mapSkip: Json, mapFilter: Json = noFilter) =>
       build(
         design({
           egoAttributes: [A('drinks', 'yes_no', 'Do you drink?')],
+          nodeTypes: [person([A('age', 'number', 'Age?')])],
           stages: [
             { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
-            ng(),
-            map('map', mapSkip),
+            ng('ng', { method: 'form', attributeIds: ['age'] }),
+            map('map', mapSkip, mapFilter),
             story,
           ],
         }),
@@ -558,6 +563,11 @@ describe('compiler review fixes', () => {
     const skipped = await withMap(conditional);
     expect(skipped.codes).toContain('NARRATIVE_WITHOUT_MAP');
     expect(skipped.stages.some((s) => s.id === 'story')).toBe(false);
+
+    const filtered = await withMap(always, adults);
+    expect(filtered.codes).not.toContain('BAD_FILTER');
+    expect(filtered.codes).toContain('NARRATIVE_WITHOUT_MAP');
+    expect(filtered.stages.some((s) => s.id === 'story')).toBe(false);
 
     const shown = await withMap(always);
     expect(shown.codes).not.toContain('NARRATIVE_WITHOUT_MAP');

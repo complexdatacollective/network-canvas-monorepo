@@ -158,6 +158,50 @@ describe('Sketch flow', () => {
     expect(synopsis().value).toBe('A sociocentric study.');
   });
 
+  it('picks up the running job instead of starting another after going back', async () => {
+    const api = mockApi(jobStatus({ status: 'running' }));
+    render(<App />);
+    await waitFor(() =>
+      expect(generateButton()).toHaveProperty('disabled', false),
+    );
+    fireEvent.click(generateButton());
+    await waitFor(() =>
+      expect(
+        api.fetchMock.mock.calls.some(
+          ([input, init]) =>
+            describeCall(input, init).url === '/api/jobs/job-1',
+        ),
+      ).toBe(true),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    const resume = await screen.findByRole('button', {
+      name: /Back to your sketch/,
+    });
+    const polls = api.fetchMock.mock.calls.length;
+    fireEvent.click(resume);
+    expect(
+      await screen.findByRole('heading', { name: 'Sketching your interview' }),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(api.fetchMock.mock.calls.length).toBeGreaterThan(polls),
+    );
+    expect(api.posts).toHaveLength(1);
+
+    // A changed study is a new run.
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Research population' }),
+      {
+        target: { value: 'Someone else entirely' },
+      },
+    );
+    expect(generateButton()).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: /Back to your sketch/ }),
+    ).toBeNull();
+  });
+
   it('shows the not-a-study notice on the describe screen when refused', async () => {
     mockApi(
       jobStatus({

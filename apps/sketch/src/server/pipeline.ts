@@ -28,6 +28,7 @@ import {
 } from './design/build.ts';
 import { buildWordingRequest } from './design/feedback.ts';
 import { toProviderJsonSchema } from './design/json-schema.ts';
+import type { DesignIssue } from './design/rules.ts';
 import {
   ScreeningSchema,
   StudyDesignSchema,
@@ -286,6 +287,10 @@ export const runPipeline = async (
   const adapter: ProviderAdapter = deps.adapters[input.provider];
   const models = getStepModels(input.provider);
   const buildOptions = deps.buildOptions ?? {};
+  // Stages the salvage step removes are reported like any degraded repair,
+  // so they reach the researcher notes, the result and the log.
+  const salvagedIssues: DesignIssue[] = [];
+  let designOptions: BuildOptions = buildOptions;
 
   const steps: JobStep[] = STEP_IDS.map((id) => ({
     id,
@@ -646,13 +651,24 @@ export const runPipeline = async (
           }),
         );
         if (!named.size) break;
+        for (const i of named) {
+          const stage = current.raw.stages[i];
+          if (!stage) continue;
+          salvagedIssues.push({
+            severity: 'degraded',
+            code: 'STAGE_SALVAGED',
+            path: `stages[${i}]`,
+            message: `The ${stage.kind} stage "${stage.id}" was removed because Sketch could not make it valid. Add it again in Architect if the study needs it.`,
+          });
+        }
+        designOptions = { ...buildOptions, extraIssues: [...salvagedIssues] };
         const raw: StudyDesign = {
           ...current.raw,
           stages: current.raw.stages.filter((_, i) => !named.has(i)),
         };
         let build: BuildResult;
         try {
-          build = await preflight(raw, buildOptions);
+          build = await preflight(raw, designOptions);
         } catch (error) {
           log.tags.push('compilerBug');
           log.crash = errorMessage(error);
@@ -705,7 +721,7 @@ export const runPipeline = async (
     let final: BuildResult = pre;
     if (wording) {
       try {
-        final = await buildProtocol(chosen.raw, wording, buildOptions);
+        final = await buildProtocol(chosen.raw, wording, designOptions);
       } catch {
         final = pre;
         log.tags.push('wordingBug');

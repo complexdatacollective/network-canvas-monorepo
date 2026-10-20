@@ -3,7 +3,8 @@
 // POST /api/jobs, then GET /api/jobs/:id straight away and every 1.5 s after,
 // until the job succeeds, fails or is refused. Polling gives up after
 // POLL_TIMEOUT_MS (even if a request hangs), or after three requests in a
-// row fail. Unmounting (or a new request) stops polling.
+// row fail. Unmounting (or a new request) stops polling. With `resumeJobId`
+// it skips the POST and follows a job that is already running.
 
 import { useEffect, useState } from 'react';
 
@@ -39,6 +40,8 @@ const EMPTY: JobRun = { jobId: null, job: null, error: null };
 type Options = {
   pollIntervalMs?: number;
   timeoutMs?: number;
+  // A job created earlier for this request, followed instead of a new one.
+  resumeJobId?: string | null;
 };
 
 const messageOf = (error: unknown) =>
@@ -55,6 +58,7 @@ export const useJobRun = (
   {
     pollIntervalMs = POLL_INTERVAL_MS,
     timeoutMs = POLL_TIMEOUT_MS,
+    resumeJobId = null,
   }: Options = {},
 ): JobRun => {
   // State is tagged with the request it belongs to, so a new request reads
@@ -129,7 +133,9 @@ export const useJobRun = (
 
     const start = async () => {
       try {
-        const { jobId } = await createJob(request, signal);
+        const { jobId } = resumeJobId
+          ? { jobId: resumeJobId }
+          : await createJob(request, signal);
         if (signal.aborted) return;
         setRun(() => ({ jobId, job: null, error: null }));
         await poll(jobId);
@@ -147,7 +153,7 @@ export const useJobRun = (
       clearTimeout(timer);
       clearTimeout(deadline);
     };
-  }, [request, pollIntervalMs, timeoutMs]);
+  }, [request, pollIntervalMs, timeoutMs, resumeJobId]);
 
   return state.request === request ? state.run : EMPTY;
 };

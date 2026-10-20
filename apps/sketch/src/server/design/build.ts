@@ -31,7 +31,7 @@ export type BuildResult = {
   protocol: SketchProtocol;
   assets: GeneratedAsset[];
   summary: ProtocolSummary;
-  /** Every issue analyse() found, of every severity. */
+  /** Every issue analyse() found, of every severity, after any extraIssues. */
   issues: DesignIssue[];
   validation: ProtocolValidationResult;
   stageMap: StageSource[];
@@ -44,7 +44,10 @@ export type BuildResult = {
   retry: boolean;
 };
 
-export type BuildOptions = Omit<CompileOptions, 'issues'>;
+export type BuildOptions = Omit<CompileOptions, 'issues'> & {
+  /** Issues found outside analyse(), such as stages the pipeline removed. */
+  extraIssues?: DesignIssue[];
+};
 
 /** `design` must already have passed StudyDesignSchema.safeParse. */
 export const buildProtocol = async (
@@ -52,9 +55,12 @@ export const buildProtocol = async (
   wording: Wording | null,
   options: BuildOptions = {},
 ): Promise<BuildResult> => {
-  const { design: normalized, issues, fatal } = analyse(design);
+  const { extraIssues = [], ...compileOptions } = options;
+  const analysed = analyse(design);
+  const { design: normalized, fatal } = analysed;
+  const issues = [...extraIssues, ...analysed.issues];
   const compiled = compile(normalized, wording ?? undefined, {
-    ...options,
+    ...compileOptions,
     issues,
   });
   // compile() emits the schema's input shape; validateProtocol parses it.
