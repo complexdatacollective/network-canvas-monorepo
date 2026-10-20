@@ -15,20 +15,20 @@
     />
     <title>Network Canvas Interviewer</title>
     <!--
-      First-paint loading screen. This renders BEFORE the JS bundle parses,
-      React mounts, or the CSS bundle loads — so the markup is static and the
-      styles are inline with LITERAL values (no Tailwind token classes, which
-      don't exist yet at this point).
+      First-paint loading screen. This renders BEFORE the JS bundle parses or
+      React mounts — so the markup is static and the styles are inline (no
+      Tailwind token classes, which don't exist yet at this point).
 
-      Colours are the interview theme's own values, hard-coded here because
-      var(--background) / the fresco palette aren't loaded yet:
+      Colours:
         - #232053  = the interview --background (oklch(0.28 0.09 281) navy-taupe),
-                     the same literal already used for <meta theme-color> and the
-                     PWA manifest background_color, so the browser chrome, the
-                     splash, and this loader all match.
-        - the spinner colours and geometry mirror
-          packages/fresco-ui/src/Spinner.tsx: four two-tone half-circle petals
-          in sea-serpent, mustard, neon-coral, and sea-green.
+                     hard-coded as the same literal already used for
+                     <meta theme-color> and the PWA manifest background_color, so
+                     the browser chrome, the splash, and this loader all match.
+        - the spinner geometry mirrors packages/fresco-ui/src/Spinner.tsx: four
+          two-tone half-circle petals. The petal colours read the brand colour
+          variables (sea-serpent, mustard, neon-coral, sea-green), which the
+          production build defines before first paint by linking the CSS bundle
+          in the head.
 
       When React mounts, main.tsx fades #app-loading out (see
       src/lib/pwa/loadingScreen.ts) and it cross-fades into the app, which
@@ -109,16 +109,16 @@
 
       /* Petal 1 — sea-serpent (blue). */
       .boot-petal--1 {
-        --spinner-color-light: oklch(73.83% 0.13 230);
-        --spinner-color-dark: oklch(68.83% 0.13 230);
+        --spinner-color-light: oklch(var(--sea-serpent));
+        --spinner-color-dark: oklch(var(--sea-serpent--dark));
         top: calc(var(--circle-size) * -1);
         left: 0;
       }
 
       /* Petal 2 — mustard (yellow). */
       .boot-petal--2 {
-        --spinner-color-light: oklch(81% 0.17 72);
-        --spinner-color-dark: oklch(76% 0.17 72);
+        --spinner-color-light: oklch(var(--mustard));
+        --spinner-color-dark: oklch(var(--mustard--dark));
         top: 0;
         left: calc(var(--circle-size) * 2);
         transform: rotate(90deg);
@@ -126,8 +126,8 @@
 
       /* Petal 3 — neon-coral (red). */
       .boot-petal--3 {
-        --spinner-color-light: oklch(58.33% 0.2484 11.57);
-        --spinner-color-dark: oklch(53.33% 0.2484 11.57);
+        --spinner-color-light: oklch(var(--neon-coral));
+        --spinner-color-dark: oklch(var(--neon-coral--dark));
         top: var(--circle-size);
         left: calc(var(--circle-size) * -1);
         transform: rotate(-90deg);
@@ -135,8 +135,8 @@
 
       /* Petal 4 — sea-green (teal). */
       .boot-petal--4 {
-        --spinner-color-light: oklch(70% 0.2 171.52);
-        --spinner-color-dark: oklch(65% 0.2 171.52);
+        --spinner-color-light: oklch(var(--sea-green));
+        --spinner-color-dark: oklch(var(--sea-green--dark));
         top: calc(var(--circle-size) * 2);
         left: var(--circle-size);
         transform: rotate(-180deg);
