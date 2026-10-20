@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { missingAssetsError } from '@codaco/protocol-validation';
 import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
 import type { BundledLegacyInterviewer } from '~/lib/legacyInterviewer';
 
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   showLegacyProtocolInfo: vi.fn(),
   upgradeLegacyProtocol: vi.fn(),
   findUpgradedCopy: vi.fn<() => Promise<string | null>>(),
+  listLegacyProtocols: vi.fn<() => Promise<LegacyProtocolSummary[]>>(),
   keepOnInterviewer8: vi.fn(),
   track: vi.fn(),
   captureException: vi.fn(),
@@ -36,6 +38,9 @@ vi.mock('~/components/legacyProtocolDialogs', () => ({
 vi.mock('~/lib/protocol/upgradeLegacyProtocol', () => ({
   upgradeLegacyProtocol: mocks.upgradeLegacyProtocol,
   findUpgradedCopy: mocks.findUpgradedCopy,
+}));
+vi.mock('~/lib/db/legacyLibrary', () => ({
+  listLegacyProtocols: mocks.listLegacyProtocols,
 }));
 vi.mock('~/lib/protocol/importRouting', () => ({
   keepOnInterviewer8: mocks.keepOnInterviewer8,
@@ -94,6 +99,7 @@ beforeEach(() => {
   mocks.lockSettled = true;
   mocks.settleLock.mockResolvedValue(true);
   mocks.findUpgradedCopy.mockResolvedValue(null);
+  mocks.listLegacyProtocols.mockResolvedValue([legacyProtocol]);
 });
 
 describe('useLegacyProtocolActions: schema 8 cards', () => {
@@ -241,6 +247,55 @@ describe('useLegacyProtocolActions: schema 8 cards', () => {
       from_schema: 8,
       to_schema: 9,
       existing: true,
+    });
+  });
+
+  it('matches the copy against the original as Interviewer 8 holds it now', async () => {
+    // Re-imported in Interviewer 8 since Home listed it: the copy made from
+    // the earlier import is not this one's.
+    const reimported = {
+      ...legacyProtocol,
+      importedAt: '2025-06-01T10:00:00.000Z',
+    };
+    mocks.listLegacyProtocols.mockResolvedValue([reimported]);
+    mocks.confirmProtocolUpgrade.mockResolvedValue(false);
+    const { result } = setup();
+
+    await act(async () => {
+      result.current.legacy.onUpgrade(legacyProtocol);
+    });
+
+    await waitFor(() =>
+      expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledOnce(),
+    );
+    expect(mocks.findUpgradedCopy).toHaveBeenCalledExactlyOnceWith(reimported);
+  });
+
+  it('names the resource an upgrade found missing', async () => {
+    mocks.confirmProtocolUpgrade.mockResolvedValue(true);
+    mocks.upgradeLegacyProtocol.mockResolvedValue({
+      status: 'failed',
+      reason: 'missing-assets',
+      cause: missingAssetsError([
+        { id: 'map', name: 'Neighbourhood map', source: 'map' },
+      ]),
+    });
+    const { result } = setup();
+
+    await act(async () => {
+      result.current.legacy.onUpgrade(legacyProtocol);
+    });
+
+    await waitFor(() =>
+      expect(mocks.addToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'destructive' }),
+      ),
+    );
+    const [{ description }] = mocks.addToast.mock.calls[0] as [
+      { description: { props: { values?: Record<string, unknown> } } },
+    ];
+    expect(description.props.values).toEqual({
+      assetName: 'Neighbourhood map',
     });
   });
 

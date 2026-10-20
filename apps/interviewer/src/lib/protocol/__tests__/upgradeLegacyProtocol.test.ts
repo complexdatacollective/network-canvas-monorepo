@@ -19,7 +19,10 @@ import {
 } from '../../db/api';
 import { db } from '../../db/db';
 import { closeLegacyLibrary } from '../../db/legacyLibrary';
-import { encryptLegacyProtocolRow } from '../../db/legacyVaultMaintenance';
+import {
+  encryptLegacyAssetRow,
+  encryptLegacyProtocolRow,
+} from '../../db/legacyVaultMaintenance';
 import { setSessionDek } from '../../db/sessionKey';
 import {
   findUpgradedCopy,
@@ -211,6 +214,7 @@ describe('upgradeLegacyProtocol', () => {
     const key = await importFrozenDek();
     await seedLegacyInterviewerDatabase({
       protocols: [await encryptLegacyProtocolRow(legacyProtocol, key)],
+      assets: [await encryptLegacyAssetRow(legacyAsset, key)],
     });
     setSessionDek(key);
 
@@ -250,6 +254,21 @@ describe('upgradeLegacyProtocol', () => {
     expect(result.status).toBe('failed');
     if (result.status !== 'failed') return;
     expect(['migration-failed', 'validation-failed']).toContain(result.reason);
+    expect(await db.protocols.count()).toBe(0);
+    expect(await db.legacyUpgrades.count()).toBe(0);
+  });
+
+  it('refuses to upgrade a protocol whose resource Interviewer 8 no longer holds', async () => {
+    await seedLegacyInterviewerDatabase({ protocols: [legacyProtocol] });
+
+    const result = await upgradeLegacyProtocol(LEGACY_HASH);
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      reason: 'missing-assets',
+    });
+    if (result.status !== 'failed') return;
+    expect(result.cause).toMatchObject({ assetName: 'Map key' });
     expect(await db.protocols.count()).toBe(0);
     expect(await db.legacyUpgrades.count()).toBe(0);
   });

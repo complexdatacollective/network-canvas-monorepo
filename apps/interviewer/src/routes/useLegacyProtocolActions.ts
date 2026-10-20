@@ -1,10 +1,14 @@
 import { createElement, useCallback, useMemo, useRef, useState } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import {
   chooseImportRoute,
   confirmProtocolUpgrade,
@@ -14,7 +18,10 @@ import {
 import type { LegacyCardActions } from '~/components/ProtocolCarousel/DeckSlotCard';
 import { useSettleLockForInterviewer8 } from '~/components/useSettleLockForInterviewer8';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
-import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
+import {
+  type LegacyProtocolSummary,
+  listLegacyProtocols,
+} from '~/lib/db/legacyLibrary';
 import {
   getBundledLegacyInterviewer,
   goToLegacyInterviewer,
@@ -83,15 +90,31 @@ const messages = defineMessages({
   },
 });
 
-const failureMessage = (reason: LegacyUpgradeFailureReason) => {
+const failureMessage = (
+  reason: LegacyUpgradeFailureReason,
+  cause: unknown,
+): {
+  message: MessageDescriptor;
+  values?: Record<string, string | number>;
+} => {
   switch (reason) {
     case 'read-failed':
-      return messages.couldNotRead;
+      return {
+        message: messages.couldNotRead,
+        values: { version: LEGACY_INTERVIEWER_MAJOR },
+      };
     case 'migration-failed':
     case 'validation-failed':
-      return importFailureMessages.cannotUpgrade;
+      return { message: importFailureMessages.cannotUpgrade };
+    case 'missing-assets': {
+      // Named in the words an archive missing the same file gets.
+      const described = describeProtocolFileErrorMessage(cause);
+      return described
+        ? { message: described.descriptor, values: described.values }
+        : { message: importFailureMessages.cannotUpgrade };
+    }
     case 'save-failed':
-      return importFailureMessages.cannotSave;
+      return { message: importFailureMessages.cannotSave };
   }
 };
 
@@ -163,7 +186,15 @@ export function useLegacyProtocolActions({
         // Upgraded before, and the copy is still here: it is shown, and as no
         // copy is made there is nothing to confirm. (If it cannot be told, the
         // upgrade below finds the copy itself, after the confirmation.)
-        const existing = await findUpgradedCopy(protocol).catch(() => null);
+        // Matched against the original as it is now, not as Home last listed
+        // it: Interviewer 8 may have re-imported it since (same hash, a new
+        // `importedAt`), which calls for a fresh copy.
+        const current = (await listLegacyProtocols()).find(
+          ({ hash }) => hash === protocol.hash,
+        );
+        const existing = current
+          ? await findUpgradedCopy(current).catch(() => null)
+          : null;
         let result: LegacyUpgradeResult;
         if (existing) {
           result = { status: 'existing', hash: existing };
@@ -224,13 +255,15 @@ export function useLegacyProtocolActions({
           title: createElement(AppMessage, {
             message: messages.upgradeFailedTitle,
           }),
-          description: createElement(AppMessage, {
-            message:
-              result.status === 'not-found'
-                ? messages.noLongerThere
-                : failureMessage(result.reason),
-            values: { version: LEGACY_INTERVIEWER_MAJOR },
-          }),
+          description: createElement(
+            AppMessage,
+            result.status === 'not-found'
+              ? {
+                  message: messages.noLongerThere,
+                  values: { version: LEGACY_INTERVIEWER_MAJOR },
+                }
+              : failureMessage(result.reason, result.cause),
+          ),
           variant: 'destructive',
         });
       } finally {

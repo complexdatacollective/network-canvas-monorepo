@@ -3,6 +3,7 @@ import {
   type CurrentProtocol,
   hashProtocol,
   migrateProtocol,
+  missingAssetsError,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
@@ -27,7 +28,12 @@ import { getLegacyUpgrade } from '../db/protocols';
 
 export type LegacyUpgradeFailureReason =
   /** The device is locked, or Interviewer 8's database could not be read. */
-  'read-failed' | 'migration-failed' | 'validation-failed' | 'save-failed';
+  | 'read-failed'
+  | 'migration-failed'
+  | 'validation-failed'
+  /** A resource the protocol names has no row in Interviewer 8's database. */
+  | 'missing-assets'
+  | 'save-failed';
 
 export type LegacyUpgradeResult =
   | { status: 'upgraded'; hash: string; protocol: CurrentProtocol }
@@ -110,6 +116,21 @@ export async function upgradeLegacyProtocol(
     return failed('validation-failed');
   }
   const protocol: CurrentProtocol = validation.data;
+
+  // Refused on the same terms as an archive missing a file: the next thing
+  // done with a resource is show it to a participant mid-interview.
+  const stored = new Set(assets.map(({ assetId }) => assetId));
+  const missing = Object.entries(protocol.assetManifest ?? {})
+    .filter(([id]) => !stored.has(id))
+    .map(([id, asset]) => ({
+      id,
+      name: asset.name,
+      source: 'source' in asset ? asset.source : id,
+    }));
+  if (missing.length > 0) {
+    return failed('missing-assets', { cause: missingAssetsError(missing) });
+  }
+
   const hash = hashProtocol(protocol);
 
   try {
