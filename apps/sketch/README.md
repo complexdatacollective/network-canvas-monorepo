@@ -47,19 +47,20 @@ The page then hands the protocol to Architect:
 
 ### Where the code lives
 
-| Path                          | What                                                                                               |
-| ----------------------------- | -------------------------------------------------------------------------------------------------- |
-| `src/shared/api.ts`           | The HTTP contract between page and functions (types only).                                         |
-| `src/App.tsx`, `src/screens/` | The page: describe, generating, ready, compare and failed screens.                                 |
-| `src/api/`, `src/hooks/`      | API client; job creation and polling.                                                              |
-| `src/handoff/`                | Architect handoff and `.netcanvas` download.                                                       |
-| `src/server/pipeline.ts`      | The five steps, with injected provider adapters.                                                   |
-| `src/server/design/`          | Design schema, analysis, compiler, retry feedback, assets.                                         |
-| `src/server/prompts/`         | System prompts and the decision guide.                                                             |
-| `src/server/providers/`       | Anthropic and OpenAI adapters behind one `ProviderAdapter` type.                                   |
-| `src/server/handlers.ts`      | Request handlers. The Netlify functions only wire production dependencies into them.               |
-| `src/server/jobs.ts`          | Job records, the research log and the daily budget, in Netlify Blobs.                              |
-| `netlify/functions/`          | `jobs` (POST /api/jobs), `job` (GET /api/jobs/:id), `config`, `preference`, `generate-background`. |
+| Path                           | What                                                                                               |
+| ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `src/shared/api.ts`            | The HTTP contract between page and functions (types only).                                         |
+| `src/App.tsx`, `src/screens/`  | The page: describe, generating, ready, compare and failed screens.                                 |
+| `src/api/`, `src/hooks/`       | API client; job creation and polling.                                                              |
+| `src/handoff/`                 | Architect handoff and `.netcanvas` download.                                                       |
+| `src/server/pipeline.ts`       | The five steps, with injected provider adapters.                                                   |
+| `src/server/design/`           | Design schema, analysis, compiler, retry feedback, assets.                                         |
+| `src/server/prompts/`          | System prompts and the decision guide.                                                             |
+| `src/server/providers/`        | Anthropic and OpenAI adapters behind one `ProviderAdapter` type.                                   |
+| `src/server/handlers.ts`       | Request handlers. The Netlify functions only wire production dependencies into them.               |
+| `src/server/jobs.ts`           | Job records, the research log and the daily budget, in Netlify Blobs.                              |
+| `netlify/functions/`           | `jobs` (POST /api/jobs), `job` (GET /api/jobs/:id), `config`, `preference`, `generate-background`. |
+| `scripts/bundle-functions.mjs` | Bundles the functions with esbuild for deployment (Netlify cannot load workspace TypeScript).      |
 
 `src/server/**` and `netlify/**` compile under `tsconfig.server.json` (Node
 types); the rest of `src` compiles under `tsconfig.app.json` (DOM). Server code
@@ -127,14 +128,17 @@ confirmed.
 
 ## Provisioning the Netlify site (manual)
 
-Nothing creates the site automatically. Once:
+The `sketch-networkcanvas` site was created this way on 2026-10-20. To
+recreate it:
 
 1. In Netlify, create a site from `complexdatacollective/network-canvas-monorepo`
    named `sketch-networkcanvas` (so `sketch-networkcanvas.netlify.app` and its
    deploy previews match Architect's origin allowlist).
 2. Set the **base directory** to the repository root and the **config file**
    (package path) to `apps/sketch/netlify.toml`. The file sets the build
-   command, publish directory (`apps/sketch/dist`) and functions directory.
+   command, publish directory (`apps/sketch/dist`) and functions directory
+   (`apps/sketch/netlify/.bundled`, written by `scripts/bundle-functions.mjs`
+   after the build).
 3. Add the environment variables above. Mark the API keys as secret and
    scope them to Functions.
 4. Netlify Blobs needs no setup: the functions create the `sketch-jobs` and
