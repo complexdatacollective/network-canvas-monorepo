@@ -139,14 +139,6 @@
     "defaultMessage": "v{appVersion}",
     "description": "The label text in components / AppUpdate / AppUpdatePill."
   },
-  "architect.architect8Banner.thisIsArchitect8": {
-    "defaultMessage": "This is Architect 8, for schema 8 protocols. Upgrading this protocol creates a schema 9 copy of it in Architect 9 and leaves the original unchanged.",
-    "description": "Banner across the protocol editor when the previous Architect release runs inside the current one. \"Schema 8\" and \"schema 9\" are protocol format versions."
-  },
-  "architect.architect8Banner.upgradeToSchema9": {
-    "defaultMessage": "Upgrade to schema 9",
-    "description": "Button in the Architect 8 banner that opens the current Architect to upgrade a copy of the open protocol to protocol format version 9."
-  },
   "architect.assetBrowser.assetBrowser.addANewResourceToThis": {
     "defaultMessage": "Add a new resource to this protocol.",
     "description": "The description text in components / AssetBrowser / AssetBrowser."
@@ -1430,10 +1422,6 @@
   "architect.home.libraryPanel.templates": {
     "defaultMessage": "Templates",
     "description": "The label text in components / Home / LibraryPanel."
-  },
-  "architect.home.libraryPanel.upgradeToSchema9": {
-    "defaultMessage": "Upgrade to schema 9",
-    "description": "Protocol row menu item, shown when the previous Architect release runs inside the current one: opens the current Architect to upgrade a copy of this protocol to protocol format version 9."
   },
   "architect.home.libraryPanel.value": {
     "defaultMessage": "Value",

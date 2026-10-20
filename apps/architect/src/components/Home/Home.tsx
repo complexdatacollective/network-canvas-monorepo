@@ -34,8 +34,12 @@ import {
   type ProtocolOpenResult,
 } from '~/ducks/modules/userActions/userActions';
 import { formatConfig } from '~/i18n/formatConfig';
-import type { BundledTemplate, ProtocolSourceRef } from '~/templates';
-import { bundledProtocols } from '~/templates/bundled-protocols';
+import {
+  BUNDLED_TEMPLATES,
+  type BundledTemplate,
+  type ProtocolSourceRef,
+} from '~/templates';
+import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { documentationLinks } from '~/utils/documentationLinks';
 import {
   describeImportFailure,
@@ -219,10 +223,9 @@ const Home = () => {
   // Recents under a user-chosen name. Selecting a template opens the naming
   // dialog; confirming it fetches and instantiates the protocol.
   const handleOpenSample = useCallback(() => {
-    if (!bundledProtocols) return;
     setPendingTemplate({
-      protocol: bundledProtocols.sample.protocol,
-      loadAssets: bundledProtocols.sample.loadAssets,
+      protocol: sampleProtocol,
+      loadAssets: loadSampleAssets,
       defaultName: 'Sample Protocol',
       sourceRef: { kind: 'sample', id: 'sample' },
     });
@@ -428,7 +431,7 @@ const Home = () => {
               </div>
 
               <LibraryPanel
-                templates={bundledProtocols?.templates ?? []}
+                templates={BUNDLED_TEMPLATES}
                 onOpenProtocol={handleOpenLibraryProtocol}
                 onOpenSample={handleOpenSample}
                 onOpenDevProtocol={handleOpenDevProtocol}

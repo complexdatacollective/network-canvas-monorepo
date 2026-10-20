@@ -17,20 +17,19 @@ import { Timeline } from '../pageobjects/timeline.js';
 /**
  * Architect 8 as Architect 9 ships it: built with ARCHITECT_BASE_PATH=/v8/ and
  * served at /v8/ of the same origin (see playwright.subpath.config.ts). The
- * root suite covers what the app does; this one covers where it lives and the
- * hand-off contract with Architect 9 at the origin root:
+ * root suite covers what the editor does; this one covers where it lives and
+ * how it fits inside Architect 9 at the origin root:
  *
  * - every request and every in-app route stays under /v8/, deep links
  *   included, and the preview popup is Architect 8's own;
  * - `?open=<id>` opens a row of this app's library, `?import=<key>` the file
  *   Architect 9 staged in the shared `ArchitectHandoffDB`;
- * - the Architect 8 banner and the library's "Upgrade to schema 9" send the
- *   protocol to Architect 9's `/?upgrade=<id>`, through the leave-editor
- *   prompt when an editor has unsaved work.
+ * - it has no start screen of its own: with nothing to open, or once the
+ *   editor closes, the tab goes back to Architect 9's.
  *
  * Architect 9 itself is not served here. Its root URL is answered by a stub,
  * so a navigation there is observable without depending on what vite preview
- * does outside its base.
+ * does outside its base, and the specs seed storage from that stub.
  */
 
 const STAGE_LABEL = 'Welcome';
@@ -66,9 +65,10 @@ const ALL_INTERFACES_NETCANVAS = path.resolve(
 
 // The hand-off store's contract, as pinned by
 // src/utils/__tests__/handoffStore.contract.test.ts. Dexie's `version(1)` is
-// IndexedDB version 10; the store is created by the app on startup (it prunes
-// stale records), so the helpers below only ever open what the app made.
+// IndexedDB version 10. Architect 9 creates it before staging anything; the
+// stub cannot, so `stageHandoff` creates it as Dexie would.
 const HANDOFF_DB = 'ArchitectHandoffDB';
+const HANDOFF_DB_VERSION = 10;
 const HANDOFF_STORE = 'handoffs';
 
 function subpathBase(): URL {
@@ -81,19 +81,30 @@ function subpathBase(): URL {
   return url;
 }
 
-/** Architect 9's `/?upgrade=` answered by a stub page, so the navigation lands. */
-async function stubArchitect9(page: Page): Promise<URL> {
+const ARCHITECT_9_STUB_HEADING = 'Architect 9 stub';
+
+/** Architect 9's root answered by a stub page, so a navigation there lands. */
+async function stubArchitect9(page: Page): Promise<void> {
   const origin = new URL('/', subpathBase());
   await page.route(
     (url) => url.origin === origin.origin && url.pathname === '/',
     (route) =>
       route.fulfill({
         contentType: 'text/html',
-        body: '<!doctype html><title>Architect 9 stub</title><h1>Architect 9 stub</h1>',
+        body: `<!doctype html><title>${ARCHITECT_9_STUB_HEADING}</title><h1>${ARCHITECT_9_STUB_HEADING}</h1>`,
       }),
   );
-  return origin;
 }
+
+const architect9Stub = (page: Page) =>
+  page.getByRole('heading', { name: ARCHITECT_9_STUB_HEADING });
+
+/** Seed from Architect 9's root, as /v8/'s own root never stays put. */
+const SEED_AT = '/';
+
+test.beforeEach(async ({ architectPage }) => {
+  await stubArchitect9(architectPage);
+});
 
 /** Same-origin requests that left the base, across every page of the context. */
 function recordRequestsOutsideBase(
@@ -123,25 +134,27 @@ async function stageHandoff(
 ): Promise<string> {
   const key = randomUUID();
   await page.evaluate(
-    async ({ dbName, storeName, handoffKey, targetMajor, fileName, bytes }) => {
-      const open = () =>
-        new Promise<IDBDatabase>((resolve, reject) => {
-          const req = indexedDB.open(dbName);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      // A versionless open that won the race with Dexie's would create an
-      // empty database; wait for the app's own to exist, as seed.ts does.
-      let db = await open();
-      const deadline = Date.now() + 10_000;
-      while (!db.objectStoreNames.contains(storeName)) {
-        db.close();
-        if (Date.now() > deadline) {
-          throw new Error(`${dbName} was never created by the app`);
-        }
-        await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-        db = await open();
-      }
+    async ({
+      dbName,
+      dbVersion,
+      storeName,
+      handoffKey,
+      targetMajor,
+      fileName,
+      bytes,
+    }) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open(dbName, dbVersion);
+        req.onupgradeneeded = () => {
+          if (!req.result.objectStoreNames.contains(storeName)) {
+            req.result
+              .createObjectStore(storeName, { keyPath: 'key' })
+              .createIndex('createdAt', 'createdAt');
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(storeName, 'readwrite');
         tx.oncomplete = () => resolve();
@@ -161,6 +174,7 @@ async function stageHandoff(
     },
     {
       dbName: HANDOFF_DB,
+      dbVersion: HANDOFF_DB_VERSION,
       storeName: HANDOFF_STORE,
       handoffKey: key,
       ...record,
@@ -200,8 +214,8 @@ async function readHandoffKeys(page: Page): Promise<string[]> {
 const protocolNameField = (page: Page) =>
   page.getByRole('textbox', { name: 'Protocol name' });
 
-const architect8Banner = (page: Page) =>
-  page.getByText('This is Architect 8, for schema 8 protocols.');
+const returnToStartScreen = (page: Page) =>
+  page.getByRole('button', { name: 'Return to start screen', exact: true });
 
 test('boots under /v8/, keeps every route and request under it, and honours deep links', async ({
   architectPage,
@@ -209,9 +223,9 @@ test('boots under /v8/, keeps every route and request under it, and honours deep
   seed,
 }) => {
   const base = subpathBase();
+  await seed(informationProtocol('Deep Link Study'), { at: SEED_AT });
   const outside = recordRequestsOutsideBase(context, base);
 
-  await seed(informationProtocol('Deep Link Study'));
   await gotoProtocol(architectPage);
   await expect(architectPage).toHaveURL(new URL('protocol', base).href);
   await expect(protocolNameField(architectPage)).toHaveValue('Deep Link Study');
@@ -222,24 +236,13 @@ test('boots under /v8/, keeps every route and request under it, and honours deep
   expect(stageUrl.pathname).toMatch(/^\/v8\/protocol\/stage\/[^/]+$/);
 
   // A full load of that deep link (a bookmark, a reload) restores the same
-  // screen rather than falling back to the start screen.
+  // screen rather than leaving the editor.
   await architectPage.reload();
   await settle(architectPage);
   await expect(architectPage).toHaveURL(stageUrl.href);
   await expect(
     architectPage.getByRole('textbox', { name: 'Page heading' }),
   ).toBeVisible();
-
-  // And back out, to the base itself rather than the origin root.
-  await architectPage
-    .getByRole('button', { name: 'Return to start screen', exact: true })
-    .click();
-  await architectPage
-    .getByRole('dialog', { name: 'Return to start screen?' })
-    .getByRole('button', { name: 'Return to Start Screen' })
-    .click();
-  await expect(architectPage).toHaveURL(base.href);
-  await expect(architectPage.getByText('Deep Link Study')).toBeVisible();
 
   expect(outside).toEqual([]);
 });
@@ -250,9 +253,9 @@ test('the preview popup is Architect 8’s own, under /v8/preview/', async ({
   seed,
 }) => {
   const base = subpathBase();
+  await seed(informationProtocol('Preview Study'), { at: SEED_AT });
   const outside = recordRequestsOutsideBase(context, base);
 
-  await seed(informationProtocol('Preview Study'));
   await gotoProtocol(architectPage);
   await new Timeline(architectPage).openStage(STAGE_LABEL);
 
@@ -267,6 +270,75 @@ test('the preview popup is Architect 8’s own, under /v8/preview/', async ({
   expect(outside).toEqual([]);
 });
 
+test('/v8/ with nothing to open goes back to Architect 9, in place of itself', async ({
+  architectPage,
+}) => {
+  subpathBase();
+  // An entry of Architect 9's own to come back to.
+  await architectPage.goto('/?came-from=architect-9');
+
+  await architectPage.goto('./');
+  await expect(architectPage).toHaveURL(new URL('/', architectPage.url()).href);
+  await expect(architect9Stub(architectPage)).toBeVisible();
+
+  // Replaced rather than pushed: Back skips the empty /v8/ page, which would
+  // only send the tab forward again.
+  await architectPage.goBack();
+  await expect(architectPage).toHaveURL(/\/\?came-from=architect-9$/);
+});
+
+test('closing a saved editor goes back to Architect 9 without asking', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(informationProtocol('Saved Study'), { at: SEED_AT });
+  await gotoProtocol(architectPage);
+  await expect(protocolNameField(architectPage)).toHaveValue('Saved Study');
+
+  await returnToStartScreen(architectPage).click();
+  await expect(architect9Stub(architectPage)).toBeVisible();
+  expect(new URL(architectPage.url()).pathname).toBe('/');
+});
+
+test('closing an editor with unsaved changes asks first, in Architect 9’s words', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(informationProtocol('Dirty Study'), { at: SEED_AT });
+  await gotoProtocol(architectPage);
+  await new Timeline(architectPage).openStage(STAGE_LABEL);
+  const stageUrl = architectPage.url();
+
+  await architectPage
+    .getByRole('textbox', { name: 'Page heading' })
+    .fill('Unsaved heading');
+
+  const dialog = architectPage.getByRole('dialog', {
+    name: 'Discard unsaved changes?',
+  });
+
+  // Cancelling stays in the editor, with the draft intact.
+  await returnToStartScreen(architectPage).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(dialog).toBeHidden();
+  await expect(architectPage).toHaveURL(stageUrl);
+  await expect(
+    architectPage.getByRole('textbox', { name: 'Page heading' }),
+  ).toHaveValue('Unsaved heading');
+
+  // The prompt names where the tab goes: Architect 9, not a start screen of
+  // this app's own.
+  await returnToStartScreen(architectPage).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('If you open Architect 9 now');
+  await dialog
+    .getByRole('button', { name: 'Discard Changes and Open Architect 9' })
+    .click();
+  await expect(architect9Stub(architectPage)).toBeVisible();
+  expect(new URL(architectPage.url()).pathname).toBe('/');
+});
+
 test('?open= opens that row of the library, and leaves the address bar clean', async ({
   architectPage,
   seed,
@@ -274,6 +346,7 @@ test('?open= opens that row of the library, and leaves the address bar clean', a
   const base = subpathBase();
   const id = await seed(informationProtocol('Opened By URL'), {
     id: 'e2e-open-by-url',
+    at: SEED_AT,
   });
   // Start from a tab with nothing open, as a navigation from Architect 9 does.
   await architectPage.evaluate(() => {
@@ -287,31 +360,33 @@ test('?open= opens that row of the library, and leaves the address bar clean', a
   await expect(protocolNameField(architectPage)).toHaveValue('Opened By URL');
 });
 
-test('?open= with an id the library does not hold opens nothing', async ({
+test('?open= with an id the library does not hold says so, then goes back to Architect 9', async ({
   architectPage,
 }) => {
   const base = subpathBase();
   await architectPage.goto('./?open=e2e-no-such-protocol');
   await settle(architectPage);
 
-  // The library's own refusal for a row that is gone.
-  await expect(
-    architectPage.getByRole('dialog', { name: 'Protocol Not Found' }),
-  ).toContainText('This protocol could not be found in your library.');
+  // The library's own refusal for a row that is gone, shown before the tab
+  // leaves.
+  const dialog = architectPage.getByRole('dialog', {
+    name: 'Protocol Not Found',
+  });
+  await expect(dialog).toContainText(
+    'This protocol could not be found in your library.',
+  );
   await expect(architectPage).toHaveURL(base.href);
   await expect(protocolNameField(architectPage)).toHaveCount(0);
+
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect(architect9Stub(architectPage)).toBeVisible();
 });
 
 test('?import= opens the file Architect 9 staged, and consumes the record', async ({
   architectPage,
 }) => {
   const base = subpathBase();
-  await architectPage.goto('./');
-  await settle(architectPage);
-  expect(await readStoreCounts(architectPage)).toEqual({
-    protocols: 0,
-    assets: 0,
-  });
+  await architectPage.goto(SEED_AT);
 
   const key = await stageHandoff(architectPage, {
     targetMajor: 8,
@@ -340,8 +415,7 @@ test('?import= leaves a record staged for Architect 9 alone', async ({
   architectPage,
 }) => {
   const base = subpathBase();
-  await architectPage.goto('./');
-  await settle(architectPage);
+  await architectPage.goto(SEED_AT);
 
   const key = await stageHandoff(architectPage, {
     targetMajor: 9,
@@ -363,100 +437,7 @@ test('?import= leaves a record staged for Architect 9 alone', async ({
     assets: 0,
   });
   expect(await readHandoffKeys(architectPage)).toEqual([key]);
-});
 
-test('the Architect 8 banner sends the open protocol to Architect 9’s upgrade', async ({
-  architectPage,
-  seed,
-}) => {
-  const architect9 = await stubArchitect9(architectPage);
-  const id = await seed(informationProtocol('Banner Study'));
-
-  // Not on the start screen: the banner belongs to the protocol editor.
-  await expect(architectPage.getByText('Banner Study')).toBeVisible();
-  await expect(architect8Banner(architectPage)).toHaveCount(0);
-
-  await gotoProtocol(architectPage);
-  await expect(architect8Banner(architectPage)).toBeVisible();
-
-  await architectPage
-    .getByRole('button', { name: 'Upgrade to schema 9', exact: true })
-    .click();
-  await expect(architectPage).toHaveURL(
-    new URL(`/?upgrade=${id}`, architect9).href,
-  );
-  await expect(
-    architectPage.getByRole('heading', { name: 'Architect 9 stub' }),
-  ).toBeVisible();
-});
-
-test('the banner goes through the leave-editor prompt when a stage has unsaved changes', async ({
-  architectPage,
-  seed,
-}) => {
-  const architect9 = await stubArchitect9(architectPage);
-  const id = await seed(informationProtocol('Dirty Banner Study'));
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage(STAGE_LABEL);
-  const stageUrl = architectPage.url();
-
-  await architectPage
-    .getByRole('textbox', { name: 'Page heading' })
-    .fill('Unsaved heading');
-
-  const upgrade = architectPage.getByRole('button', {
-    name: 'Upgrade to schema 9',
-    exact: true,
-  });
-  const dialog = architectPage.getByRole('dialog', {
-    name: 'Discard unsaved changes?',
-  });
-
-  // Cancelling stays in the editor, with the draft intact.
-  await upgrade.click();
-  await expect(dialog).toBeVisible();
-  await dialog.getByTestId('dialog-cancel').click();
-  await expect(dialog).toBeHidden();
-  await expect(architectPage).toHaveURL(stageUrl);
-  await expect(
-    architectPage.getByRole('textbox', { name: 'Page heading' }),
-  ).toHaveValue('Unsaved heading');
-
-  // Confirming the discard is what lets the navigation happen. The prompt
-  // names where it goes: Architect 9, not this app's start screen.
-  await upgrade.click();
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('If you open Architect 9 now');
-  await dialog
-    .getByRole('button', { name: 'Discard Changes and Open Architect 9' })
-    .click();
-  await expect(architectPage).toHaveURL(
-    new URL(`/?upgrade=${id}`, architect9).href,
-  );
-});
-
-test('the library row offers Upgrade to schema 9', async ({
-  architectPage,
-  seed,
-}) => {
-  const architect9 = await stubArchitect9(architectPage);
-  const id = await seed(informationProtocol('Library Study'), {
-    id: 'e2e-library-upgrade',
-  });
-  await architectPage.evaluate(() => {
-    sessionStorage.clear();
-  });
-  await architectPage.goto('./');
-  await settle(architectPage);
-
-  await architectPage
-    .getByRole('button', { name: 'Actions for Library Study' })
-    .click();
-  await architectPage
-    .getByRole('menuitem', { name: 'Upgrade to schema 9' })
-    .click();
-
-  await expect(architectPage).toHaveURL(
-    new URL(`/?upgrade=${id}`, architect9).href,
-  );
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect(architect9Stub(architectPage)).toBeVisible();
 });

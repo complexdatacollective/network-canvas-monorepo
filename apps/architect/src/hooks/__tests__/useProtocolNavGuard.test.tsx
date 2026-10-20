@@ -1,5 +1,5 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   AnyDialog,
@@ -25,6 +25,15 @@ import {
   guardState,
   promptLeaveEditor,
 } from '../useProtocolNavGuard';
+
+const appBase = vi.hoisted(() => ({ isSubpath: false }));
+
+vi.mock('~/utils/appBase', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/appBase')>()),
+  get IS_SUBPATH_BUILD() {
+    return appBase.isSubpath;
+  },
+}));
 
 // Intercepts the fresco dialog request so the test can read the config shown to
 // the user and auto-confirm it. Records every dispatched action; the download
@@ -254,9 +263,17 @@ describe('promptLeaveEditor', () => {
     });
   });
 
-  // Leaving for Architect 9 is a full-page navigation to another app, not a
-  // return to the start screen, and the copy must say where it goes.
-  describe('when leaving for Architect 9', () => {
+  // Architect 8 served inside Architect 9 has no start screen of its own: a
+  // leave returns to Architect 9's, and the copy must say where it goes.
+  describe('in Architect 8 served inside Architect 9', () => {
+    beforeEach(() => {
+      appBase.isSubpath = true;
+    });
+
+    afterEach(() => {
+      appBase.isSubpath = false;
+    });
+
     it('names Architect 9 in the discard dialog', async () => {
       const { dispatch, dispatched, openDialog, getCaptured } =
         setup('discard-and-leave');
@@ -268,7 +285,6 @@ describe('promptLeaveEditor', () => {
         performLeave,
         true,
         'saved',
-        'architect-9',
       );
 
       const captured = getCaptured();
@@ -306,7 +322,6 @@ describe('promptLeaveEditor', () => {
           vi.fn(),
           true,
           persistence,
-          'architect-9',
         );
 
         const captured = getCaptured();
@@ -330,7 +345,6 @@ describe('promptLeaveEditor', () => {
         performLeave,
         false,
         'storage-unavailable',
-        'architect-9',
       );
 
       const captured = getCaptured();
@@ -372,7 +386,6 @@ describe('promptLeaveEditor', () => {
         performLeave,
         false,
         'saved',
-        'architect-9',
       );
 
       expect(getCapturedDialogs()).toHaveLength(0);

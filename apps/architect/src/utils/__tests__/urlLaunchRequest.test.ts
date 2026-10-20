@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   captureUrlLaunchRequest,
@@ -116,8 +116,14 @@ describe('captureUrlLaunchRequest', () => {
 });
 
 describe('the request captured at load', () => {
+  // Architect 8 served inside Architect 9, the only build handed requests.
+  beforeEach(() => {
+    vi.stubEnv('BASE_URL', '/v8/');
+  });
+
   afterEach(() => {
     window.history.replaceState(null, '', '/');
+    vi.unstubAllEnvs();
     vi.resetModules();
   });
 
@@ -142,6 +148,18 @@ describe('the request captured at load', () => {
     expect(mod.takeUrlImportRequest()).toBeNull();
     expect(mod.takeUrlOpenRequest()).toBe(PROTOCOL_ID);
     expect(mod.takeUrlOpenRequest()).toBeNull();
+  });
+
+  it('is never taken by standalone Architect 8, which leaves the URL alone', async () => {
+    vi.stubEnv('BASE_URL', '/');
+    window.history.replaceState(null, '', `/?open=${PROTOCOL_ID}`);
+    vi.resetModules();
+
+    const mod = await import('../urlLaunchRequest');
+
+    expect(window.location.search).toBe(`?open=${PROTOCOL_ID}`);
+    expect(mod.takeUrlOpenRequest()).toBeNull();
+    expect(mod.takeUrlImportRequest()).toBeNull();
   });
 });
 

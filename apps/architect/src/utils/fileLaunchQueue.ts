@@ -52,18 +52,7 @@ const trackLaunchRead = (
     });
 };
 
-type LaunchCaptureOptions = {
-  /**
-   * Decide what happens to launched .netcanvas files before they are queued:
-   * resolve with the files this app should still open itself. Architect 8
-   * served inside Architect 9 hands them on to Architect 9 instead.
-   */
-  routeFiles?: (files: File[]) => Promise<File[]>;
-};
-
-export const initFileLaunchCapture = (
-  options: LaunchCaptureOptions = {},
-): void => {
+export const initFileLaunchCapture = (): void => {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
   const queue = window.launchQueue;
@@ -92,11 +81,9 @@ export const initFileLaunchCapture = (
         reportLaunchReadFailure(failures.length);
       }
 
-      const netcanvas = files.filter((file) =>
+      return files.filter((file) =>
         file.name.toLowerCase().endsWith('.netcanvas'),
       );
-      if (netcanvas.length === 0) return [];
-      return options.routeFiles ? options.routeFiles(netcanvas) : netcanvas;
     }, 'fileLaunchHandle');
   });
 };

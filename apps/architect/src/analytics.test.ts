@@ -104,9 +104,12 @@ describe('initializeAnalytics', () => {
 describe('loading the analytics module', () => {
   afterEach(() => {
     window.history.replaceState(null, '', '/');
+    vi.unstubAllEnvs();
   });
 
+  // In Architect 8 served inside Architect 9, the only build handed requests.
   it('strips a URL launch request before analytics can see it', async () => {
+    vi.stubEnv('BASE_URL', '/v8/');
     window.history.replaceState(
       null,
       '',

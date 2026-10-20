@@ -8,9 +8,8 @@ import {
 } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { BUNDLED_TEMPLATES } from '~/templates';
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 import type { StoredProtocolRow } from '~/utils/assetDB';
 import { UnresolvedAssetsError } from '~/utils/bundleProtocol';
@@ -18,20 +17,6 @@ import { UnresolvedAssetsError } from '~/utils/bundleProtocol';
 import LibraryPanel from '../LibraryPanel';
 
 const downloadProtocolAsNetcanvasMock = vi.fn();
-
-// A sub-path build replaces the bundled-protocols module with
-// `bundledProtocols = null` (vite.config.ts); flip this to render that build.
-const bundledProtocolsMock = vi.hoisted(() => ({ omitted: false }));
-
-vi.mock('~/templates/bundled-protocols', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('~/templates/bundled-protocols')>();
-  return {
-    get bundledProtocols() {
-      return bundledProtocolsMock.omitted ? null : actual.bundledProtocols;
-    },
-  };
-});
 
 vi.mock('~/utils/bundleProtocol', async (importOriginal) => ({
   // The real error class: the panel narrows on `instanceof`, so a look-alike
@@ -43,12 +28,7 @@ vi.mock('~/utils/bundleProtocol', async (importOriginal) => ({
 
 const openDialogMock = globalThis.__architectDialogMocks.openDialog;
 
-vi.mock('~/ducks/modules/userActions/userActions', async (importOriginal) => ({
-  // Partial: the store, reached through the leave-editor guard, registers
-  // listeners on the real thunks.
-  ...(await importOriginal<
-    typeof import('~/ducks/modules/userActions/userActions')
-  >()),
+vi.mock('~/ducks/modules/userActions/userActions', () => ({
   deleteLibraryProtocol: vi.fn(() => ({
     type: 'webUserActions/deleteLibraryProtocol',
   })),
@@ -440,75 +420,5 @@ describe('<LibraryPanel /> opening tab', () => {
       'aria-selected',
       'true',
     );
-  });
-});
-
-describe('<LibraryPanel /> in a build that ships no bundled protocols', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    bundledProtocolsMock.omitted = true;
-  });
-
-  afterEach(() => {
-    bundledProtocolsMock.omitted = false;
-  });
-
-  // Even handed templates, a build without bundled protocols (Architect 8
-  // inside Architect 9's deploy) offers only the researcher's own library.
-  const renderWithTemplates = () =>
-    render(
-      <LibraryPanel
-        onOpenProtocol={vi.fn()}
-        onOpenSample={vi.fn()}
-        onOpenDevProtocol={vi.fn()}
-        templates={BUNDLED_TEMPLATES}
-        onOpenTemplate={vi.fn()}
-      />,
-      { wrapper: wrap },
-    );
-
-  it('shows no Templates tab, Sample protocol, template count or gallery card', () => {
-    useProtocolLibraryMock.mockReturnValue({ protocols: [], isLoaded: true });
-    renderWithTemplates();
-
-    expect(screen.getAllByRole('tab')).toHaveLength(1);
-    expect(screen.getByRole('tab', { name: 'Recent' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    expect(
-      screen.queryByRole('tab', { name: 'Templates' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('No recent protocols yet.')).toBeInTheDocument();
-    expect(screen.queryByText('Sample Protocol')).not.toBeInTheDocument();
-    expect(screen.queryByText(/\d+ templates?$/)).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('group', { name: 'Protocol gallery' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('still lists and opens the researcher’s own protocols', async () => {
-    const onOpenProtocol = vi.fn();
-    useProtocolLibraryMock.mockReturnValue({
-      protocols: [makeProtocolRow()],
-      isLoaded: true,
-    });
-    render(
-      <LibraryPanel
-        onOpenProtocol={onOpenProtocol}
-        onOpenSample={vi.fn()}
-        onOpenDevProtocol={vi.fn()}
-        templates={BUNDLED_TEMPLATES}
-        onOpenTemplate={vi.fn()}
-      />,
-      { wrapper: wrap },
-    );
-
-    expect(
-      screen.queryByRole('tab', { name: 'Templates' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('My Protocol')).toBeInTheDocument();
-    await openMenuItem(/^open$/i);
-    expect(onOpenProtocol).toHaveBeenCalledWith('protocol-1');
   });
 });

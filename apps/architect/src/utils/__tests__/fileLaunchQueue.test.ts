@@ -4,11 +4,7 @@ type Handle = { getFile: () => Promise<File> };
 
 // The module registers the launchQueue consumer on init and holds module
 // state, so load a fresh copy per test with a stubbed queue.
-const loadModule = async (
-  options: Parameters<
-    typeof import('../fileLaunchQueue').initFileLaunchCapture
-  >[0] = {},
-) => {
+const loadModule = async () => {
   vi.resetModules();
   let consumer: ((params: { files: Handle[] }) => void) | undefined;
   vi.stubGlobal('launchQueue', {
@@ -17,7 +13,7 @@ const loadModule = async (
     },
   });
   const mod = await import('../fileLaunchQueue');
-  mod.initFileLaunchCapture(options);
+  mod.initFileLaunchCapture();
   if (!consumer) throw new Error('consumer was not registered');
   const settle = async () => {
     // getFile() resolution and the lazy import in the failure path are async;
@@ -144,39 +140,6 @@ describe('fileLaunchQueue', () => {
     expect(listener).toHaveBeenCalled();
     expect(mod.takeLaunchReadFailures()).toEqual([1]);
     expect(mod.takeLaunchReadFailures()).toEqual([]);
-  });
-
-  it('hands launched .netcanvas files to routeFiles and queues only what it returns', async () => {
-    const routeFiles = vi.fn((files: File[]) =>
-      Promise.resolve(files.filter((file) => file.name.startsWith('keep'))),
-    );
-    const { mod, launch } = await loadModule({ routeFiles });
-
-    await launch('notes.txt', 'keep.netcanvas', 'forward.netcanvas');
-
-    expect(
-      routeFiles.mock.calls[0]?.[0].map((file: File) => file.name),
-    ).toEqual(['keep.netcanvas', 'forward.netcanvas']);
-    expect(mod.getLaunchFiles().map((f) => f.name)).toEqual(['keep.netcanvas']);
-  });
-
-  it('holds the startup update check while routeFiles runs', async () => {
-    let finishRouting: (files: File[]) => void = () => {};
-    const routeFiles = vi.fn(
-      () =>
-        new Promise<File[]>((resolve) => {
-          finishRouting = resolve;
-        }),
-    );
-    const { mod, launch, settle } = await loadModule({ routeFiles });
-
-    await launch('forward.netcanvas');
-    expect(mod.hasPendingLaunchFiles()).toBe(true);
-
-    finishRouting([]);
-    await settle();
-    expect(mod.hasPendingLaunchFiles()).toBe(false);
-    expect(mod.getLaunchFiles()).toEqual([]);
   });
 
   describe('enqueueLaunchRead', () => {

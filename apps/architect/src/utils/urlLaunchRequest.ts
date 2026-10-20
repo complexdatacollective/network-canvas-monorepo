@@ -87,8 +87,13 @@ export const captureUrlLaunchRequest = (
   return parsed.request;
 };
 
+// Only Architect 8 served inside Architect 9 (a build with a base path) is
+// handed protocols this way; standalone Architect 8 leaves its URL alone. The
+// base is compared here rather than imported, to keep this module a leaf.
 let pending: UrlLaunchRequest | null =
-  typeof window === 'undefined' ? null : captureUrlLaunchRequest(window);
+  typeof window === 'undefined' || import.meta.env.BASE_URL === '/'
+    ? null
+    : captureUrlLaunchRequest(window);
 
 /** Hand the `?open=` request to its consumer, once. */
 export const takeUrlOpenRequest = (): string | null => {

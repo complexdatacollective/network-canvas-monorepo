@@ -49,7 +49,10 @@ const appBase = createAppBase(import.meta.env.BASE_URL);
 
 export const APP_BASE_URL = appBase.baseUrl;
 export const ROUTER_BASE = appBase.routerBase;
-export const IS_SUBPATH_BUILD = appBase.isSubpath;
+// Compared directly rather than read from `appBase`, so the bundler can fold it
+// to a constant: code that only one kind of build runs is left out of the
+// other's bundle.
+export const IS_SUBPATH_BUILD = import.meta.env.BASE_URL !== '/';
 export const toBrowserPath = appBase.toBrowserPath;
 export const toAppPath = appBase.toAppPath;
 
