@@ -4,6 +4,7 @@ import { type ReactNode, useContext, useEffect, useRef } from 'react';
 
 import type { ToastVariant } from '@codaco/fresco-ui/Toast';
 
+import type { StageValidationKind } from '../analytics/events';
 import { useTrack } from '../analytics/useTrack';
 import { StageMetadataContext } from '../contexts/StageMetadataContext';
 import { useInterviewToast } from '../toast/useInterviewToast';
@@ -17,7 +18,7 @@ type StageConstraint = {
    * Examples: "min_nodes", "required_field", "passphrase_mismatch".
    * Never a rendered message.
    */
-  kind?: string;
+  kind?: StageValidationKind;
   toast: {
     description: string | ReactNode;
     variant: ToastVariant;
@@ -62,8 +63,14 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
     prevIsMetRef.current = constraints.map((c) => c.isMet);
   }, [constraints, closeToast]);
 
+  // A stage with nothing to check registers no handler: navigation treats any
+  // registered handler as a reason to keep Next live at a review's end.
+  const hasConstraints = constraints.length > 0;
+
   // Register the keyed beforeNext handler
   useEffect(() => {
+    if (!hasConstraints) return;
+
     const handler = (direction: Direction, intent: NavigationIntent) => {
       if (intent === 'jump') {
         return true;
@@ -113,7 +120,7 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
       }
       activeToasts.clear();
     };
-  }, [registerBeforeNext, showToast, closeToast, track]);
+  }, [hasConstraints, registerBeforeNext, showToast, closeToast, track]);
 
   return { showToast, closeToast };
 }

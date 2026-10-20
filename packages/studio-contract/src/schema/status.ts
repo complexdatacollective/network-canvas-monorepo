@@ -1,6 +1,7 @@
 import { Schema } from 'effect';
 
 import { DEPLOYMENT_MODES } from '../surfaces.ts';
+import { LogLevelName } from './browserLogs.ts';
 
 export const SOCIAL_PROVIDERS = ['google', 'microsoft'] as const;
 export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
@@ -26,6 +27,7 @@ export const InstanceStatus = Schema.Struct({
     required: Schema.Boolean,
   }),
   telemetry: Schema.Boolean,
+  logLevel: LogLevelName,
 }).annotate({ identifier: 'InstanceStatus' });
 export type InstanceStatus = (typeof InstanceStatus)['Type'];
 

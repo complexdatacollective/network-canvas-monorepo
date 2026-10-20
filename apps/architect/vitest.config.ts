@@ -26,6 +26,8 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify('0.0.0-test'),
+    // No Architect 8 is bundled under test; a test that needs one stubs it.
+    __ARCHITECT_V8__: 'null',
   },
   test: {
     globals: true,
@@ -101,6 +103,7 @@ export default defineConfig({
             '@codaco/fresco-ui > @codaco/app-i18n > react-intl/server',
             '@base-ui/react',
             '@base-ui/react/accordion',
+            '@base-ui/react/autocomplete',
             '@base-ui/react/checkbox',
             '@base-ui/react/collapsible',
             '@base-ui/react/combobox',
@@ -145,8 +148,13 @@ export default defineConfig({
             '@codaco/fresco-ui > zustand/react/shallow',
             '@codaco/fresco-ui > zustand/shallow',
             '@codaco/fresco-ui > zustand/vanilla',
+            // `readRosterCsv` loads it with a dynamic import, which the
+            // scanner never follows.
+            '@codaco/protocol-validation > csvtojson',
+            '@codaco/interview > @use-gesture/react',
             '@codaco/interview > concaveman',
             '@codaco/interview > html-to-image',
+            '@codaco/interview > intl-messageformat',
             '@codaco/interview > ohash',
             '@reduxjs/toolkit > immer',
             '@tanstack/react-table',

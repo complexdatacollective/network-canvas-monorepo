@@ -18,15 +18,9 @@ const languageMessages = defineMessages({
   hint: {
     id: 'interviewer.language.hint',
     defaultMessage:
-      'Choose the language for Interviewer and its built-in interview controls on this device. This does not change protocol content or collected data.',
+      "Choose the language Interviewer uses on this device. Interviews follow the participant's browser language, or the language they choose during the interview.",
     description:
-      'Explains that the device language applies to app-provided controls while protocol-authored content and research data stay unchanged.',
-  },
-  automatic: {
-    id: 'interviewer.language.automatic',
-    defaultMessage: 'Automatic (browser)',
-    description:
-      'Language option that follows this device browser preferences instead of storing an explicit choice.',
+      "Explains that this setting changes only Interviewer's own screens on this device, while each interview is shown in the participant's browser language or the language the participant picks during the interview.",
   },
   saved: {
     id: 'interviewer.language.saved',
@@ -45,7 +39,8 @@ const languageMessages = defineMessages({
 
 export function LanguageSettings({ compact = false }: { compact?: boolean }) {
   const intl = useAppIntl();
-  const { preference, setPreference, saveState } = useInterviewerLocale();
+  const { preference, automaticLocale, setPreference, saveState } =
+    useInterviewerLocale();
   const id = useId();
   return (
     <div className={`flex min-w-0 flex-col gap-3 ${compact ? '' : 'py-4'}`}>
@@ -63,7 +58,7 @@ export function LanguageSettings({ compact = false }: { compact?: boolean }) {
         options={interviewerLocales}
         value={preference}
         onChange={setPreference}
-        automaticLabel={intl.formatMessage(languageMessages.automatic)}
+        automaticLocale={automaticLocale}
         className="max-w-full"
       />
       <Paragraph

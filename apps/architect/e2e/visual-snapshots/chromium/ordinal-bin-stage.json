@@ -1,11 +1,15 @@
 {
   "id": "id-1",
-  "label": "Rank These",
+  "label": {
+    "en": "Rank These"
+  },
   "prompts": [
     {
       "color": "ord-color-seq-1",
       "id": "id-2",
-      "text": "Rank these",
+      "text": {
+        "en": "Rank these"
+      },
       "variable": "id-3"
     }
   ],

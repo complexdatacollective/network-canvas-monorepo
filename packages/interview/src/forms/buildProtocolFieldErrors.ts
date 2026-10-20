@@ -1,6 +1,10 @@
+import type { ComponentType } from '@codaco/protocol-validation';
+
+import type { AnalyticsFieldComponent } from '../analytics/events';
+
 export type ProtocolFieldErrorEntry = {
   field_index: number;
-  component: string;
+  component: AnalyticsFieldComponent;
 };
 
 export function buildProtocolFieldErrors(
@@ -8,7 +12,7 @@ export function buildProtocolFieldErrors(
     | { fieldErrors?: Record<string, string[] | undefined> }
     | undefined,
   fields: ReadonlyArray<{ variable: string }>,
-  componentByVariable: Record<string, string>,
+  componentByVariable: Record<string, ComponentType>,
   variableByFieldPath: Record<string, string>,
 ): ProtocolFieldErrorEntry[] {
   const result: ProtocolFieldErrorEntry[] = [];

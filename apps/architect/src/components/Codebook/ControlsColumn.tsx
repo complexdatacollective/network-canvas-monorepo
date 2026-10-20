@@ -32,19 +32,24 @@ const ControlsColumn = ({ id, inUse, onDelete }: ControlsColumnProps) => {
     ? intl.formatMessage(chromeMessages.inUseCannotBeDeleted)
     : intl.formatMessage(chromeMessages.deleteAttribute);
 
-  // The title lives on the wrapping span rather than the IconButton: a disabled
-  // button gets `pointer-events-none`, so a `title` on it would never show on
-  // hover. `disabled` already blocks the click, so no extra guard is needed.
   return (
-    <span title={label} className="inline-block">
-      <IconButton
-        color="destructive"
-        variant="text"
-        icon={<Trash2 />}
-        onClick={() => onDelete(id)}
-        disabled={inUse || readOnly}
-        aria-label={label}
-      />
+    <span className="inline-flex items-center">
+      {/*
+        The delete title lives on the wrapping span rather than the IconButton:
+        a disabled button gets `pointer-events-none`, so a `title` on it would
+        never show on hover. `disabled` already blocks the click, so no extra
+        guard is needed.
+      */}
+      <span title={label} className="inline-block">
+        <IconButton
+          color="destructive"
+          variant="text"
+          icon={<Trash2 />}
+          onClick={() => onDelete(id)}
+          disabled={inUse || readOnly}
+          aria-label={label}
+        />
+      </span>
     </span>
   );
 };

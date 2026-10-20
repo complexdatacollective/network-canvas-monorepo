@@ -162,12 +162,16 @@ const relativeDeclarationSpecifier =
   /\b(from\s+['"]|import\s+['"])(\.{1,2}(?:\/[^'"]*)?)(['"])/g;
 const relativeDynamicDeclarationSpecifier =
   /\b(import\(\s*['"])(\.{1,2}(?:\/[^'"]*)?)(['"]\s*\))/g;
+const sourceDeclarationExtension = /\.tsx?$/;
 const runtimeDeclarationExtension = /\.(?:cjs|css|js|json|mjs)$/;
 const directoryDeclarationSpecifier = /^(?:\.{1,2}\/)*\.{1,2}$/;
 
 const appendJsExtension = (specifier: string) => {
   if (directoryDeclarationSpecifier.test(specifier)) {
     return `${specifier}/index.js`;
+  }
+  if (sourceDeclarationExtension.test(specifier)) {
+    return specifier.replace(sourceDeclarationExtension, '.js');
   }
   return runtimeDeclarationExtension.test(specifier)
     ? specifier
@@ -189,7 +193,7 @@ const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
 
 export default defineConfig({
   plugins: [
-    isLibraryBuild && appI18n({ build: 'library' }),
+    isLibraryBuild && appI18n(),
     interfaceImagesNoInlinePlugin(),
     inlineWorkerPlugin(),
     isLibraryBuild && clientDirective.plugin,
@@ -250,6 +254,7 @@ export default defineConfig({
           __dirname,
           'src/contract/protocolPayload.ts',
         ),
+        'analytics-events': resolve(__dirname, 'src/analytics/events.ts'),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

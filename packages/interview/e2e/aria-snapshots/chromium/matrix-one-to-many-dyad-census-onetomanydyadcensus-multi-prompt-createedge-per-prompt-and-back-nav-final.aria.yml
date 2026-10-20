@@ -2,8 +2,6 @@
   - status:
     - 'heading "Prompt one: friendship" [level=2]'
   - button "Bob"
-  - button "Select all that apply, then click next":
-    - heading "Select all that apply, then click next" [level=3]
   - listbox "Target nodes":
     - option "Carol"
     - option "Alice"

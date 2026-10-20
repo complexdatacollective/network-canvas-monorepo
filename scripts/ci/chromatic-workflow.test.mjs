@@ -101,9 +101,10 @@ test('release runs serialize by ref while main builds are commit-scoped', () => 
 });
 
 test('Chromatic diagnostic logs are retained briefly without changing status semantics', () => {
-  assert.match(
-    workflow,
-    /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/,
+  assert.equal(
+    workflow.match(/uses: actions\/upload-artifact@[a-f0-9]{40}(?=\s|$)/g)
+      ?.length,
+    5,
   );
   assert.equal(workflow.match(/retention-days: 7/g)?.length, 5);
   assert.equal(workflow.match(/if-no-files-found: ignore/g)?.length, 5);

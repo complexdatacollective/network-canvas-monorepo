@@ -288,7 +288,7 @@ export const EnvironmentSchema = Schema.Struct({
     {
       group: 'Process',
       summary:
-        'The least severe log level this instance writes and exports, using Effect’s level names. The researcher web app logs at the same level.',
+        'The least severe log level this instance writes and exports, using Effect’s level names. The web app and participant pages log at the same level, and the api forwards nothing of theirs below it.',
       deployment:
         'Unset ⇒ `Info`. `Debug` or `Trace` while investigating a problem; `None` writes nothing.',
       example: 'Info',

@@ -1,6 +1,14 @@
 - main:
-  - heading "Rate Your Relationships" [level=1]
-  - paragraph: Intro.
+  - text: Nikita Crist and Lilliana Wisozk
+  - button "Nikita Crist"
+  - button "Lilliana Wisozk"
+  - status:
+    - heading "How close are these two people?" [level=2]
+  - listbox "Nikita Crist and Lilliana Wisozk How close are these two people?":
+    - option "Weak"
+    - option "Moderate"
+    - option "Strong" [selected]
+    - option "Not close"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

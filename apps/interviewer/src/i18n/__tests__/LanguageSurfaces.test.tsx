@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -65,6 +65,11 @@ it('offers the device language before starting setup and retains the choice on r
     </InterviewerI18nProvider>
   );
   const first = render(view());
+  // The automatic entry names the language, not "browser": an installed app
+  // is not a browser from the researcher's point of view.
+  expect(
+    screen.getByRole('combobox', { name: 'App language' }),
+  ).toHaveDisplayValue('Automatic (English)');
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'App language' }),
     'es',
@@ -125,7 +130,7 @@ it('exposes a keyboard-operated language picker from the home header', async () 
   expect(renamed).toHaveFocus();
 });
 
-it('changes language inside an open setup step without losing PIN values, refusal, or retry', async () => {
+it('asks for the language once, before setup, and keeps PIN values, refusal, and retry when it changes elsewhere', async () => {
   const user = userEvent.setup();
   const vault = '{"version":5,"mode":"none"}';
   localStorage.setItem('interviewer:vault', vault);
@@ -136,15 +141,19 @@ it('changes language inside an open setup step without losing PIN values, refusa
       </DialogProvider>
     </InterviewerI18nProvider>,
   );
-  await user.click(screen.getByRole('button', { name: 'Get started' }));
-  const dialog = await screen.findByRole('dialog', {
-    name: 'Setting up your device',
-  });
   await user.selectOptions(
-    within(dialog).getByRole('combobox', { name: 'App language' }),
+    screen.getByRole('combobox', { name: 'App language' }),
     'es',
   );
-  expect(dialog).toHaveAccessibleName('Configuración de tu dispositivo');
+  await user.click(screen.getByRole('button', { name: 'Empezar' }));
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Configuración de tu dispositivo',
+  });
+  const languagePickers = () =>
+    within(dialog).queryAllByRole('combobox', {
+      name: /^(App language|Idioma de la aplicación)$/,
+    });
+  expect(languagePickers()).toHaveLength(0);
   await user.click(within(dialog).getByTestId('wizard-next'));
   await user.click(within(dialog).getByTestId('wizard-next'));
   await user.click(within(dialog).getByRole('option', { name: /Código PIN/ }));
@@ -168,9 +177,13 @@ it('changes language inside an open setup step without losing PIN values, refusa
     'No se pudo configurar el PIN.',
   );
   expect(enrolWithPin).toHaveBeenCalledExactlyOnceWith('11111111');
-  await user.selectOptions(
-    within(dialog).getByRole('combobox', { name: 'Idioma de la aplicación' }),
-    'en',
+  expect(languagePickers()).toHaveLength(0);
+  // Another tab is now the only way to change language mid-setup.
+  localStorage.setItem(LOCALE_PREFERENCE_KEY, 'en');
+  await act(() =>
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: LOCALE_PREFERENCE_KEY }),
+    ),
   );
   expect(within(dialog).getByRole('alert')).toHaveTextContent(
     'PIN setup failed.',
@@ -191,8 +204,6 @@ it('changes language inside an open setup step without losing PIN values, refusa
   await user.click(within(dialog).getByTestId('wizard-next'));
   await waitFor(() => expect(dialog).toHaveAccessibleName('Lock behavior'));
   expect(enrolWithPin).toHaveBeenCalledTimes(2);
-  expect(
-    within(dialog).getByRole('combobox', { name: 'App language' }),
-  ).toHaveValue('en');
+  expect(languagePickers()).toHaveLength(0);
   expect(refresh).not.toHaveBeenCalled();
 });

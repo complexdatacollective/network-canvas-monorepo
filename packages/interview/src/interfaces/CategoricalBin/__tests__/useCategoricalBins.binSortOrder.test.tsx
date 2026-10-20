@@ -14,6 +14,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { useCategoricalBins } from '../useCategoricalBins';
 
 const NODE_TYPE = 'person';
@@ -40,19 +41,24 @@ const nodes: NcNode[] = [
   makeNode('dave', { [NAME_VAR]: 'dave', [AGE_VAR]: 20 }),
 ];
 
-function makeWrapper() {
+function makeWrapper(networkNodes: NcNode[] = nodes) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: {
         id: 's',
         promptIndex: 0,
-        network: { nodes, edges: [], ego: { [entityAttributesProperty]: {} } },
+        network: {
+          nodes: networkNodes,
+          edges: [],
+          ego: { [entityAttributesProperty]: {} },
+        },
       } as never,
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: {
           node: {
             [NODE_TYPE]: {
@@ -62,12 +68,18 @@ function makeWrapper() {
                   name: CAT_VAR,
                   type: 'categorical',
                   options: [
-                    { label: 'A', value: 'a' },
-                    { label: 'B', value: 'b' },
+                    { label: { en: 'A' }, value: 'a' },
+                    { label: { en: 'B' }, value: 'b' },
                   ],
                 },
-                [NAME_VAR]: { name: NAME_VAR, type: 'text' },
-                [AGE_VAR]: { name: AGE_VAR, type: 'number' },
+                [NAME_VAR]: {
+                  name: NAME_VAR,
+                  type: 'text',
+                },
+                [AGE_VAR]: {
+                  name: AGE_VAR,
+                  type: 'number',
+                },
               },
             },
           },
@@ -76,11 +88,12 @@ function makeWrapper() {
           {
             id: 'stage1',
             type: 'CategoricalBin',
+            label: { en: 'Categorise' },
             subject: { entity: 'node', type: NODE_TYPE },
             prompts: [
               {
                 id: 'prompt1',
-                text: 'sort me',
+                text: { en: 'sort me' },
                 variable: CAT_VAR,
                 bucketSortOrder: [{ property: NAME_VAR, direction: 'asc' }],
                 binSortOrder: [{ property: AGE_VAR, direction: 'desc' }],
@@ -95,11 +108,13 @@ function makeWrapper() {
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     );
   };
 }
@@ -129,5 +144,35 @@ describe('useCategoricalBins sort order', () => {
     expect(
       result.current.uncategorisedNodes.map((n) => n[entityPrimaryKeyProperty]),
     ).toEqual(['carol', 'dave']);
+  });
+});
+
+describe('useCategoricalBins placement', () => {
+  /**
+   * A value no bin offers (an option since removed from the codebook) would
+   * otherwise leave the node in no bin and out of the drawer, where the
+   * participant could neither see nor place it, and where a stage requiring
+   * every node to be placed would count it as placed.
+   */
+  it('keeps a node whose value matches no bin in the drawer', () => {
+    const { result } = renderHook(() => useCategoricalBins(), {
+      wrapper: makeWrapper([
+        ...nodes,
+        makeNode('erin', {
+          [CAT_VAR]: ['z'],
+          [NAME_VAR]: 'erin',
+          [AGE_VAR]: 60,
+        }),
+      ]),
+    });
+
+    expect(
+      result.current.uncategorisedNodes.map((n) => n[entityPrimaryKeyProperty]),
+    ).toEqual(['carol', 'dave', 'erin']);
+    expect(
+      result.current.bins.flatMap((bin) =>
+        bin.nodes.map((n) => n[entityPrimaryKeyProperty]),
+      ),
+    ).not.toContain('erin');
   });
 });

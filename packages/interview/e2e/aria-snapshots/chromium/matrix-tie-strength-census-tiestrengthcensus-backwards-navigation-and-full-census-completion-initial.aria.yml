@@ -1,9 +1,17 @@
 - main:
-  - heading "Rate Your Relationships" [level=1]
-  - paragraph: Intro.
+  - text: Nikita Crist and Lilliana Wisozk
+  - button "Nikita Crist"
+  - button "Lilliana Wisozk"
+  - status:
+    - heading "Rate friendship strength" [level=2]
+  - listbox "Nikita Crist and Lilliana Wisozk Rate friendship strength":
+    - option "Weak"
+    - option "Moderate"
+    - option "Strong"
+    - option "No Friendship"
   - navigation:
     - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

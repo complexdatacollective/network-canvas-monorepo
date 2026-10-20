@@ -471,6 +471,7 @@ beforeEach(() => {
         deployment: fixtures.deployment,
         setup: fixtures.setup,
         telemetry: false,
+        logLevel: 'Info',
       }),
     'me': () =>
       Effect.succeed({
@@ -502,7 +503,8 @@ beforeEach(() => {
         sections: {
           settings: Redacted.make({
             name: Redacted.value(PROTOCOL.name),
-            schemaVersion: 8,
+            schemaVersion: 9,
+            localization: { defaultLocale: 'en-US', locales: ['en-US'] },
           }),
           stageOrder: Redacted.make({ stages: [] }),
         },

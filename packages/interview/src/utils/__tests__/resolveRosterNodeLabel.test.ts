@@ -9,6 +9,8 @@ import {
 
 import { resolveRosterNodeLabel } from '../resolveRosterNodeLabel';
 
+const placeholder = (sequentialNumber: number) => `Unnamed ${sequentialNumber}`;
+
 const makeNode = (
   attributes: NcNode[typeof entityAttributesProperty],
 ): NcNode => ({
@@ -29,7 +31,7 @@ describe('resolveRosterNodeLabel', () => {
     const result = resolveRosterNodeLabel({
       codebookVariables,
       node,
-      subjectLabel: 'Person',
+      placeholder,
       sequentialNumber: 1,
     });
 
@@ -41,7 +43,10 @@ describe('resolveRosterNodeLabel', () => {
     // keyed by UUIDs that are NOT present in the codebook (e.g. a preview-export
     // roster), so the heuristic finds nothing.
     const codebookVariables: NodeDefinition['variables'] = {
-      'codebook-name-uuid': { name: 'name', type: 'text' },
+      'codebook-name-uuid': {
+        name: 'name',
+        type: 'text',
+      },
     };
 
     const node = makeNode({
@@ -52,7 +57,7 @@ describe('resolveRosterNodeLabel', () => {
     const result = resolveRosterNodeLabel({
       codebookVariables,
       node,
-      subjectLabel: 'Person',
+      placeholder,
       sequentialNumber: 2,
     });
 
@@ -69,25 +74,28 @@ describe('resolveRosterNodeLabel', () => {
     const result = resolveRosterNodeLabel({
       codebookVariables: undefined,
       node,
-      subjectLabel: 'Person',
+      placeholder,
       sequentialNumber: 3,
     });
 
     expect(result).toBe('42');
   });
 
-  it('returns a placeholder with the subject label and sequential number for a value-less node', () => {
+  it('returns the numbered placeholder for a value-less node', () => {
     const node = makeNode({});
 
     const result = resolveRosterNodeLabel({
       codebookVariables: {
-        'codebook-name-uuid': { name: 'name', type: 'text' },
+        'codebook-name-uuid': {
+          name: 'name',
+          type: 'text',
+        },
       },
       node,
-      subjectLabel: 'Person',
+      placeholder,
       sequentialNumber: 3,
     });
 
-    expect(result).toBe('Unnamed Person 3');
+    expect(result).toBe('Unnamed 3');
   });
 });

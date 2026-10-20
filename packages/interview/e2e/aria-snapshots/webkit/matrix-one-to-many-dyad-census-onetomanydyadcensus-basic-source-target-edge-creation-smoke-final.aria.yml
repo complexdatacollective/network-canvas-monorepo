@@ -6,8 +6,6 @@
       - emphasis: italic
       - text: ""
   - button "Carol"
-  - button "Select all that apply, then click next":
-    - heading "Select all that apply, then click next" [level=3]
   - listbox "Target nodes":
     - option "Alice"
     - option "Bob"

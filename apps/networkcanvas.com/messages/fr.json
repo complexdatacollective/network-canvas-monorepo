@@ -233,8 +233,10 @@
       "DyadCensus": "Recensement des dyades",
       "EgoForm": "Formulaire ego",
       "FamilyPedigree": "Arbre généalogique",
+      "FinishSession": "Écran de fin",
       "Geospatial": "Interface géospatiale",
       "Information": "Information",
+      "LanguageChooser": "Choix de la langue",
       "NameGenerator": "Générateur de noms (avec formulaires)",
       "NameGeneratorQuickAdd": "Générateur de noms (ajout rapide)",
       "NameGeneratorRoster": "Générateur de noms à partir d’une liste",
@@ -275,8 +277,6 @@
       },
       "loading": "Préparation de l’aperçu…",
       "finishConfirmation": "Ceci est un aperçu : rien n’est donc enregistré. Terminer met fin à cette exécution du protocole, et vous pourrez la relancer ensuite.",
-      "finishedHeading": "Aperçu terminé",
-      "finishedDescription": "L’entretien s’est terminé exactement comme pour une personne participante. Rien n’a été enregistré.",
       "restart": "Relancer l’aperçu",
       "backToProtocol": "Retour au protocole",
       "errorHeading": "Ce protocole ne peut pas être prévisualisé",
@@ -336,7 +336,7 @@
       "bestFor": "Idéal pour",
       "downloadVersion": "Télécharger la version {version}",
       "platformAccessibleName": "{platform} pour {app}",
-      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles en schéma 7. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma 8, qui inclut les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez le fichier d’origine en schéma 7 si vous avez encore besoin des applications Classic.",
+      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles en schéma 7. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma 9, qui inclut les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez le fichier d’origine en schéma 7 si vous avez encore besoin des applications Classic.",
       "schemaVersionLink": "En savoir plus sur les versions de schéma"
     },
     "platforms": {

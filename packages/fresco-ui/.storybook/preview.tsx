@@ -79,6 +79,12 @@ const ThemedDocsContainer = ({
 // See: https://github.com/chromaui/addon-visual-tests/pull/404
 
 export default definePreview({
+  beforeEach: () => {
+    // Playwright's Linux Firefox can leave a newly isolated story iframe
+    // inactive. Activate its window before interactions so native focus and
+    // keyboard input reach the story, while preserving per-file isolation.
+    window.focus();
+  },
   addons: [addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     options: {

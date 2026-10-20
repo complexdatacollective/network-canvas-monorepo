@@ -21,6 +21,20 @@ const backgroundImageAsset: SyntheticAssetSpec = {
   localPath: BACKGROUND_IMAGE_FIXTURE,
 };
 
+// A researcher's own wording for the legend headings and the tool tooltips,
+// each distinct from the text Network Canvas supplies, so an assertion on one
+// proves the stage's own setting is what the participant sees.
+const ATTRIBUTES_HEADING = 'Traits - matrix check';
+const LINKS_HEADING = 'Ties - matrix check';
+const GROUPS_HEADING = 'Circles - matrix check';
+const ENABLE_DRAWING = 'Start sketching - matrix check';
+const DISABLE_DRAWING = 'Stop sketching - matrix check';
+const FREEZE_ANNOTATIONS = 'Hold the sketch - matrix check';
+const UNFREEZE_ANNOTATIONS = 'Let the sketch fade - matrix check';
+const RESET_ANNOTATIONS = 'Wipe the sketch - matrix check';
+const PAUSE_LAYOUT = 'Hold the layout - matrix check';
+const RESUME_LAYOUT = 'Release the layout - matrix check';
+
 /**
  * Base Narrative builder: a Person node type with a real "name" text variable
  * (deduped against the auto-seeded one) and a layout variable. Every Narrative
@@ -125,6 +139,9 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
     'presets[].edges.display',
     'presets[].highlight',
     'presets[].groupVariable',
+    'attributesHeading',
+    'linksHeading',
+    'groupsHeading',
   ],
   seedNetwork: true,
   build: () => {
@@ -148,6 +165,11 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
 
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', type: person.id },
+      wording: {
+        attributesHeading: ATTRIBUTES_HEADING,
+        linksHeading: LINKS_HEADING,
+        groupsHeading: GROUPS_HEADING,
+      },
     });
     stage.addPreset({
       label: 'View A',
@@ -190,15 +212,24 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
   },
   run: async ({ page }) => {
     const narrative = new NarrativeFixture(page);
+    // The legend sections carry the stage's own headings, and none of the
+    // headings Network Canvas supplies.
+    const section = (heading: string) =>
+      page.getByRole('button', { name: heading, exact: true });
 
     // Preset 0 (View A): first preset, so Previous is disabled. It carries edges
     // and two highlight attributes, so Links + Attributes sections render (but
     // not Groups). The first highlight radio is checked by default.
     await expect(narrative.getPresetLabelButton('View A')).toBeVisible();
     expect(await narrative.isPreviousPresetDisabled()).toBe(true);
-    await expect(narrative.getAccordionTrigger('Links')).toBeVisible();
-    await expect(narrative.getAccordionTrigger('Attributes')).toBeVisible();
-    await expect(narrative.getAccordionTrigger('Groups')).toHaveCount(0);
+    await expect(section(LINKS_HEADING)).toBeVisible();
+    await expect(section(ATTRIBUTES_HEADING)).toBeVisible();
+    await expect(section(GROUPS_HEADING)).toHaveCount(0);
+    for (const supplied of ['Attributes', 'Links', 'Groups']) {
+      await expect(
+        page.getByRole('button', { name: supplied, exact: true }),
+      ).toHaveCount(0);
+    }
     await expect(narrative.getHighlightRadio('CloseFriend')).toBeChecked();
 
     // Select the second highlight attribute, then leave and return.
@@ -212,9 +243,9 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
     await expect(narrative.getPresetLabelButton('View A')).toHaveCount(0);
     expect(await narrative.getNodeLeftPercent('Ada')).toBeCloseTo(70, 0);
     expect(await narrative.getNodeTopPercent('Ada')).toBeCloseTo(30, 0);
-    await expect(narrative.getAccordionTrigger('Groups')).toBeVisible();
-    await expect(narrative.getAccordionTrigger('Links')).toHaveCount(0);
-    await expect(narrative.getAccordionTrigger('Attributes')).toHaveCount(0);
+    await expect(section(GROUPS_HEADING)).toBeVisible();
+    await expect(section(LINKS_HEADING)).toHaveCount(0);
+    await expect(section(ATTRIBUTES_HEADING)).toHaveCount(0);
 
     // Preset 2 (View C): last preset, so Next is disabled.
     await narrative.goToNextPreset();
@@ -228,7 +259,7 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
     await narrative.goToPreviousPreset();
     await expect(narrative.getPresetLabelButton('View A')).toBeVisible();
     expect(await narrative.isPreviousPresetDisabled()).toBe(true);
-    await expect(narrative.getAccordionTrigger('Links')).toBeVisible();
+    await expect(section(LINKS_HEADING)).toBeVisible();
     await expect(narrative.getHighlightRadio('CloseFriend')).toBeChecked();
     await expect(narrative.getHighlightRadio('Trusted')).not.toBeChecked();
     expect(await narrative.getNodeLeftPercent('Ada')).toBeCloseTo(20, 0);
@@ -530,13 +561,22 @@ const allowRepositioningFalse: ScenarioDefinition = {
 
 const automaticLayoutPauseResume: ScenarioDefinition = {
   id: 'automatic-layout-identity-mock-pause-resume',
-  covers: ['behaviours.automaticLayout', 'behaviours'],
+  covers: [
+    'behaviours.automaticLayout',
+    'behaviours',
+    'tooltips.pauseLayout',
+    'tooltips.resumeLayout',
+  ],
   seedNetwork: true,
   build: () => {
     const { synth, person, nameVar, layoutVar } = buildBaseNarrative();
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', type: person.id },
       behaviours: { automaticLayout: true },
+      wording: {
+        'tooltips.pauseLayout': PAUSE_LAYOUT,
+        'tooltips.resumeLayout': RESUME_LAYOUT,
+      },
     });
     stage.addPreset({ layoutVariable: layoutVar.id });
     const coords = [
@@ -563,32 +603,49 @@ const automaticLayoutPauseResume: ScenarioDefinition = {
     expect(await narrative.getNodeLeftPercent('Node0')).toBeCloseTo(20, 0);
     expect(await narrative.getNodeTopPercent('Node0')).toBeCloseTo(20, 0);
 
+    // The toggle carries the stage's own words in each state, never the
+    // words Network Canvas supplies.
     const root = narrative.root();
-    await expect(
-      root.getByRole('button', { name: 'Pause automatic layout' }),
-    ).toBeVisible();
+    const pause = root.getByRole('button', { name: PAUSE_LAYOUT });
+    const resume = root.getByRole('button', { name: RESUME_LAYOUT });
+    const supplied = root.getByRole('button', {
+      name: /Pause automatic layout|Resume automatic layout/,
+    });
+    await expect(pause).toBeVisible();
+    await expect(supplied).toHaveCount(0);
 
-    await narrative.toggleAutomaticLayout();
-    await expect(
-      root.getByRole('button', { name: 'Resume automatic layout' }),
-    ).toBeVisible();
+    await pause.click();
+    await expect(resume).toBeVisible();
+    await expect(supplied).toHaveCount(0);
 
-    await narrative.toggleAutomaticLayout();
-    await expect(
-      root.getByRole('button', { name: 'Pause automatic layout' }),
-    ).toBeVisible();
+    await resume.click();
+    await expect(pause).toBeVisible();
   },
 };
 
 const freeDrawAnnotate: ScenarioDefinition = {
   id: 'free-draw-annotate-fade-freeze-reset',
-  covers: ['behaviours.freeDraw'],
+  covers: [
+    'behaviours.freeDraw',
+    'tooltips.enableDrawing',
+    'tooltips.disableDrawing',
+    'tooltips.freezeAnnotations',
+    'tooltips.unfreezeAnnotations',
+    'tooltips.resetAnnotations',
+  ],
   seedNetwork: true,
   build: () => {
     const { synth, person, nameVar, layoutVar } = buildBaseNarrative();
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', type: person.id },
       behaviours: { freeDraw: true },
+      wording: {
+        'tooltips.enableDrawing': ENABLE_DRAWING,
+        'tooltips.disableDrawing': DISABLE_DRAWING,
+        'tooltips.freezeAnnotations': FREEZE_ANNOTATIONS,
+        'tooltips.unfreezeAnnotations': UNFREEZE_ANNOTATIONS,
+        'tooltips.resetAnnotations': RESET_ANNOTATIONS,
+      },
     });
     stage.addPreset({ layoutVariable: layoutVar.id });
     synth.addManualNode(stage.id, person.id, 'node-alice', {
@@ -604,16 +661,28 @@ const freeDrawAnnotate: ScenarioDefinition = {
   run: async ({ page }) => {
     const narrative = new NarrativeFixture(page);
     const before = await page.evaluate(() => window.__test.getNetworkState());
+    // Each tool carries the stage's own words, never the words Network Canvas
+    // supplies.
+    const tool = (name: string) => page.getByRole('button', { name });
+    const suppliedTools = page.getByRole('button', {
+      name: /Enable drawing|Disable drawing|Freeze annotations|Unfreeze annotations|Reset annotations/,
+    });
 
     // No annotation layer mounts until drawing is explicitly enabled.
     await expect(narrative.getAnnotationPaths()).toHaveCount(0);
-    await narrative.toggleDrawing();
+    await expect(tool(ENABLE_DRAWING)).toBeVisible();
+    await tool(ENABLE_DRAWING).click();
+    await expect(tool(DISABLE_DRAWING)).toBeVisible();
+    await expect(tool(FREEZE_ANNOTATIONS)).toBeVisible();
+    await expect(tool(RESET_ANNOTATIONS)).toBeVisible();
+    await expect(suppliedTools).toHaveCount(0);
 
     // Frozen strokes persist (isFading is gated off while frozen). Under the
     // e2e MotionConfig `skipAnimations`, an UNfrozen stroke's fade completes
     // instantly and the path unmounts, so freezing is the deterministic way to
     // prove a stroke was drawn.
-    await narrative.toggleFreeze();
+    await tool(FREEZE_ANNOTATIONS).click();
+    await expect(tool(UNFREEZE_ANNOTATIONS)).toBeVisible();
     await narrative.drawStroke([
       { x: 0.35, y: 0.5 },
       { x: 0.5, y: 0.5 },
@@ -633,13 +702,14 @@ const freeDrawAnnotate: ScenarioDefinition = {
     await expect(narrative.getAnnotationPaths()).toHaveCount(2);
 
     // Reset clears every annotation.
-    await narrative.resetAnnotations();
+    await tool(RESET_ANNOTATIONS).click();
     await expect(narrative.getAnnotationPaths()).toHaveCount(0);
 
     // Unfreezing: a fresh stroke now fades and unmounts (opacity animates to 0
     // and the line is removed) — the contrast that proves the fade behaviour
     // without any pixel-timing assertion.
-    await narrative.toggleFreeze();
+    await tool(UNFREEZE_ANNOTATIONS).click();
+    await expect(tool(FREEZE_ANNOTATIONS)).toBeVisible();
     await narrative.drawStroke([
       { x: 0.35, y: 0.55 },
       { x: 0.6, y: 0.55 },

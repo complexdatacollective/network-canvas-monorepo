@@ -1,0 +1,372 @@
+name: Architect Maintenance Release
+
+# Releases a patch to an OLDER Architect major line — 8.5.1 once Architect 9 is
+# production — from a `maintenance/architect-<version>` branch cut from that
+# line's newest tag.
+#
+# Neither existing lane can: both deploy to the one production site, so both
+# refuse a version older than the newest release (app-release-guard.sh and
+# resolve-hotfix-release.mjs). An older line is not deployed anywhere of its
+# own. Architect 8 reaches users inside Architect 9's deploy at /v8/, as a
+# tarball Architect 9's build bundles. So this lane only tags, creates a
+# GitHub release, and attaches that tarball (architect-subpath-dist.yml).
+# Users get the fix when the pin on the newer line is bumped and that line
+# next releases; see "Maintenance releases" in apps/architect/RELEASING.md.
+#
+# What it never does: deploy (there is no Netlify step and no Netlify
+# credential here), make its release "Latest" (`make_latest: 'false'`, so the
+# repository's latest release stays the newest line's), or release the newest
+# line. resolve-hotfix-release.mjs in its line scope (SCOPE=line) requires a
+# version newer than every release on its own line, on a major below the
+# newest release overall, in a tree that contains the line's newest tag. A
+# maintenance tag that became the newest overall would leave production behind
+# its newest tag, and the normal lane's guard would skip every later release
+# from main until someone reconciled it.
+#
+# No merge back to main afterwards, unlike a hotfix: main is on a newer major,
+# and merging would drag this line's package.json and CHANGELOG into it.
+#
+# Dispatched FROM main with the branch as an input, like the Hotfix Release
+# workflow: the job definitions, guards and tooling are main's reviewed code,
+# and only the tree that gets verified and released comes from the branch.
+#
+# NOTE(human-setup-required): that separation is a convention this file cannot
+# enforce (see the same note in hotfix-release.yml). Create the
+# `architect-maintenance-release` environment with required reviewers and its
+# deployment branches restricted to main, so a copy of this workflow on
+# another branch cannot reach the job that claims the tag. It holds no
+# secrets: the lane deploys nothing.
+#
+# Procedure (apps/architect/RELEASING.md, "Maintenance releases"):
+#   1. `git switch -c maintenance/architect-8.5.1 '@codaco/architect@8.5.0'`,
+#      cherry-pick the fix, bump apps/architect/package.json and add the
+#      CHANGELOG.md section by hand, push the branch.
+#   2. Run this workflow from main with `source_ref` set to that branch.
+#   3. Bump the pin on the newer line to the tarball the run's summary prints.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Maintenance branch to release (e.g. maintenance/architect-8.5.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Not the normal lane's `apps-release-@codaco/architect`. That group keeps one
+# pending run, and a maintenance run waiting for environment approval would
+# hold it, so a normal release queued behind it could be dropped. Nothing here
+# touches production, so the lanes do not need to exclude each other; two
+# maintenance runs still must not, or both could pass the line check.
+concurrency:
+  group: architect-maintenance-release
+  cancel-in-progress: false
+
+env:
+  # One task at a time on every CI runner; see the `env` block and the `test`
+  # job in ci-and-release.yml for the measurements behind the cap.
+  TURBO_CONCURRENCY: '1'
+
+jobs:
+  # Validates the dispatch and the version, then typechecks, tests and builds
+  # the branch. Runs the branch's code, so it holds a read-only token and no
+  # secret; the tag is claimed by `release`, which runs none of it.
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    # The verify step tests Architect's whole workspace dependency closure,
+    # which reaches @codaco/studio-sync; its conformance suites need this
+    # Postgres. Same service as hotfix-release.yml, for the reasons given there.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: spike
+          POSTGRES_DB: studio_dev
+          POSTGRES_INITDB_ARGS: --set=max_prepared_transactions=10
+        ports:
+          - 54318:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+      version: ${{ steps.version.outputs.version }}
+    env:
+      APP: architect
+      SCOPE: line
+      SOURCE_REF: ${{ inputs.source_ref }}
+    steps:
+      # DISPATCH_REF comes through the environment, never interpolated into the
+      # script: `$(...)` is a legal git ref name.
+      - name: Validate the dispatch
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          if [[ "$DISPATCH_REF" != 'refs/heads/main' ]]; then
+            echo "::error::Dispatch this workflow from main and name the branch to release in source_ref. Running it from a branch would take the job definition from that branch too." >&2
+            exit 1
+          fi
+          if [[ "$SOURCE_REF" != maintenance/architect-* ]]; then
+            echo "::error::source_ref '$SOURCE_REF' is not a maintenance/architect-<version> branch. The newest line releases through apps-release-architect or the Hotfix Release workflow." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-tags: true
+          # Full history: the resolver checks that this tree descends from the
+          # newest release on its line.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A branch cut from an older tag carries the lane's tooling as it was
+      # then (the line scope did not exist in 8.5.0), so it comes from the
+      # dispatching main commit, the only copy anyone has reviewed. Each
+      # script reads its inputs relative to the working directory, so it
+      # operates on the branch's tree while living outside it.
+      - name: Check out the lane's tooling from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          path: .maintenance-lane
+          sparse-checkout: |
+            .github/scripts
+            scripts
+          persist-credentials: false
+
+      # Compares commits, not strings: any commit main already contains
+      # releases through the normal lane.
+      - name: Resolve the released commit
+        id: commit
+        run: |
+          sha=$(git rev-parse HEAD)
+          if git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::source_ref '$SOURCE_REF' ($sha) is a commit of main. main releases through apps-release-architect in ci-and-release.yml." >&2
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # A claim an earlier attempt left without a release (see the release
+      # job's first step) would make the resolver refuse this version as
+      # already released, and the release job that gives the claim up would
+      # never run. Only this checkout's copy of the tag is set aside: the
+      # release job deletes the real one, behind the environment's approval.
+      - name: Set aside a claim an earlier attempt left without a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          version="$(jq -r .version apps/architect/package.json)"
+          tag="@codaco/architect@$version"
+          if ! git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            exit 0
+          fi
+          if [[ "$(git cat-file -t "refs/tags/$tag")" != 'commit' || "$(git rev-parse "refs/tags/$tag")" != "$SHA" ]]; then
+            exit 0
+          fi
+          encoded="$(jq -rn --arg t "$tag" '$t|@uri')"
+          status="$(gh api -i "repos/$GITHUB_REPOSITORY/releases/tags/${encoded}" 2>/dev/null | head -1 || true)"
+          if [[ "$status" != HTTP/*' 404'* ]]; then
+            exit 0
+          fi
+          git tag -d "$tag"
+          echo "::notice::$tag is a claim an earlier attempt left at $SHA without a release. The release job gives it up before claiming the tag again."
+
+      - name: Resolve and validate the version
+        id: version
+        run: node .maintenance-lane/.github/scripts/resolve-hotfix-release.mjs
+
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          install: false
+      # No dependency cache. This job runs the maintenance branch's own code
+      # on a dispatch from main, and a cache it saved would be scoped to main
+      # and restored by every later workflow there. A maintenance release is
+      # rare enough that a cold install costs nothing worth protecting.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version-file: '.nvmrc'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # A maintenance branch has no pull request CI and no required `quality`
+      # gate behind it, and workspace packages are consumed as source, so the
+      # filter covers Architect's whole dependency closure (`...`).
+      - name: Verify Architect and its workspace dependencies
+        env:
+          SKIP_ENV_VALIDATION: 'true'
+        run: pnpm exec turbo run typecheck test --filter="@codaco/architect..."
+
+      # The sub-path build is the only build this line ships, and the dist
+      # workflow makes it from the tag, after the tag exists. Building it here
+      # first means a branch that cannot build under /v<major>/ fails before
+      # anything is claimed. Not through turbo, as in the dist workflow.
+      - name: Verify the sub-path build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ARCHITECT_BASE_PATH="/v${VERSION%%.*}/" pnpm --filter @codaco/architect build
+
+  # Claims the tag and creates the release. Holds the write token, sits behind
+  # the environment's reviewers, and runs nothing from the branch: it checks
+  # out the verified commit for its data only (package.json, the CHANGELOG,
+  # tags and history) and executes main's tooling against it.
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: architect-maintenance-release
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    env:
+      APP: architect
+      SCOPE: line
+    steps:
+      # The exact commit `verify` checked, not the branch: a push to the
+      # branch while this job waited for approval must not be released under
+      # a tag that names what was verified.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          fetch-tags: true
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the lane's tooling from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          path: .maintenance-lane
+          sparse-checkout: |
+            .github/scripts
+            scripts
+            .nvmrc
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version-file: '.maintenance-lane/.nvmrc'
+
+      # The rollback step below gives up a claim whose release failed, but a
+      # run that died outright (a lost runner, a job timeout) skips it and
+      # leaves the tag behind. The resolver then refuses the version as
+      # already released, and the dist workflow finds no release to attach
+      # to, so neither a re-run nor a dispatch could finish it. A lightweight
+      # tag at exactly the verified commit with no release is such a claim:
+      # nothing was published from it, and this lane's concurrency group
+      # means no other maintenance run is holding it. Anything else, or a
+      # lookup that does not answer plainly, is left for the re-check to
+      # refuse.
+      - name: Give up a claim an earlier attempt left without a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: '@codaco/architect@${{ needs.verify.outputs.version }}'
+          SHA: ${{ needs.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          encoded="$(jq -rn --arg t "$TAG" '$t|@uri')"
+          if ! ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" 2>/dev/null)"; then
+            exit 0
+          fi
+          if [[ "$(jq -r '.object.type' <<<"$ref")" != 'commit' || "$(jq -r '.object.sha' <<<"$ref")" != "$SHA" ]]; then
+            exit 0
+          fi
+          status="$(gh api -i "repos/$GITHUB_REPOSITORY/releases/tags/${encoded}" 2>/dev/null | head -1 || true)"
+          if [[ "$status" != HTTP/*' 404'* ]]; then
+            exit 0
+          fi
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
+          # The checkout fetched the tag, and a later fetch never prunes it.
+          git tag -d "$TAG" > /dev/null 2>&1 || true
+          echo "::notice::Deleted $TAG, which an earlier attempt claimed at $SHA without creating its release, so this attempt can claim it again."
+
+      # The verdict in `verify` predates its build and the approval wait; a
+      # release on this line (or the line becoming the newest) since then must
+      # stop the run with nothing claimed.
+      - name: Re-check the version against the newest releases
+        id: version
+        run: |
+          git fetch --tags --force origin
+          node .maintenance-lane/.github/scripts/resolve-hotfix-release.mjs
+
+      # --since is the previous release on this line (the resolver's line
+      # scope reports it as `newest`), so the notes cover only this line. The
+      # notes come from the CHANGELOG alone, so they are written before the
+      # claim: nothing that can fail runs between the claim and the release.
+      - name: Release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SINCE: ${{ steps.version.outputs.newest }}
+        run: >-
+          node .maintenance-lane/scripts/release/release-notes.mjs
+          --app apps/architect
+          --pkg @codaco/architect
+          --version "$VERSION"
+          --since "$SINCE"
+          --out "${RUNNER_TEMP}/maintenance-notes.md"
+
+      # Creating the ref through the API is atomic, so a duplicate run fails
+      # here rather than racing.
+      - name: Claim the release tag
+        id: claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          SHA: ${{ needs.verify.outputs.sha }}
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" \
+            -f sha="$SHA"
+
+      # Never "Latest": that belongs to the newest line, and Architect's
+      # in-app update check must not see this as the newest release (it picks
+      # the highest version on or above the running major regardless).
+      - name: Create the release
+        id: create
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ needs.verify.outputs.sha }}
+          name: Architect ${{ steps.version.outputs.version }}
+          body_path: ${{ runner.temp }}/maintenance-notes.md
+          prerelease: false
+          make_latest: 'false'
+
+      # The resolver refuses a version whose tag exists, so a claimed tag with
+      # no release behind it would block every re-run. When the release was
+      # not created (a failure or a cancellation after the claim), give the
+      # tag up again; a tag that has a release is left alone.
+      - name: Release the claimed tag if no release was created
+        if: ${{ always() && steps.claim.outcome == 'success' && steps.create.outcome != 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::warning::$TAG has a release although the step that creates it did not succeed. The tag stays; check the release by hand."
+            exit 0
+          fi
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
+          echo "::notice::Deleted the unreleased tag $TAG, so the run can be repeated."
+
+  # The tarball the newer line bundles: the only way this release reaches
+  # anyone. Its summary prints the pin to update. Only the called workflow's
+  # publish job, which runs no code from the tag, uses the write.
+  subpath-dist:
+    needs: [verify, release]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/architect-subpath-dist.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+      expected_sha: ${{ needs.verify.outputs.sha }}
+      # Unlike the release lanes, a tarball is this lane's whole product, so a
+      # tag that cannot be built under a sub-path fails the run.
+      skip_ineligible: false

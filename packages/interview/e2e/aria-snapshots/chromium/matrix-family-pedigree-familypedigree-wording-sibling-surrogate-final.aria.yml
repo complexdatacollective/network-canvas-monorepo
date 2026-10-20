@@ -1,0 +1,44 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your sibling":
+    - heading "Add your sibling" [level=2]
+    - button "Close"
+    - text: Which parents do they share with you? Required A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.
+    - radiogroup "Which parents do they share with you?":
+      - radio "Both parents" [checked]
+      - text: Both parents
+      - radio "Only the biological mother"
+      - text: Only the biological mother
+      - radio "Only the biological father"
+      - text: Only the biological father
+    - text: Same surrogate as you - matrix check
+    - group "Same surrogate as you - matrix check":
+      - checkbox "Gail"
+      - text: Gail
+    - text: To the parents they share, are they… Required
+    - radiogroup "To the parents they share, are they…":
+      - radio "A biological child" [checked]
+      - text: A biological child
+      - radio "An adopted child"
+      - text: An adopted child
+    - text: Are they your twin? Answer yes for triplets and other multiple births too. This sibling cannot be your twin, because twins are carried in the same pregnancy and “Gail”, who carried you, is not chosen above. To answer yes, choose “Gail” above.
+    - radiogroup "Are they your twin?":
+      - radio "No"
+      - text: "No"
+      - radio "Yes, identical twins" [disabled]
+      - text: Yes, identical twins This sibling cannot be your twin, because twins are carried in the same pregnancy and “Gail”, who carried you, is not chosen above. To answer yes, choose “Gail” above.
+      - radio "Yes, fraternal (non-identical) twins" [disabled]
+      - text: Yes, fraternal (non-identical) twins This sibling cannot be your twin, because twins are carried in the same pregnancy and “Gail”, who carried you, is not chosen above. To answer yes, choose “Gail” above.
+      - radio "Yes, but I don’t know if they are identical" [disabled]
+      - text: Yes, but I don’t know if they are identical This sibling cannot be your twin, because twins are carried in the same pregnancy and “Gail”, who carried you, is not chosen above. To answer yes, choose “Gail” above.
+    - text: Who carried the pregnancy? Required
+    - radiogroup "Who carried the pregnancy?":
+      - radio "Biological mother"
+      - text: Biological mother
+      - radio "Someone else, or I don’t know"
+      - text: Someone else, or I don’t know
+    - button "Cancel"
+    - button "Back"
+    - button "Save"

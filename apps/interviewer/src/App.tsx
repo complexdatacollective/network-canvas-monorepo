@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/AppErrorBoundary';
 import { AppUpdateProvider } from './components/AppUpdate/AppUpdateProvider';
 import { AuthGate } from './components/AuthGate';
 import { InterviewerI18nProvider } from './i18n/InterviewerI18nProvider';
+import { LegacyInterviewerBackgroundInstall } from './lib/pwa/LegacyInterviewerBackgroundInstall';
 import { AppProviders } from './providers/AppProviders';
 import { HomeRoute } from './routes/Home';
 import { InterviewRoute } from './routes/Interview';
@@ -113,6 +114,7 @@ export default function App() {
                   </AnimatePresence>
                 </AuthGate>
               </AppUpdateProvider>
+              <LegacyInterviewerBackgroundInstall />
             </AppProviders>
           </ErrorBoundary>
         </InterviewerI18nProvider>

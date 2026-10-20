@@ -24,11 +24,21 @@
 //     keyring and the envelope refuse to print themselves for this reason,
 //     and a sink that serialised a caught error, or an adapter row, would
 //     undo that.
-//
-// Only the asset-key half is enforced in code today, by `assertNoAssetKeyValues`
-// below. #1897 owns the sinks and adds the rest, extending this module and its
-// test file; the rule is written here rather than only in an issue because a
-// rule with no code beside it is a rule the next change forgets.
+
+export const TELEMETRY_EXCLUSIONS = [
+  'participant-information',
+  'participant-responses',
+  'asset-keys',
+  'secrets',
+  'researcher-identity',
+  'team-study-and-protocol-names',
+  'protocol-content',
+  'ip-addresses',
+  'request-urls-and-headers',
+  'free-text-error-messages',
+] as const;
+
+export type TelemetryExclusion = (typeof TELEMETRY_EXCLUSIONS)[number];
 
 /** Thrown when an assembled protocol document still carries an API key. */
 export class AssetKeyLeakError extends Error {
@@ -61,10 +71,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * one thing that puts a value back for validation — produces a document that
  * is never returned to a caller. So anything with a `value` on it here is a
  * document that went somewhere it should not have.
- *
- * Only the asset-key half of `TELEMETRY_EXCLUSIONS` is enforced in code today.
- * Participant information and the remaining secrets have no sink to enforce
- * against yet; #1897 adds them, and extends this module's test file.
  */
 export function assertNoAssetKeyValues(
   document: Record<string, unknown>,

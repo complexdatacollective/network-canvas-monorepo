@@ -1,6 +1,10 @@
 - main:
-  - heading "Relationship details" [level=1]
-  - paragraph: Answer the following.
+  - button "Alex"
+  - button "Sam"
+  - text: How many years have you known each other?
+  - button "Decrease value"
+  - spinbutton "How many years have you known each other?"
+  - button "Increase value"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

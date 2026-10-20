@@ -7,6 +7,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import BinSummary from '../BinSummary';
 
 // Label resolution is `useNodeLabel`'s job and needs the whole session store to
@@ -40,11 +41,11 @@ describe('BinSummary', () => {
     render(<BinSummary nodes={makeNodes(4)} />);
 
     // The count is its own element, so clamping the label to a couple of lines
-    // cannot take the count with it. Concatenating the two into one string —
-    // which is what this replaced — puts the count past the clamp, and the bin
-    // then reads as holding a single person.
-    const count = screen.getByText('and 3 others');
-    expect(count.textContent).toBe('and 3 others');
+    // cannot take the count with it. Concatenating the two into one string
+    // puts the count past the clamp, and the bin then reads as holding a
+    // single person.
+    const count = screen.getByText('+3');
+    expect(count.textContent).toBe('+3');
 
     const label = screen.getByText(LONG_LABEL);
     expect(label).not.toBe(count);
@@ -56,23 +57,35 @@ describe('BinSummary', () => {
     render(<BinSummary nodes={makeNodes(4)} />);
 
     // Both spans are block-level, so the line break between them is layout
-    // only — nothing in the text content separates them. A screen reader
-    // reading the paragraph would say "Villanuevaand 3 others".
-    const paragraph = screen.getByText('and 3 others').closest('p');
-    expect(paragraph?.textContent).toBe(`${LONG_LABEL} and 3 others`);
+    // only. A space keeps a screen reader from running the name into the count.
+    const paragraph = screen.getByText('+3').closest('p');
+    expect(paragraph?.textContent).toBe(`${LONG_LABEL} +3`);
   });
 
-  it('says "other" rather than "others" for a single remaining node', () => {
+  it('shows the count as a bare number for a single remaining node', () => {
     render(<BinSummary nodes={makeNodes(2)} />);
 
-    expect(screen.getByText('and 1 other')).toBeInTheDocument();
-    expect(screen.queryByText(/others/)).not.toBeInTheDocument();
+    expect(screen.getByText('+1')).toBeInTheDocument();
+    expect(screen.queryByText(/other/)).not.toBeInTheDocument();
   });
 
   it('shows no count when the bin holds one node', () => {
     render(<BinSummary nodes={makeNodes(1)} />);
 
     expect(screen.getByText(LONG_LABEL)).toBeInTheDocument();
-    expect(screen.queryByText(/^and /)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\+/)).not.toBeInTheDocument();
+  });
+
+  it('counts the others in the digits of the language the protocol is read in', () => {
+    render(
+      <TestProtocolLocalization
+        localization={{ defaultLocale: 'ar-EG', locales: ['ar-EG'] }}
+      >
+        <BinSummary nodes={makeNodes(4, 'أمل')} />
+      </TestProtocolLocalization>,
+    );
+
+    const count = screen.getByText('أمل').nextElementSibling;
+    expect(count?.textContent).toMatch(/\+٣$/);
   });
 });

@@ -22,10 +22,10 @@ describe('the questions a dyad census asks about a pair', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openSection());
 
-    // The stage's name, the type it asks about and the screen shown before it
-    // belong to sections this mount does not include.
+    // The stage's name and the type it asks about belong to sections this
+    // mount does not include.
     await harness.roundTrip({
-      unowned: ['subject', 'introductionPanel'],
+      unowned: ['subject'],
     });
   });
 
@@ -99,14 +99,17 @@ describe('the questions a dyad census asks about a pair', () => {
       stage: {
         type: 'DyadCensus',
         fields: {
-          label: 'Dyad Census',
+          label: { 'en-US': 'Dyad Census' },
           subject: { entity: 'node', type: 'person' },
-          introductionPanel: { title: 'Pairs', text: 'Two at a time.' },
           prompts: [
-            { id: 'prompt-a', text: 'Know each other?', createEdge: 'knows' },
+            {
+              id: 'prompt-a',
+              text: { 'en-US': 'Know each other?' },
+              createEdge: 'knows',
+            },
             {
               id: 'prompt-b',
-              text: 'Worked together?',
+              text: { 'en-US': 'Worked together?' },
               createEdge: 'family_edge',
             },
           ],

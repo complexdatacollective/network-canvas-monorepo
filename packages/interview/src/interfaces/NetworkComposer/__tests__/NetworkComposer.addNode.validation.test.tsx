@@ -11,7 +11,11 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { Codebook, Validation } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type Codebook,
+  type Validation,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -24,8 +28,10 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import AddNodeInput from '../AddNodeInput';
 import NetworkComposer from '../NetworkComposer';
+import { composerWords } from './composerWords';
 
 beforeAll(() => {
   if (typeof window.ResizeObserver === 'undefined') {
@@ -45,10 +51,11 @@ function buildStage() {
   return {
     id: 'nc1',
     type: 'NetworkComposer' as const,
-    label: 'Network Composer',
+    ...composerWords(),
+    label: { en: 'Network Composer' },
     subject: { entity: 'node' as const, type: NODE_TYPE },
-    layoutVariable: LAYOUT_VAR,
-    quickAdd: QUICK_ADD_VAR,
+    layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+    quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
     background: {
       concentricCircles: 4,
       skewedTowardCenter: true,
@@ -77,7 +84,10 @@ function buildCodebook(
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
           },
-          [LAYOUT_VAR]: { name: 'position', type: 'layout' },
+          [LAYOUT_VAR]: {
+            name: 'position',
+            type: 'layout',
+          },
         },
       },
     },
@@ -118,7 +128,8 @@ function renderInterface({
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: buildCodebook(validation, omitComponent),
         stages: [stage],
       } as never,
@@ -146,7 +157,7 @@ function renderInterface({
         >
           <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
             <StageMetadataContext.Provider value={registerBeforeNext}>
-              {children}
+              <TestProtocolLocalization>{children}</TestProtocolLocalization>
             </StageMetadataContext.Provider>
           </CurrentStepProvider>
         </ContractProvider>
@@ -308,13 +319,15 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
 
     render(
       <AddNodeInput
-        entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="safe.__proto__.polluted"
         onCreate={onCreate}
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -336,13 +349,15 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
 
     render(
       <AddNodeInput
-        entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable={QUICK_ADD_VAR}
         onCreate={onCreate}
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -369,13 +384,15 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
 
     render(
       <AddNodeInput
-        entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable={QUICK_ADD_VAR}
         onCreate={onCreate}
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 

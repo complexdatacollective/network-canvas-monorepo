@@ -11,6 +11,7 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { resolveInitialLocale } from './i18n/StudioI18nProvider.tsx';
 import { queryClient } from './lib/queryClient.ts';
 import { studioCatalogSource } from './locales/catalogs.ts';
+import { studioRootOptions } from './rootOptions.ts';
 import { router } from './router.tsx';
 
 const container = document.getElementById('root');
@@ -26,7 +27,7 @@ if (!container) {
 // renders, and a second failure reaches the router's error screen.
 await studioCatalogSource.load(resolveInitialLocale()).catch(() => undefined);
 
-createRoot(container).render(
+createRoot(container, studioRootOptions).render(
   <StrictMode>
     {/* Outermost, so every `motion` component Studio renders — all of them by
         way of fresco-ui and @codaco/interview — inherits `reducedMotion="user"`

@@ -1,9 +1,10 @@
-import { cookies } from 'next/headers';
 import { after, NextResponse, type NextRequest } from 'next/server';
 
 import { createInterview } from '~/actions/interviews';
 import { env } from '~/env';
+import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
+import { interviewPath } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
 
 const handler = async (
@@ -26,12 +27,20 @@ const handler = async (
 
   const limitInterviews = await getAppSetting('limitInterviews');
 
-  // if limitInterviews is enabled
-  // Check cookies for interview already completed for this user for this protocol
-  // and redirect to finished page
-  if (limitInterviews && (await cookies()).get(protocolId)) {
-    url.pathname = '/interview/finished';
-    return NextResponse.redirect(url);
+  // When limitInterviews is enabled, a browser that has already finished an
+  // interview of this protocol is sent back to that interview, which shows its
+  // completed state, instead of starting another.
+  if (limitInterviews) {
+    const limitedInterviewId = await getLimitedInterviewId(protocolId);
+
+    if (limitedInterviewId) {
+      url.pathname = `/interview/${limitedInterviewId}`;
+      return NextResponse.redirect(url, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      });
+    }
   }
 
   let participantIdentifier: string | undefined;
@@ -97,7 +106,7 @@ const handler = async (
   // Explicitly disable caching to prevent Netlify from caching this redirect
   // (Netlify adds max-age=86400 by default, causing all users to get the same interview)
   // See: https://github.com/opennextjs/opennextjs-netlify/issues/3460
-  url.pathname = `/interview/${result.createdInterviewId}`;
+  url.pathname = interviewPath(result.createdInterviewId, result.schemaVersion);
   return NextResponse.redirect(url, {
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate',

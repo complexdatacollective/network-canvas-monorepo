@@ -67,6 +67,8 @@ function rosterStage(count: number): Stage {
   return {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
     label: 'Roster',
     subject: { entity: 'node', type: 'person' },
     prompts: [{ id: 'p1', text: 'Pick people' }],

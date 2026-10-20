@@ -231,6 +231,7 @@ beforeEach(() => {
         deployment: fixtures.deployment,
         setup: { required: false },
         telemetry: false,
+        logLevel: 'Info',
       }),
     'studies.list': () => Effect.succeed([STUDY]),
     'studies.get': () =>

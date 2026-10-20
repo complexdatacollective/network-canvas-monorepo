@@ -100,8 +100,13 @@ because there is no fixed value to name:
 
 - **The SMTP host** in `SMTP_URL`. See
   [Run the stack](./run.md#8-configure-mail).
-- **The OpenTelemetry collector** in `OTEL_EXPORTER_OTLP_ENDPOINT`, if you
-  send telemetry to your own store instead of Codaco's PostHog project.
+- **The OpenTelemetry endpoint** in `OTEL_EXPORTER_OTLP_ENDPOINT`, when one
+  is set. Both `api` and `worker` then send their logs, traces, metrics and
+  error reports to that host instead of `us.i.posthog.com`, which stays on the
+  list for analytics. Allow the host the URL names, on the port it names; the
+  [telemetry page](./telemetry.md#sending-telemetry-to-your-own-store) covers
+  the variable and an Azure Monitor example, where the collector, not Studio,
+  is what contacts Azure.
 - **Any service you [swapped in](./swap.md)** for one of the stack's own: the
   host in `DATABASE_URL`, in `S3_ENDPOINT`, or in `REDIS_URL`. For Azure Blob
   Storage it is the storage account's blob endpoint, normally
@@ -117,7 +122,8 @@ Two things worth knowing before your firewall team asks:
   newer version exists. An institution that must stop it blocks the host; there
   is no switch
   ([#1901](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1901)).
-- **`STUDIO_TELEMETRY=false` stops analytics and telemetry completely**,
+- **`STUDIO_TELEMETRY=false` stops analytics and telemetry completely**
+  ([telemetry](./telemetry.md)),
   because no client and no exporter is constructed at all rather than
   constructed and muted. It is on by default. Only public data is sent: fixed
   codes, counts, durations, versions and ids Studio mints, never names, emails,
@@ -336,23 +342,25 @@ seconds, minutes or hours:
 
 <!-- rate-limits start -->
 
-| Scope                        | Limit     | What it protects                                                          |
-| ---------------------------- | --------- | ------------------------------------------------------------------------- |
-| `sign_in_address`            | `10/10m`  | Credential stuffing from one host, without locking out a shared address   |
-| `sign_in_email`              | `5/10m`   | One account, against attempts spread across many addresses                |
-| `invitation_accept`          | `10/10m`  | A team invitation token, against being brute-forced through its link      |
-| `participant_redeem_address` | `20/10m`  | Participation links, loosely: a lab runs several interviews from one host |
-| `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                   |
-| `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                      |
-| `participant_session`        | `60/1m`   | Reading an interview, against a script repeating the protocol's assembly  |
-| `participant_analytics`      | `60/1m`   | Interview usability events, against a page flooding the forwarder         |
-| `error_report_address`       | `30/1m`   | Browser error reports, against a page flooding the error reporter         |
-| `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                  |
-| `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
-| `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |
-| `public_api`                 | `300/1m`  | `/api/v1`, leaving the instance responsive while a script pages results   |
-| `api_docs`                   | `30/1m`   | `/api/v1/docs`, against the reference page becoming a bandwidth amplifier |
-| `ws_upgrade`                 | `30/1m`   | Reconnection, against a flapping client becoming a connection storm       |
+| Scope                        | Limit     | What it protects                                                             |
+| ---------------------------- | --------- | ---------------------------------------------------------------------------- |
+| `sign_in_address`            | `10/10m`  | Credential stuffing from one host, without locking out a shared address      |
+| `sign_in_email`              | `5/10m`   | One account, against attempts spread across many addresses                   |
+| `invitation_accept`          | `10/10m`  | A team invitation token, against being brute-forced through its link         |
+| `participant_redeem_address` | `20/10m`  | Participation links, loosely: a lab runs several interviews from one host    |
+| `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                      |
+| `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                         |
+| `participant_session`        | `60/1m`   | Reading an interview, against a script repeating the protocol's assembly     |
+| `participant_analytics`      | `60/1m`   | Interview usability events, against a page flooding the forwarder            |
+| `error_report_address`       | `30/1m`   | Browser error reports, against a page flooding the error reporter            |
+| `researcher_log`             | `60/1m`   | Researcher app log batches, against one signed-in tab flooding the forwarder |
+| `participant_log`            | `30/1m`   | Interview page log batches, against one session flooding the forwarder       |
+| `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                     |
+| `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                   |
+| `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows     |
+| `public_api`                 | `300/1m`  | `/api/v1`, leaving the instance responsive while a script pages results      |
+| `api_docs`                   | `30/1m`   | `/api/v1/docs`, against the reference page becoming a bandwidth amplifier    |
+| `ws_upgrade`                 | `30/1m`   | Reconnection, against a flapping client becoming a connection storm          |
 
 <!-- rate-limits end -->
 

@@ -54,8 +54,8 @@ function sequentialIds(prefix = 'staged-resource'): () => string {
  * was never attempted.
  */
 const DEFAULT_INFORMATION_FIELDS: SectionDoc = {
-  label: 'Welcome',
-  title: 'Welcome',
+  label: { 'en-US': 'Welcome' },
+  title: { 'en-US': 'Welcome' },
   items: [],
 };
 
@@ -100,7 +100,8 @@ export function createResourceHost(seed: ResourceHostSeed = {}): InMemoryHost {
     sections: {
       [sectionId({ kind: 'settings' })]: {
         name: 'Resource fields',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en-US', locales: ['en-US'] },
       },
       [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-1'] },
       [STAGE_SECTION]: {

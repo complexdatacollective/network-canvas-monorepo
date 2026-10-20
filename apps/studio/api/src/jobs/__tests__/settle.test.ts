@@ -231,6 +231,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
 
     it.effect('dead-letters a lease that expired on its last attempt', () =>
       Effect.gen(function* () {
+        const logs = collectLeveledLogs();
         yield* clear;
         const jobId = yield* enqueueDelivery();
         yield* updateJob(jobId, 'retry_limit = 0');
@@ -244,10 +245,34 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           yield* TestClock.adjust(
             Duration.seconds(DELIVERY.expireInSeconds + 1),
           );
-          assert.strictEqual(yield* worker.reapExpired, 1);
+          assert.strictEqual(
+            yield* worker.reapExpired.pipe(Effect.provide(logs.layer)),
+            1,
+          );
           yield* Fiber.interrupt(running);
         }).pipe(Effect.provide(layerWorker()));
 
+        assert.deepStrictEqual(
+          logs.records
+            .filter(({ annotations }) => annotations.alert !== undefined)
+            .map(({ level, message, annotations }) => ({
+              level,
+              message,
+              annotations,
+            })),
+          [
+            {
+              level: 'Error',
+              message:
+                'job lease expired on its last attempt; it will not be retried',
+              annotations: {
+                queue: 'invitation-delivery',
+                job_id: jobId,
+                alert: 'job_dead_lettered',
+              },
+            },
+          ],
+        );
         const rows = yield* readJobs();
         const original = rows.find((row) => row.id === jobId);
         assert.strictEqual(original?.state, 'failed');

@@ -17,6 +17,7 @@ import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import SlidesForm from '../SlidesForm';
 
 class StubResizeObserver {
@@ -55,7 +56,7 @@ beforeAll(() => {
 });
 
 const form: TitlelessForm = {
-  fields: [{ variable: 'name' as never, prompt: 'Person name' }],
+  fields: [{ variable: 'name' as never, prompt: { en: 'Person name' } }],
 };
 
 const person: NcNode = {
@@ -83,7 +84,11 @@ const codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        name: { name: 'Name', type: 'text', component: 'Text' },
+        name: {
+          name: 'Name',
+          type: 'text',
+          component: 'Text',
+        },
       },
     },
   },
@@ -124,7 +129,8 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: {
             node: {
               person: {
@@ -147,9 +153,8 @@ describe('SlidesForm navigation ownership', () => {
             {
               id: 'hidden-alter-form',
               type: 'AlterForm',
-              label: 'Hidden form',
+              label: { en: 'Hidden form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
               form,
               skipLogic: {
                 action: 'SKIP',
@@ -159,8 +164,8 @@ describe('SlidesForm navigation ownership', () => {
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -194,13 +199,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <OverrideHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <OverrideHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     expect(screen.getByTestId('overridden-slides-form')).toBeVisible();
@@ -227,22 +234,22 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -274,13 +281,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     expect(
@@ -312,22 +321,22 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -359,13 +368,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     expect(
@@ -399,22 +410,22 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -446,13 +457,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     // This person starts without a name, and the name is required — so the
@@ -489,22 +502,22 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -536,13 +549,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     const field = await screen.findByRole('textbox', { name: 'Person name' });
@@ -556,7 +571,7 @@ describe('SlidesForm navigation ownership', () => {
     });
 
     const keepChanges = await screen.findByRole('button', {
-      name: 'Keep changes',
+      name: 'Cancel',
     });
     await act(async () => {
       fireEvent.click(keepChanges);
@@ -581,22 +596,22 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -628,13 +643,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     const field = await screen.findByRole('textbox', { name: 'Person name' });
@@ -656,5 +673,127 @@ describe('SlidesForm navigation ownership', () => {
     });
 
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
+  });
+});
+
+describe('SlidesForm going back from the first slide', () => {
+  function renderFirstSlide() {
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 'session',
+          network: {
+            ego: { [entityAttributesProperty]: {} },
+            nodes: [person, secondPerson],
+            edges: [],
+          },
+        } as never,
+        protocol: {
+          id: 'protocol',
+          hash: 'hash',
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          codebook: requiredNameCodebook,
+          stages: [
+            {
+              id: 'previous-screen',
+              type: 'Information',
+              label: { en: 'Previous screen' },
+              title: { en: 'Previous screen' },
+              items: [],
+            },
+            {
+              id: 'alter-form',
+              type: 'AlterForm',
+              label: { en: 'Alter form' },
+              subject: { entity: 'node', type: 'person' },
+              form,
+            },
+          ],
+        } as never,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+    const onStepChange = vi.fn();
+    const updateItem = vi.fn().mockResolvedValue({ success: true });
+    let moveBackward: (() => Promise<void>) | undefined;
+
+    function BackHarness() {
+      const navigation = useInterviewNavigation(1);
+      moveBackward = navigation.moveBackward;
+
+      return (
+        <StageMetadataProvider value={navigation.registerBeforeNext}>
+          <SlidesForm
+            form={form}
+            items={[person, secondPerson]}
+            subject={{ entity: 'node', type: 'person' }}
+            updateItem={updateItem}
+            moveForward={navigation.moveForward}
+            renderHeader={() => <span>Person header</span>}
+            form_kind="alter"
+          />
+        </StageMetadataProvider>
+      );
+    }
+
+    render(
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={1} onStepChange={onStepChange}>
+            <DialogProvider>
+              <BackHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
+    );
+
+    return { onStepChange, updateItem, back: () => moveBackward?.() };
+  }
+
+  it('saves the answers before leaving the stage', async () => {
+    const { onStepChange, updateItem, back } = renderFirstSlide();
+
+    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    fireEvent.change(field, { target: { value: 'Ada Lovelace' } });
+    await screen.findByDisplayValue('Ada Lovelace');
+
+    await act(async () => {
+      await back();
+    });
+
+    expect(updateItem).toHaveBeenCalledWith('person-1', expect.anything());
+    expect(onStepChange).toHaveBeenCalledWith(0, expect.anything());
+  });
+
+  it('asks before discarding answers that cannot be saved, and stays when they are kept', async () => {
+    const { onStepChange, updateItem, back } = renderFirstSlide();
+
+    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    fireEvent.change(field, { target: { value: '' } });
+    await screen.findByDisplayValue('');
+
+    let leaving: Promise<void> | undefined;
+    await act(async () => {
+      leaving = back();
+      await Promise.resolve();
+    });
+
+    const keepChanges = await screen.findByRole('button', {
+      name: 'Cancel',
+    });
+    await act(async () => {
+      fireEvent.click(keepChanges);
+      await leaving;
+    });
+
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(updateItem).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: 'Person name' })).toHaveValue(
+      '',
+    );
   });
 });

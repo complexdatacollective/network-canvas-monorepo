@@ -7,6 +7,7 @@ import {
   AnalyticsInput,
   FinishInput,
   FinishResult,
+  FinishUnrecognised,
   LinkUnavailable,
   RedeemInput,
   RedeemResult,
@@ -54,6 +55,7 @@ const finish = Rpc.make('participant.finish', {
     SessionEnded,
     SessionTakenOver,
     SessionOutOfDate,
+    FinishUnrecognised,
     LinkUnavailable,
   ]),
 });

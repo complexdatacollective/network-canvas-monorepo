@@ -479,7 +479,7 @@ DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `ef5c73ec1c06f80aa7029c9e46c16784194d0375d0bfa3170dbb058a188623d5`.
+Schema fingerprint: `38fcdcc1d8b5ccf8af3f1e6fc2d1cad49dcd2d96f336327b68c41a8e70f2ba4e`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -619,6 +619,16 @@ Studio consumes the schema-conformant protocol document exactly as
 assembled document with the canonical validator before freezing it. Sectioning
 is Studio-internal storage topology, not a protocol-schema change.
 
+The settings block holds the protocol's name, its schema version and its
+language declaration (`localization`: the default language and every declared
+one, which have no order). Labels, prompts and other participant-facing text
+are translations keyed by declared language, stored inside the section that owns
+them, so a structural diff names a stage by its label in the default language,
+or in another declared language that has one when the default has none. A
+protocol created in Studio declares English (`en`), as one migrated from schema
+8 does, because nothing asks the researcher for a language yet. A draft branched from a version stored under an older schema is migrated to
+the current one, so it can be edited.
+
 ### Tenancy
 
 Teams (#1249) are the tenant boundary. Every domain row — from protocols,
@@ -715,11 +725,12 @@ pnpm --filter @codaco/studio-api protocol-demo
 
 remains the way to look at one. It sectionizes a protocol (the sample one, or
 `--protocol <path>`), prints its sections and their hashes (`--sections` for
-every row), assembles it back, publishes it, edits one prompt and publishes
-again to show how much of the second version is structurally shared with the
-first, and renders the structural diff as sentences. It asserts nothing — the
-suites in `api/src/protocol/__tests__` own that — and it should be deleted
-once the client can show the same things. The rows it writes stay behind for
+every row), assembles it back, publishes it, edits one prompt in every language
+the protocol declares and publishes again to show how much of the second
+version is structurally shared with the first, and renders the structural diff
+as sentences that name stages in the protocol's default language. It asserts
+nothing — the suites in `api/src/protocol/__tests__` own that — and it should be
+deleted once the client can show the same things. The rows it writes stay behind for
 inspection; published versions cannot be deleted, so `db:reset` is how you clear
 them.
 
@@ -977,7 +988,7 @@ generating a half-documented entry.
 | `HOST`                        | Interface the HTTP server binds to.                                                                                                                                                                                                                                                                                                                                                                        | —                   | Unset ⇒ `0.0.0.0`.                                                                                                                                                                                                                                                                                                                                                                 |
 | `WORKER_HEALTH_PORT`          | TCP port the worker process serves `/healthz` and `/readyz` on, bound to `127.0.0.1` only.                                                                                                                                                                                                                                                                                                                 | —                   | Unset ⇒ 3001. The worker routes no traffic, so this listener exists for the container healthcheck and is never published or proxied; the address it binds is fixed in code, not configurable. The web process ignores it and serves the same two routes on `PORT`.                                                                                                                 |
 | `STUDIO_TELEMETRY`            | Whether this instance reports telemetry and usage analytics. With it on, logs, traces, metrics and error reports go to Codaco’s PostHog project, or to the OpenTelemetry endpoint `OTEL_EXPORTER_OTLP_ENDPOINT` names, and participant usability analytics go to Codaco’s PostHog project. With it off, no exporter and no analytics client is built, whatever the endpoint says, and logs stay on stdout. | `false`             | Unset ⇒ true. Set to `false` to opt an instance out of everything that leaves the machine except the update check (#1901), which is not governed by this switch and is blocked at the firewall instead. Only public data is ever sent: fixed codes, counts, durations, versions and ids Studio mints, never names, emails, protocol content or participant data.                   |
-| `STUDIO_LOG_LEVEL`            | The least severe log level this instance writes and exports, using Effect’s level names. The researcher web app logs at the same level.                                                                                                                                                                                                                                                                    | —                   | Unset ⇒ `Info`. `Debug` or `Trace` while investigating a problem; `None` writes nothing.                                                                                                                                                                                                                                                                                           |
+| `STUDIO_LOG_LEVEL`            | The least severe log level this instance writes and exports, using Effect’s level names. The web app and participant pages log at the same level, and the api forwards nothing of theirs below it.                                                                                                                                                                                                         | —                   | Unset ⇒ `Info`. `Debug` or `Trace` while investigating a problem; `None` writes nothing.                                                                                                                                                                                                                                                                                           |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/HTTP collector that receives this instance’s logs, traces, metrics and error reports instead of Codaco’s PostHog project (#1897).                                                                                                                                                                                                                                                                     | —                   | Unset ⇒ telemetry goes to Codaco’s PostHog project (`https://us.i.posthog.com/i`). Set to a collector’s base URL to keep it in the institution’s own store; the OTLP/HTTP paths `/v1/logs`, `/v1/traces` and `/v1/metrics` are appended. Usage analytics still go to Codaco unless `STUDIO_TELEMETRY=false`, which overrides this variable. Logs are written to stdout either way. |
 | `OTEL_EXPORTER_OTLP_HEADERS`  | Headers sent with every export to `OTEL_EXPORTER_OTLP_ENDPOINT`, in the OpenTelemetry format `key=value,key=value` with URL-encoded values; usually the collector’s credential.                                                                                                                                                                                                                            | —                   | Read only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; exports to Codaco’s PostHog project carry Codaco’s project key instead. Treated as a secret: it never appears in a log line or an error.                                                                                                                                                                                      |
 | `STUDIO_DEPLOYMENT_MODE`      | Which topology this deployment serves: `managed` (marketing, pricing, sign-up, billing) or `self-hosted` (first-run setup). The other topology’s paths are refused with 404.                                                                                                                                                                                                                               | `managed`           | Unset ⇒ `self-hosted`. The managed deployment sets `managed` in the container environment, at run time rather than at build time, because every entrypoint reads it inside the running process.                                                                                                                                                                                    |
@@ -1135,6 +1146,16 @@ its maintenance pool, the schema, and whether its queue is working. A surface
 this deployment has not configured is left out rather than reported failed: it
 refuses by design, and a check for it would make an instance that never wanted
 one permanently unready.
+
+Each process logs the moment its own checks turn failing, once rather than on
+every probe: an error-level `readiness is failing` record naming the failing
+checks in `failing_checks` and carrying the `alert` annotation
+`readiness_failing`, and an info-level `readiness has recovered` when they
+pass again. The record is written when `/readyz` is asked, so it needs
+something polling it; the reference stack's worker healthcheck polls the
+worker's every ten seconds. A drain is not a check and logs nothing. The
+operator alert that reads the record is in
+[the alert runbook](./docs/operations/alerts.md).
 
 The worker's listener binds `127.0.0.1` and nothing else. It is not a service
 anything routes to, and `WORKER_HEALTH_PORT` (default 3001) exists so the

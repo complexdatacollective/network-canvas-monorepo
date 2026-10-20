@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   type Codebook,
+  type LocalizedString,
   type Variables,
   VariableTypesKeys,
 } from '@codaco/protocol-validation';
 
+import { translationText } from '../../localization/localizedText.ts';
 import { enIntl } from '../../testing/i18n.ts';
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import type { OperandOptionProblem } from '../ruleCodebook.ts';
@@ -15,6 +17,7 @@ import {
   ruleEntityTypeExists,
   ruleEntityTypeOptions,
   ruleOperatorOptions,
+  ruleOperatorSubject,
   ruleVariableChoices,
   ruleVariableDateParameters,
   ruleVariableOptions,
@@ -22,6 +25,8 @@ import {
   ruleVariableType,
 } from '../ruleCodebook.ts';
 import { testCodebook } from './fixtures.ts';
+
+const inEnglish = (label: LocalizedString) => translationText(label, 'en');
 
 const codebook = testCodebook;
 
@@ -46,7 +51,7 @@ describe('the rule variable-type catalogue', () => {
   });
 
   it('offers only the existence operators before an attribute is chosen', () => {
-    expect(ruleOperatorOptions(undefined).map(({ value }) => value)).toEqual([
+    expect(ruleOperatorOptions('exists').map(({ value }) => value)).toEqual([
       'EXISTS',
       'NOT_EXISTS',
     ]);
@@ -121,6 +126,46 @@ describe('an operator a stored rule holds that the list leaves out', () => {
     expect(ruleOperatorOptions('number', 'GREATER_THAN')).toEqual(offered);
     expect(ruleOperatorOptions('number', undefined)).toEqual(offered);
     expect(ruleOperatorOptions('number', 'NOT_AN_OPERATOR')).toEqual(offered);
+  });
+});
+
+describe('the operators an encrypted attribute is offered', () => {
+  const variables = ruleVariables(codebook, 'node', 'person');
+
+  it('asks only whether it is answered, where rules read interview answers', () => {
+    expect(ruleOperatorSubject(variables, 'secret')).toBe('encrypted');
+    expect(ruleOperatorOptions('encrypted').map(({ value }) => value)).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
+    ]);
+  });
+
+  it('compares it like any text attribute where the rule set allows that', () => {
+    expect(
+      ruleOperatorSubject(variables, 'secret', {
+        allowEncryptedAttributes: true,
+      }),
+    ).toBe('text');
+  });
+
+  it('leaves an attribute that is not encrypted to its type', () => {
+    expect(ruleOperatorSubject(variables, 'note')).toBe('text');
+    expect(ruleOperatorSubject(variables, 'age')).toBe('number');
+  });
+
+  it('offers the presence operators for a rule with no attribute it can type', () => {
+    expect(ruleOperatorSubject(variables, undefined)).toBe('exists');
+    expect(ruleOperatorSubject(variables, 'favouriteColour')).toBe('exists');
+  });
+
+  it('keeps a stored comparison on screen, disabled', () => {
+    // The schema refuses every comparison on it, so the stored one has to be
+    // replaced rather than saved back.
+    expect(ruleOperatorOptions('encrypted', 'EXACTLY').at(-1)).toEqual({
+      value: 'EXACTLY',
+      label: 'is exactly (not valid for this attribute)',
+      disabled: true,
+    });
   });
 });
 
@@ -442,14 +487,14 @@ describe('codebook entries that are legal but sparse', () => {
             name: 'Agrees',
             type: 'boolean',
             options: [
-              { label: 'Yes', value: true },
-              { label: 'No', value: false },
+              { label: { en: 'Yes' }, value: true },
+              { label: { en: 'No' }, value: false },
             ],
           },
           rank: {
             name: 'Rank',
             type: 'ordinal',
-            options: [{ label: '', value: 1 }],
+            options: [{ label: { en: '' }, value: 1 }],
           },
         },
       },
@@ -485,12 +530,12 @@ describe('codebook entries that are legal but sparse', () => {
     // control prints for true and false — comparing the attribute against the
     // word "Yes" is a rule that matches nothing.
     const variables = ruleVariables(sparseCodebook, 'node', 'blank');
-    expect(ruleVariableChoices(variables, 'agrees')).toBeUndefined();
+    expect(ruleVariableChoices(variables, 'agrees', inEnglish)).toBeUndefined();
   });
 
   it('names an authored option by its value when it has no label', () => {
     const variables = ruleVariables(sparseCodebook, 'node', 'blank');
-    expect(ruleVariableChoices(variables, 'rank')).toEqual([
+    expect(ruleVariableChoices(variables, 'rank', inEnglish)).toEqual([
       { value: 1, label: '1' },
     ]);
   });
@@ -515,6 +560,8 @@ describe('reading the codebook for a rule', () => {
       { value: 'note', label: 'Note', type: 'text', usable: true },
       { value: 'born', label: 'Born', type: 'datetime', usable: true },
       { value: 'home', label: 'Home', type: 'layout', usable: false },
+      // Whether it was answered can still be asked of an encrypted attribute.
+      { value: 'secret', label: 'Secret', type: 'text', usable: true },
     ]);
   });
 
@@ -540,11 +587,11 @@ describe('reading the codebook for a rule', () => {
 
   it('keeps option values in the type the codebook authored them with', () => {
     const variables = ruleVariables(codebook, 'node', 'person');
-    expect(ruleVariableChoices(variables, 'mood')).toEqual([
+    expect(ruleVariableChoices(variables, 'mood', inEnglish)).toEqual([
       { value: 'happy', label: 'Happy' },
       { value: 'sad', label: 'Sad' },
     ]);
-    expect(ruleVariableChoices(variables, 'age')).toBeUndefined();
+    expect(ruleVariableChoices(variables, 'age', inEnglish)).toBeUndefined();
   });
 
   it('lists the entity types a rule may be pointed at', () => {
@@ -616,8 +663,8 @@ describe('an operand naming an option the attribute no longer offers', () => {
               name: 'Strength',
               type: 'ordinal',
               options: [
-                { label: 'Weak', value: 1 },
-                { label: 'Strong', value: 2 },
+                { label: { en: 'Weak' }, value: 1 },
+                { label: { en: 'Strong' }, value: 2 },
               ],
             },
           },

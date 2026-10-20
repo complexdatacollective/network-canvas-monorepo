@@ -1,4 +1,6 @@
 import {
+  CloudCheck,
+  CloudOff,
   FlaskConical,
   Info,
   LineChart,
@@ -32,6 +34,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
 import { GenerationFailureDescription } from '~/components/GenerationFailureDescription';
 import { HomeModal } from '~/components/HomeModal';
+import { legacyOfflineMessages } from '~/components/legacyProtocolMessages';
 import {
   ManageAuthenticator,
   ResetDeviceRow,
@@ -54,6 +57,8 @@ import {
 } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSettings } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import { LEGACY_INTERVIEWER_MAJOR } from '~/lib/legacyInterviewer';
+import { useLegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 import {
   estimateStorage,
   formatBytes,
@@ -535,6 +540,7 @@ export function SettingsDialog({
     return () => media.removeEventListener('change', update);
   }, []);
   const [section, setSection] = useState<Section>('about');
+  const legacyOffline = useLegacyInterviewerOffline();
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [storage, setStorage] = useState<StorageEstimate>({
     usage: null,
@@ -904,6 +910,41 @@ export function SettingsDialog({
                         {storagePersisted
                           ? intl.formatMessage(messages.persisted)
                           : intl.formatMessage(messages.bestEffort)}
+                      </span>
+                    }
+                  />
+                ) : null}
+                {legacyOffline === 'ready' || legacyOffline === 'not-ready' ? (
+                  <SettingsRow
+                    title={intl.formatMessage(
+                      legacyOfflineMessages.settingTitle,
+                      { version: LEGACY_INTERVIEWER_MAJOR },
+                    )}
+                    desc={intl.formatMessage(
+                      legacyOffline === 'ready'
+                        ? legacyOfflineMessages.readyHelp
+                        : legacyOfflineMessages.notReadyHelp,
+                      { version: LEGACY_INTERVIEWER_MAJOR },
+                    )}
+                    control={
+                      <span
+                        data-testid="legacy-offline-setting"
+                        className={`inline-flex items-center gap-1.5 text-xs ${
+                          legacyOffline === 'ready'
+                            ? 'text-text/60'
+                            : 'text-warning'
+                        }`}
+                      >
+                        {legacyOffline === 'ready' ? (
+                          <CloudCheck className="size-3.5" aria-hidden />
+                        ) : (
+                          <CloudOff className="size-3.5" aria-hidden />
+                        )}
+                        {intl.formatMessage(
+                          legacyOffline === 'ready'
+                            ? legacyOfflineMessages.ready
+                            : legacyOfflineMessages.notReady,
+                        )}
                       </span>
                     }
                   />

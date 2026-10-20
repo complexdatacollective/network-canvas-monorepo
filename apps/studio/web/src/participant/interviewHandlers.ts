@@ -1,19 +1,25 @@
-import { Redacted } from 'effect';
+import { Data, Redacted } from 'effect';
 
 import {
   createDebouncedSyncHandler,
   type FinishHandler,
-  type SessionPayload,
+  type SessionFinish,
+  type SessionSnapshot,
   type SyncHandler,
 } from '@codaco/interview/contract';
+import type { FaultCode } from '@codaco/studio-contract/schema/browser-logs';
 import { SessionOutOfDate } from '@codaco/studio-contract/schema/participant';
 
-import { retryAfterSeconds } from '../runtime/errors.ts';
+import { faultCodeOf, retryAfterSeconds } from '../runtime/errors.ts';
 import {
   participantCall,
   participantUnloadingSync,
 } from '../runtime/participantRpc.ts';
 import { noticeFor, type ParticipantNoticeKind } from './ParticipantNotice.tsx';
+
+export class SaveNotApplied extends Data.TaggedError('SaveNotApplied')<{
+  readonly attempts: number;
+}> {}
 
 const SYNC_WAIT_MS = 3000;
 const RATE_LIMIT_ATTEMPTS = 3;
@@ -33,11 +39,29 @@ type Args = {
    * revision: `pageRevisionBase()` in a browser.
    */
   readonly numberSavesFrom?: bigint;
-  readonly session: SessionPayload;
+  readonly session: SessionSnapshot;
   readonly stageIds: readonly string[];
   readonly getCurrentStep: () => number;
   readonly onNotice: (kind: ParticipantNoticeKind) => void;
+  readonly onSaveOutcome?: (outcome: SaveOutcome) => void;
 };
+
+export type SaveOutcome =
+  | { readonly kind: 'applied'; readonly stageIndex: number }
+  | {
+      readonly kind: 'retried';
+      readonly attempts: number;
+      readonly stageIndex: number;
+    }
+  | {
+      readonly kind: 'failed';
+      readonly code: FaultCode;
+      readonly error: unknown;
+      readonly attempts: number;
+      readonly stageIndex: number;
+    };
+
+type SaveProgress = { attempts: number; stageIndex: number };
 
 type ParticipantHandlers = {
   readonly onSync: SyncHandler;
@@ -58,6 +82,7 @@ export function createParticipantHandlers({
   stageIds,
   getCurrentStep,
   onNotice,
+  onSaveOutcome,
 }: Args): ParticipantHandlers {
   // The revision the server holds as far as this page knows: the stored one,
   // then each save it applied. Finishing presents it, since the server
@@ -84,7 +109,7 @@ export function createParticipantHandlers({
     return kind === 'rateLimited' ? undefined : kind;
   };
 
-  const payloadFor = (snapshot: SessionPayload): SyncPayload => {
+  const payloadFor = (snapshot: SessionSnapshot): SyncPayload => {
     issued += 1n;
     const stageIndex = getCurrentStep();
     return {
@@ -97,10 +122,18 @@ export function createParticipantHandlers({
     };
   };
 
+  type Saved = {
+    readonly stored: bigint;
+    readonly applied: boolean;
+  };
+
   const deliver = async (
     payload: SyncPayload,
-  ): Promise<{ readonly stored: bigint; readonly applied: boolean }> => {
+    progress: SaveProgress,
+  ): Promise<Saved> => {
     for (let attempt = 1; ; attempt += 1) {
+      progress.attempts += 1;
+      progress.stageIndex = payload.stageIndex;
       try {
         const result = await participantCall('participant.sync', payload);
         return { stored: BigInt(result.revision), applied: result.applied };
@@ -120,9 +153,12 @@ export function createParticipantHandlers({
     }
   };
 
-  type Saved = { readonly stored: bigint; readonly applied: boolean };
-
-  const deliverUnloading = async (payload: SyncPayload): Promise<Saved> => {
+  const deliverUnloading = async (
+    payload: SyncPayload,
+    progress: SaveProgress,
+  ): Promise<Saved> => {
+    progress.attempts += 1;
+    progress.stageIndex = payload.stageIndex;
     const result = await participantUnloadingSync(payload);
     return { stored: BigInt(result.revision), applied: result.applied };
   };
@@ -134,33 +170,54 @@ export function createParticipantHandlers({
   // holds. Whoever wrote what was in the way, the server ends with this page's
   // newest answers; when it was this page's own, the resend repeats them.
   const send = async (
-    snapshot: SessionPayload,
+    snapshot: SessionSnapshot,
     { unloading }: { readonly unloading: boolean },
-  ): Promise<void> => {
-    let next = snapshot;
-    for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
-      const payload = payloadFor(next);
-      const { stored, applied } = await (unloading
-        ? deliverUnloading(payload)
-        : deliver(payload));
-      if (applied) {
-        held = BigInt(payload.revision);
-        savedStep = payload.stageIndex;
-        return;
+  ): Promise<SaveOutcome> => {
+    const progress: SaveProgress = { attempts: 0, stageIndex: 0 };
+    const failed = (error: unknown): SaveOutcome => ({
+      kind: 'failed',
+      code: faultCodeOf(error),
+      error,
+      ...progress,
+    });
+    try {
+      let next = snapshot;
+      for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
+        const payload = payloadFor(next);
+        progress.stageIndex = payload.stageIndex;
+        const { stored, applied } = await (unloading
+          ? deliverUnloading(payload, progress)
+          : deliver(payload, progress));
+        if (applied) {
+          held = BigInt(payload.revision);
+          savedStep = payload.stageIndex;
+          return progress.attempts > 1
+            ? { kind: 'retried', ...progress }
+            : { kind: 'applied', stageIndex: progress.stageIndex };
+        }
+        if (stored > issued) issued = stored;
+        next = offered;
       }
-      if (stored > issued) issued = stored;
-      next = offered;
+      return failed(new SaveNotApplied({ attempts: progress.attempts }));
+    } catch (error) {
+      return failed(error);
     }
-    throw new Error(
-      `the server kept another save at revision ${String(issued)} through ${String(RESEND_ATTEMPTS)} attempts`,
-    );
+  };
+
+  const save = async (
+    snapshot: SessionSnapshot,
+    options: { readonly unloading: boolean },
+  ): Promise<void> => {
+    const outcome = await send(snapshot, options);
+    onSaveOutcome?.(outcome);
+    if (outcome.kind === 'failed') throw outcome.error;
   };
 
   const debouncedSync = createDebouncedSyncHandler(
     async (_id, snapshot, { unloading }) => {
       if (stopped) return;
       try {
-        await send(snapshot, { unloading });
+        await save(snapshot, { unloading });
       } catch (error) {
         const kind = noticeOf(error);
         if (kind !== undefined) stop(kind);
@@ -175,18 +232,24 @@ export function createParticipantHandlers({
     return debouncedSync(id, snapshot, options);
   };
 
-  const finish = (signal: AbortSignal) =>
+  const finish = ({ stageId, outcome }: SessionFinish, signal: AbortSignal) =>
     participantCall(
       'participant.finish',
-      { holderEpoch, revision: String(held) },
+      { holderEpoch, revision: String(held), stageId, outcome },
       signal,
     );
 
   // The finish dialog cannot be cancelled while this runs, but tearing it down
   // (the interview unmounting) aborts `signal`: the request in flight is
-  // abandoned, and nothing after it runs, so an abandoned finish never shows
-  // the finished notice or finishes again after a resend.
-  const onFinish: FinishHandler = async (_id, signal) => {
+  // abandoned, and nothing after it runs, so an abandoned finish never counts
+  // as finished or finishes again after a resend.
+  //
+  // A finish resolves without a notice: the Shell then shows the interview's
+  // completed state in place, with the finish stage's own closing text. That
+  // includes a finish the server already holds (an earlier attempt whose
+  // answer was lost), since the interview is finished either way. Only a
+  // refusal replaces the interview with a notice.
+  const onFinish: FinishHandler = async (_id, sessionFinish, signal) => {
     try {
       // The runtime flushes only answers it holds unsaved, so a stage save
       // still waiting out the debounce (reaching the finish stage changes no
@@ -196,21 +259,25 @@ export function createParticipantHandlers({
         signal.throwIfAborted();
       }
       try {
-        await finish(signal);
+        await finish(sessionFinish, signal);
       } catch (error) {
         if (!(error instanceof SessionOutOfDate)) throw error;
-        await send(offered, ORDINARY);
+        await save(offered, ORDINARY);
         signal.throwIfAborted();
-        await finish(signal);
+        await finish(sessionFinish, signal);
       }
     } catch (error) {
       const kind = noticeOf(error);
+      if (kind === 'finished') {
+        stopped = true;
+        return;
+      }
       if (kind === undefined) throw error;
       stop(kind);
-      if (kind === 'finished') return;
       throw error;
     }
-    stop('finished');
+    // Nothing more is saved: the session is finished.
+    stopped = true;
   };
 
   const saveStep = (): void => {

@@ -1,7 +1,17 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { mockFindFirst } = vi.hoisted(() => ({
+  mockFindFirst: vi.fn(),
+}));
+
 // Mock dependencies before importing the handler
+vi.mock('server-only', () => ({}));
+
+vi.mock('~/lib/db', () => ({
+  prisma: { interview: { findFirst: mockFindFirst } },
+}));
+
 vi.mock('~/actions/interviews', () => ({
   createInterview: vi.fn(),
 }));
@@ -58,6 +68,7 @@ describe('Onboard Route Handler', () => {
 
     // Default mock implementations
     mockGetAppSetting.mockResolvedValue(false);
+    mockFindFirst.mockResolvedValue(null);
     mockCookies.mockResolvedValue({
       get: vi.fn().mockReturnValue(undefined),
       has: vi.fn().mockReturnValue(false),
@@ -93,6 +104,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -112,6 +124,29 @@ describe('Onboard Route Handler', () => {
       );
     });
 
+    it('sends an interview of a schema 8 protocol to the schema 8 interview', async () => {
+      const protocolId = 'schema-8-protocol';
+      const createdInterviewId = 'interview-v8';
+
+      mockCreateInterview.mockResolvedValue({
+        createdInterviewId,
+        error: null,
+        errorType: null,
+        schemaVersion: 8,
+      });
+
+      const request = new NextRequest(
+        `http://localhost:3000/onboard/${protocolId}`,
+      );
+      const params = Promise.resolve({ protocolId });
+
+      const response = await GET(request, { params });
+
+      expect(response.headers.get('location')).toBe(
+        `http://localhost:3000/v8/interview/${createdInterviewId}`,
+      );
+    });
+
     it('should pass undefined when no participantIdentifier is provided', async () => {
       const protocolId = 'test-protocol-id';
       const createdInterviewId = 'interview-456';
@@ -120,6 +155,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -135,13 +171,17 @@ describe('Onboard Route Handler', () => {
       });
     });
 
-    it('should redirect to finished page when limitInterviews is enabled and cookie exists', async () => {
+    it('should redirect to the finished interview the cookie names when limitInterviews is enabled', async () => {
       const protocolId = 'test-protocol-id';
+      const getCookie = vi
+        .fn()
+        .mockReturnValue({ value: 'finished-interview' });
 
       mockGetAppSetting.mockResolvedValue(true);
       mockCookies.mockResolvedValue({
-        get: vi.fn().mockReturnValue({ value: 'completed' }),
+        get: getCookie,
       } as unknown as Awaited<ReturnType<typeof cookies>>);
+      mockFindFirst.mockResolvedValue({ id: 'finished-interview' });
 
       const request = new NextRequest(
         `http://localhost:3000/onboard/${protocolId}`,
@@ -150,10 +190,92 @@ describe('Onboard Route Handler', () => {
 
       const response = await GET(request, { params });
 
+      expect(getCookie).toHaveBeenCalledWith(protocolId);
+      // Only a finished interview of this same protocol counts.
+      expect(mockFindFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'finished-interview',
+          protocolId,
+          finishTime: { not: null },
+        },
+        select: { id: true },
+      });
       expect(mockCreateInterview).not.toHaveBeenCalled();
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe(
-        'http://localhost:3000/interview/finished',
+        'http://localhost:3000/interview/finished-interview',
+      );
+      expect(response.headers.get('Cache-Control')).toBe(
+        'no-cache, no-store, must-revalidate',
+      );
+    });
+
+    it.each([
+      ['the legacy "completed" value', 'completed'],
+      ['an id that names no finished interview of the protocol', 'other-id'],
+    ])(
+      'should start a new interview when the cookie holds %s',
+      async (_case, value) => {
+        const protocolId = 'test-protocol-id';
+        const createdInterviewId = 'interview-new';
+
+        mockGetAppSetting.mockResolvedValue(true);
+        mockCookies.mockResolvedValue({
+          get: vi.fn().mockReturnValue({ value }),
+        } as unknown as Awaited<ReturnType<typeof cookies>>);
+        mockFindFirst.mockResolvedValue(null);
+        mockCreateInterview.mockResolvedValue({
+          createdInterviewId,
+          error: null,
+          errorType: null,
+          schemaVersion: 9,
+        });
+
+        const request = new NextRequest(
+          `http://localhost:3000/onboard/${protocolId}`,
+        );
+        const params = Promise.resolve({ protocolId });
+
+        const response = await GET(request, { params });
+
+        expect(mockFindFirst).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ id: value, protocolId }),
+          }),
+        );
+        expect(mockCreateInterview).toHaveBeenCalled();
+        expect(response.headers.get('location')).toBe(
+          `http://localhost:3000/interview/${createdInterviewId}`,
+        );
+      },
+    );
+
+    it('should ignore the cookie when limitInterviews is disabled', async () => {
+      const protocolId = 'test-protocol-id';
+      const createdInterviewId = 'interview-unlimited';
+
+      mockGetAppSetting.mockResolvedValue(false);
+      mockCookies.mockResolvedValue({
+        get: vi.fn().mockReturnValue({ value: 'finished-interview' }),
+      } as unknown as Awaited<ReturnType<typeof cookies>>);
+      mockFindFirst.mockResolvedValue({ id: 'finished-interview' });
+      mockCreateInterview.mockResolvedValue({
+        createdInterviewId,
+        error: null,
+        errorType: null,
+        schemaVersion: 9,
+      });
+
+      const request = new NextRequest(
+        `http://localhost:3000/onboard/${protocolId}`,
+      );
+      const params = Promise.resolve({ protocolId });
+
+      const response = await GET(request, { params });
+
+      expect(mockFindFirst).not.toHaveBeenCalled();
+      expect(response.headers.get('location')).toBe(
+        `http://localhost:3000/interview/${createdInterviewId}`,
       );
     });
 
@@ -169,6 +291,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -266,6 +389,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -300,6 +424,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -385,8 +510,9 @@ describe('Onboard Route Handler', () => {
 
       mockGetAppSetting.mockResolvedValue(true);
       mockCookies.mockResolvedValue({
-        get: vi.fn().mockReturnValue({ value: 'completed' }),
+        get: vi.fn().mockReturnValue({ value: 'finished-interview' }),
       } as unknown as Awaited<ReturnType<typeof cookies>>);
+      mockFindFirst.mockResolvedValue({ id: 'finished-interview' });
 
       const request = new NextRequest(
         `http://localhost:3000/onboard/${protocolId}`,
@@ -404,7 +530,7 @@ describe('Onboard Route Handler', () => {
 
       expect(mockCreateInterview).not.toHaveBeenCalled();
       expect(response.headers.get('location')).toBe(
-        'http://localhost:3000/interview/finished',
+        'http://localhost:3000/interview/finished-interview',
       );
     });
   });
@@ -418,6 +544,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -445,6 +572,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(

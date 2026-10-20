@@ -5,6 +5,11 @@ import {
   type EntityIdPseudonymiser,
   pseudonymiseEntityIds,
 } from './entityIds';
+import type {
+  InterviewAnalyticsEventName,
+  InterviewAnalyticsEventProperties,
+  InterviewExceptionProperties,
+} from './events';
 import type { SuperProperties } from './PROPERTY_KEYS';
 
 /**
@@ -19,13 +24,31 @@ export type AnalyticsClient = Pick<
   'capture' | 'captureException' | 'register'
 >;
 
-export type EventProps = {
+type EventProps = {
   [key: string]: unknown;
 };
 
+type TrackArguments<Name extends InterviewAnalyticsEventName> = [
+  keyof InterviewAnalyticsEventProperties<Name>,
+] extends [never]
+  ? [props?: Record<string, never>]
+  : Record<string, never> extends InterviewAnalyticsEventProperties<Name>
+    ? [props?: InterviewAnalyticsEventProperties<Name>]
+    : [props: InterviewAnalyticsEventProperties<Name>];
+
+type Track = <Name extends InterviewAnalyticsEventName>(
+  eventName: Name,
+  ...props: TrackArguments<Name>
+) => void;
+
+export type CaptureException = (
+  error: Error,
+  props: InterviewExceptionProperties,
+) => void;
+
 export type Tracker = {
-  track: (eventName: string, props?: EventProps) => void;
-  captureException: (error: Error, props?: EventProps) => void;
+  track: Track;
+  captureException: CaptureException;
 };
 
 type CreateTrackerArgs = {
@@ -59,7 +82,7 @@ export function createTracker({
   });
 
   return {
-    track: (eventName, props) => {
+    track: (eventName, ...[props]) => {
       try {
         client.capture(eventName, merge(props));
       } catch {

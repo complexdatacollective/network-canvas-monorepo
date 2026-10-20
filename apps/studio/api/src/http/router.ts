@@ -5,6 +5,7 @@ import { Environment } from '../env.ts';
 import { ProtocolBuilderRoutes } from '../protocol-builder/rpc.ts';
 import { ApiV1Routes } from './api-v1.ts';
 import { AuthMount } from './auth-mount.ts';
+import { BrowserLogRoutes } from './browser-logs.ts';
 import { type HealthChecks, HealthRoutes } from './health.ts';
 import { ClientAddressLive } from './middleware/client-address.ts';
 import { HttpSpanLive } from './middleware/http-span.ts';
@@ -41,7 +42,10 @@ export const Routes = (studio: Studio, checks: HealthChecks) =>
       const auth = AuthMount.pipe(Layer.provideMerge(health));
       const apiV1 = ApiV1Routes(studio.rpc).pipe(Layer.provideMerge(auth));
       const storage = StorageRoutes.pipe(Layer.provideMerge(apiV1));
-      const rpc = RpcRoutes(studio.rpc, env).pipe(Layer.provideMerge(storage));
+      const browserLogs = BrowserLogRoutes.pipe(Layer.provideMerge(storage));
+      const rpc = RpcRoutes(studio.rpc, env).pipe(
+        Layer.provideMerge(browserLogs),
+      );
       return ProtocolBuilderRoutes(env).pipe(Layer.provideMerge(rpc));
     }),
   );

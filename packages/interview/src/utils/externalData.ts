@@ -1,6 +1,5 @@
-import { get, includes, toNumber } from 'es-toolkit/compat';
+import { includes, toNumber } from 'es-toolkit/compat';
 
-import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import {
   type Codebook,
   type StageSubject,
@@ -12,6 +11,25 @@ import {
   entityAttributesProperty,
   type NcNode,
 } from '@codaco/shared-consts';
+
+import { asOptionName } from './optionName';
+
+/**
+ * Attribute and variable keys here are researcher-chosen text, so they are read
+ * as own properties only, and never as lodash paths: a key containing a dot or
+ * a bracket is a key, not a path, and `constructor` or `__proto__` must not
+ * resolve to anything on `Object.prototype`.
+ */
+const getOwn = <T>(
+  record: Readonly<Record<string, T>> | undefined,
+  key: string,
+): T | undefined =>
+  record !== undefined && Object.hasOwn(record, key) ? record[key] : undefined;
+
+const getCodebookVariable = (
+  codebookDefinition: ReturnType<typeof getCodebookDefinition>,
+  variableId: string,
+) => getOwn(codebookDefinition?.variables, variableId);
 
 /**
  * Try to determine the type of an attribute based on data across all nodes
@@ -28,10 +46,7 @@ const deriveAttributeTypeFromData = (
   nodeList: NcNode[],
 ) =>
   nodeList.reduce((previousType, node) => {
-    const currentValue = get(
-      node,
-      `[${entityAttributesProperty}][${attributeKey}]`,
-    ) as FieldValue | null;
+    const currentValue = getOwn(node[entityAttributesProperty], attributeKey);
 
     // if the value is null or undefined, defer to the previous type
     if (!currentValue || previousType === VariableTypes.text) {
@@ -78,7 +93,10 @@ const getAttributeTypes = (
         protocolCodebook,
         stageSubject,
       )!;
-      const codebookType = codebookDefinition.variables?.[attributeKey]?.type;
+      const codebookType = getCodebookVariable(
+        codebookDefinition,
+        attributeKey,
+      )?.type;
 
       if (codebookType && includes(VariableTypes, codebookType)) {
         return {
@@ -91,7 +109,10 @@ const getAttributeTypes = (
       if (attributeKey.includes('_')) {
         const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
         const option = attributeKey.substring(attributeKey.indexOf('_'));
-        const optionCodebookType = codebookDefinition.variables?.[uuid]?.type;
+        const optionCodebookType = getCodebookVariable(
+          codebookDefinition,
+          uuid,
+        )?.type;
         if (optionCodebookType && includes(VariableTypes, optionCodebookType)) {
           if (option === '_x' || option === '_y') {
             return {
@@ -146,13 +167,78 @@ const getUniqueAttributeKeys = (
     );
     const variables = Object.keys(node[entityAttributesProperty]);
     const nonCodebookVariables = variables.filter(
-      (attributeKey) => !get(codebookDefinition, `variables[${attributeKey}]`),
+      (attributeKey) => !getCodebookVariable(codebookDefinition, attributeKey),
     );
     const novelVariables = nonCodebookVariables.filter(
       (attributeKey) => !attributeKeys.includes(attributeKey),
     );
     return [...attributeKeys, ...novelVariables];
   }, []);
+
+type AttributeValue = NcNode[EntityAttributesProperty][string];
+
+/**
+ * The codebook's own option value for option text found in a roster: a
+ * `<variable>_<option>` column header, or a value in a categorical or ordinal
+ * cell. A header only has the option as text, so reading it back through
+ * JSON.parse would turn an option named `null` or `"x"` into something else;
+ * the codebook knows whether the value is a string, number or boolean.
+ * Compared in NFC so a header spelled decomposed still finds the option, and
+ * then as an option name, so text an option was renamed from still finds it.
+ * A number or boolean is matched as its text when no option has that value.
+ * Text that names no option is kept as it is.
+ */
+const resolveCategoricalOption = (
+  variable: ReturnType<typeof getCodebookVariable>,
+  optionText: unknown,
+) => {
+  if (
+    (variable?.type !== 'categorical' && variable?.type !== 'ordinal') ||
+    (typeof optionText !== 'string' &&
+      typeof optionText !== 'number' &&
+      typeof optionText !== 'boolean')
+  ) {
+    return optionText;
+  }
+  if (variable.options.some((option) => option.value === optionText)) {
+    return optionText;
+  }
+
+  // A number or boolean a cell parsed to is compared as its text: the
+  // migration merges `1` into an earlier `"1"`, which a roster may still write
+  // as `[1]`, and turns a legacy `true` option into `"true"`.
+  const target = String(optionText).normalize('NFC');
+  const exact = variable.options.find(
+    (option) => String(option.value).normalize('NFC') === target,
+  );
+  if (exact) return exact.value;
+
+  const name = asOptionName(String(optionText));
+  return (
+    variable.options.find((option) => String(option.value) === name)?.value ??
+    optionText
+  );
+};
+
+/**
+ * A roster answer with each option it names read as the codebook's own
+ * (`resolveCategoricalOption`). A list naming two options the migration
+ * merged names the merged option once.
+ */
+const resolveOptionAnswer = (
+  variable: ReturnType<typeof getCodebookVariable>,
+  value: unknown,
+): AttributeValue => {
+  if (
+    !Array.isArray(value) ||
+    (variable?.type !== 'categorical' && variable?.type !== 'ordinal')
+  ) {
+    return resolveCategoricalOption(variable, value) as AttributeValue;
+  }
+  return [
+    ...new Set(value.map((item) => resolveCategoricalOption(variable, item))),
+  ] as AttributeValue;
+};
 
 const getNodeListUsingTypes = (
   nodeList: NcNode[],
@@ -177,10 +263,16 @@ const getNodeListUsingTypes = (
           return consolidatedAttributes;
         }
 
-        let codebookType = codebookDefinition?.variables?.[attributeKey]?.type;
+        let codebookType = getCodebookVariable(
+          codebookDefinition,
+          attributeKey,
+        )?.type;
 
         if (!Object.values(VariableTypes).includes(codebookType!)) {
-          codebookType = derivedAttributeTypes[attributeKey] as VariableType;
+          codebookType = getOwn(
+            derivedAttributeTypes,
+            attributeKey,
+          ) as VariableType;
         }
 
         switch (codebookType) {
@@ -201,22 +293,19 @@ const getNodeListUsingTypes = (
           case VariableTypes.categorical:
           case VariableTypes.ordinal:
           case VariableTypes.layout: {
+            let value: unknown;
             try {
-              const value = JSON.parse(attributeValue as string) as {
-                x: number;
-                y: number;
-              };
-
-              return {
-                ...consolidatedAttributes,
-                [attributeKey]: value,
-              };
+              value = JSON.parse(attributeValue as string);
             } catch {
-              return {
-                ...consolidatedAttributes,
-                [attributeKey]: attributeValue,
-              };
+              value = attributeValue;
             }
+            return {
+              ...consolidatedAttributes,
+              [attributeKey]: resolveOptionAnswer(
+                getCodebookVariable(codebookDefinition, attributeKey),
+                value,
+              ),
+            };
           }
           // Handle column names with _x and _y suffixes, indicating this is a file we created
           case `${VariableTypes.layout}_x`: {
@@ -244,26 +333,18 @@ const getNodeListUsingTypes = (
             // eslint-disable-next-line @typescript-eslint/no-base-to-string
             if (String(attributeValue).toLowerCase() === 'true') {
               const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
-              const option = attributeKey.substring(
-                attributeKey.indexOf('_') + 1,
+              const option = resolveCategoricalOption(
+                getCodebookVariable(codebookDefinition, uuid),
+                attributeKey.substring(attributeKey.indexOf('_') + 1),
               );
-              const previousOptions =
-                (consolidatedAttributes[uuid] as (string | number)[]) || [];
-              try {
-                const parsedOption = JSON.parse(option);
-                return {
-                  ...consolidatedAttributes,
-                  [uuid]: [...previousOptions, parsedOption] as (
-                    | string
-                    | number
-                  )[],
-                };
-              } catch {
-                return {
-                  ...consolidatedAttributes,
-                  [uuid]: [...previousOptions, option] as (string | number)[],
-                };
-              }
+              const previous = getOwn(consolidatedAttributes, uuid);
+              const chosen: unknown[] = Array.isArray(previous) ? previous : [];
+              return {
+                ...consolidatedAttributes,
+                [uuid]: (chosen.includes(option)
+                  ? chosen
+                  : [...chosen, option]) as AttributeValue,
+              };
             }
             return consolidatedAttributes;
           }
@@ -326,5 +407,35 @@ export const getVariableTypeReplacements = (
   if (fileType === 'csv') {
     return withTypeReplacement(uuidData, protocolCodebook, stageSubject);
   }
-  return uuidData;
+  return withOptionValuesResolved(uuidData, protocolCodebook, stageSubject);
+};
+
+/**
+ * A JSON roster's answers are already typed, so only its categorical and
+ * ordinal answers are read again, against the codebook's options
+ * (`resolveCategoricalOption`).
+ */
+const withOptionValuesResolved = (
+  nodeList: NcNode[],
+  protocolCodebook: Codebook,
+  stageSubject: StageSubject,
+) => {
+  const codebookDefinition = getCodebookDefinition(
+    protocolCodebook,
+    stageSubject,
+  );
+  return nodeList.map((node) => {
+    const attributes = Object.fromEntries(
+      Object.entries(node[entityAttributesProperty]).map(([key, value]) => {
+        return [
+          key,
+          resolveOptionAnswer(
+            getCodebookVariable(codebookDefinition, key),
+            value,
+          ),
+        ];
+      }),
+    );
+    return { ...node, [entityAttributesProperty]: attributes };
+  });
 };

@@ -11,6 +11,7 @@ import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
 import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
 import { clientSessionId } from '../lib/clientSession.ts';
+import { observedWebSocketConstructor } from './hostFaults.ts';
 
 /**
  * The tab names itself on the query string because a browser cannot put a
@@ -38,7 +39,7 @@ export class HostClient extends Context.Service<
       RpcClient.layerProtocolSocket({ retryTransientErrors: false }),
     ),
     Layer.provide(Socket.layerWebSocket(Effect.sync(hostSocketUrl))),
-    Layer.provide(Socket.layerWebSocketConstructorGlobal),
+    Layer.provide(observedWebSocketConstructor()),
     // The default 16 MiB would refuse an asset the server stores, and a
     // refused frame poisons the connection rather than closing it.
     Layer.provide(

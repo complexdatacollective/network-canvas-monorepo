@@ -22,6 +22,7 @@ import {
   readiness,
   schemaCheckOn,
 } from '../http/health.ts';
+import { collectLeveledLogs } from '../platform/__tests__/support/logs.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { freePort } from './support/entrypoint.ts';
 import { committedMigrations } from './support/migrations.ts';
@@ -284,6 +285,84 @@ describe('a draining web process', () => {
     } finally {
       await dispose();
       await Effect.runPromise(Scope.close(scope, Exit.void));
+    }
+  });
+});
+
+describe('a readiness transition', () => {
+  it('is logged once when readiness starts failing, and once when it recovers', async () => {
+    let healthy = true;
+    const logs = collectLeveledLogs();
+    const { handler, dispose } = HttpRouter.toWebHandler(
+      HealthRoutes({
+        db: Effect.suspend(() =>
+          healthy
+            ? Effect.succeed('ok' as const)
+            : Effect.fail(new Error('connect ECONNREFUSED')),
+        ),
+        limiter: Effect.succeed('degraded'),
+      }).pipe(
+        Layer.provide(HttpServer.layerServices),
+        Layer.provideMerge(logs.layer),
+      ),
+      { disableLogger: true },
+    );
+    const readyz = async () =>
+      (await handler(new Request(new URL('/readyz', 'http://studio.test'))))
+        .status;
+    const transitions = () =>
+      logs.records
+        .filter((record) => record.message.startsWith('readiness '))
+        .map(({ level, message, annotations }) => ({
+          level,
+          message,
+          alert: annotations.alert,
+          failing_checks: annotations.failing_checks,
+        }));
+    try {
+      expect(await readyz()).toBe(200);
+      expect(transitions()).toEqual([]);
+
+      healthy = false;
+      expect(await readyz()).toBe(503);
+      expect(await readyz()).toBe(503);
+      expect(await readyz()).toBe(503);
+      expect(transitions()).toEqual([
+        {
+          level: 'Error',
+          message: 'readiness is failing',
+          alert: 'readiness_failing',
+          failing_checks: 'db',
+        },
+      ]);
+
+      healthy = true;
+      expect(await readyz()).toBe(200);
+      expect(await readyz()).toBe(200);
+      healthy = false;
+      expect(await readyz()).toBe(503);
+      expect(transitions()).toEqual([
+        {
+          level: 'Error',
+          message: 'readiness is failing',
+          alert: 'readiness_failing',
+          failing_checks: 'db',
+        },
+        {
+          level: 'Info',
+          message: 'readiness has recovered',
+          alert: undefined,
+          failing_checks: undefined,
+        },
+        {
+          level: 'Error',
+          message: 'readiness is failing',
+          alert: 'readiness_failing',
+          failing_checks: 'db',
+        },
+      ]);
+    } finally {
+      await dispose();
     }
   });
 });

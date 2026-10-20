@@ -18,12 +18,12 @@ export const interviewLocales = defineAppLocales([
 export type RequestedLocale = string | readonly string[] | null;
 
 /** No browser or storage access: hosts supply their preference at the boundary. */
-export function negotiateInterviewLocale(
+function negotiateInterviewLocale(
   requestedLocale?: RequestedLocale,
   preference?: string | null,
 ) {
   return resolveAppLocale({
-    stored: preference,
+    stored: preference ?? null,
     requested:
       typeof requestedLocale === 'string'
         ? [requestedLocale]
@@ -33,6 +33,10 @@ export function negotiateInterviewLocale(
   });
 }
 
+/**
+ * `preference` is the participant's stated protocol language. It decides only
+ * when the interface has that language; otherwise the requested languages do.
+ */
 export function resolveInterviewLocale(
   requestedLocale?: RequestedLocale,
   preference?: string | null,

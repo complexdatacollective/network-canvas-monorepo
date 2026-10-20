@@ -1,0 +1,130 @@
+import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
+import ProtocolSchemaV8 from '../../8/schema.ts';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const definitionsIn = (record: unknown): Record<string, unknown>[] =>
+  isRecord(record) ? Object.values(record).filter(isRecord) : [];
+
+/** Every node and edge type definition in a codebook. */
+export const codebookTypes = (protocol: unknown): Record<string, unknown>[] => {
+  const codebook = isRecord(protocol) ? protocol.codebook : undefined;
+  if (!isRecord(codebook)) return [];
+  return [...definitionsIn(codebook.node), ...definitionsIn(codebook.edge)];
+};
+
+/** Every attribute definition in a codebook. */
+export const codebookVariables = (
+  protocol: unknown,
+): Record<string, unknown>[] => {
+  const codebook = isRecord(protocol) ? protocol.codebook : undefined;
+  if (!isRecord(codebook)) return [];
+  const ego = isRecord(codebook.ego) ? codebook.ego : {};
+  return [
+    ...codebookTypes(protocol).flatMap((type) => definitionsIn(type.variables)),
+    ...definitionsIn(ego.variables),
+  ];
+};
+
+// A schema 8 Narrative preset named each highlighted attribute, and each edge
+// type its legend showed, by its id.
+const legendIds = (stage: unknown) => {
+  if (!isRecord(stage) || !Array.isArray(stage.presets)) return;
+  for (const preset of stage.presets) {
+    if (!isRecord(preset)) continue;
+    if (Array.isArray(preset.highlight)) {
+      preset.highlight = preset.highlight.map((highlight: unknown) =>
+        isRecord(highlight) ? highlight.variable : highlight,
+      );
+    }
+    if (isRecord(preset.edges) && Array.isArray(preset.edges.display)) {
+      preset.edges.display = preset.edges.display.map((edge: unknown) =>
+        isRecord(edge) ? edge.type : edge,
+      );
+    }
+  }
+};
+
+// A schema 8 Network Composer named each edge type in its toolbar by the
+// type's name, so its edges carried no label.
+const composerEdgeLabels = (stage: unknown) => {
+  if (!isRecord(stage) || stage.type !== 'NetworkComposer') return;
+  if (!Array.isArray(stage.edges)) return;
+  for (const edge of stage.edges) {
+    if (isRecord(edge)) delete edge.label;
+  }
+};
+
+// A schema 8 Anonymisation stage held its heading as a title of its own,
+// apart from the text below it.
+const explanationTitle = (stage: unknown) => {
+  if (!isRecord(stage) || stage.type !== 'Anonymisation') return;
+  const { explanationText } = stage;
+  if (typeof explanationText !== 'string') return;
+  const match = /^# (.+)\n\n([\s\S]*)$/.exec(explanationText);
+  stage.explanationText = match
+    ? { title: match[1], body: match[2] }
+    : { title: '', body: explanationText };
+};
+
+/**
+ * A schema 9 protocol written in English, as schema 8 held it: each localized
+ * string is its English text, put through `rewrite` (text with placeholders,
+ * which schema 8 never held, stays localized), Narrative highlights and
+ * legend edges are ids, Network Composer edges have no label, an Anonymisation
+ * explanation's heading is a title of its own, and the language
+ * chooser and language settings, which schema 8 did not have, are gone.
+ */
+export const asSchema8Protocol = (
+  protocol: unknown,
+  rewrite: (text: string) => string = (text) => text,
+) => {
+  const document: unknown = structuredClone(protocol);
+  if (!isRecord(document) || !Array.isArray(document.stages)) {
+    throw new Error('Not a protocol with stages');
+  }
+  for (const { path, value, arguments: declared } of collectLocalizedStrings(
+    document,
+  )) {
+    // Text with placeholders is new in schema 9, as are the settings that
+    // hold it, so the document keeps it as schema 9 holds it.
+    if (declared !== undefined) continue;
+    const text = value.en;
+    const key = path.at(-1);
+    const parent = path
+      .slice(0, -1)
+      .reduce<unknown>(
+        (node, segment) =>
+          isRecord(node) || Array.isArray(node)
+            ? Reflect.get(node, segment)
+            : undefined,
+        document,
+      );
+    if (
+      text === undefined ||
+      key === undefined ||
+      typeof parent !== 'object' ||
+      parent === null
+    ) {
+      throw new Error(`No English text at ${path.join('.')}`);
+    }
+    Reflect.set(parent, key, rewrite(text));
+  }
+  for (const stage of document.stages) {
+    legendIds(stage);
+    composerEdgeLabels(stage);
+    explanationTitle(stage);
+  }
+  // Schema 8 has neither stage type: the interview chose no language, and
+  // added its own finish screen.
+  document.stages = document.stages.filter(
+    (stage) =>
+      isRecord(stage) &&
+      stage.type !== 'LanguageChooser' &&
+      stage.type !== 'FinishSession',
+  );
+  delete document.localization;
+  document.schemaVersion = 8;
+  return ProtocolSchemaV8.parse(document);
+};

@@ -20,8 +20,16 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          name: { name: 'Name', type: 'text', component: 'Text' },
-          age: { name: 'Age', type: 'number', component: 'Number' },
+          name: {
+            name: 'Name',
+            type: 'text',
+            component: 'Text',
+          },
+          age: {
+            name: 'Age',
+            type: 'number',
+            component: 'Number',
+          },
         },
       },
       place: {
@@ -36,7 +44,10 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
         name: 'Knows',
         color: 'edge-color-seq-1',
         variables: {
-          closeness: { name: 'Closeness', type: 'number' },
+          closeness: {
+            name: 'Closeness',
+            type: 'number',
+          },
         },
       },
     },

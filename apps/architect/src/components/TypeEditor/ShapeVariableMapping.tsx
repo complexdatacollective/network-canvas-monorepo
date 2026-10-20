@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import { createContext, useContext, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -23,6 +24,8 @@ import type {
 } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import { getLocalization } from '~/selectors/protocol';
+import { localizedText } from '~/utils/localizedText';
 
 import type {
   DiscreteShapeMapEntry,
@@ -327,6 +330,7 @@ const ShapeMappingEditor = ({
   defaultShape,
 }: ShapeMappingEditorProps) => {
   const intl = useAppIntl();
+  const localization = useSelector(getLocalization);
   const dynamic = (value ?? EMPTY_MAPPING) as ShapeMappingDraft;
 
   const variableOptions = Object.entries(variables ?? {})
@@ -398,15 +402,16 @@ const ShapeMappingEditor = ({
     value: DiscreteShapeMapEntry['value'];
   }> => {
     if (!selectedVar) return [];
-    if (selectedVar.type === 'boolean') {
-      return (
-        selectedVar.options ?? [
-          { label: intl.formatMessage(messages.true), value: true },
-          { label: intl.formatMessage(messages.false), value: false },
-        ]
-      );
+    if (selectedVar.type === 'boolean' && !selectedVar.options) {
+      return [
+        { label: intl.formatMessage(messages.true), value: true },
+        { label: intl.formatMessage(messages.false), value: false },
+      ];
     }
-    return selectedVar.options ?? [];
+    return (selectedVar.options ?? []).map((option) => ({
+      label: localizedText(option.label, localization),
+      value: option.value,
+    }));
   };
 
   const getShapeForValue = (

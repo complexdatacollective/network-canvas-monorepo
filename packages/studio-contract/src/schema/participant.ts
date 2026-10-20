@@ -1,5 +1,8 @@
 import { Schema } from 'effect';
 
+import { FINISH_OUTCOMES } from '@codaco/protocol-validation';
+
+import { LogLevelName } from './browserLogs.ts';
 import { LinkToken, SessionToken, StudyId } from './ids.ts';
 import { DecimalSequence, NonNegativeInt } from './primitives.ts';
 import { problemFields } from './problem.ts';
@@ -31,7 +34,8 @@ const SecureAttributesMeta = Schema.Record(
   Schema.String,
   Schema.Struct({
     iv: Schema.Array(Schema.Number),
-    salt: Schema.Array(Schema.Number),
+    // Only a value collected under schema 8 carries its own salt.
+    salt: Schema.optional(Schema.Array(Schema.Number)),
   }),
 );
 
@@ -98,6 +102,7 @@ export const SessionPayload = Schema.Struct({
   session: InterviewSession,
   protocol: Schema.RedactedFromValue(Schema.Unknown),
   analytics: Schema.Boolean,
+  logLevel: Schema.NullOr(LogLevelName),
 });
 
 export const MAX_ANALYTICS_EVENTS = 100;
@@ -124,6 +129,38 @@ export const AnalyticsEvent = Schema.Struct({
   ),
   timestamp: Schema.String.check(Schema.isMaxLength(64)),
 });
+
+export const PARTICIPANT_EXCEPTION_EVENT = '$exception';
+
+export const ParticipantEventTimestamp = Schema.String.check(
+  Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, {
+    expected: 'an ISO 8601 UTC timestamp',
+  }),
+  Schema.makeFilter<string>((timestamp) => {
+    const instant = Date.parse(timestamp);
+    return (
+      (Number.isFinite(instant) &&
+        new Date(instant).toISOString() === timestamp) ||
+      'must be a real instant'
+    );
+  }),
+);
+
+const ExceptionTypeName = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(200),
+);
+
+export const ParticipantExceptionList = Schema.Tuple([
+  Schema.Struct({
+    type: ExceptionTypeName,
+    value: ExceptionTypeName,
+    mechanism: Schema.Struct({
+      handled: Schema.Literal(true),
+      synthetic: Schema.Literal(false),
+    }),
+  }),
+]);
 
 export const AnalyticsInput = Schema.Struct({
   events: Schema.Array(AnalyticsEvent).check(
@@ -152,9 +189,22 @@ export const SyncResult = Schema.Struct({
   applied: Schema.Boolean,
 });
 
+/**
+ * How the interview ended, as the finish stage it ended at declares: one of
+ * the protocol schema's finish outcomes.
+ */
+export const FinishOutcome = Schema.Literals(FINISH_OUTCOMES);
+
+/**
+ * Where the interview ended: the finish stage the participant confirmed Finish
+ * on, and the outcome that stage declares. The server records both only when
+ * they are the protocol's own finish stage and its outcome.
+ */
 export const FinishInput = Schema.Struct({
   holderEpoch: NonNegativeInt,
   revision: DecimalSequence,
+  stageId: NetworkIdentifier,
+  outcome: FinishOutcome,
 });
 
 export const FinishResult = Schema.Struct({
@@ -186,6 +236,16 @@ export class SessionOutOfDate extends Schema.TaggedError<SessionOutOfDate>()(
     revision: DecimalSequence,
   },
   { httpApiStatus: 409 },
+) {}
+
+/**
+ * A finish that names a stage other than the protocol's finish stage, or an
+ * outcome other than the one that stage declares. Nothing is recorded.
+ */
+export class FinishUnrecognised extends Schema.TaggedError<FinishUnrecognised>()(
+  'FinishUnrecognised',
+  problemFields('Finish unrecognised', 422),
+  { httpApiStatus: 422 },
 ) {}
 
 export class LinkUnavailable extends Schema.TaggedError<LinkUnavailable>()(

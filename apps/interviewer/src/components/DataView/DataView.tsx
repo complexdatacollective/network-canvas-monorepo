@@ -13,6 +13,7 @@ import type { ProtocolWithCounts } from '~/lib/db/types';
 
 import { DataViewToolbar } from './DataViewToolbar';
 import { ExportDialog } from './ExportDialog';
+import { LegacyInterviewsNotice } from './LegacyInterviewsNotice';
 import { useDataViewColumns } from './useDataViewColumns';
 import { useDataViewUrlState } from './useDataViewUrlState';
 import { useSessionMutations } from './useSessionMutations';
@@ -67,6 +68,10 @@ type DataViewProps = {
   // Bumped by the parent when sessions change outside this view (e.g.
   // synthetic-data generation/deletion in Settings) so the table re-queries.
   refreshKey?: number;
+  // Interviews Interviewer 8 keeps (and exports itself), and how to send the
+  // researcher to them there (null when this build has no Interviewer 8).
+  legacyInterviewCount?: number;
+  onOpenLegacyData?: (() => void) | null;
 };
 
 // Rich-text chunk formatter for the selection banner's messages, at module
@@ -115,12 +120,17 @@ const bannerVariants = {
   exit: { opacity: 0, height: 0, transition: { duration: 0.15 } },
 } as const;
 
-export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
+export function DataView({
+  protocols,
+  onReload,
+  refreshKey,
+  legacyInterviewCount = 0,
+  onOpenLegacyData = null,
+}: DataViewProps) {
   const intl = useAppIntl();
-  // Total interview steps (including the engine's appended finish stage) by
-  // protocol hash, for the progress column's "step X of Y" label. Derived via
-  // getInterviewProgress so the host never hard-codes the +1 for the finish
-  // stage.
+  // Total interview steps by protocol hash, for the progress column's "step X
+  // of Y" label. Derived via getInterviewProgress so the host counts steps the
+  // way the interview does.
   const { protocolTotalSteps, protocolStages } = useMemo(() => {
     const totalSteps = new Map<string, number>();
     const stagesByHash = new Map<
@@ -260,6 +270,13 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
         onExport={() => void handleExport()}
         onDelete={() => void handleDelete()}
       />
+
+      {onOpenLegacyData && legacyInterviewCount > 0 ? (
+        <LegacyInterviewsNotice
+          count={legacyInterviewCount}
+          onOpen={onOpenLegacyData}
+        />
+      ) : null}
 
       <ExportDialog
         flow={exportFlow}

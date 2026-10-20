@@ -43,6 +43,7 @@ import {
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
+import { automaticLocaleMessage } from './automaticLocaleMessage';
 
 const messages = defineMessages({
   heading: {
@@ -62,12 +63,6 @@ const messages = defineMessages({
     defaultMessage: 'Interface language: {current}',
     description:
       'Accessible name of the switcher button; {current} is the chosen language’s name or the automatic wording.',
-  },
-  automaticCurrent: {
-    id: 'frescoUi.localeSwitcher.automaticCurrent',
-    defaultMessage: 'Automatic ({language})',
-    description:
-      'The automatic entry and the switcher button’s accessible name while it is chosen; {language} is the own name of the language the browser resolves to.',
   },
   noResults: {
     id: 'frescoUi.localeSwitcher.noResults',
@@ -271,7 +266,7 @@ export default function LocaleSwitcher({
   const autonymOf = (tag: string) =>
     options.find((entry) => entry.locale === tag)?.label ?? tag;
 
-  const automaticAutonym = intl.formatMessage(messages.automaticCurrent, {
+  const automaticAutonym = intl.formatMessage(automaticLocaleMessage, {
     language: autonymOf(automaticLocale),
   });
   const items: LocaleItem[] = [
@@ -435,7 +430,7 @@ export default function LocaleSwitcher({
               ref={listRef}
               className="max-h-96 overflow-hidden has-data-empty:hidden"
               render={
-                <ScrollArea viewportClassName="flex flex-col gap-1 px-2 pb-2" />
+                <ScrollArea viewportClassName="flex flex-col px-2 pb-2" />
               }
             >
               {(item: LocaleItem) => (

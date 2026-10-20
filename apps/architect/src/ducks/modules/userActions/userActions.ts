@@ -1,8 +1,10 @@
 import { type Dispatch } from '@reduxjs/toolkit';
+import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import {
+  createDefaultFinishSessionStage,
   type CurrentProtocol,
   type ExtractedAsset,
   extractProtocolFromZip,
@@ -20,6 +22,7 @@ import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { getArchitectIntl } from '~/i18n/imperative';
 import type { ProtocolSourceRef } from '~/templates';
+import type { LegacyProtocolChoice, StoredAsset } from '~/utils/assetDB';
 import {
   saveProtocolAssets,
   saveProtocolAssetsToMemory,
@@ -30,13 +33,15 @@ import {
 } from '~/utils/beforeUnloadGuard';
 import {
   downloadProtocolAsNetcanvas,
+  MissingFinishStageTextError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
-import {
-  setExportInProgress,
-  setImportInProgress,
-} from '~/utils/criticalOperation';
+import { beginExport, setImportInProgress } from '~/utils/criticalOperation';
 import { describeMigrationFailure } from '~/utils/describeMigrationFailure';
+import {
+  getLegacyProtocol,
+  readLegacyProtocolSnapshot,
+} from '~/utils/legacyProtocolLibrary';
 import {
   assertCompressedSizeWithinLimit,
   loadGuardedNetcanvas,
@@ -51,8 +56,10 @@ import {
 } from '~/utils/protocolImportErrors';
 import {
   deleteStoredProtocol,
+  getLegacyProtocolChoice,
   getStoredProtocol,
   putStoredProtocol,
+  writeUpgradedLegacyCopy,
 } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 import { isStorageUnavailableError } from '~/utils/storageErrors';
@@ -102,7 +109,8 @@ const extraMessages = defineMessages({
   },
 });
 
-type ImportSource = 'local' | 'bundled';
+// `legacy-library`: a protocol copied out of Architect 8's library.
+type ImportSource = 'local' | 'bundled' | 'legacy-library';
 
 export type ProtocolOpenResult =
   | {
@@ -390,8 +398,11 @@ export const openLocalNetcanvas = createAppAsyncThunk(
       const migratedProtocol = migrationResult.protocol;
 
       // Validate the protocol
+      // As a draft: Architect is where a protocol missing its closing text
+      // gets it written, so it opens like any other.
       const validationResult = await validateProtocol(
         migratedProtocol as CurrentProtocol,
+        { draft: true },
       );
 
       if (!validationResult.success) {
@@ -562,25 +573,31 @@ const handleProtocolMigration = ({
 type CreateNetcanvasParams = {
   name: string;
   description?: string;
+  localization: CurrentProtocol['localization'];
 };
 
 // Create a new protocol
 export const createNetcanvas = createAppAsyncThunk(
   'webUserActions/createNetcanvas',
-  async ({ name, description }: CreateNetcanvasParams, { dispatch }) => {
-    // Create a new empty protocol
+  async (
+    { name, description, localization }: CreateNetcanvasParams,
+    { dispatch },
+  ) => {
     const newProtocol: CurrentProtocol = {
       name,
       description,
       schemaVersion: APP_SCHEMA_VERSION,
-      stages: [],
+      localization,
+      // A new protocol starts with the screen that ends the interview, with
+      // the closing text Network Canvas supplies in each of its languages.
+      stages: [createDefaultFinishSessionStage({ id: uuid(), localization })],
       codebook: {
         node: {},
         edge: {},
         ego: {},
       },
       assetManifest: {},
-    } as CurrentProtocol;
+    };
 
     await instantiateProtocol(
       { protocol: newProtocol, name, description },
@@ -616,7 +633,9 @@ export const openBundledTemplate = createAppAsyncThunk(
     setImportInProgress(true);
     try {
       const finalProtocol = name ? { ...protocol, name } : protocol;
-      const validationResult = await validateProtocol(finalProtocol);
+      const validationResult = await validateProtocol(finalProtocol, {
+        draft: true,
+      });
 
       if (!validationResult.success) {
         trackImportValidationFailure('bundled', validationResult.error);
@@ -685,7 +704,7 @@ export const exportNetcanvas = createAppAsyncThunk(
 
     // Signal an export is in flight so a service-worker update reload warns/defers
     // rather than interrupting the download.
-    setExportInProgress(true);
+    const finishExport = beginExport();
     try {
       await downloadProtocolAsNetcanvas(
         protocol as CurrentProtocol,
@@ -696,44 +715,75 @@ export const exportNetcanvas = createAppAsyncThunk(
     } catch (error) {
       // Returned rather than rethrown because `.unwrap()` gives the caller a
       // serialized copy of the error, not the instance — the class is gone by
-      // the time a dialog could ask about it. The resource names are what the
-      // researcher needs, so they travel as data.
+      // the time a dialog could ask about it. The resource names, and what
+      // the finish stage is missing, are what the researcher needs, so they
+      // travel as data.
       if (error instanceof UnresolvedAssetsError) {
-        return { status: 'unresolved-assets', assetNames: error.assetNames };
+        return {
+          status: 'unresolved-assets',
+          assetNames: error.assetNames,
+        } as const;
+      }
+      if (error instanceof MissingFinishStageTextError) {
+        return {
+          status: 'missing-finish-stage-text',
+          problem: error.problem,
+        } as const;
       }
       throw error;
     } finally {
-      setExportInProgress(false);
+      finishExport();
     }
   },
 );
+
+const notFoundResult = (): ProtocolOpenResult => ({
+  status: 'error',
+  title: getArchitectIntl().formatMessage(extraMessages.notFound),
+  localizedTitle: { message: extraMessages.notFound },
+  message: getArchitectIntl().formatMessage(extraMessages.missing),
+  localizedMessage: { message: extraMessages.missing },
+});
 
 // Load a protocol already saved in the library into the editing buffer. Its
 // assets are already namespaced under this id in IndexedDB.
 //
 // Schema compatibility is decided by `admitStoredProtocol`, shared with the
 // startup session restore, so a library protocol behaves the same however it is
-// reached. Note that this path has NO migration approval dialog and needs none:
-// unlike `openLocalNetcanvas`, which migrates a file into a new library entry
-// and leaves the researcher's own copy on disk untouched, there is no second
-// copy here to fall back to.
+// reached. This library only ever holds this schema's protocols; one written by
+// Architect 8 lives in Architect 8's library, is copied into this one by
+// `upgradeLegacyProtocol` or opened in Architect 8 itself, and never reaches
+// this thunk.
 export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
   async ({ id }: { id: string }, { dispatch }): Promise<ProtocolOpenResult> => {
-    const row = await getStoredProtocol(id);
-    if (!row) {
+    let row: Awaited<ReturnType<typeof getStoredProtocol>>;
+    try {
+      row = await getStoredProtocol(id);
+    } catch (error: unknown) {
+      // The library itself could not be read (storage blocked or broken).
+      // Described like any other refusal, so every caller shows a dialog
+      // rather than failing silently.
+      reportError(error, { operation: 'stored-protocol-read' });
+      const { message, detail, localizedMessage } = describeImportFailure(
+        error,
+        PROTOCOL_OPEN_FAILURE_MESSAGE,
+        getArchitectIntl(),
+      );
       return {
         status: 'error',
-        title: getArchitectIntl().formatMessage(extraMessages.notFound),
-        localizedTitle: { message: extraMessages.notFound },
-        message: getArchitectIntl().formatMessage(extraMessages.missing),
-        localizedMessage: { message: extraMessages.missing },
+        title: getArchitectIntl().formatMessage(extraMessages.openError),
+        localizedTitle: { message: extraMessages.openError },
+        message,
+        detail,
+        localizedMessage,
       };
     }
+    if (!row) return notFoundResult();
 
     let admission: Awaited<ReturnType<typeof admitStoredProtocol>>;
     try {
-      admission = await admitStoredProtocol(row, undefined, getArchitectIntl());
+      admission = await admitStoredProtocol(row);
     } catch (error: unknown) {
       // Reported even when `getImportFailureKind` can classify it, unlike the
       // import paths. A library row is Architect's own output, written from a
@@ -768,11 +818,184 @@ export const openLibraryProtocol = createAppAsyncThunk(
     dispatch(setStorageUnavailable(false));
     disarmInMemoryUnloadGuard();
     dispatch(setActiveProtocolId(id));
-    // The admitted document, which is the upgraded one when the row was below
-    // this build's schema — `row.protocol` is stale by then.
     dispatch(setActiveProtocol(admission.protocol));
     navigate('/protocol');
     return openedResult;
+  },
+);
+
+type LegacyProtocolOpenPlan =
+  | {
+      status: 'refused';
+      result: ProtocolOpenResult;
+    }
+  | {
+      status: 'ready';
+      /** What the researcher decided about it before, if anything. */
+      choice: LegacyProtocolChoice | undefined;
+      /** The offer to upgrade it, for the open dialog. */
+      result: Extract<ProtocolOpenResult, { status: 'migration-required' }>;
+    };
+
+/**
+ * Everything needed to offer a choice about a protocol in Architect 8's
+ * library: the offer to upgrade it (with the migration notes from its actual
+ * schema version, which may be older than 8), and the researcher's earlier
+ * decision. Reads only; the caller asks the researcher.
+ */
+export const planLegacyProtocolOpen = async (
+  legacyId: string,
+): Promise<LegacyProtocolOpenPlan> => {
+  try {
+    const row = await getLegacyProtocol(legacyId);
+    if (!row) return { status: 'refused', result: notFoundResult() };
+    const choice = await getLegacyProtocolChoice(legacyId);
+    // The document's own version, which is what migration starts from.
+    const { schemaVersion } = row.protocol;
+    return {
+      status: 'ready',
+      choice,
+      result: {
+        status: 'migration-required',
+        protocolSchemaVersion: schemaVersion,
+        targetSchemaVersion: APP_SCHEMA_VERSION,
+        migrationNotes: getMigrationInfo(schemaVersion, APP_SCHEMA_VERSION)
+          .notes,
+      },
+    };
+  } catch (error: unknown) {
+    reportError(error, { operation: 'legacy-protocol-open' });
+    const { message, detail, localizedMessage } = describeImportFailure(
+      error,
+      PROTOCOL_OPEN_FAILURE_MESSAGE,
+      getArchitectIntl(),
+    );
+    return {
+      status: 'refused',
+      result: {
+        status: 'error',
+        title: getArchitectIntl().formatMessage(extraMessages.openError),
+        localizedTitle: { message: extraMessages.openError },
+        message,
+        detail,
+        localizedMessage,
+      },
+    };
+  }
+};
+
+// The resources a protocol's manifest lists that are not among `assets`, by
+// the name the researcher gave them. Architect 8 opens an archive missing a
+// file the way this app does, so its library can hold a protocol with a gap
+// in it; the copy is made anyway, as a file import would open it, and says
+// what is missing. API keys are values in the manifest, not stored files.
+const unresolvedAssetNames = (
+  protocol: CurrentProtocol,
+  assets: ReadonlyArray<StoredAsset>,
+): string[] => {
+  const stored = new Set(assets.map((asset) => asset.assetId));
+  return Object.entries(protocol.assetManifest ?? {}).flatMap(
+    ([assetId, entry]) =>
+      entry.type === 'apikey' || stored.has(assetId) ? [] : [entry.name],
+  );
+};
+
+// Upgrade a protocol from Architect 8's library into a NEW protocol in this
+// one, then open it.
+//
+// Architect 8's row is read (with its assets, as one snapshot) and never
+// written: it stays exactly as it was, still listed and still openable in
+// Architect 8. The copy is migrated and validated before anything is written,
+// and then written in one transaction (see `writeUpgradedLegacyCopy`), so a
+// failure at any step leaves this library as it was. The caller has already
+// asked the researcher; this thunk does not.
+//
+// Never falls back to an in-memory copy the way the file imports do: the
+// researcher can only reach this protocol again through Architect 8, so an
+// unsaved copy that vanishes with the tab would look like an upgrade that
+// happened and then lost their work.
+export const upgradeLegacyProtocol = createAppAsyncThunk(
+  'webUserActions/upgradeLegacyProtocol',
+  async (
+    { legacyId }: { legacyId: string },
+    { dispatch },
+  ): Promise<ProtocolOpenResult> => {
+    // A fresh-load service-worker update must not reload between the copy's
+    // write and the editor opening it.
+    setImportInProgress(true);
+    try {
+      const snapshot = await readLegacyProtocolSnapshot(legacyId);
+      if (!snapshot) return notFoundResult();
+      // Read before the slow work below, so the write can tell a copy another
+      // tab made meanwhile from one the researcher already had.
+      const upgradedIdBefore = (await getLegacyProtocolChoice(legacyId))
+        ?.upgradedId;
+
+      let protocol: CurrentProtocol;
+      try {
+        protocol = migrateProtocol(snapshot.row.protocol, APP_SCHEMA_VERSION, {
+          name: snapshot.row.name,
+        });
+      } catch (caught) {
+        // As for a file: see `handleProtocolMigration`.
+        trackImportFailure('legacy-library', caught);
+        const { title, message, detail } = describeMigrationFailure(
+          ensureError(caught),
+          snapshot.row.protocol,
+          getArchitectIntl(),
+        );
+        return { status: 'error', title, message, detail };
+      }
+
+      const validation = await validateProtocol(protocol, { draft: true });
+      if (!validation.success) {
+        trackImportValidationFailure('legacy-library', validation.error);
+        return {
+          status: 'validation-error',
+          message: ensureError(validation.error).message,
+        };
+      }
+
+      const copy = await writeUpgradedLegacyCopy({
+        snapshot,
+        protocol,
+        upgradedIdBefore,
+      });
+      if (!copy.created) {
+        // Another tab upgraded it first. Open that copy, through the same
+        // admission any library protocol gets.
+        return await dispatch(
+          openLibraryProtocol({ id: copy.protocolId }),
+        ).unwrap();
+      }
+
+      dispatch(setStorageUnavailable(false));
+      disarmInMemoryUnloadGuard();
+      dispatch(setActiveProtocolId(copy.protocolId));
+      dispatch(setActiveProtocol(protocol));
+      navigate('/protocol');
+      const missing = unresolvedAssetNames(protocol, snapshot.assets);
+      return missing.length > 0
+        ? { status: 'opened', unresolvedAssetNames: missing }
+        : openedResult;
+    } catch (error) {
+      trackImportFailure('legacy-library', error);
+      const { message, detail, localizedMessage } = describeImportFailure(
+        error,
+        PROTOCOL_OPEN_FAILURE_MESSAGE,
+        getArchitectIntl(),
+      );
+      return {
+        status: 'error',
+        title: getArchitectIntl().formatMessage(extraMessages.openError),
+        localizedTitle: { message: extraMessages.openError },
+        message,
+        detail,
+        localizedMessage,
+      };
+    } finally {
+      setImportInProgress(false);
+    }
   },
 );
 

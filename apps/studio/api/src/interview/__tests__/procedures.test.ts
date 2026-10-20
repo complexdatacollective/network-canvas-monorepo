@@ -4,7 +4,12 @@ import { Context, Effect, Exit, Redacted, Schema } from 'effect';
 import { RpcClient } from 'effect/rpc';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  CURRENT_SCHEMA_VERSION,
+  type CurrentProtocol,
+  type FinishOutcome,
+  isFinishSessionStage,
+} from '@codaco/protocol-validation';
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
 import { LinkToken } from '@codaco/studio-contract/schema/ids';
 import {
@@ -31,7 +36,12 @@ import {
 import { createStudio } from '../../app.ts';
 import { TenantScope, unsafeMakeTeamAccess } from '../../db/tenant.ts';
 import { readEnv } from '../../env.ts';
-import { Analytics, RecordedAnalytics } from '../../platform/analytics.ts';
+import {
+  Analytics,
+  RecordedAnalytics,
+  stableEventUuid,
+} from '../../platform/analytics.ts';
+import { BrowserLogs } from '../../platform/browser-logs.ts';
 import { baseProtocol } from '../../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../../protocol/store.ts';
 import type { RateLimiter } from '../../rate-limit/limiter.ts';
@@ -43,8 +53,16 @@ import { mintSessionToken } from '../token.ts';
 const MAPBOX_KEY = 'pk.participant-test-key';
 const PHOTO_SOURCE = `${'a'.repeat(64)}.png`;
 
-const interviewProtocol = (): CurrentProtocol => ({
+/** The protocol's finish stage, as `baseProtocol` names it. */
+const FINISH_STAGE_ID = 'finish';
+
+const interviewProtocol = (
+  finishOutcome: FinishOutcome = 'completed',
+): CurrentProtocol => ({
   ...baseProtocol(),
+  stages: baseProtocol().stages.map((stage) =>
+    isFinishSessionStage(stage) ? { ...stage, outcome: finishOutcome } : stage,
+  ),
   assetManifest: {
     mapKey: { id: 'mapKey', name: 'Mapbox', type: 'apikey', value: MAPBOX_KEY },
     photo: { id: 'photo', name: 'Photo', type: 'image', source: PHOTO_SOURCE },
@@ -62,7 +80,10 @@ type Fixture = {
   readonly linkToken: Redacted.Redacted;
 };
 
-const seed = (mode: 'managed' | 'anonymous' = 'managed') =>
+const seed = (
+  mode: 'managed' | 'anonymous' = 'managed',
+  finishOutcome: FinishOutcome = 'completed',
+) =>
   Effect.gen(function* () {
     const harness = yield* TestDatabase;
     const cipher = yield* SecretsCipher;
@@ -72,7 +93,7 @@ const seed = (mode: 'managed' | 'anonymous' = 'managed') =>
       unsafeMakeTeamAccess(teamId, 'owner'),
       Effect.gen(function* () {
         const created = yield* createProtocol(teamId, cipher, {
-          protocol: interviewProtocol(),
+          protocol: interviewProtocol(finishOutcome),
         });
         const published = yield* publishDraft(teamId, {
           draftId: created.draftId,
@@ -252,23 +273,38 @@ describe.skipIf(!testDb)('the participant procedures', () => {
     token: Redacted.Redacted,
     holderEpoch: number,
     revision: string,
+    {
+      stageId = FINISH_STAGE_ID,
+      outcome = 'completed',
+    }: { readonly stageId?: string; readonly outcome?: FinishOutcome } = {},
   ) =>
     client.callExit(
       asParticipant(
         token,
-        client.rpc('participant.finish', { holderEpoch, revision }),
+        client.rpc('participant.finish', {
+          holderEpoch,
+          revision,
+          stageId,
+          outcome,
+        }),
       ),
     );
 
-  const fixture = (mode?: 'managed' | 'anonymous') => database.run(seed(mode));
+  const fixture = (
+    mode?: 'managed' | 'anonymous',
+    finishOutcome?: FinishOutcome,
+  ) => database.run(seed(mode, finishOutcome));
   const sessionRow = async (sessionId: string) =>
     (
       await query<{
         status: string;
         client_revision: string;
         ego_attributes: unknown;
+        finish_stage_id: string | null;
+        finish_outcome: string | null;
       }>(
-        `SELECT status, client_revision::text AS client_revision, ego_attributes
+        `SELECT status, client_revision::text AS client_revision, ego_attributes,
+                finish_stage_id, finish_outcome
          FROM interview_sessions WHERE id = $1`,
         [sessionId],
       )
@@ -450,7 +486,9 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       );
       const f = await fixture();
       const { sessionToken } = await redeemed(f.linkToken);
-      expect((await opened(sessionToken)).analytics).toBe(false);
+      const session = await opened(sessionToken);
+      expect(session.analytics).toBe(false);
+      expect(session.logLevel).toBeNull();
     });
 
     it('returns the pinned protocol with its API key and the session as stored', async () => {
@@ -481,7 +519,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
         schemaVersion: number;
       };
       expect(protocol.id).toBe(f.versionId);
-      expect(protocol.schemaVersion).toBe(8);
+      expect(protocol.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(protocol.assets).toEqual(
         expect.arrayContaining([
           {
@@ -678,7 +716,11 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       expect(await finish(sessionToken, holderEpoch, '1')).toEqual(
         Exit.succeed({ state: 'completed' }),
       );
-      expect((await sessionRow(sessionId))?.status).toBe('completed');
+      expect(await sessionRow(sessionId)).toMatchObject({
+        status: 'completed',
+        finish_stage_id: FINISH_STAGE_ID,
+        finish_outcome: 'completed',
+      });
 
       const snapshots = await query<{
         payload: unknown;
@@ -689,11 +731,13 @@ describe.skipIf(!testDb)('the participant procedures', () => {
         [sessionId],
       );
       expect(snapshots).toHaveLength(1);
-      expect(snapshots[0]?.schema_version).toBe(8);
+      expect(snapshots[0]?.schema_version).toBe(CURRENT_SCHEMA_VERSION);
       expect(snapshots[0]?.payload).toMatchObject({
         currentStep: 1,
         stageMetadata: { 'stage-1': { seen: true } },
         network: network(['n1', 'n2'], [['n1', 'n2']]),
+        finishStageId: FINISH_STAGE_ID,
+        finishOutcome: 'completed',
       });
 
       const jobSchema = database.harness.jobSchema;
@@ -715,6 +759,86 @@ describe.skipIf(!testDb)('the participant procedures', () => {
           nodeCount: 2,
           edgeCount: 1,
         },
+      });
+    });
+
+    it('records the outcome the finish stage declares', async () => {
+      const f = await fixture('managed', 'ineligible');
+      const { sessionId, sessionToken } = await redeemed(f.linkToken);
+      const { holderEpoch } = await opened(sessionToken);
+
+      expect(
+        await finish(sessionToken, holderEpoch, '0', { outcome: 'ineligible' }),
+      ).toEqual(Exit.succeed({ state: 'completed' }));
+      expect(await sessionRow(sessionId)).toMatchObject({
+        status: 'completed',
+        finish_stage_id: FINISH_STAGE_ID,
+        finish_outcome: 'ineligible',
+      });
+      expect(
+        await query(
+          'SELECT payload FROM session_snapshots WHERE session_id = $1',
+          [sessionId],
+        ),
+      ).toEqual([
+        {
+          payload: expect.objectContaining({
+            finishStageId: FINISH_STAGE_ID,
+            finishOutcome: 'ineligible',
+          }),
+        },
+      ]);
+    });
+
+    it.each([
+      ['a stage that is not a finish stage', { stageId: 'sociogram1' }],
+      ['a stage the protocol does not have', { stageId: 'elsewhere' }],
+      [
+        'an outcome its finish stage does not declare',
+        { outcome: 'terminated' as const },
+      ],
+    ])('refuses a finish naming %s, and commits nothing', async (_, named) => {
+      const f = await fixture();
+      const { sessionId, sessionToken } = await redeemed(f.linkToken);
+      const { holderEpoch } = await opened(sessionToken);
+
+      await expectRpcFailure(
+        finish(sessionToken, holderEpoch, '0', named),
+        'FinishUnrecognised',
+      );
+      expect(await sessionRow(sessionId)).toMatchObject({
+        status: 'in_progress',
+        finish_stage_id: null,
+        finish_outcome: null,
+      });
+      expect(
+        await query(
+          'SELECT session_id FROM session_snapshots WHERE session_id = $1',
+          [sessionId],
+        ),
+      ).toEqual([]);
+      expect(
+        (await auditEvents(f.teamId)).map((event) => event.event_type),
+      ).toEqual(['interview.started']);
+    });
+
+    it('keeps the first finish when one is replayed with another outcome', async () => {
+      const f = await fixture();
+      const { sessionId, sessionToken } = await redeemed(f.linkToken);
+      const { holderEpoch } = await opened(sessionToken);
+      await finish(sessionToken, holderEpoch, '0');
+
+      expect(
+        (
+          await expectRpcFailure(
+            finish(sessionToken, holderEpoch, '0', { outcome: 'terminated' }),
+            'SessionEnded',
+          )
+        ).state,
+      ).toBe('completed');
+      expect(await sessionRow(sessionId)).toMatchObject({
+        finish_stage_id: FINISH_STAGE_ID,
+        finish_outcome: 'completed',
       });
     });
 
@@ -858,7 +982,11 @@ describe.skipIf(!testDb)('participant analytics', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth: authServiceStub(),
-        services: Context.merge(database.services, analytics),
+        services: Context.add(
+          Context.merge(database.services, analytics),
+          BrowserLogs,
+          BrowserLogs.of({ forward: () => Effect.void }),
+        ),
         limiter,
       }),
     );
@@ -928,6 +1056,7 @@ describe.skipIf(!testDb)('participant analytics', () => {
   it('tells the page to report usability events', async () => {
     const { session } = await begin();
     expect(session.analytics).toBe(true);
+    expect(session.logLevel).toBe('Info');
     expect(
       JSON.stringify(Schema.encodeSync(SessionPayload)(session)),
     ).not.toContain(installationId);
@@ -960,77 +1089,220 @@ describe.skipIf(!testDb)('participant analytics', () => {
     expect(session.analytics).toBe(false);
   });
 
-  it('forwards usability events unidentified and stamped by the server', async () => {
+  const page = {
+    app: 'studio',
+    $app_name: 'studio',
+    installation_id: 'studio',
+    package_version: '10.0.0',
+    protocol_hash: 'protocol-digest',
+    distinct_id: 'page-pseudonym',
+  };
+
+  const stamped = () => ({
+    app: 'studio',
+    $app_name: 'Network Canvas Studio',
+    $app_version: STUDIO_VERSION,
+    host_version: STUDIO_VERSION,
+    installation_id: installationId,
+    $process_person_profile: false,
+    $geoip_disable: true,
+  });
+
+  const entered = {
+    event: 'stage_entered',
+    properties: {
+      ...page,
+      stage_type: 'NameGenerator',
+      stage_index: 1,
+      direction: 'forward',
+    },
+  };
+
+  it('forwards catalogued usability events unidentified and stamped by the server', async () => {
     const { sessionId, sessionToken } = await begin();
     charged.length = 0;
     const exit = await send(sessionToken, [
       {
         event: 'stage_entered',
         properties: {
-          distinct_id: 'page-pseudonym',
-          stage_type: 'NameGenerator',
+          ...entered.properties,
           installation_id: 'chosen-by-the-page',
           app: 'chosen-by-the-page',
           $app_name: 'chosen-by-the-page',
           $app_version: 'chosen-by-the-page',
           host_version: 'chosen-by-the-page',
-          $process_person_profile: true,
-          $geoip_disable: false,
-          token: 'phc_another_project',
-          api_key: 'phc_another_project',
-          $set: { email: 'participant@example.com' },
-          $set_once: { email: 'participant@example.com' },
-          $unset: ['name'],
-          $groups: { team: 'chosen-by-the-page' },
-          $ip: '203.0.113.9',
-          $anon_distinct_id: 'another-person',
-          $session_id: 'session-token-shaped',
-          $current_url: 'http://localhost/session/secret',
-          $lib: 'chosen-by-the-page',
         },
       },
       {
-        event: '$identify',
-        properties: { distinct_id: 'page-pseudonym', $set: { name: 'Ada' } },
+        event: 'node_added',
+        properties: {
+          ...page,
+          node_id: '0b6f8a52-3c1d-4e2f-9a7b-5c4d3e2f1a0b',
+          node_type_index: 0,
+        },
       },
-      { event: 'stage_left', properties: { stage_type: 'NameGenerator' } },
     ]);
 
     expect(Exit.isSuccess(exit)).toBe(true);
     expect(charged).toEqual([`participant_analytics:${sessionId}`]);
-    const stamped = {
-      app: 'studio',
-      $app_name: 'Network Canvas Studio',
-      $app_version: STUDIO_VERSION,
-      host_version: STUDIO_VERSION,
-      installation_id: installationId,
-      $process_person_profile: false,
-      $geoip_disable: true,
-    };
     const distinctId = `participant:${createHash('sha256').update(`${installationId}:${sessionId}`).digest('hex').slice(0, 32)}`;
     expect(await captured()).toEqual([
       {
         event: 'stage_entered',
         distinctId,
-        timestamp: '2026-10-07T09:00:00.000Z',
-        properties: { stage_type: 'NameGenerator', ...stamped },
+        timestamp: expect.any(String),
+        properties: {
+          stage_type: 'NameGenerator',
+          stage_index: 1,
+          direction: 'forward',
+          ...stamped(),
+        },
       },
       {
-        event: 'stage_left',
+        event: 'node_added',
         distinctId,
-        timestamp: '2026-10-07T09:00:00.000Z',
-        properties: { stage_type: 'NameGenerator', ...stamped },
+        timestamp: expect.any(String),
+        properties: {
+          node_id: stableEventUuid(
+            `${installationId}:${sessionId}:entity:0b6f8a52-3c1d-4e2f-9a7b-5c4d3e2f1a0b`,
+          ),
+          node_type_index: 0,
+          ...stamped(),
+        },
       },
     ]);
+  });
+
+  it('refuses the whole batch when one event is not in the catalogue', async () => {
+    const { sessionToken } = await begin();
+    for (const unknown of [
+      { event: 'stage_viewed', properties: { ...page, stage_index: 1 } },
+      {
+        event: '$identify',
+        properties: { ...page, $set: { name: 'Jane Doe' } },
+      },
+      { event: 'constructor', properties: page },
+    ]) {
+      const exit = await send(sessionToken, [entered, unknown]);
+      expect(Exit.isSuccess(exit)).toBe(true);
+    }
+    expect(await captured()).toEqual([]);
+  });
+
+  it('refuses a batch whose event carries a property the catalogue does not declare', async () => {
+    const { sessionToken } = await begin();
+    for (const extra of [
+      { name: 'Jane Doe' },
+      { $set: { email: 'participant@example.com' } },
+      { $ip: '203.0.113.9' },
+      { token: 'phc_another_project' },
+      { $current_url: 'http://localhost/session/secret' },
+      { $process_person_profile: true },
+    ]) {
+      await send(sessionToken, [
+        entered,
+        {
+          event: 'interview_finished',
+          properties: { ...page, stage_count: 4, ...extra },
+        },
+      ]);
+    }
+    expect(await captured()).toEqual([]);
+  });
+
+  it('refuses free text where the catalogue declares a code or a number', async () => {
+    const { sessionToken } = await begin();
+    for (const forged of [
+      {
+        event: 'stage_entered',
+        properties: { ...entered.properties, stage_type: 'Jane Doe' },
+      },
+      {
+        event: 'stage_entered',
+        properties: { ...entered.properties, direction: 'Jane Doe' },
+      },
+      {
+        event: 'stage_entered',
+        properties: { ...entered.properties, stage_index: 'Jane Doe' },
+      },
+      {
+        event: 'stage_entered',
+        properties: { ...entered.properties, stage_index: 1.5 },
+      },
+      { event: 'node_removed', properties: { ...page, node_id: 'Jane Doe' } },
+      {
+        event: 'stage_entered',
+        properties: { ...entered.properties, package_version: 'Jane Doe' },
+      },
+    ]) {
+      await send(sessionToken, [entered, forged]);
+    }
+    expect(await captured()).toEqual([]);
+  });
+
+  it('stamps events with the server clock, keeping only their order and spacing', async () => {
+    const { sessionToken } = await begin();
+    const before = Date.now();
+    await client.callExit(
+      asParticipant(
+        sessionToken,
+        client.rpc('participant.analytics', {
+          events: [
+            { ...entered, timestamp: '1998-12-01T00:00:00.000Z' },
+            { ...entered, timestamp: '1999-01-01T00:00:00.000Z' },
+            { ...entered, timestamp: '1999-01-01T00:00:01.500Z' },
+            { ...entered, timestamp: '1999-01-01T00:01:00.000Z' },
+          ],
+        }),
+      ),
+    );
+    const after = Date.now();
+    const forwardedAt = (await captured()).map((event) =>
+      Date.parse(event.timestamp),
+    );
+    expect(forwardedAt).toHaveLength(4);
+    const [stale, first, second, latest] = forwardedAt as [
+      number,
+      number,
+      number,
+      number,
+    ];
+    expect(latest).toBeGreaterThanOrEqual(before);
+    expect(latest).toBeLessThanOrEqual(after);
+    expect([latest - stale, latest - first, latest - second]).toEqual([
+      10 * 60 * 1000,
+      60_000,
+      58_500,
+    ]);
+  });
+
+  it('refuses a batch whose event carries anything but an ISO timestamp', async () => {
+    const { sessionToken } = await begin();
+    for (const timestamp of [
+      'Jane Doe',
+      '2026-10-07',
+      '2026-10-07T09:00:00Z',
+      '2026-02-30T09:00:00.000Z',
+    ]) {
+      await client.callExit(
+        asParticipant(
+          sessionToken,
+          client.rpc('participant.analytics', {
+            events: [
+              { ...entered, timestamp: '2026-10-07T09:00:00.000Z' },
+              { ...entered, timestamp },
+            ],
+          }),
+        ),
+      );
+    }
+    expect(await captured()).toEqual([]);
   });
 
   it('keeps one identity for a session across pages, and a different one per session', async () => {
     const first = await begin();
     const second = await begin();
-    const event = [
-      { event: 'stage_entered', properties: { distinct_id: 'page-a' } },
-    ];
-    await send(first.sessionToken, event);
+    await send(first.sessionToken, [entered]);
     await client.call(
       asParticipant(
         first.sessionToken,
@@ -1038,9 +1310,12 @@ describe.skipIf(!testDb)('participant analytics', () => {
       ),
     );
     await send(first.sessionToken, [
-      { event: 'stage_entered', properties: { distinct_id: 'page-b' } },
+      {
+        event: 'stage_entered',
+        properties: { ...entered.properties, distinct_id: 'page-b' },
+      },
     ]);
-    await send(second.sessionToken, event);
+    await send(second.sessionToken, [entered]);
 
     const [before, after, other] = (await captured()).map(
       (forwarded) => forwarded.distinctId,
@@ -1050,66 +1325,150 @@ describe.skipIf(!testDb)('participant analytics', () => {
     expect(before).not.toContain(first.sessionId);
   });
 
-  it('forwards an exception by its type only, never its message', async () => {
+  it('forwards an exception by its type and feature only, never its message, stack or protocol digest', async () => {
     const { sessionToken } = await begin();
     await send(sessionToken, [
       {
         event: '$exception',
         properties: {
-          feature: 'external-data',
+          ...page,
+          protocol_hash: 'ROSTER_ROW_SENTINEL',
+          feature: 'stage-error-boundary',
+          component_stack: '\n    at ROSTER_ROW_SENTINEL',
+          is_offline: false,
           $exception_list: [
             {
               type: 'SyntaxError',
               value: 'Unexpected token in ROSTER_ROW_SENTINEL',
-              stacktrace: { frames: [{ filename: 'ROSTER_ROW_SENTINEL' }] },
+              mechanism: { handled: true, synthetic: false },
             },
           ],
-          $exception_message: 'ROSTER_ROW_SENTINEL',
         },
       },
       {
         event: '$exception',
         properties: {
-          $exception_list: [{ type: 'not a type: ROSTER_ROW_SENTINEL' }],
+          ...page,
+          feature: 'external-data',
+          $exception_list: [
+            {
+              type: 'not a type: ROSTER_ROW_SENTINEL',
+              value: 'not a type: ROSTER_ROW_SENTINEL',
+              mechanism: { handled: true, synthetic: false },
+            },
+          ],
         },
       },
     ]);
     const forwarded = await captured();
     expect(JSON.stringify(forwarded)).not.toContain('ROSTER_ROW_SENTINEL');
-    expect(
-      forwarded.map((event) => [
-        event.properties.feature,
-        event.properties.$exception_list,
-      ]),
-    ).toEqual([
-      [
-        'external-data',
-        [
+    expect(forwarded.map((event) => event.properties)).toEqual([
+      {
+        feature: 'stage-error-boundary',
+        is_offline: false,
+        $exception_list: [
           {
             type: 'SyntaxError',
             value: 'SyntaxError',
             mechanism: { handled: true, synthetic: false },
           },
         ],
-      ],
-      [
-        undefined,
-        [
+        ...stamped(),
+      },
+      {
+        feature: 'external-data',
+        $exception_list: [
           {
             type: 'Error',
             value: 'Error',
             mechanism: { handled: true, synthetic: false },
           },
         ],
-      ],
+        ...stamped(),
+      },
     ]);
+  });
+
+  it('forwards no value the page chose freely, re-deriving ids and fixing error types', async () => {
+    const { sessionToken } = await begin();
+    const forgedId = '4a616e65-2044-4f65-a000-000000000000';
+    await send(sessionToken, [
+      {
+        event: 'node_removed',
+        properties: {
+          ...page,
+          package_version: '1.0.0-JaneDoe',
+          node_id: forgedId,
+        },
+      },
+      {
+        event: '$exception',
+        properties: {
+          ...page,
+          feature: 'external-data',
+          $exception_list: [
+            {
+              type: 'JaneDoe',
+              value: 'JaneDoe',
+              mechanism: { handled: true, synthetic: false },
+            },
+          ],
+        },
+      },
+    ]);
+    const forwarded = await captured();
+    expect(forwarded).toHaveLength(2);
+    const serialized = JSON.stringify(forwarded);
+    expect(serialized).not.toContain('JaneDoe');
+    expect(serialized).not.toContain(forgedId);
+    expect(forwarded[1]?.properties.$exception_list).toEqual([
+      {
+        type: 'Error',
+        value: 'Error',
+        mechanism: { handled: true, synthetic: false },
+      },
+    ]);
+  });
+
+  it('refuses an exception carrying anything beyond its catalogued shape', async () => {
+    const { sessionToken } = await begin();
+    const exception = (extra: Record<string, unknown>) => ({
+      event: '$exception',
+      properties: {
+        ...page,
+        feature: 'external-data',
+        $exception_list: [
+          {
+            type: 'Error',
+            value: 'Error',
+            mechanism: { handled: true, synthetic: false },
+          },
+        ],
+        ...extra,
+      },
+    });
+    for (const extra of [
+      { $exception_message: 'Jane Doe' },
+      { locale: 'en' },
+      {
+        $exception_list: [
+          {
+            type: 'Error',
+            value: 'Error',
+            mechanism: { handled: true, synthetic: false },
+            stacktrace: { frames: [{ filename: 'Jane Doe' }] },
+          },
+        ],
+      },
+    ]) {
+      await send(sessionToken, [entered, exception(extra)]);
+    }
+    expect(await captured()).toEqual([]);
   });
 
   it('forwards nothing for a study that turned participant analytics off', async () => {
     const { sessionToken } = await begin(false);
-    const exit = await send(sessionToken, [
-      { event: 'stage_entered', properties: { distinct_id: 'page-pseudonym' } },
-    ]);
+    const exit = await send(sessionToken, [entered]);
     expect(Exit.isSuccess(exit)).toBe(true);
     expect(await captured()).toEqual([]);
   });
@@ -1118,12 +1477,7 @@ describe.skipIf(!testDb)('participant analytics', () => {
     const { sessionToken } = await begin();
     refused.add('participant_analytics');
     const limited = await expectRpcFailure(
-      send(sessionToken, [
-        {
-          event: 'stage_entered',
-          properties: { distinct_id: 'page-pseudonym' },
-        },
-      ]),
+      send(sessionToken, [entered]),
       'RateLimited',
     );
     expect(limited.retryAfterSeconds).toBe(7);

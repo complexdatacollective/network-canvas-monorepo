@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { ParentConnection } from '../types';
 import {
   ancestor,
+  inOrder,
+  areConsanguineous,
   chaseup,
   createMatrix,
   isGroupMarker,
@@ -147,5 +149,72 @@ describe('isGroupMarker', () => {
     expect(isGroupMarker(3.5)).toBe(true);
     expect(isGroupMarker(3)).toBe(false);
     expect(isGroupMarker(0)).toBe(false);
+  });
+});
+
+describe('areConsanguineous', () => {
+  const link = (
+    parentIndex: number,
+    edgeType: ParentConnection['edgeType'],
+  ): ParentConnection => ({ parentIndex, edgeType });
+
+  // gp → a and b, each through the given kinds of link from gp to their
+  // parent p and q.
+  const cousins = (
+    toP: ParentConnection['edgeType'],
+    toA: ParentConnection['edgeType'],
+  ): ParentConnection[][] => [
+    [],
+    [link(0, toP)],
+    [link(0, 'biological')],
+    [link(1, toA)],
+    [link(2, 'biological')],
+  ];
+
+  it('finds a shared biological ancestor', () => {
+    expect(areConsanguineous(3, 4, cousins('biological', 'biological'))).toBe(
+      true,
+    );
+  });
+
+  it('follows donor links, as an adopted child’s birth parent is drawn', () => {
+    expect(areConsanguineous(3, 4, cousins('biological', 'donor'))).toBe(true);
+  });
+
+  it.each(['social', 'adoptive', 'surrogate'] as const)(
+    'ignores a %s link',
+    (kind) => {
+      expect(areConsanguineous(3, 4, cousins(kind, 'biological'))).toBe(false);
+      expect(areConsanguineous(3, 4, cousins('biological', kind))).toBe(false);
+    },
+  );
+});
+
+describe('inOrder', () => {
+  it('keeps items ranked alike in the order they were given', () => {
+    const items = [
+      { id: 'a', at: 2 },
+      { id: 'b', at: 1 },
+      { id: 'c', at: 2 },
+      { id: 'd', at: 1 },
+    ];
+    const byAt = (p: { at: number }, q: { at: number }) => p.at - q.at;
+    expect(inOrder(items, byAt).map(({ id }) => id)).toEqual([
+      'b',
+      'd',
+      'a',
+      'c',
+    ]);
+    expect(inOrder(items.toReversed(), byAt).map(({ id }) => id)).toEqual([
+      'd',
+      'b',
+      'c',
+      'a',
+    ]);
+  });
+
+  it('keeps the given order where a comparison cannot rank two items', () => {
+    const items = [Infinity, 1, Infinity, 0];
+    expect(inOrder(items, (p, q) => p - q)).toEqual([0, 1, Infinity, Infinity]);
   });
 });

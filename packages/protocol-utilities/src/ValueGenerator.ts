@@ -120,7 +120,7 @@ export class ValueGenerator {
    * Type-appropriate "unanswered" value for a variable. Used for manually
    * seeded nodes, where unset attributes must stay neutral rather than being
    * filled with random data that would corrupt a deliberately-constructed
-   * scenario (e.g. a random ego or random disease flags in a pedigree).
+   * scenario.
    */
   neutralForVariable(variable: VariableEntry): VariableValue | undefined {
     switch (variable.type) {

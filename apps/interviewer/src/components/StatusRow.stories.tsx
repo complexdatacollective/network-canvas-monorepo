@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 
 import type { AuthMode } from '~/lib/auth/api';
+import type { LegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 
 import { StatusRowView } from './StatusRow';
 
@@ -18,6 +19,7 @@ type StoryArgs = {
   installed: boolean;
   usage: number;
   version: string;
+  legacyOffline: LegacyInterviewerOffline;
 };
 
 const meta: Meta<StoryArgs> = {
@@ -30,6 +32,7 @@ const meta: Meta<StoryArgs> = {
     installed: false,
     usage: 4.2 * 1024 * 1024,
     version: '0.0.0',
+    legacyOffline: 'not-bundled',
   },
   argTypes: {
     mode: {
@@ -52,6 +55,12 @@ const meta: Meta<StoryArgs> = {
       control: 'text',
       description: 'Fixed story fixture; production reads the package version',
     },
+    legacyOffline: {
+      control: 'inline-radio',
+      options: ['not-bundled', 'checking', 'ready', 'not-ready'],
+      description:
+        'Whether the bundled Interviewer 8 is installed for offline use',
+    },
   },
   render: ({
     protocolCount,
@@ -61,6 +70,7 @@ const meta: Meta<StoryArgs> = {
     installed,
     usage,
     version,
+    legacyOffline,
   }) => (
     <StatusRowView
       protocolCount={protocolCount}
@@ -68,6 +78,7 @@ const meta: Meta<StoryArgs> = {
       mode={mode}
       durability={{ persisted, usage }}
       installed={installed}
+      legacyOffline={legacyOffline}
       versionSlot={<span>Interviewer {version}</span>}
     />
   ),
@@ -112,4 +123,14 @@ export const ExplanationPopover: Story = {
 // steady state there, presented without warning styling.
 export const InstalledBestEffort: Story = {
   args: { persisted: false, installed: true },
+};
+
+/** The bundled Interviewer 8 is installed and works without a network. */
+export const InterviewerEightReadyOffline: Story = {
+  args: { legacyOffline: 'ready' },
+};
+
+/** Interviewer 8 has not finished downloading for offline use yet. */
+export const InterviewerEightNotReadyOffline: Story = {
+  args: { legacyOffline: 'not-ready' },
 };

@@ -154,6 +154,116 @@ tag before re-dispatching:
 git push --delete origin '@codaco/interviewer@<version>'
 ```
 
+## Bundled Interviewer 8 (`/v8/`)
+
+Interviewer 9 serves Interviewer 8 at `/v8/` from its own deploy, so a
+researcher can keep running schema 8 protocols and their interviews in
+Interviewer 8 without leaving the site. Interviewer 9 does not build
+Interviewer 8. Each 8.x release attaches a build of itself made for `/v8/`,
+`interviewer-v8-dist.tgz`, to its GitHub release (the **App Sub-path Dist**
+workflow on the 8.x line), and `legacy-interviewer.json` in this directory
+pins one of them:
+
+```json
+{
+  "v8": {
+    "version": "8.5.0",
+    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/%40codaco%2Finterviewer%408.5.0/interviewer-v8-dist.tgz",
+    "sha256": "<64 lowercase hex characters>",
+    "cachePrefix": "interviewer-v8-"
+  }
+}
+```
+
+Until a release is pinned the file reads `{ "v8": null }`.
+
+**What the build does.** `scripts/build.mjs` reads the pin through the
+app-generic `scripts/buildtime/legacy-app.ts` (shared with Architect), runs
+Vite, then has `scripts/buildtime/bundle-legacy-app.mjs` fetch the tarball,
+check its sha256, refuse any entry that is not a plain file or directory or
+would land outside the extraction directory, check `dist-info.json`
+(`{tag, version, commit, base, cachePrefix}`) and the build itself against the
+pin, drop its `_headers`, `_redirects` and source maps, and move it to
+`dist/v8`. It runs after Vite has generated the service worker, so none of it
+enters this app's precache (`globIgnores` repeats that). The same decision
+sets the `__INTERVIEWER_V8__` define, so the app offers Start, Resume, "Open in
+Interviewer 8" and "Keep on schema 8" exactly when `dist/v8` holds Interviewer 8. With an empty pin the build bundles nothing, leaves no `dist/v8`, and the
+app shows schema 8 protocols as unavailable, with only the upgrade.
+
+The tarball comes from `INTERVIEWER_LEGACY_V8_TARBALL` when that names a local
+copy, then from `node_modules/.cache/interviewer-legacy/<sha256>.tgz`, then
+from the pinned URL (with retries; the download is cached). Whichever it is
+must match the pin's sha256. Node's `fetch` ignores `HTTPS_PROXY` unless
+`NODE_USE_ENV_PROXY=1`, so in a proxied sandbox download the asset yourself
+and point `INTERVIEWER_LEGACY_V8_TARBALL` at it, or set
+`INTERVIEWER_SKIP_LEGACY_V8=true` to build without Interviewer 8.
+
+**The release guard.** The production builds in `apps-release-interviewer`
+and the hotfix lane set `INTERVIEWER_REQUIRE_LEGACY_V8=true`, which fails the
+build while nothing is pinned (and refuses `INTERVIEWER_SKIP_LEGACY_V8`), and
+both lanes check `dist/v8` again before anything is tagged or deployed.
+**Interviewer 9 cannot release until an Interviewer 8 build is pinned.** Both
+variables are in the turbo cache key for `build`, so a required build never
+replays one that bundled nothing; the pin file is a build input, so a new pin
+never replays a cached `dist/v8`.
+
+**Updating the pin** — after any 8.x release whose fix should reach `/v8/`:
+
+1. Wait for the App Sub-path Dist run that the 8.x release lane chains (or
+   dispatch it from main with the released tag). Its step summary prints the
+   pin, ready to paste.
+2. On the Interviewer 9 line, replace `legacy-interviewer.json` with that JSON
+   and add a `patch` changeset for `@codaco/interviewer` saying which
+   Interviewer 8 is now served at `/v8/`.
+3. Build once locally (`pnpm --filter @codaco/interviewer build`): it
+   downloads the tarball, verifies it against the pin, and
+   `assert-pwa-build.mjs` checks `dist/v8`.
+4. Merge, and release Interviewer 9 as usual. `/v8/` changes only when
+   Interviewer 9 is redeployed.
+
+Never replace an uploaded tarball without updating the pin: the sub-path build
+is not bit-for-bit reproducible, so a rebuilt asset no longer matches the
+pinned sha256 and every later Interviewer 9 build fails until the pin is
+bumped. The dist workflow refuses to replace one unless `replace` is set.
+
+**The contract between the two builds**, checked by `assert-pwa-build.mjs`:
+
+- Interviewer 8's worker precaches under `interviewer-v8-`. This app's cache
+  reclaimer keeps `appCachePrefix: 'interviewer-'` (so it still reclaims older
+  root 8.x caches) and is told that `interviewer-v8-` caches and `/v8/` windows
+  belong to another worker (`foreignCachePrefixes`, `foreignScopePaths` in
+  `vite.config.ts`). The pin's `cachePrefix`, the prefix in `dist/v8/sw.js`
+  and the reclaimer's foreign prefixes must all agree.
+- This app's worker does not answer `/v8` or `/v8/` navigations and does not
+  cache images or fonts under `/v8/` (or from other origins). Its
+  `/interview/` and `/assets/` routes match only those top-level paths.
+  Workbox serialises each route's matcher into `sw.js`, so these exclusions
+  are literals in `vite.config.ts`.
+- `public/_redirects` sends every path under `/v8/` to Interviewer 8's shell
+  before its own catch-all. It has no `/v8 /v8/ 301`: Netlify ignores a
+  trailing slash when matching, so that rule would loop whenever nothing is
+  bundled at `/v8/`, and Netlify already takes `/v8` to `dist/v8/index.html`
+  when it exists. `public/_headers` holds Interviewer 8's shell, worker,
+  manifest and icons (every stable path of this app, rebased under `/v8/`) to
+  no-store and `/v8/assets/*` to a year's immutable cache, since Netlify reads
+  neither file from inside `dist/v8`.
+- `vite preview` applies no `_redirects`, so `vite.config.ts` adds a preview
+  middleware (`scripts/buildtime/legacy-app-preview-plugin.ts`) that does the
+  same for `dist/v8`, whenever it exists. An e2e spec can put a stub
+  `dist/v8/index.html` there and navigate to `/v8/…`.
+
+**Offline.** Interviewer 8 is never in this app's precache. Once this app has
+rendered, its own worker is ready and active (a released 8.x root worker
+would reclaim Interviewer 8's precache) and the browser is idle, it registers
+`/v8/sw.js` with scope `/v8/` in the background, once per page load
+(`src/lib/pwa/legacyInterviewerServiceWorker.ts`). When that worker is already
+registered, it checks it for an update instead, so a deploy that changes the
+pin downloads the new build on devices that never visit `/v8/`; the new build
+waits and Interviewer 8 applies it on its next load. Interviewer 8's worker
+downloads its own precache and keeps it across Interviewer 9 releases; its
+cache name changes only when the pin changes. The status row, Settings and
+each schema 8 card show whether the pinned build's precache is installed.
+
 ## Developer site
 
 The separate `.dev` Netlify site is intentionally linked to this repository and
@@ -184,8 +294,9 @@ version being shipped. Without `args`, the workflow drives
 which is the right target for ad-hoc health checks between releases. Either
 way it runs every core user journey with headless Playwright: protocol management, a
 complete interview conducted entirely offline (the committed release-smoke
-walker over the six-stage fixture protocol, proving the precache serves the
-whole engine without network), session and data management, export in every
+walker over the fourteen-stage, two-language schema 9 fixture protocol,
+proving the precache serves the whole engine without network and that the
+schema 9 runtime works offline), session and data management, export in every
 format combination, device-lock enrolment through revocation, service-worker
 and offline behaviour, and settings. Each journey runs in its own isolated
 browser profile; every reported failure is independently re-examined by a
@@ -235,10 +346,11 @@ The app's `build` command runs Vite and then `scripts/assert-pwa-build.mjs`, whi
 fails the build if the service worker, manifest, or icons are missing from
 `dist/`, or if a critical JS chunk (the interview engine, mapbox-gl, the entry
 point) or responsive stage-preview image got silently dropped from the Workbox
-precache manifest. A deploy that passes this assertion is one that will actually
-boot and render the interview menu offline; treat an assertion failure as a hard
-release blocker, not a warning to route around. The assertion
-also validates the emitted `_headers`: the service worker, HTML shell (including
+precache manifest, or if any of the dev-only Development protocol (its JSON or
+media, matched by content) is in `dist/`. A deploy that passes this assertion is
+one that will actually boot and render the interview menu offline; treat an
+assertion failure as a hard release blocker, not a warning to route around.
+The assertion also validates the emitted `_headers`: the service worker, HTML shell (including
 requested SPA deep links), manifest, and stable icons must use
 `no-store, no-cache, max-age=0, must-revalidate`, while only content-hashed
 `/assets/*` may use a one-year immutable cache. The generated worker assertion

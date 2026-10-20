@@ -11,6 +11,10 @@ import {
   documentWithRebasedVariable,
   sectionIdForCodebookSubject,
 } from '../../codebook/editing.ts';
+import type {
+  OptionRowChoiceValue,
+  VariableEditorHostOptions,
+} from '../../codebook/optionRowChoice.ts';
 import { useCodebookSectionWrite } from '../../codebook/writes.ts';
 import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
@@ -41,6 +45,12 @@ export type CreateVariableEditorOptions = Readonly<{
    * to one of these slots whose options differ.
    */
   lockedOptions?: readonly VariableOption[];
+  /**
+   * Options the new attribute starts with, which the researcher may edit, add
+   * to and remove from. The counterpart of `lockedOptions` for an interface
+   * that suggests a starting list but does not own the values.
+   */
+  seedOptions?: readonly VariableOption[];
   /** Title of the editor's dialog, already formatted. */
   title: string;
   /**
@@ -55,7 +65,19 @@ export type CreateVariableEditorOptions = Readonly<{
    * can take it off.
    */
   seedValidation?: Readonly<Record<string, unknown>>;
-  onCreated(variableId: string): void;
+  /**
+   * Passed on to the editor, for a slot whose host fixes the type or keeps a
+   * choice of its own about each option.
+   */
+  editorOptions?: VariableEditorHostOptions;
+  /**
+   * Told the id of the attribute created, with the choice made on each of its
+   * options' rows when `editorOptions` asked for one.
+   */
+  onCreated(
+    variableId: string,
+    optionRowChoices?: readonly OptionRowChoiceValue[],
+  ): void;
 }>;
 
 export type CreateVariableEditor = Readonly<{
@@ -129,8 +151,10 @@ export function useCreateVariableEditor({
   subject,
   variableTypes,
   lockedOptions,
+  seedOptions,
   title,
   seedValidation,
+  editorOptions,
   onCreated,
 }: CreateVariableEditorOptions): CreateVariableEditor {
   const { readOnly } = useStageEditorForm();
@@ -313,7 +337,11 @@ export function useCreateVariableEditor({
         open={session.open}
         onExitComplete={onSessionExited}
         title={title}
-        size="readable"
+        // Wider for a host that adds a choice to every option row, which
+        // then needs the room for a third field beside the label and value.
+        size={
+          editorOptions?.optionRowChoice === undefined ? 'readable' : 'editor'
+        }
         dismissible={!submitting}
         closeDialog={requestClose}
         // The editor paints Cancel and its own submit in here, so the dialog's
@@ -330,6 +358,9 @@ export function useCreateVariableEditor({
           initialDraft={{
             name: session.name,
             ...(onlyType === undefined ? {} : { type: onlyType }),
+            ...(seedOptions === undefined
+              ? {}
+              : { options: seedOptions.map((option) => ({ ...option })) }),
             ...(seedValidation === undefined
               ? {}
               : { validation: seedValidation }),
@@ -341,7 +372,8 @@ export function useCreateVariableEditor({
           footerSlot={footerSlot}
           onCancel={requestClose}
           onSubmitDocument={submitEdit(session.subject, session.variableId)}
-          onComplete={(variableId) => {
+          {...editorOptions}
+          onComplete={(variableId, _variableName, optionRowChoices) => {
             // Bound only while the slot still names attributes of the type the
             // attribute was created on. An answer that arrives after the type
             // has moved would otherwise put a reference to the old type's
@@ -352,7 +384,7 @@ export function useCreateVariableEditor({
             // before it awaited the host, so a closure read would answer for
             // the render that started the request. See `writable`.
             if (writable.current) {
-              onCreated(variableId);
+              onCreated(variableId, optionRowChoices);
               session.settle({ status: 'created' });
             } else {
               // The codebook holds it, and the slot it was for has moved on.

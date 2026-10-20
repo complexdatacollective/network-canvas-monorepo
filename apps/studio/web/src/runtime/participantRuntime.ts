@@ -49,6 +49,12 @@ export const participantRequestInit: globalThis.RequestInit = {
   credentials: 'omit',
 };
 
+export const participantLogTransport = (token: string) =>
+  ({
+    credentials: 'omit',
+    headers: () => ({ [PARTICIPANT_SESSION_HEADER]: token }),
+  }) as const;
+
 const protocol = RpcClient.layerProtocolHttp({ url: RPC_PATH }).pipe(
   Layer.provide(RpcSerialization.layerNdjson),
   Layer.provide(

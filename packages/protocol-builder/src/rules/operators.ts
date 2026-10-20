@@ -787,8 +787,14 @@ const offeredOperators = (
 /**
  * What a rule's operator list is chosen for: an attribute of a given type, or
  * — before any attribute has been chosen — the entity itself.
+ *
+ * `encrypted` is an encrypted attribute in a rule set that reads interview
+ * answers. Rules there are checked without the participant's passphrase, so
+ * an answer is only ciphertext to them; whether the attribute was answered at
+ * all is the one thing they can still read, and the presence operators are the
+ * whole list.
  */
-export type RuleOperatorSubject = VariableType | 'exists';
+export type RuleOperatorSubject = VariableType | 'exists' | 'encrypted';
 
 const OFFERED_OPERATORS: ReadonlyMap<
   RuleOperatorSubject,
@@ -796,6 +802,7 @@ const OFFERED_OPERATORS: ReadonlyMap<
 > = new Map<RuleOperatorSubject, ReadonlySet<FilterOperator>>([
   ...VariableTypesKeys.map((type) => [type, offeredOperators(type)] as const),
   ['exists', PRESENCE_OPERATORS],
+  ['encrypted', PRESENCE_OPERATORS],
 ]);
 
 const NO_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>();

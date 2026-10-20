@@ -18,12 +18,13 @@ function makeBaseProtocol(
   return {
     name: 'Test',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
     ...overrides,
-  } as CurrentProtocol;
+  };
 }
 
 describe('currentProtocolToPayload', () => {
@@ -31,6 +32,24 @@ describe('currentProtocolToPayload', () => {
     const payload = currentProtocolToPayload(makeBaseProtocol(), identity);
     expect(payload.id).toBe(identity.id);
     expect(payload.importedAt).toBe(identity.importedAt);
+  });
+
+  it('hashes the protocol’s languages along with its structure', () => {
+    const english = currentProtocolToPayload(makeBaseProtocol(), identity);
+    const englishAndFrench = currentProtocolToPayload(
+      makeBaseProtocol({
+        localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      }),
+      identity,
+    );
+    const frenchByDefault = currentProtocolToPayload(
+      makeBaseProtocol({
+        localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+      }),
+      identity,
+    );
+    expect(englishAndFrench.hash).not.toBe(english.hash);
+    expect(frenchByDefault.hash).not.toBe(englishAndFrench.hash);
   });
 
   it('produces identical output for the same protocol and identity', () => {

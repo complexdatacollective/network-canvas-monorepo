@@ -1,6 +1,7 @@
 import { Predicate } from 'effect';
 import { RpcClientError } from 'effect/rpc';
 
+import type { FaultCode } from '@codaco/studio-contract/schema/browser-logs';
 import {
   Conflict,
   Forbidden,
@@ -113,4 +114,50 @@ export const parseRetryAfter = (
   return value !== undefined && DELTA_SECONDS.test(value)
     ? boundedSeconds(Number(value))
     : undefined;
+};
+
+const REFUSAL_FAULTS: Readonly<
+  Record<NonNullable<Refusal>['kind'], FaultCode>
+> = {
+  rateLimited: 'rate_limited',
+  maintenance: 'maintenance',
+  unauthorized: 'unauthorized',
+  forbidden: 'forbidden',
+  notFound: 'not_found',
+  transport: 'transport',
+};
+
+const TAGGED_FAULTS: Readonly<Record<string, FaultCode>> = {
+  Conflict: 'conflict',
+  SessionOutOfDate: 'conflict',
+  SaveNotApplied: 'conflict',
+  SessionEnded: 'session_ended',
+  SessionTakenOver: 'session_taken_over',
+  LinkUnavailable: 'link_unavailable',
+};
+
+const clientErrorFault = (error: RpcClientError.RpcClientError): FaultCode => {
+  const { reason } = error;
+  switch (reason._tag) {
+    case 'HttpError':
+      return reason.kind === 'TransportError' ? 'transport' : 'http_error';
+    case 'RpcClientDefect':
+      return 'unknown';
+    default:
+      return 'transport';
+  }
+};
+
+export const faultCodeOf = (error: unknown): FaultCode => {
+  const refusal = refusalOf(error);
+  if (refusal !== undefined && refusal.kind !== 'transport') {
+    return REFUSAL_FAULTS[refusal.kind];
+  }
+  if (error instanceof RpcClientError.RpcClientError) {
+    return clientErrorFault(error);
+  }
+  if (Predicate.hasProperty(error, '_tag') && Predicate.isString(error._tag)) {
+    return TAGGED_FAULTS[error._tag] ?? 'unknown';
+  }
+  return 'unknown';
 };

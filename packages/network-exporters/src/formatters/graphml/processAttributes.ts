@@ -1,32 +1,57 @@
 import type { DocumentFragment } from '@xmldom/xmldom';
 
 import type { Codebook } from '@codaco/protocol-validation';
-import type { NcEgo, VariableValue } from '@codaco/shared-consts';
+import {
+  type LayoutColumnAxis,
+  type NcEgo,
+  type VariableValue,
+  variableExportColumnEntries,
+} from '@codaco/shared-consts';
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
+import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
 import {
   getEntityAttributes,
-  hasEncryptedValue,
+  getOwn,
   isCategoricalOptionSelected,
 } from '../../utils/general';
 import {
   createDataElement,
   createDocumentFragment,
   getCodebookVariablesForEntity,
-  sha1,
 } from './helpers';
+import type { GraphMLKeyIds } from './keyIds';
+
+const layoutDatum = (
+  axis: LayoutColumnAxis,
+  x: number,
+  y: number,
+  { globalOptions }: ExportOptions,
+): string => {
+  switch (axis) {
+    case 'x':
+      return String(x);
+    case 'y':
+      return String(y);
+    case 'screenSpaceX':
+      return (x * globalOptions.screenLayoutWidth).toFixed(2);
+    case 'screenSpaceY':
+      return ((1.0 - y) * globalOptions.screenLayoutHeight).toFixed(2);
+  }
+};
 
 /**
  * Function for processing attributes of an entity. Processing means creating
- * one or more <data> elements for each attribute.
+ * one or more <data> elements for each attribute, under the key ids
+ * `generateKeyElements` gave each column.
  */
-async function processAttributes(
+function processAttributes(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
   codebook: Codebook,
   exportOptions: ExportOptions,
-  externalKeyIds: ReadonlyMap<string, string>,
-): Promise<DocumentFragment> {
+  keyIds: GraphMLKeyIds,
+): DocumentFragment {
   const fragment = createDocumentFragment();
 
   const createDomDataElement = (key: string, value: string) => {
@@ -38,104 +63,78 @@ async function processAttributes(
   const entityAttributes = getEntityAttributes(entity);
 
   for (const [key, value] of Object.entries(entityAttributes)) {
-    const codebookEntry = variables?.[key];
-    const variableIsEncrypted = hasEncryptedValue(entity, key);
+    const codebookEntry = getOwn(variables, key);
+    const encrypted = isEncryptedAttribute(entity, key, codebookEntry);
 
     if (!codebookEntry) {
-      const externalKey = externalKeyIds.get(key);
+      const externalKey = keyIds.external.get(key);
       if (!externalKey) {
         throw new Error(`Missing GraphML key for external attribute: ${key}`);
       }
       createDomDataElement(
         externalKey,
-        variableIsEncrypted ? 'ENCRYPTED' : stringifyValue(value),
+        encrypted ? 'ENCRYPTED' : stringifyValue(value),
       );
       continue;
     }
 
-    switch (codebookEntry.type) {
-      case 'categorical': {
-        const options = codebookEntry.options;
-        const hashedValues = await Promise.all(
-          options.map((option) => sha1(String(option.value))),
-        );
-
-        if (variableIsEncrypted) {
-          // If the variable is encrypted, we don't want to export it.
-          options.forEach((_option, index) => {
-            const optionKey = `${key}_${hashedValues[index]}`;
-            createDomDataElement(optionKey, 'ENCRYPTED');
-          });
-          break;
-        }
-
-        options.forEach((option, index) => {
-          const optionKey = `${key}_${hashedValues[index]}`;
-
-          const attributeValue = entityAttributes[key];
-          const isSelected = isCategoricalOptionSelected(
-            attributeValue,
-            option.value,
-          );
-          createDomDataElement(optionKey, isSelected ? 'true' : 'false');
-        });
-
-        break;
+    const ids = keyIds.variable.get(codebookEntry);
+    const columns = variableExportColumnEntries(codebookEntry, {
+      format: 'graphml',
+      useScreenLayoutCoordinates:
+        exportOptions.globalOptions.useScreenLayoutCoordinates,
+    }).map(({ origin }, index) => {
+      const id = ids?.[index];
+      if (id === undefined) {
+        throw new Error(`Missing GraphML key for variable: ${key}`);
       }
-      case 'layout': {
-        if (variableIsEncrypted) {
-          // If the variable is encrypted, we don't want to export it.
-          createDomDataElement(`${key}_X`, 'ENCRYPTED');
-          createDomDataElement(`${key}_Y`, 'ENCRYPTED');
-          break;
-        }
+      return { id, origin };
+    });
 
+    if (encrypted) {
+      // An encrypted value is never exported. A layout variable writes the
+      // marker for its coordinates only.
+      for (const { id, origin } of columns) {
         if (
-          typeof value !== 'object' ||
-          Array.isArray(value) ||
-          !('x' in value) ||
-          !('y' in value) ||
-          typeof value.x !== 'number' ||
-          typeof value.y !== 'number'
+          origin.kind !== 'layout' ||
+          origin.axis === 'x' ||
+          origin.axis === 'y'
         ) {
-          break;
+          createDomDataElement(id, 'ENCRYPTED');
         }
-
-        const { x: xCoord, y: yCoord } = value;
-
-        createDomDataElement(`${key}_X`, String(xCoord));
-        createDomDataElement(`${key}_Y`, String(yCoord));
-
-        if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-          const { screenLayoutWidth, screenLayoutHeight } =
-            exportOptions.globalOptions;
-          const screenSpaceXCoord = (xCoord * screenLayoutWidth).toFixed(2);
-          const screenSpaceYCoord = (
-            (1.0 - yCoord) *
-            screenLayoutHeight
-          ).toFixed(2);
-
-          createDomDataElement(`${key}_screenSpaceX`, screenSpaceXCoord);
-          createDomDataElement(`${key}_screenSpaceY`, screenSpaceYCoord);
-        }
-        break;
       }
+      continue;
+    }
 
-      case 'boolean':
-      case 'number':
-      case 'text':
-      case 'datetime':
-      case 'location':
-      case 'ordinal':
-      case 'scalar': {
-        if (variableIsEncrypted) {
-          createDomDataElement(key, 'ENCRYPTED');
-          break;
-        }
-
-        createDomDataElement(key, stringifyValue(value));
-        break;
+    if (codebookEntry.type === 'layout') {
+      if (
+        typeof value !== 'object' ||
+        Array.isArray(value) ||
+        !('x' in value) ||
+        !('y' in value) ||
+        typeof value.x !== 'number' ||
+        typeof value.y !== 'number'
+      ) {
+        continue;
       }
+      for (const { id, origin } of columns) {
+        if (origin.kind === 'layout') {
+          createDomDataElement(
+            id,
+            layoutDatum(origin.axis, value.x, value.y, exportOptions),
+          );
+        }
+      }
+      continue;
+    }
+
+    for (const { id, origin } of columns) {
+      createDomDataElement(
+        id,
+        origin.kind === 'option'
+          ? String(isCategoricalOptionSelected(value, origin.value))
+          : stringifyValue(value),
+      );
     }
   }
 

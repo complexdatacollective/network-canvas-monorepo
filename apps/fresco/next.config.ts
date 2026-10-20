@@ -1,4 +1,6 @@
 import ChildProcess from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { withPostHogConfig } from '@posthog/nextjs-config';
 import type { NextConfig } from 'next';
@@ -7,24 +9,46 @@ import './env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from './fresco.config';
 import pkg from './package.json' with { type: 'json' };
 
-let commitHash = 'Unknown commit hash';
+/**
+ * Source files the FormatJS transform in `@codaco/app-i18n/next-loader` can
+ * change: it rewrites only calls to `formatMessage`, `$t`, `$formatMessage`,
+ * `defineMessage(s)` and `<FormattedMessage>`, matched by name, so a file
+ * that never spells one of them comes back unchanged. Every file the loader
+ * sees is a round trip through one of Turbopack's Node.js loader processes,
+ * and each module context keeps its own pool of them, so sending only these
+ * files keeps the build within Netlify's memory (see netlify.toml).
+ */
+const I18N_SOURCE = /formatMessage|defineMessage|FormattedMessage|\$t\b/;
 
-try {
-  commitHash = ChildProcess.execSync('git log --pretty=format:"%h" -n1')
-    .toString()
-    .trim();
-} catch (error) {
-  if (error instanceof Error) {
-    // eslint-disable-next-line no-console
-    console.info(
-      'Error getting commit hash:',
-      error.message ?? 'Unknown error',
-    );
-  } else {
-    // eslint-disable-next-line no-console
-    console.info('Error getting commit hash:', error);
+/**
+ * The commit this build came from. A checkout answers through git; the
+ * released image is built from the mirrored tree, which the Docker build sees
+ * without its .git, so scripts/release/mirror-app.mjs records the monorepo
+ * commit in `source-commit` instead.
+ */
+function readCommitHash() {
+  try {
+    return ChildProcess.execSync('git log --pretty=format:"%h" -n1', {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
+  } catch {
+    // Not a git checkout; fall through to the recorded commit.
   }
+  try {
+    const recorded = readFileSync(
+      join(process.cwd(), 'source-commit'),
+      'utf8',
+    ).trim();
+    if (/^[0-9a-f]{7,40}$/i.test(recorded)) return recorded.slice(0, 10);
+  } catch {
+    // Not a mirrored tree either.
+  }
+  return 'Unknown commit hash';
 }
+
+const commitHash = readCommitHash();
 
 const config: NextConfig = {
   // Next 16.3 stopped emitting `.next/next-server.js.nft.json` when
@@ -42,7 +66,7 @@ const config: NextConfig = {
   turbopack: {
     rules: {
       '*.{js,jsx,ts,tsx}': {
-        condition: { not: 'foreign' },
+        condition: { all: [{ not: 'foreign' }, { content: I18N_SOURCE }] },
         loaders: ['@codaco/app-i18n/next-loader'],
       },
       '**/src/locales/*.json': {
@@ -51,16 +75,6 @@ const config: NextConfig = {
         as: '*.js',
       },
     },
-    resolveAlias:
-      // Source descriptors and all workspace catalogs use the shared compiler.
-      // Published packages already contain compiled ICU ASTs.
-      // eslint-disable-next-line no-process-env
-      process.env.NODE_ENV === 'production'
-        ? {
-            '@formatjs/icu-messageformat-parser':
-              '@formatjs/icu-messageformat-parser/no-parser.js',
-          }
-        : {},
   },
   transpilePackages: ['@codaco/shared-consts'],
   experimental: {

@@ -59,30 +59,30 @@ catalog:
   '@formatjs/icu-messageformat-parser': ^3.5.20
   # oxc-based build transform (no babel) compiling defineMessages
   # defaultMessage strings to pre-parsed AST in @codaco/app-i18n's vite
-  # integration, keeping the ICU parser out of production bundles.
+  # integration.
   '@formatjs/unplugin': ^1.2.12
   # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
   # the protocol localization design (§7.1) adopts this same entry when
   # protocol-validation's locale helpers land.
   '@formatjs/intl-localematcher': ^0.9.0
   '@microsoft/api-extractor': ^7.59.3
-  '@next/bundle-analyzer': ^16.3.8
-  '@next/third-parties': ^16.3.8
+  '@next/bundle-analyzer': ^16.4.0
+  '@next/third-parties': ^16.4.0
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
-  '@playwright/test': ^1.63.0
+  '@playwright/test': ^1.64.0
   '@posthog/cli': ^0.18.9
   '@posthog/nextjs-config': ^1.11.1
   '@posthog/plugin-utils': ^2.0.0
   '@posthog/react': ^1.11.3
   '@radix-ui/react-slot': ^1.3.3
   '@reduxjs/toolkit': ^2.13.0
-  '@storybook/addon-a11y': ^10.6.1
-  '@storybook/addon-docs': ^10.6.1
-  '@storybook/addon-mcp': ^10.6.1
-  '@storybook/addon-vitest': ^10.6.1
-  '@storybook/nextjs-vite': ^10.6.1
-  '@storybook/react-vite': ^10.6.1
+  '@storybook/addon-a11y': ^10.6.2
+  '@storybook/addon-docs': ^10.6.2
+  '@storybook/addon-mcp': ^10.6.2
+  '@storybook/addon-vitest': ^10.6.2
+  '@storybook/nextjs-vite': ^10.6.2
+  '@storybook/react-vite': ^10.6.2
   '@tailwindcss/cli': ^4.3.3
   '@tailwindcss/postcss': ^4.3.3
   '@tailwindcss/typography': ^0.5.20
@@ -103,9 +103,9 @@ catalog:
   # which TS7 does not ship; it looks for this exact fallback package name.
   '@typescript/typescript6': ^6.0.2
   '@vitejs/plugin-react': ^6.1.1
-  '@vitest/browser': ^5.0.3
-  '@vitest/browser-playwright': ^5.0.3
-  '@vitest/coverage-v8': ^5.0.3
+  '@vitest/browser': ^5.0.4
+  '@vitest/browser-playwright': ^5.0.4
+  '@vitest/coverage-v8': ^5.0.4
   # The engine behind Storybook's a11y addon, used directly by the
   # protocol-builder suite so a heading ladder is judged by the same
   # `heading-order` rule a story is.
@@ -138,11 +138,14 @@ catalog:
   eslint-plugin-formatjs: ^8.1.1
   es-toolkit: ^1.52.0
   fuse.js: ^7.5.0
+  # The FormatJS runtime react-intl already pins; the interview formats
+  # protocol-authored ICU messages with it directly, in their source locale.
+  intl-messageformat: ^12.1.2
   jsdom: ^30.1.2
   jszip: ^3.10.2
   lucide-react: ^1.49.0
   motion: ^13.4.6
-  next: ^16.3.8
+  next: ^16.4.0
   # Catalogued so the root's formatter and Architect's cannot drift apart.
   # Architect's E2E helper formats stage snapshots in-process (see
   # `apps/architect/e2e/helpers/normalize-stage.ts`) and depends on producing
@@ -153,7 +156,7 @@ catalog:
   pdfjs-dist: ^6.3.289
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
-  playwright: ^1.63.0
+  playwright: ^1.64.0
   postcss: ^8.5.28
   posthog-js: ^1.435.3
   react: ^19.3.0
@@ -165,7 +168,7 @@ catalog:
   react-redux: ^9.3.0
   redux-logger: ^3.0.6
   sass: ^1.105.1
-  storybook: ^10.6.1
+  storybook: ^10.6.2
   tailwind-merge: ^3.7.0
   tailwindcss: ^4.3.3
   tsx: ^4.23.15
@@ -173,7 +176,7 @@ catalog:
   uuid: ^14.0.2
   vite: ^8.3.1
   vite-plugin-dts: ^5.1.1
-  vitest: ^5.0.3
+  vitest: ^5.0.4
   wrangler: ^4.144.0
   zod: ^4.6.5
   zustand: ^5.0.15
@@ -332,7 +335,7 @@ patchedDependencies:
   # and nothing is reported: a story asking for a 700px viewport renders at
   # whatever `browser.viewport` says, and only a story that measures its own
   # layout notices. `vitest/browser` is the same `page` object under the name
-  # Vitest 5 serves. 10.6.1 declares Vitest 5 peers but still imports the old
+  # Vitest 5 serves. 10.6.2 declares Vitest 5 peers but still imports the old
   # entry point; drop this once a release imports `vitest/browser` itself.
-  '@storybook/addon-vitest@10.6.1': patches/@storybook__addon-vitest@10.6.1.patch
+  '@storybook/addon-vitest@10.6.2': patches/@storybook__addon-vitest@10.6.2.patch
   drizzle-orm@1.0.0-rc.5-5935859: patches/drizzle-orm@1.0.0-rc.5-5935859.patch

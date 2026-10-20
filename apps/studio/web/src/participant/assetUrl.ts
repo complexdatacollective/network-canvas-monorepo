@@ -1,4 +1,5 @@
 import type { ResolvedAsset } from '@codaco/interview/contract';
+import type { FaultCode } from '@codaco/studio-contract/schema/browser-logs';
 
 import { participantRequestInit } from '../runtime/participantRuntime.ts';
 
@@ -8,12 +9,44 @@ const storagePath = (source: string): string =>
 const isSvg = (source: string): boolean =>
   source.toLowerCase().endsWith('.svg');
 
-const svgDataUrl = async (path: string): Promise<string> => {
-  const response = await fetch(path, participantRequestInit);
-  if (!response.ok) {
-    throw new Error(`Could not load ${path}: ${String(response.status)}`);
+type AssetFailure = (code: FaultCode) => void;
+
+type Fetched =
+  | { readonly ok: true; readonly url: string }
+  | { readonly ok: false; readonly code: FaultCode; readonly error: unknown };
+
+const failedWith = (code: FaultCode, error: unknown): Fetched => ({
+  ok: false,
+  code,
+  error,
+});
+
+const svgDataUrl = async (path: string): Promise<Fetched> => {
+  let response: Response;
+  try {
+    response = await fetch(path, participantRequestInit);
+  } catch (error) {
+    return failedWith('transport', error);
   }
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(await response.text())}`;
+  if (!response.ok) {
+    return failedWith(
+      response.status === 404 ? 'not_found' : 'http_error',
+      new Error(`Could not load ${path}: ${String(response.status)}`),
+    );
+  }
+  try {
+    const body = await response.text();
+    return {
+      ok: true,
+      url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(body)}`,
+    };
+  } catch (error) {
+    return failedWith('transport', error);
+  }
+};
+
+export type AssetResolver = ((assetId: string) => Promise<string>) & {
+  readonly produced: (url: string) => boolean;
 };
 
 /**
@@ -26,23 +59,42 @@ const svgDataUrl = async (path: string): Promise<string> => {
  */
 export const createAssetResolver = (
   assets: readonly ResolvedAsset[],
-): ((assetId: string) => Promise<string>) => {
+  failureReporter: () => AssetFailure = () => () => undefined,
+): AssetResolver => {
   const resolved = new Map<string, Promise<string>>();
-  return (assetId) => {
+  const generated = new Set<string>();
+  const resolve = (assetId: string): Promise<string> => {
     const known = resolved.get(assetId);
     if (known !== undefined) return known;
+    const report = failureReporter();
     const source = assets.find(
       (candidate) => candidate.assetId === assetId,
     )?.source;
-    if (source === undefined) {
-      return Promise.reject(new Error(`No stored file for asset ${assetId}`));
-    }
-    const url = isSvg(source)
-      ? svgDataUrl(storagePath(source))
-      : Promise.resolve(storagePath(source));
+    const fetched: Promise<Fetched> =
+      source === undefined
+        ? Promise.resolve(
+            failedWith(
+              'not_found',
+              new Error(`No stored file for asset ${assetId}`),
+            ),
+          )
+        : isSvg(source)
+          ? svgDataUrl(storagePath(source))
+          : Promise.resolve({ ok: true, url: storagePath(source) });
+    const url = fetched.then((outcome) => {
+      if (!outcome.ok) {
+        report(outcome.code);
+        throw outcome.error;
+      }
+      if (source !== undefined && isSvg(source)) generated.add(outcome.url);
+      return outcome.url;
+    });
     // A failed load is not kept, so the next request tries again.
     url.catch(() => resolved.delete(assetId));
     resolved.set(assetId, url);
     return url;
   };
+  return Object.assign(resolve, {
+    produced: (url: string) => generated.has(url),
+  });
 };

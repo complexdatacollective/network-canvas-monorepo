@@ -22,7 +22,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
-import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
@@ -41,31 +41,31 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import type { FormKind } from '../../analytics/events';
 import { useTrack } from '../../analytics/useTrack';
 import {
   buildProtocolFieldErrors,
   type ProtocolFieldErrorEntry,
 } from '../../forms/buildProtocolFieldErrors';
-import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
+import useFormReadyToContinue from '../../forms/useFormReadyToContinue';
 import useProtocolForm from '../../forms/useProtocolForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
-import KeepWhileProtected from '../Anonymisation/KeepWhileProtected';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
-import discardChangesDialog from '../discardChangesDialog';
+import discardChangesDialog, {
+  failedCheckReason,
+} from '../discardChangesDialog';
 import { interfaceMessages } from '../messages';
 
-type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
-
 type SlidesFormAnalyticsProps = {
-  form_kind?: FormKind;
+  form_kind: FormKind;
 };
 
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
@@ -80,7 +80,6 @@ type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
     id: string,
     attributePatch: AttributePatch,
   ) => Promise<FormSubmissionResult>;
-  onNavigateBack?: () => void;
   moveForward: () => void | Promise<void>;
   renderHeader: (item: T) => ReactNode;
 };
@@ -95,7 +94,10 @@ type SlideHandle = {
   validate: () => Promise<boolean>;
   submit: () => Promise<boolean>;
   isDirty: () => boolean;
-  /** Why the answers entered cannot be saved, for the warning before leaving. */
+  /**
+   * Why answers that failed their checks cannot be saved, for the warning
+   * before leaving.
+   */
   unsavedReason: () => MessageDescriptor;
   /**
    * Ask the slide's form to move to its first invalid question. The form does
@@ -116,11 +118,12 @@ type SlideContentProps = {
   submitButton: ReactNode;
   onUpdate: SlidesFormProps['updateItem'];
   onReadyChange: (ready: boolean) => void;
-  form_kind?: FormKind;
+  form_kind: FormKind;
 };
 
 type SlideFormProps = SlideContentProps & {
   initialValues: Record<string, FieldValue>;
+  unavailableVariables: readonly string[];
 };
 
 const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
@@ -135,6 +138,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       onReadyChange,
       form_kind,
       initialValues,
+      unavailableVariables,
     },
     ref,
   ) {
@@ -143,28 +147,26 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
 
     const {
       fieldComponents,
-      coerceValues,
+      toAttributePatch,
       componentByVariable,
       variableByFieldPath,
+      passphraseNeeded,
     } = useProtocolForm({
       fields: form.fields,
       autoFocus: false,
       initialValues,
       subject,
       currentEntityId: id,
+      unavailableVariables,
     });
 
     const handleSubmit: FormSubmitHandler = async (values) => {
-      const patchResult = formValuesToAttributePatch(
-        coerceValues(values),
-        form.fields.map((field) => field.variable),
-        initialValues,
-      );
+      const patchResult = toAttributePatch(values);
 
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
@@ -181,8 +183,6 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     };
 
     const storeApi = useContext(FormStoreContext);
-    const { isValid } = useFormMeta();
-    const fieldCount = useFormStore((s) => s.fields.size);
     const formErrors = useFormStore((s) => s.errors);
     const formErrorsRef = useRef(formErrors);
     useLayoutEffect(() => {
@@ -195,9 +195,10 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     const { hasScrolledToBottom, sentinelRef } =
       useScrolledToBottom(scrollAreaRef);
 
+    const isReady = useFormReadyToContinue(hasScrolledToBottom);
     useEffect(() => {
-      onReadyChange(isValid && fieldCount > 0 && hasScrolledToBottom);
-    }, [isValid, fieldCount, hasScrolledToBottom, onReadyChange]);
+      onReadyChange(isReady);
+    }, [isReady, onReadyChange]);
 
     useEffect(() => {
       track('form_opened', {
@@ -226,7 +227,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       // no longer had.
       isDirty: () =>
         storeApi ? selectIsFormDirty(storeApi.getState()) : false,
-      unsavedReason: () => interfaceMessages.discardChangesDescription,
+      unsavedReason: () => failedCheckReason(passphraseNeeded),
       requestErrorFocus: () => storeApi?.getState().requestErrorFocus(),
       getFieldErrors: () =>
         buildProtocolFieldErrors(
@@ -281,18 +282,17 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
  * Stands in for a slide whose answers are protected by the interview
  * passphrase while that passphrase is not in force (or its answers are still
  * being decrypted), so nothing can be entered that could not be saved.
- * `isDirty` reports answers entered before the slide was hidden.
  */
 const ProtectedSlide = forwardRef<
   SlideHandle,
   {
     header: ReactNode;
-    reason: 'pending' | 'passphrase-needed' | 'passphrase-invalid';
+    reason: 'pending' | 'locked';
     onReadyChange: (ready: boolean) => void;
-    isDirty: () => boolean;
   }
->(function ProtectedSlide({ header, reason, onReadyChange, isDirty }, ref) {
+>(function ProtectedSlide({ header, reason, onReadyChange }, ref) {
   const noticeRef = useRef<HTMLDivElement>(null);
+  const { lockedNotice } = usePassphrase();
 
   useEffect(() => {
     onReadyChange(false);
@@ -301,8 +301,8 @@ const ProtectedSlide = forwardRef<
   useImperativeHandle(ref, () => ({
     validate: async () => false,
     submit: async () => false,
-    isDirty,
-    unsavedReason: () => runtimeMessages.protectedAnswersNotSaved,
+    isDirty: () => false,
+    unsavedReason: () => failedCheckReason(reason === 'locked'),
     requestErrorFocus: () => noticeRef.current?.focus(),
     getFieldErrors: () => [],
   }));
@@ -319,13 +319,7 @@ const ProtectedSlide = forwardRef<
             className="tablet-portrait:min-w-lg focusable max-w-2xl"
           >
             <AlertDescription>
-              <AppMessage
-                message={
-                  reason === 'passphrase-invalid'
-                    ? runtimeMessages.decryptRetry
-                    : runtimeMessages.protectedAnswersLocked
-                }
-              />
+              <AppMessage message={lockedNotice} />
             </AlertDescription>
           </Alert>
         )}
@@ -335,8 +329,6 @@ const ProtectedSlide = forwardRef<
 });
 
 const NO_VARIABLES = {};
-
-const ignoreReadiness = () => undefined;
 
 const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
   function SlideContent(props, ref) {
@@ -351,44 +343,38 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
       form.fields,
       variables,
     );
-    // The slide's form while it is hidden, which still knows what was entered.
-    const hiddenSlideRef = useRef<SlideHandle>(null);
-    const ready = protectedValues.status === 'ready';
+
+    if (protectedValues.status === 'pending') {
+      return (
+        <ProtectedSlide
+          ref={ref}
+          header={props.header}
+          reason="pending"
+          onReadyChange={props.onReadyChange}
+        />
+      );
+    }
+
+    if (protectedValues.status === 'locked') {
+      return (
+        <ProtectedSlide
+          ref={ref}
+          header={props.header}
+          reason="locked"
+          onReadyChange={props.onReadyChange}
+        />
+      );
+    }
 
     return (
-      <>
-        {protectedValues.status !== 'ready' && (
-          <ProtectedSlide
-            ref={ref}
-            header={props.header}
-            reason={
-              protectedValues.status === 'pending'
-                ? 'pending'
-                : protectedValues.reason
-            }
-            onReadyChange={props.onReadyChange}
-            isDirty={() => hiddenSlideRef.current?.isDirty() ?? false}
-          />
-        )}
-        <KeepWhileProtected
-          values={
-            protectedValues.status === 'ready'
-              ? protectedValues.values
-              : undefined
-          }
-        >
-          {(initialValues) => (
-            <FormStoreProvider>
-              <SlideContentInner
-                ref={ready ? ref : hiddenSlideRef}
-                {...props}
-                onReadyChange={ready ? props.onReadyChange : ignoreReadiness}
-                initialValues={initialValues}
-              />
-            </FormStoreProvider>
-          )}
-        </KeepWhileProtected>
-      </>
+      <FormStoreProvider>
+        <SlideContentInner
+          ref={ref}
+          {...props}
+          initialValues={protectedValues.values}
+          unavailableVariables={protectedValues.unavailable}
+        />
+      </FormStoreProvider>
     );
   },
 );
@@ -397,7 +383,6 @@ export default function SlidesForm({
   items = [],
   subject,
   updateItem,
-  onNavigateBack,
   moveForward,
   renderHeader,
   form,
@@ -498,11 +483,8 @@ export default function SlidesForm({
         }
       }
 
+      // Back from the first slide leaves the stage.
       if (activeIndex === 0) {
-        if (onNavigateBack) {
-          onNavigateBack();
-          return false;
-        }
         return true;
       }
 

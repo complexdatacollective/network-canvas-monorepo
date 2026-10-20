@@ -15,6 +15,11 @@ import type {
   StageSubject,
 } from '@codaco/protocol-validation';
 
+import { useDynamicValueSources } from '../dynamicValues/DynamicValueScope';
+import {
+  FormDynamicValues,
+  type LabelNode,
+} from '../dynamicValues/FormDynamicValues';
 import { useStageSelector } from '../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -25,8 +30,12 @@ import {
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
 import { useVariableLabels } from './buildVariableLabels';
 import { coerceFormValues } from './coerceFormValues';
-import ProtocolField from './ProtocolField';
+import { formValuesToAttributePatch } from './formValuesToAttributePatch';
+import type { ProtocolFieldDefinition } from './ProtocolField';
+import ProtocolFormField from './ProtocolFormField';
 import { useValidationNetwork } from './useValidationNetwork';
+
+const NO_VARIABLES: readonly string[] = [];
 
 /**
  * Narrow a loosely-typed form Subject into a valid StageSubject for the
@@ -38,6 +47,77 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
   if (subject.entity === 'ego') return { entity: 'ego' };
   if (subject.type === undefined) return null;
   return { entity: subject.entity, type: subject.type };
+}
+
+/**
+ * A form's fields, with the captions the variable-comparison validators name
+ * their target with. Those are resolved here, inside `FormDynamicValues`
+ * where the form has one, so a caption showing an earlier answer reads the
+ * answer as typed and a validation message names the question as it is on
+ * screen.
+ */
+function ProtocolFormFields({
+  fields,
+  unavailableVariables,
+  initialValues,
+  autoFocus,
+  validationContext,
+}: {
+  fields: readonly ProtocolFieldDefinition[];
+  unavailableVariables: readonly string[];
+  initialValues: Record<string, FieldValue> | undefined;
+  autoFocus: boolean;
+  /** Everything but `variableLabels`, which is added here. */
+  validationContext: ValidationContext | null;
+}) {
+  /**
+   * The participant-facing text for each variable this form asks about, for
+   * the variable-comparison validators to name their target with. Shared with
+   * the screens that render a field without going through this hook (a
+   * categorical "other" input, a quick-add popover, the pedigree's side
+   * panel), so one comparison rule reads the same way wherever it is asked —
+   * see `buildVariableLabels` for what may and may not go in it.
+   *
+   * Read off the SAME metadata the fields are rendered from, rather than
+   * recomputed from the authored fields, so a validator can only name a field
+   * by the caption the participant is reading on this screen.
+   * `useVariableLabels` keys on content, so the fresh array mapped here does
+   * not destabilise `validationContext`.
+   */
+  const variableLabels = useVariableLabels(
+    fields.map((field) => ({ variable: field.variable, label: field.label })),
+  );
+  const fieldContext = useMemo(
+    () =>
+      validationContext === null
+        ? undefined
+        : { ...validationContext, variableLabels },
+    [validationContext, variableLabels],
+  );
+
+  return (
+    <>
+      {fields.map((field, index) => {
+        const initialValue =
+          initialValues &&
+          Object.hasOwn(initialValues, field.variable) &&
+          initialValues[field.variable] !== undefined
+            ? initialValues[field.variable]
+            : undefined;
+
+        return (
+          <ProtocolFormField
+            key={index}
+            field={field}
+            unavailable={unavailableVariables.includes(field.variable)}
+            initialValue={initialValue}
+            autoFocus={autoFocus && index === 0}
+            validationContext={fieldContext}
+          />
+        );
+      })}
+    </>
+  );
 }
 
 /**
@@ -54,6 +134,26 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
  *                    avoid collisions when multiple instances share a form store.
  * @param formValueAliases - Maps codebook variable IDs to interface-owned form
  *                    keys while preserving the original ID for metadata lookup.
+ * @param unavailableVariables - Variables whose stored answer can never be
+ *                    shown (see `useProtectedFormValues`). Each is shown as
+ *                    unavailable, and `toAttributePatch` leaves it as stored
+ *                    unless the participant enters a new answer.
+ * @param precedingVariables - Variables the interface's own controls ask in
+ *                    the same form before these fields (Family Pedigree's
+ *                    name, gender identity and sex assigned at birth). The
+ *                    fields' text can show their answers as they are given,
+ *                    as validation allows.
+ * @param newEntityAttributes - What a new entity is created with besides the
+ *                    form's answers (a Name Generator prompt's additional
+ *                    attributes), which the fields' text can show while the
+ *                    entity is being created.
+ * @param labelNode - How the interface names the node the form describes,
+ *                    when it shows its nodes by labels of its own (Family
+ *                    Pedigree's), given the node's attributes as the form's
+ *                    answers leave them. The fields' text, the text
+ *                    `withFormValues` scopes, and validation messages naming
+ *                    a field then show the node's label as the interface
+ *                    shows it, in place of the codebook's label rules.
  */
 export default function useProtocolForm({
   fields,
@@ -63,6 +163,10 @@ export default function useProtocolForm({
   namespace,
   currentEntityId,
   formValueAliases,
+  unavailableVariables = NO_VARIABLES,
+  precedingVariables = NO_VARIABLES,
+  newEntityAttributes,
+  labelNode,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -71,6 +175,10 @@ export default function useProtocolForm({
   namespace?: string;
   currentEntityId?: string;
   formValueAliases?: Readonly<Record<string, string>>;
+  unavailableVariables?: readonly string[];
+  precedingVariables?: readonly string[];
+  newEntityAttributes?: Readonly<Record<string, unknown>>;
+  labelNode?: LabelNode;
 }) {
   const stageValidationContext = useStageSelector(getValidationContext);
   const baseValidationContext =
@@ -108,28 +216,7 @@ export default function useProtocolForm({
     [subjectFieldsMetadata, stageVariables, fields],
   );
 
-  /**
-   * The participant-facing text for each variable this form asks about, for
-   * the variable-comparison validators to name their target with. Shared with
-   * the screens that render a field without going through this hook (a
-   * categorical "other" input, a quick-add popover, the pedigree's name field),
-   * so one comparison rule reads the same way wherever it is asked — see
-   * `buildVariableLabels` for what may and may not go in it.
-   *
-   * Read off the SAME metadata the fields are rendered from, rather than
-   * recomputed from `fields`, so a validator can only name a field by the
-   * caption the participant is reading on this screen. `useVariableLabels`
-   * keys on content, so the fresh array mapped here does not destabilise
-   * `validationContext`.
-   */
-  const variableLabels = useVariableLabels(
-    fieldsMetadata.map((field) => ({
-      variable: field.variable,
-      label: field.authoredLabel,
-    })),
-  );
-
-  const validationNetwork = useValidationNetwork(
+  const { context: validationNetwork, passphraseNeeded } = useValidationNetwork(
     stageValidationContext,
     subjectToStageSubject(stableSubject) ?? stageValidationContext.stageSubject,
     fieldsMetadata.map((field) => field.variable),
@@ -139,7 +226,7 @@ export default function useProtocolForm({
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
-    // Stages without a top-level subject (e.g. FamilyPedigree) leave
+    // Stages without a top-level subject (e.g. Information) leave
     // stageSubject null, which the context-dependent validators
     // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
     // caller supplies a concrete subject for the rendered fields, use it as the
@@ -151,7 +238,6 @@ export default function useProtocolForm({
       ...baseValidationContext,
       ...validationNetwork,
       stageSubject,
-      variableLabels,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
       ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
@@ -161,7 +247,6 @@ export default function useProtocolForm({
     formValueAliases,
     stableSubject,
     validationNetwork,
-    variableLabels,
   ]);
 
   // Names of fields whose codebook variable is a number, so the submit
@@ -180,6 +265,21 @@ export default function useProtocolForm({
     (values: Record<string, FieldValue>): Record<string, FieldValue> =>
       coerceFormValues(values, numberFieldNames),
     [numberFieldNames],
+  );
+
+  /**
+   * The change a submission of `values` makes to the entity's attributes. A
+   * stored answer the form could not show is never part of it unless the
+   * participant entered a new one.
+   */
+  const toAttributePatch = useCallback(
+    (values: Record<string, FieldValue>) =>
+      formValuesToAttributePatch(
+        coerceValues(values),
+        fields.map((field) => field.variable),
+        { keepWhenUnanswered: unavailableVariables },
+      ),
+    [coerceValues, fields, unavailableVariables],
   );
 
   // Audit sweep: the input control each field actually renders with, keyed by
@@ -207,35 +307,72 @@ export default function useProtocolForm({
     );
   }, [fieldsMetadata, namespace]);
 
-  const renderedFields = fieldsMetadata.map((field, index) => {
-    const initialValue =
-      initialValues &&
-      Object.hasOwn(initialValues, field.variable) &&
-      initialValues[field.variable] !== undefined
-        ? initialValues[field.variable]
-        : undefined;
-
-    return (
-      <ProtocolField
-        key={index}
-        field={field}
-        initialValue={initialValue}
-        autoFocus={autoFocus && index === 0}
-        validationContext={validationContext ?? undefined}
-      />
-    );
-  });
-
-  const fieldComponents: ReactNode = namespace ? (
-    <FieldNamespace prefix={namespace}>{renderedFields}</FieldNamespace>
-  ) : (
-    renderedFields
+  const dynamicValueSources = useDynamicValueSources();
+  const formVariables = useMemo(
+    () => [
+      ...precedingVariables,
+      ...fieldsMetadata.map((field) => field.variable),
+    ],
+    [precedingVariables, fieldsMetadata],
   );
+
+  const renderedFields = (
+    <ProtocolFormFields
+      fields={fieldsMetadata}
+      unavailableVariables={unavailableVariables}
+      initialValues={initialValues}
+      autoFocus={autoFocus}
+      validationContext={validationContext}
+    />
+  );
+
+  // The fields' captions can show values of the entity the form describes,
+  // including answers given in its earlier fields (see `FormDynamicValues`).
+  // A stage that binds no values leaves the fields as they are.
+  const showsDynamicValues =
+    dynamicValueSources !== null &&
+    Object.keys(dynamicValueSources.bindings).length > 0;
+  const inFormScope = (children: ReactNode): ReactNode => {
+    const scoped = showsDynamicValues ? (
+      <FormDynamicValues
+        formSubject={
+          subjectToStageSubject(stableSubject) ??
+          stageValidationContext.stageSubject
+        }
+        stageSubject={stageValidationContext.stageSubject}
+        entityId={currentEntityId}
+        initialValues={initialValues}
+        variables={formVariables}
+        {...(newEntityAttributes !== undefined && { newEntityAttributes })}
+        {...(labelNode !== undefined && { labelNode })}
+        coerce={coerceValues}
+      >
+        {children}
+      </FormDynamicValues>
+    ) : (
+      children
+    );
+    return namespace ? (
+      <FieldNamespace prefix={namespace}>{scoped}</FieldNamespace>
+    ) : (
+      scoped
+    );
+  };
+
+  const fieldComponents: ReactNode = inFormScope(renderedFields);
 
   return {
     fieldComponents,
+    /**
+     * Puts other text about the form (an Ego Form's title) in the same scope
+     * as its fields, so it shows the participant's answers as they are given.
+     * Must be rendered inside the form's store.
+     */
+    withFormValues: inFormScope,
     coerceValues,
+    toAttributePatch,
     componentByVariable,
     variableByFieldPath,
+    passphraseNeeded,
   };
 }

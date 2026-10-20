@@ -31,14 +31,14 @@ Interviewer is built on the same platform as Fresco 4.0, bringing the updated in
 
 Interviewer comes in two supported versions:
 
-- The current app runs in your **web browser** — installable to a device you control as a PWA — supports **schema 8**, and is recommended for all new studies.
+- The current app runs in your **web browser** — installable to a device you control as a PWA — supports **schemas 8 and 9**, and is recommended for all new studies.
 - **Interviewer Classic** is the established **desktop and tablet** app you download and install on each device. It runs schema 7 protocols and works fully offline.
 
 Which version can run a given protocol depends on its schema version — see [Protocol Schema Information](/en/get-started/protocol-schema-information). The [installation guide](/en/collect-data/interviewer/installing-interviewer) covers how to get each version, and [Using Interviewer](/en/collect-data/interviewer/using-interviewer) lets you switch between the two throughout the tutorial.
 
 ## Key capabilities
 
-- **Runs schema-8 protocols from Architect** — Interviewer is compatible with your existing protocols, and any protocol built against an older schema is migrated to schema 8 automatically on import, with a notification telling you the migration occurred.
+- **Runs protocols from Architect** — Interviewer is compatible with your existing protocols, and any protocol built against an older schema is migrated to the latest schema version automatically on import, with a notification telling you the migration occurred.
 - **Offline-capable, with documented exceptions** — once installed as a PWA, Interviewer remains available offline. Some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection during the interview, and protocol cards show a **Requires internet** indicator when a protocol uses them.
 - **On-device data, with app-level security** — when you set up an app lock (a PIN, passphrase, or biometric), stored data is encrypted at rest with a key derived from your credential. See [Data Storage and Safety](/en/collect-data/interviewer/data-storage) for what this protects and what it doesn't.
 - **Data export to CSV and GraphML** — export the sessions you select as a single `.zip` archive, with formats and options configured once in **Settings → Data export**. See the [Data Export guide](/en/analyze-data/data-export) for what the exported files contain.

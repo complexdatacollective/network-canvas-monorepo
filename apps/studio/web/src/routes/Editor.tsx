@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -43,7 +44,10 @@ import {
   useProtocolReading,
   type ProtocolReading,
 } from '@codaco/protocol-builder/state/protocolContext';
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  findTimelineStructureProblems,
+} from '@codaco/protocol-validation';
 import {
   StageId,
   type DraftId,
@@ -55,8 +59,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
+import { teamScope } from '../runtime/browserLogs.ts';
 import { isForbidden } from '../runtime/errors.ts';
 import { HostClient } from '../runtime/hostClient.ts';
+import { editorVisits, observeLocks } from '../runtime/hostFaults.ts';
 import { hostRuntime } from '../runtime/hostSession.ts';
 import {
   reportUnauthorizedFailure,
@@ -71,7 +77,7 @@ const route = getRouteApi('/app/study/$studyId/editor/');
 /**
  * Built once: `ProtocolBuilder` memoises its whole context on this identity.
  */
-const hostAdapter: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
+const baseHostAdapter: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
   runtime: hostRuntime,
   client: HostClient,
   onFailure: reportUnauthorizedFailure,
@@ -83,6 +89,27 @@ type DraftAddress = {
   protocolId: ProtocolId;
   draftId: DraftId;
 };
+
+/**
+ * Whether moving one screen adds a problem to the timeline's structure — a
+ * screen after the finish stage, or the interview ending anywhere else — which
+ * the server refuses, as Architect does. Only problems a move ADDS count, so a
+ * protocol already in such a shape can still be reordered into a better one.
+ */
+function moveAddsTimelineProblems(
+  stages: readonly StageSummary[],
+  fromIndex: number,
+  toIndex: number,
+): boolean {
+  const proposed = [...stages];
+  const [moved] = proposed.splice(fromIndex, 1);
+  if (moved === undefined) return true;
+  proposed.splice(toIndex, 0, moved);
+  return (
+    findTimelineStructureProblems(proposed).length >
+    findTimelineStructureProblems(stages).length
+  );
+}
 
 type Selection =
   | { kind: 'stage'; stageId: string }
@@ -537,6 +564,14 @@ export default function Editor() {
 function ProtocolEditor({ address }: { address: DraftAddress }) {
   const intl = useAppIntl();
   const draft = useQuery(rpcQuery('protocols.draft', address));
+  const hostAdapter = useMemo(
+    () => observeLocks(baseHostAdapter, teamScope(address.teamId)),
+    [address.teamId],
+  );
+  useEffect(
+    () => editorVisits.open(),
+    [address.teamId, address.protocolId, address.draftId],
+  );
 
   if (draft.isPending) {
     return (
@@ -950,6 +985,11 @@ function EditorWorkspace({
                                 )}
                                 disabled={
                                   index === 0 ||
+                                  moveAddsTimelineProblems(
+                                    stages,
+                                    index,
+                                    index - 1,
+                                  ) ||
                                   moveStage.isPending ||
                                   moveStage.isError ||
                                   reconcilingMove
@@ -969,6 +1009,11 @@ function EditorWorkspace({
                                 )}
                                 disabled={
                                   index === stages.length - 1 ||
+                                  moveAddsTimelineProblems(
+                                    stages,
+                                    index,
+                                    index + 1,
+                                  ) ||
                                   moveStage.isPending ||
                                   moveStage.isError ||
                                   reconcilingMove

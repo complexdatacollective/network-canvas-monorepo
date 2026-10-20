@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Decides whether a hotfix dispatch may release the version on the checked-out
-// ref, and writes `version`, `label`, `package`, `tag`, `newest` and
-// `newest_tag` to $GITHUB_OUTPUT.
+// Decides whether a hotfix or maintenance dispatch may release the version on
+// the checked-out ref, and writes `version`, `label`, `package`, `tag`,
+// `newest` and `newest_tag` to $GITHUB_OUTPUT.
 //
 // Unlike the normal lane (.github/scripts/detect-app-release.sh), which is
 // self-healing and silently skips anything it should not release, every
@@ -27,9 +27,27 @@
 //      tags: its version is what is live, and the normal lane pushes it before
 //      it tags (rule 5 is checked only when the workflow supplies it).
 //
+// SCOPE=line is the Architect Maintenance Release lane
+// (.github/workflows/architect-maintenance-release.yml): a patch to an OLDER
+// major line, such as 8.5.1 once 9.x is production. Nothing it releases is
+// deployed — Architect 8 reaches users as a tarball Architect 9 bundles at
+// /v8/ — so rules 3 and 4 are scoped to the version's own major line instead:
+//   3a. The line must already have a release, and the version must be newer
+//       than every release on it.
+//   3b. The version's major must be LOWER than the newest release overall.
+//       A maintenance tag that became the newest overall would leave
+//       production (the normal lane's site) behind its own newest tag, and
+//       app-release-guard.sh would then skip every later release from main,
+//       whose tree does not contain it. The newest line releases through the
+//       normal or hotfix lane.
+//   4a. The commit must descend from the newest release on the line, for the
+//       reason rule 4 gives.
+// `newest` and `newest_tag` then name the line's newest release, so the
+// release notes run --since the previous release on that line.
+//
 // Inputs (env): APP (interviewer | architect | fresco), GITHUB_OUTPUT,
 // MIRROR_VERSION (optional: the version the mirrored repository's main
-// carries).
+// carries), SCOPE (optional: `line` for the maintenance lane; Architect only).
 // Requires tags in the checkout (actions/checkout fetch-tags: true).
 import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -53,6 +71,20 @@ if (!target) {
   );
 }
 const { label, pkg } = target;
+
+// Only Architect has a maintenance lane: an older Architect line still reaches
+// users inside the newer app, while every other app has exactly one production
+// target and nowhere for an older line to go.
+const scope = process.env.SCOPE ?? '';
+if (scope !== '' && scope !== 'line') {
+  fail(`Unsupported SCOPE '${scope}'. Expected 'line' or nothing.`);
+}
+const lineScope = scope === 'line';
+if (lineScope && app !== 'architect') {
+  fail(
+    `SCOPE=line is the Architect maintenance lane; ${label} has no older line to maintain.`,
+  );
+}
 
 const pkgPath = `apps/${app}/package.json`;
 const { version } = JSON.parse(readFileSync(pkgPath, 'utf8'));
@@ -86,11 +118,42 @@ const compare = (a, b) => {
   return 0;
 };
 
-const newest = tags.toSorted(compare).at(-1);
-if (newest && compare(version, newest) < 0) {
+const majorOf = (semver) => parse(semver)[0];
+const sorted = tags.toSorted(compare);
+const newestOverall = sorted.at(-1);
+const lineNewest = sorted
+  .filter((candidate) => majorOf(candidate) === majorOf(version))
+  .at(-1);
+// The release this one must supersede: the newest overall for a hotfix, the
+// newest on the version's own major line for a maintenance release.
+const newest = lineScope ? lineNewest : newestOverall;
+
+if (lineScope) {
+  if (!lineNewest) {
+    fail(
+      `${pkg} has no ${majorOf(version)}.x release to maintain. A new major line starts in the normal lane.`,
+    );
+  }
+  if (compare(version, lineNewest) <= 0) {
+    fail(
+      `${version} is not newer than ${lineNewest}, the newest ${majorOf(version)}.x release. ` +
+        `Bump ${pkgPath} past it on the maintenance branch.`,
+    );
+  }
+  if (majorOf(version) >= majorOf(newestOverall)) {
+    fail(
+      `${version} is on the newest ${label} line (newest released: ${newestOverall}). ` +
+        `That line releases through the normal lane or the Hotfix Release workflow, which deploy it to production; ` +
+        `the maintenance lane only ships an older major line.`,
+    );
+  }
+} else if (newest && compare(version, newest) < 0) {
   fail(
     `${version} is older than the released ${newest}. Deploying it would roll ${label} production back to older code; ` +
-      `this lane only ships the newest line.`,
+      `this lane only ships the newest line.` +
+      (app === 'architect'
+        ? ' An older Architect major line releases through the Architect Maintenance Release workflow instead.'
+        : ''),
   );
 }
 
@@ -123,8 +186,11 @@ if (newest) {
       .status === 0;
   if (!descends) {
     fail(
-      `This tree does not contain ${newestTag}. Re-cut the hotfix from that tag and cherry-pick the fix: ` +
-        `releasing ${version} from here would take the changes in ${newest} off production.`,
+      lineScope
+        ? `This tree does not contain ${newestTag}, the newest ${majorOf(version)}.x release. Re-cut the maintenance branch from that tag and cherry-pick the fix: ` +
+            `releasing ${version} from here would drop the changes in ${newest} from the ${majorOf(version)}.x line.`
+        : `This tree does not contain ${newestTag}. Re-cut the hotfix from that tag and cherry-pick the fix: ` +
+            `releasing ${version} from here would take the changes in ${newest} off production.`,
     );
   }
 }
@@ -132,7 +198,8 @@ if (newest) {
 appendFileSync(
   process.env.GITHUB_OUTPUT,
   // `newest` feeds release-notes.mjs --since, so the release body also carries
-  // any CHANGELOG section whose own release run was dropped while pending.
+  // any CHANGELOG section whose own release run was dropped while pending. In
+  // the line scope it is the newest release on the version's own line.
   // `newest_tag` is the ref a Fresco hotfix vendors its changed packages
   // against (scripts/release/mirror-app.mjs --vendor-changed-since).
   [
@@ -146,7 +213,9 @@ appendFileSync(
   ].join('\n'),
 );
 console.log(
-  `[hotfix] ${label} ${version} (newest released: ${newest ?? 'none'}) — clear to release`,
+  lineScope
+    ? `[maintenance] ${label} ${version} (newest ${majorOf(version)}.x: ${newest}; newest overall: ${newestOverall}) — clear to release`
+    : `[hotfix] ${label} ${version} (newest released: ${newest ?? 'none'}) — clear to release`,
 );
 
 function fail(message) {

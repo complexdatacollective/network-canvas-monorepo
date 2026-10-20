@@ -47,6 +47,7 @@ const statusWith = (telemetry: boolean): InstanceStatus => ({
   deployment: { mode: 'self-hosted', billing: false },
   setup: { required: false },
   telemetry,
+  logLevel: 'Info',
 });
 
 const failure = (): Error => {

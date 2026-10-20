@@ -9,6 +9,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 import { appI18n } from '@codaco/app-i18n/vite';
 
+import { createLegacyAppPreviewPlugin } from '../../scripts/buildtime/legacy-app-preview-plugin.ts';
+import {
+  legacyApp,
+  legacyAppDefine,
+  loadLegacyAppV8,
+} from '../../scripts/buildtime/legacy-app.ts';
 import { createPostHogSourceMapsPlugin } from '../../scripts/buildtime/posthog-source-maps-plugin.ts';
 import {
   createPwaCacheReclamationPlugin,
@@ -20,6 +26,7 @@ import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-a
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(rootDir, '../..');
+const legacyArchitect = legacyApp('architect');
 
 // The Content-Security-Policy directives a <meta http-equiv> can express — i.e.
 // everything except frame-ancestors, which is header-only and stays in
@@ -67,8 +74,15 @@ const injectCspMeta = (): Plugin => ({
 });
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, rootDir, '');
+  // Whether this build bundles Architect 8 at /v8/: the same decision
+  // build.mjs acts on after Vite, so the app offers Architect 8 exactly when
+  // dist/v8 will hold it. The dev server serves no /v8/, so it never does.
+  const legacyArchitectV8 =
+    command === 'build'
+      ? legacyAppDefine(loadLegacyAppV8(legacyArchitect, rootDir, env))
+      : null;
   // This ID belongs to the generated bundle, not just its package release. Dev
   // deploys can publish several different bundles at the same package version;
   // sharing a precache between them would let the newer worker prune files that
@@ -98,6 +112,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __APP_VERSION__: JSON.stringify(version),
       __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
+      __ARCHITECT_V8__: JSON.stringify(legacyArchitectV8),
     },
     resolve: {
       tsconfigPaths: true,
@@ -111,9 +126,17 @@ export default defineConfig(({ mode }) => {
       }),
       react(),
       tailwindcss(),
+      // `vite preview` applies no _redirects, so its SPA fallback would
+      // answer a /v8/ deep link with this app's shell; this serves Architect
+      // 8's from dist/v8 whenever a build (or an e2e setup) has put one there.
+      createLegacyAppPreviewPlugin(legacyArchitect),
+      // Architect 8 is served at /v8/ beside the root app with its own worker
+      // and 'architect-v8-' caches, which 'architect-' would otherwise match.
       createPwaCacheReclamationPlugin({
         appCachePrefix: 'architect-',
         buildId: pwaCacheId,
+        foreignCachePrefixes: [legacyArchitect.cachePrefix],
+        foreignScopePaths: ['/v8/'],
       }),
       VitePWA({
         registerType: 'prompt',
@@ -175,6 +198,11 @@ export default defineConfig(({ mode }) => {
           // 4:3 candidate so the chooser and timeline work on first offline
           // use, regardless of which width Safari selects from srcset.
           globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
+          // Architect 8 (dist/v8) has its own worker and precache. It is
+          // written after this worker is generated, so this only repeats the
+          // build order; setting globIgnores replaces Workbox's default, which
+          // is the node_modules entry.
+          globIgnores: ['**/node_modules/**/*', 'v8/**'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,
@@ -240,10 +268,16 @@ export default defineConfig(({ mode }) => {
               // The handler keeps offline launch via the precached fallback
               // while preventing a still-old service worker from caching new
               // HTML whose matching hashed chunks it has not precached.
+              // Architect 8 at /v8/ has its own worker and shell: answering
+              // its navigations here would serve this app's shell at /v8/
+              // when offline. (Literals: Workbox serialises this function
+              // into the worker, so it cannot read a module constant.)
               urlPattern: ({ request, sameOrigin, url }) =>
                 sameOrigin &&
                 request.mode === 'navigate' &&
-                !url.pathname.startsWith('/preview/'),
+                !url.pathname.startsWith('/preview/') &&
+                url.pathname !== '/v8' &&
+                !url.pathname.startsWith('/v8/'),
               handler: 'NetworkOnly',
               options: {
                 plugins: [
@@ -297,8 +331,11 @@ export default defineConfig(({ mode }) => {
             {
               // Stable PWA icons are replaced in place and must reach the
               // network so their no-store response headers can take effect.
-              // Other images keep the existing bounded offline cache.
+              // Other images keep the existing bounded offline cache, except
+              // Architect 8's, whose own worker caches them (and whose icons
+              // are just as stable).
               urlPattern: ({ url }) =>
+                !url.pathname.startsWith('/v8/') &&
                 /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname) &&
                 ![
                   '/apple-touch-icon-180x180.png',
@@ -321,8 +358,15 @@ export default defineConfig(({ mode }) => {
             {
               // Self-hosted fonts (bundled via @codaco/tailwind-config). Matched
               // before the /assets/ catch-all below so font files get the long
-              // one-year expiry.
-              urlPattern: /\.(?:woff2?|ttf|otf|eot)$/i,
+              // one-year expiry. A function rather than a RegExp so it can leave
+              // Architect 8's fonts to its own worker; `sameOrigin` keeps what
+              // the RegExp matched, since Workbox matches a RegExp route
+              // cross-origin only from the start of the URL, which a path
+              // pattern never is.
+              urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                !url.pathname.startsWith('/v8/') &&
+                /\.(?:woff2?|ttf|otf|eot)$/i.test(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'architect-fonts',

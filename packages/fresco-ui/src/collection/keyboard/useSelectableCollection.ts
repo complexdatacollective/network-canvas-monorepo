@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 
 import { isEventFromOwnSubtree } from '../isEventFromOwnSubtree';
@@ -45,6 +46,8 @@ export function useSelectableCollection(
     disallowSelectAll = false,
     disallowTypeAhead = false,
   } = options;
+
+  const isRtl = useDirection() === 'rtl';
 
   // Type-ahead search state
   const searchRef = useRef('');
@@ -96,8 +99,19 @@ export function useSelectableCollection(
 
       const { focusedKey } = selectionManager;
 
+      // An order-following delegate's "left" is the previous item, which a
+      // right-to-left layout places on the right.
+      const swapHorizontal = isRtl && keyboardDelegate.horizontalFollowsOrder;
+      const key = !swapHorizontal
+        ? e.key
+        : e.key === 'ArrowLeft'
+          ? 'ArrowRight'
+          : e.key === 'ArrowRight'
+            ? 'ArrowLeft'
+            : e.key;
+
       // Handle navigation keys
-      switch (e.key) {
+      switch (key) {
         case 'ArrowDown': {
           e.preventDefault();
           const nextKey = focusedKey
@@ -259,6 +273,7 @@ export function useSelectableCollection(
       disallowSelectAll,
       options.disallowEmptySelection,
       handleTypeAhead,
+      isRtl,
     ],
   );
 

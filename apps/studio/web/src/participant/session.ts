@@ -48,6 +48,10 @@ export const openSession = async (rawSessionToken: string) => {
       ? entered.loaded
       : await readSession(sessionToken);
   entered = undefined;
+  const protocol = Redacted.value(loaded.protocol) as ProtocolPayload;
+  // Loaded with the interview runtime, which already depends on it, rather
+  // than pulled into this module statically.
+  const { getLocaleMetadata } = await import('@codaco/protocol-validation');
   const payload: InterviewPayload = {
     session: {
       ...loaded.session,
@@ -55,14 +59,18 @@ export const openSession = async (rawSessionToken: string) => {
       stageMetadata: StageMetadataSchema.parse(
         Redacted.value(loaded.session.stageMetadata),
       ),
+      localeOptions: protocol.localization.locales.map((locale) =>
+        getLocaleMetadata(locale),
+      ),
     },
-    protocol: Redacted.value(loaded.protocol) as ProtocolPayload,
+    protocol,
   };
   return {
     holderEpoch: loaded.holderEpoch,
     revision: loaded.revision,
     stageIndex: loaded.stageIndex,
     analytics: loaded.analytics,
+    logLevel: loaded.logLevel,
     payload,
   };
 };

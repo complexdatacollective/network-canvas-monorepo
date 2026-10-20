@@ -2,8 +2,13 @@ import { configureStore, createAction, type Reducer } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
 import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
+
+import {
   createEncryptionStore,
-  makePlainPerson,
+  NODE_TYPE,
 } from '../../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { updateEgo, updateNode } from '../../modules/session';
 import { createWritesInFlightMiddleware } from '../writesInFlight';
@@ -146,7 +151,13 @@ describe('writes in flight', () => {
   });
 
   it('tracks a write dispatched through the interview store until it is stored', async () => {
-    const interview = createEncryptionStore([makePlainPerson('n1', 'Alice')]);
+    const interview = createEncryptionStore([
+      {
+        [entityPrimaryKeyProperty]: 'n1',
+        type: NODE_TYPE,
+        [entityAttributesProperty]: { age: 40 },
+      },
+    ]);
 
     const write = interview.dispatch(
       updateNode({

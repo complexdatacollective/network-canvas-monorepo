@@ -47,14 +47,15 @@ of every process environment, and out of any log line that prints one.
 
 ## The pages
 
-| Page                                                  | What it covers                                                                                            |
-| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [Requirements](./requirements.md)                     | Host sizing, Docker versions, ports, DNS, every outbound host, and what a swapped-in service must provide |
-| [Run the stack](./run.md)                             | From nothing to a signed-in owner                                                                         |
-| [Back up and restore](./backup.md)                    | What to copy, in what order, and why a database without its keyring is not a backup                       |
-| [Upgrade](./upgrade.md)                               | The six commands, and rollback                                                                            |
-| [Swap an element](./swap.md)                          | A managed database, bucket, Azure Blob container or Redis, and your own reverse proxy                     |
-| [Postgres major upgrade](./postgres-major-upgrade.md) | Moving from one Postgres major to the next without losing the volume you came from                        |
+| Page                                                  | What it covers                                                                                             |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [Requirements](./requirements.md)                     | Host sizing, Docker versions, ports, DNS, every outbound host, and what a swapped-in service must provide  |
+| [Run the stack](./run.md)                             | From nothing to a signed-in owner                                                                          |
+| [Back up and restore](./backup.md)                    | What to copy, in what order, and why a database without its keyring is not a backup                        |
+| [Upgrade](./upgrade.md)                               | The six commands, and rollback                                                                             |
+| [Swap an element](./swap.md)                          | A managed database, bucket, Azure Blob container or Redis, and your own reverse proxy                      |
+| [Postgres major upgrade](./postgres-major-upgrade.md) | Moving from one Postgres major to the next without losing the volume you came from                         |
+| [Telemetry](./telemetry.md)                           | What leaves the machine and to whom, sending telemetry to your own OpenTelemetry store, and turning it off |
 
 Read [Requirements](./requirements.md) first if you are deciding whether a host
 will do; go straight to [Run the stack](./run.md) if it will.

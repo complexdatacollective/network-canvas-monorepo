@@ -4,6 +4,7 @@ import {
   createProtocolTabLock,
   type ProtocolTabLock,
 } from '../protocolTabLock';
+import { TAB_LOCK_CHANNEL } from '../storageNames';
 
 // A minimal in-process BroadcastChannel stand-in: every channel created with
 // the same name shares one message bus, and a post is delivered to every OTHER
@@ -118,7 +119,7 @@ class DeferredBroadcastChannel {
   }
 }
 
-const CHANNEL = 'architect-protocol-lock';
+const CHANNEL = TAB_LOCK_CHANNEL;
 
 const channelFactory = (name: string) =>
   new FakeBroadcastChannel(name) as unknown as BroadcastChannel;
@@ -210,6 +211,25 @@ describe('protocolTabLock', () => {
     expect(onB).toHaveBeenLastCalledWith(false);
     // tabA keeps its exclusivity.
     expect(tabA.isExclusive()).toBe(true);
+  });
+
+  // Architect 8 at `/v8/` keeps the historical channel for its own library.
+  // A claim there names a row in that library, never one in this one.
+  it('ignores claims on Architect 8’s channel', () => {
+    const onExclusivityChange = vi.fn();
+    const lock = makeLock({ channelFactory, onExclusivityChange });
+    const architect8 = new FakeBroadcastChannel('architect-protocol-lock');
+    peers.push(architect8);
+    const heard: unknown[] = [];
+    architect8.addEventListener('message', (event) => heard.push(event.data));
+
+    architect8.postMessage({ type: 'claim', id: 'p1', from: 'v8-tab' });
+    lock.claimProtocol('p1');
+    architect8.postMessage({ type: 'held', id: 'p1', from: 'v8-tab' });
+
+    expect(lock.isExclusive()).toBe(true);
+    expect(onExclusivityChange).not.toHaveBeenCalled();
+    expect(heard).toEqual([]);
   });
 
   it('two tabs editing DIFFERENT protocols are both exclusive', () => {

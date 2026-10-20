@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
@@ -48,7 +49,7 @@ function makeProtocol(stageTypes: string[]): ProtocolWithCounts {
   const protocol = {
     name: 'Test',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     codebook: {},
     stages,
   } as unknown as CurrentProtocol;
@@ -56,7 +57,7 @@ function makeProtocol(stageTypes: string[]): ProtocolWithCounts {
     id: 'test',
     hash: 'hash',
     name: 'Test',
-    schemaVersion: 8,
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     importedAt: '2026-07-01T00:00:00.000Z',
     description: '',
     codebook: {},
@@ -141,8 +142,8 @@ describe('NewSessionForm offline warning', () => {
   });
 
   it('refuses to start an interview on a protocol below the runtime schema version', () => {
-    // The launch-time migration left this row behind; a session created from
-    // it would be refused by the interview route, so no form is offered.
+    // A session created from it would be refused by the interview route, so
+    // no form is offered.
     render(<Harness protocol={{ ...makeProtocol([]), schemaVersion: 7 }} />);
 
     expect(screen.getByText(/could not be updated/i)).toBeInTheDocument();

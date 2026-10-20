@@ -2,7 +2,7 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import createTimeline from '~/ducks/middleware/timeline';
@@ -13,6 +13,7 @@ import app from '~/ducks/modules/app';
 import protocolsReducer, { addProtocol } from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 
+import { loadProtocolRoutes } from '../protocolRoutesLoader';
 import Routes from '../Routes';
 
 // Mock wouter
@@ -32,7 +33,10 @@ vi.mock('wouter', () => ({
     // Simple path matching for testing
     if (
       path === currentPath ||
-      (path === '/protocol' && currentPath.startsWith('/protocol/'))
+      (path === '/protocol' && currentPath.startsWith('/protocol/')) ||
+      // Routes' own match for the lazily loaded editor routes.
+      (path === '/protocol/*?' &&
+        (currentPath === '/protocol' || currentPath.startsWith('/protocol/')))
     ) {
       if (Component) return <Component />;
       return <>{children}</>;
@@ -77,7 +81,8 @@ const mockProtocolDescription = 'test description';
 const mockProtocol: CurrentProtocol = {
   name: mockProtocolName,
   description: mockProtocolDescription,
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {
     node: {},
@@ -106,6 +111,13 @@ const createWrapper = (store: TestStore) => {
 };
 
 describe('Routes', () => {
+  // Routes loads the editor routes on demand. Load them up front, as the app
+  // does once its start screen is up, so no test's wait includes compiling the
+  // whole editor.
+  beforeAll(async () => {
+    await loadProtocolRoutes();
+  }, 60_000);
+
   let store: TestStore;
 
   beforeEach(() => {
@@ -125,7 +137,7 @@ describe('Routes', () => {
     expect(screen.getByTestId('home')).toBeInTheDocument();
   });
 
-  it('should render Protocol component on protocol path', () => {
+  it('should render Protocol component on protocol path', async () => {
     // Add protocol to store
     store.dispatch(
       addProtocol({
@@ -142,7 +154,8 @@ describe('Routes', () => {
       wrapper: createWrapper(store),
     });
 
-    expect(screen.getByTestId('protocol')).toBeInTheDocument();
+    // The editor routes are loaded on demand.
+    expect(await screen.findByTestId('protocol')).toBeInTheDocument();
     expect(mockBrowserNavigate).not.toHaveBeenCalled();
   });
 
@@ -167,7 +180,7 @@ describe('Routes', () => {
     expect(mockBrowserNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 
-  it('should handle invalid protocol routes gracefully', () => {
+  it('should handle invalid protocol routes gracefully', async () => {
     store.dispatch(setActiveProtocol(mockProtocol));
     mockLocation.mockReturnValue('/protocol/non-existent-id');
 
@@ -176,7 +189,7 @@ describe('Routes', () => {
     });
 
     // Should still render the Protocol component, which will handle the missing protocol
-    expect(screen.getByTestId('protocol')).toBeInTheDocument();
+    expect(await screen.findByTestId('protocol')).toBeInTheDocument();
   });
 
   it('should handle root path with trailing slash', () => {

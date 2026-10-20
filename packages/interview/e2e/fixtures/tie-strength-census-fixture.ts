@@ -23,13 +23,8 @@ export class TieStrengthCensusFixture {
     return this.page.getByRole('listbox');
   }
 
-  /**
-   * Dismiss the introduction panel. The first Next does not advance the URL
-   * step (TieStrengthCensus.tsx:238-239), so wait for the listbox instead of a
-   * step change.
-   */
-  async dismissIntro(): Promise<void> {
-    await this.page.getByTestId('next-button').click();
+  /** Wait for the first pair's options. The stage opens directly on it. */
+  async waitForFirstPair(): Promise<void> {
     await expect(this.listbox).toBeVisible();
   }
 

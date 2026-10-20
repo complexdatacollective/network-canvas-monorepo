@@ -28,6 +28,12 @@ export type EditedRowScope = Readonly<{
   /** Where the list holding this row lives in the stage document. */
   listPath: readonly string[];
   /**
+   * The row as the list held it when the dialog opened; absent for a row
+   * being added. A row with no id of its own (one saved before rows had them)
+   * is found in the list by this, not by a position that may have moved.
+   */
+  opened?: Readonly<Record<string, unknown>>;
+  /**
    * The row as a save would commit it, read at the moment it is asked rather
    * than closed over: the dialog stays open for as long as the researcher
    * takes, and its store is live behind whatever asks.

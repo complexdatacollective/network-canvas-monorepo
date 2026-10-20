@@ -34,6 +34,12 @@ const utilityMessages = defineMessages({
     description:
       'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
   },
+  changeUndoneMovedToLanguages: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToLanguages',
+    defaultMessage: 'Change undone. Moved to Languages to show the result.',
+    description:
+      'Screen-reader announcement after an undo moved the researcher to the Languages page. "Languages" is the name of that page in the project navigation.',
+  },
   changeUndone: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndone',
     defaultMessage: 'Change undone.',
@@ -57,6 +63,12 @@ const utilityMessages = defineMessages({
     defaultMessage: 'Change redone. Moved to Codebook to show the result.',
     description:
       'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+  changeRedoneMovedToLanguages: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToLanguages',
+    defaultMessage: 'Change redone. Moved to Languages to show the result.',
+    description:
+      'Screen-reader announcement after a redo moved the researcher to the Languages page. "Languages" is the name of that page in the project navigation.',
   },
   changeRedone: {
     id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedone',
@@ -90,6 +102,8 @@ const undoAnnouncement = (
       return intl.formatMessage(utilityMessages.changeUndoneMovedToResourcesTo);
     case '/protocol/codebook':
       return intl.formatMessage(utilityMessages.changeUndoneMovedToCodebookTo);
+    case '/protocol/localization':
+      return intl.formatMessage(utilityMessages.changeUndoneMovedToLanguages);
     case null:
     default:
       return intl.formatMessage(utilityMessages.changeUndone);
@@ -107,6 +121,8 @@ const redoAnnouncement = (
       return intl.formatMessage(utilityMessages.changeRedoneMovedToResourcesTo);
     case '/protocol/codebook':
       return intl.formatMessage(utilityMessages.changeRedoneMovedToCodebookTo);
+    case '/protocol/localization':
+      return intl.formatMessage(utilityMessages.changeRedoneMovedToLanguages);
     case null:
     default:
       return intl.formatMessage(utilityMessages.changeRedone);

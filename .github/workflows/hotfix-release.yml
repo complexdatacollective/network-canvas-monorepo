@@ -119,6 +119,9 @@ jobs:
           --health-retries 5
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
+      # For architect-subpath-dist below.
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
     # No credential at job level: every step below that runs code from the
     # hotfix branch (verify, build, stage) would see it. The deploy step
     # names the Netlify token itself, and the Fresco push token never enters
@@ -219,10 +222,10 @@ jobs:
           MIRROR_VERSION: ${{ steps.mirror-version.outputs.version }}
         run: node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
 
-      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -250,7 +253,37 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          # An Architect tree that bundles Architect 8 at /v8/ (it carries the
+          # pin file) must not release without it, exactly as in the normal
+          # lane. A tree from before Architect 9 has no pin and nothing to
+          # bundle; this lane ships only the newest line, so that is a hotfix
+          # released before 9.0.
+          ARCHITECT_REQUIRE_LEGACY_V8: ${{ inputs.app == 'architect' && hashFiles('apps/architect/legacy-architect.json') != '' && 'true' || '' }}
+          # The same for an Interviewer tree that bundles Interviewer 8.
+          INTERVIEWER_REQUIRE_LEGACY_V8: ${{ inputs.app == 'interviewer' && hashFiles('apps/interviewer/legacy-interviewer.json') != '' && 'true' || '' }}
         run: pnpm exec turbo run build --filter="@codaco/$APP"
+
+      # Checked outside the turbo cache too, before the tag is claimed or
+      # anything deployed.
+      - name: Check Architect 8 is bundled
+        if: inputs.app == 'architect' && hashFiles('apps/architect/legacy-architect.json') != ''
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/architect/dist/v8/$file" ]]; then
+              echo "::error::apps/architect/dist/v8/$file is missing; production must serve Architect 8 at /v8/." >&2
+              exit 1
+            fi
+          done
+
+      - name: Check Interviewer 8 is bundled
+        if: inputs.app == 'interviewer' && hashFiles('apps/interviewer/legacy-interviewer.json') != ''
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/interviewer/dist/v8/$file" ]]; then
+              echo "::error::apps/interviewer/dist/v8/$file is missing; production must serve Interviewer 8 at /v8/." >&2
+              exit 1
+            fi
+          done
 
       # Fresco's image is built by its own repository from the mirrored tree;
       # what this job builds is the workspace dependency closure, so the
@@ -410,7 +443,7 @@ jobs:
           rm -rf "${RUNNER_TEMP}/fresco-mirror/stage"
       - name: Upload the staged mirror
         if: inputs.app == 'fresco'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fresco-mirror
           path: ${{ runner.temp }}/fresco-mirror
@@ -430,6 +463,25 @@ jobs:
           body_path: ${{ runner.temp }}/hotfix-notes.md
           prerelease: false
           make_latest: 'true'
+
+  # An Architect 8 hotfix is also bundled by Architect 9 at /v8/: build the tag
+  # just released under that sub-path and attach architect-v8-dist.tgz to its
+  # release, exactly as apps-release-architect-subpath-dist does for the normal
+  # lane (see apps/architect/RELEASING.md, "Sub-path dist tarball"). After the
+  # release job, so the tag and release it reads exist; inside this workflow's
+  # concurrency group, so a queued normal release waits for it too. A tag that
+  # predates sub-path builds is skipped inside with a notice.
+  architect-subpath-dist:
+    needs: hotfix-release
+    if: inputs.app == 'architect' && startsWith(needs.hotfix-release.outputs.version, '8.')
+    # Only the called workflow's publish job, which runs no code from the tag,
+    # uses the write.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/architect-subpath-dist.yml
+    with:
+      tag: ${{ needs.hotfix-release.outputs.tag }}
+      expected_sha: ${{ needs.hotfix-release.outputs.sha }}
 
   # The push to the Fresco repository, from a job that has never run code from
   # the branch being released. It checks out the released commit for its DATA
@@ -473,7 +525,7 @@ jobs:
             scripts
             .nvmrc
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.hotfix-lane/.nvmrc'
 
@@ -510,7 +562,7 @@ jobs:
       # days, and a second environment approval can take longer than that. An
       # expired artifact must fail here, with nothing claimed, rather than
       # after the tag exists.
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: fresco-mirror
           path: ${{ runner.temp }}/fresco-mirror

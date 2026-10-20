@@ -144,7 +144,7 @@ const loadAssetPreviewUrl = async (
     reportError(error);
   }
 
-  const bundledUrl = getBundledAssetUrl(source);
+  const bundledUrl = await getBundledAssetUrl(source);
   return bundledUrl ? { url: bundledUrl, revoke: false } : null;
 };
 

@@ -13,6 +13,8 @@
  */
 @import '@codaco/fresco-ui/styles.css';
 @import '@codaco/interview/styles.css';
+/* The schema 8 interview Fresco bundles for protocols kept at schema 8. */
+@import 'fresco-schema-8/styles.css';
 
 /* Autodocs renders each story in a `.sbdocs-preview` wrapper that lives
    outside the canvas iframe, so the body rule above doesn't reach it.

@@ -19,14 +19,17 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
+import { DynamicTextPreview } from '../../../../fields/DynamicTextPreview.tsx';
 import EntityTypePickerField from '../../../../fields/EntityTypePickerField.tsx';
-import RichTextField from '../../../../fields/RichTextField.tsx';
+import { LocalizedRichTextField } from '../../../../fields/LocalizedStringField.tsx';
 import type { SortableProperty } from '../../../../fields/sortOrderOptions.ts';
 import VariablePickerField from '../../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
 } from '../../../../form/rowDialog.tsx';
+import { asLocalizedString } from '../../../../localization/localizedText.ts';
+import { useLocalizedText } from '../../../../localization/ProtocolLocalization.tsx';
 import { variablesForSubject } from '../../../../protocol-context.ts';
 import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
@@ -420,13 +423,14 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
         title={intl.formatMessage(messages.promptTextTitle)}
         description={intl.formatMessage(messages.promptTextSectionDescription)}
       >
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={TEXT_FIELD}
           label={intl.formatMessage(messages.promptTextLabel)}
-          component={RichTextField}
+          component={LocalizedRichTextField}
+          dynamicValues="prompt"
           singleLine
           placeholder={intl.formatMessage(messages.promptTextPlaceholder)}
-          initialValue={asText(item[TEXT_FIELD]) ?? ''}
+          initialValue={asLocalizedString(item[TEXT_FIELD])}
           required={intl.formatMessage(messages.promptTextRequired)}
         />
       </Section>
@@ -562,10 +566,14 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
  */
 export function SociogramPromptPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const text = asText(item[TEXT_FIELD]);
-  return (
-    <RenderMarkdown render={<div />}>
-      {text ?? intl.formatMessage(messages.promptEmptyPreview)}
-    </RenderMarkdown>
-  );
+  const localize = useLocalizedText();
+  const text = localize(item[TEXT_FIELD]);
+  if (text.text === '') {
+    return (
+      <RenderMarkdown render={<div />}>
+        {intl.formatMessage(messages.promptEmptyPreview)}
+      </RenderMarkdown>
+    );
+  }
+  return <DynamicTextPreview value={item[TEXT_FIELD]} />;
 }

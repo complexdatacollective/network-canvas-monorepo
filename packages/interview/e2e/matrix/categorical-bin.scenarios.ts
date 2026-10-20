@@ -147,8 +147,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           return synth;
         },
         run: async ({ page, interview, stage, protocol }) => {
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '3 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^3 unplaced\b/,
           );
 
           // Dead config: label is menu-only, interviewScript never renders.
@@ -186,8 +186,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
             expect(p[entityAttributesProperty][categoryVarId]).toBeUndefined();
           }
 
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '0 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^0 unplaced\b/,
           );
           expect(await interview.nextButtonHasPulse()).toBe(true);
         },
@@ -262,7 +262,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           familyBin.getByRole('heading', { name: 'Family' }),
         ).toBeVisible();
         await expect(familyBin.getByText(LONG_NODE_LABEL)).toBeVisible();
-        await expect(familyBin.getByText('and 2 others')).toBeVisible();
+        // The summary names the first node and shows the rest as a count badge.
+        await expect(familyBin.getByText('+2', { exact: true })).toBeVisible();
       },
     },
 
@@ -341,8 +342,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           // Prompt 2 re-uncategorises the set (fresh variable) and resets
           // expansion.
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '2 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^2 unplaced\b/,
           );
           await expect(page.locator('.catbin-expanded')).toHaveCount(0);
 
@@ -502,8 +503,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           };
 
           // Initially Alice + Bob in the drawer; Carol already in Other.
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '2 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^2 unplaced\b/,
           );
           expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(1);
 
@@ -647,8 +648,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           ).toBeNull();
           expect(alice[entityAttributesProperty][otherVarId]).toBe('');
           expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(1);
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '0 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^0 unplaced\b/,
           );
           await expect(
             stage.categoricalBin.getNodeInDrawer('Alice'),
@@ -859,11 +860,9 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, stage }) => {
-        // The collapsed summary names the first sorted node (Amy), not the
-        // first-created (Zed).
-        await expect(page.locator('.catbin-summary')).toContainText(
-          'Amy and 2 others',
-        );
+        // The collapsed summary names the first sorted node (Amy) and counts
+        // the others (+2), not the first-created (Zed).
+        await expect(page.locator('.catbin-summary')).toContainText('Amy +2');
 
         await stage.categoricalBin.expandBin('Family');
 
@@ -925,8 +924,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           );
           expect(await stage.categoricalBin.getNodeCountInBin('Work')).toBe(1);
           // Both unset representations sit in the drawer.
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '2 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^2 unplaced\b/,
           );
           await expect(
             stage.categoricalBin.getNodeInDrawer('Empty'),
@@ -1048,8 +1047,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           // Advancing the prompt resets the expanded bin.
           await interview.nextButton.click();
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '2 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^2 unplaced\b/,
           );
           await expect(panel).toHaveCount(0);
         },
@@ -1140,6 +1139,152 @@ export const categoricalBinScenarios: InterfaceScenarios = {
               );
           expect(await catColorAt(10)).toBe(await catColorAt(0));
           expect(await catColorAt(0)).not.toBe(await catColorAt(1));
+        },
+      };
+    })(),
+    {
+      id: 'require-complete-placement',
+      covers: [
+        'behaviours',
+        'behaviours.requireCompletePlacement',
+        'unplacedNodesNotice',
+      ],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const personType = synth.addNodeType({ name: 'Person' });
+        const personName = personType.addVariable({
+          name: 'name',
+          type: 'text',
+        });
+        const categoryVar = personType.addVariable({
+          name: 'Category',
+          type: 'categorical',
+          options: [
+            { label: 'Family', value: 1 },
+            { label: 'Work', value: 2 },
+          ],
+        });
+        const stage = synth.addStage('CategoricalBin', {
+          subject: { entity: 'node', type: personType.id },
+          initialNodes: { count: 2 },
+          behaviours: { requireCompletePlacement: true },
+        });
+        stage.addPrompt({ variable: categoryVar.id });
+        synth.setNodeAttribute(0, personName.id, 'Ivy');
+        synth.setNodeAttribute(0, categoryVar.id, []);
+        synth.setNodeAttribute(1, personName.id, 'Jon');
+        synth.setNodeAttribute(1, categoryVar.id, []);
+        // A trailing stage so a successful advance is observable.
+        synth.addInformationStage({
+          label: 'Done',
+          title: 'All done',
+          items: [{ id: 'done-1', type: 'text', content: 'Thanks.' }],
+        });
+        return synth;
+      },
+      run: async ({ page, interview, stage }) => {
+        expect(await interview.nextButtonHasPulse()).toBe(false);
+        // Uncategorised nodes: forward navigation is blocked with the notice.
+        await interview.nextButton.click();
+        await expect(page.getByText(/must place every item/i)).toBeVisible();
+        expect(page.url()).toContain('step=0');
+
+        // One node still waiting: still blocked.
+        await stage.categoricalBin.dragNodeToBin('Ivy', 'Family');
+        await interview.nextButton.click();
+        expect(page.url()).toContain('step=0');
+
+        // Every node placed: advancing succeeds.
+        await stage.categoricalBin.dragNodeToBin('Jon', 'Work');
+        // Ready for the next stage once every node is placed.
+        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.next();
+        await expect(
+          page.getByRole('heading', { name: 'All done' }),
+        ).toBeVisible();
+      },
+    },
+    (() => {
+      // Tap to place (#1652): one person at a time, placed by tapping a bin.
+      let nameVarId = '';
+      let categoryVarId = '';
+      return {
+        id: 'select-mode-tap-to-place',
+        covers: ['behaviours', 'behaviours.interactionMode'],
+        visual: true,
+        seedNetwork: true,
+        build: () => {
+          const synth = new SyntheticInterview();
+          const personType = synth.addNodeType({ name: 'Person' });
+          const personName = personType.addVariable({
+            name: 'name',
+            type: 'text',
+          });
+          const categoryVar = personType.addVariable({
+            name: 'Category',
+            type: 'categorical',
+            options: [
+              { label: 'Family', value: 1 },
+              { label: 'Work', value: 2 },
+            ],
+          });
+          nameVarId = personName.id;
+          categoryVarId = categoryVar.id;
+
+          const stage = synth.addStage('CategoricalBin', {
+            subject: { entity: 'node', type: personType.id },
+            initialNodes: { count: 2 },
+            behaviours: { interactionMode: 'select' },
+          });
+          stage.addPrompt({ variable: categoryVar.id });
+
+          synth.setNodeAttribute(0, personName.id, 'Alice');
+          synth.setNodeAttribute(0, categoryVar.id, []);
+          synth.setNodeAttribute(1, personName.id, 'Bob');
+          synth.setNodeAttribute(1, categoryVar.id, []);
+          return synth;
+        },
+        run: async ({ page, interview, protocol }) => {
+          // The node being placed is the one shown selected in the drawer.
+          const drawerNode = (name: string) =>
+            page.getByRole('button', { name, exact: true });
+          const announcer = page.getByTestId('bin-select-announcer');
+          await expect(drawerNode('Alice')).toHaveAttribute(
+            'aria-pressed',
+            'true',
+          );
+          await expect(announcer).toHaveText('Choose where Alice belongs.');
+
+          // Tapping a person in the drawer makes them the one being placed.
+          await drawerNode('Bob').click();
+          await expect(drawerNode('Bob')).toHaveAttribute(
+            'aria-pressed',
+            'true',
+          );
+          await expect(drawerNode('Alice')).not.toHaveAttribute(
+            'aria-pressed',
+            'true',
+          );
+          await page.getByRole('button', { name: 'Place Bob in Work' }).click();
+
+          // The next unplaced person follows.
+          await expect(drawerNode('Alice')).toHaveAttribute(
+            'aria-pressed',
+            'true',
+          );
+          await page
+            .getByRole('button', { name: 'Place Alice in Family' })
+            .click();
+          await expect(announcer).toHaveText('Nothing left to place.');
+
+          const state = await protocol.getNetworkState(interview.interviewId);
+          const answerOf = (name: string) =>
+            state!.nodes.find(
+              (n) => n[entityAttributesProperty][nameVarId] === name,
+            )![entityAttributesProperty][categoryVarId];
+          expect(answerOf('Alice')).toEqual([1]);
+          expect(answerOf('Bob')).toEqual([2]);
         },
       };
     })(),

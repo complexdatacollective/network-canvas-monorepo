@@ -17,7 +17,10 @@ const ROSTER_UID = 'person_pKqRz1sWm3';
 function Probe() {
   const track = useTrack();
   return (
-    <button type="button" onClick={() => track('test_event', { foo: 'bar' })}>
+    <button
+      type="button"
+      onClick={() => track('roster_loaded', { entry_count: 3 })}
+    >
       fire
     </button>
   );
@@ -81,9 +84,9 @@ describe('AnalyticsProvider', () => {
       expect(client.capture).toHaveBeenCalled();
     });
     expect(client.capture).toHaveBeenCalledWith(
-      'test_event',
+      'roster_loaded',
       expect.objectContaining({
-        foo: 'bar',
+        entry_count: 3,
         app: 'Fresco',
         $app_name: 'Fresco',
         installation_id: 'i1',
@@ -144,7 +147,7 @@ describe('AnalyticsProvider', () => {
         getByRole('button').click();
       });
       expect(client.capture).toHaveBeenLastCalledWith(
-        'test_event',
+        'roster_loaded',
         expect.objectContaining({ host_version: '2' }),
       );
     });

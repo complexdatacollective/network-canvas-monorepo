@@ -170,10 +170,9 @@ export function NewSessionForm({
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
   const isOnline = useOnline();
 
-  // A protocol the launch-time migration could not bring up to the runtime's
-  // schema version cannot run an interview — the interview route would refuse
-  // the session it produced. Explain instead of creating a permanently
-  // unusable session.
+  // A protocol at another schema version cannot run an interview here — the
+  // interview route would refuse the session it produced. Explain instead of
+  // creating a permanently unusable session.
   if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
     return (
       <div className="flex flex-col gap-4">

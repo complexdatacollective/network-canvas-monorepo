@@ -1,6 +1,6 @@
 - main:
-  - button "Zoom In"
-  - button "Zoom Out"
+  - button "Zoom in"
+  - button "Zoom out"
   - button "Recenter Map"
   - status:
     - heading "Select the test tract for this person." [level=4]

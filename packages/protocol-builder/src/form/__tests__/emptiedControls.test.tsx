@@ -4,6 +4,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
@@ -18,15 +19,17 @@ import { createStageDraftProbe } from './stageDraftProbe.tsx';
  * Neither is a value the protocol schema accepts where it accepts a value at
  * all, and neither is something the researcher wrote.
  */
+const en = (text: string) => ({ 'en-US': text });
+
 describe('a control the researcher emptied', () => {
   it('leaves nothing in the stage', async () => {
     const harness = renderStageEditor({
       stage: {
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'info-item-1', type: 'text', content: 'Hello.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
           interviewScript: 'Read this aloud',
         },
       },
@@ -61,41 +64,43 @@ describe('a control the researcher emptied', () => {
   it('takes the container it emptied with it', async () => {
     const { probe, draft } = createStageDraftProbe();
     const harness = renderStageEditor({
-      stageId: 'ego-form-1',
+      stageId: 'sociogram-1',
       sections: (
         <>
-          <BuilderSection title="Introduction panel">
+          <BuilderSection title="Tooltips">
             {probe}
             <Field
-              name="introductionPanel.title"
-              label="Panel heading"
-              component={InputField}
+              name="tooltips.pauseLayout"
+              label="Pause layout tooltip"
+              component={LocalizedInputField}
             />
             <Field
-              name="introductionPanel.text"
-              label="Panel text"
-              component={InputField}
+              name="tooltips.resumeLayout"
+              label="Resume layout tooltip"
+              component={LocalizedInputField}
             />
           </BuilderSection>
         </>
       ),
     });
 
+    const pause = await harness.findByRole('textbox', {
+      name: 'Pause layout tooltip',
+    });
+    // The fixture's stage holds both, so the object is there to be taken.
+    expect(Object.hasOwn(draft(), 'tooltips')).toBe(true);
+
+    await harness.user.clear(pause);
     await harness.user.clear(
-      await harness.findByRole('textbox', { name: 'Panel heading' }),
-    );
-    await harness.user.clear(
-      await harness.findByRole('textbox', { name: 'Panel text' }),
+      await harness.findByRole('textbox', { name: 'Resume layout tooltip' }),
     );
 
-    // The panel is required, so this save is refused either way. What is under
-    // test is what the draft holds after it: an `introductionPanel` of two
-    // empty strings is a panel the researcher did not write, and the schema
-    // reports it as two values that are too short rather than as the panel
-    // simply not being there.
-    expect(await harness.submit()).toBeNull();
-
-    expect(Object.hasOwn(draft(), 'introductionPanel')).toBe(false);
+    // Read off the draft rather than out of a save: a save writes Network
+    // Canvas's own wording back into any of these the stage lacks, so what it
+    // stores says nothing about what the form assembled. A `tooltips` with
+    // neither translation map left in it is an object the researcher did not
+    // write, holding nothing.
+    expect(Object.hasOwn(draft(), 'tooltips')).toBe(false);
   });
 
   it('is refused rather than dropped when the field is required', async () => {
@@ -103,9 +108,9 @@ describe('a control the researcher emptied', () => {
       stage: {
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'info-item-1', type: 'text', content: 'Hello.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
         },
       },
       sections: (
@@ -114,7 +119,7 @@ describe('a control the researcher emptied', () => {
             <Field
               name="title"
               label="Page heading"
-              component={InputField}
+              component={LocalizedInputField}
               required
             />
           </BuilderSection>
@@ -145,15 +150,19 @@ describe('a control the researcher emptied', () => {
       stage: {
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'info-item-1', type: 'text', content: 'Hello.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
         },
       },
       sections: (
         <>
           <BuilderSection title="Page content">
-            <Field name="title" label="Page heading" component={InputField} />
+            <Field
+              name="title"
+              label="Page heading"
+              component={LocalizedInputField}
+            />
           </BuilderSection>
         </>
       ),

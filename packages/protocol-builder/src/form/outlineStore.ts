@@ -301,6 +301,16 @@ export class SectionOutlineStore {
     return this.cachedUnattributed;
   };
 
+  /**
+   * What the schema last found wrong with the stage, by path, whether or not
+   * a field on screen answers for it: what a part of a section that mounts
+   * its fields only while it is open reads to open itself over a problem
+   * inside it. Kept by identity until the problems change, for
+   * `useSyncExternalStore`.
+   */
+  getValidationIssues = (): readonly SectionValidationIssue[] =>
+    this.validationIssues;
+
   registerSection(
     section: Readonly<{ id: string; title: string }>,
   ): () => void {

@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import Form from '@codaco/fresco-ui/form/Form';
 import { findDanglingIdReferences } from '@codaco/fresco-ui/utils/ariaIdReferences';
 
 vi.mock('../../hooks/useCelebrate', () => ({
@@ -18,7 +19,6 @@ vi.mock('../../selectors/session', () => ({
 }));
 
 vi.mock('../../selectors/name-generator', () => ({
-  getCanAddMultipleNodes: 'getCanAddMultipleNodes',
   getNodeIconName: 'getNodeIconName',
 }));
 
@@ -28,13 +28,14 @@ vi.mock('../../hooks/useStageSelector', () => ({
       case 'getNodeColorSelector':
         return 'node-color-seq-1';
       case 'getNodeTypeDefinition':
-        return { name: 'Person', shape: { default: 'circle' } };
+        return {
+          name: 'Person',
+          shape: { default: 'circle' },
+        };
       case 'getPromptAdditionalAttributes':
         return {};
       case 'getNodeIconName':
         return 'add-a-person';
-      case 'getCanAddMultipleNodes':
-        return true;
       default:
         return undefined;
     }
@@ -43,6 +44,10 @@ vi.mock('../../hooks/useStageSelector', () => ({
 
 import QuickAddField from '../NameGenerator/components/QuickAddField';
 import AddNodeInput from '../NetworkComposer/AddNodeInput';
+import { TestProtocolLocalization } from './TestProtocolLocalization';
+
+/** The stage's own line beside the quick-add field. */
+const QUICK_ADD_HINT = { en: 'Press Enter when you are finished.' };
 
 /**
  * Both of these components spread `useField`'s `fieldProps` onto markup of
@@ -65,12 +70,16 @@ afterEach(() => {
 describe('QuickAddField ARIA references', () => {
   it('resolves every ARIA reference on the quick-add input', async () => {
     const { container } = render(
-      <QuickAddField
-        name="name"
-        placeholder="Type a label and press enter..."
-        disabled={false}
-        onAdd={() => ({ success: true })}
-      />,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            hint={QUICK_ADD_HINT}
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -83,13 +92,17 @@ describe('QuickAddField ARIA references', () => {
     // `required` is what used to add a `${id}-required` IDREF: BaseField
     // renders that marker, and this component does not.
     const { container } = render(
-      <QuickAddField
-        name="name"
-        placeholder="Type a label and press enter..."
-        disabled={false}
-        onAdd={() => ({ success: true })}
-        required
-      />,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            hint={QUICK_ADD_HINT}
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+            required
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -98,14 +111,18 @@ describe('QuickAddField ARIA references', () => {
     expectNoDanglingReferences(container);
   });
 
-  it('names the quick-add input after the entity being added', async () => {
+  it('names the quick-add input by its placeholder', async () => {
     render(
-      <QuickAddField
-        name="name"
-        placeholder="Type a label and press enter..."
-        disabled={false}
-        onAdd={() => ({ success: true })}
-      />,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            hint={QUICK_ADD_HINT}
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -113,7 +130,9 @@ describe('QuickAddField ARIA references', () => {
     // Asserted through the accessible name rather than the attribute, so it
     // fails if a future reference ever displaces the label again.
     expect(
-      await screen.findByRole('textbox', { name: 'Person name' }),
+      await screen.findByRole('textbox', {
+        name: 'Type a label and press enter...',
+      }),
     ).toBeInTheDocument();
   });
 });
@@ -122,7 +141,7 @@ describe('AddNodeInput ARIA references', () => {
   it('resolves every ARIA reference on the add-node input', () => {
     const { container } = render(
       <AddNodeInput
-        entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,
@@ -134,7 +153,7 @@ describe('AddNodeInput ARIA references', () => {
   it('resolves every ARIA reference when the target variable is required', () => {
     const { container } = render(
       <AddNodeInput
-        entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
         required
@@ -147,13 +166,15 @@ describe('AddNodeInput ARIA references', () => {
   it('still describes the error region it renders itself', () => {
     render(
       <AddNodeInput
-        entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: 'Person name' });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     // Not merely "nothing dangles": the region this component does render has
     // to still be named, or suppressing the rest would have cost the errors.
     expect(input.getAttribute('aria-describedby')).toBe(`${input.id}-error`);

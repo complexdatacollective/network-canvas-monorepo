@@ -1,4 +1,4 @@
-import { Redacted, Stream } from 'effect';
+import { Redacted, Schema, Stream } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -87,6 +87,8 @@ describe('the protocol channel reconnecting', () => {
 
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 
+const isEnglishLabel = Schema.is(Schema.Struct({ 'en-US': Schema.String }));
+
 const WRITER = {
   sessionId: 'writer-session',
   userId: 'writer',
@@ -113,13 +115,11 @@ describe('the protocol channel resuming', () => {
       host.protocolId,
       (event) => {
         if (event.type === 'revision' && event.sectionId === INFORMATION) {
-          labels.push(
-            String(
-              event.document === undefined
-                ? undefined
-                : Redacted.value(event.document).label,
-            ),
-          );
+          const label =
+            event.document === undefined
+              ? undefined
+              : Redacted.value(event.document).label;
+          if (isEnglishLabel(label)) labels.push(label['en-US']);
         }
       },
       controller.signal,
@@ -136,7 +136,10 @@ describe('the protocol channel resuming', () => {
         protocolId: host.protocolId,
         requestId: `resume-${++writes}`,
         sectionId: INFORMATION,
-        document: Redacted.make({ ...Redacted.value(held.document), label }),
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: { 'en-US': label },
+        }),
         revision: held.revision,
       });
 

@@ -1,21 +1,28 @@
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SessionPayload } from '@codaco/interview/contract';
+import type { SessionSnapshot } from '@codaco/interview/contract';
 import { RateLimited } from '@codaco/studio-contract/schema/errors';
 import {
   LinkUnavailable,
+  SessionEnded,
   SessionOutOfDate,
   SessionTakenOver,
 } from '@codaco/studio-contract/schema/participant';
 
+import { faultCodeOf } from '../../runtime/errors.ts';
 import { installParticipantHarness } from '../../test/participantHarness.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
+  type SaveOutcome,
+  SaveNotApplied,
 } from '../interviewHandlers.ts';
 
-const session = (name: string): SessionPayload => ({
+/** Where these interviews end: the protocol's finish stage. */
+const FINISH = { stageId: 'finish', outcome: 'completed' } as const;
+
+const session = (name: string): SessionSnapshot => ({
   id: 'session-1',
   startTime: '2026-01-01T00:00:00.000Z',
   finishTime: null,
@@ -40,6 +47,7 @@ const session = (name: string): SessionPayload => ({
 
 const handlersFor = (step = 1) => {
   const onNotice = vi.fn();
+  const onSaveOutcome = vi.fn<(fault: SaveOutcome) => void>();
   const handlers = createParticipantHandlers({
     holderEpoch: 3,
     revision: '7',
@@ -47,14 +55,15 @@ const handlersFor = (step = 1) => {
     stageIds: ['first', 'second'],
     getCurrentStep: () => step,
     onNotice,
+    onSaveOutcome,
   });
-  return { ...handlers, onNotice };
+  return { ...handlers, onNotice, onSaveOutcome };
 };
 
 const SYNC = { immediate: true, unloading: false };
 
 const savedName = (payload: unknown): unknown =>
-  (payload as { network: SessionPayload['network'] }).network.ego.attributes
+  (payload as { network: SessionSnapshot['network'] }).network.ego.attributes
     .name;
 
 afterEach(() => {
@@ -191,7 +200,7 @@ describe('the participant sync handler’s recovery', () => {
     const { onSync, onFinish } = handlersFor();
 
     await onSync('session-1', session('Ada'), SYNC);
-    await onFinish('session-1', new AbortController().signal);
+    await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
       ['participant.sync', expect.objectContaining({ revision: '8' })],
@@ -202,7 +211,7 @@ describe('the participant sync handler’s recovery', () => {
           network: session('Ada').network,
         }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
   });
 
@@ -303,10 +312,14 @@ describe('the participant sync handler’s recovery', () => {
       'participant.sync': () =>
         Effect.succeed({ revision: '99', applied: false }),
     });
-    const { onSync } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
-    await expect(onSync('session-1', session('Ada'), SYNC)).rejects.toThrow(
-      'kept another save',
+    await expect(
+      onSync('session-1', session('Ada'), SYNC),
+    ).rejects.toBeInstanceOf(SaveNotApplied);
+    const [[fault]] = onSaveOutcome.mock.calls as [[SaveOutcome]];
+    expect(fault.kind === 'failed' && faultCodeOf(fault.error)).toBe(
+      'conflict',
     );
   });
 
@@ -391,7 +404,7 @@ describe('the participant sync handler’s own saves', () => {
   const savedNames = (calls: ReadonlyArray<{ readonly payload: unknown }>) =>
     calls.map(
       ({ payload }) =>
-        (payload as { network: SessionPayload['network'] }).network.ego
+        (payload as { network: SessionSnapshot['network'] }).network.ego
           .attributes.name,
     );
 
@@ -442,7 +455,7 @@ describe('the participant sync handler’s own saves', () => {
 
     await onSync('session-1', session('Ada'), SYNC);
     void onSync('session-1', session('Grace'), ORDINARY).catch(() => undefined);
-    await onFinish('session-1', new AbortController().signal);
+    await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(
       savedNames(harness.calls.filter(({ tag }) => tag === 'participant.sync')),
@@ -498,7 +511,7 @@ describe('the participant stage flush', () => {
     // no answer, and straight to Finish.
     moveTo(2);
     saveStep();
-    await onFinish('session-1', new AbortController().signal);
+    await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
       ['participant.sync', expect.objectContaining({ revision: '8' })],
@@ -506,7 +519,7 @@ describe('the participant stage flush', () => {
         'participant.sync',
         expect.objectContaining({ revision: '9', stageIndex: 2 }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
   });
 
@@ -563,10 +576,13 @@ describe('the participant page’s save numbers', () => {
     });
     const { onFinish } = numbered(5000n);
 
-    await onFinish('session-1', new AbortController().signal);
+    await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(harness.calls).toEqual([
-      { tag: 'participant.finish', payload: { holderEpoch: 3, revision: '7' } },
+      {
+        tag: 'participant.finish',
+        payload: { holderEpoch: 3, revision: '7', ...FINISH },
+      },
     ]);
   });
 
@@ -580,7 +596,7 @@ describe('the participant page’s save numbers', () => {
 describe('the participant finish handler', () => {
   const signal = new AbortController().signal;
 
-  it('finishes at the last revision it saved, then shows the finished notice', async () => {
+  it('finishes at the last revision it saved, and leaves the interview mounted', async () => {
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
         Effect.succeed({ revision: payload.revision, applied: true }),
@@ -589,13 +605,38 @@ describe('the participant finish handler', () => {
     const { onSync, onFinish, onNotice } = handlersFor();
 
     await onSync('session-1', session('Ada'), SYNC);
-    await onFinish('session-1', signal);
+    await onFinish('session-1', FINISH, signal);
 
     expect(harness.calls.at(-1)).toEqual({
       tag: 'participant.finish',
-      payload: { holderEpoch: 3, revision: '8' },
+      payload: { holderEpoch: 3, revision: '8', ...FINISH },
     });
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(onNotice).not.toHaveBeenCalled();
+  });
+
+  it('sends the finish stage the interview ended at and its outcome', async () => {
+    const harness = installParticipantHarness({
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+    });
+    const { onFinish } = handlersFor();
+
+    await onFinish(
+      'session-1',
+      { stageId: 'screened-out', outcome: 'ineligible' },
+      signal,
+    );
+
+    expect(harness.calls).toEqual([
+      {
+        tag: 'participant.finish',
+        payload: {
+          holderEpoch: 3,
+          revision: '7',
+          stageId: 'screened-out',
+          outcome: 'ineligible',
+        },
+      },
+    ]);
   });
 
   it('saves the latest answers again when the server is behind, then finishes', async () => {
@@ -620,12 +661,12 @@ describe('the participant finish handler', () => {
       unloading: true,
     });
     await expect(saved).rejects.toBeInstanceOf(RateLimited);
-    await onFinish('session-1', signal);
+    await onFinish('session-1', FINISH, signal);
 
     expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
       ['participant.sync', expect.objectContaining({ revision: '8' })],
       // The save at 8 was refused, so the server still holds 7.
-      ['participant.finish', { holderEpoch: 3, revision: '7' }],
+      ['participant.finish', { holderEpoch: 3, revision: '7', ...FINISH }],
       [
         'participant.sync',
         expect.objectContaining({
@@ -633,9 +674,9 @@ describe('the participant finish handler', () => {
           network: session('Ada').network,
         }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(onNotice).not.toHaveBeenCalled();
   });
 
   it('stops when the participant cancels while the finish is on the wire', async () => {
@@ -648,7 +689,7 @@ describe('the participant finish handler', () => {
     const cancel = new AbortController();
 
     await onSync('session-1', session('Ada'), SYNC);
-    const finishing = onFinish('session-1', cancel.signal);
+    const finishing = onFinish('session-1', FINISH, cancel.signal);
     await vi.waitFor(() => expect(harness.calls).toHaveLength(2));
     cancel.abort();
 
@@ -669,7 +710,9 @@ describe('the participant finish handler', () => {
     const { onSync, onFinish, onNotice } = handlersFor();
 
     await onSync('session-1', session('Ada'), SYNC);
-    await expect(onFinish('session-1', cancel.signal)).rejects.toMatchObject({
+    await expect(
+      onFinish('session-1', FINISH, cancel.signal),
+    ).rejects.toMatchObject({
       name: 'AbortError',
     });
 
@@ -681,16 +724,38 @@ describe('the participant finish handler', () => {
     expect(onNotice).not.toHaveBeenCalled();
   });
 
-  it('shows the finished notice when the interview was already finished', async () => {
-    installParticipantHarness({
-      'participant.finish': () =>
-        Effect.fail(new LinkUnavailable({ state: 'finished' })),
+  it.each([
+    ['the link', new LinkUnavailable({ state: 'finished' })],
+    ['the session', new SessionEnded({ state: 'completed' })],
+  ])(
+    'finishes without a notice when %s says the interview was already finished',
+    async (_, refusal) => {
+      installParticipantHarness({
+        'participant.finish': () => Effect.fail(refusal),
+      });
+      const { onFinish, onNotice } = handlersFor();
+
+      await expect(
+        onFinish('session-1', FINISH, signal),
+      ).resolves.toBeUndefined();
+
+      expect(onNotice).not.toHaveBeenCalled();
+    },
+  );
+
+  it('saves nothing more once the interview has finished', async () => {
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
     });
-    const { onFinish, onNotice } = handlersFor();
+    const { onSync, onFinish, flushStep } = handlersFor();
 
-    await expect(onFinish('session-1', signal)).resolves.toBeUndefined();
+    await onFinish('session-1', FINISH, signal);
+    await onSync('session-1', session('Ada'), SYNC);
+    flushStep();
 
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(harness.calls.map(({ tag }) => tag)).toEqual(['participant.finish']);
   });
 
   it('shows the refusal and rejects, so the runtime does not count a finish', async () => {
@@ -700,7 +765,7 @@ describe('the participant finish handler', () => {
     });
     const { onFinish, onNotice } = handlersFor();
 
-    await expect(onFinish('session-1', signal)).rejects.toBeInstanceOf(
+    await expect(onFinish('session-1', FINISH, signal)).rejects.toBeInstanceOf(
       SessionTakenOver,
     );
     expect(onNotice).toHaveBeenCalledWith('takenOver');
@@ -712,7 +777,249 @@ describe('the participant finish handler', () => {
     });
     const { onFinish, onNotice } = handlersFor();
 
-    await expect(onFinish('session-1', signal)).rejects.toBeDefined();
+    await expect(onFinish('session-1', FINISH, signal)).rejects.toBeDefined();
     expect(onNotice).not.toHaveBeenCalled();
+  });
+});
+
+describe('the participant save faults', () => {
+  it('reports a save that succeeded only after retrying, with its attempts', async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        attempts += 1;
+        return attempts < 3
+          ? Effect.fail(new RateLimited({ retryAfterSeconds: 1 }))
+          : Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    await vi.advanceTimersByTimeAsync(2000);
+    await saved;
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 3, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports a save that went through first time as applied, not retried', async () => {
+    installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'applied', stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports a save that failed, with its error and attempts', async () => {
+    vi.useFakeTimers();
+    const refusal = new RateLimited({ retryAfterSeconds: 1 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    const refused = expect(saved).rejects.toBeInstanceOf(RateLimited);
+    await vi.advanceTimersByTimeAsync(3000);
+    await refused;
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+
+  it('reports a failed save on the stage that save recorded, not the stage reached since', async () => {
+    vi.useFakeTimers();
+    const refusal = new RateLimited({ retryAfterSeconds: 1 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+    });
+    let step = 1;
+    const onSaveOutcome = vi.fn<(fault: SaveOutcome) => void>();
+    const { onSync } = createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second', 'third'],
+      getCurrentStep: () => step,
+      onNotice: vi.fn(),
+      onSaveOutcome,
+    });
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    const refused = expect(saved).rejects.toBeInstanceOf(RateLimited);
+    await vi.advanceTimersByTimeAsync(0);
+    step = 2;
+    await vi.advanceTimersByTimeAsync(3000);
+    await refused;
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+
+  it('reports the save finishing makes when the server is behind, if that save fails', async () => {
+    const refusal = new RateLimited({ retryAfterSeconds: 600 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+      'participant.finish': () =>
+        Effect.fail(new SessionOutOfDate({ revision: '8' })),
+    });
+    const { onFinish, onSaveOutcome } = handlersFor();
+
+    await expect(
+      onFinish('session-1', FINISH, new AbortController().signal),
+    ).rejects.toBeInstanceOf(RateLimited);
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 1,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+
+  it('reports one retry, counting every request, when a save is rate limited, then not applied, then applied', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        if (calls === 1) {
+          return Effect.fail(new RateLimited({ retryAfterSeconds: 1 }));
+        }
+        if (calls === 2) {
+          return Effect.succeed({ revision: '50', applied: false });
+        }
+        return Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    await vi.advanceTimersByTimeAsync(2000);
+    await saved;
+
+    expect(calls).toBe(3);
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 3, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports a retry when a save the server did not apply is applied on its resend', async () => {
+    let calls = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        return calls === 1
+          ? Effect.succeed({ revision: '50', applied: false })
+          : Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 2, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports every request a save made when the server declined each resend', async () => {
+    installParticipantHarness({
+      'participant.sync': () =>
+        Effect.succeed({ revision: '99', applied: false }),
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    await expect(
+      onSync('session-1', session('Ada'), SYNC),
+    ).rejects.toBeInstanceOf(SaveNotApplied);
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'conflict',
+          error: expect.any(SaveNotApplied),
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+});
+
+describe('the unloading save', () => {
+  it('reports its failure once, from its outcome, on the stage it recorded', async () => {
+    let calls = 0;
+    const refusal = new RateLimited({ retryAfterSeconds: 600 });
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        return calls === 1
+          ? Effect.succeed({ revision: payload.revision, applied: true })
+          : Effect.fail(refusal);
+      },
+    });
+    let step = 0;
+    const onSaveOutcome = vi.fn<(outcome: SaveOutcome) => void>();
+    const { onSync, flushStep } = createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second'],
+      getCurrentStep: () => step,
+      onNotice: vi.fn(),
+      onSaveOutcome,
+    });
+
+    await onSync('session-1', session('Ada'), SYNC);
+    step = 1;
+    flushStep();
+    await vi.waitFor(() => expect(onSaveOutcome).toHaveBeenCalledTimes(2));
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'applied', stageIndex: 0 }],
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 1,
+          stageIndex: 1,
+        },
+      ],
+    ]);
   });
 });

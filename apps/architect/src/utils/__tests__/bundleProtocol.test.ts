@@ -1,14 +1,32 @@
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 
-import { bundleProtocol, UnresolvedAssetsError } from '../bundleProtocol';
+import type { StoredAsset } from '../assetDB';
+import {
+  bundleLegacyProtocol,
+  bundleProtocol,
+  downloadProtocolAsNetcanvas,
+  MissingFinishStageTextError,
+  UnresolvedAssetsError,
+} from '../bundleProtocol';
+import type { LegacyStoredProtocolRow } from '../legacyProtocolLibrary';
 
 const getAssetById = vi.fn();
 
 vi.mock('../assetUtils', () => ({
   getAssetById: (...args: unknown[]) => getAssetById(...args),
+}));
+
+const readLegacyProtocolSnapshot = vi.fn();
+
+vi.mock('../legacyProtocolLibrary', () => ({
+  readLegacyProtocolSnapshot: (...args: unknown[]) =>
+    readLegacyProtocolSnapshot(...args),
 }));
 
 const asset = (
@@ -23,14 +41,14 @@ const asset = (
 
 const makeProtocol = (
   assetManifest: CurrentProtocol['assetManifest'],
-): CurrentProtocol =>
-  ({
-    name: 'test',
-    schemaVersion: 8,
-    stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest,
-  }) as CurrentProtocol;
+): CurrentProtocol => ({
+  name: 'test',
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  codebook: { node: {}, edge: {}, ego: {} },
+  assetManifest,
+});
 
 describe('bundleProtocol', () => {
   beforeEach(() => {
@@ -172,5 +190,241 @@ describe('bundleProtocol', () => {
       value: 'secret',
       name: 'Mapbox',
     });
+  });
+});
+
+describe('the finish stage text guard', () => {
+  const japanese = { defaultLocale: 'ja', locales: ['ja'] };
+  // As Architect creates a protocol in a language Network Canvas supplies no
+  // closing text for.
+  const japaneseProtocol = (): CurrentProtocol => ({
+    ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
+    localization: japanese,
+    stages: [
+      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+    ],
+  });
+
+  beforeEach(() => {
+    getAssetById.mockReset();
+    getAssetById.mockResolvedValue({ data: new Blob(['bytes']) });
+  });
+
+  it('refuses to bundle a protocol whose finish stage has no closing or finished text in the default language', async () => {
+    const refusal = bundleProtocol(japaneseProtocol());
+    await expect(refusal).rejects.toBeInstanceOf(MissingFinishStageTextError);
+    await expect(refusal).rejects.toMatchObject({
+      problem: {
+        stageId: 'end',
+        stageIndex: 0,
+        locale: 'ja',
+        missing: ['content', 'finishedContent'],
+      },
+    });
+    // Refused before any resource is read.
+    expect(getAssetById).not.toHaveBeenCalled();
+  });
+
+  it('refuses one missing only its finished text, and names only that', async () => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    await expect(
+      bundleProtocol({
+        ...protocol,
+        stages: [
+          {
+            ...finish,
+            content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ problem: { missing: ['finishedContent'] } });
+  });
+
+  it('asks an automatic finish stage only for its finished text', async () => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    await expect(
+      bundleProtocol({
+        ...protocol,
+        stages: [{ ...finish, mode: 'automatic' }],
+      }),
+    ).rejects.toMatchObject({ problem: { missing: ['finishedContent'] } });
+  });
+
+  it('bundles it once both are written in the default language', async () => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    const blob = await bundleProtocol({
+      ...protocol,
+      stages: [
+        {
+          ...finish,
+          content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
+          finishedContent: { ja: '# 終了しました' },
+        },
+      ],
+    });
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    expect(zip.file('protocol.json')).not.toBeNull();
+  });
+
+  it('passes the refusal through a download unwrapped, so its caller can describe it', async () => {
+    await expect(
+      downloadProtocolAsNetcanvas(japaneseProtocol(), 'Japanese'),
+    ).rejects.toBeInstanceOf(MissingFinishStageTextError);
+  });
+});
+
+describe('bundleLegacyProtocol', () => {
+  const legacyRow = (assetManifest: unknown): LegacyStoredProtocolRow =>
+    ({
+      id: 'legacy-1',
+      name: 'Schema 8 study',
+      schemaVersion: 8,
+      createdAt: 1,
+      updatedAt: 2,
+      // No localization and no finish stage: a schema 8 document has neither.
+      protocol: {
+        schemaVersion: 8,
+        codebook: { node: {} },
+        stages: [{ id: 's1', type: 'Information' }],
+        assetManifest,
+      },
+    }) as unknown as LegacyStoredProtocolRow;
+
+  const legacyAsset = (assetId: string, bytes: string): StoredAsset => ({
+    id: `legacy-1::${assetId}`,
+    assetId,
+    protocolId: 'legacy-1',
+    name: `${assetId}.png`,
+    data: new Blob([bytes]),
+  });
+
+  // What Architect 8's library holds now, read in one transaction.
+  const stored = (row: LegacyStoredProtocolRow, assets: StoredAsset[] = []) => {
+    readLegacyProtocolSnapshot.mockResolvedValue({ row, assets });
+    return row;
+  };
+
+  beforeEach(() => {
+    getAssetById.mockReset();
+    readLegacyProtocolSnapshot.mockReset();
+  });
+
+  it('bundles the document as stored, with resources read from Architect 8’s library', async () => {
+    const row = stored(
+      legacyRow({
+        a1: { type: 'image', source: 'map.png', name: 'Map' },
+        key: { type: 'apikey', name: 'Mapbox', value: 'pk.123' },
+      }),
+      [legacyAsset('a1', 'map bytes')],
+    );
+
+    const zip = await JSZip.loadAsync(
+      await (await bundleLegacyProtocol(row)).arrayBuffer(),
+    );
+
+    expect(readLegacyProtocolSnapshot).toHaveBeenCalledWith('legacy-1');
+    expect(getAssetById).not.toHaveBeenCalled();
+    const written = JSON.parse(
+      await zip.file('protocol.json')!.async('string'),
+    ) as { schemaVersion: number; assetManifest: Record<string, unknown> };
+    expect(written.schemaVersion).toBe(8);
+    expect(written.assetManifest).toEqual({
+      a1: { type: 'image', source: 'a1.png', name: 'Map' },
+      key: { type: 'apikey', name: 'Mapbox', value: 'pk.123' },
+    });
+    expect(await zip.file('assets/a1.png')!.async('string')).toBe('map bytes');
+  });
+
+  // A stored document is parsed JSON, so `__proto__` can be an asset ID of
+  // its own there.
+  it('keeps a resource whose ID is __proto__', async () => {
+    const row = stored(
+      legacyRow(
+        JSON.parse(
+          '{"__proto__": {"type": "image", "source": "map.png", "name": "Map"}}',
+        ),
+      ),
+      [legacyAsset('__proto__', 'map bytes')],
+    );
+
+    const zip = await JSZip.loadAsync(
+      await (await bundleLegacyProtocol(row)).arrayBuffer(),
+    );
+
+    const written = JSON.parse(
+      await zip.file('protocol.json')!.async('string'),
+    ) as { assetManifest: Record<string, unknown> };
+    expect(Object.keys(written.assetManifest)).toEqual(['__proto__']);
+    expect(await zip.file('assets/__proto__.png')!.async('string')).toBe(
+      'map bytes',
+    );
+  });
+
+  // Architect 8, open in another tab, can save the protocol between the
+  // library listing it and the researcher choosing Download.
+  it('bundles the protocol as stored now, not as it was listed', async () => {
+    const listed = legacyRow({
+      old: { type: 'image', source: 'old.png', name: 'Old map' },
+    });
+    stored(
+      legacyRow({ a2: { type: 'image', source: 'new.png', name: 'New map' } }),
+      [legacyAsset('a2', 'new bytes')],
+    );
+
+    const zip = await JSZip.loadAsync(
+      await (await bundleLegacyProtocol(listed)).arrayBuffer(),
+    );
+
+    const written = JSON.parse(
+      await zip.file('protocol.json')!.async('string'),
+    ) as { assetManifest: Record<string, unknown> };
+    expect(written.assetManifest).toEqual({
+      a2: { type: 'image', source: 'a2.png', name: 'New map' },
+    });
+    expect(Object.keys(zip.files).toSorted()).toEqual([
+      'assets/',
+      'assets/a2.png',
+      'protocol.json',
+    ]);
+  });
+
+  it('fails when the protocol has left Architect 8’s library', async () => {
+    readLegacyProtocolSnapshot.mockResolvedValue(undefined);
+
+    await expect(bundleLegacyProtocol(legacyRow(undefined))).rejects.toThrow();
+  });
+
+  it('refuses, naming them, when resources are missing from that library', async () => {
+    const row = stored(
+      legacyRow({ a1: { type: 'image', source: 'map.png', name: 'Map' } }),
+    );
+
+    await expect(bundleLegacyProtocol(row)).rejects.toEqual(
+      new UnresolvedAssetsError(['Map']),
+    );
+  });
+
+  it('refuses a manifest entry it cannot read rather than writing it half-formed', async () => {
+    const row = stored(legacyRow({ broken: { name: 'Broken' } }));
+
+    await expect(bundleLegacyProtocol(row)).rejects.toBeInstanceOf(
+      UnresolvedAssetsError,
+    );
+  });
+
+  it('bundles a protocol with no resources', async () => {
+    const row = stored(legacyRow(undefined));
+
+    const zip = await JSZip.loadAsync(
+      await (await bundleLegacyProtocol(row)).arrayBuffer(),
+    );
+
+    expect(Object.keys(zip.files)).toEqual(['protocol.json']);
   });
 });

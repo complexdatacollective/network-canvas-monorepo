@@ -95,6 +95,7 @@ const STATUS: InstanceStatus = {
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';

@@ -8,12 +8,13 @@ import {
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
-import Markdown from '~/components/Markdown';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from '../EntityBadge';
 import { SummaryValue } from '../helpers';
 import MiniTable from '../MiniTable';
+import { SummaryMarkdown } from '../SummaryText';
 import Variable from '../Variable';
 const extraMessages = defineMessages({
   sortOrder: {
@@ -114,6 +115,15 @@ const renderProperty = (property: string) => () =>
 
 const renderSmall = (chunks: ReactNode[]) => <small>{chunks}</small>;
 
+const isLocalizedString = (value: unknown): value is LocalizedString =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.values(value).every((text) => typeof text === 'string');
+
+const renderLocalizedText = (text: unknown) =>
+  isLocalizedString(text) ? <SummaryMarkdown value={text} /> : null;
+
 type SortOrderProps = {
   rules: Array<{
     property: string;
@@ -179,11 +189,7 @@ const attributes: Array<
     extraMessages.highlightattribute,
     (id: unknown) => <Variable id={String(id)} />,
   ],
-  [
-    'negativeLabel',
-    extraMessages.negativeOptionLabel,
-    (text: unknown) => String(text),
-  ],
+  ['negativeLabel', extraMessages.negativeOptionLabel, renderLocalizedText],
   [
     'sortOrder',
     extraMessages.sortbyproperty,
@@ -207,13 +213,9 @@ const attributes: Array<
   [
     'otherVariablePrompt',
     extraMessages.otherattributeprompt,
-    (text: unknown) => String(text),
+    renderLocalizedText,
   ],
-  [
-    'otherOptionLabel',
-    extraMessages.otheroptionlabel,
-    (text: unknown) => String(text),
-  ],
+  ['otherOptionLabel', extraMessages.otheroptionlabel, renderLocalizedText],
 ];
 const reduceAttribute =
   (prompt: Record<string, unknown>, intl: IntlShape) =>
@@ -233,7 +235,7 @@ const reduceAttribute =
   };
 
 type PromptProps = {
-  text: string;
+  text: LocalizedString;
   additionalAttributes?: Array<{
     variable: string;
     value: unknown;
@@ -270,7 +272,7 @@ const Prompt = ({
 
   return (
     <div className="break-inside-avoid">
-      <Markdown label={text} />
+      <SummaryMarkdown value={text} />
       {attributeRows.length > 0 && <MiniTable rotated rows={attributeRows} />}
       {additionalAttributes.length > 0 && (
         <MiniTable

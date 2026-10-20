@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect, Layer, Predicate, Redacted } from 'effect';
+import { Effect, Layer, Predicate, Redacted, Schema } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
@@ -23,6 +23,12 @@ import {
   type InMemoryHandlers,
 } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
 import type { Me } from '@codaco/studio-contract/schema/account';
+import {
+  BROWSER_LOG_PATHS,
+  BROWSER_LOG_TEAM_ATTRIBUTE,
+  BrowserLogsBody,
+  browserLogRecords,
+} from '@codaco/studio-contract/schema/browser-logs';
 import { Forbidden } from '@codaco/studio-contract/schema/errors';
 import {
   DraftId,
@@ -45,6 +51,7 @@ import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
 import { HostClient } from '../../runtime/hostClient.ts';
 import { hostRuntime } from '../../runtime/hostSession.ts';
+import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
 import {
   FakeWebSocket,
   installInProcessHost,
@@ -64,27 +71,61 @@ type Answer<Tag extends keyof StudioHandlers> = (
 const STAGE_A = '11111111-1111-4111-8111-111111111111';
 const STAGE_B = '22222222-2222-4222-8222-222222222222';
 const STAGE_C = '33333333-3333-4333-8333-333333333333';
+const FINISH = '44444444-4444-4444-8444-444444444444';
 const queryDraft = vi.hoisted(() => vi.fn<Answer<'protocols.draft'>>());
 const addInformationStage = vi.fn<Answer<'protocols.addInformationStage'>>();
 const moveStage = vi.fn<Answer<'protocols.moveStage'>>();
 
 const PROTOCOL_UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
+/** Text written in the only language the sample protocol declares. */
+const enUS = (text: string) => ({ 'en-US': text });
+
+const fetchStub = installFetchStub();
+
+const decodeLogs = Schema.decodeUnknownSync(
+  Schema.fromJsonString(BrowserLogsBody),
+);
+
+const lockLogsSent = () =>
+  fetchStub.mock.calls
+    .filter(
+      ([input]) =>
+        new URL(requestUrl(input), window.location.href).pathname ===
+        BROWSER_LOG_PATHS.researcher,
+    )
+    .flatMap(([, init]) => browserLogRecords(decodeLogs(String(init?.body))))
+    .filter((record) => record.body.stringValue === 'Editing lock refused')
+    .map((record) =>
+      record.attributes.find(
+        (attribute) => attribute.key === BROWSER_LOG_TEAM_ATTRIBUTE,
+      ),
+    );
+
+const lockAnswer = {
+  requested: 0,
+  gate: Promise.resolve(),
+};
+
 const DRAFT_SECTIONS = {
-  settings: { name: 'Shell proof', schemaVersion: 8 },
+  settings: {
+    name: 'Shell proof',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en-US', locales: ['en-US'] },
+  },
   stageOrder: { stages: [STAGE_A, STAGE_B] },
   [`stage:${STAGE_A}`]: {
     id: STAGE_A,
     type: 'Information',
-    label: 'Welcome',
-    title: 'Welcome',
+    label: enUS('Welcome'),
+    title: enUS('Welcome'),
     items: [],
   },
   [`stage:${STAGE_B}`]: {
     id: STAGE_B,
     type: 'Information',
-    label: 'Follow-up',
-    title: 'Follow-up',
+    label: enUS('Follow-up'),
+    title: enUS('Follow-up'),
     items: [],
   },
   assets: {},
@@ -122,7 +163,31 @@ const HOST_SECTIONS: Readonly<Record<string, SectionDoc>> = {
   ...DRAFT_SECTIONS,
   [`stage:${STAGE_A}`]: {
     ...DRAFT_SECTIONS[`stage:${STAGE_A}`],
-    label: 'Welcome, from the host',
+    label: enUS('Welcome, from the host'),
+  },
+};
+
+/**
+ * The host's protocol as schema 9 requires it, ending at a finish stage — the
+ * shape validation admits. The fixture above leaves it out, because what those
+ * tests check is drawn the same either way.
+ */
+const ENDS_AT_FINISH: Readonly<Record<string, SectionDoc>> = {
+  ...HOST_SECTIONS,
+  stageOrder: { stages: [STAGE_A, STAGE_B, FINISH] },
+  [`stage:${FINISH}`]: {
+    id: FINISH,
+    type: 'FinishSession',
+    mode: 'confirmation',
+    label: enUS('Finish'),
+    content: enUS('# Thank you\n\nThe interview is complete.'),
+    finishedContent: enUS(
+      '# Interview Finished\n\nThank you for participating!',
+    ),
+    finishLabel: enUS('Finish'),
+    finishConfirmation: enUS('Finish this interview?'),
+    finishFailed: enUS('The interview could not be finished.'),
+    outcome: 'completed',
   },
 };
 
@@ -170,6 +235,8 @@ const ME: Me = {
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
 
+const telemetry = { on: false };
+
 const STATUS: InstanceStatus = {
   name: 'Studio',
   version: 'test',
@@ -182,6 +249,7 @@ const STATUS: InstanceStatus = {
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 /** The host these tests seed, kept so a second caller can be made from it. */
@@ -253,14 +321,18 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
         return yield* handle.GetSection(input);
       }),
     AcquireLock: (input) => {
+      lockAnswer.requested += 1;
       const written = commandWriteFor(input.sectionId);
-      return written === undefined
-        ? handle.AcquireLock(input)
-        : Effect.succeed({
-            lock: 'held' as const,
-            document: Redacted.make(written),
-            revision: COMMAND_REVISION,
-          });
+      return Effect.andThen(
+        Effect.promise(() => lockAnswer.gate),
+        written === undefined
+          ? handle.AcquireLock(input)
+          : Effect.succeed({
+              lock: 'held' as const,
+              document: Redacted.make(written),
+              revision: COMMAND_REVISION,
+            }),
+      );
     },
     ListSections: (input) =>
       Effect.map(handle.ListSections(input), ({ sectionIds }) => ({
@@ -300,8 +372,8 @@ async function collaboratorAddsScreen(label: string): Promise<void> {
     kind: 'stage',
     document: Redacted.make({
       type: 'Information',
-      label,
-      title: label,
+      label: enUS(label),
+      title: enUS(label),
       items: [],
     }),
   });
@@ -321,7 +393,10 @@ async function collaboratorRenamesScreen(
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: target,
-    document: Redacted.make({ ...Redacted.value(held.document), label }),
+    document: Redacted.make({
+      ...Redacted.value(held.document),
+      label: enUS(label),
+    }),
     revision: held.revision,
   });
   await client.rpcCall('ReleaseLock', {
@@ -331,7 +406,9 @@ async function collaboratorRenamesScreen(
 }
 
 /** The stage order, put back as it should be, by a collaborator's submit. */
-async function collaboratorRepairsStageOrder(): Promise<void> {
+async function collaboratorRepairsStageOrder(
+  stages: readonly string[],
+): Promise<void> {
   const client = collaborator();
   const held = await client.rpcCall('AcquireLock', {
     protocolId: DRAFT.protocol.id,
@@ -341,7 +418,7 @@ async function collaboratorRepairsStageOrder(): Promise<void> {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: STAGE_ORDER,
-    document: Redacted.make({ stages: [STAGE_A, STAGE_B] }),
+    document: Redacted.make({ stages }),
     revision: held.revision,
   });
   await client.rpcCall('ReleaseLock', {
@@ -400,6 +477,9 @@ beforeEach(async () => {
   commandWrote.clear();
   unreadableSections.clear();
   withheldReads.length = 0;
+  telemetry.on = false;
+  lockAnswer.requested = 0;
+  lockAnswer.gate = Promise.resolve();
   await seedHost(HOST_SECTIONS);
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
@@ -422,7 +502,7 @@ beforeEach(async () => {
   moveStage.mockReturnValue(Effect.succeed({ sequence: '3', hash: 'r3' }));
   installRpcHarness({
     'me': () => Effect.succeed(ME),
-    'status': () => Effect.succeed(STATUS),
+    'status': () => Effect.succeed({ ...STATUS, telemetry: telemetry.on }),
     'studies.get': () =>
       tenancy.owner === null
         ? Effect.fail(new Forbidden({}))
@@ -949,7 +1029,7 @@ describe('Studio editor shell', () => {
         commandWrote.set(sectionId({ kind: 'stage', stageId }), {
           id: stageId,
           type: 'Information',
-          title: '',
+          title: enUS('Untitled screen'),
           items: [],
         });
         commandWrote.set(STAGE_ORDER, { stages: [STAGE_A, STAGE_B, stageId] });
@@ -996,6 +1076,90 @@ describe('Studio editor shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
     await waitFor(() => expect(moveUp).toBeEnabled());
   });
+
+  it('offers no move that would put a screen after the finish stage', async () => {
+    // The interview ends at its finish stage, and the server refuses a move
+    // that leaves a screen after it, as Architect does.
+    await seedHost(ENDS_AT_FINISH);
+    renderEditor();
+    const finishUp = await screen.findByRole('button', {
+      name: 'Move Finish up',
+    });
+
+    expect(finishUp).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Move Finish down' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Move Follow-up down' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Move Follow-up up' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Move Welcome, from the host down' }),
+    ).toBeEnabled();
+  });
+});
+
+/**
+ * A screen's name is one translation per language of the protocol, so the
+ * outline has to say which of them it is showing: the language the editor is
+ * writing in, or the one a participant would be shown when that language has
+ * no name for the screen.
+ */
+describe('a protocol written in two languages', () => {
+  async function seedEnglishAndFrench() {
+    await seedHost({
+      ...DRAFT_SECTIONS,
+      settings: {
+        ...DRAFT_SECTIONS.settings,
+        localization: { defaultLocale: 'en-US', locales: ['en-US', 'fr'] },
+      },
+      [`stage:${STAGE_A}`]: {
+        ...DRAFT_SECTIONS[`stage:${STAGE_A}`],
+        label: { 'en-US': 'Hello', 'fr': 'Bonjour' },
+      },
+      // Named in French alone, so English has nothing to show for it.
+      [`stage:${STAGE_B}`]: {
+        ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
+        label: { fr: 'Suite' },
+      },
+    });
+  }
+
+  it('names each screen in the default language, or in another when it has no name there', async () => {
+    await seedEnglishAndFrench();
+    renderEditor();
+
+    expect(await findStageNameField()).toHaveValue('Hello');
+    expect(outlineScreens()).toEqual(['HelloInformation', 'SuiteInformation']);
+  });
+
+  it('names each screen in the language the editor switches to', async () => {
+    await seedEnglishAndFrench();
+    renderEditor();
+    await findStageNameField();
+
+    // Every localized field draws a menu and they all move together, so any
+    // one of them will do.
+    const [languageMenu] = screen.getAllByRole('button', {
+      name: /Editing language/,
+    });
+    if (languageMenu === undefined) throw new Error('The editor has no menu');
+    fireEvent.click(languageMenu);
+    fireEvent.click(
+      await screen.findByRole('menuitemradio', { name: /^français/ }),
+    );
+
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'BonjourInformation',
+        'SuiteInformation',
+      ]),
+    );
+    expect(await findStageNameField()).toHaveValue('Bonjour');
+  });
 });
 
 /**
@@ -1027,8 +1191,8 @@ describe('a protocol that is not all here', () => {
       [`stage:${STAGE_C}`]: {
         id: STAGE_C,
         type: 'Information',
-        label: 'Closing',
-        title: 'Closing',
+        label: enUS('Closing'),
+        title: enUS('Closing'),
         items: [],
       },
     });
@@ -1204,8 +1368,8 @@ describe('what a collaborator changes', () => {
     // catch — and Studio's draft query answers with a consistent protocol, so
     // a panel drawn from that one reports nothing here at all.
     await seedHost({
-      ...HOST_SECTIONS,
-      stageOrder: { stages: [STAGE_A, STAGE_B, 'no-such-stage'] },
+      ...ENDS_AT_FINISH,
+      stageOrder: { stages: [STAGE_A, STAGE_B, FINISH, 'no-such-stage'] },
     });
     renderEditor();
     await screen.findByRole('button', { name: 'Follow-upInformation' });
@@ -1220,13 +1384,45 @@ describe('what a collaborator changes', () => {
     // And it is checked again against what the channel delivers, so the
     // researcher is not left reading a problem a collaborator has fixed.
     await act(async () => {
-      await collaboratorRepairsStageOrder();
+      await collaboratorRepairsStageOrder([STAGE_A, STAGE_B, FINISH]);
     });
 
     expect(
       await screen.findByRole('button', { name: 'Protocol valid' }),
     ).toBeInTheDocument();
     expect(screen.getByText('No validation problems.')).toBeInTheDocument();
+  });
+});
+
+describe('an editing lock refused after the researcher has moved on', () => {
+  it('is logged under the team of the editor that asked for it', async () => {
+    telemetry.on = true;
+    fetchStub.mockImplementation(
+      async () => new Response(null, { status: 204 }),
+    );
+    await collaborator().rpcCall('AcquireLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: sectionId({ kind: 'stage', stageId: STAGE_A }),
+    });
+    const { promise, resolve } = Promise.withResolvers<void>();
+    lockAnswer.gate = promise;
+    const { router } = renderEditor();
+    await waitFor(() => expect(lockAnswer.requested).toBeGreaterThan(0));
+
+    await act(() =>
+      router.navigate({ to: '/team/$teamId', params: { teamId: TEAM_B.id } }),
+    );
+    resolve();
+
+    await waitFor(() => expect(lockLogsSent()).toHaveLength(1), {
+      timeout: 5000,
+    });
+    expect(lockLogsSent()).toEqual([
+      {
+        key: BROWSER_LOG_TEAM_ATTRIBUTE,
+        value: { stringValue: TEAM_A.id },
+      },
+    ]);
   });
 });
 

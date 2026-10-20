@@ -1,8 +1,10 @@
 // Offline tests for the release test's lane contracts.
 //
 // The script-driven lanes drive a browser, but what they CONCLUDE lives in
-// three pure modules — the analytics payload contract, the localization
-// comparison and the export reader — and those are exercised here on synthetic
+// pure modules — the analytics payload contract, the localization
+// comparison, the export reader, what a schema 9 export has to record, and
+// what an upgrade has to leave alone in the schema 8 protocols and
+// interviews a deployment holds — and those are exercised here on synthetic
 // input rather than only through a running stack. Every test names the
 // fail-open it prevents: each negative assertion is shown failing on a payload
 // that breaks the behaviour it guards, and each positive control is shown
@@ -14,7 +16,8 @@
 // property renamed in the app, or an error kind added to the package, would
 // otherwise leave a check looking for something nobody sends any more.
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -28,6 +31,8 @@ const scripts = join(repoRoot, 'apps/fresco/release-test/scripts');
 const require = createRequire(join(repoRoot, 'package.json'));
 
 const {
+  APP_DEFECT_KINDS,
+  UPGRADE_ERROR_NAMES,
   ELEMENT_EVENTS,
   ELEMENT_PROPERTIES,
   ENTITY_ID_PROPERTIES,
@@ -42,6 +47,27 @@ const { judgeAuthoredText, judgeInterpolated, judgeRendering, longestLiteral } =
 const { readInterviewExport } = await import(
   join(scripts, 'interview-export-contract.mjs')
 );
+
+const {
+  ENCRYPTED_PLACEHOLDER,
+  anythingBut,
+  categoricalColumns,
+  edgeAnswerProblems,
+  edgeSetProblems,
+  egoAnswerProblems,
+  encryptedValueProblems,
+  finishOutcomeProblems,
+  nodeAnswerProblems,
+  finishOutcomesByFormat,
+  splitCsvRow,
+} = await import(join(scripts, 'schema9-export-contract.mjs'));
+
+const {
+  KEPT_SCHEMA,
+  familyKeptProblems,
+  interviewKeptProblems,
+  protocolKeptProblems,
+} = await import(join(scripts, 'migration-contract.mjs'));
 
 // ---------------------------------------------------------------------------
 // Building payloads the way posthog does
@@ -88,6 +114,14 @@ const serverEvent = (event, properties = {}) => ({
   properties: { $lib: 'posthog-node', ...properties },
 });
 
+/** The exception posthog-js sends for a migration that returned garbage. */
+const upgradeException = () =>
+  webEvent('$exception', {
+    $exception_list: [
+      { type: 'MigrationResultInvalidError', value: 'Migration resulted…' },
+    ],
+  });
+
 /** A run in which an enabled deployment behaved. */
 const cleanRun = () => ({
   records: [
@@ -96,6 +130,8 @@ const cleanRun = () => ({
     request('/e/', [
       webEvent('$pageview'),
       webEvent('ProtocolImportFailed', { reason: 'notArchive' }),
+      webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
+      upgradeException(),
       interviewEvent('stage_entered'),
       interviewEvent('node_added', { node_id: 'pseudonym-1' }),
     ]),
@@ -134,6 +170,7 @@ test('an empty capture fails every positive control', () => {
     'analytics-entity-ids-reported',
     'analytics-pseudonymous-distinct-id',
     'analytics-damaged-file-not-an-error',
+    'analytics-upgrade-failure-reported-twice',
   ])
     assert.ok(
       ids.includes(id),
@@ -293,6 +330,81 @@ test('an exception from BEFORE the damaged imports is not held against them', ()
   assert.ok(!failing(run).includes('analytics-damaged-file-not-an-error'));
 });
 
+test('a failed upgrade reported only as an exception fails the run', () => {
+  const run = cleanRun();
+  run.records = run.records.map((record) =>
+    record.path === '/e/'
+      ? request('/e/', [
+          webEvent('$pageview'),
+          webEvent('ProtocolImportFailed', { reason: 'notArchive' }),
+          webEvent('$exception'),
+          interviewEvent('stage_entered'),
+          interviewEvent('node_added', { node_id: 'pseudonym-1' }),
+        ])
+      : record,
+  );
+  const ids = failing(run);
+  assert.ok(ids.includes('analytics-upgrade-failure-reported-twice'));
+  assert.ok(ids.includes('analytics-damaged-file-not-an-error'));
+});
+
+test('a failed upgrade reported only as a refusal fails the run', () => {
+  const run = cleanRun();
+  run.records = run.records.map((record) =>
+    record.path === '/e/'
+      ? request('/e/', [
+          webEvent('$pageview'),
+          webEvent('ProtocolImportFailed', { reason: 'notArchive' }),
+          webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
+          interviewEvent('stage_entered'),
+          interviewEvent('node_added', { node_id: 'pseudonym-1' }),
+        ])
+      : record,
+  );
+  const ids = failing(run);
+  assert.ok(ids.includes('analytics-upgrade-failure-reported-twice'));
+  assert.ok(!ids.includes('analytics-damaged-file-not-an-error'));
+});
+
+test('a failed upgrade does not stand in for a damaged file', () => {
+  const run = cleanRun();
+  run.records = run.records.map((record) =>
+    record.path === '/e/'
+      ? request('/e/', [
+          webEvent('$pageview'),
+          webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
+          upgradeException(),
+          interviewEvent('stage_entered'),
+          interviewEvent('node_added', { node_id: 'pseudonym-1' }),
+        ])
+      : record,
+  );
+  const ids = failing(run);
+  assert.ok(ids.includes('analytics-damaged-file-not-an-error'));
+  assert.ok(!ids.includes('analytics-upgrade-failure-reported-twice'));
+});
+
+test('an exception for a damaged file cannot stand in for a failed upgrade’s', () => {
+  const run = cleanRun();
+  run.records = run.records.map((record) =>
+    record.path === '/e/'
+      ? request('/e/', [
+          webEvent('$pageview'),
+          webEvent('ProtocolImportFailed', { reason: 'notArchive' }),
+          webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
+          webEvent('$exception', {
+            $exception_list: [{ type: 'MalformedNetcanvasError' }],
+          }),
+          interviewEvent('stage_entered'),
+          interviewEvent('node_added', { node_id: 'pseudonym-1' }),
+        ])
+      : record,
+  );
+  const ids = failing(run);
+  assert.ok(ids.includes('analytics-upgrade-failure-reported-twice'));
+  assert.ok(ids.includes('analytics-damaged-file-not-an-error'));
+});
+
 test('a free-form import-failure reason fails the run', () => {
   const run = cleanRun();
   run.records = run.records.map((record) =>
@@ -392,11 +504,11 @@ test('the element events and properties are the ones Fresco drops', () => {
 
 test('the entity-id properties are the ones the interview runtime pseudonymises', () => {
   const source = readFileSync(
-    join(repoRoot, 'packages/interview/src/analytics/entityIds.ts'),
+    join(repoRoot, 'packages/interview/src/analytics/entityIdProperties.ts'),
     'utf8',
   );
   assert.deepEqual(
-    sorted(declaredStrings(source, 'const ENTITY_ID_PROPS', ']')),
+    sorted(declaredStrings(source, 'export const ENTITY_ID_PROPERTIES', ']')),
     sorted(ENTITY_ID_PROPERTIES),
   );
 });
@@ -418,6 +530,55 @@ test('the import-failure vocabulary is the package’s own', () => {
   assert.deepEqual(
     kinds.toSorted((a, b) => a.localeCompare(b)),
     [...PROTOCOL_FILE_ERROR_KINDS].toSorted((a, b) => a.localeCompare(b)),
+  );
+});
+
+test('the failed-upgrade error names are the package’s own', () => {
+  const errors = readFileSync(
+    join(repoRoot, 'packages/protocol-validation/src/migration/errors.ts'),
+    'utf8',
+  );
+  const kinds = readFileSync(
+    join(
+      repoRoot,
+      'packages/protocol-validation/src/utils/protocolFileErrorKind.ts',
+    ),
+    'utf8',
+  );
+  for (const name of UPGRADE_ERROR_NAMES)
+    assert.ok(
+      errors.includes(`this.name = '${name}';`),
+      `${name} is not an error name protocol-validation assigns`,
+    );
+  // The classes classified as a failed upgrade, read from the classifier.
+  const classified = [
+    ...kinds.matchAll(
+      /instanceof (\w+)\)\s*(?:\n\s*)?return 'upgrade(?:StepFailed|Failed)'/g,
+    ),
+  ].map((match) => match[1]);
+  assert.ok(classified.length > 0, 'failed to read the classifier');
+  for (const name of classified)
+    assert.ok(
+      UPGRADE_ERROR_NAMES.includes(name),
+      `${name} is classified as a failed upgrade but not matched in exceptions`,
+    );
+});
+
+test('the failed-upgrade kinds are the package’s own', () => {
+  const source = readFileSync(
+    join(
+      repoRoot,
+      'packages/protocol-validation/src/utils/protocolFileErrorKind.ts',
+    ),
+    'utf8',
+  );
+  const start = source.indexOf('const APP_DEFECT_KINDS');
+  const declared = source.slice(start, source.indexOf(']);', start));
+  const kinds = [...declared.matchAll(/'([\w-]+)'/g)].map((match) => match[1]);
+  assert.ok(kinds.length > 0, 'failed to read APP_DEFECT_KINDS');
+  assert.deepEqual(
+    kinds.toSorted((a, b) => a.localeCompare(b)),
+    [...APP_DEFECT_KINDS].toSorted((a, b) => a.localeCompare(b)),
   );
 });
 
@@ -633,4 +794,1036 @@ test('an unreadable archive is reported as unreadable, not as empty', async () =
   const found = await readInterviewExport(path);
   assert.equal(found.entries, 0);
   assert.match(found.error, /could not be read/);
+});
+
+// ---------------------------------------------------------------------------
+// What a schema 9 export records
+// ---------------------------------------------------------------------------
+
+// An ego CSV and a GraphML file as the exporters write them, one row and one
+// graph per interview.
+const egoCsv = (rows) =>
+  [
+    'networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,networkCanvasProtocolName,networkCanvasFinishOutcome,name',
+    ...rows.map(
+      ([session, outcome, name]) =>
+        `e-${session},case,${session},"Protocol, with a comma",${outcome},${name}`,
+    ),
+  ].join('\r\n');
+const graphml = (graphs) =>
+  `<?xml version="1.0"?><graphml>${graphs
+    .map(
+      ([session, outcome]) =>
+        `<graph edgedefault="undirected" nc:sessionUUID="${session}" nc:protocolUID="p"${outcome ? ` nc:finishOutcome="${outcome}"` : ''}><node id="n"/></graph>`,
+    )
+    .join('')}</graphml>`;
+const exported = (csvRows, graphs) => [
+  { name: 'a_ego.csv', text: egoCsv(csvRows) },
+  { name: 'a_edgeList.csv', text: 'from,to\r\n1,2' },
+  { name: 'a.graphml', text: graphml(graphs) },
+];
+
+test('a quoted CSV cell keeps its commas and doubled quotes', () => {
+  assert.deepEqual(splitCsvRow('a,"b, c","say ""hi""",'), [
+    'a',
+    'b, c',
+    'say "hi"',
+    '',
+  ]);
+});
+
+test('each format reports where every exported interview ended', () => {
+  const files = exported(
+    [
+      ['s1', 'completed', 'Rosa'],
+      ['s2', 'terminated', 'Declina'],
+    ],
+    [
+      ['s1', 'completed'],
+      ['s2', 'terminated'],
+    ],
+  );
+  assert.deepEqual(finishOutcomesByFormat(files), {
+    csv: { s1: 'completed', s2: 'terminated' },
+    graphml: { s1: 'completed', s2: 'terminated' },
+  });
+  assert.deepEqual(
+    finishOutcomeProblems(files, { s1: 'completed', s2: 'terminated' }),
+    [],
+  );
+});
+
+test('an outcome recorded wrongly in either format fails', () => {
+  const wrongInCsv = exported(
+    [['s1', 'terminated', 'Rosa']],
+    [['s1', 'completed']],
+  );
+  assert.deepEqual(finishOutcomeProblems(wrongInCsv, { s1: 'completed' }), [
+    'csv records interview s1 as "terminated", expected "completed"',
+  ]);
+  const missingInGraphml = exported([['s1', 'completed', 'Rosa']], [['s1']]);
+  assert.deepEqual(
+    finishOutcomeProblems(missingInGraphml, { s1: 'completed' }),
+    ['graphml records interview s1 as "", expected "completed"'],
+  );
+});
+
+test('an interview left out of a format is a problem, not a pass by omission', () => {
+  const files = exported([['s1', 'completed', 'Rosa']], [['s1', 'completed']]);
+  assert.deepEqual(
+    finishOutcomeProblems(files, { s1: 'completed', s2: 'terminated' }),
+    ['csv has no row for interview s2', 'graphml has no row for interview s2'],
+  );
+  // An export with no data at all fails every expected interview, twice.
+  assert.equal(finishOutcomeProblems([], { s1: 'completed' }).length, 2);
+});
+
+test('an interview recorded twice is a problem even when one record is right', () => {
+  const files = exported(
+    [
+      ['s1', 'terminated', 'Rosa'],
+      ['s1', 'completed', 'Rosa'],
+    ],
+    [
+      ['s1', 'terminated'],
+      ['s1', 'completed'],
+    ],
+  );
+  assert.deepEqual(finishOutcomeProblems(files, { s1: 'completed' }), [
+    'csv records interview s1 2 times ("terminated", "completed")',
+    'graphml records interview s1 2 times ("terminated", "completed")',
+  ]);
+});
+
+test('an interview finished before outcomes existed records none, and that is checkable', () => {
+  const files = exported([['old', '', 'Mira']], [['old']]);
+  assert.deepEqual(finishOutcomeProblems(files, { old: '' }), []);
+  assert.equal(finishOutcomeProblems(files, { old: 'completed' }).length, 2);
+});
+
+test('the finish outcome is read from the column and attribute the exporters write', () => {
+  const helpers = readFileSync(
+    join(
+      repoRoot,
+      'packages/network-exporters/src/formatters/graphml/helpers.ts',
+    ),
+    'utf8',
+  );
+  assert.ok(helpers.includes("'nc:finishOutcome'"));
+  assert.ok(helpers.includes("'nc:sessionUUID'"));
+  const consts = readFileSync(
+    join(repoRoot, 'packages/shared-consts/src/export-process.ts'),
+    'utf8',
+  );
+  assert.match(
+    consts,
+    /ncFinishOutcomeProperty = 'networkCanvasFinishOutcome'/,
+  );
+  assert.match(consts, /ncSessionProperty = 'networkCanvasSessionID'/);
+});
+
+const personCsv = (rows) =>
+  [
+    'nodeID,networkCanvasUUID,name,hours,context_work,context_family',
+    ...rows.map(
+      ([id, name, hours = '', work = '', family = ''], index) =>
+        `${index + 1},${id},${name},${hours},${work},${family}`,
+    ),
+  ].join('\r\n');
+// GraphML numbers its nodes and carries each node's id as data, and names its
+// keys opaquely: the attribute's name is on the <key>.
+const personGraphml = (nodes) =>
+  [
+    '<graphml>',
+    '<key id="networkCanvasUUID" attr.name="networkCanvasUUID" attr.type="string" for="all"/>',
+    '<key id="var-1" attr.name="name" attr.type="string" for="node"/>',
+    '<key id="hours" attr.name="hours" attr.type="int" for="node"/>',
+    '<key id="context_a1" attr.name="context_work" attr.type="boolean" for="node"/>',
+    '<key id="context_b2" attr.name="context_family" attr.type="boolean" for="node"/>',
+    '<graph>',
+    ...nodes.map(
+      ([id, name, hours, work, family], index) =>
+        `<node id="${index + 1}"><data key="networkCanvasUUID">${id}</data><data key="var-1">${name}</data>${hours === undefined ? '' : `<data key="hours">${hours}</data><data key="context_a1">${work}</data><data key="context_b2">${family}</data>`}</node>`,
+    ),
+    '</graph></graphml>',
+  ].join('');
+
+test("each person's answers are read from that person's own records", () => {
+  const files = [
+    {
+      name: 'a_attributeList_Person.csv',
+      text: personCsv([
+        ['ana', 'Ana', '5', 'true', 'false'],
+        ['bruno', 'Bruno', '12', 'false', 'true'],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([
+        ['ana', 'Ana', '5', 'true', 'false'],
+        ['bruno', 'Bruno', '12', 'false', 'true'],
+      ]),
+    },
+  ];
+  const expected = {
+    ana: { hours: '5', context_work: 'true', context_family: 'false' },
+    bruno: { hours: '12', context_work: 'false', context_family: 'true' },
+  };
+  assert.deepEqual(nodeAnswerProblems(files, expected), []);
+});
+
+test('an answer dropped from its record fails even though the value appears elsewhere', () => {
+  // Bruno's hours are lost; "5" is still in the archive, as Ana's answer.
+  const files = [
+    {
+      name: 'a_attributeList_Person.csv',
+      text: personCsv([
+        ['ana', 'Ana', '5', 'true', 'false'],
+        ['bruno', 'Bruno', '', 'false', 'true'],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([
+        ['ana', 'Ana', '5', 'true', 'false'],
+        ['bruno', 'Bruno', '5', 'true', 'true'],
+      ]),
+    },
+  ];
+  assert.deepEqual(
+    nodeAnswerProblems(files, {
+      bruno: { hours: '5', context_work: 'false' },
+    }),
+    [
+      'a_attributeList_Person.csv\'s record for node bruno holds hours="", expected "5"',
+      'a.graphml\'s record for node bruno holds context_work="true", expected "false"',
+    ],
+  );
+  assert.deepEqual(nodeAnswerProblems(files, { carla: { hours: '5' } }), [
+    'no exported csv file has a record for node carla',
+    'no exported graphml file has a record for node carla',
+  ]);
+});
+
+test('a node the GraphML leaves out is not covered by its CSV row', () => {
+  const files = [
+    {
+      name: 'a_attributeList_Person.csv',
+      text: personCsv([['ana', ENCRYPTED_PLACEHOLDER, '5', 'true', 'false']]),
+    },
+    { name: 'a.graphml', text: personGraphml([]) },
+  ];
+  assert.deepEqual(nodeAnswerProblems(files, { ana: { hours: '5' } }), [
+    'no exported graphml file has a record for node ana',
+  ]);
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'ana'), [
+    'no exported graphml file has a record for node ana',
+  ]);
+});
+
+test('an encrypted answer exported as its placeholder passes', () => {
+  const files = [
+    {
+      name: 'a_attributeList_person.csv',
+      text: personCsv([['linda', ENCRYPTED_PLACEHOLDER]]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([['linda', ENCRYPTED_PLACEHOLDER]]),
+    },
+  ];
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'linda'), []);
+});
+
+test('an encrypted answer exported in plain text fails, wherever it appears', () => {
+  const files = [
+    {
+      name: 'a_attributeList_person.csv',
+      text: personCsv([['linda', ENCRYPTED_PLACEHOLDER]]),
+    },
+    {
+      name: 'a.graphml',
+      text: `${personGraphml([['linda', ENCRYPTED_PLACEHOLDER]])}<!-- Linda -->`,
+    },
+  ];
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'linda'), [
+    'a.graphml holds "Linda" in plain text',
+  ]);
+});
+
+test('an export that dropped the encrypted attribute altogether proves nothing', () => {
+  const files = [{ name: 'a_attributeList_person.csv', text: 'id\r\n1' }];
+  const problems = encryptedValueProblems(files, 'Linda', 'linda');
+  assert.deepEqual(problems, [
+    'no exported csv file has a record for node linda',
+    'no exported graphml file has a record for node linda',
+  ]);
+});
+
+test('a node exported twice in one format is a duplicated person, even when the copies agree', () => {
+  const files = [
+    {
+      name: 'a_attributeList_Person.csv',
+      text: personCsv([
+        ['ana', ENCRYPTED_PLACEHOLDER, '5', 'true', 'false'],
+        ['ana', ENCRYPTED_PLACEHOLDER, '5', 'true', 'false'],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([
+        ['ana', ENCRYPTED_PLACEHOLDER, '5', 'true', 'false'],
+      ]),
+    },
+  ];
+  assert.deepEqual(nodeAnswerProblems(files, { ana: { hours: '5' } }), [
+    'the exported csv files hold 2 records for node ana',
+  ]);
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'ana'), [
+    'the exported csv files hold 2 records for node ana',
+  ]);
+});
+
+test("another person's placeholder does not stand in for a dropped answer", () => {
+  // The pedigree labels a relative itself and encrypts that label too, so the
+  // placeholder appears in the export even when Linda's own answer is lost.
+  const files = [
+    {
+      name: 'a_attributeList_person.csv',
+      text: personCsv([
+        ['linda', ''],
+        ['generated', ENCRYPTED_PLACEHOLDER],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([
+        ['linda', ''],
+        ['generated', ENCRYPTED_PLACEHOLDER],
+      ]),
+    },
+  ];
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'linda'), [
+    'a_attributeList_person.csv\'s record for node linda holds name="", not the ENCRYPTED placeholder, so its encrypted answer was dropped',
+    'a.graphml\'s record for node linda holds name="", not the ENCRYPTED placeholder, so its encrypted answer was dropped',
+  ]);
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'generated'), []);
+});
+
+// Each interview's ego, as the exporters write it: one ego CSV row per
+// interview, carrying its session id, and one GraphML graph per interview,
+// whose own <data> (outside every <node> and <edge>) is the ego's.
+const egoAnswersCsv = (rows) =>
+  [
+    'networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,ego_name,consent',
+    ...rows.map(
+      ([session, name, consent]) =>
+        `e-${session},case,${session},${name},${consent}`,
+    ),
+  ].join('\r\n');
+const egoAnswersGraphml = (graphs) =>
+  [
+    '<graphml>',
+    '<key id="networkCanvasUUID" attr.name="networkCanvasUUID" attr.type="string" for="all"/>',
+    '<key id="ego-var-1" attr.name="ego_name" attr.type="string" for="graph"/>',
+    '<key id="ego-var-2" attr.name="consent" attr.type="boolean" for="graph"/>',
+    '<key id="var-1" attr.name="ego_name" attr.type="string" for="node"/>',
+    ...graphs.map(
+      ([session, name, consent, nodeName]) =>
+        `<graph edgedefault="undirected" nc:sessionUUID="${session}">${name === undefined ? '' : `<data key="networkCanvasUUID">e-${session}</data><data key="ego-var-1">${name}</data><data key="ego-var-2">${consent}</data>`}<node id="1"><data key="networkCanvasUUID">n-${session}</data><data key="var-1">${nodeName ?? 'someone'}</data></node></graph>`,
+    ),
+    '</graphml>',
+  ].join('');
+const egoFiles = (rows, graphs = rows) => [
+  { name: 'a_ego.csv', text: egoAnswersCsv(rows) },
+  { name: 'a.graphml', text: egoAnswersGraphml(graphs) },
+];
+const ROSA = { ego_name: 'Rosa', consent: 'true' };
+const DECLINA = { ego_name: 'Declina', consent: 'false' };
+
+test("each interview's ego answers are read from that interview's own ego records", () => {
+  const files = egoFiles([
+    ['s1', 'Rosa', 'true'],
+    ['s2', 'Declina', 'false'],
+  ]);
+  assert.deepEqual(egoAnswerProblems(files, { s1: ROSA, s2: DECLINA }), []);
+});
+
+test("an ego answer recorded on another interview's ego fails, though the archive holds it", () => {
+  // The two interviews' names swapped: every name is somewhere in the
+  // archive, which is all a search of its text could see.
+  const files = egoFiles([
+    ['s1', 'Declina', 'true'],
+    ['s2', 'Rosa', 'false'],
+  ]);
+  assert.deepEqual(egoAnswerProblems(files, { s1: ROSA }), [
+    'a_ego.csv\'s record for the ego of interview s1 holds ego_name="Declina", expected "Rosa"',
+    'a.graphml\'s record for the ego of interview s1 holds ego_name="Declina", expected "Rosa"',
+  ]);
+});
+
+test("a person's answer under the same name is not the ego's", () => {
+  // The GraphML graph lost its ego data; a node in it still holds "Rosa"
+  // under an attribute of the same name.
+  const files = egoFiles(
+    [['s1', 'Rosa', 'true']],
+    [['s1', undefined, undefined, 'Rosa']],
+  );
+  assert.deepEqual(egoAnswerProblems(files, { s1: { ego_name: 'Rosa' } }), [
+    'a.graphml\'s record for the ego of interview s1 holds ego_name=null, expected "Rosa"',
+  ]);
+});
+
+test('an interview a format leaves out, or records twice, fails', () => {
+  const missing = egoFiles([['s1', 'Rosa', 'true']], []);
+  assert.deepEqual(egoAnswerProblems(missing, { s1: ROSA }), [
+    'no exported graphml file has a record for the ego of interview s1',
+  ]);
+  const twice = egoFiles(
+    [
+      ['s1', 'Rosa', 'true'],
+      ['s1', 'Rosa', 'true'],
+    ],
+    [['s1', 'Rosa', 'true']],
+  );
+  assert.deepEqual(egoAnswerProblems(twice, { s1: ROSA }), [
+    'the exported csv files hold 2 records for the ego of interview s1',
+  ]);
+  assert.equal(egoAnswerProblems([], { s1: ROSA }).length, 2);
+});
+
+// A relationship as the exporters write it: one edge list row and one
+// GraphML <edge>, each carrying the edge's id and both ends' ids.
+const familyEdgeCsv = (rows) =>
+  [
+    'edgeID,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,kind_biological,kind_partner,gestationalCarrier',
+    ...rows.map(
+      ([id, from, to, biological, partner, carrier], index) =>
+        `${index + 1},ego,${id},${from},${to},${biological},${partner},${carrier}`,
+    ),
+  ].join('\r\n');
+const familyEdgeGraphml = (edges) =>
+  [
+    '<graphml>',
+    '<key id="networkCanvasUUID" attr.name="networkCanvasUUID" attr.type="string" for="all"/>',
+    '<key id="networkCanvasSourceUUID" attr.name="networkCanvasSourceUUID" attr.type="string" for="edge"/>',
+    '<key id="networkCanvasTargetUUID" attr.name="networkCanvasTargetUUID" attr.type="string" for="edge"/>',
+    '<key id="kind_a" attr.name="kind_biological" attr.type="boolean" for="edge"/>',
+    '<key id="kind_b" attr.name="kind_partner" attr.type="boolean" for="edge"/>',
+    '<key id="carrier" attr.name="gestationalCarrier" attr.type="boolean" for="edge"/>',
+    '<graph>',
+    ...edges.map(
+      ([id, from, to, biological, partner, carrier], index) =>
+        `<edge id="${index + 1}" source="1" target="2"><data key="networkCanvasUUID">${id}</data><data key="networkCanvasSourceUUID">${from}</data><data key="networkCanvasTargetUUID">${to}</data><data key="kind_a">${biological}</data><data key="kind_b">${partner}</data><data key="carrier">${carrier}</data></edge>`,
+    ),
+    '</graph></graphml>',
+  ].join('');
+const LINDA_PARENT = {
+  networkCanvasSourceUUID: 'linda',
+  networkCanvasTargetUUID: 'ego',
+  kind_biological: 'true',
+  kind_partner: 'false',
+  gestationalCarrier: 'true',
+};
+
+test("each relationship's answers are read from that relationship's own records", () => {
+  const rows = [
+    ['parent', 'linda', 'ego', 'true', 'false', 'true'],
+    ['partners', 'linda', 'robert', 'false', 'true', ''],
+  ];
+  const files = [
+    { name: 'a_edgeList_family.csv', text: familyEdgeCsv(rows) },
+    { name: 'a.graphml', text: familyEdgeGraphml(rows) },
+  ];
+  assert.deepEqual(edgeAnswerProblems(files, { parent: LINDA_PARENT }), []);
+});
+
+test('a relationship between the wrong people, of the wrong kind, or without its carrier fails', () => {
+  const files = [
+    {
+      name: 'a_edgeList_family.csv',
+      // Drawn from Linda to Robert rather than to the participant.
+      text: familyEdgeCsv([
+        ['parent', 'linda', 'robert', 'true', 'false', 'true'],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      // Recorded as a partnership, and the carrier answer lost.
+      text: familyEdgeGraphml([
+        ['parent', 'linda', 'ego', 'false', 'true', ''],
+      ]),
+    },
+  ];
+  assert.deepEqual(edgeAnswerProblems(files, { parent: LINDA_PARENT }), [
+    'a_edgeList_family.csv\'s record for edge parent holds networkCanvasTargetUUID="robert", expected "ego"',
+    'a.graphml\'s record for edge parent holds kind_biological="false", expected "true"',
+    'a.graphml\'s record for edge parent holds kind_partner="true", expected "false"',
+    'a.graphml\'s record for edge parent holds gestationalCarrier="", expected "true"',
+  ]);
+});
+
+test('a categorical answer is held to every option the codebook lists', () => {
+  const codebook = {
+    edge: {
+      fe: {
+        variables: {
+          k: {
+            name: 'kind',
+            options: [
+              { value: 'biological' },
+              { value: 'partner' },
+              { value: 'donor' },
+            ],
+          },
+        },
+      },
+    },
+  };
+  assert.deepEqual(
+    categoricalColumns(codebook, 'edge', 'fe', 'k', 'biological'),
+    {
+      kind_biological: 'true',
+      kind_partner: 'false',
+      kind_donor: 'false',
+    },
+  );
+  assert.throws(
+    () => categoricalColumns(codebook, 'edge', 'fe', 'k', 'twin'),
+    /has no option "twin"/,
+  );
+});
+
+test('a flag nobody set may be blank or left out, but never true', () => {
+  const rows = [['parent', 'linda', 'ego', 'true', 'false', 'true']];
+  const files = [
+    { name: 'a_edgeList_family.csv', text: familyEdgeCsv(rows) },
+    { name: 'a.graphml', text: familyEdgeGraphml(rows) },
+  ];
+  assert.deepEqual(
+    edgeAnswerProblems(files, {
+      parent: { currentPartner: anythingBut('true') },
+    }),
+    [],
+  );
+  assert.deepEqual(
+    edgeAnswerProblems(files, {
+      parent: { gestationalCarrier: anythingBut('true') },
+    }),
+    [
+      'a_edgeList_family.csv\'s record for edge parent holds gestationalCarrier="true", expected anything but "true"',
+      'a.graphml\'s record for edge parent holds gestationalCarrier="true", expected anything but "true"',
+    ],
+  );
+});
+
+test('the export holds exactly the stored relationships, once each', () => {
+  const rows = [
+    ['parent', 'linda', 'ego', 'true', 'false', 'true'],
+    ['other', 'robert', 'ego', 'true', 'false', 'false'],
+  ];
+  const files = [
+    { name: 'a_edgeList_family.csv', text: familyEdgeCsv(rows) },
+    { name: 'a.graphml', text: familyEdgeGraphml(rows) },
+  ];
+  assert.deepEqual(edgeSetProblems(files, ['parent', 'other']), []);
+  const extra = [...rows, ['spurious', 'linda', 'robert', 'false', 'true', '']];
+  assert.deepEqual(
+    edgeSetProblems(
+      [
+        { name: 'a_edgeList_family.csv', text: familyEdgeCsv(extra) },
+        { name: 'a.graphml', text: familyEdgeGraphml([...rows, rows[0]]) },
+      ],
+      ['parent', 'other'],
+    ),
+    [
+      'the exported csv files hold the relationships ["other","parent","spurious"], not ["other","parent"]',
+      'the exported graphml files hold the relationships ["other","parent","parent"], not ["other","parent"]',
+    ],
+  );
+});
+
+test('a relationship the GraphML leaves out is not covered by its edge list row', () => {
+  const row = ['parent', 'linda', 'ego', 'true', 'false', 'true'];
+  const files = [
+    { name: 'a_edgeList_family.csv', text: familyEdgeCsv([row]) },
+    { name: 'a.graphml', text: familyEdgeGraphml([]) },
+  ];
+  assert.deepEqual(edgeAnswerProblems(files, { parent: LINDA_PARENT }), [
+    'no exported graphml file has a record for edge parent',
+  ]);
+  // Nor is a node with that id an edge.
+  assert.deepEqual(
+    edgeAnswerProblems(
+      [{ name: 'a.graphml', text: personGraphml([['parent', 'Linda']]) }],
+      { parent: {} },
+    ),
+    [
+      'no exported csv file has a record for edge parent',
+      'no exported graphml file has a record for edge parent',
+    ],
+  );
+});
+
+// ---------------------------------------------------------------------------
+// What an upgrade must leave alone: a deployment's schema 8 data
+// ---------------------------------------------------------------------------
+
+// Two readings of one deployment, as migration-lane.mjs takes them either
+// side of the swap: a schema 8 protocol with an introduction panel and a
+// Family Pedigree, an interview parked on its Alter Form with a family and
+// the pedigree's schema 8 stage record, and a finished one. The upgrade
+// leaves every value as it was; the newer database reads the finish columns
+// it added as null, and jsonb hands keys back in an order of its own.
+const SKIP = { action: 'SKIP', filter: { join: 'AND', rules: [] } };
+const readings = () => {
+  const family = {
+    nodes: [
+      {
+        _uid: 'you',
+        type: 'family_member',
+        stageId: 'family',
+        attributes: { is_ego: true, biologicalSex: ['female'] },
+      },
+      {
+        _uid: 'linda',
+        type: 'family_member',
+        stageId: 'family',
+        attributes: { fm_name: 'Linda', biologicalSex: ['female'] },
+      },
+      {
+        _uid: 'robert',
+        type: 'family_member',
+        stageId: 'family',
+        attributes: { fm_name: 'Robert', biologicalSex: ['male'] },
+      },
+    ],
+    edges: [
+      {
+        _uid: 'egg',
+        type: 'family_edge',
+        from: 'linda',
+        to: 'you',
+        attributes: {
+          relationshipType: ['biological'],
+          gameteRole: ['egg'],
+          isGestationalCarrier: true,
+          isActive: true,
+        },
+      },
+      {
+        _uid: 'partners',
+        type: 'family_edge',
+        from: 'linda',
+        to: 'robert',
+        attributes: { relationshipType: ['partner'], isActive: true },
+      },
+    ],
+  };
+  const before = {
+    protocols: [
+      {
+        id: 'p1',
+        name: 'migration',
+        hash: 'schema-8-hash',
+        schemaVersion: 8,
+        description: null,
+        importedAt: '2026-10-01 12:00:00',
+        lastModified: '2026-09-01 12:00:00',
+        codebook: { node: { person: { variables: {} } } },
+        stages: [
+          { id: 'welcome', type: 'Information' },
+          {
+            id: 'family',
+            type: 'FamilyPedigree',
+            nodeConfig: { type: 'family_member' },
+            edgeConfig: { type: 'family_edge' },
+          },
+          {
+            id: 'each-person',
+            type: 'AlterForm',
+            introductionPanel: {
+              title: 'About each person',
+              text: 'Now each person.',
+            },
+            skipLogic: SKIP,
+            form: { fields: [] },
+          },
+        ],
+      },
+    ],
+    interviews: [
+      {
+        id: 'parked',
+        protocolId: 'p1',
+        participantId: 'participant-1',
+        startTime: '2026-10-01 12:00:00',
+        finishTime: null,
+        currentStep: 2,
+        isSynthetic: false,
+        finishStageId: null,
+        finishOutcome: null,
+        network: {
+          ego: { _uid: 'ego', attributes: { name: 'Mira' } },
+          nodes: [
+            {
+              _uid: 'alex',
+              type: 'person',
+              attributes: { name: 'Alex' },
+              _secureAttributes: { name: { iv: [1], salt: [2] } },
+            },
+            ...family.nodes,
+          ],
+          edges: family.edges,
+        },
+        stageMetadata: {
+          1: {
+            isNetworkCommitted: true,
+            nodes: [{ id: 'you', isEgo: true }],
+            edges: [],
+          },
+          2: { seen: true },
+        },
+      },
+      {
+        id: 'finished',
+        protocolId: 'p1',
+        participantId: 'participant-2',
+        startTime: '2026-10-01 12:00:00',
+        finishTime: '2026-10-01 13:00:00',
+        currentStep: 3,
+        isSynthetic: true,
+        finishStageId: null,
+        finishOutcome: null,
+        network: {
+          ego: { _uid: 'ego-2', attributes: {} },
+          nodes: [],
+          edges: [],
+        },
+        stageMetadata: {},
+      },
+    ],
+  };
+  // The same values, every object's keys listed backwards.
+  const reversed = (value) =>
+    Array.isArray(value)
+      ? value.map(reversed)
+      : value && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.keys(value)
+              .toReversed()
+              .map((key) => [key, reversed(value[key])]),
+          )
+        : value;
+  return { before, after: reversed(structuredClone(before)) };
+};
+
+test('a deployment the upgrade left alone satisfies every oracle', () => {
+  const { before, after } = readings();
+  assert.equal(KEPT_SCHEMA, 8);
+  assert.deepEqual(protocolKeptProblems(before, after), []);
+  assert.deepEqual(interviewKeptProblems(before, after), []);
+  assert.deepEqual(familyKeptProblems(before, after), []);
+});
+
+test('a reading of a database without the finish columns is the same reading', () => {
+  // The released image predates them: its reading holds them as null, and so
+  // does the pending image's for interviews that recorded no finish stage.
+  const { before, after } = readings();
+  for (const interview of before.interviews) {
+    delete interview.finishStageId;
+    delete interview.finishOutcome;
+  }
+  assert.deepEqual(interviewKeptProblems(before, after), []);
+});
+
+test('empty readings fail every oracle rather than passing', () => {
+  const empty = { protocols: [], interviews: [] };
+  assert.deepEqual(protocolKeptProblems(empty, empty), [
+    'the reading before the upgrade holds no protocols at all',
+  ]);
+  assert.deepEqual(interviewKeptProblems(empty, empty), [
+    'the reading before the upgrade holds no interviews at all',
+  ]);
+  assert.deepEqual(familyKeptProblems(empty, empty), [
+    'no interview held a Family Pedigree family before the upgrade, so nothing showed that one survives it',
+  ]);
+});
+
+test('a protocol the upgrade migrated, rewrote or dropped fails', () => {
+  const { before, after } = readings();
+  const migrated = structuredClone(after);
+  migrated.protocols[0].schemaVersion = 9;
+  assert.match(
+    protocolKeptProblems(before, migrated).join('\n'),
+    /stored as schema 8 and is now stored as schema 9/,
+  );
+
+  const rehashed = structuredClone(after);
+  rehashed.protocols[0].hash = 'schema-9-hash';
+  assert.match(
+    protocolKeptProblems(before, rehashed).join('\n'),
+    /"migration"'s hash changed in the upgrade/,
+  );
+
+  // What schema 9 made of an introduction panel: the stage loses it.
+  const restaged = structuredClone(after);
+  delete restaged.protocols[0].stages[2].introductionPanel;
+  assert.match(
+    protocolKeptProblems(before, restaged).join('\n'),
+    /"migration"'s stages changed in the upgrade/,
+  );
+
+  const recoded = structuredClone(after);
+  recoded.protocols[0].codebook.node.person.variables.name = { type: 'text' };
+  assert.match(
+    protocolKeptProblems(before, recoded).join('\n'),
+    /"migration"'s codebook changed in the upgrade/,
+  );
+
+  assert.deepEqual(
+    protocolKeptProblems(before, { protocols: [], interviews: [] }),
+    ['protocol "migration" is no longer stored'],
+  );
+});
+
+test('readings without a schema 8 protocol prove nothing about keeping one', () => {
+  const { before, after } = readings();
+  before.protocols[0].schemaVersion = 9;
+  after.protocols[0].schemaVersion = 9;
+  assert.deepEqual(protocolKeptProblems(before, after), [
+    'the reading before the upgrade holds no schema 8 protocol, so keeping one went untested',
+  ]);
+});
+
+test('an interview that moved, changed or gained an outcome in the upgrade fails', () => {
+  const { before, after } = readings();
+  const breaks = {
+    // Moved as if an Information stage had been put in front of it.
+    moved: [
+      (a) => {
+        a.interviews[0].currentStep = 3;
+      },
+      /interview parked was on step 2 and now resumes at step 3/,
+    ],
+    rekeyed: [
+      (a) => {
+        a.interviews[0].stageMetadata = {
+          1: a.interviews[0].stageMetadata[1],
+          3: { seen: true },
+        };
+      },
+      /interview parked's stage record at step 2 was \{"seen":true\}, is now null/,
+    ],
+    answer: [
+      (a) => {
+        a.interviews[0].network.nodes[0].attributes.name = 'Alexandra';
+      },
+      /node alex \(person\)'s name was "Alex", is now "Alexandra"/,
+    ],
+    encrypted: [
+      (a) => {
+        delete a.interviews[0].network.nodes[0]._secureAttributes;
+      },
+      /node alex \(person\)'s _secureAttributes was/,
+    ],
+    ego: [
+      (a) => {
+        a.interviews[0].network.ego.attributes.name = '';
+      },
+      /the ego's name was "Mira", is now ""/,
+    ],
+    outcome: [
+      (a) => {
+        a.interviews[1].finishOutcome = 'completed';
+        a.interviews[1].finishStageId = 'finish';
+      },
+      /interview finished was given an outcome \("completed" at "finish"\)/,
+    ],
+    finished: [
+      (a) => {
+        a.interviews[0].finishTime = '2026-10-20 12:00:00';
+      },
+      /interview parked's finishTime changed in the upgrade/,
+    ],
+    gone: [
+      (a) => {
+        a.interviews.pop();
+      },
+      /interview finished is no longer stored/,
+    ],
+    appeared: [
+      (a) => {
+        a.interviews.push({ ...a.interviews[1], id: 'new' });
+      },
+      /interview new appeared in the upgrade/,
+    ],
+  };
+  for (const [name, [breakIt, expected]] of Object.entries(breaks)) {
+    const broken = structuredClone(after);
+    breakIt(broken);
+    assert.match(
+      interviewKeptProblems(before, broken).join('\n'),
+      expected,
+      name,
+    );
+  }
+});
+
+test('a family the upgrade rewrote fails, naming what changed', () => {
+  const { before, after } = readings();
+  const breaks = {
+    // What the schema 9 migration did to a parent relationship.
+    flag: [
+      (a) => {
+        const edge = a.interviews[0].network.edges[0];
+        delete edge.attributes.isActive;
+        edge.attributes.isGestationalCarrier = true;
+      },
+      /"family" pedigree: edge egg \(family_edge\)'s isActive was true, is now null/,
+    ],
+    // ...and to the pedigree's schema 8 stage record.
+    record: [
+      (a) => {
+        a.interviews[0].stageMetadata[1] = { framing: 'gamete' };
+      },
+      /"family" pedigree's stage record was \{"isNetworkCommitted":true,"nodes":\[\{"id":"you","isEgo":true\}\],"edges":\[\]\} before the upgrade and is \{"framing":"gamete"\} after it/,
+    ],
+    person: [
+      (a) => {
+        a.interviews[0].network.nodes.pop();
+      },
+      /"family" pedigree: node robert \(family_member\) is gone/,
+    ],
+    added: [
+      (a) => {
+        a.interviews[0].network.nodes.push({
+          _uid: 'grace',
+          type: 'family_member',
+          attributes: { fm_name: 'Grace' },
+        });
+      },
+      /"family" pedigree: node grace \(family_member\) was added/,
+    ],
+    doubled: [
+      (a) => {
+        a.interviews[0].network.edges.push(a.interviews[0].network.edges[1]);
+      },
+      /"family" pedigree: edge partners is stored 2 times/,
+    ],
+  };
+  for (const [name, [breakIt, expected]] of Object.entries(breaks)) {
+    const broken = structuredClone(after);
+    breakIt(broken);
+    assert.match(familyKeptProblems(before, broken).join('\n'), expected, name);
+    // The whole-interview oracle sees it too: the family is part of it.
+    assert.notDeepEqual(interviewKeptProblems(before, broken), [], name);
+  }
+});
+
+test('readings with no family in them prove nothing about a family', () => {
+  const { before, after } = readings();
+  for (const reading of [before, after]) {
+    reading.interviews[0].network.nodes =
+      reading.interviews[0].network.nodes.filter(
+        (node) => node.type !== 'family_member',
+      );
+    reading.interviews[0].network.edges = [];
+  }
+  assert.deepEqual(familyKeptProblems(before, after), [
+    'no interview held a Family Pedigree family before the upgrade, so nothing showed that one survives it',
+  ]);
+});
+
+// The export diff holds every export file to being identical. The only thing
+// it reconciles is the interview API naming each interview's finish stage and
+// outcome as null — never a value there, and nothing in an export archive.
+test('the export diff reconciles nothing but finish fields added as null', () => {
+  const work = mkdtempSync(join(tmpdir(), 'fresco-diff-identity-'));
+  const write = (dir, name, value) => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, name),
+      typeof value === 'string' ? value : `${JSON.stringify(value)}\n`,
+    );
+  };
+  const interview = { id: 'parked', protocolId: 'p1', currentStep: 2 };
+  const ego =
+    'networkCanvasEgoUUID,networkCanvasSessionID,sessionExported\nego,parked,2026-10-01\n';
+  const graph = (hash) =>
+    `<graphml><graph nc:protocolName="migration" nc:codebookHash="${hash}" nc:sessionExportTime="2026-10-01"></graph></graphml>\n`;
+  write(join(work, 'baseline'), 'api-interview-parked.json', {
+    data: interview,
+  });
+  write(join(work, 'baseline'), 'api-interview.json', { data: [interview] });
+  write(join(work, 'baseline'), 'ego.csv', ego);
+  write(join(work, 'baseline'), 'graph.graphml', graph('a'));
+  let runs = 0;
+  const diff = (files, extra = []) => {
+    runs += 1;
+    const dir = join(work, `current-${runs}`);
+    for (const [name, value] of Object.entries(files)) write(dir, name, value);
+    const out = join(work, `summary-${runs}.json`);
+    execFileSync(
+      process.execPath,
+      [
+        join(scripts, 'diff-exports.mjs'),
+        join(work, 'baseline'),
+        dir,
+        '--work',
+        join(work, `work-${runs}`),
+        '--out',
+        out,
+        ...extra,
+      ],
+      { stdio: 'pipe' },
+    );
+    return JSON.parse(readFileSync(out, 'utf8'));
+  };
+  const nulls = { ...interview, finishStageId: null, finishOutcome: null };
+  const unchanged = {
+    'ego.csv': ego.replace('2026-10-01', '2026-10-20'),
+    'graph.graphml': graph('a').replace('2026-10-01', '2026-10-20'),
+  };
+  const same = diff({
+    'api-interview-parked.json': { data: nulls },
+    'api-interview.json': { data: [nulls] },
+    ...unchanged,
+  });
+  assert.deepEqual(same.changed, []);
+  assert.deepEqual(same.identical.toSorted(), [
+    'api-interview-parked.json',
+    'api-interview.json',
+    'ego.csv',
+    'graph.graphml',
+  ]);
+  assert.match(JSON.stringify(same.reconciled), /finishOutcome added as null/);
+
+  // An outcome nothing recorded, a step that moved, a column the export
+  // gained and a codebook the upgrade rewrote are all differences.
+  const changed = diff({
+    'api-interview-parked.json': {
+      data: { ...nulls, finishOutcome: 'completed' },
+    },
+    'api-interview.json': { data: [{ ...nulls, currentStep: 3 }] },
+    'ego.csv': ego
+      .replace(
+        'sessionExported\n',
+        'sessionExported,networkCanvasFinishOutcome\n',
+      )
+      .replace('2026-10-01\n', '2026-10-20,\n'),
+    'graph.graphml': graph('b'),
+  });
+  assert.deepEqual(changed.changed.map((c) => c.file).toSorted(), [
+    'api-interview-parked.json',
+    'api-interview.json',
+    'ego.csv',
+    'graph.graphml',
+  ]);
+
+  // The readings the schema 9 migration's reconciliation once took are no
+  // longer an option: handing them over is a usage error, not a quiet no-op.
+  assert.throws(() =>
+    diff(unchanged, ['--migration', join(work, 'migration')]),
+  );
 });

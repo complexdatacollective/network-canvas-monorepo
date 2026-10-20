@@ -1,16 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, describe, layer } from '@effect/vitest';
-import { Duration, Effect, Metric } from 'effect';
+import { Duration, Effect, Layer, Metric } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
+import type { Episode } from '../../platform/operator-alerts.ts';
 import {
   jobQueueDepth,
   JobQueueMetrics,
+  noteQueueBacklog,
   recordQueueDepths,
   type BacklogWarnings,
 } from '../metrics.ts';
@@ -28,6 +30,59 @@ import {
 
 const db = await reachableDb();
 
+layer(Layer.empty)('the queue backlog alert', (it) => {
+  it.effect(
+    'logs once per queue when more than 100 jobs wait for ten minutes, and once when it clears',
+    () => {
+      const logs = collectLogs();
+      return Effect.gen(function* () {
+        const episodes = new Map<JobQueueName, Episode>();
+        const note = (queue: JobQueueName, waiting: number) =>
+          noteQueueBacklog(episodes, queue, waiting);
+        const records = () =>
+          logs.records.map(({ level, annotations }) => ({
+            level,
+            alert: annotations.alert,
+            queue: annotations.queue,
+            waiting: annotations.waiting,
+          }));
+
+        yield* note('invitation-delivery', 150);
+        yield* note('sign-in-email', 101);
+        yield* TestClock.adjust(Duration.minutes(9));
+        yield* note('invitation-delivery', 150);
+        yield* note('sign-in-email', 100);
+        assert.deepStrictEqual(records(), []);
+
+        yield* TestClock.adjust(Duration.minutes(1));
+        yield* note('invitation-delivery', 180);
+        yield* note('sign-in-email', 101);
+        yield* TestClock.adjust(Duration.minutes(5));
+        yield* note('invitation-delivery', 400);
+        assert.deepStrictEqual(records(), [
+          {
+            level: 'Error',
+            alert: 'queue_backlog',
+            queue: 'invitation-delivery',
+            waiting: 180,
+          },
+        ]);
+
+        yield* note('invitation-delivery', 12);
+        yield* note('invitation-delivery', 0);
+        assert.deepStrictEqual(records().slice(1), [
+          {
+            level: 'Info',
+            alert: undefined,
+            queue: 'invitation-delivery',
+            waiting: 12,
+          },
+        ]);
+      }).pipe(Effect.provide(logs.layer));
+    },
+  );
+});
+
 describe.skipIf(!db)('the queue’s metrics', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
     const clear = clearQueue;
@@ -44,7 +99,10 @@ describe.skipIf(!db)('the queue’s metrics', () => {
     const pass = (options: {
       readonly warned: BacklogWarnings;
       readonly warningQueueSize: number;
-    }) => recordQueueDepths(options).pipe(Effect.provide(layerWorker()));
+    }) =>
+      recordQueueDepths({ ...options, backlog: new Map() }).pipe(
+        Effect.provide(layerWorker()),
+      );
 
     const withRegistry = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
       Effect.provideService(effect, Metric.MetricRegistry, new Map());

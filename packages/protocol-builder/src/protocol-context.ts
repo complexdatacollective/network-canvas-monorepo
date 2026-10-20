@@ -3,6 +3,7 @@ import {
   type Asset,
   assetSchema,
   type Codebook,
+  CurrentProtocolSchema,
   EdgeDefinitionSchema,
   type EdgeDefinition,
   EgoDefinitionSchema,
@@ -20,6 +21,8 @@ import {
   sectionId,
   UnknownSectionIdError,
 } from '@codaco/studio-sync/taxonomy';
+
+import type { ProtocolLocalization } from './localization/localizedText.ts';
 
 /**
  * What is wrong with a protocol section this package could not read.
@@ -122,6 +125,11 @@ export type ProtocolBuilderProtocolContext = Readonly<{
    */
   assets: Readonly<Record<string, Asset>>;
   orderedStages: readonly Readonly<Stage>[];
+  /**
+   * The languages the protocol is written in. Absent until the settings
+   * section has been read, or while its declaration is not valid.
+   */
+  localization?: ProtocolLocalization;
   issues: readonly ProtocolContextIssue[];
 }>;
 
@@ -203,6 +211,7 @@ export function protocolContextFromSections(
   const variableOwners = new Map<string, string>();
   const entityNameOwners = new Map<string, string>();
   let ego: EgoDefinition | undefined;
+  let localization: ProtocolLocalization | undefined;
   let stageOrder: string[] | null = null;
 
   const recordVariableIds = (
@@ -336,8 +345,22 @@ export function protocolContextFromSections(
         }
         break;
       }
-      case 'settings':
+      case 'settings': {
+        const result = CurrentProtocolSchema.shape.localization.safeParse(
+          document.localization,
+        );
+        if (result.success) {
+          localization = result.data;
+        } else {
+          issues.push(
+            ...sectionIssues(id, result.error.issues).map((issue) => ({
+              ...issue,
+              path: ['localization', ...issue.path],
+            })),
+          );
+        }
         break;
+      }
     }
   }
 
@@ -389,6 +412,7 @@ export function protocolContextFromSections(
     codebook: Object.freeze(codebook),
     assets: Object.freeze(Object.fromEntries(assets)),
     orderedStages: Object.freeze(orderedStages),
+    ...(localization === undefined ? {} : { localization }),
     issues: Object.freeze(issues),
   });
 }

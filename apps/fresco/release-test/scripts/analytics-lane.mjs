@@ -18,7 +18,13 @@
 //
 // It also imports the damaged protocol fixtures, because "opening a damaged
 // file is no longer recorded as an application error" is a claim about what is
-// sent, and can only be checked where something is being sent.
+// sent, and can only be checked where something is being sent. One of them is
+// a schema 8 protocol schema 9 cannot take. Fresco asks how to import a
+// schema 8 protocol, and upgrades it only when told to; told to here, it must
+// report the failed upgrade both as a refused protocol and as an application
+// error, so migration bugs are found. (Fresco no longer upgrades the protocols
+// a deployment already holds when it is updated, so a failed upgrade can only
+// come from an import, and nothing is reported at deploy.)
 //
 // Usage: node analytics-lane.mjs [--lane analytics]
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -79,6 +85,11 @@ const psql = (sql) =>
 /**
  * What each damaged fixture must be told about, and by which message.
  *
+ * `olderSchema` answers the question Fresco asks before it imports a protocol
+ * made for an older schema: every readable fixture here is schema 8, and each
+ * is upgraded, because what is being checked is how the current import refuses
+ * it. An archive that cannot be read is refused before anything is asked.
+ *
  * The messages are the researcher-facing sentences `@codaco/protocol-validation`
  * defines, quoted here by their distinguishing clause rather than in full: what
  * is being checked is that the right KIND of answer comes back — a damaged
@@ -92,6 +103,7 @@ const DAMAGED_FIXTURES = [
     file: 'missing-asset.netcanvas',
     expect: /refers to a file that isn't included in it: "Duck clip"/i,
     why: 'the resource is named as the researcher named it, not by its internal filename',
+    olderSchema: 'upgrade',
   },
   {
     id: 'analytics-damaged-archive-described',
@@ -108,8 +120,11 @@ const DAMAGED_FIXTURES = [
   {
     id: 'analytics-fractional-count-refused',
     file: 'fractional-count-filter.netcanvas',
-    expect: /invalid|check the protocol structure/i,
-    why: 'an operator that counts selected options still takes a whole number',
+    // The fixture is schema 8, which allowed this; schema 9 does not, so the
+    // upgrade returns an invalid document and the import says so.
+    expect: /could not be upgraded/i,
+    why: 'an operator that counts selected options takes a whole number in schema 9, so the schema 8 protocol cannot be upgraded',
+    olderSchema: 'upgrade',
   },
 ];
 
@@ -206,7 +221,9 @@ try {
         await page.waitForTimeout(1500);
         if (!result.damagedImportFrom)
           result.damagedImportFrom = new Date(Date.now() - 1000).toISOString();
-        await uploadProtocol(page, join(fixtures, fixture.file));
+        await uploadProtocol(page, join(fixtures, fixture.file), {
+          olderSchema: fixture.olderSchema,
+        });
         const deadline = Date.now() + 240_000;
         let said = '';
         while (Date.now() < deadline) {
@@ -240,9 +257,11 @@ try {
         waitUntil: 'networkidle',
       });
       await page.waitForTimeout(1500);
+      // Upgraded, like its pair: the claim is that schema 9 accepts it.
       await uploadProtocol(
         page,
         join(fixtures, 'fractional-value-filter.netcanvas'),
+        { olderSchema: 'upgrade' },
       );
       const deadline = Date.now() + 240_000;
       let after = before;

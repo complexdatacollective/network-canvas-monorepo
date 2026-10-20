@@ -10,6 +10,11 @@ import {
 import { Effect, Redacted, Schema } from 'effect';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
+import {
+  BROWSER_LOG_PATHS,
+  type LogLevelName,
+} from '@codaco/studio-contract/schema/browser-logs';
 import {
   LinkToken,
   SessionToken,
@@ -21,7 +26,7 @@ import {
 } from '@codaco/studio-contract/schema/participant';
 
 import { createAppRouter } from '../../router.tsx';
-import { installFetchStub } from '../../test/fetchStub.ts';
+import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
 import {
   installParticipantHarness,
   type ParticipantHandlers,
@@ -42,8 +47,13 @@ const storedSession = (): string | undefined => {
   return stored === undefined ? undefined : Redacted.value(stored);
 };
 
-const sessionPayload = (stageIndex: number, analytics = false) => ({
+const sessionPayload = (
+  stageIndex: number,
+  analytics = false,
+  logLevel: LogLevelName | null = null,
+) => ({
   analytics,
+  logLevel,
   studyId: StudyId.make('00000000-0000-4000-8000-000000000002'),
   holderEpoch: 2,
   revision: '5',
@@ -67,16 +77,32 @@ const sessionPayload = (stageIndex: number, analytics = false) => ({
     hash: 'protocol-hash',
     importedAt: '2026-10-01T00:00:00.000Z',
     name: 'Participant route protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
     stages: [
       {
         id: 'welcome',
         type: 'Information',
-        label: 'Welcome',
-        title: 'Welcome to the study',
+        label: { en: 'Welcome' },
+        title: { en: 'Welcome to the study' },
         items: [],
+      },
+      // Schema 9 ends every interview at a finish stage of the protocol's own.
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        mode: 'confirmation',
+        label: { en: 'Finish' },
+        content: { en: '# Thank you\n\nThe interview is complete.' },
+        finishedContent: {
+          en: '# Thank you\n\nThis interview is finished, and its answers can no longer be changed.',
+        },
+        finishLabel: { en: 'Finish' },
+        finishConfirmation: { en: 'Finish this interview?' },
+        finishFailed: { en: 'The interview could not be finished.' },
+        outcome: 'terminated',
       },
     ],
   }),
@@ -276,8 +302,12 @@ describe('opening a participant link', () => {
   });
 });
 
+/** The text of the finish stage's finished screen. */
+const FINISHED_NOTICE =
+  'This interview is finished, and its answers can no longer be changed.';
+
 describe('the interview session', () => {
-  it('finishes from the runtime’s own finish stage and shows the finished notice', async () => {
+  it('finishes from the protocol’s finish stage and shows its completed state in place', async () => {
     const harness = installParticipantHarness({
       ...readsSession(1),
       'participant.finish': () => Effect.succeed({ state: 'completed' }),
@@ -294,19 +324,34 @@ describe('the interview session', () => {
     );
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(
-      await within(dialog).findByRole('button', { name: 'Finish Interview' }),
+      await within(dialog).findByRole('button', { name: 'Finish' }),
     );
 
-    const finished = await screen.findByRole('heading', {
-      name: "You've finished this interview",
-    });
+    // The interview stays mounted and shows its completed state: the finish
+    // stage's own finished screen, not Studio's generic notice in place of
+    // the interview.
+    await screen.findByText(FINISHED_NOTICE);
+    // Focus moves to the finished screen's text, which opens with its heading.
     await waitFor(() => {
-      expect(finished).toHaveFocus();
+      expect(
+        screen.getByRole('heading', { name: 'Thank you' }).parentElement,
+      ).toHaveFocus();
     });
+    expect(
+      screen.queryByRole('button', { name: 'Finish' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: "You've finished this interview" }),
+    ).not.toBeInTheDocument();
     await waitFor(() => {
       expect(harness.calls.at(-1)).toEqual({
         tag: 'participant.finish',
-        payload: { holderEpoch: 2, revision: '5' },
+        payload: {
+          holderEpoch: 2,
+          revision: '5',
+          stageId: 'finish',
+          outcome: 'terminated',
+        },
       });
     });
   });
@@ -347,11 +392,9 @@ describe('participant analytics', () => {
     );
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(
-      await within(dialog).findByRole('button', { name: 'Finish Interview' }),
+      await within(dialog).findByRole('button', { name: 'Finish' }),
     );
-    await screen.findByRole('heading', {
-      name: "You've finished this interview",
-    });
+    await screen.findByText(FINISHED_NOTICE);
   };
 
   it('sends the runtime’s events to Studio, unidentified, when the session allows it', async () => {
@@ -440,5 +483,155 @@ describe('participant analytics', () => {
     expect(harness.calls.map(({ tag }) => tag)).not.toContain(
       'participant.analytics',
     );
+  });
+});
+
+const LOG_PATH = BROWSER_LOG_PATHS.participant;
+
+const logPosts = () =>
+  fetchStub.mock.calls.filter(
+    ([input]) =>
+      new URL(requestUrl(input), window.location.href).pathname === LOG_PATH,
+  );
+
+const acceptLogs: typeof globalThis.fetch = async () =>
+  new Response(null, { status: 204 });
+
+const PUBLIC_STATUS = {
+  name: 'Network Canvas Studio',
+  version: '1.2.3',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
+  },
+  deployment: { mode: 'self-hosted', billing: false },
+  setup: { required: false },
+  telemetry: true,
+  logLevel: 'Info',
+};
+
+const answerStatusAndLogs: typeof globalThis.fetch = async (input, init) => {
+  if (new URL(requestUrl(input), window.location.href).pathname === LOG_PATH) {
+    return new Response(null, { status: 204 });
+  }
+  const request = String(init?.body ?? '').split('\n')[0] ?? '';
+  const { id } = Schema.decodeUnknownSync(
+    Schema.fromJsonString(
+      Schema.Struct({ id: Schema.Union([Schema.String, Schema.Number]) }),
+    ),
+  )(request);
+  return new Response(
+    `${JSON.stringify({
+      _tag: 'Exit',
+      requestId: id,
+      exit: { _tag: 'Success', value: PUBLIC_STATUS },
+    })}\n`,
+    { status: 200, headers: { 'content-type': 'application/ndjson' } },
+  );
+};
+
+describe('participant logs', () => {
+  it('logs a lost connection through Studio, with the session and no credentials, when the session has telemetry on', async () => {
+    installParticipantHarness({
+      'participant.session': () =>
+        Effect.succeed(sessionPayload(0, false, 'Info')),
+    });
+    fetchStub.mockImplementation(acceptLogs);
+
+    renderAt(`/session/${SESSION}`);
+    await screen.findByRole(
+      'heading',
+      { name: 'Welcome to the study' },
+      { timeout: 15_000 },
+    );
+    window.dispatchEvent(new Event('offline'));
+
+    await waitFor(() => expect(logPosts().length).toBeGreaterThan(0), {
+      timeout: 3000,
+    });
+    for (const [input] of fetchStub.mock.calls) {
+      expect(new URL(requestUrl(input), window.location.href).origin).toBe(
+        window.location.origin,
+      );
+    }
+    const [[, init]] = logPosts() as [Parameters<typeof globalThis.fetch>];
+    expect(init?.credentials).toBe('omit');
+    expect(new Headers(init?.headers).get(PARTICIPANT_SESSION_HEADER)).toBe(
+      SESSION,
+    );
+    expect(String(init?.body)).toContain('Participant connection lost');
+    expect(String(init?.body)).toContain('"stringValue":"Information"');
+    window.dispatchEvent(new Event('online'));
+  });
+
+  it('logs a stored image that fails to load on the stage shown', async () => {
+    installParticipantHarness({
+      'participant.session': () =>
+        Effect.succeed(sessionPayload(0, false, 'Info')),
+    });
+    fetchStub.mockImplementation(acceptLogs);
+
+    renderAt(`/session/${SESSION}`);
+    await screen.findByRole(
+      'heading',
+      { name: 'Welcome to the study' },
+      { timeout: 15_000 },
+    );
+    const shown = document.querySelector('[data-stage-step]');
+    if (shown === null) throw new Error('no stage is shown');
+    const image = document.createElement('img');
+    image.setAttribute('src', '/storage/missing-asset');
+    shown.append(image);
+    image.dispatchEvent(new Event('error'));
+    image.remove();
+
+    await waitFor(() => expect(logPosts().length).toBeGreaterThan(0), {
+      timeout: 3000,
+    });
+    const [[, init]] = logPosts() as [Parameters<typeof globalThis.fetch>];
+    expect(String(init?.body)).toContain('Asset failed to load');
+    expect(String(init?.body)).toContain('"stringValue":"media"');
+  });
+
+  it('sends nothing when the session has telemetry off', async () => {
+    installParticipantHarness(readsSession());
+    fetchStub.mockImplementation(acceptLogs);
+
+    renderAt(`/session/${SESSION}`);
+    await screen.findByRole(
+      'heading',
+      { name: 'Welcome to the study' },
+      { timeout: 15_000 },
+    );
+    window.dispatchEvent(new Event('offline'));
+    await new Promise((done) => setTimeout(done, 1600));
+    window.dispatchEvent(new Event('online'));
+
+    expect(fetchStub).not.toHaveBeenCalled();
+  });
+
+  it('logs a session that could not be loaded once public status says telemetry is on', async () => {
+    installParticipantHarness({
+      'participant.session': () =>
+        Effect.fail(new SessionEnded({ state: 'completed' })),
+    });
+    fetchStub.mockImplementation(answerStatusAndLogs);
+
+    renderAt(`/session/${SESSION}`);
+    await screen.findByRole('heading', {
+      name: "You've finished this interview",
+    });
+
+    await waitFor(() => expect(logPosts().length).toBeGreaterThan(0), {
+      timeout: 3000,
+    });
+    const [[, init]] = logPosts() as [Parameters<typeof globalThis.fetch>];
+    expect(new Headers(init?.headers).get(PARTICIPANT_SESSION_HEADER)).toBe(
+      SESSION,
+    );
+    expect(String(init?.body)).toContain('Interview session failed to load');
+    expect(String(init?.body)).toContain('"stringValue":"session_ended"');
   });
 });

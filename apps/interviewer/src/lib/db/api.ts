@@ -1,9 +1,9 @@
+import type { SessionFinish } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import * as dexieSettings from './db';
-import { migrateStoredProtocols as dexieMigrateStoredProtocols } from './migrateStoredProtocols';
-import type { StoredProtocolMigrationResult } from './migrateStoredProtocols';
+import type { LegacyUpgradeRecord } from './db';
 import * as dexieProtocols from './protocols';
 import { reencryptAllRecords as dexieReencryptAllRecords } from './reencrypt';
 import type { ReencryptProgress, ReencryptResult } from './reencrypt';
@@ -39,16 +39,18 @@ export async function saveProtocol(
   protocol: CurrentProtocol,
   hash: string,
   assets: { id: string; name: string; data: Blob | string }[],
+  options?: Parameters<typeof dexieProtocols.saveProtocol>[3],
 ): Promise<StoredProtocol> {
-  return dexieProtocols.saveProtocol(protocol, hash, assets);
+  return dexieProtocols.saveProtocol(protocol, hash, assets, options);
 }
 
 export async function deleteProtocol(hash: string): Promise<void> {
   return dexieProtocols.deleteProtocol(hash);
 }
 
-export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationResult> {
-  return dexieMigrateStoredProtocols();
+/** Which schema 8 protocols have an upgraded copy here, and which copy. */
+export async function listLegacyUpgrades(): Promise<LegacyUpgradeRecord[]> {
+  return dexieProtocols.listLegacyUpgrades();
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
@@ -111,8 +113,12 @@ export async function whenSessionWritesSettle(): Promise<void> {
   return dexieSessions.whenSessionWritesSettle();
 }
 
-export async function markSessionFinished(id: string): Promise<void> {
-  return dexieSessions.markSessionFinished(id);
+export async function markSessionFinished(
+  id: string,
+  finish: SessionFinish,
+  signal?: AbortSignal,
+): Promise<void> {
+  return dexieSessions.markSessionFinished(id, finish, signal);
 }
 
 export async function markSessionUnfinished(

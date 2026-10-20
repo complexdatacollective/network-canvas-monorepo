@@ -11,6 +11,7 @@ import { POSTHOG_API_KEY } from '@codaco/shared-consts';
 
 import { Environment, type StudioEnv } from '../env.ts';
 import { STUDIO_VERSION } from '../version.ts';
+import { BrowserLogs } from './browser-logs.ts';
 import { ErrorReporter } from './error-reporter.ts';
 import { InstallationIdentity } from './installation-identity.ts';
 import { LoggerLive, LogLevelLive, studioJson } from './logger.ts';
@@ -61,7 +62,7 @@ const signalUrl = (baseUrl: string, path: string): string => {
 const exporters = (
   program: TracedProgram,
   destination: TelemetryDestination,
-): Layer.Layer<never, never, InstallationIdentity> => {
+): Layer.Layer<BrowserLogs, never, InstallationIdentity> => {
   const options = {
     resource: {
       serviceName: 'studio-api',
@@ -92,6 +93,10 @@ const exporters = (
       ],
       { mergeWithExisting: false },
     ).pipe(Layer.provideMerge(OtlpExporter.layerFlusher)),
+    BrowserLogs.layer({
+      url: signalUrl(destination.baseUrl, '/v1/logs'),
+      headers: destination.headers,
+    }).pipe(Layer.provide(OtlpExporter.layerFlusher)),
   ).pipe(
     Layer.provide(StudioSerialization),
     Layer.provide(FetchHttpClient.layer),

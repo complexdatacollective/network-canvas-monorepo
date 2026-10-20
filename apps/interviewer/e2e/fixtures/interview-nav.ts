@@ -30,9 +30,11 @@ export class InterviewNav {
   }
 
   async waitForStage(): Promise<void> {
-    await expect(this.page.locator('main[data-theme-interview]')).toBeVisible({
-      timeout: 15_000,
-    });
+    // While a language restored after a reload loads, the interview stays
+    // mounted but hidden beside the loading screen, which is also a `main`.
+    await expect(
+      this.page.locator('main[data-theme-interview]:not([aria-busy="true"])'),
+    ).toBeVisible({ timeout: 15_000 });
     await expect(this.stage).toHaveAttribute('data-stage-step', /\d+/);
   }
 
@@ -62,8 +64,7 @@ export class InterviewNav {
     await this.page.getByTestId('settings-button').click();
     await this.page.getByTestId('exit-button').click();
     const exitDialog = this.page.getByRole('dialog', {
-      name:
-        locale === 'es' ? '¿Salir de esta entrevista?' : 'Exit this interview?',
+      name: locale === 'es' ? 'Salir de la entrevista' : 'Exit interview',
     });
     await expect(exitDialog).toBeVisible();
     await exitDialog
@@ -103,6 +104,6 @@ export class InterviewNav {
     await this.page.getByRole('button', { name: 'Finish' }).click();
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Finish Interview' }).click();
+    await dialog.getByRole('button', { name: 'Finish', exact: true }).click();
   }
 }

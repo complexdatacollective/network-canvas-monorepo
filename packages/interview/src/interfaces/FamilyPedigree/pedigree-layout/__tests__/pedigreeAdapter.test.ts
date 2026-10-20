@@ -1,53 +1,27 @@
 import { describe, expect, test } from 'vitest';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
-
-import type { VariableConfig } from '../../store';
 import { alignPedigree } from '../alignPedigree';
 import {
   computeLayoutMetrics,
   type LayoutDimensions,
 } from '../layoutDimensions';
+import { lineOwnersOf } from '../lineOwners';
 import {
   buildConnectorData,
+  drawPedigree,
   pedigreeLayoutToPositions,
-  storeToPedigreeInput,
+  toPedigreeInput,
 } from '../pedigreeAdapter';
-import type { PedigreeLayout } from '../types';
-
-const variableConfig: VariableConfig = {
-  nodeType: 'person',
-  edgeType: 'family',
-  nodeLabelVariable: 'name',
-  egoVariable: 'isEgo',
-  relationshipVariable: 'relationship',
-  relationshipTypeVariable: 'rel',
-  isActiveVariable: 'active',
-  isGestationalCarrierVariable: 'gc',
-  gameteRoleVariable: 'gameteRole',
-  biologicalSexVariable: 'biologicalSex',
-};
+import type { PedigreeEdgeType, PedigreeLink, PedigreeLayout } from '../types';
+import { areConsanguineous, relativeRaisers } from '../utils';
 
 const TEST_DIMENSIONS: LayoutDimensions = {
   nodeWidth: 100,
   nodeHeight: 100,
 };
 
-function makeNodes(
-  entries: { id: string; isEgo?: boolean }[],
-): Map<string, NcNode> {
-  const map = new Map<string, NcNode>();
-  for (const { id, isEgo } of entries) {
-    map.set(id, {
-      _uid: id,
-      type: 'person',
-      [entityAttributesProperty]: {
-        [variableConfig.egoVariable]: isEgo ?? false,
-      },
-    });
-  }
-  return map;
+function makeNodes(entries: { id: string; isEgo?: boolean }[]): string[] {
+  return entries.map(({ id }) => id);
 }
 
 function makeEdges(
@@ -58,48 +32,26 @@ function makeEdges(
     isActive?: boolean;
     isGestationalCarrier?: boolean;
   }[],
-): Map<string, NcEdge> {
-  const map = new Map<string, NcEdge>();
-  for (let i = 0; i < entries.length; i++) {
-    const e = entries[i]!;
-    map.set(`e${i}`, {
-      _uid: `e${i}`,
-      type: 'family',
-      from: e.from,
-      to: e.to,
-      [entityAttributesProperty]: e.isGestationalCarrier
-        ? {
-            [variableConfig.relationshipTypeVariable]: [e.relationshipType],
-            [variableConfig.isActiveVariable]: e.isActive ?? true,
-            [variableConfig.isGestationalCarrierVariable]: true,
-          }
-        : {
-            [variableConfig.relationshipTypeVariable]: [e.relationshipType],
-            [variableConfig.isActiveVariable]: e.isActive ?? true,
-          },
-    });
-  }
-  return map;
+): PedigreeLink[] {
+  return entries.map((e) => ({
+    source: e.from,
+    target: e.to,
+    kind: e.relationshipType as PedigreeEdgeType,
+    isActive: e.isActive ?? true,
+    isGestationalCarrier: e.isGestationalCarrier ?? false,
+  }));
 }
 
-describe('storeToPedigreeInput', () => {
+describe('toPedigreeInput', () => {
   test('empty graph produces empty input', () => {
-    const { input } = storeToPedigreeInput(
-      new Map(),
-      new Map(),
-      variableConfig,
-    );
+    const { input } = toPedigreeInput([], []);
     expect(input.id).toHaveLength(0);
     expect(input.parents).toHaveLength(0);
   });
 
   test('single node produces correct single-element arrays', () => {
     const nodes = makeNodes([{ id: 'ego', isEgo: true }]);
-    const { input, indexToId, idToIndex } = storeToPedigreeInput(
-      nodes,
-      new Map(),
-      variableConfig,
-    );
+    const { input, indexToId, idToIndex } = toPedigreeInput(nodes, []);
 
     expect(input.id).toEqual(['ego']);
     expect(input.parents).toEqual([[]]);
@@ -119,11 +71,7 @@ describe('storeToPedigreeInput', () => {
       { from: 'mother', to: 'child', relationshipType: 'biological' },
     ]);
 
-    const { input, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
 
     const childIdx = idToIndex.get('child')!;
     const fatherIdx = idToIndex.get('father')!;
@@ -138,10 +86,10 @@ describe('storeToPedigreeInput', () => {
     expect(input.parents[motherIdx]).toHaveLength(0);
   });
 
-  test('promotes the gestational carrier to a primary parent when the child has no primary parent', () => {
+  test('keeps a gestational carrier’s tie as recorded, and draws the line of descent from her when the child has no other parent', () => {
     // Donor-conceived child carried by a gestational carrier ("single parent,
-    // two donors"). Per NSGC nomenclature the child descends from the carrier;
-    // the carrier's edge is promoted so it anchors the line of descent.
+    // two donors"). Per NSGC nomenclature the child descends from the
+    // carrier; the donors draw lines of their own.
     const nodes = makeNodes([
       { id: 'eggDonor' },
       { id: 'spermDonor' },
@@ -159,11 +107,7 @@ describe('storeToPedigreeInput', () => {
       },
     ]);
 
-    const { input, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
     const childParents = input.parents[idToIndex.get('child')!]!;
     const carrierConn = childParents.find(
       (p) => p.parentIndex === idToIndex.get('carrier')!,
@@ -172,8 +116,191 @@ describe('storeToPedigreeInput', () => {
       (p) => p.parentIndex === idToIndex.get('eggDonor')!,
     );
 
-    expect(carrierConn?.edgeType).toBe('social');
+    expect(carrierConn?.edgeType).toBe('surrogate');
     expect(eggConn?.edgeType).toBe('donor');
+    const { descent, lines } = lineOwnersOf(input.parents, [])[
+      idToIndex.get('child')!
+    ]!;
+    expect(descent).toStrictEqual({
+      parents: [idToIndex.get('carrier')!],
+      kind: 'surrogate',
+    });
+    expect(lines.map((line) => line.kind)).toStrictEqual(['donor', 'donor']);
+  });
+
+  test('a carrier the line of descent comes from gave the child no genes', () => {
+    // The surrogate's own child and the child she carried for donors are
+    // partners. The surrogacy child descends from her, but they share no
+    // genetic ancestor, so their partnership is not consanguineous.
+    const nodes = makeNodes([
+      { id: 'carrier' },
+      { id: 'carriersPartner' },
+      { id: 'ownChild' },
+      { id: 'eggDonor' },
+      { id: 'spermDonor' },
+      { id: 'surrogacyChild' },
+    ]);
+    const edges = makeEdges([
+      { from: 'carrier', to: 'carriersPartner', relationshipType: 'partner' },
+      { from: 'carrier', to: 'ownChild', relationshipType: 'biological' },
+      {
+        from: 'carriersPartner',
+        to: 'ownChild',
+        relationshipType: 'biological',
+      },
+      { from: 'eggDonor', to: 'surrogacyChild', relationshipType: 'donor' },
+      { from: 'spermDonor', to: 'surrogacyChild', relationshipType: 'donor' },
+      {
+        from: 'carrier',
+        to: 'surrogacyChild',
+        relationshipType: 'surrogate',
+        isGestationalCarrier: true,
+      },
+      { from: 'ownChild', to: 'surrogacyChild', relationshipType: 'partner' },
+    ]);
+
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
+    const index = (id: string) => idToIndex.get(id)!;
+    const carried = input.parents[index('surrogacyChild')]!.find(
+      (p) => p.parentIndex === index('carrier'),
+    );
+    expect(carried?.edgeType).toBe('surrogate');
+    expect(
+      areConsanguineous(
+        index('ownChild'),
+        index('surrogacyChild'),
+        input.parents,
+      ),
+    ).toBe(false);
+  });
+
+  test('an adopted child’s birth parent keeps their recorded tie, and gave them genes', () => {
+    const nodes = makeNodes([
+      { id: 'birthMum' },
+      { id: 'adoptiveMum' },
+      { id: 'adopted' },
+      { id: 'birthSibling' },
+      { id: 'otherParent' },
+    ]);
+    const edges = makeEdges([
+      { from: 'birthMum', to: 'adopted', relationshipType: 'biological' },
+      { from: 'adoptiveMum', to: 'adopted', relationshipType: 'adoptive' },
+      { from: 'birthMum', to: 'birthSibling', relationshipType: 'biological' },
+      {
+        from: 'otherParent',
+        to: 'birthSibling',
+        relationshipType: 'biological',
+      },
+      { from: 'adopted', to: 'birthSibling', relationshipType: 'partner' },
+    ]);
+
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
+    const index = (id: string) => idToIndex.get(id)!;
+    expect(
+      input.parents[index('adopted')]!.find(
+        (p) => p.parentIndex === index('birthMum'),
+      )?.edgeType,
+    ).toBe('biological');
+    expect(
+      areConsanguineous(index('adopted'), index('birthSibling'), input.parents),
+    ).toBe(true);
+  });
+
+  test('the layout and the adapter find the same relatives raising a child, whichever line a carrier is drawn with', () => {
+    // Kit's birth parent is Bea; Bea's sister Ann and Cal adopt Kit. Cal is
+    // the own child of a carrier who carried a child for donors, and that
+    // child is the partner of Bea's father. The carrier's line to the child
+    // she carried is drawn solid, but it is no genetic tie, so Cal is no
+    // relative of Kit's birth family.
+    const nodes = makeNodes([
+      { id: 'grandad' },
+      { id: 'bea' },
+      { id: 'ann' },
+      { id: 'kit' },
+      { id: 'carrier' },
+      { id: 'cal' },
+      { id: 'eggDonor' },
+      { id: 'spermDonor' },
+      { id: 'carried' },
+    ]);
+    const edges = makeEdges([
+      { from: 'grandad', to: 'bea', relationshipType: 'biological' },
+      { from: 'grandad', to: 'ann', relationshipType: 'biological' },
+      { from: 'bea', to: 'kit', relationshipType: 'biological' },
+      { from: 'ann', to: 'kit', relationshipType: 'adoptive' },
+      { from: 'cal', to: 'kit', relationshipType: 'adoptive' },
+      { from: 'carrier', to: 'cal', relationshipType: 'biological' },
+      { from: 'eggDonor', to: 'carried', relationshipType: 'donor' },
+      { from: 'spermDonor', to: 'carried', relationshipType: 'donor' },
+      {
+        from: 'carrier',
+        to: 'carried',
+        relationshipType: 'surrogate',
+        isGestationalCarrier: true,
+      },
+      { from: 'carried', to: 'grandad', relationshipType: 'partner' },
+    ]);
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
+    const index = (id: string) => idToIndex.get(id)!;
+    const raisers = relativeRaisers(input.parents, input.partners);
+    expect([...raisers[index('kit')]!]).toEqual([index('ann')]);
+  });
+
+  test('keeps a birth parent who is the adoptive parent’s partner as a biological parent', () => {
+    // A step-parent adoption: Karen gave birth to the child and raises them
+    // with Steve, her partner, who adopted the child.
+    const edges = makeEdges([
+      {
+        from: 'karen',
+        to: 'child',
+        relationshipType: 'biological',
+        isGestationalCarrier: true,
+      },
+      { from: 'steve', to: 'child', relationshipType: 'adoptive' },
+      { from: 'karen', to: 'steve', relationshipType: 'partner' },
+    ]);
+    const { input, idToIndex } = toPedigreeInput(
+      ['karen', 'steve', 'child'],
+      edges,
+    );
+    const typeFrom = (parent: string) =>
+      input.parents[idToIndex.get('child')!]!.find(
+        (p) => p.parentIndex === idToIndex.get(parent),
+      )?.edgeType;
+    expect(typeFrom('karen')).toBe('biological');
+    expect(typeFrom('steve')).toBe('adoptive');
+  });
+
+  test('keeps a birth parent outside the adoptive family as recorded, the line of descent coming from the adopters', () => {
+    const edges = makeEdges([
+      { from: 'ann', to: 'child', relationshipType: 'adoptive' },
+      { from: 'bob', to: 'child', relationshipType: 'adoptive' },
+      { from: 'ann', to: 'bob', relationshipType: 'partner' },
+      {
+        from: 'cara',
+        to: 'child',
+        relationshipType: 'biological',
+        isGestationalCarrier: true,
+      },
+    ]);
+    const { input, idToIndex } = toPedigreeInput(
+      ['ann', 'bob', 'cara', 'child'],
+      edges,
+    );
+    const cara = input.parents[idToIndex.get('child')!]!.find(
+      (p) => p.parentIndex === idToIndex.get('cara'),
+    );
+    expect(cara?.edgeType).toBe('biological');
+    const { descent, lines } = lineOwnersOf(
+      input.parents,
+      input.partners ?? [],
+    )[idToIndex.get('child')!]!;
+    expect(descent?.parents.toSorted((a, b) => a - b)).toStrictEqual(
+      [idToIndex.get('ann')!, idToIndex.get('bob')!].toSorted((a, b) => a - b),
+    );
+    expect(lines).toStrictEqual([
+      { parents: [idToIndex.get('cara')!], kind: 'biological' },
+    ]);
   });
 
   test('leaves the surrogate auxiliary when the child also has a primary parent', () => {
@@ -194,11 +321,7 @@ describe('storeToPedigreeInput', () => {
       },
     ]);
 
-    const { input, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
     const surrConn = input.parents[idToIndex.get('child')!]!.find(
       (p) => p.parentIndex === idToIndex.get('surr')!,
     );
@@ -222,11 +345,7 @@ describe('storeToPedigreeInput', () => {
       { from: 'mother', to: 'child', relationshipType: 'biological' },
     ]);
 
-    const { input, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
 
     const fatherIdx = idToIndex.get('father')!;
     const gfIdx = idToIndex.get('gf')!;
@@ -253,7 +372,7 @@ describe('storeToPedigreeInput', () => {
       { from: 'a', to: 'c', relationshipType: 'partner' },
     ]);
 
-    const { input } = storeToPedigreeInput(nodes, edges, variableConfig);
+    const { input } = toPedigreeInput(nodes, edges);
 
     expect(input.relation).toHaveLength(2);
     expect(input.relation![0]!.code).toBe(4);
@@ -266,11 +385,7 @@ describe('storeToPedigreeInput', () => {
       { from: 'parent', to: 'child', relationshipType: 'biological' },
     ]);
 
-    const { input, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
     const childIdx = idToIndex.get('child')!;
 
     expect(input.parents[childIdx]).toHaveLength(1);
@@ -290,11 +405,249 @@ describe('storeToPedigreeInput', () => {
       { from: 'donor', to: 'child', relationshipType: 'donor' },
     ]);
 
-    const result = storeToPedigreeInput(nodes, edges, variableConfig);
+    const result = toPedigreeInput(nodes, edges);
     const childIdx = result.idToIndex.get('child')!;
     const edgeTypes = result.input.parents[childIdx]!.map((p) => p.edgeType);
     expect(edgeTypes).toContain('biological');
     expect(edgeTypes).toContain('donor');
+  });
+});
+
+describe('who carried the pregnancy (Round 5, Josh, 12 Oct 2026)', () => {
+  // Whether a tie is a birth tie, and who carried, are read from the tie's
+  // kind and its carried flag in one place; every reader sees the same.
+  const ownersOf = (nodes: string[], edges: PedigreeLink[], child: string) => {
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
+    const owners = lineOwnersOf(input.parents, input.partners ?? [])[
+      idToIndex.get(child)!
+    ]!;
+    const name = (index: number) => nodes[index]!;
+    return {
+      descent: owners.descent?.parents.map(name),
+      descentKind: owners.descent?.kind,
+      lines: owners.lines.map((line) => ({
+        parents: line.parents.map(name),
+        kind: line.kind,
+      })),
+    };
+  };
+
+  test('a donor who carried the child (a traditional surrogate) is their carrier, and with no one else, their line of descent', () => {
+    const edges = makeEdges([
+      {
+        from: 'donor',
+        to: 'child',
+        relationshipType: 'donor',
+        isGestationalCarrier: true,
+      },
+    ]);
+    expect(ownersOf(['donor', 'child'], edges, 'child').descent).toEqual([
+      'donor',
+    ]);
+  });
+
+  test('the line of descent comes from whoever carried the child, not the biological couple (Bennett 3)', () => {
+    const edges = makeEdges([
+      { from: 'a', to: 'b', relationshipType: 'partner' },
+      { from: 'a', to: 'p', relationshipType: 'biological' },
+      { from: 'b', to: 'p', relationshipType: 'biological' },
+      {
+        from: 's',
+        to: 'p',
+        relationshipType: 'surrogate',
+        isGestationalCarrier: true,
+      },
+    ]);
+    const owners = ownersOf(['a', 'b', 's', 'p'], edges, 'p');
+    expect(owners.descent).toEqual(['s']);
+    expect(owners.lines).toEqual([{ parents: ['a', 'b'], kind: 'biological' }]);
+  });
+
+  describe('full siblings stay one sibship (Josh, 12 Oct 2026)', () => {
+    const carried = (from: string, to: string) => ({
+      from,
+      to,
+      relationshipType: 'surrogate' as const,
+      isGestationalCarrier: true,
+    });
+
+    test('a couple’s three children hang from the couple when a surrogate carried two of them, and she draws one line', () => {
+      const nodes = ['ana', 'luis', 'carrier', 'ego', 'leo', 'mia'];
+      const edges = makeEdges([
+        { from: 'ana', to: 'luis', relationshipType: 'partner' },
+        ...['ego', 'leo', 'mia'].flatMap((child) => [
+          {
+            from: 'ana',
+            to: child,
+            relationshipType: 'biological' as const,
+            isGestationalCarrier: child === 'mia',
+          },
+          { from: 'luis', to: child, relationshipType: 'biological' as const },
+        ]),
+        carried('carrier', 'ego'),
+        carried('carrier', 'leo'),
+      ]);
+      for (const child of ['ego', 'leo', 'mia']) {
+        const owners = ownersOf(nodes, edges, child);
+        expect(owners.descent?.toSorted(), child).toEqual(['ana', 'luis']);
+      }
+      for (const child of ['ego', 'leo']) {
+        expect(ownersOf(nodes, edges, child).lines).toEqual([
+          { parents: ['carrier'], kind: 'surrogate' },
+        ]);
+      }
+    });
+
+    test('a child their parents did not carry stays in the sibship of the full sibling their mother carried', () => {
+      const nodes = ['grace', 'henry', 'jenna', 'ego', 'oliver'];
+      const edges = makeEdges([
+        { from: 'grace', to: 'henry', relationshipType: 'partner' },
+        {
+          from: 'grace',
+          to: 'ego',
+          relationshipType: 'biological',
+          isGestationalCarrier: true,
+        },
+        { from: 'henry', to: 'ego', relationshipType: 'biological' },
+        { from: 'grace', to: 'oliver', relationshipType: 'biological' },
+        { from: 'henry', to: 'oliver', relationshipType: 'biological' },
+        carried('jenna', 'oliver'),
+      ]);
+      expect(ownersOf(nodes, edges, 'oliver').descent?.toSorted()).toEqual([
+        'grace',
+        'henry',
+      ]);
+      expect(ownersOf(nodes, edges, 'oliver').lines).toEqual([
+        { parents: ['jenna'], kind: 'surrogate' },
+      ]);
+    });
+
+    test('twins one surrogate carried hang from her, and their parents draw one line (Bennett 3)', () => {
+      const nodes = ['mum', 'dad', 'lena', 'ego', 'arjun'];
+      const edges = makeEdges([
+        { from: 'mum', to: 'dad', relationshipType: 'partner' },
+        ...['ego', 'arjun'].flatMap((child) => [
+          { from: 'mum', to: child, relationshipType: 'biological' as const },
+          { from: 'dad', to: child, relationshipType: 'biological' as const },
+          carried('lena', child),
+        ]),
+      ]);
+      for (const child of ['ego', 'arjun']) {
+        const owners = ownersOf(nodes, edges, child);
+        expect(owners.descent, child).toEqual(['lena']);
+        expect(owners.lines).toEqual([
+          { parents: ['mum', 'dad'], kind: 'biological' },
+        ]);
+      }
+    });
+
+    test('twins carried by two different people hang from their parents, and each carrier draws a line to the twin they carried', () => {
+      const nodes = ['mum', 'dad', 'lena', 'kim', 'ego', 'arjun'];
+      const edges = makeEdges([
+        { from: 'mum', to: 'dad', relationshipType: 'partner' },
+        ...['ego', 'arjun'].flatMap((child) => [
+          { from: 'mum', to: child, relationshipType: 'biological' as const },
+          { from: 'dad', to: child, relationshipType: 'biological' as const },
+        ]),
+        carried('lena', 'ego'),
+        carried('kim', 'arjun'),
+      ]);
+      expect(ownersOf(nodes, edges, 'ego').descent?.toSorted()).toEqual([
+        'dad',
+        'mum',
+      ]);
+      expect(ownersOf(nodes, edges, 'arjun').lines).toEqual([
+        { parents: ['kim'], kind: 'surrogate' },
+      ]);
+    });
+  });
+
+  test('a donor who carried owns the line of descent; the biological father and his partner draw lines of their own (Bennett 4a)', () => {
+    const edges = makeEdges([
+      { from: 'man', to: 'woman', relationshipType: 'partner' },
+      { from: 'man', to: 'p', relationshipType: 'biological' },
+      { from: 'woman', to: 'p', relationshipType: 'social' },
+      {
+        from: 'd',
+        to: 'p',
+        relationshipType: 'donor',
+        isGestationalCarrier: true,
+      },
+    ]);
+    const owners = ownersOf(['man', 'woman', 'd', 'p'], edges, 'p');
+    expect(owners.descent).toEqual(['d']);
+    expect(owners.lines).toEqual([
+      { parents: ['man'], kind: 'biological' },
+      { parents: ['woman'], kind: 'social' },
+    ]);
+  });
+
+  test('a carrier partnered with the other genetic parent shares the line of descent with them, solid (Bennett 2 and 5)', () => {
+    const edges = makeEdges([
+      { from: 'man', to: 'woman', relationshipType: 'partner' },
+      { from: 'man', to: 'p', relationshipType: 'biological' },
+      {
+        from: 'woman',
+        to: 'p',
+        relationshipType: 'social',
+        isGestationalCarrier: true,
+      },
+      { from: 'd', to: 'p', relationshipType: 'donor' },
+    ]);
+    const owners = ownersOf(['man', 'woman', 'd', 'p'], edges, 'p');
+    expect(owners.descent?.toSorted()).toEqual(['man', 'woman']);
+    expect(owners.descentKind).toBe('biological');
+    expect(owners.lines).toEqual([{ parents: ['d'], kind: 'donor' }]);
+  });
+
+  test('a parent who raises the child and carried them holds a birth tie, drawn solid; a partner who only raises keeps a dashed line (Bennett 1f)', () => {
+    const edges = makeEdges([
+      { from: 'woman', to: 'man', relationshipType: 'partner' },
+      {
+        from: 'woman',
+        to: 'p',
+        relationshipType: 'social',
+        isGestationalCarrier: true,
+      },
+      { from: 'man', to: 'p', relationshipType: 'social' },
+      { from: 'eggD', to: 'p', relationshipType: 'donor' },
+      { from: 'spermD', to: 'p', relationshipType: 'donor' },
+    ]);
+    const owners = ownersOf(
+      ['woman', 'man', 'eggD', 'spermD', 'p'],
+      edges,
+      'p',
+    );
+    expect(owners.descent).toEqual(['woman']);
+    expect(owners.descentKind).not.toBe('social');
+    expect(owners.lines).toContainEqual({ parents: ['man'], kind: 'social' });
+  });
+
+  test('the line of descent a parent shares between a child they raise and a child they carried is drawn solid', () => {
+    // Pat raises Ann (a social tie) and carried Ben (a social tie with the
+    // carried flag): one sibship, one line of descent from Pat.
+    const nodes = ['pat', 'ann', 'ben'];
+    const links: PedigreeLink[] = [
+      { source: 'pat', target: 'ann', kind: 'social' },
+      {
+        source: 'pat',
+        target: 'ben',
+        kind: 'social',
+        isGestationalCarrier: true,
+      },
+    ];
+    const { connectorData } = drawPedigree({
+      nodeIds: nodes,
+      links,
+      dimensions: TEST_DIMENSIONS,
+    });
+    const withLink = connectorData.connectors.parentChildLines.filter(
+      (line) => line.parentLink.length > 0,
+    );
+    expect(withLink).toHaveLength(1);
+    expect(['biological', 'donor', 'surrogate']).toContain(
+      withLink[0]!.edgeType,
+    );
   });
 });
 
@@ -388,17 +741,12 @@ describe('buildConnectorData', () => {
       { from: 'mother', to: 'child', relationshipType: 'biological' },
     ]);
 
-    const { input, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
     const layout = alignPedigree(input);
     const { connectors } = buildConnectorData(
       layout,
       edges,
       TEST_DIMENSIONS,
-      variableConfig,
       input.parents,
       idToIndex,
     );
@@ -448,17 +796,12 @@ describe('buildConnectorData', () => {
       { from: 'sibB1', to: 'sibling', relationshipType: 'biological' },
     ]);
 
-    const { input, indexToId, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, indexToId, idToIndex } = toPedigreeInput(nodes, edges);
     const layout = alignPedigree(input);
     const { connectors } = buildConnectorData(
       layout,
       edges,
       TEST_DIMENSIONS,
-      variableConfig,
       input.parents,
       idToIndex,
       undefined,
@@ -479,7 +822,7 @@ describe('buildConnectorData', () => {
       (union!.segment.x1 + union!.segment.x2) / 2,
     );
     expect(descent).toBeDefined();
-    expect(new Set(descent!.uplineChildIds)).toEqual(
+    expect(new Set(descent!.uplines.map((upline) => upline.childId))).toEqual(
       new Set(['ego', 'sibling']),
     );
   });
@@ -525,17 +868,12 @@ describe('buildConnectorData', () => {
       { from: 'white', to: 'robert', relationshipType: 'social' },
     ]);
 
-    const { input, indexToId, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, indexToId, idToIndex } = toPedigreeInput(nodes, edges);
     const layout = alignPedigree(input);
     const { connectors } = buildConnectorData(
       layout,
       edges,
       TEST_DIMENSIONS,
-      variableConfig,
       input.parents,
       idToIndex,
       undefined,
@@ -580,11 +918,7 @@ describe('end-to-end: store → layout → positions', () => {
       { from: 'mother', to: 'child', relationshipType: 'biological' },
     ]);
 
-    const { input, indexToId } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, indexToId } = toPedigreeInput(nodes, edges);
     const layout = alignPedigree(input);
     const positions = pedigreeLayoutToPositions(
       layout,
@@ -602,11 +936,7 @@ describe('end-to-end: store → layout → positions', () => {
       { from: 'father', to: 'mother', relationshipType: 'partner' },
     ]);
 
-    const { input, indexToId } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, indexToId } = toPedigreeInput(nodes, edges);
     const layout = alignPedigree(input);
     const positions = pedigreeLayoutToPositions(
       layout,
@@ -632,11 +962,7 @@ describe('end-to-end: store → layout → positions', () => {
       { from: 'mother', to: 'sibling', relationshipType: 'biological' },
     ]);
 
-    const { input, indexToId } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, indexToId } = toPedigreeInput(nodes, edges);
     const layout = alignPedigree(input);
     const positions = pedigreeLayoutToPositions(
       layout,
@@ -664,11 +990,7 @@ describe('end-to-end: store → layout → positions', () => {
       { from: 'mother', to: 'ego', relationshipType: 'biological' },
     ]);
 
-    const { input, indexToId } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
+    const { input, indexToId } = toPedigreeInput(nodes, edges);
     const layout = alignPedigree(input);
     const positions = pedigreeLayoutToPositions(
       layout,
@@ -676,8 +998,8 @@ describe('end-to-end: store → layout → positions', () => {
       TEST_DIMENSIONS,
     );
 
-    expect(positions.size).toBe(nodes.size);
-    for (const nodeId of nodes.keys()) {
+    expect(positions.size).toBe(nodes.length);
+    for (const nodeId of nodes) {
       expect(positions.has(nodeId)).toBe(true);
     }
   });
