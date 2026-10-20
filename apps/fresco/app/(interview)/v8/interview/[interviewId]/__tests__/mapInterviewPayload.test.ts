@@ -77,4 +77,27 @@ describe('mapLegacyInterviewPayload', () => {
     expect(result.initialStep).toBe(2);
     expect(result.initialSyncRevision).toBe(4);
   });
+
+  it('keeps the URL of a resource whose ID is __proto__', () => {
+    const source = makeSource();
+    source.protocol.assets = [
+      {
+        key: 'asset-key-1',
+        assetId: '__proto__',
+        name: 'Photo',
+        type: 'image',
+        url: 'https://files.example/photo.jpg',
+        size: 10,
+        value: null,
+      },
+    ];
+
+    const result = mapLegacyInterviewPayload(source);
+    if (!result.success) throw new Error('Expected a readable interview');
+
+    expect(Object.keys(result.assetUrls)).toEqual(['__proto__']);
+    expect(result.assetUrls['__proto__']).toBe(
+      'https://files.example/photo.jpg',
+    );
+  });
 });

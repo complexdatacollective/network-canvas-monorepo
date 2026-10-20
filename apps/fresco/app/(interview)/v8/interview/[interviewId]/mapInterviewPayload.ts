@@ -79,10 +79,11 @@ export function mapLegacyInterviewPayload(
     };
   });
 
-  const assetUrls: Record<string, string> = {};
-  for (const a of protocol.assets) {
-    if (a.url) assetUrls[a.assetId] = a.url;
-  }
+  // Built with fromEntries so that an asset ID such as `__proto__` stays an
+  // entry of its own rather than reaching the prototype setter.
+  const assetUrls: Record<string, string> = Object.fromEntries(
+    protocol.assets.filter((a) => a.url).map((a) => [a.assetId, a.url]),
+  );
 
   const payload: InterviewPayload = {
     session: {
