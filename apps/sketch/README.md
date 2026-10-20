@@ -74,7 +74,14 @@ uses relative imports only, so the Netlify esbuild bundler can resolve it.
 A job runs in `generate-background`, a Netlify background function (up to
 15 minutes). `POST /api/jobs` validates the request, checks the budget, writes a
 queued job record and starts the background function. The page polls
-`GET /api/jobs/:id` every 1.5 s for up to 4 minutes.
+`GET /api/jobs/:id` every 1.5 s for up to 16 minutes, past the pipeline's
+13-minute deadline. A job still queued or running after 16 minutes is reported
+as failed.
+
+Leaving the generating or compare screen does not stop a job: the page keeps
+the job id, and generating the same study again ("Back to your sketch")
+follows that job instead of starting another paid run. The same holds after
+polling fails.
 
 ## Local development
 
@@ -121,16 +128,15 @@ back with `extractProtocol` and validates it.
 | `ANTHROPIC_API_KEY`       | functions    | none                                     | Enables the Claude provider. Without it the provider shows as unavailable.                                       |
 | `OPENAI_API_KEY`          | functions    | none                                     | Enables the ChatGPT provider.                                                                                    |
 | `SKETCH_PROVIDERS`        | functions    | `anthropic`                              | Comma list of providers to offer. A key alone does not switch one on, since Netlify's AI Gateway injects keys.   |
-| `OPENAI_DESIGN_MODEL`     | functions    | `gpt-6-astra`                            | OpenAI model for step 2 (both tiers).                                                                            |
+| `OPENAI_DESIGN_MODEL`     | functions    | `gpt-6-astra`                            | OpenAI model for step 2.                                                                                         |
 | `OPENAI_WORDING_MODEL`    | functions    | `gpt-6-luna`                             | OpenAI model for steps 1 and 3.                                                                                  |
 | `SKETCH_DAILY_BUDGET_USD` | functions    | `20`                                     | New jobs are refused (HTTP 429) once today's recorded spend (UTC day) reaches this.                              |
 | `SKETCH_PRICING`          | functions    | built-in table in `src/server/models.ts` | JSON `{"<model>": {"input", "output", "cacheRead", "cacheWrite"}}` in USD per million tokens; overrides entries. |
 | `VITE_ARCHITECT_URL`      | build (Vite) | `https://architect.networkcanvas.dev`    | Where "Open in Architect" goes. Baked into the bundle at build time.                                             |
 
-Anthropic models are fixed in code: Sonnet 5.5 designs on the standard tier,
-Opus 5.5 on the strong (compare) tier, Haiku 5.5 screens and writes wording.
-The built-in OpenAI prices are unverified; set `SKETCH_PRICING` once they are
-confirmed.
+Anthropic models are fixed in code: Opus 5.5 designs every protocol (there is
+no model picker), and Haiku 5.5 screens and writes wording. The built-in
+OpenAI prices are unverified; set `SKETCH_PRICING` once they are confirmed.
 
 ## Provisioning the Netlify site (manual)
 
@@ -149,8 +155,8 @@ recreate it:
    scope them to Functions.
 4. Netlify Blobs needs no setup: the functions create the `sketch-jobs` and
    `sketch-log` stores on first use.
-5. Add the custom domain `sketch.networkcanvas.com` (production) and/or
-   `sketch.networkcanvas.dev`. Any other host must be added to
+5. Add the custom domain. Production is `sketch.networkcanvas.dev`;
+   `sketch.networkcanvas.com` is also allowed. Any other host must be added to
    `apps/architect/src/config/sketchOrigins.ts` and released in Architect
    before the handoff works from it.
 6. Make sure the Architect that `VITE_ARCHITECT_URL` points at has shipped the
@@ -161,12 +167,14 @@ Deploy previews skip the build when nothing Sketch depends on changed (the
 
 ## Cost guards
 
-- **Daily budget.** `POST /api/jobs` refuses new jobs once the day's spend in
-  `sketch-jobs` under `spend/<YYYY-MM-DD>` reaches `SKETCH_DAILY_BUDGET_USD`.
-  Spend is added when a job finishes, priced from the token usage each call
-  reports. This is a soft guard: jobs that are already running are not
-  stopped, so concurrent jobs can overshoot the limit by a few jobs' cost, and
-  two jobs finishing at the same instant can lose an increment.
+- **Daily budget.** `POST /api/jobs` reserves a job's worst-case cost
+  (about $0.95 with Opus) against `SKETCH_DAILY_BUDGET_USD`, and refuses the
+  job (HTTP 429) when the reservation would pass the limit. The day's total
+  lives in `sketch-jobs` under `spend/<YYYY-MM-DD>`, updated with
+  compare-and-swap writes. When the job finishes, the reservation is settled
+  to the cost priced from the token usage each call reports. A reservation
+  that is never settled stays counted for the day, which errs on the safe
+  side. Typical runs cost $0.15–0.21 and take about a minute.
 - **Rate limits.** Netlify rate-limits `POST /api/jobs` to 4 requests a minute
   and `POST /api/preference` to 20 a minute, per IP and domain.
 - **Bounded calls.** One design retry at most. Output is capped at 16,000
@@ -182,7 +190,7 @@ Deploy previews skip the build when nothing Sketch depends on changed (the
 ## Logging
 
 Each finished job writes one entry to the `sketch-log` Blobs store under
-`log/<YYYY-MM-DD>/<jobId>`: the study text (questions, population and synopsis), provider, tier, models, status,
+`log/<YYYY-MM-DD>/<jobId>`: the study text (questions, population and synopsis), provider, models, status,
 error, token usage, cost and duration, plus the pipeline's own record. That
 record holds the screening result, every design attempt with its raw text and
 issues, the retry feedback, the wording, validity, tags (`wordingFailed`,
@@ -214,19 +222,20 @@ tell users that what they type is stored.
 
 ## Known limitations
 
-- **No live provider test yet.** No API keys have been used. OpenAI strict mode
-  with this schema (`$ref` inside `anyOf`, single-value `enum`
-  discriminators), OpenAI's schema size limits and Anthropic's grammar compile
-  time are unverified. Run a smoke test against both providers before
-  launch.
+- **Only Claude has run live.** End-to-end runs against Anthropic work. The
+  OpenAI adapter has never run with a real key: strict mode with this schema
+  (`$ref` inside `anyOf`, single-value `enum` discriminators) and OpenAI's
+  schema size limits are unverified. Smoke-test it before enabling it in
+  `SKETCH_PROVIDERS`.
 - **Output size.** A design is roughly 3–4k output tokens, because every stage
   repeats a full `skipLogic` and most repeat a `filter`.
 - **`single_choice` compiles to categorical with `maxSelected: 1`.** The widgets
   are multi-select, so a participant can tap two options and then see a
   validation error.
 - **Repairs drop rather than guess.** A degraded design loses the pieces that
-  could not be repaired. The researcher-notes stage and the compare screen's
-  `fixedIssues` say what changed.
+  could not be repaired, including any stage the salvage step removes to make
+  the protocol valid. The researcher-notes stage lists every such change, and
+  the compare screen's `fixedIssues` says what the retry fixed.
 - **Validated instruments come from model memory.** Wording never changes
   them, but the model can misremember items or scores. The researcher-notes
   stage flags this.
