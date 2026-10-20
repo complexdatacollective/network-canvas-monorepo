@@ -433,6 +433,25 @@ describe('generate-background and GET /api/jobs/:id', () => {
     expect((await readJob(jobs, 'job-9'))?.status).toBe('failed');
   });
 
+  it('keeps polling a stale job whose failure could not be stored', async () => {
+    const { jobs } = await setup();
+    const queued = (await readJob(jobs, 'job-9')) as JobRecord;
+    await writeJob(jobs, {
+      ...queued,
+      status: 'running',
+      startedAt: NOW.toISOString(),
+    });
+    jobs.updateJSON = async () => {
+      throw new Error('blobs down');
+    };
+    const response = await handleGetJob('job-9', {
+      jobs,
+      now: () => new Date(NOW.getTime() + STALE_JOB_MS + 1),
+    });
+    expect(response.status).toBe(503);
+    expect((await readJob(jobs, 'job-9'))?.status).toBe('running');
+  });
+
   it('keeps a stale job that a delayed background run claims mid-check', async () => {
     const { jobs } = await setup();
     const late = new Date(NOW.getTime() + STALE_JOB_MS + 1);

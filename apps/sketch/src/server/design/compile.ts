@@ -461,9 +461,13 @@ export const compile = (
   const lastSociogramAuto = new Map<string, boolean>();
   let ordColor = 0;
 
-  // consent placement: after the first design stage if it is Information, else first
+  // consent placement: after an opening welcome screen that always shows,
+  // else first, so no skip logic can end the interview before consent
+  const opening = d.stages[0];
   const consentAfter = d.includeConsent
-    ? d.stages[0]?.kind === 'information'
+    ? opening?.kind === 'information' &&
+      opening.role === 'welcome' &&
+      opening.skipLogic.mode === 'always_show'
       ? 0
       : -1
     : null;
@@ -719,7 +723,8 @@ export const compile = (
           assetManifest[assetId] = {
             id: assetId,
             type: 'network',
-            name: `${n.plural} list (PLACEHOLDER: replace before fielding)`,
+            // Architect picks the parser from this name's extension.
+            name: `${n.plural} list (PLACEHOLDER, replace before fielding).csv`,
             source: `${assetId}.csv`,
           };
           placeholderNotes.push(

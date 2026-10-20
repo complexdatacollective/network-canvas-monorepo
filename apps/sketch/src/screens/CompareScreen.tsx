@@ -437,9 +437,12 @@ export const CompareScreen = ({
                 onPrefer={() => void prefer(run.jobId)}
                 onRetry={() => {
                   if (seeded === config.provider) setSeeded(null);
+                  // A job Sketch lost track of may still be running: follow
+                  // it again rather than paying for another.
+                  const unfinishedId = running(run);
                   setResumeIds((current) => ({
                     ...current,
-                    [config.provider]: undefined,
+                    [config.provider]: unfinishedId ?? undefined,
                   }));
                   setAttempts((current) => ({
                     ...current,

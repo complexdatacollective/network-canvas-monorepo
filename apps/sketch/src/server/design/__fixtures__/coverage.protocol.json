@@ -307,7 +307,7 @@
     "classmates_roster": {
       "id": "classmates_roster",
       "type": "network",
-      "name": "Classmates list (PLACEHOLDER: replace before fielding)",
+      "name": "Classmates list (PLACEHOLDER, replace before fielding).csv",
       "source": "classmates_roster.csv"
     },
     "mapbox-testing-token": {

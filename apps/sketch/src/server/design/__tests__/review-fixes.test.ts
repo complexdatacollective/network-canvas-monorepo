@@ -679,4 +679,26 @@ describe('compiler review fixes', () => {
     expect(r.codes).toContain('LOCATION_RENAMED');
     expect(varNames(r.protocol, 'person')).toContain('country_map_2');
   });
+
+  it('asks for consent before an opening screen that is not a welcome', async () => {
+    const opening = (role: string) =>
+      design({
+        includeConsent: true,
+        consentText: 'Do you agree?',
+        stages: [
+          { kind: 'information', ...c('intro'), role, content: 'Hello' },
+          ng(),
+        ],
+      });
+    const order = async (role: string) => {
+      const { stages } = await build(opening(role));
+      const ids = stages.map((s) => s.id);
+      return ids.findIndex((id) => id.includes('consent')) <
+        ids.indexOf('intro')
+        ? 'consent first'
+        : 'consent after';
+    };
+    expect(await order('welcome')).toBe('consent after');
+    expect(await order('instructions')).toBe('consent first');
+  });
 });

@@ -17,7 +17,6 @@ import {
   failQueuedJob,
   dayKey,
   failJobIfStale,
-  failStaleJob,
   isStaleJob,
   type JobRecord,
   joinComparison,
@@ -205,9 +204,10 @@ export const handleGetJob = async (
       const current = await readJob(deps.jobs, id);
       if (current) return json(toJobStatus(current));
     } catch {
-      // Reported as failed; the next poll tries the write again.
+      // Not reported as failed until the failure is stored, so the
+      // client keeps polling and the next poll tries the write again.
     }
-    return json(toJobStatus(failStaleJob(record, now)));
+    return apiError('Sketch could not check this job. Please try again.', 503);
   }
   return json(toJobStatus(record));
 };

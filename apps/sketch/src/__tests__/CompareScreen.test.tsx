@@ -225,4 +225,54 @@ describe('CompareScreen', () => {
     await new Promise((resolve) => setTimeout(resolve, 1100));
     expect(chatgpt().getByText('Elapsed 0:00')).toBeTruthy();
   });
+
+  it('follows the same job again when trying after polling failed', async () => {
+    let openaiPosts = 0;
+    let reachable = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const { url, method } = describeCall(input, init);
+        if (url === '/api/jobs' && method === 'POST') {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
+          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          if (body.provider === 'anthropic')
+            return jsonResponse({ jobId: 'job-anthropic' });
+          openaiPosts += 1;
+          return jsonResponse({ jobId: 'job-openai' });
+        }
+        if (url === '/api/jobs/job-anthropic')
+          return jsonResponse(succeededJob({ id: 'job-anthropic' }));
+        if (url === '/api/jobs/job-openai')
+          return reachable
+            ? jsonResponse(jobStatus({ id: 'job-openai', provider: 'openai' }))
+            : jsonResponse({ error: 'Sketch lost the connection.' }, 503);
+        return jsonResponse({ error: 'unexpected' }, 500);
+      }),
+    );
+
+    render(
+      <CompareScreen
+        description="Students name their friends."
+        providers={configResponse(true).providers}
+        onUnfinished={() => {}}
+        onNew={() => {}}
+        onRefused={() => {}}
+      />,
+    );
+    const chatgpt = () =>
+      within(screen.getByRole('article', { name: 'ChatGPT' }));
+    expect(
+      await chatgpt().findByText(
+        'Sketch lost the connection.',
+        {},
+        { timeout: 8000 },
+      ),
+    ).toBeTruthy();
+
+    reachable = true;
+    fireEvent.click(chatgpt().getByRole('button', { name: 'Try again' }));
+    expect(await chatgpt().findByText(/Elapsed/)).toBeTruthy();
+    expect(openaiPosts).toBe(1);
+  }, 15_000);
 });
