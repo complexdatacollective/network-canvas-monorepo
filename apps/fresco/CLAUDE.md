@@ -307,27 +307,28 @@ then runs two Docker stacks via
 - **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR
   image through its setup wizard (sample protocol, synthetic interviews, data
   export), and leaves one interview of a schema 8 protocol unfinished
-  (`migration-lane.mjs --phase seed`): it builds a family on the schema 8
+  (`migration-lane.mjs --phase seed`, answering "Keep schema 8" if the
+  released build asks how to import it): it builds a family on the schema 8
   Family Pedigree with that stage's quick-start questions and finalizes it,
   then stops on the stage behind an introduction panel, whose skip logic is
   false for that interview. It then swaps the app container to the pending
-  image against the live volumes so its `migrate-and-start.sh` migrations run
-  on real data, and reads what the schema 9 migration did to every stored
-  protocol and interview, the family included (`--phase migrated`). It
-  captures the exports, and then lets that participant come back: the
-  interview resumes where it was, its former panel shows as an Information
-  stage, the redesigned pedigree draws the family and takes a new relative,
-  and the interview can be finished and exported with every answer in its own
-  record (`--phase resume`). Finally it verifies data integrity, dashboard CRUD,
-  settings, and the interview data API, and diffs pre- vs post-upgrade exports
-  (`release-test/scripts/diff-exports.mjs`) for unanticipated differences.
-  Once the released image itself runs schema 9, it migrates the schema 8
-  fixture on import and a release carries no schema 8 data across: every
-  phase then reports `notApplicable` with no checks (the seed still leaves an
-  interview, so the lane's counts hold), and the workflow records a warning.
-  It accepts that only when all three phases agree; any other mix is
-  unaccounted. A later schema bump needs its own migration fixture, and the
-  seed fails loudly until it has one.
+  image against the live volumes so `migrate-and-start.sh` runs on real data,
+  and holds every stored protocol and interview, the family included, to
+  being exactly what it was: a schema 8 protocol stays schema 8 and an
+  interview stays on its step (`--phase upgraded`). It captures the exports,
+  and then lets that participant come back: `/interview/<id>` redirects to
+  `/v8/interview/<id>`, which opens on the same stage with the panel shown,
+  the schema 8 pedigree still draws the family, and the interview can be
+  finished on the schema 8 finish screen and exported with every answer in
+  its own record. It then imports two copies of the schema 8 fixture, one
+  answered "Keep schema 8" (stored at schema 8 and badged "Schema 8" in the
+  protocols table) and one answered "Upgrade to schema 9" (stored at schema 9,
+  ending in a Finish Session stage, unbadged) (`--phase resume`). Finally it
+  verifies data integrity (two more protocols than the seed left), dashboard
+  CRUD, settings, and the interview data API, and diffs pre- vs post-upgrade
+  exports (`release-test/scripts/diff-exports.mjs`), which must be identical.
+  A later schema bump needs its own fixture for the release that still stores
+  the old schema, and the seed fails loudly until it has one.
 - **Fresh lane** (ports 3211/5534/9311): verifies the new-deployment setup
   process of the pending image end-to-end, and then runs the script-driven
   checks on that instance — a whole interview conducted from the first stage to
@@ -343,8 +344,10 @@ then runs two Docker stacks via
   request. It also imports the damaged protocol fixtures, because "opening a
   damaged file is no longer recorded as an application error" is a claim about
   what is sent. The fractional COUNT fixture is a schema 8 protocol schema 9
-  cannot take, and a protocol Fresco cannot upgrade is a migration bug, so it
-  must arrive both as a `ProtocolImportFailed` refusal and as an exception.
+  cannot take; the lane answers the import dialog with "Upgrade to schema 9",
+  and a protocol Fresco cannot upgrade is a migration bug, so it must arrive
+  both as a `ProtocolImportFailed` refusal and as an exception. Nothing is
+  upgraded at deploy, so no lane expects a failed-upgrade report from one.
 - **Two-factor lane** (ports 3213/5536/9313): a deployment that sets
   `REQUIRE_TWO_FACTOR`.
 
@@ -353,7 +356,7 @@ run holds four stacks only as long as it has to.
 
 #### The script-driven lanes
 
-Those last three lanes, and the upgrade lane's migration checks, are driven
+Those last three lanes, and the upgrade lane's schema 8 checks, are driven
 by deterministic scripts under `release-test/scripts/` rather than by an agent
 reading a checklist: `interview-lane.mjs`, `schema9-interview-lane.mjs`,
 `migration-lane.mjs`, `health-lane.mjs`, `localization-lane.mjs`,
@@ -383,15 +386,12 @@ so that agent runs it, and the workflow binds its checks from the
 `artifacts/migration/seed-result.json` the script leaves rather than from the
 agent's account of them. The migration interview is one of the seeded
 interviews every later count includes (`SEEDED_INTERVIEWS`), so the export
-diff compares it too. Its Family Pedigree is converted to the redesigned one
-by the upgrade, which changes that interview's codebook and the edge list and
-GraphML keys exported for it, and rewrites the family it holds the way the
-redesigned stage writes one: parent relationships lose the current-partner
-flag schema 8 set on them and record the gestational carrier flag as true or
-false, and the schema 8 stage record leaves `stageMetadata`. The migrated
-phase holds the family to exactly that (`migration-pedigree-family-kept`),
-naming each person, relationship or answer that was lost, and the diff judge
-is told to attribute those differences to the redesign's changeset.
+diff compares it too. The upgrade leaves its schema 8 Family Pedigree alone:
+the upgraded phase holds the family's people, relationships and the stage's
+record in `stageMetadata` to being unchanged (`migration-pedigree-family-kept`),
+naming each one that changed, and after the interview is finished the stored
+family must still equal the one read before the upgrade
+(`migration-pedigree-answers-stored`).
 
 The judgment in those lanes lives in pure modules —
 `relay-payload-protocol.mjs` (what an enabled deployment may send),
@@ -401,9 +401,9 @@ were given), `schema9-export-contract.mjs` (whether an export records each
 interview's finish outcome, holds each answer in exactly one record per
 format of the interview's ego, person or relationship it belongs to — never
 a search of the whole archive — and keeps an encrypted answer out) and
-`migration-contract.mjs` (what the schema 8 to 9 upgrade must have done to
-each stored protocol, interview and Family Pedigree family, judged from
-database readings taken either side of the swap and naming what was lost) — so each oracle is exercised on synthetic input in
+`migration-contract.mjs` (that the upgrade left each stored schema 8
+protocol, interview and Family Pedigree family exactly as it was, judged from
+database readings taken either side of the swap and naming what changed) — so each oracle is exercised on synthetic input in
 `scripts/release-test/fresco-release-test-lane-contracts.test.mjs`, where it is
 also shown failing on input that breaks the behaviour it guards. Lists those
 contracts are written against are bound to the application's own: the element
@@ -411,19 +411,23 @@ events and properties to `lib/posthog-client.ts`, the entity-id properties to
 `@codaco/interview`, and the import-failure vocabulary to
 `@codaco/protocol-validation`.
 
-The export diff reconciles the differences the schema 9 migration is
-expected to make. Given the migration lane's readings (`--migration
-artifacts/migration`), that includes an interview's `currentStep` and
-`stageMetadata` moving exactly as far as the stages they point at moved when an
-introduction panel became an Information stage in front of them. A step that
-moved anywhere else is still a difference.
+The export diff expects identity. Schema 8 interviews are exported and
+served by schema 8's code, so after normalising the fields that change on
+every export (export times, dated file names, JSON key order) the archives
+must match the released image's byte for byte. Its one reconciliation is in
+the interview API: the pending build selects `finishStageId` and
+`finishOutcome`, which are null for a schema 8 interview, so those keys
+added as null are accepted; any other value, or any other added field, CSV
+column, GraphML key or moved step, is a difference.
 
 The protocol fixtures are built rather than committed
 (`release-test/scripts/make-fixtures.mjs`, from
 `packages/protocols/e2e/fresco-release-test`,
 `fresco-release-test-v9` and `fresco-release-test-migration`): the protocol an
 interview is conducted with, the schema 9 protocol in English and Spanish,
-the schema 8 protocol the upgrade migrates, and the damaged ones — a missing resource, a damaged archive, a
+the schema 8 protocol the upgrade keeps, two copies of it (relabelled so
+their hashes differ from the seeded one's and each other's) that the resume
+phase imports kept and upgraded, and the damaged ones — a missing resource, a damaged archive, a
 protocol that inflates past the shared limit, and the pair of filters that
 shows a fractional comparison value accepted and a fractional COUNT refused. A
 repository is the wrong place for a deliberately corrupt archive and an entry

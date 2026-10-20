@@ -4116,7 +4116,7 @@ test('the schema 9 interview runs before the account changes language', async ()
 
 // Each migration phase observes a particular moment. The reading after the
 // swap must come before anything opens an interview, the capture must see the
-// interview as the migration left it, and the resumed interview must be
+// interview as the upgrade left it, and the resumed interview must be
 // finished before integrity counts the dataset and CRUD starts deleting from
 // it.
 test('the migration phases run at the moments they describe', async () => {
@@ -4141,7 +4141,7 @@ test('the migration phases run at the moments they describe', async () => {
       seedItem < seed.indexOf('Snapshot the API'),
     'the migration seed must land after the synthetic interviews and before the baseline snapshot',
   );
-  assert.match(promptFor(prompts, 'migration-lane'), /--phase migrated/);
+  assert.match(promptFor(prompts, 'migration-lane'), /--phase upgraded/);
   assert.match(promptFor(prompts, 'migration-resume-lane'), /--phase resume/);
   assert.match(
     promptFor(prompts, 'migration-seed-result'),
@@ -4192,18 +4192,21 @@ test('the seeded dataset counts the migration interview', async () => {
   );
 });
 
-// Both diffs reconcile an interview's step and stage records against the
-// database readings either side of the swap; a diff run without them would
-// report every resumed interview as changed, or — worse — a judge would learn
-// to wave such changes through.
-test('both export diffs are given the migration readings', async () => {
+// The upgrade leaves schema 8 data as it was, so both diffs hold the exports
+// to being identical: neither is handed the database readings the schema 9
+// migration's reconciliation once needed, and the judge is not told to expect
+// a migrated protocol. A run that still reconciled moved stages or rewritten
+// codebooks would wave through exactly the upgrade this release must not do.
+test('both export diffs hold the exports to being identical', async () => {
   const { prompts } = await run(happyPath());
-  for (const label of ['export-capture', 'diff-audit'])
-    assert.match(
-      promptFor(prompts, label),
-      /diff-exports\.mjs [^\n]*--migration apps\/fresco\/release-test\/artifacts\/migration/,
-      label,
-    );
+  for (const label of ['export-capture', 'diff-audit']) {
+    const prompt = promptFor(prompts, label);
+    assert.match(prompt, /diff-exports\.mjs /, label);
+    assert.doesNotMatch(prompt, /--migration/, label);
+  }
+  const judge = promptFor(prompts, 'diff-judge');
+  assert.match(judge, /does NOT upgrade stored protocols or interviews/);
+  assert.doesNotMatch(judge, /schemaVersion moving to 9/);
   assert.match(
     promptFor(prompts, 'up-released'),
     /rm -rf [^\n]*artifacts\/migration/,
@@ -4540,51 +4543,27 @@ test('every lane a prompt starts is a lane up.sh defines', async () => {
     );
 });
 
-// Once the released image runs schema 9 itself, it migrates the schema 8
-// fixture on import and the release carries no schema 8 data across. The
-// lane says so in every phase instead of failing its seed, and the run is
-// still certifiable — but only on one consistent reading.
-const NOT_APPLICABLE =
-  'the released image stores the schema 8 fixture as schema 9, the schema the pending image runs';
-const migrationNotApplicable = (r) => {
-  for (const label of [
-    'migration-seed-result',
-    'migration-lane',
-    'migration-resume-lane',
-  ])
-    r[label] = { ok: true, checks: [], notApplicable: NOT_APPLICABLE };
-  return r;
-};
-
-test('a migration lane every phase reports not applicable is a warning, not a gap', async () => {
-  const { result } = await run(migrationNotApplicable(happyPath()));
-  assert.equal(result.verdict, 'go', JSON.stringify(result.unaccounted));
-  assert.equal(result.releasable, true);
-  assert.ok(
-    result.warnings.some((w) => w.includes(NOT_APPLICABLE)),
-    JSON.stringify(result.warnings),
-  );
-});
-
-test('a migration lane only one phase reports not applicable cannot be trusted', async () => {
-  const r = migrationNotApplicable(happyPath());
-  r['migration-lane'] = passingScript('migration');
+// The migration lane once stood down when the released image already stored
+// the fixture as schema 9. No release does that — the seed keeps the fixture at
+// schema 8 whatever the released build — so a phase that reports no checks is
+// a lane that stopped checking, whatever reason it gives.
+test('a migration phase that reports no checks is missing every check', async () => {
+  const r = happyPath();
+  r['migration-lane'] = {
+    ok: true,
+    checks: [],
+    notApplicable: 'the released image already runs schema 9',
+  };
   const { result } = await run(r);
-  assert.equal(result.verdict, 'incomplete');
+  assert.notEqual(result.verdict, 'go');
   assert.equal(result.releasable, false);
   assert.ok(
-    result.unaccounted.some((u) => u.includes('not every phase agreed')),
-    JSON.stringify(result.unaccounted),
-  );
-});
-
-test('a not-applicable migration phase that still ran checks cannot be trusted', async () => {
-  const r = migrationNotApplicable(happyPath());
-  r['migration-resume-lane'].checks = passingScript('migrationResume').checks;
-  const { result } = await run(r);
-  assert.equal(result.verdict, 'incomplete');
-  assert.ok(
-    result.unaccounted.some((u) => u.includes('not every phase agreed')),
-    JSON.stringify(result.unaccounted),
+    [...result.failures, ...result.unaccounted].some((entry) =>
+      entry.includes('migration-protocols-kept-at-schema-8'),
+    ),
+    JSON.stringify({
+      failures: result.failures,
+      unaccounted: result.unaccounted,
+    }),
   );
 });

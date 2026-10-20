@@ -123,9 +123,13 @@ try {
       await page.goto(`${config.baseUrl}/dashboard/protocols`, {
         waitUntil: 'networkidle',
       });
+      // A schema 8 protocol, so Fresco asks how to import it. Upgraded: this
+      // lane conducts the current interview, on a protocol the schema 9
+      // upgrade has to have handled.
       await uploadProtocol(
         page,
         join(fixtures, 'fresco-release-test.netcanvas'),
+        { olderSchema: 'upgrade' },
       );
       // The import streams the media through storage, so it is not instant.
       // Waited for by its effect in the database rather than by a toast: the
