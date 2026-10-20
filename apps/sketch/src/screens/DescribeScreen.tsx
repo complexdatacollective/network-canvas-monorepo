@@ -1,10 +1,10 @@
-import { type FormEvent, useEffect, useId, useRef } from 'react';
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 
 import { ctaButton } from '../components/buttonStyles.ts';
-import { HeroArt, PhoneArt } from '../components/HeroArt.tsx';
+import { Faq, WHAT_WE_KEEP } from '../components/Faq.tsx';
+import { HeroArt } from '../components/HeroArt.tsx';
 import {
   ArrowRightIcon,
-  CheckIcon,
   CloseIcon,
   InfoIcon,
   LockIcon,
@@ -84,12 +84,6 @@ const synopsisLine = (length: number) =>
 
 const textareaClass =
   'font-body text-ink-strong block w-full resize-y rounded-[18px] border-2 bg-white px-4 py-3 text-base leading-[1.6] placeholder:text-[oklch(0.55_0.03_281)] sm:px-5 sm:py-3.5 sm:text-[1.0625rem]';
-
-const INCLUDES = [
-  'A codebook of node types, relationships and variables, with input controls chosen to fit each question',
-  'Stages in a sensible order, with titles, prompts, intro screens and skip logic written for participants',
-  'Placeholder roster files and a test map key where your design needs them',
-];
 
 const STEPS = [
   {
@@ -186,52 +180,95 @@ export const DescribeScreen = ({
 
   const labels = current?.models.labels;
 
+  // FAQ items open on the page. A visit to #what-we-keep opens that answer.
+  const [faqOpen, setFaqOpen] = useState<string[]>(() =>
+    typeof window !== 'undefined' && window.location.hash === `#${WHAT_WE_KEEP}`
+      ? [WHAT_WE_KEEP]
+      : [],
+  );
+  const openWhatWeKeep = () =>
+    setFaqOpen((open) =>
+      open.includes(WHAT_WE_KEEP) ? open : [...open, WHAT_WE_KEEP],
+    );
+
   return (
     <>
       <SiteHeader home />
       <main className="mx-auto w-full max-w-[1344px] px-4 pt-1 sm:px-8 sm:pt-8">
-        <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
-          <div className="flex min-w-0 flex-col gap-[22px] sm:gap-7">
-            <div className="-mx-4 sm:hidden">
-              <PhoneArt />
-            </div>
-            <div className="flex flex-col gap-3 sm:gap-5">
-              <span className="bg-night-raised hidden items-center gap-2 self-start rounded-full border border-[oklch(0.42_0.08_281)] px-3.5 py-1.5 text-[0.8125rem] font-semibold text-[oklch(0.9_0.03_281)] sm:inline-flex">
-                <span className="bg-sea-green size-2 rounded-full" />
-                Experimental · builds schema 8 protocols
+        <div className="grid grid-cols-1 gap-x-14 gap-y-7 sm:gap-y-9 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] xl:gap-x-16">
+          <div className="flex min-w-0 flex-col gap-3.5 sm:gap-5 lg:col-start-1 lg:row-start-1">
+            <span className="bg-night-raised inline-flex items-center gap-2 self-start rounded-full border border-[oklch(0.42_0.08_281)] px-3.5 py-1.5 text-[0.8125rem] font-semibold text-[oklch(0.9_0.03_281)]">
+              <span
+                aria-hidden="true"
+                className="bg-sea-green size-2 rounded-full"
+              />
+              Experimental · builds schema 8 protocols
+            </span>
+            <ScreenHeading
+              focusOnMount={focusHeading}
+              className="font-display sm:text-hero text-[2.5rem] leading-[1.04] font-black tracking-[-0.025em]"
+            >
+              From research questions to a{' '}
+              <span className="text-mustard relative inline-block">
+                protocol.
+                <svg
+                  viewBox="0 0 300 24"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                  focusable="false"
+                  className="absolute -bottom-3.5 left-0 hidden h-5 w-full sm:block"
+                >
+                  <path
+                    d="M4 16 C 60 6, 140 4, 200 9 S 280 16, 296 8"
+                    fill="none"
+                    className="stroke-mustard"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </span>
-              <ScreenHeading
-                focusOnMount={focusHeading}
-                className="font-display sm:text-hero text-[2.5rem] leading-[1.04] font-black tracking-[-0.025em]"
-              >
-                From research questions to a{' '}
-                <span className="text-mustard relative inline-block">
-                  protocol.
-                  <svg
-                    viewBox="0 0 300 24"
-                    preserveAspectRatio="none"
-                    aria-hidden="true"
-                    focusable="false"
-                    className="absolute -bottom-3.5 left-0 hidden h-5 w-full sm:block"
-                  >
-                    <path
-                      d="M4 16 C 60 6, 140 4, 200 9 S 280 16, 296 8"
-                      fill="none"
-                      className="stroke-mustard"
-                      strokeWidth="5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </span>
-              </ScreenHeading>
-              <p className="m-0 max-w-[640px] text-[1.0625rem] leading-[1.55] text-[oklch(0.88_0.025_281)] sm:text-[1.1875rem]">
-                Enter your research questions and a synopsis of the study.
-                Sketch derives the alters, ties and measures they call for,
-                designs a complete Network Canvas interview, and opens it in
-                Architect for you to review and refine.
-              </p>
-            </div>
+            </ScreenHeading>
+            <p className="m-0 max-w-[620px] text-[1.0625rem] leading-[1.55] text-[oklch(0.88_0.025_281)] sm:text-[1.1875rem]">
+              Enter your research questions and a synopsis of the study. Sketch
+              derives the alters, ties and measures they call for, designs a
+              complete Network Canvas interview, and opens it in Architect for
+              you to review and refine.
+            </p>
+          </div>
 
+          <figure className="m-0 flex min-w-0 flex-col items-center gap-3 lg:sticky lg:top-8 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start lg:pt-2">
+            <div className="w-full max-w-[460px] lg:max-w-none">
+              <HeroArt />
+            </div>
+            <figcaption className="text-night-muted flex max-w-[400px] flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-[0.8125rem] sm:text-sm">
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="bg-neon-coral size-2.5 rounded-full"
+                />
+                People
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="bg-sea-green size-2.5 rounded-full"
+                />
+                Places
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="bg-mustard size-2.5 rounded-full"
+                />
+                Measures
+              </span>
+              <span className="hidden w-full sm:block">
+                The terms in your questions become the interview.
+              </span>
+            </figcaption>
+          </figure>
+
+          <div className="flex min-w-0 flex-col gap-5 sm:gap-6 lg:col-start-1 lg:row-start-2">
             <form
               aria-label="Your study"
               onSubmit={submit}
@@ -585,36 +622,12 @@ export const DescribeScreen = ({
                 Sketch keeps a log of every study you submit and the protocol it
                 generates, so we can improve it. Please leave out names and
                 anything that could identify a real person.{' '}
-                <a href="#what-we-keep">What we keep</a>
+                <a href={`#${WHAT_WE_KEEP}`} onClick={openWhatWeKeep}>
+                  What we keep
+                </a>
               </p>
             </div>
           </div>
-
-          <aside
-            aria-label="What Sketch builds"
-            className="hidden min-w-0 flex-col gap-6 lg:flex"
-          >
-            <HeroArt />
-            <div className="border-night-line bg-night-panel flex flex-col gap-3.5 rounded-3xl border p-6">
-              <h2 className="font-display m-0 text-[1.1875rem] font-extrabold">
-                Every protocol includes
-              </h2>
-              <ul className="m-0 flex list-none flex-col gap-3 p-0 text-[0.9375rem] text-[oklch(0.88_0.025_281)]">
-                {INCLUDES.map((item) => (
-                  <li key={item} className="flex items-start gap-3">
-                    <CheckIcon className="text-sea-green mt-0.5 flex-none" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-                <li className="flex items-start gap-3">
-                  <InfoIcon className="text-mustard mt-0.5 flex-none" />
-                  <span>
-                    Images, audio and video are left for you to add in Architect
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </aside>
         </div>
 
         <section
@@ -651,23 +664,9 @@ export const DescribeScreen = ({
               </li>
             ))}
           </ol>
-          <div
-            id="what-we-keep"
-            className="border-night-border text-night-text flex max-w-[760px] scroll-mt-6 flex-col gap-2 rounded-3xl border-[1.5px] border-dashed px-[22px] py-5 text-[0.9375rem]"
-          >
-            <h3 className="font-display m-0 text-lg font-extrabold text-white">
-              What we keep
-            </h3>
-            <p className="m-0">
-              For every run, Sketch logs the research questions and synopsis you
-              entered, the protocol it generated, the models it used, how long
-              it took and what it cost. When you compare two designs, it also
-              logs which one you preferred. We read these logs to make Sketch
-              better. Nothing else is stored, and Sketch never sees what happens
-              in Architect.
-            </p>
-          </div>
         </section>
+
+        <Faq open={faqOpen} onOpenChange={setFaqOpen} />
       </main>
       <footer className="border-night-dot border-t">
         <div className="text-night-muted mx-auto flex max-w-[1344px] flex-wrap justify-between gap-3 px-4 py-6 text-sm sm:px-8">

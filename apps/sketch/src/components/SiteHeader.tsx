@@ -22,6 +22,9 @@ const NavLinks = () => (
     <a className={navLink} href="#how">
       How it works
     </a>
+    <a className={navLink} href="#faq">
+      FAQ
+    </a>
     <a className={navLink} href="https://documentation.networkcanvas.com">
       Documentation
     </a>

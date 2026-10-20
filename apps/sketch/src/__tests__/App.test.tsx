@@ -308,12 +308,27 @@ describe('Sketch flow', () => {
       await screen.findByRole('article', { name: 'Claude' }),
     );
     expect(claude.getByText('Friendship and Wellbeing')).toBeTruthy();
+    // ChatGPT is still designing, so there is nothing to prefer over yet.
+    expect(
+      claude.getByRole('button', { name: 'Prefer this one' }),
+    ).toHaveProperty('disabled', true);
     await waitFor(() => expect(posts).toHaveLength(2));
     expect(posts[1]).toMatchObject({
       provider: 'openai',
       seedJobId: 'job-1',
       comparisonId: expect.any(String),
     });
+  });
+
+  it('opens the stored-data answer from the privacy note', async () => {
+    mockApi(succeededJob());
+    render(<App />);
+    const stored = screen.getByRole('button', { name: 'What is stored?' });
+    expect(stored.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('link', { name: 'What we keep' }));
+    await waitFor(() =>
+      expect(stored.getAttribute('aria-expanded')).toBe('true'),
+    );
   });
 
   it('explains a disabled Generate when no provider is set up', async () => {

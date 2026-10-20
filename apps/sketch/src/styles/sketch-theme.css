@@ -67,7 +67,6 @@
 
   --animate-draw: sketch-draw 1.4s linear infinite;
   --animate-bob: sketch-bob 4s ease-in-out infinite;
-  --animate-pencil: sketch-pencil 2.8s ease-in-out infinite alternate;
 
   @keyframes sketch-draw {
     to {
@@ -81,14 +80,6 @@
     }
     50% {
       transform: translateY(-5px);
-    }
-  }
-  @keyframes sketch-pencil {
-    from {
-      transform: translate(0, 0);
-    }
-    to {
-      transform: translate(-10px, -8px);
     }
   }
 }
