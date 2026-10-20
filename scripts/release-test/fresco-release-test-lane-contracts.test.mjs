@@ -32,7 +32,6 @@ const require = createRequire(join(repoRoot, 'package.json'));
 
 const {
   APP_DEFECT_KINDS,
-  UPGRADE_ERROR_NAMES,
   ELEMENT_EVENTS,
   ELEMENT_PROPERTIES,
   ENTITY_ID_PROPERTIES,
@@ -114,7 +113,11 @@ const serverEvent = (event, properties = {}) => ({
   properties: { $lib: 'posthog-node', ...properties },
 });
 
-/** The exception posthog-js sends for a migration that returned garbage. */
+/**
+ * The exception posthog-js would send for a migration that returned garbage —
+ * which none of the damaged imports may send: they are schema 8 and 9, which
+ * Fresco stores as they are.
+ */
 const upgradeException = () =>
   webEvent('$exception', {
     $exception_list: [
@@ -130,8 +133,6 @@ const cleanRun = () => ({
     request('/e/', [
       webEvent('$pageview'),
       webEvent('ProtocolImportFailed', { reason: 'notArchive' }),
-      webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
-      upgradeException(),
       interviewEvent('stage_entered'),
       interviewEvent('node_added', { node_id: 'pseudonym-1' }),
     ]),
@@ -170,7 +171,6 @@ test('an empty capture fails every positive control', () => {
     'analytics-entity-ids-reported',
     'analytics-pseudonymous-distinct-id',
     'analytics-damaged-file-not-an-error',
-    'analytics-upgrade-failure-reported-twice',
   ])
     assert.ok(
       ids.includes(id),
@@ -330,40 +330,20 @@ test('an exception from BEFORE the damaged imports is not held against them', ()
   assert.ok(!failing(run).includes('analytics-damaged-file-not-an-error'));
 });
 
-test('a failed upgrade reported only as an exception fails the run', () => {
+test('a migration error reported during the imports fails the run', () => {
   const run = cleanRun();
-  run.records = run.records.map((record) =>
-    record.path === '/e/'
-      ? request('/e/', [
-          webEvent('$pageview'),
-          webEvent('ProtocolImportFailed', { reason: 'notArchive' }),
-          webEvent('$exception'),
-          interviewEvent('stage_entered'),
-          interviewEvent('node_added', { node_id: 'pseudonym-1' }),
-        ])
-      : record,
-  );
-  const ids = failing(run);
-  assert.ok(ids.includes('analytics-upgrade-failure-reported-twice'));
-  assert.ok(ids.includes('analytics-damaged-file-not-an-error'));
+  run.records.push(request('/e/', [upgradeException()]));
+  assert.ok(failing(run).includes('analytics-damaged-file-not-an-error'));
 });
 
-test('a failed upgrade reported only as a refusal fails the run', () => {
+test('a refusal naming a failed upgrade fails the run, with no exception', () => {
   const run = cleanRun();
-  run.records = run.records.map((record) =>
-    record.path === '/e/'
-      ? request('/e/', [
-          webEvent('$pageview'),
-          webEvent('ProtocolImportFailed', { reason: 'notArchive' }),
-          webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
-          interviewEvent('stage_entered'),
-          interviewEvent('node_added', { node_id: 'pseudonym-1' }),
-        ])
-      : record,
+  run.records.push(
+    request('/e/', [
+      webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
+    ]),
   );
-  const ids = failing(run);
-  assert.ok(ids.includes('analytics-upgrade-failure-reported-twice'));
-  assert.ok(!ids.includes('analytics-damaged-file-not-an-error'));
+  assert.ok(failing(run).includes('analytics-damaged-file-not-an-error'));
 });
 
 test('a failed upgrade does not stand in for a damaged file', () => {
@@ -373,36 +353,12 @@ test('a failed upgrade does not stand in for a damaged file', () => {
       ? request('/e/', [
           webEvent('$pageview'),
           webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
-          upgradeException(),
           interviewEvent('stage_entered'),
           interviewEvent('node_added', { node_id: 'pseudonym-1' }),
         ])
       : record,
   );
-  const ids = failing(run);
-  assert.ok(ids.includes('analytics-damaged-file-not-an-error'));
-  assert.ok(!ids.includes('analytics-upgrade-failure-reported-twice'));
-});
-
-test('an exception for a damaged file cannot stand in for a failed upgrade’s', () => {
-  const run = cleanRun();
-  run.records = run.records.map((record) =>
-    record.path === '/e/'
-      ? request('/e/', [
-          webEvent('$pageview'),
-          webEvent('ProtocolImportFailed', { reason: 'notArchive' }),
-          webEvent('ProtocolImportFailed', { reason: 'upgradeStepFailed' }),
-          webEvent('$exception', {
-            $exception_list: [{ type: 'MalformedNetcanvasError' }],
-          }),
-          interviewEvent('stage_entered'),
-          interviewEvent('node_added', { node_id: 'pseudonym-1' }),
-        ])
-      : record,
-  );
-  const ids = failing(run);
-  assert.ok(ids.includes('analytics-upgrade-failure-reported-twice'));
-  assert.ok(ids.includes('analytics-damaged-file-not-an-error'));
+  assert.ok(failing(run).includes('analytics-damaged-file-not-an-error'));
 });
 
 test('a free-form import-failure reason fails the run', () => {
@@ -531,37 +487,6 @@ test('the import-failure vocabulary is the package’s own', () => {
     kinds.toSorted((a, b) => a.localeCompare(b)),
     [...PROTOCOL_FILE_ERROR_KINDS].toSorted((a, b) => a.localeCompare(b)),
   );
-});
-
-test('the failed-upgrade error names are the package’s own', () => {
-  const errors = readFileSync(
-    join(repoRoot, 'packages/protocol-validation/src/migration/errors.ts'),
-    'utf8',
-  );
-  const kinds = readFileSync(
-    join(
-      repoRoot,
-      'packages/protocol-validation/src/utils/protocolFileErrorKind.ts',
-    ),
-    'utf8',
-  );
-  for (const name of UPGRADE_ERROR_NAMES)
-    assert.ok(
-      errors.includes(`this.name = '${name}';`),
-      `${name} is not an error name protocol-validation assigns`,
-    );
-  // The classes classified as a failed upgrade, read from the classifier.
-  const classified = [
-    ...kinds.matchAll(
-      /instanceof (\w+)\)\s*(?:\n\s*)?return 'upgrade(?:StepFailed|Failed)'/g,
-    ),
-  ].map((match) => match[1]);
-  assert.ok(classified.length > 0, 'failed to read the classifier');
-  for (const name of classified)
-    assert.ok(
-      UPGRADE_ERROR_NAMES.includes(name),
-      `${name} is classified as a failed upgrade but not matched in exceptions`,
-    );
 });
 
 test('the failed-upgrade kinds are the package’s own', () => {

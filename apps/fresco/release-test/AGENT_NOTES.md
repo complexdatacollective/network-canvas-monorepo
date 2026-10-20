@@ -52,20 +52,14 @@ Garage and inject it:
 
 3. Verify via the network log (presigned OPTIONS 200 + PUT 200 to Garage) or
    the protocols table — the dropzone UI may not visibly react.
-4. A protocol made for an older schema (Sample Protocol v4 is schema 7; the
-   release-test fixtures under `packages/protocols/e2e/` are mostly schema 8)
-   opens a dialog, "How do you want to import this protocol?", once the file
-   has been read, and nothing is imported until it is answered. Its buttons
-   are "Upgrade to schema 9", "Keep schema 8" and "Cancel"; choose the one the
-   checklist names. Like every dialog here it may render as a ghost, so click
-   it from the DOM:
-   `[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Keep schema 8').click()`.
-   (This step has not been run in the pane yet; the dialog and its button
-   names are what `components/ProtocolImport/askHowToImport.tsx` renders.)
-   Fresco before the schema 9 release never asks: it imports the protocol at
-   schema 8 as it is. A protocol kept at schema 8 carries a "Schema 8" badge
-   in the protocols table, and its interviews run at `/v8/interview/<id>`;
-   `/interview/<id>` redirects there.
+4. Fresco asks nothing on import, whatever schema the protocol was made for,
+   and never makes one schema 9: a schema 9 protocol is stored as it is, a
+   schema 8 one at schema 8, and a schema 7 one (Sample Protocol v4) is
+   upgraded to schema 8 as it is imported, as Fresco 4 did; anything older is
+   refused. In the pending build a schema 8 protocol carries a "Schema 8"
+   badge in the protocols table, and its interviews run at
+   `/v8/interview/<id>`; `/interview/<id>` redirects there. The stored schema is `"schemaVersion"` on the `Protocol`
+   row.
 
 ## Capturing a download (exports) — never let one reach the pane
 
@@ -154,14 +148,6 @@ rather than loudly.
   and then read them all back together: a field verified on its own can be
   emptied by a Suspense boundary streaming in behind it, which surfaces as
   "Username cannot be empty" on a form you watched being filled.
-- **Importing an older protocol waits on a question.** Fresco asks how to
-  import a protocol made for an older schema (keep it at schema 8, or upgrade
-  it) before it validates or stores anything, so a lane that uploads one and
-  waits for the database waits for ever. `uploadProtocol` answers it when
-  given `olderSchema` ('keep' or 'upgrade'), and fails when the question never
-  comes; `importProtocol` takes `schemaChoice` to answer it only if it is
-  asked, for a released build that may predate it. `completeSetup` upgrades
-  the schema 7 sample protocol.
 - **The setup wizard's last button is what marks the installation
   configured.** A lane that stops before it leaves an instance that redirects
   every later request back to `/setup`, and whatever it was testing is never
