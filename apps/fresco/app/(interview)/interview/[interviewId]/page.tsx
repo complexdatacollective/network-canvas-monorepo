@@ -3,21 +3,13 @@ import { after, connection } from 'next/server';
 import { Suspense } from 'react';
 import SuperJSON from 'superjson';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';
-import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
-import type { ActivityLocalization } from '~/i18n/activityDetails';
 import { getRequestedLocales, getServerIntl } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
-import { safeRevalidateTag } from '~/lib/cache';
-import { prisma } from '~/lib/db';
 import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
-import {
-  captureEvent,
-  captureException,
-  flushPostHog,
-} from '~/lib/posthog-server';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { interviewPath, isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { getAppSetting, getDisableAnalytics } from '~/queries/appSettings';
 import {
   getInterviewById,
@@ -25,31 +17,10 @@ import {
 } from '~/queries/interviews';
 
 import { ErrorMessage } from '../_components/ErrorMessage';
+import { recordInterviewOpened } from '../_components/recordInterviewOpened';
+import { unopenableInterviewMessages } from '../_components/unopenableInterviewMessages';
 import InterviewClient from './InterviewClient';
 import { mapInterviewForViewer } from './mapInterviewPayload';
-
-const messages = defineMessages({
-  unreadableTitle: {
-    id: 'fresco.interview.page.unreadableTitle',
-    defaultMessage: 'This interview could not be opened',
-    description:
-      'Participant-facing heading shown instead of an interview whose stored protocol or answers could not be read.',
-  },
-  protocolUnreadable: {
-    id: 'fresco.interview.page.protocolUnreadable',
-    defaultMessage:
-      'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
-    description:
-      'Participant-facing explanation shown when the protocol an interview uses could not be read, so the interview was not started.',
-  },
-  sessionUnreadable: {
-    id: 'fresco.interview.page.sessionUnreadable',
-    defaultMessage:
-      'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
-    description:
-      'Participant-facing explanation shown when the answers saved for an interview could not be read, so the interview was not started.',
-  },
-});
 
 export default function Page(props: {
   params: Promise<{ interviewId: string }>;
@@ -89,6 +60,13 @@ async function InterviewContent({
 
   const interview =
     SuperJSON.parse<NonNullable<GetInterviewByIdQuery>>(rawInterview);
+
+  // A schema 8 protocol is kept as it was imported and runs in the bundled
+  // schema 8 interview. Links handed out before an upgrade, and the
+  // dashboard's, still name this route, so they are sent on.
+  if (isLegacySchemaVersion(interview.protocol.schemaVersion)) {
+    redirect(interviewPath(interview.id, interview.protocol.schemaVersion));
+  }
   // A session still held at the mandatory two-factor gate is not a
   // researcher yet, and gets the participant treatment below.
   const session = await getAdmittedSession();
@@ -141,11 +119,11 @@ async function InterviewContent({
     const intl = await getServerIntl();
     return (
       <ErrorMessage
-        title={intl.formatMessage(messages.unreadableTitle)}
+        title={intl.formatMessage(unopenableInterviewMessages.unreadableTitle)}
         message={intl.formatMessage(
           mapped.unreadable === 'protocol'
-            ? messages.protocolUnreadable
-            : messages.sessionUnreadable,
+            ? unopenableInterviewMessages.protocolUnreadable
+            : unopenableInterviewMessages.sessionUnreadable,
         )}
       />
     );
@@ -153,52 +131,9 @@ async function InterviewContent({
 
   // Recorded only once the interview can actually be opened: a refusal above
   // must not leave an activity entry claiming it was.
-  after(async () => {
-    try {
-      const message = session
-        ? `Interview "${interviewId}" was opened by user "${session.user.username}"`
-        : `Interview "${interviewId}" was opened`;
-
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-
-      const recentEvent = await prisma.events.findFirst({
-        where: {
-          type: 'Interview Opened',
-          message,
-          timestamp: { gte: thirtyMinutesAgo },
-        },
-      });
-
-      if (recentEvent) return;
-
-      await prisma.events.create({
-        data: {
-          type: 'Interview Opened' satisfies ActivityType,
-          message,
-          localization: {
-            kind: 'interviewOpened',
-            values: {
-              actor: session ? 'researcher' : 'participant',
-              interview: interviewId,
-              username: session?.user.username ?? '',
-            },
-          } satisfies ActivityLocalization,
-        },
-      });
-
-      safeRevalidateTag('activityFeed');
-
-      // The analytics copy of this event carries only who opened it. The feed
-      // message above names the interview, and an interview id is the
-      // participant's access link, so it must not leave the deployment.
-      await captureEvent('Interview Opened', {
-        actor: session ? 'researcher' : 'participant',
-      });
-      await flushPostHog();
-    } catch {
-      // Non-critical — don't block the interview
-    }
-  });
+  after(() =>
+    recordInterviewOpened(interviewId, session?.user.username ?? null),
+  );
 
   const { payload, assetUrls, initialStep, initialSyncRevision, view } = mapped;
 

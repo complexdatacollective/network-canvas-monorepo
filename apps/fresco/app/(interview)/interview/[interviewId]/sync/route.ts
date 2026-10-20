@@ -1,3 +1,7 @@
+import {
+  NcNetworkSchema as LegacyNcNetworkSchema,
+  StageMetadataSchema as LegacyStageMetadataSchema,
+} from 'fresco-schema-8/shared-consts';
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -9,6 +13,8 @@ import {
 import { prisma } from '~/lib/db';
 import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { parseLegacyStoredInterviewSession } from '~/lib/schema-8/storedInterviewSession';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
 
 /**
@@ -88,21 +94,50 @@ const routeHandler = async (
       { status: 409 },
     );
 
-  if (
-    typeof rawPayload !== 'object' ||
-    rawPayload === null ||
-    !('protocolHash' in rawPayload) ||
-    typeof rawPayload.protocolHash !== 'string'
+  const stored = await prisma.interview.findUnique({
+    where: { id: interviewId },
+    select: {
+      finishTime: true,
+      syncRevision: true,
+      network: true,
+      stageMetadata: true,
+      protocol: { select: { schemaVersion: true, hash: true } },
+    },
+  });
+
+  if (!stored) {
+    return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
+  }
+
+  // A schema 8 interview runs in the bundled schema 8 interview, which writes
+  // the network and stage metadata in schema 8's shapes, and so does a tab
+  // Fresco 4 left open across the upgrade. Neither names a protocol hash, and
+  // neither needs to: a schema 8 protocol is kept exactly as it was imported,
+  // so there is no upgrade for a tab to have missed.
+  const legacy = isLegacySchemaVersion(stored.protocol.schemaVersion);
+
+  let protocolHash: string;
+  if (legacy) {
+    protocolHash = stored.protocol.hash;
+  } else if (
+    typeof rawPayload === 'object' &&
+    rawPayload !== null &&
+    'protocolHash' in rawPayload &&
+    typeof rawPayload.protocolHash === 'string'
   ) {
+    protocolHash = rawPayload.protocolHash;
+  } else {
     return staleTab();
   }
-  const { protocolHash } = rawPayload;
 
   const Schema = z.object({
     id: z.string(),
-    network: NcNetworkSchema,
+    network: legacy ? LegacyNcNetworkSchema : NcNetworkSchema,
     currentStep: z.number(),
-    stageMetadata: StageMetadataSchema.optional(),
+    stageMetadata: (legacy
+      ? LegacyStageMetadataSchema
+      : StageMetadataSchema
+    ).optional(),
     lastUpdated: z.string(),
     /**
      * Position of this write in the browser's own sequence of syncs — see
@@ -140,21 +175,6 @@ const routeHandler = async (
 
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
 
-  const stored = await prisma.interview.findUnique({
-    where: { id: interviewId },
-    select: {
-      finishTime: true,
-      syncRevision: true,
-      network: true,
-      stageMetadata: true,
-      protocol: { select: { hash: true } },
-    },
-  });
-
-  if (!stored) {
-    return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
-  }
-
   if (stored.protocol.hash !== protocolHash) {
     return staleTab();
   }
@@ -170,7 +190,9 @@ const routeHandler = async (
   // and writing it would destroy them. Leave the row as it is, for an operator
   // to repair. Between this read and the update below only another sync writes
   // the network or stage metadata, and every sync is validated first.
-  const readable = parseStoredInterviewSession(stored);
+  const readable = legacy
+    ? parseLegacyStoredInterviewSession(stored)
+    : parseStoredInterviewSession(stored);
   if (!readable.success) {
     after(async () => {
       await captureException(readable.error, {

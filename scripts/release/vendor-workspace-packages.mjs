@@ -563,7 +563,7 @@ export function previouslyVendoredPackages(stageDir) {
   const lines = readFileSync(workspaceYamlPath, 'utf8').split('\n');
   const names = [];
   const kept = lines.filter((line) => {
-    const match = /^\s+'([^']+)':\s*'file:vendor\//.exec(line);
+    const match = /^\s+'(@?[^@']+)(?:@[^']*)?':\s*'file:vendor\//.exec(line);
     if (!match) return true;
     names.push(match[1]);
     return false;
@@ -596,6 +596,39 @@ export function withDependents(names, closure, wsPackages) {
     }
   }
   return closure.filter((name) => selected.has(name));
+}
+
+function parseVersion(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
+  if (!match) throw new Error(`not a semver version: ${version}`);
+  return { major: Number(match[1]), minor: Number(match[2]) };
+}
+
+// The lowest version of the release line `version` belongs to: the floor of
+// its caret range, so `11.2.0` → `11.0.0` and `0.3.1` → `0.3.0`.
+function releaseLineFloor(version) {
+  const { major, minor } = parseVersion(version);
+  return major > 0 ? `${major}.0.0` : `0.${minor}.0`;
+}
+
+// Whether a registry `version` of a vendored package is on the vendored
+// version's release line or a later one — what the override replaces.
+export function onVendoredLine(version, vendoredVersion) {
+  const v = parseVersion(version);
+  const floor = parseVersion(releaseLineFloor(vendoredVersion));
+  return v.major !== floor.major
+    ? v.major > floor.major
+    : v.minor >= floor.minor;
+}
+
+// The override key for a vendored package. pnpm overrides a range keyed by a
+// selector wherever the dependency's own range intersects it, so the key
+// reaches every range on the vendored version's release line and later ones,
+// and nothing older. Older lines are deliberate: Fresco bundles the schema 8
+// interview (`apps/fresco/schema-8`), which pins the schema 8 releases of
+// these packages, and a bare-name key would swap the pending code into it.
+export function overrideSelector(name, vendoredVersion) {
+  return `${name}@>=${releaseLineFloor(vendoredVersion)}-0`;
 }
 
 // pnpm pack names scoped tarballs codaco-<name>-<version>.tgz.
@@ -664,10 +697,16 @@ export function patchDockerfileForVendor(dockerfile, tarballs) {
       'runner-stage protocol-validation install',
     );
   }
-  if (tarballs['@codaco/interview']) {
+  // Fresco 4's runner stage also unpacked `@codaco/interview` for its startup
+  // migration. Fresco 5 dropped that step, so the line is patched only where a
+  // hotfix branch cut from a Fresco 4 tag still carries it: without it the
+  // runner installs no interview at all, and there is nothing to vendor.
+  const interviewPack =
+    '    npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \\';
+  if (tarballs['@codaco/interview'] && dockerfile.includes(interviewPack)) {
     dockerfile = patchOnce(
       dockerfile,
-      '    npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \\',
+      interviewPack,
       `    cp /tmp/vendor/${tarballs['@codaco/interview']} /tmp/codaco-interview-vendored.tgz; \\`,
       'runner-stage interview pack',
     );
@@ -715,7 +754,10 @@ export function vendorPackages({ stageDir, names, closure, wsPackages, note }) {
     );
   }
   const overrideLines = names
-    .map((name) => `  '${name}': 'file:vendor/${tarballs[name]}'`)
+    .map(
+      (name) =>
+        `  '${overrideSelector(name, wsPackages[name].version)}': 'file:vendor/${tarballs[name]}'`,
+    )
     .join('\n');
   writeFileSync(
     workspaceYamlPath,
@@ -756,7 +798,18 @@ export function assertVendoredLockfile(stageDir, manifest) {
         `${name}: no file:vendor/${tarball} resolution in lockfile`,
       );
     }
-    if (new RegExp(`${name}@\\d`).test(lockfile)) {
+    const vendoredVersion = /-(\d+\.\d+\.\d+[^/]*)\.tgz$/.exec(tarball)?.[1];
+    const registryVersions = [
+      ...lockfile.matchAll(new RegExp(`${name}@(\\d+\\.\\d+\\.\\d+)`, 'g')),
+    ].map((match) => match[1]);
+    // An older release line is the bundled schema 8 interview's, which the
+    // override leaves alone on purpose (`overrideSelector`).
+    if (
+      registryVersions.some(
+        (version) =>
+          !vendoredVersion || onVendoredLine(version, vendoredVersion),
+      )
+    ) {
       problems.push(`${name}: vendored but also resolved from the registry`);
     }
   }

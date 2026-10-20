@@ -1,0 +1,7 @@
+/*
+ * Tailwind class-scanner glue for the schema 8 interview. Each package's own
+ * styles.css points Tailwind at its compiled files, relative to where that
+ * package is installed, which is inside this package's dependencies.
+ */
+@import '@codaco/fresco-ui/styles.css';
+@import '@codaco/interview/styles.css';

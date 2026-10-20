@@ -677,23 +677,23 @@ lib/
 - **Next.js** (App Router, Turbopack) with `cacheComponents` and `typedRoutes`
 - **React** with the React Compiler enabled
 - **PostgreSQL** via **Prisma**, schema at `lib/db/schema.prisma`
-- **Deploy-time data migration is all or nothing.** `migrate-and-start.sh`
-  runs `scripts/setup-database.ts`, which applies the Prisma migrations and
-  then, in one transaction, brings every stored protocol up to the schema
-  version the embedded interview runtime executes, together with every
-  interview recorded against it (`scripts/migrate-protocols.ts`, using
-  `migrateProtocolWithSessions`). If any interview cannot be migrated, every
-  protocol is still tried, then `InterviewMigrationFailedError` rolls the
-  whole transaction back and startup stops with a report naming each failed
-  interview (id, protocol, reason). Nothing is left half-migrated, so
-  restoring the previous image works. A protocol that cannot be migrated at
-  all is different: it is logged and left in place with its interviews, and
-  the interview route refuses it. Unless analytics are disabled, each one is
-  also reported once the transaction is over, as a `ProtocolUpgradeFailed`
-  event (its error kind and schema versions only) and as an exception
-  (`scripts/report-upgrade-failures.ts`), so migration bugs can be found. The
-  exception is a message-free copy (`toReportableProtocolError`): a migration
-  error's message can quote the protocol.
+- **Stored protocols and interviews are never upgraded.** Each protocol keeps
+  the schema version it was imported at, and so does every interview recorded
+  against it. A schema 9 interview runs at `/interview/<id>`; a schema 8 one
+  runs at `/v8/interview/<id>` in the schema 8 interview Fresco bundles
+  (`schema-8/`, the private `fresco-schema-8` package, installed with
+  `file:./schema-8`). That package pins the npm releases of
+  `@codaco/interview` 10 and the libraries released with it, so it runs the
+  code Fresco 4 ran; `lib/schema-8/version.ts` decides which route an
+  interview takes. Nothing under `/v8` but the interview and its thank-you
+  page: listing, export, the API and every dashboard page stay in the current
+  app and read schema 8 rows with the pinned schemas. A researcher upgrades a
+  protocol only when importing it, by choosing to in the import dialog.
+  `migrate-and-start.sh` runs `scripts/setup-database.ts`, which applies the
+  Prisma migrations and a categorical-answer clean-up, in one transaction. The
+  pinned packages and the vendoring overrides of the release test and hotfix
+  lanes are scoped so pending code never replaces them (`overrideSelector` in
+  `scripts/release/vendor-workspace-packages.mjs`).
 - **Auth** is first-party: sessions in `lib/auth/session.ts`, plus WebAuthn
   passkeys and TOTP. There is no third-party auth library.
 - **Tailwind** with `@codaco/tailwind-config`, components from

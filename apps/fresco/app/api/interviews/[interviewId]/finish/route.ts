@@ -13,6 +13,8 @@ import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
 import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 import { setLimitInterviewsCookie } from '~/lib/limitInterviewsCookie';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { parseLegacyStoredInterviewSession } from '~/lib/schema-8/storedInterviewSession';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
 
 /**
@@ -85,6 +87,7 @@ export async function POST(
         protocolId: true,
         protocol: {
           select: {
+            schemaVersion: true,
             stages: true,
             codebook: true,
             localization: true,
@@ -102,42 +105,58 @@ export async function POST(
       );
     }
 
-    // A protocol whose stored design does not parse cannot say which finish
-    // stages it has, so the finish is refused rather than recorded unchecked.
-    const storedProtocol = parseStoredProtocol(interview.protocol);
-    if (!storedProtocol.success) {
-      throw new Error(
-        'The protocol of an interview being finished could not be read',
-        { cause: storedProtocol.error },
-      );
-    }
+    // A schema 8 interview runs in the bundled schema 8 interview, which has
+    // no finish stages: it finishes with a bodyless request, as in Fresco 4,
+    // and records no finish stage or outcome.
+    const legacy = isLegacySchemaVersion(interview.protocol.schemaVersion);
+    let finish: z.infer<typeof FinishRequestSchema> | null = null;
 
-    // The outcome reaches every export, and this endpoint is unauthenticated,
-    // so a finish is accepted only as the protocol declares it: the stage must
-    // be one of the protocol's finish stages, and the outcome the one that
-    // stage declares.
-    const finishStages =
-      storedProtocol.data.stages.filter(isFinishSessionStage);
-    const finishStage = requested
-      ? finishStages.find((stage) => stage.id === requested.stageId)
-      : finishStages.length === 1
-        ? finishStages[0]
-        : undefined;
+    if (legacy) {
+      if (requested) {
+        return invalidRequest(
+          new Error('Finish names a stage on a schema 8 interview'),
+        );
+      }
+    } else {
+      // A protocol whose stored design does not parse cannot say which finish
+      // stages it has, so the finish is refused rather than recorded unchecked.
+      const storedProtocol = parseStoredProtocol(interview.protocol);
+      if (!storedProtocol.success) {
+        throw new Error(
+          'The protocol of an interview being finished could not be read',
+          { cause: storedProtocol.error },
+        );
+      }
 
-    if (!finishStage) {
-      return invalidRequest(
-        new Error(
-          requested
-            ? 'Finish names a stage that is not a finish stage'
-            : 'Bodyless finish against a protocol without exactly one finish stage',
-        ),
-      );
-    }
+      // The outcome reaches every export, and this endpoint is unauthenticated,
+      // so a finish is accepted only as the protocol declares it: the stage must
+      // be one of the protocol's finish stages, and the outcome the one that
+      // stage declares.
+      const finishStages =
+        storedProtocol.data.stages.filter(isFinishSessionStage);
+      const finishStage = requested
+        ? finishStages.find((stage) => stage.id === requested.stageId)
+        : finishStages.length === 1
+          ? finishStages[0]
+          : undefined;
 
-    if (requested && finishStage.outcome !== requested.outcome) {
-      return invalidRequest(
-        new Error('Finish outcome differs from the one its stage declares'),
-      );
+      if (!finishStage) {
+        return invalidRequest(
+          new Error(
+            requested
+              ? 'Finish names a stage that is not a finish stage'
+              : 'Bodyless finish against a protocol without exactly one finish stage',
+          ),
+        );
+      }
+
+      if (requested && finishStage.outcome !== requested.outcome) {
+        return invalidRequest(
+          new Error('Finish outcome differs from the one its stage declares'),
+        );
+      }
+
+      finish = { stageId: finishStage.id, outcome: finishStage.outcome };
     }
 
     const freezeEnabled = await getAppSetting(
@@ -167,8 +186,8 @@ export async function POST(
       },
       data: {
         finishTime: new Date(),
-        finishStageId: finishStage.id,
-        finishOutcome: finishStage.outcome,
+        finishStageId: finish?.stageId ?? null,
+        finishOutcome: finish?.outcome ?? null,
       },
     });
 
@@ -198,7 +217,9 @@ export async function POST(
 
     // Only the sizes are recorded, so stored data that does not parse costs the
     // activity its counts and nothing else: finishing writes no network.
-    const stored = parseStoredInterviewSession(updatedInterview);
+    const stored = legacy
+      ? parseLegacyStoredInterviewSession(updatedInterview)
+      : parseStoredInterviewSession(updatedInterview);
 
     void addEvent(
       'Interview Completed',

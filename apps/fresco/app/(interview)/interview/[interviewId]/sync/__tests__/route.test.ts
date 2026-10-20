@@ -276,6 +276,28 @@ describe('interview sync route', () => {
     expect(readRow()?.syncRevision).toBe(4);
   });
 
+  it("takes a schema 8 interview's write without a protocol hash, which its interview never sends", async () => {
+    findUniqueMock.mockResolvedValue({
+      network: networkNamed('stored'),
+      stageMetadata: null,
+      finishTime: null,
+      syncRevision: 0,
+      protocol: { hash: PROTOCOL_HASH, schemaVersion: 8 },
+    });
+
+    const response = await post(
+      makeRequest(networkNamed('schema 8'), { protocolHash: undefined }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ protocol: { hash: PROTOCOL_HASH } }),
+        data: expect.objectContaining({ network: networkNamed('schema 8') }),
+      }),
+    );
+  });
+
   it('keeps the generic HTTP 400 response for malformed JSON', async () => {
     const request = new NextRequest(
       'http://localhost/interview/interview-1/sync',
