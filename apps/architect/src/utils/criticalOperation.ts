@@ -52,3 +52,21 @@ export const subscribeCriticalOperation = (listener: () => void) => {
     listeners.delete(listener);
   };
 };
+
+/**
+ * Resolves once no critical operation is in flight — immediately when none
+ * is. For a full-page navigation away from Architect, which would otherwise
+ * abandon a commit half-written to IndexedDB, or an import or export midway.
+ */
+export const whenCriticalOperationsSettle = (): Promise<void> =>
+  new Promise((resolve) => {
+    if (!isCriticalOperationInProgress()) {
+      resolve();
+      return;
+    }
+    const unsubscribe = subscribeCriticalOperation(() => {
+      if (isCriticalOperationInProgress()) return;
+      unsubscribe();
+      resolve();
+    });
+  });

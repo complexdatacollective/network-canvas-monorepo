@@ -92,7 +92,7 @@ export default function useAppUpdate({
     if (!needRefresh) return undefined;
     let active = true;
     setReleaseNotes((prev) => (prev && prev !== 'loading' ? prev : 'loading'));
-    void fetchLatestReleaseNotes(app).then((notes) => {
+    void fetchLatestReleaseNotes(app, currentVersion).then((notes) => {
       if (!active) return undefined;
       if (!notes) {
         // Fetch failed (offline / rate-limited / release not yet published):
@@ -109,7 +109,7 @@ export default function useAppUpdate({
     return () => {
       active = false;
     };
-  }, [needRefresh, app]);
+  }, [needRefresh, app, currentVersion]);
 
   // On a "just updated" load, prefer the cached notes for the running version
   // (written when it was "available"); otherwise fetch them by tag. Both

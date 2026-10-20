@@ -1,4 +1,5 @@
 import { getArchitectIntl } from '~/i18n/imperative';
+import { currentAppPath, toBrowserPath } from '~/utils/appBase';
 import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { getStoredProtocol as readStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
@@ -58,8 +59,8 @@ export type RestoreActiveProtocolResult =
   | 'stale';
 
 const replaceProtocolRoute = (): void => {
-  if (window.location.pathname.startsWith('/protocol')) {
-    history.replaceState(null, '', '/');
+  if (currentAppPath().startsWith('/protocol')) {
+    history.replaceState(null, '', toBrowserPath('/'));
   }
 };
 

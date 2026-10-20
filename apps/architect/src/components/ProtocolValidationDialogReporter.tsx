@@ -11,6 +11,7 @@ import {
   collapseProtocolHistory,
   guardState,
 } from '~/hooks/useProtocolNavGuard';
+import { toBrowserPath } from '~/utils/appBase';
 import {
   type ProtocolValidationDialogEvent,
   subscribeProtocolValidationDialogEvents,
@@ -106,8 +107,9 @@ const ProtocolValidationDialogReporter = () => {
     // the standard leave-editor prompt and remove the protocol session from
     // browser history. Back must not reopen the invalid editor state.
     guardState.bypass = true;
-    const collapsed = collapseProtocolHistory('/', () => {
-      history.replaceState(null, '', '/');
+    const home = toBrowserPath('/');
+    const collapsed = collapseProtocolHistory(home, () => {
+      history.replaceState(null, '', home);
     });
     void Promise.resolve(collapsed).finally(() => {
       guardState.bypass = false;

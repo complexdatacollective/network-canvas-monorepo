@@ -31,6 +31,15 @@ vi.mock('@codaco/fresco-ui/appUpdate/useAppUpdate', () => ({
   default: mockUseAppUpdate,
 }));
 
+const appBase = vi.hoisted(() => ({ isSubpath: false }));
+
+vi.mock('~/utils/appBase', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/appBase')>()),
+  get IS_SUBPATH_BUILD() {
+    return appBase.isSubpath;
+  },
+}));
+
 import { AppUpdateProvider, useAppUpdateContext } from '../AppUpdateProvider';
 
 function ContextProbe() {
@@ -41,6 +50,24 @@ function ContextProbe() {
 describe('AppUpdateProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    appBase.isSubpath = false;
+  });
+
+  // The update and release-notes keys are shared with Architect 9 on the same
+  // origin, and a /v8/ build only changes with an Architect 9 deploy.
+  it('keeps a sub-path build registered but out of the update UX', () => {
+    appBase.isSubpath = true;
+    mockUseRegisterSW.mockReturnValueOnce({ needRefresh: [true] });
+
+    render(
+      <AppUpdateProvider>
+        <ContextProbe />
+      </AppUpdateProvider>,
+    );
+
+    expect(mockUseRegisterSW).toHaveBeenCalledTimes(1);
+    expect(mockUseAppUpdate).not.toHaveBeenCalled();
+    expect(screen.getByText('idle')).toBeInTheDocument();
   });
 
   it('keeps reload ownership out of vite-plugin-pwa', () => {

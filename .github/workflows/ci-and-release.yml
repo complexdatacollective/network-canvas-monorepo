@@ -947,6 +947,20 @@ jobs:
           pnpm --filter=@codaco/architect build
           pnpm --filter=@codaco/interviewer build
           pnpm --filter=@codaco/studio-web build
+      # Architect 8 ships inside Architect 9's deploy as a /v8/ sub-path build,
+      # made from a released tag only after that release is already in
+      # production. Build it here too, so a change that breaks the sub-path
+      # build (or its worker, manifest and asset assertions in
+      # apps/architect/scripts/assert-pwa-build.mjs) fails before merge rather
+      # than after the tag exists. No PostHog credentials: the release-time
+      # sub-path build uploads no source maps either. It replaces the root
+      # build's dist, which nothing after this step reads.
+      - name: Build Architect under its /v8/ sub-path
+        id: architect_subpath_build
+        continue-on-error: true
+        env:
+          ARCHITECT_BASE_PATH: /v8/
+        run: pnpm --filter=@codaco/architect build
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
       # Builder has no Chromatic project by design, and the build step above
@@ -978,6 +992,7 @@ jobs:
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          ARCHITECT_SUBPATH_BUILD_OUTCOME: ${{ steps.architect_subpath_build.outcome }}
           PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
@@ -993,6 +1008,7 @@ jobs:
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
+            "architect-subpath-build=$ARCHITECT_SUBPATH_BUILD_OUTCOME" \
             "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
@@ -2887,6 +2903,19 @@ jobs:
         # as calling `playwright test --shard=1/2` directly), so `--shard`
         # reaches Playwright without needing the `exec playwright` form.
         run: pnpm --filter @codaco/architect run test:e2e:native --shard=${{ matrix.shard }}
+      # Architect 8 as Architect 9 bundles it, served at /v8/: the sub-path
+      # suite (e2e/subpath-specs/) needs its own build, which replaces dist/,
+      # so it runs after the root specs and on one shard only. `!cancelled()`
+      # rather than the default success(), so a root failure does not hide a
+      # sub-path one.
+      - name: Build the /v8/ sub-path app under test
+        if: ${{ !cancelled() && matrix.shard == '2/2' }}
+        env:
+          ARCHITECT_BASE_PATH: /v8/
+        run: pnpm exec turbo run build --filter=@codaco/architect
+      - name: Run the /v8/ sub-path E2E tests
+        if: ${{ !cancelled() && matrix.shard == '2/2' }}
+        run: pnpm --filter @codaco/architect run test:e2e:subpath:native
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -2896,6 +2925,16 @@ jobs:
           # shards' uploads would collide and only one report would survive.
           name: playwright-report-architect-native-${{ strategy.job-index }}
           path: apps/architect/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload the /v8/ sub-path report
+        # Named outside the `*playwright-report*` pattern the PR report job
+        # merges, whose per-job layout has no place for a second suite.
+        if: ${{ always() && matrix.shard == '2/2' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: architect-subpath-e2e-report
+          path: apps/architect/e2e/playwright-report-subpath/
           if-no-files-found: warn
           retention-days: 14
 
@@ -3728,6 +3767,14 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
+    # Read by apps-release-architect-subpath-dist below: whether this run
+    # actually released (the guard skips a version already tagged or
+    # overtaken), the tag it created, and the commit it built and deployed,
+    # which that tag must name.
+    outputs:
+      released: ${{ steps.guard.outputs.skip != 'true' }}
+      tag: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
+      sha: ${{ github.sha }}
     # No job-level secrets: every credential is scoped to the one step that
     # consumes it, so setup actions, the install, and the release action never
     # see the Netlify token or the build-time values.
@@ -3804,10 +3851,35 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
+          # The commit built and deployed above. Without it GitHub creates the
+          # tag at main's tip when the release is published, which can be a
+          # later push that still carries this version (a pending changeset
+          # bumps nothing), and the sub-path dist below builds the tag's tree.
+          target_commitish: ${{ github.sha }}
           name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
           body_path: ${{ runner.temp }}/architect-notes.md
           prerelease: false
           make_latest: 'true'
+
+  # Builds the release just tagged under /v8/ and attaches architect-v8-dist.tgz
+  # to it, for Architect 9 to bundle (see apps/architect/RELEASING.md, "Sub-path
+  # dist tarball"). A separate job so a failure here never turns a release
+  # that has already shipped red, and chained by workflow_call because the
+  # release above is created with GITHUB_TOKEN, which fires no tag or release
+  # event. Major 8 only: 9.x is the root app; the next major bundles it once
+  # 10.x exists. A tag that predates sub-path builds (8.4.1) is skipped inside.
+  apps-release-architect-subpath-dist:
+    needs: [apps-release-detect, apps-release-architect]
+    if: needs.apps-release-detect.outputs.architect_released == 'true' && needs.apps-release-architect.outputs.released == 'true' && startsWith(needs.apps-release-detect.outputs.architect_version, '8.')
+    # A called workflow's jobs get no more than this job grants, and the
+    # workflow's top-level permissions are read-only. Only its publish job,
+    # which runs no code from the tag, uses the write.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/architect-subpath-dist.yml
+    with:
+      tag: ${{ needs.apps-release-architect.outputs.tag }}
+      expected_sha: ${{ needs.apps-release-architect.outputs.sha }}
 
   # Build, deploy to Netlify production, and cut a GitHub release for interviewer
   # when its version changed. Separate job (see apps-release-architect) so a

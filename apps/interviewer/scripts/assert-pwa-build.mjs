@@ -13,6 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
+import { findShippedProtocols } from '../../../scripts/buildtime/find-shipped-protocols.mjs';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -205,8 +206,7 @@ if (
 // Modules the app loads on demand to keep them out of the initial load. Each
 // must stay its own chunk (a static import anywhere folds it into the entry,
 // and the chunk disappears) outside the initial load, and must be precached
-// exactly when the feature it serves has to work offline. The Development
-// protocol's ~33 MB chunk is dev-only, so it must never be precached.
+// exactly when the feature it serves has to work offline.
 const deferredChunks = [
   {
     prefix: 'bundledSampleProtocol-',
@@ -217,11 +217,6 @@ const deferredChunks = [
     prefix: 'generate-',
     purpose: 'generating synthetic interviews',
     precache: true,
-  },
-  {
-    prefix: 'bundledDevelopmentProtocol-',
-    purpose: 'installing the development protocol',
-    precache: false,
   },
 ];
 for (const { prefix, purpose, precache } of deferredChunks) {
@@ -242,6 +237,34 @@ for (const { prefix, purpose, precache } of deferredChunks) {
         : `${chunk} is precached, so every install downloads it`,
     );
   }
+}
+
+// The dev-only Development protocol is installed only from a dev build (its
+// import is guarded by `import.meta.env.DEV` in useProtocolImport.ts), so a
+// production build must carry neither it nor its media (a 23 MB video among
+// it), not even in a chunk nothing requests.
+const developmentChunks = jsAssets.filter((f) =>
+  f.startsWith('bundledDevelopmentProtocol-'),
+);
+if (developmentChunks.length > 0) {
+  fail(
+    `a production build must not emit the dev-only ${developmentChunks.join(', ')}`,
+  );
+}
+let shippedDevelopment = [];
+try {
+  shippedDevelopment = await findShippedProtocols({
+    dist,
+    protocolsRoot: path.resolve(appRoot, '../../packages/protocols'),
+    protocolDirs: ['development'],
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
+if (shippedDevelopment.length > 0) {
+  fail(
+    `a production build must not ship the Development protocol or its media: ${shippedDevelopment.join(', ')}`,
+  );
 }
 
 // Faker should reach the bundle only through the synthetic generator chunk.

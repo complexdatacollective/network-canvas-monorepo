@@ -149,6 +149,12 @@ const MigrationNotes = ({
   return <Markdown label={formatMigrationNotes(version, notes, intl)} />;
 };
 
+/**
+ * Explain an open's result, if it needs explaining. Resolves once the
+ * researcher has dismissed every dialog it raised, so a caller can tell when
+ * they are done: Architect 8 inside Architect 9 waits for that before going
+ * back to Architect 9.
+ */
 export const showProtocolOpenResultDialog = async ({
   result,
   openDialog,
@@ -263,7 +269,7 @@ export const showProtocolOpenResultDialog = async ({
     return;
   }
   if (result.status === 'app-upgrade-required') {
-    void openDialog({
+    await openDialog({
       type: 'acknowledge',
       intent: 'destructive',
       title: createElement(AppMessage, {
@@ -308,7 +314,7 @@ export const showProtocolOpenResultDialog = async ({
     return;
   }
   if (result.status === 'validation-error') {
-    void openDialog({
+    await openDialog({
       type: 'acknowledge',
       intent: 'destructive',
       title: createElement(AppMessage, {
@@ -345,7 +351,7 @@ export const showProtocolOpenResultDialog = async ({
     });
     return;
   }
-  void openDialog({
+  await openDialog({
     type: 'acknowledge',
     intent: 'destructive',
     title: result.localizedTitle ? (

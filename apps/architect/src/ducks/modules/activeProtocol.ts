@@ -4,7 +4,6 @@ import {
   type PayloadAction,
   type UnknownAction,
 } from '@reduxjs/toolkit';
-import { navigate } from 'wouter/use-browser-location';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
@@ -15,6 +14,7 @@ import {
   getRedoTargetPath,
   getUndoTargetPath,
 } from '~/selectors/protocol';
+import { currentAppPath, navigateApp } from '~/utils/appBase';
 import { resolveTimelineNavTarget } from '~/utils/timelineNavigation';
 
 import { timelineActions } from '../middleware/timeline';
@@ -136,9 +136,7 @@ export const actionCreators = {
 export default activeProtocolSlice.reducer;
 
 const currentPath = () =>
-  typeof window !== 'undefined' && window.location
-    ? window.location.pathname
-    : '';
+  typeof window !== 'undefined' && window.location ? currentAppPath() : '';
 
 /**
  * What one activation of the history controls actually did, so the caller can
@@ -220,7 +218,7 @@ const performTimelineOperation =
     }
 
     const navigatedTo = targetPage || null;
-    if (navigatedTo) navigate(navigatedTo);
+    if (navigatedTo) navigateApp(navigatedTo);
 
     return { applied: true, navigatedTo };
   };

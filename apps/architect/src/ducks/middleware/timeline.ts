@@ -10,6 +10,8 @@ import {
 import { isEqual } from 'es-toolkit';
 import { v4 as uuid } from 'uuid';
 
+import { currentAppPath } from '~/utils/appBase';
+
 // Types
 export type Locus = {
   id: string;
@@ -73,10 +75,10 @@ type TimelineOptions = {
 const defaultOptions: Required<TimelineOptions> = {
   limit: 1000,
   exclude: () => false,
+  // App-relative, so a recorded page matches the routes it is compared with
+  // under a sub-path build too.
   getPath: () =>
-    typeof window !== 'undefined' && window.location
-      ? window.location.pathname
-      : '',
+    typeof window !== 'undefined' && window.location ? currentAppPath() : '',
 };
 
 export const timelineActions = {

@@ -29,15 +29,36 @@ const reportLaunchReadFailure = (failedCount: number): void => {
   emitReadFailure();
 };
 
+// Count a read in flight for `hasPendingLaunchFiles`, so the startup update
+// check holds while it runs, then queue whatever files it produced.
+const trackLaunchRead = (
+  read: () => Promise<File[]>,
+  operation: string,
+): void => {
+  pendingLaunchReads += 1;
+  emit();
+  void read()
+    .then((files) => {
+      if (files.length === 0) return;
+      pendingFiles = [...pendingFiles, ...files];
+      emit();
+    })
+    .catch((error: unknown) => {
+      reportError(error, { operation });
+    })
+    .finally(() => {
+      pendingLaunchReads -= 1;
+      emit();
+    });
+};
+
 export const initFileLaunchCapture = (): void => {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
   const queue = window.launchQueue;
   if (!queue) return;
   queue.setConsumer((params) => {
-    pendingLaunchReads += 1;
-    emit();
-    void (async () => {
+    trackLaunchRead(async () => {
       // allSettled so one unreadable handle (file moved/deleted, volume
       // unmounted between the OS launch and consumption) doesn't drop the whole
       // batch — read what we can and report the rest.
@@ -60,21 +81,31 @@ export const initFileLaunchCapture = (): void => {
         reportLaunchReadFailure(failures.length);
       }
 
-      const netcanvas = files.filter((file) =>
+      return files.filter((file) =>
         file.name.toLowerCase().endsWith('.netcanvas'),
       );
-      if (netcanvas.length === 0) return;
-      pendingFiles = [...pendingFiles, ...netcanvas];
-      emit();
-    })()
-      .catch((error: unknown) => {
-        reportError(error, { operation: 'fileLaunchHandle' });
-      })
-      .finally(() => {
-        pendingLaunchReads -= 1;
-        emit();
-      });
+    }, 'fileLaunchHandle');
   });
+};
+
+/**
+ * Queue a file that arrives some other way than the OS launch queue — the
+ * `?import=` hand-off from Architect 9 — so it opens exactly as a launched
+ * file does. `read` resolves null when there is nothing to open, which is
+ * reported with the launch read-failure dialog, as an unreadable launch is.
+ */
+export const enqueueLaunchRead = (read: () => Promise<File | null>): void => {
+  trackLaunchRead(async () => {
+    let file: File | null = null;
+    try {
+      file = await read();
+    } catch (error) {
+      reportError(error, { operation: 'fileLaunchHandoffRead' });
+    }
+    if (file) return [file];
+    reportLaunchReadFailure(1);
+    return [];
+  }, 'fileLaunchHandoffRead');
 };
 
 export const subscribeLaunchFiles = (listener: () => void): (() => void) => {

@@ -109,6 +109,7 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
+        "$TURBO_ROOT$/scripts/buildtime/assert-pwa-cache-headers.mjs",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
@@ -127,7 +128,11 @@
       // than extending it, so the PostHog credentials have to be repeated here
       // — otherwise strict mode hides them from the build and the source-map
       // upload silently never runs. See the note on the generic build task.
+      // ARCHITECT_BASE_PATH selects the /v8/ sub-path build Architect 9 bundles;
+      // undeclared, strict mode would hide it and a "sub-path" build would come
+      // out (or be replayed from cache) as the root build.
       "env": [
+        "ARCHITECT_BASE_PATH",
         "VITE_FRESCO_PREVIEW_URL",
         "VITE_FRESCO_PREVIEW_API_TOKEN",
         "VITE_DISABLE_ANALYTICS",
