@@ -19,7 +19,9 @@ import {
 // ready: its precache is complete, and Interviewer 8 applies it when it next
 // loads, offline too. This module holds the answer for the status row,
 // Settings and the schema 8 cards; the code that registers the worker calls
-// `refreshLegacyInterviewerOffline` when the registration changes.
+// `refreshLegacyInterviewerOffline` when the registration changes. Interviewer
+// 8 also registers its worker itself when it first runs an interview, so a
+// check that finds a worker installing follows it until it settles.
 
 export type LegacyInterviewerOffline =
   /** This build has no Interviewer 8. */
@@ -74,6 +76,20 @@ export async function hasLegacyInterviewerPrecache(
   }
 }
 
+const followed = new WeakSet<ServiceWorker>();
+
+/** Check again each time `worker` changes state, until it settles. */
+const followInstalling = (worker: ServiceWorker) => {
+  if (followed.has(worker)) return;
+  followed.add(worker);
+  worker.addEventListener('statechange', function onStateChange() {
+    void refreshLegacyInterviewerOffline();
+    if (worker.state === 'activated' || worker.state === 'redundant') {
+      worker.removeEventListener('statechange', onStateChange);
+    }
+  });
+};
+
 /**
  * Read the answer again from the browser: has a worker finished installing
  * for exactly Interviewer 8's scope, with nothing newer still installing, and
@@ -96,9 +112,14 @@ export async function refreshLegacyInterviewerOffline(): Promise<void> {
   }
   try {
     const registration = await container.getRegistration(interviewer.path);
-    const installed =
+    const ownScope =
       registration !== undefined &&
-      new URL(registration.scope).pathname === interviewer.path &&
+      new URL(registration.scope).pathname === interviewer.path;
+    if (ownScope && registration.installing) {
+      followInstalling(registration.installing);
+    }
+    const installed =
+      ownScope &&
       !registration.installing &&
       Boolean(registration.active ?? registration.waiting);
     setState(

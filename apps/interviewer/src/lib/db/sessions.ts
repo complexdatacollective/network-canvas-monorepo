@@ -264,14 +264,19 @@ export function getSession(id: string): Promise<StoredSession | undefined> {
 }
 
 /**
- * The schema version of the protocol session `id` was recorded with, read
- * from plaintext fields alone, so nothing is decrypted to find out which
- * interview engine runs it. `undefined` when the session or its protocol is
- * not stored.
+ * Session `id`'s plaintext fields: its protocol, whether it is finished, and
+ * the schema version that protocol was recorded with (`undefined` when the
+ * protocol is not stored). Nothing is decrypted, so this is how the interview
+ * engine that runs it is chosen. `undefined` when the session is not stored.
  */
-export async function getSessionSchemaVersion(
-  id: string,
-): Promise<number | undefined> {
+export async function getSessionHeader(id: string): Promise<
+  | {
+      protocolHash: string;
+      finishedAt: string | null;
+      schemaVersion: number | undefined;
+    }
+  | undefined
+> {
   return db.transaction('r', db.sessions, db.protocols, async () => {
     const session = await db.sessions.get(id);
     if (!session) return undefined;
@@ -279,7 +284,11 @@ export async function getSessionSchemaVersion(
       .where('hash')
       .equals(session.protocolHash)
       .first();
-    return protocol?.schemaVersion;
+    return {
+      protocolHash: session.protocolHash,
+      finishedAt: session.finishedAt,
+      schemaVersion: protocol?.schemaVersion,
+    };
   });
 }
 
@@ -499,7 +508,7 @@ export function markSessionUnfinished(
   return enqueueSessionMutation(id, async () => {
     const existingRow = await db.sessions.get(id);
     if (!existingRow?.finishedAt) return;
-    const schemaVersion = await getSessionSchemaVersion(id);
+    const schemaVersion = (await getSessionHeader(id))?.schemaVersion;
     if (
       schemaVersion !== undefined &&
       schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION
@@ -566,13 +575,32 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
 // The answers are re-wrapped exactly as stored, never parsed: a schema 8
 // session's are Interviewer 8's, and come out in Interviewer 8's own row
 // format.
+//
+// Interviewer 8, running a schema 8 interview in a frame or another tab, does
+// not share the per-id serializer, so the row is replaced only if no write
+// has stamped it since it was read; otherwise it is read and re-wrapped
+// again. Every write stamps `lastUpdatedAt`; a re-encryption does not.
+const REENCRYPT_ATTEMPTS = 5;
+
 export async function reencryptSession(id: string): Promise<void> {
   await enqueueSessionMutation(id, async () => {
-    const existingRow = await db.sessions.get(id);
-    if (!existingRow) return;
-    const existing = await decryptSessionRecord(existingRow);
-    const row = await encryptSession(existing);
-    await db.sessions.put(row);
+    for (let attempt = 0; attempt < REENCRYPT_ATTEMPTS; attempt += 1) {
+      const existingRow = await db.sessions.get(id);
+      if (!existingRow) return;
+      const existing = await decryptSessionRecord(existingRow);
+      const row = await encryptSession(existing);
+      const replaced = await db.transaction('rw', db.sessions, async () => {
+        const latest = await db.sessions.get(id);
+        if (!latest) return true;
+        if (latest.lastUpdatedAt !== existingRow.lastUpdatedAt) return false;
+        await db.sessions.put(row);
+        return true;
+      });
+      if (replaced) return;
+    }
+    throw new Error(
+      `Interview ${id} kept changing while it was being re-encrypted`,
+    );
   });
 }
 
