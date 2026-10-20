@@ -1229,6 +1229,18 @@ export const analyse = (
                 `${pp}.relationshipId`,
               );
               if (!r) return false;
+              // Selecting a pair that already has this tie removes it, so a
+              // second question drawing the same relationship would undo the
+              // earlier answers.
+              if (createdRels.has(r)) {
+                add(
+                  'degraded',
+                  'DUPLICATE_RELATIONSHIP_CREATOR',
+                  `${pp}.relationshipId`,
+                  `Relationship "${r}" is already created by an earlier question, so this one would overwrite its answers. Prompt removed; give a distinct question its own relationship type.`,
+                );
+                return false;
+              }
               p.relationshipId = r;
               p.attributeId = '';
               createRel(r, t);
@@ -1718,8 +1730,12 @@ export const analyse = (
     }
     stageIds.add(id);
     kept.push(s);
-    if (followUp && !stageIds.has(followUp.id)) {
-      stageIds.add(followUp.id);
+    if (followUp) {
+      // the generated form must ship, so it takes a free id
+      let x = followUp.id;
+      for (let n = 2; stageIds.has(x); n++) x = `${followUp.id}_${n}`;
+      followUp.id = x;
+      stageIds.add(x);
       kept.push(followUp);
     }
   }
@@ -1765,13 +1781,15 @@ export const analyse = (
       return true;
     });
   d.stages.forEach((s, at) => {
+    // a stage that skip logic can hide does not reach everyone
+    const shown = s.skipLogic.mode === 'always_show';
     if (s.kind === 'alterForm')
       s.attributeIds = askOnce(
         `node:${s.nodeTypeId}`,
         s.attributeIds,
         at,
         s,
-        !s.filter.conditions.length,
+        shown && !s.filter.conditions.length,
       );
     if (s.kind === 'nameGenerator' && s.method === 'form')
       s.attributeIds = askOnce(
@@ -1779,7 +1797,7 @@ export const analyse = (
         s.attributeIds,
         at,
         s,
-        true,
+        shown,
       );
     if (s.kind === 'relationshipForm')
       s.attributeIds = askOnce(
@@ -1787,7 +1805,7 @@ export const analyse = (
         s.attributeIds,
         at,
         s,
-        true,
+        shown,
       );
     if (s.kind === 'networkComposer') {
       s.attributeIds.forEach((x) => {

@@ -58,6 +58,15 @@ describe('estimateBurden', () => {
     expect(burden.answers).toBe(12 + 18 * 3);
   });
 
+  it('counts putting each person in a group on a composer', () => {
+    const burden = estimateBurden(
+      { stages: [{ type: 'NetworkComposer', convexHullVariable: 'group' }] },
+      12,
+    );
+    expect(burden.answers).toBe(12 * 2 + 18);
+    expect(burden.itemsPerPerson).toBe(1);
+  });
+
   it('counts the name on a naming form once', () => {
     const burden = estimateBurden(
       {

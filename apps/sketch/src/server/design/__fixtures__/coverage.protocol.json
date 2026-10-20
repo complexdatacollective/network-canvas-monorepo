@@ -979,17 +979,6 @@
           "edges": {
             "display": ["friends", "studies_with", "conflict"]
           }
-        },
-        {
-          "id": "p2",
-          "text": "Who is friends with whom?",
-          "layout": {
-            "layoutVariable": "classmate_layout"
-          },
-          "edges": {
-            "create": "friends",
-            "display": ["friends"]
-          }
         }
       ],
       "filter": {

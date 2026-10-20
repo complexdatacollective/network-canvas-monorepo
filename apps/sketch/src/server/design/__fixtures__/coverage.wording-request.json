@@ -232,12 +232,6 @@
       "draft": "Arrange your classmates.",
       "kind": "sociogram",
       "needsNegativeLabel": false
-    },
-    {
-      "promptKey": "class_map/p2",
-      "draft": "Who is friends with whom?",
-      "kind": "sociogram",
-      "needsNegativeLabel": false
     }
   ],
   "questions": [

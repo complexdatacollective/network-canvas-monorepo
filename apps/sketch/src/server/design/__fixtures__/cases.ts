@@ -351,12 +351,6 @@ export const coverageDesign: StudyDesign = {
           relationshipId: '',
           attributeId: '',
         },
-        {
-          task: 'connect',
-          text: 'Who is friends with whom?',
-          relationshipId: 'friends',
-          attributeId: '',
-        },
       ],
     },
     {

@@ -754,7 +754,8 @@ describe('generate-background and GET /api/jobs/:id', () => {
       },
     );
     expect(res.status).toBe(503);
-    expect(await readJob(jobs, 'job-11')).toBeNull();
+    expect((await readJob(jobs, 'job-11'))?.status).toBe('failed');
+    expect(jobs.data.get('spend/2026-10-20')).toMatchObject({ pendingUsd: 0 });
   });
 
   it('does not start a comparison whose seed belongs to another one', async () => {
@@ -780,7 +781,40 @@ describe('generate-background and GET /api/jobs/:id', () => {
     );
     expect(res.status).toBe(409);
     expect(startBackground).not.toHaveBeenCalled();
-    expect(await readJob(jobs, 'job-11')).toBeNull();
+    expect((await readJob(jobs, 'job-11'))?.status).toBe('failed');
+  });
+
+  it('leaves the seed free when the comparison job is refused or fails to start', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    const create = (startBackground: () => Promise<void>) =>
+      handleCreateJob(
+        post({
+          ...validRequest,
+          provider: 'anthropic',
+          comparisonId: 'cmp-new',
+          seedJobId: 'job-9',
+        }),
+        {
+          jobs,
+          log,
+          adapters: fake.adapters,
+          startBackground,
+          now: () => NOW,
+          newId: () => 'job-11',
+        },
+      );
+    await addSpend(jobs, NOW, 999);
+    expect((await create(async () => {})).status).toBe(429);
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBeNull();
+    jobs.data.delete('spend/2026-10-20');
+    const res = await create(async () => {
+      throw new Error('502');
+    });
+    expect(res.status).toBe(202);
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBeNull();
   });
 
   it('answers 404 for unknown jobs', async () => {

@@ -1637,6 +1637,101 @@ describe('instrument attributes', () => {
     expect(map.prompts[0]?.edges).toBeUndefined();
   });
 
+  it('keeps a later question when the earlier form can be skipped', async () => {
+    const r = await build(
+      design({
+        egoAttributes: [A('drinks', 'yes_no', 'Drink?')],
+        nodeTypes: [person([A('age', 'number', 'Age?')])],
+        stages: [
+          { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
+          ng(),
+          {
+            kind: 'alterForm',
+            ...c('af1'),
+            skipLogic: {
+              mode: 'skip_if',
+              whenSkipped: 'next_stage',
+              match: 'all',
+              conditions: [
+                {
+                  about: 'participant',
+                  typeId: '',
+                  attributeId: 'drinks',
+                  operator: 'is',
+                  value: 'no',
+                },
+              ],
+            },
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['age'],
+          },
+          {
+            kind: 'alterForm',
+            ...c('af2'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['age'],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).not.toContain('FORM_FIELD_REPEATED');
+    expect(r.stages.map((s) => s.id)).toContain('af2');
+  });
+
+  it('gives a generated follow-up form a free id', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [person([A('age', 'number', 'Age?')])],
+        stages: [
+          ng(),
+          {
+            kind: 'information',
+            ...c('later_details'),
+            role: 'instructions',
+            content: 'Next.',
+          },
+          ng('later', { method: 'form', attributeIds: ['age'] }),
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(stageById(r.stages, 'later_details_2').type).toBe('AlterForm');
+  });
+
+  it('removes a second map question that draws the same ties', async () => {
+    const drawTies = (text: string) => ({
+      task: 'connect',
+      text,
+      relationshipId: 'knows',
+      attributeId: '',
+    });
+    const r = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'sociogram',
+            ...c('map'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            prompts: [
+              drawTies('Who knows whom?'),
+              drawTies('Who talks often?'),
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).toContain('DUPLICATE_RELATIONSHIP_CREATOR');
+    const map = stageById(r.stages, 'map') as Stage & { prompts: unknown[] };
+    expect(map.prompts).toHaveLength(1);
+  });
+
   it('asks a form question once when two forms reach the same people', async () => {
     const af = (id: string, attributeIds: string[]) => ({
       kind: 'alterForm',

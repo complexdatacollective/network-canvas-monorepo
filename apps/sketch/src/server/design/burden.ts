@@ -19,6 +19,7 @@ type ProtocolStage = {
   filter?: unknown;
   form?: Fields;
   nodeForm?: Fields;
+  convexHullVariable?: string;
   prompts?: { highlight?: unknown; edges?: { create?: string } }[];
   presets?: unknown[];
   edges?: { form?: Fields }[];
@@ -106,11 +107,13 @@ const costOf = (s: ProtocolStage, n: number): Omit<StageCost, 'label'> => {
         0,
         ...(s.edges ?? []).map((e) => e.form?.fields?.length ?? 0),
       );
+      // putting each person in a group is one more answer about them
+      const perPerson =
+        (s.nodeForm?.fields?.length ?? 0) + (s.convexHullVariable ? 1 : 0);
       screens += 1;
-      itemsPerPerson += s.nodeForm?.fields?.length ?? 0;
+      itemsPerPerson += perPerson;
       // each drawn tie is one action plus its form's questions
-      answers +=
-        n * (1 + (s.nodeForm?.fields?.length ?? 0)) + ties * (1 + edgeFields);
+      answers += n * (1 + perPerson) + ties * (1 + edgeFields);
       break;
     }
     case 'Narrative':

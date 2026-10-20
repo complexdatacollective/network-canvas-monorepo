@@ -20,6 +20,7 @@ import {
   isStaleJob,
   type JobRecord,
   joinComparison,
+  leaveComparison,
   type JsonStore,
   type LogEntry,
   newJobRecord,
@@ -178,28 +179,6 @@ export const handleCreateJob = async (
     }
   }
 
-  // A seed that cannot join would show a "Prefer this one" that never records,
-  // so the comparison does not start without it.
-  if (request.seedJobId && request.comparisonId && deps.log) {
-    let joined: boolean;
-    try {
-      joined = await joinComparison(
-        { jobs: deps.jobs, log: deps.log },
-        request.seedJobId,
-        request.comparisonId,
-      );
-    } catch {
-      return apiError(
-        'Sketch could not start the comparison. Please try again.',
-        503,
-      );
-    }
-    if (!joined)
-      return apiError(
-        'That design is already part of another comparison.',
-        409,
-      );
-  }
   // Reserve the job's worst case now; generate-background settles it with
   // the real cost when the job finishes.
   const reservedUsd = estimateJobCostUsd(request.provider);
@@ -231,6 +210,51 @@ export const handleCreateJob = async (
     }
     return json({ jobId } satisfies CreateJobResponse, 202);
   }
+  // A seed that cannot join would show a "Prefer this one" that never
+  // records, so the comparison does not start without it. The seed joins only
+  // once this job exists, so a create refused earlier leaves it free.
+  const seed =
+    request.seedJobId && request.comparisonId && deps.log
+      ? {
+          stores: { jobs: deps.jobs, log: deps.log },
+          seedJobId: request.seedJobId,
+          comparisonId: request.comparisonId,
+        }
+      : null;
+  if (seed) {
+    let joined: boolean | null = null;
+    try {
+      joined = await joinComparison(
+        seed.stores,
+        seed.seedJobId,
+        seed.comparisonId,
+      );
+    } catch {
+      // handled with a refusal below
+    }
+    if (!joined) {
+      await failQueuedJob(
+        deps.jobs,
+        jobId,
+        'Sketch could not start the comparison. Please try again.',
+        new Date(),
+      )
+        .then((failed) =>
+          failed
+            ? settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd)
+            : undefined,
+        )
+        .catch(() => {
+          // The reservation stays counted for the day: errs on the safe side.
+        });
+      return joined === false
+        ? apiError('That design is already part of another comparison.', 409)
+        : apiError(
+            'Sketch could not start the comparison. Please try again.',
+            503,
+          );
+    }
+  }
   try {
     await deps.startBackground(jobId);
   } catch {
@@ -251,8 +275,17 @@ export const handleCreateJob = async (
       return apiError('Sketch could not start the job. Please try again.', 502);
     }
     if (!failed) return json({ jobId } satisfies CreateJobResponse, 202);
-    // Nothing ran: hand the reservation back. If this write fails, the
+    // Nothing ran: free the seed for another comparison and hand the
+    // reservation back. If either write fails, the seed stays joined or the
     // reservation stays counted for the day, which errs on the safe side.
+    if (seed)
+      await leaveComparison(
+        seed.stores,
+        seed.seedJobId,
+        seed.comparisonId,
+      ).catch(() => {
+        // See above.
+      });
     try {
       await settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd);
     } catch {

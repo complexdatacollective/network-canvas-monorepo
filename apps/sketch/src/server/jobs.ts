@@ -354,6 +354,18 @@ export const joinComparison = async (
   return true;
 };
 
+/** Undoes joinComparison when the comparison's new job never started. */
+export const leaveComparison = async (
+  stores: { jobs: JsonStore; log: JsonStore },
+  seedJobId: string,
+  comparisonId: string,
+): Promise<void> => {
+  const seed = await readJob(stores.jobs, seedJobId);
+  if (!seed || seed.comparisonId !== comparisonId) return;
+  await writeJob(stores.jobs, { ...seed, comparisonId: null });
+  await updateLogEntry(stores.log, seed, { comparisonId: null });
+};
+
 // ---------------------------------------------------------------------------
 // Daily budget
 // ---------------------------------------------------------------------------
