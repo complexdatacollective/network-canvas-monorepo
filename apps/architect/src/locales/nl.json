@@ -611,7 +611,7 @@
   "architect.sketchImport.errorTitle": "Je protocol kon niet worden geopend",
   "architect.sketchImport.noOpenerBody": "Deze pagina ontvangt protocollen die vanuit Sketch zijn verzonden. Ga terug naar Sketch en stuur je protocol van daaruit naar Architect.",
   "architect.sketchImport.noOpenerTitle": "Open deze pagina vanuit Sketch",
-  "architect.sketchImport.receiving": "Je protocol wordt ontvangen van Sketch…",
+  "architect.sketchImport.receiving": "Je protocol wordt ontvangen vanuit Sketch…",
   "architect.sketchImport.returnToStartScreen": "Terug naar het startscherm",
   "architect.sketchImport.timeoutTitle": "Je protocol is niet aangekomen",
   "architect.sketchImport.tryAgainBody": "Ga terug naar Sketch en probeer het opnieuw, of download het protocol daar en open het bestand in Architect.",

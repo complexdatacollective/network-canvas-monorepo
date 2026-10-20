@@ -611,7 +611,7 @@
   "architect.sketchImport.errorTitle": "Ihr Protokoll konnte nicht geöffnet werden",
   "architect.sketchImport.noOpenerBody": "Diese Seite empfängt Protokolle, die von Sketch gesendet werden. Kehren Sie zu Sketch zurück und senden Sie Ihr Protokoll von dort an Architect.",
   "architect.sketchImport.noOpenerTitle": "Öffnen Sie diese Seite über Sketch",
-  "architect.sketchImport.receiving": "Ihr Protokoll wird von Sketch empfangen…",
+  "architect.sketchImport.receiving": "Ihr Protokoll aus Sketch wird empfangen…",
   "architect.sketchImport.returnToStartScreen": "Zurück zum Startbildschirm",
   "architect.sketchImport.timeoutTitle": "Ihr Protokoll ist nicht angekommen",
   "architect.sketchImport.tryAgainBody": "Kehren Sie zu Sketch zurück und versuchen Sie es erneut, oder laden Sie das Protokoll dort herunter und öffnen Sie die Datei in Architect.",
