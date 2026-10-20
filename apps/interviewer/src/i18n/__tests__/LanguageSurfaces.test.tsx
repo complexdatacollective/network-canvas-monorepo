@@ -65,6 +65,11 @@ it('offers the device language before starting setup and retains the choice on r
     </InterviewerI18nProvider>
   );
   const first = render(view());
+  // The automatic entry names the language, not "browser": an installed app
+  // is not a browser from the researcher's point of view.
+  expect(
+    screen.getByRole('combobox', { name: 'App language' }),
+  ).toHaveDisplayValue('Automatic (English)');
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'App language' }),
     'es',
