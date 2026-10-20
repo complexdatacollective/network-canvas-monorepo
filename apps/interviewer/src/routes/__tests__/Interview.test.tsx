@@ -743,7 +743,7 @@ describe('InterviewRoute schema 8 interview', () => {
       screen.getByRole('heading', { name: /interview unavailable/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Interviewer 8, which runs schema 8 protocols/),
+      screen.getByText(/has not finished downloading for use without/),
     ).toBeInTheDocument();
     expect(lockMock).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();

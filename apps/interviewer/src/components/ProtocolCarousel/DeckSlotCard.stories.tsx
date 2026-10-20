@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
-import type { LegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 
 import type { DeckEntry } from './deckEntries';
 import { DeckSlotCard, type Schema8CardActions } from './DeckSlotCard';
@@ -87,18 +86,13 @@ type StoryArgs = {
   // kind="schema8" only: a schema 8 protocol, whose interviews run in the
   // bundled Interviewer 8.
   legacyBundled: boolean;
-  legacyOffline: Exclude<LegacyInterviewerOffline, 'not-bundled'>;
   // kind="protocol" or "schema8": the protocol has a stage that needs the
   // internet.
   geospatial: boolean;
 };
 
-const schema8Actions = (
-  bundled: boolean,
-  offline: StoryArgs['legacyOffline'],
-): Schema8CardActions => ({
+const schema8Actions = (bundled: boolean): Schema8CardActions => ({
   interviewer: bundled ? { version: '8.5.0', path: '/v8/' } : null,
-  offline: bundled ? offline : 'not-bundled',
   onShowInfo: () => {},
 });
 
@@ -174,7 +168,6 @@ const meta: Meta<StoryArgs> = {
     size: 480,
     progress: 0.5,
     legacyBundled: true,
-    legacyOffline: 'ready',
     geospatial: false,
   },
   argTypes: {
@@ -197,11 +190,6 @@ const meta: Meta<StoryArgs> = {
       control: 'boolean',
       description: 'Whether this build bundles Interviewer 8 (kind="schema8")',
     },
-    legacyOffline: {
-      control: 'inline-radio',
-      options: ['checking', 'ready', 'not-ready'],
-      description: 'Interviewer 8 offline readiness (kind="schema8")',
-    },
   },
   render: ({
     kind,
@@ -210,7 +198,6 @@ const meta: Meta<StoryArgs> = {
     size,
     progress,
     legacyBundled,
-    legacyOffline,
     geospatial,
   }) => (
     <ResizableFrame size={size}>
@@ -223,7 +210,7 @@ const meta: Meta<StoryArgs> = {
         onDismissSample={() => {}}
         onInstallSample={() => {}}
         onInstallDevelopment={() => {}}
-        schema8={schema8Actions(legacyBundled, legacyOffline)}
+        schema8={schema8Actions(legacyBundled)}
       />
     </ResizableFrame>
   ),
@@ -270,17 +257,9 @@ export const SchemaEightProtocol: Story = {
   args: { kind: 'schema8' },
 };
 
-/**
- * Interviewer 8 is not yet saved for offline use, so the protocol cannot be
- * used offline yet: a status icon in the schema badge says so.
- */
-export const SchemaEightNotReadyOffline: Story = {
-  args: { kind: 'schema8', legacyOffline: 'not-ready' },
-};
-
-/** The same, for a protocol that needs the internet for its own stages too. */
-export const SchemaEightGeospatialNotReadyOffline: Story = {
-  args: { kind: 'schema8', legacyOffline: 'not-ready', geospatial: true },
+/** A schema 8 protocol with a stage that always needs the internet. */
+export const SchemaEightRequiresInternet: Story = {
+  args: { kind: 'schema8', geospatial: true },
 };
 
 /** This build has no Interviewer 8: no interview can be started. */

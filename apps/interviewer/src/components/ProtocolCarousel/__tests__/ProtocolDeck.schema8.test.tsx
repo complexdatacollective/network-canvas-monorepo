@@ -61,7 +61,6 @@ const makeSchema8 = (
   overrides: Partial<Schema8CardActions> = {},
 ): Schema8CardActions => ({
   interviewer: { version: '8.5.0', path: '/v8/' },
-  offline: 'ready',
   onShowInfo: vi.fn(),
   ...overrides,
 });
@@ -104,7 +103,7 @@ describe('ProtocolDeck with schema 8 protocols', () => {
   it('starts nothing from a schema 8 card when Interviewer 8 is not bundled', async () => {
     const onStartInterview = vi.fn();
     renderDeck({
-      schema8: makeSchema8({ interviewer: null, offline: 'not-bundled' }),
+      schema8: makeSchema8({ interviewer: null }),
       onStartInterview,
     });
 

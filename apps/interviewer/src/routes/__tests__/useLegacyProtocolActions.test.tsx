@@ -20,9 +20,6 @@ vi.mock('~/components/legacyProtocolDialogs', () => ({
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => ({ openDialog: mocks.openDialog }),
 }));
-vi.mock('~/lib/pwa/legacyInterviewerOffline', () => ({
-  useLegacyInterviewerOffline: () => 'ready',
-}));
 
 const { useLegacyProtocolActions } =
   await import('../useLegacyProtocolActions');
@@ -51,7 +48,6 @@ describe('useLegacyProtocolActions: schema 8 cards', () => {
   it('says whether Interviewer 8 is there to run their interviews', () => {
     expect(setup().result.current.schema8).toMatchObject({
       interviewer: INTERVIEWER_8,
-      offline: 'ready',
     });
     mocks.bundled = null;
     expect(setup().result.current.schema8.interviewer).toBeNull();
@@ -69,7 +65,6 @@ describe('useLegacyProtocolActions: schema 8 cards', () => {
   it('offers no upgrade of a schema 8 protocol', () => {
     expect(Object.keys(setup().result.current.schema8).toSorted()).toEqual([
       'interviewer',
-      'offline',
       'onShowInfo',
     ]);
   });

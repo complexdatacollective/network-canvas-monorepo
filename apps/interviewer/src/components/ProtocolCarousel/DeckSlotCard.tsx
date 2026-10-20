@@ -1,4 +1,4 @@
-import { CircleAlert, CloudOff, Download, Info, Trash2 } from 'lucide-react';
+import { CircleAlert, Download, Info, Trash2 } from 'lucide-react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor, IntlShape } from '@codaco/app-i18n/messages';
@@ -17,7 +17,6 @@ import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
-import type { LegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 
 import { legacyProtocolMessages } from '../legacyProtocolMessages';
 import { NewSessionForm } from '../NewSessionForm';
@@ -74,12 +73,11 @@ const PHASE_LABEL: Record<ImportPhase, MessageDescriptor> = {
   saving: messages.saving,
 };
 
-// What a schema 8 card offers beyond any protocol card's, and the state of
-// the bundled Interviewer 8 its interviews run in. `interviewer` is null when
-// this build bundles none: the card then starts no interview, and says why.
+// What a schema 8 card offers beyond any protocol card's, and the bundled
+// Interviewer 8 its interviews run in. `interviewer` is null when this build
+// bundles none: the card then starts no interview, and says why.
 export type Schema8CardActions = {
   interviewer: BundledLegacyInterviewer | null;
-  offline: LegacyInterviewerOffline;
   onShowInfo: (protocol: ProtocolWithCounts) => void;
 };
 
@@ -279,29 +277,7 @@ function schema8CardProps(
   return {
     badges: (
       <>
-        <DeckCardBadge
-          tone="info"
-          // While Interviewer 8, which runs its interviews, is not yet saved
-          // for offline use, the protocol cannot be used offline either.
-          status={
-            interviewer && schema8?.offline === 'not-ready' ? (
-              // Named and titled on a wrapper, so the badge's own text stays
-              // its label alone.
-              <span
-                role="img"
-                aria-label={intl.formatMessage(
-                  legacyProtocolMessages.notReadyOffline,
-                )}
-                title={intl.formatMessage(
-                  legacyProtocolMessages.notReadyOffline,
-                )}
-                className="flex"
-              >
-                <CloudOff aria-hidden className={iconClassName} />
-              </span>
-            ) : undefined
-          }
-        >
+        <DeckCardBadge tone="info">
           {intl.formatMessage(legacyProtocolMessages.schemaBadge, {
             version: protocol.schemaVersion,
           })}
