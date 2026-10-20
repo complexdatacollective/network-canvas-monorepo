@@ -14,14 +14,22 @@ type Registration = {
   scope: string;
   active: { scriptURL: string } | null;
   installing: { scriptURL: string } | null;
+  waiting: { scriptURL: string } | null;
   update: () => Promise<unknown>;
+  unregister: () => Promise<boolean>;
 };
 
 const registration = (
-  fields: Omit<Registration, 'update'>,
-): Registration & { update: ReturnType<typeof vi.fn> } => ({
+  fields: Omit<Registration, 'update' | 'unregister' | 'waiting'> &
+    Partial<Pick<Registration, 'waiting'>>,
+): Registration & {
+  update: ReturnType<typeof vi.fn>;
+  unregister: ReturnType<typeof vi.fn>;
+} => ({
+  waiting: null,
   ...fields,
   update: vi.fn(() => Promise.resolve(undefined)),
+  unregister: vi.fn(() => Promise.resolve(true)),
 });
 
 // The module registers at most once per page load, so each test loads a
@@ -41,10 +49,12 @@ const deferred = <T>() => {
 
 const BUILD_ID = 'architect-test-build';
 
-// This page's build is the active root worker, unless a test says otherwise.
+// This page's build is the active root worker, and Architect 8's precache is
+// there, unless a test says otherwise.
 const thisBuild = {
   buildId: BUILD_ID,
   readActiveRootBuild: () => Promise.resolve(BUILD_ID),
+  hasPrecache: () => Promise.resolve(true),
 };
 
 const ROOT = { scope: `${ORIGIN}/` };
@@ -201,6 +211,119 @@ describe('registerLegacyArchitectWorker', () => {
       expect(existing.update).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('registers again when the active worker’s precache has gone', async () => {
+    const { registerLegacyArchitectWorker } = await load();
+    const existing = registration({
+      scope: V8_SCOPE,
+      active: { scriptURL: V8_SCRIPT },
+      installing: null,
+    });
+    const { ready, container } = makeContainer(existing);
+    ready.resolve(ROOT);
+    const hasPrecache = vi.fn(() => Promise.resolve(false));
+
+    await registerLegacyArchitectWorker({
+      architect: ARCHITECT_8,
+      serviceWorker: container,
+      whenIdle: (callback) => callback(),
+      origin: ORIGIN,
+      ...thisBuild,
+      hasPrecache,
+    });
+
+    expect(existing.update).toHaveBeenCalledTimes(1);
+    expect(hasPrecache).toHaveBeenCalledExactlyOnceWith(ARCHITECT_8);
+    expect(existing.unregister).toHaveBeenCalledTimes(1);
+    expect(container.register).toHaveBeenCalledExactlyOnceWith('/v8/sw.js', {
+      scope: '/v8/',
+    });
+  });
+
+  it('leaves a worker the update check is installing, precache or not', async () => {
+    const { registerLegacyArchitectWorker } = await load();
+    const existing = registration({
+      scope: V8_SCOPE,
+      active: { scriptURL: V8_SCRIPT },
+      installing: null,
+    });
+    existing.update.mockImplementation(() => {
+      existing.installing = { scriptURL: V8_SCRIPT };
+      return Promise.resolve(undefined);
+    });
+    const { ready, container } = makeContainer(existing);
+    ready.resolve(ROOT);
+
+    await registerLegacyArchitectWorker({
+      architect: ARCHITECT_8,
+      serviceWorker: container,
+      whenIdle: (callback) => callback(),
+      origin: ORIGIN,
+      ...thisBuild,
+      hasPrecache: () => Promise.resolve(false),
+    });
+
+    expect(existing.unregister).not.toHaveBeenCalled();
+    expect(container.register).not.toHaveBeenCalled();
+  });
+
+  it('finds the pinned build’s precache by its cache name', async () => {
+    const { registerLegacyArchitectWorker } = await load();
+    const existing = registration({
+      scope: V8_SCOPE,
+      active: { scriptURL: V8_SCRIPT },
+      installing: null,
+    });
+    const { ready, container } = makeContainer(existing);
+    ready.resolve(ROOT);
+    // Another version's precache, and the pinned version's runtime cache,
+    // are not the pinned build's precache.
+    vi.stubGlobal('caches', {
+      keys: () =>
+        Promise.resolve([
+          'architect-v8-8.4.0-old-build-precache-v2-https://architect.example/v8/',
+          'architect-v8-images',
+        ]),
+    });
+
+    await registerLegacyArchitectWorker({
+      architect: ARCHITECT_8,
+      serviceWorker: container,
+      whenIdle: (callback) => callback(),
+      origin: ORIGIN,
+      buildId: BUILD_ID,
+      readActiveRootBuild: () => Promise.resolve(BUILD_ID),
+    });
+    expect(container.register).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a registration whose pinned precache is there', async () => {
+    const { registerLegacyArchitectWorker } = await load();
+    const existing = registration({
+      scope: V8_SCOPE,
+      active: { scriptURL: V8_SCRIPT },
+      installing: null,
+    });
+    const { ready, container } = makeContainer(existing);
+    ready.resolve(ROOT);
+    vi.stubGlobal('caches', {
+      keys: () =>
+        Promise.resolve([
+          'architect-v8-8.5.0-build-precache-v2-https://architect.example/v8/',
+        ]),
+    });
+
+    await registerLegacyArchitectWorker({
+      architect: ARCHITECT_8,
+      serviceWorker: container,
+      whenIdle: (callback) => callback(),
+      origin: ORIGIN,
+      buildId: BUILD_ID,
+      readActiveRootBuild: () => Promise.resolve(BUILD_ID),
+    });
+    expect(existing.unregister).not.toHaveBeenCalled();
+    expect(container.register).not.toHaveBeenCalled();
+  });
 
   it('registers when /v8/ has a worker for some other script', async () => {
     const { registerLegacyArchitectWorker } = await load();

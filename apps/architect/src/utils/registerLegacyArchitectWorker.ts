@@ -1,6 +1,7 @@
 import {
   type BundledLegacyArchitect,
   getBundledLegacyArchitect,
+  LEGACY_ARCHITECT_MAJOR,
 } from './legacyArchitect';
 import { reportError } from './reportError';
 
@@ -23,6 +24,11 @@ import { reportError } from './reportError';
 // cache the next time this page reported ready. This build's reclaimer leaves
 // `architect-v8-` alone, so until it is active the registration waits for a
 // later load.
+//
+// A registration whose precache has gone (cache storage cleared or evicted
+// while the registration survived) is registered again: an update check finds
+// the same script and installs nothing, so Architect 8 would otherwise stay
+// unavailable offline.
 
 type WorkerLike = { scriptURL: string } | null;
 
@@ -30,7 +36,9 @@ type RegistrationLike = {
   scope: string;
   active: WorkerLike;
   installing: WorkerLike;
+  waiting: WorkerLike;
   update: () => Promise<unknown>;
+  unregister: () => Promise<boolean>;
 };
 
 /** The parts of `navigator.serviceWorker` this uses. */
@@ -50,6 +58,8 @@ type Environment = {
   buildId: string | undefined;
   /** The build the active root worker recorded for `scope`, if any. */
   readActiveRootBuild: (scope: string) => Promise<string | undefined>;
+  /** Whether the pinned build's precache is in cache storage. */
+  hasPrecache: (architect: BundledLegacyArchitect) => Promise<boolean>;
 };
 
 /** The longest an idle callback may be put off before it runs anyway. */
@@ -74,6 +84,9 @@ export const whenBrowserIdle = (callback: () => void): void => {
 export const ACTIVE_BUILD_CACHE = 'architect-pwa-cache-metadata';
 export const ACTIVE_BUILD_KEY = '__pwa-active-build__';
 
+/** What Architect 8's caches are named with (the pin's `cachePrefix`). */
+export const LEGACY_ARCHITECT_CACHE_PREFIX = `architect-v${LEGACY_ARCHITECT_MAJOR}-`;
+
 /** The build the active root worker recorded. `caches.match` never creates. */
 const readActiveRootBuild = async (
   scope: string,
@@ -83,6 +96,25 @@ const readActiveRootBuild = async (
     cacheName: ACTIVE_BUILD_CACHE,
   });
   return response?.text();
+};
+
+/**
+ * Whether cache storage holds the precache of exactly the bundled build
+ * (`architect-v8-<version>-…-precache-…`, after Architect 8's `cacheId`).
+ * Storage that cannot be read holds nothing.
+ */
+const hasPrecache = async (
+  architect: BundledLegacyArchitect,
+): Promise<boolean> => {
+  if (typeof caches === 'undefined') return false;
+  const prefix = `${LEGACY_ARCHITECT_CACHE_PREFIX}${architect.version}-`;
+  try {
+    return (await caches.keys()).some(
+      (name) => name.startsWith(prefix) && name.includes('-precache-'),
+    );
+  } catch {
+    return false;
+  }
 };
 
 const defaultEnvironment = (): Environment => ({
@@ -97,6 +129,7 @@ const defaultEnvironment = (): Environment => ({
   buildId:
     typeof __PWA_BUILD_ID__ === 'undefined' ? undefined : __PWA_BUILD_ID__,
   readActiveRootBuild,
+  hasPrecache,
 });
 
 let started = false;
@@ -106,7 +139,8 @@ let started = false;
  * Does nothing when this build bundles no Architect 8 or the browser has no
  * service workers. When `/v8/` already has a worker for the same script,
  * active or installing, it checks that worker for an update instead, so a
- * newer pinned Architect 8 is fetched and precached too. Waits for a later
+ * newer pinned Architect 8 is fetched and precached too, and registers it
+ * again when its precache has gone. Waits for a later
  * load while the active root worker is another build's. Never rejects: a failure
  * is reported and leaves Architect 8 to install its worker on its first visit,
  * as it would anyway.
@@ -123,6 +157,7 @@ export const registerLegacyArchitectWorker = async (
     origin,
     buildId,
     readActiveRootBuild: readRootBuild,
+    hasPrecache: hasPinnedPrecache,
   } = {
     ...defaultEnvironment(),
     ...overrides,
@@ -151,7 +186,14 @@ export const registerLegacyArchitectWorker = async (
       // without fetching the script, so a newer pinned Architect 8 (served at
       // the same URL) is only picked up by asking for an update.
       await existing.update();
-      return;
+      if (
+        existing.installing ||
+        existing.waiting ||
+        (await hasPinnedPrecache(architect))
+      ) {
+        return;
+      }
+      await existing.unregister();
     }
     await serviceWorker.register(scriptPath, { scope: architect.path });
   } catch (error: unknown) {
