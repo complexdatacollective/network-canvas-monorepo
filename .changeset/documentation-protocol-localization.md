@@ -24,6 +24,6 @@ A new page documents the Language Chooser interface, including how to manage
 the protocol's languages from its editor in Architect. The preview, Fresco and
 Interviewer guides describe how an interview's language follows the
 participant's browser rather than a settings menu, and that the language is
-neither saved with the interview nor exported, and the schema 9 notes and Fresco upgrade guide describe what the upgrade to schema 9
+neither saved with the interview nor exported, and the schema 9 notes describe what the upgrade to schema 9
 does to a protocol's text. Pages that listed three interface languages now
 list all ten.
