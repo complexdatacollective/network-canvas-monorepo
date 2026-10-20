@@ -38,8 +38,7 @@ The schema information page says that schema 9 keeps a protocol's
 that encrypted attributes are no longer one of them. It explains that
 upgrading a schema 8 protocol removes the Encrypted Attributes experiment,
 and what that does to its encrypted attributes. If the experiment was on, they stay marked and
-new answers are encrypted, but answers the experimental version protected
-can't be read after the upgrade: those interviews still open, and the old
-answers show as "Answer unavailable" and export as `ENCRYPTED`. If the
+answers are encrypted, while the interviews already collected stay with the
+schema 8 protocol and keep the answers the experimental version protected. If the
 experiment was off, the attributes are unmarked, so they keep being collected
 without encryption.

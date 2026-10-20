@@ -2,14 +2,14 @@
 title: Protocol Schema Information
 wip: false
 navOrder: 3
-date: 7th October 2026
+date: 20th October 2026
 ---
 
 ## Summary
 
 This article will explain the concept of "protocol schemas", including what they are, why we need them, and how to work with schema version requirements within our apps.
 
-Although every effort is made to maintain compatibility with new schema versions, any features implemented that require a schema update will be unavailable to you until you migrate your protocol. We _strongly_ encourage you to update your protocol files wherever possible, so that you are able to use the newest Network Canvas features.
+Although every effort is made to maintain compatibility with new schema versions, any features implemented that require a schema update will be unavailable to you until you migrate your protocol. We _strongly_ encourage you to update your protocol files wherever possible, so that you are able to use the newest Network Canvas features. Only Architect migrates a protocol to schema 9, and only when you choose to. Fresco and Interviewer run each protocol on the schema it was made for, apart from schema 7 protocols, which they migrate to schema 8 automatically (see [Migrating a protocol](#migrating-a-protocol)).
 
 The current, latest protocol schema version is **9**. Schema 9 is supported by current releases of **Architect**, **Fresco**, and **Interviewer**. It is **not** supported by **Architect Classic** or **Interviewer Classic**, which support schema 7 and earlier, or by releases of Fresco and Interviewer made before schema 9 was introduced. See [Schema version 9](#schema-version-9) and [Schema version 8](#schema-version-8) below for details.
 
@@ -31,7 +31,7 @@ We need to "version" Network Canvas protocol schemas so that we can add or chang
 
 We also adopted schemas in an effort to ensure stability and consistency within the functioning of the software. If a protocol is valid according to its schema, it should function without issues.
 
-Our priority when implementing schema versioning has been to not burden the end user, either through creating "maintenance work" (for example by requiring older protocols to be updated manually), or by disrupting your workflow (for example by preventing existing protocols from functioning). For this reason, Architect, Interviewer, and Fresco all automatically update your protocols to the latest schema version when you import or open them.
+Our priority when implementing schema versioning has been to not burden the end user, either through creating "maintenance work" (for example by requiring older protocols to be updated manually), or by disrupting your workflow (for example by preventing existing protocols from functioning). For this reason, Fresco and Interviewer keep running schema 8 protocols exactly as they were designed, and migrate schema 7 protocols from the Classic apps to schema 8 without asking. Moving a protocol to schema 9 changes what participants see, so it happens only when you choose it in Architect.
 
 ## What it means for you
 
@@ -47,13 +47,9 @@ If your protocol is no longer compatible with the version of Interviewer that yo
 
 ### Within Architect
 
-In Architect, you may see a prompt that a protocol must be migrated to a newer version before it can be opened (see below).
+When you open a schema 7 or schema 8 protocol in Architect, it asks how you want to open it. You can upgrade it to schema 9, or keep editing it as schema 8 in the previous version of Architect, which is built in. See [migrating a protocol](#migrating-a-protocol) below for what each choice does.
 
-![](/assets/img/protocol-schema/architect-migrate.png)
-
-If you wish to update their protocol file to the new schema version, follow the instructions provided below under [migrating a protocol](#migrating-a-protocol).
-
-If you would like to continue editing this protocol without migrating it to the latest version, keep it in **Architect Classic**, which works with schema 7. (Architect, the browser app, always runs the latest version and will migrate the protocol to the latest schema version.) For older schema versions, see the [GitHub releases page](https://github.com/complexdatacollective/Architect/releases) for an archive of past Architect Classic versions, and consult the [compatibility table](#compatibility-table) for information about which version you need.
+If you would like to keep editing a schema 7 protocol as schema 7, keep it in **Architect Classic**. For older schema versions, see the [GitHub releases page](https://github.com/complexdatacollective/Architect/releases) for an archive of past Architect Classic versions, and consult the [compatibility table](#compatibility-table) for information about which version you need.
 
 ## Handling obsolete protocols
 
@@ -70,26 +66,39 @@ If your protocol is marked as obsolete, and you wish to continue collecting data
 
 ## Migrating a protocol
 
-Migrating a protocol happens within Architect, Fresco, and Interviewer, and is automatic. If you are migrating because you are moving from the Classic apps to the current generation, [Migrating from the Classic Apps](/en/get-started/migrating-from-classic) walks through that whole transition — including what happens to your collected data. How migration works depends on which app you use:
+If you are migrating because you are moving from the Classic apps to the current generation, [Migrating from the Classic Apps](/en/get-started/migrating-from-classic) walks through that whole transition — including what happens to your collected data. How migration works depends on which app you use:
 
-**In Architect (the browser app), Fresco, and Interviewer**, migration is automatic and requires no setup — these apps always run the latest version. When you open or import a protocol built on an older schema, it is upgraded to the current schema in place. In Architect, the upgraded protocol is saved to your browser library; **Download** a `.netcanvas` copy if you want a backup or need to move it to another app.
+**In Architect (the browser app)**, migrating to schema 9 is your choice. When you open a schema 7 or schema 8 protocol, Architect lists the changes an upgrade would make and offers two ways forward:
+
+- **Upgrade to schema 9** creates an upgraded copy of the protocol and opens it. Your original protocol is not changed. The copy is saved to your browser library; **Download** a `.netcanvas` copy to run it in Fresco or Interviewer.
+- **Keep editing as schema 8** opens the protocol, without upgrading it to schema 9, in Architect 8, the previous version of Architect, which is built in. A schema 7 protocol is migrated to schema 8 when you do this.
+
+Architect is the only app that migrates a protocol to schema 9.
+
+**In Fresco and Interviewer**, a protocol is never migrated to schema 9. A schema 8 protocol stays schema 8, and its interviews run in the schema 8 interview built into the app, exactly as the protocol was designed. To use schema 9 features, upgrade the protocol in Architect and import the upgraded copy. It is a separate protocol, so interviews you have already collected stay with the schema 8 original.
+
+A schema 7 protocol is the one exception. Fresco and Interviewer migrate it to schema 8 automatically when you import it, and then run it as schema 8. This is how protocols made in the Classic apps move to Fresco and Interviewer: Architect Classic only makes schema 7 protocols, and earlier releases of Fresco and Interviewer migrated them the same way. The migration doesn't change the protocol file you imported.
 
 **In Architect Classic**, migration works on files you manage yourself:
 
 1. Ensure you are on the latest version of Architect Classic. When opening the app with an active internet connection, it will check for updates automatically, and notify you if any are found. Alternatively, you can manually update it by visiting our download page and installing the latest version for your platform.
 2. Once you are running the latest version, open the protocol file that you wish to migrate.
 3. Architect Classic will inform you that the protocol file can be upgraded, which happens by creating a copy (so that your original file is preserved). If you choose to continue, you will be prompted for a location to save your upgraded protocol.
+
+   ![Architect Classic offering to create an upgraded copy of a protocol](/assets/img/protocol-schema/architect-migrate.png)
+
 4. Architect Classic will automatically append "(schema version X)" to the filename, which may help you to keep track of the different versions of your protocol, and to differentiate them within Interviewer.
 
 ## Schema version 9
 
 Schema version 9 is the current, latest protocol schema version. It lets you write a protocol in more than one language, so that participants can take the interview in their own language. It also lets you name variables in any language, and use spaces and punctuation in their names, and makes encrypted attributes a standard feature.
 
-- **Architect** 9.0 and later, **Fresco** 5.0 and later, and **Interviewer** 9.0 and later support schema 9, and migrate schema 7 and schema 8 protocols to it automatically.
+- **Architect** 9.0 and later supports schema 9, and offers to upgrade schema 7 and schema 8 protocols to it when you open them.
+- **Fresco** 5.0 and later and **Interviewer** 9.0 and later support schema 9. They also keep running schema 8 protocols as schema 8, and never upgrade a protocol to schema 9.
 - Earlier releases of **Fresco** (4.x) and **Interviewer** (8.x) support schemas 7 and 8 only, and can't open a schema 9 protocol.
 - **Architect Classic** and **Interviewer Classic** support schema 7 and earlier.
 
-Because Architect always runs the latest version, a protocol becomes schema 9 as soon as you open it in Architect, and any `.netcanvas` file you download from Architect is schema 9.
+Every new protocol you create in Architect is schema 9, and so is every upgraded copy. A protocol you keep editing as schema 8 stays schema 8.
 
 <TipBox danger>
 
@@ -130,22 +139,22 @@ Migrating a protocol from schema 8 to schema 9 keeps all of its content, and exi
 
 Migration removes the **Encrypted Attributes** experiment from the protocol's `experiments` setting, because encrypted attributes no longer need it. What happens to the attributes marked as encrypted depends on whether it was turned on:
 
-- If the **Encrypted Attributes** experiment was turned on, the attributes marked as encrypted stay marked, and new answers are encrypted during interviews. Answers that the experimental version protected in earlier interviews cannot be read after the upgrade: those interviews still open, but the protected answers appear as "Answer unavailable" (and are still exported as `ENCRYPTED`). New answers are protected once the participant chooses a new passphrase. See [Answers protected by the experimental version](/en/design-protocols/interface-documentation/anonymisation#answers-protected-by-the-experimental-version).
+- If the **Encrypted Attributes** experiment was turned on, the attributes marked as encrypted stay marked, and answers are encrypted during interviews. Interviews already collected with the schema 8 protocol stay with it, and keep the answers the experimental version protected. See [Answers protected by the experimental version](/en/design-protocols/interface-documentation/anonymisation#answers-protected-by-the-experimental-version).
 - If the experiment was turned off, any attribute marked as encrypted is unmarked, so it keeps being collected without encryption, as it was before. To encrypt it, mark it again in an Anonymisation stage.
 
 ## Schema version 8
 
 Support for schema 8 depends on which apps you use:
 
-- **Architect**, **Fresco**, and **Interviewer** support schema 8. Current releases migrate schema 8 protocols to schema 9.
+- **Architect**, **Fresco**, and **Interviewer** support schema 8. In current releases, Architect can keep editing a schema 8 protocol as schema 8 or upgrade it to schema 9, and Fresco and Interviewer run it as schema 8.
 - **Architect Classic** and **Interviewer Classic** support schema 7 and earlier.
 
 This has two practical consequences:
 
-1. Architect Classic cannot create, open, or migrate protocols to schema 8. Use **Architect** instead, which migrates schema 8 protocols to schema 9 when you open them.
+1. Architect Classic cannot create, open, or migrate protocols to schema 8. Use **Architect** instead.
 2. A schema 8 protocol can only be run in **Fresco** or **Interviewer**. The older **Interviewer Classic** desktop and tablet apps cannot run schema 8 protocols, and will mark them as incompatible/unsupported.
 
-Both Fresco and Interviewer accept schema 7 and schema 8 protocols, so your existing protocols continue to work without a manual migration step. When Fresco or Interviewer imports an older `.netcanvas` file, it automatically upgrades it to the latest schema version it supports, in place.
+Both Fresco and Interviewer accept schema 7 and schema 8 protocols, so your existing protocols continue to work without a manual migration step. A schema 8 protocol runs as schema 8. A schema 7 protocol is migrated to schema 8 automatically when you import it, and runs as schema 8, so protocols made in the Classic apps work without first opening them in Architect.
 
 <TipBox danger>
 
