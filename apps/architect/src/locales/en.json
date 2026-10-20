@@ -2435,6 +2435,18 @@
     "defaultMessage": "Saving...",
     "description": "Visible text in components / ProjectNav / ProjectActions."
   },
+  "architect.projectNav.projectActions.sendToInterviewer": {
+    "defaultMessage": "Send to Interviewer",
+    "description": "Toolbar button beside Download. It opens Interviewer (the app that runs interviews) in a new browser tab and passes it this protocol to import."
+  },
+  "architect.projectNav.projectActions.sending": {
+    "defaultMessage": "Sending...",
+    "description": "Label of the Send to Interviewer toolbar button while Interviewer opens in a new browser tab and the protocol is passed to it."
+  },
+  "architect.projectNav.projectActions.sent": {
+    "defaultMessage": "Sent",
+    "description": "Label of the Send to Interviewer toolbar button for a moment after Interviewer received the protocol."
+  },
   "architect.projectNav.projectActions.sourceActions": {
     "defaultMessage": "Source actions",
     "description": "The aria-label text in components / ProjectNav / ProjectActions."
@@ -3118,6 +3130,22 @@
   "architect.screens.newStageScreen.newStageScreen.selectAnInterfaceType": {
     "defaultMessage": "Select an Interface Type",
     "description": "The title text in components / Screens / NewStageScreen / NewStageScreen."
+  },
+  "architect.sendToInterviewer.notReached": {
+    "defaultMessage": "Interviewer didn’t receive it. Check that your browser lets Architect open new tabs, then try again. You can also download the protocol and open the file in Interviewer.",
+    "description": "Body of the dialog shown when Interviewer (the app that runs interviews) could not be opened in a new browser tab, or opened but did not receive the protocol. \"Download\" means saving the protocol as a .netcanvas file with the Download button."
+  },
+  "architect.sendToInterviewer.notSentTitle": {
+    "defaultMessage": "Your protocol wasn’t sent to Interviewer",
+    "description": "Title of the dialog shown when the \"Send to Interviewer\" button, which opens Interviewer (the app that runs interviews) in a new browser tab and passes it the protocol, did not manage to pass it on."
+  },
+  "architect.sendToInterviewer.oK": {
+    "defaultMessage": "OK",
+    "description": "Button that closes the dialog explaining why the protocol was not sent to Interviewer."
+  },
+  "architect.sendToInterviewer.unresolvedAssets": {
+    "defaultMessage": "These resources could not be read, so your protocol was not sent: {assetList}. Add the files again in Resources, then send the protocol.",
+    "description": "Body of the dialog shown when the protocol could not be sent to Interviewer because some of its resources (images, audio, video or other files added to the protocol) could not be read. assetList is a list of the resource names. Resources is the name of the page where they are managed."
   },
   "architect.skipDestination.finish": {
     "defaultMessage": "End interview",

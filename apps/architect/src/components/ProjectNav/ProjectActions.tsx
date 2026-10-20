@@ -1,4 +1,4 @@
-import { ArrowLeftToLine, Check, Download, Save } from 'lucide-react';
+import { ArrowLeftToLine, Check, Download, Save, Send } from 'lucide-react';
 import {
   createElement,
   type ReactNode,
@@ -34,6 +34,7 @@ import {
 } from '~/utils/downloadActiveProtocol';
 import { getStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
+import { sendProtocolToInterviewer } from '~/utils/sendToInterviewer';
 
 import { ProtocolFailureDetails } from '../protocolOpenDialogs';
 import { useActionToolbar } from './ActionToolbar';
@@ -131,6 +132,24 @@ const messages = defineMessages({
     id: 'architect.projectNav.projectActions.download',
     defaultMessage: 'Download',
     description: 'Visible text in components / ProjectNav / ProjectActions.',
+  },
+  sendToInterviewer: {
+    id: 'architect.projectNav.projectActions.sendToInterviewer',
+    defaultMessage: 'Send to Interviewer',
+    description:
+      'Toolbar button beside Download. It opens Interviewer (the app that runs interviews) in a new browser tab and passes it this protocol to import.',
+  },
+  sending: {
+    id: 'architect.projectNav.projectActions.sending',
+    defaultMessage: 'Sending...',
+    description:
+      'Label of the Send to Interviewer toolbar button while Interviewer opens in a new browser tab and the protocol is passed to it.',
+  },
+  sent: {
+    id: 'architect.projectNav.projectActions.sent',
+    defaultMessage: 'Sent',
+    description:
+      'Label of the Send to Interviewer toolbar button for a moment after Interviewer received the protocol.',
   },
   sourceActions: {
     id: 'architect.projectNav.projectActions.sourceActions',
@@ -253,6 +272,32 @@ const ProjectActions = ({
     }
   }, [activeProtocolId, dispatch, mode, openDialog]);
   const handleDownload = useSingleFlight(runDownload);
+
+  const [isSending, setIsSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
+  // Opens Interviewer's tab synchronously, inside this click, before anything
+  // is awaited: a tab opened later is blocked as a pop-up.
+  const runSend = useCallback(async () => {
+    setIsSending(true);
+    try {
+      // Like Download: a tab that does not own the saved copy sends that copy.
+      const sent = await sendProtocolToInterviewer(openDialog, async () => {
+        if (mode === 'locked' && activeProtocolId) {
+          const row = await getStoredProtocol(activeProtocolId);
+          if (!row) {
+            throw new Error('No saved copy of the open protocol to send');
+          }
+          return { protocol: row.protocol, protocolId: activeProtocolId };
+        }
+        if (!protocol) throw new Error('No active protocol to send');
+        return { protocol, protocolId: activeProtocolId ?? undefined };
+      });
+      if (sent) setSendSuccess(true);
+    } finally {
+      setIsSending(false);
+    }
+  }, [activeProtocolId, mode, openDialog, protocol]);
+  const handleSend = useSingleFlight(runSend);
 
   const runSaveSource = useCallback(async () => {
     if (!activeProtocolId || !sourceRef || !protocol) {
@@ -406,6 +451,12 @@ const ProjectActions = ({
   }, [downloadSuccess]);
 
   useEffect(() => {
+    if (!sendSuccess) return undefined;
+    const timer = setTimeout(() => setSendSuccess(false), 2000);
+    return () => clearTimeout(timer);
+  }, [sendSuccess]);
+
+  useEffect(() => {
     if (!sourceSaveSuccess) return undefined;
     const timer = setTimeout(() => setSourceSaveSuccess(false), 2000);
     return () => clearTimeout(timer);
@@ -472,6 +523,17 @@ const ProjectActions = ({
                 ? intl.formatMessage(messages.downloading)
                 : intl.formatMessage(messages.download)}
           </ToolbarButton>
+          <ToolbarButton
+            icon={sendSuccess ? <Check /> : <Send />}
+            disabled={isSending}
+            onClick={handleSend}
+          >
+            {sendSuccess
+              ? intl.formatMessage(messages.sent)
+              : isSending
+                ? intl.formatMessage(messages.sending)
+                : intl.formatMessage(messages.sendToInterviewer)}
+          </ToolbarButton>
         </ToolbarGroup>,
         canSaveToSource ? <ToolbarSeparator key="source-separator" /> : null,
         canSaveToSource ? (
@@ -504,10 +566,13 @@ const ProjectActions = ({
       handleRedo,
       handleReturn,
       handleSaveSource,
+      handleSend,
       handleUndo,
       isExporting,
       isSavingSource,
+      isSending,
       returnLabel,
+      sendSuccess,
       showHistoryActions,
       sourceSaveSuccess,
       intl,

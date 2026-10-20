@@ -18,6 +18,7 @@ describe('parseUrlEntryRequests', () => {
     const { parseUrlEntryRequests } = await load('/');
     expect(parseUrlEntryRequests(`?lang=es&import=${HANDOFF_KEY}`)).toEqual({
       importHandoffKey: HANDOFF_KEY,
+      fromArchitect: false,
       remainingSearch: '?lang=es',
     });
   });
@@ -32,6 +33,21 @@ describe('parseUrlEntryRequests', () => {
     const { parseUrlEntryRequests } = await load('/');
     expect(parseUrlEntryRequests(search)).toEqual({
       importHandoffKey: undefined,
+      fromArchitect: false,
+      remainingSearch: '',
+    });
+  });
+
+  it('reads an Architect sender and drops any other', async () => {
+    const { parseUrlEntryRequests } = await load('/');
+    expect(parseUrlEntryRequests('?from=architect&lang=es')).toEqual({
+      importHandoffKey: undefined,
+      fromArchitect: true,
+      remainingSearch: '?lang=es',
+    });
+    expect(parseUrlEntryRequests('?from=elsewhere')).toEqual({
+      importHandoffKey: undefined,
+      fromArchitect: false,
       remainingSearch: '',
     });
   });
@@ -56,6 +72,16 @@ describe('captureUrlEntryRequests', () => {
     const mod = await load('/?import=nope');
     mod.captureUrlEntryRequests();
     expect(window.location.search).toBe('');
+    expect(mod.takeImportRequest()).toBeUndefined();
+  });
+
+  it('strips an Architect sender and answers it once', async () => {
+    const mod = await load('/?from=architect#top');
+    mod.captureUrlEntryRequests();
+    expect(window.location.search).toBe('');
+    expect(window.location.hash).toBe('#top');
+    expect(mod.takeArchitectRequest()).toBe(true);
+    expect(mod.takeArchitectRequest()).toBe(false);
     expect(mod.takeImportRequest()).toBeUndefined();
   });
 

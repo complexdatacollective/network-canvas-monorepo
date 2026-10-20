@@ -11,6 +11,7 @@ import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBu
 
 import App from './App';
 import { startupLocale } from './i18n/preference';
+import { startArchitectHandoff } from './lib/handoff/architectHandoff';
 import { startHandedOverImport } from './lib/handoff/handedOverImport';
 import {
   hasPendingLaunchFiles,
@@ -54,6 +55,10 @@ initFileLaunchCapture();
 // A file Interviewer 8 staged for this app (`/?import=<key>`) joins the
 // launched files; hand-offs nobody took are cleaned up.
 startHandedOverImport();
+
+// A protocol Architect's "Send to Interviewer" opened this tab for
+// (`/?from=architect`) joins them too, once Architect posts it.
+startArchitectHandoff();
 
 async function startApp(): Promise<void> {
   await Promise.all([
