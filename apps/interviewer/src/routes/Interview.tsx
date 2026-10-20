@@ -60,7 +60,7 @@ import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   getProtocolByHash,
   getSession,
-  getSessionSchemaVersion,
+  getSessionHeader,
   getSettings,
   markSessionFinished,
   updateSession,
@@ -73,6 +73,7 @@ import {
   LEGACY_INTERVIEWER_MAJOR,
   legacyInterviewUrl,
 } from '~/lib/legacyInterviewer';
+import { refreshLegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
@@ -344,7 +345,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // the auth state it reads, and re-running the load must not follow from it.
   const { settled: lockSettled, settleLock } = useSettleLockForInterviewer8();
   const hostInInterviewer8 = useEffectEvent(
-    async (isActive: () => boolean): Promise<boolean> => {
+    async (
+      header: { protocolHash: string; finishedAt: string | null },
+      isActive: () => boolean,
+    ): Promise<boolean> => {
       const interviewer = getBundledLegacyInterviewer();
       if (!interviewer) return false;
       const settingUp = !lockSettled;
@@ -381,6 +385,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         ),
         enterAuthorized: settings.requireUnlockOnEnter,
       });
+      // As for a schema 9 interview: Home focuses this protocol's card when
+      // the interview ends. A review or a finished interview changes nothing.
+      if (!reviewRequested && header.finishedAt === null) {
+        void updateSettings({
+          lastActiveSessionId: sessionId,
+          lastActiveProtocolHash: header.protocolHash,
+        });
+      }
       return true;
     },
   );
@@ -413,6 +425,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       stepOverFrameEntries: true,
     });
     if (leavingHosted.lock) void lock();
+    // Interviewer 8 may have installed its worker while it ran.
+    void refreshLegacyInterviewerOffline();
   }, [leavingHosted, exitToHome, lock, navigate, setAuthorizedInterviewId]);
 
   // The route stopped being this interview while the frame was still up, by
@@ -497,9 +511,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     const load = async () => {
       // Schema detection first, from the plaintext columns alone: nothing of a
       // schema 8 interview is unlocked or decrypted by this app.
-      const schemaVersion = await getSessionSchemaVersion(sessionId);
+      const header = await getSessionHeader(sessionId);
       if (!active) return;
+      const schemaVersion = header?.schemaVersion;
       if (
+        header &&
         schemaVersion !== undefined &&
         schemaVersion < COMPATIBLE_PROTOCOL_SCHEMA_VERSION
       ) {
@@ -507,7 +523,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         // should exist) is explained, as is a build without Interviewer 8.
         const hosted =
           schemaVersion === LEGACY_INTERVIEWER_MAJOR &&
-          (await hostInInterviewer8(() => active));
+          (await hostInInterviewer8(header, () => active));
         if (!hosted && active) setLoadState({ kind: 'legacy-not-bundled' });
         return;
       }

@@ -50,6 +50,15 @@ vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
 
 const getSettingsMock = vi.fn();
 const getSessionSchemaVersionMock = vi.fn<() => Promise<number | undefined>>();
+const getSessionHeaderMock = async () => {
+  const schemaVersion = await getSessionSchemaVersionMock();
+  return {
+    protocolHash: 'h1',
+    finishedAt: sessionFinishedAt.current,
+    schemaVersion,
+  };
+};
+const sessionFinishedAt: { current: string | null } = { current: null };
 const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
@@ -58,7 +67,7 @@ const updateSettingsMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
-  getSessionSchemaVersion: () => getSessionSchemaVersionMock(),
+  getSessionHeader: () => getSessionHeaderMock(),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
   updateSession: (...a: unknown[]) => updateSessionMock(...a),
   updateSettings: (...a: unknown[]) => updateSettingsMock(...a),
@@ -341,6 +350,7 @@ async function invoke(fn: () => unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionFinishedAt.current = null;
   getSessionSchemaVersionMock.mockResolvedValue(
     COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
   );
@@ -567,7 +577,11 @@ describe('InterviewRoute schema 8 interview', () => {
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
     expect(getSessionMock).not.toHaveBeenCalled();
     expect(getProtocolByHashMock).not.toHaveBeenCalled();
-    expect(updateSettingsMock).not.toHaveBeenCalled();
+    // Home focuses this protocol's card when the interview ends.
+    expect(updateSettingsMock).toHaveBeenCalledWith({
+      lastActiveSessionId: 's1',
+      lastActiveProtocolHash: 'h1',
+    });
     expect(navigateMock).not.toHaveBeenCalled();
     expect(exitToHomeSpy).not.toHaveBeenCalled();
     expect(shellMock).not.toHaveBeenCalled();
@@ -582,6 +596,16 @@ describe('InterviewRoute schema 8 interview', () => {
       'src',
       '/v8/interview/s1?mode=review',
     );
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves the last-active protocol alone for a finished interview', async () => {
+    sessionFinishedAt.current = '2026-01-02T00:00:00.000Z';
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await screen.findByTitle('Interview');
+    expect(updateSettingsMock).not.toHaveBeenCalled();
   });
 
   it('asks nothing when the entry was already authorized, as by the lock screen on a reload', async () => {

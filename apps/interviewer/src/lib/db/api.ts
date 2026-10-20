@@ -80,10 +80,10 @@ export async function getSession(
   return dexieSessions.getSession(id);
 }
 
-export async function getSessionSchemaVersion(
+export async function getSessionHeader(
   id: string,
-): Promise<number | undefined> {
-  return dexieSessions.getSessionSchemaVersion(id);
+): ReturnType<typeof dexieSessions.getSessionHeader> {
+  return dexieSessions.getSessionHeader(id);
 }
 
 export async function getSessionsForExport(

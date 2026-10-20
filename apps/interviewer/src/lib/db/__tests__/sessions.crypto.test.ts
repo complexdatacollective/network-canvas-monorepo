@@ -1,6 +1,14 @@
 // fake-indexeddb must be imported before Dexie opens a database.
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type MockInstance,
+  vi,
+} from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
@@ -217,6 +225,48 @@ describe('sessions repo — encryption at boundary', () => {
     const back = await getSession(created.id);
     expect(back?.network.nodes).toHaveLength(0);
     expect(back?.progress).toBe(55);
+  });
+
+  it('keeps a write that lands while the row is being re-encrypted', async () => {
+    // Written before the device was secured, so the sweep has it to wrap.
+    const dek = await makeDek();
+    setSessionDek(null);
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    setSessionDek(dek);
+
+    // Interviewer 8, in its frame, saves an answer after the sweep has read
+    // the row and before it writes the re-wrapped copy back.
+    const answered: NcNetwork = { ...initialNetwork, nodes: [] };
+    const realGet = (id: string) => db.sessions.get(id);
+    // Only the key form of `get` is used; its overloads defeat inference.
+    const getSpy = (
+      vi.spyOn(db.sessions, 'get') as unknown as MockInstance<
+        (id: string) => Promise<StoredSessionRow | undefined>
+      >
+    ).mockImplementationOnce(async (id) => {
+      const read = await realGet(id);
+      if (read) {
+        await db.sessions.put({
+          ...read,
+          network: answered,
+          lastUpdatedAt: '2099-01-01T00:00:00.000Z',
+        });
+      }
+      return read;
+    });
+
+    await reencryptSession(created.id);
+    getSpy.mockRestore();
+
+    const raw = await db.sessions.get(created.id);
+    expect(raw?._enc?.network).toBeDefined();
+    expect(raw?.lastUpdatedAt).toBe('2099-01-01T00:00:00.000Z');
+    expect((await getSession(created.id))?.network).toEqual(answered);
   });
 
   it('lists and queries without touching the key (returns lite rows)', async () => {
