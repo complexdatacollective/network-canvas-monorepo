@@ -13,10 +13,9 @@ in the background, after it has finished loading itself.
   copy and opens it; the original is never changed. **Keep editing as schema
   8** opens the protocol, unchanged, in Architect 8.
 - The protocols you saved in Architect 8 appear in the library beside your
-  schema 9 protocols, marked with their schema version, and marked "Has an
-  upgraded copy" once you have upgraded one. Their menu can upgrade the
-  protocol, open it in Architect 8, download it as a `.netcanvas` file or show
-  its details. Architect remembers when you chose to keep a protocol in
+  schema 9 protocols, marked with their schema version. Their menu can
+  upgrade the protocol, open it in Architect 8, download it as a `.netcanvas`
+  file or show its details. Architect remembers when you chose to keep a protocol in
   Architect 8 and opens it there next time.
 - Architect 9 keeps its own library, separate from Architect 8's. It never
   changes or deletes a protocol saved in Architect 8, and **Clear all**
