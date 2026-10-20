@@ -1,0 +1,42 @@
+{
+  "name": "@codaco/sketch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --build --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.135.0",
+    "@codaco/fresco-ui": "workspace:^",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
+    "@codaco/tailwind-config": "workspace:^",
+    "@codaco/tsconfig": "workspace:^",
+    "@netlify/blobs": "11.1.4",
+    "@netlify/functions": "6.0.2",
+    "jszip": "catalog:",
+    "motion": "catalog:",
+    "openai": "7.39.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/vitest-config": "workspace:^",
+    "@tailwindcss/vite": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "jsdom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

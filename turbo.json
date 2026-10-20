@@ -225,6 +225,44 @@
       "inputs": ["src/**", "vite.config.*", "tsconfig*.json", "package.json"],
       "outputs": []
     },
+    "@codaco/sketch#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "public/**",
+        "netlify/**",
+        "index.html",
+        "netlify.toml",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV", "VITE_ARCHITECT_URL"],
+      "outputs": ["dist/**"]
+    },
+    "@codaco/sketch#typecheck": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "netlify/**",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "@codaco/sketch#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "netlify/**",
+        "vite*.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "outputs": []
+    },
     "networkcanvas.com#build": {
       "dependsOn": ["^topo"],
       "inputs": [

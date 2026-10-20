@@ -1,0 +1,14 @@
+# Paths are relative to the repository root, the site's base directory.
+[build]
+command = "pnpm exec turbo run build --filter=@codaco/sketch"
+publish = "apps/sketch/dist"
+
+[build.environment]
+NODE_OPTIONS = "--max-old-space-size=4096"
+
+[functions]
+directory = "apps/sketch/netlify/functions"
+node_bundler = "esbuild"
+
+[context.deploy-preview]
+ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- apps/sketch/netlify.toml package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes \"turbo@$(node -p \"require('./package.json').devDependencies.turbo\")\" query affected --tasks build --packages @codaco/sketch --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"
