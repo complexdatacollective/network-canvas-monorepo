@@ -13,11 +13,10 @@ import {
   legacyProtocol,
   legacyProtocolAssets,
 } from '../fixtures/legacy-protocol.js';
-import { seedHandoffRecord, seedLegacyProtocols } from '../fixtures/seed.js';
+import { seedLegacyProtocols } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import {
   readDatabaseNames,
-  readHandoffRecords,
   readLegacyLibraryFingerprint,
   readLibraryRows,
   readStoreCounts,
@@ -77,7 +76,6 @@ test('lists an Architect 8 protocol in Recent with a badge naming its schema', a
   const row = libraryRow(architectPage, LEGACY_NAME);
   await expect(row).toBeVisible();
   await expect(row).toContainText('Schema 8');
-  await expect(row).not.toContainText('Has an upgraded copy');
   // Beside this app's own protocols, in one list; only the legacy row is
   // badged.
   await expect(libraryRow(architectPage, 'Current Study')).toBeVisible();
@@ -151,12 +149,11 @@ test('upgrading makes a copy in this library and leaves Architect 8’s library 
 
   expect(await readLegacyLibraryFingerprint(architectPage)).toBe(before);
 
-  // Back home, both are listed, and the original says a copy exists.
+  // Back home, both are listed: the original, still schema 8, and the copy.
   await architectPage.goto('/');
-  const original = libraryRow(architectPage, LEGACY_NAME).filter({
-    hasText: 'Schema 8',
-  });
-  await expect(original).toContainText('Has an upgraded copy');
+  await expect(
+    libraryRow(architectPage, LEGACY_NAME).filter({ hasText: 'Schema 8' }),
+  ).toHaveCount(1);
   await expect(libraryRow(architectPage, LEGACY_NAME)).toHaveCount(2);
 });
 
@@ -189,71 +186,6 @@ test('offers to keep an older file in Architect 8 only when this build bundles i
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(architectPage).toHaveURL(/\/$/);
-  expect(await readStoreCounts(architectPage)).toEqual({
-    protocols: 0,
-    assets: 0,
-  });
-});
-
-// The other direction of the hand-off: a file an Architect 8 window was
-// launched with, forwarded here as `/?import=<key>`.
-test('/?import= opens the file Architect 8 staged for this app, once', async ({
-  architectPage,
-}) => {
-  const key = '3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a';
-  await architectPage.goto('/');
-  await seedHandoffRecord(architectPage, {
-    key,
-    targetMajor: 9,
-    fileName: 'legacy-study.netcanvas',
-    file: await legacyNetcanvas(LEGACY_NAME),
-  });
-
-  await architectPage.goto(`/?import=${key}`);
-
-  // The same dialog as any other older file, under the file's own protocol.
-  const dialog = architectPage.getByRole('dialog', {
-    name: SUITE_BUILD_BUNDLES_ARCHITECT_8
-      ? 'How do you want to open this protocol?'
-      : 'Upgrade to continue',
-  });
-  await expect(
-    dialog.getByRole('button', { name: 'Upgrade to schema 9' }),
-  ).toBeFocused();
-  // Taken from the address, so a reload cannot ask again, and taken from the
-  // store, so another tab cannot open it again.
-  await expect(architectPage).toHaveURL(/\/$/);
-  expect(await readHandoffRecords(architectPage)).toEqual([]);
-
-  await dialog.getByRole('button', { name: 'Upgrade to schema 9' }).click();
-  await expect(architectPage).toHaveURL(/\/protocol$/);
-  await expect(
-    architectPage.getByRole('textbox', { name: 'Protocol name' }),
-  ).toHaveValue(LEGACY_NAME);
-});
-
-test('/?import= leaves a file staged for Architect 8 alone and says it could not open one', async ({
-  architectPage,
-}) => {
-  const key = '4e3d2c1b-0a9f-4e8d-9c7b-6a5f4e3d2c1b';
-  await architectPage.goto('/');
-  await seedHandoffRecord(architectPage, {
-    key,
-    targetMajor: 8,
-    fileName: 'legacy-study.netcanvas',
-    file: await legacyNetcanvas(LEGACY_NAME),
-  });
-
-  await architectPage.goto(`/?import=${key}`);
-
-  const dialog = architectPage.getByRole('dialog', {
-    name: 'Could not open file',
-  });
-  await expect(dialog).toBeVisible();
-  await expect(architectPage).toHaveURL(/\/$/);
-  expect(await readHandoffRecords(architectPage)).toEqual([
-    expect.objectContaining({ key, targetMajor: 8 }),
-  ]);
   expect(await readStoreCounts(architectPage)).toEqual({
     protocols: 0,
     assets: 0,

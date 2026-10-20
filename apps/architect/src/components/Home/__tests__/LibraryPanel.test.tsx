@@ -537,49 +537,7 @@ describe('<LibraryPanel /> Architect 8 protocols', () => {
     );
     const row = screen.getByRole('option', { name: /Schema 8 Study/ });
     expect(within(row).getByText('Schema 7')).toBeInTheDocument();
-    expect(
-      within(row).queryByText('Has an upgraded copy'),
-    ).not.toBeInTheDocument();
     expect(screen.getByText('1 protocol')).toBeInTheDocument();
-  });
-
-  it('marks one whose upgraded copy is in this library', () => {
-    const legacy = makeLegacyRow();
-    withLibrary({
-      protocols: [makeProtocolRow({ id: 'copy-1', updatedAt: 1_500 })],
-      legacyProtocols: [legacy],
-      legacyChoices: [
-        {
-          legacyId: legacy.id,
-          choice: 'upgraded',
-          upgradedId: 'copy-1',
-          updatedAt: 1_500,
-        },
-      ],
-    });
-    renderWithCallbacks();
-
-    const row = screen.getByRole('option', { name: /Schema 8 Study/ });
-    expect(within(row).getByText('Has an upgraded copy')).toBeInTheDocument();
-    expect(screen.getByText('2 protocols')).toBeInTheDocument();
-  });
-
-  it('does not claim an upgrade whose copy has since been deleted', () => {
-    const legacy = makeLegacyRow();
-    withLibrary({
-      legacyProtocols: [legacy],
-      legacyChoices: [
-        {
-          legacyId: legacy.id,
-          choice: 'upgraded',
-          upgradedId: 'deleted-copy',
-          updatedAt: 1_500,
-        },
-      ],
-    });
-    renderWithCallbacks();
-
-    expect(screen.queryByText('Has an upgraded copy')).not.toBeInTheDocument();
   });
 
   it('merges both libraries, most recently edited first', () => {

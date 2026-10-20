@@ -491,10 +491,6 @@
     "defaultMessage": "Exit",
     "description": "Participant completion-screen action handing control back to the researcher, with authentication if required."
   },
-  "interviewer.language.automatic": {
-    "defaultMessage": "Automatic (browser)",
-    "description": "Language option that follows this device browser preferences instead of storing an explicit choice."
-  },
   "interviewer.language.failed": {
     "defaultMessage": "The language changed for this session, but the preference could not be saved. Your browser may be blocking device storage.",
     "description": "Error announced when the language applies immediately but cannot persist across reloads."
