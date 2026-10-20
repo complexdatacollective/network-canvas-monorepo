@@ -1,14 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  architect9UpgradeUrl,
-  deferArchitect9Navigation,
-  forwardLaunchFilesToArchitect9,
-  stageHandoffImport,
-  subscribeArchitect9Navigation,
-  takeArchitect9Navigation,
-} from '../architect9Handoff';
+import { stageHandoffImport } from '../architect9Handoff';
 import {
   getLaunchFiles,
   hasPendingLaunchFiles,
@@ -16,7 +9,6 @@ import {
   takeLaunchReadFailures,
 } from '../fileLaunchQueue';
 import * as handoffStore from '../handoffStore';
-import { reportError } from '../reportError';
 
 vi.mock('../reportError', () => ({ reportError: vi.fn() }));
 
@@ -31,17 +23,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   takeLaunchFiles();
   takeLaunchReadFailures();
-  takeArchitect9Navigation();
   await handoffStore.pruneStaleHandoffs(Number.POSITIVE_INFINITY);
-});
-
-describe('architect9UpgradeUrl', () => {
-  it('is root-absolute, outside this build’s base, and encodes the id', () => {
-    expect(architect9UpgradeUrl('3f0c1f7e-8a8e-4f43-9d6a-1d2c3b4a5e6f')).toBe(
-      '/?upgrade=3f0c1f7e-8a8e-4f43-9d6a-1d2c3b4a5e6f',
-    );
-    expect(architect9UpgradeUrl('a b')).toBe('/?upgrade=a%20b');
-  });
 });
 
 describe('stageHandoffImport', () => {
@@ -103,70 +85,5 @@ describe('stageHandoffImport', () => {
 
     expect(getLaunchFiles()).toEqual([]);
     expect(takeLaunchReadFailures()).toEqual([1]);
-  });
-});
-
-describe('forwardLaunchFilesToArchitect9', () => {
-  it('stages the first file for Architect 9 and asks to navigate to its import URL', async () => {
-    const listener = vi.fn();
-    const unsubscribe = subscribeArchitect9Navigation(listener);
-    const first = new File(['first'], 'first.netcanvas');
-
-    const remaining = await forwardLaunchFilesToArchitect9([
-      first,
-      new File(['second'], 'second.netcanvas'),
-    ]);
-    unsubscribe();
-
-    expect(remaining).toEqual([]);
-    expect(listener).toHaveBeenCalledTimes(1);
-    const url = takeArchitect9Navigation();
-    const key = /^\/\?import=([0-9a-f-]{36})$/.exec(url ?? '')?.[1];
-    expect(key).toBeDefined();
-    // Not this app's to open...
-    expect(await handoffStore.takeHandoff(key ?? '', 8)).toBeNull();
-    // ...but Architect 9's.
-    const record = await handoffStore.takeHandoff(key ?? '', 9);
-    expect(record).toMatchObject({
-      kind: 'import',
-      targetMajor: 9,
-      fileName: 'first.netcanvas',
-    });
-    expect(takeArchitect9Navigation()).toBeNull();
-  });
-
-  it('opens the file here instead when it cannot be staged', async () => {
-    vi.spyOn(handoffStore, 'writeHandoff').mockRejectedValueOnce(
-      new Error('QuotaExceededError'),
-    );
-    const file = new File(['zip'], 'study.netcanvas');
-
-    expect(await forwardLaunchFilesToArchitect9([file])).toEqual([file]);
-    expect(takeArchitect9Navigation()).toBeNull();
-    expect(reportError).toHaveBeenCalled();
-  });
-});
-
-describe('deferArchitect9Navigation', () => {
-  it('keeps a cancelled navigation for later without asking to run it now', () => {
-    const listener = vi.fn();
-    const unsubscribe = subscribeArchitect9Navigation(listener);
-
-    deferArchitect9Navigation('/?import=abc');
-
-    expect(listener).not.toHaveBeenCalled();
-    expect(takeArchitect9Navigation()).toBe('/?import=abc');
-    expect(takeArchitect9Navigation()).toBeNull();
-    unsubscribe();
-  });
-
-  it('keeps a newer navigation that is already waiting', () => {
-    // A second launch arrives while the first one's prompt is open and is
-    // deferred at once; the first prompt is then cancelled.
-    deferArchitect9Navigation('/?import=newer');
-    deferArchitect9Navigation('/?import=older');
-
-    expect(takeArchitect9Navigation()).toBe('/?import=newer');
-    expect(takeArchitect9Navigation()).toBeNull();
   });
 });

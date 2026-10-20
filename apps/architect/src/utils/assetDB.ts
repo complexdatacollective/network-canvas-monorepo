@@ -2,7 +2,6 @@ import Dexie, { type EntityTable } from 'dexie';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolSourceRef } from '~/templates';
-import { IS_SUBPATH_BUILD } from '~/utils/appBase';
 
 // A protocol saved in the local library. The library is the durable, multi-
 // protocol store surfaced on the home screen; the redux `activeProtocol` slice
@@ -49,12 +48,7 @@ assetDb.version(1).stores({
 
 export async function clearAllStorage() {
   try {
-    // A sub-path build shares localStorage with Architect 9 on the same origin
-    // (its language, analytics and update keys), so only the root app may
-    // clear it wholesale. The library below is Architect 8's alone: Architect
-    // 9 keeps its own in ArchitectProtocolDB-v9 and only reads this one to
-    // upgrade a protocol.
-    if (!IS_SUBPATH_BUILD) localStorage.clear();
+    localStorage.clear();
     await Promise.all([assetDb.assets.clear(), assetDb.protocols.clear()]);
     window.location.reload();
   } catch (_error) {}

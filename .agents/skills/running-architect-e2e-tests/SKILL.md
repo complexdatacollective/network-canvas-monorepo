@@ -36,7 +36,7 @@ pnpm --filter @codaco/architect test:e2e
 
 ### The /v8/ sub-path suite
 
-Architect 8 also ships inside Architect 9's deploy, built with `ARCHITECT_BASE_PATH=/v8/`. `e2e/playwright.subpath.config.ts` runs `e2e/subpath-specs/` against that build on port 4302 with `baseURL` `http://localhost:4302/v8/`. It covers routes, requests and the preview popup staying under `/v8/`; `?open=` and `?import=` (the `ArchitectHandoffDB` hand-off); and the Architect 8 banner and library action that go to Architect 9's `/?upgrade=`. Run it after changing anything path-, URL- or hand-off-related:
+Architect 8 also ships inside Architect 9's deploy, built with `ARCHITECT_BASE_PATH=/v8/`. `e2e/playwright.subpath.config.ts` runs `e2e/subpath-specs/` against that build on port 4302 with `baseURL` `http://localhost:4302/v8/`. It covers routes, requests and the preview popup staying under `/v8/`; `?open=` and `?import=` (the `ArchitectHandoffDB` hand-off); and going back to Architect 9's root, stubbed, whenever the editor closes or there is nothing to open. Seed with `seed(protocol, { at: '/' })` there, since `/v8/` itself never stays put. Run it after changing anything path-, URL- or hand-off-related:
 
 ```bash
 pnpm --filter @codaco/architect test:e2e:subpath   # builds with ARCHITECT_BASE_PATH=/v8/, then runs

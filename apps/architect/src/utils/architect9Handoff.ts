@@ -1,18 +1,13 @@
 import { enqueueLaunchRead } from './fileLaunchQueue';
-import { takeHandoff, writeHandoff } from './handoffStore';
-import { reportError } from './reportError';
+import { takeHandoff } from './handoffStore';
 
 // Architect 9 is served at the origin root, with this build at /v8/ inside its
-// deploy. Its entry points are root-absolute, never under this build's base,
-// and each is reached by a full-page navigation: they belong to another app.
+// deploy. Architect 9 does all the opening: it sends a protocol here with
+// `?open=` or `?import=`, and this build only ever goes back to its start
+// screen, which is root-absolute, never under this build's base.
 
-/** Architect 9's upgrade confirmation for a row of this app's library. */
-export const architect9UpgradeUrl = (protocolId: string): string =>
-  `/?upgrade=${encodeURIComponent(protocolId)}`;
-
-/** Architect 9's open flow, for a file staged in the hand-off store. */
-const architect9ImportUrl = (handoffKey: string): string =>
-  `/?import=${encodeURIComponent(handoffKey)}`;
+/** Architect 9's start screen, where this build returns when the editor closes. */
+const ARCHITECT_9_START_SCREEN_URL = '/';
 
 // The file Architect 9 staged keeps the name it was opened under; Open file
 // refuses anything without the .netcanvas extension, so make sure it has one.
@@ -37,72 +32,17 @@ export const stageHandoffImport = (handoffKey: string): void => {
   });
 };
 
-// A navigation to Architect 9 requested before, or outside, React — an OS file
-// launch reaching an Architect 8 window — waits here for the component that
-// can honour the leave-editor rule (useNavigateToArchitect9).
-let pendingNavigation: string | null = null;
-const navigationListeners = new Set<() => void>();
-
-export const subscribeArchitect9Navigation = (
-  listener: () => void,
-): (() => void) => {
-  navigationListeners.add(listener);
-  return () => {
-    navigationListeners.delete(listener);
-  };
-};
-
-export const takeArchitect9Navigation = (): string | null => {
-  const url = pendingNavigation;
-  pendingNavigation = null;
-  return url;
-};
+let left = false;
 
 /**
- * Hold a navigation the researcher cancelled at the leave-editor prompt. The
- * staged file stays in the hand-off store, and the navigation runs again once
- * the editor is closed rather than dropping the launch. A later launch
- * replaces it, and a navigation already waiting is newer than this one (a
- * launch that arrived while this one's prompt was open), so it is kept.
+ * Go back to Architect 9's start screen: a full-page navigation to another
+ * app, kept here so tests can stand in for it. It replaces this page in
+ * history, so Back from Architect 9 never lands on an empty page that would
+ * only send it forward again. Once the page is leaving, a second call does
+ * nothing rather than replace the first.
  */
-export const deferArchitect9Navigation = (url: string): void => {
-  pendingNavigation ??= url;
-};
-
-const requestArchitect9Navigation = (url: string): void => {
-  pendingNavigation = url;
-  for (const listener of Array.from(navigationListeners)) listener();
-};
-
-/**
- * `routeFiles` for the launch queue in a /v8/ build. Architect 9 owns
- * `.netcanvas` launches (this build declares no file handler), but a launch can
- * still reach a window of the installed app that is showing Architect 8. Hand
- * the file to Architect 9's open flow, which offers the schema choice.
- *
- * If staging fails the file opens here instead, so a launch is never dropped.
- */
-export const forwardLaunchFilesToArchitect9 = async (
-  files: File[],
-): Promise<File[]> => {
-  // Like Open file, a launch opens one protocol.
-  const [file] = files;
-  if (!file) return [];
-  try {
-    const key = await writeHandoff({
-      targetMajor: 9,
-      fileName: file.name,
-      file,
-    });
-    requestArchitect9Navigation(architect9ImportUrl(key));
-    return [];
-  } catch (error) {
-    reportError(error, { operation: 'fileLaunchForward' });
-    return [file];
-  }
-};
-
-/** The full-page navigation itself, kept here so tests can stand in for it. */
-export const leaveForArchitect9 = (url: string): void => {
-  window.location.assign(url);
+export const returnToArchitect9 = (): void => {
+  if (left) return;
+  left = true;
+  window.location.replace(ARCHITECT_9_START_SCREEN_URL);
 };

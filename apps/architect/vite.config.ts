@@ -71,25 +71,35 @@ const injectCspMeta = (): Plugin => ({
   },
 });
 
-// Architect 8 ships inside Architect 9's deploy as the editor alone: the
-// research templates, the Sample protocol and their media (video, CSV, GeoJSON,
-// audio) stay out of it. Every one of them is reached through
-// src/templates/bundled-protocols.ts, so a sub-path build replaces that module
-// with its "nothing bundled" value before any of its imports are resolved. The
-// replacement has to happen at load time: an eager `import.meta.glob` emits its
-// asset files as the module loads, so a branch that merely stops using them
-// still ships every file. scripts/assert-pwa-build.mjs fails a sub-path build
-// that ships any of them.
-const bundledProtocolsModule = normalizePath(
-  resolve(rootDir, 'src/templates/bundled-protocols.ts'),
-);
-const omitBundledProtocols = (): Plugin => ({
-  name: 'architect-omit-bundled-protocols',
+// Architect 8 ships inside Architect 9's deploy as the editor alone: no start
+// screen, and none of the research templates, the Sample protocol or their
+// media (video, CSV, GeoJSON, audio). A sub-path build replaces two modules
+// before any of their imports are resolved:
+//
+// - the start screen, which Routes never renders there (it returns to
+//   Architect 9's instead), so the library, Open file and everything else only
+//   it imports stay out;
+// - src/templates/bundled-protocols.ts, the editor's one way to the bundled
+//   protocols, with its "nothing bundled" value.
+//
+// The replacement has to happen at load time: an eager `import.meta.glob`
+// emits its asset files as the module loads, so a branch that merely stops
+// using them still ships every file. scripts/assert-pwa-build.mjs fails a
+// sub-path build that ships any of them.
+const subpathReplacements = new Map([
+  [
+    normalizePath(resolve(rootDir, 'src/components/Home/Home.tsx')),
+    'export default function Home() { return null; }',
+  ],
+  [
+    normalizePath(resolve(rootDir, 'src/templates/bundled-protocols.ts')),
+    'export const bundledProtocols = null;',
+  ],
+]);
+const omitFromSubpathBuild = (): Plugin => ({
+  name: 'architect-omit-from-subpath-build',
   enforce: 'pre',
-  load: (id) =>
-    id === bundledProtocolsModule
-      ? 'export const bundledProtocols = null;'
-      : undefined,
+  load: (id) => subpathReplacements.get(id),
 });
 
 // https://vite.dev/config/
@@ -139,7 +149,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       ...appI18n(),
-      ...(isSubpath ? [omitBundledProtocols()] : []),
+      ...(isSubpath ? [omitFromSubpathBuild()] : []),
       injectCspMeta(),
       createProtocolSourceAuthoringPlugin({
         repoRoot,

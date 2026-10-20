@@ -20,7 +20,7 @@ import {
 import type { RootState } from '~/ducks/modules/root';
 import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
-import { toAppPath, toBrowserPath } from '~/utils/appBase';
+import { IS_SUBPATH_BUILD, toAppPath, toBrowserPath } from '~/utils/appBase';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 const utilityMessages = defineMessages({
   returnToStartScreen: {
@@ -439,23 +439,22 @@ const NESTED_DRAFT_DISCARD_DESCRIPTION = defineMessages({
 // instead. Callers must resolve `no-protocol` themselves: there is nothing to
 // confirm, and every action this dialog offers would fail.
 //
-// `destination` names where the leave goes, so the copy can say so: the start
-// screen, or Architect 9 (a full-page navigation away from this app). Leaving
-// a pristine editor for Architect 9 loses nothing unless storage is
-// unavailable, so that is the only pristine state its copy covers, and any
-// other leaves without asking.
+// Architect 8 served inside Architect 9 has no start screen of its own: a leave
+// there returns to Architect 9's, so the copy says so. Leaving a pristine
+// editor for Architect 9 loses nothing unless storage is unavailable, so that
+// is the only pristine state its copy covers, and any other leaves without
+// asking.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void | Promise<void>,
   draftDirty = false,
   persistence: Exclude<LeavePersistence, 'no-protocol'> = 'saved',
-  destination: 'start-screen' | 'architect-9' = 'start-screen',
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
-    const toArchitect9 = destination === 'architect-9';
+    const toArchitect9 = IS_SUBPATH_BUILD;
     const leaveAction = {
       label: createElement(AppMessage, {
         message: toArchitect9

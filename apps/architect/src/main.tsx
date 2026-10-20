@@ -28,10 +28,7 @@ import { loadStartupLocale } from './i18n/imperative';
 import { preloadTimelineImages } from './images/timeline';
 import { bundledProtocols } from './templates/bundled-protocols';
 import { IS_SUBPATH_BUILD } from './utils/appBase';
-import {
-  forwardLaunchFilesToArchitect9,
-  stageHandoffImport,
-} from './utils/architect9Handoff';
+import { stageHandoffImport } from './utils/architect9Handoff';
 import { isCriticalOperationInProgress } from './utils/criticalOperation';
 import {
   hasPendingLaunchFiles,
@@ -69,26 +66,25 @@ initInstallPromptCapture();
 
 // OS-launched .netcanvas files (installed-PWA file handler, Chromium desktop):
 // capture before React mounts so early launches are queued until App consumes
-// them inside the fresco dialog provider.
-//
-// Architect 8 served inside Architect 9 declares no file handler, but a launch
-// can still reach one of its windows; Architect 9 owns .netcanvas launches, so
-// the file is handed on to it.
-initFileLaunchCapture(
-  IS_SUBPATH_BUILD ? { routeFiles: forwardLaunchFilesToArchitect9 } : {},
-);
+// them inside the fresco dialog provider. Architect 8 served inside Architect 9
+// declares no file handler and opens nothing itself: Architect 9 does all the
+// opening.
+if (!IS_SUBPATH_BUILD) initFileLaunchCapture();
 
-// A file Architect 9 staged for this app (`?import=`) opens through the same
-// queue, so it gets Open file's flow and holds the startup update check while
-// it is read.
-const handoffImportKey = takeUrlImportRequest();
-if (handoffImportKey) stageHandoffImport(handoffImportKey);
+// Architect 8 served inside Architect 9 only; standalone Architect 8 never
+// takes part in a hand-off. A file Architect 9 staged for this app (`?import=`)
+// opens through the same queue, so it gets Open file's flow and holds the
+// startup update check while it is read. Hand-off records are consumed at
+// once; anything older than an hour was abandoned (a closed tab, a failed
+// navigation) and only takes up space.
+if (IS_SUBPATH_BUILD) {
+  const handoffImportKey = takeUrlImportRequest();
+  if (handoffImportKey) stageHandoffImport(handoffImportKey);
 
-// Hand-off records are consumed at once; anything older than an hour was
-// abandoned (a closed tab, a failed navigation) and only takes up space.
-void pruneStaleHandoffs().catch((error: unknown) => {
-  reportError(error, { operation: 'handoffPrune' });
-});
+  void pruneStaleHandoffs().catch((error: unknown) => {
+    reportError(error, { operation: 'handoffPrune' });
+  });
+}
 
 // During idle time, fetch stage thumbnails so they are already cached when the
 // timeline or stage editor first renders. When running as an installed PWA, also

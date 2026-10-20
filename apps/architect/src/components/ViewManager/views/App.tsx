@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef } from 'react';
+import { createElement, useEffect } from 'react';
 import { useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -6,7 +6,6 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
-import Architect8Banner from '~/components/Architect8Banner';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
@@ -22,14 +21,9 @@ import {
   openLibraryProtocol,
   openLocalNetcanvas,
 } from '~/ducks/modules/userActions/userActions';
-import { useNavigateToArchitect9 } from '~/hooks/useNavigateToArchitect9';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { resetRunOnce } from '~/hooks/useRunOnce';
-import {
-  subscribeArchitect9Navigation,
-  deferArchitect9Navigation,
-  takeArchitect9Navigation,
-} from '~/utils/architect9Handoff';
+import { IS_SUBPATH_BUILD } from '~/utils/appBase';
 import {
   subscribeAutosaveFailures,
   takeAutosaveFailures,
@@ -40,6 +34,7 @@ import {
   takeLaunchFiles,
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
+import { trackLaunchActivity } from '~/utils/launchActivity';
 import {
   subscribeProtocolUpgrades,
   takeProtocolUpgrades,
@@ -102,25 +97,27 @@ const FileLaunchFailureReporter = () => {
     const reportFailures = () => {
       const failures = takeLaunchReadFailures();
       for (const failedCount of failures) {
-        void openDialog({
-          type: 'acknowledge',
-          intent: 'destructive',
-          title: createElement(AppMessage, {
-            message: messages.couldNotOpenFile,
-          }),
-          description: createElement(AppMessage, {
-            message: messages.launchedCouldNotBeRead,
-            values: {
-              failedCount: failedCount,
+        void trackLaunchActivity(
+          openDialog({
+            type: 'acknowledge',
+            intent: 'destructive',
+            title: createElement(AppMessage, {
+              message: messages.couldNotOpenFile,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.launchedCouldNotBeRead,
+              values: {
+                failedCount: failedCount,
+              },
+            }),
+            actions: {
+              primary: {
+                label: createElement(AppMessage, { message: messages.oK }),
+                value: true,
+              },
             },
           }),
-          actions: {
-            primary: {
-              label: createElement(AppMessage, { message: messages.oK }),
-              value: true,
-            },
-          },
-        });
+        );
       }
     };
 
@@ -167,10 +164,12 @@ const StartupProtocolFailureReporter = () => {
   useEffect(() => {
     const reportFailures = () => {
       for (const refusal of takeStartupProtocolFailures()) {
-        void showProtocolOpenResultDialog({
-          result: refusal,
-          openDialog,
-        });
+        void trackLaunchActivity(
+          showProtocolOpenResultDialog({
+            result: refusal,
+            openDialog,
+          }),
+        );
       }
     };
 
@@ -231,7 +230,9 @@ const LaunchedProtocolOpener = () => {
           onApproveMigration: migrationApproved ? undefined : () => open(true),
         });
       };
-      void open();
+      // Through every dialog it raises, so the tab is not sent elsewhere while
+      // the researcher is still deciding.
+      void trackLaunchActivity(open());
     };
 
     openLaunchedProtocols();
@@ -253,61 +254,17 @@ const UrlProtocolOpener = () => {
   useEffect(() => {
     const protocolId = takeUrlOpenRequest();
     if (!protocolId) return;
-    void (async () => {
-      const result = await dispatch(
-        openLibraryProtocol({ id: protocolId }),
-      ).unwrap();
-      await showProtocolOpenResultDialog({ result, openDialog });
-    })().catch((error: unknown) => {
-      reportError(error, { operation: 'urlProtocolOpen' });
-    });
+    void trackLaunchActivity(
+      (async () => {
+        const result = await dispatch(
+          openLibraryProtocol({ id: protocolId }),
+        ).unwrap();
+        await showProtocolOpenResultDialog({ result, openDialog });
+      })().catch((error: unknown) => {
+        reportError(error, { operation: 'urlProtocolOpen' });
+      }),
+    );
   }, [dispatch, openDialog]);
-
-  return null;
-};
-
-/**
- * Carries out a navigation to Architect 9 that was requested outside React —
- * an OS file launch forwarded from an Architect 8 window — once the
- * leave-editor rule can be applied to it.
- */
-const Architect9NavigationRunner = () => {
-  const navigateToArchitect9 = useNavigateToArchitect9();
-  const [location] = useLocation();
-  const onStartScreen = location === '/';
-  // One navigation at a time. A launch that arrives while one waits at the
-  // leave-editor prompt stays pending, and the waiting navigation leaves for
-  // the newest launch once confirmed, so a later file is never left behind by
-  // an earlier one.
-  const inFlight = useRef(false);
-
-  useEffect(() => {
-    const run = () => {
-      if (inFlight.current) return;
-      const requested = takeArchitect9Navigation();
-      if (!requested) return;
-      let url = requested;
-      inFlight.current = true;
-      void navigateToArchitect9(() => {
-        url = takeArchitect9Navigation() ?? url;
-        return url;
-      })
-        .then((navigated) => {
-          // Cancelled at the leave-editor prompt: keep the launch for when
-          // the editor closes. A launch that arrived meanwhile is still
-          // pending, and is newer, so it is the one kept.
-          if (!navigated) deferArchitect9Navigation(url);
-        })
-        .finally(() => {
-          inFlight.current = false;
-        });
-    };
-
-    // A deferred navigation waits for the start screen, so it never pulls the
-    // researcher out of an editor they have just opened.
-    if (onStartScreen) run();
-    return subscribeArchitect9Navigation(run);
-  }, [navigateToArchitect9, onStartScreen]);
 
   return null;
 };
@@ -340,8 +297,9 @@ const AppContents = () => {
       <StartupProtocolFailureReporter />
       <ProtocolUpgradeToaster />
       <LaunchedProtocolOpener />
-      <UrlProtocolOpener />
-      <Architect9NavigationRunner />
+      {/* Architect 8 served inside Architect 9 only: Architect 9 opens its
+          protocols here through the URL. */}
+      {IS_SUBPATH_BUILD && <UrlProtocolOpener />}
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be
           open over the Codebook or Resources just as easily, and that is
@@ -356,9 +314,6 @@ const AppContents = () => {
         {/* The install banner urges installation when running in a browser tab;
             it self-hides (rendering nothing) when installed or dismissed. */}
         <InstallBanner />
-        {/* Architect 8 served inside Architect 9 only: which Architect this
-            is, and the way to upgrade the open protocol in the newer one. */}
-        <Architect8Banner />
         {/* Sits directly beneath the install banner (both are shrink-0 strips);
             self-hides unless the open protocol is also open in another tab. */}
         <ProtocolLockBanner />

@@ -3,14 +3,11 @@ import { test as base, expect, type Page } from '@playwright/test';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { installMapboxMocks } from './mapbox-mocks.js';
-import { seedProtocol, type SeedAsset } from './seed.js';
+import { seedProtocol, type SeedOptions } from './seed.js';
 
 type ArchitectFixtures = {
   architectPage: Page;
-  seed: (
-    protocol: CurrentProtocol,
-    opts?: { id?: string; name?: string; assets?: SeedAsset[] },
-  ) => Promise<string>;
+  seed: (protocol: CurrentProtocol, opts?: SeedOptions) => Promise<string>;
 };
 
 // `architectPage` is the same `page` fixture under another name: service
