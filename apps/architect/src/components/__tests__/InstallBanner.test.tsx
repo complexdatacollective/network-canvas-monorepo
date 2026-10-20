@@ -42,6 +42,15 @@ vi.mock('~/utils/installPrompt', () => ({
   subscribeInstalled: mockSubscribeInstalled,
 }));
 
+const appBase = vi.hoisted(() => ({ isSubpath: false }));
+
+vi.mock('~/utils/appBase', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/appBase')>()),
+  get IS_SUBPATH_BUILD() {
+    return appBase.isSubpath;
+  },
+}));
+
 import InstallBanner from '../InstallBanner';
 
 const SESSION_DISMISS_KEY = 'architect:install-banner-dismissed';
@@ -80,6 +89,7 @@ const stubBrowser = ({
 };
 
 afterEach(() => {
+  appBase.isSubpath = false;
   vi.clearAllMocks();
   resetInstalled();
   vi.unstubAllGlobals();
@@ -87,6 +97,19 @@ afterEach(() => {
 });
 
 describe('InstallBanner', () => {
+  // Architect 9 is the app to install; Architect 8 at /v8/ never competes.
+  it('is never shown by a sub-path build', () => {
+    stubBrowser({ chromium: true });
+    mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
+    appBase.isSubpath = true;
+    const { container } = render(<InstallBanner />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(
+      screen.queryByRole('status', { name: 'Install Architect' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('Chrome with a prompt: browser-specific low-risk copy and a one-tap Install', () => {
     stubBrowser({ chromium: true });
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);

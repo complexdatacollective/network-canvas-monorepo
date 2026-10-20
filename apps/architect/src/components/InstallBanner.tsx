@@ -13,6 +13,7 @@ import {
   getBrowserStorageProfile,
   StorageRiskBanner,
 } from '@codaco/fresco-ui/StorageRiskBanner';
+import { IS_SUBPATH_BUILD } from '~/utils/appBase';
 import {
   getDeferredPrompt,
   getInstalled,
@@ -147,7 +148,7 @@ function InstallBannerView({
 // browsers can evict a website's stored data, while installation protects
 // against routine cleanup. Dismissal lasts one session; the risk persists, so
 // it returns on the next launch.
-const InstallBanner = () => {
+const InstallBannerPrompt = () => {
   const deferredPrompt = useSyncExternalStore(
     subscribeInstallPrompt,
     getDeferredPrompt,
@@ -177,5 +178,10 @@ const InstallBanner = () => {
     />
   );
 };
+
+// Architect 8 inside Architect 9's deploy is never offered for installation:
+// Architect 9 is the app to install, and it hands schema 8 protocols to this
+// one. Installing both would put two Architects in the OS's app lists.
+const InstallBanner = () => (IS_SUBPATH_BUILD ? null : <InstallBannerPrompt />);
 
 export default InstallBanner;

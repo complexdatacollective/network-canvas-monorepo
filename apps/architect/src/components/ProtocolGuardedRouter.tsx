@@ -14,6 +14,7 @@ import {
   promptLeaveEditor,
   useProtocolNavGuard,
 } from '~/hooks/useProtocolNavGuard';
+import { ROUTER_BASE } from '~/utils/appBase';
 
 const NavGuardListener = () => {
   useProtocolNavGuard();
@@ -65,7 +66,7 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
   );
 
   return (
-    <Router aroundNav={aroundNav}>
+    <Router base={ROUTER_BASE} aroundNav={aroundNav}>
       <NavGuardListener />
       {children}
     </Router>

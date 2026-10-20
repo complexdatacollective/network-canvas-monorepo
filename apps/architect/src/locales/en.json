@@ -831,6 +831,26 @@
     "defaultMessage": "Add at least one threshold, or turn off shape mapping.",
     "description": "Researcher-facing status or validation message. Context: components/TypeEditor/validateEntityType.ts."
   },
+  "architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.openElsewhere": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you open Architect 9 now, those changes will be discarded.",
+    "description": "Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. \"Architect 9\" is a product name."
+  },
+  "architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.reclaimBlocked": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you open Architect 9 now, those changes will be discarded and that saved version will remain available.",
+    "description": "Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. \"Architect 9\" is a product name."
+  },
+  "architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.saved": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you open Architect 9 now, those changes will be discarded and the last saved version of the protocol will remain available.",
+    "description": "Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. \"Architect 9\" is a product name."
+  },
+  "architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.storageUnavailable": {
+    "defaultMessage": "This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Opening Architect 9 now discards all of it.",
+    "description": "Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. \"Architect 9\" is a product name."
+  },
+  "architect.constants.hooks.useprotocolnavguard.architect9LeaveDescription.storageUnavailable": {
+    "defaultMessage": "This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when Architect 9 opens.",
+    "description": "Shown before this tab switches to Architect 9, the newer Architect release served from the same site, when the open protocol could not be saved. \"Architect 9\" is a product name."
+  },
   "architect.constants.hooks.useprotocolnavguard.discarddescriptions.openElsewhere": {
     "defaultMessage": "Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.",
     "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
@@ -3099,6 +3119,10 @@
     "defaultMessage": "Discard Changes and Leave",
     "description": "The label text in hooks / useProtocolNavGuard."
   },
+  "architect.utility.hooks.useProtocolNavGuard.discardChangesAndOpenArchitect9": {
+    "defaultMessage": "Discard Changes and Open Architect 9",
+    "description": "Button confirming that unsaved changes are discarded so this tab can switch to Architect 9, the newer Architect release served from the same site. \"Architect 9\" is a product name."
+  },
   "architect.utility.hooks.useProtocolNavGuard.discardChangesAndReturn": {
     "defaultMessage": "Discard Changes and Return",
     "description": "The label text in hooks / useProtocolNavGuard."
@@ -3110,6 +3134,18 @@
   "architect.utility.hooks.useProtocolNavGuard.discardUnsavedStageChanges": {
     "defaultMessage": "Discard unsaved stage changes?",
     "description": "The title text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.downloadAndOpenArchitect9": {
+    "defaultMessage": "Download now and open Architect 9",
+    "description": "Button that downloads the open protocol and then switches this tab to Architect 9. \"Architect 9\" is a product name."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.openArchitect9Title": {
+    "defaultMessage": "Open Architect 9?",
+    "description": "Title of the confirmation shown before this tab switches from Architect 8 to Architect 9, the newer Architect release served from the same site. \"Architect 9\" is a product name."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.openArchitect9WithoutDownloading": {
+    "defaultMessage": "Open Architect 9 without downloading",
+    "description": "Button that switches this tab to Architect 9 without downloading the open protocol, which then is lost. \"Architect 9\" is a product name."
   },
   "architect.utility.hooks.useProtocolNavGuard.returnAndDownloadNow": {
     "defaultMessage": "Return and download now",

@@ -4,6 +4,7 @@ import {
   isRunningAsInstalledPwa,
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
+  scopeServiceWorkerContainer,
 } from '../pwa';
 
 const stubMatchMedia = (matchingModes: string[]) => {
@@ -124,5 +125,72 @@ describe('requestPersistentStorageOnFirstInteraction', () => {
     requestPersistentStorageOnFirstInteraction();
     window.dispatchEvent(new Event('keydown'));
     await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('scopeServiceWorkerContainer', () => {
+  const registrationAt = (scope: string) =>
+    ({ scope }) as unknown as ServiceWorkerRegistration;
+
+  const containerReturning = (
+    registration: ServiceWorkerRegistration | undefined,
+  ) => {
+    const controller = {} as ServiceWorker;
+    return {
+      controller,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      getRegistration: vi.fn(async (_clientURL?: string | URL) => registration),
+    };
+  };
+
+  it("returns this build's own registration", async () => {
+    const own = registrationAt('https://architect.example/v8/');
+    const container = containerReturning(own);
+    const scoped = scopeServiceWorkerContainer(
+      container,
+      '/v8/',
+      'https://architect.example/v8/protocol',
+    );
+
+    await expect(scoped.getRegistration()).resolves.toBe(own);
+    expect(container.getRegistration).toHaveBeenCalledWith(
+      'https://architect.example/v8/',
+    );
+  });
+
+  // Before /v8/sw.js is registered, the root app's worker controls a /v8/ page
+  // and the browser answers the lookup with the root registration. Acting on it
+  // would skip-wait the other app's update.
+  it("never returns the hosting app's root registration", async () => {
+    const scoped = scopeServiceWorkerContainer(
+      containerReturning(registrationAt('https://architect.example/')),
+      '/v8/',
+      'https://architect.example/v8/',
+    );
+
+    await expect(scoped.getRegistration()).resolves.toBeUndefined();
+  });
+
+  it('forwards the controller and controller-change listeners', () => {
+    const container = containerReturning(undefined);
+    const scoped = scopeServiceWorkerContainer(
+      container,
+      '/v8/',
+      'https://architect.example/v8/',
+    );
+    const listener = vi.fn();
+
+    expect(scoped.controller).toBe(container.controller);
+    scoped.addEventListener('controllerchange', listener);
+    scoped.removeEventListener('controllerchange', listener);
+    expect(container.addEventListener).toHaveBeenCalledWith(
+      'controllerchange',
+      listener,
+    );
+    expect(container.removeEventListener).toHaveBeenCalledWith(
+      'controllerchange',
+      listener,
+    );
   });
 });

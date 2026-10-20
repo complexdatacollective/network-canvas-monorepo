@@ -17,6 +17,22 @@ export type SeedAsset = {
 };
 
 const DB_NAME = 'ArchitectProtocolDB';
+// The app's `assetDb.version(1).stores(...)` in `~/utils/assetDB`: Dexie
+// multiplies its version by ten, so the IndexedDB version is 10.
+const DB_VERSION = 10;
+
+export type SeedOptions = {
+  id?: string;
+  name?: string;
+  assets?: SeedAsset[];
+  /**
+   * The page to seed from, relative to the config's baseURL. Storage is per
+   * origin, so any page of it will do. The sub-path suite passes Architect 9's
+   * root (stubbed), because /v8/'s own root never stays put: it returns to
+   * Architect 9.
+   */
+  at?: string;
+};
 
 // Deterministic id so create-from-scratch snapshots are stable across runs.
 const FIXED_ID = 'e2e-protocol';
@@ -31,7 +47,7 @@ const FIXED_ID = 'e2e-protocol';
 export async function seedProtocol(
   page: Page,
   protocol: CurrentProtocol,
-  opts: { id?: string; name?: string; assets?: SeedAsset[] } = {},
+  opts: SeedOptions = {},
 ): Promise<string> {
   const id = opts.id ?? FIXED_ID;
   const name = opts.name ?? protocol.name;
@@ -44,39 +60,38 @@ export async function seedProtocol(
   const seededProtocol: CurrentProtocol =
     opts.name === undefined ? protocol : { ...protocol, name };
 
-  // 1. Navigate once so Dexie creates ArchitectProtocolDB, then write the
-  //    durable protocol row + asset rows via raw IndexedDB (Dexie isn't on
-  //    `window`, so this talks to the native API directly).
-  await page.goto('/');
+  // 1. Navigate to a page of the app's origin, then write the durable
+  //    protocol row + asset rows via raw IndexedDB (Dexie isn't on `window`,
+  //    so this talks to the native API directly). `./` is the config's
+  //    baseURL itself: the origin root for the root suite, /v8/ for the
+  //    sub-path suite (playwright.subpath.config.ts).
+  await page.goto(opts.at ?? './');
   await page.evaluate(
-    async ({ dbName, storageId, protocolName, proto, assets }) => {
-      const open = () =>
-        new Promise<IDBDatabase>((resolve, reject) => {
-          const req = indexedDB.open(dbName);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      // A versionless open that wins the race with Dexie's first open would
-      // CREATE an empty version-1 DB with no object stores, and the
-      // transaction below would then throw NotFoundError. Wait until the
-      // app's Dexie instance (assetDB.ts) has created both stores, closing
-      // between polls so an in-flight Dexie upgrade is never blocked by this
-      // connection.
-      let db = await open();
-      const deadline = Date.now() + 10_000;
-      while (
-        !db.objectStoreNames.contains('protocols') ||
-        !db.objectStoreNames.contains('assets')
-      ) {
-        db.close();
-        if (Date.now() > deadline) {
-          throw new Error(
-            `stores missing from ${dbName} — app never opened its Dexie DB`,
-          );
-        }
-        await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-        db = await open();
-      }
+    async ({ dbName, dbVersion, storageId, protocolName, proto, assets }) => {
+      // Opened at the app's own version, creating the stores exactly as Dexie
+      // declares them when this open is the first: nothing on a page that
+      // never shows the start screen has opened the database yet. A
+      // versionless open would instead create an empty version-1 database
+      // that Dexie then has to upgrade. If the app's Dexie got there first,
+      // this is an ordinary open of what it made.
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open(dbName, dbVersion);
+        req.onupgradeneeded = () => {
+          const created = req.result;
+          if (!created.objectStoreNames.contains('assets')) {
+            created
+              .createObjectStore('assets', { keyPath: 'id' })
+              .createIndex('protocolId', 'protocolId');
+          }
+          if (!created.objectStoreNames.contains('protocols')) {
+            created
+              .createObjectStore('protocols', { keyPath: 'id' })
+              .createIndex('updatedAt', 'updatedAt');
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
       const now = Date.now();
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(['protocols', 'assets'], 'readwrite');
@@ -117,6 +132,7 @@ export async function seedProtocol(
     },
     {
       dbName: DB_NAME,
+      dbVersion: DB_VERSION,
       storageId: id,
       protocolName: name,
       proto: seededProtocol,

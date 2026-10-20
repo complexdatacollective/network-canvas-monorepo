@@ -17,9 +17,13 @@ import ProtocolValidationDialogReporter from '~/components/ProtocolValidationDia
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openLocalNetcanvas } from '~/ducks/modules/userActions/userActions';
+import {
+  openLibraryProtocol,
+  openLocalNetcanvas,
+} from '~/ducks/modules/userActions/userActions';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { resetRunOnce } from '~/hooks/useRunOnce';
+import { IS_SUBPATH_BUILD } from '~/utils/appBase';
 import {
   subscribeAutosaveFailures,
   takeAutosaveFailures,
@@ -30,14 +34,17 @@ import {
   takeLaunchFiles,
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
+import { trackLaunchActivity } from '~/utils/launchActivity';
 import {
   subscribeProtocolUpgrades,
   takeProtocolUpgrades,
 } from '~/utils/protocolUpgradeQueue';
+import { reportError } from '~/utils/reportError';
 import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
+import { takeUrlOpenRequest } from '~/utils/urlLaunchRequest';
 const messages = defineMessages({
   couldNotOpenFile: {
     id: 'architect.viewManager.views.app.couldNotOpenFile',
@@ -90,25 +97,27 @@ const FileLaunchFailureReporter = () => {
     const reportFailures = () => {
       const failures = takeLaunchReadFailures();
       for (const failedCount of failures) {
-        void openDialog({
-          type: 'acknowledge',
-          intent: 'destructive',
-          title: createElement(AppMessage, {
-            message: messages.couldNotOpenFile,
-          }),
-          description: createElement(AppMessage, {
-            message: messages.launchedCouldNotBeRead,
-            values: {
-              failedCount: failedCount,
+        void trackLaunchActivity(
+          openDialog({
+            type: 'acknowledge',
+            intent: 'destructive',
+            title: createElement(AppMessage, {
+              message: messages.couldNotOpenFile,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.launchedCouldNotBeRead,
+              values: {
+                failedCount: failedCount,
+              },
+            }),
+            actions: {
+              primary: {
+                label: createElement(AppMessage, { message: messages.oK }),
+                value: true,
+              },
             },
           }),
-          actions: {
-            primary: {
-              label: createElement(AppMessage, { message: messages.oK }),
-              value: true,
-            },
-          },
-        });
+        );
       }
     };
 
@@ -155,10 +164,12 @@ const StartupProtocolFailureReporter = () => {
   useEffect(() => {
     const reportFailures = () => {
       for (const refusal of takeStartupProtocolFailures()) {
-        void showProtocolOpenResultDialog({
-          result: refusal,
-          openDialog,
-        });
+        void trackLaunchActivity(
+          showProtocolOpenResultDialog({
+            result: refusal,
+            openDialog,
+          }),
+        );
       }
     };
 
@@ -219,11 +230,40 @@ const LaunchedProtocolOpener = () => {
           onApproveMigration: migrationApproved ? undefined : () => open(true),
         });
       };
-      void open();
+      // Through every dialog it raises, so the tab is not sent elsewhere while
+      // the researcher is still deciding.
+      void trackLaunchActivity(open());
     };
 
     openLaunchedProtocols();
     return subscribeLaunchFiles(openLaunchedProtocols);
+  }, [dispatch, openDialog]);
+
+  return null;
+};
+
+/**
+ * Opens the library protocol named by `?open=` (Architect 9 sending a schema 8
+ * protocol back here), exactly as the library's Open does — including its
+ * dialog when the row is missing or cannot be opened.
+ */
+const UrlProtocolOpener = () => {
+  const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
+
+  useEffect(() => {
+    const protocolId = takeUrlOpenRequest();
+    if (!protocolId) return;
+    void trackLaunchActivity(
+      (async () => {
+        const result = await dispatch(
+          openLibraryProtocol({ id: protocolId }),
+        ).unwrap();
+        await showProtocolOpenResultDialog({ result, openDialog });
+      })().catch((error: unknown) => {
+        reportError(error, { operation: 'urlProtocolOpen' });
+      }),
+    );
   }, [dispatch, openDialog]);
 
   return null;
@@ -257,6 +297,9 @@ const AppContents = () => {
       <StartupProtocolFailureReporter />
       <ProtocolUpgradeToaster />
       <LaunchedProtocolOpener />
+      {/* Architect 8 served inside Architect 9 only: Architect 9 opens its
+          protocols here through the URL. */}
+      {IS_SUBPATH_BUILD && <UrlProtocolOpener />}
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be
           open over the Codebook or Resources just as easily, and that is

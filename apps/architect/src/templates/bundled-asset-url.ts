@@ -1,7 +1,12 @@
+// The bundled copy of a media file a template or the Sample protocol
+// references, by its `source` filename. The dev-only Development protocol's
+// media is deliberately absent: an eager `?url` glob emits every file it
+// matches, so listing it here would ship that media (a 24 MB video among it)
+// in every production build. development-protocol.ts, which only a dev build
+// loads, resolves it instead.
 const bundledAssetModules = import.meta.glob<string>(
   [
     '../../../../packages/protocols/sample/assets/*',
-    '../../../../packages/protocols/development/assets/*',
     '../../../../packages/protocols/templates/*/assets/*',
     '!../../../../packages/protocols/templates/*/assets/.gitkeep',
   ],

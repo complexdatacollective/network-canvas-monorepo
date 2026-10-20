@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
+import { getAssetBlobUrl } from '~/utils/assetUtils';
 
 vi.mock('~/utils/assetUtils', () => ({
   getAssetBlobUrl: vi.fn(async () => 'blob:resource-preview'),
@@ -147,5 +148,31 @@ describe('AssetCard actions while another tab owns the protocol', () => {
     fireEvent.click(download);
     expect(handlers.onPreview).toHaveBeenCalledExactlyOnceWith('resource');
     expect(handlers.onDownload).toHaveBeenCalledExactlyOnceWith('resource');
+  });
+});
+
+describe('AssetCard previews of bundled media', () => {
+  afterEach(() => {
+    vi.mocked(getAssetBlobUrl).mockResolvedValue('blob:resource-preview');
+  });
+
+  // The dev-only Development protocol's media is bundled only in a dev build
+  // (as vitest runs), through a dynamic import a production build drops.
+  it('previews a Development protocol file in a dev build', async () => {
+    vi.mocked(getAssetBlobUrl).mockResolvedValue(null);
+    render(
+      <AssetCard
+        id="resource"
+        name="Bundled image"
+        source="rubberduck.jpg"
+        type="image"
+        itemProps={itemProps}
+      />,
+    );
+
+    const image = await screen.findByRole('img', { name: 'Bundled image' });
+    expect(image.getAttribute('src')).toMatch(
+      /packages\/protocols\/development\/assets\/rubberduck\.jpg/,
+    );
   });
 });

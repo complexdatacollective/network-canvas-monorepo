@@ -20,6 +20,7 @@ import {
 import type { RootState } from '~/ducks/modules/root';
 import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
+import { IS_SUBPATH_BUILD, toAppPath, toBrowserPath } from '~/utils/appBase';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 const utilityMessages = defineMessages({
   returnToStartScreen: {
@@ -56,6 +57,30 @@ const utilityMessages = defineMessages({
     id: 'architect.utility.hooks.useProtocolNavGuard.discardChangesAndLeave',
     defaultMessage: 'Discard Changes and Leave',
     description: 'The label text in hooks / useProtocolNavGuard.',
+  },
+  discardChangesAndOpenArchitect9: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.discardChangesAndOpenArchitect9',
+    defaultMessage: 'Discard Changes and Open Architect 9',
+    description:
+      'Button confirming that unsaved changes are discarded so this tab can switch to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  openArchitect9Title: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.openArchitect9Title',
+    defaultMessage: 'Open Architect 9?',
+    description:
+      'Title of the confirmation shown before this tab switches from Architect 8 to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  downloadAndOpenArchitect9: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.downloadAndOpenArchitect9',
+    defaultMessage: 'Download now and open Architect 9',
+    description:
+      'Button that downloads the open protocol and then switches this tab to Architect 9. "Architect 9" is a product name.',
+  },
+  openArchitect9WithoutDownloading: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.openArchitect9WithoutDownloading',
+    defaultMessage: 'Open Architect 9 without downloading',
+    description:
+      'Button that switches this tab to Architect 9 without downloading the open protocol, which then is lost. "Architect 9" is a product name.',
   },
 });
 const leaveDescriptions: Record<
@@ -124,6 +149,53 @@ const discardDescriptions: Record<
       'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
   },
 });
+// The same, when the tab is leaving for Architect 9 (a full-page navigation to
+// the newer Architect served from the same site) rather than for the start
+// screen.
+const architect9DiscardDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  MessageDescriptor
+> = defineMessages({
+  'saved': {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.saved',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you open Architect 9 now, those changes will be discarded and the last saved version of the protocol will remain available.',
+    description:
+      'Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  'open-elsewhere': {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.openElsewhere',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you open Architect 9 now, those changes will be discarded.',
+    description:
+      'Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  'reclaim-blocked': {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.reclaimBlocked',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you open Architect 9 now, those changes will be discarded and that saved version will remain available.',
+    description:
+      'Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  'storage-unavailable': {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Opening Architect 9 now discards all of it.',
+    description:
+      'Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+});
+// Leaving for Architect 9 with nothing unsaved in an editor only loses work
+// when nothing could be saved at all, so this is the one state it describes.
+const ARCHITECT_9_UNSAVED_LEAVE_DESCRIPTION = defineMessages({
+  message: {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9LeaveDescription.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when Architect 9 opens.',
+    description:
+      'Shown before this tab switches to Architect 9, the newer Architect release served from the same site, when the open protocol could not be saved. "Architect 9" is a product name.',
+  },
+}).message;
 export const stageDiscardDescriptions: Record<
   Exclude<LeavePersistence, 'no-protocol'>,
   MessageDescriptor
@@ -174,8 +246,11 @@ const getFullPath = () =>
   window.location.pathname + window.location.search + window.location.hash;
 
 // path may include a search/hash suffix; pathname always comes first, so a
-// prefix check still correctly identifies protocol routes.
-export const isProtocolPath = (path: string) => path.startsWith('/protocol');
+// prefix check still correctly identifies protocol routes. Browser paths
+// (window.location, wouter's aroundNav `to`) carry a sub-path build's base and
+// router paths do not, so both forms are accepted.
+export const isProtocolPath = (path: string) =>
+  toAppPath(path).startsWith('/protocol');
 
 const PROTOCOL_HISTORY_KEY = '__architectProtocolHistory';
 
@@ -260,6 +335,11 @@ const syncProtocolHistoryMarker = (
 // the protocol and pushing the target path truncates all protocol entries from
 // the forward stack. A direct-load session has no in-app entry before it, so
 // its first protocol entry is replaced before the final push instead.
+//
+// Architect 8 inside Architect 9 leaves the protocol only for its start
+// screen, which goes back to Architect 9 in place of its own entry. There the
+// session collapses onto that one entry with nothing pushed after it, so the
+// tab's history holds no empty /v8/ page for Back from Architect 9 to land on.
 export const collapseProtocolHistory = (
   targetPath: string,
   replaceCurrentEntry: () => void,
@@ -273,14 +353,15 @@ export const collapseProtocolHistory = (
     return;
   }
 
+  const target = IS_SUBPATH_BUILD ? toBrowserPath('/') : targetPath;
   return new Promise<void>((resolve) => {
     window.addEventListener(
       'popstate',
       () => {
         if (!hasAppEntryBeforeProtocol) {
-          history.replaceState(null, '', targetPath);
+          history.replaceState(null, '', target);
         }
-        history.pushState(null, '', targetPath);
+        if (!IS_SUBPATH_BUILD) history.pushState(null, '', target);
         resolve();
       },
       { once: true },
@@ -292,7 +373,7 @@ export const collapseProtocolHistory = (
 // The stage editor lives under /protocol/stage/, so leaving it can be intra-
 // /protocol nav (e.g. Back to the overview) that isProtocolPath() alone misses.
 export const isStageEditorPath = (path: string) =>
-  path.startsWith('/protocol/stage/');
+  toAppPath(path).startsWith('/protocol/stage/');
 
 // How much of what the user sees is actually persisted. This decides both the
 // leave-editor copy and whether leaving needs confirming at all, so it is
@@ -363,6 +444,12 @@ const NESTED_DRAFT_DISCARD_DESCRIPTION = defineMessages({
 // protocol open in another tab) gets a description of its own situation
 // instead. Callers must resolve `no-protocol` themselves: there is nothing to
 // confirm, and every action this dialog offers would fail.
+//
+// Architect 8 served inside Architect 9 has no start screen of its own: a leave
+// there returns to Architect 9's, so the copy says so. Leaving a pristine
+// editor for Architect 9 loses nothing unless storage is unavailable, so that
+// is the only pristine state its copy covers, and any other leaves without
+// asking.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
@@ -373,15 +460,20 @@ export const promptLeaveEditor = async (
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
+    const toArchitect9 = IS_SUBPATH_BUILD;
     const leaveAction = {
       label: createElement(AppMessage, {
-        message: utilityMessages.returnToStartScreen,
+        message: toArchitect9
+          ? utilityMessages.openArchitect9WithoutDownloading
+          : utilityMessages.returnToStartScreen,
       }),
       value: 'leave' as const,
     };
     const downloadAction = {
       label: createElement(AppMessage, {
-        message: utilityMessages.returnAndDownloadNow,
+        message: toArchitect9
+          ? utilityMessages.downloadAndOpenArchitect9
+          : utilityMessages.returnAndDownloadNow,
       }),
       value: 'download-and-leave' as const,
     };
@@ -396,14 +488,18 @@ export const promptLeaveEditor = async (
             message: utilityMessages.discardUnsavedChanges,
           }),
           description: createElement(AppMessage, {
-            message: discardDescriptions[persistence],
+            message: toArchitect9
+              ? architect9DiscardDescriptions[persistence]
+              : discardDescriptions[persistence],
           }),
           intent: 'warning',
           size: 'readable',
           actions: {
             primary: {
               label: createElement(AppMessage, {
-                message: utilityMessages.discardChangesAndReturn,
+                message: toArchitect9
+                  ? utilityMessages.discardChangesAndOpenArchitect9
+                  : utilityMessages.discardChangesAndReturn,
               }),
               value: 'discard-and-leave' as const,
             },
@@ -415,27 +511,33 @@ export const promptLeaveEditor = async (
             },
           },
         })
-      : await openDialog({
-          type: 'choice',
-          title: createElement(AppMessage, {
-            message: utilityMessages.returnToStartScreenb2364,
-          }),
-          description: createElement(AppMessage, {
-            message: leaveDescriptions[persistence],
-          }),
-          intent: unsaved ? 'warning' : 'default',
-          size: 'readable',
-          actions: {
-            primary: unsaved ? downloadAction : leaveAction,
-            secondary: unsaved ? leaveAction : downloadAction,
-            cancel: {
-              label: createElement(AppMessage, {
-                message: commonMessages.cancel,
-              }),
-              value: null,
+      : toArchitect9 && !unsaved
+        ? 'leave'
+        : await openDialog({
+            type: 'choice',
+            title: createElement(AppMessage, {
+              message: toArchitect9
+                ? utilityMessages.openArchitect9Title
+                : utilityMessages.returnToStartScreenb2364,
+            }),
+            description: createElement(AppMessage, {
+              message: toArchitect9
+                ? ARCHITECT_9_UNSAVED_LEAVE_DESCRIPTION
+                : leaveDescriptions[persistence],
+            }),
+            intent: unsaved ? 'warning' : 'default',
+            size: 'readable',
+            actions: {
+              primary: unsaved ? downloadAction : leaveAction,
+              secondary: unsaved ? leaveAction : downloadAction,
+              cancel: {
+                label: createElement(AppMessage, {
+                  message: commonMessages.cancel,
+                }),
+                value: null,
+              },
             },
-          },
-        });
+          });
 
     if (draftDirty && action !== 'discard-and-leave') {
       return;
@@ -664,7 +766,7 @@ export const useProtocolNavGuard = () => {
           dispatch,
           openDialog,
           () =>
-            collapseProtocolHistory('/', () =>
+            collapseProtocolHistory(toBrowserPath('/'), () =>
               setLocation('/', { replace: true }),
             ),
           draftDirty,
@@ -675,7 +777,8 @@ export const useProtocolNavGuard = () => {
 
       void promptDiscardDraft(
         openDialog,
-        () => setLocation(newPath),
+        // newPath is a browser path; setLocation would prefix the base again.
+        () => setLocation(toAppPath(newPath)),
         leavingDirtyStageEditor,
       );
     };

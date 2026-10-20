@@ -16,6 +16,7 @@ const errors = defineMessages({
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
+import { APP_BASE_URL } from '~/utils/appBase';
 import { getMemoryAssetsForScope } from '~/utils/inMemoryAssetStore';
 
 import {
@@ -62,7 +63,7 @@ export function launchPreview({
   // a tab (and an app window when Architect runs as an installed PWA); the
   // handshake below needs window.opener, so 'noopener' must never be added.
   const popup = window.open(
-    '/preview/',
+    `${APP_BASE_URL}preview/`,
     '_blank',
     'popup,width=1280,height=800',
   );

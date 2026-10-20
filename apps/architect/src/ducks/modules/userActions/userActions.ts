@@ -1,5 +1,4 @@
 import { type Dispatch } from '@reduxjs/toolkit';
-import { navigate } from 'wouter/use-browser-location';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import {
@@ -20,6 +19,7 @@ import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { getArchitectIntl } from '~/i18n/imperative';
 import type { ProtocolSourceRef } from '~/templates';
+import { navigateApp } from '~/utils/appBase';
 import {
   saveProtocolAssets,
   saveProtocolAssetsToMemory,
@@ -258,7 +258,7 @@ const instantiateProtocol = async (
     // Nothing is persisted in this mode, so warn before the tab closes to avoid
     // silently losing the in-memory protocol.
     armInMemoryUnloadGuard();
-    navigate('/protocol');
+    navigateApp('/protocol');
     return;
   }
 
@@ -270,7 +270,7 @@ const instantiateProtocol = async (
   dispatch(setActiveProtocolId(protocolId));
   dispatch(setActiveProtocol(protocol));
 
-  navigate('/protocol');
+  navigateApp('/protocol');
 };
 
 type OpenLocalNetcanvasParams = {
@@ -720,7 +720,28 @@ export const exportNetcanvas = createAppAsyncThunk(
 export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
   async ({ id }: { id: string }, { dispatch }): Promise<ProtocolOpenResult> => {
-    const row = await getStoredProtocol(id);
+    let row: Awaited<ReturnType<typeof getStoredProtocol>>;
+    try {
+      row = await getStoredProtocol(id);
+    } catch (error: unknown) {
+      // The library itself could not be read (storage blocked or broken).
+      // Described like any other refusal, so every caller shows a dialog
+      // rather than failing silently.
+      reportError(error, { operation: 'stored-protocol-read' });
+      const { message, detail, localizedMessage } = describeImportFailure(
+        error,
+        PROTOCOL_OPEN_FAILURE_MESSAGE,
+        getArchitectIntl(),
+      );
+      return {
+        status: 'error',
+        title: getArchitectIntl().formatMessage(extraMessages.openError),
+        localizedTitle: { message: extraMessages.openError },
+        message,
+        detail,
+        localizedMessage,
+      };
+    }
     if (!row) {
       return {
         status: 'error',
@@ -771,7 +792,7 @@ export const openLibraryProtocol = createAppAsyncThunk(
     // The admitted document, which is the upgraded one when the row was below
     // this build's schema — `row.protocol` is stale by then.
     dispatch(setActiveProtocol(admission.protocol));
-    navigate('/protocol');
+    navigateApp('/protocol');
     return openedResult;
   },
 );
