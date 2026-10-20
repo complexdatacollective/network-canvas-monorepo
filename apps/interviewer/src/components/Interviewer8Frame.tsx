@@ -27,6 +27,12 @@ const messages = defineMessages({
 const FRAME_ALLOW =
   'fullscreen; publickey-credentials-get; clipboard-write; autoplay';
 
+// How long Interviewer 8 has, once its page has loaded, to say it is ready.
+// A page that loads but never starts (a script failed to load, or threw on
+// start-up) says nothing else either, so past this the frame is explained
+// as unavailable instead of left showing a page that does nothing.
+export const INTERVIEWER8_READY_TIMEOUT_MS = 30_000;
+
 type Interviewer8FrameProps = {
   /** `/v8/interview/<id>`, with `?mode=review` for a review. */
   src: string;
@@ -95,6 +101,7 @@ export function Interviewer8Frame({
     let ended = false;
     let answered = false;
     let loads = 0;
+    let readyTimer: number | undefined;
 
     const onPageHide = () => end('lost');
     const watchPage = () => {
@@ -103,6 +110,7 @@ export function Interviewer8Frame({
       frame.contentWindow?.addEventListener('pagehide', onPageHide);
     };
     const detach = () => {
+      window.clearTimeout(readyTimer);
       window.removeEventListener('message', onMessage);
       frame.removeEventListener('load', onLoad);
       try {
@@ -136,6 +144,7 @@ export function Interviewer8Frame({
         return;
       }
       answered = true;
+      window.clearTimeout(readyTimer);
       watchPage();
       postUnlockToInterviewer8(target, unlockForFrame());
     }
@@ -156,6 +165,12 @@ export function Interviewer8Frame({
         return;
       }
       watchPage();
+      if (!answered) {
+        readyTimer = window.setTimeout(
+          () => end('unavailable'),
+          INTERVIEWER8_READY_TIMEOUT_MS,
+        );
+      }
     }
 
     window.addEventListener('message', onMessage);

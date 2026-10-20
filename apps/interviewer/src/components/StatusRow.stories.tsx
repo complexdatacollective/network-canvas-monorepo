@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 
 import type { AuthMode } from '~/lib/auth/api';
-import type { LegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
+import type { AppOffline } from '~/lib/pwa/appOffline';
 
 import { StatusRowView } from './StatusRow';
 
@@ -19,7 +19,7 @@ type StoryArgs = {
   installed: boolean;
   usage: number;
   version: string;
-  legacyOffline: LegacyInterviewerOffline;
+  offline: AppOffline;
 };
 
 const meta: Meta<StoryArgs> = {
@@ -32,7 +32,7 @@ const meta: Meta<StoryArgs> = {
     installed: false,
     usage: 4.2 * 1024 * 1024,
     version: '0.0.0',
-    legacyOffline: 'not-bundled',
+    offline: 'ready',
   },
   argTypes: {
     mode: {
@@ -55,11 +55,11 @@ const meta: Meta<StoryArgs> = {
       control: 'text',
       description: 'Fixed story fixture; production reads the package version',
     },
-    legacyOffline: {
+    offline: {
       control: 'inline-radio',
-      options: ['not-bundled', 'checking', 'ready', 'not-ready'],
+      options: ['checking', 'ready', 'not-ready'],
       description:
-        'Whether the bundled Interviewer 8 is installed for offline use',
+        'Whether Interviewer, with everything it runs, is saved for offline use',
     },
   },
   render: ({
@@ -70,7 +70,7 @@ const meta: Meta<StoryArgs> = {
     installed,
     usage,
     version,
-    legacyOffline,
+    offline,
   }) => (
     <StatusRowView
       protocolCount={protocolCount}
@@ -78,7 +78,7 @@ const meta: Meta<StoryArgs> = {
       mode={mode}
       durability={{ persisted, usage }}
       installed={installed}
-      legacyOffline={legacyOffline}
+      offline={offline}
       versionSlot={<span>Interviewer {version}</span>}
     />
   ),
@@ -125,12 +125,7 @@ export const InstalledBestEffort: Story = {
   args: { persisted: false, installed: true },
 };
 
-/** The bundled Interviewer 8 is installed and works without a network. */
-export const InterviewerEightReadyOffline: Story = {
-  args: { legacyOffline: 'ready' },
-};
-
-/** Interviewer 8 has not finished downloading for offline use yet. */
-export const InterviewerEightNotReadyOffline: Story = {
-  args: { legacyOffline: 'not-ready' },
+/** Interviewer has not finished downloading for offline use yet. */
+export const NotReadyOffline: Story = {
+  args: { offline: 'not-ready' },
 };

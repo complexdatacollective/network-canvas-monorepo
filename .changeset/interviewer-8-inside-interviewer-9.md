@@ -16,8 +16,8 @@ protocol runs just as it did in Interviewer 8.
 - One passcode or biometric lock protects every interview. You unlock once,
   in Interviewer, whichever schema the interview uses, and you set the lock
   up, change it and reset it in Interviewer as usual.
-- The schema 8 interview screen downloads for offline use in the background
-  after Interviewer has started. The status bar and Settings say when it is
-  ready, so you can check before going into the field. Until then, the
-  schema badge on a schema 8 protocol card carries a "not ready offline"
-  icon.
+- Interviewer is ready for offline use only once everything it needs,
+  including the schema 8 interview screen, is saved on the device. The status
+  bar and Settings show one "Ready offline" status for the whole app, so you
+  can check before going into the field. The schema 8 interview screen
+  downloads in the background after Interviewer has started.

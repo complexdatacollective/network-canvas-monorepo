@@ -823,15 +823,10 @@ export function DeckCard(props: DeckCardProps) {
 export function DeckCardBadge({
   tone,
   icon,
-  status,
   children,
 }: {
   tone: 'neutral' | 'info' | 'success' | 'warning';
   icon?: ReactNode;
-  // A status icon after the label, set off by a divider: a passing state of
-  // what the badge names (a schema 8 protocol while Interviewer 8 is not yet
-  // saved for offline use). Give it an accessible name.
-  status?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -843,11 +838,6 @@ export function DeckCardBadge({
       className="whitespace-nowrap"
     >
       {children}
-      {status != null && (
-        <span className="ms-0.5 flex items-center border-s border-current/40 ps-1.5">
-          {status}
-        </span>
-      )}
     </Badge>
   );
 }

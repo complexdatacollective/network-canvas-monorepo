@@ -5,7 +5,6 @@ import { showLegacyProtocolInfo } from '~/components/legacyProtocolDialogs';
 import type { Schema8CardActions } from '~/components/ProtocolCarousel/DeckSlotCard';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 import { getBundledLegacyInterviewer } from '~/lib/legacyInterviewer';
-import { useLegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 
 // What Home does with schema 8 protocols beyond what it does with any
 // protocol: show a stored one's details. A schema 8 protocol is never
@@ -15,7 +14,6 @@ export function useLegacyProtocolActions() {
   const { openDialog } = useDialog();
   // Read once: the define is an object literal, new on every read.
   const [interviewer] = useState(getBundledLegacyInterviewer);
-  const offline = useLegacyInterviewerOffline();
 
   const onShowInfo = useCallback(
     (protocol: ProtocolWithCounts) => {
@@ -27,10 +25,9 @@ export function useLegacyProtocolActions() {
   const schema8 = useMemo<Schema8CardActions>(
     () => ({
       interviewer,
-      offline,
       onShowInfo,
     }),
-    [interviewer, offline, onShowInfo],
+    [interviewer, onShowInfo],
   );
 
   return { schema8 };

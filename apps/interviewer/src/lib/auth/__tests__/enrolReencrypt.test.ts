@@ -261,6 +261,24 @@ describe("the shared lock covers Interviewer 8's rows", () => {
     expect(isReencryptionPending()).toBe(false);
   });
 
+  it('a plaintext legacy row written after the sweep finished is encrypted on the next unlock', async () => {
+    expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
+    expect(isReencryptionPending()).toBe(false);
+
+    // A tab of Interviewer 8 left open with no lock commits its row after
+    // the sweep cleared the flag; nothing marked the retry as pending.
+    setSessionDek(null);
+    await seedAsInterviewer8({ sessions: [legacySession('late-1')] });
+    expect(isReencryptionPending()).toBe(false);
+    expect((await readLegacySession('late-1'))?._enc).toBeUndefined();
+
+    expect((await authApi.unlockWithPin('12345678')).ok).toBe(true);
+    const legacy = await readLegacySession('late-1');
+    expect(legacy?._enc).toBeDefined();
+    expect(legacy?.network).toBeUndefined();
+    expect(isReencryptionPending()).toBe(false);
+  });
+
   it('enrolling without a lock never touches the legacy rows', async () => {
     await seedAsInterviewer8({ sessions: [legacySession()] });
     const before = await readRawRows('sessions');

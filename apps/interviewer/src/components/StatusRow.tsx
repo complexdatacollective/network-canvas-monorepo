@@ -20,12 +20,8 @@ import {
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
-import { LEGACY_INTERVIEWER_MAJOR } from '~/lib/legacyInterviewer';
+import { type AppOffline, useAppOffline } from '~/lib/pwa/appOffline';
 import { isRunningInstalled } from '~/lib/pwa/isRunningInstalled';
-import {
-  type LegacyInterviewerOffline,
-  useLegacyInterviewerOffline,
-} from '~/lib/pwa/legacyInterviewerOffline';
 import {
   estimateStorage,
   formatBytes,
@@ -34,7 +30,7 @@ import {
 } from '~/lib/storage';
 
 import AppUpdatePill from './AppUpdate/AppUpdatePill';
-import { legacyOfflineMessages } from './legacyProtocolMessages';
+import { offlineMessages } from './offlineMessages';
 
 const messages = defineMessages({
   interviewerAPPVERSION: {
@@ -301,7 +297,7 @@ export function StatusRowView({
   mode,
   durability,
   installed,
-  legacyOffline = 'not-bundled',
+  offline = 'checking',
   versionSlot,
 }: {
   protocolCount: number;
@@ -309,13 +305,12 @@ export function StatusRowView({
   mode: AuthMode | undefined;
   durability: Durability | null;
   installed: boolean;
-  // Whether the bundled Interviewer 8 works offline; no chip without one, or
-  // until it is known.
-  legacyOffline?: LegacyInterviewerOffline;
+  // Whether Interviewer works offline on this device; no chip until it is
+  // known.
+  offline?: AppOffline;
   versionSlot?: React.ReactNode;
 }) {
   const intl = useAppIntl();
-  const legacyVersion = { version: LEGACY_INTERVIEWER_MAJOR };
   return (
     <motion.div
       variants={variants}
@@ -429,35 +424,33 @@ export function StatusRowView({
             )}
           </StatusChipPopover>
         ) : null}
-        {legacyOffline === 'ready' || legacyOffline === 'not-ready' ? (
+        {offline === 'ready' || offline === 'not-ready' ? (
           <StatusChipPopover
-            testId="legacy-offline-status-trigger"
+            testId="offline-status-trigger"
             className={`${statusTriggerClassName} ${
-              legacyOffline === 'ready' ? 'text-primary' : 'text-warning'
+              offline === 'ready' ? 'text-primary' : 'text-warning'
             }`}
             chip={
               <>
-                {legacyOffline === 'ready' ? (
+                {offline === 'ready' ? (
                   <CloudCheck className={statusIconClassName} />
                 ) : (
                   <CloudOff className={statusIconClassName} />
                 )}
                 <span className={compactLabelClassName}>
                   {intl.formatMessage(
-                    legacyOffline === 'ready'
-                      ? legacyOfflineMessages.readyChip
-                      : legacyOfflineMessages.notReadyChip,
-                    legacyVersion,
+                    offline === 'ready'
+                      ? offlineMessages.readyChip
+                      : offlineMessages.notReadyChip,
                   )}
                 </span>
               </>
             }
           >
             {intl.formatMessage(
-              legacyOffline === 'ready'
-                ? legacyOfflineMessages.readyHelp
-                : legacyOfflineMessages.notReadyHelp,
-              legacyVersion,
+              offline === 'ready'
+                ? offlineMessages.readyHelp
+                : offlineMessages.notReadyHelp,
             )}
           </StatusChipPopover>
         ) : null}
@@ -490,7 +483,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
   // Static per page load, like InstallBanner: installing mid-session still
   // requires launching the installed app.
   const [installed] = useState(isRunningInstalled);
-  const legacyOffline = useLegacyInterviewerOffline();
+  const offline = useAppOffline();
 
   useEffect(() => {
     let active = true;
@@ -545,7 +538,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
       mode={displayMode}
       durability={durability}
       installed={installed}
-      legacyOffline={legacyOffline}
+      offline={offline}
       versionSlot={<AppUpdatePill />}
     />
   );

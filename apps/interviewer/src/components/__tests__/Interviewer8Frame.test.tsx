@@ -25,7 +25,8 @@ vi.mock('~/lib/interviewer8Embed', async (importOriginal) => ({
   frameShowsInterviewer8: () => showsInterviewer8.current,
 }));
 
-const { Interviewer8Frame } = await import('../Interviewer8Frame');
+const { Interviewer8Frame, INTERVIEWER8_READY_TIMEOUT_MS } =
+  await import('../Interviewer8Frame');
 
 // The session key Interviewer 9 holds; any object stands in for the
 // CryptoKey, which is handed over as it is.
@@ -193,6 +194,50 @@ describe('Interviewer8Frame', () => {
 
     expect(onUnavailable).toHaveBeenCalledTimes(1);
     expect(onLost).not.toHaveBeenCalled();
+  });
+
+  it('reports a page that loads but never says it is ready as unavailable', () => {
+    vi.useFakeTimers();
+    try {
+      const { frame, frameWindow, posted, onLost, onUnavailable } =
+        renderFrame();
+      act(() => {
+        frame.dispatchEvent(new Event('load'));
+      });
+      act(() => {
+        vi.advanceTimersByTime(INTERVIEWER8_READY_TIMEOUT_MS - 1);
+      });
+      expect(onUnavailable).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+
+      expect(onUnavailable).toHaveBeenCalledTimes(1);
+      expect(onLost).not.toHaveBeenCalled();
+      // A 'ready' that comes after is handed nothing.
+      fromFrame(frameWindow, 'interviewer8:ready');
+      expect(posted).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps a frame that said it is ready past the start-up deadline', () => {
+    vi.useFakeTimers();
+    try {
+      const { frame, frameWindow, onUnavailable } = renderFrame();
+      act(() => {
+        frame.dispatchEvent(new Event('load'));
+      });
+      fromFrame(frameWindow, 'interviewer8:ready');
+      act(() => {
+        vi.advanceTimersByTime(INTERVIEWER8_READY_TIMEOUT_MS * 2);
+      });
+
+      expect(onUnavailable).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('reports a second page that is not Interviewer 8 as lost', () => {

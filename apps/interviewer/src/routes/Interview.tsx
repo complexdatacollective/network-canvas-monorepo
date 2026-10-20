@@ -44,7 +44,7 @@ import {
   type LocalizationDeclaration,
 } from '@codaco/protocol-validation';
 import { Interviewer8Frame } from '~/components/Interviewer8Frame';
-import { legacyOfflineMessages } from '~/components/legacyProtocolMessages';
+import { offlineMessages } from '~/components/offlineMessages';
 import { useSettleLockForInterviewer8 } from '~/components/useSettleLockForInterviewer8';
 import { interviewerLocales } from '~/i18n/locales';
 import { browserLanguages } from '~/i18n/preference';
@@ -240,7 +240,7 @@ const loadFailureCopy = {
   },
   'interviewer8-unreachable': {
     heading: messages.interviewUnavailable,
-    body: legacyOfflineMessages.notReadyHelp,
+    body: offlineMessages.notReadyHelp,
   },
   'missing': {
     heading: messages.interviewNotFound,

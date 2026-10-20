@@ -5,7 +5,10 @@ import type { NcNetwork } from '@codaco/shared-consts';
 import * as dexieSettings from './db';
 import * as dexieProtocols from './protocols';
 import type { ExportedSessionRecord } from './recordCrypto';
-import { reencryptAllRecords as dexieReencryptAllRecords } from './reencrypt';
+import {
+  hasPlaintextSessions as dexieHasPlaintextSessions,
+  reencryptAllRecords as dexieReencryptAllRecords,
+} from './reencrypt';
 import type { ReencryptProgress, ReencryptResult } from './reencrypt';
 import * as dexieSessions from './sessions';
 import type {
@@ -148,6 +151,10 @@ export async function reencryptAllRecords(
   onProgress?: ReencryptProgress,
 ): Promise<ReencryptResult> {
   return dexieReencryptAllRecords(onProgress);
+}
+
+export async function hasPlaintextSessions(): Promise<boolean> {
+  return dexieHasPlaintextSessions();
 }
 
 export async function getSettings(): Promise<StoredSettings> {
