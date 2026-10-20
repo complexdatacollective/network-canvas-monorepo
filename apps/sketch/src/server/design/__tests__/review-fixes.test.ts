@@ -316,6 +316,17 @@ describe('compiler review fixes', () => {
     );
   });
 
+  it('flags a form generator that follows an earlier generator of the same type', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [person([A('age', 'number', 'Age?')])],
+        stages: [ng(), ng('later', { method: 'form', attributeIds: ['age'] })],
+      }),
+    );
+    expect(r.codes).toContain('FORM_AFTER_NAMES');
+    expect(r.retry).toBe(true);
+  });
+
   it('keeps multi_choice attributes out of bins, which record one choice', async () => {
     const r = await build(
       design({

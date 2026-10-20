@@ -47,10 +47,10 @@ export const estimateBurden = (
         answers += fields;
         break;
       case 'NameGenerator':
-        // a form opens for each person added
+        // a form opens for each person added; its first field is the name
         screens += prompts + n;
-        itemsPerPerson += fields;
-        answers += n * (fields + 1);
+        itemsPerPerson += Math.max(0, fields - 1);
+        answers += n * Math.max(1, fields);
         break;
       case 'NameGeneratorQuickAdd':
       case 'NameGeneratorRoster':

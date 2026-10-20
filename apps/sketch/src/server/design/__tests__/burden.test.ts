@@ -56,4 +56,21 @@ describe('estimateBurden', () => {
     );
     expect(burden.answers).toBe(12 + 18 * 3);
   });
+
+  it('counts the name on a naming form once', () => {
+    const burden = estimateBurden(
+      {
+        stages: [
+          {
+            type: 'NameGenerator',
+            prompts: [{}],
+            form: { fields: [{}, {}, {}] },
+          },
+        ],
+      },
+      12,
+    );
+    expect(burden.answers).toBe(36);
+    expect(burden.itemsPerPerson).toBe(2);
+  });
 });

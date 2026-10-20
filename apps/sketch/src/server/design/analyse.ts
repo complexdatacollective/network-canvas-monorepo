@@ -976,6 +976,13 @@ export const analyse = (
           );
           s.method = 'quick_add';
         }
+        if (s.method === 'form' && named.has(t))
+          add(
+            'degraded',
+            'FORM_AFTER_NAMES',
+            path,
+            `nameGenerator "${s.id}" uses a form, but people named by an earlier generator can be added here from the "Already mentioned" panel without the form, so they would miss its questions. Use quick_add here and ask ${s.attributeIds.join(', ')} in an alterForm after it.`,
+          );
         if (s.method === 'form' && s.attributeIds.length > 3)
           add(
             'note',

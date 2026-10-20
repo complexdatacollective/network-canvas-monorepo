@@ -49,7 +49,7 @@ Name everyone before interpreting them: do not zigzag between generators and int
 ### Method
 
 - **quick_add** (default): the participant types a name and moves on. Fastest, and people name more alters when naming is cheap.
-- **form**: name plus 1-3 attributes asked as each person is added. Use it only when an attribute is essential at nomination time and is better asked immediately (relationship type when later stages filter on it, an age band). Never more than 3.
+- **form**: name plus 1-3 attributes asked as each person is added. Use it only when an attribute is essential at nomination time and is better asked immediately (relationship type when later stages filter on it, an age band). Never more than 3. Only on the FIRST generator of a node type: later generators let the participant re-add people from an "Already mentioned" panel, which skips the form.
 - **roster**: pick from a list of a known population (a class, a ward, a team, an organisation). Use it only when the study says such a list exists. Sketch generates a placeholder list for the researcher to replace; attributeIds are columns the list holds for each person (text, long_text, number or yes_no only), shown on the cards.
 
 ### Prompts
