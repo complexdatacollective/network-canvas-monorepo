@@ -205,4 +205,70 @@ describe('Sketch flow', () => {
       screen.getByRole('button', { name: /Generate with both/ }),
     ).toBeTruthy();
   });
+
+  it('compares against the protocol already made instead of re-running it', async () => {
+    const posts: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const { url, method } = describeCall(input, init);
+        if (url === '/api/config') return jsonResponse(configResponse(true));
+        if (url === '/api/jobs' && method === 'POST') {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
+          const body = JSON.parse(String(init?.body)) as Record<
+            string,
+            unknown
+          >;
+          posts.push(body);
+          return jsonResponse({
+            jobId: body.provider === 'openai' ? 'job-openai' : 'job-1',
+          });
+        }
+        if (url === '/api/jobs/job-1') return jsonResponse(succeededJob());
+        if (url === '/api/jobs/job-openai')
+          return jsonResponse(
+            jobStatus({ id: 'job-openai', provider: 'openai' }),
+          );
+        return jsonResponse({ error: 'unexpected' }, 500);
+      }),
+    );
+    render(<App />);
+    await waitFor(() =>
+      expect(generateButton()).toHaveProperty('disabled', false),
+    );
+    fireEvent.click(generateButton());
+    fireEvent.click(
+      await screen.findByRole('button', { name: /See your protocol/ }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Compare with ChatGPT' }),
+    );
+
+    const claude = within(
+      await screen.findByRole('article', { name: 'Claude' }),
+    );
+    expect(claude.getByText('Friendship and Wellbeing')).toBeTruthy();
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(posts[1]).toMatchObject({
+      provider: 'openai',
+      seedJobId: 'job-1',
+      comparisonId: expect.any(String),
+    });
+  });
+
+  it('explains a disabled Generate when no provider is set up', async () => {
+    const none = configResponse(false);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse({
+          providers: none.providers.map((p) => ({ ...p, available: false })),
+        }),
+      ),
+    );
+    render(<App />);
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText(/no model provider is set up/)).toBeTruthy();
+    expect(generateButton()).toHaveProperty('disabled', true);
+  });
 });

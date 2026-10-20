@@ -10,7 +10,9 @@ const SKETCH_ORIGINS: readonly string[] = [
 
 // Netlify deploy previews and branch deploys: `<label>--sketch-networkcanvas`.
 // Anchored at both ends, and the label cannot contain a dot, so no other host
-// can end in this suffix and pass.
+// can end in this suffix and pass. A preview runs whatever code its pull
+// request contains (fork PRs included), so only a non-production Architect
+// build (`allowPreviews`) trusts one.
 const SKETCH_DEPLOY_PREVIEW_ORIGIN =
   /^https:\/\/[a-z0-9-]+--sketch-networkcanvas\.netlify\.app$/;
 
@@ -19,9 +21,9 @@ export const SKETCH_DEV_ORIGIN = 'http://localhost:5186';
 
 export function isAllowedSketchOrigin(
   origin: string,
-  { dev }: { dev: boolean },
+  { dev, allowPreviews }: { dev: boolean; allowPreviews: boolean },
 ): boolean {
   if (SKETCH_ORIGINS.includes(origin)) return true;
-  if (SKETCH_DEPLOY_PREVIEW_ORIGIN.test(origin)) return true;
+  if (allowPreviews && SKETCH_DEPLOY_PREVIEW_ORIGIN.test(origin)) return true;
   return dev && origin === SKETCH_DEV_ORIGIN;
 }

@@ -59,7 +59,7 @@ describe('provider JSON Schemas', () => {
       maxEnum: 14,
       anyOfBranches: 10,
       maxObjectDepth: 2,
-      bytes: 25_938,
+      bytes: 26_168,
     });
     expect(
       Object.keys(toProviderJsonSchema(StudyDesignSchema).$defs as object),
@@ -83,14 +83,14 @@ describe('provider JSON Schemas', () => {
     ).toMatchInlineSnapshot(`
       {
         "Screening": "b26b714997904503f942e3f7fa6302138337122472bc36eca22e938ef00df3a3",
-        "StudyDesign": "b45ea9548f35f2ba5a93f29e4ee9a189f1c9f20ccbd411218b403b76eae68ef4",
+        "StudyDesign": "96c4265ef839b71fac84d261b6f6b2ef8d59a1f72644de7c3af707ee55d85be2",
         "Wording": "4b760d7df90de94c5d6d013446340d1cc734f57ca66840b8a4b00495a484d24d",
       }
     `);
     expect(
       sha256(toProviderJsonSchema(StudyDesignSchema, { defs: false })),
     ).toMatchInlineSnapshot(
-      `"5f2620a24a01381283c1d131744496a67f69792111461daf37bba184da02d2c7"`,
+      `"fbcc7bf5b29731204be2d5430feb82155ec3d865db0f488b53adc02693ac0b91"`,
     );
   });
 });

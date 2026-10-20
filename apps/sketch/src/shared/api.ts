@@ -20,6 +20,10 @@ export type CreateJobRequest = {
   // Set when the page runs the same description through both providers, so
   // the log can pair the two runs and record which one the researcher picked.
   comparisonId?: string;
+  // With comparisonId: a finished job from the Ready screen that this
+  // comparison starts from, so the server can tag it with the same
+  // comparisonId and the researcher can prefer it.
+  seedJobId?: string;
 };
 
 export type CreateJobResponse = { jobId: string };

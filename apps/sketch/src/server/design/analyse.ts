@@ -15,7 +15,11 @@ import {
   resolveCondition,
   slug,
 } from './rules.ts';
-import type { DesignStage, StudyDesign } from './schema.ts';
+import {
+  ATTRIBUTE_KINDS,
+  type DesignStage,
+  type StudyDesign,
+} from './schema.ts';
 
 export type NStage = DesignStage & { rawIndex: number };
 export type NNodeType = Omit<StudyDesign['nodeTypes'][number], 'attributes'> & {
@@ -36,6 +40,17 @@ export type NormalizedDesign = Omit<
   /** attributes with optionScores: excluded from Wording, flagged on the researcher-notes screen */
   instrumentAttributes: string[];
 };
+
+const CONSENT_IDS = new Set([
+  'consent',
+  'consent_given',
+  'consent_to_participate',
+  'informed_consent',
+  'participant_consent',
+]);
+
+/** Every declarable kind: everything a form can render (the builtin 'location' is not one). */
+const FORM_KINDS: NAttribute['kind'][] = [...ATTRIBUTE_KINDS];
 
 const NAME_ALIASES = new Set([
   'name',
@@ -188,18 +203,26 @@ export const analyse = (
         );
         return;
       }
-      if (scope === 'ego' && a.kind === 'yes_no' && a.id.includes('consent')) {
+      // Only an attribute that IS the participation consent is folded; one that merely
+      // mentions consent ("recontact_consent") is ordinary data and is kept.
+      if (scope === 'ego' && a.kind === 'yes_no' && CONSENT_IDS.has(a.id)) {
         consentAlias.add(a.id);
         if (!d.includeConsent) {
           d.includeConsent = true;
-        }
-        if (!d.consentText) d.consentText = a.question;
-        add(
-          'adjusted',
-          'CONSENT_FOLDED',
-          p,
-          `Consent attribute "${a.id}" was replaced by the built-in consent question (includeConsent).`,
-        );
+          if (!d.consentText) d.consentText = a.question;
+          add(
+            'degraded',
+            'CONSENT_FOLDED',
+            p,
+            `Consent attribute "${a.id}" was replaced by the built-in consent question (includeConsent); the interview ends if the participant declines.`,
+          );
+        } else
+          add(
+            'adjusted',
+            'CONSENT_FOLDED',
+            p,
+            `Consent attribute "${a.id}" duplicates the built-in consent question and was removed.`,
+          );
         return;
       }
       if (
@@ -451,7 +474,16 @@ export const analyse = (
   ): string => {
     const sev = 'degraded';
     let id = slug(ref);
-    if (!id) return '';
+    if (!id) {
+      if (ref.trim())
+        add(
+          sev,
+          'UNKNOWN_ATTRIBUTE',
+          path,
+          `${what} "${ref}" is not a usable attribute id (letters a-z and digits only).`,
+        );
+      return '';
+    }
     id = nameAlias.get(`${scope}/${id}`) ?? id;
     // tolerate the type prefix being written or omitted ("person_closeness" <-> "closeness")
     const prefix = scope.split(':')[1];
@@ -531,6 +563,15 @@ export const analyse = (
     path: string,
   ): string => {
     const id = slug(ref);
+    if (!id) {
+      add(
+        'degraded',
+        'MISSING_ATTRIBUTE',
+        path,
+        `Tag "${ref}" has no usable id (letters a-z and digits only). Tag removed.`,
+      );
+      return '';
+    }
     if (
       id === 'name' ||
       id === 'layout' ||
@@ -750,6 +791,28 @@ export const analyse = (
       c.attributeId = id;
       return true;
     });
+    // network-query ANDs every node rule against ONE node (every tie rule against ties
+    // of ONE node), so under "all" conditions on different types can never hold together.
+    if (sk.mode !== 'always_show' && sk.match === 'all') {
+      const firstType: Partial<Record<'nodes' | 'relationships', string>> = {};
+      sk.conditions = sk.conditions.filter((c) => {
+        if (c.about === 'participant' || c.operator === 'none_exist')
+          return true;
+        const seen = firstType[c.about];
+        if (seen === undefined || seen === c.typeId) {
+          firstType[c.about] = c.typeId;
+          return true;
+        }
+        const one = c.about === 'nodes' ? 'node' : 'tie';
+        add(
+          'degraded',
+          'MIXED_ALL_CONDITION',
+          `${path}.skipLogic`,
+          `With match "all", every ${c.about} condition must hold for the SAME ${one}, so a condition on "${c.typeId}" cannot be combined with one on "${seen}". Condition on "${c.typeId}" removed; use match "any" or separate stages.`,
+        );
+        return false;
+      });
+    }
     if (sk.mode !== 'always_show' && !sk.conditions.length) {
       add(
         'degraded',
@@ -852,7 +915,7 @@ export const analyse = (
         const kinds: NAttribute['kind'][] | null =
           s.method === 'roster'
             ? ['text', 'long_text', 'number', 'yes_no']
-            : null;
+            : FORM_KINDS;
         s.attributeIds = [
           ...new Set(
             s.attributeIds
@@ -973,7 +1036,7 @@ export const analyse = (
                     a,
                     scope,
                     `${path}.attributeIds[${i}]`,
-                    null,
+                    FORM_KINDS,
                     'Form attribute',
                   ),
                 )
@@ -1141,7 +1204,7 @@ export const analyse = (
                   'degraded',
                   'NO_STRENGTH',
                   pp,
-                  'with_strength needs an ordered attribute of the relationship; the prompt is asked as a yes/no every_pair question instead.',
+                  `with_strength needs an ordered attribute of the relationship "${r}".`,
                 );
               }
               if (!p.noTieLabel) p.noTieLabel = 'Not connected';
@@ -1149,9 +1212,6 @@ export const analyse = (
               p.strengthAttributeId = '';
               p.noTieLabel = '';
             }
-            createdRels.add(r);
-            if (p.strengthAttributeId)
-              markCollected(`rel:${r}`, p.strengthAttributeId);
             return true;
           });
           if (!s.prompts.length) {
@@ -1164,12 +1224,31 @@ export const analyse = (
           if (
             s.method === 'with_strength' &&
             s.prompts.some((p) => !p.strengthAttributeId)
-          )
-            s.method = s.prompts.every((p) => !p.strengthAttributeId)
-              ? 'every_pair'
-              : s.method;
-          if (s.method === 'with_strength')
-            s.prompts = s.prompts.filter((p) => p.strengthAttributeId);
+          ) {
+            if (s.prompts.every((p) => !p.strengthAttributeId)) {
+              s.method = 'every_pair';
+              add(
+                'degraded',
+                'NO_STRENGTH',
+                path,
+                'No prompt has an ordered strength attribute; the census is asked as yes/no every_pair questions instead.',
+              );
+            } else {
+              for (const p of s.prompts.filter((q) => !q.strengthAttributeId))
+                add(
+                  'degraded',
+                  'NO_STRENGTH_REMOVED',
+                  path,
+                  `Prompt "${p.text}" was removed: relationship "${p.relationshipId}" has no ordered strength attribute, and a with_strength census cannot mix in yes/no prompts. Add an ordered attribute or put it in its own every_pair census.`,
+                );
+              s.prompts = s.prompts.filter((p) => p.strengthAttributeId);
+            }
+          }
+          for (const p of s.prompts) {
+            createdRels.add(p.relationshipId);
+            if (p.strengthAttributeId)
+              markCollected(`rel:${p.relationshipId}`, p.strengthAttributeId);
+          }
         } else if (s.kind === 'narrative') {
           if (!sociogramTypes.has(t)) {
             drop(
@@ -1262,7 +1341,14 @@ export const analyse = (
             if (loc === 'name' || loc === 'layout') loc = `${loc}_country`;
             const ex = listOf(scope).find((a) => a.id === loc);
             if (ex && ex.kind !== 'location') {
-              const x = `${loc}_map`;
+              // The first `<loc>_map[_n]` id that is free or already a
+              // location attribute.
+              let x = `${loc}_map`;
+              for (let n = 2; ; n++) {
+                const taken = listOf(scope).find((a) => a.id === x);
+                if (!taken || taken.kind === 'location') break;
+                x = `${loc}_map_${n}`;
+              }
               add(
                 'adjusted',
                 'LOCATION_RENAMED',

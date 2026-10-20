@@ -213,11 +213,15 @@ export const compile = (
       vars[claim(scope, 'name', tk)] = variableFor(nameAttr, 'name', true);
       if (needsLayout.has(n.id))
         vars[claim(scope, 'layout', tk)] = { name: 'layout', type: 'layout' };
-      const names = new Set(['name', 'layout']);
+      // every declared id up front, so a generated `<id>_other` never takes one
+      const names = new Set([
+        'name',
+        'layout',
+        ...n.attributes.map((a) => a.id),
+      ]);
       for (const a of n.attributes) {
         const k = claim(scope, a.id, tk);
         vars[k] = variableFor(a, a.id, askedInForm.has(`${scope}/${a.id}`));
-        names.add(a.id);
         sourceMap.set(
           `codebook.node.${tk}.variables.${k}`,
           `nodeTypes "${n.id}" attribute "${a.id}"`,
@@ -377,20 +381,20 @@ export const compile = (
               operator: 'NOT_EXISTS',
             }
           : undefined;
+    // The auto-skip only ever falls through to the next stage, so it is never merged
+    // into a skip that ends the interview.
     const usesAbsent =
       absentRule &&
       (sk.mode === 'always_show' ||
-        (sk.mode === 'skip_if' && (sk.match === 'any' || rules.length === 1)));
+        (sk.mode === 'skip_if' &&
+          sk.whenSkipped !== 'end_interview' &&
+          (sk.match === 'any' || rules.length === 1)));
     const absent = usesAbsent ? toRule(absentRule) : undefined;
     if (sk.mode === 'always_show')
       return absent
         ? { action: 'SKIP', filter: { rules: [absent] } }
         : undefined;
-    if (
-      sk.mode === 'skip_if' &&
-      absent &&
-      (sk.match === 'any' || rules.length === 1)
-    )
+    if (sk.mode === 'skip_if' && absent)
       return {
         action: 'SKIP',
         filter: { join: 'OR', rules: [...rules, absent] },
@@ -619,8 +623,12 @@ export const compile = (
           prompts,
           ...(Object.keys(behaviours).length ? { behaviours } : {}),
         };
+        // An earlier generator named this type, or an earlier prompt here did: either way
+        // the people already named are off screen and (with the unique name rule) cannot
+        // be retyped, so they must be draggable from a panel.
         const panels =
-          namedBefore.has(n.id) && s.method !== 'roster'
+          (namedBefore.has(n.id) || s.prompts.length > 1) &&
+          s.method !== 'roster'
             ? {
                 panels: [
                   {

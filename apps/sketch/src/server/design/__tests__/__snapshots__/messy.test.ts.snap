@@ -7,6 +7,7 @@ Ids are references: if you rename one, rename every reference to it. Do not inve
 
 Design problems (paths refer to your design JSON):
 - [DUPLICATE_TYPE_ID] relationships[0].id: Two node types / relationships use id "person"; the second became "person_2". Give each its own id.
+- [CONSENT_FOLDED] egoAttributes[0]: Consent attribute "participant_consent" was replaced by the built-in consent question (includeConsent); the interview ends if the participant declines.
 - [DUPLICATE_ATTRIBUTE_ID] egoAttributes[2]: Two different attributes use id "age"; the second became "age_2" and every reference to "age" points at the first. Give each attribute its own id.
 - [TOO_FEW_OPTIONS] egoAttributes[4].options: ordered attribute "mood" needs at least 2 options; it was turned into free text.
 - [BAD_SCORES] egoAttributes[5].optionScores: optionScores of "scale" must be one distinct whole number per option (3); they were dropped and options scored 1..n.
@@ -25,5 +26,5 @@ Design problems (paths refer to your design JSON):
 - [UNKNOWN_TYPE] stages[8]: relationshipForm "edge_form" has no valid relationship. The stage was removed.
 - [EMPTY_SKIP] stages[9].skipLogic: mode show_only_if has no usable conditions; the stage is always shown.
 
-(11 smaller issues were corrected automatically; you do not need to address them.)"
+(10 smaller issues were corrected automatically; you do not need to address them.)"
 `;

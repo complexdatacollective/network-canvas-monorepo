@@ -21,13 +21,19 @@ import type {
   CreateJobRequest,
   DesignTier,
   JobResult,
+  JobStatus,
   Provider,
   ProviderConfig,
 } from '../shared/api.ts';
 
+// A finished run (from the Ready screen) that fills one side of the
+// comparison, so only the other provider runs.
+export type CompareSeed = { provider: Provider; job: JobStatus };
+
 type Props = {
   description: string;
   tier: DesignTier;
+  seed?: CompareSeed | null;
   providers: ProviderConfig[];
   onNew: () => void;
   // Both runs refused the description: back to the describe screen.
@@ -253,6 +259,7 @@ const RunCard = ({
 export const CompareScreen = ({
   description,
   tier,
+  seed = null,
   providers,
   onNew,
   onRefused,
@@ -269,15 +276,36 @@ export const CompareScreen = ({
   // Each run's request; a new object (Try again) starts that run again.
   const makeRequest = (provider: Provider): CreateJobRequest | null =>
     providers.some((p) => p.provider === provider)
-      ? { description, provider, tier, comparisonId }
+      ? {
+          description,
+          provider,
+          tier,
+          comparisonId,
+          ...(seed && seed.provider !== provider
+            ? { seedJobId: seed.job.id }
+            : {}),
+        }
       : null;
+  // The seeded side shows the finished run until it is retried.
+  const [seeded, setSeeded] = useState<Provider | null>(seed?.provider ?? null);
   const [requests, setRequests] = useState(() => ({
-    anthropic: makeRequest('anthropic'),
-    openai: makeRequest('openai'),
+    anthropic: seed?.provider === 'anthropic' ? null : makeRequest('anthropic'),
+    openai: seed?.provider === 'openai' ? null : makeRequest('openai'),
   }));
+  // Counts retries so each one remounts its card and restarts the clock.
+  const [attempts, setAttempts] = useState<Record<Provider, number>>({
+    anthropic: 0,
+    openai: 0,
+  });
 
-  const anthropicRun = useJobRun(requests.anthropic);
-  const openaiRun = useJobRun(requests.openai);
+  const anthropicLive = useJobRun(requests.anthropic);
+  const openaiLive = useJobRun(requests.openai);
+  const seedRun = (provider: Provider, live: JobRun): JobRun =>
+    seed && seeded === provider
+      ? { jobId: seed.job.id, job: seed.job, error: null }
+      : live;
+  const anthropicRun = seedRun('anthropic', anthropicLive);
+  const openaiRun = seedRun('openai', openaiLive);
   const anthropicResult = resultOf(anthropicRun);
   const openaiResult = resultOf(openaiRun);
 
@@ -357,7 +385,7 @@ export const CompareScreen = ({
           {cards.map(({ config, run, mine, theirs }) =>
             config ? (
               <RunCard
-                key={config.provider}
+                key={`${config.provider}-${attempts[config.provider]}`}
                 provider={config}
                 tier={tier}
                 run={run}
@@ -365,12 +393,17 @@ export const CompareScreen = ({
                 preferred={run.jobId !== null && run.jobId === preferredJobId}
                 preferDisabled={preferenceState === 'saving'}
                 onPrefer={() => void prefer(run.jobId)}
-                onRetry={() =>
+                onRetry={() => {
+                  if (seeded === config.provider) setSeeded(null);
+                  setAttempts((current) => ({
+                    ...current,
+                    [config.provider]: current[config.provider] + 1,
+                  }));
                   setRequests((current) => ({
                     ...current,
                     [config.provider]: makeRequest(config.provider),
-                  }))
-                }
+                  }));
+                }}
               />
             ) : null,
           )}

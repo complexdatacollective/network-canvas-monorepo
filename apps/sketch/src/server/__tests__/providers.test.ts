@@ -121,6 +121,15 @@ describe('anthropic adapter', () => {
     ).resolves.toMatchObject({ stopReason: 'refusal' });
   });
 
+  it('turns SDK retries off so a timeout is not multiplied', async () => {
+    const { adapter, create } = setup(anthropicMessage());
+    await adapter.generateStructured({ ...request, timeoutMs: 90_000 });
+    expect((create.mock.calls[0] as unknown[] | undefined)?.[1]).toEqual({
+      maxRetries: 0,
+      timeout: 90_000,
+    });
+  });
+
   it('is configured only with a key', () => {
     expect(createAnthropicAdapter({ apiKey: '' }).isConfigured()).toBe(false);
     expect(createAnthropicAdapter({ apiKey: 'sk-test' }).isConfigured()).toBe(
@@ -185,6 +194,15 @@ describe('openai adapter', () => {
     );
     const sent = (params.text as { format: { schema: unknown } }).format.schema;
     expect(sent).toBe(schema);
+  });
+
+  it('turns SDK retries off so a timeout is not multiplied', async () => {
+    const { adapter, create } = setup(openaiResponse());
+    await adapter.generateStructured({ ...request, timeoutMs: 90_000 });
+    expect((create.mock.calls[0] as unknown[] | undefined)?.[1]).toEqual({
+      maxRetries: 0,
+      timeout: 90_000,
+    });
   });
 
   it('separates cached input tokens', async () => {

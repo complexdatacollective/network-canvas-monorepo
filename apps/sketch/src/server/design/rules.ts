@@ -235,10 +235,12 @@ export const resolveCondition = (
         (!!a.options[1] && raw.toLowerCase() === a.options[1].toLowerCase());
       if (!yes && !no)
         return `a yes_no value must be "yes" or "no" (got "${raw}").`;
-      if (operator === 'is')
-        return { ...base, operator: 'EXACTLY', value: yes };
-      if (operator === 'is_not')
-        return { ...base, operator: 'NOT', value: yes }; // NOT true also matches never-set tags
+      // Always compare against true: tags and highlights are only ever set to true, so a
+      // never-set attribute must count as "no" (EXACTLY false would match nobody).
+      const isYes =
+        operator === 'is' ? yes : operator === 'is_not' ? !yes : null;
+      if (isYes !== null)
+        return { ...base, operator: isYes ? 'EXACTLY' : 'NOT', value: true };
       return notFor('yes_no', 'is / is_not');
     }
     case 'text':

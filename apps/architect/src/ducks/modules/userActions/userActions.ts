@@ -222,6 +222,11 @@ const instantiateProtocol = async (
     sourceRef?: ProtocolSourceRef;
   },
   dispatch: Dispatch,
+  // Replace the current history entry instead of pushing: an open that starts
+  // on a one-shot route (Sketch's /import-from-sketch) must not leave that
+  // route reachable by Back, where it would remount and wait for a payload
+  // that never comes.
+  { replaceHistory = false }: { replaceHistory?: boolean } = {},
 ): Promise<void> => {
   const protocolId = crypto.randomUUID();
 
@@ -258,7 +263,7 @@ const instantiateProtocol = async (
     // Nothing is persisted in this mode, so warn before the tab closes to avoid
     // silently losing the in-memory protocol.
     armInMemoryUnloadGuard();
-    navigate('/protocol');
+    navigate('/protocol', { replace: replaceHistory });
     return;
   }
 
@@ -270,7 +275,7 @@ const instantiateProtocol = async (
   dispatch(setActiveProtocolId(protocolId));
   dispatch(setActiveProtocol(protocol));
 
-  navigate('/protocol');
+  navigate('/protocol', { replace: replaceHistory });
 };
 
 type OpenLocalNetcanvasParams = {
@@ -609,7 +614,12 @@ const openInMemoryProtocol = async (
   {
     source,
     fallbackMessage,
-  }: { source: ImportSource; fallbackMessage: string },
+    replaceHistory,
+  }: {
+    source: ImportSource;
+    fallbackMessage: string;
+    replaceHistory?: boolean;
+  },
   dispatch: Dispatch,
 ): Promise<ProtocolOpenResult> => {
   // Signal an import is in flight so a fresh-load service-worker update won't
@@ -636,6 +646,7 @@ const openInMemoryProtocol = async (
         sourceRef,
       },
       dispatch,
+      { replaceHistory },
     );
 
     return openedResult;
@@ -680,6 +691,15 @@ export const openBundledTemplate = createAppAsyncThunk(
 // the current schema version, so this is the bundled-template path under its
 // own analytics source and protocol wording. It takes no `sourceRef`: a Sketch
 // protocol has no canonical source file to save back to.
+//
+// Sketch is a separate deploy, so its schema version is checked first:
+// `validateProtocol` accepts every schema it knows, and the in-memory path
+// would otherwise store an older or newer protocol as the current one. A newer
+// schema gets the "update Architect" result; an older one is a Sketch/Architect
+// version skew, not a file to migrate, so it is refused.
+//
+// The editor replaces the /import-from-sketch history entry (see
+// `instantiateProtocol`).
 export const openSketchProtocol = createAppAsyncThunk(
   'webUserActions/openSketchProtocol',
   async (
@@ -690,9 +710,33 @@ export const openSketchProtocol = createAppAsyncThunk(
     }: { protocol: CurrentProtocol; name: string; assets: ExtractedAsset[] },
     { dispatch },
   ): Promise<ProtocolOpenResult> => {
+    // `protocol` is an unchecked postMessage payload: a missing or non-numeric
+    // version is left to validation, which rejects it, rather than read as
+    // "newer than this app".
+    const versionState =
+      typeof (protocol as { schemaVersion?: unknown }).schemaVersion ===
+      'number'
+        ? checkSchemaVersion(protocol)
+        : schemaVersionStates.OK;
+    if (versionState === schemaVersionStates.UPGRADE_APP) {
+      return {
+        status: 'app-upgrade-required',
+        protocolSchemaVersion: protocol.schemaVersion,
+      };
+    }
+    if (versionState !== schemaVersionStates.OK) {
+      return {
+        status: 'validation-error',
+        message: `Sketch sent a schema ${protocol.schemaVersion} protocol; this Architect expects schema ${APP_SCHEMA_VERSION}.`,
+      };
+    }
     const result = await openInMemoryProtocol(
       { protocol, name, assets },
-      { source: 'sketch', fallbackMessage: PROTOCOL_OPEN_FAILURE_MESSAGE },
+      {
+        source: 'sketch',
+        fallbackMessage: PROTOCOL_OPEN_FAILURE_MESSAGE,
+        replaceHistory: true,
+      },
       dispatch,
     );
     if (result.status !== 'opened') return result;

@@ -20,8 +20,9 @@ describe('the messy design', () => {
         result.issues.filter((i) => i.severity === severity).length,
       ]),
     );
-    // SPEC §8.3 says 12 / 17 / 3; the reference implementation itself gives 11 / 18 / 3.
-    expect(counts).toEqual({ adjusted: 11, degraded: 18, note: 3 });
+    // SPEC §8.3 says 12 / 17 / 3; the reference implementation gives 10 / 19 / 3
+    // (folding participant_consent into the interview-ending gate is degraded).
+    expect(counts).toEqual({ adjusted: 10, degraded: 19, note: 3 });
     expect(result.retry).toBe(true);
     expect(result.fatal).toBeNull();
     expect(

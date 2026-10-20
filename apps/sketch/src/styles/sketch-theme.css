@@ -133,6 +133,12 @@
     outline: 3px solid var(--color-mustard);
     outline-offset: 2px;
   }
+  /* Mustard is under 2:1 on paper and white, so paper cards ring in ink. */
+  .bg-paper :focus-visible,
+  .bg-paper textarea:focus,
+  .bg-paper select:focus {
+    outline-color: var(--color-ink);
+  }
 }
 
 @media (max-width: 40rem) {

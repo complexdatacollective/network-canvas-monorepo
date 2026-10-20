@@ -4,6 +4,7 @@ import { sampleResult } from '../../__tests__/fixtures.ts';
 import {
   HANDOFF_TIMEOUT_MS,
   openInArchitect,
+  READY_TIMEOUT_MS,
   type SketchImportPayload,
 } from '../openInArchitect.ts';
 
@@ -103,13 +104,32 @@ describe('openInArchitect', () => {
     post(popup, { type: 'sketch-import:ready', version: 2 });
     expect(popupPost).not.toHaveBeenCalled();
 
-    await vi.advanceTimersByTimeAsync(HANDOFF_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(READY_TIMEOUT_MS);
+    await expect(outcome).resolves.toBe('timeout');
+  });
+
+  it('waits out a slow cold load longer than the result timeout', async () => {
+    const outcome = openInArchitect(input(), { architectUrl: ARCHITECT });
+    await vi.advanceTimersByTimeAsync(HANDOFF_TIMEOUT_MS + 10_000);
+    post(popup, { type: 'sketch-import:ready', version: 1 });
+    expect(popupPost).toHaveBeenCalledTimes(1);
+    post(popup, { type: 'sketch-import:result', version: 1, status: 'opened' });
+    await expect(outcome).resolves.toBe('opened');
+  });
+
+  it('settles at once when the Architect tab is closed', async () => {
+    const outcome = openInArchitect(input(), { architectUrl: ARCHITECT });
+    Object.defineProperty(popup, 'closed', {
+      configurable: true,
+      get: () => true,
+    });
+    await vi.advanceTimersByTimeAsync(1_000);
     await expect(outcome).resolves.toBe('timeout');
   });
 
   it('times out when Architect never says it is ready', async () => {
     const outcome = openInArchitect(input(), { architectUrl: ARCHITECT });
-    await vi.advanceTimersByTimeAsync(HANDOFF_TIMEOUT_MS - 1);
+    await vi.advanceTimersByTimeAsync(READY_TIMEOUT_MS - 1);
     let settled = false;
     void outcome.then(() => {
       settled = true;

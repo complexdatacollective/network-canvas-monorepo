@@ -104,7 +104,11 @@ describe('useJobRun', () => {
     expect(server.polls()).toBe(3);
   });
 
-  it('stops after four minutes with an error', async () => {
+  it('waits longer than the server can run a job', () => {
+    expect(POLL_TIMEOUT_MS).toBeGreaterThan(15 * 60 * 1000);
+  });
+
+  it('stops after POLL_TIMEOUT_MS with an error', async () => {
     const server = mockServer([jobStatus()]);
     const { result } = renderHook(() => useJobRun(request));
     await flush();
@@ -118,6 +122,52 @@ describe('useJobRun', () => {
       await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 5);
     });
     expect(server.polls()).toBe(polls);
+  });
+
+  it('gives up at the deadline even when a poll never answers', async () => {
+    let aborted = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const { method } = describeCall(input, init);
+        if (method === 'POST') return jsonResponse({ jobId: 'job-1' });
+        // A stalled connection: never settles until aborted.
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            aborted = true;
+            reject(new DOMException('aborted', 'AbortError'));
+          });
+        });
+      }),
+    );
+    const { result } = renderHook(() => useJobRun(request));
+    await flush();
+    expect(result.current.error).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_TIMEOUT_MS + 1);
+    });
+    expect(result.current.error).toBe(TIMEOUT_MESSAGE);
+    expect(aborted).toBe(true);
+  });
+
+  it('gives up at the deadline even when creating the job never answers', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_input: unknown, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            );
+          }),
+      ),
+    );
+    const { result } = renderHook(() => useJobRun(request));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_TIMEOUT_MS + 1);
+    });
+    expect(result.current.error).toBe(TIMEOUT_MESSAGE);
   });
 
   it('rides out a failed poll but gives up after three in a row', async () => {

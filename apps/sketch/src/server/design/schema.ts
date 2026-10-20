@@ -131,7 +131,7 @@ export type Operator = (typeof OPERATORS)[number];
 const OperatorSchema = z.enum(OPERATORS).meta({
   id: 'Operator',
   description:
-    'yes_no: is / is_not with value "yes" or "no" (is_not "yes" also matches nodes never tagged). single_choice / multi_choice: includes / excludes one option label. ordered: is / is_not / at_least / at_most / greater_than / less_than an option label, following option order. number: is / is_not / greater_than / less_than / at_least / at_most a number. text / long_text: contains / does_not_contain a word or phrase. Any kind: answered / not_answered (value ""). any_exist / none_exist: whether any node or relationship of typeId exists (attributeId "", value ""; skip logic only).',
+    'yes_no: is / is_not with value "yes" or "no" (a node never tagged counts as "no"). single_choice / multi_choice: includes / excludes one option label. ordered: is / is_not / at_least / at_most / greater_than / less_than an option label, following option order. number: is / is_not / greater_than / less_than / at_least / at_most a number. text / long_text: contains / does_not_contain a word or phrase. Any kind: answered / not_answered (value ""). any_exist / none_exist: whether any node or relationship of typeId exists (attributeId "", value ""; skip logic only).',
 });
 
 const FilterConditionSchema = z
@@ -169,7 +169,7 @@ const SkipConditionSchema = z
     about: z
       .enum(['participant', 'nodes', 'relationships'])
       .describe(
-        'participant = an egoAttributes attribute. nodes = nodes of node type typeId. relationships = relationships of type typeId. For nodes / relationships the condition holds when AT LEAST ONE matches (counts cannot be expressed).',
+        'participant = an egoAttributes attribute. nodes = nodes of node type typeId. relationships = relationships of type typeId. For nodes / relationships, a condition alone holds when at least one node / tie matches. With match "all", every nodes condition must hold for the SAME node, and every relationships condition for the SAME tie, so do not combine conditions on different node types (or different relationship types) under "all". Counts cannot be expressed.',
       ),
     typeId: Ref(
       'the node type or relationship (about nodes / relationships); "" for participant',

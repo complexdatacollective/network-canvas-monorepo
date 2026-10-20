@@ -6,8 +6,10 @@
 // 3. On the first ready from that tab and Architect's origin, reply once with
 //    the protocol and its assets, targeted at Architect's origin.
 // 4. Architect answers {type:'sketch-import:result', status:'opened'|'error'}.
-// 5. Without a ready, or a result after the payload, give up after 20 s so
-//    the page can offer the .netcanvas download instead.
+// 5. Without a ready within 60 s (which has to cover Architect's cold load
+//    plus its own 30 s payload wait), or a result within 20 s of the payload,
+//    give up so the page can offer the .netcanvas download instead. A tab
+//    the researcher closes settles straight away.
 
 import type { GeneratedAsset } from '../shared/api.ts';
 import { ARCHITECT_URL, IMPORT_PATH } from './architectUrl.ts';
@@ -32,7 +34,10 @@ export type OpenInArchitectInput = {
 
 export type OpenInArchitectOptions = {
   architectUrl?: string;
+  // How long to wait for Architect's result once the payload is sent.
   timeoutMs?: number;
+  // How long to wait for the tab to load and say it is ready.
+  readyTimeoutMs?: number;
   // The window that opens the tab and receives its messages (tests pass one).
   host?: Window;
   // Called with Architect's message when it reports an error.
@@ -40,6 +45,8 @@ export type OpenInArchitectOptions = {
 };
 
 export const HANDOFF_TIMEOUT_MS = 20_000;
+export const READY_TIMEOUT_MS = 60_000;
+const CLOSED_POLL_MS = 500;
 
 const toHandoffAssets = (assets: GeneratedAsset[]): HandoffAsset[] =>
   assets.map((asset) => ({
@@ -58,6 +65,7 @@ export const openInArchitect = (
   const host = options.host ?? window;
   const architectUrl = options.architectUrl ?? ARCHITECT_URL;
   const timeoutMs = options.timeoutMs ?? HANDOFF_TIMEOUT_MS;
+  const readyTimeoutMs = options.readyTimeoutMs ?? READY_TIMEOUT_MS;
   const architectOrigin = new URL(architectUrl).origin;
 
   const popup = host.open(
@@ -69,16 +77,18 @@ export const openInArchitect = (
   return new Promise<HandoffOutcome>((resolve) => {
     let sent = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let closedPoll: ReturnType<typeof setInterval> | undefined;
 
     const finish = (outcome: HandoffOutcome) => {
       clearTimeout(timer);
+      clearInterval(closedPoll);
       host.removeEventListener('message', onMessage);
       resolve(outcome);
     };
 
-    const arm = () => {
+    const arm = (ms: number) => {
       clearTimeout(timer);
-      timer = setTimeout(() => finish('timeout'), timeoutMs);
+      timer = setTimeout(() => finish('timeout'), ms);
     };
 
     function onMessage(event: MessageEvent) {
@@ -97,7 +107,7 @@ export const openInArchitect = (
           assets: toHandoffAssets(input.assets),
         };
         popup?.postMessage(payload, architectOrigin);
-        arm();
+        arm(timeoutMs);
         return;
       }
 
@@ -114,6 +124,9 @@ export const openInArchitect = (
     }
 
     host.addEventListener('message', onMessage);
-    arm();
+    arm(readyTimeoutMs);
+    closedPoll = setInterval(() => {
+      if (popup.closed) finish('timeout');
+    }, CLOSED_POLL_MS);
   });
 };

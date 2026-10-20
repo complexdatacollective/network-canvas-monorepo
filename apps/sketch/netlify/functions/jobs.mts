@@ -1,7 +1,7 @@
 import type { Config } from '@netlify/functions';
 
 import { handleCreateJob } from '../../src/server/handlers.ts';
-import { jobStore } from '../../src/server/jobs.ts';
+import { jobStore, logStore } from '../../src/server/jobs.ts';
 import { createDefaultAdapters } from '../../src/server/providers/adapters.ts';
 
 // POST /api/jobs: validate, check the daily budget, queue the job and hand it
@@ -9,6 +9,7 @@ import { createDefaultAdapters } from '../../src/server/providers/adapters.ts';
 export default async (req: Request): Promise<Response> =>
   handleCreateJob(req, {
     jobs: jobStore(),
+    log: logStore(),
     adapters: createDefaultAdapters(),
     startBackground: async (jobId) => {
       const response = await fetch(

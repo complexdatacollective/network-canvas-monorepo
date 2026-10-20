@@ -130,7 +130,16 @@ export default function SketchImport() {
     const onMessage = (event: MessageEvent) => {
       if (settled.current) return;
       if (event.source !== opener) return;
-      if (!isAllowedSketchOrigin(event.origin, { dev: import.meta.env.DEV })) {
+      if (
+        !isAllowedSketchOrigin(event.origin, {
+          dev: import.meta.env.DEV,
+          // Set by apps/architect/netlify.toml for deploy previews and branch
+          // deploys only; production never trusts a Sketch preview.
+          allowPreviews:
+            import.meta.env.DEV ||
+            import.meta.env.VITE_ALLOW_SKETCH_PREVIEWS === 'true',
+        })
+      ) {
         return;
       }
       const parsed = parseSketchMessage(event.data);

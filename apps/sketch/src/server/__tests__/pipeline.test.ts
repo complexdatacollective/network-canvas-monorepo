@@ -8,7 +8,7 @@ import {
   friendshipDesign,
   friendshipWording,
 } from '../design/__fixtures__/example.ts';
-import { runPipeline } from '../pipeline.ts';
+import { estimateJobCostUsd, runPipeline } from '../pipeline.ts';
 import { DESIGN_SYSTEM, UNPARSEABLE_FEEDBACK } from '../prompts/design.ts';
 import { reply, scriptedAdapter, STUDY_SCREENING } from './fakes.ts';
 
@@ -273,5 +273,128 @@ describe('runPipeline', () => {
     });
     await runPipeline({ ...input, tier: 'strong' }, { adapters, buildOptions });
     expect(requests[1]?.model).toBe('claude-opus-5-5');
+  });
+
+  it('charges a call that timed out at its worst case, not $0', async () => {
+    const timeout = Object.assign(new Error('Request timed out.'), {
+      status: undefined,
+    });
+    const rejected = Object.assign(new Error('overloaded'), { status: 529 });
+    const { adapters } = scriptedAdapter({
+      screening: [reply(STUDY_SCREENING)],
+      study_design: [timeout, rejected],
+    });
+    const { outcome } = await run(adapters);
+    const design = outcome.log.calls.filter((c) => c.role === 'design');
+    // 16k output at $10/M plus a 30k-token input allowance at $2.5/M.
+    expect(design[0]).toMatchObject({ costUsd: 0.235, estimated: true });
+    // The provider answered with an error: nothing was generated.
+    expect(design[1]).toMatchObject({ costUsd: 0 });
+    expect(design[1]).not.toHaveProperty('estimated');
+    expect(outcome.usage.costUsd).toBeGreaterThan(0.235);
+  });
+
+  it('clips call timeouts to the job deadline and stops calling after it', async () => {
+    const t0 = NOW.getTime();
+    let clock = t0;
+    const { adapters, requests } = scriptedAdapter({
+      screening: [reply(STUDY_SCREENING)],
+      study_design: [reply(null, { rawText: '{' }), reply(friendshipDesign)],
+      wording: [reply(friendshipWording)],
+    });
+    const adapter = adapters.anthropic;
+    const slow = {
+      ...adapter,
+      generateStructured: async (
+        request: Parameters<typeof adapter.generateStructured>[0],
+      ) => {
+        const response = await adapter.generateStructured(request);
+        // Each call takes five minutes.
+        clock += 5 * 60_000;
+        return response;
+      },
+    };
+    const outcome = await runPipeline(input, {
+      adapters: { ...adapters, anthropic: slow },
+      buildOptions,
+      now: () => clock,
+      deadline: t0 + 11 * 60_000,
+    });
+    // Screening at 0 min, design at 5 min with 6 min left, then 10 min: only
+    // one minute left, so the retry is clipped to it.
+    expect(requests.map((r) => [r.schemaName, r.timeoutMs])).toEqual([
+      ['screening', 60_000],
+      ['study_design', 6 * 60_000],
+      ['study_design', 60_000],
+    ]);
+    // Wording at 15 min is past the deadline: skipped, draft wording ships.
+    expect(outcome.status).toBe('succeeded');
+    expect(outcome.log.tags).toContain('wordingFailed');
+    expect(outcome.log.calls.at(-1)).toMatchObject({
+      role: 'wording',
+      costUsd: 0,
+      error: expect.stringMatching(/deadline/),
+    });
+  });
+
+  it('defaults the deadline to 13 minutes after the run starts', async () => {
+    let clock = NOW.getTime();
+    const { adapters, requests } = scriptedAdapter({
+      screening: [reply(STUDY_SCREENING)],
+      study_design: [reply(friendshipDesign)],
+    });
+    const adapter = adapters.anthropic;
+    const outcome = await runPipeline(input, {
+      adapters: {
+        ...adapters,
+        anthropic: {
+          ...adapter,
+          generateStructured: async (request) => {
+            const response = await adapter.generateStructured(request);
+            // Screening ends 12m35s in: 25 s left, too little for a call.
+            clock += 12 * 60_000 + 35_000;
+            return response;
+          },
+        },
+      },
+      buildOptions,
+      now: () => clock,
+    });
+    expect(requests.map((r) => r.schemaName)).toEqual(['screening']);
+    expect(outcome.status).toBe('failed');
+  });
+
+  it('keeps the log and the cost when the run throws midway', async () => {
+    const { adapters } = scriptedAdapter({
+      screening: [reply(STUDY_SCREENING)],
+      study_design: [reply(friendshipDesign)],
+      wording: [reply(friendshipWording)],
+    });
+    const outcome = await runPipeline(input, {
+      adapters,
+      buildOptions,
+      onProgress: (steps) => {
+        if (steps.some((s) => s.id === 'design' && s.state === 'done'))
+          throw new Error('blob write failed');
+      },
+    });
+    expect(outcome.status).toBe('failed');
+    expect(outcome.error).toMatch(/Something went wrong/);
+    expect(outcome.log.crash).toBe('blob write failed');
+    expect(outcome.log.attempts).toHaveLength(1);
+    expect(outcome.log.calls).toHaveLength(2);
+    expect(outcome.usage.costUsd).toBeGreaterThan(0);
+    expect(outcome.steps.some((s) => s.state === 'active')).toBe(false);
+  });
+
+  it('estimates the worst case of a job for the budget', () => {
+    // Haiku screening + 2 x Sonnet design + Haiku wording.
+    expect(estimateJobCostUsd('anthropic', 'standard')).toBeCloseTo(
+      0.00425 + 2 * 0.235 + 0.00775,
+      6,
+    );
+    expect(estimateJobCostUsd('anthropic', 'strong')).toBeGreaterThan(
+      estimateJobCostUsd('anthropic', 'standard'),
+    );
   });
 });

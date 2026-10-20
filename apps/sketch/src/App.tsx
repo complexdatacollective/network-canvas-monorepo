@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { getConfig } from './api/client.ts';
 import { EXAMPLES } from './lib/examples.ts';
-import { CompareScreen } from './screens/CompareScreen.tsx';
+import { type CompareSeed, CompareScreen } from './screens/CompareScreen.tsx';
 import {
   type ConfigState,
   type DescribeForm,
@@ -38,6 +38,8 @@ type View =
       description: string;
       tier: CreateJobRequest['tier'];
       id: number;
+      // A finished run to keep as one side of the comparison.
+      seed: CompareSeed | null;
     };
 
 const firstExample = EXAMPLES[0];
@@ -114,7 +116,13 @@ export const App = () => {
     const description = form.description.trim();
     const bothAvailable = providers.filter((p) => p.available).length >= 2;
     if (form.compare && bothAvailable) {
-      go({ name: 'compare', description, tier: form.tier, id: Date.now() });
+      go({
+        name: 'compare',
+        description,
+        tier: form.tier,
+        id: Date.now(),
+        seed: null,
+      });
       return;
     }
     go({
@@ -191,6 +199,7 @@ export const App = () => {
               description: view.request.description,
               tier: view.request.tier,
               id: Date.now(),
+              seed: { provider: view.request.provider, job: view.job },
             })
           }
         />
@@ -215,6 +224,7 @@ export const App = () => {
           key={view.id}
           description={view.description}
           tier={view.tier}
+          seed={view.seed}
           providers={providers.filter((p) => p.available)}
           onNew={startNew}
           onRefused={(hint) => go({ name: 'describe', refusal: { hint } })}

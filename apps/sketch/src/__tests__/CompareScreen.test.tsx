@@ -13,6 +13,7 @@ import type { CreateJobRequest } from '../shared/api.ts';
 import {
   configResponse,
   describeCall,
+  jobStatus,
   jsonResponse,
   sampleResult,
   succeededJob,
@@ -21,6 +22,7 @@ import {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 const openaiResult = () => {
@@ -129,5 +131,54 @@ describe('CompareScreen', () => {
       'true',
     );
     expect(chatgpt.getByText('Your pick')).toBeTruthy();
+  });
+
+  it('restarts the elapsed clock when a run is tried again', async () => {
+    let clock = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => clock);
+    let openaiPosts = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const { url, method } = describeCall(input, init);
+        if (url === '/api/jobs' && method === 'POST') {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
+          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          if (body.provider === 'anthropic')
+            return jsonResponse({ jobId: 'job-anthropic' });
+          openaiPosts += 1;
+          return openaiPosts === 1
+            ? jsonResponse({ error: 'The model is busy.' }, 503)
+            : jsonResponse({ jobId: 'job-openai' });
+        }
+        if (url === '/api/jobs/job-anthropic')
+          return jsonResponse(succeededJob({ id: 'job-anthropic' }));
+        if (url === '/api/jobs/job-openai')
+          return jsonResponse(
+            jobStatus({ id: 'job-openai', provider: 'openai' }),
+          );
+        return jsonResponse({ error: 'unexpected' }, 500);
+      }),
+    );
+
+    render(
+      <CompareScreen
+        description="Students name their friends."
+        tier="standard"
+        providers={configResponse(true).providers}
+        onNew={() => {}}
+        onRefused={() => {}}
+      />,
+    );
+    const chatgpt = () =>
+      within(screen.getByRole('article', { name: 'ChatGPT' }));
+    expect(await chatgpt().findByText('The model is busy.')).toBeTruthy();
+
+    clock += 150_000;
+    fireEvent.click(chatgpt().getByRole('button', { name: 'Try again' }));
+    expect(await chatgpt().findByText(/Elapsed/)).toBeTruthy();
+    // Let useElapsed tick once.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    expect(chatgpt().getByText('Elapsed 0:00')).toBeTruthy();
   });
 });

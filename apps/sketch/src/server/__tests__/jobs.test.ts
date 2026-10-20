@@ -19,9 +19,15 @@ import {
   BUDGET_EXCEEDED_MESSAGE,
   checkBudget,
   dailyBudgetUsd,
+  type JobRecord,
   type LogEntry,
   readJob,
+  reserveBudget,
+  settleSpend,
+  STALE_JOB_MS,
+  writeJob,
 } from '../jobs.ts';
+import { estimateJobCostUsd } from '../pipeline.ts';
 import {
   memoryStore,
   reply,
@@ -63,13 +69,94 @@ describe('budget guard', () => {
     expect(store.data.get('spend/2026-10-20')).toEqual({
       date: '2026-10-20',
       costUsd: 1.1,
+      pendingUsd: 0,
       jobs: 2,
     });
   });
 
-  it('defaults to $5 a day', () => {
-    expect(dailyBudgetUsd(undefined)).toBe(5);
-    expect(dailyBudgetUsd('nonsense')).toBe(5);
+  it('reserves the worst case of jobs in flight and settles it', async () => {
+    const store = memoryStore();
+    const reserve = () => reserveBudget(store, NOW, 0.4, 1);
+    await expect(reserve()).resolves.toEqual({
+      ok: true,
+      spendDate: '2026-10-20',
+    });
+    await expect(reserve()).resolves.toMatchObject({ ok: true });
+    // 0.8 reserved: a third worst case would pass the limit.
+    await expect(reserve()).resolves.toEqual({
+      ok: false,
+      error: BUDGET_EXCEEDED_MESSAGE,
+    });
+    await expect(checkBudget(store, NOW, 1, 0.4)).resolves.toMatchObject({
+      ok: false,
+      spentUsd: 0.8,
+    });
+    await settleSpend(store, '2026-10-20', 0.1, 0.4);
+    expect(store.data.get('spend/2026-10-20')).toEqual({
+      date: '2026-10-20',
+      costUsd: 0.1,
+      pendingUsd: 0.4,
+      jobs: 1,
+    });
+    await expect(reserve()).resolves.toMatchObject({ ok: true });
+  });
+
+  it('lets a lone job run when one worst case exceeds the limit', async () => {
+    const store = memoryStore();
+    await expect(reserveBudget(store, NOW, 2, 1)).resolves.toMatchObject({
+      ok: true,
+    });
+    await expect(reserveBudget(store, NOW, 2, 1)).resolves.toMatchObject({
+      ok: false,
+    });
+  });
+
+  it('stops concurrent jobs that the remaining budget cannot cover', async () => {
+    const jobs = memoryStore();
+    await addSpend(
+      jobs,
+      NOW,
+      dailyBudgetUsd(undefined) - estimateJobCostUsd('anthropic', 'standard'),
+    );
+    let n = 0;
+    const deps = {
+      jobs,
+      adapters: scriptedAdapter({}).adapters,
+      startBackground: async () => {},
+      now: () => NOW,
+      newId: () => `job-${++n}`,
+    };
+    const statuses = await Promise.all(
+      [1, 2, 3].map(
+        async () => (await handleCreateJob(post(validRequest), deps)).status,
+      ),
+    );
+    expect(statuses.sort((a, b) => a - b)).toEqual([202, 429, 429]);
+    expect(await readJob(jobs, 'job-1')).toMatchObject({
+      reservedUsd: estimateJobCostUsd('anthropic', 'standard'),
+      spendDate: '2026-10-20',
+    });
+  });
+
+  it('hands the reservation back when the job cannot start', async () => {
+    const jobs = memoryStore();
+    await handleCreateJob(post(validRequest), {
+      jobs,
+      adapters: scriptedAdapter({}).adapters,
+      startBackground: async () => {
+        throw new Error('502');
+      },
+      now: () => NOW,
+    });
+    expect(jobs.data.get('spend/2026-10-20')).toMatchObject({
+      costUsd: 0,
+      pendingUsd: 0,
+    });
+  });
+
+  it('defaults to $20 a day', () => {
+    expect(dailyBudgetUsd(undefined)).toBe(20);
+    expect(dailyBudgetUsd('nonsense')).toBe(20);
     expect(dailyBudgetUsd('12.5')).toBe(12.5);
   });
 
@@ -192,7 +279,7 @@ describe('generate-background and GET /api/jobs/:id', () => {
       now: () => NOW,
       newId: () => 'job-9',
     });
-    const generate = () =>
+    const generate = (logStore = log) =>
       handleGenerate(
         new Request(
           'https://sketch.test/.netlify/functions/generate-background',
@@ -203,7 +290,7 @@ describe('generate-background and GET /api/jobs/:id', () => {
         ),
         {
           jobs,
-          log,
+          log: logStore,
           adapters: fake.adapters,
           now: () => NOW,
           pipeline: { buildOptions: { now: NOW } },
@@ -237,9 +324,65 @@ describe('generate-background and GET /api/jobs/:id', () => {
       models: { design: 'claude-sonnet-5-5' },
       pipeline: { protocolValid: true },
     });
-    expect(
-      (jobs.data.get('spend/2026-10-20') as { costUsd: number }).costUsd,
-    ).toBe(status.usage?.costUsd);
+    expect(jobs.data.get('spend/2026-10-20')).toEqual({
+      date: '2026-10-20',
+      costUsd: status.usage?.costUsd,
+      // The reservation made at POST is released.
+      pendingUsd: 0,
+      jobs: 1,
+    });
+  });
+
+  it('runs the paid pipeline once when invoked twice at the same time', async () => {
+    const { fake, generate } = await setup();
+    const results = await Promise.all([generate(), generate()]);
+    expect(fake.requests).toHaveLength(3);
+    const bodies = await Promise.all(results.map((r) => r.json()));
+    expect(bodies).toContainEqual({ skipped: true });
+  });
+
+  it('settles spend even when the research log cannot be written', async () => {
+    const { jobs, generate } = await setup();
+    const broken = memoryStore();
+    broken.setJSON = async () => {
+      throw new Error('blobs down');
+    };
+    const response = await generate(broken);
+    expect(response.status).toBe(200);
+    const record = await readJob(jobs, 'job-9');
+    expect(record?.status).toBe('succeeded');
+    expect(jobs.data.get('spend/2026-10-20')).toMatchObject({
+      costUsd: record?.usage?.costUsd,
+      pendingUsd: 0,
+    });
+  });
+
+  it('reports a job whose background run died as failed once stale', async () => {
+    const { jobs } = await setup();
+    const queued = (await readJob(jobs, 'job-9')) as JobRecord;
+    const startedAt = NOW.toISOString();
+    await writeJob(jobs, {
+      ...queued,
+      status: 'running',
+      startedAt,
+      steps: queued.steps.map((s, i) =>
+        i === 1 ? { ...s, state: 'active' } : s,
+      ),
+    });
+    const at = (ms: number) => () => new Date(NOW.getTime() + ms);
+    const read = async (ms: number) =>
+      (await (
+        await handleGetJob('job-9', { jobs, now: at(ms) })
+      ).json()) as JobStatus;
+
+    expect((await read(10 * 60_000)).status).toBe('running');
+    const stale = await read(STALE_JOB_MS + 1);
+    expect(stale.status).toBe('failed');
+    expect(stale.error).toMatch(/Something went wrong/);
+    expect(stale.steps[1]?.state).toBe('failed');
+    expect(stale).not.toHaveProperty('startedAt');
+    // Written back, so a background retry cannot pick the job up again.
+    expect((await readJob(jobs, 'job-9'))?.status).toBe('failed');
   });
 
   it('records a preference against the compared job', async () => {
@@ -267,6 +410,75 @@ describe('generate-background and GET /api/jobs/:id', () => {
     expect(
       (log.data.get('log/2026-10-20/job-9') as LogEntry).preference,
     ).toEqual({ preferred: true, at: NOW.toISOString() });
+  });
+
+  it('clears the earlier pick when the preference changes', async () => {
+    const { jobs, log, generate } = await setup();
+    await generate();
+    const first = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...first, id: 'job-10' });
+    log.data.set('log/2026-10-20/job-10', {
+      ...(log.data.get('log/2026-10-20/job-9') as LogEntry),
+      jobId: 'job-10',
+    });
+    const pick = (preferredJobId: string) =>
+      handlePreference(
+        new Request('https://sketch.test/api/preference', {
+          method: 'POST',
+          body: JSON.stringify({ comparisonId: 'cmp-9', preferredJobId }),
+        }),
+        { jobs, log, now: () => NOW },
+      );
+    await pick('job-9');
+    await pick('job-10');
+    const entry = (id: string) =>
+      (log.data.get(`log/2026-10-20/${id}`) as LogEntry).preference;
+    expect(entry('job-9')).toBeNull();
+    expect(entry('job-10')).toEqual({ preferred: true, at: NOW.toISOString() });
+  });
+
+  it('adds a finished seed job to the comparison started from it', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    const seedKey = 'log/2026-10-20/job-9';
+    log.data.set(seedKey, {
+      ...(log.data.get(seedKey) as LogEntry),
+      comparisonId: null,
+    });
+    await handleCreateJob(
+      post({
+        ...validRequest,
+        provider: 'anthropic',
+        comparisonId: 'cmp-new',
+        seedJobId: 'job-9',
+      }),
+      {
+        jobs,
+        log,
+        adapters: fake.adapters,
+        startBackground: async () => {},
+        now: () => NOW,
+        newId: () => 'job-11',
+      },
+    );
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-new');
+    expect((log.data.get(seedKey) as LogEntry).comparisonId).toBe('cmp-new');
+    expect(
+      (
+        await handlePreference(
+          new Request('https://sketch.test/api/preference', {
+            method: 'POST',
+            body: JSON.stringify({
+              comparisonId: 'cmp-new',
+              preferredJobId: 'job-9',
+            }),
+          }),
+          { jobs, log, now: () => NOW },
+        )
+      ).status,
+    ).toBe(200);
   });
 
   it('answers 404 for unknown jobs', async () => {

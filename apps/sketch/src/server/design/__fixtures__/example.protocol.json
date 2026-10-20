@@ -636,7 +636,14 @@
       "behaviours": {
         "maxNodes": 20
       },
-      "quickAdd": "person_name"
+      "quickAdd": "person_name",
+      "panels": [
+        {
+          "id": "existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ]
     },
     {
       "id": "friend_details",

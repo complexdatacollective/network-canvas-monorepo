@@ -15,6 +15,13 @@ export const memoryStore = (): JsonStore & { data: Map<string, unknown> } => {
     setJSON: async (key, value) => {
       data.set(key, structuredClone(value));
     },
+    // Synchronous between read and write, so it is atomic here.
+    updateJSON: async (key, next) => {
+      const value = next(structuredClone(data.get(key) ?? null));
+      if (value === undefined) return undefined;
+      data.set(key, structuredClone(value));
+      return structuredClone(value);
+    },
   };
 };
 

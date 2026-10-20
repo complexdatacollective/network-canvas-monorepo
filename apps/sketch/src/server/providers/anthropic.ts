@@ -24,7 +24,7 @@ export type AnthropicClientLike = {
   messages: {
     create: (
       params: MessageCreateParamsNonStreaming,
-      options?: { timeout?: number },
+      options?: { timeout?: number; maxRetries?: number },
     ) => Promise<Message>;
   };
 };
@@ -99,7 +99,7 @@ export const createAnthropicAdapter = (
   const apiKey = () => options.apiKey ?? process.env.ANTHROPIC_API_KEY ?? '';
   let client = options.client;
   const getClient = (): AnthropicClientLike => {
-    client ??= new Anthropic({ apiKey: apiKey(), maxRetries: 2 });
+    client ??= new Anthropic({ apiKey: apiKey(), maxRetries: 0 });
     return client;
   };
   return {
@@ -108,7 +108,12 @@ export const createAnthropicAdapter = (
     generateStructured: async (request) => {
       const message = await getClient().messages.create(
         buildAnthropicParams(request),
-        request.timeoutMs ? { timeout: request.timeoutMs } : undefined,
+        // No SDK retries: each would get the full timeout again, multiplying
+        // it past the background function's limit. The pipeline retries.
+        {
+          maxRetries: 0,
+          ...(request.timeoutMs ? { timeout: request.timeoutMs } : {}),
+        },
       );
       return readAnthropicMessage(message);
     },

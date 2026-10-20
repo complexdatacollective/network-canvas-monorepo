@@ -44,7 +44,7 @@ export const NotAStudyNotice = ({ id, hint, onTryExample }: Props) => (
         <button
           type="button"
           onClick={onTryExample}
-          className="text-slate-blue hover:text-ink cursor-pointer border-0 bg-transparent p-0 font-[inherit] font-semibold underline"
+          className="text-ink hover:text-ink-strong cursor-pointer border-0 bg-transparent p-0 font-[inherit] font-semibold underline"
         >
           Try an example
         </button>

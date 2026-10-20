@@ -259,7 +259,8 @@
         "netlify/**",
         "vite*.config.*",
         "tsconfig*.json",
-        "package.json"
+        "package.json",
+        "$TURBO_ROOT$/packages/protocols/templates/transnational-networks/assets/world-countries.geojson"
       ],
       "outputs": []
     },

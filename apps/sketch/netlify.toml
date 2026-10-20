@@ -6,6 +6,15 @@ publish = "apps/sketch/dist"
 [build.environment]
 NODE_OPTIONS = "--max-old-space-size=4096"
 
+# `netlify dev` must serve the page on http://localhost:5186, the only Sketch
+# origin a development build of Architect accepts (sketchOrigins.ts). Vite
+# moves to an inner port so the two do not collide.
+[dev]
+framework = "#custom"
+command = "pnpm --filter @codaco/sketch exec vite --port 5187 --strictPort"
+targetPort = 5187
+port = 5186
+
 [functions]
 directory = "apps/sketch/netlify/functions"
 node_bundler = "esbuild"

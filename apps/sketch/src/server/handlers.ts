@@ -14,20 +14,29 @@ import {
   PROVIDERS,
 } from '../shared/api.ts';
 import {
-  addSpend,
-  checkBudget,
+  claimJob,
   dayKey,
+  failStaleJob,
+  isStaleJob,
   type JobRecord,
+  joinComparison,
   type JsonStore,
   newJobRecord,
   readJob,
   recordPreference,
+  reserveBudget,
+  settleSpend,
   toJobStatus,
   writeJob,
   writeLog,
 } from './jobs.ts';
 import { getStepModels, providerConfig } from './models.ts';
-import { runPipeline, type PipelineDeps } from './pipeline.ts';
+import {
+  estimateJobCostUsd,
+  PIPELINE_FAILURE_MESSAGE,
+  runPipeline,
+  type PipelineDeps,
+} from './pipeline.ts';
 import type { ProviderAdapters } from './providers/types.ts';
 
 const json = (body: unknown, status = 200): Response =>
@@ -72,10 +81,16 @@ const CreateJobRequestSchema = z.object({
     .string()
     .regex(/^[A-Za-z0-9-]{1,64}$/)
     .optional(),
+  seedJobId: z
+    .string()
+    .regex(/^[A-Za-z0-9-]{1,64}$/)
+    .optional(),
 });
 
 type CreateJobDeps = {
   jobs: JsonStore;
+  // The research log, for tagging a seed job with the comparison it joins.
+  log?: JsonStore;
   adapters: ProviderAdapters;
   // Starts generate-background for the job; resolves once it has accepted.
   startBackground: (jobId: string) => Promise<void>;
@@ -101,11 +116,30 @@ export const handleCreateJob = async (
   if (!deps.adapters[request.provider].isConfigured()) {
     return apiError('That model provider is not available right now.', 400);
   }
-  const budget = await checkBudget(deps.jobs, now);
+  // Reserve the job's worst case now; generate-background settles it with
+  // the real cost when the job finishes.
+  const reservedUsd = estimateJobCostUsd(request.provider, request.tier);
+  const budget = await reserveBudget(deps.jobs, now, reservedUsd);
   if (!budget.ok) return apiError(budget.error, 429);
 
+  if (request.seedJobId && request.comparisonId && deps.log) {
+    try {
+      await joinComparison(
+        { jobs: deps.jobs, log: deps.log },
+        request.seedJobId,
+        request.comparisonId,
+      );
+    } catch {
+      // The new run goes ahead; only the seed's preference link is lost.
+    }
+  }
+
   const jobId = deps.newId?.() ?? crypto.randomUUID();
-  const record = newJobRecord(jobId, request, now);
+  const record: JobRecord = {
+    ...newJobRecord(jobId, request, now),
+    reservedUsd,
+    spendDate: budget.spendDate,
+  };
   await writeJob(deps.jobs, record);
   try {
     await deps.startBackground(jobId);
@@ -116,6 +150,13 @@ export const handleCreateJob = async (
       error: 'Sketch could not start working on your study. Please try again.',
       finishedAt: new Date().toISOString(),
     });
+    // Nothing ran: hand the reservation back. If this write fails, the
+    // reservation stays counted for the day, which errs on the safe side.
+    try {
+      await settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd);
+    } catch {
+      // See above.
+    }
     return apiError('Sketch could not start the job. Please try again.', 502);
   }
   return json({ jobId } satisfies CreateJobResponse, 202);
@@ -127,13 +168,24 @@ export const handleCreateJob = async (
 
 export const handleGetJob = async (
   id: string | undefined,
-  deps: { jobs: JsonStore },
+  deps: { jobs: JsonStore; now?: () => Date },
 ): Promise<Response> => {
   if (!id || !/^[A-Za-z0-9-]{1,64}$/.test(id)) {
     return apiError('Unknown job.', 404);
   }
   const record = await readJob(deps.jobs, id);
   if (!record) return apiError('Unknown job.', 404);
+  const now = deps.now?.() ?? new Date();
+  if (isStaleJob(record, now)) {
+    // The background run was killed or crashed without writing an outcome.
+    const failed = failStaleJob(record, now);
+    try {
+      await writeJob(deps.jobs, failed);
+    } catch {
+      // Reported as failed either way; the next poll tries the write again.
+    }
+    return json(toJobStatus(failed));
+  }
   return json(toJobStatus(record));
 };
 
@@ -188,11 +240,9 @@ type GenerateDeps = {
   pipeline?: Omit<PipelineDeps, 'adapters' | 'onProgress'>;
 };
 
-const FAILURE_MESSAGE =
-  'Something went wrong while Sketch was working on your study. Please try again.';
-
-// Idempotent: Netlify retries a background function that throws, so a job
-// that is no longer queued is left alone, and nothing here throws.
+// Idempotent: Netlify retries a background function that throws, and the
+// endpoint is public, so the job is claimed atomically and a job that is no
+// longer queued is left alone. Nothing after the claim throws.
 export const handleGenerate = async (
   req: Request,
   deps: GenerateDeps,
@@ -200,12 +250,10 @@ export const handleGenerate = async (
   const clock = deps.now ?? (() => new Date());
   const parsed = BackgroundRequestSchema.safeParse(await readBody(req));
   if (!parsed.success) return apiError('Missing jobId.', 400);
-  const queued = await readJob(deps.jobs, parsed.data.jobId);
-  if (!queued || queued.status !== 'queued') return json({ skipped: true });
-
   const started = clock();
-  let record: JobRecord = { ...queued, status: 'running' };
-  await writeJob(deps.jobs, record);
+  const queued = await claimJob(deps.jobs, parsed.data.jobId, started);
+  if (!queued) return json({ skipped: true });
+  let record: JobRecord = queued;
 
   let pipelineLog: Record<string, unknown> | null = null;
   try {
@@ -220,7 +268,11 @@ export const handleGenerate = async (
         adapters: deps.adapters,
         onProgress: async (steps) => {
           record = { ...record, steps };
-          await writeJob(deps.jobs, record);
+          try {
+            await writeJob(deps.jobs, record);
+          } catch {
+            // Progress is cosmetic; the final write carries the outcome.
+          }
         },
       },
     );
@@ -235,13 +287,14 @@ export const handleGenerate = async (
       refusalHint: outcome.refusalHint,
     };
   } catch (error) {
+    // runPipeline does not throw; this is a last-resort backstop.
     pipelineLog = {
       crash: error instanceof Error ? error.message : String(error),
     };
     record = {
       ...record,
       status: 'failed',
-      error: FAILURE_MESSAGE,
+      error: PIPELINE_FAILURE_MESSAGE,
       steps: record.steps.map((s) =>
         s.state === 'active' ? { ...s, state: 'failed' } : s,
       ),
@@ -253,9 +306,25 @@ export const handleGenerate = async (
     finishedAt: finished.toISOString(),
     durationMs: finished.getTime() - started.getTime(),
   };
-  await writeJob(deps.jobs, record);
+  try {
+    await writeJob(deps.jobs, record);
+  } catch {
+    // A retry would only skip the claimed job; GET /api/jobs/:id reports a
+    // job that never got its outcome written as failed once it is stale.
+  }
 
-  // Bookkeeping must never turn a finished job into a retried one.
+  // Bookkeeping must never turn a finished job into a retried one. Spend is
+  // settled first and on its own, so a failed log write cannot lose it.
+  try {
+    await settleSpend(
+      deps.jobs,
+      record.spendDate ?? dayKey(finished),
+      record.usage?.costUsd ?? 0,
+      record.reservedUsd ?? 0,
+    );
+  } catch {
+    // The reservation stays counted for the day: errs on the safe side.
+  }
   try {
     const models = getStepModels(record.provider, record.tier);
     await writeLog(deps.log, {
@@ -275,7 +344,6 @@ export const handleGenerate = async (
       comparisonId: record.comparisonId,
       preference: null,
     });
-    await addSpend(deps.jobs, finished, record.usage?.costUsd ?? 0);
   } catch {
     // The job record is already final; a lost log line is acceptable.
   }

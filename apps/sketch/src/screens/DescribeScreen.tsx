@@ -59,6 +59,9 @@ const shortLabel = (label: string, provider: ProviderConfig) =>
 const selectClass =
   'min-h-11 cursor-pointer rounded-xl border-[1.5px] border-[oklch(0.86_0.015_281)] bg-white px-3 font-[inherit] text-sm font-semibold text-ink-strong';
 
+const NO_PROVIDERS_MESSAGE =
+  'Sketch cannot generate protocols right now because no model provider is set up. Try again later.';
+
 const countLine = (length: number, trimmed: number) => {
   if (trimmed > 0 && trimmed < MIN_DESCRIPTION_LENGTH) {
     return `${length} characters · write at least ${MIN_DESCRIPTION_LENGTH} to get started`;
@@ -112,6 +115,9 @@ export const DescribeScreen = ({
   const available = providers.filter((p) => p.available);
   const current = providers.find((p) => p.provider === form.provider);
   const canCompare = available.length >= 2;
+  // Config loaded, but no provider has a key: say so rather than leave a
+  // dead Generate button.
+  const noProviders = config.status === 'ready' && available.length === 0;
   const comparing = form.compare && canCompare;
   const trimmed = form.description.trim().length;
   const ready =
@@ -226,7 +232,7 @@ export const DescribeScreen = ({
                     <button
                       type="button"
                       onClick={() => update({ description: '', picked: null })}
-                      className="min-h-8 cursor-pointer rounded-md border-0 bg-transparent px-1.5 font-[inherit] font-semibold text-[oklch(0.42_0.1_281)]"
+                      className="-my-1.5 min-h-11 min-w-11 cursor-pointer rounded-md border-0 bg-transparent px-3 font-[inherit] font-semibold text-[oklch(0.42_0.1_281)]"
                     >
                       Clear
                     </button>
@@ -280,13 +286,17 @@ export const DescribeScreen = ({
 
               <div className="bg-paper-rule h-px" />
 
-              {config.status === 'error' && (
+              {(config.status === 'error' || noProviders) && (
                 <div
                   role="alert"
                   className="bg-danger-wash flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3 text-sm"
                 >
                   <InfoIcon size={20} className="text-danger flex-none" />
-                  <span className="flex-1">{config.message}</span>
+                  <span className="flex-1">
+                    {config.status === 'error'
+                      ? config.message
+                      : NO_PROVIDERS_MESSAGE}
+                  </span>
                   <button
                     type="button"
                     onClick={onRetryConfig}

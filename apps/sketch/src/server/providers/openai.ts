@@ -21,7 +21,7 @@ export type OpenAIClientLike = {
   responses: {
     create: (
       params: ResponseCreateParamsNonStreaming,
-      options?: { timeout?: number },
+      options?: { timeout?: number; maxRetries?: number },
     ) => Promise<Response>;
   };
 };
@@ -98,7 +98,7 @@ export const createOpenAIAdapter = (
   const apiKey = () => options.apiKey ?? process.env.OPENAI_API_KEY ?? '';
   let client = options.client;
   const getClient = (): OpenAIClientLike => {
-    client ??= new OpenAI({ apiKey: apiKey(), maxRetries: 2 });
+    client ??= new OpenAI({ apiKey: apiKey(), maxRetries: 0 });
     return client;
   };
   return {
@@ -107,7 +107,12 @@ export const createOpenAIAdapter = (
     generateStructured: async (request) => {
       const response = await getClient().responses.create(
         buildOpenAIParams(request),
-        request.timeoutMs ? { timeout: request.timeoutMs } : undefined,
+        // No SDK retries: each would get the full timeout again, multiplying
+        // it past the background function's limit. The pipeline retries.
+        {
+          maxRetries: 0,
+          ...(request.timeoutMs ? { timeout: request.timeoutMs } : {}),
+        },
       );
       return readOpenAIResponse(response);
     },

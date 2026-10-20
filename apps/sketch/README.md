@@ -78,17 +78,22 @@ UI only, against mocked or remote functions:
 pnpm --filter @codaco/sketch dev        # http://localhost:5186
 ```
 
-UI and functions together (needs the Netlify CLI, and a linked site or local
-env vars for the keys):
+Plain `pnpm dev` serves no `/api/*`, so generation (and with it the Architect
+handoff) needs the functions too. Run UI and functions together with the
+Netlify CLI (and a linked site or local env vars for the keys):
 
 ```sh
-npx netlify dev --filter @codaco/sketch
+npx netlify dev --filter @codaco/sketch   # http://localhost:5186
 ```
 
-To try the Architect handoff locally, run Architect's dev server and point
-Sketch at it with `VITE_ARCHITECT_URL=http://localhost:5173`. A development
-build of Architect accepts `http://localhost:5186`; a production build does
-not.
+The `[dev]` block in `netlify.toml` serves `netlify dev` on
+`http://localhost:5186` and moves Vite to an inner port (5187), so the page
+keeps the one origin a development build of Architect accepts.
+
+To try the Architect handoff locally, run Architect's dev server and start
+Sketch with `VITE_ARCHITECT_URL=http://localhost:5173 npx netlify dev --filter
+@codaco/sketch`. A development build of Architect accepts
+`http://localhost:5186`; a production build does not.
 
 Tests, typecheck and build:
 
@@ -111,7 +116,7 @@ back with `extractProtocol` and validates it.
 | `OPENAI_API_KEY`          | functions    | none                                     | Enables the ChatGPT provider.                                                                                    |
 | `OPENAI_DESIGN_MODEL`     | functions    | `gpt-6-astra`                            | OpenAI model for step 2 (both tiers).                                                                            |
 | `OPENAI_WORDING_MODEL`    | functions    | `gpt-6-luna`                             | OpenAI model for steps 1 and 3.                                                                                  |
-| `SKETCH_DAILY_BUDGET_USD` | functions    | `5`                                      | New jobs are refused (HTTP 429) once today's recorded spend (UTC day) reaches this.                              |
+| `SKETCH_DAILY_BUDGET_USD` | functions    | `20`                                     | New jobs are refused (HTTP 429) once today's recorded spend (UTC day) reaches this.                              |
 | `SKETCH_PRICING`          | functions    | built-in table in `src/server/models.ts` | JSON `{"<model>": {"input", "output", "cacheRead", "cacheWrite"}}` in USD per million tokens; overrides entries. |
 | `VITE_ARCHITECT_URL`      | build (Vite) | `https://architect.networkcanvas.dev`    | Where "Open in Architect" goes. Baked into the bundle at build time.                                             |
 
@@ -175,8 +180,8 @@ issues, the retry feedback, the wording, validity, tags (`wordingFailed`,
 `comparisonId`. The researcher's pick is stored under
 `preference/<comparisonId>` and on the preferred job's entry.
 
-Job records (with the generated protocol) live in `sketch-jobs` under the job
-id. Neither store expires anything automatically.
+Job records (with the generated protocol) live in `sketch-jobs` under
+`jobs/<jobId>` (e.g. `npx netlify blobs:get sketch-jobs jobs/<jobId>`). Neither store expires anything automatically.
 
 To export the log with the Netlify CLI, from a directory linked to the site:
 
