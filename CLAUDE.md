@@ -208,28 +208,9 @@ either lane. The **Architect Maintenance Release** workflow
 GitHub release that is never "Latest", and deploys nothing. There is no merge
 back to main. See "Maintenance releases" in `apps/architect/RELEASING.md`.
 
-#### Architect version archive
+#### Architect 8 inside Architect 9
 
-Released Architect versions stay reachable at a per-major host —
-`@codaco/architect@8.2.5` → `https://v8.architect.networkcanvas.com` — so
-researchers on an older protocol schema keep a working Architect. Keyed by major
-version because majors track schema versions, so a later release replaces an
-earlier one on the same line. Run the **Architect Archive Release** workflow
-(`.github/workflows/architect-archive-release.yml`) with the released tag; it is
-deliberately not wired into the release lane yet, and it never touches
-production, tags, or GitHub releases.
-
-The archive is a Cloudflare Worker serving static assets, not Netlify: Netlify
-overrides `Cache-Control` on `/sw.js` and `/manifest.webmanifest` for any
-non-production deploy. Cloudflare instead **appends** `_headers` rules where
-Netlify replaces them, and rejects Netlify's SPA `_redirects` outright, so the
-deploy-time transform in
-`apps/architect/scripts/write-cloudflare-archive-config.mjs` reshapes a copy.
-Never "fix" `apps/architect/public/_headers` for Cloudflare — its Netlify shape
-is asserted in CI by `scripts/buildtime/assert-pwa-cache-headers.mjs`. Details in
-`apps/architect/RELEASING.md`.
-
-Separately, Architect 9 bundles Architect 8 at `/v8/` from a tarball. The
+Architect 9 bundles Architect 8 at `/v8/` from a tarball. The
 **Architect Sub-path Dist** workflow
 (`.github/workflows/architect-subpath-dist.yml`) builds each released 8.x tag
 with `ARCHITECT_BASE_PATH=/v8/` and attaches `architect-v8-dist.tgz` to its
