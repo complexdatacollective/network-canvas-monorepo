@@ -41,6 +41,8 @@ export const coverageDesign: StudyDesign = {
   workingTitle: 'Coverage design',
   summary: 'Students, classmates and the places they study.',
   rationale: 'Exercises every branch of the compiler.',
+  administration: 'face_to_face',
+  qualitative: true,
   includeConsent: true,
   consentText: '',
   egoAttributes: [
@@ -95,6 +97,19 @@ export const coverageDesign: StudyDesign = {
         A('hours', 'number', 'How many hours a week do you spend there?'),
       ],
     },
+    {
+      id: 'mentor',
+      singular: 'Mentor',
+      plural: 'Mentors',
+      represents: 'people',
+      nameQuestion: "Mentor's name",
+      attributes: [
+        A('mentor_role', 'text', 'What is their role?'),
+        A('circles', 'multi_choice', '', {
+          options: ['Department', 'Clubs', 'Family'],
+        }),
+      ],
+    },
   ],
   relationships: [
     {
@@ -109,6 +124,11 @@ export const coverageDesign: StudyDesign = {
     },
     { id: 'studies_with', name: 'Study together', attributes: [] },
     { id: 'conflict', name: 'In conflict', attributes: [] },
+    {
+      id: 'mentors_know',
+      name: 'Mentors know each other',
+      attributes: [A('met_through', 'text', 'How did they meet?')],
+    },
   ],
   stages: [
     { kind: 'egoForm', ...common('about'), attributeIds: ['year', 'commutes'] },
@@ -334,6 +354,18 @@ export const coverageDesign: StudyDesign = {
       ],
     },
     {
+      kind: 'networkComposer',
+      ...common('mentor_canvas'),
+      interviewerNote:
+        'Ask the participant to add the mentors they have had and talk about each one.',
+      nodeTypeId: 'mentor',
+      attributeIds: ['mentor_role'],
+      groupAttributeId: 'circles',
+      relationships: [
+        { relationshipId: 'mentors_know', attributeIds: ['met_through'] },
+      ],
+    },
+    {
       kind: 'egoForm',
       ...common('reflection'),
       skipLogic: {
@@ -380,6 +412,8 @@ export const messyDesign: StudyDesign = {
   workingTitle: '   ',
   summary: 'A messy study of support.',
   rationale: '',
+  administration: 'face_to_face',
+  qualitative: true,
   includeConsent: false,
   consentText: '',
   egoAttributes: [

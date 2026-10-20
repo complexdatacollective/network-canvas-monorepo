@@ -27,6 +27,7 @@ const EMITTED_TYPES = [
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'Narrative',
+  'NetworkComposer',
   'OneToManyDyadCensus',
   'OrdinalBin',
   'Sociogram',
@@ -72,11 +73,12 @@ describe('the coverage design', () => {
       ['classmates_roster', GEOJSON_ASSET_ID, MAPBOX_ASSET_ID].sort(),
     );
     expect(summary.rosterCount).toBe(1);
-    expect(summary.nodeTypes).toEqual(['Classmate', 'Place']);
+    expect(summary.nodeTypes).toEqual(['Classmate', 'Place', 'Mentor']);
     expect(summary.edgeTypes).toEqual([
       'Friends',
       'Study together',
       'In conflict',
+      'Mentors know each other',
     ]);
   });
 

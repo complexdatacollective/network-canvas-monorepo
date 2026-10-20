@@ -24,6 +24,7 @@ const STAGE_TYPES: Record<string, StageTypeStyle> = {
   CategoricalBin: { label: 'Categorical bin', swatch: BIN },
   Sociogram: { label: 'Sociogram', swatch: MAP },
   Narrative: { label: 'Narrative', swatch: MAP },
+  NetworkComposer: { label: 'Network composer', swatch: MAP },
   DyadCensus: { label: 'Dyad census', swatch: CENSUS },
   OneToManyDyadCensus: { label: 'One-to-many dyad census', swatch: CENSUS },
   TieStrengthCensus: { label: 'Tie strength census', swatch: CENSUS },

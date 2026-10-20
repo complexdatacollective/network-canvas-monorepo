@@ -177,6 +177,25 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
           );
         } else slot('none: return ""', 'none: return ""');
         break;
+      case 'networkComposer':
+        slot('none: return ""', 'none: return ""');
+        s.attributeIds.forEach((a) =>
+          q(
+            `node:${s.nodeTypeId}`,
+            a,
+            attr(`node:${s.nodeTypeId}`, a).question,
+          ),
+        );
+        s.relationships.forEach((e) =>
+          e.attributeIds.forEach((a) =>
+            q(
+              `rel:${e.relationshipId}`,
+              a,
+              attr(`rel:${e.relationshipId}`, a).question,
+            ),
+          ),
+        );
+        break;
       case 'relationshipCensus':
         slot(
           s.method === 'one_at_a_time'

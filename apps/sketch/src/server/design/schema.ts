@@ -13,7 +13,7 @@
 //   - no .min/.max/.length/.int/.regex/.email etc. (bounds live in analyse.ts / compile.ts)
 //   - primitive enums only; stage discriminators are z.literal (normalised to enum:[x])
 //   - no recursion; root is an object
-//   - EXACTLY ONE union in the whole StudyDesign schema: StageSchema (10 branches).
+//   - EXACTLY ONE union in the whole StudyDesign schema: StageSchema (11 branches).
 //     Anthropic allows 16 union-typed parameters per request; each anyOf or type
 //     array counts once. Do not add a second union without re-running the
 //     union-count test.
@@ -388,7 +388,7 @@ const RelationshipCensusStage = z
     method: z
       .enum(['every_pair', 'one_at_a_time', 'with_strength'])
       .describe(
-        'every_pair = yes/no for every pair (under ~10 nodes). one_at_a_time = one node shown, tap everyone tied to it (10-20 nodes). with_strength = every pair on an ordered strength scale (small networks).',
+        'every_pair = a yes/no screen for every pair (under ~10 nodes). one_at_a_time = one node at a time, tap everyone tied to it from the rest (about 8-25 nodes). with_strength = every pair on an ordered strength scale (under ~10 nodes).',
       ),
     prompts: z
       .array(
@@ -439,7 +439,37 @@ const NarrativeStage = z
       .describe('1-4 views, one discussion question each.'),
   })
   .describe(
-    'A closing visualisation of the map for discussion. Collects no data.',
+    'A closing visualisation of the map for an interviewer to discuss with the participant. Collects no data. Only for face_to_face studies with a qualitative element.',
+  );
+
+const NetworkComposerStage = z
+  .object({
+    kind: z.literal('networkComposer'),
+    ...stageCommon,
+    nodeTypeId: nodeTypeRef,
+    attributeIds: z
+      .array(z.string())
+      .describe(
+        'Attributes of nodeTypeId the participant can fill in for each person on the canvas, in order. 0-4; never the groupAttributeId.',
+      ),
+    groupAttributeId: Ref(
+      'a multi_choice attribute of nodeTypeId whose options are drawn as groups the participant puts people into',
+    ),
+    relationships: z
+      .array(
+        z.object({
+          relationshipId: Ref('a relationship drawn on the canvas'),
+          attributeIds: z
+            .array(z.string())
+            .describe(
+              'Attributes of relationshipId asked about each tie drawn; [] for none.',
+            ),
+        }),
+      )
+      .describe('0-2 relationships the participant can draw.'),
+  })
+  .describe(
+    'A free-form canvas on which the participant, guided by an interviewer, adds people, places them, groups them and draws ties while talking about their network. It creates nodes itself. Only for face_to_face studies with a qualitative element.',
   );
 
 export const MAP_REGIONS = [
@@ -486,6 +516,7 @@ export const StageSchema = z.union([
   RelationshipCensusStage,
   NarrativeStage,
   GeospatialStage,
+  NetworkComposerStage,
 ]);
 export const DESIGN_STAGE_KINDS = [
   'information',
@@ -498,6 +529,7 @@ export const DESIGN_STAGE_KINDS = [
   'relationshipCensus',
   'narrative',
   'geospatial',
+  'networkComposer',
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -544,6 +576,16 @@ export const StudyDesignSchema = z
     rationale: Text(
       '2-4 sentences for the researcher on the main design choices (no step-by-step reasoning).',
     ),
+    administration: z
+      .enum(['face_to_face', 'self_administered'])
+      .describe(
+        'face_to_face = an interviewer sits with the participant (clinic, field or lab interviews); self_administered = the participant completes it alone (online, on a kiosk or tablet). self_administered unless the description says interviewers run the interviews.',
+      ),
+    qualitative: z
+      .boolean()
+      .describe(
+        'true only when the research design includes a qualitative or narrative element: the participant talks through their network with the interviewer, and that discussion is part of the data.',
+      ),
     includeConsent: z
       .boolean()
       .describe(

@@ -262,6 +262,53 @@
             "component": "Toggle"
           }
         }
+      },
+      "mentor": {
+        "name": "Mentor",
+        "icon": "add-a-person",
+        "color": "node-color-seq-3",
+        "shape": {
+          "default": "diamond"
+        },
+        "variables": {
+          "mentor_name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "mentor_layout": {
+            "name": "layout",
+            "type": "layout"
+          },
+          "mentor_role": {
+            "name": "mentor_role",
+            "type": "text",
+            "component": "Text"
+          },
+          "mentor_circles": {
+            "name": "circles",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Department",
+                "value": "department"
+              },
+              {
+                "label": "Clubs",
+                "value": "clubs"
+              },
+              {
+                "label": "Family",
+                "value": "family"
+              }
+            ]
+          }
+        }
       }
     },
     "edge": {
@@ -305,6 +352,17 @@
       "conflict": {
         "name": "In conflict",
         "color": "edge-color-seq-3"
+      },
+      "mentors_know": {
+        "name": "Mentors know each other",
+        "color": "edge-color-seq-4",
+        "variables": {
+          "mentors_know_met_through": {
+            "name": "met_through",
+            "type": "text",
+            "component": "Text"
+          }
+        }
       }
     }
   },
@@ -930,7 +988,7 @@
           },
           "edges": {
             "create": "friends",
-            "display": ["friends", "studies_with", "conflict"]
+            "display": ["friends"]
           }
         }
       ],
@@ -947,6 +1005,53 @@
           }
         ]
       }
+    },
+    {
+      "id": "mentor_canvas",
+      "type": "NetworkComposer",
+      "label": "Mentor canvas",
+      "interviewScript": "Ask the participant to add the mentors they have had and talk about each one.",
+      "subject": {
+        "entity": "node",
+        "type": "mentor"
+      },
+      "quickAdd": "mentor_name",
+      "layoutVariable": "mentor_layout",
+      "nodeForm": {
+        "fields": [
+          {
+            "variable": "mentor_role",
+            "component": "Text",
+            "label": "What is their role?"
+          }
+        ]
+      },
+      "convexHullVariable": "mentor_circles",
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": true
+      },
+      "edges": [
+        {
+          "id": "edge1",
+          "subject": {
+            "entity": "edge",
+            "type": "mentors_know"
+          },
+          "form": {
+            "fields": [
+              {
+                "variable": "mentors_know_met_through",
+                "component": "Text",
+                "label": "How did they meet?"
+              }
+            ]
+          }
+        }
+      ]
     },
     {
       "id": "reflection",

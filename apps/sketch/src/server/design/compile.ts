@@ -164,6 +164,12 @@ export const compile = (
       s.attributeIds.forEach((a) => askAt(`node:${s.nodeTypeId}/${a}`, i));
     if (s.kind === 'relationshipForm')
       s.attributeIds.forEach((a) => askAt(`rel:${s.relationshipId}/${a}`, i));
+    if (s.kind === 'networkComposer') {
+      s.attributeIds.forEach((a) => askAt(`node:${s.nodeTypeId}/${a}`, i));
+      s.relationships.forEach((e) =>
+        e.attributeIds.forEach((a) => askAt(`rel:${e.relationshipId}/${a}`, i)),
+      );
+    }
   });
   if (d.includeConsent) formFrom.set('ego/consent', -1);
   const askedInForm = { has: (k: string) => formFrom.has(k) };
@@ -171,7 +177,12 @@ export const compile = (
     (formFrom.get(k) ?? Infinity) < d.stages.indexOf(s);
   const needsLayout = new Set(
     d.stages
-      .filter((s) => s.kind === 'sociogram' || s.kind === 'narrative')
+      .filter(
+        (s) =>
+          s.kind === 'sociogram' ||
+          s.kind === 'narrative' ||
+          s.kind === 'networkComposer',
+      )
       .map((s) => (s as { nodeTypeId: string }).nodeTypeId),
   );
   const otherFor = new Set<string>(); // "node:t/attr" with an Other bin
@@ -371,7 +382,11 @@ export const compile = (
         : {};
     // auto-skip: nothing to show when no node of the type (or no tie) exists
     const nodeType =
-      'nodeTypeId' in s && s.kind !== 'nameGenerator' ? s.nodeTypeId : '';
+      'nodeTypeId' in s &&
+      s.kind !== 'nameGenerator' &&
+      s.kind !== 'networkComposer'
+        ? s.nodeTypeId
+        : '';
     const absentRule: ResolvedRule | undefined =
       nodeType && !guaranteed.has(nodeType)
         ? {
@@ -780,7 +795,9 @@ export const compile = (
           if (p.task === 'connect') {
             const ek = relKey.get(p.relationshipId)!;
             if (!createdRels.includes(ek)) createdRels.push(ek);
-            out.edges = { create: ek, display: [...createdRels] };
+            // only the type being drawn: other types on screen while
+            // drawing are easily mistaken for the one being created
+            out.edges = { create: ek, display: [ek] };
           } else if (createdRels.length)
             out.edges = { display: [...createdRels] };
           if (p.task === 'highlight')
@@ -798,6 +815,64 @@ export const compile = (
             behaviours: { automaticLayout },
             prompts,
           }),
+          src,
+        );
+        break;
+      }
+      case 'networkComposer': {
+        const composerField = (sc: string, a: string) => {
+          const f = field(sc, a);
+          return {
+            variable: f.variable,
+            component: variableFor(attrIn(sc, a)!, a, true).component,
+            label: f.prompt,
+          };
+        };
+        for (const e of s.relationships) {
+          const ek = relKey.get(e.relationshipId)!;
+          if (!createdRels.includes(ek)) createdRels.push(ek);
+        }
+        lastSociogramAuto.set(s.nodeTypeId, true);
+        namedBefore.add(s.nodeTypeId);
+        push(
+          {
+            ...base(s.id, 'NetworkComposer', label(s.id, humanise(s.id))),
+            subject: nodeSubject(s.nodeTypeId),
+            quickAdd: key(scope, 'name'),
+            layoutVariable: key(scope, 'layout'),
+            ...(s.attributeIds.length
+              ? {
+                  nodeForm: {
+                    fields: s.attributeIds.map((a) => composerField(scope, a)),
+                  },
+                }
+              : {}),
+            ...(s.groupAttributeId
+              ? { convexHullVariable: key(scope, s.groupAttributeId) }
+              : {}),
+            background: { concentricCircles: 4, skewedTowardCenter: true },
+            behaviours: { automaticLayout: true },
+            ...(s.relationships.length
+              ? {
+                  edges: s.relationships.map((e, i) => ({
+                    id: `edge${i + 1}`,
+                    subject: {
+                      entity: 'edge',
+                      type: relKey.get(e.relationshipId),
+                    },
+                    ...(e.attributeIds.length
+                      ? {
+                          form: {
+                            fields: e.attributeIds.map((a) =>
+                              composerField(`rel:${e.relationshipId}`, a),
+                            ),
+                          },
+                        }
+                      : {}),
+                  })),
+                }
+              : {}),
+          },
           src,
         );
         break;

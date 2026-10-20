@@ -54,6 +54,8 @@ export const friendshipDesign: StudyDesign = {
     "First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).",
   rationale:
     'One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects "know each other" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.',
+  administration: 'face_to_face',
+  qualitative: true,
   includeConsent: true,
   consentText:
     'This study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time.',

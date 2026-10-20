@@ -9,9 +9,15 @@
 // the guide must never suggest something the schema cannot express
 // (asserted in part by __tests__/decision-guide.test.ts).
 
-export const DECISION_GUIDE = `# Sketch decision guide v3
+export const DECISION_GUIDE = `# Sketch decision guide v4
 
 This guide is how an experienced Network Canvas designer turns a researcher's research questions, research population and study synopsis into a StudyDesign. Follow it unless the study clearly asks for something else that the schema can express.
+
+## 0. How the interview is run
+
+- **administration**: face_to_face when the description says interviewers, researchers or clinicians sit with the participant (interviews, clinic or field visits); self_administered otherwise (online surveys, kiosks, participants on their own device). When it is unclear, choose self_administered and say so in the rationale.
+- **qualitative**: true only when the research design has a qualitative or narrative element, such as an interview in which the participant talks through their network and that talk is analysed. A purely quantitative network survey is false, even when face_to_face.
+- **narrative** and **networkComposer** stages need both: administration face_to_face AND qualitative true. Never use either in a self-administered study, or in one with no qualitative or narrative element.
 
 ## 1. The interview arc
 
@@ -24,7 +30,7 @@ Order stages like this, leaving out what the study does not need:
 5. **Name interpreters**: alterForm, bins, sociogram highlights, geospatial: what each named person is like.
 6. **Relationship capture**: sociogram connect prompts or a relationshipCensus, then an optional relationshipForm about the ties just created.
 7. **egoForm** stages for outcome measures and instruments that should not prime the network questions.
-8. **narrative** (optional): a closing view of the map for discussion.
+8. **narrative** (face_to_face qualitative studies only): a closing view of the map for the interviewer and participant to discuss.
 9. **information** (role closing): thanks, what happens next, and support resources (helplines, services) whenever the topic is sensitive (health, substance use, violence, loss, sexuality, mental health).
 
 Name everyone before interpreting them: do not zigzag between generators and interpreters. Use role instructions or transition screens sparingly, before an unfamiliar task (the first map, a census), not between every stage.
@@ -71,28 +77,44 @@ A bins stage takes 1-3 prompts, each on its own attribute. Ask about each attrib
 
 Every interpreter after a generator applies to all nodes of the type unless you set a filter. Use a filter to ask only about the people it applies to, e.g. a bins stage on drink_together_freq with filter conditions [drinks_with is "yes"].
 
-## 5. Relationship capture by expected network size
+## 5. Relationship capture: choosing how ties are created
 
-- **sociogram** with a connect prompt: the default, and the only practical choice above ~20 nodes. The participant draws a line between any two people who are tied.
-- **relationshipCensus** method **every_pair**: a yes/no question for every pair: n(n-1)/2 screens per prompt (45 for 10 people). Exhaustive and good for surfacing forgotten ties, but only for under ~10 nodes (cap maxNodes or use a filter).
-- **relationshipCensus** method **one_at_a_time**: one person shown at a time, the participant taps everyone tied to them. Linear in size; use it for 10-20 nodes, or when some alters are very central.
-- **relationshipCensus** method **with_strength**: every pair answered on an ordered strength scale. Needs an ordered attribute (2-5 options) on that relationship as strengthAttributeId and a noTieLabel ("They don't know each other"). Small networks only (under ~10). Never also create the same relationship with a sociogram connect prompt.
+Each method has different strengths. Choose by what the analysis needs from the ties, the expected network size (after maxNodes and any filter), and how the interview is run.
+
+- **sociogram** connect prompt: the participant draws a line between two people on the map. It scales to large networks and shows the structure as it is drawn, so clusters and gaps are visible and easy to talk about. It is not systematic: the participant must spot every tie, and in a dense map some are missed. It needs a screen large enough to drag and tap precisely.
+- **relationshipCensus every_pair** (dyad census): one yes/no screen for each pair, n(n-1)/2 screens per prompt (28 for 8 people, 45 for 10). Every pair is explicitly considered and every "no" is a real answer, so it is the most complete and accurate method, and simple enough for any participant on any device. The burden grows with the square of the network size.
+- **relationshipCensus one_at_a_time** (one-to-many dyad census): one person is shown at a time with the people not yet considered, and the participant taps everyone tied to them. Each pair is still considered once, but on n-1 screens instead of n(n-1)/2, so it is nearly as systematic as every_pair at a fraction of the burden. Its lists suit small screens and self-administration. An untapped person counts as "no tie", which makes it slightly less deliberate than a yes/no for each pair.
+- **relationshipCensus with_strength** (tie strength census): every pair rated on an ordered strength scale. Use it only when the strength of ties BETWEEN alters is a measure in the research questions. It is the most burdensome method. It needs an ordered attribute (2-5 options) on that relationship as strengthAttributeId and a noTieLabel ("They don't know each other").
+- **networkComposer**: a free-form canvas (see §6), for face_to_face qualitative studies only.
+
+Decide in this order:
+
+1. Strength of alter-alter ties is a measure: with_strength, with maxNodes 10 or a filter to the people who matter.
+2. The analysis needs complete tie data (density, brokerage, components, structural holes, whether two supporters know each other) and the network is small: under ~8 people, every_pair; about 8-25 people, one_at_a_time.
+3. The network can exceed ~25 people, the questions are exploratory or about overall structure, or the map is already used to position people: a sociogram connect prompt.
+4. Self-administered on phones or by participants unused to touch screens: prefer a census to drawing whenever the network fits under ~25 people.
+
+Further rules:
+
+- Create each relationship in exactly ONE stage: never census a relationship that a sociogram connect prompt also creates.
+- Each extra relationship type is another full pass (another census prompt or connect prompt), so measure more than one alter-alter relationship only when the research questions need it, and at most 2.
 - **relationshipForm**: questions about each tie that already exists (how long they have known each other). Only after a stage that creates those ties; keep it to 1-4 attributes and use it rarely, since a dense network makes it long. It never replaces a census.
 
 ### The sociogram
 
 One shared map, 1-4 prompts, each with one task:
 - **position**: drag people onto concentric circles, closer to the centre = closer to the participant. Gives a meaningful layout for later prompts and the narrative. Position is not a measure: if closeness will be analysed, also record it with an ordered attribute in bins. Without a position prompt the layout is automatic.
-- **connect**: create ties of relationshipId. One relationship per prompt; wording about the tie ("Draw a line between any two people who **know each other**").
+- **connect**: create ties of relationshipId. One relationship per prompt; wording about the tie ("Draw a line between any two people who **know each other**"). While drawing, the map shows only the type being drawn: showing several relationship types at once makes the prompt ambiguous, so do not put two connect prompts on one map unless the study needs both types.
 - **highlight**: tap people to set a yes_no attributeId to yes; wording about a characteristic ("Tap everyone who **gives you advice**").
 
 ## 6. Geospatial, narrative and other stages
 
 - **geospatial**: the participant taps the COUNTRY where each person is, on a world map opening at mapRegion (world, europe, africa, asia, middle_east, north_america, south_america, oceania). Use it for migration, transnational and diaspora studies. Each prompt's locationAttributeId is a NEW id that Sketch creates; do not declare it in attributes. It works at country level only and needs internet during the interview. For cities, neighbourhoods or venues use a text or single_choice attribute instead. Filter to the people it applies to (e.g. a yes_no lives_abroad).
-- **narrative**: a closing visualisation for discussion that collects no data. Only after a sociogram of the same node type. 1-4 views, each answering one question, with a 1-4 word label: groupByAttributeId (a single_choice or multi_choice attribute), relationshipIds (ties created earlier) and highlightAttributeIds (yes_no attributes). Include it for qualitative or mixed-methods interviews, or when the participant reflecting on their network is part of the study.
+- **narrative**: a closing visualisation that collects no data; the interviewer uses it to talk the participant through their network. Only in face_to_face studies with a qualitative or narrative element, and only after a sociogram or networkComposer of the same node type. 1-4 views, each answering one question, with a 1-4 word label: groupByAttributeId (a single_choice or multi_choice attribute), relationshipIds (ties created earlier) and highlightAttributeIds (yes_no attributes).
+- **networkComposer**: a free-form canvas on which the participant adds people, places them, draws ties and puts people into groups, while talking it through with the interviewer. Only in face_to_face studies with a qualitative or narrative element. It creates its own nodes, so it can replace a nameGenerator plus sociogram when building the network IS the conversation (life-history, narrative or ethnographic network interviews). It has no prompts: give it an interviewerNote with what to ask and how to guide the participant. attributeIds (0-4) are filled in for each person on the canvas; groupAttributeId is a multi_choice attribute whose options are the groups; relationships (0-2) are the tie types the participant can draw, each with optional attributeIds. It is not systematic, so use a census or a structured generator instead when the analysis needs complete, comparable data.
 - **egoForm**: 1-8 attributeIds from egoAttributes. Split long sets across consecutive egoForm stages by topic. Never a consent form.
 - **information**: text only (Markdown). role is welcome, instructions, transition or closing.
-- interviewerNote: use it when the study mentions interviewers or a clinic setting: what to say, how to help. Otherwise "".
+- interviewerNote: use it in face_to_face studies: what to say, how to help. Required on a networkComposer. Otherwise "".
 
 ## 7. Participant attributes and validated instruments
 
@@ -132,9 +154,9 @@ One shared map, 1-4 prompts, each with one task:
 - If a research question names an outcome (wellbeing, drinking, loneliness), measure it on the participant and, where it matters for the hypothesis, on the alters as perceived by the participant.
 - Not offered, with the nearest alternative to design instead (say so in the rationale):
   - anonymising or encrypting names: ask for initials or a nickname in nameQuestion;
-  - interviewer-led free-form network drawing: a sociogram with an interviewerNote;
+  - interviewer-led free-form network drawing in a self-administered or purely quantitative study: a sociogram with an interviewerNote;
   - family pedigree / family tree: a nameGenerator with a single_choice family relationship attribute, plus a sociogram connect prompt;
-  - pedigree visualisation: a narrative view grouped by that attribute;
+  - pedigree visualisation: in face_to_face qualitative studies, a narrative view grouped by that attribute;
   - images, video or audio on screens, and image map backgrounds: text in information stages and concentric circles;
   - maps below country level: text or single_choice location attributes;
   - directed ties or tie counts in skip logic: node attributes (yes_no tags or highlights) relative to the participant.
@@ -143,8 +165,8 @@ One shared map, 1-4 prompts, each with one task:
 
 Research questions: "How do first-year undergraduates form friendship networks during their first semester? Is the drinking behaviour of a student's close friends associated with the student's own alcohol use and wellbeing?"
 
-- includeConsent true. egoAttributes: age (number [16, 99], required), gender (single_choice), lives_in_halls (yes_no); AUDIT-C (3 ordered items, optionScores [0, 1, 2, 3, 4]); WHO-5 (5 ordered items, 6 options "At no time" to "All of the time", optionScores [0, 1, 2, 3, 4, 5]).
+- administration self_administered (students complete it online), qualitative false, so no narrative. includeConsent true. egoAttributes: age (number [16, 99], required), gender (single_choice), lives_in_halls (yes_no); AUDIT-C (3 ordered items, optionScores [0, 1, 2, 3, 4]); WHO-5 (5 ordered items, 6 options "At no time" to "All of the time", optionScores [0, 1, 2, 3, 4, 5]).
 - One node type person. Tags new_friend and support (yes_no, question ""); is_first_year (yes_no with labels "Yes" / "No, or I'm not sure") and first_met (month_year) in an alterForm, because neither is a bin kind; closeness (ordered, 4 options), how_met (single_choice, allowOther) and drinks_heavily (single_choice: Yes / No / I don't know, since "don't know" matters) in one bins stage; drinks_with as a sociogram highlight; drink_together_freq (ordered).
-- One relationship knows. Up to 20 friends, so a sociogram connect prompt rather than a census.
-- Stages: welcome; egoForm about_you; nameGenerator quick_add with 3 prompts on one theme ("Since **starting university this semester**, who have you **become friends with**?" tagged new_friend; free time; "Who would you **turn to for support**…" tagged support), minNodes 0, maxNodes 20; alterForm; bins (closeness, how_met, drinks_heavily); sociogram (position, connect knows, highlight drinks_with); bins drinking_together with filter drinks_with is "yes" and skipLogic show_only_if about nodes, drinks_with is "yes"; egoForm AUDIT-C item 1; egoForm items 2-3 with skip_if participant audit_frequency is "Never"; egoForm WHO-5 after the network, so it does not prime it; narrative with views "Who drinks heavily" (group drinks_heavily, show knows), "Who you drink with" (highlight drinks_with) and "How you met" (group how_met); closing screen with student support and alcohol helpline resources.
+- One relationship knows. Up to 20 friends, and the map already positions them, so a sociogram connect prompt; a one_at_a_time census would also suit if complete tie data mattered more than the picture.
+- Stages: welcome; egoForm about_you; nameGenerator quick_add with 3 prompts on one theme ("Since **starting university this semester**, who have you **become friends with**?" tagged new_friend; free time; "Who would you **turn to for support**…" tagged support), minNodes 0, maxNodes 20; alterForm; bins (closeness, how_met, drinks_heavily); sociogram (position, connect knows, highlight drinks_with); bins drinking_together with filter drinks_with is "yes" and skipLogic show_only_if about nodes, drinks_with is "yes"; egoForm AUDIT-C item 1; egoForm items 2-3 with skip_if participant audit_frequency is "Never"; egoForm WHO-5 after the network, so it does not prime it; closing screen with student support and alcohol helpline resources.
 `;

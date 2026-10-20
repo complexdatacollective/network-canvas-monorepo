@@ -868,6 +868,20 @@ export const analyse = (
       }
       return true;
     };
+    // Both stages need an interviewer to talk the participant through
+    // their network, and only earn their place when that talk is data.
+    if (
+      (s.kind === 'narrative' || s.kind === 'networkComposer') &&
+      !(d.administration === 'face_to_face' && d.qualitative)
+    ) {
+      add(
+        s.kind === 'narrative' ? 'adjusted' : 'degraded',
+        'NEEDS_FACE_TO_FACE_QUALITATIVE',
+        path,
+        `${s.kind} "${id}" is only for face_to_face studies with a qualitative element (administration "${d.administration}", qualitative ${String(d.qualitative)}). The stage was removed.${s.kind === 'networkComposer' ? ' Name people with a nameGenerator and draw ties on a sociogram instead.' : ''}`,
+      );
+      continue;
+    }
     checkSkip(s, path);
     switch (s.kind) {
       case 'information':
@@ -1478,6 +1492,89 @@ export const analyse = (
         }
         break;
       }
+      case 'networkComposer': {
+        const t = resolveType(
+          s.nodeTypeId,
+          d.nodeTypes,
+          'node type',
+          `${path}.nodeTypeId`,
+        );
+        if (!t) {
+          drop(
+            'UNKNOWN_TYPE',
+            `networkComposer "${id}" has no valid node type.`,
+          );
+          continue;
+        }
+        s.nodeTypeId = t;
+        const scope = `node:${t}`;
+        s.groupAttributeId = s.groupAttributeId
+          ? resolveAttr(
+              s.groupAttributeId,
+              scope,
+              `${path}.groupAttributeId`,
+              ['multi_choice'],
+              'Group attribute',
+            )
+          : '';
+        s.attributeIds = [
+          ...new Set(
+            s.attributeIds
+              .map((a, i) =>
+                resolveAttr(
+                  a,
+                  scope,
+                  `${path}.attributeIds[${i}]`,
+                  FORM_KINDS,
+                  'Form attribute',
+                ),
+              )
+              .filter((x) => x && x !== 'name' && x !== s.groupAttributeId),
+          ),
+        ];
+        const relSeen = new Set<string>();
+        s.relationships = s.relationships.filter((e, i) => {
+          const pe = `${path}.relationships[${i}]`;
+          const r = resolveType(
+            e.relationshipId,
+            d.relationships,
+            'relationship',
+            `${pe}.relationshipId`,
+          );
+          if (!r || relSeen.has(r)) return false;
+          relSeen.add(r);
+          e.relationshipId = r;
+          e.attributeIds = [
+            ...new Set(
+              e.attributeIds
+                .map((a, j) =>
+                  resolveAttr(
+                    a,
+                    `rel:${r}`,
+                    `${pe}.attributeIds[${j}]`,
+                    FORM_KINDS,
+                    'Form attribute',
+                  ),
+                )
+                .filter(Boolean),
+            ),
+          ];
+          return true;
+        });
+        s.attributeIds.forEach((x) => markCollected(scope, x));
+        markCollected(scope, s.groupAttributeId);
+        for (const e of s.relationships) {
+          createdRels.add(e.relationshipId);
+          e.attributeIds.forEach((x) =>
+            markCollected(`rel:${e.relationshipId}`, x),
+          );
+        }
+        named.add(t);
+        // the canvas places everyone it shows, so a narrative can reuse it
+        if (s.skipLogic.mode === 'always_show') sociogramTypes.add(t);
+        else partialSociogramTypes.add(t);
+        break;
+      }
       case 'relationshipForm': {
         const r = resolveType(
           s.relationshipId,
@@ -1560,6 +1657,18 @@ export const analyse = (
         const k = `rel:${s.relationshipId}/${x}`;
         if (!formAt.has(k)) formAt.set(k, at);
       });
+    if (s.kind === 'networkComposer') {
+      s.attributeIds.forEach((x) => {
+        const k = `node:${s.nodeTypeId}/${x}`;
+        if (!formAt.has(k)) formAt.set(k, at);
+      });
+      s.relationships.forEach((e) =>
+        e.attributeIds.forEach((x) => {
+          const k = `rel:${e.relationshipId}/${x}`;
+          if (!formAt.has(k)) formAt.set(k, at);
+        }),
+      );
+    }
     const site = (key: string, what: string, drop: () => void) =>
       unvalidated.push({ key, at, stage: s, drop, what });
     if (s.kind === 'nameGenerator')
@@ -1595,6 +1704,10 @@ export const analyse = (
             },
           );
       });
+    if (s.kind === 'networkComposer' && s.groupAttributeId)
+      site(`node:${s.nodeTypeId}/${s.groupAttributeId}`, 'group', () => {
+        s.groupAttributeId = '';
+      });
     if (s.kind === 'relationshipCensus' && s.method === 'with_strength')
       s.prompts.forEach((p) =>
         site(
@@ -1623,7 +1736,28 @@ export const analyse = (
       );
     } else fromForms.add(w.key);
   }
+  const keepUnwritten = (scope: string, ids: string[], s: NStage) =>
+    ids.filter((x) => {
+      if (!fromForms.has(`${scope}/${x}`)) return true;
+      add(
+        'adjusted',
+        'FORM_FIELD_WRITTEN_ELSEWHERE',
+        `stages[${s.rawIndex}].attributeIds`,
+        `"${x}" is recorded by an earlier stage, so "${s.id}" no longer asks it.`,
+      );
+      return false;
+    });
   d.stages = d.stages.filter((s) => {
+    if (s.kind === 'networkComposer') {
+      s.attributeIds = keepUnwritten(`node:${s.nodeTypeId}`, s.attributeIds, s);
+      for (const e of s.relationships)
+        e.attributeIds = keepUnwritten(
+          `rel:${e.relationshipId}`,
+          e.attributeIds,
+          s,
+        );
+      return true;
+    }
     if (
       s.kind === 'alterForm' ||
       s.kind === 'relationshipForm' ||
@@ -1633,16 +1767,7 @@ export const analyse = (
         s.kind === 'relationshipForm'
           ? `rel:${s.relationshipId}`
           : `node:${s.nodeTypeId}`;
-      s.attributeIds = s.attributeIds.filter((x) => {
-        if (!fromForms.has(`${scope}/${x}`)) return true;
-        add(
-          'adjusted',
-          'FORM_FIELD_WRITTEN_ELSEWHERE',
-          `stages[${s.rawIndex}].attributeIds`,
-          `"${x}" is recorded by an earlier stage, so "${s.id}" no longer asks it.`,
-        );
-        return false;
-      });
+      s.attributeIds = keepUnwritten(scope, s.attributeIds, s);
       if (s.kind === 'nameGenerator') {
         if (!s.attributeIds.length) s.method = 'quick_add';
         return true;
@@ -1670,7 +1795,11 @@ export const analyse = (
   });
 
   // ---- framing notes ----------------------------------------------------------------
-  if (!d.stages.some((s) => s.kind === 'nameGenerator'))
+  if (
+    !d.stages.some(
+      (s) => s.kind === 'nameGenerator' || s.kind === 'networkComposer',
+    )
+  )
     add(
       'note',
       'NO_NAME_GENERATOR',

@@ -130,6 +130,14 @@
       "draft": ""
     },
     {
+      "stageKey": "mentor_canvas",
+      "kind": "networkComposer",
+      "purpose": "Purpose of mentor_canvas.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
       "stageKey": "reflection",
       "kind": "egoForm",
       "purpose": "Purpose of reflection.",
@@ -264,6 +272,14 @@
     {
       "questionKey": "node:classmate/year_of_study",
       "draft": "Year of study"
+    },
+    {
+      "questionKey": "node:mentor/mentor_role",
+      "draft": "What is their role?"
+    },
+    {
+      "questionKey": "rel:mentors_know/met_through",
+      "draft": "How did they meet?"
     },
     {
       "questionKey": "ego/satisfaction",

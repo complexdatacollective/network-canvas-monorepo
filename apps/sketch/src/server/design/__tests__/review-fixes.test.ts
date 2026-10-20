@@ -61,6 +61,8 @@ const design = (over: Json) => ({
   workingTitle: 'T',
   summary: 'S.',
   rationale: 'R',
+  administration: 'face_to_face',
+  qualitative: true,
   includeConsent: false,
   consentText: '',
   egoAttributes: [],
@@ -686,6 +688,8 @@ describe('compiler review fixes', () => {
   it('asks for consent before an opening screen that is not a welcome', async () => {
     const opening = (role: string) =>
       design({
+        administration: 'face_to_face',
+        qualitative: true,
         includeConsent: true,
         consentText: 'Do you agree?',
         stages: [
@@ -1049,5 +1053,154 @@ describe('instrument attributes', () => {
       ),
     );
     expect(d.instrumentAttributes).toEqual(['ego/stress', 'ego/stress_2']);
+  });
+
+  const mapStages = (prompts: Json[]) => [
+    ng(),
+    {
+      kind: 'sociogram',
+      ...c('map'),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      prompts,
+    },
+  ];
+  const connect = (relationshipId: string) => ({
+    task: 'connect',
+    text: `Who ${relationshipId}?`,
+    relationshipId,
+    attributeId: '',
+  });
+
+  it('shows only the relationship being drawn on a connect prompt', async () => {
+    const r = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+          { id: 'conflict', name: 'In conflict', attributes: [] },
+        ],
+        stages: mapStages([connect('knows'), connect('conflict')]),
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    const prompts = stageById(r.stages, 'map').prompts as unknown as {
+      edges: { create: string; display: string[] };
+    }[];
+    expect(prompts.map((p) => p.edges)).toEqual([
+      { create: 'knows', display: ['knows'] },
+      { create: 'conflict', display: ['conflict'] },
+    ]);
+  });
+
+  const composer = {
+    kind: 'networkComposer',
+    ...c('canvas'),
+    interviewerNote: 'Talk it through.',
+    nodeTypeId: 'person',
+    attributeIds: ['role'],
+    groupAttributeId: 'circles',
+    relationships: [{ relationshipId: 'knows', attributeIds: [] }],
+  };
+  const narrative = {
+    kind: 'narrative',
+    ...c('story'),
+    nodeTypeId: 'person',
+    filter: noFilter,
+    views: [
+      {
+        label: 'Your circles',
+        groupByAttributeId: 'circles',
+        relationshipIds: ['knows'],
+        highlightAttributeIds: [],
+      },
+    ],
+  };
+  const composerDesign = (over: Json = {}) =>
+    design({
+      nodeTypes: [
+        person([
+          A('role', 'text', 'What is their role?'),
+          A('circles', 'multi_choice', '', { options: ['Work', 'Family'] }),
+        ]),
+      ],
+      relationships: [{ id: 'knows', name: 'Know each other', attributes: [] }],
+      stages: [composer, narrative],
+      ...over,
+    });
+
+  it('builds a network composer that a narrative can reuse', async () => {
+    const r = await build(composerDesign());
+    expect(
+      r.validation.success,
+      JSON.stringify(r.validation.error?.issues),
+    ).toBe(true);
+    expect(r.retry).toBe(false);
+    const canvas = stageById(r.stages, 'canvas');
+    expect(canvas).toMatchObject({
+      type: 'NetworkComposer',
+      quickAdd: 'person_name',
+      layoutVariable: 'person_layout',
+      convexHullVariable: 'person_circles',
+      nodeForm: { fields: [{ variable: 'person_role', component: 'Text' }] },
+      edges: [{ subject: { entity: 'edge', type: 'knows' } }],
+    });
+    // it creates the people, so it is never skipped for want of them
+    expect(canvas.skipLogic).toBeUndefined();
+    expect(stageById(r.stages, 'story').type).toBe('Narrative');
+  });
+
+  it.each([
+    ['self_administered', true],
+    ['face_to_face', false],
+  ])(
+    'removes narrative and composer stages when administration is %s and qualitative is %s',
+    async (administration, qualitative) => {
+      const r = await build(
+        composerDesign({
+          administration,
+          qualitative,
+          stages: [
+            ng(),
+            {
+              kind: 'sociogram',
+              ...c('map'),
+              nodeTypeId: 'person',
+              filter: noFilter,
+              prompts: [connect('knows')],
+            },
+            narrative,
+            composer,
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(r.stages.map((s) => s.type)).not.toContain('Narrative');
+      expect(r.stages.map((s) => s.type)).not.toContain('NetworkComposer');
+      expect(
+        r.issues.filter((i) => i.code === 'NEEDS_FACE_TO_FACE_QUALITATIVE'),
+      ).toHaveLength(2);
+    },
+  );
+
+  it('keeps a composer group that a later form also asks out of that form', async () => {
+    const r = await build(
+      composerDesign({
+        stages: [
+          composer,
+          {
+            kind: 'alterForm',
+            ...c('form'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['circles', 'role'],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(findVariableRoleConflicts(r.protocol as never)).toEqual([]);
+    expect(stageById(r.stages, 'canvas').convexHullVariable).toBe(
+      'person_circles',
+    );
   });
 });
