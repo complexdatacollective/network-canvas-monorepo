@@ -285,17 +285,20 @@ function schema8CardProps(
           // for offline use, the protocol cannot be used offline either.
           status={
             interviewer && schema8?.offline === 'not-ready' ? (
-              <CloudOff
+              // Named and titled on a wrapper, so the badge's own text stays
+              // its label alone.
+              <span
                 role="img"
                 aria-label={intl.formatMessage(
                   legacyProtocolMessages.notReadyOffline,
                 )}
-                className={iconClassName}
+                title={intl.formatMessage(
+                  legacyProtocolMessages.notReadyOffline,
+                )}
+                className="flex"
               >
-                <title>
-                  {intl.formatMessage(legacyProtocolMessages.notReadyOffline)}
-                </title>
-              </CloudOff>
+                <CloudOff aria-hidden className={iconClassName} />
+              </span>
             ) : undefined
           }
         >
