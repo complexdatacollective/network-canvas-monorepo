@@ -58,7 +58,7 @@ handler does not see) through `captureException`.
 
 | Event                     | Where                 | Properties (anonymous)                                            |
 | ------------------------- | --------------------- | ----------------------------------------------------------------- |
-| `protocol_installed`      | `routes/Home.tsx`     | `source`, `migrated`, `protocol_hash`                             |
+| `protocol_installed`      | `routes/Home.tsx`     | `source`, `schema_version`, `protocol_hash`                       |
 | `protocol_install_failed` | `routes/Home.tsx`     | `source`, `reason`                                                |
 | `data_exported`           | `components/DataView` | `interview_count`, `failed_count`, `export_graphml`, `export_csv` |
 

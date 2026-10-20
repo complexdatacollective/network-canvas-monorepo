@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProtocolWithCounts } from '~/lib/db/types';
@@ -6,10 +6,7 @@ import type { BundledLegacyInterviewer } from '~/lib/legacyInterviewer';
 
 const mocks = vi.hoisted(() => ({
   bundled: null as BundledLegacyInterviewer | null,
-  confirmProtocolUpgrade: vi.fn(),
-  chooseImportRoute: vi.fn(),
   showLegacyProtocolInfo: vi.fn(),
-  track: vi.fn(),
   openDialog: vi.fn(),
 }));
 
@@ -18,12 +15,7 @@ vi.mock('~/lib/legacyInterviewer', async (importOriginal) => ({
   getBundledLegacyInterviewer: () => mocks.bundled,
 }));
 vi.mock('~/components/legacyProtocolDialogs', () => ({
-  confirmProtocolUpgrade: mocks.confirmProtocolUpgrade,
-  chooseImportRoute: mocks.chooseImportRoute,
   showLegacyProtocolInfo: mocks.showLegacyProtocolInfo,
-}));
-vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
-  useAnalytics: () => ({ track: mocks.track }),
 }));
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => ({ openDialog: mocks.openDialog }),
@@ -48,14 +40,7 @@ const schema8Protocol = {
   sessionCount: 2,
 } as ProtocolWithCounts;
 
-const file = new File(['zip'], 'older.netcanvas');
-const migrationRequest = { file, label: 'Older', schemaVersion: 8 };
-
-const setup = () => {
-  const startImport = vi.fn();
-  const hook = renderHook(() => useLegacyProtocolActions({ startImport }));
-  return { ...hook, startImport };
-};
+const setup = () => renderHook(() => useLegacyProtocolActions());
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -81,101 +66,11 @@ describe('useLegacyProtocolActions: schema 8 cards', () => {
     );
   });
 
-  it('offers no upgrade of a stored protocol: only an import upgrades', () => {
+  it('offers no upgrade of a schema 8 protocol', () => {
     expect(Object.keys(setup().result.current.schema8).toSorted()).toEqual([
       'interviewer',
       'offline',
       'onShowInfo',
     ]);
-  });
-});
-
-describe('useLegacyProtocolActions: an older file being imported', () => {
-  it('keeps it on schema 8 through the normal import', async () => {
-    mocks.chooseImportRoute.mockResolvedValue('keep');
-    const { result, startImport } = setup();
-
-    result.current.onMigrationRequired(migrationRequest);
-
-    await waitFor(() =>
-      expect(startImport).toHaveBeenCalledWith({
-        source: 'file',
-        file,
-        label: 'Older',
-        olderSchema: 'keep',
-      }),
-    );
-    expect(mocks.confirmProtocolUpgrade).not.toHaveBeenCalled();
-    expect(mocks.track).toHaveBeenCalledWith('protocol_kept_on_legacy', {
-      schema_version: 8,
-    });
-  });
-
-  it('upgrades it, after the migration notes, through the normal import', async () => {
-    mocks.chooseImportRoute.mockResolvedValue('upgrade');
-    mocks.confirmProtocolUpgrade.mockResolvedValue(true);
-    const { result, startImport } = setup();
-
-    result.current.onMigrationRequired(migrationRequest);
-
-    await waitFor(() =>
-      expect(startImport).toHaveBeenCalledWith({
-        source: 'file',
-        file,
-        label: 'Older',
-        olderSchema: 'upgrade',
-      }),
-    );
-    expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledWith(
-      mocks.openDialog,
-      { fromVersion: 8, legacyInterviewerBundled: true },
-    );
-  });
-
-  it('imports nothing when the upgrade notes are not confirmed', async () => {
-    mocks.chooseImportRoute.mockResolvedValue('upgrade');
-    mocks.confirmProtocolUpgrade.mockResolvedValue(false);
-    const { result, startImport } = setup();
-
-    result.current.onMigrationRequired(migrationRequest);
-
-    await waitFor(() =>
-      expect(mocks.confirmProtocolUpgrade).toHaveBeenCalled(),
-    );
-    expect(startImport).not.toHaveBeenCalled();
-  });
-
-  it('does nothing on Cancel', async () => {
-    mocks.chooseImportRoute.mockResolvedValue(null);
-    const { result, startImport } = setup();
-
-    result.current.onMigrationRequired(migrationRequest);
-
-    await waitFor(() => expect(mocks.chooseImportRoute).toHaveBeenCalled());
-    await act(async () => {});
-    expect(mocks.confirmProtocolUpgrade).not.toHaveBeenCalled();
-    expect(startImport).not.toHaveBeenCalled();
-  });
-
-  it('offers only the upgrade without a bundled Interviewer 8', async () => {
-    mocks.bundled = null;
-    mocks.confirmProtocolUpgrade.mockResolvedValue(true);
-    const { result, startImport } = setup();
-
-    result.current.onMigrationRequired(migrationRequest);
-
-    await waitFor(() =>
-      expect(startImport).toHaveBeenCalledWith(
-        expect.objectContaining({ olderSchema: 'upgrade' }),
-      ),
-    );
-    expect(mocks.chooseImportRoute).not.toHaveBeenCalled();
-    // The confirmation is told it is the only dialog, so it gives the schema
-    // intro and the caution itself (legacyProtocolDialogs.test.tsx pins the
-    // words it then shows).
-    expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledWith(
-      mocks.openDialog,
-      { fromVersion: 8, legacyInterviewerBundled: false },
-    );
   });
 });

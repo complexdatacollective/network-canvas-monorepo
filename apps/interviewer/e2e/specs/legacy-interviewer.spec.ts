@@ -31,9 +31,8 @@ import {
  * resuming and reviewing an interview all go through /interview/<id>, which
  * hosts Interviewer 8 in a same-origin frame at /v8/interview/<id>, hands it
  * the unlock (so the researcher unlocks once, here) and goes home when it
- * says it has closed; a schema 8 file can be kept on schema 8 or upgraded on
- * import (a stored one is never upgraded); and deleting, exporting and
- * resetting work on those rows here.
+ * says it has closed; a schema 8 file is imported on schema 8 and never
+ * upgraded; and deleting, exporting and resetting work on those rows here.
  *
  * These need a build that bundles Interviewer 8, which the suite's own build
  * does not while nothing is pinned, so they run against a build of their own
@@ -260,7 +259,7 @@ test('shows a schema 8 protocol as a protocol card with its schema', async ({
   ).toBeVisible();
 
   await openActionsMenu(page);
-  // A stored schema 8 protocol is never upgraded: only an import upgrades.
+  // A schema 8 protocol is never upgraded.
   await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText([
     'Info',
     'Delete',
@@ -371,7 +370,7 @@ test('reviewing a finished schema 8 interview hosts /v8/interview/<id>?mode=revi
   );
 });
 
-test('keeping a schema 8 file on schema 8 stores it in Interviewer 8’s format', async ({
+test('importing a schema 8 file stores it in Interviewer 8’s format, without asking', async ({
   page,
 }) => {
   const file = await legacyNetcanvas();
@@ -382,19 +381,13 @@ test('keeping a schema 8 file on schema 8 stores it in Interviewer 8’s format'
     buffer: file,
   });
 
-  const dialog = page.getByRole('dialog', {
-    name: 'This protocol uses schema 8',
-  });
-  await expect(
-    dialog.getByRole('link', { name: 'more information' }),
-  ).toHaveAttribute(
-    'href',
-    'https://documentation.networkcanvas.com/en/get-started/protocol-schema-information',
-  );
-  await dialog.getByRole('button', { name: 'Keep on schema 8' }).click();
   await expect(page.getByText('Protocol imported')).toBeVisible({
     timeout: 15_000,
   });
+  // Nothing to choose: no upgrade is offered.
+  await expect(
+    page.getByRole('dialog', { name: 'This protocol uses schema 8' }),
+  ).toHaveCount(0);
   // Nowhere else to go: the protocol is here, on its own card.
   await expect(page).toHaveURL('/');
   await expect(legacyCard(page)).toBeVisible();
@@ -492,45 +485,6 @@ test('exports schema 8 interviews with the rest', async ({
   );
   expect(finished?.exportedAt).toEqual(expect.any(String));
   expect(finished).not.toHaveProperty('_enc');
-});
-
-test('upgrading a schema 8 file on import says it imports a copy and leaves the file unchanged', async ({
-  page,
-}) => {
-  const file = await legacyNetcanvas();
-  await page.goto('/');
-  await page.getByTestId('protocol-import-input').setInputFiles({
-    name: 'legacy-study.netcanvas',
-    mimeType: 'application/octet-stream',
-    buffer: file,
-  });
-
-  const COPY_LINE =
-    'Upgrading makes a copy of this protocol on schema 9 and imports that copy into this version of Interviewer. The original file is left unchanged.';
-  const choice = page.getByRole('dialog', {
-    name: 'This protocol uses schema 8',
-  });
-  await expect(choice.getByText(COPY_LINE)).toBeVisible();
-  await choice.getByRole('button', { name: 'Upgrade to schema 9' }).click();
-
-  const confirm = page.getByRole('dialog', { name: 'Upgrade to schema 9?' });
-  await expect(confirm.getByText(COPY_LINE)).toBeVisible();
-  await expect(
-    confirm.getByText(
-      'If you upgrade, the following changes will be made to your protocol:',
-    ),
-  ).toBeVisible();
-  await confirm.getByRole('button', { name: 'Upgrade to schema 9' }).click();
-  await expect(page.getByText('Protocol imported')).toBeVisible({
-    timeout: 15_000,
-  });
-
-  // One protocol, the upgraded copy: nothing at schema 8 was stored.
-  const imported = rowsOf(await dumpDatabase(page), 'protocols').filter(
-    (row) => row.name === LEGACY_PROTOCOL_NAME,
-  );
-  expect(imported).toHaveLength(1);
-  expect(imported[0]).toMatchObject({ schemaVersion: 9 });
 });
 
 test('under a PIN lock, starting asks once, in Interviewer 9, and hands Interviewer 8 the real key', async ({

@@ -200,7 +200,6 @@ export function NewSessionForm({
           {schema8
             ? intl.formatMessage(legacyProtocolMessages.notAvailableHelp, {
                 legacyVersion: LEGACY_INTERVIEWER_MAJOR,
-                currentVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
               })
             : intl.formatMessage(messages.thisProtocolCouldNotBeUpdatedTo)}
         </Paragraph>

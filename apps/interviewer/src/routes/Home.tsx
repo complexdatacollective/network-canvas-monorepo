@@ -1,12 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  createElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createElement, useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -26,10 +19,7 @@ import { TopActionBar } from '~/components/TopActionBar';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import { isSchema8Protocol, type StoredSession } from '~/lib/db/types';
-import {
-  type ImportRequest,
-  useProtocolImport,
-} from '~/lib/protocol/useProtocolImport';
+import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
 
@@ -78,23 +68,10 @@ function viewFromLocation(location: string): View {
 
 export function HomeRoute() {
   const { protocols, sessions, settings, reload } = useHomeData();
-  // The choice an older file gets imports it again with that choice, through
-  // the import that itself asks for it: the ref closes the loop.
-  const startImportRef = useRef<((request: ImportRequest) => void) | null>(
-    null,
-  );
-  const legacyActions = useLegacyProtocolActions({
-    startImport: useCallback((request: ImportRequest) => {
-      startImportRef.current?.(request);
-    }, []),
-  });
+  const legacyActions = useLegacyProtocolActions();
   const { pendingImports, startImport } = useProtocolImport({
     onInstalled: reload,
-    onMigrationRequired: legacyActions.onMigrationRequired,
   });
-  useEffect(() => {
-    startImportRef.current = (request) => void startImport(request);
-  }, [startImport]);
   // OS-launched .netcanvas files (installed-PWA file handler) import through
   // the same pipeline as the import dialog.
   useLaunchedProtocolImport(startImport);

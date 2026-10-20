@@ -6,7 +6,7 @@ import type { Interviewer8Seed } from '../helpers/legacy-database.js';
 
 // A schema 8 protocol as Interviewer 8 keeps it in the shared database, with
 // one image asset, one unfinished interview and one finished one: small enough
-// to read at a glance and valid enough to upgrade. Its `name` is part of the
+// to read at a glance and valid enough to import. Its `name` is part of the
 // document because schema 8 requires one. The rows are in Interviewer 8's own
 // format (its `saveProtocol` and `createSession`), unencrypted, as a device
 // with no lock has them.

@@ -241,7 +241,7 @@ describe('buildDeck with schema 8 protocols', () => {
     ]);
   });
 
-  it('puts an upgraded copy before the schema 8 protocol it came from', () => {
+  it('puts a schema 9 protocol before the schema 8 protocol of the same name', () => {
     const deck = buildDeck({
       ...base,
       protocols: [makeSchema8('Study'), makeProtocol('Study')],
