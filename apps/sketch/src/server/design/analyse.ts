@@ -21,6 +21,8 @@ import {
   type StudyDesign,
 } from './schema.ts';
 
+// Screens one unfiltered census may take before the design is sent back.
+const CENSUS_SCREEN_LIMIT = 45;
 export type NStage = DesignStage & { rawIndex: number };
 export type NNodeType = Omit<StudyDesign['nodeTypes'][number], 'attributes'> & {
   attributes: NAttribute[];
@@ -1350,6 +1352,22 @@ export const analyse = (
             createdRels.add(p.relationshipId);
             if (p.strengthAttributeId)
               markCollected(`rel:${p.relationshipId}`, p.strengthAttributeId);
+          }
+          // Pairs grow with the square of the people shown, so an unfiltered
+          // census of a large network is the heaviest thing a design can ask.
+          if (!s.filter.conditions.length) {
+            const n = Math.round(d.burdenEstimate?.expectedPeople ?? 0);
+            const screens =
+              s.method === 'one_at_a_time'
+                ? s.prompts.length * (n - 1)
+                : (s.prompts.length * n * (n - 1)) / 2;
+            if (screens > CENSUS_SCREEN_LIMIT)
+              add(
+                'degraded',
+                'UNFILTERED_CENSUS',
+                path,
+                `"${id}" asks about every pair of the ~${n} people expected, about ${screens} screens. Decide which people the tie question needs: filter the census to a core the research question is about (people named at a core prompt, or rated close), or, if it needs everyone, use a lighter method (one_at_a_time, or a sociogram connect prompt) or a lower maxNodes, and say why in the rationale.`,
+              );
           }
         } else if (s.kind === 'narrative') {
           if (!sociogramTypes.has(t)) {

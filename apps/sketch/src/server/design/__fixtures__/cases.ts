@@ -44,7 +44,7 @@ export const coverageDesign: StudyDesign = {
   administration: 'face_to_face',
   qualitative: true,
   burdenEstimate: {
-    expectedPeople: 12,
+    expectedPeople: 8,
     screens: 30,
     itemsPerPerson: 4,
     minutes: 20,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { estimateBurden } from '../burden';
+import { buildReviewMessage } from '../../prompts/design';
+import { estimateBurden, stageCosts } from '../burden';
 
 describe('estimateBurden', () => {
   it('counts per-person, per-pair and filtered work', () => {
@@ -72,5 +73,38 @@ describe('estimateBurden', () => {
     );
     expect(burden.answers).toBe(36);
     expect(burden.itemsPerPerson).toBe(2);
+  });
+
+  it('lists the heaviest stages for the review, marking unfiltered ones', () => {
+    const protocol = {
+      stages: [
+        { type: 'NameGeneratorQuickAdd', label: 'Names', prompts: [{}] },
+        {
+          type: 'AlterForm',
+          label: 'About them',
+          filter: {},
+          form: { fields: [{}] },
+        },
+        { type: 'DyadCensus', label: 'Who knows whom', prompts: [{}] },
+      ],
+    };
+    const costs = stageCosts(protocol, 12);
+    expect(costs[2]).toMatchObject({
+      label: 'Who knows whom',
+      filtered: false,
+      answers: 66,
+    });
+    const message = buildReviewMessage(
+      estimateBurden(protocol, 12),
+      { screens: 0, itemsPerPerson: 0 },
+      costs,
+    );
+    expect(message).toContain(
+      '- Who knows whom (DyadCensus): about 66 screens and 66 answers, asked about everyone',
+    );
+    expect(message.indexOf('Who knows whom')).toBeLessThan(
+      message.indexOf('About them'),
+    );
+    expect(message).toMatch(/1\. Who each question is about/);
   });
 });

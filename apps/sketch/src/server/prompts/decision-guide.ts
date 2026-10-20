@@ -9,7 +9,7 @@
 // the guide must never suggest something the schema cannot express
 // (asserted in part by __tests__/decision-guide.test.ts).
 
-export const DECISION_GUIDE = `# Sketch decision guide v5
+export const DECISION_GUIDE = `# Sketch decision guide v6
 
 This guide is how an experienced Network Canvas designer turns a researcher's research questions, research population and study synopsis into a StudyDesign. Its method choices are defaults with their trade-offs, not rules: weigh them against this study, and against the design as a whole. The goal is the interview that answers the research questions with the least burden on the participant (§10). Rules marked "never" or "only" are hard constraints of the software or of valid measurement; everything else is judgement.
 
@@ -78,7 +78,7 @@ Typical trade-offs: two single categorical items about everyone can share one bi
 
 A bins stage takes 1-3 prompts, each on its own attribute. Ask about each attribute once, with one stage, and reuse it everywhere (filters, narrative groups). An attribute recorded by bins, a sociogram highlight, a prompt tag or a census strength never also appears in a form: those stages skip the form's validation, so the two would disagree.
 
-Every interpreter after a generator applies to all nodes of the type unless you set a filter. Use a filter to ask only about the people it applies to, e.g. a bins stage on drink_together_freq with filter conditions [drinks_with is "yes"].
+Every interpreter after a generator applies to all nodes of the type unless you set a filter. Use a filter to ask only about the people it applies to, e.g. a bins stage on drink_together_freq with filter conditions [drinks_with is "yes"]. See §10 on deciding who each stage is about.
 
 ## 5. Relationship capture: choosing how ties are created
 
@@ -93,7 +93,7 @@ Each method has different strengths. Choose by what the analysis needs from the 
 As a default, weigh them in this order:
 
 1. Strength of alter-alter ties is a measure: with_strength, with maxNodes 10 or a filter to the people who matter.
-2. The analysis needs complete tie data (density, brokerage, components, structural holes, whether two supporters know each other) and the network is small: under ~8 people, every_pair; about 8-25 people, one_at_a_time.
+2. The analysis needs complete tie data (density, brokerage, components, structural holes, whether two supporters know each other): first decide whether it needs them among everyone or only a core (see §10, Filtering). Then, by the people the census shows after any filter: under ~8, every_pair; about 8-25, one_at_a_time.
 3. The network can exceed ~25 people, the questions are exploratory or about overall structure, or the map is already used to position people: a sociogram connect prompt.
 4. Self-administered on phones or by participants unused to touch screens: prefer a census to drawing whenever the network fits under ~25 people.
 
@@ -148,14 +148,24 @@ One shared map, 1-4 prompts, each with one task:
 
 Burden is what the participant does: screens seen, questions answered, and above all questions repeated for every person and every pair. Estimate it as you design and fill burdenEstimate honestly; when two choices are equally valid, take the lighter one.
 
-- Count per-person work: each alterForm question, bins prompt, highlight prompt and geospatial prompt is done once per person, so 5 per-person items with 15 people is 75 answers. Filter interpreters to the people they apply to.
+- Count per-person work: each alterForm question, bins prompt, highlight prompt and geospatial prompt is done once per person, so 5 per-person items with 15 people is 75 answers.
 - Count tie work: a census is per pair; a relationshipForm is per tie.
 - Merge where nothing is lost: one bins stage with 3 prompts instead of 3 stages; one map with position, connect and highlight prompts instead of several maps; a categorical item in an existing form instead of its own stage; adjacent egoForms on one topic.
 - Every stage, prompt and attribute must earn its place against a research question. When in doubt, leave it out.
 - Aim for an interview of 15-30 minutes: typically 8-14 stages, rarely more than 18.
 - At most ~3 nameGenerator stages; 1-4 prompts each.
 - At most ~4 interpreter stages per node type beyond the map; ordered bins at most 6 options, category bins at most 8.
-- Every stage, prompt and attribute must earn its place against the research question. When in doubt, leave it out.
+
+### Filtering: decide who each question is about
+
+Filtering is usually the strongest lever on burden, and the one most often missed. For every stage that repeats per person or per pair, ask which people the research question needs it for. When the answer is a subset, filter the stage to that subset instead of asking about everyone:
+
+- Ties: pairs grow with the square of the people shown, so halving the people shown cuts a census to about a quarter. Structural measures are commonly computed on a core network (the people named at a core prompt, or rated close) rather than everyone named; when the research question is about that core, census only it. 12 people is 66 pairs; the 6 closest is 15.
+- Follow-up questions that only apply to some people (how often you drink with them, where they live abroad, how they help) are asked only of the people a tag, highlight or earlier answer marks as relevant.
+- The criterion must be collected earlier, about the same node type. A prompt tag costs nothing; a closeness item, highlight or form question the design already has can serve too. Add a criterion only when it is cheaper than the work it removes.
+- Do not filter when the analysis needs everyone (whole-network composition, a measure defined over all alters), or when the subset would be too small to be worth a stage. Then lighten the stage another way (a cheaper tie method, fewer prompts, a lower maxNodes) and say why in the rationale.
+
+Filtering is a judgement about this study, not a fixed pattern: weigh what the excluded people would have added against the time saved.
 
 ## 11. Brief or unusual studies
 

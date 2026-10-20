@@ -1414,4 +1414,63 @@ describe('instrument attributes', () => {
     expect(r.stages.map((s) => s.id)).toContain('rc1');
     expect(r.stages.map((s) => s.id)).not.toContain('rc2');
   });
+
+  it.each([
+    ['unfiltered', noFilter, true],
+    [
+      'filtered to close people',
+      {
+        match: 'all',
+        conditions: [
+          {
+            about: 'nodes',
+            typeId: 'person',
+            attributeId: 'close',
+            operator: 'is',
+            value: 'yes',
+          },
+        ],
+      },
+      false,
+    ],
+  ])(
+    'sends back a large %s every_pair census only when it is unfiltered',
+    async (_label, filter, flagged) => {
+      const r = await build(
+        design({
+          nodeTypes: [person([A('close', 'yes_no', 'Close?')])],
+          relationships: [
+            { id: 'knows', name: 'Know each other', attributes: [] },
+          ],
+          stages: [
+            ng(),
+            {
+              kind: 'alterForm',
+              ...c('af'),
+              nodeTypeId: 'person',
+              filter: noFilter,
+              attributeIds: ['close'],
+            },
+            {
+              kind: 'relationshipCensus',
+              ...c('rc'),
+              nodeTypeId: 'person',
+              filter,
+              method: 'every_pair',
+              prompts: [
+                {
+                  text: 'Do they know each other?',
+                  relationshipId: 'knows',
+                  strengthAttributeId: '',
+                  noTieLabel: '',
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      expect(r.codes.includes('UNFILTERED_CENSUS')).toBe(flagged);
+      expect(r.retry).toBe(flagged);
+    },
+  );
 });

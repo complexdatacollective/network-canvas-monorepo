@@ -29,6 +29,7 @@ import {
 import {
   DEFAULT_PEOPLE,
   estimateBurden,
+  stageCosts,
   type Burden,
 } from './design/burden.ts';
 import { buildWordingRequest } from './design/feedback.ts';
@@ -735,6 +736,7 @@ export const runPipeline = async (
                 screens: 0,
                 itemsPerPerson: 0,
               },
+              stageCosts(chosen.build.protocol, people),
             ),
           },
         ],
