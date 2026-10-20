@@ -20,7 +20,7 @@ import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider
 import { parseObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 
-import { messages } from '../messages';
+import { messages } from './messages';
 
 const FIELD_SELECTOR = '[data-field-name]';
 const TEXT_SELECTOR =
@@ -123,18 +123,44 @@ const waitingAfter = (root: Element, field: Element, read?: ReadValue) =>
       isUnanswered(candidate, read),
   );
 
+/**
+ * Where the scroller's view starts for `next`: below any header placed before
+ * it that stays stuck at the top rather than scrolling away, so a question is
+ * never brought in underneath one.
+ */
+const viewTopFor = (scroller: HTMLElement, next: Element) => {
+  let top = scroller.getBoundingClientRect().top;
+  for (
+    let current: Element | null = next;
+    current && current !== scroller;
+    current = current.parentElement
+  ) {
+    for (
+      let before = current.previousElementSibling;
+      before;
+      before = before.previousElementSibling
+    ) {
+      if (getComputedStyle(before).position === 'sticky') {
+        top = Math.max(top, before.getBoundingClientRect().bottom);
+      }
+    }
+  }
+  return top;
+};
+
 /** Scrolls `next` into view, unless all of it already shows. */
 const bringIntoView = (next: Element) => {
   const scroller = scrollerOf(next);
   if (!scroller) return;
   const view = scroller.getBoundingClientRect();
   const box = next.getBoundingClientRect();
-  if (box.top >= view.top && box.bottom <= view.bottom) return;
+  const top = viewTopFor(scroller, next);
+  if (box.top >= top && box.bottom <= view.bottom) return;
 
   const reduceMotion =
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   scroller.scrollTo({
-    top: scroller.scrollTop + box.top - view.top - LEAD_IN,
+    top: scroller.scrollTop + box.top - top - LEAD_IN,
     behavior: reduceMotion ? 'auto' : 'smooth',
   });
 };
@@ -191,6 +217,13 @@ const requiredWaiting = (step: Element, read?: ReadValue) =>
 const firstRequiredWaiting = (step: Element, read?: ReadValue) =>
   requiredWaiting(step, read)[0];
 
+/** Every question that can be answered is, and the form refuses none. */
+const isComplete = (root: Element, read?: ReadValue) =>
+  !firstInvalid(root) &&
+  ![...root.querySelectorAll(FIELD_SELECTOR)].some(
+    (field) => !isClosed(field) && isUnanswered(field, read),
+  );
+
 /** The steps holding at least one question, in the order they show. */
 const stepsIn = (root: Element) =>
   [...root.querySelectorAll(STEP_SELECTOR)].filter(
@@ -210,6 +243,13 @@ type QuestionFlowProps = {
   navigation?: HTMLElement | null;
   /** The control that ends the last step (the panel's Save button). */
   finish?: ReactNode;
+  /**
+   * Called when a chosen option answers the last question still waiting in
+   * the whole form, once the answer has shown for a moment, so the form can
+   * be saved and the next one shown. Changing an answer already given never
+   * calls it.
+   */
+  onComplete?: () => void;
 };
 
 /**
@@ -231,6 +271,10 @@ type QuestionFlowProps = {
  * focus instead, and every one left unanswered shows the error saving
  * would. Back returns to the step before. An answer the form refuses on
  * saving opens the step holding it.
+ *
+ * Given `onComplete`, a chosen option that leaves no question in the form
+ * waiting for an answer moves on from the form itself in the same way: the
+ * per-person forms use it to go on to the next person or pair.
  */
 export default function QuestionFlow({
   className,
@@ -238,6 +282,7 @@ export default function QuestionFlow({
   stepped: steppedWanted = false,
   navigation,
   finish,
+  onComplete,
 }: QuestionFlowProps) {
   const intl = useAppIntl();
   const store = useContext(FormStoreContext);
@@ -261,6 +306,10 @@ export default function QuestionFlow({
   const [, animate] = useSafeAnimate();
   const saving = useRef(false);
   const advanceTimer = useRef<number | undefined>(undefined);
+  const completed = useRef(onComplete);
+  useLayoutEffect(() => {
+    completed.current = onComplete;
+  }, [onComplete]);
 
   const index = Math.min(current, Math.max(steps.length - 1, 0));
   const step = steps[index];
@@ -486,6 +535,21 @@ export default function QuestionFlow({
               return;
             }
             goTo(index + 1);
+          }, STEP_DELAY);
+          return;
+        }
+        if (
+          completed.current &&
+          !changedAnswer &&
+          (!stepped || isLast) &&
+          isComplete(root, read)
+        ) {
+          window.clearTimeout(advanceTimer.current);
+          // Checked again when the pause ends, as for a step.
+          advanceTimer.current = window.setTimeout(() => {
+            if (root.isConnected && isComplete(root, read)) {
+              completed.current?.();
+            }
           }, STEP_DELAY);
         }
       });

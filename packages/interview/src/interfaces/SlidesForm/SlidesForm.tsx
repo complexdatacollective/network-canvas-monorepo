@@ -47,6 +47,7 @@ import {
   buildProtocolFieldErrors,
   type ProtocolFieldErrorEntry,
 } from '../../forms/buildProtocolFieldErrors';
+import QuestionFlow from '../../forms/QuestionFlow';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useFormReadyToContinue from '../../forms/useFormReadyToContinue';
 import useProtocolForm from '../../forms/useProtocolForm';
@@ -118,6 +119,8 @@ type SlideContentProps = {
   submitButton: ReactNode;
   onUpdate: SlidesFormProps['updateItem'];
   onReadyChange: (ready: boolean) => void;
+  /** Moves on once a chosen option leaves nothing in the form to answer. */
+  onComplete: () => void;
   form_kind: FormKind;
 };
 
@@ -136,6 +139,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       submitButton,
       onUpdate,
       onReadyChange,
+      onComplete,
       form_kind,
       initialValues,
       unavailableVariables,
@@ -267,7 +271,9 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
               className="[&_.form-field-container]:break-inside-avoid"
             >
               {/* Wrap fields so the last field's :last-child match isn't broken by the hidden submit button. */}
-              <div>{fieldComponents}</div>
+              <QuestionFlow onComplete={onComplete}>
+                {fieldComponents}
+              </QuestionFlow>
               {submitButton}
             </FormWithoutProvider>
           </Surface>
@@ -550,6 +556,7 @@ export default function SlidesForm({
             header={renderHeader(currentItem)}
             onUpdate={updateItem}
             onReadyChange={setSlideReady}
+            onComplete={moveForward}
             submitButton={
               <button
                 type="submit"

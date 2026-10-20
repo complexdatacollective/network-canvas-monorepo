@@ -1068,5 +1068,92 @@ export const alterFormScenarios: InterfaceScenarios = {
         ).toBeVisible();
       },
     },
+
+    {
+      id: 'moves-on-once-the-form-is-answered',
+      covers: ['form', 'form.fields[].variable'],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const person = synth.addNodeType({ name: 'Person' });
+        const personName = person.addVariable({ name: 'name', type: 'text' });
+        const options = [
+          { label: 'Not close', value: 1 },
+          { label: 'Very close', value: 2 },
+        ];
+        const closeness = person.addVariable({
+          id: 'closeness',
+          name: 'Closeness',
+          type: 'ordinal',
+          component: 'RadioGroup',
+          options,
+        });
+        const trust = person.addVariable({
+          id: 'trust',
+          name: 'Trust',
+          type: 'ordinal',
+          component: 'RadioGroup',
+          options,
+        });
+        const alterForm = synth.addStage('AlterForm', {
+          subject: { entity: 'node', type: person.id },
+        });
+        alterForm.addFormField({
+          variable: closeness.id,
+          component: 'RadioGroup',
+          prompt: 'How close are you?',
+        });
+        alterForm.addFormField({
+          variable: trust.id,
+          component: 'RadioGroup',
+          prompt: 'How much do you trust them?',
+        });
+        synth.addManualNode(alterForm.id, person.id, 'p1', {
+          [personName.id]: 'Ada',
+        });
+        synth.addManualNode(alterForm.id, person.id, 'p2', {
+          [personName.id]: 'Grace',
+        });
+        synth.addInformationStage({ title: 'Next stage', items: [] });
+        return synth;
+      },
+      run: async ({ page, interview, stage, protocol }) => {
+        const slides = new SlidesFormFixture(page);
+        await interview.waitForForm();
+        await expect(slides.getCurrentItemLabel()).resolves.toBe('Ada');
+
+        // A question still waiting keeps the person on screen. Nothing marks
+        // a move that never happens, so this waits out the pause before a
+        // move (350ms) with room to spare.
+        await stage.form.selectRadio('closeness', 'Very close');
+        await page.waitForTimeout(800);
+        await expect(slides.getCurrentItemLabel()).resolves.toBe('Ada');
+
+        // Answering the last one moves on to the next person by itself.
+        await stage.form.selectRadio('trust', 'Not close');
+        await expect.poll(() => slides.getCurrentItemLabel()).toBe('Grace');
+        await expect(page).toHaveURL(/step=0/);
+
+        // The last person's answers leave the stage, as Next would.
+        await stage.form.selectRadio('trust', 'Very close');
+        await stage.form.selectRadio('closeness', 'Not close');
+        await expect(
+          page.getByRole('heading', { name: 'Next stage' }),
+        ).toBeVisible();
+
+        const state = await protocol.getNetworkState(interview.interviewId);
+        const nodes = state?.nodes ?? [];
+        const ada = nodes.find((n) => n[entityPrimaryKeyProperty] === 'p1');
+        const grace = nodes.find((n) => n[entityPrimaryKeyProperty] === 'p2');
+        expect(ada?.attributes).toMatchObject({
+          closeness: 2,
+          trust: 1,
+        });
+        expect(grace?.attributes).toMatchObject({
+          closeness: 1,
+          trust: 2,
+        });
+      },
+    },
   ],
 };

@@ -1,5 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -795,5 +801,142 @@ describe('SlidesForm going back from the first slide', () => {
     expect(screen.getByRole('textbox', { name: 'Person name' })).toHaveValue(
       '',
     );
+  });
+});
+
+describe('SlidesForm moving on from a complete form', () => {
+  const closenessForm: TitlelessForm = {
+    fields: [{ variable: 'closeness' as never, prompt: { en: 'How close?' } }],
+  };
+
+  function renderClosenessSlides(nodes: NcNode[]) {
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 'session',
+          network: {
+            ego: { [entityAttributesProperty]: {} },
+            nodes,
+            edges: [],
+          },
+        } as never,
+        protocol: {
+          id: 'protocol',
+          hash: 'hash',
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          codebook: {
+            ...codebook,
+            node: {
+              person: {
+                ...codebook.node.person,
+                variables: {
+                  closeness: {
+                    name: 'Closeness',
+                    type: 'ordinal',
+                    component: 'RadioGroup',
+                    options: [
+                      { label: { en: 'Not close' }, value: 1 },
+                      { label: { en: 'Very close' }, value: 2 },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+          stages: [
+            {
+              id: 'alter-form',
+              type: 'AlterForm',
+              label: { en: 'Alter form' },
+              subject: { entity: 'node', type: 'person' },
+              form: closenessForm,
+            },
+            {
+              id: 'next-screen',
+              type: 'Information',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
+              items: [],
+            },
+          ],
+        } as never,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+    const updateItem = vi.fn().mockResolvedValue({ success: true });
+
+    function Harness() {
+      const navigation = useInterviewNavigation(0);
+      return (
+        <StageMetadataProvider value={navigation.registerBeforeNext}>
+          <SlidesForm
+            form={closenessForm}
+            items={nodes}
+            subject={{ entity: 'node', type: 'person' }}
+            updateItem={updateItem}
+            moveForward={navigation.moveForward}
+            renderHeader={(item) => (
+              <span data-testid="slide-header">
+                {item[entityPrimaryKeyProperty]}
+              </span>
+            )}
+            form_kind="alter"
+          />
+        </StageMetadataProvider>
+      );
+    }
+
+    render(
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <Harness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
+    );
+
+    return { updateItem };
+  }
+
+  const unanswered = (id: string): NcNode => ({
+    [entityPrimaryKeyProperty]: id,
+    type: 'person',
+    [entityAttributesProperty]: {},
+  });
+
+  it('saves the answers and shows the next person once the form is answered', async () => {
+    const { updateItem } = renderClosenessSlides([
+      unanswered('person-1'),
+      unanswered('person-2'),
+    ]);
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('slide-header')).toHaveTextContent('person-2'),
+    );
+    expect(updateItem).toHaveBeenCalledWith('person-1', expect.anything());
+  });
+
+  it('stays on the person when an answer already given is changed', async () => {
+    const { updateItem } = renderClosenessSlides([
+      {
+        ...unanswered('person-1'),
+        [entityAttributesProperty]: { closeness: 1 },
+      },
+      unanswered('person-2'),
+    ]);
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(screen.getByTestId('slide-header')).toHaveTextContent('person-1');
+    expect(updateItem).not.toHaveBeenCalled();
   });
 });
