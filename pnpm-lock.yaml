@@ -1432,6 +1432,9 @@ importers:
       posthog-js:
         specifier: 'catalog:'
         version: 1.435.3(@types/react@19.3.0)(react@19.3.0)
+      protocol-validation-schema-8:
+        specifier: npm:@codaco/protocol-validation@15.0.0
+        version: '@codaco/protocol-validation@15.0.0(@codaco/app-i18n@0.3.0(@types/react@19.3.0)(esbuild@0.28.2)(react@19.3.0)(rollup@4.62.2)(vite@8.3.1(@types/node@24.19.0)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))(webpack@5.105.2(@swc/core@1.16.13(@swc/helpers@0.5.23))(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.28)(uglify-js@3.19.3)))'
       react:
         specifier: 'catalog:'
         version: 19.3.0
