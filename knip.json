@@ -114,7 +114,11 @@
       // list them as entries so they and their imports (e.g.
       // scripts/release/resolve-manifest.mjs in the root workspace) count as used. The
       // project glob deliberately keeps other .mjs invisible, as before.
-      "entry": ["release-test/scripts/*.mjs"],
+      // schema-8/src is the bundled schema 8 interview's package
+      // (`fresco-schema-8`, installed from `file:./schema-8`); the app imports
+      // it through its package exports, which resolve to the installed copy,
+      // so knip cannot see that the source files are used.
+      "entry": ["release-test/scripts/*.mjs", "schema-8/src/*.js"],
       "project": ["**/*.{js,jsx,ts,tsx}", "release-test/scripts/*.mjs"],
       "ignore": ["knip.config.ts"],
       "ignoreDependencies": [
