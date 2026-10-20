@@ -29,7 +29,11 @@ export async function validateImportedLegacyProtocol(protocolJson: {
     };
   }
 
-  const validationResult = await validateProtocol(protocolJson);
+  // Schema 8's validator is typed for a protocol it has already read, but it
+  // parses whatever it is given: this is the file as it was imported.
+  const validationResult = await validateProtocol(
+    protocolJson as Parameters<typeof validateProtocol>[0],
+  );
   if (!validationResult.success) {
     return { success: false, error: 'validation-failed', validationResult };
   }
