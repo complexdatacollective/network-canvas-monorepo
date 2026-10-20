@@ -910,9 +910,9 @@
           {
             "variable": "relationship",
             "prompt": {
-              "en-US": "What is {nodeLabel} to you?",
-              "es": "¿Qué es {nodeLabel} para usted?",
-              "hu": "Ki Önnek {nodeLabel}?"
+              "en-US": "How would you best categorize {nodeLabel}?",
+              "es": "¿Cómo clasificaría mejor a {nodeLabel}?",
+              "hu": "Ön szerint {nodeLabel} melyik kategóriába tartozik leginkább?"
             }
           },
           {
