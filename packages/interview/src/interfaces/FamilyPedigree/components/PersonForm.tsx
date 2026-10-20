@@ -39,6 +39,7 @@ import {
 
 import PassphraseEntry from '../../../components/PassphraseEntry';
 import type { LabelNode } from '../../../dynamicValues/FormDynamicValues';
+import QuestionFlow from '../../../forms/QuestionFlow';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
@@ -107,7 +108,6 @@ import {
   usePedigreeWords,
 } from '../pedigreeWords';
 import { DerivedAnswersScope, useDerivedAnswer } from './derivedAnswers';
-import QuestionFlow from './QuestionFlow';
 import {
   bothSameSexReason,
   cannotCarryReason,
