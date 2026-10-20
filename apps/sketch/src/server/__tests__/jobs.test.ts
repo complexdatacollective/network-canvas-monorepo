@@ -263,6 +263,30 @@ describe('POST /api/jobs', () => {
   });
 });
 
+describe('POST /api/jobs when the job record cannot be written', () => {
+  it('hands the reservation back', async () => {
+    const jobs = memoryStore();
+    const setJSON = jobs.setJSON;
+    jobs.setJSON = async (key, value) => {
+      if (key.startsWith('jobs/')) throw new Error('down');
+      await setJSON(key, value);
+    };
+    const startBackground = vi.fn(async () => {});
+    const { adapters } = scriptedAdapter({});
+    const response = await handleCreateJob(post(validRequest), {
+      jobs,
+      adapters,
+      startBackground,
+      now: () => NOW,
+    });
+    expect(response.status).toBe(502);
+    expect(startBackground).not.toHaveBeenCalled();
+    expect(jobs.data.get('spend/2026-10-20')).toMatchObject({
+      pendingUsd: 0,
+    });
+  });
+});
+
 describe('generate-background and GET /api/jobs/:id', () => {
   const setup = async () => {
     const jobs = memoryStore();
@@ -427,6 +451,20 @@ describe('generate-background and GET /api/jobs/:id', () => {
     await generate();
     expect(failed).toBe(true);
     expect((await readJob(jobs, 'job-9'))?.status).toBe('succeeded');
+  });
+
+  it('writes the log before the job reads as finished', async () => {
+    const { jobs, log, generate } = await setup();
+    const setJSON = jobs.setJSON;
+    let loggedFirst: boolean | undefined;
+    jobs.setJSON = async (key, value) => {
+      const status = (value as { status?: string } | null)?.status;
+      if (key === 'jobs/job-9' && status === 'succeeded')
+        loggedFirst = log.data.has('log/2026-10-20/job-9');
+      await setJSON(key, value);
+    };
+    await generate();
+    expect(loggedFirst).toBe(true);
   });
 
   it('clears the earlier pick when the preference changes', async () => {

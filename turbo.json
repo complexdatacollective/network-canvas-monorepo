@@ -231,6 +231,7 @@
         "src/**",
         "public/**",
         "netlify/**",
+        "scripts/**",
         "index.html",
         "netlify.toml",
         "vite.config.*",

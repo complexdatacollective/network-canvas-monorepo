@@ -400,6 +400,20 @@ export const compile = (
         filter: { join: 'OR', rules: [...rules, absent] },
         ...destination,
       };
+    // show_only_if gets the same guard as a further "and they exist" condition
+    if (
+      sk.mode === 'show_only_if' &&
+      absentRule &&
+      sk.whenSkipped !== 'end_interview' &&
+      (sk.match === 'all' || rules.length <= 1)
+    )
+      return {
+        action: 'SHOW',
+        filter: {
+          join: 'AND',
+          rules: [...rules, toRule({ ...absentRule, operator: 'EXISTS' })],
+        },
+      };
     return {
       action: sk.mode === 'skip_if' ? 'SKIP' : 'SHOW',
       filter: filterOf(rules, sk.match),

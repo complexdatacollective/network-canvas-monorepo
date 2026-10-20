@@ -828,6 +828,7 @@
       "skipLogic": {
         "action": "SHOW",
         "filter": {
+          "join": "AND",
           "rules": [
             {
               "id": "rule_6",
@@ -837,6 +838,14 @@
                 "attribute": "person_drinks_with",
                 "operator": "EXACTLY",
                 "value": true
+              }
+            },
+            {
+              "id": "rule_7",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "EXISTS"
               }
             }
           ]
@@ -857,7 +866,7 @@
       "filter": {
         "rules": [
           {
-            "id": "rule_7",
+            "id": "rule_8",
             "type": "node",
             "options": {
               "type": "person",
@@ -895,7 +904,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_8",
+              "id": "rule_9",
               "type": "ego",
               "options": {
                 "attribute": "ego_audit_frequency",
@@ -965,7 +974,7 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_9",
+              "id": "rule_10",
               "type": "node",
               "options": {
                 "type": "person",

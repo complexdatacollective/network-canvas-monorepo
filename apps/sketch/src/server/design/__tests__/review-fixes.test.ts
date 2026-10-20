@@ -194,6 +194,48 @@ describe('compiler review fixes', () => {
     expect(sk?.filter.rules).toHaveLength(1);
   });
 
+  it('adds the no-nodes guard to a "show only if" condition on the participant', async () => {
+    const r = await build(
+      design({
+        egoAttributes: [A('drinks', 'yes_no', 'Do you drink?')],
+        nodeTypes: [person([A('age', 'number', 'Age?')])],
+        stages: [
+          { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
+          ng(),
+          {
+            kind: 'alterForm',
+            ...c('af'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['age'],
+            skipLogic: {
+              mode: 'show_only_if',
+              whenSkipped: 'next_stage',
+              match: 'all',
+              conditions: [
+                {
+                  about: 'participant',
+                  typeId: '',
+                  attributeId: 'drinks',
+                  operator: 'is',
+                  value: 'yes',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    const sk = stageById(r.stages, 'af').skipLogic;
+    expect(sk?.action).toBe('SHOW');
+    expect(sk?.filter.join).toBe('AND');
+    expect(sk?.filter.rules.map((x) => [x.type, x.options.operator])).toEqual([
+      ['ego', 'EXACTLY'],
+      ['node', 'EXISTS'],
+    ]);
+  });
+
   it('keeps a yes_no attribute that only mentions consent as ordinary data', async () => {
     const r = await build(
       design({

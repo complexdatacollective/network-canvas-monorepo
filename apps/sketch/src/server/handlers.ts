@@ -140,7 +140,16 @@ export const handleCreateJob = async (
     reservedUsd,
     spendDate: budget.spendDate,
   };
-  await writeJob(deps.jobs, record);
+  try {
+    await writeJob(deps.jobs, record);
+  } catch {
+    try {
+      await settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd);
+    } catch {
+      // The reservation stays counted for the day: errs on the safe side.
+    }
+    return apiError('Sketch could not start the job. Please try again.', 502);
+  }
   try {
     await deps.startBackground(jobId);
   } catch {
@@ -306,30 +315,8 @@ export const handleGenerate = async (
     finishedAt: finished.toISOString(),
     durationMs: finished.getTime() - started.getTime(),
   };
-  // Two tries: a function retry would only skip the claimed job, so a lost
-  // write loses the result. GET /api/jobs/:id reports a job that never got
-  // its outcome written as failed once it is stale.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      await writeJob(deps.jobs, record);
-      break;
-    } catch {
-      // Try once more, then leave it to the stale check.
-    }
-  }
-
-  // Bookkeeping must never turn a finished job into a retried one. Spend is
-  // settled first and on its own, so a failed log write cannot lose it.
-  try {
-    await settleSpend(
-      deps.jobs,
-      record.spendDate ?? dayKey(finished),
-      record.usage?.costUsd ?? 0,
-      record.reservedUsd ?? 0,
-    );
-  } catch {
-    // The reservation stays counted for the day: errs on the safe side.
-  }
+  // The log goes first: once the job reads as finished, a comparison or a
+  // preference can patch its log entry, and a later write would undo that.
   try {
     const models = getStepModels(record.provider, record.tier);
     await writeLog(deps.log, {
@@ -350,7 +337,31 @@ export const handleGenerate = async (
       preference: null,
     });
   } catch {
-    // The job record is already final; a lost log line is acceptable.
+    // A lost log line is acceptable.
+  }
+  // Two tries: a function retry would only skip the claimed job, so a lost
+  // write loses the result. GET /api/jobs/:id reports a job that never got
+  // its outcome written as failed once it is stale.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await writeJob(deps.jobs, record);
+      break;
+    } catch {
+      // Try once more, then leave it to the stale check.
+    }
+  }
+
+  // Bookkeeping must never turn a finished job into a retried one. Spend is
+  // settled on its own, so a failed log write cannot lose it.
+  try {
+    await settleSpend(
+      deps.jobs,
+      record.spendDate ?? dayKey(finished),
+      record.usage?.costUsd ?? 0,
+      record.reservedUsd ?? 0,
+    );
+  } catch {
+    // The reservation stays counted for the day: errs on the safe side.
   }
   return json({ status: record.status });
 };
