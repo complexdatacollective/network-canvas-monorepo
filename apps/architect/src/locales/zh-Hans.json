@@ -650,6 +650,7 @@
   "architect.protocolOpenDialogs.technicalDetails": "技术详情（英文）",
   "architect.protocolOpenDialogs.upgradeAffectsInterviews": "<strong>请注意：</strong>升级可能会改变参与者的访谈体验，且升级后您还需要使用最新版本的 Interviewer 或 Fresco。",
   "architect.protocolOpenDialogs.upgradeChangesList": "如果升级，您的协议将发生以下变更：",
+  "architect.protocolOpenDialogs.upgradeMakesACopy": "升级会为您的协议创建一个升级后的副本并将其打开。您的原始协议不会被更改。",
   "architect.protocolSummary.asset.english": "英语",
   "architect.protocolSummary.assetManifest.resourceLibrary": "资源库",
   "architect.protocolSummary.contents.assets": "资源",

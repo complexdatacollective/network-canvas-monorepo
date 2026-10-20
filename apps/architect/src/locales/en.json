@@ -2603,6 +2603,10 @@
     "defaultMessage": "If you upgrade, the following changes will be made to your protocol:",
     "description": "Sentence in the dialog offering to upgrade an older protocol, introducing the box below it that lists every change the upgrade makes to the protocol."
   },
+  "architect.protocolOpenDialogs.upgradeMakesACopy": {
+    "defaultMessage": "Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.",
+    "description": "Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy at the current schema and opens it, and that the original protocol stays as it was."
+  },
   "architect.protocolSummary.asset.english": {
     "defaultMessage": "English",
     "description": "The label text in lib / ProtocolSummary / components / Asset."

@@ -70,6 +70,13 @@ const additionalMessages = defineMessages({
     description:
       'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Warns that interviews may look or behave differently after upgrading, and that the upgraded protocol only runs in the latest versions of Interviewer and Fresco (the apps that run interviews). <strong> wraps the opening words, shown in bold.',
   },
+  upgradeMakesACopy: {
+    id: 'architect.protocolOpenDialogs.upgradeMakesACopy',
+    defaultMessage:
+      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
+    description:
+      'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy at the current schema and opens it, and that the original protocol stays as it was.',
+  },
   upgradeChangesList: {
     id: 'architect.protocolOpenDialogs.upgradeChangesList',
     defaultMessage:
@@ -249,6 +256,11 @@ export const showProtocolOpenResultDialog = async ({
             {createElement(AppMessage, {
               message: additionalMessages.upgradeAffectsInterviews,
               values: { strong: renderStrong },
+            })}
+          </Paragraph>
+          <Paragraph>
+            {createElement(AppMessage, {
+              message: additionalMessages.upgradeMakesACopy,
             })}
           </Paragraph>
           {result.migrationNotes.length > 0 && (
