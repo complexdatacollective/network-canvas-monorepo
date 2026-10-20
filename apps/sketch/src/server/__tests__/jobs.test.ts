@@ -412,6 +412,23 @@ describe('generate-background and GET /api/jobs/:id', () => {
     ).toEqual({ preferred: true, at: NOW.toISOString() });
   });
 
+  it('tries the final job write again when it fails once', async () => {
+    const { jobs, generate } = await setup();
+    const setJSON = jobs.setJSON;
+    let failed = false;
+    jobs.setJSON = async (key, value) => {
+      const status = (value as { status?: string } | null)?.status;
+      if (!failed && key === 'jobs/job-9' && status === 'succeeded') {
+        failed = true;
+        throw new Error('transient');
+      }
+      await setJSON(key, value);
+    };
+    await generate();
+    expect(failed).toBe(true);
+    expect((await readJob(jobs, 'job-9'))?.status).toBe('succeeded');
+  });
+
   it('clears the earlier pick when the preference changes', async () => {
     const { jobs, log, generate } = await setup();
     await generate();

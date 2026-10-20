@@ -306,11 +306,16 @@ export const handleGenerate = async (
     finishedAt: finished.toISOString(),
     durationMs: finished.getTime() - started.getTime(),
   };
-  try {
-    await writeJob(deps.jobs, record);
-  } catch {
-    // A retry would only skip the claimed job; GET /api/jobs/:id reports a
-    // job that never got its outcome written as failed once it is stale.
+  // Two tries: a function retry would only skip the claimed job, so a lost
+  // write loses the result. GET /api/jobs/:id reports a job that never got
+  // its outcome written as failed once it is stale.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await writeJob(deps.jobs, record);
+      break;
+    } catch {
+      // Try once more, then leave it to the stale check.
+    }
   }
 
   // Bookkeeping must never turn a finished job into a retried one. Spend is
