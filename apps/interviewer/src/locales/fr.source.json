@@ -198,7 +198,7 @@
   "interviewer.notFound.returnHome": "Return home",
   "interviewer.notFound.thePageYouWereLookingForDoes": "The page you were looking for does not exist.",
   "interviewer.offline.notReady": "Not ready",
-  "interviewer.offline.notReadyChip": "Not ready offline",
+  "interviewer.offline.notReadyChip": "Not ready for offline",
   "interviewer.offline.notReadyHelp": "Interviewer has not finished downloading for use without an internet connection, so protocols cannot be used offline yet. Keep Interviewer open while you are online until it is ready.",
   "interviewer.offline.ready": "Ready",
   "interviewer.offline.readyChip": "Ready offline",

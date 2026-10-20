@@ -493,7 +493,7 @@ describe('StatusRowView: offline use', () => {
     const user = userEvent.setup();
     view('not-ready');
     const trigger = screen.getByTestId('offline-status-trigger');
-    expect(trigger).toHaveTextContent('Not ready offline');
+    expect(trigger).toHaveTextContent('Not ready for offline');
     expect(trigger).toHaveClass('text-warning');
     await user.hover(trigger);
     expect(

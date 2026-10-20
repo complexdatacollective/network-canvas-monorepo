@@ -12,7 +12,7 @@ export const offlineMessages = defineMessages({
   },
   notReadyChip: {
     id: 'interviewer.offline.notReadyChip',
-    defaultMessage: 'Not ready offline',
+    defaultMessage: 'Not ready for offline',
     description:
       'Short warning status at the bottom of the home screen: Interviewer has not finished downloading for use without an internet connection, so protocols cannot be used offline yet.',
   },
