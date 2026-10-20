@@ -194,11 +194,10 @@ pin, drop its `_headers`, `_redirects` and source maps, and move it to
 `dist/v8`. It runs after Vite has generated the service worker, so none of it
 enters this app's precache (`globIgnores` repeats that). The same decision
 sets the `__INTERVIEWER_V8__` define, so the app starts, resumes and reviews
-schema 8 interviews, and offers "Keep on schema 8" on import, exactly when
-`dist/v8` holds Interviewer 8. With an empty pin the build bundles nothing,
-leaves no `dist/v8`, and the app shows schema 8 protocols as unavailable for
-interviews (their data can still be exported, and they can be deleted, or
-their file imported again and upgraded).
+schema 8 interviews exactly when `dist/v8` holds Interviewer 8. With an empty
+pin the build bundles nothing, leaves no `dist/v8`, and the app shows schema 8
+protocols as unavailable for interviews (their data can still be exported, and
+they can be deleted).
 
 The tarball comes from `INTERVIEWER_LEGACY_V8_TARBALL` when that names a local
 copy, then from `node_modules/.cache/interviewer-legacy/<sha256>.tgz`, then
@@ -228,9 +227,9 @@ never replays a cached `dist/v8`.
 3. If that Interviewer 8 was built with a different
    `@codaco/protocol-validation` than the one the
    `protocol-validation-schema-8` alias in `package.json` names (15.0.0, the
-   version Interviewer 8.4.0 ships), move the alias to it. "Keep on schema 8"
-   validates a file with it, so a kept protocol is one the served Interviewer
-   8 would have imported.
+   version Interviewer 8.4.0 ships), move the alias to it. Importing a schema
+   8 file validates it with that alias, so an imported protocol is one the
+   served Interviewer 8 would have imported.
 4. Build once locally (`pnpm --filter @codaco/interviewer build`): it
    downloads the tarball, verifies it against the pin, and
    `assert-pwa-build.mjs` checks `dist/v8`.

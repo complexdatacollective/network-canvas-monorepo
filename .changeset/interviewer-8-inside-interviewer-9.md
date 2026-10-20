@@ -10,11 +10,9 @@ protocol runs just as it did in Interviewer 8.
   among your protocols and on the data screen like any other, with the
   protocol's schema version shown on its card. Starting, resuming and
   reviewing their interviews, exporting and deleting all work as usual.
-- Importing a protocol made for schema 8 or earlier asks what to do with it:
-  **Keep on schema 8** imports it to use as normal, and **Upgrade to schema
-  9** shows what the upgrade changes and then imports an upgraded copy,
-  leaving your file unchanged. Interviewer no longer upgrades a protocol
-  without asking, and a protocol already on the device is not upgraded.
+- A protocol made for schema 8 or earlier is imported on schema 8, to use as
+  normal. Interviewer no longer upgrades protocols: to move a protocol to
+  schema 9, upgrade it in Architect and import the new file.
 - One passcode or biometric lock protects every interview. You unlock once,
   in Interviewer, whichever schema the interview uses, and you set the lock
   up, change it and reset it in Interviewer as usual.

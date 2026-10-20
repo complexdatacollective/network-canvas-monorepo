@@ -145,8 +145,7 @@ export function buildDeck({
   }
 
   const collator = new Intl.Collator(locale, { sensitivity: 'base' });
-  // Same name: the schema 9 protocol (an upgraded copy, say) before the
-  // schema 8 one it came from.
+  // Same name: the schema 9 protocol before the schema 8 one.
   const isSchema8Entry = (entry: Exclude<DeckEntry, { kind: 'import' }>) =>
     entry.kind === 'protocol' && isSchema8Protocol(entry.protocol);
   const sorted = Array.from(bySlot.values()).toSorted(

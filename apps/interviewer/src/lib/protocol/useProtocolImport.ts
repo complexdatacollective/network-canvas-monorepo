@@ -13,7 +13,6 @@ import {
   type ImportProtocolResult,
   importBundledProtocol,
   importProtocolFromFile,
-  type OlderSchemaChoice,
   peekProtocolName,
 } from './importProtocol';
 import { openProtocolValidationDetailsDialog } from './ProtocolValidationDetailsDialog';
@@ -49,8 +48,7 @@ const messages = defineMessages({
   },
   importSuccess: {
     id: 'interviewer.protocolImport.importSuccess',
-    defaultMessage:
-      '{migrated, select, true {{name} was migrated to the current schema.} other {{name} is ready to use.}}',
+    defaultMessage: '{name} is ready to use.',
     description: 'Administration text in Interviewer useProtocolImport.',
   },
 });
@@ -59,18 +57,6 @@ export type ImportRequest = {
   source: 'file';
   file: File;
   label: string;
-  /**
-   * What the researcher chose for a file below this app's schema: upgrade it,
-   * or keep it on schema 8. Without it, such a file is never imported.
-   */
-  olderSchema?: OlderSchemaChoice;
-};
-
-/** A file below this app's schema that needs the researcher's choice. */
-export type MigrationChoiceRequest = {
-  file: File;
-  label: string;
-  schemaVersion: number;
 };
 
 // An in-flight protocol import, tracked by this hook and rendered by
@@ -127,18 +113,9 @@ type UseProtocolImportOptions = {
   // Called after a successful install is persisted, before the pending
   // card is removed, so the real protocol card is ready to take its slot.
   onInstalled: () => Promise<void> | void;
-  /**
-   * Offer the choice for a file below this app's schema: keep it on schema 8
-   * or upgrade it (`startImport` again with that `olderSchema`). Without it,
-   * the import is refused with a message.
-   */
-  onMigrationRequired?: (request: MigrationChoiceRequest) => void;
 };
 
-export function useProtocolImport({
-  onInstalled,
-  onMigrationRequired,
-}: UseProtocolImportOptions) {
+export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
   const toast = useToast();
   const dialog = useDialog();
   const analytics = useAnalytics();
@@ -195,7 +172,6 @@ export function useProtocolImport({
             request.file,
             onProgress,
             peekedName ?? undefined,
-            { olderSchema: request.olderSchema },
           );
         } else if (request.source === 'development') {
           // Dev-only, like the trigger in Home. The import sits behind
@@ -241,10 +217,10 @@ export function useProtocolImport({
           await onInstalled();
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
           // No protocol name or contents — only the anonymous content hash,
-          // import source, and whether a schema migration ran.
+          // import source, and the schema version it was kept on.
           analytics.track('protocol_installed', {
             source: request.source,
-            migrated: result.migrated,
+            schema_version: result.protocol.schemaVersion,
             protocol_hash: result.hash,
           });
           toast.add({
@@ -253,24 +229,9 @@ export function useProtocolImport({
             }),
             description: createElement(AppMessage, {
               message: messages.importSuccess,
-              values: {
-                name: result.name,
-                migrated: String(result.migrated),
-              },
+              values: { name: result.name },
             }),
             variant: 'success',
-          });
-        } else if (
-          result.error === 'migration-required' &&
-          request.source === 'file' &&
-          onMigrationRequired
-        ) {
-          // Not a failure: nothing was saved, and the researcher decides.
-          setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
-          onMigrationRequired({
-            file: request.file,
-            label: fileLabel,
-            schemaVersion: result.schemaVersion,
           });
         } else {
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
@@ -321,7 +282,7 @@ export function useProtocolImport({
         });
       }, IMPORT_START_DELAY_MS);
     },
-    [analytics, dialog, onInstalled, onMigrationRequired, toast],
+    [analytics, dialog, onInstalled, toast],
   );
 
   return { pendingImports, startImport };

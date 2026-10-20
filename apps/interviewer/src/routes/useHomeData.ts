@@ -9,7 +9,7 @@ import type {
 
 // Loads the data the Home route renders (protocols of every schema, sessions
 // and settings, all from the one database) and exposes `reload` so mutations
-// elsewhere (imports, deletes, upgrades, settings changes) can refresh them
+// elsewhere (imports, deletes, settings changes) can refresh them
 // together.
 export function useHomeData() {
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([]);

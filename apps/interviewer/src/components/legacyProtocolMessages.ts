@@ -1,26 +1,13 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 
-// Copy shared by every place that offers something for a protocol made for an
-// older schema: the deck's schema 8 cards and their menus, the new-interview
-// form, the upgrade confirmation and the import choice. One definition each,
-// so a button and the menu item that does the same thing can never be worded
+// Copy shared by every place that shows a protocol made for an older schema:
+// the deck's schema 8 cards and their menus, and the new-interview form. One
+// definition each, so two places saying the same thing can never be worded
 // differently.
 //
 // Versions are arguments rather than literals, so the same copy serves the
 // next schema bump.
 export const legacyProtocolMessages = defineMessages({
-  upgradeToSchema: {
-    id: 'interviewer.legacyProtocol.upgradeToSchema',
-    defaultMessage: 'Upgrade to schema {version}',
-    description:
-      'Button in the dialogs shown when importing an older protocol file, which imports an upgraded copy of it at the current schema version, for use in this version of Interviewer. {version} is the current schema version number (for example 9).',
-  },
-  keepOnSchema: {
-    id: 'interviewer.legacyProtocol.keepOnSchema',
-    defaultMessage: 'Keep on schema {version}',
-    description:
-      'Button in the dialog shown when importing an older protocol file. Imports the protocol without upgrading it, to be used as normal on its older schema. {version} is the older schema version number (for example 8).',
-  },
   schemaBadge: {
     id: 'interviewer.legacyProtocol.schemaBadge',
     defaultMessage: 'Schema {version}',
@@ -48,15 +35,15 @@ export const legacyProtocolMessages = defineMessages({
   notAvailableHelp: {
     id: 'interviewer.legacyProtocol.notAvailableHelp',
     defaultMessage:
-      'This version of Interviewer cannot run schema {legacyVersion} protocols, so interviews cannot be started with this protocol here. To use it, import its file again and upgrade it to schema {currentVersion}.',
+      'This version of Interviewer cannot run schema {legacyVersion} protocols, so interviews cannot be started with this protocol here.',
     description:
-      'Text at the bottom of an older protocol’s card on the home screen, and in place of its new-interview form, when this version of Interviewer does not include the previous version that runs its interviews. {legacyVersion} is the older schema version number, which is also the previous version’s number (for example 8); {currentVersion} is the current schema version number (for example 9).',
+      'Text at the bottom of an older protocol’s card on the home screen, and in place of its new-interview form, when this version of Interviewer does not include the previous version that runs its interviews. {legacyVersion} is the older schema version number, which is also the previous version’s number (for example 8).',
   },
   notReadyOffline: {
     id: 'interviewer.legacyProtocol.notReadyOffline',
     defaultMessage: 'Not ready offline',
     description:
-      'Short warning badge on an older protocol’s card on the home screen: the previous version of Interviewer, which runs this protocol, has not finished downloading for use without an internet connection, so the protocol cannot be used offline yet.',
+      'Accessible name and tooltip of a status icon inside the “Requires Internet” badge on an older protocol’s card on the home screen: the previous version of Interviewer, which runs this protocol, has not finished downloading for use without an internet connection, so the protocol cannot be used offline yet.',
   },
 });
 
