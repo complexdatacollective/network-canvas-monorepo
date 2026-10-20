@@ -153,7 +153,7 @@ const routeHandler = async (
      * schema 8 interview: a tab Fresco 4.0 or 4.1 left open across the upgrade
      * numbers none of its writes, and refusing them would lose every answer it
      * records from then on. Its writes are taken in the order they arrive, as
-     * those releases took them.
+     * those releases took them, each numbered by the write itself (below).
      *
      * `lastUpdated` above is deliberately not used for this. It is a wall-clock
      * millisecond stamped by the interview reducer for a different purpose, so
@@ -176,9 +176,8 @@ const routeHandler = async (
     return invalidRequest(validatedRequest.error);
   }
 
-  const { network, currentStep, stageMetadata } = validatedRequest.data;
-  const syncRevision =
-    validatedRequest.data.syncRevision ?? stored.syncRevision + 1;
+  const { network, currentStep, stageMetadata, syncRevision } =
+    validatedRequest.data;
 
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
 
@@ -222,13 +221,23 @@ const routeHandler = async (
     // of two concurrent writes the lower-numbered one matches nothing. The
     // same goes for freezing: an interview finished since the read above
     // matches nothing either.
+    //
+    // An unnumbered write (a tab Fresco 4.0 or 4.1 left open) has no order to be
+    // judged in, so it is not judged: it lands and moves the revision on by
+    // one, in the write itself. Numbering it from the read above instead would
+    // give two writes in flight at once the same number, and the later one —
+    // the newer answers, which those releases never retry — would be dropped.
     const { count } = await prisma.interview.updateMany({
       where: {
         id: interviewId,
-        syncRevision: {
-          lt: syncRevision,
-          gte: syncRevision - MAX_REVISION_ADVANCE,
-        },
+        ...(syncRevision === undefined
+          ? {}
+          : {
+              syncRevision: {
+                lt: syncRevision,
+                gte: syncRevision - MAX_REVISION_ADVANCE,
+              },
+            }),
         ...(freezeEnabled ? { finishTime: null } : {}),
         // Checked again in the write itself, like the revision, so an upgrade
         // committing after the read above still turns this write into a no-op.
@@ -238,7 +247,7 @@ const routeHandler = async (
         network,
         currentStep,
         stageMetadata: stageMetadata ?? undefined,
-        syncRevision,
+        syncRevision: syncRevision ?? { increment: 1 },
         // `lastUpdated` is intentionally NOT taken from the client. Prisma's
         // @updatedAt sets it server-side; trusting the client value let a
         // participant backdate it (overwriting newer data) and corrupt the
@@ -247,6 +256,7 @@ const routeHandler = async (
     });
 
     if (count > 0) {
+      // A client that sent no revision does not read one back.
       return NextResponse.json({ success: true, applied: true, syncRevision });
     }
 
