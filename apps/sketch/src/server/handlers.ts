@@ -19,6 +19,7 @@ import {
   failJobIfStale,
   isStaleJob,
   type JobRecord,
+  type JoinOutcome,
   joinComparison,
   leaveComparison,
   type JsonStore,
@@ -221,8 +222,9 @@ export const handleCreateJob = async (
           comparisonId: request.comparisonId,
         }
       : null;
+  let joinedSeed = false;
   if (seed) {
-    let joined: boolean | null = null;
+    let joined: JoinOutcome | null = null;
     try {
       joined = await joinComparison(
         seed.stores,
@@ -232,7 +234,7 @@ export const handleCreateJob = async (
     } catch {
       // handled with a refusal below
     }
-    if (!joined) {
+    if (joined !== 'joined' && joined !== 'member') {
       await failQueuedJob(
         deps.jobs,
         jobId,
@@ -247,13 +249,14 @@ export const handleCreateJob = async (
         .catch(() => {
           // The reservation stays counted for the day: errs on the safe side.
         });
-      return joined === false
+      return joined === 'taken'
         ? apiError('That design is already part of another comparison.', 409)
         : apiError(
             'Sketch could not start the comparison. Please try again.',
             503,
           );
     }
+    joinedSeed = joined === 'joined';
   }
   try {
     await deps.startBackground(jobId);
@@ -278,7 +281,8 @@ export const handleCreateJob = async (
     // Nothing ran: free the seed for another comparison and hand the
     // reservation back. If either write fails, the seed stays joined or the
     // reservation stays counted for the day, which errs on the safe side.
-    if (seed)
+    // only a seed this request added: one already in the comparison stays
+    if (seed && joinedSeed)
       await leaveComparison(
         seed.stores,
         seed.seedJobId,

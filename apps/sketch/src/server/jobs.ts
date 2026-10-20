@@ -337,21 +337,43 @@ export const recordPreference = async (
 
 // A finished job from the Ready screen joins a comparison started from it, so
 // the researcher can prefer it like the comparison's own runs. Resolves to
-// false when the seed already belongs to another comparison, where a
-// preference for it could never be recorded.
+// 'taken' when the seed already belongs to another comparison, where a
+// preference for it could never be recorded; 'member' when it already
+// belongs to this one; 'joined' when this call added it (or there is no
+// finished seed to add). The claim is a compare-and-swap, so two comparisons
+// racing for one seed cannot both win.
+export type JoinOutcome = 'joined' | 'member' | 'taken';
+
 export const joinComparison = async (
   stores: { jobs: JsonStore; log: JsonStore },
   seedJobId: string,
   comparisonId: string,
-): Promise<boolean> => {
-  const seed = await readJob(stores.jobs, seedJobId);
-  if (!seed || seed.status !== 'succeeded') return true;
-  if (seed.comparisonId && seed.comparisonId !== comparisonId) return false;
-  if (seed.comparisonId !== comparisonId) {
-    await writeJob(stores.jobs, { ...seed, comparisonId });
-  }
-  await updateLogEntry(stores.log, seed, { comparisonId });
-  return true;
+): Promise<JoinOutcome> => {
+  // set inside the update callback, which may run more than once
+  const result: { outcome: JoinOutcome } = { outcome: 'joined' };
+  const written = await stores.jobs.updateJSON(jobKey(seedJobId), (current) => {
+    if (!isJobRecord(current) || current.status !== 'succeeded') {
+      result.outcome = 'joined';
+      return undefined;
+    }
+    if (current.comparisonId === comparisonId) {
+      result.outcome = 'member';
+      return undefined;
+    }
+    if (current.comparisonId) {
+      result.outcome = 'taken';
+      return undefined;
+    }
+    result.outcome = 'joined';
+    return { ...current, comparisonId } satisfies JobRecord;
+  });
+  if (result.outcome === 'taken') return result.outcome;
+  const seed = isJobRecord(written)
+    ? written
+    : await readJob(stores.jobs, seedJobId);
+  if (seed?.status === 'succeeded')
+    await updateLogEntry(stores.log, seed, { comparisonId });
+  return result.outcome;
 };
 
 /** Undoes joinComparison when the comparison's new job never started. */

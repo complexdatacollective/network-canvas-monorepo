@@ -1645,6 +1645,16 @@ export const analyse = (
             `${pe}.relationshipId`,
           );
           if (!r || relSeen.has(r)) return false;
+          // selecting a pair that already has this tie removes it
+          if (createdRels.has(r)) {
+            add(
+              'degraded',
+              'DUPLICATE_RELATIONSHIP_CREATOR',
+              `${pe}.relationshipId`,
+              `Relationship "${r}" is already created by an earlier question, so drawing it here would overwrite its answers. Removed from the composer; give a distinct question its own relationship type.`,
+            );
+            return false;
+          }
           relSeen.add(r);
           e.relationshipId = r;
           e.attributeIds = [
@@ -1890,7 +1900,15 @@ export const analyse = (
     const formIndex = formAt.get(w.key);
     if (formIndex === undefined) continue;
     const form = d.stages[formIndex]!;
-    const formWins = formIndex < w.at || form.id === `${w.stage.id}_overlap`;
+    // An earlier form keeps the attribute unless it misses some people and
+    // the later writer reaches everyone: then the writer asks it of all.
+    const writerReachesAll =
+      w.stage.skipLogic.mode === 'always_show' &&
+      !('filter' in w.stage && w.stage.filter.conditions.length);
+    const formWins =
+      (formIndex < w.at &&
+        (formEveryone.get(w.key) === true || !writerReachesAll)) ||
+      form.id === `${w.stage.id}_overlap`;
     const attr = w.key.split('/')[1];
     if (formWins) {
       w.drop();

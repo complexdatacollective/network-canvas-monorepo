@@ -732,10 +732,10 @@ describe('generate-background and GET /api/jobs/:id', () => {
     await generate();
     const seed = (await readJob(jobs, 'job-9'))!;
     await writeJob(jobs, { ...seed, comparisonId: null });
-    const setJSON = jobs.setJSON;
-    jobs.setJSON = async (key, value) => {
+    const updateJSON = jobs.updateJSON;
+    jobs.updateJSON = async (key, next) => {
       if (key === 'jobs/job-9') throw new Error('blobs down');
-      await setJSON(key, value);
+      return updateJSON(key, next);
     };
     const res = await handleCreateJob(
       post({
@@ -782,6 +782,32 @@ describe('generate-background and GET /api/jobs/:id', () => {
     expect(res.status).toBe(409);
     expect(startBackground).not.toHaveBeenCalled();
     expect((await readJob(jobs, 'job-11'))?.status).toBe('failed');
+  });
+
+  it('keeps a seed already in the comparison when a retry fails to start', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-9');
+    const res = await handleCreateJob(
+      post({
+        ...validRequest,
+        provider: 'anthropic',
+        comparisonId: 'cmp-9',
+        seedJobId: 'job-9',
+      }),
+      {
+        jobs,
+        log,
+        adapters: fake.adapters,
+        startBackground: async () => {
+          throw new Error('502');
+        },
+        now: () => NOW,
+        newId: () => 'job-12',
+      },
+    );
+    expect(res.status).toBe(202);
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-9');
   });
 
   it('leaves the seed free when the comparison job is refused or fails to start', async () => {

@@ -1732,6 +1732,101 @@ describe('instrument attributes', () => {
     expect(map.prompts).toHaveLength(1);
   });
 
+  it('removes a composer tie type an earlier question already creates', async () => {
+    const r = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'relationshipCensus',
+            ...c('rc'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            method: 'one_at_a_time',
+            prompts: [
+              {
+                text: 'Do they know each other?',
+                relationshipId: 'knows',
+                strengthAttributeId: '',
+                noTieLabel: '',
+              },
+            ],
+          },
+          {
+            kind: 'networkComposer',
+            ...c('canvas'),
+            nodeTypeId: 'person',
+            attributeIds: [],
+            groupAttributeId: '',
+            relationships: [{ relationshipId: 'knows', attributeIds: [] }],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).toContain('DUPLICATE_RELATIONSHIP_CREATOR');
+    const canvas = stageById(r.stages, 'canvas') as Stage & {
+      edges?: unknown[];
+    };
+    expect(canvas.edges ?? []).toHaveLength(0);
+  });
+
+  it('lets a later bins stage for everyone record what a filtered form asked', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('close', 'yes_no', 'Close?'),
+            A('role', 'single_choice', 'Role?', {
+              options: ['friend', 'family'],
+            }),
+          ]),
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'alterForm',
+            ...c('af0'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['close'],
+          },
+          {
+            kind: 'alterForm',
+            ...c('af1'),
+            nodeTypeId: 'person',
+            filter: {
+              match: 'all',
+              conditions: [
+                {
+                  about: 'nodes',
+                  typeId: 'person',
+                  attributeId: 'close',
+                  operator: 'is',
+                  value: 'yes',
+                },
+              ],
+            },
+            attributeIds: ['role'],
+          },
+          {
+            kind: 'bins',
+            ...c('b'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            prompts: [
+              { text: 'Role?', attributeId: 'role', allowOther: false },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).not.toContain('WRITTEN_BY_FORM');
+    expect(r.stages.map((s) => s.id)).toContain('b');
+  });
+
   it('asks a form question once when two forms reach the same people', async () => {
     const af = (id: string, attributeIds: string[]) => ({
       kind: 'alterForm',
