@@ -132,6 +132,18 @@ export const discardHandoff = async (key: string): Promise<void> => {
 };
 
 /**
+ * Delete the database and every record in it, for either major: a device
+ * reset removes every protocol stored here, and a staged record is a whole
+ * `.netcanvas` file. A key still held by some tab then finds nothing.
+ * Deleting a database that does not exist creates nothing.
+ */
+export const deleteHandoffDatabase = async (): Promise<void> => {
+  handoffDb?.close();
+  handoffDb = null;
+  await Dexie.delete(HANDOFF_DB_NAME);
+};
+
+/**
  * Remove records older than `HANDOFF_TTL_MS`, for either major. Run at startup:
  * a record is only ever left behind when the navigation that should have
  * consumed it never happened.

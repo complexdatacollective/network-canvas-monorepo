@@ -7,6 +7,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { getProtocolByHash, saveProtocol } from '../db/api';
+import { isCurrentUpgrade } from '../db/db';
 import { readLegacyProtocolSnapshot } from '../db/legacyLibrary';
 import { getLegacyUpgrade } from '../db/protocols';
 
@@ -19,7 +20,10 @@ import { getLegacyUpgrade } from '../db/protocols';
 //   protocol stay with it, in Interviewer 8.
 // - The copy is recorded in `legacyUpgrades`, in the same transaction that
 //   saves it, so the deck can say so and a second upgrade opens the existing
-//   copy rather than making another.
+//   copy rather than making another, while the original is as it was then.
+//   Once Interviewer 8 has re-imported it, upgrading again makes the copy
+//   afresh (in place when the upgraded hash is unchanged, as a re-import here
+//   would).
 
 export type LegacyUpgradeFailureReason =
   /** The device is locked, or Interviewer 8's database could not be read. */
@@ -44,15 +48,21 @@ const failed = (
 ): LegacyUpgradeResult => ({ status: 'failed', reason, ...extra });
 
 /**
- * The hash of the copy an earlier upgrade of `legacyHash` made, when that copy
- * is still in this app's library; otherwise null (never upgraded, or the copy
- * has since been deleted, so upgrading makes a new one).
+ * The hash of the copy an earlier upgrade of `legacy` made, when that copy is
+ * still in this app's library and was made from the original as it is now;
+ * otherwise null (never upgraded, the copy has since been deleted, or
+ * Interviewer 8 has re-imported the original, so upgrading makes it afresh).
  */
-export async function findUpgradedCopy(
-  legacyHash: string,
-): Promise<string | null> {
-  const previous = await getLegacyUpgrade(legacyHash);
-  if (previous && (await getProtocolByHash(previous.upgradedHash))) {
+export async function findUpgradedCopy(legacy: {
+  hash: string;
+  importedAt: string;
+}): Promise<string | null> {
+  const previous = await getLegacyUpgrade(legacy.hash);
+  if (
+    previous &&
+    isCurrentUpgrade(previous, legacy) &&
+    (await getProtocolByHash(previous.upgradedHash))
+  ) {
     return previous.upgradedHash;
   }
   return null;
@@ -62,9 +72,6 @@ export async function upgradeLegacyProtocol(
   legacyHash: string,
   now: () => Date = () => new Date(),
 ): Promise<LegacyUpgradeResult> {
-  const existing = await findUpgradedCopy(legacyHash);
-  if (existing) return { status: 'existing', hash: existing };
-
   let snapshot: Awaited<ReturnType<typeof readLegacyProtocolSnapshot>>;
   try {
     snapshot = await readLegacyProtocolSnapshot(legacyHash);
@@ -73,6 +80,9 @@ export async function upgradeLegacyProtocol(
   }
   if (!snapshot) return { status: 'not-found' };
   const { protocol: legacy, assets } = snapshot;
+
+  const existing = await findUpgradedCopy(legacy);
+  if (existing) return { status: 'existing', hash: existing };
 
   let migrated: unknown;
   try {
@@ -111,6 +121,7 @@ export async function upgradeLegacyProtocol(
         legacyUpgrade: {
           legacyHash,
           upgradedHash: hash,
+          legacyImportedAt: legacy.importedAt,
           upgradedAt: now().toISOString(),
         },
       },

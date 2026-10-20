@@ -6,6 +6,7 @@ import {
   listProtocols,
   listSessions,
 } from '~/lib/db/api';
+import { isCurrentUpgrade, type LegacyUpgradeRecord } from '~/lib/db/db';
 import {
   type LegacyProtocolSummary,
   type LegacySessionSummary,
@@ -42,8 +43,9 @@ export function useHomeData() {
     // Interviewer 8's library is read on its own: its reads never reject, and
     // a failure of this app's database must not hide it, nor it this one.
     const legacy = Promise.all([listLegacyProtocols(), listLegacySessions()]);
+    let upgrades: LegacyUpgradeRecord[] = [];
     try {
-      const [p, s, st, upgrades] = await Promise.all([
+      const [p, s, st, u] = await Promise.all([
         listProtocols(),
         listSessions(),
         getSettings(),
@@ -52,15 +54,24 @@ export function useHomeData() {
       setProtocols(p);
       setSessions(s);
       setSettings(st);
-      setUpgradedLegacyHashes(
-        new Set(upgrades.map((record) => record.legacyHash)),
-      );
+      upgrades = u;
     } catch {
       // Load failures leave state empty; the DB facade logs the underlying error.
     }
     const [lp, ls] = await legacy;
     setLegacyProtocols(lp);
     setLegacySessions(ls);
+    // Upgraded only while the copy was made from the original as it is now:
+    // one Interviewer 8 has since re-imported can be upgraded again.
+    setUpgradedLegacyHashes(
+      new Set(
+        lp
+          .filter((protocol) =>
+            upgrades.some((record) => isCurrentUpgrade(record, protocol)),
+          )
+          .map((protocol) => protocol.hash),
+      ),
+    );
   }, []);
 
   // The lists live in IndexedDB, so the only way to know them is to ask and

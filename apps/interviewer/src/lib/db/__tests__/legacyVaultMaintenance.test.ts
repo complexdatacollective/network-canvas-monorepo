@@ -1,7 +1,7 @@
 // fake-indexeddb must be imported before Dexie opens a database.
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   deleteLegacyInterviewerDatabase,
@@ -368,6 +368,58 @@ describe('encryptLegacyDatabases', () => {
       expect(
         ((await legacy.table('sessions').get('session-a')) as Row)._enc,
       ).toBeUndefined();
+    } finally {
+      legacy.close();
+    }
+  });
+
+  it('also encrypts a plaintext row Interviewer 8 commits after the sweep listed its table', async () => {
+    await seedLegacyInterviewerDatabase({
+      sessions: [fixture.plaintext.sessionWithMetadata],
+    });
+    const key = await importFixtureDek();
+    setSessionDek(key);
+    // Interviewer 8 has no commit-time guard: a write it prepared before the
+    // lock was set up lands while the sweep encrypts the first row it listed.
+    const writer = new Dexie(LEGACY_DB_NAME);
+    await writer.open();
+    const subtle = crypto.subtle;
+    const encrypt = subtle.encrypt.bind(subtle);
+    let landed = false;
+    const spy = vi
+      .spyOn(subtle, 'encrypt')
+      .mockImplementation(
+        async (...args: Parameters<SubtleCrypto['encrypt']>) => {
+          if (!landed) {
+            landed = true;
+            await writer
+              .table('sessions')
+              .put(fixture.plaintext.sessionWithoutMetadata);
+          }
+          return encrypt(...args);
+        },
+      );
+    try {
+      expect(await encryptLegacyDatabases()).toEqual({ total: 2, failed: 0 });
+    } finally {
+      spy.mockRestore();
+      writer.close();
+    }
+    expect(landed).toBe(true);
+
+    const legacy = new Dexie(LEGACY_DB_NAME);
+    await legacy.open();
+    try {
+      const late = (await legacy.table('sessions').get('session-b')) as Row;
+      expect(shapeOf(late)).toEqual(
+        shapeOf(fixture.encrypted.sessionWithoutMetadata),
+      );
+      await expectDecryptsTo(
+        'sessions',
+        late,
+        fixture.plaintext.sessionWithoutMetadata,
+        key,
+      );
     } finally {
       legacy.close();
     }

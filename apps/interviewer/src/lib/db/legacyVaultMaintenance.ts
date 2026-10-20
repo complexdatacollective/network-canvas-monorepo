@@ -139,6 +139,18 @@ const SWEEPS: TableSweep[] = [
 /** Same meaning as `reencryptAllRecords`' result: `failed > 0` means retry. */
 export type LegacyEncryptionResult = { total: number; failed: number };
 
+/**
+ * How many times the tables are swept before rows still being written
+ * plaintext are left for the retry. Interviewer 8 has no secured marker to
+ * check at commit (that guard is this app's), so a write it prepared before
+ * the lock was set up can still land during a sweep, as a row the sweep had
+ * not listed or over one it had just encrypted. Each pass lists the rows again
+ * and the sweep ends with a pass that finds none plaintext. Such a write was
+ * already in flight when the lock appeared, and Interviewer 8 refuses to write
+ * plaintext once the vault exists, so a second pass normally finds nothing.
+ */
+const MAX_PASSES = 3;
+
 /** A write connection to `dbName`, or null when there is no such database. */
 const openForMaintenance = async (dbName: string): Promise<Dexie | null> => {
   const exists = await databaseExists(dbName);
@@ -217,17 +229,38 @@ export async function encryptLegacyDatabases(): Promise<LegacyEncryptionResult> 
     const connection = await openForMaintenance(dbName);
     if (!connection) continue;
     try {
-      for (const sweep of SWEEPS) {
-        const result = await sweepTable(connection, sweep, dek);
-        total += result.total;
-        failed += result.failed;
-      }
+      const result = await sweepUntilSettled(connection, dek);
+      total += result.total;
+      failed += result.failed;
     } finally {
       connection.close();
     }
   }
   return { total, failed };
 }
+
+const sweepUntilSettled = async (
+  connection: Dexie,
+  dek: CryptoKey,
+): Promise<LegacyEncryptionResult> => {
+  let total = 0;
+  for (let pass = 1; ; pass += 1) {
+    let found = 0;
+    let failed = 0;
+    for (const sweep of SWEEPS) {
+      const result = await sweepTable(connection, sweep, dek);
+      found += result.total;
+      failed += result.failed;
+    }
+    // A row that keeps failing is counted once, not once per pass.
+    total += found - failed;
+    if (found === 0) return { total, failed: 0 };
+    if (failed === found || pass === MAX_PASSES) {
+      // Still plaintext rows after the last pass: the pending flag retries.
+      return { total: total + failed, failed: Math.max(failed, 1) };
+    }
+  }
+};
 
 /**
  * Delete Interviewer 8's database. Run with every revoke of the shared lock.

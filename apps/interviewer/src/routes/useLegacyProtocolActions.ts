@@ -163,9 +163,7 @@ export function useLegacyProtocolActions({
         // Upgraded before, and the copy is still here: it is shown, and as no
         // copy is made there is nothing to confirm. (If it cannot be told, the
         // upgrade below finds the copy itself, after the confirmation.)
-        const existing = await findUpgradedCopy(protocol.hash).catch(
-          () => null,
-        );
+        const existing = await findUpgradedCopy(protocol).catch(() => null);
         let result: LegacyUpgradeResult;
         if (existing) {
           result = { status: 'existing', hash: existing };

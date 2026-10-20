@@ -132,6 +132,7 @@ describe('upgradeLegacyProtocol', () => {
       {
         legacyHash: LEGACY_HASH,
         upgradedHash: result.hash,
+        legacyImportedAt: legacyProtocol.importedAt,
         upgradedAt: '2026-10-01T12:00:00.000Z',
       },
     ]);
@@ -155,15 +156,49 @@ describe('upgradeLegacyProtocol', () => {
     expect((await getProtocolByHash(first.hash))?.importedAt).toBe(savedAt);
   });
 
+  it('makes the copy afresh once Interviewer 8 has re-imported the original with new assets', async () => {
+    await seed();
+    const first = await upgradeLegacyProtocol(LEGACY_HASH);
+    if (first.status !== 'upgraded') throw new Error('expected an upgrade');
+
+    // Interviewer 8 re-imports a same-hash file in place: the hash leaves out
+    // the assets, so only `importedAt` says the row changed.
+    const reimported = {
+      ...legacyProtocol,
+      importedAt: '2026-04-01T00:00:00.000Z',
+    };
+    await deleteLegacyInterviewerDatabase();
+    await seedLegacyInterviewerDatabase({
+      protocols: [reimported],
+      assets: [{ ...legacyAsset, data: 'replaced-secret' }],
+    });
+    expect(await findUpgradedCopy(reimported)).toBeNull();
+
+    const second = await upgradeLegacyProtocol(LEGACY_HASH, () => UPGRADED_AT);
+
+    expect(second).toMatchObject({ status: 'upgraded', hash: first.hash });
+    expect(await db.protocols.count()).toBe(1);
+    expect(
+      (await getProtocolAssets(first.hash)).map(({ data }) => data),
+    ).toEqual(['replaced-secret']);
+    expect(await db.legacyUpgrades.toArray()).toEqual([
+      expect.objectContaining({
+        legacyHash: LEGACY_HASH,
+        legacyImportedAt: reimported.importedAt,
+      }),
+    ]);
+    expect(await findUpgradedCopy(reimported)).toBe(first.hash);
+  });
+
   it('upgrades again once the copy has been deleted, which also clears the record', async () => {
     await seed();
     const first = await upgradeLegacyProtocol(LEGACY_HASH);
     if (first.status !== 'upgraded') throw new Error('expected an upgrade');
 
-    expect(await findUpgradedCopy(LEGACY_HASH)).toBe(first.hash);
+    expect(await findUpgradedCopy(legacyProtocol)).toBe(first.hash);
     await deleteProtocol(first.hash);
     expect(await db.legacyUpgrades.count()).toBe(0);
-    expect(await findUpgradedCopy(LEGACY_HASH)).toBeNull();
+    expect(await findUpgradedCopy(legacyProtocol)).toBeNull();
 
     expect(await upgradeLegacyProtocol(LEGACY_HASH)).toMatchObject({
       status: 'upgraded',

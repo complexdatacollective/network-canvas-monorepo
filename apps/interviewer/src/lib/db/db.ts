@@ -19,9 +19,24 @@ export type LegacyUpgradeRecord = {
   legacyHash: string;
   /** The hash of the schema 9 copy in this database. */
   upgradedHash: string;
+  /**
+   * The schema 8 protocol's `importedAt` when the copy was made. Interviewer 8
+   * re-imports a file with the same hash in place (new name, description or
+   * assets keep the hash) and gives the row a new `importedAt`, so a copy made
+   * before that no longer matches its original.
+   */
+  legacyImportedAt: string;
   /** ISO timestamp, like every other timestamp this app stores. */
   upgradedAt: string;
 };
+
+/** Whether `record` was made from the schema 8 protocol as it is now. */
+export const isCurrentUpgrade = (
+  record: LegacyUpgradeRecord,
+  legacy: { hash: string; importedAt: string },
+): boolean =>
+  record.legacyHash === legacy.hash &&
+  record.legacyImportedAt === legacy.importedAt;
 
 /**
  * The stores of `DB_NAME`. Its own database, separate from Interviewer 8's

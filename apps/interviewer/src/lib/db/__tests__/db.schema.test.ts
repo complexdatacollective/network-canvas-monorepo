@@ -84,6 +84,7 @@ describe('the interviewer-v9 database', () => {
     const record = {
       legacyHash: 'schema-8-hash',
       upgradedHash: 'schema-9-hash',
+      legacyImportedAt: '2026-10-18T00:00:00.000Z',
       upgradedAt: '2026-10-19T00:00:00.000Z',
     };
     await db.legacyUpgrades.put(record);

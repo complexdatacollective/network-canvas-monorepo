@@ -231,7 +231,7 @@ describe('useLegacyProtocolActions: schema 8 cards', () => {
         protocolHash: 'earlier-hash',
       }),
     );
-    expect(mocks.findUpgradedCopy).toHaveBeenCalledWith('legacy-hash');
+    expect(mocks.findUpgradedCopy).toHaveBeenCalledWith(legacyProtocol);
     expect(mocks.confirmProtocolUpgrade).not.toHaveBeenCalled();
     expect(mocks.upgradeLegacyProtocol).not.toHaveBeenCalled();
     expect(mocks.addToast).toHaveBeenCalledWith(

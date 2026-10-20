@@ -6,6 +6,7 @@ import {
   encryptLegacyDatabases,
 } from '../db/legacyVaultMaintenance';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
+import { deleteHandoffDatabase } from '../handoff/handoffStore';
 import { requestPersistentStorage } from '../storage';
 import * as vault from '../vault/vault';
 import { isPrfSupported } from '../vault/webauthn';
@@ -222,9 +223,11 @@ export async function revoke(): Promise<void> {
   // locked" state instead of an orphaned DB without a vault. Every reset, mode
   // switch and recovery-by-resetting comes through here, and the lock is
   // shared with Interviewer 8, so its database goes too: its rows are
-  // encrypted under the key about to be discarded.
+  // encrypted under the key about to be discarded. Protocol files staged
+  // for a hand-off between the two are stored protocols too.
   await db.delete({ disableAutoOpen: false });
   await deleteLegacyDatabases();
+  await deleteHandoffDatabase();
   await vault.revoke(); // clears the localStorage vault record + best-effort passkey delete
   setSessionDek(null);
 }
