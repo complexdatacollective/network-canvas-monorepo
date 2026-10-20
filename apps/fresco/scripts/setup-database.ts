@@ -10,12 +10,6 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '~/lib/db/generated/client';
 
 import { migrateInterviewCategoricals } from './migrate-interview-categoricals';
-import {
-  InterviewMigrationFailedError,
-  migrateProtocolsToCompatibleVersion,
-  type ProtocolUpgradeFailure,
-} from './migrate-protocols';
-import { reportProtocolUpgradeFailures } from './report-upgrade-failures';
 
 // CLI scripts must use the PG adapter directly because the Neon serverless
 // adapter doesn't work in CLI/Node.js context (only in serverless runtimes)
@@ -116,50 +110,33 @@ async function handleMigrations(): Promise<void> {
   }
 }
 
-// Generous ceiling for the one-time data migrations, which run at deploy time
+// Generous ceiling for the one-time data migration, which runs at deploy time
 // with no concurrent app traffic. If a deployment exceeds it, raise this rather
-// than splitting the migrations across transactions.
+// than splitting the migration across transactions.
 const DATA_MIGRATION_TIMEOUT_MS = 1000 * 60 * 30;
 
-// Stored protocols the data migration had to leave behind. Reported once the
-// transaction is over, whether it committed or not: the upgrade failed either
-// way, and a report must never hold the transaction open.
-const upgradeFailures: ProtocolUpgradeFailure[] = [];
+// Stored protocols and their interviews are never upgraded here. Each one stays
+// at the schema version it was imported at and runs in the interview bundled
+// for that version (`lib/schema-8/version.ts`); a researcher upgrades a
+// protocol by choosing to when they import it.
 let setupFailed = false;
 
 try {
   await handleMigrations();
 
-  // Run the in-place data migrations together in a single transaction so a
-  // failure rolls them all back. A partially-migrated database is dangerous:
-  // when the deploy aborts, the previous Fresco version keeps serving and would
-  // read half-converted protocols/networks written for the new interview
-  // module. All-or-nothing keeps the old version working on the old data: an
-  // interview that cannot be migrated throws InterviewMigrationFailedError,
-  // which rolls everything back and stops startup.
+  // One transaction, so a failure rolls the whole data migration back rather
+  // than leaving the previous Fresco version, which keeps serving when the
+  // deploy aborts, reading half-converted networks.
   await prisma.$transaction(
     async (tx) => {
-      upgradeFailures.length = 0;
-      await migrateProtocolsToCompatibleVersion(tx, (failure) =>
-        upgradeFailures.push(failure),
-      );
       await migrateInterviewCategoricals(tx);
     },
     { timeout: DATA_MIGRATION_TIMEOUT_MS },
   );
 } catch (error) {
-  if (error instanceof InterviewMigrationFailedError) {
-    // The report is the whole message; a stack trace would only bury it.
-    console.error(`Error during database setup: ${error.message}`);
-  } else {
-    console.error('Error during database setup:', error);
-  }
-  // Exits below, once the report has been sent and the client disconnected.
+  console.error('Error during database setup:', error);
   setupFailed = true;
 } finally {
-  // Before disconnecting: the report reads the analytics setting through
-  // this client.
-  await reportProtocolUpgradeFailures(upgradeFailures, prisma);
   await prisma.$disconnect();
 }
 

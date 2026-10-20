@@ -1,3 +1,7 @@
+import {
+  NcNetworkSchema as LegacyNcNetworkSchema,
+  StageMetadataSchema as LegacyStageMetadataSchema,
+} from 'fresco-schema-8/shared-consts';
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -9,6 +13,8 @@ import {
 import { prisma } from '~/lib/db';
 import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { parseLegacyStoredInterviewSession } from '~/lib/schema-8/storedInterviewSession';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
 
 /**
@@ -88,21 +94,50 @@ const routeHandler = async (
       { status: 409 },
     );
 
-  if (
-    typeof rawPayload !== 'object' ||
-    rawPayload === null ||
-    !('protocolHash' in rawPayload) ||
-    typeof rawPayload.protocolHash !== 'string'
+  const stored = await prisma.interview.findUnique({
+    where: { id: interviewId },
+    select: {
+      finishTime: true,
+      syncRevision: true,
+      network: true,
+      stageMetadata: true,
+      protocol: { select: { schemaVersion: true, hash: true } },
+    },
+  });
+
+  if (!stored) {
+    return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
+  }
+
+  // A schema 8 interview runs in the bundled schema 8 interview, which writes
+  // the network and stage metadata in schema 8's shapes, and so does a tab
+  // Fresco 4 left open across the upgrade. Neither names a protocol hash, and
+  // neither needs to: a schema 8 protocol is kept exactly as it was imported,
+  // so there is no upgrade for a tab to have missed.
+  const legacy = isLegacySchemaVersion(stored.protocol.schemaVersion);
+
+  let protocolHash: string;
+  if (legacy) {
+    protocolHash = stored.protocol.hash;
+  } else if (
+    typeof rawPayload === 'object' &&
+    rawPayload !== null &&
+    'protocolHash' in rawPayload &&
+    typeof rawPayload.protocolHash === 'string'
   ) {
+    protocolHash = rawPayload.protocolHash;
+  } else {
     return staleTab();
   }
-  const { protocolHash } = rawPayload;
 
   const Schema = z.object({
     id: z.string(),
-    network: NcNetworkSchema,
+    network: legacy ? LegacyNcNetworkSchema : NcNetworkSchema,
     currentStep: z.number(),
-    stageMetadata: StageMetadataSchema.optional(),
+    stageMetadata: (legacy
+      ? LegacyStageMetadataSchema
+      : StageMetadataSchema
+    ).optional(),
     lastUpdated: z.string(),
     /**
      * Position of this write in the browser's own sequence of syncs — see
@@ -114,7 +149,11 @@ const routeHandler = async (
      *
      * Required, so there is no shape of request that reaches the row without an
      * order to be judged in. A browser still running a bundle from before an
-     * upgrade is refused above, by its protocol hash.
+     * upgrade is refused above, by its protocol hash. The one exception is a
+     * schema 8 interview: a tab Fresco 4.0 or 4.1 left open across the upgrade
+     * numbers none of its writes, and refusing them would lose every answer it
+     * records from then on. Its writes are taken in the order they arrive, as
+     * those releases took them, each numbered by the write itself (below).
      *
      * `lastUpdated` above is deliberately not used for this. It is a wall-clock
      * millisecond stamped by the interview reducer for a different purpose, so
@@ -124,7 +163,9 @@ const routeHandler = async (
      * is only as reliable as every future reducer case remembering to bump it.
      * This counter is owned by the code that issues the writes it orders.
      */
-    syncRevision: z.number().int().nonnegative(),
+    syncRevision: legacy
+      ? z.number().int().nonnegative().optional()
+      : z.number().int().nonnegative(),
   });
 
   const validatedRequest = Schema.safeParse(rawPayload);
@@ -139,21 +180,6 @@ const routeHandler = async (
     validatedRequest.data;
 
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
-
-  const stored = await prisma.interview.findUnique({
-    where: { id: interviewId },
-    select: {
-      finishTime: true,
-      syncRevision: true,
-      network: true,
-      stageMetadata: true,
-      protocol: { select: { hash: true } },
-    },
-  });
-
-  if (!stored) {
-    return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
-  }
 
   if (stored.protocol.hash !== protocolHash) {
     return staleTab();
@@ -170,7 +196,9 @@ const routeHandler = async (
   // and writing it would destroy them. Leave the row as it is, for an operator
   // to repair. Between this read and the update below only another sync writes
   // the network or stage metadata, and every sync is validated first.
-  const readable = parseStoredInterviewSession(stored);
+  const readable = legacy
+    ? parseLegacyStoredInterviewSession(stored)
+    : parseStoredInterviewSession(stored);
   if (!readable.success) {
     after(async () => {
       await captureException(readable.error, {
@@ -193,13 +221,23 @@ const routeHandler = async (
     // of two concurrent writes the lower-numbered one matches nothing. The
     // same goes for freezing: an interview finished since the read above
     // matches nothing either.
+    //
+    // An unnumbered write (a tab Fresco 4.0 or 4.1 left open) has no order to be
+    // judged in, so it is not judged: it lands and moves the revision on by
+    // one, in the write itself. Numbering it from the read above instead would
+    // give two writes in flight at once the same number, and the later one —
+    // the newer answers, which those releases never retry — would be dropped.
     const { count } = await prisma.interview.updateMany({
       where: {
         id: interviewId,
-        syncRevision: {
-          lt: syncRevision,
-          gte: syncRevision - MAX_REVISION_ADVANCE,
-        },
+        ...(syncRevision === undefined
+          ? {}
+          : {
+              syncRevision: {
+                lt: syncRevision,
+                gte: syncRevision - MAX_REVISION_ADVANCE,
+              },
+            }),
         ...(freezeEnabled ? { finishTime: null } : {}),
         // Checked again in the write itself, like the revision, so an upgrade
         // committing after the read above still turns this write into a no-op.
@@ -209,7 +247,7 @@ const routeHandler = async (
         network,
         currentStep,
         stageMetadata: stageMetadata ?? undefined,
-        syncRevision,
+        syncRevision: syncRevision ?? { increment: 1 },
         // `lastUpdated` is intentionally NOT taken from the client. Prisma's
         // @updatedAt sets it server-side; trusting the client value let a
         // participant backdate it (overwriting newer data) and corrupt the
@@ -218,6 +256,7 @@ const routeHandler = async (
     });
 
     if (count > 0) {
+      // A client that sent no revision does not read one back.
       return NextResponse.json({ success: true, applied: true, syncRevision });
     }
 

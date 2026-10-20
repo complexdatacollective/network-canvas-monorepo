@@ -1,11 +1,12 @@
 // Moving through a Fresco interview, for the lanes that conduct one.
 //
-// Shared by interview-lane.mjs (the schema 8 protocol, migrated on import),
+// Shared by interview-lane.mjs (the schema 8 protocol, upgraded on import),
 // schema9-interview-lane.mjs (the schema 9 protocol) and migration-lane.mjs
-// (interviews resumed after the upgrade). Everything here is driving; the
-// lanes decide what counts as a pass.
+// (a schema 8 interview resumed after the upgrade). Everything here is
+// driving; the lanes decide what counts as a pass.
 import { execFileSync } from 'node:child_process';
 
+import { answerImportChoice } from './fresco-driver.mjs';
 import { postgresContainer } from './lanes.mjs';
 
 /** A psql runner against one lane's Postgres container: one value per line. */
@@ -176,10 +177,15 @@ export async function startInterview(page, baseUrl, protocolId, identifier) {
  * under, waited for in the database rather than by the toast — the toast is
  * also how a FAILED import reports itself. Fresco names a protocol after its
  * file, which is what `fileStem` matches.
+ *
+ * `schemaChoice` answers the dialog a build that asks how to import an older
+ * protocol opens, whenever it is open while the import is waited for; a build
+ * that never asks (Fresco 4) imports it as it is. For a caller that needs the
+ * question asked, `upload` is where to insist on it.
  */
 export async function importProtocol(
   page,
-  { baseUrl, psql, path, fileStem, upload },
+  { baseUrl, psql, path, fileStem, upload, schemaChoice = null },
 ) {
   await page.goto(`${baseUrl}/dashboard/protocols`, {
     waitUntil: 'networkidle',
@@ -188,6 +194,7 @@ export async function importProtocol(
   const deadline = Date.now() + 120_000;
   let id = '';
   while (Date.now() < deadline && !id) {
+    if (schemaChoice) await answerImportChoice(page, schemaChoice);
     await page.waitForTimeout(2000);
     id = psql(
       `select id from "Protocol" where name like ${sqlText(`${fileStem}%`)} order by "importedAt" desc limit 1;`,

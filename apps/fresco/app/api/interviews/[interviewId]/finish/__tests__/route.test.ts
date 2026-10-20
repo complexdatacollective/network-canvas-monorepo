@@ -276,6 +276,50 @@ describe('interview finish route', () => {
     });
   });
 
+  describe('a schema 8 interview', () => {
+    const installSchema8Interview = () =>
+      findUniqueMock.mockImplementation((args: FindUniqueArgs) =>
+        Promise.resolve(
+          args.include
+            ? FINISHED_ROW
+            : {
+                finishTime: null,
+                protocolId: 'protocol-1',
+                // Schema 8 has no finish stages to choose between.
+                protocol: { ...STORED_PROTOCOL, stages: [], schemaVersion: 8 },
+              },
+        ),
+      );
+
+    it('finishes with no stage or outcome, as its interview has none', async () => {
+      installSchema8Interview();
+
+      const response = await postWithoutBody();
+
+      expect(response.status).toBe(200);
+      expect(updateManyMock).toHaveBeenCalledWith({
+        where: { id: 'interview-1' },
+        data: {
+          finishTime: expect.any(Date),
+          finishStageId: null,
+          finishOutcome: null,
+        },
+      });
+    });
+
+    it('refuses a finish that names a stage', async () => {
+      installSchema8Interview();
+
+      const response = await post({
+        stageId: 'finish-completed',
+        outcome: 'completed',
+      });
+
+      expect(response.status).toBe(400);
+      expect(updateManyMock).not.toHaveBeenCalled();
+    });
+  });
+
   it('refuses a bodyless finish when the protocol does not have exactly one finish stage', async () => {
     installInterview();
 

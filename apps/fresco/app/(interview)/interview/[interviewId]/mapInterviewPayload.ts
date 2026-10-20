@@ -145,13 +145,11 @@ export function mapInterviewPayload(
   const { protocol, ...session } = source;
 
   // The stored version is written from the validated document at import
-  // (actions/protocols.ts) and rewritten by the deploy-time migration
-  // (scripts/migrate-protocols.ts), so every row that reaches an interview
-  // should already match the runtime. Stamping a literal instead would
-  // mislabel any row that does not, handing the interview a document it cannot
-  // read while claiming it can; refuse instead. The deploy migration leaves a
-  // protocol it cannot migrate in place, so such a row is unreadable to this
-  // runtime and is reported the way a damaged one is, not thrown.
+  // (actions/protocols.ts) and never rewritten. A schema 8 row is sent to the
+  // bundled schema 8 interview before it gets here (`interviewPath`), so any
+  // other version is one this runtime cannot read. Stamping a literal instead
+  // would hand the interview a document it cannot read while claiming it can;
+  // refuse instead, reporting it the way a damaged row is, not thrown.
   const { schemaVersion } = protocol;
   if (schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
     return {

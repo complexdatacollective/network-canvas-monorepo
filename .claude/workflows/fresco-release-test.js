@@ -1,7 +1,7 @@
 export const meta = {
   name: 'fresco-release-test',
   description:
-    'Release-test the pending Fresco build locally in Docker: upgrade path from the released image (seed, migrate, export diff) plus fresh-deployment setup verification',
+    'Release-test the pending Fresco build locally in Docker: upgrade path from the released image (seed, upgrade, export diff) plus fresh-deployment setup verification',
   whenToUse:
     'Before approving a Fresco release (merging the Version Packages PR). Requires Docker. Release gates must consume the `releasable` field, which is true only for a full-coverage "go" run with expectedVersion pinned and matched. Run from the Version Packages branch (changeset-release/main) and expectedVersion is inferred from the Fresco version that branch releases. Optional args: { expectedVersion, keepStack, skipBuild, releasedImage, allowDirty }.',
   phases: [
@@ -13,7 +13,7 @@ export const meta = {
     {
       title: 'Upgrade lane',
       detail:
-        'seed released instance (with a schema 8 interview left unfinished), swap to pending image, read what the schema 9 migration did, capture exports, finish that interview, verify data',
+        'seed released instance (with a schema 8 interview left unfinished), swap to pending image, check the schema 8 data was left as it was, capture exports, finish that interview in the schema 8 interview, import a schema 8 protocol both ways, verify data',
     },
     {
       title: 'Fresh lane',
@@ -385,11 +385,6 @@ const SCRIPT_LANE_SCHEMA = {
       },
     },
     error: { type: 'string' },
-    notApplicable: {
-      type: 'string',
-      description:
-        'Only when the script printed one: its "notApplicable" field, verbatim',
-    },
   },
   required: ['ok', 'checks'],
 };
@@ -768,21 +763,22 @@ const expectedScriptChecks = {
     'migration-seed-read',
   ],
   migration: [
-    'migration-protocols-stored-as-schema-9',
-    'migration-introduction-panels-are-information-stages',
+    'migration-protocols-kept-at-schema-8',
     'migration-pedigree-family-kept',
     'migration-interviews-resume-where-they-were',
     'migration-unfinished-interview-kept-in-place',
   ],
   migrationResume: [
+    'migration-interview-redirected-to-schema-8',
     'migration-interview-resumes-where-it-was',
-    'migration-introduction-panel-shown-as-information-stage',
-    'migration-interview-keeps-its-answers',
     'migration-pedigree-shown-after-upgrade',
+    'migration-interview-keeps-its-answers',
     'migration-interview-finished-after-upgrade',
     'migration-pedigree-answers-stored',
     'migration-export-after-upgrade',
     'migration-export-carries-the-pedigree',
+    'migration-import-keeps-schema-8',
+    'migration-import-upgrades-to-schema-9',
   ],
   health: [
     'health-answers-anonymously',
@@ -1195,7 +1191,7 @@ const scriptPrompt = (
   what,
 ) => `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once (Bash timeout 1800000 — it drives a browser through ${what}):
 node ${SCRIPTS}/${script} ${args}
-It prints ONE line of JSON on stdout and nothing else. Return its "ok", its "notApplicable" when it has one, and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as printed, none added, none dropped, none reworded. On a non-zero exit it still prints that line; return it. Do not interpret what the checks mean, do not investigate a failure, do not re-run the script, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
+It prints ONE line of JSON on stdout and nothing else. Return its "ok" and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as printed, none added, none dropped, none reworded. On a non-zero exit it still prints that line; return it. Do not interpret what the checks mean, do not investigate a failure, do not re-run the script, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
 
 // A script run INSIDE a checklist agent's sequence (the migration lane's seed
 // phase has to land between two of the seed agent's items) is bound the same
@@ -1205,7 +1201,7 @@ const scriptResultPrompt = (
   file,
   what,
 ) => `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once: cat ${file}
-It is the JSON result a script left after checking ${what}. Return its "ok", its "notApplicable" when it has one, and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as written, none added, none dropped, none reworded. If the file does not exist or is not JSON, return ok:false with what cat printed in "error" and an empty checks array. Do not interpret the checks, do not run anything else, and change nothing on disk. The workflow decides what they mean.`;
+It is the JSON result a script left after checking ${what}. Return its "ok" and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as written, none added, none dropped, none reworded. If the file does not exist or is not JSON, return ok:false with what cat printed in "error" and an empty checks array. Do not interpret the checks, do not run anything else, and change nothing on disk. The workflow decides what they mean.`;
 
 // ---------------------------------------------------------------------------
 
@@ -1233,7 +1229,7 @@ ${BROWSER_HOWTO}
 Do, in order, recording one check per numbered item:
 1. Setup wizard: create the administrator account (username ${ADMIN_USER}, password ${ADMIN_PASSWORD}; choose the Password authentication method).
 2. Storage step: the storage provider is already set to "S3 / S3-Compatible" and every field is filled in and locked, because the deployment configures storage through its environment, as the documented production bundled-Garage setup does. Confirm the form shows Endpoint URL http://garage:3900, Public URL http://localhost:9310, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, and a Secret Access Key that is masked rather than shown; then press Continue.
-3. Protocol step: stage the seed protocol with: bash ${HARNESS}/stage-fixture.sh --lane upgrade --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas — then inject it per AGENT_NOTES (fetch the printed URL → File → set input.files → dispatch change). Confirm the import succeeded via the presigned PUTs in the network log AND the protocol appearing (dashboard count or psql per AGENT_NOTES) — the dropzone UI may not visibly react.
+3. Protocol step: stage the seed protocol with: bash ${HARNESS}/stage-fixture.sh --lane upgrade --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas — then inject it per AGENT_NOTES (fetch the printed URL → File → set input.files → dispatch change). It is a schema 7 protocol: if the released build asks "How do you want to import this protocol?", choose "Keep schema 8" (per AGENT_NOTES), so the deployment holds schema 8 data as one that never upgraded does. Confirm the import succeeded via the presigned PUTs in the network log AND the protocol appearing (dashboard count or psql per AGENT_NOTES) — the dropzone UI may not visibly react.
 4. Finish the wizard to the dashboard.
 5. In settings, generate ${SYNTHETIC_COUNT} synthetic interviews via the Synthetic Interview Data section (native select + number input per AGENT_NOTES); wait for the completion toast.
 6. Seed the schema 8 interview the upgrade has to carry across. Run exactly this, once (Bash timeout 900000 — it drives its own browser): node ${SCRIPTS}/migration-lane.mjs --lane upgrade --phase seed
@@ -1301,7 +1297,7 @@ Set area="seed" and pass=true only if every item passed or was legitimately skip
     `Upgrade the running release-test stack to the pending image, exactly as a deployment would:
 Run: bash ${HARNESS}/up.sh --lane upgrade --image ${pendingImage} --keep-data
 (Bash timeout 480000.) Then run: docker logs --tail 200 fresco-release-test-upgrade-fresco-1
-Inspect the logs for the migration/startup sequence (prisma migrate deploy, protocol/data migrations, server start). Return ok:true with the "imageId" field of up.sh's last stdout line verbatim, or ok:false with the decisive failing log lines in "error". Any migration error, stack trace, or crash-loop is a failure even if the container eventually reports healthy.`,
+Inspect the logs for the migration/startup sequence (prisma migrate deploy, the categorical-answer clean-up, server start). Return ok:true with the "imageId" field of up.sh's last stdout line verbatim, or ok:false with the decisive failing log lines in "error". Any migration error, stack trace, or crash-loop is a failure even if the container eventually reports healthy.`,
     {
       label: 'upgrade-swap',
       phase: 'Upgrade lane',
@@ -1314,13 +1310,13 @@ Inspect the logs for the migration/startup sequence (prisma migrate deploy, prot
   if (!swap?.ok) return lane;
 
   // Straight after the swap and before anything opens an interview, so it
-  // reads exactly what the startup migration left. Read-only, so the capture
-  // that follows sees the same database.
+  // reads exactly what the pending image's startup left. Read-only, so the
+  // capture that follows sees the same database.
   lane.migration = await agent(
     scriptPrompt(
       'migration-lane.mjs',
-      '--lane upgrade --phase migrated',
-      'nothing — it reads the database the upgrade migrated and compares it with the reading taken before the swap',
+      '--lane upgrade --phase upgraded',
+      'nothing — it reads the database after the upgrade and compares it with the reading taken before the swap',
     ),
     {
       label: 'migration-lane',
@@ -1345,7 +1341,7 @@ Record one check per numbered item:
 2. Snapshot every per-interview payload exactly as the baseline did: for each api-interview-<id>.json in ${BASELINE_DIR}, curl /api/v1/interview/<id> to ${UPGRADED_DIR}/api-interview-<id>.json (these carry the stored network; the collection endpoint is metadata only). Record how many succeeded in networkSnapshots; this item fails unless every baseline snapshot has an upgraded counterpart.
 3. In the browser, export ALL interviews from the interviews page with the SAME options as the baseline export (every format toggle on), using the download-hook capture in AGENT_NOTES (run enable-captures.sh --lane upgrade --name upgraded-ui-export.zip for a fresh putUrl/getUrl pair; install the hook BEFORE triggering the export); PUT the blob to that putUrl and curl its getUrl to ${UPGRADED_DIR}/ui-export.zip. THIS ITEM MAY BE SKIPPED, and ONLY when ${BASELINE_DIR}/ui-export.zip does not exist — check first; without a baseline archive there is nothing to compare against. Set uiExportCaptured:true only if ${UPGRADED_DIR}/ui-export.zip actually exists on the host afterwards.
 4. Verify the export COMMITTED its status — the zip blob is assembled before the post-export commit action runs, so a captured blob alone does not prove it: wait for the export success toast (note that Fresco shows the SUCCESS toast even when some interviews failed to export, naming how many — if it names any, this item FAILS: the archive is incomplete), then run docker exec fresco-release-test-upgrade-postgres-1 psql -U postgres -t -c 'SELECT max("exportTime") FROM "Interview";' and confirm the value is from the last few minutes (this export, not the baseline one). A captured blob with a stale or null exportTime is a FAILURE. THIS ITEM MAY BE SKIPPED, and ONLY when item 3 was skipped — there was no export whose status could be committed; the per-interview API snapshots carry the comparison instead.
-5. Run: node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${DIFF_WORK} --out ${DIFF_SUMMARY} --migration ${MIGRATION_DIR} — this item passes only if the command exits 0 and ${DIFF_SUMMARY} exists.
+5. Run: node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${DIFF_WORK} --out ${DIFF_SUMMARY} — this item passes only if the command exits 0 and ${DIFF_SUMMARY} exists.
 ${CHECK_DISCIPLINE}
 Set area="capture" and pass=true only if every item passed or was legitimately skipped, and report the changedFiles / onlyInBaseline / onlyInCurrent counts from the summary. Do NOT paste diff content.`,
     {
@@ -1356,14 +1352,16 @@ Set area="capture" and pass=true only if every item passed or was legitimately s
     },
   );
 
-  // After the capture, which has to see the interview as the migration left
+  // After the capture, which has to see the interview as the upgrade left
   // it, and before integrity, which counts it: the participant comes back to
-  // the interview they left on the released build and finishes it.
+  // the interview they left on the released build and finishes it in the
+  // schema 8 interview, and the researcher imports a schema 8 protocol both
+  // ways.
   lane.migrationResume = await agent(
     scriptPrompt(
       'migration-lane.mjs',
       '--lane upgrade --phase resume',
-      'the interview left unfinished before the upgrade, resumed, finished and exported',
+      'the interview left unfinished before the upgrade, resumed in the schema 8 interview, finished and exported, then a schema 8 protocol imported kept and upgraded',
     ),
     {
       label: 'migration-resume-lane',
@@ -1374,10 +1372,10 @@ Set area="capture" and pass=true only if every item passed or was legitimately s
   );
 
   const integrity = await agent(
-    `Verify data survived a Fresco upgrade at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Pre-upgrade the instance had ${asData('counts', counts)} (protocols are "Sample Protocol" and the migration lane's "fresco-release-test-migration"; interviews are ${SYNTHETIC_COUNT} synthetic ones of the first and one of the second, for participant "migration-resume", which the migration lane has since finished on this build).
+    `Verify data survived a Fresco upgrade at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Pre-upgrade the instance had ${asData('counts', counts)} (protocols are "Sample Protocol" and the migration lane's "fresco-release-test-migration"; interviews are ${SYNTHETIC_COUNT} synthetic ones of the first and one of the second, for participant "migration-resume", which the migration lane has since finished on this build). Since the upgrade the migration lane has also imported two protocols, "release-test-kept-schema-8" and "release-test-upgraded-schema-9", with no interviews: the protocol count is now exactly 2 more than before the upgrade, and every other count is unchanged.
 ${BROWSER_HOWTO}
 Record one check per numbered item:
-1. Dashboard summary counts match the pre-upgrade counts.
+1. Dashboard summary counts match the pre-upgrade counts, with the 2 protocols imported since.
 2. The protocols page lists the seeded protocol.
 3. The interviews page lists the synthetic interviews.
 4. The participants page loads.
@@ -1480,7 +1478,7 @@ Record one check per numbered item, in order:
 2. Account step rejects a weak password (try "password") with visible validation feedback (choose the Password authentication method).
 3. Account creation succeeds with username ${ADMIN_USER}, password ${ADMIN_PASSWORD}.
 4. Storage step: the storage provider is already set to "S3 / S3-Compatible" and every field is filled in and locked, because the deployment configures storage through its environment, as the documented production bundled-Garage setup does. Confirm the form shows Endpoint URL http://garage:3900, Public URL http://localhost:9311, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, and a Secret Access Key that is masked rather than shown; then press Continue. This item fails if any field is editable or the secret is readable.
-5. Protocol step: stage the protocol with bash ${HARNESS}/stage-fixture.sh --lane fresh --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas and inject per AGENT_NOTES; the presigned Garage PUTs (network log) and the imported protocol prove the storage pipeline.
+5. Protocol step: stage the protocol with bash ${HARNESS}/stage-fixture.sh --lane fresh --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas and inject per AGENT_NOTES. It is a schema 7 protocol, so Fresco asks "How do you want to import this protocol?" — choose "Upgrade to schema 9" (per AGENT_NOTES); this item fails if nothing asks. The presigned Garage PUTs (network log) and the imported protocol prove the storage pipeline.
 6. Completing the wizard lands on the dashboard.
 7. Sign out; sign-in rejects a wrong password; sign-in succeeds with the right one.
 8. The setup wizard is no longer reachable once configured (navigating to /setup does not offer account creation again).
@@ -1666,7 +1664,7 @@ try {
   if (upgradeLane.capture?.pass) {
     upgradeLane.diffAudit = await agent(
       `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Re-run the deterministic export diff over the capture directories as they stand right now:
-node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${AUDIT_DIFF_WORK} --out ${AUDIT_DIFF_SUMMARY} --migration ${MIGRATION_DIR}
+node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${AUDIT_DIFF_WORK} --out ${AUDIT_DIFF_SUMMARY}
 Then read ${AUDIT_DIFF_SUMMARY} and report, from that file and nothing else:
 - files: EVERY entry of its "onlyInBaseline" and "onlyInCurrent" arrays (plain strings) plus every "file" of its "changed" array (objects), verbatim and complete.
 - identical: every name in its "identical" array, verbatim.
@@ -1679,8 +1677,8 @@ Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT
       },
     );
     upgradeLane.diffVerdict = await agent(
-      `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. When the released build predates protocol languages, the upgrade migrates every stored protocol to schema 9, and the same script reconciled, file by file, exactly the differences that follow from that — a protocol's schemaVersion moving to 9; codebook text held as { en: <message> }; labels the migration derives from entity type and attribute names; empty optional text it leaves out; and the GraphML nc:protocolUID and nc:codebookHash of a protocol it migrated; and an interview's currentStep and stageMetadata moving exactly as the stages they point at moved, when the migration put an Information stage in front of them (read from the database readings the migration lane took either side of the swap) — and lists them per file under "reconciled". Those are anticipated by design and are not findings; a file whose only differences were reconciled is listed as identical. Whatever remains under "changed" was not predicted by the upgrade, including in those same fields (a label that is not its type's or attribute's name), and is judged as usual. A freshly re-run diff of exactly those files is at ${AUDIT_DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${AUDIT_DIFF_WORK}/diffs/ / reconciled). Use that one — it describes the files as they stand now; ignore any other summary in that directory.
-Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships.${consumedChangesetsNote} One of the seeded interviews is not synthetic: the migration lane's interview of its own schema 8 protocol, which has a Family Pedigree stage. The upgrade converts that stage to the redesigned Family Pedigree, whose codebook differs (relationship options reordered, relabelled and joined by twin options, a variable for relatives not recorded, a reworded intersex label), so that interview's payload and the edge list and GraphML keys exported for it change accordingly. The interview carries a family built on the schema 8 pedigree, and the upgrade also rewrites that family's stored record the way the redesigned stage writes one: its parent relationships lose the current-partner flag schema 8 set on them and record the gestational carrier flag as true or false, and the pedigree's schema 8 stage record leaves stageMetadata. The migration lane's own checks hold each of those to exactly that (migration-pedigree-family-kept); the changeset that ships the redesign explains those differences, and nothing else. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
+      `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. The upgrade does NOT upgrade stored protocols or interviews: every seeded protocol is schema 8 (the released build stored them so) and stays schema 8, its interviews run in the schema 8 interview Fresco bundles, and exports and the interview API read them with schema 8's own code — so every exported CSV and GraphML file is expected to be byte-identical after normalization, and nothing in them is reconciled. The one thing the same script reconciled is in the interview API snapshots: the API now names each interview's finishStageId and finishOutcome, which are null for every schema 8 interview (schema 8 has no finish stages), and a key the baseline lacks that appears as null is listed per file under "reconciled". That is anticipated by design and is not a finding; a file whose only differences were reconciled is listed as identical. Whatever remains under "changed" was not predicted by the upgrade — a schemaVersion that moved, a codebook or stage that changed, a currentStep or stageMetadata that moved, a finish outcome that appeared, a column added to or dropped from an export — and is judged as usual. A freshly re-run diff of exactly those files is at ${AUDIT_DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${AUDIT_DIFF_WORK}/diffs/ / reconciled). Use that one — it describes the files as they stand now; ignore any other summary in that directory.
+Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships.${consumedChangesetsNote} One of the seeded interviews is not synthetic: the migration lane's interview of its own schema 8 protocol, which has a Family Pedigree stage and a family built on it. It too is left as it was: the migration lane's own checks hold its stored family and stage record to being unchanged (migration-pedigree-family-kept), so a difference in its payload, edge list or GraphML is as unanticipated as any other unless a pending changeset says the schema 8 export of it changes. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
 - anticipated: explained by a specific pending changeset. Put that changeset's file name without the .md extension in "changeset". An entry naming a changeset that does not exist is treated as unanticipated.
 - unanticipated: everything else. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them.
 Every file the summary lists must appear exactly once across the two lists, and you must not invent entries for files it does not list — the workflow compares your entries against the summary on disk and fails the run if any file is unclassified. An empty diff (all identical, nothing one-sided) is pass:true with both lists empty. pass=false if anything is unanticipated.`,
@@ -1723,7 +1721,7 @@ Set ok:true if you completed the audit (missing artifacts are a normal result, n
 
   phase('Report');
   report = await agent(
-    `You are the release-gate critic for a Fresco release test. The pending build was tested two ways: an upgrade from the released image (seed → migrate → verify → export diff) and a fresh-deployment setup.
+    `You are the release-gate critic for a Fresco release test. The pending build was tested two ways: an upgrade from the released image (seed → upgrade → verify → export diff) and a fresh-deployment setup.
 ${asData('Full structured results', { build, released, upgradeLane, freshLane })}
 ${consumedChangesetsNote}
 Also read EVERY pending changeset (.changeset/*.md in your working directory, excluding README) and return one changesetCoverage entry for each, named by its file name without .md — omit none, because the workflow compares your list against the files on disk:
@@ -1924,11 +1922,11 @@ const scriptLanes = {
   },
   migration: {
     result: upgradeLane?.migration,
-    what: 'what the upgrade did to the stored protocols and interviews',
+    what: 'whether the upgrade left the stored schema 8 protocols and interviews as they were',
   },
   migrationResume: {
     result: upgradeLane?.migrationResume,
-    what: 'an interview begun before the upgrade, finished after it',
+    what: 'an interview begun before the upgrade, finished after it in the schema 8 interview, and a schema 8 protocol imported both ways',
   },
   health: {
     result: freshLane?.health,
@@ -1948,41 +1946,7 @@ const scriptLanes = {
   },
 };
 
-// The migration lane carries schema 8 data across the upgrade, which only a
-// release that introduces schema 9 does. Once the released image itself runs
-// schema 9 it migrates the fixture on import, and every phase says so in
-// `notApplicable` instead of reporting checks. That is accepted only as one
-// consistent reading: all three phases agree, completed, and checked nothing.
-// Anything else is unaccounted, and the phases are then held to their checks.
-const MIGRATION_AREAS = ['migrationSeed', 'migration', 'migrationResume'];
-const notApplicableReasons = MIGRATION_AREAS.map((area) => {
-  const reason = scriptLanes[area].result?.notApplicable;
-  return typeof reason === 'string' && reason.trim() ? reason.trim() : null;
-});
-let migrationNotApplicable = false;
-if (notApplicableReasons.some(Boolean)) {
-  const consistent = MIGRATION_AREAS.every((area, index) => {
-    const result = scriptLanes[area].result;
-    return (
-      notApplicableReasons[index] !== null &&
-      result?.ok === true &&
-      Array.isArray(result.checks) &&
-      result.checks.length === 0
-    );
-  });
-  if (consistent) {
-    migrationNotApplicable = true;
-    warnings.push(
-      `migration lane: the schema 8 upgrade was not exercised — ${notApplicableReasons[0]}`,
-    );
-  } else
-    unaccounted.push(
-      `migration lane: ${MIGRATION_AREAS.filter((_, index) => notApplicableReasons[index]).join(', ')} reported the lane not applicable, but not every phase agreed with no checks run, so the reading cannot be trusted`,
-    );
-}
-
 for (const [area, { result, what }] of Object.entries(scriptLanes)) {
-  if (migrationNotApplicable && MIGRATION_AREAS.includes(area)) continue;
   const expected = expectedScriptChecks[area];
   if (!result) {
     unaccounted.push(

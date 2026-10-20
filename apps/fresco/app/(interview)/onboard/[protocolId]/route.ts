@@ -4,6 +4,7 @@ import { createInterview } from '~/actions/interviews';
 import { env } from '~/env';
 import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
+import { interviewPath } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
 
 const handler = async (
@@ -105,7 +106,7 @@ const handler = async (
   // Explicitly disable caching to prevent Netlify from caching this redirect
   // (Netlify adds max-age=86400 by default, causing all users to get the same interview)
   // See: https://github.com/opennextjs/opennextjs-netlify/issues/3460
-  url.pathname = `/interview/${result.createdInterviewId}`;
+  url.pathname = interviewPath(result.createdInterviewId, result.schemaVersion);
   return NextResponse.redirect(url, {
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
