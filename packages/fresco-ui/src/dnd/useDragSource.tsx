@@ -63,7 +63,14 @@ type DragSourceOptions = {
 type PendingDrag = {
   startPosition: { x: number; y: number };
   element: HTMLElement;
+};
+
+/** The pointer sequence a drag source is following, press to release. */
+type PointerGesture = {
   pointerId: number;
+  element: HTMLElement;
+  /** Removes every listener the gesture attached. */
+  detach: () => void;
 };
 
 type UseDragSourceReturn = {
@@ -94,7 +101,18 @@ export function useDragSource(
     disabled = false,
     dragThreshold = DRAG_DISTANCE,
   } = options;
-  const previewComponent = preview;
+  // Read when they are needed — a drag starting, an announcement — rather
+  // than captured by the handlers: hosts rebuild metadata and previews on
+  // every render, and handlers depending on them would make `dragProps` new
+  // on every render too.
+  const latestRef = useRef({
+    type,
+    metadata,
+    announcedName,
+    preview,
+    dragThreshold,
+  });
+  latestRef.current = { type, metadata, announcedName, preview, dragThreshold };
 
   const { announce } = useAccessibilityAnnouncements();
   const intl = useAppIntl();
@@ -106,9 +124,7 @@ export function useDragSource(
   const dragId = useId();
   const elementRef = useRef<HTMLElement | null>(null);
   const pendingDragRef = useRef<PendingDrag | null>(null);
-  // The pointer that began the gesture. On a tablet a second finger landing,
-  // moving or lifting elsewhere must not steer or end a drag it did not start.
-  const activePointerRef = useRef<number | null>(null);
+  const gestureRef = useRef<PointerGesture | null>(null);
   const {
     touchAction,
     isArmed,
@@ -127,7 +143,8 @@ export function useDragSource(
 
   const createPreview = useCallback(
     (element: HTMLElement | null): ReactNode => {
-      if (previewComponent !== undefined) return previewComponent;
+      const latestPreview = latestRef.current.preview;
+      if (latestPreview !== undefined) return latestPreview;
       if (!element) return null;
 
       // Capture the element's exact computed size
@@ -161,7 +178,7 @@ export function useDragSource(
         dangerouslySetInnerHTML: { __html: clonedElement.outerHTML },
       });
     },
-    [previewComponent],
+    [],
   );
 
   // Unified drag initialization logic
@@ -178,8 +195,8 @@ export function useDragSource(
       const sourceZone = findSourceZone(element);
       const dragItem = {
         id: dragId,
-        type,
-        metadata,
+        type: latestRef.current.type,
+        metadata: latestRef.current.metadata,
         _sourceZone: sourceZone,
       };
       const dragPosition = {
@@ -196,7 +213,7 @@ export function useDragSource(
         element.style.visibility = 'hidden';
       }
     },
-    [dragId, type, metadata, createPreview, startDrag],
+    [dragId, createPreview, startDrag],
   );
 
   // Unified drag end logic
@@ -238,68 +255,71 @@ export function useDragSource(
       if (dragMode === 'keyboard' && !isSuccessfulDrop) {
         announce(
           intl.formatMessage(messages.returnedToPosition, {
-            name: announcedName ?? intl.formatMessage(messages.unnamedItem),
+            name:
+              latestRef.current.announcedName ??
+              intl.formatMessage(messages.unnamedItem),
           }),
         );
       }
     },
-    [endDrag, dragMode, announce, announcedName, storeApi, intl],
+    [endDrag, dragMode, announce, storeApi, intl],
   );
 
-  const handlePointerMove = useCallback(
-    (e: PointerEvent) => {
-      if (e.pointerId !== activePointerRef.current) return;
-      e.preventDefault();
+  // The gesture's listeners are attached once, at pointerdown, and outlive
+  // renders; they call through these refs so they always run the latest
+  // handlers (and see the latest drag mode).
+  const moveRef = useRef<(event: PointerEvent) => void>(() => {});
+  moveRef.current = (e: PointerEvent) => {
+    e.preventDefault();
 
-      // Check if we have a pending drag that hasn't met the threshold yet
-      if (pendingDragRef.current && dragMode === 'none') {
-        const { startPosition, element } = pendingDragRef.current;
-        const dx = e.clientX - startPosition.x;
-        const dy = e.clientY - startPosition.y;
+    // Check if we have a pending drag that hasn't met the threshold yet
+    const pending = pendingDragRef.current;
+    if (pending && dragMode === 'none') {
+      const dx = e.clientX - pending.startPosition.x;
+      const dy = e.clientY - pending.startPosition.y;
 
-        // Movement the scroll region owns stays pending: the browser cancels
-        // the sequence once it starts scrolling.
-        if (Math.hypot(dx, dy) >= dragThreshold && claimsMove(dx, dy)) {
-          // Threshold met - initialize the drag
-          initializeDrag(element, startPosition, 'pointer');
-          pendingDragRef.current = null;
-        }
-        return;
-      }
-
-      // Normal drag position update
-      updatePosition(e.clientX, e.clientY);
-    },
-    [updatePosition, dragMode, dragThreshold, initializeDrag, claimsMove],
-  );
-
-  const handlePointerUp = useCallback(
-    (e: PointerEvent) => {
-      if (e.pointerId !== activePointerRef.current) return;
-      activePointerRef.current = null;
-      document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
-      document.removeEventListener('pointercancel', handlePointerUp);
-      endScrollAware();
-
-      // Check if we have a pending drag that never met the threshold
-      if (pendingDragRef.current) {
-        const { element, pointerId } = pendingDragRef.current;
-        if (element.hasPointerCapture(pointerId)) {
-          element.releasePointerCapture(pointerId);
-        }
+      // Movement the scroll region owns stays pending: the browser cancels
+      // the sequence once it starts scrolling.
+      if (
+        Math.hypot(dx, dy) >= latestRef.current.dragThreshold &&
+        claimsMove(dx, dy)
+      ) {
+        initializeDrag(pending.element, pending.startPosition, 'pointer');
         pendingDragRef.current = null;
-        // Don't call finishDrag - let the click event fire for selection
-        return;
       }
+      return;
+    }
 
-      const element = elementRef.current;
-      if (element?.hasPointerCapture(e.pointerId)) {
-        element.releasePointerCapture(e.pointerId);
-      }
+    // Normal drag position update
+    updatePosition(e.clientX, e.clientY);
+  };
 
-      // Suppress the click event that follows pointer up after a real drag.
-      // This prevents selection from triggering after drag-and-drop.
+  /**
+   * Ends the pointer gesture however it ended: released (`drop`), cancelled
+   * by the browser, or interrupted from outside its own pointer sequence — a
+   * window switch, the source being disabled — which nothing else would end.
+   */
+  const settleRef = useRef<(drop: boolean) => void>(() => {});
+  settleRef.current = (drop: boolean) => {
+    const gesture = gestureRef.current;
+    if (!gesture) return;
+    gestureRef.current = null;
+    gesture.detach();
+    endScrollAware();
+    if (gesture.element.hasPointerCapture(gesture.pointerId)) {
+      gesture.element.releasePointerCapture(gesture.pointerId);
+    }
+
+    // A press that never became a drag: let the click through for selection
+    if (pendingDragRef.current) {
+      pendingDragRef.current = null;
+      return;
+    }
+
+    // Suppress the click event that follows pointer up after a real drag.
+    // This prevents selection from triggering after drag-and-drop. A
+    // cancelled or interrupted gesture is followed by no click.
+    if (drop) {
       const cleanup = () => {
         document.removeEventListener('click', suppressClick, true);
       };
@@ -316,42 +336,83 @@ export function useDragSource(
       // it after the current event cycle — any synthetic click from this
       // pointer-up sequence fires synchronously before setTimeout(0).
       setTimeout(cleanup, 0);
+    }
 
-      // A cancelled sequence (the browser claimed the gesture after all) is
-      // not a release over whatever happened to be under the finger.
-      finishDrag(e.type !== 'pointercancel');
-    },
-    [handlePointerMove, finishDrag, endScrollAware],
-  );
+    finishDrag(drop);
+  };
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (disabled || e.button !== 0) return;
       const element = e.currentTarget as HTMLElement;
       // A second finger landing while the first still holds the element is
-      // not a new gesture. A gesture that ended without its pointerup (a
-      // window switch) has lost its capture, and must not lock the source.
-      const active = activePointerRef.current;
-      if (active !== null && element.hasPointerCapture(active)) return;
-      activePointerRef.current = e.pointerId;
+      // not a new gesture.
+      const current = gestureRef.current;
+      if (current && current.element.hasPointerCapture(current.pointerId)) {
+        return;
+      }
+      // One that lost its capture without a pointerup has ended unseen.
+      settleRef.current(false);
+
+      // Only the pointer that began the gesture advances or ends it: on a
+      // tablet a second finger moving or lifting elsewhere must not steer or
+      // end a drag it did not start.
+      const { pointerId } = e;
+      const handleMove = (event: PointerEvent) => {
+        if (event.pointerId === pointerId) moveRef.current(event);
+      };
+      const handleEnd = (event: PointerEvent) => {
+        if (event.pointerId !== pointerId) return;
+        // A cancelled sequence (the browser claimed the gesture after all) is
+        // not a release over whatever happened to be under the finger.
+        settleRef.current(event.type !== 'pointercancel');
+      };
+      // The window lost the pointer without a pointerup or pointercancel (an
+      // app switch, a release outside the browser).
+      const handleBlur = () => settleRef.current(false);
+
+      document.addEventListener('pointermove', handleMove);
+      document.addEventListener('pointerup', handleEnd);
+      document.addEventListener('pointercancel', handleEnd);
+      window.addEventListener('blur', handleBlur);
+      gestureRef.current = {
+        pointerId,
+        element,
+        detach: () => {
+          document.removeEventListener('pointermove', handleMove);
+          document.removeEventListener('pointerup', handleEnd);
+          document.removeEventListener('pointercancel', handleEnd);
+          window.removeEventListener('blur', handleBlur);
+        },
+      };
 
       // Store pending drag - actual drag starts when threshold is exceeded
       pendingDragRef.current = {
         startPosition: { x: e.clientX, y: e.clientY },
         element,
-        pointerId: e.pointerId,
       };
       beginScrollAware(e);
-
-      element.setPointerCapture(e.pointerId);
-      document.addEventListener('pointermove', handlePointerMove);
-      document.addEventListener('pointerup', handlePointerUp);
-      document.addEventListener('pointercancel', handlePointerUp);
+      element.setPointerCapture(pointerId);
 
       // Prevent default to avoid text selection during potential drag
       e.preventDefault();
     },
-    [disabled, handlePointerMove, handlePointerUp, beginScrollAware],
+    [disabled, beginScrollAware],
+  );
+
+  // Disabling the source mid-gesture ends the gesture, and a drag with it.
+  useEffect(() => {
+    if (disabled) settleRef.current(false);
+  }, [disabled]);
+
+  // An unmount before anything was picked up leaves nothing to finish. A
+  // live drag is left to run: its payload is in the store, and a virtualised
+  // list unmounts a source scrolled out of view mid-drag.
+  useEffect(
+    () => () => {
+      if (pendingDragRef.current) settleRef.current(false);
+    },
+    [],
   );
 
   const startKeyboardDrag = useCallback(
@@ -369,11 +430,13 @@ export function useDragSource(
       // Announce the enhanced grab message
       announce(
         intl.formatMessage(messages.grabbed, {
-          name: announcedName ?? intl.formatMessage(messages.unnamedItem),
+          name:
+            latestRef.current.announcedName ??
+            intl.formatMessage(messages.unnamedItem),
         }),
       );
     },
-    [initializeDrag, announcedName, announce, intl],
+    [initializeDrag, announce, intl],
   );
 
   useEffect(() => () => updatePosition.cancel(), [updatePosition]);

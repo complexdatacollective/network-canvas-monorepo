@@ -15,9 +15,10 @@ const DEFAULT_HOLD_DURATION = 500;
 /**
  * How long a press has to last before it is treated as a deliberate hold worth
  * giving feedback for. Ordinary taps are shorter than this, so they never
- * flash an indicator on their way past.
+ * flash an indicator on their way past. Shared with the DnD drag source, whose
+ * hold to drag along a scroll axis gives its feedback at the same moment.
  */
-const DEFAULT_FEEDBACK_DELAY = 150;
+export const DELIBERATE_PRESS_DELAY = 150;
 
 /**
  * How a node was activated. Pointer taps carry gesture state a keyboard press
@@ -105,7 +106,7 @@ export function useNodeGestures({
   dragEnabled = false,
   disabled = false,
   holdDuration = DEFAULT_HOLD_DURATION,
-  feedbackDelay = DEFAULT_FEEDBACK_DELAY,
+  feedbackDelay = DELIBERATE_PRESS_DELAY,
 }: UseNodeGesturesOptions): UseNodeGesturesResult {
   const timerRef = useRef<number | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);

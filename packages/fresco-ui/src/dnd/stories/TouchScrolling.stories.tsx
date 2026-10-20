@@ -165,7 +165,12 @@ function SociogramBinExample({ count }: { count: number }) {
 }
 
 const renderPerson = (person: Person, itemProps: ItemProps) => (
-  <Node {...itemProps} label={person.name} size="sm" />
+  <Node
+    {...itemProps}
+    label={person.name}
+    size="sm"
+    selected={itemProps['data-selected'] === true}
+  />
 );
 
 function PersonPanel({
@@ -175,15 +180,17 @@ function PersonPanel({
 }: {
   title: string;
   people: Person[];
-  onReceive: (id: string) => void;
+  onReceive: (ids: string[]) => void;
 }) {
   const { dragAndDropHooks } = useDragAndDrop<Person>({
     announcedName: title,
     getItems: (keys) => [{ type: PERSON, keys }],
     acceptTypes: [PERSON],
+    // A drag of a selected person carries everyone selected with them.
     onDrop: ({ metadata }) => {
-      const key = metadata.key;
-      if (typeof key === 'string') onReceive(key);
+      if (metadata.keys instanceof Set) {
+        onReceive([...metadata.keys].map(String));
+      }
     },
   });
 
@@ -202,6 +209,7 @@ function PersonPanel({
         textValueExtractor={(person) => person.name}
         layout={layout}
         aria-label={title}
+        selectionMode="multiple"
         className="min-h-0 flex-1"
       >
         {(elements) => elements}
@@ -216,15 +224,15 @@ function PanelsExample({ stacked }: { stacked: boolean }) {
     added: [] as Person[],
   }));
 
-  const moveTo = (target: 'available' | 'added') => (id: string) => {
+  const moveTo = (target: 'available' | 'added') => (ids: string[]) => {
     setPanels((current) => {
       const source = target === 'added' ? 'available' : 'added';
-      const person = current[source].find((p) => p.id === id);
-      if (!person) return current;
+      const moving = current[source].filter((p) => ids.includes(p.id));
+      if (moving.length === 0) return current;
       return {
         ...current,
-        [source]: current[source].filter((p) => p.id !== id),
-        [target]: [...current[target], person],
+        [source]: current[source].filter((p) => !ids.includes(p.id)),
+        [target]: [...current[target], ...moving],
       } as typeof current;
     });
   };
@@ -250,7 +258,10 @@ function PanelsExample({ stacked }: { stacked: boolean }) {
             immediately.
           </li>
         )}
-        <li>Tap a person: it should toggle selection, not pick up.</li>
+        <li>
+          Tap a person: it should toggle selection, not pick up. Dragging a
+          selected person takes everyone selected with them.
+        </li>
       </Instructions>
       <div
         className={`flex min-h-0 flex-1 gap-4 ${stacked ? 'flex-col' : 'flex-row'}`}

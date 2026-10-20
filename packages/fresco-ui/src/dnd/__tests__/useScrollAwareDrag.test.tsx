@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ScrollArea } from '../../ScrollArea';
@@ -37,9 +37,16 @@ beforeEach(() => {
   document.elementsFromPoint = () => [];
 });
 
-afterEach(() => {
+afterEach(async () => {
+  // A drag left live by a test outlives its unmounted source by design;
+  // losing the window ends it, so its listeners do not reach the next test.
+  act(() => {
+    window.dispatchEvent(new Event('blur'));
+  });
   cleanup();
   vi.useRealTimers();
+  // A release swallows the click it produces until the next task.
+  await new Promise((resolve) => setTimeout(resolve, 0));
   for (const property of OVERFLOW_PROPERTIES) {
     Reflect.deleteProperty(HTMLElement.prototype, property);
   }
@@ -280,6 +287,104 @@ describe('scroll-aware drag sources', () => {
       pointer('pointerup', document, { y: -40 });
       expect(dragState()).toBe('idle');
     });
+  });
+
+  describe('a gesture interrupted from outside its pointer sequence', () => {
+    const startDrag = () => {
+      pointer('pointerdown', source());
+      pointer('pointermove', document, { x: 40, y: 0 });
+      expect(dragState()).toBe('dragging');
+      expect(source().style.visibility).toBe('hidden');
+    };
+
+    it('ends when the window loses the pointer', () => {
+      renderIn('none');
+      startDrag();
+      act(() => {
+        window.dispatchEvent(new Event('blur'));
+      });
+      expect(dragState()).toBe('idle');
+      expect(source().style.visibility).toBe('');
+    });
+
+    it('ends when the source is disabled', () => {
+      function Toggle() {
+        const [disabled, setDisabled] = useState(false);
+        const { dragProps } = useDragSource({
+          type: 'person',
+          announcedName: 'Ada',
+          disabled,
+        });
+        return (
+          <>
+            <div data-testid="source" {...dragProps} />
+            <button type="button" onClick={() => setDisabled(true)}>
+              disable
+            </button>
+          </>
+        );
+      }
+      renderWith(<Toggle />);
+      startDrag();
+      act(() => {
+        screen.getByRole('button', { name: 'disable' }).click();
+      });
+      expect(dragState()).toBe('idle');
+      expect(source().style.visibility).toBe('');
+    });
+
+    it('lets go of a press whose source unmounts before it drags', () => {
+      function Removable() {
+        const [shown, setShown] = useState(true);
+        return (
+          <>
+            {shown && <Source />}
+            <button type="button" onClick={() => setShown(false)}>
+              remove
+            </button>
+          </>
+        );
+      }
+      const addListener = vi.spyOn(document, 'addEventListener');
+      const removeListener = vi.spyOn(document, 'removeEventListener');
+      renderWith(<Removable />);
+      pointer('pointerdown', source());
+      act(() => {
+        screen.getByRole('button', { name: 'remove' }).click();
+      });
+
+      const attached = addListener.mock.calls
+        .filter(([type]) => type === 'pointermove')
+        .map(([, listener]) => listener);
+      const detached = removeListener.mock.calls
+        .filter(([type]) => type === 'pointermove')
+        .map(([, listener]) => listener);
+      expect(attached).toHaveLength(1);
+      expect(detached).toContain(attached[0]);
+      pointer('pointermove', document, { x: 40, y: 0 });
+      expect(dragState()).toBe('idle');
+    });
+  });
+
+  it('keeps its handlers when the host rebuilds metadata every render', () => {
+    const seen = new Set<unknown>();
+    function Host({ tick }: { tick: number }) {
+      const { dragProps } = useDragSource({
+        type: 'person',
+        metadata: { id: 'ada', tick },
+        announcedName: 'Ada',
+      });
+      seen.add(dragProps.onPointerDown);
+      return <div data-testid="source" {...dragProps} />;
+    }
+    const { rerender } = renderWith(<Host tick={0} />);
+    rerender(
+      <DndStoreProvider>
+        <Host tick={1} />
+        <DragState />
+      </DndStoreProvider>,
+    );
+    expect(seen.size).toBe(1);
   });
 
   it('drags a mouse along the scroll axis immediately', async () => {

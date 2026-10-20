@@ -9,13 +9,19 @@ import {
   useState,
 } from 'react';
 
+import { DELIBERATE_PRESS_DELAY } from '../hooks/useNodeGestures';
 import { type ScrollAxes, useScrollAxes } from '../ScrollArea';
 
 /**
  * How long a still press on a drag source must last before movement along
  * the region's scroll axis drags it instead of scrolling the region.
+ *
+ * Movement does not need a long hold to tell it apart: any movement past the
+ * drag distance ends the hold, and it arrives as a pointermove well before the
+ * browser's own touch slop starts a scroll. What sets the floor is the tap:
+ * the hold shows feedback, and a tap must not flash it on the way past.
  */
-export const SCROLL_AXIS_DRAG_HOLD = 300;
+export const SCROLL_AXIS_DRAG_HOLD = DELIBERATE_PRESS_DELAY;
 
 /**
  * Outside any `ScrollArea` nothing says what scrolls. The page itself may
