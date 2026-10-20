@@ -1159,6 +1159,10 @@ describe('instrument attributes', () => {
     // it creates the people, so it is never skipped for want of them
     expect(canvas.skipLogic).toBeUndefined();
     expect(stageById(r.stages, 'story').type).toBe('Narrative');
+    // the participant may have arranged the composer by hand
+    expect(stageById(r.stages, 'story').behaviours).toMatchObject({
+      automaticLayout: false,
+    });
   });
 
   it.each([

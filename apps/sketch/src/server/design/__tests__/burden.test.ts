@@ -33,4 +33,27 @@ describe('estimateBurden', () => {
     expect(burden.screens).toBe(7);
     expect(burden.answers).toBe(28);
   });
+
+  it('counts a filtered census over the filtered people', () => {
+    const burden = estimateBurden(
+      { stages: [{ type: 'DyadCensus', filter: {}, prompts: [{}] }] },
+      12,
+    );
+    expect(burden.screens).toBe(15);
+  });
+
+  it('counts the questions on each tie a composer draws', () => {
+    const burden = estimateBurden(
+      {
+        stages: [
+          {
+            type: 'NetworkComposer',
+            edges: [{ form: { fields: [{}, {}] } }],
+          },
+        ],
+      },
+      12,
+    );
+    expect(burden.answers).toBe(12 + 18 * 3);
+  });
 });

@@ -746,8 +746,19 @@ export const runPipeline = async (
         !reviewed.build.fatal &&
         reviewed.build.validation.success
       ) {
-        chosen = { raw: reviewed.raw, build: reviewed.build };
-        designOptions = buildOptions;
+        // The review starts from a salvaged design when salvage ran, so its
+        // notes still apply to what ships.
+        let build = reviewed.build;
+        if (designOptions !== buildOptions) {
+          try {
+            build = await preflight(reviewed.raw, designOptions);
+          } catch (error) {
+            log.tags.push('compilerBug');
+            log.crash = errorMessage(error);
+            return failActive(DESIGN_FAILED);
+          }
+        }
+        chosen = { raw: reviewed.raw, build };
         log.burden.after = estimateBurden(chosen.build.protocol, people);
         log.tags.push('reviewed');
       } else log.tags.push('reviewDiscarded');

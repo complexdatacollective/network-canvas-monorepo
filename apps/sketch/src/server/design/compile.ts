@@ -832,7 +832,9 @@ export const compile = (
           const ek = relKey.get(e.relationshipId)!;
           if (!createdRels.includes(ek)) createdRels.push(ek);
         }
-        lastSociogramAuto.set(s.nodeTypeId, true);
+        // The participant can switch the composer's layout to manual and
+        // arrange people themselves, so a following narrative keeps positions.
+        lastSociogramAuto.set(s.nodeTypeId, false);
         namedBefore.add(s.nodeTypeId);
         push(
           {

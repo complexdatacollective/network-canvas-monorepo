@@ -20,6 +20,7 @@ type ProtocolStage = {
   nodeForm?: Fields;
   prompts?: { highlight?: unknown; edges?: { create?: string } }[];
   presets?: unknown[];
+  edges?: { form?: Fields }[];
 };
 
 export const DEFAULT_PEOPLE = 12;
@@ -29,7 +30,6 @@ export const estimateBurden = (
   people = DEFAULT_PEOPLE,
 ): Burden => {
   const n = Math.max(1, Math.round(people));
-  const pairs = (n * (n - 1)) / 2;
   // ties drawn in a typical personal network: about 1.5 per person
   const ties = Math.round(n * 1.5);
   let screens = 0;
@@ -40,6 +40,7 @@ export const estimateBurden = (
     const prompts = s.prompts?.length ?? 0;
     const fields = s.form?.fields?.length ?? 0;
     const shown = s.filter ? Math.ceil(n / 2) : n;
+    const shownPairs = (shown * (shown - 1)) / 2;
     switch (s.type) {
       case 'EgoForm':
         screens += 1;
@@ -82,23 +83,30 @@ export const estimateBurden = (
         break;
       case 'DyadCensus':
       case 'TieStrengthCensus':
-        screens += prompts * pairs;
-        answers += prompts * pairs;
+        screens += prompts * shownPairs;
+        answers += prompts * shownPairs;
         break;
       case 'OneToManyDyadCensus':
-        screens += prompts * (n - 1);
-        answers += prompts * pairs;
+        screens += prompts * Math.max(0, shown - 1);
+        answers += prompts * shownPairs;
         break;
       case 'Geospatial':
         screens += prompts * shown;
         itemsPerPerson += prompts;
         answers += prompts * shown;
         break;
-      case 'NetworkComposer':
+      case 'NetworkComposer': {
+        const edgeFields = Math.max(
+          0,
+          ...(s.edges ?? []).map((e) => e.form?.fields?.length ?? 0),
+        );
         screens += 1;
         itemsPerPerson += s.nodeForm?.fields?.length ?? 0;
-        answers += n * (1 + (s.nodeForm?.fields?.length ?? 0)) + ties;
+        // each drawn tie is one action plus its form's questions
+        answers +=
+          n * (1 + (s.nodeForm?.fields?.length ?? 0)) + ties * (1 + edgeFields);
         break;
+      }
       case 'Narrative':
         screens += s.presets?.length ?? 1;
         break;
