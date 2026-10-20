@@ -19,6 +19,8 @@ const settleLock = vi.fn<() => Promise<boolean>>();
 let lockSettled = true;
 let online = true;
 let bundledInterviewer8: { version: string; path: '/v8/' } | null = null;
+let interviewer8Offline: 'not-bundled' | 'checking' | 'ready' | 'not-ready' =
+  'ready';
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => ({ openDialog, closeDialog: vi.fn(), confirm: vi.fn() }),
@@ -42,6 +44,9 @@ vi.mock('../useSettleLockForInterviewer8', () => ({
 vi.mock('~/lib/legacyInterviewer', async (importOriginal) => ({
   ...(await importOriginal<typeof import('~/lib/legacyInterviewer')>()),
   getBundledLegacyInterviewer: () => bundledInterviewer8,
+}));
+vi.mock('~/lib/pwa/legacyInterviewerOffline', () => ({
+  useLegacyInterviewerOffline: () => interviewer8Offline,
 }));
 vi.mock('@codaco/interview', () => ({
   createInitialNetwork: () => ({ nodes: [], edges: [], ego: {} }),
@@ -188,6 +193,7 @@ describe('NewSessionForm for a schema 8 protocol', () => {
     vi.clearAllMocks();
     online = true;
     bundledInterviewer8 = { version: '8.5.0', path: '/v8/' };
+    interviewer8Offline = 'ready';
     getSettings.mockResolvedValue({ requireUnlockOnEnter: true });
     createSession.mockResolvedValue(session);
     settleLock.mockResolvedValue(true);
@@ -278,6 +284,25 @@ describe('NewSessionForm for a schema 8 protocol', () => {
 
     await waitFor(() => expect(openDialog).toHaveBeenCalledTimes(1));
     expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('explains instead of offering the form offline before Interviewer 8 is saved on this device', () => {
+    online = false;
+    interviewer8Offline = 'not-ready';
+    render(<Harness protocol={makeSchema8Protocol([])} />);
+
+    expect(
+      screen.getByText(/has not finished downloading for use without/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Case ID/)).not.toBeInTheDocument();
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('offers the form online even before Interviewer 8 is saved on this device', () => {
+    interviewer8Offline = 'not-ready';
+    render(<Harness protocol={makeSchema8Protocol([])} />);
+
+    expect(screen.getByLabelText(/Case ID/)).toBeInTheDocument();
   });
 
   it('explains instead of offering the form when this build has no Interviewer 8', () => {

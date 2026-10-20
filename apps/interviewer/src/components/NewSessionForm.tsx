@@ -24,8 +24,10 @@ import {
 } from '~/lib/legacyInterviewer';
 import { useOnline } from '~/lib/net/OnlineStatusProvider';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
+import { useLegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 
 import { legacyProtocolMessages } from './legacyProtocolMessages';
+import { offlineMessages } from './offlineMessages';
 import { useSettleLockForInterviewer8 } from './useSettleLockForInterviewer8';
 
 const messages = defineMessages({
@@ -181,6 +183,7 @@ export function NewSessionForm({
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
   const { settled: lockSettled, settleLock } = useSettleLockForInterviewer8();
   const isOnline = useOnline();
+  const interviewer8Offline = useLegacyInterviewerOffline();
 
   // A schema 8 protocol's interviews run in the bundled Interviewer 8, which
   // the interview route hosts. A build without it cannot run them: explain
@@ -202,6 +205,24 @@ export function NewSessionForm({
                 legacyVersion: LEGACY_INTERVIEWER_MAJOR,
               })
             : intl.formatMessage(messages.thisProtocolCouldNotBeUpdatedTo)}
+        </Paragraph>
+        <div className="flex justify-end">
+          <Button onClick={onCancel}>
+            {intl.formatMessage(commonMessages.close)}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Offline, a schema 8 interview opens only once Interviewer 8 is saved on
+  // this device; until then the interview route could show nothing but an
+  // error, so explain here rather than create an interview that cannot open.
+  if (schema8 && !isOnline && interviewer8Offline !== 'ready') {
+    return (
+      <div className="flex flex-col gap-4">
+        <Paragraph>
+          {intl.formatMessage(offlineMessages.notReadyHelp)}
         </Paragraph>
         <div className="flex justify-end">
           <Button onClick={onCancel}>

@@ -1,5 +1,5 @@
 import type { LocalizedMessage } from '../../i18n/messageResult';
-import { reencryptAllRecords } from '../db/api';
+import { hasPlaintextSessions, reencryptAllRecords } from '../db/api';
 import { db } from '../db/db';
 import { deleteRetiredDatabases } from '../db/retiredDatabases';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
@@ -87,12 +87,25 @@ async function applyInitialEnrol(
 
 // After a normal unlock, finish an initial-enrol sweep that a prior attempt left
 // incomplete (e.g. a mid-sweep quota error), so rows left plaintext eventually
-// get encrypted. Gated on the persisted flag so a device that was never in that
-// state does no work beyond one localStorage read. runReencryptionSweep never
-// throws, so this never breaks the unlock it follows.
+// get encrypted. The persisted flag covers this app's own failures. It cannot
+// cover Interviewer 8: a tab of it left open with no lock (suspended, say) can
+// still commit a plaintext session row after a sweep finished and cleared the
+// flag, so a plaintext session row also starts the sweep. runReencryptionSweep
+// never throws, so this never breaks the unlock it follows.
 async function resumePendingReencryption(): Promise<void> {
-  if (!isReencryptionPending()) return;
+  if (!isReencryptionPending() && !(await hasPlaintextSessionsSafely())) {
+    return;
+  }
   await runReencryptionSweep();
+}
+
+// A failed check must not break the unlock; the next unlock checks again.
+async function hasPlaintextSessionsSafely(): Promise<boolean> {
+  try {
+    return await hasPlaintextSessions();
+  } catch {
+    return false;
+  }
 }
 
 async function applyUnlockAndResume(

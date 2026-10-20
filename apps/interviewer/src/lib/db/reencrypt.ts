@@ -99,6 +99,17 @@ export async function reencryptAllRecords(
   return { total, failed };
 }
 
+/**
+ * Whether any session row is still plaintext. Only sessions are checked:
+ * Interviewer 8 writes nothing else, and a protocol or asset row this app
+ * failed to encrypt is already counted by the sweep that missed it.
+ */
+export async function hasPlaintextSessions(): Promise<boolean> {
+  return (
+    (await db.sessions.filter((row) => row._enc === undefined).count()) > 0
+  );
+}
+
 async function countPlaintextRows(): Promise<number> {
   const plaintext = (row: { _enc?: unknown }) => row._enc === undefined;
   const [sessions, protocols, assets] = await Promise.all([
