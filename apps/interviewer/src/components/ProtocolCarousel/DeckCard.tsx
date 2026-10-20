@@ -333,11 +333,6 @@ type DeckCardData = Pick<
 
 export type DeckCardProps = {
   requiresInternetConnection?: boolean;
-  // A status icon inside the requires-internet badge, after its label,
-  // saying why the internet is needed beyond the protocol itself (a schema 8
-  // protocol while Interviewer 8 is not yet saved for offline use). Give it
-  // an accessible name.
-  requiresInternetStatus?: ReactNode;
   // Further badges for the controls row, before the requires-internet one
   // (`DeckCardBadge`): a schema 8 protocol's schema and its availability.
   badges?: ReactNode;
@@ -414,7 +409,6 @@ export function DeckCard(props: DeckCardProps) {
     hideDescription = false,
     hideControls = false,
     requiresInternetConnection = false,
-    requiresInternetStatus,
     badges,
     menu,
     footer,
@@ -544,11 +538,6 @@ export function DeckCard(props: DeckCardProps) {
                           className="whitespace-nowrap"
                         >
                           {intl.formatMessage(messages.requiresInternet)}
-                          {requiresInternetStatus != null && (
-                            <span className="ms-0.5 flex items-center border-s border-current/40 ps-1.5">
-                              {requiresInternetStatus}
-                            </span>
-                          )}
                         </Badge>
                       )}
                     </div>
@@ -834,10 +823,15 @@ export function DeckCard(props: DeckCardProps) {
 export function DeckCardBadge({
   tone,
   icon,
+  status,
   children,
 }: {
   tone: 'neutral' | 'info' | 'success' | 'warning';
   icon?: ReactNode;
+  // A status icon after the label, set off by a divider: a passing state of
+  // what the badge names (a schema 8 protocol while Interviewer 8 is not yet
+  // saved for offline use). Give it an accessible name.
+  status?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -849,6 +843,11 @@ export function DeckCardBadge({
       className="whitespace-nowrap"
     >
       {children}
+      {status != null && (
+        <span className="ms-0.5 flex items-center border-s border-current/40 ps-1.5">
+          {status}
+        </span>
+      )}
     </Badge>
   );
 }

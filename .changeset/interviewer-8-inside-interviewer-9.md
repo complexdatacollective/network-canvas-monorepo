@@ -18,5 +18,6 @@ protocol runs just as it did in Interviewer 8.
   up, change it and reset it in Interviewer as usual.
 - The schema 8 interview screen downloads for offline use in the background
   after Interviewer has started. The status bar and Settings say when it is
-  ready, so you can check before going into the field. Until then, schema 8
-  protocol cards show that they need the internet.
+  ready, so you can check before going into the field. Until then, the
+  schema badge on a schema 8 protocol card carries a "not ready offline"
+  icon.
