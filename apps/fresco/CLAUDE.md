@@ -688,7 +688,11 @@ lib/
   (`schema-8/`, the private `fresco-schema-8` package, installed with
   `file:./schema-8`). That package pins the npm releases of
   `@codaco/interview` 10 and the libraries released with it, so it runs the
-  code Fresco 4 ran; `lib/schema-8/version.ts` decides which route an
+  code Fresco 4 ran. The pin is always the newest `@codaco/interview` release
+  whose `COMPATIBLE_PROTOCOL_SCHEMA_VERSION` is 8 (a schema 8 fix ships as a
+  10.0.x patch from a hotfix branch, and the pin moves to it);
+  `lib/schema-8/__tests__/version.test.ts` fails if the pinned release
+  declares any other schema. `lib/schema-8/version.ts` decides which route an
   interview takes. Nothing under `/v8` but the interview and its thank-you
   page: listing, export, the API and every dashboard page stay in the current
   app and read schema 8 rows with the pinned schemas. A researcher upgrades a
