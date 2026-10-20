@@ -219,6 +219,9 @@ const DESIGN_UNREACHABLE =
 const DESIGN_REJECTED =
   "The design model turned down Sketch's request. This is a problem with Sketch, not with your study, and it has been logged.";
 
+const DESIGN_REFUSED =
+  'The design model declined to design this study. Try describing the research questions and the population in more neutral, academic terms.';
+
 export const PIPELINE_FAILURE_MESSAGE =
   'Something went wrong while Sketch was working on your study. Please try again.';
 
@@ -486,7 +489,7 @@ export const runPipeline = async (
           ok: false;
           rawText: string;
           feedback: string;
-          reason: 'unparseable' | 'unreachable' | 'rejected';
+          reason: 'unparseable' | 'unreachable' | 'rejected' | 'refused';
         };
 
     const runAttempt = async (
@@ -533,7 +536,8 @@ export const runPipeline = async (
           ok: false,
           rawText: response.rawText,
           feedback: UNPARSEABLE_FEEDBACK,
-          reason: 'unparseable',
+          // a refusal of this study would be refused again
+          reason: response.stopReason === 'refusal' ? 'refused' : 'unparseable',
         };
       }
       entry.parsed = true;
@@ -580,6 +584,8 @@ export const runPipeline = async (
     } else if (!first.ok && first.reason === 'rejected') {
       // The same request would be rejected again: do not spend the retry.
       return failActive(DESIGN_REJECTED);
+    } else if (!first.ok && first.reason === 'refused') {
+      return failActive(DESIGN_REFUSED);
     } else {
       const count = problemCount(first);
       await setStep(
@@ -628,6 +634,8 @@ export const runPipeline = async (
         return failActive(DESIGN_UNREACHABLE);
       } else if (!second.ok && second.reason === 'rejected') {
         return failActive(DESIGN_REJECTED);
+      } else if (!second.ok && second.reason === 'refused') {
+        return failActive(DESIGN_REFUSED);
       } else {
         return failActive(
           second.ok && second.build.fatal ? second.build.fatal : DESIGN_FAILED,

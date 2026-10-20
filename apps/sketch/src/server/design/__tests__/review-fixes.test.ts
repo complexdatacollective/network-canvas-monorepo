@@ -1203,4 +1203,70 @@ describe('instrument attributes', () => {
       'person_circles',
     );
   });
+
+  it('drops a narrative when a generator after its map adds people with no position', async () => {
+    const r = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [
+          ...mapStages([connect('knows')]),
+          ng('ng_more'),
+          {
+            ...narrative,
+            views: [{ ...narrative.views[0], groupByAttributeId: '' }],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(r.stages.map((s) => s.type)).not.toContain('Narrative');
+    expect(
+      r.issues.find((i) => i.code === 'NARRATIVE_WITHOUT_MAP')?.message,
+    ).toMatch(/after that sociogram adds/);
+  });
+
+  it('keeps an earlier relationship form answer that a later strength census also asks', async () => {
+    const strength = A('strength', 'ordered', 'How close are they?', {
+      options: ['Not close', 'Close', 'Very close'],
+    });
+    const census = (id: string, method: string) => ({
+      kind: 'relationshipCensus',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      method,
+      prompts: [
+        {
+          text: 'Do these two know each other?',
+          relationshipId: 'knows',
+          strengthAttributeId: method === 'with_strength' ? 'strength' : '',
+          noTieLabel: method === 'with_strength' ? 'Not at all' : '',
+        },
+      ],
+    });
+    const r = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [strength] },
+        ],
+        stages: [
+          ng(),
+          census('pairs', 'every_pair'),
+          {
+            kind: 'relationshipForm',
+            ...c('tie_form'),
+            relationshipId: 'knows',
+            attributeIds: ['strength'],
+          },
+          census('strength_census', 'with_strength'),
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(findVariableRoleConflicts(r.protocol as never)).toEqual([]);
+    expect(r.stages.map((s) => s.id)).toContain('tie_form');
+    expect(r.stages.map((s) => s.id)).not.toContain('strength_census');
+  });
 });

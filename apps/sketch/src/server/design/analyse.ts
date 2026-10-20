@@ -637,6 +637,7 @@ export const analyse = (
   const mappedLocations = new Set<string>(); // "scope/attr" recorded by a geospatial prompt
   const sociogramTypes = new Set<string>(); // node types with a map that places every node
   const partialSociogramTypes = new Set<string>();
+  const namedAfterMap = new Set<string>(); // node types a generator added to after their full map
   const collected = new Set<string>(); // "scope/attr" collected by an earlier stage
   const markCollected = (scope: string, id: string) =>
     id && collected.add(`${scope}/${id}`);
@@ -1074,6 +1075,8 @@ export const analyse = (
         }
         s.attributeIds.forEach((x) => markCollected(scope, x));
         named.add(t);
+        // people named after the map have no position on it
+        if (sociogramTypes.delete(t)) namedAfterMap.add(t);
         break;
       }
       case 'alterForm':
@@ -1229,9 +1232,13 @@ export const analyse = (
           }
           // A narrative can only reuse a map that places every node: one with
           // skip conditions or a filter may leave nodes without positions.
-          if (s.skipLogic.mode === 'always_show' && !s.filter.conditions.length)
+          if (
+            s.skipLogic.mode === 'always_show' &&
+            !s.filter.conditions.length
+          ) {
             sociogramTypes.add(t);
-          else partialSociogramTypes.add(t);
+            namedAfterMap.delete(t);
+          } else partialSociogramTypes.add(t);
         } else if (s.kind === 'relationshipCensus') {
           s.prompts = s.prompts.filter((p, i) => {
             const pp = `${path}.prompts[${i}]`;
@@ -1326,9 +1333,11 @@ export const analyse = (
           if (!sociogramTypes.has(t)) {
             drop(
               'NARRATIVE_WITHOUT_MAP',
-              partialSociogramTypes.has(t)
-                ? `narrative "${id}" reuses the positions of an EARLIER sociogram of node type "${t}", but every such sociogram has skip conditions or a filter, so some nodes would have no position and the narrative map would be partly or wholly empty. Give one of them always_show and no filter, or remove the narrative.`
-                : `narrative "${id}" needs an EARLIER sociogram of node type "${t}" (it reuses that map's positions). Add one, or remove the narrative.`,
+              namedAfterMap.has(t)
+                ? `narrative "${id}" reuses the positions of an EARLIER sociogram of node type "${t}", but a nameGenerator after that sociogram adds "${t}" nodes that have no position, so the narrative would leave them out. Put a sociogram (always_show, no filter) after the last nameGenerator, or remove the narrative.`
+                : partialSociogramTypes.has(t)
+                  ? `narrative "${id}" reuses the positions of an EARLIER sociogram of node type "${t}", but every such sociogram has skip conditions or a filter, so some nodes would have no position and the narrative map would be partly or wholly empty. Give one of them always_show and no filter, or remove the narrative.`
+                  : `narrative "${id}" needs an EARLIER sociogram of node type "${t}" (it reuses that map's positions). Add one, or remove the narrative.`,
             );
             continue;
           }
@@ -1571,8 +1580,10 @@ export const analyse = (
         }
         named.add(t);
         // the canvas places everyone it shows, so a narrative can reuse it
-        if (s.skipLogic.mode === 'always_show') sociogramTypes.add(t);
-        else partialSociogramTypes.add(t);
+        if (s.skipLogic.mode === 'always_show') {
+          sociogramTypes.add(t);
+          namedAfterMap.delete(t);
+        } else partialSociogramTypes.add(t);
         break;
       }
       case 'relationshipForm': {
@@ -1637,9 +1648,8 @@ export const analyse = (
   // form's validation, so an attribute a form also asks could reach that form
   // with values it would reject. The earlier writer keeps the attribute, so
   // nothing that reads it in between loses its value; the later one drops it.
-  // Two exceptions: a roster's overlap form replaces the roster's tags (it
-  // runs straight after them), and a census always records strength before a
-  // relationshipForm can ask about its ties.
+  // One exception: a roster's overlap form replaces the roster's tags (it
+  // runs straight after them).
   type Writer = { at: number; stage: NStage; drop: () => void; what: string };
   const formAt = new Map<string, number>();
   const unvalidated: (Writer & { key: string })[] = [];
@@ -1713,7 +1723,11 @@ export const analyse = (
         site(
           `rel:${p.relationshipId}/${p.strengthAttributeId}`,
           'strength',
-          () => {},
+          // a form can only come first once earlier ties exist, so this
+          // census's prompt is not needed to create them
+          () => {
+            s.prompts = s.prompts.filter((x) => x !== p);
+          },
         ),
       );
   });
@@ -1722,9 +1736,7 @@ export const analyse = (
     const formIndex = formAt.get(w.key);
     if (formIndex === undefined) continue;
     const form = d.stages[formIndex]!;
-    const formWins =
-      w.what !== 'strength' &&
-      (formIndex < w.at || form.id === `${w.stage.id}_overlap`);
+    const formWins = formIndex < w.at || form.id === `${w.stage.id}_overlap`;
     const attr = w.key.split('/')[1];
     if (formWins) {
       w.drop();
@@ -1782,7 +1794,12 @@ export const analyse = (
         return false;
       }
     }
-    if ((s.kind === 'bins' || s.kind === 'sociogram') && !s.prompts.length) {
+    if (
+      (s.kind === 'bins' ||
+        s.kind === 'sociogram' ||
+        s.kind === 'relationshipCensus') &&
+      !s.prompts.length
+    ) {
       add(
         'adjusted',
         'EMPTY_STAGE_REMOVED',

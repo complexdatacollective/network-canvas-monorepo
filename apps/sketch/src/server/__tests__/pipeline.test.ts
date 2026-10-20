@@ -227,6 +227,23 @@ describe('runPipeline', () => {
     expect(outcome.usage.outputTokens).toBe(1500);
   });
 
+  it('does not spend the retry on a design the model refused', async () => {
+    const { adapters, requests } = scriptedAdapter({
+      screening: [reply(STUDY_SCREENING)],
+      study_design: [
+        reply(null, { rawText: '', stopReason: 'refusal' }),
+        reply(friendshipDesign),
+      ],
+    });
+    const { outcome } = await run(adapters);
+
+    expect(outcome.status).toBe('failed');
+    expect(outcome.error).toMatch(/declined to design this study/);
+    expect(
+      requests.filter((r) => r.schemaName === 'study_design'),
+    ).toHaveLength(1);
+  });
+
   it('asks again when the first design call throws', async () => {
     const { adapters, requests } = scriptedAdapter({
       screening: [reply(STUDY_SCREENING)],
