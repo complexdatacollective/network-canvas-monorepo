@@ -3,9 +3,9 @@
 // POST /api/jobs, then GET /api/jobs/:id straight away and every 1.5 s after,
 // until the job succeeds, fails or is refused. Polling gives up after
 // POLL_TIMEOUT_MS (even if a request hangs), or after three requests in a
-// row fail. Unmounting (or a new request) stops polling. With `resumeJobId`
-// it skips the POST and follows a job that is already running. The page picks
-// each job's id, so the POST can be followed even when its answer is lost.
+// row fail. Unmounting (or a new request) stops polling. The page picks each
+// job's id and the server creates one job per id, so `resumeJobId` sends the
+// same create again and follows whatever job has that id.
 
 import { useEffect, useState } from 'react';
 
@@ -133,14 +133,12 @@ export const useJobRun = (
     };
 
     const start = async () => {
-      if (resumeJobId) {
-        setRun(() => ({ jobId: resumeJobId, job: null, error: null }));
-        await poll(resumeJobId);
-        return;
-      }
       // The id is chosen and reported before the POST, so a create whose
-      // answer is lost (or that Back interrupts) can still be followed.
-      const jobId = crypto.randomUUID();
+      // answer is lost (or that Back interrupts) can still be followed. A
+      // resumed job is created again with its own id: the server answers
+      // with the job it already has, or starts it if the first create never
+      // arrived.
+      const jobId = resumeJobId ?? crypto.randomUUID();
       setRun(() => ({ jobId, job: null, error: null }));
       let confirmed: string;
       try {
@@ -148,8 +146,13 @@ export const useJobRun = (
       } catch (error) {
         if (isAbort(error)) return;
         settle();
-        // The server answered, so no job exists to follow.
-        if (error instanceof ApiRequestError && error.status > 0)
+        // Only a 4xx says the job was not created; a 5xx or a lost answer
+        // may leave one running, so its id is kept for Try again.
+        if (
+          error instanceof ApiRequestError &&
+          error.status >= 400 &&
+          error.status < 500
+        )
           setRun(() => ({ jobId: null, job: null, error: messageOf(error) }));
         else fail(messageOf(error));
         return;

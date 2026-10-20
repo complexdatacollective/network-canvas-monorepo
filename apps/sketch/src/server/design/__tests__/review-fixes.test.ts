@@ -933,6 +933,82 @@ describe('compiler review fixes', () => {
     expect(fields).toEqual(['Nickname?', 'Full name?']);
   });
 
+  it('gives a second map question on the same location its own answer', async () => {
+    const r = await build(
+      design({
+        stages: [
+          ng('ng'),
+          {
+            kind: 'geospatial',
+            ...c('g'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            mapRegion: 'world',
+            prompts: [
+              { text: 'Where were they born?', locationAttributeId: 'country' },
+              { text: 'Where do they live?', locationAttributeId: 'country' },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(r.codes).toContain('LOCATION_DUPLICATE');
+    expect(varNames(r.protocol, 'person')).toEqual(
+      expect.arrayContaining(['country', 'country_2']),
+    );
+  });
+
+  it('keeps a map a narrative reuses when its only highlight moves to a form', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [person([A('close', 'yes_no', 'Are you close?')])],
+        stages: [
+          ng('ng'),
+          {
+            kind: 'alterForm',
+            ...c('f'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['close'],
+          },
+          {
+            kind: 'sociogram',
+            ...c('map'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            prompts: [
+              {
+                task: 'highlight',
+                text: 'Tap the people you are close to.',
+                relationshipId: '',
+                attributeId: 'close',
+              },
+            ],
+          },
+          {
+            kind: 'narrative',
+            ...c('story'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            views: [
+              {
+                label: 'Everyone',
+                groupByAttributeId: '',
+                relationshipIds: [],
+                highlightAttributeIds: [],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
+    const ids = r.stages.map((x) => x.id);
+    expect(ids).toEqual(expect.arrayContaining(['map', 'story']));
+  });
+
   it('caps a roster minimum before generating its rows', async () => {
     const r = await build(
       design({

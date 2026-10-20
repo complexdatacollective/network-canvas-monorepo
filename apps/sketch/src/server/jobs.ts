@@ -316,9 +316,9 @@ export const recordPreference = async (
   const at = now.toISOString();
   const recordKey = `preference/${request.comparisonId}`;
   const previous = await stores.log.getJSON(recordKey);
-  const record: PreferenceRecord = { ...request, at };
-  await stores.log.setJSON(recordKey, record);
   // A changed choice: the job picked before is no longer the preferred one.
+  // The log entries change first and the comparison's record last, so a
+  // retry after a failed write still knows which entry to clear.
   const previousId =
     previous && typeof previous === 'object' && 'preferredJobId' in previous
       ? previous.preferredJobId
@@ -330,6 +330,8 @@ export const recordPreference = async (
   await updateLogEntry(stores.log, job, {
     preference: { preferred: true, at },
   });
+  const record: PreferenceRecord = { ...request, at };
+  await stores.log.setJSON(recordKey, record);
   return { ok: true };
 };
 

@@ -634,6 +634,7 @@ export const analyse = (
   const stageIds = new Set<string>();
   const named = new Set<string>(); // node types named by an earlier stage
   const createdRels = new Set<string>();
+  const mappedLocations = new Set<string>(); // "scope/attr" recorded by a geospatial prompt
   const sociogramTypes = new Set<string>(); // node types with a map that places every node
   const partialSociogramTypes = new Set<string>();
   const collected = new Set<string>(); // "scope/attr" collected by an earlier stage
@@ -1416,6 +1417,25 @@ export const analyse = (
             }
             let loc = slug(p.locationAttributeId) || `country_${i + 1}`;
             if (loc === 'name' || loc === 'layout') loc = `${loc}_country`;
+            // Each map question records its own answer: a second prompt on
+            // the same location would overwrite the first.
+            if (mappedLocations.has(`${scope}/${loc}`)) {
+              let x = `${loc}_2`;
+              for (
+                let n = 3;
+                mappedLocations.has(`${scope}/${x}`) ||
+                listOf(scope).some((a) => a.id === x);
+                n++
+              )
+                x = `${loc}_${n}`;
+              add(
+                'adjusted',
+                'LOCATION_DUPLICATE',
+                `${path}.prompts[${i}].locationAttributeId`,
+                `"${loc}" is already recorded by another map question; this one records "${x}".`,
+              );
+              loc = x;
+            }
             const ex = listOf(scope).find((a) => a.id === loc);
             if (ex && ex.kind !== 'location') {
               // The first `<loc>_map[_n]` id that is free or already a
@@ -1447,6 +1467,7 @@ export const analyse = (
                 builtin: 'location',
               });
             p.locationAttributeId = loc;
+            mappedLocations.add(`${scope}/${loc}`);
             markCollected(scope, loc);
             return true;
           });
@@ -1561,7 +1582,16 @@ export const analyse = (
             `node:${s.nodeTypeId}/${p.attributeId}`,
             'highlight prompt',
             () => {
-              s.prompts = s.prompts.filter((x) => x !== p);
+              // A narrative may reuse this map, so its last prompt stays as
+              // a plain arrangement task rather than removing the stage.
+              if (s.prompts.length > 1)
+                s.prompts = s.prompts.filter((x) => x !== p);
+              else {
+                const plural = nodeType(s.nodeTypeId)?.plural ?? 'People';
+                p.task = 'position';
+                p.attributeId = '';
+                p.text = `Arrange the ${plural.toLowerCase()} on the map in a way that makes sense to you.`;
+              }
             },
           );
       });

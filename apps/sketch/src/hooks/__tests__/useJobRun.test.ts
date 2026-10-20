@@ -121,6 +121,24 @@ describe('useJobRun', () => {
     expect(result.current.error).not.toBeNull();
   });
 
+  it('keeps the job id when the create fails on the server side', async () => {
+    let posted = '';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: unknown, init?: RequestInit) => {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
+        posted = (JSON.parse(String(init?.body)) as { jobId: string }).jobId;
+        return new Response(JSON.stringify({ error: 'Try again.' }), {
+          status: 502,
+        });
+      }),
+    );
+    const { result } = renderHook(() => useJobRun(request));
+    await flush();
+    expect(result.current.jobId).toBe(posted);
+    expect(result.current.error).toBe('Try again.');
+  });
+
   it('drops the job id when the server refuses the create', async () => {
     vi.stubGlobal(
       'fetch',

@@ -187,7 +187,10 @@ describe('Sketch flow', () => {
     await waitFor(() =>
       expect(api.fetchMock.mock.calls.length).toBeGreaterThan(polls),
     );
-    expect(api.posts).toHaveLength(1);
+    // going back sends the same create again, for the same job
+    expect(api.posts.slice(1)).toEqual(
+      api.posts.slice(1).map(() => expect.objectContaining({ jobId: 'job-1' })),
+    );
 
     // A changed study is a new run.
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));

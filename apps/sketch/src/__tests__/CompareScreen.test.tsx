@@ -51,8 +51,10 @@ describe('CompareScreen', () => {
       vi.fn(async (input: unknown, init?: RequestInit) => {
         const { url, method } = describeCall(input, init);
         if (method === 'POST') {
-          posts.push(url);
-          return jsonResponse({ jobId: 'job-new' });
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
+          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          posts.push(body.jobId);
+          return jsonResponse({ jobId: body.jobId ?? 'job-new' });
         }
         if (url === '/api/jobs/job-a')
           return jsonResponse(jobStatus({ id: 'job-a', status: 'running' }));
@@ -85,7 +87,8 @@ describe('CompareScreen', () => {
         jobIds: { anthropic: 'job-a', openai: 'job-o' },
       }),
     );
-    expect(posts).toEqual([]);
+    // the creates are sent again with the same ids, so no new job starts
+    expect(new Set(posts)).toEqual(new Set(['job-a', 'job-o']));
   });
 
   it('keeps a finished side in the record while the other side runs', async () => {
@@ -280,7 +283,8 @@ describe('CompareScreen', () => {
           const body = JSON.parse(String(init?.body)) as CreateJobRequest;
           if (body.provider === 'anthropic')
             return jsonResponse({ jobId: 'job-anthropic' });
-          openaiPosts += 1;
+          // like the server: a create sent again with a known id is that job
+          if (body.jobId !== 'job-openai') openaiPosts += 1;
           return jsonResponse({ jobId: 'job-openai' });
         }
         if (url === '/api/jobs/job-anthropic')

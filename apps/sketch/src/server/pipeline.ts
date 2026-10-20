@@ -677,6 +677,8 @@ export const runPipeline = async (
         chosen = { raw, build };
         log.tags.push('salvaged');
       }
+      // Salvage can remove the last stage that collects anything.
+      if (chosen.build.fatal) return failActive(chosen.build.fatal);
       if (!chosen.build.validation.success) {
         log.tags.push('compilerBug');
         return failActive(DESIGN_FAILED);

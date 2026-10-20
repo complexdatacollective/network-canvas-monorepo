@@ -586,6 +586,41 @@ describe('generate-background and GET /api/jobs/:id', () => {
     expect(entry('job-10')).toEqual({ preferred: true, at: NOW.toISOString() });
   });
 
+  it('leaves one pick after a changed preference is retried', async () => {
+    const { jobs, log, generate } = await setup();
+    await generate();
+    const first = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...first, id: 'job-10' });
+    log.data.set('log/2026-10-20/job-10', {
+      ...(log.data.get('log/2026-10-20/job-9') as LogEntry),
+      jobId: 'job-10',
+    });
+    const pick = (preferredJobId: string) =>
+      handlePreference(
+        new Request('https://sketch.test/api/preference', {
+          method: 'POST',
+          body: JSON.stringify({ comparisonId: 'cmp-9', preferredJobId }),
+        }),
+        { jobs, log, now: () => NOW },
+      );
+    await pick('job-9');
+    const setJSON = log.setJSON;
+    let failOnce = true;
+    log.setJSON = async (key, value) => {
+      if (key === 'log/2026-10-20/job-9' && failOnce) {
+        failOnce = false;
+        throw new Error('blobs down');
+      }
+      await setJSON(key, value);
+    };
+    await pick('job-10').catch(() => {});
+    await pick('job-10');
+    const entry = (id: string) =>
+      (log.data.get(`log/2026-10-20/${id}`) as LogEntry).preference;
+    expect(entry('job-9')).toBeNull();
+    expect(entry('job-10')).toEqual({ preferred: true, at: NOW.toISOString() });
+  });
+
   it('adds a finished seed job to the comparison started from it', async () => {
     const { jobs, log, fake, generate } = await setup();
     await generate();
