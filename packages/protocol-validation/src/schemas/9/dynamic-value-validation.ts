@@ -14,8 +14,10 @@ import {
   type DynamicValueForm,
   type DynamicValueSite,
   type DynamicValueSiteContext,
+  type DynamicValueStage,
   type DynamicValues,
   type DynamicValueVariable,
+  dynamicValueAbsentRolesAt,
   dynamicValueRolesAt,
   dynamicValueStatus,
   parseDynamicValuePath,
@@ -52,6 +54,12 @@ const asSubject = (value: unknown): StageSubject | undefined => {
   }
   return undefined;
 };
+
+/** What of a stage decides which values its text can show. */
+const dynamicValueStageOf = (stage: unknown): DynamicValueStage => ({
+  type: isRecord(stage) && typeof stage.type === 'string' ? stage.type : '',
+  behaviours: isRecord(stage) ? stage.behaviours : undefined,
+});
 
 /** The subject a stage's own forms and interface describe. */
 const stageSubjectOf = (stage: unknown): StageSubject | undefined =>
@@ -120,14 +128,14 @@ export const dynamicValueContextFor = ({
   sitePath: readonly (string | number)[];
   site: DynamicValueSite;
 }): DynamicValueSiteContext => {
-  const stageType =
-    isRecord(stage) && typeof stage.type === 'string' ? stage.type : '';
   const stageSubject = stageSubjectOf(stage);
   const form =
     site === 'formField' ? formOf(stage, sitePath, stageSubject) : undefined;
+  const valueStage = dynamicValueStageOf(stage);
 
   return {
-    roles: dynamicValueRolesAt(stageType, site, form),
+    roles: dynamicValueRolesAt(valueStage, site, form),
+    absentRoles: dynamicValueAbsentRolesAt(valueStage, site),
     variablesFor: (role) => {
       if (role === 'ego') return variablesOf(codebook, { entity: 'ego' });
       // An edge's ends are nodes of any type.
@@ -156,12 +164,14 @@ export const stageDynamicValueContext = ({
     dynamicValueContextFor({ codebook, stage, sitePath: [], site });
   const prompt = contextAt('prompt');
   const formField = contextAt('formField');
-  const stageType =
-    isRecord(stage) && typeof stage.type === 'string' ? stage.type : '';
-  const edgeForm = dynamicValueRolesAt(stageType, 'formField', {
-    entity: 'edge',
-    isStageSubject: false,
-  });
+  const edgeForm = dynamicValueRolesAt(
+    dynamicValueStageOf(stage),
+    'formField',
+    {
+      entity: 'edge',
+      isStageSubject: false,
+    },
+  );
   return {
     ...prompt,
     roles: new Set([...prompt.roles, ...formField.roles, ...edgeForm]),

@@ -200,8 +200,9 @@ export const categoricalBinPromptSchema = promptSchema
     otherVariablePrompt: localizedString(nonBlankText(), 'markdown', {
       dynamicValues: 'formField',
     }).optional(),
+    // The "other" bin's caption, which is not about the node being placed.
     otherOptionLabel: localizedString(nonBlankText(), 'markdown', {
-      dynamicValues: 'prompt',
+      dynamicValues: 'stageText',
     }).optional(),
   })
   .superRefine((prompt, ctx) => {

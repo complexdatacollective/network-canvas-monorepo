@@ -19,10 +19,10 @@ import {
 
 import { codebookTypeIndex } from '../../analytics/codebookTypeIndex';
 import { useTrack } from '../../analytics/useTrack';
+import BinPrompts from '../../components/BinPrompts';
 import BinSelectAnnouncer from '../../components/BinSelectAnnouncer';
 import NodeDrawer from '../../components/NodeDrawer';
 import PassphraseEntry from '../../components/PassphraseEntry';
-import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import {
@@ -554,7 +554,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
       data-testid="categorical-bin-interface"
       className="interface overflow-hidden pb-0"
     >
-      <Prompts />
+      <BinPrompts focalNode={focalNode} />
       <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
         <div className="catbin-outer min-h-0 w-full flex-1">
           <AnimatePresence mode="wait">
