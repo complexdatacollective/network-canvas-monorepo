@@ -1,4 +1,4 @@
-import Dexie from 'dexie';
+import Dexie, { type IndexableType } from 'dexie';
 
 import {
   encryptAssetData,
@@ -110,29 +110,51 @@ export async function encryptLegacyAssetRow(
 
 type TableSweep = {
   table: 'sessions' | 'protocols' | 'assets';
+  /** Every table `revision` reads, `table` first. */
+  scope: string[];
   encrypt: (row: Row, dek: CryptoKey) => Promise<Row>;
   /**
-   * The fields that say a row is still the one that was encrypted. Interviewer
-   * 8 rewrites a row with a fresh value in one of these whenever it changes it.
+   * What says a row is still the one that was encrypted, read in the same
+   * transaction as the row. Interviewer 8 changes it whenever it rewrites the
+   * row.
    */
-  sameRow: (a: Row, b: Row) => boolean;
+  revision: (connection: Dexie, row: Row) => Promise<string>;
 };
 
 const SWEEPS: TableSweep[] = [
   {
     table: 'sessions',
+    scope: ['sessions'],
     encrypt: encryptLegacySessionRow,
-    sameRow: (a, b) => a.lastUpdatedAt === b.lastUpdatedAt,
+    revision: (_connection, row) =>
+      Promise.resolve(JSON.stringify([row.lastUpdatedAt])),
   },
   {
     table: 'protocols',
+    scope: ['protocols'],
     encrypt: encryptLegacyProtocolRow,
-    sameRow: (a, b) => a.hash === b.hash && a.importedAt === b.importedAt,
+    revision: (_connection, row) =>
+      Promise.resolve(JSON.stringify([row.hash, row.importedAt])),
   },
   {
     table: 'assets',
+    scope: ['assets', 'protocols'],
     encrypt: encryptLegacyAssetRow,
-    sameRow: (a, b) => a.protocolHash === b.protocolHash && a.name === b.name,
+    // A re-import replaces a protocol's asset rows, possibly with new bytes
+    // under the same id and name, in the transaction that gives the protocol
+    // row a fresh `importedAt`. So that timestamp is the assets' revision.
+    revision: async (connection, row) => {
+      const protocol: unknown = await connection
+        .table('protocols')
+        .where('hash')
+        .equals(String(row.protocolHash))
+        .first();
+      return JSON.stringify([
+        row.protocolHash,
+        row.name,
+        isObject(protocol) ? protocol.importedAt : null,
+      ]);
+    },
   },
 ];
 
@@ -172,28 +194,36 @@ const openForMaintenance = async (dbName: string): Promise<Dexie | null> => {
 
 const sweepTable = async (
   connection: Dexie,
-  { table, encrypt, sameRow }: TableSweep,
+  { table, scope, encrypt, revision }: TableSweep,
   dek: CryptoKey,
 ): Promise<LegacyEncryptionResult> => {
-  if (!connection.tables.some(({ name }) => name === table)) {
+  const tableNames = new Set(connection.tables.map(({ name }) => name));
+  if (!scope.every((name) => tableNames.has(name))) {
     return { total: 0, failed: 0 };
   }
+  // The row and its revision, as one snapshot.
+  const read = async (key: IndexableType) => {
+    const row: unknown = await connection.table(table).get(key);
+    return isPlaintextRow(row)
+      ? { row, revision: await revision(connection, row) }
+      : undefined;
+  };
   const keys = await connection.table(table).toCollection().primaryKeys();
   let total = 0;
   let failed = 0;
   for (const key of keys) {
     try {
-      const row: unknown = await connection.table(table).get(key);
-      if (!isPlaintextRow(row)) continue;
+      const read1 = await connection.transaction('r', scope, () => read(key));
+      if (!read1) continue;
       total += 1;
       // Encrypted outside the transaction: crypto awaits would let it commit.
-      const encrypted = await encrypt(row, dek);
-      const committed = await connection.transaction('rw', table, async () => {
-        const latest: unknown = await connection.table(table).get(key);
+      const encrypted = await encrypt(read1.row, dek);
+      const committed = await connection.transaction('rw', scope, async () => {
+        const latest = await read(key);
         // Deleted, or encrypted by someone else, meanwhile: nothing to do.
-        if (!isPlaintextRow(latest)) return true;
+        if (!latest) return true;
         // Changed by Interviewer 8 meanwhile: leave it for the retry.
-        if (!sameRow(latest, row)) return false;
+        if (latest.revision !== read1.revision) return false;
         await connection.table(table).put(encrypted);
         return true;
       });

@@ -15,6 +15,14 @@ import { reportError } from './reportError';
 // It must never slow this app down, so it waits until this app has rendered,
 // its own worker is ready (the downloads would otherwise compete, and this
 // app's is the one that matters), and the browser is idle.
+//
+// Only once this page's own build is the active root worker. A root worker
+// from a build before Architect 8 was bundled can still be active (when this
+// build's has not installed yet), and its cache reclaimer knows nothing of
+// `/v8/`: it would delete Architect 8's precache as an unleased `architect-`
+// cache the next time this page reported ready. This build's reclaimer leaves
+// `architect-v8-` alone, so until it is active the registration waits for a
+// later load.
 
 type WorkerLike = { scriptURL: string } | null;
 
@@ -27,7 +35,7 @@ type RegistrationLike = {
 
 /** The parts of `navigator.serviceWorker` this uses. */
 type ServiceWorkerContainerLike = {
-  ready: Promise<unknown>;
+  ready: Promise<{ scope: string }>;
   getRegistration: (clientURL: string) => Promise<RegistrationLike | undefined>;
   register: (scriptURL: string, options: { scope: string }) => Promise<unknown>;
 };
@@ -38,6 +46,10 @@ type Environment = {
   /** Calls back once the browser is idle (or has waited long enough). */
   whenIdle: (callback: () => void) => void;
   origin: string;
+  /** This page's build, as its root worker records it (`__PWA_BUILD_ID__`). */
+  buildId: string | undefined;
+  /** The build the active root worker recorded for `scope`, if any. */
+  readActiveRootBuild: (scope: string) => Promise<string | undefined>;
 };
 
 /** The longest an idle callback may be put off before it runs anyway. */
@@ -56,6 +68,23 @@ export const whenBrowserIdle = (callback: () => void): void => {
   window.setTimeout(callback, LEGACY_WORKER_FALLBACK_DELAY_MS);
 };
 
+// Where the root worker's cache reclaimer records the build that activated
+// (scripts/buildtime/pwa-cache-reclamation-plugin.ts, with vite.config.ts's
+// `appCachePrefix`). A test pins these against the generated worker.
+export const ACTIVE_BUILD_CACHE = 'architect-pwa-cache-metadata';
+export const ACTIVE_BUILD_KEY = '__pwa-active-build__';
+
+/** The build the active root worker recorded. `caches.match` never creates. */
+const readActiveRootBuild = async (
+  scope: string,
+): Promise<string | undefined> => {
+  if (typeof caches === 'undefined') return undefined;
+  const response = await caches.match(new URL(ACTIVE_BUILD_KEY, scope).href, {
+    cacheName: ACTIVE_BUILD_CACHE,
+  });
+  return response?.text();
+};
+
 const defaultEnvironment = (): Environment => ({
   architect: getBundledLegacyArchitect(),
   serviceWorker:
@@ -64,6 +93,10 @@ const defaultEnvironment = (): Environment => ({
       : undefined,
   whenIdle: whenBrowserIdle,
   origin: window.location.origin,
+  // Read through `typeof`: tests and Storybook do not define it.
+  buildId:
+    typeof __PWA_BUILD_ID__ === 'undefined' ? undefined : __PWA_BUILD_ID__,
+  readActiveRootBuild,
 });
 
 let started = false;
@@ -73,7 +106,8 @@ let started = false;
  * Does nothing when this build bundles no Architect 8 or the browser has no
  * service workers. When `/v8/` already has a worker for the same script,
  * active or installing, it checks that worker for an update instead, so a
- * newer pinned Architect 8 is fetched and precached too. Never rejects: a failure
+ * newer pinned Architect 8 is fetched and precached too. Waits for a later
+ * load while the active root worker is another build's. Never rejects: a failure
  * is reported and leaves Architect 8 to install its worker on its first visit,
  * as it would anyway.
  */
@@ -82,7 +116,14 @@ export const registerLegacyArchitectWorker = async (
 ): Promise<void> => {
   if (started) return;
   started = true;
-  const { architect, serviceWorker, whenIdle, origin } = {
+  const {
+    architect,
+    serviceWorker,
+    whenIdle,
+    origin,
+    buildId,
+    readActiveRootBuild: readRootBuild,
+  } = {
     ...defaultEnvironment(),
     ...overrides,
   };
@@ -94,8 +135,10 @@ export const registerLegacyArchitectWorker = async (
   const isThisScript = (worker: WorkerLike) => worker?.scriptURL === scriptURL;
 
   try {
-    await serviceWorker.ready;
+    const root = await serviceWorker.ready;
     await new Promise<void>((resolve) => whenIdle(resolve));
+    // A root worker of another build may reclaim what is downloaded here.
+    if (!buildId || (await readRootBuild(root.scope)) !== buildId) return;
     // `getRegistration` answers with the registration whose scope best covers
     // the URL — this app's own, at `/`, while Architect 8 has none — so the
     // scope is checked as well as the script.

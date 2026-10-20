@@ -425,6 +425,62 @@ describe('encryptLegacyDatabases', () => {
     }
   });
 
+  it('keeps the bytes of an asset Interviewer 8 re-imports while the sweep encrypts it', async () => {
+    await seedLegacyInterviewerDatabase({
+      protocols: [fixture.encrypted.protocol],
+      assets: [fixture.plaintext.stringAsset],
+    });
+    setSessionDek(await importFixtureDek());
+    // A same-hash re-import keeps the asset's id and name and replaces its
+    // bytes, in the transaction that gives the protocol a new `importedAt`.
+    const writer = new Dexie(LEGACY_DB_NAME);
+    await writer.open();
+    const subtle = crypto.subtle;
+    const encrypt = subtle.encrypt.bind(subtle);
+    let landed = false;
+    const spy = vi
+      .spyOn(subtle, 'encrypt')
+      .mockImplementation(
+        async (...args: Parameters<SubtleCrypto['encrypt']>) => {
+          if (!landed) {
+            landed = true;
+            await writer.transaction(
+              'rw',
+              ['protocols', 'assets'],
+              async () => {
+                await writer.table('protocols').put({
+                  ...fixture.plaintext.protocol,
+                  importedAt: '2026-05-02T09:00:00.000Z',
+                });
+                await writer.table('assets').put({
+                  ...fixture.plaintext.stringAsset,
+                  data: 'reimported-secret',
+                });
+              },
+            );
+          }
+          return encrypt(...args);
+        },
+      );
+    try {
+      // The row the sweep read is gone, so it is left for the retry.
+      expect(await encryptLegacyDatabases()).toEqual({ total: 1, failed: 1 });
+    } finally {
+      spy.mockRestore();
+      writer.close();
+    }
+    expect(landed).toBe(true);
+    expect(await encryptLegacyDatabases()).toEqual({ total: 2, failed: 0 });
+
+    const reader = createLegacyLibraryReader(LEGACY_DB_NAME);
+    try {
+      const assets = await reader.getLegacyAssets('fixture-hash');
+      expect(assets.map(({ data }) => data)).toEqual(['reimported-secret']);
+    } finally {
+      reader.close();
+    }
+  });
+
   it('creates nothing on a device that never had Interviewer 8', async () => {
     setSessionDek(await importFixtureDek());
     expect(await encryptLegacyDatabases()).toEqual({ total: 0, failed: 0 });

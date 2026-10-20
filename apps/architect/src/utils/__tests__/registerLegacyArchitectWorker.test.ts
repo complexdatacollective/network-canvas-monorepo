@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createPwaCacheReclamationWorkerSource } from '../../../../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
+
 const reportError = vi.hoisted(() => vi.fn());
 vi.mock('../reportError', () => ({ reportError }));
 
@@ -37,8 +39,18 @@ const deferred = <T>() => {
   return { promise, resolve };
 };
 
+const BUILD_ID = 'architect-test-build';
+
+// This page's build is the active root worker, unless a test says otherwise.
+const thisBuild = {
+  buildId: BUILD_ID,
+  readActiveRootBuild: () => Promise.resolve(BUILD_ID),
+};
+
+const ROOT = { scope: `${ORIGIN}/` };
+
 const makeContainer = (existing?: Registration) => {
-  const ready = deferred<unknown>();
+  const ready = deferred<{ scope: string }>();
   return {
     ready,
     container: {
@@ -93,13 +105,14 @@ describe('registerLegacyArchitectWorker', () => {
       serviceWorker: container,
       whenIdle: idle.whenIdle,
       origin: ORIGIN,
+      ...thisBuild,
     });
 
     await flush();
     expect(idle.whenIdle).not.toHaveBeenCalled();
     expect(container.register).not.toHaveBeenCalled();
 
-    ready.resolve({});
+    ready.resolve(ROOT);
     await flush();
     expect(idle.whenIdle).toHaveBeenCalledTimes(1);
     expect(container.register).not.toHaveBeenCalled();
@@ -119,13 +132,14 @@ describe('registerLegacyArchitectWorker', () => {
     const { registerLegacyArchitectWorker } = await load();
     const { ready, container } = makeContainer();
     const idle = makeIdle();
-    ready.resolve({});
+    ready.resolve(ROOT);
 
     await registerLegacyArchitectWorker({
       architect: null,
       serviceWorker: container,
       whenIdle: idle.whenIdle,
       origin: ORIGIN,
+      ...thisBuild,
     });
 
     expect(idle.whenIdle).not.toHaveBeenCalled();
@@ -143,6 +157,7 @@ describe('registerLegacyArchitectWorker', () => {
         serviceWorker: undefined,
         whenIdle: idle.whenIdle,
         origin: ORIGIN,
+        ...thisBuild,
       }),
     ).resolves.toBeUndefined();
     expect(idle.whenIdle).not.toHaveBeenCalled();
@@ -170,13 +185,14 @@ describe('registerLegacyArchitectWorker', () => {
     async (_state, existing) => {
       const { registerLegacyArchitectWorker } = await load();
       const { ready, container } = makeContainer(existing);
-      ready.resolve({});
+      ready.resolve(ROOT);
 
       await registerLegacyArchitectWorker({
         architect: ARCHITECT_8,
         serviceWorker: container,
         whenIdle: (callback) => callback(),
         origin: ORIGIN,
+        ...thisBuild,
       });
 
       expect(container.register).not.toHaveBeenCalled();
@@ -195,27 +211,97 @@ describe('registerLegacyArchitectWorker', () => {
         installing: null,
       }),
     );
-    ready.resolve({});
+    ready.resolve(ROOT);
 
     await registerLegacyArchitectWorker({
       architect: ARCHITECT_8,
       serviceWorker: container,
       whenIdle: (callback) => callback(),
       origin: ORIGIN,
+      ...thisBuild,
     });
 
     expect(container.register).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ['another build', 'architect-older-build'],
+    ['no build', undefined],
+  ])(
+    'waits for a later load while the active root worker records %s',
+    async (_case, activeBuild) => {
+      const { registerLegacyArchitectWorker } = await load();
+      const { ready, container } = makeContainer();
+      ready.resolve(ROOT);
+      const readActiveRootBuild = vi.fn((_scope: string) =>
+        Promise.resolve(activeBuild),
+      );
+
+      await registerLegacyArchitectWorker({
+        architect: ARCHITECT_8,
+        serviceWorker: container,
+        whenIdle: (callback) => callback(),
+        origin: ORIGIN,
+        buildId: BUILD_ID,
+        readActiveRootBuild,
+      });
+
+      expect(readActiveRootBuild).toHaveBeenCalledExactlyOnceWith(ROOT.scope);
+      expect(container.getRegistration).not.toHaveBeenCalled();
+      expect(container.register).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reads the build the root worker recorded', async () => {
+    const { registerLegacyArchitectWorker } = await load();
+    const { ready, container } = makeContainer();
+    ready.resolve(ROOT);
+    const match = vi.fn(() => Promise.resolve(new Response(BUILD_ID)));
+    vi.stubGlobal('caches', { match });
+
+    await registerLegacyArchitectWorker({
+      architect: ARCHITECT_8,
+      serviceWorker: container,
+      whenIdle: (callback) => callback(),
+      origin: ORIGIN,
+      buildId: BUILD_ID,
+    });
+
+    expect(match).toHaveBeenCalledExactlyOnceWith(
+      `${ORIGIN}/__pwa-active-build__`,
+      { cacheName: 'architect-pwa-cache-metadata' },
+    );
+    expect(container.register).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the record the generated root worker writes', async () => {
+    const { ACTIVE_BUILD_CACHE, ACTIVE_BUILD_KEY } = await load();
+    const source = createPwaCacheReclamationWorkerSource({
+      appCachePrefix: 'architect-',
+      buildId: BUILD_ID,
+      foreignCachePrefixes: ['architect-v8-'],
+      foreignScopePaths: ['/v8/'],
+    });
+    expect(ACTIVE_BUILD_CACHE).toBe('architect-pwa-cache-metadata');
+    expect(source).toContain(
+      `const metadataCacheName = appCachePrefix + 'pwa-cache-metadata';`,
+    );
+    expect(source).toContain('const appCachePrefix = "architect-";');
+    expect(source).toContain(
+      `new URL('${ACTIVE_BUILD_KEY}', self.registration.scope)`,
+    );
+  });
+
   it('runs once per page load', async () => {
     const { registerLegacyArchitectWorker } = await load();
     const { ready, container } = makeContainer();
-    ready.resolve({});
+    ready.resolve(ROOT);
     const environment = {
       architect: ARCHITECT_8,
       serviceWorker: container,
       whenIdle: (callback: () => void) => callback(),
       origin: ORIGIN,
+      ...thisBuild,
     };
 
     await registerLegacyArchitectWorker(environment);
@@ -229,7 +315,7 @@ describe('registerLegacyArchitectWorker', () => {
     const { ready, container } = makeContainer();
     const failure = new Error('SecurityError');
     container.register.mockRejectedValue(failure);
-    ready.resolve({});
+    ready.resolve(ROOT);
 
     await expect(
       registerLegacyArchitectWorker({
@@ -237,6 +323,7 @@ describe('registerLegacyArchitectWorker', () => {
         serviceWorker: container,
         whenIdle: (callback) => callback(),
         origin: ORIGIN,
+        ...thisBuild,
       }),
     ).resolves.toBeUndefined();
 
