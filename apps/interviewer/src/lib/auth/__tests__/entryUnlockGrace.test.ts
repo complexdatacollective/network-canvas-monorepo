@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const HASH = 'q2Vb3n0p9X_cE-1lK4mZ8sT6yU7wA5dF0gH2jR3tY9o';
-const OTHER_HASH = 'Zz9Vb3n0p9X_cE-1lK4mZ8sT6yU7wA5dF0gH2jR3tY9';
 const UNLOCKED_AT = 1_000_000;
 const SOON = UNLOCKED_AT + 1_000;
 
@@ -23,15 +21,13 @@ afterEach(() => {
 describe('the unlock-to-enter grace in a /v8/ build', () => {
   it('follows an unlock on a page opened to resume an interview, for one minute', async () => {
     const grace = await openPage('/v8/', '/v8/interview/s1');
-    expect(grace.takeEntryUnlockGrace({ sessionId: 's1' }, UNLOCKED_AT)).toBe(
-      false,
-    );
+    expect(grace.takeEntryUnlockGrace('s1', UNLOCKED_AT)).toBe(false);
 
     // Each check uses the grace up, so each one gets a page of its own.
     const takenAt = async (now: number) => {
       const page = await openPage('/v8/', '/v8/interview/s1');
       page.noteLockScreenUnlock(UNLOCKED_AT);
-      return page.takeEntryUnlockGrace({ sessionId: 's1' }, now);
+      return page.takeEntryUnlockGrace('s1', now);
     };
     expect(await takenAt(UNLOCKED_AT)).toBe(true);
     expect(await takenAt(UNLOCKED_AT + grace.ENTRY_UNLOCK_GRACE_MS)).toBe(true);
@@ -42,49 +38,30 @@ describe('the unlock-to-enter grace in a /v8/ build', () => {
     expect(await takenAt(UNLOCKED_AT - 1)).toBe(false);
   });
 
-  it('follows an unlock on a page opened by ?start=, for that protocol', async () => {
-    const grace = await openPage('/v8/', `/v8/?start=${HASH}`);
+  it('follows an unlock on a page opened to review an interview', async () => {
+    const grace = await openPage('/v8/', '/v8/interview/s1?mode=review');
 
     grace.noteLockScreenUnlock(UNLOCKED_AT);
 
-    expect(grace.takeEntryUnlockGrace({ protocolHash: HASH }, SOON)).toBe(true);
+    expect(grace.takeEntryUnlockGrace('s1', SOON)).toBe(true);
   });
 
   it('stands in once: a second entry within the minute asks again', async () => {
     const resumed = await openPage('/v8/', '/v8/interview/s1');
     resumed.noteLockScreenUnlock(UNLOCKED_AT);
-    expect(resumed.takeEntryUnlockGrace({ sessionId: 's1' }, SOON)).toBe(true);
-    expect(resumed.takeEntryUnlockGrace({ sessionId: 's1' }, SOON)).toBe(false);
+    expect(resumed.takeEntryUnlockGrace('s1', SOON)).toBe(true);
+    expect(resumed.takeEntryUnlockGrace('s1', SOON)).toBe(false);
     // A later lock-screen unlock on the same page does not grant it again.
     resumed.noteLockScreenUnlock(SOON);
-    expect(resumed.takeEntryUnlockGrace({ sessionId: 's1' }, SOON)).toBe(false);
-
-    const started = await openPage('/v8/', `/v8/?start=${HASH}`);
-    started.noteLockScreenUnlock(UNLOCKED_AT);
-    expect(started.takeEntryUnlockGrace({ protocolHash: HASH }, SOON)).toBe(
-      true,
-    );
-    expect(started.takeEntryUnlockGrace({ protocolHash: HASH }, SOON)).toBe(
-      false,
-    );
+    expect(resumed.takeEntryUnlockGrace('s1', SOON)).toBe(false);
   });
 
-  it('never stands in for another interview or protocol, nor spends itself on one', async () => {
+  it('never stands in for another interview, nor spends itself on one', async () => {
     const resumed = await openPage('/v8/', '/v8/interview/s1');
     resumed.noteLockScreenUnlock(UNLOCKED_AT);
-    expect(resumed.takeEntryUnlockGrace({ sessionId: 's2' }, SOON)).toBe(false);
-    expect(resumed.takeEntryUnlockGrace({ protocolHash: HASH }, SOON)).toBe(
-      false,
-    );
+    expect(resumed.takeEntryUnlockGrace('s2', SOON)).toBe(false);
     // The interview it was opened for still has it.
-    expect(resumed.takeEntryUnlockGrace({ sessionId: 's1' }, SOON)).toBe(true);
-
-    const started = await openPage('/v8/', `/v8/?start=${HASH}`);
-    started.noteLockScreenUnlock(UNLOCKED_AT);
-    expect(
-      started.takeEntryUnlockGrace({ protocolHash: OTHER_HASH }, SOON),
-    ).toBe(false);
-    expect(started.takeEntryUnlockGrace({ sessionId: 's1' }, SOON)).toBe(false);
+    expect(resumed.takeEntryUnlockGrace('s1', SOON)).toBe(true);
   });
 
   it('ends when the interview is left', async () => {
@@ -93,19 +70,42 @@ describe('the unlock-to-enter grace in a /v8/ build', () => {
 
     grace.endEntryUnlockGrace();
 
-    expect(grace.takeEntryUnlockGrace({ sessionId: 's1' }, SOON)).toBe(false);
+    expect(grace.takeEntryUnlockGrace('s1', SOON)).toBe(false);
   });
 
   it('is not granted on a page opened any other way', async () => {
-    for (const path of ['/v8/', '/v8/data', `/v8/?start=..%2F`]) {
+    for (const path of ['/v8/', '/v8/data', '/v8/welcome']) {
       const grace = await openPage('/v8/', path);
       grace.noteLockScreenUnlock(UNLOCKED_AT);
 
-      expect(grace.takeEntryUnlockGrace({ sessionId: 's1' }, SOON)).toBe(false);
-      expect(grace.takeEntryUnlockGrace({ protocolHash: HASH }, SOON)).toBe(
-        false,
-      );
+      expect(grace.takeEntryUnlockGrace('s1', SOON)).toBe(false);
     }
+  });
+});
+
+describe('Interviewer 9 saying the enter step is satisfied', () => {
+  it('stands in for it once, for the interview the page was framed for', async () => {
+    const framed = await openPage('/v8/', '/v8/interview/s1?mode=review');
+    framed.noteInterviewer9EntryAuthorization(UNLOCKED_AT);
+
+    expect(framed.takeEntryUnlockGrace('s2', SOON)).toBe(false);
+    expect(framed.takeEntryUnlockGrace('s1', SOON)).toBe(true);
+    expect(framed.takeEntryUnlockGrace('s1', SOON)).toBe(false);
+  });
+
+  it('is given up when the interview is left', async () => {
+    const framed = await openPage('/v8/', '/v8/interview/s1');
+    framed.noteInterviewer9EntryAuthorization(UNLOCKED_AT);
+
+    framed.endEntryUnlockGrace();
+
+    expect(framed.takeEntryUnlockGrace('s1', SOON)).toBe(false);
+  });
+
+  it('grants nothing in the root build', async () => {
+    const page = await openPage('/', '/interview/s1');
+    page.noteInterviewer9EntryAuthorization(UNLOCKED_AT);
+    expect(page.takeEntryUnlockGrace('s1', SOON)).toBe(false);
   });
 });
 
@@ -113,12 +113,6 @@ describe('the unlock-to-enter grace in the root build', () => {
   it('is never granted, however the page was opened', async () => {
     const resumed = await openPage('/', '/interview/s1');
     resumed.noteLockScreenUnlock(UNLOCKED_AT);
-    expect(resumed.takeEntryUnlockGrace({ sessionId: 's1' }, SOON)).toBe(false);
-
-    const started = await openPage('/', `/?start=${HASH}`);
-    started.noteLockScreenUnlock(UNLOCKED_AT);
-    expect(started.takeEntryUnlockGrace({ protocolHash: HASH }, SOON)).toBe(
-      false,
-    );
+    expect(resumed.takeEntryUnlockGrace('s1', SOON)).toBe(false);
   });
 });

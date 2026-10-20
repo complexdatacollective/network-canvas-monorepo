@@ -1822,7 +1822,6 @@ test('the app maintenance lane releases an older line without deploying it', () 
   );
   assert.doesNotMatch(definition, /netlify/i);
   assert.doesNotMatch(definition, /secrets\./);
-  assert.match(source, /NOTE\(human-setup-required\)/);
   assert.match(source, /`interviewer-maintenance-release`/);
   assert.match(source, /`architect-maintenance-release`/);
   assert.notEqual(

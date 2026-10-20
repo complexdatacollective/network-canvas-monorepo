@@ -38,6 +38,7 @@ import { useInterviewerLocale } from '~/i18n/InterviewerI18nProvider';
 import { interviewerLocales } from '~/i18n/locales';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
+import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { APP_VERSION } from '~/lib/appVersion';
 import {
   buildResolvedAssets,
@@ -58,6 +59,7 @@ import {
 } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import { returnToInterviewer9 } from '~/lib/interviewer9Navigation';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
@@ -232,10 +234,37 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // the requireUnlockOnExit gate. Pin the history for the life of the route;
   // gated forward exits go through `exitToHome` so the pinned entry is consumed
   // rather than left buried (which would let Back from Home re-enter).
-  const exitToHome = useHistoryBackGuard(true);
-  const goHome = useCallback(
-    () => exitToHome(() => navigate('/', { replace: true })),
-    [exitToHome, navigate],
+  //
+  // Interviewer 8 inside Interviewer 9 (a /v8/ build) has no Home of its own:
+  // every way out of an interview ends it and tells Interviewer 9, which
+  // frames it (lib/interviewer9Embed.ts). There the guard is held above the
+  // lock screen instead (App.tsx), so Back stays inert while the interview is
+  // locked too, and the close pops its entry itself, within a bounded wait
+  // (interviewer9Navigation.ts), so no entry of this interview is left for
+  // Back to replay and an exit never waits on a popstate that may not come.
+  const exitToHome = useHistoryBackGuard(!IS_SUBPATH_BUILD);
+  const goHome = useCallback(() => {
+    if (IS_SUBPATH_BUILD) {
+      returnToInterviewer9();
+      return;
+    }
+    exitToHome(() => navigate('/', { replace: true }));
+  }, [exitToHome, navigate]);
+
+  // An interview that is not there, that this app cannot run, or whose saved
+  // data cannot be read, explains itself. Interviewer 8 inside Interviewer 9
+  // has nowhere of its own to send the researcher, and Interviewer 9 only
+  // opens what it expects this app to run, so there it ends the interview at
+  // once instead.
+  const failToLoad = useEffectEvent(
+    (kind: 'missing' | 'incompatible' | 'unreadable') => {
+      if (IS_SUBPATH_BUILD) {
+        setAuthorizedInterviewId(null);
+        goHome();
+        return;
+      }
+      setLoadState({ kind });
+    },
   );
 
   // Participant text-size choice, persisted per session in sessionStorage so
@@ -314,12 +343,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       // the same interview. The user just authenticated at the LockScreen, so a
       // second step-up prompt would be redundant.
       const alreadyAuthorized = getAuthorizedInterviewId() === sessionId;
-      // In Interviewer 8 inside Interviewer 9, so does an unlock seconds ago
-      // on the page Interviewer 9 opened to resume this interview, once.
+      // In Interviewer 8 inside Interviewer 9, so does, once, Interviewer 9's
+      // word that it has satisfied this step, or an unlock seconds ago at
+      // this page's lock screen (auth/entryUnlockGrace.ts).
       if (
         settings.requireUnlockOnEnter &&
         !alreadyAuthorized &&
-        !takeEntryUnlockGrace({ sessionId })
+        !takeEntryUnlockGrace(sessionId)
       ) {
         const result = await requireFreshUnlock();
         if (!result.ok) {
@@ -330,7 +360,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       if (!active) return;
       const session = await getSession(sessionId);
       if (!session) {
-        if (active) setLoadState({ kind: 'missing' });
+        if (active) failToLoad('missing');
         return;
       }
       // Bail if a sessionId change / unmount tore down this load while we
@@ -342,15 +372,18 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       setAuthorizedInterviewId(sessionId);
       const protocol = await getProtocolByHash(session.protocolHash);
       if (!protocol) {
-        if (active) setLoadState({ kind: 'missing' });
+        if (active) failToLoad('missing');
         return;
       }
       // The launch-time sweep migrates stored protocols before routes render,
       // so a row still below the runtime's schema version is one that could
       // not be migrated. Refuse to run rather than hand the runtime a document
       // it cannot execute.
+      //
+      // In Interviewer 8 inside Interviewer 9 no sweep runs, and a protocol
+      // at another schema is one Interviewer 9 runs itself, or cannot run.
       if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
-        if (active) setLoadState({ kind: 'incompatible' });
+        if (active) failToLoad('incompatible');
         return;
       }
       const assets = await buildResolvedAssets(session.protocolHash);
@@ -393,7 +426,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           ? 0
           : undefined,
       });
-      if (!readOnly) {
+      // Interviewer 8 inside Interviewer 9 writes nothing but this session's
+      // row; Interviewer 9 keeps its own record of what was last opened.
+      if (!readOnly && !IS_SUBPATH_BUILD) {
         void updateSettings({
           lastActiveSessionId: session.id,
           lastActiveProtocolHash: session.protocolHash,
@@ -405,8 +440,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     // Shell (and with it every autosave) and report the failure.
     load().catch((cause: unknown) => {
       if (!active) return;
-      setLoadState({ kind: 'unreadable' });
       reportLoadFailure(cause);
+      failToLoad('unreadable');
     });
     return () => {
       active = false;

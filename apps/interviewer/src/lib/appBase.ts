@@ -10,7 +10,6 @@ export type AppBase = {
   baseUrl: string;
   /** wouter's `base`: `''` at the root, else the base without its trailing slash. */
   routerBase: string;
-  isSubpath: boolean;
   /** Prefix an app path (`/data`) with the base for the browser. */
   toBrowserPath: (path: string) => string;
   /** Strip the base from a browser path; app paths pass through unchanged. */
@@ -31,7 +30,6 @@ export const createAppBase = (baseUrl: string): AppBase => {
   return {
     baseUrl,
     routerBase,
-    isSubpath: routerBase !== '',
     toBrowserPath: (path) => `${routerBase}${path}`,
     toAppPath: (path) => {
       if (!basePattern?.test(path)) return path;
@@ -45,5 +43,8 @@ const appBase = createAppBase(import.meta.env.BASE_URL);
 
 export const APP_BASE_URL = appBase.baseUrl;
 export const ROUTER_BASE = appBase.routerBase;
-export const IS_SUBPATH_BUILD = appBase.isSubpath;
+// Compared directly rather than read from `appBase`, so the bundler can fold it
+// to a constant: code that only one kind of build runs is left out of the
+// other's bundle.
+export const IS_SUBPATH_BUILD = import.meta.env.BASE_URL !== '/';
 export const toAppPath = appBase.toAppPath;

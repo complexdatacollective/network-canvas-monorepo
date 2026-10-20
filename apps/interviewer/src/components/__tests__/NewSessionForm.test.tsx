@@ -14,7 +14,6 @@ const createSession = vi.fn();
 const getSettings = vi.fn();
 const requireFreshUnlock = vi.fn();
 const setAuthorizedInterviewId = vi.fn();
-const takeEntryUnlockGrace = vi.fn((_target: unknown) => false);
 let online = true;
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
@@ -25,9 +24,6 @@ vi.mock('~/lib/net/OnlineStatusProvider', () => ({
 }));
 vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
   useStepUpAuth: () => ({ requireFreshUnlock, setAuthorizedInterviewId }),
-}));
-vi.mock('~/lib/auth/entryUnlockGrace', () => ({
-  takeEntryUnlockGrace: (target: unknown) => takeEntryUnlockGrace(target),
 }));
 vi.mock('~/lib/db/api', () => ({
   createSession: (...args: unknown[]) => createSession(...args),
@@ -218,38 +214,4 @@ it('keeps a visible Case ID refusal when the administration language changes and
   await waitFor(() =>
     expect(submit).toHaveBeenCalledExactlyOnceWith('Caso Á-21'),
   );
-});
-
-describe('NewSessionForm unlock-to-enter step', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    online = true;
-    getSettings.mockResolvedValue({ requireUnlockOnEnter: true });
-    createSession.mockResolvedValue(session);
-    requireFreshUnlock.mockResolvedValue({ ok: true });
-    takeEntryUnlockGrace.mockReturnValue(false);
-  });
-
-  const start = async () => {
-    const user = userEvent.setup();
-    render(<Harness protocol={makeProtocol(['NameGenerator'])} />);
-    await user.type(screen.getByLabelText(/Case ID/), 'P01');
-    await user.click(screen.getByRole('button', { name: 'Start interview' }));
-    await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
-  };
-
-  it('asks for a fresh unlock before creating the session', async () => {
-    await start();
-
-    expect(requireFreshUnlock).toHaveBeenCalledTimes(1);
-  });
-
-  it('is skipped while a recent unlock stands in for starting this protocol', async () => {
-    takeEntryUnlockGrace.mockReturnValue(true);
-
-    await start();
-
-    expect(requireFreshUnlock).not.toHaveBeenCalled();
-    expect(takeEntryUnlockGrace).toHaveBeenCalledWith({ protocolHash: 'hash' });
-  });
 });

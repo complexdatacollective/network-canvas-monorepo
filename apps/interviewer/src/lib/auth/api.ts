@@ -3,9 +3,11 @@ import { IS_SUBPATH_BUILD } from '../appBase';
 import { reencryptAllRecords } from '../db/api';
 import { db } from '../db/db';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
+import { interviewer9Unlock, isEmbedClosed } from '../interviewer9Embed';
 import { requestPersistentStorage } from '../storage';
 import * as vault from '../vault/vault';
 import { isPrfSupported } from '../vault/webauthn';
+import { noteInterviewer9EntryAuthorization } from './entryUnlockGrace';
 import {
   isReencryptionPending,
   setReencryptionPending,
@@ -41,14 +43,14 @@ async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
 // ("secured ⇒ existing data encrypted") is only met once the flag is cleared (a
 // run with zero failed rows).
 //
-// Interviewer 8 inside Interviewer 9 (a /v8/ build) shares this flag with
-// Interviewer 9, whose retry sweeps both apps' databases. This build sweeps
-// only its own, so a clean run here says nothing about Interviewer 9's rows:
-// it may raise the flag, and leaves clearing it to Interviewer 9.
+// Interviewer 8 inside Interviewer 9 (a /v8/ build) never sweeps: the
+// database and this flag are Interviewer 9's, whose own unlock retries the
+// sweep, and the /v8/ page writes nothing but its interview's session row.
 async function runReencryptionSweep(): Promise<void> {
+  if (IS_SUBPATH_BUILD) return;
   try {
     const { failed } = await reencryptAllRecords();
-    if (failed > 0 || !IS_SUBPATH_BUILD) setReencryptionPending(failed > 0);
+    setReencryptionPending(failed > 0);
   } catch (error) {
     // No other reporting exists for this background sweep, and the security
     // invariant depends on knowing why it failed.
@@ -103,6 +105,33 @@ async function applyUnlockAndResume(
   if (!unlocked.ok) return unlocked;
   await resumePendingReencryption();
   return unlocked;
+}
+
+let interviewer9Adoption: Promise<void> | null = null;
+
+/**
+ * Interviewer 8 framed by Interviewer 9 (see interviewer9Embed.ts): take what
+ * Interviewer 9 handed over before the lock is first read. Its key becomes the
+ * session key exactly as an unlock at the lock screen would make it, so the
+ * lock screen is never shown for it, and its word that the enter step is
+ * satisfied stands in for that step. Resolves once Interviewer 9 has replied
+ * or the wait has timed out (the lock screen then shows as usual), and at once
+ * anywhere else. Runs once per page load: a later lock is unlocked here.
+ */
+export function adoptInterviewer9Unlock(): Promise<void> {
+  interviewer9Adoption ??= (async () => {
+    const reply = await interviewer9Unlock();
+    // Nor once the embedded interview has closed: that page holds no key.
+    if (!reply || isEmbedClosed()) return;
+    const s = vault.vaultStatus();
+    // A key means nothing without a lock that uses one: on a device with no
+    // lock, rows are plaintext and must stay so.
+    const secured =
+      !s.corrupt && s.configured && s.mode !== undefined && s.mode !== 'none';
+    if (secured && reply.key) await applyUnlock({ ok: true, dek: reply.key });
+    if (reply.enterAuthorized) noteInterviewer9EntryAuthorization();
+  })();
+  return interviewer9Adoption;
 }
 
 // PRF availability gates biometric enrolment in the setup wizard.

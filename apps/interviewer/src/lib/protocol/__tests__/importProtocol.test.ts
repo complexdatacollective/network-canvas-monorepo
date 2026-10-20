@@ -4,11 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
-import {
-  importProtocolFromFile,
-  isNewerSchemaVersion,
-  peekProtocol,
-} from '../importProtocol';
+import { importProtocolFromFile } from '../importProtocol';
 
 const saveProtocolMock = vi.fn();
 
@@ -197,26 +193,17 @@ describe('a protocol made for a newer schema', () => {
     expect(result.error).toBe('newer-version');
   });
 
-  it('peeks the name and declared version without importing', async () => {
-    const bytes = await buildArchive({
-      'protocol.json': JSON.stringify(newerProtocol(9)),
-    });
+  it('counts only versions above this app’s as newer', async () => {
+    for (const schemaVersion of [8, 7]) {
+      const bytes = await buildArchive({
+        'protocol.json': JSON.stringify(newerProtocol(schemaVersion)),
+      });
 
-    await expect(peekProtocol(bytes)).resolves.toEqual({
-      name: 'From the future',
-      schemaVersion: 9,
-    });
-    await expect(peekProtocol(new Uint8Array([1, 2, 3]))).resolves.toEqual({
-      name: null,
-      schemaVersion: null,
-    });
-    expect(saveProtocolMock).not.toHaveBeenCalled();
-  });
+      const result = await importProtocolFromFile(asFile(bytes));
 
-  it('counts only versions above this app’s as newer', () => {
-    expect(isNewerSchemaVersion(9)).toBe(true);
-    expect(isNewerSchemaVersion(8)).toBe(false);
-    expect(isNewerSchemaVersion(7)).toBe(false);
-    expect(isNewerSchemaVersion(null)).toBe(false);
+      expect(result.success ? 'installed' : result.error).not.toBe(
+        'newer-version',
+      );
+    }
   });
 });

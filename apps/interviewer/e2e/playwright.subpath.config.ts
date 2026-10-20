@@ -47,5 +47,18 @@ export default defineConfig({
   },
 
   // No pixel or viewport-geometry project: nothing here reads a baseline.
-  projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        // One spec frames /v8/ from another origin, a page Playwright
+        // answers itself, which Chromium counts as public and so would not
+        // let frame this local server at all. A deploy's origins are public.
+        launchOptions: {
+          args: ['--disable-features=LocalNetworkAccessChecks'],
+        },
+      },
+    },
+  ],
 });

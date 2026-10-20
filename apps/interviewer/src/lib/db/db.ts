@@ -1,19 +1,29 @@
 import Dexie, { type Table } from 'dexie';
 
 import { IS_SUBPATH_BUILD } from '~/lib/appBase';
+import { OPENED_INTERVIEW_SESSION_ID } from '~/lib/openedInterview';
 
-import { readInterviewer9SecurityBehaviour } from './interviewer9Settings';
 import type {
   StoredAssetRow,
   StoredProtocolRow,
   StoredSessionRow,
 } from './recordCrypto';
+import { sessionRowWriteScope } from './sessionRowWriteScope';
 import {
   DEFAULT_SETTINGS,
   type StoredProtocolMigrationRecord,
   type StoredSettings,
 } from './types';
 
+export const DB_NAME = 'interviewer';
+
+// Interviewer 8 inside Interviewer 9 (a /v8/ build) opens this same database,
+// which Interviewer 9 owns from then on: it declares versions above these, with
+// more tables and indexes but never fewer, and runs every upgrade. Dexie opens
+// a database installed at a higher version than declared here at that version
+// (it retries the open without one on a VersionError), and this app only uses
+// the tables and indexes below, so these declarations keep working there and
+// never upgrade anything. Standalone Interviewer 8 still upgrades through them.
 class InterviewerV8DB extends Dexie {
   protocols!: Table<StoredProtocolRow, string>;
   sessions!: Table<StoredSessionRow, string>;
@@ -22,7 +32,7 @@ class InterviewerV8DB extends Dexie {
   protocolMigrations!: Table<StoredProtocolMigrationRecord, string>;
 
   constructor() {
-    super('interviewer');
+    super(DB_NAME);
     this.version(1).stores({
       protocols: 'id, hash, name, importedAt',
       sessions:
@@ -50,7 +60,13 @@ class InterviewerV8DB extends Dexie {
 
 export const db = new InterviewerV8DB();
 
-async function getOwnSettings(): Promise<StoredSettings> {
+// In a /v8/ build the only row this app may write is the session of the
+// interview the page was opened for (see sessionRowWriteScope).
+if (IS_SUBPATH_BUILD) db.use(sessionRowWriteScope(OPENED_INTERVIEW_SESSION_ID));
+
+// This app's own settings, for the root build. A /v8/ build reads Interviewer
+// 9's instead and never writes any (interviewer9Settings.ts, api.ts).
+export async function getSettings(): Promise<StoredSettings> {
   const existing = await db.settings.get('device');
   if (existing) {
     return { ...DEFAULT_SETTINGS, ...existing, id: 'device' };
@@ -59,24 +75,10 @@ async function getOwnSettings(): Promise<StoredSettings> {
   return DEFAULT_SETTINGS;
 }
 
-// Interviewer 8 served inside Interviewer 9 (a /v8/ build) shares Interviewer
-// 9's lock, so the rules for that lock — idle timeout, and unlocking on enter,
-// exit and export — come from Interviewer 9's settings, read-only. This app's
-// own row is the fallback for any rule Interviewer 9 has not stored yet. The
-// root build only ever reads its own row.
-export async function getSettings(): Promise<StoredSettings> {
-  const own = await getOwnSettings();
-  if (!IS_SUBPATH_BUILD) return own;
-  const shared = await readInterviewer9SecurityBehaviour();
-  return shared ? { ...own, ...shared } : own;
-}
-
 export async function updateSettings(
   patch: Partial<Omit<StoredSettings, 'id'>>,
 ): Promise<StoredSettings> {
-  // From this app's own row, so a write never copies Interviewer 9's rules
-  // into it.
-  const current = await getOwnSettings();
+  const current = await getSettings();
   const next: StoredSettings = { ...current, ...patch };
   await db.settings.put(next);
   return next;

@@ -7,7 +7,8 @@ import {
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
-import { db } from './db';
+import { databaseExists } from './databaseExists';
+import { db, DB_NAME } from './db';
 import {
   decryptSession,
   encryptSession,
@@ -260,6 +261,19 @@ export async function getSessionsByIds(
   const rows = await db.sessions.bulkGet([...ids]);
   const present = rows.filter((r): r is StoredSessionRow => Boolean(r));
   return Promise.all(present.map((row) => decryptSession(row)));
+}
+
+export async function getSessionProtocolSchemaVersion(
+  id: string,
+): Promise<number | null> {
+  if ((await databaseExists(DB_NAME)) === false) return null;
+  const session = await db.sessions.get(id);
+  if (!session) return null;
+  const protocol = await db.protocols
+    .where('hash')
+    .equals(session.protocolHash)
+    .first();
+  return protocol?.schemaVersion ?? null;
 }
 
 export async function createSession(args: {

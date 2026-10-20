@@ -254,17 +254,20 @@ if (stagePreviewAssets.length === 0) {
 }
 
 // Interviewer 9 installs a sub-path build's worker in the background, so its
-// first visit may be offline: every font and the hashed header mark must be
-// precached there. The root build leaves both to its runtime caches.
+// first visit may be offline: every font must be precached there. The root
+// build leaves them to its runtime cache, and the hashed header mark too
+// (Home's, which a sub-path build does not ship).
 const offlineFirstVisitAssets = assetFiles
-  .filter((f) => f.endsWith('.woff2') || /^NC-Flat-.+\.png$/.test(f))
+  .filter((f) => f.endsWith('.woff2'))
   .map((f) => `assets/${f}`);
-if (!offlineFirstVisitAssets.some((url) => url.endsWith('.woff2'))) {
+if (offlineFirstVisitAssets.length === 0) {
   fail('no .woff2 fonts emitted to dist/assets');
 }
-if (!offlineFirstVisitAssets.some((url) => url.endsWith('.png'))) {
+const headerMarks = assetFiles.filter((f) => /^NC-Flat-.+\.png$/.test(f));
+if (!isSubpath && headerMarks.length === 0) {
   fail('no hashed header mark (assets/NC-Flat-*.png) emitted');
 }
+
 const manifestUrls = new Set(
   [...sw.matchAll(/\{url:"([^"]+)",revision:/g)].map((m) => m[1]),
 );
@@ -274,11 +277,14 @@ if (isSubpath) {
   );
   if (missing.length > 0) {
     fail(
-      `a ${base} build must precache its fonts and header mark; missing: ${missing.join(', ')}`,
+      `a ${base} build must precache its fonts; missing: ${missing.join(', ')}`,
     );
   }
 } else {
-  const added = offlineFirstVisitAssets.filter((url) => manifestUrls.has(url));
+  const added = [
+    ...offlineFirstVisitAssets,
+    ...headerMarks.map((f) => `assets/${f}`),
+  ].filter((url) => manifestUrls.has(url));
   if (added.length > 0) {
     fail(`the root build precaches runtime-cached assets: ${added.join(', ')}`);
   }
@@ -373,7 +379,9 @@ if (
 // Modules the app loads on demand to keep them out of the initial load. Each
 // must stay its own chunk (a static import anywhere folds it into the entry,
 // and the chunk disappears) outside the initial load, and must be precached
-// exactly when the feature it serves has to work offline.
+// exactly when the feature it serves has to work offline. Both serve Home (the
+// sample card, Settings' synthetic data), so a sub-path build, which has no
+// Home, must ship neither.
 const deferredChunks = [
   {
     prefix: 'bundledSampleProtocol-',
@@ -388,6 +396,14 @@ const deferredChunks = [
 ];
 for (const { prefix, purpose, precache } of deferredChunks) {
   const matches = jsAssets.filter((f) => f.startsWith(prefix));
+  if (isSubpath) {
+    if (matches.length > 0) {
+      fail(
+        `a ${base} build has no Home, so must not ship ${matches.join(', ')} for ${purpose}`,
+      );
+    }
+    continue;
+  }
   if (matches.length !== 1) {
     fail(
       `expected one on-demand ${prefix}*.js chunk for ${purpose}, found ${matches.length}`,
@@ -402,6 +418,45 @@ for (const { prefix, purpose, precache } of deferredChunks) {
       precache
         ? `${chunk} is excluded from precache, so ${purpose} fails offline`
         : `${chunk} is precached, so every install downloads it`,
+    );
+  }
+}
+
+// Interviewer 8 inside Interviewer 9 is the interview alone: Home (the
+// protocol deck), the data view, Settings, onboarding and the not-found page
+// are replaced before they load (vite.config.ts), so none of their code may
+// reach a sub-path build. Their message ids mark them: every message is
+// defined, id and all, in the module that shows it. The root build must carry
+// every one, or the marker has stopped matching and the check would pass
+// vacuously. Catalog chunks are left out: they hold every message by design.
+const SCREEN_MESSAGE_PREFIXES = [
+  'home',
+  'protocolDeck',
+  'topActionBar',
+  'dataView',
+  'settingsDialog',
+  'onboardingScreen',
+  'notFound',
+];
+const screenMarker = (prefix) => new RegExp(`["'\`]interviewer\\.${prefix}\\.`);
+const codeChunks = jsAssets
+  .filter((f) => !/^(?:interview-)?locale-/.test(f))
+  .map((f) => ({
+    file: f,
+    source: readFileSync(path.join(assetsDir, f), 'utf8'),
+  }));
+for (const prefix of SCREEN_MESSAGE_PREFIXES) {
+  const shipping = codeChunks
+    .filter(({ source }) => screenMarker(prefix).test(source))
+    .map(({ file }) => file);
+  if (isSubpath && shipping.length > 0) {
+    fail(
+      `a ${base} build ships Interviewer 8's own ${prefix} screen (${shipping.join(', ')}); vite.config.ts must leave it out`,
+    );
+  }
+  if (!isSubpath && shipping.length === 0) {
+    fail(
+      `no chunk carries the interviewer.${prefix}.* messages; update the screen markers`,
     );
   }
 }
@@ -444,7 +499,14 @@ const FAKER_MARKER = '[@faker-js/faker]: ';
 const fakerChunks = jsAssets.filter((f) =>
   readFileSync(path.join(assetsDir, f), 'utf8').includes(FAKER_MARKER),
 );
-if (fakerChunks.length === 0) {
+// A sub-path build has no Settings, so no synthetic data generator, and no
+// Faker at all.
+if (isSubpath && fakerChunks.length > 0) {
+  fail(
+    `a ${base} build has no synthetic data generator, but ships @faker-js/faker (${fakerChunks.join(', ')})`,
+  );
+}
+if (!isSubpath && fakerChunks.length === 0) {
   fail(`no chunk contains the faker marker ${FAKER_MARKER}; update it`);
 }
 const fakerInInitialLoad = fakerChunks.filter((f) => initialLoad.has(f));
@@ -684,5 +746,5 @@ if (isSubpath) {
 }
 
 console.log(
-  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load${isSubpath ? `; plus ${offlineFirstVisitAssets.length} font and header-mark files` : ''}`,
+  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${isSubpath ? `${offlineFirstVisitAssets.length} font files precached; no Home, data view, Settings, onboarding, sample or faker shipped` : `${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`}`,
 );

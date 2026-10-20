@@ -10,7 +10,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 const mocks = vi.hoisted(() => ({
   isSubpath: true,
-  leaveForInterviewer9: vi.fn(),
+  returnToInterviewer9: vi.fn(),
   useAuth: vi.fn(),
 }));
 
@@ -21,11 +21,9 @@ vi.mock('~/lib/appBase', async (importOriginal) => ({
   },
 }));
 
-vi.mock('~/lib/handoff/interviewer9Navigation', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('~/lib/handoff/interviewer9Navigation')
-  >()),
-  leaveForInterviewer9: mocks.leaveForInterviewer9,
+vi.mock('~/lib/interviewer9Navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/lib/interviewer9Navigation')>()),
+  returnToInterviewer9: mocks.returnToInterviewer9,
 }));
 
 vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => mocks.useAuth() }));
@@ -77,7 +75,7 @@ describe('LockScreen in Interviewer 8 inside Interviewer 9', () => {
       screen.queryByRole('button', { name: RESET }),
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: MANAGE }));
-    expect(mocks.leaveForInterviewer9).toHaveBeenCalledWith('/');
+    expect(mocks.returnToInterviewer9).toHaveBeenCalledTimes(1);
   });
 
   it('does the same in the biometric recovery dialog', async () => {
@@ -138,7 +136,7 @@ describe('VaultRecoveryScreen in Interviewer 8 inside Interviewer 9', () => {
       screen.queryByRole('button', { name: 'Reset all app data' }),
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: MANAGE }));
-    expect(mocks.leaveForInterviewer9).toHaveBeenCalledWith('/');
+    expect(mocks.returnToInterviewer9).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the reset in the root app', () => {

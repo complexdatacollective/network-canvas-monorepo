@@ -1,11 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  createElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { createElement, useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -16,23 +10,17 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { InstallBanner } from '~/components/InstallBanner';
-import { Interviewer8Banner } from '~/components/Interviewer8Banner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
-import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
-import {
-  peekUrlStartRequest,
-  takeUrlStartRequest,
-} from '~/lib/urlLaunchRequest';
 
 import { buildDeleteProtocolMessage } from './deleteProtocolMessage';
 import {
@@ -76,13 +64,6 @@ function viewFromLocation(location: string): View {
   return location === '/data' ? 'data' : 'protocols';
 }
 
-// The header's top padding measures from the bottom of the device's top safe
-// area (see the header below). Interviewer 8 inside Interviewer 9 (a /v8/
-// build) puts its banner above the header, and the banner takes the inset.
-const HEADER_TOP_INSET = IS_SUBPATH_BUILD
-  ? 'laptop:pt-9 pt-4'
-  : 'laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pt-[calc(1rem+env(safe-area-inset-top))]';
-
 export function HomeRoute() {
   const { protocols, sessions, settings, reload } = useHomeData();
   const { pendingImports, startImport } = useProtocolImport({
@@ -95,11 +76,6 @@ export function HomeRoute() {
   useLaunchFailureToast();
   const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
-    null,
-  );
-  // The protocol a `?start=` link asked to start an interview with (Interviewer
-  // 9 opens schema 8 protocols here that way), once it is known to be stored.
-  const [startProtocolHash, setStartProtocolHash] = useState<string | null>(
     null,
   );
   // Bumped when sessions are mutated outside the DataView (synthetic-data
@@ -124,37 +100,10 @@ export function HomeRoute() {
   const showResumePill =
     view === 'protocols' && !newSessionActive && hasResumableSession;
 
-  // `?start=<protocolHash>`: once the library has loaded, open the new-interview
-  // form for that protocol, exactly as tapping its card does. The request is
-  // read when Home mounts and taken from its module at once, so it is acted
-  // on once; one naming a protocol this device does not have is ignored. The
-  // library arrives asynchronously from IndexedDB, so the request waits in
-  // state and is settled during the render in which the library is there.
-  const [startRequest, setStartRequest] = useState(peekUrlStartRequest);
-  useEffect(() => {
-    takeUrlStartRequest();
-  }, []);
-  const libraryLoaded = settings !== null;
-  if (startRequest !== null && libraryLoaded) {
-    setStartRequest(null);
-    if (protocols.some((p) => p.hash === startRequest)) {
-      setStartProtocolHash(startRequest);
-      setPendingProtocolHash(startRequest);
-    }
-  }
-
   // Default the active card to the user's last-used protocol; fall back to
   // the most-recently-imported one if they've never opened a protocol (or
   // the remembered one has since been deleted).
-  // A `?start=` protocol wins. It is settled above in the same render the
-  // library arrives in, so the deck's very first placement is on that card.
   const initialProtocolHash = useMemo(() => {
-    if (
-      startProtocolHash !== null &&
-      protocols.some((p) => p.hash === startProtocolHash)
-    ) {
-      return startProtocolHash;
-    }
     const lastUsed = settings?.lastActiveProtocolHash;
     if (lastUsed && protocols.some((p) => p.hash === lastUsed)) {
       return lastUsed;
@@ -163,7 +112,7 @@ export function HomeRoute() {
     return [...protocols].toSorted((a, b) =>
       b.importedAt.localeCompare(a.importedAt),
     )[0]?.hash;
-  }, [settings?.lastActiveProtocolHash, protocols, startProtocolHash]);
+  }, [settings?.lastActiveProtocolHash, protocols]);
 
   const handleImportFile = useCallback(
     (file: File) => {
@@ -285,14 +234,13 @@ export function HomeRoute() {
           z-index so it is visually overlaid, and `inert` keeps its
           controls out of the tab order while the new-session form is up. */}
       <InstallBanner />
-      <Interviewer8Banner inert={newSessionActive} />
       {/* Top padding measures from the bottom of the device's top safe area
           (env() is 0 outside an installed PWA on a notched/status-bar device),
           so the brand mark and action bar clear the clock/battery while the
           gradient backdrop still shows through behind them (#1186). At laptop:
           the design's 2.25rem floor wins unless the inset pushes past it. */}
       <header
-        className={`laptop:px-11 relative flex items-center justify-between px-6 ${HEADER_TOP_INSET}`}
+        className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] relative flex items-center justify-between px-6 pt-[calc(1rem+env(safe-area-inset-top))]"
         inert={newSessionActive}
       >
         <BrandHeader />
@@ -314,9 +262,7 @@ export function HomeRoute() {
             actual ORIENTATION, not a min-width breakpoint: the 13" iPad's
             portrait width (~1024px) would otherwise trip a min-width
             breakpoint and pull the pill up into the header. */}
-        <div
-          className={`laptop:px-11 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 landscape:translate-y-0 ${HEADER_TOP_INSET}`}
-        >
+        <div className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-[calc(1rem+env(safe-area-inset-top))] landscape:translate-y-0">
           <AnimatePresence>
             {showResumePill ? (
               <ResumePill key="resume-pill" sessions={sessions} />
@@ -349,12 +295,8 @@ export function HomeRoute() {
               // researcher's preference, and the dev-only build gate. The deck
               // drops a teaser whose protocol is already installed, and hands
               // its slot to the pending card while an install is in flight.
-              // Interviewer 8 inside Interviewer 9 offers no sample: Interviewer
-              // 9 has its own, made for schema 9.
               showSampleCard={
-                !IS_SUBPATH_BUILD && settings
-                  ? !settings.sampleProtocolDismissed
-                  : false
+                settings ? !settings.sampleProtocolDismissed : false
               }
               showDevelopmentCard={import.meta.env.DEV}
               pendingImports={pendingImports}

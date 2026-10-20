@@ -7,7 +7,6 @@ describe('createAppBase', () => {
     const root = createAppBase('/');
 
     expect(root.routerBase).toBe('');
-    expect(root.isSubpath).toBe(false);
     for (const path of ['/', '/data', '/interview/s1?x=1#y', '/v8/data']) {
       expect(root.toBrowserPath(path)).toBe(path);
       expect(root.toAppPath(path)).toBe(path);
@@ -18,7 +17,6 @@ describe('createAppBase', () => {
     const v8 = createAppBase('/v8/');
 
     expect(v8.routerBase).toBe('/v8');
-    expect(v8.isSubpath).toBe(true);
     expect(v8.toBrowserPath('/')).toBe('/v8/');
     expect(v8.toBrowserPath('/interview/s1')).toBe('/v8/interview/s1');
   });
@@ -29,7 +27,7 @@ describe('createAppBase', () => {
     expect(v8.toAppPath('/v8/interview/s1')).toBe('/interview/s1');
     expect(v8.toAppPath('/v8/')).toBe('/');
     expect(v8.toAppPath('/v8')).toBe('/');
-    expect(v8.toAppPath('/v8?start=abc')).toBe('/?start=abc');
+    expect(v8.toAppPath('/v8?mode=review')).toBe('/?mode=review');
     expect(v8.toAppPath('/v8#top')).toBe('/#top');
   });
 

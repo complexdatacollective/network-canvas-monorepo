@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { useAuth } from '~/lib/auth/AuthContext';
-import { replaceWithInterviewer9 } from '~/lib/handoff/interviewer9Navigation';
+import { returnToInterviewer9 } from '~/lib/interviewer9Navigation';
 import { useStoredProtocolMigration } from '~/lib/protocol/useStoredProtocolMigration';
 import { isRunningInstalled } from '~/lib/pwa/isRunningInstalled';
 
@@ -35,19 +35,22 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, []);
 
   // Interviewer 8 inside Interviewer 9 (a /v8/ build) shares Interviewer 9's
-  // lock and never sets one up itself. Where set-up is required, the
-  // researcher belongs in Interviewer 9, which owns it and forces it under
-  // the same rule. In a plain browser tab Interviewer 9 runs without a lock,
-  // and so does this build: handing over there would send every way into
-  // Interviewer 8 straight back to Interviewer 9.
-  const shouldHandOverToInterviewer9 =
+  // lock and never sets one up itself, and has no onboarding or Home of its
+  // own: this gate only ever stands in front of an interview (App.tsx returns
+  // every other address to Interviewer 9 before it). Where set-up is
+  // required, the researcher belongs in Interviewer 9, which owns it and
+  // forces it under the same rule. In a plain browser tab Interviewer 9 runs
+  // without a lock, and so does this build: returning there would send every
+  // way into Interviewer 8 straight back to Interviewer 9.
+  const shouldReturnToInterviewer9 =
     IS_SUBPATH_BUILD && kind === 'unconfigured' && requireSetup;
   const shouldRedirectToWelcome =
     !IS_SUBPATH_BUILD &&
     kind === 'unconfigured' &&
     requireSetup &&
     location !== '/welcome';
-  const shouldRedirectToHome = kind === 'unlocked' && location === '/welcome';
+  const shouldRedirectToHome =
+    !IS_SUBPATH_BUILD && kind === 'unlocked' && location === '/welcome';
 
   // Protocol documents are encrypted at rest, so a stored protocol can only be
   // read — and therefore only be migrated to the schema version this build's
@@ -57,13 +60,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // last point before a session could resume against a stale protocol. Hold the
   // same spinner the redirects use until the sweep settles; it finds nothing to
   // do on every library in the field today.
+  //
+  // Not in a /v8/ build: the database is Interviewer 9's, which keeps its
+  // schema 8 protocols at schema 8, and that build writes nothing but its
+  // interview's session row.
   const databaseReadable = kind === 'unlocked' || kind === 'unconfigured';
-  const migrationPhase = useStoredProtocolMigration(databaseReadable);
-  const awaitingMigration = databaseReadable && migrationPhase !== 'settled';
+  const sweepsProtocols = !IS_SUBPATH_BUILD && databaseReadable;
+  const migrationPhase = useStoredProtocolMigration(sweepsProtocols);
+  const awaitingMigration = sweepsProtocols && migrationPhase !== 'settled';
 
   useEffect(() => {
-    if (shouldHandOverToInterviewer9) {
-      replaceWithInterviewer9();
+    if (shouldReturnToInterviewer9) {
+      returnToInterviewer9();
     } else if (shouldRedirectToWelcome) {
       navigate('/welcome', { replace: true });
     } else if (shouldRedirectToHome) {
@@ -71,7 +79,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     }
   }, [
     navigate,
-    shouldHandOverToInterviewer9,
+    shouldReturnToInterviewer9,
     shouldRedirectToWelcome,
     shouldRedirectToHome,
   ]);
@@ -80,7 +88,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // can't paint for a frame before navigation runs in the effect above.
   if (
     kind === 'loading' ||
-    shouldHandOverToInterviewer9 ||
+    shouldReturnToInterviewer9 ||
     shouldRedirectToWelcome ||
     shouldRedirectToHome ||
     awaitingMigration

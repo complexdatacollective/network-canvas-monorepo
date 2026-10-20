@@ -125,13 +125,13 @@ describe('StepUpAuthProvider and the unlock-to-enter grace', () => {
     mockAuth = { kind: 'unlocked', mode: 'pin' };
     rerender();
 
-    expect(grace.takeEntryUnlockGrace({ sessionId: 's1' })).toBe(true);
+    expect(grace.takeEntryUnlockGrace('s1')).toBe(true);
   });
 
   it('is not started by a page that was never locked', async () => {
     const { grace, rerender } = await openInterviewPage();
     rerender();
 
-    expect(grace.takeEntryUnlockGrace({ sessionId: 's1' })).toBe(false);
+    expect(grace.takeEntryUnlockGrace('s1')).toBe(false);
   });
 });

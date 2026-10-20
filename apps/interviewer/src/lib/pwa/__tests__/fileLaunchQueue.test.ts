@@ -4,9 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // state, so load a fresh copy per test with a stubbed queue.
 type Handle = { getFile: () => Promise<File> };
 
-type CaptureOptions = { routeFiles?: (files: File[]) => Promise<File[]> };
-
-const loadModule = async (options?: CaptureOptions) => {
+const loadModule = async () => {
   vi.resetModules();
   let consumer: ((params: { files: Handle[] }) => void) | undefined;
   vi.stubGlobal('launchQueue', {
@@ -15,7 +13,7 @@ const loadModule = async (options?: CaptureOptions) => {
     },
   });
   const mod = await import('../fileLaunchQueue');
-  mod.initFileLaunchCapture(options);
+  mod.initFileLaunchCapture();
   if (!consumer) throw new Error('consumer was not registered');
   const settle = async () => {
     // getFile() resolution is async; let the consumer settle.
@@ -38,7 +36,6 @@ const loadModule = async (options?: CaptureOptions) => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  vi.restoreAllMocks();
 });
 
 describe('fileLaunchQueue', () => {
@@ -147,82 +144,5 @@ describe('fileLaunchQueue', () => {
     expect(taken).toBe(2);
     expect(mod.getLaunchFailureCount()).toBe(0);
     expect(mod.takeLaunchFailureCount()).toBe(0);
-  });
-
-  describe('routeFiles', () => {
-    it('queues only the files it hands back, holding the update check while it runs', async () => {
-      let finishRouting: (files: File[]) => void = () => {};
-      const routeFiles = vi.fn(
-        () =>
-          new Promise<File[]>((resolve) => {
-            finishRouting = resolve;
-          }),
-      );
-      const { mod, launch, settle } = await loadModule({ routeFiles });
-
-      await launch('a.netcanvas', 'notes.txt', 'b.netcanvas');
-
-      expect(routeFiles).toHaveBeenCalledWith([
-        expect.objectContaining({ name: 'a.netcanvas' }),
-        expect.objectContaining({ name: 'b.netcanvas' }),
-      ]);
-      expect(mod.getLaunchFiles()).toEqual([]);
-      expect(mod.hasPendingLaunchFiles()).toBe(true);
-
-      finishRouting([]);
-      await settle();
-
-      expect(mod.getLaunchFiles()).toEqual([]);
-      expect(mod.hasPendingLaunchFiles()).toBe(false);
-    });
-
-    it('imports here whatever it hands back', async () => {
-      const { mod, launch } = await loadModule({
-        routeFiles: async (files) => files.slice(0, 1),
-      });
-
-      await launch('a.netcanvas', 'b.netcanvas');
-
-      expect(mod.getLaunchFiles().map((f) => f.name)).toEqual(['a.netcanvas']);
-    });
-  });
-
-  describe('enqueueLaunchRead', () => {
-    it('queues the file it reads, and holds the update check until then', async () => {
-      const { mod, settle } = await loadModule();
-      let resolveRead: (file: File | null) => void = () => {};
-
-      mod.enqueueLaunchRead(
-        () =>
-          new Promise<File | null>((resolve) => {
-            resolveRead = resolve;
-          }),
-      );
-      expect(mod.hasPendingLaunchFiles()).toBe(true);
-      expect(mod.getLaunchFiles()).toEqual([]);
-
-      resolveRead(new File(['zip'], 'staged.netcanvas'));
-      await settle();
-
-      expect(mod.getLaunchFiles().map((f) => f.name)).toEqual([
-        'staged.netcanvas',
-      ]);
-      expect(mod.getLaunchFailureCount()).toBe(0);
-    });
-
-    it('reports nothing to read, or a failed read, as an unreadable launched file', async () => {
-      vi.spyOn(console, 'error').mockImplementation(() => {});
-      const { mod, settle } = await loadModule();
-
-      mod.enqueueLaunchRead(async () => null);
-      mod.enqueueLaunchRead(async () => {
-        throw new Error('storage unavailable');
-      });
-      await settle();
-
-      expect(mod.getLaunchFiles()).toEqual([]);
-      expect(mod.getLaunchFailureCount()).toBe(2);
-      expect(mod.hasPendingLaunchFiles()).toBe(false);
-    });
   });
 });

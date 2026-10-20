@@ -11,7 +11,6 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { createInitialNetwork } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { takeEntryUnlockGrace } from '~/lib/auth/entryUnlockGrace';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import { createSession, getSettings } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
@@ -199,13 +198,7 @@ export function NewSessionForm({
         // Run the enter gate before creating the session so a declined or
         // failed unlock doesn't leave an orphan session behind.
         const settings = await getSettings();
-        // In Interviewer 8 inside Interviewer 9, an unlock seconds ago on the
-        // page Interviewer 9 opened to start this protocol stands in for the
-        // gate, once.
-        if (
-          settings.requireUnlockOnEnter &&
-          !takeEntryUnlockGrace({ protocolHash: protocol.hash })
-        ) {
+        if (settings.requireUnlockOnEnter) {
           const result = await requireFreshUnlock();
           if (!result.ok) return { success: false };
         }

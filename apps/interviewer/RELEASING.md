@@ -190,10 +190,32 @@ builds a released tag with `INTERVIEWER_BASE_PATH=/v<major>/` and attaches
 - **What a `/v8/` build is.** The same app, built under the base: Vite `base`,
   wouter's router base, manifest `start_url`, `scope` and `id`, and every
   service-worker route rebased to `/v8/`; caches named `interviewer-v8-*`; the
-  manifest named "Interviewer 8" with no file handler. It is never offered for
-  installation and hides the update pill, release notes and sample protocol;
-  the lock is managed in Interviewer 9. `scripts/build.mjs` drops `_headers`
-  and `_redirects` (Interviewer 9 owns the `/v8/` hosting rules) and writes
+  manifest named "Interviewer 8" with no file handler. It is the interview
+  alone: Interviewer 9 starts, resumes and reviews schema 8 interviews through
+  its own `/interview/<id>` route, which frames `/v8/interview/<id>` (with
+  `?mode=review` for a review) in a full-viewport same-origin iframe and hands
+  over the lock's key by `postMessage`, so the researcher unlocks once, in
+  Interviewer 9 (the contract is written out in
+  `src/lib/interviewer9Embed.ts`). A top-level load of `/v8/interview/<id>`
+  is replaced with `/interview/<id>`, and every other `/v8/` address with `/`.
+  Framed, every way out of the interview posts `interviewer8:closed` to
+  Interviewer 9 instead of navigating. Both apps use the one `interviewer` IndexedDB
+  database: Interviewer 9 owns it (it declares the higher Dexie versions and
+  runs every upgrade) and writes schema 8 rows in Interviewer 8's format, and
+  the `/v8/` build writes nothing but the session row of the interview it is
+  running, reading its lock rules from Interviewer 9's `'device'` settings
+  row. Nothing is handed back. Every other address, an interview it cannot
+  run, and every way out of an interview return to Interviewer 9; Home, the
+  data view, Settings and onboarding are left out of the build. It is never
+  offered for installation and hides the update pill and release notes; the
+  lock is managed in Interviewer 9. `scripts/build.mjs` drops `_headers`
+  and `_redirects` (Interviewer 9 owns the `/v8/` hosting rules: they must let
+  only the same origin frame `/v8/*`, as `Content-Security-Policy:
+frame-ancestors 'self'`, never a wider value, and must not send
+  `X-Frame-Options: DENY` there; the build's own `<meta>` policy says
+  `frame-ancestors 'self'`, but browsers ignore that directive in a meta
+  policy, so the app itself only renders nothing when another origin frames
+  it) and writes
   `dist-info.json`, and `scripts/assert-pwa-build.mjs` holds the shape. CI's
   quality-support job builds it on every pull request, and
   `pnpm --filter @codaco/interviewer test:e2e:subpath` drives it end to end.
@@ -299,11 +321,11 @@ The workflow has its own concurrency group per app. It does not share
 one pending run, so a maintenance run waiting for approval could make a normal
 release be dropped.
 
-**Setup (one-time, and load-bearing).** NOTE(human-setup-required): create the
-`interviewer-maintenance-release` environment with **required reviewers**, and
-restrict its **deployment branches** to `main`. The reason is the same as for
-the hotfix lane: a workflow file cannot enforce its own protection. The
-environment holds no secrets, because the lane deploys nothing.
+**Setup (load-bearing).** The `interviewer-maintenance-release` environment
+has **required reviewers**, and its **deployment branches** are restricted to
+`main`; keep them so. The reason is the same as for the hotfix lane: a
+workflow file cannot enforce its own protection. The environment holds no
+secrets, because the lane deploys nothing.
 
 ## Developer site
 

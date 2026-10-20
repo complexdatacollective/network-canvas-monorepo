@@ -87,7 +87,11 @@ export const CSP_DIRECTIVES = [
   "base-uri 'none'",
   "object-src 'none'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
+  // Interviewer 9 frames the /v8/ build (src/lib/interviewer9Embed.ts) from
+  // its own origin, and nothing else may frame either build. Browsers ignore
+  // frame-ancestors in a <meta> policy, so this records the rule; the deploy
+  // that serves the page enforces it in its headers (RELEASING.md).
+  appBase === '/' ? "frame-ancestors 'none'" : "frame-ancestors 'self'",
 ];
 
 function injectCspMeta(): Plugin {

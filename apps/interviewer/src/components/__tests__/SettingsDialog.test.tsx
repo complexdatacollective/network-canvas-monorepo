@@ -106,25 +106,6 @@ vi.mock('~/lib/synthetic/generate', () => ({
   generateSyntheticSessions: mockGenerateSyntheticSessions,
 }));
 
-const subpath = vi.hoisted(() => ({
-  isSubpath: false,
-  leaveForInterviewer9: vi.fn(),
-}));
-
-vi.mock('~/lib/appBase', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('~/lib/appBase')>()),
-  get IS_SUBPATH_BUILD() {
-    return subpath.isSubpath;
-  },
-}));
-
-vi.mock('~/lib/handoff/interviewer9Navigation', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('~/lib/handoff/interviewer9Navigation')
-  >()),
-  leaveForInterviewer9: subpath.leaveForInterviewer9,
-}));
-
 import { SettingsDialog } from '../SettingsDialog';
 
 function makeProtocol(name: string, hash: string): ProtocolWithCounts {
@@ -185,90 +166,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
-  subpath.isSubpath = false;
-});
-
-// Interviewer 8 inside Interviewer 9's deploy (a /v8/ build) shares Interviewer
-// 9's lock and its rules, and only unlocks it.
-describe('SettingsDialog in Interviewer 8 inside Interviewer 9', () => {
-  it('replaces every lock control with the way to Interviewer 9', async () => {
-    subpath.isSubpath = true;
-    mockAuth('unlocked', 'pin');
-    const user = userEvent.setup();
-    render(<SettingsDialog open onClose={vi.fn()} />);
-
-    await user.click(screen.getByRole('tab', { name: 'Security' }));
-    const manage = await screen.findByRole('button', {
-      name: 'Manage the lock in Interviewer',
-    });
-
-    expect(
-      screen.queryByRole('heading', { name: 'Authenticator' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Revoke' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('switch', {
-        name: 'Require unlock when entering an interview',
-      }),
-    ).not.toBeInTheDocument();
-
-    await user.click(manage);
-    expect(subpath.leaveForInterviewer9).toHaveBeenCalledWith('/');
-  });
-
-  it('offers no Get started wizard or device reset without a lock either', async () => {
-    subpath.isSubpath = true;
-    mockAuth('unlocked', 'none');
-    const user = userEvent.setup();
-    render(<SettingsDialog open onClose={vi.fn()} />);
-
-    await user.click(screen.getByRole('tab', { name: 'Security' }));
-    await screen.findByRole('button', {
-      name: 'Manage the lock in Interviewer',
-    });
-
-    expect(
-      screen.queryByRole('button', { name: 'Get started' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Reset device' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('keeps the lock controls in the root app', async () => {
-    mockAuth('unlocked', 'pin');
-    const user = userEvent.setup();
-    render(<SettingsDialog open onClose={vi.fn()} />);
-
-    await user.click(screen.getByRole('tab', { name: 'Security' }));
-
-    expect(
-      await screen.findByRole('button', { name: 'Revoke' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Manage the lock in Interviewer' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('has no setting to bring back the sample protocol card', async () => {
-    subpath.isSubpath = true;
-    render(<SettingsDialog open onClose={vi.fn()} />);
-
-    await screen.findByText('Installation ID');
-    expect(
-      screen.queryByRole('switch', { name: /sample protocol/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('keeps that setting at the root', async () => {
-    render(<SettingsDialog open onClose={vi.fn()} />);
-
-    expect(
-      await screen.findByRole('switch', { name: /sample protocol/i }),
-    ).toBeInTheDocument();
-  });
 });
 
 describe('SettingsDialog storage durability', () => {

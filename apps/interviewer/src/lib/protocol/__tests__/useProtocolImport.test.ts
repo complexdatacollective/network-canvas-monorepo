@@ -9,20 +9,9 @@ import { renderedMessage } from '~/testUtils/renderedMessage';
 
 import { useProtocolImport } from '../useProtocolImport';
 
-const { appBase, dialogOpen, forwardFile, toastAdd } = vi.hoisted(() => ({
-  appBase: { subpath: false },
+const { dialogOpen, toastAdd } = vi.hoisted(() => ({
   dialogOpen: vi.fn(),
-  forwardFile: vi.fn<(file: File) => Promise<boolean>>(),
   toastAdd: vi.fn<(options: ToastCall) => void>(),
-}));
-
-vi.mock('~/lib/appBase', () => ({
-  get IS_SUBPATH_BUILD() {
-    return appBase.subpath;
-  },
-}));
-vi.mock('~/lib/handoff/interviewer9Handoff', () => ({
-  forwardFileToInterviewer9: forwardFile,
 }));
 
 vi.mock('@codaco/fresco-ui/Toast', () => ({
@@ -40,15 +29,12 @@ vi.mock('~/lib/db/api', () => ({
 vi.mock('../importProtocol', () => ({
   importBundledProtocol: vi.fn(() => new Promise(() => {})),
   importProtocolFromFile: vi.fn(() => new Promise(() => {})),
-  isNewerSchemaVersion: (version: number | null) =>
-    version !== null && version > 8,
-  peekProtocol: vi.fn(async () => ({ name: null, schemaVersion: null })),
+  peekProtocolName: vi.fn(async () => null),
 }));
 
 import {
   importBundledProtocol,
   importProtocolFromFile,
-  peekProtocol,
 } from '../importProtocol';
 
 type ToastCall = {
@@ -66,7 +52,6 @@ describe('useProtocolImport', () => {
     );
   });
   afterEach(() => {
-    appBase.subpath = false;
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -241,86 +226,5 @@ describe('useProtocolImport', () => {
         intent: 'destructive',
       }),
     );
-  });
-
-  describe('a protocol made for a newer schema', () => {
-    const startNewerImport = async (
-      startImport: ReturnType<typeof useProtocolImport>['startImport'],
-    ) => {
-      vi.mocked(peekProtocol).mockResolvedValueOnce({
-        name: 'Newer study',
-        schemaVersion: 9,
-      });
-      const file = new File([new Uint8Array()], 'newer.netcanvas');
-      await act(async () => {
-        await startImport({ source: 'file', file, label: file.name });
-        await vi.advanceTimersByTimeAsync(600);
-      });
-      return file;
-    };
-
-    it('is handed to Interviewer 9 by an Interviewer 8 build, without importing it here', async () => {
-      appBase.subpath = true;
-      forwardFile.mockResolvedValueOnce(true);
-      const { result } = renderHook(() =>
-        useProtocolImport({ onInstalled: () => {} }),
-      );
-
-      const file = await startNewerImport(result.current.startImport);
-
-      expect(forwardFile).toHaveBeenCalledWith(file);
-      expect(result.current.pendingImports).toEqual([]);
-      expect(importProtocolFromFile).not.toHaveBeenCalled();
-    });
-
-    it('imports here, to explain itself, when the hand-off cannot be staged', async () => {
-      appBase.subpath = true;
-      forwardFile.mockResolvedValueOnce(false);
-      const { result } = renderHook(() =>
-        useProtocolImport({ onInstalled: () => {} }),
-      );
-
-      await startNewerImport(result.current.startImport);
-
-      expect(forwardFile).toHaveBeenCalledTimes(1);
-      expect(importProtocolFromFile).toHaveBeenCalledTimes(1);
-    });
-
-    it('is never handed over by the root build', async () => {
-      const { result } = renderHook(() =>
-        useProtocolImport({ onInstalled: () => {} }),
-      );
-
-      await startNewerImport(result.current.startImport);
-
-      expect(forwardFile).not.toHaveBeenCalled();
-      expect(result.current.pendingImports).toEqual([
-        expect.objectContaining({ label: 'Newer study' }),
-      ]);
-      expect(importProtocolFromFile).toHaveBeenCalledTimes(1);
-    });
-
-    it('leaves a schema 8 protocol to this build', async () => {
-      appBase.subpath = true;
-      vi.mocked(peekProtocol).mockResolvedValueOnce({
-        name: 'Study',
-        schemaVersion: 8,
-      });
-      const { result } = renderHook(() =>
-        useProtocolImport({ onInstalled: () => {} }),
-      );
-
-      await act(async () => {
-        await result.current.startImport({
-          source: 'file',
-          file: new File([new Uint8Array()], 'study.netcanvas'),
-          label: 'study.netcanvas',
-        });
-        await vi.advanceTimersByTimeAsync(600);
-      });
-
-      expect(forwardFile).not.toHaveBeenCalled();
-      expect(importProtocolFromFile).toHaveBeenCalledTimes(1);
-    });
   });
 });

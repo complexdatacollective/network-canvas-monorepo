@@ -132,39 +132,28 @@ function declaredSchemaVersion(document: unknown): number | null {
  * a protocol was made for a newer Interviewer, and no migration can bring it
  * back to this one.
  */
-export function isNewerSchemaVersion(version: number | null): boolean {
+function isNewerSchemaVersion(version: number | null): boolean {
   return version !== null && version > APP_SCHEMA_VERSION;
 }
 
-export type ProtocolPeek = {
-  /** The protocol's own name, when it has a usable one. */
-  name: string | null;
-  /** The schema version it declares, when it declares a readable one. */
-  schemaVersion: number | null;
-};
-
-/**
- * Read a protocol file's name and declared schema version without importing
- * it. Never rejects: an unreadable file peeks as nothing, and the import that
- * follows explains what is wrong with it.
- */
-export async function peekProtocol(buffer: Uint8Array): Promise<ProtocolPeek> {
+export async function peekProtocolName(
+  buffer: Uint8Array,
+): Promise<string | null> {
   try {
     // Goes through the package's loader and reader rather than JSZip directly,
-    // so peeking costs the same bounded inflation as importing: this runs on a
-    // researcher-supplied file before any size guard.
+    // so naming the pending card costs the same bounded inflation as importing
+    // it: this runs on a researcher-supplied file before any size guard, and
+    // an unbudgeted `.async('string')` here would inflate a deflate-bombed
+    // `protocol.json` in full just to read one field off it.
     const zip = await loadNetcanvasArchive(buffer);
     const parsed: unknown = await createNetcanvasReader(zip).readProtocol();
-    if (!isRecord(parsed)) return { name: null, schemaVersion: null };
-    return {
-      name:
-        typeof parsed.name === 'string' && parsed.name.trim().length > 0
-          ? parsed.name
-          : null,
-      schemaVersion: declaredSchemaVersion(parsed),
-    };
+    if (!isRecord(parsed)) return null;
+    if (typeof parsed.name === 'string' && parsed.name.trim().length > 0) {
+      return parsed.name;
+    }
+    return null;
   } catch {
-    return { name: null, schemaVersion: null };
+    return null;
   }
 }
 

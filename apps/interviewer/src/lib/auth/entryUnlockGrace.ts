@@ -1,51 +1,21 @@
-import { IS_SUBPATH_BUILD, toAppPath } from '~/lib/appBase';
-import { getOpeningStartRequest } from '~/lib/urlLaunchRequest';
+import { OPENED_INTERVIEW_SESSION_ID } from '~/lib/openedInterview';
 
-// Interviewer 9 starts and resumes schema 8 interviews by opening Interviewer
-// 8 (a /v8/ build) with a full-page navigation. The lock's key never leaves a
-// page's memory, so Interviewer 8 asks to unlock again on arrival. Without
-// this, starting an interview there would then ask a second time, at the
-// "unlock to enter the interview" step, seconds later.
+// Interviewer 9 hosts each schema 8 interview by framing Interviewer 8 (a /v8/
+// build) at /interview/<id> (see interviewer9Embed.ts). The researcher has
+// already unlocked Interviewer 9, which hands its key over, and says whether
+// it has also satisfied the "unlock to enter the interview" step. Without
+// this, entering the interview here would then ask a second time, seconds
+// later.
 //
-// So an unlock at the lock screen in the last minute stands in for that step,
-// but only in a /v8/ build, only on a page Interviewer 9 opened for an
-// interview, and only for that interview: the protocol named by
-// `?start=<protocolHash>`, or the session at `/interview/<id>`. It stands in
-// once. Entering anything else, or entering again (after the participant has
-// left the interview, say), asks as usual. Everything lives in this page's
-// memory; nothing written to storage can grant it.
+// So, only in a /v8/ build and only for the session at the `/interview/<id>`
+// the page was opened at, either of these stands in for that step, once:
+// Interviewer 9 saying it was satisfied, or, when Interviewer 9 did not hand
+// the key over in time, an unlock at this page's own lock screen in the last
+// minute. Entering anything else, or entering again (after the participant
+// has left the interview, say), asks as usual. Everything lives in this
+// page's memory; nothing written to storage can grant it.
 
 export const ENTRY_UNLOCK_GRACE_MS = 60_000;
-
-/** What is being entered: a new interview of a protocol, or a session. */
-export type EntryTarget = { protocolHash: string } | { sessionId: string };
-
-const INTERVIEW_PATH = /^\/interview\/([^/?#]+)/i;
-
-const sessionIdInPath = (path: string): string | null => {
-  const segment = INTERVIEW_PATH.exec(toAppPath(path))?.[1];
-  if (segment === undefined) return null;
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return null;
-  }
-};
-
-// Read as the app's modules are evaluated, before any navigation within it.
-const openedFor = (): EntryTarget | null => {
-  const protocolHash = getOpeningStartRequest();
-  if (protocolHash !== null) return { protocolHash };
-  if (typeof window === 'undefined') return null;
-  const sessionId = sessionIdInPath(window.location.pathname);
-  return sessionId === null ? null : { sessionId };
-};
-const openingTarget = IS_SUBPATH_BUILD ? openedFor() : null;
-
-const isSameTarget = (a: EntryTarget, b: EntryTarget): boolean =>
-  'protocolHash' in a
-    ? 'protocolHash' in b && a.protocolHash === b.protocolHash
-    : 'sessionId' in b && a.sessionId === b.sessionId;
 
 let unlockedAt: number | null = null;
 let spent = false;
@@ -55,6 +25,16 @@ export const noteLockScreenUnlock = (now: number = Date.now()): void => {
   if (!spent) unlockedAt = now;
 };
 
+/**
+ * Record that Interviewer 9 has already satisfied the enter step for the
+ * interview this page was opened for (auth/api.ts adoptInterviewer9Unlock).
+ */
+export const noteInterviewer9EntryAuthorization = (
+  now: number = Date.now(),
+): void => {
+  noteLockScreenUnlock(now);
+};
+
 /** Give up the grace for the rest of this page load, used or not. */
 export const endEntryUnlockGrace = (): void => {
   spent = true;
@@ -62,17 +42,16 @@ export const endEntryUnlockGrace = (): void => {
 };
 
 /**
- * Whether the "unlock to enter the interview" step may be skipped for
- * `target` now. A true answer uses the grace up.
+ * Whether the "unlock to enter the interview" step may be skipped for the
+ * session `sessionId` now. A true answer uses the grace up.
  */
 export const takeEntryUnlockGrace = (
-  target: EntryTarget,
+  sessionId: string,
   now: number = Date.now(),
 ): boolean => {
   const granted =
     !spent &&
-    openingTarget !== null &&
-    isSameTarget(openingTarget, target) &&
+    OPENED_INTERVIEW_SESSION_ID === sessionId &&
     unlockedAt !== null &&
     now >= unlockedAt &&
     now - unlockedAt <= ENTRY_UNLOCK_GRACE_MS;

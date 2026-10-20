@@ -21,7 +21,7 @@ vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => mockUseAuth() }));
 
 const subpath = vi.hoisted(() => ({
   isSubpath: false,
-  replaceWithInterviewer9: vi.fn(),
+  returnToInterviewer9: vi.fn(),
 }));
 
 vi.mock('~/lib/appBase', async (importOriginal) => ({
@@ -31,8 +31,8 @@ vi.mock('~/lib/appBase', async (importOriginal) => ({
   },
 }));
 
-vi.mock('~/lib/handoff/interviewer9Navigation', () => ({
-  replaceWithInterviewer9: subpath.replaceWithInterviewer9,
+vi.mock('~/lib/interviewer9Navigation', () => ({
+  returnToInterviewer9: subpath.returnToInterviewer9,
 }));
 
 // The real hook reaches into Dexie. What the gate is responsible for is when it
@@ -88,42 +88,57 @@ afterEach(() => {
 
 // Interviewer 8 inside Interviewer 9's deploy shares Interviewer 9's lock and
 // never sets one up: where set-up is required, the device belongs in
-// Interviewer 9, which forces set-up under the same rule.
+// Interviewer 9, which forces set-up under the same rule. Nor does it have
+// onboarding, so an unlocked /welcome is not sent Home. (App.tsx returns every
+// address but an interview to Interviewer 9 before this gate.)
 describe('AuthGate — Interviewer 8 inside Interviewer 9 (a /v8/ build)', () => {
-  it('hands an unconfigured installed app to Interviewer 9 to set up the lock', () => {
+  it('returns an unconfigured installed app to Interviewer 9 to set up the lock', () => {
     subpath.isSubpath = true;
     setup({ kind: 'unconfigured', installed: true });
 
-    expect(subpath.replaceWithInterviewer9).toHaveBeenCalledTimes(1);
+    expect(subpath.returnToInterviewer9).toHaveBeenCalledTimes(1);
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
   });
 
-  it('hands over the moment the app is installed while unconfigured', () => {
+  it('returns the moment the app is installed while unconfigured', () => {
     subpath.isSubpath = true;
     setup({ kind: 'unconfigured', installed: false });
-    expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
+    expect(subpath.returnToInterviewer9).not.toHaveBeenCalled();
 
     act(() => {
       window.dispatchEvent(new Event('appinstalled'));
     });
 
-    expect(subpath.replaceWithInterviewer9).toHaveBeenCalledTimes(1);
+    expect(subpath.returnToInterviewer9).toHaveBeenCalledTimes(1);
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  // Interviewer 9 runs without a lock in a browser tab, so every way into
-  // Interviewer 8 it offers (?start=, resume, data, ?import=) must open here
-  // too, rather than bounce back to Interviewer 9.
-  it.each(['/', '/interview/s1', '/data'])(
-    'runs an unconfigured browser tab without a lock, as Interviewer 9 does (%s)',
-    (location) => {
-      subpath.isSubpath = true;
-      setup({ kind: 'unconfigured', installed: false, location });
+  // Interviewer 9 runs without a lock in a browser tab, so the interviews it
+  // opens here must run here too, rather than bounce back to Interviewer 9.
+  it('runs an interview in an unconfigured browser tab without a lock, as Interviewer 9 does', () => {
+    subpath.isSubpath = true;
+    setup({
+      kind: 'unconfigured',
+      installed: false,
+      location: '/interview/s1',
+    });
 
+    expect(screen.getByTestId('app-child')).toBeInTheDocument();
+    expect(subpath.returnToInterviewer9).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  // The database is Interviewer 9's, and this build writes nothing but its
+  // interview's session row.
+  it.each(['unlocked', 'unconfigured'] as const)(
+    'never runs the stored-protocol migration, nor waits for it (%s)',
+    (kind) => {
+      subpath.isSubpath = true;
+      setup({ kind, location: '/interview/s1', migrationPhase: 'pending' });
+
+      expect(mockStoredProtocolMigration).not.toHaveBeenCalledWith(true);
       expect(screen.getByTestId('app-child')).toBeInTheDocument();
-      expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
-      expect(mockNavigate).not.toHaveBeenCalled();
     },
   );
 
@@ -132,7 +147,7 @@ describe('AuthGate — Interviewer 8 inside Interviewer 9 (a /v8/ build)', () =>
     setup({ kind: 'locked' });
 
     expect(screen.getByTestId('lock-screen')).toBeInTheDocument();
-    expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
+    expect(subpath.returnToInterviewer9).not.toHaveBeenCalled();
   });
 
   it('runs the app once unlocked', () => {
@@ -140,13 +155,21 @@ describe('AuthGate — Interviewer 8 inside Interviewer 9 (a /v8/ build)', () =>
     setup({ kind: 'unlocked' });
 
     expect(screen.getByTestId('app-child')).toBeInTheDocument();
-    expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
+    expect(subpath.returnToInterviewer9).not.toHaveBeenCalled();
   });
 
-  it('never hands the root app over', () => {
+  it('leaves /welcome alone once unlocked: there is no Home to send it to', () => {
+    subpath.isSubpath = true;
+    setup({ kind: 'unlocked', location: '/welcome' });
+
+    expect(screen.getByTestId('app-child')).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('never returns the root app to Interviewer 9', () => {
     setup({ kind: 'unconfigured', installed: true });
 
-    expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
+    expect(subpath.returnToInterviewer9).not.toHaveBeenCalled();
   });
 });
 

@@ -36,10 +36,6 @@ import {
   ManageAuthenticator,
   ResetDeviceRow,
 } from '~/components/ManageAuthenticator';
-import {
-  ManageLockInInterviewerButton,
-  manageLockMessages,
-} from '~/components/ManageLockInInterviewer';
 import SecurityBehaviorControls, {
   type Behavior,
 } from '~/components/SecurityBehaviorControls';
@@ -47,7 +43,6 @@ import { SettingsRow } from '~/components/SettingsRow';
 import { useSetupWizard } from '~/components/SetupWizardDialog';
 import { LanguageSettings } from '~/i18n/LanguageSettings';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
-import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { APP_VERSION } from '~/lib/appVersion';
 import { useAuth } from '~/lib/auth/AuthContext';
 import {
@@ -922,23 +917,21 @@ export function SettingsDialog({
                     </span>
                   }
                 />
-                {IS_SUBPATH_BUILD ? null : (
-                  <UnconnectedField
-                    name="showSampleProtocol"
-                    label={intl.formatMessage(
-                      messages.showSampleProtocolOnHomeScreen,
-                    )}
-                    hint={intl.formatMessage(
-                      messages.reShowsTheOneClickSampleProtocol,
-                    )}
-                    inline
-                    component={ToggleField}
-                    value={!settings.sampleProtocolDismissed}
-                    onChange={(next: boolean | undefined) =>
-                      void persist({ sampleProtocolDismissed: next !== true })
-                    }
-                  />
-                )}
+                <UnconnectedField
+                  name="showSampleProtocol"
+                  label={intl.formatMessage(
+                    messages.showSampleProtocolOnHomeScreen,
+                  )}
+                  hint={intl.formatMessage(
+                    messages.reShowsTheOneClickSampleProtocol,
+                  )}
+                  inline
+                  component={ToggleField}
+                  value={!settings.sampleProtocolDismissed}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ sampleProtocolDismissed: next !== true })
+                  }
+                />
               </>
             ) : null}
           </TabsPanel>
@@ -1088,21 +1081,7 @@ export function SettingsDialog({
           </TabsPanel>
 
           <TabsPanel value="security">
-            {/* Interviewer 8 inside Interviewer 9 (a /v8/ build) shares
-                Interviewer 9's lock and the rules for it, and only unlocks
-                it: setting it up, changing it, its behaviour and resetting
-                the device all belong to Interviewer 9. */}
-            {IS_SUBPATH_BUILD ? (
-              <SettingsRow
-                title={intl.formatMessage(
-                  manageLockMessages.manageTheLockInInterviewer,
-                )}
-                desc={intl.formatMessage(
-                  manageLockMessages.lockIsManagedInInterviewer,
-                )}
-                control={<ManageLockInInterviewerButton />}
-              />
-            ) : settings ? (
+            {settings ? (
               <>
                 <ManageAuthenticator />
                 {hasNoDeviceLock ? (

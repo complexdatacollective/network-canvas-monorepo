@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig, mergeConfig, normalizePath, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 import {
@@ -48,6 +48,36 @@ const pwaCacheReclamationScript =
 const themeColor = '#232053';
 const backgroundColor = '#232053';
 
+// Interviewer 8 ships inside Interviewer 9's deploy as the interview alone:
+// Interviewer 9 lists, starts, resumes and reviews its schema 8 interviews, so
+// App.tsx renders none of Interviewer 8's own screens there and returns to
+// Interviewer 9 instead (components/ReturnToInterviewer9.tsx). A sub-path build
+// replaces those screens' modules before any of their imports are resolved, so
+// Home (the protocol deck, the new-interview form), the data view, Settings,
+// onboarding and everything only they import stay out of it. The replacement
+// has to happen at load time: a module that merely goes unrendered is still
+// bundled with everything it imports. scripts/assert-pwa-build.mjs fails a
+// sub-path build that ships any of them.
+const subpathReplacements = new Map([
+  [
+    normalizePath(resolve(here, 'src/routes/Home.tsx')),
+    'export function HomeRoute() { return null; }',
+  ],
+  [
+    normalizePath(resolve(here, 'src/routes/Welcome.tsx')),
+    'export function WelcomeRoute() { return null; }',
+  ],
+  [
+    normalizePath(resolve(here, 'src/routes/NotFound.tsx')),
+    'export function NotFoundRoute() { return null; }',
+  ],
+]);
+const omitFromSubpathBuild = (): Plugin => ({
+  name: 'interviewer-omit-from-subpath-build',
+  enforce: 'pre',
+  load: (id) => subpathReplacements.get(id),
+});
+
 // The @codaco/interview engine chunk is well past workbox's 2 MB default.
 // Raise the precache ceiling so no critical JS is silently dropped from
 // precache (which would break the offline boot). assert-pwa-build.mjs
@@ -74,6 +104,7 @@ export default defineConfig(() =>
       __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
     },
     plugins: [
+      ...(isSubpath ? [omitFromSubpathBuild()] : []),
       // Interviewer 8 is served at /v8/ beside the root app (from Interviewer
       // 9's deploy) with its own worker and 'interviewer-v8-' caches, which
       // 'interviewer-' would otherwise match. The /v8/ build itself hosts no
@@ -176,10 +207,9 @@ export default defineConfig(() =>
             '**/*.4x3.*.webp',
             // Interviewer 9 installs a sub-path build's worker in the
             // background, so its first visit may already be offline and never
-            // fills the runtime font and image caches. Precache the fonts and
-            // the hashed header mark (components/BrandHeader.tsx) every
-            // screen renders.
-            ...(isSubpath ? ['**/*.woff2', 'assets/NC-Flat-*.png'] : []),
+            // fills the runtime font cache. Precache the fonts every screen
+            // renders.
+            ...(isSubpath ? ['**/*.woff2'] : []),
           ],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.

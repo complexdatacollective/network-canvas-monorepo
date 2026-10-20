@@ -499,14 +499,6 @@
     "defaultMessage": "Thank you. This interview is finished and its responses can no longer be changed. Please hand the device back to the researcher.",
     "description": "Visible copy in Interviewer Interview Complete."
   },
-  "interviewer.interviewer8Banner.backToInterviewer": {
-    "defaultMessage": "Back to Interviewer",
-    "description": "Button in the Interviewer 8 banner that returns the researcher to the current Interviewer. \"Interviewer\" is the app name."
-  },
-  "interviewer.interviewer8Banner.interviewer8ForSchema8": {
-    "defaultMessage": "Interviewer 8, for schema 8 protocols",
-    "description": "Banner across the protocols and data views when the previous Interviewer release runs inside the current one, telling the researcher which Interviewer they are in. \"Interviewer 8\" is an app name; \"schema 8\" is a protocol format version."
-  },
   "interviewer.language.automatic": {
     "defaultMessage": "Automatic (browser)",
     "description": "Language option that follows this device browser preferences instead of storing an explicit choice."
@@ -706,10 +698,6 @@
   "interviewer.manageAuthenticator.yourNewPassphraseMustBeAtLeast": {
     "defaultMessage": "Your new passphrase must be at least 12 characters and combine uppercase, lowercase, numbers, and symbols.",
     "description": "User-facing message in Interviewer Manage Authenticator."
-  },
-  "interviewer.manageLock.lockIsManagedInInterviewer": {
-    "defaultMessage": "Interviewer 8 uses the same lock as Interviewer. Set it up, change it or reset this device in Interviewer.",
-    "description": "Settings text shown by Interviewer 8 when it runs inside the current Interviewer, in place of the lock controls. \"Interviewer 8\" and \"Interviewer\" are app names."
   },
   "interviewer.manageLock.manageTheLockInInterviewer": {
     "defaultMessage": "Manage the lock in Interviewer",

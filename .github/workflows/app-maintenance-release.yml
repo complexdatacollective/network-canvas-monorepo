@@ -31,14 +31,13 @@ name: App Maintenance Release
 # reviewed code, and only the tree that gets verified and released comes from
 # the branch.
 #
-# NOTE(human-setup-required): that separation is a convention this file cannot
-# enforce (see the same note in hotfix-release.yml). Each app needs an
-# `<app>-maintenance-release` environment with required reviewers and its
+# That separation is a convention this file cannot enforce (see the note in
+# hotfix-release.yml). What closes it is each app's
+# `<app>-maintenance-release` environment, with required reviewers and its
 # deployment branches restricted to main, so a copy of this workflow on
 # another branch cannot reach the job that claims the tag:
-# `interviewer-maintenance-release` is new, and
-# `architect-maintenance-release` is the one Architect's earlier lane used, so
-# check it rather than create it. They hold no secrets: the lane deploys
+# `interviewer-maintenance-release`, and `architect-maintenance-release`, the
+# one Architect's earlier lane used. They hold no secrets: the lane deploys
 # nothing.
 #
 # Procedure (apps/<app>/RELEASING.md, "Maintenance releases"):
