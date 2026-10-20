@@ -1,1 +1,8 @@
-{ "v8": null }
+{
+  "v8": {
+    "version": "8.5.0",
+    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/%40codaco%2Finterviewer%408.5.0/interviewer-v8-dist.tgz",
+    "sha256": "83d45a7fe33dd3615b60e42a0955490440d091849dc9f7b3afb3640e3c7d46a4",
+    "cachePrefix": "interviewer-v8-"
+  }
+}
