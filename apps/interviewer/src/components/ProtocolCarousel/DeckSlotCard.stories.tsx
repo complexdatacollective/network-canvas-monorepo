@@ -83,6 +83,8 @@ type StoryArgs = {
   // bundled Interviewer 8.
   legacyBundled: boolean;
   legacyOffline: Exclude<LegacyInterviewerOffline, 'not-bundled'>;
+  // kind="schema8" only: the protocol has a stage that needs the internet.
+  geospatial: boolean;
 };
 
 const schema8Actions = (
@@ -98,6 +100,7 @@ function entryForKind(
   kind: StoryArgs['kind'],
   progress: number,
   sessionCount: number,
+  geospatial: boolean,
 ): Exclude<DeckEntry, { kind: 'import' }> {
   switch (kind) {
     case 'protocol':
@@ -116,7 +119,14 @@ function entryForKind(
           importedAt,
           schemaVersion: 8,
           codebook: {},
-          protocol: { name, schemaVersion: 8, codebook: {}, stages: [] },
+          protocol: {
+            name,
+            schemaVersion: 8,
+            codebook: {},
+            stages: geospatial
+              ? [{ id: 'map', type: 'Geospatial', label: 'Map' }]
+              : [],
+          },
           sessionCount,
         },
       };
@@ -159,6 +169,7 @@ const meta: Meta<StoryArgs> = {
     progress: 0.5,
     legacyBundled: true,
     legacyOffline: 'ready',
+    geospatial: false,
   },
   argTypes: {
     kind: {
@@ -194,10 +205,11 @@ const meta: Meta<StoryArgs> = {
     progress,
     legacyBundled,
     legacyOffline,
+    geospatial,
   }) => (
     <ResizableFrame size={size}>
       <DeckSlotCard
-        entry={entryForKind(kind, progress, sessionCount)}
+        entry={entryForKind(kind, progress, sessionCount, geospatial)}
         isActive={isActive}
         activate={() => {}}
         sessionCount={sessionCount}
@@ -247,8 +259,17 @@ export const SchemaEightProtocol: Story = {
   args: { kind: 'schema8' },
 };
 
+/**
+ * Interviewer 8 is not yet saved for offline use, so the protocol needs the
+ * internet: a status icon in the requires-internet badge says why.
+ */
 export const SchemaEightNotReadyOffline: Story = {
   args: { kind: 'schema8', legacyOffline: 'not-ready' },
+};
+
+/** The same, for a protocol that needs the internet for its own stages too. */
+export const SchemaEightGeospatialNotReadyOffline: Story = {
+  args: { kind: 'schema8', legacyOffline: 'not-ready', geospatial: true },
 };
 
 /** This build has no Interviewer 8: no interview can be started. */

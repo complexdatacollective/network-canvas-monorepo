@@ -333,6 +333,11 @@ type DeckCardData = Pick<
 
 export type DeckCardProps = {
   requiresInternetConnection?: boolean;
+  // A status icon inside the requires-internet badge, after its label,
+  // saying why the internet is needed beyond the protocol itself (a schema 8
+  // protocol while Interviewer 8 is not yet saved for offline use). Give it
+  // an accessible name.
+  requiresInternetStatus?: ReactNode;
   // Further badges for the controls row, before the requires-internet one
   // (`DeckCardBadge`): a schema 8 protocol's schema and its availability.
   badges?: ReactNode;
@@ -409,6 +414,7 @@ export function DeckCard(props: DeckCardProps) {
     hideDescription = false,
     hideControls = false,
     requiresInternetConnection = false,
+    requiresInternetStatus,
     badges,
     menu,
     footer,
@@ -518,27 +524,34 @@ export function DeckCard(props: DeckCardProps) {
                   // deletable) never reflows the content below the row.
                   className="flex min-h-[max(40px,10cqi)] shrink-0 items-center justify-end gap-4"
                 >
-                  {badges != null && (
-                    // Wraps rather than pushing the menu off a small card.
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+                  {(badges != null || requiresInternetConnection) && (
+                    // One group, so the badges line up with each other and
+                    // wrap together rather than pushing the menu off a small
+                    // card.
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-start gap-2">
                       {badges}
+                      {requiresInternetConnection && (
+                        <Badge
+                          render={
+                            <motion.div
+                              layout="position"
+                              transition={REGION_TRANSITION}
+                            />
+                          }
+                          tone="warning"
+                          uppercase
+                          icon={<Globe className="size-4" />}
+                          className="whitespace-nowrap"
+                        >
+                          {intl.formatMessage(messages.requiresInternet)}
+                          {requiresInternetStatus != null && (
+                            <span className="ms-0.5 flex items-center border-s border-current/40 ps-1.5">
+                              {requiresInternetStatus}
+                            </span>
+                          )}
+                        </Badge>
+                      )}
                     </div>
-                  )}
-                  {requiresInternetConnection && (
-                    <Badge
-                      render={
-                        <motion.div
-                          layout="position"
-                          transition={REGION_TRANSITION}
-                        />
-                      }
-                      tone="warning"
-                      uppercase
-                      icon={<Globe className="size-4" />}
-                      className="whitespace-nowrap"
-                    >
-                      {intl.formatMessage(messages.requiresInternet)}
-                    </Badge>
                   )}
 
                   {/* Direct presence parent: gives the control real enter/exit

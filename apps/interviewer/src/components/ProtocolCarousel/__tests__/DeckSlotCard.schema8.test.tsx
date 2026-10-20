@@ -80,7 +80,11 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
 
     expect(screen.getByText('Wave One')).toBeInTheDocument();
     expect(screen.getByText('Schema 8')).toBeInTheDocument();
-    expect(screen.queryByText('Not ready offline')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('img', { name: 'Not ready offline' }),
+    ).not.toBeInTheDocument();
+    // Its stages need no internet, and Interviewer 8 is saved for offline use.
+    expect(screen.queryByText('Requires Internet')).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole('button', { name: 'Start new interview' }),
     );
@@ -124,9 +128,12 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
     expect(screen.queryByText(/Interviewer 8/)).not.toBeInTheDocument();
   });
 
-  it('says when Interviewer 8 is not ready offline yet', () => {
+  it('says it needs the internet, and why, while Interviewer 8 is not ready offline', () => {
     renderCard(makeActions({ offline: 'not-ready' }));
-    expect(screen.getByText('Not ready offline')).toBeInTheDocument();
+    const badge = screen.getByText('Requires Internet');
+    expect(
+      within(badge).getByRole('img', { name: 'Not ready offline' }),
+    ).toBeInTheDocument();
   });
 
   it('starts no interview, and says why, when Interviewer 8 is not bundled', async () => {
