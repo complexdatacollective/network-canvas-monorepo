@@ -38,10 +38,10 @@ name: Architect Sub-path Dist
 # exists it rewrites the name, body and make_latest, and re-running it on
 # 8.5.0 after 9.0 ships could move "Latest".
 #
-# No PostHog credentials reach the build, for the reason architect-archive-
-# release.yml gives: without them the build emits no source maps and uploads
-# nothing, and maps for an already-released version would be duplicated in
-# PostHog. The packer refuses a dist carrying any.
+# No PostHog credentials reach the build: without them it emits no source
+# maps and uploads nothing. The version was already released, so uploading its
+# maps again would duplicate them against that release in PostHog. The packer
+# refuses a dist carrying any.
 
 on:
   workflow_dispatch:
@@ -67,8 +67,9 @@ on:
       # In a reusable workflow the `github` context belongs to the CALLER, so
       # `github.sha` is the caller's commit rather than the revision this body
       # was loaded from. For a local `./.github/workflows/…` call those are the
-      # same commit; a caller that pins an explicit `@ref` must pass the
-      # matching revision here. See architect-archive-release.yml.
+      # same commit, and the default is correct; a caller that pins an explicit
+      # `@ref` must pass the matching revision here, or the tooling checkouts
+      # below could be an older tree that lacks the guard and packing scripts.
       tooling_ref:
         required: false
         default: ''
@@ -142,7 +143,7 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
           FORCE: 'false'
-        run: bash .github/scripts/architect-archive-guard.sh
+        run: bash .github/scripts/architect-release-tag-guard.sh
 
       - name: Check the tag names the released commit
         if: inputs.expected_sha != ''

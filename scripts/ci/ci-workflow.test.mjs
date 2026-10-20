@@ -1508,7 +1508,7 @@ test('the sub-path dist lane builds a released tag without a write token', () =>
   );
   assert.match(
     resolveRun,
-    /bash \.github\/scripts\/architect-archive-guard\.sh/,
+    /bash \.github\/scripts\/architect-release-tag-guard\.sh/,
   );
   // Major-generic: /vN/ and architect-vN-dist.tgz from the tag's own major.
   assert.match(resolveRun, /echo "base=\/v\$\{MAJOR\}\/"/);
