@@ -1,15 +1,22 @@
 import { type Cause, Effect, Fiber, Layer, Queue, Ref, Result } from 'effect';
+import { exportPipeline as legacyExportPipeline } from 'fresco-schema-8/network-exporters/pipeline';
 import { after } from 'next/server';
 
 import { type ExportEvent } from '@codaco/network-exporters/events';
 import { exportPipeline } from '@codaco/network-exporters/pipeline';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { prisma } from '~/lib/db';
-import { makeFileStreamOutputLayer } from '~/lib/export/FileStreamOutput';
+import {
+  makeFileStreamOutputLayer,
+  makeLegacyFileStreamOutputLayer,
+} from '~/lib/export/FileStreamOutput';
 import { PrismaInterviewRepository } from '~/lib/export/InterviewRepository';
 import { PrismaProtocolRepository } from '~/lib/export/ProtocolRepository';
 import { encodeExportEvent } from '~/lib/export/streamProtocol';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { LegacyPrismaInterviewRepository } from '~/lib/schema-8/export/InterviewRepository';
+import { LegacyPrismaProtocolRepository } from '~/lib/schema-8/export/ProtocolRepository';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { exportInterviewsSchema } from '~/schemas/export';
 
 export async function POST(request: Request) {
@@ -47,10 +54,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const count = await prisma.interview.count({
+  const interviews = await prisma.interview.findMany({
     where: { id: { in: interviewIds } },
+    select: { id: true, protocol: { select: { schemaVersion: true } } },
   });
-  if (count !== interviewIds.length) {
+  if (interviews.length !== interviewIds.length) {
     return Response.json(
       { error: 'One or more interviews not found' },
       { status: 404 },
@@ -60,10 +68,25 @@ export async function POST(request: Request) {
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
   const writer = writable.getWriter();
 
+  // A schema 8 interview is exported by the exporter released with schema 8,
+  // as Fresco 4 exported it, into the same stream. Its services share the
+  // current exporter's keys, so each run is given its own layers.
+  const legacyIds = new Set(
+    interviews
+      .filter(({ protocol }) => isLegacySchemaVersion(protocol.schemaVersion))
+      .map(({ id }) => id),
+  );
+  const currentIds = interviewIds.filter((id) => !legacyIds.has(id));
+
   const exportLayer = Layer.mergeAll(
     PrismaInterviewRepository,
     PrismaProtocolRepository,
     makeFileStreamOutputLayer(writer),
+  );
+  const legacyExportLayer = Layer.mergeAll(
+    LegacyPrismaInterviewRepository,
+    LegacyPrismaProtocolRepository,
+    makeLegacyFileStreamOutputLayer(writer),
   );
 
   const program = Effect.gen(function* () {
@@ -99,7 +122,28 @@ export async function POST(request: Request) {
       ),
     );
 
-    const result = yield* exportPipeline(interviewIds, exportOptions, queue);
+    const current =
+      currentIds.length > 0
+        ? yield* exportPipeline(currentIds, exportOptions, queue).pipe(
+            Effect.provide(exportLayer),
+          )
+        : null;
+    const legacy =
+      legacyIds.size > 0
+        ? yield* legacyExportPipeline(
+            [...legacyIds],
+            exportOptions,
+            queue,
+          ).pipe(Effect.provide(legacyExportLayer))
+        : null;
+    const result = {
+      failedExports: [
+        ...(current?.failedExports ?? []),
+        ...(legacy?.failedExports ?? []),
+      ],
+      // The schema 8 exporter reports no warnings: it predates them.
+      warnings: current?.warnings ?? [],
+    };
 
     yield* Fiber.interrupt(progressFiber);
     yield* Queue.end(queue);
@@ -139,7 +183,6 @@ export async function POST(request: Request) {
       }),
     ),
     Effect.catch(() => Effect.void),
-    Effect.provide(exportLayer),
   );
 
   const fiber = Effect.runFork(program);

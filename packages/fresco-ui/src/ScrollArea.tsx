@@ -1,10 +1,13 @@
 'use client';
 
 import {
+  createContext,
   type CSSProperties,
   forwardRef,
   useCallback,
+  useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -17,6 +20,27 @@ import {
 } from './utils/horizontalOverflow';
 
 type ScrollSnapType = 'mandatory' | 'proximity';
+
+/** The axes along which a scroll region can be scrolled right now. */
+export type ScrollAxes = { x: boolean; y: boolean };
+
+const NO_SCROLL: ScrollAxes = { x: false, y: false };
+
+const ScrollAxesContext = createContext<ScrollAxes | null>(null);
+
+/**
+ * The axes along which the `ScrollArea`s enclosing this point can currently be
+ * scrolled: a region counts on an axis when its content overflows it there and
+ * it scrolls (rather than clips) that axis. Nested regions combine — a fitting
+ * region inside a scrolling one still scrolls with it. Kept current from each
+ * region's own overflow measurement, so content arriving or a region resizing
+ * is reflected without anything inside measuring for itself.
+ *
+ * `null` outside any `ScrollArea`, where what scrolls is not known.
+ */
+export function useScrollAxes(): ScrollAxes | null {
+  return useContext(ScrollAxesContext);
+}
 
 type ScrollSnapAxis = 'x' | 'y' | 'both';
 
@@ -82,7 +106,19 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
   ) => {
     const viewportRef = useRef<HTMLElement>(null);
     const rafIdRef = useRef<number | null>(null);
-    const [overflows, setOverflows] = useState(false);
+    const [scrollAxes, setScrollAxes] = useState<ScrollAxes>(NO_SCROLL);
+
+    const enclosingAxes = useScrollAxes();
+    const publishedAxes = useMemo(
+      () =>
+        enclosingAxes
+          ? {
+              x: scrollAxes.x || enclosingAxes.x,
+              y: scrollAxes.y || enclosingAxes.y,
+            }
+          : scrollAxes,
+      [enclosingAxes, scrollAxes],
+    );
 
     const updateScrollVariables = useCallback(() => {
       const viewport = viewportRef.current;
@@ -141,11 +177,17 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
         // Horizontal overflow
         const hasHorizontalOverflow = scrollWidth > clientWidth;
 
-        // Drives the tab stop. Set from the same measurement that drives the
+        // Drives the tab stop and what touch gestures inside the region are
+        // left to the browser. Set from the same measurement that drives the
         // fades, but deliberately OUTSIDE the `fade` gate below — a region with
         // `fade={false}` still scrolls, and would otherwise never be reachable
-        // by keyboard.
-        setOverflows(hasVerticalOverflow || hasHorizontalOverflow);
+        // by keyboard. A horizontal region clips its vertical overflow
+        // (`overflow-y: hidden`) rather than scrolling it.
+        const x = hasHorizontalOverflow;
+        const y = hasVerticalOverflow && orientation !== 'horizontal';
+        setScrollAxes((previous) =>
+          previous.x === x && previous.y === y ? previous : { x, y },
+        );
         setHorizontalOverflowVariables(
           viewportRef.current,
           measureHorizontalOverflow(viewportRef.current, {
@@ -160,7 +202,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
           `${scrollbarHeight}px`,
         );
       });
-    }, []);
+    }, [orientation]);
 
     // Runs whether or not `fade` is on: it is the only source of the overflow
     // measurement that decides the tab stop, and `fade={false}` regions
@@ -253,7 +295,8 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
     };
 
     const isHorizontal = orientation === 'horizontal';
-    const resolvedTabIndex = tabIndex ?? (overflows ? 0 : -1);
+    const resolvedTabIndex =
+      tabIndex ?? (scrollAxes.x || scrollAxes.y ? 0 : -1);
     const isNamed = !nameWhenScrollableOnly || resolvedTabIndex >= 0;
     /**
      * The viewport is a `<section>` — a `region` landmark once it is named —
@@ -306,7 +349,9 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
           }
           {...rest}
         >
-          {children}
+          <ScrollAxesContext value={publishedAxes}>
+            {children}
+          </ScrollAxesContext>
         </Viewport>
       </div>
     );

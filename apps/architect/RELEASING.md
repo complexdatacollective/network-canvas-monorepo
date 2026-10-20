@@ -24,7 +24,9 @@ Interviewer.
    `apps-release-detect` job sees the change and `apps-release-architect` builds,
    deploys to Netlify **production** (site secret
    `NETLIFY_SITE_ID_ARCHITECT`), and creates the stable GitHub release
-   `@codaco/architect@<version>` with the CHANGELOG notes.
+   `@codaco/architect@<version>` with the CHANGELOG notes. For an 8.x
+   version, `apps-release-architect-subpath-dist` then attaches the `/v8/`
+   tarball Architect 9 bundles (see [Sub-path dist tarball](#sub-path-dist-tarball)).
 
 Netlify's Git integration builds pull-request previews and reports their URLs
 directly on the PR. Production is no longer deployed on every push to `main`—it
@@ -72,7 +74,8 @@ is not ready to go out, release from the previous tag instead:
    with `app: architect` and `source_ref` set to the hotfix branch. It runs
    typecheck and tests across the app's whole workspace dependency closure,
    builds with PostHog source maps, deploys to Netlify production, and cuts
-   `@codaco/architect@<version>`.
+   `@codaco/architect@<version>`. An 8.x hotfix also gets its `/v8/` tarball
+   (see [Sub-path dist tarball](#sub-path-dist-tarball)).
 
    A hotfix and a normal release for the same app hold one lock, so a dispatch
    made while a Version Packages release is deploying waits for it rather than
@@ -89,8 +92,8 @@ is not ready to go out, release from the previous tag instead:
    The lane only ships the newest line: `.github/scripts/resolve-hotfix-release.mjs`
    refuses a version older than the current release, because each app has one
    production site and `netlify deploy --prod` always replaces what is live.
-   A branch that needs an older line published needs a separate channel, not
-   this lane.
+   An older major line (8.x once 9.x is production) releases through the
+   [maintenance lane](#maintenance-releases-older-major-lines) instead.
 
 4. **Merge the hotfix branch into main.** Open a pull request from the hotfix
    branch itself rather than re-applying its content: the normal lane refuses
@@ -142,85 +145,142 @@ tag before re-dispatching:
 git push --delete origin '@codaco/architect@<version>'
 ```
 
-## Version archive
+## Sub-path dist tarball
 
-Released versions stay reachable at a per-major-version host so researchers on
-an older protocol schema keep a working Architect after production moves on:
+Architect 9 serves Architect 8 at `/v8/` from its own deploy, so researchers
+can keep editing schema 8 protocols beside it. Architect 9 does not build
+Architect 8: it bundles a tarball attached to an 8.x GitHub release, pinned by
+URL and sha256 in `apps/architect/legacy-architect.json` on the schema-9 line.
+
+The **Architect Sub-path Dist** workflow
+(`.github/workflows/architect-subpath-dist.yml`) makes that tarball. It builds a
+released tag with `ARCHITECT_BASE_PATH=/v<major>/` and attaches
+`architect-v<major>-dist.tgz` (and its `.sha256`) to the tag's release:
 
 ```text
-@codaco/architect@8.2.5  ->  https://v8.architect.networkcanvas.com
+@codaco/architect@8.5.0  ->  architect-v8-dist.tgz  (base /v8/, caches architect-v8-*)
 ```
 
-The archive is keyed by **major version**, not by release, because major
-versions track protocol schema versions: only the newest release on each major
-line needs to stay reachable, so 8.3.0 replaces 8.2.5 at the same host. That
-holds the host count to one per schema generation, which matters because a
-Cloudflare zone allows 100 custom domains in total.
+- **When it runs.** `apps-release-architect` and the Hotfix Release workflow
+  chain it after every 8.x release, and the maintenance lane after every
+  maintenance release. It is chained by `workflow_call` because a release
+  created with `GITHUB_TOKEN` fires no tag or release event. It runs in its
+  own job, so a failure never turns a release that has already shipped red.
+  Dispatch it by hand from main to retry. A chained run also receives the
+  commit the lane built and released, and refuses a tag that points anywhere
+  else: the tarball is built from the tag's tree, so it must be the released
+  one. Only tags whose tree can build under
+  a sub-path are eligible (8.5.0 onwards, marked by
+  `apps/architect/scripts/app-base-path.mjs`). A release lane skips an older
+  tag with a notice; a dispatch for one fails.
+- **Layout.** The archive root is the dist root (`index.html`, `sw.js`,
+  `manifest.webmanifest`, `assets/`, `preview/`, `build-info.json`) plus
+  `dist-info.json` (`{ tag, version, commit, base, cachePrefix }`), so the
+  bundler extracts it straight into `dist/v8`. It has no `_headers` or
+  `_redirects` (Architect 9 owns the `/v8/` hosting rules) and no source maps.
+  `scripts/release/package-architect-subpath-dist.mjs` checks the shape again
+  before packing: assets under the base, manifest `start_url` and `scope`
+  equal to the base, and a precache under the `architect-v<major>-` prefix
+  Architect 9's worker treats as foreign.
+- **Deterministic packing, not a reproducible build.** The archive is packed
+  with `tar --sort=name --mtime=@0 --owner=0 --group=0 | gzip -n`, so the same
+  dist always packs to the same bytes. The build itself is not reproducible:
+  its precache id is random outside turbo. So the workflow **never replaces**
+  an attached tarball unless it is dispatched with `replace`. A replaced
+  tarball breaks the pin, and Architect 9's production build verifies the pin's
+  sha256, so it would fail until the pin is bumped.
+- **No PostHog.** The build gets no PostHog credentials, so it emits and
+  uploads no source maps: the version was already released, and uploading its
+  maps again would duplicate them against that release in PostHog. Exceptions
+  from `/v8/` are not symbolicated.
+- **The pin.** The run's summary prints the pin, ready to paste:
 
-Run the **Architect Archive Release** workflow
-(`.github/workflows/architect-archive-release.yml`) with the released tag. It is
-not yet wired into the release lane — do it by hand after a release, or call the
-workflow from another one. Integration is tracked in
-[#1767](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1767);
-note that the archive must run _after_ the release tag is pushed, because the
-newest-on-the-line guard reads tags.
+  ```json
+  {
+    "v8": {
+      "version": "8.5.0",
+      "url": "https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/%40codaco%2Farchitect%408.5.0/architect-v8-dist.tgz",
+      "sha256": "<64 hex characters>",
+      "cachePrefix": "architect-v8-"
+    }
+  }
+  ```
 
-The lane refuses a version that is not the newest on its major line, so
-archiving an old patch cannot roll the host backwards; `force` overrides that
-for repairs. It never touches the production site, the tags, or the GitHub
-releases, so a failure here cannot block or undo a release.
+  The URL is the asset's `browser_download_url` as GitHub reports it. The
+  workflow downloads it and checks its sha256 before printing. To ship it,
+  update `legacy-architect.json` on the line that bundles it, in a pull request
+  with an `'@codaco/architect': patch` changeset. Users get the new Architect 8
+  when that line next releases.
 
-Each archived line is a Cloudflare Worker serving static assets, with
-`custom_domain: true` provisioning both the DNS record and the certificate.
-Static asset requests are free and unlimited on both Workers plans, so the
-archive costs nothing to run.
+The job that builds runs the tag's code, so it holds a read-only token. Only
+the publish job uploads, with `contents: write`. It runs nothing from the tag:
+it downloads the packed artifact, re-verifies it, and uploads through the REST
+API. The upload does not use `softprops/action-gh-release`, because that action
+would rewrite an existing release's name, body and "Latest" flag.
 
-**Netlify cannot host this.** It overrides `Cache-Control` on `/sw.js` and
-`/manifest.webmanifest` for any deploy that is not the site's production deploy,
-serving `public,max-age=0,must-revalidate` whatever `_headers` says — so an
-aliased Netlify deploy cannot satisfy the cache contract below. (The same
-override applies to Architect's deploy previews, and `assert-pwa-build.mjs`
-cannot catch it because it validates the emitted `_headers` file rather than
-what the origin serves.)
+## Maintenance releases (older major lines)
 
-Cloudflare honours those rules but differs in two other ways, both handled by
-`scripts/write-cloudflare-archive-config.mjs` at deploy time — **never by
-editing `public/_headers`**, whose shape is asserted for Netlify in
-`scripts/buildtime/assert-pwa-cache-headers.mjs`:
+Once Architect 9 is production, an Architect 8 fix cannot go through the
+normal or hotfix lane, because both deploy to the one production site and
+refuse a version older than the newest release. The **Architect Maintenance
+Release** workflow (`.github/workflows/architect-maintenance-release.yml`)
+releases an older line instead. It tags the release, creates a GitHub release
+that is never "Latest", and attaches the line's sub-path tarball. It deploys
+nothing.
 
-- **`_headers` rules append rather than replace.** Netlify lets `/assets/*`
-  override the blanket `/*` no-store; Cloudflare joins them into one header
-  where `no-store` wins and every content-hashed asset becomes uncacheable. The
-  transform strips `Cache-Control` from `/*` only.
-- **`_redirects` is rejected**, because Cloudflare's asset layer already strips
-  `/index` and `.html` and reads `/* /index.html 200` as an infinite loop. The
-  SPA fallback is expressed as `not_found_handling` in the Wrangler config.
+1. Cut the branch from the line's newest tag, cherry-pick the fix, and bump
+   `apps/architect/package.json` and `CHANGELOG.md` by hand. Do not run
+   `changeset version`, for the reason given under hotfix releases:
 
-The workflow asserts the resulting contract against the live host after
-deploying and fails the run if it does not hold.
+   ```bash
+   git switch -c maintenance/architect-8.5.1 '@codaco/architect@8.5.0'
+   git cherry-pick <sha>
+   ```
 
-**Setup (one-time, and load-bearing).** The deploy job declares the
-`architect-archive` environment, but — exactly as for the hotfix lane above — a
-workflow file cannot enforce its own protection: GitHub runs whichever copy of
-the YAML lives on the ref a dispatch selects, so a branch copy with the
-`environment:` line deleted would run instead. Only repository configuration
-closes that:
+2. Push the branch, then run the workflow **from main** with `source_ref` set
+   to it. The `verify` job runs typecheck and tests across Architect's
+   workspace dependency closure, then a `/v<major>/` build, because a
+   maintenance branch gets no pull-request CI. After approval, the `release`
+   job checks the version again, writes the notes since the line's previous
+   release, claims the tag atomically, and creates the release. If the release
+   is not created after the claim, the job deletes the tag again so the run
+   can be repeated. A run that died before that cleanup (a lost runner or a
+   timeout) leaves the tag with no release. Re-running it, or dispatching it
+   again, deletes a tag that sits on the verified commit and has no release,
+   then claims it again.
+   This job holds the write token and runs nothing from the branch.
+   `resolve-hotfix-release.mjs` in its line scope (`SCOPE=line`) requires:
+   - a version newer than every release on its own major line;
+   - a major below the newest release overall;
+   - a tree that contains the line's newest tag.
 
-1. Create the `architect-archive` environment.
-2. Restrict its **deployment branches** to `main`, so a job reaching for it from
-   any other ref is refused.
-3. Hold `CLOUDFLARE_API_TOKEN` as an **environment** secret, not a repository
-   secret. A repository secret is readable by any branch that can rewrite the
-   scripts this workflow runs, and this token can edit DNS across the whole
-   networkcanvas.com zone and deploy Workers to the account. Scope it to that
-   zone with DNS:Edit, Zone:Read and Workers Routes:Edit, plus account-level
-   Workers Scripts:Edit.
-4. Optionally set the repository variable `CLOUDFLARE_ACCOUNT_ID`; a
-   single-account token lets Wrangler resolve it on its own.
+   A maintenance tag that became the newest overall would leave production
+   behind its own newest tag, and `app-release-guard.sh` would then skip every
+   later release from main.
 
-Required reviewers are worth considering but are not the load-bearing part
-here: unlike the hotfix lane this one cannot change what production serves, so
-the branch restriction and the environment-scoped secret are what matter.
+3. **Bump the pin** on the newer line to the tarball the run's summary prints
+   (see [Sub-path dist tarball](#sub-path-dist-tarball)). Until that line
+   releases, users keep the previous Architect 8.
+
+There is **no merge back to main**. Main is on the newer major, and a merge
+would bring this line's `package.json` and CHANGELOG into it. Land the fix on
+main separately if it applies there too.
+
+The in-app update check (fresco-ui's `selectLatestForApp`) picks the highest
+version on or above the running app's major. A maintenance release created
+after 9.x is therefore never offered to Architect 9 as an update, even though
+GitHub lists it first.
+
+The workflow has its own concurrency group. It does not share
+`apps-release-@codaco/architect` with the other lanes: that group keeps only one
+pending run, so a maintenance run waiting for approval could make a normal
+release be dropped.
+
+**Setup (one-time, and load-bearing).** Create the
+`architect-maintenance-release` environment with **required reviewers**, and
+restrict its **deployment branches** to `main`. The reason is the same as for
+the hotfix lane: a workflow file cannot enforce its own protection. The
+environment holds no secrets, because the lane deploys nothing.
 
 ## Bundled Architect 8 (`/v8/`)
 

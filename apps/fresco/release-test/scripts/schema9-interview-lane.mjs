@@ -2,8 +2,9 @@
 // Conducts the schema 9 protocol in Fresco with the participant's browser set
 // to Spanish, and follows it out through an export.
 //
-// interview-lane.mjs conducts a schema 8 protocol that Fresco migrates on
-// import, so everything it sees is what a migrated protocol can express. This
+// interview-lane.mjs conducts a schema 8 protocol that Fresco upgrades on
+// import when told to, so everything it sees is what a migrated protocol can
+// express. This
 // lane conducts one written in schema 9 (packages/protocols/e2e/
 // fresco-release-test-v9): two languages and a Language Chooser, text that
 // shows dynamic values, an Anonymisation stage whose passphrase encrypts the

@@ -140,23 +140,31 @@ function installInterviewRow(
     }: {
       where: {
         id: string;
-        syncRevision: { lt: number; gte: number };
+        syncRevision?: { lt: number; gte: number };
         finishTime?: null;
         protocol: { hash: string };
       };
-      data: { syncRevision: number; network: unknown; currentStep: number };
+      data: {
+        syncRevision: number | { increment: number };
+        network: unknown;
+        currentStep: number;
+      };
     }) => {
       if (!row || where.id !== 'interview-1')
         return Promise.resolve({ count: 0 });
       if (
-        row.syncRevision >= where.syncRevision.lt ||
-        row.syncRevision < where.syncRevision.gte ||
+        (where.syncRevision &&
+          (row.syncRevision >= where.syncRevision.lt ||
+            row.syncRevision < where.syncRevision.gte)) ||
         (where.finishTime === null && row.finishTime !== null) ||
         row.protocol.hash !== where.protocol.hash
       ) {
         return Promise.resolve({ count: 0 });
       }
-      row.syncRevision = data.syncRevision;
+      row.syncRevision =
+        typeof data.syncRevision === 'number'
+          ? data.syncRevision
+          : row.syncRevision + data.syncRevision.increment;
       row.network = data.network;
       row.currentStep = data.currentStep;
       return Promise.resolve({ count: 1 });
@@ -274,6 +282,28 @@ describe('interview sync route', () => {
     expect(response.status).toBe(409);
     expect(readRow()?.network).toEqual(networkNamed('upgraded'));
     expect(readRow()?.syncRevision).toBe(4);
+  });
+
+  it("takes a schema 8 interview's write without a protocol hash, which its interview never sends", async () => {
+    findUniqueMock.mockResolvedValue({
+      network: networkNamed('stored'),
+      stageMetadata: null,
+      finishTime: null,
+      syncRevision: 0,
+      protocol: { hash: PROTOCOL_HASH, schemaVersion: 8 },
+    });
+
+    const response = await post(
+      makeRequest(networkNamed('schema 8'), { protocolHash: undefined }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ protocol: { hash: PROTOCOL_HASH } }),
+        data: expect.objectContaining({ network: networkNamed('schema 8') }),
+      }),
+    );
   });
 
   it('keeps the generic HTTP 400 response for malformed JSON', async () => {
@@ -450,6 +480,57 @@ describe('interview sync route', () => {
 
       expect(response.status).toBe(400);
       expect(updateManyMock).not.toHaveBeenCalled();
+    });
+
+    it('takes an unnumbered write to a schema 8 interview from a tab Fresco 4.1 left open', async () => {
+      const row = installInterviewRow({
+        syncRevision: 3,
+        network: networkNamed('stored'),
+      });
+      findUniqueMock.mockImplementation(() =>
+        Promise.resolve(
+          row() && {
+            ...row(),
+            protocol: { hash: PROTOCOL_HASH, schemaVersion: 8 },
+          },
+        ),
+      );
+
+      const response = await post(
+        makeRequest(networkNamed('from fresco 4.1'), {
+          protocolHash: undefined,
+          syncRevision: undefined,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(row()?.network).toEqual(networkNamed('from fresco 4.1'));
+      expect(row()?.syncRevision).toBe(4);
+    });
+
+    it('keeps the later of two unnumbered schema 8 writes that were in flight at once', async () => {
+      // Both requests read the row before either writes, as an ordinary sync
+      // and an unloading one from a Fresco 4.1 tab can. Those releases never
+      // retry a declined write, so the later one must land too.
+      const row = installInterviewRow({
+        syncRevision: 3,
+        network: networkNamed('stored'),
+      });
+      findUniqueMock.mockResolvedValue({
+        ...row(),
+        protocol: { hash: PROTOCOL_HASH, schemaVersion: 8 },
+      });
+      const unnumbered = { protocolHash: undefined, syncRevision: undefined };
+
+      const first = await post(makeRequest(networkNamed('first'), unnumbered));
+      const second = await post(
+        makeRequest(networkNamed('second'), unnumbered),
+      );
+
+      await expect(first.json()).resolves.toMatchObject({ applied: true });
+      await expect(second.json()).resolves.toMatchObject({ applied: true });
+      expect(row()?.network).toEqual(networkNamed('second'));
+      expect(row()?.syncRevision).toBe(5);
     });
 
     it('marks a frozen interview as frozen, not merely as a write that lost a race', async () => {

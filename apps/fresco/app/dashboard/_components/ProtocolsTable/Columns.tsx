@@ -4,10 +4,12 @@ import Image from 'next/image';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import { type StrictColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 
 import { AnonymousRecruitmentURLButton } from './AnonymousRecruitmentURLButton';
 import type { ProtocolWithInterviews } from './ProtocolsTableClient';
@@ -42,6 +44,12 @@ const messages = defineMessages({
     id: 'fresco.ProtocolsTable.Columns.modified',
     defaultMessage: 'Modified',
     description: 'Researcher-facing ProtocolsTable / Columns: Modified',
+  },
+  schemaBadge: {
+    id: 'fresco.ProtocolsTable.Columns.schemaBadge',
+    defaultMessage: 'Schema {version}',
+    description:
+      'Short badge beside a protocol in the protocols table, marking a protocol kept at an older schema version when it was imported. Its interviews run in the older version of the interview. {version} is that schema version number (for example 8).',
   },
   anonymousParticipationURL: {
     id: 'fresco.ProtocolsTable.Columns.anonymousParticipationURL',
@@ -97,6 +105,13 @@ export const getProtocolColumns = (
               className="shrink-0"
             />
             {row.original.name}
+            {isLegacySchemaVersion(row.original.schemaVersion) && (
+              <Badge tone="neutral" appearance="outline" size="sm">
+                {intl.formatMessage(messages.schemaBadge, {
+                  version: row.original.schemaVersion,
+                })}
+              </Badge>
+            )}
           </div>
         );
       },

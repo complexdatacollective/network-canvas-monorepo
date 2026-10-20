@@ -1,7 +1,7 @@
 'use server';
 
 import { Effect } from 'effect';
-import { type z } from 'zod';
+import { hashProtocol as hashLegacyProtocol } from 'fresco-schema-8/protocol-validation';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { hashProtocol } from '@codaco/protocol-validation';
@@ -11,9 +11,10 @@ import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { Prisma } from '~/lib/db/generated/client';
 import { selectUnreferencedKeys } from '~/lib/protocol/selectUnreferencedKeys';
+import { LEGACY_SCHEMA_VERSION } from '~/lib/schema-8/version';
 import { getStorageLayer } from '~/lib/storage/layers/StorageLayer';
 import { AssetStorage } from '~/lib/storage/services/AssetStorage';
-import { type protocolInsertSchema } from '~/schemas/protocol';
+import { type ProtocolInsert } from '~/schemas/protocol';
 
 const messages = defineMessages({
   copyFailedToDeleteProtocols: {
@@ -243,16 +244,19 @@ async function deleteFilesFromStorage(fileKey: string | string[]) {
   }).pipe(Effect.provide(storageLayer), Effect.runPromise);
 }
 
-export async function insertProtocol(
-  input: z.infer<typeof protocolInsertSchema>,
-) {
+export async function insertProtocol(input: ProtocolInsert) {
   const session = await requireApiAuth();
 
   const { protocol, protocolName, newAssets, existingAssetIds, originalFile } =
     input;
 
   try {
-    const protocolHash = hashProtocol(protocol);
+    // A schema 8 protocol is hashed as Fresco 4 hashed it, and stores no
+    // languages or shared wording: the column defaults are what it reads as.
+    const legacy = protocol.schemaVersion === LEGACY_SCHEMA_VERSION;
+    const protocolHash = legacy
+      ? hashLegacyProtocol(protocol)
+      : hashProtocol(protocol);
 
     await prisma.protocol.create({
       data: {
@@ -265,8 +269,12 @@ export async function insertProtocol(
         // it at the Prisma JSON boundary.
         stages: protocol.stages as Prisma.InputJsonValue,
         codebook: protocol.codebook,
-        localization: protocol.localization,
-        interfaceText: protocol.interfaceText ?? Prisma.JsonNull,
+        ...(legacy
+          ? {}
+          : {
+              localization: protocol.localization,
+              interfaceText: protocol.interfaceText ?? Prisma.JsonNull,
+            }),
         description: protocol.description,
         originalFileKey: originalFile.key,
         originalFileUrl: originalFile.url,

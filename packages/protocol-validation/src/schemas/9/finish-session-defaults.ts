@@ -29,7 +29,7 @@ export type FinishSessionText = Readonly<{
 
 /**
  * The finish stage text Network Canvas supplies, in every language its apps
- * ship in, and in Hungarian, which a bundled template is written in. It is written into the protocol — by the v8 → v9 migration and when
+ * ship in. It is written into the protocol — by the v8 → v9 migration and when
  * Architect creates a protocol or adds a language — so a researcher can edit
  * and translate it like any other protocol text; nothing reads it at interview
  * time.
@@ -63,12 +63,6 @@ export const DEFAULT_FINISH_SESSION_TEXT = {
       '# Terminer l’entretien\n\nVous avez atteint la fin de l’entretien. Si les informations que vous avez saisies vous conviennent, vous pouvez maintenant terminer l’entretien.',
     finishedContent:
       '# Entretien terminé\n\nMerci de votre participation\u00a0!',
-  },
-  'hu': {
-    label: 'Interjú befejezése',
-    content:
-      '# Interjú befejezése\n\nElérte az interjú végét. Ha elégedett az Ön által megadott információkkal, most befejezheti az interjút.',
-    finishedContent: '# Az interjú véget ért\n\nKöszönjük a részvételt!',
   },
   'it': {
     label: 'Termina l’intervista',

@@ -37,9 +37,9 @@ several, such as a separate ending for participants who are not eligible.
   `completed`, and the text the interview has always shown there, in English under the protocol's default
   language. Its notes say so. A recorded interview that was on the old
   finish screen resumes on the new finish stage. Run again over a document
-  already in schema 9 form, as Fresco's deploy normalization does, it keeps a
-  finish stage the document already ends at, and gives one that has none the
-  supplied text in the document's own languages.
+  already in schema 9 form, it keeps a finish stage the document already ends
+  at, and gives one that has none the supplied text in the document's own
+  languages.
 - A finish stage's name and text may have no translation at all while a
   protocol is being written, so a protocol in a language Network Canvas has no
   closing text for starts without any. `validateProtocol` still refuses a
@@ -146,6 +146,3 @@ several, such as a separate ending for participants who are not eligible.
   it is sent only over HTTPS when the session cookie is (in production, unless
   `COOKIE_SECURE` says otherwise).
 - The dashboard's progress counts the finish stage as a stage.
-- Deploy normalization leaves a protocol in place, with a logged reason,
-  when the normalized protocol would not be accepted on import, such as one
-  given a finish stage with no text in its default language.

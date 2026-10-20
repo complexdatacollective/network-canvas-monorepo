@@ -81,8 +81,8 @@ model Protocol {
   interfaceText   Json?
   assets          Asset[]
   interviews      Interview[]
-  // The protocol's `experiments`. A schema 8 row's also tell the deploy-time
-  // migration to schema 9 whether its encrypted attributes stay encrypted.
+  // The protocol's `experiments`. A schema 8 row's say whether the bundled
+  // schema 8 interview encrypts its encrypted attributes.
   experiments     Json?
   originalFileKey String?
   originalFileUrl String?

@@ -22,6 +22,8 @@ type PromptsProps = {
   className?: string;
   small?: boolean;
   id?: string;
+  /** Called once an outgoing prompt has finished leaving. */
+  onExitComplete?: () => void;
 };
 
 /**
@@ -34,6 +36,7 @@ const Prompts = ({
   className,
   small,
   id,
+  onExitComplete,
 }: PromptsProps) => {
   const prevPromptRef = useRef<number>(undefined);
 
@@ -73,7 +76,12 @@ const Prompts = ({
         />
       )}
       <motion.div variants={containerVariants}>
-        <AnimatePresence custom={backwards} mode="wait" initial={false}>
+        <AnimatePresence
+          custom={backwards}
+          mode="wait"
+          initial={false}
+          onExitComplete={onExitComplete}
+        >
           {prompts.map(
             ({ id: promptId, text }) =>
               currentIndex >= 0 &&

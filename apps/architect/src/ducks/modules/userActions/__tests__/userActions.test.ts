@@ -557,6 +557,21 @@ describe('userActions', () => {
       expect(setActiveProtocol).toHaveBeenCalledWith(protocol);
     });
 
+    it('describes a library that cannot be read instead of rejecting', async () => {
+      getStoredProtocol.mockRejectedValue(
+        new Error('IndexedDB is unavailable'),
+      );
+
+      const result = await runThunk(openLibraryProtocol({ id: 'p1' }));
+
+      expect(result.payload).toMatchObject({
+        status: 'error',
+        title: 'Protocol Open Error',
+        detail: expect.stringContaining('IndexedDB is unavailable'),
+      });
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+    });
+
     it('hard-blocks an invalid unproven row', async () => {
       const protocol = makeProtocol();
       getStoredProtocol.mockResolvedValue({

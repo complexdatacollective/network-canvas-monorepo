@@ -2,12 +2,12 @@
  * The migration chain: the registered steps that carry a protocol document
  * forward one schema version at a time, and the machinery that walks them.
  *
- * A host that migrates a stored protocol does so IN PLACE (Fresco:
- * apps/fresco/scripts/migrate-protocols.ts), so every interview already
- * recorded against it goes on pointing at the migrated protocol. (Interviewer
- * never migrates a stored protocol or interview: schema 8 ones stay in
- * Interviewer 8, and its explicit upgrade makes a new copy with no
- * interviews.) A session refers to its protocol
+ * A host that migrates a stored protocol in place keeps every interview
+ * already recorded against it pointing at the migrated protocol. (No Network
+ * Canvas host does so any more: Interviewer and Fresco keep schema 8
+ * protocols and interviews as they are, running them in a bundled schema 8
+ * interview, and upgrade only a protocol being imported, which has no
+ * interviews yet.) A session refers to its protocol
  * by stage INDEX — its resume position (`currentStep`) and each stage's
  * record (`stageMetadata`, keyed by index) — and holds data collected under
  * the old codebook. So every step answers for the sessions as well as the

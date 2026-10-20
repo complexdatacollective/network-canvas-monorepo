@@ -104,6 +104,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -123,6 +124,29 @@ describe('Onboard Route Handler', () => {
       );
     });
 
+    it('sends an interview of a schema 8 protocol to the schema 8 interview', async () => {
+      const protocolId = 'schema-8-protocol';
+      const createdInterviewId = 'interview-v8';
+
+      mockCreateInterview.mockResolvedValue({
+        createdInterviewId,
+        error: null,
+        errorType: null,
+        schemaVersion: 8,
+      });
+
+      const request = new NextRequest(
+        `http://localhost:3000/onboard/${protocolId}`,
+      );
+      const params = Promise.resolve({ protocolId });
+
+      const response = await GET(request, { params });
+
+      expect(response.headers.get('location')).toBe(
+        `http://localhost:3000/v8/interview/${createdInterviewId}`,
+      );
+    });
+
     it('should pass undefined when no participantIdentifier is provided', async () => {
       const protocolId = 'test-protocol-id';
       const createdInterviewId = 'interview-456';
@@ -131,6 +155,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -203,6 +228,7 @@ describe('Onboard Route Handler', () => {
           createdInterviewId,
           error: null,
           errorType: null,
+          schemaVersion: 9,
         });
 
         const request = new NextRequest(
@@ -237,6 +263,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -264,6 +291,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -361,6 +389,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -395,6 +424,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -514,6 +544,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
@@ -541,6 +572,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId,
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(

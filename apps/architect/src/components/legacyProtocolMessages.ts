@@ -26,12 +26,6 @@ export const legacyProtocolMessages = defineMessages({
     description:
       'Short badge on a protocol in the home screen library, marking a protocol made for an older schema version. {version} is that protocol’s schema version number (for example 8).',
   },
-  upgradedBadge: {
-    id: 'architect.legacyProtocol.upgradedBadge',
-    defaultMessage: 'Has an upgraded copy',
-    description:
-      'Short badge on an older protocol in the home screen library, shown when an upgraded copy of it has already been made in the current version of Architect: it says that such a copy exists. The older protocol carrying the badge is itself unchanged; it is not the copy.',
-  },
   openInArchitect: {
     id: 'architect.legacyProtocol.openInArchitect',
     defaultMessage: 'Open in Architect {version}',

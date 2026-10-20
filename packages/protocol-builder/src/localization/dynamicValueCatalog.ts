@@ -131,7 +131,8 @@ export const dynamicValueChoices = (
   const labelOf = (role: DynamicValueRole): DynamicValueChoice[] => {
     if (!isLabelledDynamicValueRole(role)) return [];
     const path = dynamicValueLabelPathFor(role);
-    if (dynamicValueStatus({ path }, context).status !== 'available') return [];
+    const status = dynamicValueStatus({ path }, context);
+    if (status.status !== 'available') return [];
     return [
       {
         path,
@@ -140,7 +141,8 @@ export const dynamicValueChoices = (
         variableId: '',
         variableName: undefined,
         variableType: 'text',
-        optional: false,
+        // Missing only where no node may be on screen.
+        optional: status.argument.optional,
         numeric: false,
         options: [],
         unshowable: undefined,

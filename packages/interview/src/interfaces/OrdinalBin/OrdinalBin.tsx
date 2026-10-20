@@ -6,9 +6,9 @@ import { useMemo } from 'react';
 import type { Stage } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
+import BinPrompts from '../../components/BinPrompts';
 import BinSelectAnnouncer from '../../components/BinSelectAnnouncer';
 import NodeDrawer from '../../components/NodeDrawer';
-import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useBinSelection } from '../../hooks/useBinSelection';
 import useCompletePlacement from '../../hooks/useCompletePlacement';
@@ -67,7 +67,7 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
 
   return (
     <div className="interface overflow-hidden pb-0">
-      <Prompts />
+      <BinPrompts focalNode={focalNode} />
       <div className="min-h-0 w-full flex-1">
         <AnimatePresence mode="wait">
           {prompt && activePromptVariable && (

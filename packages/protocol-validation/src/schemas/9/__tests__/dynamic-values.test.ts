@@ -590,6 +590,66 @@ describe('dynamic values in stage text', () => {
         }
       });
 
+      it('offers a bin prompt in select mode the node being placed', () => {
+        for (const id of ['ordinalBin', 'categoricalBin']) {
+          const protocol = editing(id, (stage) => {
+            stage.dynamicValues = {
+              ...labels,
+              them: { path: 'node.nickname' },
+            };
+            stage.behaviours = { interactionMode: 'select' };
+          });
+          expect(
+            argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
+          ).toEqual(['nodeLabel', 'them']);
+        }
+        const dragging = editing('ordinalBin', (stage) => {
+          stage.dynamicValues = labels;
+          stage.behaviours = { interactionMode: 'drag' };
+        });
+        expect(
+          argumentsAt(dragging, 'ordinalBin', ['prompts', 0, 'text'], 'prompt'),
+        ).toEqual([]);
+      });
+
+      it('needs a missing version for the label of the node a bin is placing, which is gone once every node is placed', () => {
+        const prompted = (text: string) =>
+          editing('ordinalBin', (stage) => {
+            stage.dynamicValues = labels;
+            stage.behaviours = { interactionMode: 'select' };
+            (stage.prompts as Stage[])[0]!.text = { en: text };
+          });
+        expect(issuesOf(prompted('How close is {nodeLabel}?'))).toEqual([
+          expect.objectContaining({
+            path: expect.stringContaining('prompts.0.text.en'),
+          }),
+        ]);
+        expect(
+          issuesOf(
+            prompted(
+              '{nodeLabel, select, missing {Everyone is placed.} other {How close is {nodeLabel}?}}',
+            ),
+          ),
+        ).toEqual([]);
+      });
+
+      it('keeps the node a bin is placing out of the "other" bin\'s label', () => {
+        const protocol = editing('categoricalBin', (stage) => {
+          stage.dynamicValues = labels;
+          stage.behaviours = { interactionMode: 'select' };
+          (stage.prompts as Stage[])[0]!.otherOptionLabel = {
+            en: guarded('nodeLabel'),
+          };
+        });
+        expect(issuesOf(protocol)).toEqual([
+          expect.objectContaining({
+            message: expect.stringContaining(
+              'values about the node this stage is about cannot be shown here',
+            ),
+          }),
+        ]);
+      });
+
       it('offers the node a form is about by its label', () => {
         expect(
           argumentsAt(

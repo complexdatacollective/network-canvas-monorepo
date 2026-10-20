@@ -7,7 +7,7 @@ exports[`dynamic values in stage text > tags exactly the inventoried stage sites
   "AlterForm form.fields.#.hint formField",
   "AlterForm form.fields.#.prompt formField",
   "Anonymisation explanationText stageText",
-  "CategoricalBin prompts.#.otherOptionLabel prompt",
+  "CategoricalBin prompts.#.otherOptionLabel stageText",
   "CategoricalBin prompts.#.otherVariablePrompt formField",
   "CategoricalBin prompts.#.text prompt",
   "DyadCensus prompts.#.text prompt",

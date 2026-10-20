@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,8 +8,8 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Form from '@codaco/fresco-ui/form/Form';
 
-import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
-import QuestionFlow from '../components/QuestionFlow';
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
+import QuestionFlow from '../QuestionFlow';
 
 // Every step change is animated through this hook; recording its calls says
 // which way each step moves, which the page itself cannot show in jsdom.
@@ -271,4 +271,139 @@ describe('QuestionFlow with a required question left unanswered', () => {
       );
     },
   );
+});
+
+function CompletingFlow({
+  onComplete,
+  withText = false,
+  initialFirst,
+  initialSecond,
+  focusFirst,
+}: {
+  onComplete: () => void;
+  withText?: boolean;
+  initialFirst?: string;
+  initialSecond?: string;
+  focusFirst?: boolean;
+}) {
+  const options = [
+    { value: 'red', label: 'Red' },
+    { value: 'blue', label: 'Blue' },
+  ];
+  return (
+    <TestProtocolLocalization>
+      <Form onSubmit={() => ({ success: true })}>
+        <QuestionFlow onComplete={onComplete} focusFirst={focusFirst}>
+          <Field
+            component={RadioGroupField}
+            name="first"
+            label="First colour"
+            options={options}
+            initialValue={initialFirst}
+          />
+          <Field
+            component={RadioGroupField}
+            name="second"
+            label="Second colour"
+            options={options}
+            initialValue={initialSecond}
+          />
+          {withText && (
+            <Field component={InputField} name="note" label="Note" />
+          )}
+        </QuestionFlow>
+      </Form>
+    </TestProtocolLocalization>
+  );
+}
+
+const pause = () => new Promise((resolve) => setTimeout(resolve, 600));
+
+describe('QuestionFlow moving on from a complete form', () => {
+  it('moves on once a choice answers the last question waiting, after a pause', async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    render(<CompletingFlow onComplete={onComplete} />);
+
+    const first = screen.getByRole('radiogroup', { name: 'First colour' });
+    await user.click(within(first).getByRole('radio', { name: 'Red' }));
+    await pause();
+    expect(onComplete).not.toHaveBeenCalled();
+
+    const second = screen.getByRole('radiogroup', { name: 'Second colour' });
+    await user.click(within(second).getByRole('radio', { name: 'Blue' }));
+    // The chosen answer shows before the form moves on.
+    expect(onComplete).not.toHaveBeenCalled();
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+  });
+
+  it('stays while any question, of any kind, still waits for an answer', async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    render(<CompletingFlow onComplete={onComplete} withText />);
+
+    for (const name of ['First colour', 'Second colour']) {
+      const group = screen.getByRole('radiogroup', { name });
+      await user.click(within(group).getByRole('radio', { name: 'Red' }));
+    }
+    await pause();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('stays when an answer already given is changed', async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    render(
+      <CompletingFlow
+        onComplete={onComplete}
+        initialFirst="red"
+        initialSecond="red"
+      />,
+    );
+
+    const first = screen.getByRole('radiogroup', { name: 'First colour' });
+    await user.click(within(first).getByRole('radio', { name: 'Blue' }));
+    await pause();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('stays when the last answer is changed during the pause', async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    render(<CompletingFlow onComplete={onComplete} initialFirst="red" />);
+
+    const second = screen.getByRole('radiogroup', { name: 'Second colour' });
+    await user.click(within(second).getByRole('radio', { name: 'Blue' }));
+    await user.click(within(second).getByRole('radio', { name: 'Red' }));
+    await pause();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  describe('handed the focus', () => {
+    // jsdom lays nothing out; every question shows.
+    beforeEach(() => {
+      vi.spyOn(Element.prototype, 'getClientRects').mockImplementation(
+        () => [new DOMRect()] as unknown as DOMRectList,
+      );
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    it('focuses the first question still waiting', async () => {
+      render(
+        <CompletingFlow onComplete={vi.fn()} initialFirst="red" focusFirst />,
+      );
+      const second = screen.getByRole('radiogroup', { name: 'Second colour' });
+      await waitFor(() =>
+        expect(
+          within(second).getByRole('radio', { name: 'Red' }),
+        ).toHaveFocus(),
+      );
+    });
+
+    it('leaves the focus alone otherwise', async () => {
+      render(<CompletingFlow onComplete={vi.fn()} initialFirst="red" />);
+      await pause();
+      expect(document.body).toHaveFocus();
+    });
+  });
 });

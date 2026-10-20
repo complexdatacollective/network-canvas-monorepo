@@ -27,6 +27,7 @@ import {
 import BinSelectAnnouncer from '../../../components/BinSelectAnnouncer';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
+import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session, {
@@ -151,19 +152,28 @@ const codebook: Codebook = {
 
 type Mode = 'drag' | 'select';
 
+type StageOptions = {
+  sortByName?: boolean;
+  /** Prompt text naming the person being placed, by `{nodeLabel}`. */
+  namingFocal?: string;
+};
+
 const buildStage = (
   mode: Mode,
-  { sortByName = false }: { sortByName?: boolean } = {},
+  { sortByName = false, namingFocal }: StageOptions = {},
 ): StageProps<'OrdinalBin'>['stage'] => ({
   id: STAGE_ID,
   type: 'OrdinalBin',
   label: { en: 'Rate people' },
   subject: { entity: 'node', type: NODE_TYPE },
   ...(mode === 'select' && { behaviours: { interactionMode: 'select' } }),
+  ...(namingFocal !== undefined && {
+    dynamicValues: { nodeLabel: { path: 'node.$label' } },
+  }),
   prompts: [
     {
       id: PROMPT_ID,
-      text: { en: 'How close?' },
+      text: { en: namingFocal ?? 'How close?' },
       variable: asEntityAttributeReference('closeness'),
       color: 'ord-color-seq-1',
       ...(sortByName && {
@@ -196,7 +206,7 @@ const buildSession = (nodes: NcNode[] = defaultNodes()): SessionState => ({
 
 const buildProtocol = (
   mode: Mode,
-  options?: { sortByName?: boolean },
+  options?: StageOptions,
 ): ProtocolPayload => ({
   id: 'protocol',
   hash: 'hash',
@@ -221,11 +231,7 @@ function CaptureDndStore({
   return null;
 }
 
-function renderStage(
-  mode: Mode,
-  nodes?: NcNode[],
-  options?: { sortByName?: boolean },
-) {
+function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -250,13 +256,15 @@ function renderStage(
                     dndStore = s;
                   }}
                 />
-                <OrdinalBin
-                  stage={buildStage(mode, options)}
-                  getNavigationHelpers={() => ({
-                    moveForward: () => {},
-                    moveBackward: () => {},
-                  })}
-                />
+                <StageDynamicValues stage={buildStage(mode, options)}>
+                  <OrdinalBin
+                    stage={buildStage(mode, options)}
+                    getNavigationHelpers={() => ({
+                      moveForward: () => {},
+                      moveBackward: () => {},
+                    })}
+                  />
+                </StageDynamicValues>
               </DndStoreProvider>
             </DialogProvider>
           </CurrentStepProvider>
@@ -319,6 +327,31 @@ describe('OrdinalBin in select mode (#1652)', () => {
       bin_index: 1,
       interaction_mode: 'select',
     });
+  });
+
+  it('names the person being placed in the prompt, and its other version once everyone is placed', async () => {
+    // The prompt's natural sentence, without the marks around its values.
+    const prompt = () => screen.getByTestId('prompt').getAttribute('title');
+    renderStage('select', [person('a', 'Ann'), person('b', 'Ben')], {
+      namingFocal:
+        '{nodeLabel, select, missing {Everyone is placed.} other {How close is {nodeLabel}?}}',
+    });
+
+    await announcement('Ann');
+    expect(prompt()).toBe('How close is Ann?');
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
+    await announcement('Ben');
+    expect(prompt()).toBe('How close is Ben?');
+    // Choosing someone else names them instead.
+    fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
+    await announcement('Ann');
+    expect(prompt()).toBe('How close is Ann?');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Place Ann in Distant' }),
+    );
+    await announcement('Ben');
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ben in Close' }));
+    await waitFor(() => expect(prompt()).toBe('Everyone is placed.'));
   });
 
   it('writes what dropping the same person on the same bin writes', async () => {

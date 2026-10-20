@@ -839,8 +839,7 @@ const LibraryPanel = ({
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
-  const { protocols, legacyProtocols, legacyChoices, isLoaded } =
-    useProtocolLibrary();
+  const { protocols, legacyProtocols, isLoaded } = useProtocolLibrary();
   // Architect 8's protocols are listed with this app's own, so every count and
   // the opening tab include them.
   const protocolCount = protocols.length + legacyProtocols.length;
@@ -1233,14 +1232,6 @@ const LibraryPanel = ({
     // Architect 8's protocols. This app never writes that library, so they
     // have no Delete; opening one offers the choice, and the menu holds both
     // ways out of it directly.
-    const upgradedIds = new Set(
-      legacyChoices.flatMap((choice) =>
-        choice.upgradedId !== undefined &&
-        protocols.some((protocol) => protocol.id === choice.upgradedId)
-          ? [choice.legacyId]
-          : [],
-      ),
-    );
     const legacyArchitect = getBundledLegacyArchitect();
     const legacyItems: LibraryPanelItem[] = legacyProtocols.map((row) => {
       const key = `legacy:${row.id}`;
@@ -1259,9 +1250,6 @@ const LibraryPanel = ({
           intl.formatMessage(legacyProtocolMessages.schemaBadge, {
             version: row.schemaVersion,
           }),
-          ...(upgradedIds.has(row.id)
-            ? [intl.formatMessage(legacyProtocolMessages.upgradedBadge)]
-            : []),
         ],
         updatedAt: row.updatedAt,
         downloading: downloadingIds.has(key),
@@ -1318,7 +1306,6 @@ const LibraryPanel = ({
     intl,
     protocols,
     legacyProtocols,
-    legacyChoices,
     downloadingIds,
     onOpenProtocol,
     onOpenLegacyProtocol,

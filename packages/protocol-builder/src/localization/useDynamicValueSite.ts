@@ -119,6 +119,8 @@ export function useDynamicValueSite(
   const { codebook } = useProtocolContext();
   const row = useContext(EditedRowContext);
   const subject = useStageValue('subject');
+  // A bin stage's prompt shows the node it is placing only in select mode.
+  const behaviours = useStageValue('behaviours');
   const rawBindings = useStageValue(DYNAMIC_VALUES_PATH);
   const listRoot =
     site === 'formField' && row !== null ? row.listPath[0] : undefined;
@@ -134,7 +136,11 @@ export function useDynamicValueSite(
   // read live (`row.read`), and which field it asks about can change without
   // anything a dependency list could see.
   const context = (() => {
-    let stage: Record<string, unknown> = { type: identity.type, subject };
+    let stage: Record<string, unknown> = {
+      type: identity.type,
+      subject,
+      behaviours,
+    };
     let sitePath: (string | number)[] = [];
     if (site === 'formField' && row !== null && listRoot !== undefined) {
       const listPath = row.listPath.map(segment);
@@ -169,7 +175,7 @@ export function useDynamicValueSite(
     if (!ownForm || ownEntity === null) return atSite;
     return {
       ...atSite,
-      roles: dynamicValueRolesAt(identity.type, 'formField', {
+      roles: dynamicValueRolesAt({ type: identity.type }, 'formField', {
         entity: ownEntity,
         isStageSubject: false,
       }),
@@ -210,16 +216,17 @@ export function useStageDynamicValues(): Pick<
   const { identity } = useStageEditorForm();
   const { codebook } = useProtocolContext();
   const subject = useStageValue('subject');
+  const behaviours = useStageValue('behaviours');
   const rawBindings = useStageValue(DYNAMIC_VALUES_PATH);
   return useMemo(
     () => ({
       context: stageDynamicValueContext({
         codebook,
-        stage: { type: identity.type, subject },
+        stage: { type: identity.type, subject, behaviours },
       }),
       bindings: isRecord(rawBindings) ? (rawBindings as DynamicValues) : {},
     }),
-    [identity.type, subject, codebook, rawBindings],
+    [identity.type, subject, behaviours, codebook, rawBindings],
   );
 }
 

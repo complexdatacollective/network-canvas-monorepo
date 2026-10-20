@@ -3,7 +3,16 @@
 import UIPrompts from './Prompts/Prompts';
 import { usePrompts } from './Prompts/usePrompts';
 
-const Prompts = ({ small, id }: { small?: boolean; id?: string }) => {
+const Prompts = ({
+  small,
+  id,
+  onExitComplete,
+}: {
+  small?: boolean;
+  id?: string;
+  /** Called once an outgoing prompt has finished leaving. */
+  onExitComplete?: () => void;
+}) => {
   const { prompt, prompts } = usePrompts();
 
   return (
@@ -12,6 +21,7 @@ const Prompts = ({ small, id }: { small?: boolean; id?: string }) => {
       prompts={prompts}
       small={small}
       id={id}
+      onExitComplete={onExitComplete}
     />
   );
 };

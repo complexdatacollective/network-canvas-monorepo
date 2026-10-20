@@ -144,9 +144,7 @@ if (failures.length > 0) {
 - **All or nothing.** A host must never leave a mixture of migrated and
   unmigrated data, because that blocks going back to the previous version. If
   any session of a protocol fails, the host writes neither the protocol nor
-  any of its sessions. Fresco, which migrates every protocol in one database
-  transaction at deploy, aborts that transaction and stops starting up,
-  naming each failed interview.
+  any of its sessions.
 - **Pure.** The migrator is deterministic and never modifies the session it is
   given, so it can be called for each session in any order, and inside a
   transaction. `changed` is false when the result equals the input, so the
@@ -154,10 +152,10 @@ if (failures.length > 0) {
 - **Already current.** When the protocol is already at the target version,
   the migrator only validates.
 
-Fresco (`apps/fresco/scripts/migrate-protocols.ts`) is the reference host.
-Interviewer never migrates stored protocols or interviews: schema 8 ones stay
-in Interviewer 8, and upgrading a protocol makes a new schema 9 copy with no
-interviews.
+No Network Canvas host migrates stored protocols or interviews any more.
+Interviewer and Fresco keep schema 8 ones as they are and run them in a
+bundled schema 8 interview; upgrading a protocol happens only on import, or
+makes a new schema 9 copy with no interviews.
 
 ### Writing a migration step
 

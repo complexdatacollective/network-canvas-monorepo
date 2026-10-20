@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
-# Resolves and validates the Architect release tag an archive run was handed,
-# emitting version/major/sha for the workflow.
+# Resolves and validates an Architect release tag, emitting version/major/sha
+# for the workflow.
 #
-# Run TWICE by .github/workflows/architect-archive-release.yml: once up front so
-# a bad tag fails before a build is spent, and again inside the deploy job while
-# it holds the concurrency lock. The second run is not redundant — every archived
-# major line shares one host, so a newer release on the same line tagged between
-# the first check and the lock would otherwise let the older run publish last and
-# roll the host backwards. The repository makes the same argument for
-# app-release-guard.sh: only mutual exclusion across the whole check-then-deploy
-# sequence closes that window.
+# Run by .github/workflows/architect-subpath-dist.yml before it builds the
+# tag's tree under its major's sub-path. The sub-path dist for a major line is
+# the one tarball the next major pins, so the guard refuses anything but the
+# newest stable release on that line: the pin is only ever moved forward.
 #
 # Reads TAG and (optionally) FORCE from the environment. Runs against whatever
 # git repository is the working directory, which must have the release tags
@@ -22,7 +18,7 @@ PKG='@codaco/architect'
 
 # The tag must be this app's release tag. Comparing only the text after the last
 # `@` would accept another independently versioned product's tag whose suffix
-# happens to equal Architect's version at that commit, and archive an unrelated
+# happens to equal Architect's version at that commit, and build an unrelated
 # tree — one that can carry unreleased Architect changes.
 case "$TAG" in
   "$PKG"@*) ;;
@@ -53,14 +49,14 @@ case "$major" in
     ;;
 esac
 
-# One host per major line means a later archive run overwrites an earlier one.
+# One sub-path dist per major line means only its newest release qualifies.
 #
 # Only plain x.y.z releases are candidates for "newest on the line". `sort -V`
 # orders a prerelease AFTER its stable release — verified on both GNU and BSD
 # sort, `8.3.0-beta.1` sorts after `8.3.0` — which is the opposite of semver.
 # Left unfiltered, dispatching a beta would sail past this check as the newest
 # tag while the stable release it precedes was refused, quietly replacing a
-# line's stable archive with a prerelease.
+# line's stable release with a prerelease.
 # `|| true` because a line with no stable release yet — a brand-new major whose
 # only tags are prereleases — makes grep exit 1, and under `pipefail` that would
 # kill the script with no message rather than leaving `newest` empty for the
@@ -76,18 +72,18 @@ newest="$(
 
 case "$version" in
   *-*)
-    # A prerelease is never the newest release on a line, so putting one on the
-    # shared host is always a deliberate act rather than a routine archive.
+    # A prerelease is never the newest release on a line, so using one for the
+    # line is always a deliberate act rather than a routine run.
     if [ "$FORCE" != 'true' ]; then
-      echo "::error::$version is a prerelease; archiving one onto the ${major}.x host needs force."
+      echo "::error::$version is a prerelease; using one for the ${major}.x line needs FORCE=true."
       exit 1
     fi
-    echo "::warning::forcing prerelease $version onto the ${major}.x host"
+    echo "::warning::forcing prerelease $version for the ${major}.x line"
     ;;
   *)
     if [ -n "$newest" ] && [ "$newest" != "$version" ]; then
       if [ "$FORCE" != 'true' ]; then
-        echo "::error::$version is not the newest release on the ${major}.x line ($newest). Archive that instead, or re-run with force."
+        echo "::error::$version is not the newest release on the ${major}.x line ($newest). Use that instead, or set FORCE=true."
         exit 1
       fi
       echo "::warning::forcing $version over newer ${major}.x release $newest"

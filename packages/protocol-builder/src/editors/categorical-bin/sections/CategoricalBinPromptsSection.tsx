@@ -338,7 +338,8 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={OTHER_LABEL_FIELD}
           component={LocalizedRichTextField}
-          dynamicValues="prompt"
+          // The bin's caption, which is not about the node being placed.
+          dynamicValues="stageText"
           label={intl.formatMessage(categoricalBinPromptMessages.otherBinLabel)}
           hint={intl.formatMessage(categoricalBinPromptMessages.otherBinHint)}
           placeholder={intl.formatMessage(

@@ -49,23 +49,40 @@ const additionalMessages = defineMessages({
     defaultMessage: 'Upgrade to continue',
     description: 'The title text in components / protocolOpenDialogs.',
   },
-  thisProtocolUsesSchemaVersion: {
-    id: 'architect.additional.protocolOpenDialogs.thisProtocolUsesSchemaVersion',
+  olderSchemaKeepOrUpgrade: {
+    id: 'architect.protocolOpenDialogs.olderSchemaKeepOrUpgrade',
     defaultMessage:
-      'This protocol uses schema version {value1}, which is not compatible with this version of Architect.',
-    description: 'Visible text in components / protocolOpenDialogs.',
+      'This protocol uses an older version of the Network Canvas protocol schema (more information <ExternalLink>here</ExternalLink>). You can either open and edit it as normal, or you can upgrade it to the latest version, which will unlock new features and functionality.',
+    description:
+      'First paragraph of the dialog shown when a researcher opens a protocol made for an older schema, when Architect can still edit it unchanged (in the previous version of Architect, served alongside this one). "Open and edit it as normal" means keeping the protocol at its older schema. <ExternalLink> wraps a link to the documentation page about protocol schemas.',
   },
-  itCanBeAutomaticallyUpgradedTo: {
-    id: 'architect.additional.protocolOpenDialogs.itCanBeAutomaticallyUpgradedTo',
+  olderSchemaUpgrade: {
+    id: 'architect.protocolOpenDialogs.olderSchemaUpgrade',
     defaultMessage:
-      'It can be automatically upgraded to schema version {value1} using our migration feature.',
-    description: 'Visible text in components / protocolOpenDialogs.',
+      'This protocol uses an older version of the Network Canvas protocol schema (more information <ExternalLink>here</ExternalLink>). You can upgrade it to the latest version, which will unlock new features and functionality.',
+    description:
+      'First paragraph of the dialog shown when a researcher opens a protocol made for an older schema, in a build of Architect that can only offer to upgrade it. <ExternalLink> wraps a link to the documentation page about protocol schemas.',
   },
-  ifYouChooseToMigrateThe: {
-    id: 'architect.additional.protocolOpenDialogs.ifYouChooseToMigrateThe',
+  upgradeAffectsInterviews: {
+    id: 'architect.protocolOpenDialogs.upgradeAffectsInterviews',
     defaultMessage:
-      'If you choose to migrate, the following actions will be automatically performed on your protocol. Read these notes carefully, as these actions may affect your data.',
-    description: 'Visible text in components / protocolOpenDialogs.',
+      '<strong>Please note:</strong> upgrading may change the interview experience for participants, and will require you to also use the latest version of Interviewer or Fresco.',
+    description:
+      'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Warns that interviews may look or behave differently after upgrading, and that the upgraded protocol only runs in the latest versions of Interviewer and Fresco (the apps that run interviews). <strong> wraps the opening words, shown in bold.',
+  },
+  upgradeMakesACopy: {
+    id: 'architect.protocolOpenDialogs.upgradeMakesACopy',
+    defaultMessage:
+      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
+    description:
+      'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy at the current schema and opens it, and that the original protocol stays as it was.',
+  },
+  upgradeChangesList: {
+    id: 'architect.protocolOpenDialogs.upgradeChangesList',
+    defaultMessage:
+      'If you upgrade, the following changes will be made to your protocol:',
+    description:
+      'Sentence in the dialog offering to upgrade an older protocol, introducing the box below it that lists every change the upgrade makes to the protocol.',
   },
   migratingToSchemaVersionWill: {
     id: 'architect.additional.protocolOpenDialogs.migratingToSchemaVersionWill',
@@ -78,20 +95,6 @@ const additionalMessages = defineMessages({
     defaultMessage: 'How do you want to open this protocol?',
     description:
       'Title of the dialog shown when a researcher opens a protocol made for an older schema and Architect offers two ways forward: upgrade a copy to the current schema, or keep editing the protocol unchanged in the previous version of Architect.',
-  },
-  upgradeCreatesACopy: {
-    id: 'architect.protocolOpenDialogs.upgradeCreatesACopy',
-    defaultMessage:
-      'If you upgrade, an upgraded copy of your protocol will be created and then opened. Your original protocol will not be changed. Please see our <ExternalLink>documentation on protocol schemas</ExternalLink> for more information on this topic.',
-    description:
-      'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy and leaves the original protocol as it was. <ExternalLink> wraps a link to the documentation page about protocol schemas.',
-  },
-  keepEditingInLegacyArchitect: {
-    id: 'architect.protocolOpenDialogs.keepEditingInLegacyArchitect',
-    defaultMessage:
-      'You can also keep editing it as a schema {version} protocol in Architect {version}, which is included with this version of Architect.',
-    description:
-      "Paragraph in the dialog offering to upgrade an older protocol, shown only when the previous version of Architect is available. {version} is that previous version's number (for example 8): the protocol can stay at schema {version} and be edited in Architect {version}, which is served alongside the current Architect.",
   },
   protocolNotCompatibleWithCurrentVersion: {
     id: 'architect.additional.protocolOpenDialogs.protocolNotCompatibleWithCurrentVersion',
@@ -226,6 +229,7 @@ export const showProtocolOpenResultDialog = async ({
         {chunks}
       </ExternalLink>
     );
+    const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
     const choice = await openDialog({
       type: 'choice',
       // Not a warning: upgrading makes a copy and changes nothing, so the
@@ -242,21 +246,28 @@ export const showProtocolOpenResultDialog = async ({
         <>
           <Paragraph>
             {createElement(AppMessage, {
-              message: additionalMessages.thisProtocolUsesSchemaVersion,
-              values: { value1: result.protocolSchemaVersion },
+              message: offerKeep
+                ? additionalMessages.olderSchemaKeepOrUpgrade
+                : additionalMessages.olderSchemaUpgrade,
+              values: { ExternalLink: renderDocumentationLink },
             })}
           </Paragraph>
           <Paragraph>
             {createElement(AppMessage, {
-              message: additionalMessages.itCanBeAutomaticallyUpgradedTo,
-              values: { value1: result.targetSchemaVersion },
+              message: additionalMessages.upgradeAffectsInterviews,
+              values: { strong: renderStrong },
+            })}
+          </Paragraph>
+          <Paragraph>
+            {createElement(AppMessage, {
+              message: additionalMessages.upgradeMakesACopy,
             })}
           </Paragraph>
           {result.migrationNotes.length > 0 && (
             <>
               <Paragraph>
                 {createElement(AppMessage, {
-                  message: additionalMessages.ifYouChooseToMigrateThe,
+                  message: additionalMessages.upgradeChangesList,
                 })}
               </Paragraph>
               <div className="bg-surface-2 max-h-72 overflow-y-auto rounded-sm px-4 py-2 [&_li]:mb-2 [&_li]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5">
@@ -274,20 +285,6 @@ export const showProtocolOpenResultDialog = async ({
                 ))}
               </div>
             </>
-          )}
-          <Paragraph>
-            {createElement(AppMessage, {
-              message: additionalMessages.upgradeCreatesACopy,
-              values: { ExternalLink: renderDocumentationLink },
-            })}
-          </Paragraph>
-          {offerKeep && (
-            <Paragraph>
-              {createElement(AppMessage, {
-                message: additionalMessages.keepEditingInLegacyArchitect,
-                values: { version: LEGACY_ARCHITECT_MAJOR },
-              })}
-            </Paragraph>
           )}
         </>
       ),

@@ -200,26 +200,25 @@ does not count: the guard checks commit ancestry. Full procedure in
 `apps/architect/RELEASING.md`, `apps/interviewer/RELEASING.md` and
 `apps/fresco/CLAUDE.md`.
 
-#### Architect version archive
+An older Architect major line (8.x once 9.x is production) never goes through
+either lane. The **Architect Maintenance Release** workflow
+(`.github/workflows/architect-maintenance-release.yml`) releases a
+`maintenance/architect-<version>` branch. It checks the version with
+`resolve-hotfix-release.mjs`'s `SCOPE=line` mode, tags the release, creates a
+GitHub release that is never "Latest", and deploys nothing. There is no merge
+back to main. See "Maintenance releases" in `apps/architect/RELEASING.md`.
 
-Released Architect versions stay reachable at a per-major host —
-`@codaco/architect@8.2.5` → `https://v8.architect.networkcanvas.com` — so
-researchers on an older protocol schema keep a working Architect. Keyed by major
-version because majors track schema versions, so a later release replaces an
-earlier one on the same line. Run the **Architect Archive Release** workflow
-(`.github/workflows/architect-archive-release.yml`) with the released tag; it is
-deliberately not wired into the release lane yet, and it never touches
-production, tags, or GitHub releases.
+#### Architect 8 inside Architect 9
 
-The archive is a Cloudflare Worker serving static assets, not Netlify: Netlify
-overrides `Cache-Control` on `/sw.js` and `/manifest.webmanifest` for any
-non-production deploy. Cloudflare instead **appends** `_headers` rules where
-Netlify replaces them, and rejects Netlify's SPA `_redirects` outright, so the
-deploy-time transform in
-`apps/architect/scripts/write-cloudflare-archive-config.mjs` reshapes a copy.
-Never "fix" `apps/architect/public/_headers` for Cloudflare — its Netlify shape
-is asserted in CI by `scripts/buildtime/assert-pwa-cache-headers.mjs`. Details in
-`apps/architect/RELEASING.md`.
+Architect 9 bundles Architect 8 at `/v8/` from a tarball. The
+**Architect Sub-path Dist** workflow
+(`.github/workflows/architect-subpath-dist.yml`) builds each released 8.x tag
+with `ARCHITECT_BASE_PATH=/v8/` and attaches `architect-v8-dist.tgz` to its
+GitHub release. It never replaces an attached tarball unless dispatched with
+`replace`. The normal, hotfix and maintenance lanes chain it by
+`workflow_call`. Its run summary prints the pin (URL and sha256) for
+`apps/architect/legacy-architect.json` on the schema-9 line. See "Sub-path dist
+tarball" in `apps/architect/RELEASING.md`.
 
 #### Apps that release by mirroring
 

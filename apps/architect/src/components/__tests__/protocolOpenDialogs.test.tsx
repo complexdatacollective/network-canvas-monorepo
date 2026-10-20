@@ -87,10 +87,14 @@ describe('the migration-required dialog', () => {
         name: 'How do you want to open this protocol?',
       }),
     ).toBeVisible();
-    // Schema 7 is kept as schema 8: Architect 8 upgrades it itself.
-    expect(dialog).toHaveTextContent('schema version 7');
     expect(dialog).toHaveTextContent(
-      'You can also keep editing it as a schema 8 protocol in Architect 8',
+      'You can either open and edit it as normal, or you can upgrade it to the latest version',
+    );
+    expect(dialog).toHaveTextContent(
+      'Please note: upgrading may change the interview experience for participants',
+    );
+    expect(dialog).toHaveTextContent(
+      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
     );
     const upgrade = within(dialog).getByRole('button', {
       name: 'Upgrade to schema 9',
@@ -129,6 +133,10 @@ describe('the migration-required dialog', () => {
       }),
     ).not.toBeInTheDocument();
     expect(dialog).not.toHaveTextContent('Architect 8');
+    expect(dialog).toHaveTextContent(
+      'You can upgrade it to the latest version',
+    );
+    expect(dialog).not.toHaveTextContent('open and edit it as normal');
   });
 
   it('offers only the upgrade when the caller has nothing to keep', async () => {

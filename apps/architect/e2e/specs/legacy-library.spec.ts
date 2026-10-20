@@ -76,7 +76,6 @@ test('lists an Architect 8 protocol in Recent with a badge naming its schema', a
   const row = libraryRow(architectPage, LEGACY_NAME);
   await expect(row).toBeVisible();
   await expect(row).toContainText('Schema 8');
-  await expect(row).not.toContainText('Has an upgraded copy');
   // Beside this app's own protocols, in one list; only the legacy row is
   // badged.
   await expect(libraryRow(architectPage, 'Current Study')).toBeVisible();
@@ -150,12 +149,11 @@ test('upgrading makes a copy in this library and leaves Architect 8’s library 
 
   expect(await readLegacyLibraryFingerprint(architectPage)).toBe(before);
 
-  // Back home, both are listed, and the original says a copy exists.
+  // Back home, both are listed: the original, still schema 8, and the copy.
   await architectPage.goto('/');
-  const original = libraryRow(architectPage, LEGACY_NAME).filter({
-    hasText: 'Schema 8',
-  });
-  await expect(original).toContainText('Has an upgraded copy');
+  await expect(
+    libraryRow(architectPage, LEGACY_NAME).filter({ hasText: 'Schema 8' }),
+  ).toHaveCount(1);
   await expect(libraryRow(architectPage, LEGACY_NAME)).toHaveCount(2);
 });
 

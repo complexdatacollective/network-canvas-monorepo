@@ -67,7 +67,8 @@ written.healthy = await write(
 
 // The schema 9 protocol the schema 9 walk conducts (schema9-interview-lane.mjs),
 // and the schema 8 protocol the upgrade lane seeds on the released image for
-// the schema 9 migration to carry (migration-lane.mjs). Neither has media.
+// the upgrade to carry across unchanged (migration-lane.mjs). Neither has
+// media.
 for (const [key, directory, file] of [
   ['schema9', 'fresco-release-test-v9', 'fresco-release-test-v9.netcanvas'],
   [
@@ -83,6 +84,40 @@ for (const [key, directory, file] of [
     ),
   );
   written[key] = await write(file, archiveOf(document, { withMedia: false }));
+}
+
+// The schema 8 protocol imported again once the deployment is upgraded,
+// kept at schema 8 and upgraded to schema 9 (migration-lane.mjs --phase
+// resume). Each copy relabels its first stage, because Fresco refuses a
+// protocol whose stages and codebook it already holds, and a copy kept at
+// schema 8 would otherwise hash the same as the one the seed imported on the
+// released image. Fresco names a protocol after its file.
+{
+  const migration = JSON.parse(
+    readFileSync(
+      join(
+        repoRoot,
+        'packages/protocols/e2e/fresco-release-test-migration/protocol.json',
+      ),
+      'utf8',
+    ),
+  );
+  for (const [key, file, label] of [
+    [
+      'importKept',
+      'release-test-kept-schema-8.netcanvas',
+      'Welcome (kept at schema 8)',
+    ],
+    [
+      'importUpgraded',
+      'release-test-upgraded-schema-9.netcanvas',
+      'Welcome (upgraded to schema 9)',
+    ],
+  ]) {
+    const document = structuredClone(migration);
+    document.stages[0].label = label;
+    written[key] = await write(file, archiveOf(document, { withMedia: false }));
+  }
 }
 
 // A protocol whose manifest names a file the archive does not contain. Fresco
