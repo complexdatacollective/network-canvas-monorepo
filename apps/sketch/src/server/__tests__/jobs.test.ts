@@ -373,7 +373,7 @@ describe('generate-background and GET /api/jobs/:id', () => {
           log: logStore,
           adapters: fake.adapters,
           now: () => NOW,
-          pipeline: { buildOptions: { now: NOW } },
+          pipeline: { buildOptions: { now: NOW }, review: false },
         },
       );
     return { jobs, log, fake, generate };

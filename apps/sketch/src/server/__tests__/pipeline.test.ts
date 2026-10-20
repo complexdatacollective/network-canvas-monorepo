@@ -68,7 +68,8 @@ describe('runPipeline', () => {
       ['wording', 'claude-haiku-5-5'],
     ]);
     const design = requests[1];
-    expect(design?.effort).toBe('medium');
+    expect(design?.effort).toBe('high');
+    expect(design?.thinking).toBe(true);
     // The guide quotes the example study, so check the prompt is the constant.
     expect(design?.system).toBe(DESIGN_SYSTEM);
     expect(design?.messages).toHaveLength(1);
@@ -318,8 +319,8 @@ describe('runPipeline', () => {
     });
     const { outcome } = await run(adapters);
     const design = outcome.log.calls.filter((c) => c.role === 'design');
-    // 16k output at $10/M plus a 30k-token input allowance at $2.5/M.
-    expect(design[0]).toMatchObject({ costUsd: 0.47, estimated: true });
+    // 32k output at $20/M plus a 30k-token input allowance at $5/M.
+    expect(design[0]).toMatchObject({ costUsd: 0.79, estimated: true });
     // The provider answered with an error: nothing was generated.
     expect(design[1]).toMatchObject({ costUsd: 0 });
     expect(design[1]).not.toHaveProperty('estimated');
@@ -420,9 +421,9 @@ describe('runPipeline', () => {
   });
 
   it('estimates the worst case of a job for the budget', () => {
-    // Haiku screening + 2 x Opus design + Haiku wording.
+    // Haiku screening + 2 x Opus design + Opus review + Haiku wording.
     expect(estimateJobCostUsd('anthropic')).toBeCloseTo(
-      0.00425 + 2 * 0.47 + 0.00775,
+      0.00425 + 3 * 0.79 + 0.00775,
       6,
     );
   });

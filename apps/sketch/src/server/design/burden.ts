@@ -1,0 +1,110 @@
+// A rough count of what a compiled protocol asks of a participant, at an
+// assumed network size. The design review reads it, and it makes two
+// designs of the same study comparable. Per-person work is counted once per
+// person, per-pair work once per pair, and filtered stages at half the
+// people, since a filter usually keeps a subset.
+
+export type Burden = {
+  people: number;
+  stages: number;
+  screens: number;
+  itemsPerPerson: number;
+  answers: number;
+};
+
+type Fields = { fields?: unknown[] };
+type ProtocolStage = {
+  type: string;
+  filter?: unknown;
+  form?: Fields;
+  nodeForm?: Fields;
+  prompts?: { highlight?: unknown; edges?: { create?: string } }[];
+  presets?: unknown[];
+};
+
+export const DEFAULT_PEOPLE = 12;
+
+export const estimateBurden = (
+  protocol: { stages: unknown[] },
+  people = DEFAULT_PEOPLE,
+): Burden => {
+  const n = Math.max(1, Math.round(people));
+  const pairs = (n * (n - 1)) / 2;
+  // ties drawn in a typical personal network: about 1.5 per person
+  const ties = Math.round(n * 1.5);
+  let screens = 0;
+  let itemsPerPerson = 0;
+  let answers = 0;
+  const stages = protocol.stages as ProtocolStage[];
+  for (const s of stages) {
+    const prompts = s.prompts?.length ?? 0;
+    const fields = s.form?.fields?.length ?? 0;
+    const shown = s.filter ? Math.ceil(n / 2) : n;
+    switch (s.type) {
+      case 'EgoForm':
+        screens += 1;
+        answers += fields;
+        break;
+      case 'NameGenerator':
+        // a form opens for each person added
+        screens += prompts + n;
+        itemsPerPerson += fields;
+        answers += n * (fields + 1);
+        break;
+      case 'NameGeneratorQuickAdd':
+      case 'NameGeneratorRoster':
+        screens += prompts;
+        answers += n;
+        break;
+      case 'AlterForm':
+        screens += shown;
+        itemsPerPerson += fields;
+        answers += shown * fields;
+        break;
+      case 'AlterEdgeForm':
+        screens += ties;
+        answers += ties * fields;
+        break;
+      case 'OrdinalBin':
+      case 'CategoricalBin':
+        screens += prompts;
+        itemsPerPerson += prompts;
+        answers += prompts * shown;
+        break;
+      case 'Sociogram':
+        screens += prompts;
+        for (const p of s.prompts ?? []) {
+          if (p.highlight) {
+            itemsPerPerson += 1;
+            answers += shown;
+          } else if (p.edges?.create) answers += ties;
+        }
+        break;
+      case 'DyadCensus':
+      case 'TieStrengthCensus':
+        screens += prompts * pairs;
+        answers += prompts * pairs;
+        break;
+      case 'OneToManyDyadCensus':
+        screens += prompts * (n - 1);
+        answers += prompts * pairs;
+        break;
+      case 'Geospatial':
+        screens += prompts * shown;
+        itemsPerPerson += prompts;
+        answers += prompts * shown;
+        break;
+      case 'NetworkComposer':
+        screens += 1;
+        itemsPerPerson += s.nodeForm?.fields?.length ?? 0;
+        answers += n * (1 + (s.nodeForm?.fields?.length ?? 0)) + ties;
+        break;
+      case 'Narrative':
+        screens += s.presets?.length ?? 1;
+        break;
+      default:
+        screens += 1;
+    }
+  }
+  return { people: n, stages: stages.length, screens, itemsPerPerson, answers };
+};

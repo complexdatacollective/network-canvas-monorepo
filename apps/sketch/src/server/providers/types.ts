@@ -20,6 +20,8 @@ export type StructuredRequest = {
   schemaName: string;
   maxTokens: number;
   effort?: Effort;
+  // Let the model think before answering (Anthropic adaptive thinking).
+  thinking?: boolean;
   timeoutMs?: number;
 };
 

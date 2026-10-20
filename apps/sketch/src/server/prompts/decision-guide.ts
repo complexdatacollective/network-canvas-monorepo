@@ -9,9 +9,9 @@
 // the guide must never suggest something the schema cannot express
 // (asserted in part by __tests__/decision-guide.test.ts).
 
-export const DECISION_GUIDE = `# Sketch decision guide v4
+export const DECISION_GUIDE = `# Sketch decision guide v5
 
-This guide is how an experienced Network Canvas designer turns a researcher's research questions, research population and study synopsis into a StudyDesign. Follow it unless the study clearly asks for something else that the schema can express.
+This guide is how an experienced Network Canvas designer turns a researcher's research questions, research population and study synopsis into a StudyDesign. Its method choices are defaults with their trade-offs, not rules: weigh them against this study, and against the design as a whole. The goal is the interview that answers the research questions with the least burden on the participant (§10). Rules marked "never" or "only" are hard constraints of the software or of valid measurement; everything else is judgement.
 
 ## 0. How the interview is run
 
@@ -63,15 +63,18 @@ Name everyone before interpreting them: do not zigzag between generators and int
 
 Use a second generator when the study needs a specific subset of alters that a general prompt would miss: drinking or drug-use companions, sex partners, people who cause stress, people abroad. Gate it with skipLogic on an earlier participant answer, so it only shows when it can apply: e.g. mode show_only_if, about participant, attributeId audit_frequency, operator is_not, value "Never". Set minNodes 0 and tag its prompts. If the subset is simply "some of the people already named", do not generate again: use a sociogram highlight or a yes_no field instead.
 
-## 4. Name interpreters: which stage records an attribute
+## 4. Name interpreters: where each attribute is asked
 
-Pick the stage by the attribute's kind:
+Every stage costs the participant a transition and an instruction to read, and every question asked about each person is repeated for every person named. Decide where an attribute goes by looking at the whole design, not attribute by attribute:
 
-- **ordered** (closeness, contact frequency, trust, how long known): **bins**, one prompt per attribute, at most 6 options. Bins are faster and more engaging than a form question repeated for every person.
-- **single_choice** or **multi_choice** (relationship type, how you met, context, support types): **bins**, at most 8 options; set allowOther true when the list may not be exhaustive.
-- **yes_no** about some of the people (who gives advice, who drinks heavily, who knows your diagnosis): a sociogram **highlight** prompt (tap the ones that apply), or a field in an alterForm when the answer is needed for everyone. Never bins.
-- **text**, **long_text**, **number**, **date**, **month_year**, **year**, **slider**: an **alterForm** field. Keep alterForm to 1-6 attributes, and move single ordered or categorical items to bins.
-- Location by country: a **geospatial** stage (see §6).
+- **bins** (drag each person into a category): the default for ONE ordered or categorical attribute about everyone, because sorting a whole network at once is faster and more engaging than a question repeated per person, and the participant compares people against each other (useful for closeness or frequency). It costs a stage per 1-3 attributes. Ordered: at most 6 options; categories: at most 8; set allowOther when the list may not be exhaustive.
+- **alterForm** (a form repeated for each person): the natural home for text, number and date answers, and for several attributes that belong together. When the design already has an alterForm on these people, an ordered or categorical item can join it instead of adding a bins stage: one more question on a form that is shown anyway often costs less than a new stage. Keep a form to about 6 questions; beyond that, moving categorical items to bins is lighter.
+- **form name generator** (1-3 attributes as each person is named): when the answer is needed immediately (a later filter or skip depends on it) or is cheapest to ask while the person is in mind.
+- **sociogram highlight** (tap the people that apply): a yes_no about SOME of the people, cheap when the design already has a map, since it adds a prompt rather than a stage. A yes_no needed for everyone, with an explicit "no", belongs in a form instead.
+- **prompt tags** on a name generator: record which prompt produced each person at no cost at all; prefer them to asking again.
+- **geospatial**: location by country (see §6).
+
+Typical trade-offs: two single categorical items about everyone can share one bins stage (up to 3 prompts) rather than two stages; a lone categorical item in a design that already asks a per-person form usually joins that form; a design with no per-person form and three ordered items is usually lighter as one bins stage with three prompts than as a new form. Never put a yes_no in bins.
 
 A bins stage takes 1-3 prompts, each on its own attribute. Ask about each attribute once, with one stage, and reuse it everywhere (filters, narrative groups). An attribute recorded by bins, a sociogram highlight, a prompt tag or a census strength never also appears in a form: those stages skip the form's validation, so the two would disagree.
 
@@ -87,7 +90,7 @@ Each method has different strengths. Choose by what the analysis needs from the 
 - **relationshipCensus with_strength** (tie strength census): every pair rated on an ordered strength scale. Use it only when the strength of ties BETWEEN alters is a measure in the research questions. It is the most burdensome method. It needs an ordered attribute (2-5 options) on that relationship as strengthAttributeId and a noTieLabel ("They don't know each other").
 - **networkComposer**: a free-form canvas (see §6), for face_to_face qualitative studies only.
 
-Decide in this order:
+As a default, weigh them in this order:
 
 1. Strength of alter-alter ties is a measure: with_strength, with maxNodes 10 or a filter to the people who matter.
 2. The analysis needs complete tie data (density, brokerage, components, structural holes, whether two supporters know each other) and the network is small: under ~8 people, every_pair; about 8-25 people, one_at_a_time.
@@ -141,8 +144,14 @@ One shared map, 1-4 prompts, each with one task:
 - Interpreter prompts refer to "each person"; node attribute questions in forms refer to "this person".
 - Write option labels as the participant would say them, short and mutually exclusive.
 
-## 10. Size and burden limits
+## 10. Burden: the deciding consideration
 
+Burden is what the participant does: screens seen, questions answered, and above all questions repeated for every person and every pair. Estimate it as you design and fill burdenEstimate honestly; when two choices are equally valid, take the lighter one.
+
+- Count per-person work: each alterForm question, bins prompt, highlight prompt and geospatial prompt is done once per person, so 5 per-person items with 15 people is 75 answers. Filter interpreters to the people they apply to.
+- Count tie work: a census is per pair; a relationshipForm is per tie.
+- Merge where nothing is lost: one bins stage with 3 prompts instead of 3 stages; one map with position, connect and highlight prompts instead of several maps; a categorical item in an existing form instead of its own stage; adjacent egoForms on one topic.
+- Every stage, prompt and attribute must earn its place against a research question. When in doubt, leave it out.
 - Aim for an interview of 15-30 minutes: typically 8-14 stages, rarely more than 18.
 - At most ~3 nameGenerator stages; 1-4 prompts each.
 - At most ~4 interpreter stages per node type beyond the map; ordered bins at most 6 options, category bins at most 8.

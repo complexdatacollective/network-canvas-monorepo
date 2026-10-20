@@ -3,6 +3,7 @@
 // the request may be interpolated into it. The researcher's research
 // questions and synopsis go in the user message.
 
+import type { Burden } from '../design/burden.ts';
 import type { ChatMessage } from '../providers/types.ts';
 import { DECISION_GUIDE } from './decision-guide.ts';
 
@@ -31,6 +32,24 @@ export const buildDesignMessages = (description: string): ChatMessage[] => [
     content: `Design a Network Canvas interview for this study.\n\n<study>\n${description}\n</study>`,
   },
 ];
+
+// The burden review: a continuation after the chosen design, so the cached
+// system prompt is reused. Its answer goes through the compiler like any
+// design, and is kept only if it builds as cleanly.
+export const buildReviewMessage = (
+  burden: Burden,
+  estimate: { screens: number; itemsPerPerson: number },
+): string => `Now review that design as a second methodologist whose job is to cut respondent burden without losing anything the research questions need.
+
+Compiled, at about ${burden.people} people per participant, the interview has ${burden.stages} stages, about ${burden.screens} screens, ${burden.itemsPerPerson} questions about each person and about ${burden.answers} answers in all. Your estimate was ${estimate.screens} screens and ${estimate.itemsPerPerson} questions about each person.
+
+Check, in this order:
+1. Measures: name the research question each attribute serves. Remove any that none needs, and any that repeat what a prompt tag or an earlier answer already records.
+2. Stages: merge what can be merged without loss. An attribute could join a per-person form the design already has instead of its own bins stage, or the reverse when a form has grown long. Bins prompts on the same people could share a stage. Map prompts could share a map. Adjacent participant forms on one topic could be one form.
+3. Repetition: every question about each person is asked once per person. Filter interpreters to the people they apply to, and keep the per-person questions to those the analysis uses.
+4. Ties: check that the tie method suits the expected network size and the analysis, and that each relationship type earns its pass.
+
+Then return the complete revised StudyDesign, with burdenEstimate updated and the rationale saying briefly what you changed. If the design is already as lean as the research questions allow, return it unchanged. Keep every hard rule of the guide.`;
 
 // Attempt 1 was cut off or did not parse.
 export const UNPARSEABLE_FEEDBACK =

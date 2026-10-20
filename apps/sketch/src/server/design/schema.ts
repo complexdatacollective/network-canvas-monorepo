@@ -612,6 +612,26 @@ export const StudyDesignSchema = z
       .describe(
         'The interview in order: welcome, participant questions, name generators, then stages about the named nodes and their ties, an optional narrative, then a closing screen. Every reference must point at something declared above.',
       ),
+    burdenEstimate: z
+      .object({
+        expectedPeople: z
+          .number()
+          .describe('How many people a typical participant will name.'),
+        screens: z
+          .number()
+          .describe(
+            'Screens a typical participant sees at that size, counting a per-person form once per person and a pair census once per pair.',
+          ),
+        itemsPerPerson: z
+          .number()
+          .describe(
+            'Questions answered about EACH named person: form questions, bins prompts, highlight and map prompts.',
+          ),
+        minutes: z.number().describe('Expected interview length in minutes.'),
+      })
+      .describe(
+        'Your estimate of respondent burden for this design. Estimate honestly: it is compared against the compiled interview.',
+      ),
   })
   .describe('A Network Canvas study design.');
 

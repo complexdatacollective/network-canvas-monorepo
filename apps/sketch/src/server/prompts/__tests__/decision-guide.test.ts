@@ -63,7 +63,7 @@ describe('DECISION_GUIDE', () => {
   );
 
   it('stays well under the token budget', () => {
-    expect(DECISION_GUIDE.length).toBeLessThan(24000);
+    expect(DECISION_GUIDE.length).toBeLessThan(27000);
   });
 
   it('is byte-stable: no interpolation leftovers', () => {

@@ -26,6 +26,11 @@ import {
   type BuildOptions,
   type BuildResult,
 } from './design/build.ts';
+import {
+  DEFAULT_PEOPLE,
+  estimateBurden,
+  type Burden,
+} from './design/burden.ts';
 import { buildWordingRequest } from './design/feedback.ts';
 import { toProviderJsonSchema } from './design/json-schema.ts';
 import type { DesignIssue } from './design/rules.ts';
@@ -39,6 +44,7 @@ import {
 import { costUsd, getStepModels, type StepModels } from './models.ts';
 import {
   buildDesignMessages,
+  buildReviewMessage,
   DESIGN_SYSTEM,
   UNPARSEABLE_FEEDBACK,
 } from './prompts/design.ts';
@@ -67,7 +73,9 @@ const SCHEMAS = {
 
 const LIMITS = {
   screening: { maxTokens: 1_000, timeoutMs: 60_000 },
-  design: { maxTokens: 16_000, timeoutMs: 6 * 60_000 },
+  // room for adaptive thinking ahead of a design of up to ~16k tokens
+  design: { maxTokens: 32_000, timeoutMs: 6 * 60_000 },
+  review: { maxTokens: 32_000, timeoutMs: 6 * 60_000 },
   wording: { maxTokens: 8_000, timeoutMs: 2 * 60_000 },
 } as const;
 
@@ -95,13 +103,15 @@ const worstCaseCallUsd = (role: CallRole, model: string) =>
     model,
   );
 
-// The most one job can cost: screening, two design attempts and wording,
-// each at its output cap. The budget guard reserves this before a job runs.
+// The most one job can cost: screening, two design attempts, the burden
+// review and wording, each at its output cap. The budget guard reserves
+// this before a job runs.
 export const estimateJobCostUsd = (provider: Provider): number => {
   const models = getStepModels(provider);
   const total =
     worstCaseCallUsd('screening', models.screening) +
     2 * worstCaseCallUsd('design', models.design) +
+    worstCaseCallUsd('review', models.design) +
     worstCaseCallUsd('wording', models.wording);
   return Math.round(total * 1e6) / 1e6;
 };
@@ -137,9 +147,12 @@ export type PipelineDeps = {
   // Epoch ms after which no call starts; defaults to PIPELINE_DEADLINE_MS
   // from the start of the run.
   deadline?: number;
+  // Ask the design model to review the chosen design for respondent
+  // burden. Off unless asked for.
+  review?: boolean;
 };
 
-type CallRole = 'screening' | 'design' | 'wording';
+type CallRole = 'screening' | 'design' | 'review' | 'wording';
 
 type CallRecord = {
   role: CallRole;
@@ -173,7 +186,9 @@ type PipelineTag =
   | 'wordingFailed'
   | 'salvaged'
   | 'firstAttemptShipped'
-  | 'screeningFailed';
+  | 'screeningFailed'
+  | 'reviewed'
+  | 'reviewDiscarded';
 
 type PipelineLog = {
   models: StepModels;
@@ -185,6 +200,8 @@ type PipelineLog = {
   tags: PipelineTag[];
   calls: CallRecord[];
   durationsMs: Partial<Record<StepId, number>>;
+  // The compiled interview's burden before and after the review.
+  burden?: { before: Burden; after?: Burden };
   // Set when the run threw; the outcome is then 'failed'.
   crash?: string;
 };
@@ -495,14 +512,16 @@ export const runPipeline = async (
     const runAttempt = async (
       attempt: number,
       messages: ChatMessage[],
+      role: 'design' | 'review' = 'design',
     ): Promise<Attempt> => {
-      const response = await call('design', attempt, {
+      const response = await call(role, attempt, {
         model: models.design,
         system: DESIGN_SYSTEM,
         messages,
         schema: SCHEMAS.design,
         schemaName: 'study_design',
-        effort: 'medium',
+        effort: 'high',
+        thinking: true,
       });
       const entry: AttemptLog = {
         attempt,
@@ -691,6 +710,47 @@ export const runPipeline = async (
         log.tags.push('compilerBug');
         return failActive(DESIGN_FAILED);
       }
+    }
+    // ---- Burden review ------------------------------------------------------
+    if (deps.review) {
+      await setStep(
+        'design',
+        'active',
+        'Reviewing the design for participant burden',
+      );
+      const people =
+        chosen.raw.burdenEstimate?.expectedPeople || DEFAULT_PEOPLE;
+      const before = estimateBurden(chosen.build.protocol, people);
+      log.burden = { before };
+      const reviewed = await runAttempt(
+        attempts + 1,
+        [
+          ...firstMessages,
+          { role: 'assistant', content: JSON.stringify(chosen.raw) },
+          {
+            role: 'user',
+            content: buildReviewMessage(
+              before,
+              chosen.raw.burdenEstimate ?? {
+                screens: 0,
+                itemsPerPerson: 0,
+              },
+            ),
+          },
+        ],
+        'review',
+      );
+      if (
+        reviewed.ok &&
+        !reviewed.build.retry &&
+        !reviewed.build.fatal &&
+        reviewed.build.validation.success
+      ) {
+        chosen = { raw: reviewed.raw, build: reviewed.build };
+        designOptions = buildOptions;
+        log.burden.after = estimateBurden(chosen.build.protocol, people);
+        log.tags.push('reviewed');
+      } else log.tags.push('reviewDiscarded');
     }
     const pre = chosen.build;
     log.shippedIssues = pre.issues

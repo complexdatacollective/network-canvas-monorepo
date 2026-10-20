@@ -316,6 +316,7 @@ export const handleGenerate = async (
         provider: queued.provider,
       },
       {
+        review: process.env.SKETCH_DESIGN_REVIEW !== 'off',
         ...deps.pipeline,
         adapters: deps.adapters,
         onProgress: async (steps) => {

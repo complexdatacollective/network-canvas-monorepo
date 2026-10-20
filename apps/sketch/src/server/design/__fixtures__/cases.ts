@@ -43,6 +43,12 @@ export const coverageDesign: StudyDesign = {
   rationale: 'Exercises every branch of the compiler.',
   administration: 'face_to_face',
   qualitative: true,
+  burdenEstimate: {
+    expectedPeople: 12,
+    screens: 30,
+    itemsPerPerson: 4,
+    minutes: 20,
+  },
   includeConsent: true,
   consentText: '',
   egoAttributes: [
@@ -414,6 +420,12 @@ export const messyDesign: StudyDesign = {
   rationale: '',
   administration: 'face_to_face',
   qualitative: true,
+  burdenEstimate: {
+    expectedPeople: 12,
+    screens: 30,
+    itemsPerPerson: 4,
+    minutes: 20,
+  },
   includeConsent: false,
   consentText: '',
   egoAttributes: [

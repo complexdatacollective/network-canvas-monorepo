@@ -63,6 +63,12 @@ const design = (over: Json) => ({
   rationale: 'R',
   administration: 'face_to_face',
   qualitative: true,
+  burdenEstimate: {
+    expectedPeople: 12,
+    screens: 30,
+    itemsPerPerson: 4,
+    minutes: 20,
+  },
   includeConsent: false,
   consentText: '',
   egoAttributes: [],
@@ -690,6 +696,12 @@ describe('compiler review fixes', () => {
       design({
         administration: 'face_to_face',
         qualitative: true,
+        burdenEstimate: {
+          expectedPeople: 12,
+          screens: 30,
+          itemsPerPerson: 4,
+          minutes: 20,
+        },
         includeConsent: true,
         consentText: 'Do you agree?',
         stages: [

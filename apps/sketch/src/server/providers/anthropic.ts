@@ -3,7 +3,8 @@
 // The schema goes in output_config.format RAW. The SDK's zodOutputFormat
 // helper moves `enum` and `const` into description text, so the stage
 // discriminators and option enums would not constrain generation.
-// No assistant prefill (400 on current models) and no `thinking` field.
+// No assistant prefill (400 on current models). Thinking, when asked for, is
+// adaptive; only the text blocks of the reply are read.
 //
 // A schema too big for constrained decoding (the study design) is rejected
 // with "The compiled grammar is too large". Such a schema is then sent as
@@ -65,6 +66,7 @@ const buildAnthropicParams = (
           cache_control: { type: 'ephemeral' },
         },
       ],
+  ...(request.thinking ? { thinking: { type: 'adaptive' as const } } : {}),
   messages: request.messages.map((m) => ({
     role: m.role,
     content: m.content,
