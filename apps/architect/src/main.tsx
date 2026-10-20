@@ -2,7 +2,6 @@ import { Toast } from '@base-ui/react/toast';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
-import './captureUrlEntryRequests';
 import './analytics';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -31,7 +30,6 @@ import {
   initFileLaunchCapture,
 } from './utils/fileLaunchQueue';
 import { pruneExpiredHandoffs } from './utils/handoffStore';
-import { queueRequestedImport } from './utils/importHandoffRequest';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import {
   isRunningAsInstalledPwa,
@@ -74,10 +72,6 @@ initInstallPromptCapture();
 // capture before React mounts so early launches are queued until App consumes
 // them inside the fresco dialog provider.
 initFileLaunchCapture();
-
-// A file Architect 8 staged for this app (`/?import=<key>`), queued with the
-// OS-launched ones so it meets the same dialogs.
-queueRequestedImport();
 
 // A file staged for another Architect major that was never taken (the page
 // that should have opened it never loaded) would otherwise stay forever.

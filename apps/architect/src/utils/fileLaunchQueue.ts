@@ -101,26 +101,6 @@ export const initFileLaunchCapture = (
   });
 };
 
-/**
- * Queue a file that arrives some other way than the OS launch queue — the
- * `?import=` hand-off from Architect 9 — so it opens exactly as a launched
- * file does. `read` resolves null when there is nothing to open, which is
- * reported with the launch read-failure dialog, as an unreadable launch is.
- */
-export const enqueueLaunchRead = (read: () => Promise<File | null>): void => {
-  trackLaunchRead(async () => {
-    let file: File | null = null;
-    try {
-      file = await read();
-    } catch (error) {
-      reportError(error, { operation: 'fileLaunchHandoffRead' });
-    }
-    if (file) return [file];
-    reportLaunchReadFailure(1);
-    return [];
-  }, 'fileLaunchHandoffRead');
-};
-
 export const subscribeLaunchFiles = (listener: () => void): (() => void) => {
   listeners.add(listener);
   return () => {
