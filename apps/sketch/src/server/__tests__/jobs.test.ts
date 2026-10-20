@@ -44,7 +44,6 @@ const post = (body: unknown) =>
 const validRequest = {
   description: friendshipDescription,
   provider: 'anthropic',
-  tier: 'standard',
 };
 
 describe('budget guard', () => {
@@ -116,7 +115,7 @@ describe('budget guard', () => {
     await addSpend(
       jobs,
       NOW,
-      dailyBudgetUsd(undefined) - estimateJobCostUsd('anthropic', 'standard'),
+      dailyBudgetUsd(undefined) - estimateJobCostUsd('anthropic'),
     );
     let n = 0;
     const deps = {
@@ -133,7 +132,7 @@ describe('budget guard', () => {
     );
     expect(statuses.sort((a, b) => a - b)).toEqual([202, 429, 429]);
     expect(await readJob(jobs, 'job-1')).toMatchObject({
-      reservedUsd: estimateJobCostUsd('anthropic', 'standard'),
+      reservedUsd: estimateJobCostUsd('anthropic'),
       spendDate: '2026-10-20',
     });
   });
@@ -195,10 +194,9 @@ describe('POST /api/jobs', () => {
     expect(record).toMatchObject({
       status: 'queued',
       provider: 'anthropic',
-      tier: 'standard',
       comparisonId: 'cmp-1',
-      models: { design: 'claude-sonnet-5-5', wording: 'claude-haiku-5-5' },
-      modelLabels: { design: 'Claude Sonnet 5.5' },
+      models: { design: 'claude-opus-5-5', wording: 'claude-haiku-5-5' },
+      modelLabels: { design: 'Claude Opus 5.5' },
     });
     expect(record?.steps).toHaveLength(5);
   });
@@ -223,8 +221,12 @@ describe('POST /api/jobs', () => {
     );
     expect(tooLong.status).toBe(400);
     expect(
-      (await handleCreateJob(post({ ...validRequest, tier: 'max' }), deps))
-        .status,
+      (
+        await handleCreateJob(
+          post({ ...validRequest, provider: 'gemini' }),
+          deps,
+        )
+      ).status,
     ).toBe(400);
     expect(
       (
@@ -345,7 +347,7 @@ describe('generate-background and GET /api/jobs/:id', () => {
       provider: 'anthropic',
       status: 'succeeded',
       comparisonId: 'cmp-9',
-      models: { design: 'claude-sonnet-5-5' },
+      models: { design: 'claude-opus-5-5' },
       pipeline: { protocolValid: true },
     });
     expect(jobs.data.get('spend/2026-10-20')).toEqual({

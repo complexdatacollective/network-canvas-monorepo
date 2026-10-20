@@ -58,7 +58,7 @@ export const jobStatus = (overrides: Partial<JobStatus> = {}): JobStatus => ({
   status: 'running',
   provider: 'anthropic',
   models: { design: 'claude-sonnet-5-5', wording: 'claude-haiku-5-5' },
-  modelLabels: { design: 'Claude Sonnet 5.5', wording: 'Claude Haiku 5.5' },
+  modelLabels: { design: 'Claude Opus 5.5', wording: 'Claude Haiku 5.5' },
   steps: stepsAt(1),
   createdAt: '2026-10-20T00:00:00.000Z',
   finishedAt: null,
@@ -99,19 +99,13 @@ export const configResponse = (openaiAvailable = false): ConfigResponse => ({
       provider: 'anthropic',
       available: true,
       label: 'Claude',
-      models: {
-        standard: models('Claude Sonnet 5.5', 'Claude Haiku 5.5'),
-        strong: models('Claude Opus 5.5', 'Claude Haiku 5.5'),
-      },
+      models: models('Claude Opus 5.5', 'Claude Haiku 5.5'),
     },
     {
       provider: 'openai',
       available: openaiAvailable,
       label: 'ChatGPT',
-      models: {
-        standard: models('GPT-6 Astra', 'GPT-6 Luna'),
-        strong: models('GPT-6 Astra', 'GPT-6 Luna'),
-      },
+      models: models('GPT-6 Astra', 'GPT-6 Luna'),
     },
   ],
 });

@@ -2,12 +2,7 @@
 
 import { z } from 'zod';
 
-import type {
-  DesignTier,
-  JobModels,
-  Provider,
-  ProviderConfig,
-} from '../shared/api.ts';
+import type { JobModels, Provider, ProviderConfig } from '../shared/api.ts';
 import type { TokenUsage } from './providers/types.ts';
 
 export type StepModels = {
@@ -20,7 +15,6 @@ export type StepModels = {
 };
 
 const ANTHROPIC = {
-  sonnet: 'claude-sonnet-5-5',
   opus: 'claude-opus-5-5',
   haiku: 'claude-haiku-5-5',
 } as const;
@@ -30,18 +24,14 @@ const openaiDesignModel = () =>
 const openaiWordingModel = () =>
   process.env.OPENAI_WORDING_MODEL ?? 'gpt-6-luna';
 
-export const getStepModels = (
-  provider: Provider,
-  tier: DesignTier,
-): StepModels => {
+export const getStepModels = (provider: Provider): StepModels => {
   if (provider === 'anthropic') {
     return {
-      design: tier === 'strong' ? ANTHROPIC.opus : ANTHROPIC.sonnet,
+      design: ANTHROPIC.opus,
       wording: ANTHROPIC.haiku,
       screening: ANTHROPIC.haiku,
     };
   }
-  // OpenAI has one design model for both tiers.
   return {
     design: openaiDesignModel(),
     wording: openaiWordingModel(),
@@ -50,7 +40,6 @@ export const getStepModels = (
 };
 
 const LABELS: Record<string, string> = {
-  'claude-sonnet-5-5': 'Claude Sonnet 5.5',
   'claude-opus-5-5': 'Claude Opus 5.5',
   'claude-haiku-5-5': 'Claude Haiku 5.5',
   'gpt-6-astra': 'GPT-6 Astra',
@@ -78,15 +67,12 @@ export const providerConfig = (
   provider: Provider,
   available: boolean,
 ): ProviderConfig => {
-  const tierModels = (tier: DesignTier) => {
-    const models = getStepModels(provider, tier);
-    return { ...jobModels(models), labels: jobModelLabels(models) };
-  };
+  const models = getStepModels(provider);
   return {
     provider,
     available,
     label: PROVIDER_LABELS[provider],
-    models: { standard: tierModels('standard'), strong: tierModels('strong') },
+    models: { ...jobModels(models), labels: jobModelLabels(models) },
   };
 };
 
@@ -102,6 +88,7 @@ type ModelPrice = {
 };
 
 const DEFAULT_PRICING: Record<string, ModelPrice> = {
+  // Kept so older log entries and SKETCH_PRICING overrides still price.
   'claude-sonnet-5-5': {
     input: 2,
     output: 10,

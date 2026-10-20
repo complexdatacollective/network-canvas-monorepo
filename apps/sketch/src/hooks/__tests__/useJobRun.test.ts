@@ -19,7 +19,6 @@ import {
 const request: CreateJobRequest = {
   description: 'Nurses on a ward name who they go to for advice.',
   provider: 'anthropic',
-  tier: 'standard',
 };
 
 // Answers POST /api/jobs with job-1 and each GET with the next status in

@@ -14,7 +14,6 @@ import { z } from 'zod';
 
 import {
   type CreateJobRequest,
-  type DesignTier,
   type JobStatus,
   type JobStep,
   type Provider,
@@ -87,7 +86,6 @@ export const dayKey = (date: Date) => date.toISOString().slice(0, 10);
 // function needs. GET /api/jobs/:id returns toJobStatus(record).
 export type JobRecord = JobStatus & {
   description: string;
-  tier: DesignTier;
   comparisonId: string | null;
   // When generate-background claimed the job.
   startedAt?: string | null;
@@ -106,7 +104,7 @@ export const newJobRecord = (
   request: CreateJobRequest,
   now: Date,
 ): JobRecord => {
-  const models = getStepModels(request.provider, request.tier);
+  const models = getStepModels(request.provider);
   return {
     id,
     status: 'queued',
@@ -122,7 +120,6 @@ export const newJobRecord = (
     error: null,
     refusalHint: null,
     description: request.description,
-    tier: request.tier,
     comparisonId: request.comparisonId ?? null,
   };
 };
@@ -193,7 +190,6 @@ export const failStaleJob = (record: JobRecord, now: Date): JobRecord => ({
 export const toJobStatus = (record: JobRecord): JobStatus => {
   const {
     description: _description,
-    tier: _tier,
     comparisonId: _comparisonId,
     startedAt: _startedAt,
     reservedUsd: _reservedUsd,
@@ -214,7 +210,6 @@ export type LogEntry = {
   finishedAt: string | null;
   description: string;
   provider: Provider;
-  tier: DesignTier;
   models: Record<string, string>;
   status: JobStatus['status'];
   error: string | null;

@@ -8,7 +8,6 @@ import {
   type ApiError,
   type ConfigResponse,
   type CreateJobResponse,
-  DESIGN_TIERS,
   MAX_DESCRIPTION_LENGTH,
   MIN_DESCRIPTION_LENGTH,
   PROVIDERS,
@@ -76,7 +75,6 @@ const CreateJobRequestSchema = z.object({
       `Keep the description under ${MAX_DESCRIPTION_LENGTH} characters.`,
     ),
   provider: z.enum(PROVIDERS),
-  tier: z.enum(DESIGN_TIERS),
   comparisonId: z
     .string()
     .regex(/^[A-Za-z0-9-]{1,64}$/)
@@ -118,7 +116,7 @@ export const handleCreateJob = async (
   }
   // Reserve the job's worst case now; generate-background settles it with
   // the real cost when the job finishes.
-  const reservedUsd = estimateJobCostUsd(request.provider, request.tier);
+  const reservedUsd = estimateJobCostUsd(request.provider);
   const budget = await reserveBudget(deps.jobs, now, reservedUsd);
   if (!budget.ok) return apiError(budget.error, 429);
 
@@ -270,7 +268,6 @@ export const handleGenerate = async (
       {
         description: queued.description,
         provider: queued.provider,
-        tier: queued.tier,
       },
       {
         ...deps.pipeline,
@@ -318,7 +315,7 @@ export const handleGenerate = async (
   // The log goes first: once the job reads as finished, a comparison or a
   // preference can patch its log entry, and a later write would undo that.
   try {
-    const models = getStepModels(record.provider, record.tier);
+    const models = getStepModels(record.provider);
     await writeLog(deps.log, {
       jobId: record.id,
       date: dayKey(new Date(record.createdAt)),
@@ -326,7 +323,6 @@ export const handleGenerate = async (
       finishedAt: record.finishedAt,
       description: record.description,
       provider: record.provider,
-      tier: record.tier,
       models,
       status: record.status,
       error: record.error,

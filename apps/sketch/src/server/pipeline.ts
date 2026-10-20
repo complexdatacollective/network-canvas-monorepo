@@ -9,7 +9,6 @@
 // fake providers.
 
 import type {
-  DesignTier,
   JobResult,
   JobStatusValue,
   JobStep,
@@ -97,11 +96,8 @@ const worstCaseCallUsd = (role: CallRole, model: string) =>
 
 // The most one job can cost: screening, two design attempts and wording,
 // each at its output cap. The budget guard reserves this before a job runs.
-export const estimateJobCostUsd = (
-  provider: Provider,
-  tier: DesignTier,
-): number => {
-  const models = getStepModels(provider, tier);
+export const estimateJobCostUsd = (provider: Provider): number => {
+  const models = getStepModels(provider);
   const total =
     worstCaseCallUsd('screening', models.screening) +
     2 * worstCaseCallUsd('design', models.design) +
@@ -129,7 +125,6 @@ const providerRejected = (error: unknown) =>
 type PipelineInput = {
   description: string;
   provider: Provider;
-  tier: DesignTier;
 };
 
 export type PipelineDeps = {
@@ -289,7 +284,7 @@ export const runPipeline = async (
   const clock = deps.now ?? Date.now;
   const deadline = deps.deadline ?? clock() + PIPELINE_DEADLINE_MS;
   const adapter: ProviderAdapter = deps.adapters[input.provider];
-  const models = getStepModels(input.provider, input.tier);
+  const models = getStepModels(input.provider);
   const buildOptions = deps.buildOptions ?? {};
 
   const steps: JobStep[] = STEP_IDS.map((id) => ({

@@ -4,11 +4,6 @@
 export const PROVIDERS = ['anthropic', 'openai'] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
-// `standard` is the default design model (Claude Sonnet 5.5 or the OpenAI
-// counterpart); `strong` is the comparison tier (Claude Opus 5.5).
-export const DESIGN_TIERS = ['standard', 'strong'] as const;
-export type DesignTier = (typeof DESIGN_TIERS)[number];
-
 export const MAX_DESCRIPTION_LENGTH = 6000;
 export const MIN_DESCRIPTION_LENGTH = 20;
 
@@ -16,7 +11,6 @@ export const MIN_DESCRIPTION_LENGTH = 20;
 export type CreateJobRequest = {
   description: string;
   provider: Provider;
-  tier: DesignTier;
   // Set when the page runs the same description through both providers, so
   // the log can pair the two runs and record which one the researcher picked.
   comparisonId?: string;
@@ -103,7 +97,7 @@ export type JobStatus = {
   status: JobStatusValue;
   provider: Provider;
   models: JobModels;
-  // Human-readable model labels, e.g. "Claude Sonnet 5.5".
+  // Human-readable model labels, e.g. "Claude Opus 5.5".
   modelLabels: JobModels;
   steps: JobStep[];
   createdAt: string;
@@ -122,7 +116,7 @@ export type ProviderConfig = {
   provider: Provider;
   available: boolean;
   label: string; // "Claude" | "ChatGPT"
-  models: Record<DesignTier, JobModels & { labels: JobModels }>;
+  models: JobModels & { labels: JobModels };
 };
 
 export type ConfigResponse = { providers: ProviderConfig[] };

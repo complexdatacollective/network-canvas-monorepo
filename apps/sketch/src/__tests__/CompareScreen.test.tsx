@@ -89,7 +89,6 @@ describe('CompareScreen', () => {
     render(
       <CompareScreen
         description="Students name their friends."
-        tier="standard"
         providers={configResponse(true).providers}
         onNew={() => {}}
         onRefused={() => {}}
@@ -164,7 +163,6 @@ describe('CompareScreen', () => {
     render(
       <CompareScreen
         description="Students name their friends."
-        tier="standard"
         providers={configResponse(true).providers}
         onNew={() => {}}
         onRefused={() => {}}

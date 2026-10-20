@@ -37,7 +37,6 @@ type View =
   | {
       name: 'compare';
       description: string;
-      tier: CreateJobRequest['tier'];
       id: number;
       // A finished run to keep as one side of the comparison.
       seed: CompareSeed | null;
@@ -51,7 +50,6 @@ const initialForm: DescribeForm = {
   synopsis: firstExample?.synopsis ?? '',
   picked: firstExample?.id ?? null,
   provider: 'anthropic',
-  tier: 'standard',
   compare: false,
 };
 
@@ -128,7 +126,6 @@ export const App = () => {
       go({
         name: 'compare',
         description,
-        tier: form.tier,
         id: Date.now(),
         seed: null,
       });
@@ -136,7 +133,7 @@ export const App = () => {
     }
     go({
       name: 'generating',
-      request: { description, provider: form.provider, tier: form.tier },
+      request: { description, provider: form.provider },
     });
   };
 
@@ -179,8 +176,7 @@ export const App = () => {
         <GeneratingScreen
           request={request}
           expectedLabels={
-            providerConfig(request.provider)?.models[request.tier].labels ??
-            null
+            providerConfig(request.provider)?.models.labels ?? null
           }
           onCancel={backToDescribe}
           onReady={(job) => {
@@ -206,7 +202,6 @@ export const App = () => {
             go({
               name: 'compare',
               description: view.request.description,
-              tier: view.request.tier,
               id: Date.now(),
               seed: { provider: view.request.provider, job: view.job },
             })
@@ -232,7 +227,6 @@ export const App = () => {
         <CompareScreen
           key={view.id}
           description={view.description}
-          tier={view.tier}
           seed={view.seed}
           providers={providers.filter((p) => p.available)}
           onNew={startNew}

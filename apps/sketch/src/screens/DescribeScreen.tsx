@@ -24,11 +24,7 @@ import {
   MIN_QUESTION_LENGTH,
   studyIsComplete,
 } from '../lib/study.ts';
-import {
-  type DesignTier,
-  type Provider,
-  type ProviderConfig,
-} from '../shared/api.ts';
+import { type Provider, type ProviderConfig } from '../shared/api.ts';
 
 export type DescribeForm = {
   questions: string[];
@@ -37,7 +33,6 @@ export type DescribeForm = {
   // The example the text came from, until the researcher edits it.
   picked: string | null;
   provider: Provider;
-  tier: DesignTier;
   compare: boolean;
 };
 
@@ -62,14 +57,11 @@ const PROVIDER_DOTS: Record<Provider, string> = {
   openai: 'bg-[oklch(0.6_0.12_171.52)]',
 };
 
-// "Claude Sonnet 5.5" reads as "Sonnet 5.5" next to the Claude toggle.
+// "Claude Opus 5.5" reads as "Opus 5.5" next to the Claude toggle.
 const shortLabel = (label: string, provider: ProviderConfig) =>
   label.startsWith(`${provider.label} `)
     ? label.slice(provider.label.length + 1)
     : label;
-
-const selectClass =
-  'min-h-11 cursor-pointer rounded-xl border-[1.5px] border-[oklch(0.86_0.015_281)] bg-white px-3 font-[inherit] text-sm font-semibold text-ink-strong';
 
 const NO_PROVIDERS_MESSAGE =
   'Sketch cannot generate protocols right now because no model provider is set up. Try again later.';
@@ -192,10 +184,7 @@ export const DescribeScreen = ({
     if (ready) onGenerate();
   };
 
-  const tierModels = current?.models[form.tier];
-  const hasTierChoice =
-    current !== undefined &&
-    current.models.standard.design !== current.models.strong.design;
+  const labels = current?.models.labels;
 
   return (
     <>
@@ -553,46 +542,13 @@ export const DescribeScreen = ({
                     })}
                   </div>
 
-                  {current && tierModels && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-start sm:gap-[18px]">
-                      {hasTierChoice ? (
-                        <label className="inline-flex items-center gap-2 text-sm text-[oklch(0.38_0.06_281)]">
-                          Design
-                          <select
-                            value={form.tier}
-                            onChange={(event) =>
-                              update({
-                                tier:
-                                  event.target.value === 'strong'
-                                    ? 'strong'
-                                    : 'standard',
-                              })
-                            }
-                            className={selectClass}
-                          >
-                            <option value="standard">
-                              {shortLabel(
-                                current.models.standard.labels.design,
-                                current,
-                              )}
-                            </option>
-                            <option value="strong">
-                              {shortLabel(
-                                current.models.strong.labels.design,
-                                current,
-                              )}
-                            </option>
-                          </select>
-                        </label>
-                      ) : (
-                        <span className="text-sm text-[oklch(0.38_0.06_281)]">
-                          Design ·{' '}
-                          {shortLabel(tierModels.labels.design, current)}
-                        </span>
-                      )}
+                  {current && labels && (
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-[18px]">
+                      <span className="text-sm text-[oklch(0.38_0.06_281)]">
+                        Design · {shortLabel(labels.design, current)}
+                      </span>
                       <span className="text-ink-muted text-sm">
-                        Wording ·{' '}
-                        {shortLabel(tierModels.labels.wording, current)}
+                        Wording · {shortLabel(labels.wording, current)}
                       </span>
                     </div>
                   )}

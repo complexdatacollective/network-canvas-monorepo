@@ -61,30 +61,24 @@ describe('costUsd', () => {
 });
 
 describe('model registry', () => {
-  it('picks a model per provider, tier and step', () => {
-    expect(getStepModels('anthropic', 'standard')).toEqual({
-      design: 'claude-sonnet-5-5',
+  it('picks a model per provider and step', () => {
+    expect(getStepModels('anthropic')).toEqual({
+      design: 'claude-opus-5-5',
       wording: 'claude-haiku-5-5',
       screening: 'claude-haiku-5-5',
     });
-    expect(getStepModels('anthropic', 'strong').design).toBe('claude-opus-5-5');
-    expect(getStepModels('openai', 'strong').design).toBe(
-      getStepModels('openai', 'standard').design,
-    );
   });
 
   it('labels models and providers', () => {
-    expect(modelLabel('claude-sonnet-5-5')).toBe('Claude Sonnet 5.5');
+    expect(modelLabel('claude-opus-5-5')).toBe('Claude Opus 5.5');
     expect(modelLabel('unknown-1')).toBe('unknown-1');
     expect(providerConfig('anthropic', true)).toMatchObject({
       provider: 'anthropic',
       available: true,
       label: 'Claude',
       models: {
-        strong: {
-          design: 'claude-opus-5-5',
-          labels: { design: 'Claude Opus 5.5', wording: 'Claude Haiku 5.5' },
-        },
+        design: 'claude-opus-5-5',
+        labels: { design: 'Claude Opus 5.5', wording: 'Claude Haiku 5.5' },
       },
     });
     expect(providerConfig('openai', false).label).toBe('ChatGPT');

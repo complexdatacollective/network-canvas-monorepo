@@ -53,7 +53,6 @@ describe('Sketch end to end with fake providers', () => {
         post('/api/jobs', {
           description: friendshipDescription,
           provider: 'anthropic',
-          tier: 'standard',
         }),
         {
           jobs,

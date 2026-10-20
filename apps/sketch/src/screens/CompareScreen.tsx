@@ -20,7 +20,6 @@ import { initialSteps, stepProgress } from '../lib/steps.ts';
 import { firstQuestion } from '../lib/study.ts';
 import type {
   CreateJobRequest,
-  DesignTier,
   JobResult,
   JobStatus,
   Provider,
@@ -33,7 +32,6 @@ export type CompareSeed = { provider: Provider; job: JobStatus };
 
 type Props = {
   description: string;
-  tier: DesignTier;
   seed?: CompareSeed | null;
   providers: ProviderConfig[];
   onNew: () => void;
@@ -67,7 +65,6 @@ const uniqueTypes = (mine: JobResult | null, theirs: JobResult | null) => {
 
 type CardProps = {
   provider: ProviderConfig;
-  tier: DesignTier;
   run: JobRun;
   onlyHere: ReadonlySet<string>;
   preferred: boolean;
@@ -78,7 +75,6 @@ type CardProps = {
 
 const RunCard = ({
   provider,
-  tier,
   run,
   onlyHere,
   preferred,
@@ -96,7 +92,7 @@ const RunCard = ({
     job?.status === 'refused';
   const elapsed = useElapsed(startedAt, !finished);
   const style = CARD_STYLE[provider.provider];
-  const labels = job?.modelLabels ?? provider.models[tier].labels;
+  const labels = job?.modelLabels ?? provider.models.labels;
   const steps = job?.steps.length ? job.steps : initialSteps();
   const progress = stepProgress(steps);
   const titleId = `run-${provider.provider}`;
@@ -259,7 +255,6 @@ const RunCard = ({
 
 export const CompareScreen = ({
   description,
-  tier,
   seed = null,
   providers,
   onNew,
@@ -280,7 +275,6 @@ export const CompareScreen = ({
       ? {
           description,
           provider,
-          tier,
           comparisonId,
           ...(seed && seed.provider !== provider
             ? { seedJobId: seed.job.id }
@@ -388,7 +382,6 @@ export const CompareScreen = ({
               <RunCard
                 key={`${config.provider}-${attempts[config.provider]}`}
                 provider={config}
-                tier={tier}
                 run={run}
                 onlyHere={uniqueTypes(mine, theirs)}
                 preferred={run.jobId !== null && run.jobId === preferredJobId}

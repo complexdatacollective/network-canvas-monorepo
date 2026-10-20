@@ -105,13 +105,12 @@ describe('Sketch flow', () => {
     expect(
       screen.getByRole('heading', { name: 'Your protocol is ready' }),
     ).toBeTruthy();
-    expect(screen.getByText('Claude Sonnet 5.5')).toBeTruthy();
+    expect(screen.getByText('Claude Opus 5.5')).toBeTruthy();
     expect(api.posts).toEqual([
       {
         description:
           'Research questions\n1. Which nurses are central in the ward advice network?\n2. Do advice ties cross shift boundaries?\n\nResearch population\nAll nurses on one acute ward.\n\nStudy synopsis\nA sociocentric study.',
         provider: 'anthropic',
-        tier: 'standard',
       },
     ]);
 
@@ -135,7 +134,7 @@ describe('Sketch flow', () => {
     expect(screen.getAllByText('Close friends').length).toBeGreaterThan(0);
     expect(
       screen.getByText(
-        'Designed by Claude Sonnet 5.5 · worded by Claude Haiku 5.5 · 41 s · valid on the first try',
+        'Designed by Claude Opus 5.5 · worded by Claude Haiku 5.5 · 41 s · valid on the first try',
       ),
     ).toBeTruthy();
     expect(

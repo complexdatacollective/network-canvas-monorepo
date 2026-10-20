@@ -16,7 +16,6 @@ const NOW = new Date('2026-10-20T00:00:00.000Z');
 const input = {
   description: friendshipDescription,
   provider: 'anthropic' as const,
-  tier: 'standard' as const,
 };
 const buildOptions = { now: NOW };
 
@@ -65,7 +64,7 @@ describe('runPipeline', () => {
     // Models per step, and the description only in the user message.
     expect(requests.map((r) => [r.schemaName, r.model])).toEqual([
       ['screening', 'claude-haiku-5-5'],
-      ['study_design', 'claude-sonnet-5-5'],
+      ['study_design', 'claude-opus-5-5'],
       ['wording', 'claude-haiku-5-5'],
     ]);
     const design = requests[1];
@@ -82,8 +81,8 @@ describe('runPipeline', () => {
       cacheReadTokens: 6000,
     });
     // haiku: (1000*0.1 + 500*0.5 + 2000*0.01) / 1e6 = 0.00037
-    // sonnet: (1000*2 + 500*10 + 2000*0.2) / 1e6 = 0.0074
-    expect(outcome.usage.costUsd).toBeCloseTo(0.00037 * 2 + 0.0074, 8);
+    // opus: (1000*4 + 500*20 + 2000*0.2) / 1e6 = 0.0144
+    expect(outcome.usage.costUsd).toBeCloseTo(0.00037 * 2 + 0.0144, 8);
 
     // Progress went step by step, and the last report is all done.
     expect(progress.length).toBeGreaterThanOrEqual(10);
@@ -281,13 +280,13 @@ describe('runPipeline', () => {
     expect(outcome.result?.attempts).toBe(2);
   });
 
-  it('uses the strong design model for the strong tier', async () => {
+  it('designs with Claude Opus', async () => {
     const { adapters, requests } = scriptedAdapter({
       screening: [reply(STUDY_SCREENING)],
       study_design: [reply(friendshipDesign)],
       wording: [reply(friendshipWording)],
     });
-    await runPipeline({ ...input, tier: 'strong' }, { adapters, buildOptions });
+    await runPipeline(input, { adapters, buildOptions });
     expect(requests[1]?.model).toBe('claude-opus-5-5');
   });
 
@@ -303,11 +302,11 @@ describe('runPipeline', () => {
     const { outcome } = await run(adapters);
     const design = outcome.log.calls.filter((c) => c.role === 'design');
     // 16k output at $10/M plus a 30k-token input allowance at $2.5/M.
-    expect(design[0]).toMatchObject({ costUsd: 0.235, estimated: true });
+    expect(design[0]).toMatchObject({ costUsd: 0.47, estimated: true });
     // The provider answered with an error: nothing was generated.
     expect(design[1]).toMatchObject({ costUsd: 0 });
     expect(design[1]).not.toHaveProperty('estimated');
-    expect(outcome.usage.costUsd).toBeGreaterThan(0.235);
+    expect(outcome.usage.costUsd).toBeGreaterThan(0.47);
   });
 
   it('clips call timeouts to the job deadline and stops calling after it', async () => {
@@ -404,13 +403,10 @@ describe('runPipeline', () => {
   });
 
   it('estimates the worst case of a job for the budget', () => {
-    // Haiku screening + 2 x Sonnet design + Haiku wording.
-    expect(estimateJobCostUsd('anthropic', 'standard')).toBeCloseTo(
-      0.00425 + 2 * 0.235 + 0.00775,
+    // Haiku screening + 2 x Opus design + Haiku wording.
+    expect(estimateJobCostUsd('anthropic')).toBeCloseTo(
+      0.00425 + 2 * 0.47 + 0.00775,
       6,
-    );
-    expect(estimateJobCostUsd('anthropic', 'strong')).toBeGreaterThan(
-      estimateJobCostUsd('anthropic', 'standard'),
     );
   });
 });
