@@ -258,7 +258,10 @@ export const handleCreateJob = async (
     } catch {
       // See above.
     }
-    return apiError('Sketch could not start the job. Please try again.', 502);
+    // The job is now failed for good. Answering with its id lets the client
+    // read that failure and start afresh, rather than keep an id that only
+    // ever reports the same failure.
+    return json({ jobId } satisfies CreateJobResponse, 202);
   }
   return json({ jobId } satisfies CreateJobResponse, 202);
 };

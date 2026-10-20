@@ -762,7 +762,8 @@ export const runPipeline = async (
         !reviewed.build.fatal &&
         reviewed.build.validation.success &&
         reviewedBurden &&
-        reviewedBurden.answers <= before.answers
+        reviewedBurden.answers <= before.answers &&
+        reviewedBurden.screens <= before.screens
       ) {
         // The review starts from a salvaged design when salvage ran, so its
         // notes still apply to what ships.

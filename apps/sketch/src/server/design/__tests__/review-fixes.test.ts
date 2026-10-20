@@ -316,7 +316,7 @@ describe('compiler review fixes', () => {
     );
   });
 
-  it('flags a form generator that follows an earlier generator of the same type', async () => {
+  it('moves the form of a generator that follows an earlier one into a form after it', async () => {
     const r = await build(
       design({
         nodeTypes: [person([A('age', 'number', 'Age?')])],
@@ -325,6 +325,15 @@ describe('compiler review fixes', () => {
     );
     expect(r.codes).toContain('FORM_AFTER_NAMES');
     expect(r.retry).toBe(true);
+    expect(r.validation.success).toBe(true);
+    const ids = r.stages.map((s) => s.id);
+    expect(ids.indexOf('later_details')).toBe(ids.indexOf('later') + 1);
+    expect(stageById(r.stages, 'later').type).toBe('NameGeneratorQuickAdd');
+    const details = stageById(r.stages, 'later_details') as Stage & {
+      form: { fields: unknown[] };
+    };
+    expect(details.type).toBe('AlterForm');
+    expect(details.form.fields).toHaveLength(1);
   });
 
   it('keeps multi_choice attributes out of bins, which record one choice', async () => {
@@ -1509,6 +1518,125 @@ describe('instrument attributes', () => {
     expect(r.codes).toContain('UNFILTERED_CENSUS');
   });
 
+  it('does not add up the minimums of generators that can reuse people', async () => {
+    const r = await build(
+      design({
+        burdenEstimate: {
+          expectedPeople: 0,
+          screens: 10,
+          itemsPerPerson: 0,
+          minutes: 10,
+        },
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [
+          ng('ng1', { minNodes: 6 }),
+          ng('ng2', { minNodes: 6 }),
+          {
+            kind: 'relationshipCensus',
+            ...c('rc'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            method: 'every_pair',
+            prompts: [
+              {
+                text: 'Do they know each other?',
+                relationshipId: 'knows',
+                strengthAttributeId: '',
+                noTieLabel: '',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).not.toContain('UNFILTERED_CENSUS');
+  });
+
+  it('shows a map only the ties drawn between its own people', async () => {
+    const census = {
+      kind: 'relationshipCensus',
+      ...c('rc'),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      method: 'one_at_a_time',
+      prompts: [
+        {
+          text: 'Do they know each other?',
+          relationshipId: 'knows',
+          strengthAttributeId: '',
+          noTieLabel: '',
+        },
+      ],
+    };
+    const story = (id: string, relationshipIds: string[]) => ({
+      kind: 'narrative',
+      ...c(id),
+      nodeTypeId: 'place',
+      filter: noFilter,
+      views: relationshipIds.length
+        ? [
+            {
+              label: 'Places',
+              groupByAttributeId: '',
+              relationshipIds,
+              highlightAttributeIds: [],
+            },
+          ]
+        : [],
+    });
+    const r = await build(
+      design({
+        nodeTypes: [
+          person(),
+          { ...person(), id: 'place', singular: 'Place', plural: 'Places' },
+        ],
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [
+          ng(),
+          ng('ngplace', { nodeTypeId: 'place' }),
+          census,
+          {
+            kind: 'sociogram',
+            ...c('map'),
+            nodeTypeId: 'place',
+            filter: noFilter,
+            prompts: [
+              {
+                task: 'position',
+                text: 'Place them.',
+                relationshipId: '',
+                attributeId: '',
+              },
+            ],
+          },
+          story('story1', ['knows']),
+          story('story2', []),
+        ],
+      }),
+    );
+    console.log(
+      JSON.stringify(r.issues),
+      r.stages.map((s) => s.type),
+    );
+    expect(r.codes).toContain('RELATIONSHIP_NOT_CREATED');
+    const views = r.stages
+      .filter((s) => s.type === 'Narrative')
+      .flatMap(
+        (s) =>
+          (s as Stage & { presets: { edges?: { display?: string[] } }[] })
+            .presets,
+      );
+    expect(views.flatMap((v) => v.edges?.display ?? [])).toEqual([]);
+    const map = stageById(r.stages, 'map') as Stage & {
+      prompts: { edges?: unknown }[];
+    };
+    expect(map.prompts[0]?.edges).toBeUndefined();
+  });
+
   it('asks a form question once when two forms reach the same people', async () => {
     const af = (id: string, attributeIds: string[]) => ({
       kind: 'alterForm',
@@ -1531,5 +1659,52 @@ describe('instrument attributes', () => {
       form: { fields: { variable: string }[] };
     };
     expect(af2.form.fields).toHaveLength(1);
+  });
+
+  it('keeps a later unfiltered question when the earlier form was filtered', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([A('close', 'yes_no', 'Close?'), A('age', 'number', 'Age?')]),
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'alterForm',
+            ...c('af0'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['close'],
+          },
+          {
+            kind: 'alterForm',
+            ...c('af1'),
+            nodeTypeId: 'person',
+            filter: {
+              match: 'all',
+              conditions: [
+                {
+                  about: 'nodes',
+                  typeId: 'person',
+                  attributeId: 'close',
+                  operator: 'is',
+                  value: 'yes',
+                },
+              ],
+            },
+            attributeIds: ['age'],
+          },
+          {
+            kind: 'alterForm',
+            ...c('af2'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['age'],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).not.toContain('FORM_FIELD_REPEATED');
+    expect(r.stages.map((s) => s.id)).toContain('af2');
   });
 });

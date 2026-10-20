@@ -635,9 +635,20 @@ export const analyse = (
   // ---- stages -------------------------------------------------------------------------
   const stageIds = new Set<string>();
   const named = new Set<string>(); // node types named by an earlier stage
-  // people every participant must name, per node type
+  // people every participant must name, per node type: the largest minimum
+  // of its generators, since a later one can reuse people already named
   const minNamed = new Map<string, number>();
   const createdRels = new Set<string>();
+  // the node types each relationship's ties are drawn between
+  const relNodeTypes = new Map<string, Set<string>>();
+  const createRel = (r: string, t: string) => {
+    createdRels.add(r);
+    const types = relNodeTypes.get(r) ?? new Set<string>();
+    types.add(t);
+    relNodeTypes.set(r, types);
+  };
+  const createdFor = (r: string, t: string) =>
+    relNodeTypes.get(r)?.has(t) ?? false;
   const mappedLocations = new Set<string>(); // "scope/attr" recorded by a geospatial prompt
   const sociogramTypes = new Set<string>(); // node types with a map that places every node
   const partialSociogramTypes = new Set<string>();
@@ -980,13 +991,31 @@ export const analyse = (
           );
           s.method = 'quick_add';
         }
-        if (s.method === 'form' && named.has(t))
+        // People named by an earlier generator can be added here from the
+        // "Already mentioned" panel without the form, so its questions move
+        // to a form after the generator that reaches everyone.
+        if (s.method === 'form' && named.has(t)) {
           add(
             'degraded',
             'FORM_AFTER_NAMES',
             path,
-            `nameGenerator "${s.id}" uses a form, but people named by an earlier generator can be added here from the "Already mentioned" panel without the form, so they would miss its questions. Use quick_add here and ask ${s.attributeIds.join(', ')} in an alterForm after it.`,
+            `nameGenerator "${s.id}" used a form, but people named by an earlier generator can be added here from the "Already mentioned" panel without the form, so they would miss its questions. It became quick_add, with ${s.attributeIds.join(', ')} asked in an alterForm after it.`,
           );
+          followUp = {
+            kind: 'alterForm',
+            id: `${id}_details`,
+            rawIndex: s.rawIndex,
+            purpose: `Asks the questions "${id}" asked while naming, so people added from an earlier list are asked them too.`,
+            interviewerNote: '',
+            skipLogic: s.skipLogic,
+            nodeTypeId: t,
+            filter: { match: 'all', conditions: [] },
+            attributeIds: s.attributeIds,
+          };
+          s.attributeIds.forEach((x) => markCollected(scope, x));
+          s.method = 'quick_add';
+          s.attributeIds = [];
+        }
         if (s.method === 'form' && s.attributeIds.length > 3)
           add(
             'note',
@@ -1086,7 +1115,7 @@ export const analyse = (
         }
         s.attributeIds.forEach((x) => markCollected(scope, x));
         named.add(t);
-        minNamed.set(t, (minNamed.get(t) ?? 0) + s.minNodes);
+        minNamed.set(t, Math.max(minNamed.get(t) ?? 0, s.minNodes));
         // people named after the map have no position on it
         if (sociogramTypes.delete(t)) namedAfterMap.add(t);
         break;
@@ -1202,7 +1231,7 @@ export const analyse = (
               if (!r) return false;
               p.relationshipId = r;
               p.attributeId = '';
-              createdRels.add(r);
+              createRel(r, t);
             } else if (p.task === 'highlight') {
               const ex = resolveAttrQuiet(scope, slug(p.attributeId));
               const a = ex && listOf(scope).find((x) => x.id === ex);
@@ -1352,7 +1381,7 @@ export const analyse = (
             }
           }
           for (const p of s.prompts) {
-            createdRels.add(p.relationshipId);
+            createRel(p.relationshipId, t);
             if (p.strengthAttributeId)
               markCollected(`rel:${p.relationshipId}`, p.strengthAttributeId);
           }
@@ -1444,12 +1473,12 @@ export const analyse = (
                   'relationship',
                   `${pv}.relationshipIds[${j}]`,
                 );
-                if (x && !createdRels.has(x)) {
+                if (x && !createdFor(x, t)) {
                   add(
                     'degraded',
                     'RELATIONSHIP_NOT_CREATED',
                     `${pv}.relationshipIds[${j}]`,
-                    `No earlier stage creates "${x}" ties; removed from the view.`,
+                    `No earlier stage creates "${x}" ties between these people; removed from the view.`,
                   );
                   return '';
                 }
@@ -1463,7 +1492,9 @@ export const analyse = (
               {
                 label: 'Your network',
                 groupByAttributeId: '',
-                relationshipIds: [...createdRels],
+                relationshipIds: [...createdRels].filter((r) =>
+                  createdFor(r, t),
+                ),
                 highlightAttributeIds: [],
               },
             ];
@@ -1624,7 +1655,7 @@ export const analyse = (
         s.attributeIds.forEach((x) => markCollected(scope, x));
         markCollected(scope, s.groupAttributeId);
         for (const e of s.relationships) {
-          createdRels.add(e.relationshipId);
+          createRel(e.relationshipId, t);
           e.attributeIds.forEach((x) =>
             markCollected(`rel:${e.relationshipId}`, x),
           );
@@ -1705,9 +1736,10 @@ export const analyse = (
   const formAt = new Map<string, number>();
   const unvalidated: (Writer & { key: string })[] = [];
   const binsKeys = new Set<string>();
-  // Whether each form-written attribute's earlier forms reach everyone: a
-  // later form on the same people would ask it again and overwrite the
-  // answer that intervening skip logic or filters used.
+  // Whether an earlier form asking each attribute reaches everyone: a later
+  // form would ask it again and overwrite the answer that intervening skip
+  // logic or filters used. After only filtered forms, a later form still asks
+  // it, since the people the filters left out have no answer yet.
   const formEveryone = new Map<string, boolean>();
   const askOnce = (
     scope: string,
@@ -1719,7 +1751,7 @@ export const analyse = (
     ids.filter((x) => {
       const k = `${scope}/${x}`;
       const earlier = formEveryone.get(k);
-      if (earlier !== undefined && (earlier || everyone)) {
+      if (earlier) {
         add(
           'adjusted',
           'FORM_FIELD_REPEATED',

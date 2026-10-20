@@ -488,4 +488,30 @@ describe('choosing between designs', () => {
       expect(outcome.log.tags).toContain(tag);
     },
   );
+
+  it('discards a review that adds screens without adding answers', async () => {
+    const stages = [...stagesOf(friendshipDesign)];
+    stages.splice(1, 0, {
+      kind: 'information',
+      id: 'extra_note',
+      purpose: 'p',
+      interviewerNote: '',
+      skipLogic: stages[0]!.skipLogic,
+      role: 'transition',
+      content: 'Next, a few more questions.',
+    } as (typeof stages)[number]);
+    const longer = { ...friendshipDesign, stages } as typeof friendshipDesign;
+    const { adapters } = scriptedAdapter({
+      screening: [reply(STUDY_SCREENING)],
+      study_design: [reply(friendshipDesign), reply(longer)],
+      wording: [reply(friendshipWording)],
+    });
+    const outcome = await runPipeline(input, {
+      adapters,
+      buildOptions,
+      review: true,
+    });
+    expect(outcome.status).toBe('succeeded');
+    expect(outcome.log.tags).toContain('reviewDiscarded');
+  });
 });

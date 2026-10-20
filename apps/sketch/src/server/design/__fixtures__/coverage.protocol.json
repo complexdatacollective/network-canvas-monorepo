@@ -905,9 +905,6 @@
           "layout": {
             "layoutVariable": "place_layout"
           },
-          "edges": {
-            "display": ["friends", "studies_with", "conflict"]
-          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "place_favourite"

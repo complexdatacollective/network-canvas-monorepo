@@ -261,7 +261,9 @@ describe('POST /api/jobs', () => {
       },
       newId: () => 'job-2',
     });
-    expect(response.status).toBe(502);
+    // the client follows the id, reads the failure and starts afresh
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({ jobId: 'job-2' });
     expect((await readJob(jobs, 'job-2'))?.status).toBe('failed');
   });
 

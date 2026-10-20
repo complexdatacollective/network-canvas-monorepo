@@ -476,7 +476,15 @@ export const compile = (
   const prompt = (designId: string, i: number, draft: string) =>
     pick(W.prompt.get(`${designId}/p${i + 1}`)?.text, draft);
   const nodeSubject = (t: string) => ({ entity: 'node', type: nodeKey.get(t) });
-  const createdRels: string[] = [];
+  // ties created so far, with the node type they were drawn between: a map
+  // shows only the ties between the people on it
+  const createdRels: { ek: string; t: string }[] = [];
+  const created = (ek: string, t: string) => {
+    if (!createdRels.some((r) => r.ek === ek && r.t === t))
+      createdRels.push({ ek, t });
+  };
+  const createdFor = (t: string) =>
+    createdRels.filter((r) => r.t === t).map((r) => r.ek);
   const namedBefore = new Set<string>();
   const lastSociogramAuto = new Map<string, boolean>();
   let ordColor = 0;
@@ -794,12 +802,12 @@ export const compile = (
           };
           if (p.task === 'connect') {
             const ek = relKey.get(p.relationshipId)!;
-            if (!createdRels.includes(ek)) createdRels.push(ek);
+            created(ek, s.nodeTypeId);
             // only the type being drawn: other types on screen while
             // drawing are easily mistaken for the one being created
             out.edges = { create: ek, display: [ek] };
-          } else if (createdRels.length)
-            out.edges = { display: [...createdRels] };
+          } else if (createdFor(s.nodeTypeId).length)
+            out.edges = { display: createdFor(s.nodeTypeId) };
           if (p.task === 'highlight')
             out.highlight = {
               allowHighlighting: true,
@@ -830,7 +838,7 @@ export const compile = (
         };
         for (const e of s.relationships) {
           const ek = relKey.get(e.relationshipId)!;
-          if (!createdRels.includes(ek)) createdRels.push(ek);
+          created(ek, s.nodeTypeId);
         }
         // The participant can switch the composer's layout to manual and
         // arrange people themselves, so a following narrative keeps positions.
@@ -972,7 +980,7 @@ export const compile = (
               : 'TieStrengthCensus';
         const prompts = s.prompts.map((p, i) => {
           const ek = relKey.get(p.relationshipId)!;
-          if (!createdRels.includes(ek)) createdRels.push(ek);
+          created(ek, s.nodeTypeId);
           const out: Json = {
             id: `p${i + 1}`,
             text: prompt(s.id, i, p.text),
