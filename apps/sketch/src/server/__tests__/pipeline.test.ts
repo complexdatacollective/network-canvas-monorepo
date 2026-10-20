@@ -428,3 +428,64 @@ describe('runPipeline', () => {
     );
   });
 });
+
+describe('choosing between designs', () => {
+  const stagesOf = (d: typeof friendshipDesign) => d.stages;
+  // copies of the bins stage repeat its attributes, a degraded repair each
+  const withDuplicateBins = (copies: number): typeof friendshipDesign => {
+    const bins = stagesOf(friendshipDesign).find(
+      (x) => x.id === 'friend_bins',
+    )!;
+    const extra = Array.from({ length: copies }, (_, i) => ({
+      ...bins,
+      id: `dup_bins_${i}`,
+    }));
+    const stages = [...stagesOf(friendshipDesign)];
+    stages.splice(stages.length - 1, 0, ...extra);
+    return { ...friendshipDesign, stages } as typeof friendshipDesign;
+  };
+
+  it('keeps a valid first design when the revision has more problems', async () => {
+    const { adapters } = scriptedAdapter({
+      screening: [reply(STUDY_SCREENING)],
+      study_design: [reply(withDuplicateBins(1)), reply(withDuplicateBins(2))],
+      wording: [reply(friendshipWording)],
+    });
+    const { outcome } = await run(adapters);
+    expect(outcome.status).toBe('succeeded');
+    expect(outcome.log.tags).toContain('firstAttemptShipped');
+  });
+
+  it.each([
+    ['keeps', false, 'reviewed'],
+    ['discards', true, 'reviewDiscarded'],
+  ])(
+    '%s a review depending on whether it adds work',
+    async (_, heavier, tag) => {
+      // the heavier review asks the drinking question about everyone
+      const unfiltered = {
+        ...friendshipDesign,
+        stages: stagesOf(friendshipDesign).map((x) =>
+          x.id === 'drinking_together'
+            ? { ...x, filter: { match: 'all', conditions: [] } }
+            : x,
+        ),
+      } as typeof friendshipDesign;
+      const { adapters } = scriptedAdapter({
+        screening: [reply(STUDY_SCREENING)],
+        study_design: [
+          reply(friendshipDesign),
+          reply(heavier ? unfiltered : friendshipDesign),
+        ],
+        wording: [reply(friendshipWording)],
+      });
+      const outcome = await runPipeline(input, {
+        adapters,
+        buildOptions,
+        review: true,
+      });
+      expect(outcome.status).toBe('succeeded');
+      expect(outcome.log.tags).toContain(tag);
+    },
+  );
+});

@@ -144,15 +144,32 @@ describe('useJobRun', () => {
       'fetch',
       vi.fn(
         async () =>
-          new Response(JSON.stringify({ error: 'Budget spent.' }), {
-            status: 429,
+          new Response(JSON.stringify({ error: 'Not a study.' }), {
+            status: 400,
           }),
       ),
     );
     const { result } = renderHook(() => useJobRun(request));
     await flush();
     expect(result.current.jobId).toBeNull();
-    expect(result.current.error).toBe('Budget spent.');
+    expect(result.current.error).toBe('Not a study.');
+  });
+
+  it('keeps the job id when the create is rate-limited', async () => {
+    let posted = '';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        posted = (JSON.parse(String(init?.body)) as { jobId: string }).jobId;
+        return new Response(JSON.stringify({ error: 'Slow down.' }), {
+          status: 429,
+        });
+      }),
+    );
+    const { result } = renderHook(() => useJobRun(request));
+    await flush();
+    expect(result.current.jobId).toBe(posted);
+    expect(result.current.error).toBe('Slow down.');
   });
 
   it('waits longer than the server can run a job', () => {

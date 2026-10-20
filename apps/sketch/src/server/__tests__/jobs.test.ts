@@ -335,6 +335,29 @@ describe('POST /api/jobs sent again with the same job id', () => {
   });
 });
 
+describe('POST /api/jobs sent again on a later day', () => {
+  it('fails a still-queued job instead of starting it against the old day', async () => {
+    const jobs = memoryStore();
+    const startBackground = vi.fn(async () => {});
+    const { adapters } = scriptedAdapter({});
+    const jobId = '0b7f3c52-1d7e-4f0a-9a4e-3c2b1a0f9e8d';
+    const send = (now: Date) =>
+      handleCreateJob(post({ ...validRequest, jobId }), {
+        jobs,
+        adapters,
+        startBackground,
+        now: () => now,
+      });
+    await send(NOW);
+    const next = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
+    const second = await send(next);
+    expect(second.status).toBe(202);
+    expect(startBackground).toHaveBeenCalledTimes(1);
+    expect((await readJob(jobs, jobId))?.status).toBe('failed');
+    expect(jobs.data.get('spend/2026-10-20')).toMatchObject({ pendingUsd: 0 });
+  });
+});
+
 describe('POST /api/jobs when the job record cannot be written', () => {
   it('hands the reservation back', async () => {
     const jobs = memoryStore();
@@ -729,6 +752,32 @@ describe('generate-background and GET /api/jobs/:id', () => {
       },
     );
     expect(res.status).toBe(503);
+    expect(await readJob(jobs, 'job-11')).toBeNull();
+  });
+
+  it('does not start a comparison whose seed belongs to another one', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-9');
+    const startBackground = vi.fn(async () => {});
+    const res = await handleCreateJob(
+      post({
+        ...validRequest,
+        provider: 'anthropic',
+        comparisonId: 'cmp-new',
+        seedJobId: 'job-9',
+      }),
+      {
+        jobs,
+        log,
+        adapters: fake.adapters,
+        startBackground,
+        now: () => NOW,
+        newId: () => 'job-11',
+      },
+    );
+    expect(res.status).toBe(409);
+    expect(startBackground).not.toHaveBeenCalled();
     expect(await readJob(jobs, 'job-11')).toBeNull();
   });
 

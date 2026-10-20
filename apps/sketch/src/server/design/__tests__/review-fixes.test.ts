@@ -1473,4 +1473,63 @@ describe('instrument attributes', () => {
       expect(r.retry).toBe(flagged);
     },
   );
+
+  it('sizes the census check by the people every participant must name', async () => {
+    const r = await build(
+      design({
+        burdenEstimate: {
+          expectedPeople: 0,
+          screens: 10,
+          itemsPerPerson: 0,
+          minutes: 10,
+        },
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [
+          ng('ng', { minNodes: 12 }),
+          {
+            kind: 'relationshipCensus',
+            ...c('rc'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            method: 'every_pair',
+            prompts: [
+              {
+                text: 'Do they know each other?',
+                relationshipId: 'knows',
+                strengthAttributeId: '',
+                noTieLabel: '',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).toContain('UNFILTERED_CENSUS');
+  });
+
+  it('asks a form question once when two forms reach the same people', async () => {
+    const af = (id: string, attributeIds: string[]) => ({
+      kind: 'alterForm',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      attributeIds,
+    });
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([A('age', 'number', 'Age?'), A('job', 'text', 'Job?')]),
+        ],
+        stages: [ng(), af('af1', ['age']), af('af2', ['age', 'job'])],
+      }),
+    );
+    expect(r.codes).toContain('FORM_FIELD_REPEATED');
+    expect(r.validation.success).toBe(true);
+    const af2 = stageById(r.stages, 'af2') as Stage & {
+      form: { fields: { variable: string }[] };
+    };
+    expect(af2.form.fields).toHaveLength(1);
+  });
 });

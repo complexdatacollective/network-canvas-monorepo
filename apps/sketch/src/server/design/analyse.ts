@@ -635,6 +635,8 @@ export const analyse = (
   // ---- stages -------------------------------------------------------------------------
   const stageIds = new Set<string>();
   const named = new Set<string>(); // node types named by an earlier stage
+  // people every participant must name, per node type
+  const minNamed = new Map<string, number>();
   const createdRels = new Set<string>();
   const mappedLocations = new Set<string>(); // "scope/attr" recorded by a geospatial prompt
   const sociogramTypes = new Set<string>(); // node types with a map that places every node
@@ -1084,6 +1086,7 @@ export const analyse = (
         }
         s.attributeIds.forEach((x) => markCollected(scope, x));
         named.add(t);
+        minNamed.set(t, (minNamed.get(t) ?? 0) + s.minNodes);
         // people named after the map have no position on it
         if (sociogramTypes.delete(t)) namedAfterMap.add(t);
         break;
@@ -1356,7 +1359,11 @@ export const analyse = (
           // Pairs grow with the square of the people shown, so an unfiltered
           // census of a large network is the heaviest thing a design can ask.
           if (!s.filter.conditions.length) {
-            const n = Math.round(d.burdenEstimate?.expectedPeople ?? 0);
+            // never fewer than every participant must name
+            const n = Math.max(
+              Math.round(d.burdenEstimate?.expectedPeople ?? 0),
+              minNamed.get(t) ?? 0,
+            );
             const screens =
               s.method === 'one_at_a_time'
                 ? s.prompts.length * (n - 1)
@@ -1698,20 +1705,58 @@ export const analyse = (
   const formAt = new Map<string, number>();
   const unvalidated: (Writer & { key: string })[] = [];
   const binsKeys = new Set<string>();
+  // Whether each form-written attribute's earlier forms reach everyone: a
+  // later form on the same people would ask it again and overwrite the
+  // answer that intervening skip logic or filters used.
+  const formEveryone = new Map<string, boolean>();
+  const askOnce = (
+    scope: string,
+    ids: string[],
+    at: number,
+    s: NStage,
+    everyone: boolean,
+  ) =>
+    ids.filter((x) => {
+      const k = `${scope}/${x}`;
+      const earlier = formEveryone.get(k);
+      if (earlier !== undefined && (earlier || everyone)) {
+        add(
+          'adjusted',
+          'FORM_FIELD_REPEATED',
+          `stages[${s.rawIndex}].attributeIds`,
+          `"${x}" is already asked in an earlier form about the same people, so "${s.id}" no longer asks it.`,
+        );
+        return false;
+      }
+      formEveryone.set(k, Boolean(earlier) || everyone);
+      if (!formAt.has(k)) formAt.set(k, at);
+      return true;
+    });
   d.stages.forEach((s, at) => {
-    if (
-      s.kind === 'alterForm' ||
-      (s.kind === 'nameGenerator' && s.method === 'form')
-    )
-      s.attributeIds.forEach((x) => {
-        const k = `node:${s.nodeTypeId}/${x}`;
-        if (!formAt.has(k)) formAt.set(k, at);
-      });
+    if (s.kind === 'alterForm')
+      s.attributeIds = askOnce(
+        `node:${s.nodeTypeId}`,
+        s.attributeIds,
+        at,
+        s,
+        !s.filter.conditions.length,
+      );
+    if (s.kind === 'nameGenerator' && s.method === 'form')
+      s.attributeIds = askOnce(
+        `node:${s.nodeTypeId}`,
+        s.attributeIds,
+        at,
+        s,
+        true,
+      );
     if (s.kind === 'relationshipForm')
-      s.attributeIds.forEach((x) => {
-        const k = `rel:${s.relationshipId}/${x}`;
-        if (!formAt.has(k)) formAt.set(k, at);
-      });
+      s.attributeIds = askOnce(
+        `rel:${s.relationshipId}`,
+        s.attributeIds,
+        at,
+        s,
+        true,
+      );
     if (s.kind === 'networkComposer') {
       s.attributeIds.forEach((x) => {
         const k = `node:${s.nodeTypeId}/${x}`;

@@ -634,7 +634,16 @@ export const runPipeline = async (
       const second = await runAttempt(2, retryMessages);
       attempts = 2;
 
-      if (second.ok && !second.build.fatal) {
+      // The revision is kept unless it still needs fixing and has more
+      // problems than a valid first attempt: its repairs may drop stages.
+      const firstIsCleaner =
+        second.ok &&
+        second.build.retry &&
+        first.ok &&
+        !first.build.fatal &&
+        first.build.validation.success &&
+        problemCount(first) < problemCount(second);
+      if (second.ok && !second.build.fatal && !firstIsCleaner) {
         chosen = { raw: second.raw, build: second.build };
         const before = first.ok
           ? issueMessages(first.build)
@@ -742,11 +751,18 @@ export const runPipeline = async (
         ],
         'review',
       );
+      // A review is meant to lighten the interview: one that adds work is
+      // discarded like one that does not build cleanly.
+      const reviewedBurden = reviewed.ok
+        ? estimateBurden(reviewed.build.protocol, people)
+        : null;
       if (
         reviewed.ok &&
         !reviewed.build.retry &&
         !reviewed.build.fatal &&
-        reviewed.build.validation.success
+        reviewed.build.validation.success &&
+        reviewedBurden &&
+        reviewedBurden.answers <= before.answers
       ) {
         // The review starts from a salvaged design when salvage ran, so its
         // notes still apply to what ships.
@@ -761,7 +777,7 @@ export const runPipeline = async (
           }
         }
         chosen = { raw: reviewed.raw, build };
-        log.burden.after = estimateBurden(chosen.build.protocol, people);
+        log.burden.after = reviewedBurden;
         log.tags.push('reviewed');
       } else log.tags.push('reviewDiscarded');
     }

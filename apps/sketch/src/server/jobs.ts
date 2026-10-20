@@ -336,19 +336,22 @@ export const recordPreference = async (
 };
 
 // A finished job from the Ready screen joins a comparison started from it, so
-// the researcher can prefer it like the comparison's own runs.
+// the researcher can prefer it like the comparison's own runs. Resolves to
+// false when the seed already belongs to another comparison, where a
+// preference for it could never be recorded.
 export const joinComparison = async (
   stores: { jobs: JsonStore; log: JsonStore },
   seedJobId: string,
   comparisonId: string,
-): Promise<void> => {
+): Promise<boolean> => {
   const seed = await readJob(stores.jobs, seedJobId);
-  if (!seed || seed.status !== 'succeeded') return;
-  if (seed.comparisonId && seed.comparisonId !== comparisonId) return;
+  if (!seed || seed.status !== 'succeeded') return true;
+  if (seed.comparisonId && seed.comparisonId !== comparisonId) return false;
   if (seed.comparisonId !== comparisonId) {
     await writeJob(stores.jobs, { ...seed, comparisonId });
   }
   await updateLogEntry(stores.log, seed, { comparisonId });
+  return true;
 };
 
 // ---------------------------------------------------------------------------

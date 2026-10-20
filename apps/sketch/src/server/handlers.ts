@@ -137,7 +137,34 @@ export const handleCreateJob = async (
     if (existing) {
       // The first create may have stopped before starting the background
       // run. Starting it again is safe: the run claims the job atomically.
-      if (existing.status === 'queued') {
+      // A job reserved on an earlier day would settle against that day's
+      // budget, so it is failed instead and its reservation handed back.
+      const spendDate =
+        existing.spendDate ?? dayKey(new Date(existing.createdAt));
+      if (existing.status === 'queued' && spendDate !== dayKey(now)) {
+        try {
+          const failed = await failQueuedJob(
+            deps.jobs,
+            jobId,
+            'Sketch could not start working on your study. Please try again.',
+            now,
+          );
+          if (failed)
+            await settleSpend(
+              deps.jobs,
+              spendDate,
+              0,
+              existing.reservedUsd ?? 0,
+            ).catch(() => {
+              // The reservation stays counted for that day: errs on the safe side.
+            });
+        } catch {
+          return apiError(
+            'Sketch could not start the job. Please try again.',
+            503,
+          );
+        }
+      } else if (existing.status === 'queued') {
         try {
           await deps.startBackground(jobId);
         } catch {
@@ -154,8 +181,9 @@ export const handleCreateJob = async (
   // A seed that cannot join would show a "Prefer this one" that never records,
   // so the comparison does not start without it.
   if (request.seedJobId && request.comparisonId && deps.log) {
+    let joined: boolean;
     try {
-      await joinComparison(
+      joined = await joinComparison(
         { jobs: deps.jobs, log: deps.log },
         request.seedJobId,
         request.comparisonId,
@@ -166,6 +194,11 @@ export const handleCreateJob = async (
         503,
       );
     }
+    if (!joined)
+      return apiError(
+        'That design is already part of another comparison.',
+        409,
+      );
   }
   // Reserve the job's worst case now; generate-background settles it with
   // the real cost when the job finishes.

@@ -147,11 +147,14 @@ export const useJobRun = (
         if (isAbort(error)) return;
         settle();
         // Only a 4xx says the job was not created; a 5xx or a lost answer
-        // may leave one running, so its id is kept for Try again.
+        // may leave one running, so its id is kept for Try again. A 429 can
+        // come from the rate limit before the server looks for the job, and
+        // retrying an id that was never created is safe, so it keeps it too.
         if (
           error instanceof ApiRequestError &&
           error.status >= 400 &&
-          error.status < 500
+          error.status < 500 &&
+          error.status !== 429
         )
           setRun(() => ({ jobId: null, job: null, error: messageOf(error) }));
         else fail(messageOf(error));
