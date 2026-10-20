@@ -645,12 +645,50 @@ export function keptVersions(stageDir) {
 // release leaves it, the key starts just above the pin instead: the pin's
 // exact edge keeps the released code, while the app's caret range on the line
 // still intersects the key, even when the pending code carries the pin's
-// version number because its bump is not applied yet.
+// version number because its bump is not applied yet. The caret ranges the
+// stack's packages hold on each other are kept by `schema8StackEdges`.
 export function overrideSelector(name, vendoredVersion, keptVersion) {
   if (keptVersion && onVendoredLine(keptVersion, vendoredVersion)) {
     return `${name}@>${keptVersion}`;
   }
   return `${name}@>=${releaseLineFloor(vendoredVersion)}-0`;
+}
+
+// The `@codaco` edges inside the bundled schema 8 interview's stack, as the
+// lockfile that resolved it records them: for every release the stack
+// reaches beneath `fresco-schema-8`, each `@codaco` dependency and the exact
+// release it resolved to. The stack's own packages depend on each other by
+// caret range (`@codaco/interview@10.0.0` on `@codaco/network-query@^1.2.6`),
+// and a vendored package's override reaches such a range just as it reaches
+// the app's, so these edges must be held where they are, by name.
+export function schema8StackEdges(lockfile) {
+  const { snapshots } = lockfileEdges(lockfile);
+  const release = (key) => /^(@?[^@]+)@(\d+\.\d+\.\d+[^(]*)/.exec(key);
+  const edges = new Map();
+  const queue = [...snapshots.keys()].filter((key) =>
+    key.startsWith('fresco-schema-8@'),
+  );
+  const seen = new Set();
+  while (queue.length) {
+    const key = queue.pop();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const parent = release(key);
+    for (const [dep, version] of snapshots.get(key) ?? new Map()) {
+      const child = release(snapshotKey(dep, version));
+      if (!dep.startsWith('@codaco/') || !child) continue;
+      queue.push(snapshotKey(dep, version));
+      // The stack's direct pins are exact, and `overrideSelector` leaves them.
+      if (!parent) continue;
+      const edge = {
+        parent: `${parent[1]}@${parent[2]}`,
+        dep,
+        version: child[2],
+      };
+      edges.set(`${edge.parent}>${dep}`, edge);
+    }
+  }
+  return [...edges.values()];
 }
 
 // pnpm pack names scoped tarballs codaco-<name>-<version>.tgz.
@@ -776,13 +814,35 @@ export function vendorPackages({ stageDir, names, closure, wsPackages, note }) {
       `${workspaceYamlPath} has no overrides: block to extend; check frescoWorkspaceYaml in scripts/release/mirror-app.mjs.`,
     );
   }
+  const stackEdges = schema8StackEdges(
+    readFileSync(join(repoRoot(), 'pnpm-lock.yaml'), 'utf8'),
+  );
+  const keep = (name, version) => {
+    if (manifest.kept[name] && manifest.kept[name] !== version) {
+      throw new Error(
+        `The bundled schema 8 interview resolves ${name} to both ${manifest.kept[name]} and ${version}; pin one release in apps/fresco/schema-8/package.json.`,
+      );
+    }
+    manifest.kept[name] = version;
+  };
   const overrideLines = names
-    .map((name) => {
+    .flatMap((name) => {
       const { version } = wsPackages[name];
       if (pins[name] && onVendoredLine(pins[name], version)) {
-        manifest.kept[name] = pins[name];
+        keep(name, pins[name]);
       }
-      return `  '${overrideSelector(name, version, pins[name])}': 'file:vendor/${tarballs[name]}'`;
+      const held = stackEdges
+        .filter(
+          (edge) => edge.dep === name && onVendoredLine(edge.version, version),
+        )
+        .map((edge) => {
+          keep(name, edge.version);
+          return `  '${edge.parent}>${name}': '${edge.version}'`;
+        });
+      return [
+        `  '${overrideSelector(name, version, pins[name])}': 'file:vendor/${tarballs[name]}'`,
+        ...held,
+      ];
     })
     .join('\n');
   writeFileSync(

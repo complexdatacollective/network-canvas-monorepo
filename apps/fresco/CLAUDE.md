@@ -687,8 +687,10 @@ lib/
   runs at `/v8/interview/<id>` in the schema 8 interview Fresco bundles
   (`schema-8/`, the private `fresco-schema-8` package, installed with
   `file:./schema-8`). That package pins the npm releases of
-  `@codaco/interview` 10 and the libraries released with it, so it runs the
-  code Fresco 4 ran. The pin is always the newest `@codaco/interview` release
+  `@codaco/interview` 10 and every `@codaco` library its stack reaches, so it
+  runs the code Fresco 4 ran: the releases depend on each other by caret
+  range, and a library the stack reaches without a pin of its own would
+  resolve to its newest, schema 9 release. The pin is always the newest `@codaco/interview` release
   whose `COMPATIBLE_PROTOCOL_SCHEMA_VERSION` is 8 (a schema 8 fix ships as a
   10.0.x patch from a hotfix branch, and the pin moves to it);
   `lib/schema-8/__tests__/version.test.ts` fails if the pinned release
@@ -700,8 +702,8 @@ lib/
   `migrate-and-start.sh` runs `scripts/setup-database.ts`, which applies the
   Prisma migrations and a categorical-answer clean-up, in one transaction. The
   pinned packages and the vendoring overrides of the release test and hotfix
-  lanes are scoped so pending code never replaces them (`overrideSelector` in
-  `scripts/release/vendor-workspace-packages.mjs`).
+  lanes are scoped so pending code never replaces them (`overrideSelector`
+  and `schema8StackEdges` in `scripts/release/vendor-workspace-packages.mjs`).
 - **Auth** is first-party: sessions in `lib/auth/session.ts`, plus WebAuthn
   passkeys and TOTP. There is no third-party auth library.
 - **Tailwind** with `@codaco/tailwind-config`, components from

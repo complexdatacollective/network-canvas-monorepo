@@ -12,6 +12,7 @@ import {
   assertVendoredLockfile,
   collectClosure,
   keptVersions,
+  schema8StackEdges,
   lockfileEdges,
   onVendoredLine,
   overrideSelector,
@@ -395,6 +396,70 @@ test('the schema 8 pins are read from the staged tree', () => {
   );
   // Only exact pins: a range is not a release the interview keeps.
   assert.deepEqual(keptVersions(stage), { '@x/ui': '8.0.0' });
+});
+
+test("the schema 8 interview's own edges between its releases are found by name", () => {
+  const lockfile = [
+    'lockfileVersion: 9.0',
+    '',
+    'snapshots:',
+    '',
+    "  '@codaco/interview@10.0.0(abc)':",
+    '    dependencies:',
+    "      '@codaco/network-query': 1.2.6(@codaco/app-i18n@0.3.0)",
+    "      '@codaco/protocol-validation': 15.0.0(@codaco/app-i18n@0.3.0)",
+    '      immer: 11.1.8',
+    '',
+    "  '@codaco/network-query@1.2.6(@codaco/app-i18n@0.3.0)':",
+    '    dependencies:',
+    "      '@codaco/protocol-validation': 15.0.0(@codaco/app-i18n@0.3.0)",
+    '',
+    "  '@codaco/protocol-validation@15.0.0(@codaco/app-i18n@0.3.0)':",
+    '    dependencies:',
+    "      '@codaco/app-i18n': 0.3.0",
+    '',
+    "  '@codaco/app-i18n@0.3.0': {}",
+    '',
+    '  fresco-schema-8@file:apps/fresco/schema-8(def):',
+    '    dependencies:',
+    "      '@codaco/interview': 10.0.0(abc)",
+    "      '@codaco/protocol-validation': 15.0.0(@codaco/app-i18n@0.3.0)",
+    '',
+    // The app's own copy, outside the stack, is not held.
+    "  '@codaco/network-exporters@5.0.0':",
+    '    dependencies:',
+    "      '@codaco/network-query': link:../network-query",
+    '',
+  ].join('\n');
+
+  assert.deepEqual(
+    schema8StackEdges(lockfile).sort((a, b) =>
+      `${a.parent}>${a.dep}`.localeCompare(`${b.parent}>${b.dep}`),
+    ),
+    [
+      {
+        parent: '@codaco/interview@10.0.0',
+        dep: '@codaco/network-query',
+        version: '1.2.6',
+      },
+      {
+        parent: '@codaco/interview@10.0.0',
+        dep: '@codaco/protocol-validation',
+        version: '15.0.0',
+      },
+      {
+        parent: '@codaco/network-query@1.2.6',
+        dep: '@codaco/protocol-validation',
+        version: '15.0.0',
+      },
+      {
+        parent: '@codaco/protocol-validation@15.0.0',
+        dep: '@codaco/app-i18n',
+        version: '0.3.0',
+      },
+    ],
+  );
+  assert.deepEqual(schema8StackEdges('lockfileVersion: 9.0\n'), []);
 });
 
 test('the lockfile guard leaves the exact release the schema 8 interview pins', () => {

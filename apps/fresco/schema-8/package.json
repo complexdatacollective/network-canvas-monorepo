@@ -75,6 +75,7 @@
     "@codaco/fresco-ui": "8.0.0",
     "@codaco/interview": "10.0.0",
     "@codaco/network-exporters": "4.0.0",
+    "@codaco/network-query": "1.2.6",
     "@codaco/protocol-utilities": "5.0.0",
     "@codaco/protocol-validation": "15.0.0",
     "@codaco/shared-consts": "6.2.0"
