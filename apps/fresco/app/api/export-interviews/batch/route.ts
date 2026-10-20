@@ -141,6 +141,7 @@ export async function POST(request: Request) {
         ...(current?.failedExports ?? []),
         ...(legacy?.failedExports ?? []),
       ],
+      // The schema 8 exporter reports no warnings: it predates them.
       warnings: current?.warnings ?? [],
     };
 

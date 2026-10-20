@@ -94,9 +94,12 @@ export function mapLegacyInterviewPayload(
       network: stored.data.network,
       stageMetadata: stored.data.stageMetadata ?? undefined,
     },
+    // Named fields only: the protocol row also carries where its original
+    // file is stored, which a participant must not be handed.
     protocol: {
-      ...protocol,
       ...storedProtocol.data,
+      id: protocol.id,
+      name: protocol.name,
       schemaVersion,
       hash: protocol.hash,
       description: protocol.description ?? undefined,
