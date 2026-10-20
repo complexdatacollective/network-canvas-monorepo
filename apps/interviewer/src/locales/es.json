@@ -198,7 +198,7 @@
   "interviewer.notFound.returnHome": "Volver al inicio",
   "interviewer.notFound.thePageYouWereLookingForDoes": "La página que buscas no existe.",
   "interviewer.offline.notReady": "No está listo",
-  "interviewer.offline.notReadyChip": "No está listo sin conexión",
+  "interviewer.offline.notReadyChip": "No está listo para uso sin conexión",
   "interviewer.offline.notReadyHelp": "Interviewer aún no ha terminado de descargarse para usarse sin conexión a internet, así que los protocolos todavía no pueden usarse sin conexión. Mantén Interviewer abierto mientras tengas conexión hasta que esté listo.",
   "interviewer.offline.ready": "Listo",
   "interviewer.offline.readyChip": "Listo sin conexión",
