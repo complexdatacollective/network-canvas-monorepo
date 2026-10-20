@@ -51,6 +51,18 @@ describe('the interface text a protocol holds', () => {
     });
   });
 
+  it('writes British English with the British spelling the interview uses', () => {
+    const text = interfaceTextFor(
+      protocolWith({
+        localization: { defaultLocale: 'en-GB', locales: ['en-GB', 'en'] },
+      }),
+    );
+
+    expect(text.messages?.stageError?.['en-GB']).toContain('study organiser');
+    expect(text.messages?.stageError?.en).toContain('study organizer');
+    expect(text.navigation?.exitInterview?.['en-GB']).toBe('Exit interview');
+  });
+
   it('writes English in a default language Network Canvas supplies no words in, and nothing in another', () => {
     const text = interfaceTextFor(
       protocolWith({

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { ecosystemLocales } from '@codaco/app-i18n/locales';
+
 import {
   migrateProtocol,
   migrateProtocolWithSessions,
@@ -300,6 +302,17 @@ describe('v8 to v9 migration', () => {
 });
 
 describe('supplied finish text', () => {
+  it('is supplied in every language the apps ship in, and no other', () => {
+    for (const { locale } of ecosystemLocales) {
+      expect(defaultFinishSessionText(locale)).toBeDefined();
+    }
+    const shipped = ecosystemLocales.map(({ locale }) => locale);
+    for (const locale of Object.keys(DEFAULT_FINISH_SESSION_TEXT)) {
+      expect(shipped).toContain(locale);
+    }
+    expect(defaultFinishSessionText('hu')).toBeUndefined();
+  });
+
   it('serves a regional variant from its language', () => {
     expect(defaultFinishSessionText('en-US')).toBe(
       DEFAULT_FINISH_SESSION_TEXT.en,
