@@ -1,8 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-  <rect x="1" y="1" width="42" height="42" rx="13" fill="oklch(0.3 0.09 281)" stroke="oklch(0.46 0.09 281)" stroke-width="1.5"/>
-  <path d="M13 29 L22 13 L31 28" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M14 30 Q22 34.5 30.5 29" fill="none" stroke="oklch(0.81 0.17 86.39)" stroke-width="2.5" stroke-dasharray="0.5 4.5" stroke-linecap="round"/>
-  <circle cx="22" cy="13" r="5.5" fill="oklch(0.53 0.235 11.57)"/>
-  <circle cx="13" cy="29" r="5.5" fill="oklch(0.7 0.2 171.52)"/>
-  <circle cx="31" cy="28" r="5.5" fill="oklch(0.7383 0.13 217.55)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbfbfa"/>
+      <stop offset="1" stop-color="#e9e8e4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
+  <line x1="250" y1="400" x2="640" y2="270" stroke="#f2b500" stroke-width="64" stroke-linecap="round"/>
+  <line x1="250" y1="400" x2="540" y2="750" stroke="#f2b500" stroke-width="64" stroke-linecap="round"/>
+  <circle cx="250" cy="400" r="132" fill="#f2b500"/>
+  <circle cx="640" cy="270" r="100" fill="#f2b500"/>
+  <circle cx="540" cy="750" r="120" fill="#fbe1a0"/>
+  <path d="M410 825 A150 150 0 0 1 670 675" fill="none" stroke="#f2b500" stroke-width="60" stroke-linecap="round" transform="rotate(0)"/>
+  <path d="M670 675 A150 150 0 0 1 410 825" fill="none" stroke="#f2b500" stroke-width="36" stroke-linecap="round" stroke-dasharray="30 64" stroke-dashoffset="-60"/>
+  <g transform="translate(670 675) rotate(-55) scale(0.7)">
+    <path d="M0 0 L150 -80 L150 80 Z" fill="#f8d77a"/>
+    <path d="M0 0 L60 -32 L60 32 Z" fill="#7a5200"/>
+    <rect x="150" y="-80" width="300" height="160" fill="#f2b500"/>
+    <rect x="150" y="20" width="300" height="60" fill="#d99a00" opacity="0.5"/>
+    <path d="M450 -80 H490 a40 40 0 0 1 40 40 V40 a40 40 0 0 1 -40 40 H450 Z" fill="#d99a00"/>
+  </g>
 </svg>
