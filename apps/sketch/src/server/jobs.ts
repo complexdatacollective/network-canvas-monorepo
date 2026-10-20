@@ -199,7 +199,7 @@ export const isStaleJob = (record: JobRecord, now: Date): boolean => {
   return Number.isFinite(since) && now.getTime() - since > STALE_JOB_MS;
 };
 
-export const failStaleJob = (record: JobRecord, now: Date): JobRecord => ({
+const failStaleJob = (record: JobRecord, now: Date): JobRecord => ({
   ...record,
   status: 'failed',
   error: STALE_JOB_MESSAGE,
