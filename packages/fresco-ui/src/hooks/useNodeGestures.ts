@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * with the canvas and DnD drag systems, so any movement that could begin a
  * drag is classified the same way everywhere.
  */
-const DRAG_DISTANCE = 5;
+export const DRAG_DISTANCE = 5;
 
 /** Press-and-hold duration used by both iOS and Android. */
 const DEFAULT_HOLD_DURATION = 500;

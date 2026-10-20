@@ -15,6 +15,7 @@ import {
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { DRAG_DISTANCE } from '../hooks/useNodeGestures';
 import type { Prettify } from '../utils/prettify';
 import { useDndStore, useDndStoreApi } from './DndStoreProvider';
 import type { DragMetadata } from './types';
@@ -23,6 +24,7 @@ import {
   getKeyboardDragAnnouncement,
   useAccessibilityAnnouncements,
 } from './useAccessibilityAnnouncements';
+import { useScrollAwareDrag } from './useScrollAwareDrag';
 import { findSourceZone, rafThrottle } from './utils';
 
 const messages = defineMessages({
@@ -47,9 +49,6 @@ const messages = defineMessages({
   },
 });
 
-// Default threshold in pixels - drag won't start until cursor moves this far
-const DEFAULT_DRAG_THRESHOLD = 5;
-
 // Hook-specific types
 type DragSourceOptions = {
   type: string;
@@ -57,6 +56,7 @@ type DragSourceOptions = {
   announcedName?: string;
   preview?: ReactNode;
   disabled?: boolean;
+  /** Movement in pixels before a pointer drag starts. */
   dragThreshold?: number;
 };
 
@@ -77,6 +77,8 @@ type UseDragSourceReturn = {
     'aria-label'?: string;
     'role'?: string;
     'tabIndex'?: number;
+    /** Present once a hold has freed the drag to move in any direction. */
+    'data-drag-armed'?: true;
   };
   isDragging: boolean;
 };
@@ -90,7 +92,7 @@ export function useDragSource(
     announcedName,
     preview,
     disabled = false,
-    dragThreshold = DEFAULT_DRAG_THRESHOLD,
+    dragThreshold = DRAG_DISTANCE,
   } = options;
   const previewComponent = preview;
 
@@ -104,6 +106,17 @@ export function useDragSource(
   const dragId = useId();
   const elementRef = useRef<HTMLElement | null>(null);
   const pendingDragRef = useRef<PendingDrag | null>(null);
+  // The pointer that began the gesture. On a tablet a second finger landing,
+  // moving or lifting elsewhere must not steer or end a drag it did not start.
+  const activePointerRef = useRef<number | null>(null);
+  const {
+    touchAction,
+    isArmed,
+    ref: setScrollAwareRef,
+    begin: beginScrollAware,
+    claimsMove,
+    end: endScrollAware,
+  } = useScrollAwareDrag();
 
   const startDrag = useDndStore((state) => state.startDrag);
   const updateDragPosition = useDndStore((state) => state.updateDragPosition);
@@ -126,6 +139,7 @@ export function useDragSource(
 
       // Ensure the preview shows the dragging state
       clonedElement.setAttribute('data-dragging', 'true');
+      clonedElement.removeAttribute('data-drag-armed');
 
       // Apply the exact computed dimensions to ensure visual consistency
       clonedElement.style.width = `${rect.width}px`;
@@ -234,17 +248,18 @@ export function useDragSource(
 
   const handlePointerMove = useCallback(
     (e: PointerEvent) => {
+      if (e.pointerId !== activePointerRef.current) return;
       e.preventDefault();
 
       // Check if we have a pending drag that hasn't met the threshold yet
       if (pendingDragRef.current && dragMode === 'none') {
         const { startPosition, element } = pendingDragRef.current;
-        const distance = Math.hypot(
-          e.clientX - startPosition.x,
-          e.clientY - startPosition.y,
-        );
+        const dx = e.clientX - startPosition.x;
+        const dy = e.clientY - startPosition.y;
 
-        if (distance >= dragThreshold) {
+        // Movement the scroll region owns stays pending: the browser cancels
+        // the sequence once it starts scrolling.
+        if (Math.hypot(dx, dy) >= dragThreshold && claimsMove(dx, dy)) {
           // Threshold met - initialize the drag
           initializeDrag(element, startPosition, 'pointer');
           pendingDragRef.current = null;
@@ -255,14 +270,17 @@ export function useDragSource(
       // Normal drag position update
       updatePosition(e.clientX, e.clientY);
     },
-    [updatePosition, dragThreshold, dragMode, initializeDrag],
+    [updatePosition, dragMode, dragThreshold, initializeDrag, claimsMove],
   );
 
   const handlePointerUp = useCallback(
     (e: PointerEvent) => {
+      if (e.pointerId !== activePointerRef.current) return;
+      activePointerRef.current = null;
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
       document.removeEventListener('pointercancel', handlePointerUp);
+      endScrollAware();
 
       // Check if we have a pending drag that never met the threshold
       if (pendingDragRef.current) {
@@ -299,15 +317,23 @@ export function useDragSource(
       // pointer-up sequence fires synchronously before setTimeout(0).
       setTimeout(cleanup, 0);
 
-      finishDrag(true);
+      // A cancelled sequence (the browser claimed the gesture after all) is
+      // not a release over whatever happened to be under the finger.
+      finishDrag(e.type !== 'pointercancel');
     },
-    [handlePointerMove, finishDrag],
+    [handlePointerMove, finishDrag, endScrollAware],
   );
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (disabled || e.button !== 0) return;
       const element = e.currentTarget as HTMLElement;
+      // A second finger landing while the first still holds the element is
+      // not a new gesture. A gesture that ended without its pointerup (a
+      // window switch) has lost its capture, and must not lock the source.
+      const active = activePointerRef.current;
+      if (active !== null && element.hasPointerCapture(active)) return;
+      activePointerRef.current = e.pointerId;
 
       // Store pending drag - actual drag starts when threshold is exceeded
       pendingDragRef.current = {
@@ -315,6 +341,7 @@ export function useDragSource(
         element,
         pointerId: e.pointerId,
       };
+      beginScrollAware(e);
 
       element.setPointerCapture(e.pointerId);
       document.addEventListener('pointermove', handlePointerMove);
@@ -324,7 +351,7 @@ export function useDragSource(
       // Prevent default to avoid text selection during potential drag
       e.preventDefault();
     },
-    [disabled, handlePointerMove, handlePointerUp],
+    [disabled, handlePointerMove, handlePointerUp, beginScrollAware],
   );
 
   const startKeyboardDrag = useCallback(
@@ -351,9 +378,13 @@ export function useDragSource(
 
   useEffect(() => () => updatePosition.cancel(), [updatePosition]);
 
-  const setDragRef = useCallback((element: HTMLElement | null) => {
-    elementRef.current = element;
-  }, []);
+  const setDragRef = useCallback(
+    (element: HTMLElement | null) => {
+      elementRef.current = element;
+      setScrollAwareRef(element);
+    },
+    [setScrollAwareRef],
+  );
 
   const isDragging = dragMode !== 'none';
 
@@ -456,9 +487,13 @@ export function useDragSource(
         'aria-grabbed': isDragging,
         'aria-dropeffect': 'move',
         'aria-label': announcedName,
+        'data-drag-armed': isArmed || undefined,
         'style': {
           cursor: disabled ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
-          touchAction: isDragging ? 'none' : 'pan-y',
+          touchAction,
+          // Feedback that the hold has freed the drag, where the finger hides
+          // most of the element. A filter keeps the element transform-free.
+          filter: isArmed ? 'brightness(1.25)' : undefined,
           userSelect: 'none',
         },
       },
@@ -471,6 +506,8 @@ export function useDragSource(
       isDragging,
       disabled,
       announcedName,
+      isArmed,
+      touchAction,
     ],
   );
 }
