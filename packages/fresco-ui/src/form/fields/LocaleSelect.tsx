@@ -1,7 +1,9 @@
 'use client';
 
 import type { AppLocale } from '@codaco/app-i18n/locales';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { automaticLocaleMessage } from '../../navigation/automaticLocaleMessage';
 import SelectField from './Select/Native';
 import type { SelectOption } from './Select/shared';
 
@@ -20,18 +22,24 @@ type LocaleSelectProps = {
    */
   'options': readonly AppLocale[];
   /**
-   * The selected BCP 47 tag, or `null` for "no explicit choice". With
-   * `automaticLabel` set, `null` selects the automatic entry; without it,
-   * `null` shows the placeholder.
+   * The selected BCP 47 tag, or `null` for "no explicit choice". With an
+   * automatic entry offered, `null` selects it; without one, `null` shows the
+   * placeholder.
    */
   'value': string | null;
   'onChange': (value: string | null) => void;
   /**
-   * Label for the leading "follow the device/browser" entry. Host-supplied
-   * because only the host knows what its automatic behaviour is called (and
-   * in which language to say it). Omit the prop to offer no such entry.
+   * Label for the leading "follow the device/browser" entry, for a host whose
+   * automatic behaviour needs its own wording. Takes precedence over
+   * `automaticLocale`. Omit both to offer no such entry.
    */
   'automaticLabel'?: string;
+  /**
+   * The locale the automatic entry resolves to on this device right now. The
+   * entry then reads "Automatic (Español)", in the same words as
+   * `LocaleSwitcher`, naming the language rather than where it came from.
+   */
+  'automaticLocale'?: string;
   /** Shown while nothing is selected. Defaults to the select's own text. */
   'placeholder'?: string;
   'name'?: string;
@@ -67,13 +75,24 @@ export default function LocaleSelect({
   value,
   onChange,
   automaticLabel,
+  automaticLocale,
   placeholder,
   ...rest
 }: LocaleSelectProps) {
+  const intl = useAppIntl();
+  const automaticEntry =
+    automaticLabel ??
+    (automaticLocale === undefined
+      ? undefined
+      : intl.formatMessage(automaticLocaleMessage, {
+          language:
+            options.find((entry) => entry.locale === automaticLocale)?.label ??
+            automaticLocale,
+        }));
   const selectOptions: SelectOption[] = [
-    ...(automaticLabel === undefined
+    ...(automaticEntry === undefined
       ? []
-      : [{ value: AUTOMATIC_VALUE, label: automaticLabel }]),
+      : [{ value: AUTOMATIC_VALUE, label: automaticEntry }]),
     ...options.map((locale) => ({
       value: locale.locale,
       label: locale.label,
@@ -90,7 +109,7 @@ export default function LocaleSelect({
       options={selectOptions}
       placeholder={placeholder}
       value={
-        value ?? (automaticLabel === undefined ? undefined : AUTOMATIC_VALUE)
+        value ?? (automaticEntry === undefined ? undefined : AUTOMATIC_VALUE)
       }
       onChange={(next) => {
         const tag = String(next);

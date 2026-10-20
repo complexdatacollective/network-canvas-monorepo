@@ -124,7 +124,6 @@
   "interviewer.interviewComplete.exit": "退出",
   "interviewer.interviewComplete.interviewComplete": "访谈已完成",
   "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "谢谢。此访谈已结束，其回答无法再更改。请将设备交还给研究人员。",
-  "interviewer.language.automatic": "自动（跟随浏览器）",
   "interviewer.language.failed": "本次会话的语言已更改，但无法保存该偏好设置。您的浏览器可能阻止了设备存储。",
   "interviewer.language.hint": "选择此设备上 Interviewer 及其内置访谈控件的语言。这不会更改协议内容或已收集的数据。",
   "interviewer.language.label": "应用语言",

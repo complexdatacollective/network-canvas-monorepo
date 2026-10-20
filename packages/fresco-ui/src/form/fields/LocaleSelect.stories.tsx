@@ -43,8 +43,12 @@ const meta = {
           '- `value` / `onChange` — controlled `string | null`. `null` means',
           '  "no explicit choice"; it selects the automatic entry when one is',
           '  offered, and otherwise shows the placeholder.',
-          '- `automaticLabel` — optional. Its wording is host-supplied, because',
-          '  only the host knows what its automatic behaviour is called.',
+          '- `automaticLocale` — optional. The locale the automatic entry',
+          '  resolves to; the entry then reads "Automatic (Français)", in the',
+          '  same words as `LocaleSwitcher`.',
+          '- `automaticLabel` — optional. Host-supplied wording for an automatic',
+          '  behaviour that needs its own name; takes precedence over',
+          '  `automaticLocale`.',
           '- Everything else (`name`, `id`, `size`, `disabled`, `readOnly`,',
           '  `className`, `aria-*`, `onBlur`) is forwarded to the native select.',
         ].join('\n'),
@@ -57,6 +61,7 @@ const meta = {
     value: { control: false },
     onChange: { control: false },
     automaticLabel: { control: 'text' },
+    automaticLocale: { control: 'text' },
     placeholder: { control: 'text' },
     disabled: { control: 'boolean' },
     readOnly: { control: 'boolean' },
@@ -69,10 +74,12 @@ type Story = StoryObj<typeof meta>;
 
 function ControlledLocaleSelect({
   automaticLabel,
+  automaticLocale,
   initialValue = null,
   ...rest
 }: {
   automaticLabel?: string;
+  automaticLocale?: string;
   initialValue?: string | null;
   placeholder?: string;
   disabled?: boolean;
@@ -89,6 +96,7 @@ function ControlledLocaleSelect({
         value={value}
         onChange={setValue}
         automaticLabel={automaticLabel}
+        automaticLocale={automaticLocale}
       />
       <Paragraph intent="smallText" margin="none">
         Stored preference:{' '}
@@ -167,6 +175,30 @@ export const AutomaticEntry: Story = {
     await userEvent.selectOptions(select, 'Match my browser');
     await expect(stored).toHaveTextContent('null');
     await expect(stored).not.toHaveTextContent('__automatic');
+  },
+};
+
+/**
+ * With `automaticLocale` set, the automatic entry names the language it
+ * resolves to, in the same words as `LocaleSwitcher`, so an installed app
+ * never has to describe where that language came from.
+ */
+export const AutomaticEntryNamesItsLanguage: Story = {
+  args: {
+    'options': locales,
+    'value': null,
+    'onChange': () => undefined,
+    'aria-label': 'Language',
+  },
+  render: () => <ControlledLocaleSelect automaticLocale="fr" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const select = canvas.getByRole('combobox', { name: 'Language' });
+
+    await expect(select).toHaveDisplayValue('Automatic (Français)');
+    await userEvent.selectOptions(select, 'de');
+    await userEvent.selectOptions(select, 'Automatic (Français)');
+    await expect(canvas.getByTestId('locale-value')).toHaveTextContent('null');
   },
 };
 
