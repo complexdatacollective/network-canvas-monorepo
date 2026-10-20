@@ -701,4 +701,37 @@ describe('compiler review fixes', () => {
     expect(await order('welcome')).toBe('consent after');
     expect(await order('instructions')).toBe('consent first');
   });
+
+  it('asks every roster prompt about each person picked, so overlaps are kept', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([A('close', 'yes_no', ''), A('advice', 'yes_no', '')]),
+        ],
+        stages: [
+          ng('roster', {
+            method: 'roster',
+            prompts: [
+              { text: 'Who are you **close** to?', tagAttributeId: 'close' },
+              {
+                text: 'Who do you ask for **advice**?',
+                tagAttributeId: 'advice',
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    const ids = r.stages.map((s) => s.id);
+    expect(ids.indexOf('roster_overlap')).toBe(ids.indexOf('roster') + 1);
+    const form = stageById(r.stages, 'roster_overlap') as Stage & {
+      form: { fields: { prompt: string }[] };
+    };
+    expect(form.type).toBe('AlterForm');
+    expect(form.form.fields.map((f) => f.prompt)).toEqual([
+      'Who are you **close** to?',
+      'Who do you ask for **advice**?',
+    ]);
+  });
 });

@@ -827,6 +827,7 @@ export const analyse = (
 
   for (const s of d.stages) {
     const path = `stages[${s.rawIndex}]`;
+    let followUp: NStage | null = null;
     let id =
       fixId(s.id, `${s.kind}_${s.rawIndex + 1}`, `${path}.id`) ||
       `stage_${s.rawIndex + 1}`;
@@ -992,6 +993,39 @@ export const analyse = (
         if (!s.prompts.length) {
           drop('NO_PROMPTS', `nameGenerator "${id}" has no prompts.`);
           continue;
+        }
+        // A roster hides everyone already named, so a person picked for one
+        // prompt cannot be picked for the next and would miss its tag. A form
+        // after the roster asks each tag question about everyone picked.
+        const rosterTags = s.prompts
+          .map((p) => p.tagAttributeId)
+          .filter(Boolean);
+        if (
+          s.method === 'roster' &&
+          s.prompts.length > 1 &&
+          rosterTags.length
+        ) {
+          s.prompts.forEach((p) => {
+            const a = listOf(scope).find((x) => x.id === p.tagAttributeId);
+            if (a && !a.question) a.question = p.text;
+          });
+          followUp = {
+            kind: 'alterForm',
+            id: `${id}_overlap`,
+            rawIndex: s.rawIndex,
+            purpose: `Records every prompt of "${id}" for each person picked, since the roster lets a person be picked only once.`,
+            interviewerNote: '',
+            skipLogic: s.skipLogic,
+            nodeTypeId: t,
+            filter: { match: 'all', conditions: [] },
+            attributeIds: [...new Set(rosterTags)],
+          };
+          add(
+            'adjusted',
+            'ROSTER_OVERLAP_FORM',
+            path,
+            `A roster lets each person be picked once, so a form after "${id}" asks every prompt's question about each person picked.`,
+          );
         }
         s.minNodes = Math.max(0, Math.round(s.minNodes || 0));
         s.maxNodes = Math.max(0, Math.round(s.maxNodes || 0));
@@ -1437,6 +1471,10 @@ export const analyse = (
     }
     stageIds.add(id);
     kept.push(s);
+    if (followUp && !stageIds.has(followUp.id)) {
+      stageIds.add(followUp.id);
+      kept.push(followUp);
+    }
   }
   d.stages = kept;
 
