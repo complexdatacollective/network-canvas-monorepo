@@ -10,10 +10,14 @@ deployed to its own Netlify site, and it is not part of a release lane.
 
 ## Architecture
 
-A job runs five steps. They are the five rows the generating screen shows
+The page collects one to six research questions and an optional study
+synopsis, and sends them as one text block with a heading for each part
+(`src/lib/study.ts`). The models derive the people, relationships and measures
+from the research questions; nothing on the page asks for them. A job runs five
+steps. They are the five rows the generating screen shows
 (`STEP_IDS` in `src/shared/api.ts`):
 
-1. **Read.** A cheap model screens the description. It refuses only when the
+1. **Read.** A cheap model screens the research questions. It refuses only when the
    text describes no study at all, and the page shows its hint inline. If the
    screening call fails, the job carries on as if it had passed.
 2. **Design.** The design model returns a `StudyDesign` (a constrained JSON
@@ -115,6 +119,7 @@ back with `extractProtocol` and validates it.
 | ------------------------- | ------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `ANTHROPIC_API_KEY`       | functions    | none                                     | Enables the Claude provider. Without it the provider shows as unavailable.                                       |
 | `OPENAI_API_KEY`          | functions    | none                                     | Enables the ChatGPT provider.                                                                                    |
+| `SKETCH_PROVIDERS`        | functions    | `anthropic`                              | Comma list of providers to offer. A key alone does not switch one on, since Netlify's AI Gateway injects keys.   |
 | `OPENAI_DESIGN_MODEL`     | functions    | `gpt-6-astra`                            | OpenAI model for step 2 (both tiers).                                                                            |
 | `OPENAI_WORDING_MODEL`    | functions    | `gpt-6-luna`                             | OpenAI model for steps 1 and 3.                                                                                  |
 | `SKETCH_DAILY_BUDGET_USD` | functions    | `20`                                     | New jobs are refused (HTTP 429) once today's recorded spend (UTC day) reaches this.                              |
@@ -176,7 +181,7 @@ Deploy previews skip the build when nothing Sketch depends on changed (the
 ## Logging
 
 Each finished job writes one entry to the `sketch-log` Blobs store under
-`log/<YYYY-MM-DD>/<jobId>`: the description, provider, tier, models, status,
+`log/<YYYY-MM-DD>/<jobId>`: the study text (questions and synopsis), provider, tier, models, status,
 error, token usage, cost and duration, plus the pipeline's own record. That
 record holds the screening result, every design attempt with its raw text and
 issues, the retry feedback, the wording, validity, tags (`wordingFailed`,

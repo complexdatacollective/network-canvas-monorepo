@@ -17,6 +17,7 @@ import {
   plural,
 } from '../lib/format.ts';
 import { initialSteps, stepProgress } from '../lib/steps.ts';
+import { firstQuestion } from '../lib/study.ts';
 import type {
   CreateJobRequest,
   DesignTier,
@@ -106,7 +107,7 @@ const RunCard = ({
       ? (job.error ?? 'Sketch could not finish this protocol.')
       : job?.status === 'refused'
         ? (job.refusalHint ??
-          'This provider did not read the description as a study.')
+          'This provider did not read the research questions as a study.')
         : null);
 
   return (
@@ -368,16 +369,16 @@ export const CompareScreen = ({
               focusOnMount
               className="font-display text-[clamp(2.125rem,4vw,3.25rem)] leading-[1.05] font-black tracking-[-0.02em]"
             >
-              One description, two designs
+              One study, two designs
             </ScreenHeading>
             <p className="text-night-text m-0 text-lg">
-              Both providers got the same description and the same decision
-              guide. Open either in Architect, and tell us which one you would
-              rather start from.
+              Both providers got the same research questions and the same
+              decision guide. Open either in Architect, and tell us which one
+              you would rather start from.
             </p>
           </div>
           <blockquote className="border-night-border m-0 max-w-[460px] rounded-[18px] border-[1.5px] border-dashed px-[18px] py-3.5 text-sm text-[oklch(0.88_0.02_281)]">
-            “{excerpt(description, 150)}”
+            “{excerpt(firstQuestion(description), 150)}”
           </blockquote>
         </div>
 

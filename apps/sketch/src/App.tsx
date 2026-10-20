@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { getConfig } from './api/client.ts';
 import { EXAMPLES } from './lib/examples.ts';
+import { composeStudyText } from './lib/study.ts';
 import { type CompareSeed, CompareScreen } from './screens/CompareScreen.tsx';
 import {
   type ConfigState,
@@ -45,7 +46,8 @@ type View =
 const firstExample = EXAMPLES[0];
 
 const initialForm: DescribeForm = {
-  description: firstExample?.text ?? '',
+  questions: firstExample?.questions ?? [''],
+  synopsis: firstExample?.synopsis ?? '',
   picked: firstExample?.id ?? null,
   provider: 'anthropic',
   tier: 'standard',
@@ -108,12 +110,17 @@ export const App = () => {
   );
 
   const startNew = () => {
-    setForm((current) => ({ ...current, description: '', picked: null }));
+    setForm((current) => ({
+      ...current,
+      questions: [''],
+      synopsis: '',
+      picked: null,
+    }));
     backToDescribe();
   };
 
   const generate = () => {
-    const description = form.description.trim();
+    const description = composeStudyText(form);
     const bothAvailable = providers.filter((p) => p.available).length >= 2;
     if (form.compare && bothAvailable) {
       go({
@@ -137,7 +144,7 @@ export const App = () => {
     if (
       view.name === 'describe' &&
       view.refusal &&
-      next.description !== form.description
+      composeStudyText(next) !== composeStudyText(form)
     ) {
       setView({ name: 'describe', refusal: null });
     }

@@ -37,6 +37,25 @@ const mockApi = (finalStatus: JobStatus, { openaiAvailable = false } = {}) => {
   return { fetchMock, posts };
 };
 
+const question = (n: number) =>
+  screen.getByRole<HTMLTextAreaElement>('textbox', {
+    name: `Research question ${n}`,
+  });
+const synopsis = () =>
+  screen.getByRole<HTMLTextAreaElement>('textbox', { name: /Study synopsis/ });
+
+const enterStudy = (questions: string[], text = '') => {
+  fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+  questions.forEach((value, index) => {
+    if (index > 0)
+      fireEvent.click(
+        screen.getByRole('button', { name: /Add a research question/ }),
+      );
+    fireEvent.change(question(index + 1), { target: { value } });
+  });
+  fireEvent.change(synopsis(), { target: { value: text } });
+};
+
 const generateButton = () =>
   screen.getByRole('button', { name: /Generate protocol/ });
 
@@ -50,14 +69,13 @@ describe('Sketch flow', () => {
     const api = mockApi(succeededJob());
     render(<App />);
 
-    const textarea = screen.getByRole('textbox', {
-      name: 'Describe your study',
-    });
-    fireEvent.change(textarea, {
-      target: {
-        value: 'Nurses on a ward name the colleagues they ask for advice.',
-      },
-    });
+    enterStudy(
+      [
+        'Which nurses are central in the ward advice network?',
+        'Do advice ties cross shift boundaries?',
+      ],
+      'All nurses on one acute ward.',
+    );
     await waitFor(() =>
       expect(generateButton()).toHaveProperty('disabled', false),
     );
@@ -80,7 +98,7 @@ describe('Sketch flow', () => {
     expect(api.posts).toEqual([
       {
         description:
-          'Nurses on a ward name the colleagues they ask for advice.',
+          'Research questions\n1. Which nurses are central in the ward advice network?\n2. Do advice ties cross shift boundaries?\n\nStudy synopsis\nAll nurses on one acute ward.',
         provider: 'anthropic',
         tier: 'standard',
       },
@@ -118,16 +136,15 @@ describe('Sketch flow', () => {
     // ChatGPT has no key in this config.
     expect(screen.queryByRole('button', { name: /Compare with/ })).toBeNull();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Edit the description' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Edit the study' }));
     expect(
       (
         await screen.findByRole<HTMLTextAreaElement>('textbox', {
-          name: 'Describe your study',
+          name: 'Research question 2',
         })
       ).value,
-    ).toBe('Nurses on a ward name the colleagues they ask for advice.');
+    ).toBe('Do advice ties cross shift boundaries?');
+    expect(synopsis().value).toBe('All nurses on one acute ward.');
   });
 
   it('shows the not-a-study notice on the describe screen when refused', async () => {
@@ -139,12 +156,7 @@ describe('Sketch flow', () => {
     );
     render(<App />);
 
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'Describe your study' }),
-      {
-        target: { value: 'Write me a poem about autumn leaves' },
-      },
-    );
+    enterStudy(['Write me a poem about autumn leaves']);
     await waitFor(() =>
       expect(generateButton()).toHaveProperty('disabled', false),
     );
@@ -152,23 +164,51 @@ describe('Sketch flow', () => {
 
     const alert = await screen.findByRole('alert');
     expect(
-      within(alert).getByText("That doesn't read like a study yet"),
+      within(alert).getByText('These do not read as research questions yet'),
     ).toBeTruthy();
     expect(
       within(alert).getByText(/Tell Sketch who you will interview\./),
     ).toBeTruthy();
     expect(generateButton()).toHaveProperty('disabled', true);
 
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'Describe your study' }),
-      {
-        target: {
-          value: 'Students name their close friends and who knows whom.',
-        },
-      },
-    );
+    fireEvent.change(question(1), {
+      target: { value: 'How do students form close friendships?' },
+    });
     expect(screen.queryByRole('alert')).toBeNull();
     expect(generateButton()).toHaveProperty('disabled', false);
+  });
+
+  it('adds and removes research questions, and needs one before generating', async () => {
+    mockApi(succeededJob());
+    render(<App />);
+    await waitFor(() =>
+      expect(generateButton()).toHaveProperty('disabled', false),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    expect(generateButton()).toHaveProperty('disabled', true);
+    expect(document.activeElement).toBe(question(1));
+    expect(
+      screen.getByText('Add at least one research question.'),
+    ).toBeTruthy();
+
+    fireEvent.change(question(1), { target: { value: 'Too short' } });
+    expect(generateButton()).toHaveProperty('disabled', true);
+    fireEvent.change(question(1), {
+      target: { value: 'How do nurses seek clinical advice?' },
+    });
+    expect(generateButton()).toHaveProperty('disabled', false);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Add a research question/ }),
+    );
+    expect(document.activeElement).toBe(question(2));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove research question 2' }),
+    );
+    expect(document.activeElement).toBe(question(1));
+    expect(
+      screen.queryByRole('textbox', { name: 'Research question 2' }),
+    ).toBeNull();
   });
 
   it('shows a friendly error with a retry when the job fails', async () => {

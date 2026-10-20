@@ -1,5 +1,5 @@
 // The three model-facing output schemas:
-//   Screening   (step 1, "Reading your description", Haiku 5.5)
+//   Screening   (step 1, "Reading your research questions", Haiku 5.5)
 //   StudyDesign (step 2, "Designing the study", Sonnet 5.5 / Opus 5.5 / OpenAI flagship)
 //   Wording     (step 3, "Writing titles and prompts", cheap model)
 //

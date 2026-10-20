@@ -215,13 +215,13 @@ const DEFAULT_REFUSAL_HINT =
   'Describe who you want to interview and which people or relationships in their lives you want to map.';
 
 const DESIGN_FAILED =
-  'Sketch could not turn this description into a working protocol. Try adding who you will interview and what you want to learn about their relationships.';
+  'Sketch could not turn these research questions into a working protocol. Try stating each question more precisely, or add the population and setting to the synopsis.';
 
 const DESIGN_UNREACHABLE =
   'The design model could not be reached. Please try again in a few minutes.';
 
 const DESIGN_REJECTED =
-  "The design model turned down Sketch's request. This is a problem with Sketch, not with your description, and it has been logged.";
+  "The design model turned down Sketch's request. This is a problem with Sketch, not with your study, and it has been logged.";
 
 export const PIPELINE_FAILURE_MESSAGE =
   'Something went wrong while Sketch was working on your study. Please try again.';

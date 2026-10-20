@@ -1,27 +1,36 @@
-import { type FormEvent, useId, useRef } from 'react';
+import { type FormEvent, useEffect, useId, useRef } from 'react';
 
 import { ctaButton } from '../components/buttonStyles.ts';
 import { HeroArt, PhoneArt } from '../components/HeroArt.tsx';
 import {
   ArrowRightIcon,
   CheckIcon,
+  CloseIcon,
   InfoIcon,
   LockIcon,
+  PlusIcon,
 } from '../components/Icons.tsx';
 import { NotAStudyNotice } from '../components/NotAStudyNotice.tsx';
 import { ScreenHeading } from '../components/ScreenHeading.tsx';
 import { SiteHeader } from '../components/SiteHeader.tsx';
 import { EXAMPLES } from '../lib/examples.ts';
 import {
+  filledQuestions,
+  MAX_QUESTION_LENGTH,
+  MAX_QUESTIONS,
+  MAX_SYNOPSIS_LENGTH,
+  MIN_QUESTION_LENGTH,
+  studyIsComplete,
+} from '../lib/study.ts';
+import {
   type DesignTier,
-  MAX_DESCRIPTION_LENGTH,
-  MIN_DESCRIPTION_LENGTH,
   type Provider,
   type ProviderConfig,
 } from '../shared/api.ts';
 
 export type DescribeForm = {
-  description: string;
+  questions: string[];
+  synopsis: string;
   // The example the text came from, until the researcher edits it.
   picked: string | null;
   provider: Provider;
@@ -62,15 +71,24 @@ const selectClass =
 const NO_PROVIDERS_MESSAGE =
   'Sketch cannot generate protocols right now because no model provider is set up. Try again later.';
 
-const countLine = (length: number, trimmed: number) => {
-  if (trimmed > 0 && trimmed < MIN_DESCRIPTION_LENGTH) {
-    return `${length} characters · write at least ${MIN_DESCRIPTION_LENGTH} to get started`;
+const questionsLine = (questions: string[]) => {
+  const filled = filledQuestions(questions);
+  if (filled.some((q) => q.length < MIN_QUESTION_LENGTH)) {
+    return `Each research question needs at least ${MIN_QUESTION_LENGTH} characters.`;
   }
-  if (length > MAX_DESCRIPTION_LENGTH - 500) {
-    return `${length} of ${MAX_DESCRIPTION_LENGTH} characters`;
-  }
-  return `${length} characters · vague is fine, Sketch fills gaps with defaults`;
+  if (filled.length === 0) return 'Add at least one research question.';
+  return filled.length === 1
+    ? '1 research question'
+    : `${filled.length} research questions`;
 };
+
+const synopsisLine = (length: number) =>
+  length > MAX_SYNOPSIS_LENGTH - 500
+    ? `${length} of ${MAX_SYNOPSIS_LENGTH} characters`
+    : `${length} characters`;
+
+const textareaClass =
+  'font-body text-ink-strong block w-full resize-y rounded-[18px] border-2 bg-white px-4 py-3 text-base leading-[1.6] placeholder:text-[oklch(0.55_0.03_281)] sm:px-5 sm:py-3.5 sm:text-[1.0625rem]';
 
 const INCLUDES = [
   'A codebook of node types, relationships and variables, with input controls chosen to fit each question',
@@ -80,13 +98,13 @@ const INCLUDES = [
 
 const STEPS = [
   {
-    title: 'Describe it in your own words',
-    text: 'A sentence or a page. Sketch never asks follow-up questions; where your description is quiet, it picks sensible defaults.',
+    title: 'State your research questions',
+    text: 'Add a synopsis of the study as you would in a proposal or paper. Population, design, reference periods and instruments you specify are kept as written.',
     badge: 'bg-neon-coral text-white',
   },
   {
     title: 'Sketch designs the interview',
-    text: 'It chooses the stages, builds the codebook, writes every prompt, and checks the result against the Network Canvas protocol schema before you see it.',
+    text: 'It derives who participants name, the relationships among them and the measures each question needs, builds the codebook and stages, and checks the result against the Network Canvas protocol schema.',
     badge: 'bg-mustard text-night',
   },
   {
@@ -105,11 +123,24 @@ export const DescribeScreen = ({
   onGenerate,
   focusHeading,
 }: Props) => {
-  const hintId = useId();
-  const countId = useId();
+  const questionsHintId = useId();
+  const questionsCountId = useId();
+  const synopsisHintId = useId();
+  const synopsisCountId = useId();
   const refusalId = useId();
-  const textareaId = useId();
+  const synopsisId = useId();
   const firstExample = useRef<HTMLButtonElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  const questionInputs = useRef<(HTMLTextAreaElement | null)[]>([]);
+  // The question to focus once the list re-renders after an add or a remove.
+  const focusQuestion = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (focusQuestion.current === null) return;
+    const target = questionInputs.current[focusQuestion.current];
+    focusQuestion.current = null;
+    (target ?? addButton.current)?.focus();
+  });
 
   const providers = config.status === 'ready' ? config.providers : [];
   const available = providers.filter((p) => p.available);
@@ -119,16 +150,33 @@ export const DescribeScreen = ({
   // dead Generate button.
   const noProviders = config.status === 'ready' && available.length === 0;
   const comparing = form.compare && canCompare;
-  const trimmed = form.description.trim().length;
   const ready =
     config.status === 'ready' &&
     (comparing || current?.available === true) &&
-    trimmed >= MIN_DESCRIPTION_LENGTH &&
-    trimmed <= MAX_DESCRIPTION_LENGTH &&
+    studyIsComplete(form) &&
     !refusal;
 
   const update = (patch: Partial<DescribeForm>) =>
     onChange({ ...form, ...patch });
+
+  const setQuestion = (index: number, value: string) =>
+    update({
+      questions: form.questions.map((q, i) => (i === index ? value : q)),
+      picked: null,
+    });
+  const addQuestion = () => {
+    focusQuestion.current = form.questions.length;
+    update({ questions: [...form.questions, ''], picked: null });
+  };
+  const removeQuestion = (index: number) => {
+    focusQuestion.current = Math.max(0, index - 1);
+    update({
+      questions: form.questions.filter((_, i) => i !== index),
+      picked: null,
+    });
+  };
+  const hasText =
+    form.questions.some((q) => q.trim()) || form.synopsis.trim().length > 0;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -158,10 +206,9 @@ export const DescribeScreen = ({
                 focusOnMount={focusHeading}
                 className="font-display sm:text-hero text-[2.5rem] leading-[1.04] font-black tracking-[-0.025em]"
               >
-                Describe your study.
-                <br className="max-sm:hidden" /> Get an{' '}
+                From research questions to a{' '}
                 <span className="text-mustard relative inline-block">
-                  interview.
+                  protocol.
                   <svg
                     viewBox="0 0 300 24"
                     preserveAspectRatio="none"
@@ -180,61 +227,143 @@ export const DescribeScreen = ({
                 </span>
               </ScreenHeading>
               <p className="m-0 max-w-[640px] text-[1.0625rem] leading-[1.55] text-[oklch(0.88_0.025_281)] sm:text-[1.1875rem]">
-                Write a few sentences about your research. Sketch designs a
-                complete Network Canvas interview, with the people to ask about,
-                the questions to ask and the screens to draw them on, and opens
-                it in Architect ready to refine.
+                Enter your research questions and a synopsis of the study.
+                Sketch derives the alters, ties and measures they call for,
+                designs a complete Network Canvas interview, and opens it in
+                Architect for you to review and refine.
               </p>
             </div>
 
             <form
-              aria-label="Study description"
+              aria-label="Your study"
               onSubmit={submit}
               className="bg-paper text-ink shadow-card-lip flex flex-col gap-3.5 rounded-3xl p-[18px] scheme-light sm:gap-[18px] sm:rounded-[28px] sm:p-7"
             >
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor={textareaId}
-                  className="font-display text-xl font-extrabold sm:text-[1.375rem]"
-                >
-                  Describe your study
-                </label>
+              <fieldset className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0">
+                <legend className="mb-1 flex flex-col gap-1 p-0">
+                  <span className="font-display text-xl font-extrabold sm:text-[1.375rem]">
+                    Research questions
+                  </span>
+                </legend>
                 <span
-                  id={hintId}
-                  className="text-sm text-[oklch(0.42_0.06_281)] sm:text-[0.9375rem]"
+                  id={questionsHintId}
+                  className="-mt-2 text-sm text-[oklch(0.42_0.06_281)] sm:text-[0.9375rem]"
                 >
-                  Who will you interview, which relationships matter, and what
-                  do you want to know about the people they name?
+                  State each question as you would in a proposal or paper.
+                  Sketch works out whom participants should name, which
+                  relationships among them matter and what to measure.
                 </span>
-              </div>
+                <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
+                  {form.questions.map((question, index) => (
+                    // Questions have no identity beyond their position.
+                    // oxlint-disable-next-line react/no-array-index-key
+                    <li key={index} className="flex items-start gap-2.5">
+                      <span
+                        aria-hidden="true"
+                        className="font-display mt-3 w-6 flex-none text-right text-base font-extrabold text-[oklch(0.42_0.06_281)]"
+                      >
+                        {index + 1}.
+                      </span>
+                      <textarea
+                        ref={(element) => {
+                          questionInputs.current[index] = element;
+                        }}
+                        rows={2}
+                        value={question}
+                        maxLength={MAX_QUESTION_LENGTH}
+                        aria-label={`Research question ${index + 1}`}
+                        aria-describedby={`${questionsHintId} ${questionsCountId}${refusal ? ` ${refusalId}` : ''}`}
+                        aria-invalid={refusal ? true : undefined}
+                        onChange={(event) =>
+                          setQuestion(index, event.target.value)
+                        }
+                        placeholder={
+                          index === 0
+                            ? 'For example: Is the drinking behaviour of a student’s close friends associated with the student’s own alcohol use?'
+                            : undefined
+                        }
+                        className={`${textareaClass} field-sizing-content min-h-[76px] ${
+                          refusal ? 'border-tangerine' : 'border-paper-line'
+                        }`}
+                      />
+                      {form.questions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeQuestion(index)}
+                          aria-label={`Remove research question ${index + 1}`}
+                          className="text-ink-muted hover:text-ink-strong mt-1.5 grid size-11 flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent"
+                        >
+                          <CloseIcon size={18} />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+                <div className="flex flex-wrap items-center justify-between gap-2 pl-8 text-[0.8125rem] text-[oklch(0.45_0.05_281)]">
+                  <span id={questionsCountId}>
+                    {questionsLine(form.questions)}
+                  </span>
+                  {form.questions.length < MAX_QUESTIONS && (
+                    <button
+                      ref={addButton}
+                      type="button"
+                      onClick={addQuestion}
+                      className="-my-1.5 inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-3 font-[inherit] font-semibold text-[oklch(0.42_0.1_281)]"
+                    >
+                      <PlusIcon size={16} />
+                      Add a research question
+                    </button>
+                  )}
+                </div>
+              </fieldset>
 
               <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor={synopsisId}
+                    className="font-display text-xl font-extrabold sm:text-[1.375rem]"
+                  >
+                    Study synopsis{' '}
+                    <span className="font-body text-base font-semibold text-[oklch(0.45_0.05_281)]">
+                      (optional)
+                    </span>
+                  </label>
+                  <span
+                    id={synopsisHintId}
+                    className="text-sm text-[oklch(0.42_0.06_281)] sm:text-[0.9375rem]"
+                  >
+                    Population, setting, design, reference period and any
+                    instruments you plan to use. What you specify is kept; where
+                    you leave something out, Sketch makes the standard choice
+                    and explains it.
+                  </span>
+                </div>
                 <textarea
-                  id={textareaId}
-                  rows={7}
-                  value={form.description}
-                  maxLength={MAX_DESCRIPTION_LENGTH}
-                  aria-describedby={`${hintId} ${countId}${refusal ? ` ${refusalId}` : ''}`}
-                  aria-invalid={refusal ? true : undefined}
+                  id={synopsisId}
+                  rows={5}
+                  value={form.synopsis}
+                  maxLength={MAX_SYNOPSIS_LENGTH}
+                  aria-describedby={`${synopsisHintId} ${synopsisCountId}`}
                   onChange={(event) =>
-                    update({ description: event.target.value, picked: null })
+                    update({ synopsis: event.target.value, picked: null })
                   }
-                  placeholder="For example: I want to understand how first-year students form friendships, and whether their friends' drinking is linked to their own wellbeing…"
-                  className={`font-body text-ink-strong block min-h-[188px] w-full resize-y rounded-[18px] border-2 bg-white px-4 py-3.5 text-base leading-[1.6] placeholder:text-[oklch(0.55_0.03_281)] sm:px-5 sm:py-[18px] sm:text-[1.0625rem] ${
-                    refusal ? 'border-tangerine' : 'border-paper-line'
-                  }`}
+                  placeholder="For example: A cross-sectional egocentric network survey of first-year undergraduates, administered in week 10 of the first semester. Alcohol use is measured with the AUDIT-C."
+                  className={`${textareaClass} border-paper-line min-h-[140px]`}
                 />
                 <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[0.8125rem] text-[oklch(0.45_0.05_281)]">
-                  <span id={countId}>
-                    {countLine(form.description.length, trimmed)}
+                  <span id={synopsisCountId}>
+                    {synopsisLine(form.synopsis.length)}
                   </span>
-                  {form.description.length > 0 && (
+                  {hasText && (
                     <button
                       type="button"
-                      onClick={() => update({ description: '', picked: null })}
+                      onClick={() => {
+                        focusQuestion.current = 0;
+                        update({ questions: [''], synopsis: '', picked: null });
+                      }}
                       className="-my-1.5 min-h-11 min-w-11 cursor-pointer rounded-md border-0 bg-transparent px-3 font-[inherit] font-semibold text-[oklch(0.42_0.1_281)]"
                     >
-                      Clear
+                      Clear all
                     </button>
                   )}
                 </div>
@@ -250,7 +379,7 @@ export const DescribeScreen = ({
 
               <div className="flex flex-col gap-2.5">
                 <span className="text-xs font-bold tracking-[0.06em] text-[oklch(0.45_0.05_281)] uppercase sm:text-[0.8125rem]">
-                  Or start from an example
+                  Or start from an example study
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {EXAMPLES.map((example, index) => {
@@ -263,7 +392,8 @@ export const DescribeScreen = ({
                         aria-pressed={on}
                         onClick={() =>
                           update({
-                            description: example.text,
+                            questions: example.questions,
+                            synopsis: example.synopsis,
                             picked: example.id,
                           })
                         }
@@ -440,7 +570,7 @@ export const DescribeScreen = ({
             <div className="flex max-w-[760px] items-start gap-3 text-sm text-[oklch(0.84_0.03_281)]">
               <LockIcon className="mt-px flex-none" />
               <p className="m-0">
-                Sketch keeps a log of every description and the protocol it
+                Sketch keeps a log of every study you submit and the protocol it
                 generates, so we can improve it. Please leave out names and
                 anything that could identify a real person.{' '}
                 <a href="#what-we-keep">What we keep</a>
@@ -517,11 +647,12 @@ export const DescribeScreen = ({
               What we keep
             </h3>
             <p className="m-0">
-              For every run, Sketch logs the description you wrote, the protocol
-              it generated, the models it used, how long it took and what it
-              cost. When you compare two designs, it also logs which one you
-              preferred. We read these logs to make Sketch better. Nothing else
-              is stored, and Sketch never sees what happens in Architect.
+              For every run, Sketch logs the research questions and synopsis you
+              entered, the protocol it generated, the models it used, how long
+              it took and what it cost. When you compare two designs, it also
+              logs which one you preferred. We read these logs to make Sketch
+              better. Nothing else is stored, and Sketch never sees what happens
+              in Architect.
             </p>
           </div>
         </section>

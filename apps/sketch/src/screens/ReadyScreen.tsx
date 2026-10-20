@@ -142,7 +142,7 @@ export const ReadyScreen = ({
             </span>
             <span className="flex flex-wrap gap-x-5 gap-y-2">
               <button type="button" onClick={onEdit} className={linkButton}>
-                Edit the description
+                Edit the study
               </button>
               {compareWith && (
                 <button

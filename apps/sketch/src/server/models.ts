@@ -15,7 +15,7 @@ export type StepModels = {
   design: string;
   // Step 3, "Writing titles and prompts".
   wording: string;
-  // Step 1, "Reading your description".
+  // Step 1, "Reading your research questions".
   screening: string;
 };
 

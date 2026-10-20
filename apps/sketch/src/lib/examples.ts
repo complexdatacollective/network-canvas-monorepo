@@ -1,35 +1,57 @@
-// Example descriptions offered on the start page.
+// Example studies offered on the start page.
 
 export type Example = {
   id: string;
   label: string;
   dot: string;
-  text: string;
+  questions: string[];
+  synopsis: string;
 };
 
 export const EXAMPLES: Example[] = [
   {
     id: 'friends',
-    label: 'Friendship and drinking',
+    label: 'Peer influence on drinking',
     dot: 'bg-neon-coral',
-    text: 'I study how first-year university students form friendships during their first semester, and whether having friends who drink heavily is linked to their own drinking and wellbeing. I want to ask about close friends and the people they go out with, which of those people know each other, and where they usually socialise. I also need some basic questions about the student themselves.',
+    questions: [
+      'How do first-year undergraduates form friendship networks during their first semester?',
+      "Is the drinking behaviour of a student's close friends associated with the student's own alcohol use and wellbeing?",
+      'Do students whose friends are densely interconnected report higher wellbeing than students with sparse networks?',
+    ],
+    synopsis:
+      'A cross-sectional egocentric network survey of first-year undergraduates at a large public university, administered in week 10 of the first semester. Alcohol use is measured with the AUDIT-C and wellbeing with the WHO-5. Perceived alter drinking and the social settings in which students socialise are secondary measures.',
   },
   {
     id: 'aging',
-    label: 'Support after a move',
+    label: 'Support in assisted living',
     dot: 'bg-sea-green',
-    text: 'We interview adults over 70 who recently moved into assisted living. We want to map who gives them practical help, emotional support and advice, where those people live, and how often they are in contact.',
+    questions: [
+      'How does the composition of older adults’ support networks change after a move into assisted living?',
+      'Is geographic proximity to support providers associated with the frequency of contact and the type of support received?',
+    ],
+    synopsis:
+      'Interviewer-administered personal network interviews with adults aged 70 and over, conducted within six months of their move into an assisted living facility. Participants describe who provides practical, emotional and informational support, and where each person lives.',
   },
   {
     id: 'prep',
-    label: 'Sexual and drug-use partners',
+    label: 'Sexual networks and PrEP',
     dot: 'bg-slate-blue',
-    text: 'A study of young men who have sex with men, mapping sexual partners and drug-use partners in the last six months, condom use and PrEP awareness with each partner, and which partners know each other.',
+    questions: [
+      'How do overlapping sexual and drug-use partnerships structure HIV risk among young men who have sex with men?',
+      'Is awareness of PrEP among partners associated with condom use within each partnership?',
+    ],
+    synopsis:
+      'A community-recruited sample of young men who have sex with men, aged 18 to 29. The reference period is the past six months. Data are collected by computer-assisted self-interview.',
   },
   {
     id: 'ward',
-    label: 'Advice on a hospital ward',
+    label: 'Advice seeking among nurses',
     dot: 'bg-mustard',
-    text: 'Nurses on a hospital ward name the colleagues they go to for clinical advice and for emotional support, the role and shift of each colleague, and who works closely with whom.',
+    questions: [
+      'Which nurses occupy central positions in the clinical advice network of a hospital ward?',
+      'Do advice-seeking ties cross professional role and shift boundaries?',
+    ],
+    synopsis:
+      'A sociocentric study of all registered and enrolled nurses on one acute medical ward. A staff roster is available, so participants select colleagues from a list rather than recalling names.',
   },
 ];

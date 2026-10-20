@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { toProviderJsonSchema } from '../design/json-schema.ts';
 import { StudyDesignSchema } from '../design/schema.ts';
+import { enabledProviders } from '../providers/adapters.ts';
 import {
   type AnthropicClientLike,
   createAnthropicAdapter,
@@ -318,5 +319,17 @@ describe('openai adapter', () => {
     await expect(
       refused.adapter.generateStructured(request),
     ).resolves.toMatchObject({ stopReason: 'refusal', json: null });
+  });
+});
+
+describe('enabled providers', () => {
+  it('offers Claude only unless SKETCH_PROVIDERS says otherwise', () => {
+    expect([...enabledProviders(undefined)]).toEqual(['anthropic']);
+    expect([...enabledProviders(' ')]).toEqual(['anthropic']);
+    expect([...enabledProviders('anthropic, OpenAI')]).toEqual([
+      'anthropic',
+      'openai',
+    ]);
+    expect([...enabledProviders('openai')]).toEqual(['openai']);
   });
 });

@@ -6,7 +6,7 @@ import {
 } from '../shared/api.ts';
 
 export const STEP_TITLES: Record<StepId, string> = {
-  read: 'Reading your description',
+  read: 'Reading your research questions',
   design: 'Designing the study',
   wording: 'Writing titles and prompts',
   compile: 'Building the protocol',

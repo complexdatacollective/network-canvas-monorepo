@@ -5,7 +5,7 @@ type Props = {
 };
 
 const FALLBACK_HINT =
-  'Sketch needs at least one thing to go on: who you will interview, or which relationships you want to learn about. Everything else can be left to defaults.';
+  'Sketch needs at least one research question about people, their relationships or their networks.';
 
 export const NotAStudyNotice = ({ id, hint, onTryExample }: Props) => (
   <div
@@ -37,7 +37,7 @@ export const NotAStudyNotice = ({ id, hint, onTryExample }: Props) => (
     </svg>
     <div className="flex flex-col gap-1.5">
       <strong className="font-display text-ink text-lg font-extrabold">
-        That doesn't read like a study yet
+        These do not read as research questions yet
       </strong>
       <p className="text-ink m-0 text-[0.9375rem]">
         {hint?.trim() || FALLBACK_HINT}{' '}

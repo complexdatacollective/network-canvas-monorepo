@@ -2,6 +2,7 @@ import { ctaButton, paperButton } from '../components/buttonStyles.ts';
 import { ScreenHeading } from '../components/ScreenHeading.tsx';
 import { SiteHeader } from '../components/SiteHeader.tsx';
 import { excerpt } from '../lib/format.ts';
+import { firstQuestion } from '../lib/study.ts';
 
 type Props = {
   message: string;
@@ -67,20 +68,20 @@ export const FailedScreen = ({
             </strong>
             <p className="m-0 text-[0.9375rem]">{message}</p>
             <p className="m-0 text-[0.9375rem]">
-              Trying again usually works. If it keeps failing, a shorter or more
-              specific description can help.
+              Trying again usually works. If it keeps failing, stating each
+              research question more precisely can help.
             </p>
           </div>
         </div>
         <div className="border-paper-line text-ink-muted flex flex-col gap-2 rounded-[18px] border-[1.5px] border-dashed px-[18px] py-3.5 text-[0.9375rem]">
           <span className="text-xs font-bold tracking-[0.06em] uppercase">
-            Your description
+            Your first research question
           </span>
-          <p className="m-0">{excerpt(description)}</p>
+          <p className="m-0">{excerpt(firstQuestion(description))}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <button type="button" onClick={onEdit} className={paperButton}>
-            Edit the description
+            Edit the study
           </button>
           <button type="button" onClick={onRetry} className={ctaButton}>
             Try again

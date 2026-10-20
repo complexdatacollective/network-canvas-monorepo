@@ -10,6 +10,7 @@ import { useElapsed } from '../hooks/useElapsed.ts';
 import { useJobRun } from '../hooks/useJobRun.ts';
 import { excerpt, formatClock } from '../lib/format.ts';
 import { initialSteps, STEP_TITLES, stepProgress } from '../lib/steps.ts';
+import { firstQuestion } from '../lib/study.ts';
 import type { CreateJobRequest, JobModels, JobStatus } from '../shared/api.ts';
 
 type Props = {
@@ -144,10 +145,10 @@ export const GeneratingScreen = ({
           <ProgressArt doneCount={progress.done} />
           <div className="border-night-border flex flex-col gap-2 rounded-3xl border-[1.5px] border-dashed px-[22px] py-5">
             <span className="text-night-muted text-[0.8125rem] font-bold tracking-[0.06em] uppercase">
-              Your description
+              Your first research question
             </span>
             <p className="m-0 text-[0.9375rem] text-[oklch(0.9_0.02_281)]">
-              {excerpt(request.description)}
+              {excerpt(firstQuestion(request.description))}
             </p>
             <button
               type="button"

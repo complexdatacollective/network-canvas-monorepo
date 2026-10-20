@@ -9,9 +9,9 @@
 // the guide must never suggest something the schema cannot express
 // (asserted in part by __tests__/decision-guide.test.ts).
 
-export const DECISION_GUIDE = `# Sketch decision guide v1
+export const DECISION_GUIDE = `# Sketch decision guide v2
 
-This guide is how an experienced Network Canvas designer turns a study description into a StudyDesign. Follow it unless the description clearly asks for something else that the schema can express.
+This guide is how an experienced Network Canvas designer turns a researcher's research questions and study synopsis into a StudyDesign. Follow it unless the study clearly asks for something else that the schema can express.
 
 ## 1. The interview arc
 
@@ -44,7 +44,7 @@ Name everyone before interpreting them: do not zigzag between generators and int
 
 - **quick_add** (default): the participant types a name and moves on. Fastest, and people name more alters when naming is cheap.
 - **form**: name plus 1-3 attributes asked as each person is added. Use it only when an attribute is essential at nomination time and is better asked immediately (relationship type when later stages filter on it, an age band). Never more than 3.
-- **roster**: pick from a list of a known population (a class, a ward, a team, an organisation). Use it only when the description says such a list exists. Sketch generates a placeholder list for the researcher to replace; attributeIds are columns the list holds for each person (text, long_text, number or yes_no only), shown on the cards.
+- **roster**: pick from a list of a known population (a class, a ward, a team, an organisation). Use it only when the study says such a list exists. Sketch generates a placeholder list for the researcher to replace; attributeIds are columns the list holds for each person (text, long_text, number or yes_no only), shown on the cards.
 
 ### Prompts
 
@@ -92,14 +92,14 @@ One shared map, 1-4 prompts, each with one task:
 - **narrative**: a closing visualisation for discussion that collects no data. Only after a sociogram of the same node type. 1-4 views, each answering one question, with a 1-4 word label: groupByAttributeId (a single_choice or multi_choice attribute), relationshipIds (ties created earlier) and highlightAttributeIds (yes_no attributes). Include it for qualitative or mixed-methods interviews, or when the participant reflecting on their network is part of the study.
 - **egoForm**: 1-8 attributeIds from egoAttributes. Split long sets across consecutive egoForm stages by topic. Never a consent form.
 - **information**: text only (Markdown). role is welcome, instructions, transition or closing.
-- interviewerNote: use it when the description mentions interviewers or a clinic setting: what to say, how to help. Otherwise "".
+- interviewerNote: use it when the study mentions interviewers or a clinic setting: what to say, how to help. Otherwise "".
 
 ## 7. Participant attributes and validated instruments
 
-- Ask only what the research question needs: age (number, numberRange [16, 99] or the population's range), gender (single_choice with an inclusive option set and "Prefer not to say"), and the context variables the description names.
+- Ask only what the research question needs: age (number, numberRange [16, 99] or the population's range), gender (single_choice with an inclusive option set and "Prefer not to say"), and the context variables the research questions or synopsis name.
 - Attribute kinds: text, long_text, number (whole numbers), yes_no, single_choice (2-8 options), multi_choice (2-8 options), ordered (2-7 options, lowest first), slider (exactly two end labels, for continuous judgements), date, month_year, year.
 - required: true only for answers the analysis cannot do without. Keep sensitive questions optional.
-- **Validated instruments** (AUDIT-C, WHO-5, PHQ-9, GAD-7, K6, UCLA-3, LSNS-6 and similar): use one only when the description names it or plainly needs that construct, and only a published instrument you know exactly. Reproduce the items, options and their order exactly; each item is an ordered attribute with optionScores set to the published scores (e.g. [0, 1, 2, 3, 4]). Never invent, shorten or reword an instrument, and never use optionScores for anything else. If you are not certain of the exact wording, use plain ordered items without optionScores and say so in the rationale. Put each instrument in its own egoForm (split if over 8 items) and keep published skip patterns (AUDIT-C items 2-3 are skipped when the participant never drinks).
+- **Validated instruments** (AUDIT-C, WHO-5, PHQ-9, GAD-7, K6, UCLA-3, LSNS-6 and similar): use one only when the synopsis names it or a research question plainly needs that construct, and only a published instrument you know exactly. Reproduce the items, options and their order exactly; each item is an ordered attribute with optionScores set to the published scores (e.g. [0, 1, 2, 3, 4]). Never invent, shorten or reword an instrument, and never use optionScores for anything else. If you are not certain of the exact wording, use plain ordered items without optionScores and say so in the rationale. Put each instrument in its own egoForm (split if over 8 items) and keep published skip patterns (AUDIT-C items 2-3 are skipped when the participant never drinks).
 
 ## 8. Skip logic and filters
 
@@ -114,7 +114,7 @@ One shared map, 1-4 prompts, each with one task:
 ## 9. Writing prompts and questions
 
 - Second person, plain words for the population, one sentence, one concept per prompt. Never two questions in one ("who do you talk to and trust").
-- Name generator prompts carry a **reference period** and a **bolded domain**: "Within the **past 6 months**, who have you **discussed important matters** with?", "Since **starting university**, who have you **become friends with**?" Use the same reference period across a theme. Default to the past 6 months when the description gives none.
+- Name generator prompts carry a **reference period** and a **bolded domain**: "Within the **past 6 months**, who have you **discussed important matters** with?", "Since **starting university**, who have you **become friends with**?" Use the same reference period across a theme. Default to the past 6 months when the study gives none.
 - Bold (with **double asterisks**) the key phrase of every prompt, the thing that distinguishes it from the others.
 - Interpreter prompts refer to "each person"; node attribute questions in forms refer to "this person".
 - Write option labels as the participant would say them, short and mutually exclusive.
@@ -126,10 +126,10 @@ One shared map, 1-4 prompts, each with one task:
 - At most ~4 interpreter stages per node type beyond the map; ordered bins at most 6 options, category bins at most 8.
 - Every stage, prompt and attribute must earn its place against the research question. When in doubt, leave it out.
 
-## 11. Vague or unusual descriptions
+## 11. Brief or unusual studies
 
-- Never refuse a real study, however brief. Make the conventional choice for that kind of study and say so in the rationale. The default personal network design is: welcome; consent; egoForm with age and gender; one quick_add generator with a past-6-months prompt about the study's domain (maxNodes 15); bins for closeness and relationship type; a sociogram with a position prompt and a connect prompt for knows; closing.
-- If the description mentions an outcome (wellbeing, drinking, loneliness), measure it on the participant and, where it matters for the hypothesis, on the alters as perceived by the participant.
+- Never refuse a real study, however brief: a single research question is enough to design from. Make the conventional choice for that kind of study and say so in the rationale. The default personal network design is: welcome; consent; egoForm with age and gender; one quick_add generator with a past-6-months prompt about the study's domain (maxNodes 15); bins for closeness and relationship type; a sociogram with a position prompt and a connect prompt for knows; closing.
+- If a research question names an outcome (wellbeing, drinking, loneliness), measure it on the participant and, where it matters for the hypothesis, on the alters as perceived by the participant.
 - Not offered, with the nearest alternative to design instead (say so in the rationale):
   - anonymising or encrypting names: ask for initials or a nickname in nameQuestion;
   - interviewer-led free-form network drawing: a sociogram with an interviewerNote;
@@ -141,7 +141,7 @@ One shared map, 1-4 prompts, each with one task:
 
 ## 12. Worked example (key decisions only)
 
-Description: "I study how first-year university students form friendships during their first semester, and whether having friends who drink heavily is linked to their own drinking and wellbeing."
+Research questions: "How do first-year undergraduates form friendship networks during their first semester? Is the drinking behaviour of a student's close friends associated with the student's own alcohol use and wellbeing?"
 
 - includeConsent true. egoAttributes: age (number [16, 99], required), gender (single_choice), lives_in_halls (yes_no); AUDIT-C (3 ordered items, optionScores [0, 1, 2, 3, 4]); WHO-5 (5 ordered items, 6 options "At no time" to "All of the time", optionScores [0, 1, 2, 3, 4, 5]).
 - One node type person. Tags new_friend and support (yes_no, question ""); is_first_year (yes_no with labels "Yes" / "No, or I'm not sure") and first_met (month_year) in an alterForm, because neither is a bin kind; closeness (ordered, 4 options), how_met (single_choice, allowOther) and drinks_heavily (single_choice: Yes / No / I don't know, since "don't know" matters) in one bins stage; drinks_with as a sociogram highlight; drink_together_freq (ordered).
