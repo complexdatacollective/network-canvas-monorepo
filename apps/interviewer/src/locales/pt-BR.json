@@ -124,7 +124,6 @@
   "interviewer.interviewComplete.exit": "Sair",
   "interviewer.interviewComplete.interviewComplete": "Entrevista concluída",
   "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Agradecemos sua participação. Esta entrevista foi concluída e as respostas não podem mais ser alteradas. Devolva o dispositivo à equipe de pesquisa.",
-  "interviewer.language.automatic": "Automático (navegador)",
   "interviewer.language.failed": "O idioma foi alterado nesta sessão, mas a preferência não pôde ser salva. Seu navegador pode estar bloqueando o armazenamento no dispositivo.",
   "interviewer.language.hint": "Escolha o idioma do Interviewer e dos controles de entrevista integrados neste dispositivo. Isso não altera o conteúdo do protocolo nem os dados coletados.",
   "interviewer.language.label": "Idioma do aplicativo",

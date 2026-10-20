@@ -173,17 +173,16 @@ if (manifest.start_url !== base || manifest.scope !== base) {
   );
 }
 if (isSubpath) {
-  // A second app on Architect 9's origin, opened inside Architect 9's window
-  // and never installed on its own: it must be told apart from Architect 9
-  // and must not compete with it for .netcanvas launches.
+  // The editor inside Architect 9, on Architect 9's origin: it must be told
+  // apart from Architect 9, must not be offered for installation, and must
+  // not compete with it for .netcanvas launches.
   const expectedName = `Architect ${packageJson.version.split('.')[0]}`;
   if (manifest.name !== expectedName || manifest.short_name !== expectedName) {
     fail(`a ${base} build's manifest must be named ${expectedName}`);
   }
-  // Browsers offer to install only an app that asks for its own window.
   if (manifest.display !== 'browser') {
     fail(
-      `a ${base} build's manifest display must be browser, so it is never offered for installation; found ${manifest.display}`,
+      `a ${base} build's manifest must use display "browser", so it is not installable`,
     );
   }
   if ('file_handlers' in manifest || 'launch_handler' in manifest) {

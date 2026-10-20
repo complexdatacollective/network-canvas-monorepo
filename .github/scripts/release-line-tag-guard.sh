@@ -1,19 +1,11 @@
 #!/usr/bin/env bash
-# Resolves and validates a released app tag that a run builds something
-# per-major-line from, emitting version/major/sha for the workflow. "Something
-# per-major-line" is a thing each major line has exactly one of, which a
-# later run replaces: the sub-path dist tarball the next major pins
-# (.github/workflows/app-subpath-dist.yml) and Architect's per-major archive
-# host (.github/workflows/architect-archive-release.yml).
+# Resolves and validates a released app tag, emitting version/major/sha for
+# the workflow.
 #
-# The archive runs it TWICE: once up front so a bad tag fails before a build
-# is spent, and again inside the deploy job while it holds the concurrency
-# lock. The second run is not redundant — every archived major line shares one
-# host, so a newer release on the same line tagged between the first check and
-# the lock would otherwise let the older run publish last and roll the host
-# backwards. The repository makes the same argument for app-release-guard.sh:
-# only mutual exclusion across the whole check-then-deploy sequence closes
-# that window.
+# Run by .github/workflows/app-subpath-dist.yml before it builds the tag's tree
+# under its major's sub-path. The sub-path dist for a major line is the one
+# tarball the next major pins, so the guard refuses anything but the newest
+# stable release on that line: the pin is only ever moved forward.
 #
 # Reads APP (architect | interviewer), TAG and (optionally) FORCE from the
 # environment. Runs against whatever git repository is the working directory,

@@ -1579,24 +1579,6 @@ test('Architect 8.x releases in either lane chain the sub-path dist after the re
   });
 });
 
-// The archive host and the sub-path dist share one tag guard: a tag of the app
-// itself, the newest stable on its major line unless forced. The archive runs
-// it before the build and again under its deploy lock.
-test('the Architect archive guards its tag with the shared release-line guard', () => {
-  const archive = readWorkflow('architect-archive-release.yml');
-  const guards = Object.values(archive.jobs)
-    .flatMap(({ steps = [] }) => steps)
-    .filter(
-      ({ run }) => run === 'bash .github/scripts/release-line-tag-guard.sh',
-    );
-  assert.equal(guards.length, 2);
-  for (const guard of guards) {
-    assert.equal(guard.env.APP, 'architect');
-    assert.equal(guard.env.TAG, '${{ inputs.tag }}');
-    assert.equal(guard.env.FORCE, '${{ inputs.force }}');
-  }
-});
-
 // Architect 9 bundles Architect 8, and Interviewer 9 bundles Interviewer 8, at
 // /v8/ from a tarball attached to the 8.x release ("Sub-path dist tarball" in
 // apps/<app>/RELEASING.md). The lane runs after a release has shipped, so it

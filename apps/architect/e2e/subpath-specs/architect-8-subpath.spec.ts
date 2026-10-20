@@ -360,6 +360,38 @@ test('?open= opens that row of the library, and leaves the address bar clean', a
   await expect(protocolNameField(architectPage)).toHaveValue('Opened By URL');
 });
 
+test('closing an editor ?open= opened leaves no /v8/ page behind in history', async ({
+  architectPage,
+  seed,
+}) => {
+  const id = await seed(informationProtocol('Round Trip Study'), {
+    id: 'e2e-round-trip',
+    at: SEED_AT,
+  });
+  await architectPage.evaluate(() => {
+    sessionStorage.clear();
+  });
+  // Architect 9's own entry, as the page that sent the protocol here.
+  await architectPage.goto('/?came-from=architect-9');
+
+  await architectPage.goto(`./?open=${id}`);
+  await settle(architectPage);
+  await expect(protocolNameField(architectPage)).toHaveValue(
+    'Round Trip Study',
+  );
+  // A step inside the editor, so the session spans several entries.
+  await new Timeline(architectPage).openStage(STAGE_LABEL);
+
+  await returnToStartScreen(architectPage).click();
+  await expect(architect9Stub(architectPage)).toBeVisible();
+  expect(new URL(architectPage.url()).search).toBe('');
+
+  // Back leaves the hand-off for the page that started it, rather than
+  // landing on an empty /v8/ page that would only send the tab forward again.
+  await architectPage.goBack();
+  await expect(architectPage).toHaveURL(/\/\?came-from=architect-9$/);
+});
+
 test('?open= with an id the library does not hold says so, then goes back to Architect 9', async ({
   architectPage,
 }) => {
