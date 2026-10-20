@@ -4,11 +4,12 @@
 // until the job succeeds, fails or is refused. Polling gives up after
 // POLL_TIMEOUT_MS (even if a request hangs), or after three requests in a
 // row fail. Unmounting (or a new request) stops polling. With `resumeJobId`
-// it skips the POST and follows a job that is already running.
+// it skips the POST and follows a job that is already running. The page picks
+// each job's id, so the POST can be followed even when its answer is lost.
 
 import { useEffect, useState } from 'react';
 
-import { createJob, getJob } from '../api/client.ts';
+import { ApiRequestError, createJob, getJob } from '../api/client.ts';
 import type { CreateJobRequest, JobStatus } from '../shared/api.ts';
 
 export const POLL_INTERVAL_MS = 1500;
@@ -132,18 +133,31 @@ export const useJobRun = (
     };
 
     const start = async () => {
+      if (resumeJobId) {
+        setRun(() => ({ jobId: resumeJobId, job: null, error: null }));
+        await poll(resumeJobId);
+        return;
+      }
+      // The id is chosen and reported before the POST, so a create whose
+      // answer is lost (or that Back interrupts) can still be followed.
+      const jobId = crypto.randomUUID();
+      setRun(() => ({ jobId, job: null, error: null }));
+      let confirmed: string;
       try {
-        const { jobId } = resumeJobId
-          ? { jobId: resumeJobId }
-          : await createJob(request, signal);
-        if (signal.aborted) return;
-        setRun(() => ({ jobId, job: null, error: null }));
-        await poll(jobId);
+        ({ jobId: confirmed } = await createJob({ ...request, jobId }, signal));
       } catch (error) {
         if (isAbort(error)) return;
         settle();
-        fail(messageOf(error));
+        // The server answered, so no job exists to follow.
+        if (error instanceof ApiRequestError && error.status > 0)
+          setRun(() => ({ jobId: null, job: null, error: messageOf(error) }));
+        else fail(messageOf(error));
+        return;
       }
+      if (signal.aborted) return;
+      if (confirmed !== jobId)
+        setRun(() => ({ jobId: confirmed, job: null, error: null }));
+      await poll(confirmed);
     };
 
     void start();

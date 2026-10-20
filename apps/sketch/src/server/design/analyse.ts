@@ -41,6 +41,8 @@ export type NormalizedDesign = Omit<
   instrumentAttributes: string[];
 };
 
+const MAX_MIN_NODES = 50;
+
 const CONSENT_IDS = new Set([
   'consent',
   'consent_given',
@@ -1036,6 +1038,16 @@ export const analyse = (
         }
         s.minNodes = Math.max(0, Math.round(s.minNodes || 0));
         s.maxNodes = Math.max(0, Math.round(s.maxNodes || 0));
+        // a roster generates this many placeholder rows; nobody names more
+        if (s.minNodes > MAX_MIN_NODES) {
+          add(
+            'adjusted',
+            'MIN_LOWERED',
+            path,
+            `minNodes lowered to ${MAX_MIN_NODES}.`,
+          );
+          s.minNodes = MAX_MIN_NODES;
+        }
         if (s.maxNodes && s.maxNodes < s.minNodes) {
           add(
             'adjusted',
@@ -1504,81 +1516,128 @@ export const analyse = (
 
   // ---- one writer per attribute ------------------------------------------------------
   // Bins, sociogram highlights, tie strength and prompt tags write without a
-  // form's validation, so an attribute a form also asks would reach that form
-  // with values it could reject. A stage built around the attribute (bins,
-  // highlight, strength) keeps it and the form drops it; a prompt tag is a
-  // side effect of naming, so the form keeps it and the tag goes.
-  const sorted = new Set<string>();
-  for (const s of d.stages) {
-    if (s.kind === 'bins')
-      s.prompts.forEach((p) =>
-        sorted.add(`node:${s.nodeTypeId}/${p.attributeId}`),
-      );
-    if (s.kind === 'sociogram')
-      s.prompts.forEach((p) => {
-        if (p.task === 'highlight')
-          sorted.add(`node:${s.nodeTypeId}/${p.attributeId}`);
-      });
-    if (s.kind === 'relationshipCensus' && s.method === 'with_strength')
-      s.prompts.forEach((p) =>
-        sorted.add(`rel:${p.relationshipId}/${p.strengthAttributeId}`),
-      );
-  }
-  const keepInForm = (s: NStage, scope: string, ids: string[]) =>
-    ids.filter((x) => {
-      if (!sorted.has(`${scope}/${x}`)) return true;
-      add(
-        'adjusted',
-        'FORM_FIELD_WRITTEN_ELSEWHERE',
-        `stages[${s.rawIndex}].attributeIds`,
-        `"${x}" is recorded by another stage, so the form in "${s.id}" no longer asks it.`,
-      );
-      return false;
-    });
-  d.stages = d.stages.filter((s) => {
-    if (s.kind === 'alterForm' || s.kind === 'relationshipForm') {
-      const scope =
-        s.kind === 'alterForm'
-          ? `node:${s.nodeTypeId}`
-          : `rel:${s.relationshipId}`;
-      s.attributeIds = keepInForm(s, scope, s.attributeIds);
-      if (!s.attributeIds.length) {
-        add(
-          'adjusted',
-          'EMPTY_FORM_REMOVED',
-          `stages[${s.rawIndex}]`,
-          `Form "${s.id}" had nothing left to ask and was removed.`,
-        );
-        return false;
-      }
-    }
-    if (s.kind === 'nameGenerator' && s.method === 'form') {
-      s.attributeIds = keepInForm(s, `node:${s.nodeTypeId}`, s.attributeIds);
-      if (!s.attributeIds.length) s.method = 'quick_add';
-    }
-    return true;
-  });
-  const formAsked = new Set<string>();
-  for (const s of d.stages) {
+  // form's validation, so an attribute a form also asks could reach that form
+  // with values it would reject. The earlier writer keeps the attribute, so
+  // nothing that reads it in between loses its value; the later one drops it.
+  // Two exceptions: a roster's overlap form replaces the roster's tags (it
+  // runs straight after them), and a census always records strength before a
+  // relationshipForm can ask about its ties.
+  type Writer = { at: number; stage: NStage; drop: () => void; what: string };
+  const formAt = new Map<string, number>();
+  const unvalidated: (Writer & { key: string })[] = [];
+  d.stages.forEach((s, at) => {
     if (
       s.kind === 'alterForm' ||
       (s.kind === 'nameGenerator' && s.method === 'form')
     )
-      s.attributeIds.forEach((x) => formAsked.add(`node:${s.nodeTypeId}/${x}`));
-  }
-  for (const s of d.stages) {
-    if (s.kind !== 'nameGenerator') continue;
-    s.prompts.forEach((p, i) => {
-      if (!formAsked.has(`node:${s.nodeTypeId}/${p.tagAttributeId}`)) return;
+      s.attributeIds.forEach((x) => {
+        const k = `node:${s.nodeTypeId}/${x}`;
+        if (!formAt.has(k)) formAt.set(k, at);
+      });
+    if (s.kind === 'relationshipForm')
+      s.attributeIds.forEach((x) => {
+        const k = `rel:${s.relationshipId}/${x}`;
+        if (!formAt.has(k)) formAt.set(k, at);
+      });
+    const site = (key: string, what: string, drop: () => void) =>
+      unvalidated.push({ key, at, stage: s, drop, what });
+    if (s.kind === 'nameGenerator')
+      s.prompts.forEach((p) => {
+        if (p.tagAttributeId)
+          site(`node:${s.nodeTypeId}/${p.tagAttributeId}`, 'prompt tag', () => {
+            p.tagAttributeId = '';
+          });
+      });
+    if (s.kind === 'bins')
+      s.prompts.forEach((p) =>
+        site(`node:${s.nodeTypeId}/${p.attributeId}`, 'bins prompt', () => {
+          s.prompts = s.prompts.filter((x) => x !== p);
+        }),
+      );
+    if (s.kind === 'sociogram')
+      s.prompts.forEach((p) => {
+        if (p.task === 'highlight')
+          site(
+            `node:${s.nodeTypeId}/${p.attributeId}`,
+            'highlight prompt',
+            () => {
+              s.prompts = s.prompts.filter((x) => x !== p);
+            },
+          );
+      });
+    if (s.kind === 'relationshipCensus' && s.method === 'with_strength')
+      s.prompts.forEach((p) =>
+        site(
+          `rel:${p.relationshipId}/${p.strengthAttributeId}`,
+          'strength',
+          () => {},
+        ),
+      );
+  });
+  const fromForms = new Set<string>();
+  for (const w of unvalidated) {
+    const formIndex = formAt.get(w.key);
+    if (formIndex === undefined) continue;
+    const form = d.stages[formIndex]!;
+    const formWins =
+      w.what !== 'strength' &&
+      (formIndex < w.at || form.id === `${w.stage.id}_overlap`);
+    const attr = w.key.split('/')[1];
+    if (formWins) {
+      w.drop();
       add(
         'adjusted',
-        'TAG_ALSO_IN_FORM',
-        `stages[${s.rawIndex}].prompts[${i}].tagAttributeId`,
-        `"${p.tagAttributeId}" is asked in a form, so the form records it and the prompt no longer tags it.`,
+        'WRITTEN_BY_FORM',
+        `stages[${w.stage.rawIndex}]`,
+        `"${attr}" is asked in the form "${form.id}", so the ${w.what} in "${w.stage.id}" no longer records it.`,
       );
-      p.tagAttributeId = '';
-    });
+    } else fromForms.add(w.key);
   }
+  d.stages = d.stages.filter((s) => {
+    if (
+      s.kind === 'alterForm' ||
+      s.kind === 'relationshipForm' ||
+      (s.kind === 'nameGenerator' && s.method === 'form')
+    ) {
+      const scope =
+        s.kind === 'relationshipForm'
+          ? `rel:${s.relationshipId}`
+          : `node:${s.nodeTypeId}`;
+      s.attributeIds = s.attributeIds.filter((x) => {
+        if (!fromForms.has(`${scope}/${x}`)) return true;
+        add(
+          'adjusted',
+          'FORM_FIELD_WRITTEN_ELSEWHERE',
+          `stages[${s.rawIndex}].attributeIds`,
+          `"${x}" is recorded by an earlier stage, so "${s.id}" no longer asks it.`,
+        );
+        return false;
+      });
+      if (s.kind === 'nameGenerator') {
+        if (!s.attributeIds.length) s.method = 'quick_add';
+        return true;
+      }
+      if (!s.attributeIds.length) {
+        add(
+          'adjusted',
+          'EMPTY_STAGE_REMOVED',
+          `stages[${s.rawIndex}]`,
+          `"${s.id}" had nothing left to ask and was removed.`,
+        );
+        return false;
+      }
+    }
+    if ((s.kind === 'bins' || s.kind === 'sociogram') && !s.prompts.length) {
+      add(
+        'adjusted',
+        'EMPTY_STAGE_REMOVED',
+        `stages[${s.rawIndex}]`,
+        `"${s.id}" had nothing left to ask and was removed.`,
+      );
+      return false;
+    }
+    return true;
+  });
 
   // ---- framing notes ----------------------------------------------------------------
   if (!d.stages.some((s) => s.kind === 'nameGenerator'))

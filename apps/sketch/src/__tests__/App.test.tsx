@@ -111,6 +111,7 @@ describe('Sketch flow', () => {
         description:
           'Research questions\n1. Which nurses are central in the ward advice network?\n2. Do advice ties cross shift boundaries?\n\nResearch population\nAll nurses on one acute ward.\n\nStudy synopsis\nA sociocentric study.',
         provider: 'anthropic',
+        jobId: expect.any(String),
       },
     ]);
 

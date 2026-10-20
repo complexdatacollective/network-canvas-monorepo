@@ -18,6 +18,9 @@ export type CreateJobRequest = {
   // comparison starts from, so the server can tag it with the same
   // comparisonId and the researcher can prefer it.
   seedJobId?: string;
+  // Chosen by the page before it sends the request, so a create whose answer
+  // is lost can be sent again, or followed, without starting a second job.
+  jobId?: string;
 };
 
 export type CreateJobResponse = { jobId: string };

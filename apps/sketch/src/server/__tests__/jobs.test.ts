@@ -287,6 +287,33 @@ describe('POST /api/jobs', () => {
   });
 });
 
+describe('POST /api/jobs sent again with the same job id', () => {
+  it('starts one job and reserves its cost once', async () => {
+    const jobs = memoryStore();
+    const startBackground = vi.fn(async () => {});
+    const { adapters } = scriptedAdapter({});
+    const jobId = '0b7f3c52-1d7e-4f0a-9a4e-3c2b1a0f9e8d';
+    const send = () =>
+      handleCreateJob(post({ ...validRequest, jobId }), {
+        jobs,
+        adapters,
+        startBackground,
+        now: () => NOW,
+      });
+    const pending = () =>
+      (jobs.data.get('spend/2026-10-20') as { pendingUsd: number }).pendingUsd;
+    const first = await send();
+    const once = pending();
+    const second = await send();
+    expect(first.status).toBe(202);
+    expect(second.status).toBe(202);
+    expect(await second.json()).toEqual({ jobId });
+    expect(startBackground).toHaveBeenCalledTimes(1);
+    expect(once).toBeGreaterThan(0);
+    expect(pending()).toBe(once);
+  });
+});
+
 describe('POST /api/jobs when the job record cannot be written', () => {
   it('hands the reservation back', async () => {
     const jobs = memoryStore();
@@ -294,6 +321,11 @@ describe('POST /api/jobs when the job record cannot be written', () => {
     jobs.setJSON = async (key, value) => {
       if (key.startsWith('jobs/')) throw new Error('down');
       await setJSON(key, value);
+    };
+    const updateJSON = jobs.updateJSON;
+    jobs.updateJSON = async (key, next) => {
+      if (key.startsWith('jobs/')) throw new Error('down');
+      return updateJSON(key, next);
     };
     const startBackground = vi.fn(async () => {});
     const { adapters } = scriptedAdapter({});
@@ -596,6 +628,36 @@ describe('generate-background and GET /api/jobs/:id', () => {
         )
       ).status,
     ).toBe(200);
+  });
+
+  it('does not start a comparison whose seed could not join it', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    const setJSON = jobs.setJSON;
+    jobs.setJSON = async (key, value) => {
+      if (key === 'jobs/job-9') throw new Error('blobs down');
+      await setJSON(key, value);
+    };
+    const res = await handleCreateJob(
+      post({
+        ...validRequest,
+        provider: 'anthropic',
+        comparisonId: 'cmp-new',
+        seedJobId: 'job-9',
+      }),
+      {
+        jobs,
+        log,
+        adapters: fake.adapters,
+        startBackground: async () => {},
+        now: () => NOW,
+        newId: () => 'job-11',
+      },
+    );
+    expect(res.status).toBe(503);
+    expect(await readJob(jobs, 'job-11')).toBeNull();
   });
 
   it('answers 404 for unknown jobs', async () => {

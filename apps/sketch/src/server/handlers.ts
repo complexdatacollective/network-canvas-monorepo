@@ -22,6 +22,7 @@ import {
   joinComparison,
   type JsonStore,
   newJobRecord,
+  insertJob,
   readJob,
   recordPreference,
   reserveBudget,
@@ -84,6 +85,10 @@ const CreateJobRequestSchema = z.object({
     .string()
     .regex(/^[A-Za-z0-9-]{1,64}$/)
     .optional(),
+  jobId: z
+    .string()
+    .regex(/^[A-Za-z0-9-]{16,64}$/)
+    .optional(),
 });
 
 type CreateJobDeps = {
@@ -115,12 +120,20 @@ export const handleCreateJob = async (
   if (!deps.adapters[request.provider].isConfigured()) {
     return apiError('That model provider is not available right now.', 400);
   }
-  // Reserve the job's worst case now; generate-background settles it with
-  // the real cost when the job finishes.
-  const reservedUsd = estimateJobCostUsd(request.provider);
-  const budget = await reserveBudget(deps.jobs, now, reservedUsd);
-  if (!budget.ok) return apiError(budget.error, 429);
+  // The same create sent again (its first answer was lost): the job exists.
+  const jobId = request.jobId ?? deps.newId?.() ?? crypto.randomUUID();
+  if (request.jobId) {
+    let existing: JobRecord | null;
+    try {
+      existing = await readJob(deps.jobs, jobId);
+    } catch {
+      return apiError('Sketch could not start the job. Please try again.', 503);
+    }
+    if (existing) return json({ jobId } satisfies CreateJobResponse, 202);
+  }
 
+  // A seed that cannot join would show a "Prefer this one" that never records,
+  // so the comparison does not start without it.
   if (request.seedJobId && request.comparisonId && deps.log) {
     try {
       await joinComparison(
@@ -129,18 +142,26 @@ export const handleCreateJob = async (
         request.comparisonId,
       );
     } catch {
-      // The new run goes ahead; only the seed's preference link is lost.
+      return apiError(
+        'Sketch could not start the comparison. Please try again.',
+        503,
+      );
     }
   }
+  // Reserve the job's worst case now; generate-background settles it with
+  // the real cost when the job finishes.
+  const reservedUsd = estimateJobCostUsd(request.provider);
+  const budget = await reserveBudget(deps.jobs, now, reservedUsd);
+  if (!budget.ok) return apiError(budget.error, 429);
 
-  const jobId = deps.newId?.() ?? crypto.randomUUID();
   const record: JobRecord = {
     ...newJobRecord(jobId, request, now),
     reservedUsd,
     spendDate: budget.spendDate,
   };
+  let inserted: boolean;
   try {
-    await writeJob(deps.jobs, record);
+    inserted = await insertJob(deps.jobs, record);
   } catch {
     try {
       await settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd);
@@ -148,6 +169,15 @@ export const handleCreateJob = async (
       // The reservation stays counted for the day: errs on the safe side.
     }
     return apiError('Sketch could not start the job. Please try again.', 502);
+  }
+  if (!inserted) {
+    // A concurrent copy of this create got there first and owns the job.
+    try {
+      await settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd);
+    } catch {
+      // The reservation stays counted for the day: errs on the safe side.
+    }
+    return json({ jobId } satisfies CreateJobResponse, 202);
   }
   try {
     await deps.startBackground(jobId);

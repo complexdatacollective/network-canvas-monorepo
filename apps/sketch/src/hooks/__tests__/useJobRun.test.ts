@@ -71,7 +71,10 @@ describe('useJobRun', () => {
 
     const [, firstInit] = server.fetchMock.mock.calls[0] ?? [];
     expect(firstInit?.method).toBe('POST');
-    expect(JSON.parse(String(firstInit?.body))).toEqual(request);
+    expect(JSON.parse(String(firstInit?.body))).toEqual({
+      ...request,
+      jobId: expect.any(String),
+    });
     expect(result.current.jobId).toBe('job-1');
     expect(server.polls()).toBe(1);
     expect(
@@ -101,6 +104,37 @@ describe('useJobRun', () => {
       await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 5);
     });
     expect(server.polls()).toBe(3);
+  });
+
+  it('reports the job id before the create answers, and keeps it if the answer is lost', async () => {
+    let posted = '';
+    const fetchMock = vi.fn(async (_input: unknown, init?: RequestInit) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
+      posted = (JSON.parse(String(init?.body)) as { jobId: string }).jobId;
+      throw new TypeError('network down');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { result } = renderHook(() => useJobRun(request));
+    await flush();
+    expect(posted).not.toBe('');
+    expect(result.current.jobId).toBe(posted);
+    expect(result.current.error).not.toBeNull();
+  });
+
+  it('drops the job id when the server refuses the create', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: 'Budget spent.' }), {
+            status: 429,
+          }),
+      ),
+    );
+    const { result } = renderHook(() => useJobRun(request));
+    await flush();
+    expect(result.current.jobId).toBeNull();
+    expect(result.current.error).toBe('Budget spent.');
   });
 
   it('waits longer than the server can run a job', () => {

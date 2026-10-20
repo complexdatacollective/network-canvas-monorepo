@@ -60,18 +60,14 @@ export const buildProtocol = async (
   const analysed = analyse(design);
   const { design: normalized, fatal } = analysed;
   const issues = [...extraIssues, ...analysed.issues];
-  const compiled = compile(normalized, wording ?? undefined, {
-    ...compileOptions,
-    issues,
-  });
-  // compile() emits the schema's input shape; validateProtocol parses it.
-  const validation = await validateProtocol(
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the parse is the check
-    compiled.protocol as VersionedProtocol,
-  );
+  const run = () =>
+    compile(normalized, wording ?? undefined, { ...compileOptions, issues });
+  let compiled = run();
   // analyse() keeps form attributes out of unvalidated writers; anything it
-  // misses is a design fault the model is asked to fix.
-  for (const c of findVariableRoleConflicts(compiled.protocol)) {
+  // misses is a design fault the model is asked to fix. Compiled again so
+  // the researcher-notes screen lists it if the design ships anyway.
+  const conflicts = findVariableRoleConflicts(compiled.protocol);
+  for (const c of conflicts) {
     issues.push({
       severity: 'degraded',
       code: 'WRITTEN_WITHOUT_VALIDATION',
@@ -79,6 +75,12 @@ export const buildProtocol = async (
       message: `"${c.variableName}" is asked in a form and also written by a stage that skips the form's validation. Collect it in one place only.`,
     });
   }
+  if (conflicts.length) compiled = run();
+  // compile() emits the schema's input shape; validateProtocol parses it.
+  const validation = await validateProtocol(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the parse is the check
+    compiled.protocol as VersionedProtocol,
+  );
   return {
     ...compiled,
     issues,

@@ -144,6 +144,13 @@ export const readJob = async (
 export const writeJob = (store: JsonStore, record: JobRecord) =>
   store.setJSON(jobKey(record.id), record);
 
+// Writes a new job only if its id is free, so a create retried with the same
+// client-chosen id never makes a second job. Resolves to false when taken.
+export const insertJob = async (store: JsonStore, record: JobRecord) =>
+  (await store.updateJSON(jobKey(record.id), (current) =>
+    current === null ? record : undefined,
+  )) !== undefined;
+
 // Atomically moves a queued job to running. Resolves to the claimed record,
 // or null when the job is unknown or another invocation got there first, so
 // two invocations for one job never both run the paid pipeline.

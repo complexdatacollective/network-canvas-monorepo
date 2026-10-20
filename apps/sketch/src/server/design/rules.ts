@@ -240,11 +240,13 @@ export const resolveCondition = (
         return `a yes_no value must be "yes" or "no" (got "${raw}").`;
       if (operator !== 'is' && operator !== 'is_not')
         return notFor('yes_no', 'is / is_not');
+      // A form answer is true, false or (optional, skipped) unset: compare
+      // exactly, so an unanswered question matches neither yes nor no.
       if (askedInForm)
         return {
           ...base,
-          operator: operator === 'is' ? 'EXACTLY' : 'NOT',
-          value: yes,
+          operator: 'EXACTLY',
+          value: operator === 'is' ? yes : !yes,
         };
       // Tags and highlights are only ever set to true, so a never-set attribute must
       // count as "no" (EXACTLY false would match nobody): compare against true.

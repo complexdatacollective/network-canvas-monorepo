@@ -8,7 +8,7 @@ import type {
   PreferenceRequest,
 } from '../shared/api.ts';
 
-class ApiRequestError extends Error {
+export class ApiRequestError extends Error {
   readonly status: number;
 
   constructor(message: string, status: number) {

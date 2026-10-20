@@ -460,11 +460,11 @@ describe('compiler review fixes', () => {
 
   it.each([
     ['is', 'no', 'EXACTLY', false],
-    ['is_not', 'yes', 'NOT', true],
+    ['is_not', 'yes', 'EXACTLY', false],
     ['is', 'yes', 'EXACTLY', true],
-    ['is_not', 'no', 'NOT', false],
+    ['is_not', 'no', 'EXACTLY', true],
   ])(
-    'compiles a form yes_no %s "%s" literally, so a blank answer is not no',
+    'compiles a form yes_no %s "%s" exactly, so a blank answer matches neither',
     async (operator, value, compiled, compiledValue) => {
       const r = await build(
         design({
@@ -743,10 +743,15 @@ describe('compiler review fixes', () => {
     );
   });
 
-  it('leaves an attribute a form asks to the form, not to a prompt tag', async () => {
+  it('keeps a tag named before a form, and drops it from the form', async () => {
     const r = await build(
       design({
-        nodeTypes: [person([A('advice', 'yes_no', 'Do you ask them?')])],
+        nodeTypes: [
+          person([
+            A('advice', 'yes_no', 'Do you ask them?'),
+            A('age', 'number', 'Age?'),
+          ]),
+        ],
         stages: [
           ng('ng', {
             prompts: [
@@ -758,15 +763,63 @@ describe('compiler review fixes', () => {
             ...c('details'),
             nodeTypeId: 'person',
             filter: noFilter,
-            attributeIds: ['advice'],
+            attributeIds: ['advice', 'age'],
           },
         ],
       }),
     );
     expect(r.validation.success).toBe(true);
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
-    expect(r.codes).toContain('TAG_ALSO_IN_FORM');
+    expect(r.codes).toContain('FORM_FIELD_WRITTEN_ELSEWHERE');
     expect(r.codes).not.toContain('WRITTEN_WITHOUT_VALIDATION');
+  });
+
+  it('keeps a form answer that a stage before a later bins reads', async () => {
+    const closeness = A('close', 'ordered', 'How close?', {
+      options: ['Not', 'Somewhat', 'Very'],
+    });
+    const r = await build(
+      design({
+        nodeTypes: [person([closeness, A('age', 'number', 'Age?')])],
+        stages: [
+          ng('ng'),
+          {
+            kind: 'alterForm',
+            ...c('early'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['close'],
+          },
+          {
+            kind: 'alterForm',
+            ...c('reader'),
+            nodeTypeId: 'person',
+            filter: {
+              match: 'all',
+              conditions: [
+                { attributeId: 'close', operator: 'is', value: 'Very' },
+              ],
+            },
+            attributeIds: ['age'],
+          },
+          {
+            kind: 'bins',
+            ...c('late'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            prompts: [
+              { text: 'How close?', attributeId: 'close', allowOther: false },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
+    const ids = r.stages.map((x) => x.id);
+    expect(ids).toContain('early');
+    expect(ids).not.toContain('late');
+    expect(r.codes).toContain('WRITTEN_BY_FORM');
   });
 
   it('reads a tag as unset until the form that asks it has run', async () => {
@@ -878,6 +931,17 @@ describe('compiler review fixes', () => {
       }
     ).form.fields.map((f) => f.prompt);
     expect(fields).toEqual(['Nickname?', 'Full name?']);
+  });
+
+  it('caps a roster minimum before generating its rows', async () => {
+    const r = await build(
+      design({
+        stages: [ng('roster', { method: 'roster', minNodes: 5_000_000 })],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(r.codes).toContain('MIN_LOWERED');
+    expect(JSON.stringify(r.protocol)).toContain('50 example rows');
   });
 
   it('generates enough placeholder rows for a roster minimum', async () => {
