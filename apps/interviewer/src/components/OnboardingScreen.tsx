@@ -101,16 +101,16 @@ export function OnboardingScreenView({ onBegin }: { onBegin: () => void }) {
             {intl.formatMessage(messages.letSSetUpThisDevice)}
           </Paragraph>
         </motion.div>
-        <motion.div variants={buttonVariants} className="mt-2">
-          <Button type="button" color="primary" onClick={onBegin}>
-            {intl.formatMessage(messages.getStarted)}
-          </Button>
-        </motion.div>
         <motion.div
           variants={textVariants}
           className="w-full max-w-xs text-start"
         >
           <LanguageSettings compact />
+        </motion.div>
+        <motion.div variants={buttonVariants} className="mt-2">
+          <Button type="button" color="primary" onClick={onBegin}>
+            {intl.formatMessage(messages.getStarted)}
+          </Button>
         </motion.div>
       </div>
     </motion.div>
