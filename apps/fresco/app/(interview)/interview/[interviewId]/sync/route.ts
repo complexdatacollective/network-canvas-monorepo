@@ -149,7 +149,11 @@ const routeHandler = async (
      *
      * Required, so there is no shape of request that reaches the row without an
      * order to be judged in. A browser still running a bundle from before an
-     * upgrade is refused above, by its protocol hash.
+     * upgrade is refused above, by its protocol hash. The one exception is a
+     * schema 8 interview: a tab Fresco 4.0 or 4.1 left open across the upgrade
+     * numbers none of its writes, and refusing them would lose every answer it
+     * records from then on. Its writes are taken in the order they arrive, as
+     * those releases took them.
      *
      * `lastUpdated` above is deliberately not used for this. It is a wall-clock
      * millisecond stamped by the interview reducer for a different purpose, so
@@ -159,7 +163,9 @@ const routeHandler = async (
      * is only as reliable as every future reducer case remembering to bump it.
      * This counter is owned by the code that issues the writes it orders.
      */
-    syncRevision: z.number().int().nonnegative(),
+    syncRevision: legacy
+      ? z.number().int().nonnegative().optional()
+      : z.number().int().nonnegative(),
   });
 
   const validatedRequest = Schema.safeParse(rawPayload);
@@ -170,8 +176,9 @@ const routeHandler = async (
     return invalidRequest(validatedRequest.error);
   }
 
-  const { network, currentStep, stageMetadata, syncRevision } =
-    validatedRequest.data;
+  const { network, currentStep, stageMetadata } = validatedRequest.data;
+  const syncRevision =
+    validatedRequest.data.syncRevision ?? stored.syncRevision + 1;
 
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
 

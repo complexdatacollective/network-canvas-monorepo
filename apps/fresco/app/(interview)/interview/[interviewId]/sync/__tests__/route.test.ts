@@ -474,6 +474,32 @@ describe('interview sync route', () => {
       expect(updateManyMock).not.toHaveBeenCalled();
     });
 
+    it('takes an unnumbered write to a schema 8 interview from a tab Fresco 4.1 left open', async () => {
+      const row = installInterviewRow({
+        syncRevision: 3,
+        network: networkNamed('stored'),
+      });
+      findUniqueMock.mockImplementation(() =>
+        Promise.resolve(
+          row() && {
+            ...row(),
+            protocol: { hash: PROTOCOL_HASH, schemaVersion: 8 },
+          },
+        ),
+      );
+
+      const response = await post(
+        makeRequest(networkNamed('from fresco 4.1'), {
+          protocolHash: undefined,
+          syncRevision: undefined,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(row()?.network).toEqual(networkNamed('from fresco 4.1'));
+      expect(row()?.syncRevision).toBe(4);
+    });
+
     it('marks a frozen interview as frozen, not merely as a write that lost a race', async () => {
       // Freezing declines every write permanently, so a client must not read it
       // as being overtaken and rewrite: it would be declined again and report a
