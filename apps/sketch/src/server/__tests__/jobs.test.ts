@@ -288,7 +288,7 @@ describe('POST /api/jobs', () => {
 });
 
 describe('POST /api/jobs sent again with the same job id', () => {
-  it('starts one job and reserves its cost once', async () => {
+  it('reserves the cost once and starts a still-queued job again', async () => {
     const jobs = memoryStore();
     const startBackground = vi.fn(async () => {});
     const { adapters } = scriptedAdapter({});
@@ -308,9 +308,30 @@ describe('POST /api/jobs sent again with the same job id', () => {
     expect(first.status).toBe(202);
     expect(second.status).toBe(202);
     expect(await second.json()).toEqual({ jobId });
-    expect(startBackground).toHaveBeenCalledTimes(1);
+    // Still queued: the first background start may never have happened.
+    expect(startBackground).toHaveBeenCalledTimes(2);
     expect(once).toBeGreaterThan(0);
     expect(pending()).toBe(once);
+  });
+
+  it('does not start a job again once the background run has claimed it', async () => {
+    const jobs = memoryStore();
+    const startBackground = vi.fn(async (id: string) => {
+      await claimJob(jobs, id, NOW);
+    });
+    const { adapters } = scriptedAdapter({});
+    const jobId = '0b7f3c52-1d7e-4f0a-9a4e-3c2b1a0f9e8d';
+    const send = () =>
+      handleCreateJob(post({ ...validRequest, jobId }), {
+        jobs,
+        adapters,
+        startBackground,
+        now: () => NOW,
+      });
+    await send();
+    const second = await send();
+    expect(second.status).toBe(202);
+    expect(startBackground).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -545,6 +566,22 @@ describe('generate-background and GET /api/jobs/:id', () => {
     await generate();
     expect(failed).toBe(true);
     expect((await readJob(jobs, 'job-9'))?.status).toBe('succeeded');
+  });
+
+  it('logs an outcome the researcher never received as failed', async () => {
+    const { jobs, log, generate } = await setup();
+    const setJSON = jobs.setJSON;
+    jobs.setJSON = async (key, value) => {
+      const status = (value as { status?: string } | null)?.status;
+      if (key === 'jobs/job-9' && status === 'succeeded')
+        throw new Error('down');
+      await setJSON(key, value);
+    };
+    await generate();
+    expect(log.data.get('log/2026-10-20/job-9')).toMatchObject({
+      status: 'failed',
+      pipeline: { protocolValid: true, undeliveredStatus: 'succeeded' },
+    });
   });
 
   it('writes the log before the job reads as finished', async () => {

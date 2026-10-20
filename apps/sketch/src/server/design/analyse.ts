@@ -1248,6 +1248,7 @@ export const analyse = (
             namedAfterMap.delete(t);
           } else partialSociogramTypes.add(t);
         } else if (s.kind === 'relationshipCensus') {
+          const censusRels = new Set<string>();
           s.prompts = s.prompts.filter((p, i) => {
             const pp = `${path}.prompts[${i}]`;
             const r = resolveType(
@@ -1266,6 +1267,19 @@ export const analyse = (
                 );
               return false;
             }
+            // A second question on the same relationship shares its edges:
+            // the later answer is preselected from, and a "no" deletes, the
+            // tie the earlier question created.
+            if (createdRels.has(r) || censusRels.has(r)) {
+              add(
+                'degraded',
+                'DUPLICATE_RELATIONSHIP_CREATOR',
+                `${pp}.relationshipId`,
+                `Relationship "${r}" is already created by an earlier question, so this one would overwrite its answers. Prompt removed; give a distinct question its own relationship type.`,
+              );
+              return false;
+            }
+            censusRels.add(r);
             p.relationshipId = r;
             if (s.method === 'with_strength') {
               const ordered = rel(r)!.attributes.filter(
@@ -1665,6 +1679,7 @@ export const analyse = (
   type Writer = { at: number; stage: NStage; drop: () => void; what: string };
   const formAt = new Map<string, number>();
   const unvalidated: (Writer & { key: string })[] = [];
+  const binsKeys = new Set<string>();
   d.stages.forEach((s, at) => {
     if (
       s.kind === 'alterForm' ||
@@ -1701,11 +1716,25 @@ export const analyse = (
           });
       });
     if (s.kind === 'bins')
-      s.prompts.forEach((p) =>
-        site(`node:${s.nodeTypeId}/${p.attributeId}`, 'bins prompt', () => {
+      s.prompts.forEach((p) => {
+        const key = `node:${s.nodeTypeId}/${p.attributeId}`;
+        // Each drop replaces the stored value, so a second bins question on
+        // the same attribute silently discards the first one's answers.
+        if (binsKeys.has(key)) {
           s.prompts = s.prompts.filter((x) => x !== p);
-        }),
-      );
+          add(
+            'degraded',
+            'DUPLICATE_BINS_WRITER',
+            `stages[${s.rawIndex}]`,
+            `"${p.attributeId}" is already sorted by an earlier bins question, so this one would overwrite its answers. Prompt removed; give a distinct question its own attribute.`,
+          );
+          return;
+        }
+        binsKeys.add(key);
+        site(key, 'bins prompt', () => {
+          s.prompts = s.prompts.filter((x) => x !== p);
+        });
+      });
     if (s.kind === 'sociogram')
       s.prompts.forEach((p) => {
         if (p.task === 'highlight')

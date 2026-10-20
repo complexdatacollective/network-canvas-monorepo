@@ -1352,4 +1352,66 @@ describe('instrument attributes', () => {
     expect(r.stages.map((s) => s.id)).toContain('tie_form');
     expect(r.stages.map((s) => s.id)).not.toContain('strength_census');
   });
+
+  it('drops a second bins question that would overwrite the same attribute', async () => {
+    const bins = (id: string, text: string) => ({
+      kind: 'bins',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      prompts: [{ text, attributeId: 'freq', allowOther: false }],
+    });
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('freq', 'ordered', 'How often?', {
+              options: ['never', 'sometimes', 'often'],
+            }),
+          ]),
+        ],
+        stages: [
+          ng(),
+          bins('b1', 'How often do you see them?'),
+          bins('b2', 'How often do you call them?'),
+        ],
+      }),
+    );
+    expect(r.codes).toContain('DUPLICATE_BINS_WRITER');
+    expect(r.stages.map((s) => s.id)).toContain('b1');
+    expect(r.stages.map((s) => s.id)).not.toContain('b2');
+  });
+
+  it('drops a census question on a relationship an earlier question creates', async () => {
+    const census = (id: string, text: string) => ({
+      kind: 'relationshipCensus',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      method: 'every_pair',
+      prompts: [
+        {
+          text,
+          relationshipId: 'knows',
+          strengthAttributeId: '',
+          noTieLabel: '',
+        },
+      ],
+    });
+    const r = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [
+          ng(),
+          census('rc1', 'Do they know each other?'),
+          census('rc2', 'Do they work together?'),
+        ],
+      }),
+    );
+    expect(r.codes).toContain('DUPLICATE_RELATIONSHIP_CREATOR');
+    expect(r.stages.map((s) => s.id)).toContain('rc1');
+    expect(r.stages.map((s) => s.id)).not.toContain('rc2');
+  });
 });

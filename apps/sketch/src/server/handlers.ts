@@ -21,6 +21,7 @@ import {
   type JobRecord,
   joinComparison,
   type JsonStore,
+  type LogEntry,
   newJobRecord,
   insertJob,
   readJob,
@@ -91,6 +92,10 @@ const CreateJobRequestSchema = z.object({
     .optional(),
 });
 
+// Logged for a finished run whose result never reached the researcher.
+const UNDELIVERED_MESSAGE =
+  'The run finished but its result could not be saved for the researcher.';
+
 type CreateJobDeps = {
   jobs: JsonStore;
   // The research log, for tagging a seed job with the comparison it joins.
@@ -129,7 +134,21 @@ export const handleCreateJob = async (
     } catch {
       return apiError('Sketch could not start the job. Please try again.', 503);
     }
-    if (existing) return json({ jobId } satisfies CreateJobResponse, 202);
+    if (existing) {
+      // The first create may have stopped before starting the background
+      // run. Starting it again is safe: the run claims the job atomically.
+      if (existing.status === 'queued') {
+        try {
+          await deps.startBackground(jobId);
+        } catch {
+          return apiError(
+            'Sketch could not start the job. Please try again.',
+            503,
+          );
+        }
+      }
+      return json({ jobId } satisfies CreateJobResponse, 202);
+    }
   }
 
   // A seed that cannot join would show a "Prefer this one" that never records,
@@ -361,36 +380,54 @@ export const handleGenerate = async (
   };
   // The log goes first: once the job reads as finished, a comparison or a
   // preference can patch its log entry, and a later write would undo that.
+  const entry: LogEntry = {
+    jobId: record.id,
+    date: dayKey(new Date(record.createdAt)),
+    createdAt: record.createdAt,
+    finishedAt: record.finishedAt,
+    description: record.description,
+    provider: record.provider,
+    models: getStepModels(record.provider),
+    status: record.status,
+    error: record.error,
+    pipeline: pipelineLog,
+    usage: record.usage,
+    durationMs: record.durationMs,
+    comparisonId: record.comparisonId,
+    preference: null,
+  };
+  let logged = false;
   try {
-    const models = getStepModels(record.provider);
-    await writeLog(deps.log, {
-      jobId: record.id,
-      date: dayKey(new Date(record.createdAt)),
-      createdAt: record.createdAt,
-      finishedAt: record.finishedAt,
-      description: record.description,
-      provider: record.provider,
-      models,
-      status: record.status,
-      error: record.error,
-      pipeline: pipelineLog,
-      usage: record.usage,
-      durationMs: record.durationMs,
-      comparisonId: record.comparisonId,
-      preference: null,
-    });
+    await writeLog(deps.log, entry);
+    logged = true;
   } catch {
     // A lost log line is acceptable.
   }
   // Two tries: a function retry would only skip the claimed job, so a lost
   // write loses the result. GET /api/jobs/:id reports a job that never got
   // its outcome written as failed once it is stale.
+  let delivered = false;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       await writeJob(deps.jobs, record);
+      delivered = true;
       break;
     } catch {
       // Try once more, then leave it to the stale check.
+    }
+  }
+  // The researcher never sees this outcome, so the log must not count it as
+  // one. Nothing can have patched the entry: the job never read as finished.
+  if (logged && !delivered) {
+    try {
+      await writeLog(deps.log, {
+        ...entry,
+        status: 'failed',
+        error: UNDELIVERED_MESSAGE,
+        pipeline: { ...pipelineLog, undeliveredStatus: record.status },
+      });
+    } catch {
+      // The entry keeps the outcome that was never delivered.
     }
   }
 
