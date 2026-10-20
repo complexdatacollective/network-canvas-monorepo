@@ -86,6 +86,13 @@ on:
         required: false
         default: ''
         type: string
+      # The commit the calling lane released. The tag is only trusted to
+      # name it: a tag created at a later commit would ship that commit's
+      # tree under this version. A dispatch never sets it (undeclared there).
+      expected_sha:
+        required: false
+        default: ''
+        type: string
       # A release lane calls this after its release has shipped, so a tag that
       # cannot be built under a sub-path is skipped with a notice. A dispatch
       # never sets it (undeclared there), so asking by hand for an ineligible
@@ -173,6 +180,18 @@ jobs:
           FORCE: 'false'
         run: bash .github/scripts/release-line-tag-guard.sh
 
+      - name: Check the tag names the released commit
+        if: inputs.expected_sha != ''
+        env:
+          TAG: ${{ inputs.tag }}
+          TAGGED: ${{ steps.guard.outputs.sha }}
+          EXPECTED: ${{ inputs.expected_sha }}
+        run: |
+          if [[ "$TAGGED" != "$EXPECTED" ]]; then
+            echo "::error::$TAG points at $TAGGED, not the released commit $EXPECTED. Its tree is not what was released, so no sub-path dist is built from it. Move the tag to $EXPECTED, then dispatch this workflow." >&2
+            exit 1
+          fi
+
       - name: Check the tag can build under a sub-path
         id: eligible
         env:
@@ -204,7 +223,10 @@ jobs:
           exit 1
 
       # Releases are created at the end of the release lanes, which run before
-      # this, so a missing release is an error rather than a race.
+      # this, so a missing release is an error rather than a race. A run that
+      # stopped between the two uploads leaves the tarball without its
+      # checksum; it never printed a pin, so nothing can depend on that
+      # tarball, but it is still only replaced when asked.
       - name: Check the release for an existing tarball
         id: existing
         if: steps.eligible.outputs.eligible == 'true'
@@ -217,16 +239,21 @@ jobs:
           set -euo pipefail
           encoded="$(jq -rn --arg t "$TAG" '$t|@uri')"
           names="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${encoded}" --jq '.assets[].name')"
-          if grep -qxF "$ASSET" <<<"$names"; then
-            if [[ "$REPLACE" == 'true' ]]; then
-              echo "::warning::$TAG already has $ASSET; replacing it, which breaks any pin of the current one."
-              echo "skip=false" >>"$GITHUB_OUTPUT"
-            else
-              echo "::notice::$TAG already has $ASSET; leaving it (and any pin of it) alone."
-              echo "skip=true" >>"$GITHUB_OUTPUT"
-            fi
-          else
+          has_tarball=false
+          has_checksum=false
+          grep -qxF "$ASSET" <<<"$names" && has_tarball=true
+          grep -qxF "${ASSET}.sha256" <<<"$names" && has_checksum=true
+          if [[ "$has_tarball" == 'false' && "$has_checksum" == 'false' ]]; then
             echo "skip=false" >>"$GITHUB_OUTPUT"
+          elif [[ "$REPLACE" == 'true' ]]; then
+            echo "::warning::$TAG already has $ASSET; replacing it, which breaks any pin of the current one."
+            echo "skip=false" >>"$GITHUB_OUTPUT"
+          elif [[ "$has_tarball" == 'true' && "$has_checksum" == 'true' ]]; then
+            echo "::notice::$TAG already has $ASSET; leaving it (and any pin of it) alone."
+            echo "skip=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "::error::$TAG has only part of its sub-path dist: an earlier run stopped between the two uploads and printed no pin. Re-run with replace to rebuild it." >&2
+            exit 1
           fi
 
   # Builds and packs the tag's tree. Runs code from the tag, so it holds a

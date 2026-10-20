@@ -11,6 +11,7 @@ import {
 } from '~/hooks/useProtocolNavGuard';
 import { navigateApp, toBrowserPath } from '~/utils/appBase';
 import { leaveForArchitect9 } from '~/utils/architect9Handoff';
+import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { whenCriticalOperationsSettle } from '~/utils/criticalOperation';
 
 const hasUnsavedEditorWork = (): boolean =>
@@ -41,12 +42,14 @@ type NavigateOptions = {
  * Leave for Architect 9 (a full-page navigation to another app), without
  * losing work:
  *
- * 1. unsaved work in an open editor goes through the leave-editor prompt, and
- *    a cancel stays here;
+ * 1. unsaved work in an open editor, or a protocol that exists only in this
+ *    tab because nothing could be saved, goes through the leave-editor
+ *    prompt, and a cancel stays here;
  * 2. in-flight commits, imports and exports finish first;
  * 3. only then does the page navigate.
  *
- * Resolves whether it navigated.
+ * `url` may be a function, read only at the moment of leaving, so a caller
+ * can leave for whatever is newest by then. Resolves whether it navigated.
  */
 export const useNavigateToArchitect9 = () => {
   const dispatch = useAppDispatch();
@@ -54,7 +57,10 @@ export const useNavigateToArchitect9 = () => {
   const { openDialog } = useDialog();
 
   return useCallback(
-    async (url: string, options: NavigateOptions = {}): Promise<boolean> => {
+    async (
+      url: string | (() => string),
+      options: NavigateOptions = {},
+    ): Promise<boolean> => {
       const refused = () => {
         if (!options.requireSavedProtocol) return false;
         const persistence = getLeavePersistence(store.getState());
@@ -62,16 +68,31 @@ export const useNavigateToArchitect9 = () => {
       };
       if (refused()) return false;
 
-      await whenCriticalOperationsSettle();
+      // The tab can lose its lock at any point while this waits, and a
+      // confirmed leave clears the protocol before the prompt returns, after
+      // which a check can no longer see that loss. So watch for it from here
+      // until the page is about to navigate.
+      let lostOwnership = false;
+      const unsubscribe = store.subscribe(() => {
+        if (refused()) lostOwnership = true;
+      });
+      try {
+        await whenCriticalOperationsSettle();
 
-      if (hasUnsavedEditorWork()) {
+        const draftDirty = hasUnsavedEditorWork();
         const persistence = getLeavePersistence(store.getState());
-        if (persistence !== 'no-protocol') {
+        // Unsaved editor work is lost by leaving, and so is the whole protocol
+        // when nothing could be saved on this device: it exists only in this
+        // tab. Anything else is safe in the library or in the tab that owns it.
+        if (
+          persistence !== 'no-protocol' &&
+          (draftDirty || persistence === 'storage-unavailable')
+        ) {
           let confirmed = false;
-          // The same discard confirmation as leaving the editor any other
-          // way. A confirmed leave clears the protocol and returns to the
-          // start screen, so Back from Architect 9 lands there rather than in
-          // an editor whose draft was just discarded.
+          // The same confirmation as leaving the editor any other way, worded
+          // for Architect 9. A confirmed leave clears the protocol and returns
+          // to the start screen, so Back from Architect 9 lands there rather
+          // than in an editor whose work was just discarded.
           await promptLeaveEditor(
             dispatch,
             openDialog,
@@ -81,18 +102,23 @@ export const useNavigateToArchitect9 = () => {
                 navigateApp('/', { replace: true }),
               );
             },
-            true,
+            draftDirty,
             persistence,
+            'architect-9',
           );
           if (!confirmed) return false;
+          // Answered here already: the browser's own "leave site?" prompt for
+          // an in-memory protocol would only ask a second time.
+          disarmInMemoryUnloadGuard();
           await whenCriticalOperationsSettle();
           await whenEditorsClosed();
         }
+      } finally {
+        unsubscribe();
       }
 
-      // The tab can lose its lock while the prompt is open.
-      if (refused()) return false;
-      leaveForArchitect9(url);
+      if (lostOwnership || refused()) return false;
+      leaveForArchitect9(typeof url === 'function' ? url() : url);
       return true;
     },
     [dispatch, store, openDialog],

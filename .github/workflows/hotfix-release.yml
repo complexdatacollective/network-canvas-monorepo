@@ -452,6 +452,7 @@ jobs:
     with:
       app: architect
       tag: ${{ needs.hotfix-release.outputs.tag }}
+      expected_sha: ${{ needs.hotfix-release.outputs.sha }}
 
   # The same for an Interviewer 8 hotfix, which Interviewer 9 bundles at /v8/:
   # interviewer-v8-dist.tgz on the release just created, as
@@ -468,6 +469,7 @@ jobs:
     with:
       app: interviewer
       tag: ${{ needs.hotfix-release.outputs.tag }}
+      expected_sha: ${{ needs.hotfix-release.outputs.sha }}
 
   # The push to the Fresco repository, from a job that has never run code from
   # the branch being released. It checks out the released commit for its DATA

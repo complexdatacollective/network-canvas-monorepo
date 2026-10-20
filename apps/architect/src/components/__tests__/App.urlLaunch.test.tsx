@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => {
     showResult: vi.fn(() => Promise.resolve()),
     pendingNavigation: null as string | null,
     navigationListeners,
-    navigate: vi.fn(() => Promise.resolve(true)),
+    navigate: vi.fn((_url: string | (() => string)) => Promise.resolve(true)),
   };
 });
 
@@ -68,7 +68,24 @@ vi.mock('~/utils/architect9Handoff', () => ({
     mocks.pendingNavigation = null;
     return url;
   },
+  deferArchitect9Navigation: (url: string) => {
+    mocks.pendingNavigation ??= url;
+  },
 }));
+
+// The URL a navigation would leave for, read as the hook reads it.
+const leaveUrl = (call = 0): string | undefined => {
+  const url = mocks.navigate.mock.calls[call]?.[0];
+  return typeof url === 'function' ? url() : url;
+};
+
+// A launch arriving from outside React.
+const launch = (url: string) => {
+  act(() => {
+    mocks.pendingNavigation = url;
+    for (const listener of mocks.navigationListeners) listener();
+  });
+};
 
 vi.mock('~/hooks/useNavigateToArchitect9', () => ({
   useNavigateToArchitect9: () => mocks.navigate,
@@ -100,7 +117,16 @@ const renderApp = () =>
     </Provider>,
   );
 
+// The runner reads wouter's browser location. pushState is what wouter's own
+// navigation uses, and it notifies wouter's subscribers.
+const goTo = (path: string) => {
+  act(() => {
+    window.history.pushState(null, '', path);
+  });
+};
+
 beforeEach(() => {
+  window.history.replaceState(null, '', '/');
   mocks.openRequest = null;
   mocks.pendingNavigation = null;
   mocks.openLibraryProtocol.mockClear();
@@ -138,10 +164,9 @@ describe('<App /> URL entry points', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(mocks.navigate).toHaveBeenCalledWith(
-        '/?import=9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
-      );
+      expect(mocks.navigate).toHaveBeenCalledTimes(1);
     });
+    expect(leaveUrl()).toBe('/?import=9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d');
   });
 
   it('carries out a navigation to Architect 9 requested while mounted', async () => {
@@ -156,5 +181,98 @@ describe('<App /> URL entry points', () => {
     await waitFor(() => {
       expect(mocks.navigate).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('leaves for the newest launch when one arrives while a prompt is open', async () => {
+    let answer: (navigated: boolean) => void = () => {};
+    mocks.navigate.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          answer = resolve;
+        }),
+    );
+    renderApp();
+
+    launch('/?import=first');
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledTimes(1);
+    });
+    launch('/?import=second');
+
+    // The second launch waits for the first prompt instead of racing it.
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+    expect(leaveUrl()).toBe('/?import=second');
+    await act(async () => {
+      answer(true);
+    });
+    expect(mocks.pendingNavigation).toBeNull();
+  });
+
+  it('waits for the start screen before carrying out a navigation requested while in the editor', async () => {
+    window.history.replaceState(null, '', '/protocol');
+    mocks.pendingNavigation = '/?import=9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+
+    renderApp();
+    await act(async () => {});
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.pendingNavigation).toBe(
+      '/?import=9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+    );
+
+    goTo('/');
+
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledTimes(1);
+    });
+    expect(leaveUrl()).toBe('/?import=9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d');
+  });
+
+  it('keeps a launch cancelled in the editor, and replays it only on the start screen', async () => {
+    window.history.replaceState(null, '', '/protocol');
+    mocks.navigate.mockResolvedValueOnce(false);
+    renderApp();
+
+    // A launch arriving in the editor is tried at once; the researcher
+    // cancels the leave-editor prompt.
+    launch('/?import=launched');
+    await waitFor(() => {
+      expect(mocks.pendingNavigation).toBe('/?import=launched');
+    });
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+
+    // Moving around the editor does not replay it.
+    goTo('/protocol/codebook');
+    await act(async () => {});
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+
+    goTo('/');
+
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledTimes(2);
+    });
+    expect(leaveUrl(1)).toBe('/?import=launched');
+    expect(mocks.pendingNavigation).toBeNull();
+  });
+
+  it('keeps the newest launch when the prompt is cancelled', async () => {
+    let answer: (navigated: boolean) => void = () => {};
+    mocks.navigate.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          answer = resolve;
+        }),
+    );
+    renderApp();
+
+    launch('/?import=first');
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledTimes(1);
+    });
+    launch('/?import=second');
+    await act(async () => {
+      answer(false);
+    });
+
+    expect(mocks.pendingNavigation).toBe('/?import=second');
   });
 });

@@ -19,10 +19,21 @@ const mocks = vi.hoisted(() => ({
   promptLeaveEditor: vi.fn(),
   navigateApp: vi.fn(),
   dispatch: vi.fn(),
+  disarmUnloadGuard: vi.fn(),
+  storeListeners: new Set<() => void>(),
 }));
+
+// A store change, as the lock or the open protocol changing would dispatch.
+const notifyStore = () => {
+  for (const listener of mocks.storeListeners) listener();
+};
 
 vi.mock('~/utils/architect9Handoff', () => ({
   leaveForArchitect9: mocks.leave,
+}));
+
+vi.mock('~/utils/beforeUnloadGuard', () => ({
+  disarmInMemoryUnloadGuard: mocks.disarmUnloadGuard,
 }));
 
 vi.mock('~/components/StageEditor/stageDraftBeacon', () => ({
@@ -35,7 +46,15 @@ vi.mock('~/components/DialogForm/nestedDraftRegistry', () => ({
 
 vi.mock('~/ducks/hooks', () => ({
   useAppDispatch: () => mocks.dispatch,
-  useAppStore: () => ({ getState: () => ({}) }),
+  useAppStore: () => ({
+    getState: () => ({}),
+    subscribe: (listener: () => void) => {
+      mocks.storeListeners.add(listener);
+      return () => {
+        mocks.storeListeners.delete(listener);
+      };
+    },
+  }),
 }));
 
 vi.mock('~/utils/appBase', () => ({
@@ -58,10 +77,12 @@ const navigate = () => renderHook(() => useNavigateToArchitect9()).result;
 beforeEach(() => {
   mocks.leave.mockReset();
   mocks.navigateApp.mockReset();
+  mocks.disarmUnloadGuard.mockReset();
   mocks.stageDirty = false;
   mocks.nestedDirty = false;
   mocks.persistence = 'saved';
   mocks.confirmLeave = true;
+  mocks.storeListeners.clear();
   mocks.promptLeaveEditor.mockReset();
   mocks.promptLeaveEditor.mockImplementation(
     async (
@@ -102,6 +123,30 @@ describe('useNavigateToArchitect9', () => {
     expect(mocks.leave).toHaveBeenCalledWith(URL);
   });
 
+  it('reads a URL function only at the moment of leaving', async () => {
+    mocks.stageDirty = true;
+    let latest = URL;
+    const resolveUrl = vi.fn(() => latest);
+    mocks.promptLeaveEditor.mockImplementationOnce(
+      async (
+        _dispatch: unknown,
+        _openDialog: unknown,
+        performLeave: () => void | Promise<void>,
+      ) => {
+        // A newer launch arrives while the prompt is open.
+        latest = '/?import=newer';
+        mocks.stageDirty = false;
+        await performLeave();
+      },
+    );
+    const result = navigate();
+
+    await expect(result.current(resolveUrl)).resolves.toBe(true);
+
+    expect(resolveUrl).toHaveBeenCalledTimes(1);
+    expect(mocks.leave).toHaveBeenCalledWith('/?import=newer');
+  });
+
   it.each([
     ['the stage editor', 'stageDirty'],
     ['a nested editor', 'nestedDirty'],
@@ -115,10 +160,12 @@ describe('useNavigateToArchitect9', () => {
       await expect(result.current(URL)).resolves.toBe(false);
 
       expect(mocks.promptLeaveEditor).toHaveBeenCalledTimes(1);
-      // The discard variant of the prompt, with this tab's persistence copy.
+      // The discard variant of the prompt, with this tab's persistence copy,
+      // worded for Architect 9.
       expect(mocks.promptLeaveEditor.mock.calls[0]?.slice(3)).toEqual([
         true,
         'saved',
+        'architect-9',
       ]);
       expect(mocks.leave).not.toHaveBeenCalled();
     },
@@ -136,6 +183,52 @@ describe('useNavigateToArchitect9', () => {
       mocks.leave.mock.invocationCallOrder[0] ?? 0,
     );
   });
+
+  // A forwarded file launch leaves without requiring a saved protocol. A
+  // protocol that could not be saved exists only in this tab, so it meets the
+  // prompt (which offers a download) even with no editor open.
+  it('asks before leaving a protocol that exists only in this tab, and stays on cancel', async () => {
+    mocks.persistence = 'storage-unavailable';
+    mocks.confirmLeave = false;
+    const result = navigate();
+
+    await expect(result.current(URL)).resolves.toBe(false);
+
+    expect(mocks.promptLeaveEditor).toHaveBeenCalledTimes(1);
+    expect(mocks.promptLeaveEditor.mock.calls[0]?.slice(3)).toEqual([
+      false,
+      'storage-unavailable',
+      'architect-9',
+    ]);
+    expect(mocks.leave).not.toHaveBeenCalled();
+    expect(mocks.disarmUnloadGuard).not.toHaveBeenCalled();
+  });
+
+  it('on a confirmed leave, stops the browser asking again, then navigates', async () => {
+    mocks.persistence = 'storage-unavailable';
+    const result = navigate();
+
+    await expect(result.current(URL)).resolves.toBe(true);
+
+    expect(mocks.disarmUnloadGuard).toHaveBeenCalledTimes(1);
+    expect(mocks.disarmUnloadGuard.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.leave.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(mocks.leave).toHaveBeenCalledWith(URL);
+  });
+
+  it.each(['open-elsewhere', 'reclaim-blocked'] as const)(
+    'leaves a pristine %s tab without asking: the other tab holds its work',
+    async (persistence) => {
+      mocks.persistence = persistence;
+      const result = navigate();
+
+      await expect(result.current(URL)).resolves.toBe(true);
+
+      expect(mocks.promptLeaveEditor).not.toHaveBeenCalled();
+      expect(mocks.leave).toHaveBeenCalledWith(URL);
+    },
+  );
 
   it.each([
     'open-elsewhere',
@@ -185,5 +278,58 @@ describe('useNavigateToArchitect9', () => {
       result.current(URL, { requireSavedProtocol: true }),
     ).resolves.toBe(false);
     expect(mocks.leave).not.toHaveBeenCalled();
+  });
+
+  it('refuses if the lock was lost during the prompt, even though the confirmed leave then cleared the protocol', async () => {
+    mocks.stageDirty = true;
+    mocks.promptLeaveEditor.mockImplementationOnce(
+      async (
+        _dispatch: unknown,
+        _openDialog: unknown,
+        performLeave: () => void | Promise<void>,
+      ) => {
+        mocks.persistence = 'open-elsewhere';
+        notifyStore();
+        // The real prompt clears the active protocol before it returns.
+        mocks.stageDirty = false;
+        mocks.persistence = 'no-protocol';
+        notifyStore();
+        await performLeave();
+      },
+    );
+    const result = navigate();
+
+    await expect(
+      result.current(URL, { requireSavedProtocol: true }),
+    ).resolves.toBe(false);
+    expect(mocks.leave).not.toHaveBeenCalled();
+    expect(mocks.storeListeners.size).toBe(0);
+  });
+
+  it('refuses if the lock was lost while waiting for an in-flight commit, before the prompt', async () => {
+    mocks.stageDirty = true;
+    const finishCommit = beginProtocolCommit();
+    const result = navigate();
+
+    const navigation = result.current(URL, { requireSavedProtocol: true });
+    mocks.persistence = 'open-elsewhere';
+    notifyStore();
+    finishCommit();
+    mocks.promptLeaveEditor.mockImplementationOnce(
+      async (
+        _dispatch: unknown,
+        _openDialog: unknown,
+        performLeave: () => void | Promise<void>,
+      ) => {
+        mocks.stageDirty = false;
+        mocks.persistence = 'no-protocol';
+        notifyStore();
+        await performLeave();
+      },
+    );
+
+    await expect(navigation).resolves.toBe(false);
+    expect(mocks.leave).not.toHaveBeenCalled();
+    expect(mocks.storeListeners.size).toBe(0);
   });
 });

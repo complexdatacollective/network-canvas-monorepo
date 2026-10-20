@@ -62,7 +62,7 @@ import { useNavigateToArchitect9 } from '~/hooks/useNavigateToArchitect9';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
 import type { BundledTemplate } from '~/templates';
-import { sampleProtocol } from '~/templates/sample-protocol';
+import { bundledProtocols } from '~/templates/bundled-protocols';
 import { IS_SUBPATH_BUILD } from '~/utils/appBase';
 import { architect9UpgradeUrl } from '~/utils/architect9Handoff';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
@@ -754,13 +754,17 @@ const LibraryPanel = ({
   const { openDialog } = useDialog();
   const { protocols, isLoaded } = useProtocolLibrary();
   const navigateToArchitect9 = useNavigateToArchitect9();
+  // A build that ships no starting points (Architect 8 inside Architect 9's
+  // deploy, which is the editor alone) has no Templates tab: the library is
+  // all there is.
+  const hasTemplates = bundledProtocols !== null;
   // Null until the library has loaded. The opening tab is then chosen once:
   // Templates when there is nothing recent to show, Recent otherwise. Deciding
   // only once means removing the last protocol later does not move the
   // researcher off the tab they are on.
   const [tab, setTab] = useState<Tab | null>(null);
   if (tab === null && isLoaded) {
-    setTab(protocols.length === 0 ? 'templates' : 'recent');
+    setTab(protocols.length === 0 && hasTemplates ? 'templates' : 'recent');
   }
   const recentLayout = useMemo(
     () => new ListLayout<LibraryPanelItem>({ gap: 0 }),
@@ -1107,6 +1111,8 @@ const LibraryPanel = ({
     ],
   );
   const templateItems = useMemo<LibraryPanelItem[]>(() => {
+    if (!bundledProtocols) return [];
+    const sampleProtocol = bundledProtocols.sample.protocol;
     const items: LibraryPanelItem[] = [
       {
         kind: 'row',
@@ -1222,13 +1228,20 @@ const LibraryPanel = ({
         layout="top"
         value={activeTab}
         onValueChange={(value) => {
-          if (value === 'recent' || value === 'templates') {
+          if (value === 'recent' || (value === 'templates' && hasTemplates)) {
             setTab(value);
           }
         }}
         tabs={[
           { value: 'recent', label: intl.formatMessage(messages.recent) },
-          { value: 'templates', label: intl.formatMessage(messages.templates) },
+          ...(hasTemplates
+            ? [
+                {
+                  value: 'templates',
+                  label: intl.formatMessage(messages.templates),
+                },
+              ]
+            : []),
         ]}
         headerEnd={headerEnd}
         className="h-full"
@@ -1260,27 +1273,29 @@ const LibraryPanel = ({
           </Collection>
         </TabsPanel>
 
-        <TabsPanel value="templates" className={PANEL_CLASSES}>
-          <ScrollArea>
-            <div className="px-2">
-              <Collection
-                id="protocol-templates"
-                items={templateItems}
-                keyExtractor={getLibraryItemKey}
-                textValueExtractor={getLibraryItemTextValue}
-                layout={templateLayout}
-                renderItem={renderLibraryItem}
-                selectionMode="none"
-                animate={false}
-                aria-label={intl.formatMessage(messages.protocolTemplates)}
-                scrollable={false}
-              >
-                {(CollectionElements) => CollectionElements}
-              </Collection>
-              <GalleryCard />
-            </div>
-          </ScrollArea>
-        </TabsPanel>
+        {hasTemplates && (
+          <TabsPanel value="templates" className={PANEL_CLASSES}>
+            <ScrollArea>
+              <div className="px-2">
+                <Collection
+                  id="protocol-templates"
+                  items={templateItems}
+                  keyExtractor={getLibraryItemKey}
+                  textValueExtractor={getLibraryItemTextValue}
+                  layout={templateLayout}
+                  renderItem={renderLibraryItem}
+                  selectionMode="none"
+                  animate={false}
+                  aria-label={intl.formatMessage(messages.protocolTemplates)}
+                  scrollable={false}
+                >
+                  {(CollectionElements) => CollectionElements}
+                </Collection>
+                <GalleryCard />
+              </div>
+            </ScrollArea>
+          </TabsPanel>
+        )}
       </Tabs>
 
       <Dialog

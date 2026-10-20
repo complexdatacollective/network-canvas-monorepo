@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   architect9UpgradeUrl,
+  deferArchitect9Navigation,
   forwardLaunchFilesToArchitect9,
   stageHandoffImport,
   subscribeArchitect9Navigation,
@@ -143,5 +144,29 @@ describe('forwardLaunchFilesToArchitect9', () => {
     expect(await forwardLaunchFilesToArchitect9([file])).toEqual([file]);
     expect(takeArchitect9Navigation()).toBeNull();
     expect(reportError).toHaveBeenCalled();
+  });
+});
+
+describe('deferArchitect9Navigation', () => {
+  it('keeps a cancelled navigation for later without asking to run it now', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeArchitect9Navigation(listener);
+
+    deferArchitect9Navigation('/?import=abc');
+
+    expect(listener).not.toHaveBeenCalled();
+    expect(takeArchitect9Navigation()).toBe('/?import=abc');
+    expect(takeArchitect9Navigation()).toBeNull();
+    unsubscribe();
+  });
+
+  it('keeps a newer navigation that is already waiting', () => {
+    // A second launch arrives while the first one's prompt is open and is
+    // deferred at once; the first prompt is then cancelled.
+    deferArchitect9Navigation('/?import=newer');
+    deferArchitect9Navigation('/?import=older');
+
+    expect(takeArchitect9Navigation()).toBe('/?import=newer');
+    expect(takeArchitect9Navigation()).toBeNull();
   });
 });

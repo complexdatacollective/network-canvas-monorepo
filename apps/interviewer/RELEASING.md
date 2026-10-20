@@ -179,9 +179,14 @@ builds a released tag with `INTERVIEWER_BASE_PATH=/v<major>/` and attaches
   maintenance release. It is chained by `workflow_call` because a release
   created with `GITHUB_TOKEN` fires no tag or release event. It runs in its
   own job, so a failure never turns a release that has already shipped red.
-  Dispatch it by hand from main (with `app: interviewer`) to retry. Only tags
-  whose build reads `INTERVIEWER_BASE_PATH` are eligible (8.5.0 onwards). A
-  release lane skips an older tag with a notice; a dispatch for one fails.
+  Dispatch it by hand from main (with `app: interviewer`) to retry. A chained
+  run also receives the commit the lane built and released, and refuses a tag
+  that points anywhere else: the tarball is built from the tag's tree, so it
+  must be the released one. Only tags whose build reads
+  `INTERVIEWER_BASE_PATH` are eligible (8.5.0 onwards). A release lane skips
+  an older tag with a notice; a dispatch for one fails. A release that has the
+  tarball but not its `.sha256` (a run that stopped between the two uploads)
+  fails the run; dispatch it with `replace` to rebuild.
 - **What a `/v8/` build is.** The same app, built under the base: Vite `base`,
   wouter's router base, manifest `start_url`, `scope` and `id`, and every
   service-worker route rebased to `/v8/`; caches named `interviewer-v8-*`; the
@@ -258,9 +263,14 @@ sub-path tarball. It deploys nothing.
 interviewer` and `source_ref` set to it. The `verify` job runs typecheck and
    tests across Interviewer's workspace dependency closure, then a
    `/v<major>/` build, because a maintenance branch gets no pull-request CI.
-   After approval, the `release` job checks the version again, claims the tag
-   atomically, and creates the release with notes since the line's previous
-   release. This job holds the write token and runs nothing from the branch.
+   After approval, the `release` job checks the version again, writes the
+   notes since the line's previous release, claims the tag atomically, and
+   creates the release. If the release is not created after the claim, the
+   job deletes the tag again so the run can be repeated. A run that died
+   before that cleanup (a lost runner or a timeout) leaves the tag with no
+   release. Re-running it, or dispatching it again, deletes a tag that sits on
+   the verified commit and has no release, then claims it again. This job
+   holds the write token and runs nothing from the branch.
    `resolve-hotfix-release.mjs` in its line scope (`SCOPE=line`) requires:
    - a version newer than every release on its own major line;
    - a major below the newest release overall;

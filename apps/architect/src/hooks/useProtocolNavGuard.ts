@@ -58,6 +58,30 @@ const utilityMessages = defineMessages({
     defaultMessage: 'Discard Changes and Leave',
     description: 'The label text in hooks / useProtocolNavGuard.',
   },
+  discardChangesAndOpenArchitect9: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.discardChangesAndOpenArchitect9',
+    defaultMessage: 'Discard Changes and Open Architect 9',
+    description:
+      'Button confirming that unsaved changes are discarded so this tab can switch to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  openArchitect9Title: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.openArchitect9Title',
+    defaultMessage: 'Open Architect 9?',
+    description:
+      'Title of the confirmation shown before this tab switches from Architect 8 to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  downloadAndOpenArchitect9: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.downloadAndOpenArchitect9',
+    defaultMessage: 'Download now and open Architect 9',
+    description:
+      'Button that downloads the open protocol and then switches this tab to Architect 9. "Architect 9" is a product name.',
+  },
+  openArchitect9WithoutDownloading: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.openArchitect9WithoutDownloading',
+    defaultMessage: 'Open Architect 9 without downloading',
+    description:
+      'Button that switches this tab to Architect 9 without downloading the open protocol, which then is lost. "Architect 9" is a product name.',
+  },
 });
 const leaveDescriptions: Record<
   Exclude<LeavePersistence, 'no-protocol'>,
@@ -125,6 +149,53 @@ const discardDescriptions: Record<
       'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
   },
 });
+// The same, when the tab is leaving for Architect 9 (a full-page navigation to
+// the newer Architect served from the same site) rather than for the start
+// screen.
+const architect9DiscardDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  MessageDescriptor
+> = defineMessages({
+  'saved': {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.saved',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you open Architect 9 now, those changes will be discarded and the last saved version of the protocol will remain available.',
+    description:
+      'Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  'open-elsewhere': {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.openElsewhere',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you open Architect 9 now, those changes will be discarded.',
+    description:
+      'Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  'reclaim-blocked': {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.reclaimBlocked',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you open Architect 9 now, those changes will be discarded and that saved version will remain available.',
+    description:
+      'Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+  'storage-unavailable': {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9DiscardDescriptions.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Opening Architect 9 now discards all of it.',
+    description:
+      'Whole message describing a protocol save/lock state before this tab switches to Architect 9, the newer Architect release served from the same site. "Architect 9" is a product name.',
+  },
+});
+// Leaving for Architect 9 with nothing unsaved in an editor only loses work
+// when nothing could be saved at all, so this is the one state it describes.
+const ARCHITECT_9_UNSAVED_LEAVE_DESCRIPTION = defineMessages({
+  message: {
+    id: 'architect.constants.hooks.useprotocolnavguard.architect9LeaveDescription.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when Architect 9 opens.',
+    description:
+      'Shown before this tab switches to Architect 9, the newer Architect release served from the same site, when the open protocol could not be saved. "Architect 9" is a product name.',
+  },
+}).message;
 export const stageDiscardDescriptions: Record<
   Exclude<LeavePersistence, 'no-protocol'>,
   MessageDescriptor
@@ -367,25 +438,37 @@ const NESTED_DRAFT_DISCARD_DESCRIPTION = defineMessages({
 // protocol open in another tab) gets a description of its own situation
 // instead. Callers must resolve `no-protocol` themselves: there is nothing to
 // confirm, and every action this dialog offers would fail.
+//
+// `destination` names where the leave goes, so the copy can say so: the start
+// screen, or Architect 9 (a full-page navigation away from this app). Leaving
+// a pristine editor for Architect 9 loses nothing unless storage is
+// unavailable, so that is the only pristine state its copy covers, and any
+// other leaves without asking.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void | Promise<void>,
   draftDirty = false,
   persistence: Exclude<LeavePersistence, 'no-protocol'> = 'saved',
+  destination: 'start-screen' | 'architect-9' = 'start-screen',
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
+    const toArchitect9 = destination === 'architect-9';
     const leaveAction = {
       label: createElement(AppMessage, {
-        message: utilityMessages.returnToStartScreen,
+        message: toArchitect9
+          ? utilityMessages.openArchitect9WithoutDownloading
+          : utilityMessages.returnToStartScreen,
       }),
       value: 'leave' as const,
     };
     const downloadAction = {
       label: createElement(AppMessage, {
-        message: utilityMessages.returnAndDownloadNow,
+        message: toArchitect9
+          ? utilityMessages.downloadAndOpenArchitect9
+          : utilityMessages.returnAndDownloadNow,
       }),
       value: 'download-and-leave' as const,
     };
@@ -400,14 +483,18 @@ export const promptLeaveEditor = async (
             message: utilityMessages.discardUnsavedChanges,
           }),
           description: createElement(AppMessage, {
-            message: discardDescriptions[persistence],
+            message: toArchitect9
+              ? architect9DiscardDescriptions[persistence]
+              : discardDescriptions[persistence],
           }),
           intent: 'warning',
           size: 'readable',
           actions: {
             primary: {
               label: createElement(AppMessage, {
-                message: utilityMessages.discardChangesAndReturn,
+                message: toArchitect9
+                  ? utilityMessages.discardChangesAndOpenArchitect9
+                  : utilityMessages.discardChangesAndReturn,
               }),
               value: 'discard-and-leave' as const,
             },
@@ -419,27 +506,33 @@ export const promptLeaveEditor = async (
             },
           },
         })
-      : await openDialog({
-          type: 'choice',
-          title: createElement(AppMessage, {
-            message: utilityMessages.returnToStartScreenb2364,
-          }),
-          description: createElement(AppMessage, {
-            message: leaveDescriptions[persistence],
-          }),
-          intent: unsaved ? 'warning' : 'default',
-          size: 'readable',
-          actions: {
-            primary: unsaved ? downloadAction : leaveAction,
-            secondary: unsaved ? leaveAction : downloadAction,
-            cancel: {
-              label: createElement(AppMessage, {
-                message: commonMessages.cancel,
-              }),
-              value: null,
+      : toArchitect9 && !unsaved
+        ? 'leave'
+        : await openDialog({
+            type: 'choice',
+            title: createElement(AppMessage, {
+              message: toArchitect9
+                ? utilityMessages.openArchitect9Title
+                : utilityMessages.returnToStartScreenb2364,
+            }),
+            description: createElement(AppMessage, {
+              message: toArchitect9
+                ? ARCHITECT_9_UNSAVED_LEAVE_DESCRIPTION
+                : leaveDescriptions[persistence],
+            }),
+            intent: unsaved ? 'warning' : 'default',
+            size: 'readable',
+            actions: {
+              primary: unsaved ? downloadAction : leaveAction,
+              secondary: unsaved ? leaveAction : downloadAction,
+              cancel: {
+                label: createElement(AppMessage, {
+                  message: commonMessages.cancel,
+                }),
+                value: null,
+              },
             },
-          },
-        });
+          });
 
     if (draftDirty && action !== 'discard-and-leave') {
       return;

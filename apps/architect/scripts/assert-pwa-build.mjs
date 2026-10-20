@@ -5,7 +5,8 @@
 // first offline rendering of screen thumbnails. Architect precaches all JS (no
 // `globIgnores`), so any excluded chunk is a real regression. (Sibling of
 // apps/interviewer/scripts/assert-pwa-build.mjs, which instead checks named
-// critical chunks because it intentionally excludes its dev-protocol chunk.)
+// critical chunks because it intentionally keeps some chunks out of the
+// initial load.)
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -18,6 +19,7 @@ import {
   resolveAppBasePath,
 } from '../../../scripts/buildtime/app-base-path.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
+import { findShippedProtocols } from '../../../scripts/buildtime/find-shipped-protocols.mjs';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -230,6 +232,71 @@ if (missingStagePreviewAssets.length > 0) {
   fail(
     `stage-preview asset(s) excluded from precache: ${missingStagePreviewAssets.join(', ')}`,
   );
+}
+
+// Architect 9 installs a sub-path build's worker in the background, so its
+// first visit may be offline: every font and the hashed header icon must be
+// precached there. The root build leaves both to its runtime caches.
+const offlineFirstVisitAssets = assetFiles
+  .filter((f) => f.endsWith('.woff2') || /^architect-icon-.+\.png$/.test(f))
+  .map((f) => `assets/${f}`);
+if (!offlineFirstVisitAssets.some((url) => url.endsWith('.woff2'))) {
+  fail('no .woff2 fonts emitted to dist/assets');
+}
+if (!offlineFirstVisitAssets.some((url) => url.endsWith('.png'))) {
+  fail('no hashed header icon (assets/architect-icon-*.png) emitted');
+}
+const manifestUrls = new Set(
+  [...sw.matchAll(/\{url:"([^"]+)",revision:/g)].map((m) => m[1]),
+);
+if (isSubpath) {
+  const missing = offlineFirstVisitAssets.filter(
+    (url) => !manifestUrls.has(url),
+  );
+  if (missing.length > 0) {
+    fail(
+      `a ${base} build must precache its fonts and header icon; missing: ${missing.join(', ')}`,
+    );
+  }
+} else {
+  const added = offlineFirstVisitAssets.filter((url) => manifestUrls.has(url));
+  if (added.length > 0) {
+    fail(`the root build precaches runtime-cached assets: ${added.join(', ')}`);
+  }
+}
+
+// The dev-only Development protocol is opened only from a dev build (its
+// imports are guarded by `import.meta.env.DEV`), so no production build may
+// carry it or its media (a 24 MB video among it). A sub-path build is the
+// editor alone (vite.config.ts replaces src/templates/bundled-protocols.ts
+// there): none of the research templates or the Sample protocol, nor any of
+// their media, may reach it either.
+{
+  const protocolsRoot = path.resolve(appRoot, '../../packages/protocols');
+  const protocolDirs = ['development'];
+  if (isSubpath) {
+    protocolDirs.push(
+      'sample',
+      ...(
+        await readdir(path.join(protocolsRoot, 'templates'), {
+          withFileTypes: true,
+        })
+      )
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => `templates/${entry.name}`),
+    );
+  }
+  let shipped = [];
+  try {
+    shipped = await findShippedProtocols({ dist, protocolsRoot, protocolDirs });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+  if (shipped.length > 0) {
+    fail(
+      `a ${base} build must not ship ${isSubpath ? 'bundled protocols or their media' : 'the Development protocol or its media'}: ${shipped.join(', ')}`,
+    );
+  }
 }
 
 // Source maps are emitted only to be uploaded to PostHog, and the upload
@@ -451,5 +518,5 @@ if (excluded.length > 0) {
 }
 
 console.log(
-  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
+  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached${isSubpath ? `, plus ${offlineFirstVisitAssets.length} font and header-icon files` : ''}`,
 );

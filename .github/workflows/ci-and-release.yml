@@ -3807,10 +3807,12 @@ jobs:
       contents: write
     # Read by apps-release-architect-subpath-dist below: whether this run
     # actually released (the guard skips a version already tagged or
-    # overtaken), and the tag it created.
+    # overtaken), the tag it created, and the commit it built and deployed,
+    # which that tag must name.
     outputs:
       released: ${{ steps.guard.outputs.skip != 'true' }}
       tag: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
+      sha: ${{ github.sha }}
     # No job-level secrets: every credential is scoped to the one step that
     # consumes it, so setup actions, the install, and the release action never
     # see the Netlify token or the build-time values.
@@ -3887,6 +3889,11 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
+          # The commit built and deployed above. Without it GitHub creates the
+          # tag at main's tip when the release is published, which can be a
+          # later push that still carries this version (a pending changeset
+          # bumps nothing), and the sub-path dist below builds the tag's tree.
+          target_commitish: ${{ github.sha }}
           name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
           body_path: ${{ runner.temp }}/architect-notes.md
           prerelease: false
@@ -3911,6 +3918,7 @@ jobs:
     with:
       app: architect
       tag: ${{ needs.apps-release-architect.outputs.tag }}
+      expected_sha: ${{ needs.apps-release-architect.outputs.sha }}
 
   # Build, deploy to Netlify production, and cut a GitHub release for interviewer
   # when its version changed. Separate job (see apps-release-architect) so a
@@ -3931,10 +3939,12 @@ jobs:
       contents: write
     # Read by apps-release-interviewer-subpath-dist below: whether this run
     # actually released (the guard skips a version already tagged or
-    # overtaken), and the tag it created.
+    # overtaken), the tag it created, and the commit it built and deployed,
+    # which that tag must name.
     outputs:
       released: ${{ steps.guard.outputs.skip != 'true' }}
       tag: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+      sha: ${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -4001,6 +4011,11 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+          # The commit built and deployed above. Without it GitHub creates the
+          # tag at main's tip when the release is published, which can be a
+          # later push that still carries this version (a pending changeset
+          # bumps nothing), and the sub-path dist below builds the tag's tree.
+          target_commitish: ${{ github.sha }}
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
           body_path: ${{ runner.temp }}/interviewer-notes.md
           prerelease: false
@@ -4025,6 +4040,7 @@ jobs:
     with:
       app: interviewer
       tag: ${{ needs.apps-release-interviewer.outputs.tag }}
+      expected_sha: ${{ needs.apps-release-interviewer.outputs.sha }}
 
   # Build, deploy to Netlify production, and cut a stable GitHub release for
   # Background Creator when its normal-lane version changes. This remains

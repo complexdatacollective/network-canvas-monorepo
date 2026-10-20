@@ -69,11 +69,30 @@ function compareSemVer(a: SemVer, b: SemVer): number {
 // so the first matching entry can be an 8.x patch created after 9.0.0. With
 // the running version given, releases on an older major than it are ignored:
 // they are never an update for this app, and a newer major still is — that is
-// how a running 8.x learns 9.0.0 has arrived.
+// how a running 8.x learns 9.0.0 has arrived. A host that only ever serves one
+// major line (an archived version's host) sets `runningMajorOnly`, because the
+// update waiting there is never a newer major.
+export type ReleaseSelectionOptions = {
+  /** Consider only releases on the running version's major line. */
+  runningMajorOnly?: boolean;
+};
+
+const onCandidateLine = (
+  semver: SemVer,
+  runningMajor: number | undefined,
+  { runningMajorOnly = false }: ReleaseSelectionOptions,
+): boolean => {
+  if (runningMajor === undefined) return true;
+  return runningMajorOnly
+    ? semver.major === runningMajor
+    : semver.major >= runningMajor;
+};
+
 export function selectLatestForApp(
   app: AppId,
   releases: GitHubRelease[],
   currentVersion?: string,
+  options: ReleaseSelectionOptions = {},
 ): ReleaseNotes | null {
   const runningMajor = currentVersion
     ? parseSemVer(currentVersion)?.major
@@ -84,25 +103,66 @@ export function selectLatestForApp(
     if (!version) continue;
     const semver = parseSemVer(version);
     if (!semver) continue;
-    if (runningMajor !== undefined && semver.major < runningMajor) continue;
+    if (!onCandidateLine(semver, runningMajor, options)) continue;
     if (latest && compareSemVer(semver, latest.semver) <= 0) continue;
     latest = { notes: { version, body: release.body ?? '' }, semver };
   }
   return latest?.notes ?? null;
 }
 
+// Every package and app in the monorepo shares one release list, about a
+// hundred releases a quarter, so an app's newest release can sit pages back.
+// The list is unauthenticated (60 requests an hour per address, shared by a
+// whole lab behind one NAT), so a further page is read only while nothing read
+// so far is a release of this app at or above its running major. Releases are
+// listed newest first, so the first page almost always answers. What that
+// gives up: a newer major's release more than a page behind a later
+// maintenance release on the running line goes unseen.
+const RELEASES_PER_PAGE = 100;
+const RELEASE_PAGES = 3;
+
+const isCandidate = (
+  app: AppId,
+  release: GitHubRelease,
+  runningMajor: number | undefined,
+  options: ReleaseSelectionOptions,
+): boolean => {
+  const version = versionFromTag(app, release.tag_name);
+  const semver = version ? parseSemVer(version) : null;
+  if (!semver) return false;
+  return onCandidateLine(semver, runningMajor, options);
+};
+
 export async function fetchLatestReleaseNotes(
   app: AppId,
   currentVersion?: string,
+  options: ReleaseSelectionOptions = {},
 ): Promise<ReleaseNotes | null> {
+  const runningMajor = currentVersion
+    ? parseSemVer(currentVersion)?.major
+    : undefined;
   try {
-    const res = await fetch(
-      `https://api.github.com/repos/${REPO}/releases?per_page=30`,
-      { headers: { Accept: 'application/vnd.github+json' } },
-    );
-    if (!res.ok) return null;
-    const releases = (await res.json()) as GitHubRelease[];
-    return selectLatestForApp(app, releases, currentVersion);
+    const releases: GitHubRelease[] = [];
+    for (let page = 1; page <= RELEASE_PAGES; page += 1) {
+      const res = await fetch(
+        `https://api.github.com/repos/${REPO}/releases?per_page=${RELEASES_PER_PAGE}&page=${page}`,
+        { headers: { Accept: 'application/vnd.github+json' } },
+      );
+      // A missing page could hold the newest release, and notes picked from
+      // the rest would describe the wrong version: show none instead.
+      if (!res.ok) return null;
+      const batch = (await res.json()) as GitHubRelease[];
+      releases.push(...batch);
+      if (batch.length < RELEASES_PER_PAGE) break;
+      if (
+        batch.some((release) =>
+          isCandidate(app, release, runningMajor, options),
+        )
+      ) {
+        break;
+      }
+    }
+    return selectLatestForApp(app, releases, currentVersion, options);
   } catch {
     return null;
   }

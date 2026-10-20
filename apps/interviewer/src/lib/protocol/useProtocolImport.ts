@@ -70,6 +70,19 @@ export type PendingImport = {
   progress?: number;
 };
 
+// Loads the dev-only Development protocol, or null in a production build.
+// The `import.meta.env.DEV` test has to guard the dynamic import itself: an
+// unguarded `import()` is emitted as its own chunk (the protocol and its
+// inlined ~23 MB video) in every build, even though nothing in production
+// ever requests it. scripts/assert-pwa-build.mjs fails a build that ships it.
+const loadDevelopmentProtocol = import.meta.env.DEV
+  ? async () => {
+      const { loadBundledDevelopmentProtocol } =
+        await import('./bundledDevelopmentProtocol');
+      return loadBundledDevelopmentProtocol();
+    }
+  : null;
+
 // Minimum time the pending (installing) card stays visible, even when the
 // import itself finishes faster.
 const MIN_PENDING_VISIBLE_MS = 1500;
@@ -188,12 +201,13 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             peekedName ?? undefined,
           );
         } else if (request.source === 'development') {
-          // Dynamically imported so its module (and the 23MB dev-only video
-          // it bundles) is split into a chunk production never fetches; the
-          // trigger that reaches this branch is itself DEV-gated in Home.
-          const { loadBundledDevelopmentProtocol } =
-            await import('./bundledDevelopmentProtocol');
-          const bundled = await loadBundledDevelopmentProtocol();
+          // The trigger that reaches this branch is itself DEV-gated in Home.
+          if (!loadDevelopmentProtocol) {
+            throw new Error(
+              'The Development protocol is only bundled in development builds',
+            );
+          }
+          const bundled = await loadDevelopmentProtocol();
           result = await importBundledProtocol(bundled, onProgress);
         } else {
           // Dynamically imported so the sample's inlined media stays out of

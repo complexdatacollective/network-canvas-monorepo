@@ -8,10 +8,10 @@
 //
 // Both are one-shot: the parameters are stripped with `history.replaceState`
 // as soon as this module is evaluated, so a reload or a bookmark never repeats
-// the request. main.tsx imports this module before `./analytics`, whose
-// `posthog.init` records the first page view, so the ids never reach
-// analytics. Keep this module a leaf: anything it imports is evaluated first,
-// and an import that reached `~/analytics` would undo that ordering.
+// the request. `~/analytics` imports this module ahead of its `posthog.init`,
+// which records the first page view, so the ids never reach analytics. Keep
+// this module a leaf: anything it imports is evaluated first, and an import
+// that reached `~/analytics` would be a cycle that undoes that ordering.
 
 export type UrlLaunchRequest =
   | { kind: 'open'; protocolId: string }
