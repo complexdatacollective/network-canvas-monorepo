@@ -250,8 +250,8 @@
       "draft": "What is this place called?"
     },
     {
-      "questionKey": "node:place/visit_freq",
-      "draft": "How often do you go there?"
+      "questionKey": "node:place/hours",
+      "draft": "How many hours a week do you spend there?"
     },
     {
       "questionKey": "rel:friends/since",

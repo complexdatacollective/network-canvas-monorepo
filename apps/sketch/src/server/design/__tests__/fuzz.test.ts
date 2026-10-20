@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 // must pass validateProtocol, with and without wording. The reference run
 // covered 12,000 mutants; CI runs a small, fixed sample.
 import {
+  findVariableRoleConflicts,
   type VersionedProtocol,
   validateProtocol,
 } from '@codaco/protocol-validation';
@@ -171,6 +172,12 @@ describe('mutation fuzzer', () => {
             if (!result.success)
               failures.push(
                 `mutant ${i}: ${JSON.stringify(result.error.issues.slice(0, 3))}`,
+              );
+            // no attribute is both asked in a form and written without one
+            const conflicts = findVariableRoleConflicts(protocol);
+            if (conflicts.length)
+              failures.push(
+                `mutant ${i}: ${conflicts.map((c) => c.variableName).join(', ')} written with and without validation`,
               );
           }
         } catch (e) {

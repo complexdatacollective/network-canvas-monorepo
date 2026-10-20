@@ -9,6 +9,7 @@
 // validates also validates with wording; if it ever does not, ship the
 // preflight protocol.
 import {
+  findVariableRoleConflicts,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
   type VersionedProtocol,
@@ -68,6 +69,16 @@ export const buildProtocol = async (
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the parse is the check
     compiled.protocol as VersionedProtocol,
   );
+  // analyse() keeps form attributes out of unvalidated writers; anything it
+  // misses is a design fault the model is asked to fix.
+  for (const c of findVariableRoleConflicts(compiled.protocol)) {
+    issues.push({
+      severity: 'degraded',
+      code: 'WRITTEN_WITHOUT_VALIDATION',
+      path: 'stages',
+      message: `"${c.variableName}" is asked in a form and also written by a stage that skips the form's validation. Collect it in one place only.`,
+    });
+  }
   return {
     ...compiled,
     issues,

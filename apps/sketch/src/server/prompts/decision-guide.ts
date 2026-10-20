@@ -9,7 +9,7 @@
 // the guide must never suggest something the schema cannot express
 // (asserted in part by __tests__/decision-guide.test.ts).
 
-export const DECISION_GUIDE = `# Sketch decision guide v2
+export const DECISION_GUIDE = `# Sketch decision guide v3
 
 This guide is how an experienced Network Canvas designer turns a researcher's research questions, research population and study synopsis into a StudyDesign. Follow it unless the study clearly asks for something else that the schema can express.
 
@@ -67,7 +67,7 @@ Pick the stage by the attribute's kind:
 - **text**, **long_text**, **number**, **date**, **month_year**, **year**, **slider**: an **alterForm** field. Keep alterForm to 1-6 attributes, and move single ordered or categorical items to bins.
 - Location by country: a **geospatial** stage (see §6).
 
-A bins stage takes 1-3 prompts, each on its own attribute. Ask about each attribute once, with one stage, and reuse it everywhere (filters, narrative groups).
+A bins stage takes 1-3 prompts, each on its own attribute. Ask about each attribute once, with one stage, and reuse it everywhere (filters, narrative groups). An attribute recorded by bins, a sociogram highlight, a prompt tag or a census strength never also appears in a form: those stages skip the form's validation, so the two would disagree.
 
 Every interpreter after a generator applies to all nodes of the type unless you set a filter. Use a filter to ask only about the people it applies to, e.g. a bins stage on drink_together_freq with filter conditions [drinks_with is "yes"].
 

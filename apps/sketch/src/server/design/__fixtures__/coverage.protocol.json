@@ -251,6 +251,11 @@
             "type": "text",
             "component": "Text"
           },
+          "place_hours": {
+            "name": "hours",
+            "type": "number",
+            "component": "Number"
+          },
           "place_favourite": {
             "name": "favourite",
             "type": "boolean",
@@ -478,8 +483,8 @@
             "prompt": "What is this place called?"
           },
           {
-            "variable": "place_visit_freq",
-            "prompt": "How often do you go there?"
+            "variable": "place_hours",
+            "prompt": "How many hours a week do you spend there?"
           }
         ]
       }

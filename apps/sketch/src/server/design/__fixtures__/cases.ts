@@ -92,6 +92,7 @@ export const coverageDesign: StudyDesign = {
         A('place_type', 'multi_choice', 'What do you do there?', {
           options: ['Study', 'Eat', 'Socialise', 'Exercise'],
         }),
+        A('hours', 'number', 'How many hours a week do you spend there?'),
       ],
     },
   ],
@@ -131,7 +132,7 @@ export const coverageDesign: StudyDesign = {
       ...common('places'),
       nodeTypeId: 'place',
       method: 'form',
-      attributeIds: ['visit_freq'],
+      attributeIds: ['hours'],
       prompts: [
         { text: 'Where do you **spend time on campus**?', tagAttributeId: '' },
       ],

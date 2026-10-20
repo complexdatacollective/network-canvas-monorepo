@@ -1,9 +1,11 @@
+import { describe, expect, it } from 'vitest';
+
 // @vitest-environment node
 //
 // Regressions found in review: each design compiled to a protocol that
 // validated (or failed in a way the model could not act on) but behaved wrongly
 // in an interview.
-import { describe, expect, it } from 'vitest';
+import { findVariableRoleConflicts } from '@codaco/protocol-validation';
 
 import { analyse } from '../analyse.ts';
 import { buildProtocol } from '../build.ts';
@@ -734,6 +736,37 @@ describe('compiler review fixes', () => {
       'Who are you **close** to?',
       'Who do you ask for **advice**?',
     ]);
+    // the form is the only writer, so its validation is never bypassed
+    expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
+    expect(JSON.stringify(stageById(r.stages, 'roster'))).not.toContain(
+      'additionalAttributes',
+    );
+  });
+
+  it('leaves an attribute a form asks to the form, not to a prompt tag', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [person([A('advice', 'yes_no', 'Do you ask them?')])],
+        stages: [
+          ng('ng', {
+            prompts: [
+              { text: 'Who do you ask for advice?', tagAttributeId: 'advice' },
+            ],
+          }),
+          {
+            kind: 'alterForm',
+            ...c('details'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['advice'],
+          },
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
+    expect(r.codes).toContain('TAG_ALSO_IN_FORM');
+    expect(r.codes).not.toContain('WRITTEN_WITHOUT_VALIDATION');
   });
 
   it('reads a tag as unset until the form that asks it has run', async () => {
