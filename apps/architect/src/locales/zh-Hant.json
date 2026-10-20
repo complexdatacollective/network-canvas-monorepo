@@ -650,6 +650,7 @@
   "architect.protocolOpenDialogs.technicalDetails": "技術詳細資料（英文）",
   "architect.protocolOpenDialogs.upgradeAffectsInterviews": "<strong>請注意：</strong>升級可能會改變參與者的訪談體驗，且您也必須使用 Interviewer 或 Fresco 的最新版本。",
   "architect.protocolOpenDialogs.upgradeChangesList": "如果升級，系統將對您的協定進行下列變更：",
+  "architect.protocolOpenDialogs.upgradeMakesACopy": "升級會建立並開啟您協定的升級副本。您的原始協定將保持不變。",
   "architect.protocolSummary.asset.english": "英文",
   "architect.protocolSummary.assetManifest.resourceLibrary": "資源庫",
   "architect.protocolSummary.contents.assets": "資源",

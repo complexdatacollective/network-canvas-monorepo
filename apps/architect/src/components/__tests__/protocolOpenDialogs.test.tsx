@@ -93,6 +93,9 @@ describe('the migration-required dialog', () => {
     expect(dialog).toHaveTextContent(
       'Please note: upgrading may change the interview experience for participants',
     );
+    expect(dialog).toHaveTextContent(
+      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
+    );
     const upgrade = within(dialog).getByRole('button', {
       name: 'Upgrade to schema 9',
     });

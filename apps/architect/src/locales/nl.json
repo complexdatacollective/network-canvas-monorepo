@@ -650,6 +650,7 @@
   "architect.protocolOpenDialogs.technicalDetails": "Technische details (Engels)",
   "architect.protocolOpenDialogs.upgradeAffectsInterviews": "<strong>Let op:</strong> het bijwerken kan veranderen hoe deelnemers het interview ervaren en betekent dat je ook de nieuwste versie van Interviewer of Fresco moet gebruiken.",
   "architect.protocolOpenDialogs.upgradeChangesList": "Als je bijwerkt, worden de volgende wijzigingen in je protocol aangebracht:",
+  "architect.protocolOpenDialogs.upgradeMakesACopy": "Bij het bijwerken wordt er een bijgewerkte kopie van je protocol gemaakt en geopend. Je oorspronkelijke protocol wordt niet gewijzigd.",
   "architect.protocolSummary.asset.english": "Engels",
   "architect.protocolSummary.assetManifest.resourceLibrary": "Bronnenbibliotheek",
   "architect.protocolSummary.contents.assets": "Bronnen",

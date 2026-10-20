@@ -650,6 +650,7 @@
   "architect.protocolOpenDialogs.technicalDetails": "Détails techniques (en anglais)",
   "architect.protocolOpenDialogs.upgradeAffectsInterviews": "<strong>Remarque :</strong> la mise à niveau peut modifier l’expérience de l’entretien pour les personnes participantes et nécessitera que vous utilisiez également la dernière version d’Interviewer ou de Fresco.",
   "architect.protocolOpenDialogs.upgradeChangesList": "Si vous effectuez la mise à niveau, les modifications suivantes seront apportées à votre protocole :",
+  "architect.protocolOpenDialogs.upgradeMakesACopy": "La mise à niveau crée une copie mise à niveau de votre protocole et l’ouvre. Votre protocole d’origine ne sera pas modifié.",
   "architect.protocolSummary.asset.english": "Anglais",
   "architect.protocolSummary.assetManifest.resourceLibrary": "Bibliothèque de ressources",
   "architect.protocolSummary.contents.assets": "Ressources",

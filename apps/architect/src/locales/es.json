@@ -650,6 +650,7 @@
   "architect.protocolOpenDialogs.technicalDetails": "Detalles técnicos (en inglés)",
   "architect.protocolOpenDialogs.upgradeAffectsInterviews": "<strong>Ten en cuenta:</strong> actualizar puede cambiar la experiencia de la entrevista para los participantes y requerirá que también uses la versión más reciente de Interviewer o Fresco.",
   "architect.protocolOpenDialogs.upgradeChangesList": "Si actualizas, se harán los siguientes cambios en tu protocolo:",
+  "architect.protocolOpenDialogs.upgradeMakesACopy": "Al actualizar, se crea y se abre una copia actualizada de tu protocolo. Tu protocolo original no se modificará.",
   "architect.protocolSummary.asset.english": "Inglés",
   "architect.protocolSummary.assetManifest.resourceLibrary": "Biblioteca de recursos",
   "architect.protocolSummary.contents.assets": "Recursos",
