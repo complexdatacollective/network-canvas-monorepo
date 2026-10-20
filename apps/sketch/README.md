@@ -130,7 +130,7 @@ back with `extractProtocol` and validates it.
 | `SKETCH_PROVIDERS`        | functions    | `anthropic`                              | Comma list of providers to offer. A key alone does not switch one on, since Netlify's AI Gateway injects keys.   |
 | `OPENAI_DESIGN_MODEL`     | functions    | `gpt-6-astra`                            | OpenAI model for step 2.                                                                                         |
 | `OPENAI_WORDING_MODEL`    | functions    | `gpt-6-luna`                             | OpenAI model for steps 1 and 3.                                                                                  |
-| `SKETCH_DAILY_BUDGET_USD` | functions    | `20`                                     | New jobs are refused (HTTP 429) once today's recorded spend (UTC day) reaches this.                              |
+| `SKETCH_DAILY_BUDGET_USD` | functions    | `50`                                     | New jobs are refused (HTTP 429) once today's recorded spend (UTC day) reaches this.                              |
 | `SKETCH_PRICING`          | functions    | built-in table in `src/server/models.ts` | JSON `{"<model>": {"input", "output", "cacheRead", "cacheWrite"}}` in USD per million tokens; overrides entries. |
 | `VITE_ARCHITECT_URL`      | build (Vite) | `https://architect.networkcanvas.dev`    | Where "Open in Architect" goes. Baked into the bundle at build time.                                             |
 

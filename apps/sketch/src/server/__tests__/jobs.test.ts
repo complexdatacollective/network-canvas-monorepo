@@ -154,9 +154,9 @@ describe('budget guard', () => {
     });
   });
 
-  it('defaults to $20 a day', () => {
-    expect(dailyBudgetUsd(undefined)).toBe(20);
-    expect(dailyBudgetUsd('nonsense')).toBe(20);
+  it('defaults to $50 a day', () => {
+    expect(dailyBudgetUsd(undefined)).toBe(50);
+    expect(dailyBudgetUsd('nonsense')).toBe(50);
     expect(dailyBudgetUsd('12.5')).toBe(12.5);
   });
 

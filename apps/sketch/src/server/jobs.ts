@@ -370,7 +370,7 @@ type DailySpend = {
   jobs: number;
 };
 
-const DEFAULT_DAILY_BUDGET_USD = 20;
+const DEFAULT_DAILY_BUDGET_USD = 50;
 
 export const dailyBudgetUsd = (
   env: string | undefined = process.env.SKETCH_DAILY_BUDGET_USD,

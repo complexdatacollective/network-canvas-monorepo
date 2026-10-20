@@ -388,7 +388,7 @@ const RelationshipCensusStage = z
     method: z
       .enum(['every_pair', 'one_at_a_time', 'with_strength'])
       .describe(
-        'every_pair = a yes/no screen for every pair (under ~10 nodes). one_at_a_time = one node at a time, tap everyone tied to it from the rest (about 8-25 nodes). with_strength = every pair on an ordered strength scale (under ~10 nodes).',
+        "one_at_a_time = usually preferred: one node at a time, tap everyone tied to it from the rest (up to ~25 nodes). every_pair = a yes/no screen for every pair (under ~8 nodes), when each pair needs an explicit answer. with_strength = every pair on an ordered strength scale, when the study needs the participant's perception of tie strength between alters.",
       ),
     prompts: z
       .array(

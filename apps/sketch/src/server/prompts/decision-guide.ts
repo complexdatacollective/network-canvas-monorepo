@@ -9,7 +9,7 @@
 // the guide must never suggest something the schema cannot express
 // (asserted in part by __tests__/decision-guide.test.ts).
 
-export const DECISION_GUIDE = `# Sketch decision guide v6
+export const DECISION_GUIDE = `# Sketch decision guide v7
 
 This guide is how an experienced Network Canvas designer turns a researcher's research questions, research population and study synopsis into a StudyDesign. Its method choices are defaults with their trade-offs, not rules: weigh them against this study, and against the design as a whole. The goal is the interview that answers the research questions with the least burden on the participant (§10). Rules marked "never" or "only" are hard constraints of the software or of valid measurement; everything else is judgement.
 
@@ -87,15 +87,15 @@ Each method has different strengths. Choose by what the analysis needs from the 
 - **sociogram** connect prompt: the participant draws a line between two people on the map. It scales to large networks and shows the structure as it is drawn, so clusters and gaps are visible and easy to talk about. It is not systematic: the participant must spot every tie, and in a dense map some are missed. It needs a screen large enough to drag and tap precisely.
 - **relationshipCensus every_pair** (dyad census): one yes/no screen for each pair, n(n-1)/2 screens per prompt (28 for 8 people, 45 for 10). Every pair is explicitly considered and every "no" is a real answer, so it is the most complete and accurate method, and simple enough for any participant on any device. The burden grows with the square of the network size.
 - **relationshipCensus one_at_a_time** (one-to-many dyad census): one person is shown at a time with the people not yet considered, and the participant taps everyone tied to them. Each pair is still considered once, but on n-1 screens instead of n(n-1)/2, so it is nearly as systematic as every_pair at a fraction of the burden. Its lists suit small screens and self-administration. An untapped person counts as "no tie", which makes it slightly less deliberate than a yes/no for each pair.
-- **relationshipCensus with_strength** (tie strength census): every pair rated on an ordered strength scale. Use it only when the strength of ties BETWEEN alters is a measure in the research questions. It is the most burdensome method. It needs an ordered attribute (2-5 options) on that relationship as strengthAttributeId and a noTieLabel ("They don't know each other").
+- **relationshipCensus with_strength** (tie strength census): every pair rated on an ordered strength scale. It is the most burdensome method, and what it records is the participant's perception of how strong other people's relationships are. It needs an ordered attribute (2-5 options) on that relationship as strengthAttributeId and a noTieLabel ("They don't know each other").
 - **networkComposer**: a free-form canvas (see §6), for face_to_face qualitative studies only.
 
-As a default, weigh them in this order:
+Choosing among them is a judgement about what this study needs. As best practice, consider them in this order, and move down when the study's needs point to a later method:
 
-1. Strength of alter-alter ties is a measure: with_strength, with maxNodes 10 or a filter to the people who matter.
-2. The analysis needs complete tie data (density, brokerage, components, structural holes, whether two supporters know each other): first decide whether it needs them among everyone or only a core (see §10, Filtering). Then, by the people the census shows after any filter: under ~8, every_pair; about 8-25, one_at_a_time.
-3. The network can exceed ~25 people, the questions are exploratory or about overall structure, or the map is already used to position people: a sociogram connect prompt.
-4. Self-administered on phones or by participants unused to touch screens: prefer a census to drawing whenever the network fits under ~25 people.
+1. **one_at_a_time**: the usual choice when ties among the named people are measured: nearly as systematic as every_pair at a fraction of the burden. Before choosing it, decide whether the ties are needed among everyone or only a core (see §10, Filtering). It suits up to about 25 people shown, after any filter.
+2. **sociogram connect prompt**: when more people would be shown than a census can handle (over ~25 after any filter), or when the study is interviewer-led and drawing the structure on the map is part of the conversation.
+3. **every_pair**: only when every pair must be an explicit yes/no answer (an untapped person counting as "no tie" is not acceptable), and few people are shown (under ~8).
+4. **with_strength**: when the research questions need the participant's perception of how strong the ties between alters are (for example, a study of perceived networks). Because it rests on the participant's perceptions of other people's relationships, it is a weaker measure of the ties themselves; when the study is really about how strong the participant's own ties are, an ordered attribute about each person (in bins or a form) measures that directly. Filter it to the people the question is about.
 
 Further rules:
 
@@ -158,18 +158,18 @@ Burden is what the participant does: screens seen, questions answered, and above
 
 ### Filtering: decide who each question is about
 
-Filtering is usually the strongest lever on burden, and the one most often missed. For every stage that repeats per person or per pair, ask which people the research question needs it for. When the answer is a subset, filter the stage to that subset instead of asking about everyone:
+Filtering is often the strongest lever on burden. For every stage that repeats per person or per pair, ask which people the research question needs it for, and when that is a subset, filter to it:
 
-- Ties: pairs grow with the square of the people shown, so halving the people shown cuts a census to about a quarter. Structural measures are commonly computed on a core network (the people named at a core prompt, or rated close) rather than everyone named; when the research question is about that core, census only it. 12 people is 66 pairs; the 6 closest is 15.
+- Ties: pairs grow with the square of the people shown, so halving the people shown cuts a census to about a quarter. When the research question is about a core network (the people named at a core prompt, or rated close), census only that core: 12 people is 66 pairs; the 6 closest is 15.
 - Follow-up questions that only apply to some people (how often you drink with them, where they live abroad, how they help) are asked only of the people a tag, highlight or earlier answer marks as relevant.
 - The criterion must be collected earlier, about the same node type. A prompt tag costs nothing; a closeness item, highlight or form question the design already has can serve too. Add a criterion only when it is cheaper than the work it removes.
 - Do not filter when the analysis needs everyone (whole-network composition, a measure defined over all alters), or when the subset would be too small to be worth a stage. Then lighten the stage another way (a cheaper tie method, fewer prompts, a lower maxNodes) and say why in the rationale.
 
-Filtering is a judgement about this study, not a fixed pattern: weigh what the excluded people would have added against the time saved.
+Filtering is a judgement about this study: weigh what the excluded people would have added against the time saved.
 
 ## 11. Brief or unusual studies
 
-- Never refuse a real study, however brief: a single research question is enough to design from. Make the conventional choice for that kind of study and say so in the rationale. The default personal network design is: welcome; consent; egoForm with age and gender; one quick_add generator with a past-6-months prompt about the study's domain (maxNodes 15); bins for closeness and relationship type; a sociogram with a position prompt and a connect prompt for knows; closing.
+- Never refuse a real study, however brief: a single research question is enough to design from. Make the conventional choice for that kind of study and say so in the rationale. The default personal network design is: welcome; consent; egoForm with age and gender; one quick_add generator with a past-6-months prompt about the study's domain (maxNodes 15); bins for closeness and relationship type; a one_at_a_time census for knows; closing.
 - If a research question names an outcome (wellbeing, drinking, loneliness), measure it on the participant and, where it matters for the hypothesis, on the alters as perceived by the participant.
 - Not offered, with the nearest alternative to design instead (say so in the rationale):
   - anonymising or encrypting names: ask for initials or a nickname in nameQuestion;
@@ -186,6 +186,6 @@ Research questions: "How do first-year undergraduates form friendship networks d
 
 - administration self_administered (students complete it online), qualitative false, so no narrative. includeConsent true. egoAttributes: age (number [16, 99], required), gender (single_choice), lives_in_halls (yes_no); AUDIT-C (3 ordered items, optionScores [0, 1, 2, 3, 4]); WHO-5 (5 ordered items, 6 options "At no time" to "All of the time", optionScores [0, 1, 2, 3, 4, 5]).
 - One node type person. Tags new_friend and support (yes_no, question ""); is_first_year (yes_no with labels "Yes" / "No, or I'm not sure") and first_met (month_year) in an alterForm, because neither is a bin kind; closeness (ordered, 4 options), how_met (single_choice, allowOther) and drinks_heavily (single_choice: Yes / No / I don't know, since "don't know" matters) in one bins stage; drinks_with as a sociogram highlight; drink_together_freq (ordered).
-- One relationship knows. Up to 20 friends, and the map already positions them, so a sociogram connect prompt; a one_at_a_time census would also suit if complete tie data mattered more than the picture.
-- Stages: welcome; egoForm about_you; nameGenerator quick_add with 3 prompts on one theme ("Since **starting university this semester**, who have you **become friends with**?" tagged new_friend; free time; "Who would you **turn to for support**…" tagged support), minNodes 0, maxNodes 20; alterForm; bins (closeness, how_met, drinks_heavily); sociogram (position, connect knows, highlight drinks_with); bins drinking_together with filter drinks_with is "yes" and skipLogic show_only_if about nodes, drinks_with is "yes"; egoForm AUDIT-C item 1; egoForm items 2-3 with skip_if participant audit_frequency is "Never"; egoForm WHO-5 after the network, so it does not prime it; closing screen with student support and alcohol helpline resources.
+- One relationship knows. The research question is about close friends, so ties are needed only among them: a one_at_a_time census of knows, filtered to closeness at least "Close". Up to 20 friends are named, but only the close ones are shown.
+- Stages: welcome; egoForm about_you; nameGenerator quick_add with 3 prompts on one theme ("Since **starting university this semester**, who have you **become friends with**?" tagged new_friend; free time; "Who would you **turn to for support**…" tagged support), minNodes 0, maxNodes 20; alterForm; bins (closeness, how_met, drinks_heavily); sociogram (position, highlight drinks_with); relationshipCensus one_at_a_time for knows with filter closeness at_least "Close"; bins drinking_together with filter drinks_with is "yes" and skipLogic show_only_if about nodes, drinks_with is "yes"; egoForm AUDIT-C item 1; egoForm items 2-3 with skip_if participant audit_frequency is "Never"; egoForm WHO-5 after the network, so it does not prime it; closing screen with student support and alcohol helpline resources.
 `;
