@@ -1,6 +1,7 @@
 'use client';
 
 import { queue } from 'async';
+import { hashProtocol as hashLegacyProtocol } from 'fresco-schema-8/protocol-validation';
 import { useCallback, useRef } from 'react';
 
 import {
@@ -10,9 +11,11 @@ import {
   formatMessageError,
 } from '@codaco/app-i18n/messages';
 import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import {
+  CURRENT_SCHEMA_VERSION,
   createNetcanvasReader,
   getProtocolFileErrorKind,
   hashProtocol,
@@ -30,6 +33,10 @@ import {
   insertProtocol,
 } from '~/actions/protocols';
 import {
+  askHowToImport,
+  type ImportChoice,
+} from '~/components/ProtocolImport/askHowToImport';
+import {
   calculateImportProgress,
   type ImportPhase,
 } from '~/components/ProtocolImport/calculateImportProgress';
@@ -44,6 +51,7 @@ import {
   validateAndMigrateProtocol,
   type ProtocolValidationError,
 } from '~/lib/protocol/validateAndMigrateProtocol';
+import { validateAndMigrateLegacyProtocol } from '~/lib/schema-8/validateAndMigrateProtocol';
 import { type AssetInsertType } from '~/schemas/protocol';
 import { DatabaseError } from '~/utils/databaseError';
 import {
@@ -164,12 +172,15 @@ function generateJobId(): string {
 
 export const useProtocolImport = () => {
   const { add, update, close } = useToast();
+  const { openDialog } = useDialog();
   const { uploadAssets } = useUploadAssets();
   const activeJobs = useRef<Set<string>>(new Set());
   // Store refs to toast manager functions so the queue callback can access them
   // without being recreated when toast manager changes
   const toastRef = useRef({ add, update, close });
   toastRef.current = { add, update, close };
+  const openDialogRef = useRef(openDialog);
+  openDialogRef.current = openDialog;
 
   const updateToastPhase = (
     toastId: string,
@@ -261,11 +272,30 @@ export const useProtocolImport = () => {
       const reader = createNetcanvasReader(zip);
       const protocolJson = await reader.readProtocol();
 
+      // A protocol made for an older schema is upgraded only if the
+      // researcher chooses to. Kept, it is imported at schema 8 and runs in
+      // the schema 8 interview Fresco bundles.
+      const fromVersion = protocolJson.schemaVersion;
+      let choice: ImportChoice | 'current' = 'current';
+      if (
+        fromVersion < CURRENT_SCHEMA_VERSION &&
+        APP_SUPPORTED_SCHEMA_VERSIONS.includes(fromVersion)
+      ) {
+        const answer = await askHowToImport(openDialogRef.current, fromVersion);
+        if (answer === null) {
+          toastRef.current.close(toastId);
+          return;
+        }
+        choice = answer;
+      }
+
       // Phase: Validating
       updateToastPhase(toastId, 'validating');
-      const validationResult = await validateAndMigrateProtocol(protocolJson, {
-        name: protocolName,
-      });
+      const dependencies = { name: protocolName };
+      const validationResult =
+        choice === 'keep'
+          ? await validateAndMigrateLegacyProtocol(protocolJson, dependencies)
+          : await validateAndMigrateProtocol(protocolJson, dependencies);
 
       if (!validationResult.success) {
         const errorMessage = getValidationErrorMessage(validationResult);
@@ -280,7 +310,10 @@ export const useProtocolImport = () => {
 
       // Phase: Checking duplicates
       updateToastPhase(toastId, 'checking-duplicates');
-      const protocolHash = hashProtocol(validatedProtocol);
+      const protocolHash =
+        validatedProtocol.schemaVersion === CURRENT_SCHEMA_VERSION
+          ? hashProtocol(validatedProtocol)
+          : hashLegacyProtocol(validatedProtocol);
       const exists = await getProtocolByHash(protocolHash);
       if (exists) {
         updateToastPhase(toastId, 'error', {
@@ -427,6 +460,8 @@ export const useProtocolImport = () => {
 
       captureClientEvent('ProtocolInstalled', {
         protocol: fileName,
+        schemaVersion: validatedProtocol.schemaVersion,
+        importedFromSchemaVersion: fromVersion,
       });
 
       // Phase: Complete

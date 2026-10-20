@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { Toaster } from '@codaco/fresco-ui/Toast';
 import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
 import { useProtocolImport } from '~/hooks/useProtocolImport';
@@ -56,7 +57,9 @@ const view = (locale: string, file: File) => (
     messages={frescoCatalogSource.peek(locale)}
   >
     <Toast.Provider>
-      <ImportButton file={file} />
+      <DialogProvider>
+        <ImportButton file={file} />
+      </DialogProvider>
       <Toaster />
     </Toast.Provider>
   </AppI18nProvider>
@@ -227,6 +230,9 @@ describe('truthful protocol import failure messages', () => {
   it('reports a protocol it cannot upgrade as both a refusal and an application error', async () => {
     render(view('en', await unupgradableProtocol()));
     fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Upgrade to schema 9' }),
+    );
     expect(
       await screen.findByText(
         'This protocol could not be upgraded to the current version. Nothing has been changed on this device.',
@@ -250,5 +256,102 @@ describe('truthful protocol import failure messages', () => {
       reason: 'damagedJson',
     });
     expect(captureClientException).not.toHaveBeenCalled();
+  });
+
+  // A schema 8 protocol as schema 8's own validation accepts it.
+  const schema8Protocol = () =>
+    archiveFile(
+      JSON.stringify({
+        schemaVersion: 8,
+        name: 'Fixture',
+        lastModified: '2026-09-05T00:00:00.000Z',
+        assetManifest: {},
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              shape: { default: 'circle' },
+              variables: {},
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'stage-info',
+            type: 'Information',
+            label: 'Information',
+            title: 'Information',
+            items: [{ id: 'item', type: 'text', content: 'Hello' }],
+          },
+        ],
+      }),
+    );
+
+  it('imports a schema 8 protocol the researcher keeps, unchanged, at schema 8', async () => {
+    render(view('en', await schema8Protocol()));
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'How do you want to import this protocol?',
+      }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Import as schema 8' }));
+
+    await waitFor(() => expect(insertProtocol).toHaveBeenCalledTimes(1));
+    const [{ protocol }] = insertProtocol.mock.calls[0] as [
+      { protocol: { schemaVersion: number; stages: { id: string }[] } },
+    ];
+    expect(protocol.schemaVersion).toBe(8);
+    // Kept as it was: an upgrade would have added a finish stage.
+    expect(protocol.stages.map((stage) => stage.id)).toEqual(['stage-info']);
+    expect(captureClientException).not.toHaveBeenCalled();
+  });
+
+  it('imports nothing when the researcher cancels the choice', async () => {
+    render(view('en', await unupgradableProtocol()));
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'How do you want to import this protocol?',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(getProtocolByHash).not.toHaveBeenCalled();
+    expect(insertProtocol).not.toHaveBeenCalled();
+  });
+
+  it('asks nothing for a protocol already at the current schema', async () => {
+    const file = await archiveFile(
+      JSON.stringify({
+        schemaVersion: 9,
+        name: 'Fixture',
+        lastModified: '2026-09-05T00:00:00.000Z',
+        stages: [
+          createDefaultFinishSessionStage({
+            id: 'finish',
+            localization: { defaultLocale: 'en', locales: ['en'] },
+          }),
+        ],
+        codebook: { node: {}, edge: {}, ego: {} },
+        localization: { defaultLocale: 'en', locales: ['en'] },
+        assetManifest: {},
+      }),
+    );
+    render(view('en', file));
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+    await waitFor(() => expect(insertProtocol).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'How do you want to import this protocol?',
+      }),
+    ).not.toBeInTheDocument();
   });
 });
