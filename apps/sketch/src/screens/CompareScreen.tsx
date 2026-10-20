@@ -8,7 +8,7 @@ import { SiteHeader } from '../components/SiteHeader.tsx';
 import { StageList } from '../components/StageList.tsx';
 import { StepList } from '../components/StepList.tsx';
 import { useElapsed } from '../hooks/useElapsed.ts';
-import { type JobRun, useJobRun } from '../hooks/useJobRun.ts';
+import { isJobFinished, type JobRun, useJobRun } from '../hooks/useJobRun.ts';
 import {
   excerpt,
   formatClock,
@@ -30,10 +30,21 @@ import type {
 // comparison, so only the other provider runs.
 export type CompareSeed = { provider: Provider; job: JobStatus };
 
+// Runs still going when the researcher leaves. Comparing the same study again
+// picks them up instead of paying for new ones.
+export type UnfinishedComparison = {
+  description: string;
+  comparisonId: string;
+  jobIds: Partial<Record<Provider, string>>;
+};
+
 type Props = {
   description: string;
   seed?: CompareSeed | null;
   providers: ProviderConfig[];
+  resume?: UnfinishedComparison | null;
+  // Reports the runs still going (null once none are).
+  onUnfinished: (runs: UnfinishedComparison | null) => void;
   onNew: () => void;
   // Both runs refused the description: back to the describe screen.
   onRefused: (hint: string | null) => void;
@@ -265,10 +276,16 @@ export const CompareScreen = ({
   description,
   seed = null,
   providers,
+  resume = null,
+  onUnfinished,
   onNew,
   onRefused,
 }: Props) => {
-  const [comparisonId] = useState(() => crypto.randomUUID());
+  const [comparisonId] = useState(
+    () => resume?.comparisonId ?? crypto.randomUUID(),
+  );
+  // Cleared for a provider when its run is retried, which starts a new job.
+  const [resumeIds, setResumeIds] = useState(() => resume?.jobIds ?? {});
   const [preferredJobId, setPreferredJobId] = useState<string | null>(null);
   const [preferenceState, setPreferenceState] = useState<
     'idle' | 'saving' | 'saved' | 'error'
@@ -301,8 +318,30 @@ export const CompareScreen = ({
     openai: 0,
   });
 
-  const anthropicLive = useJobRun(requests.anthropic);
-  const openaiLive = useJobRun(requests.openai);
+  const anthropicLive = useJobRun(requests.anthropic, {
+    resumeJobId: resumeIds.anthropic ?? null,
+  });
+  const openaiLive = useJobRun(requests.openai, {
+    resumeJobId: resumeIds.openai ?? null,
+  });
+
+  const running = (run: JobRun) =>
+    run.jobId !== null && !isJobFinished(run.job) ? run.jobId : null;
+  const runningAnthropic = running(anthropicLive);
+  const runningOpenai = running(openaiLive);
+  const reportUnfinished = useEffectEvent(() => {
+    const jobIds: UnfinishedComparison['jobIds'] = {};
+    if (runningAnthropic) jobIds.anthropic = runningAnthropic;
+    if (runningOpenai) jobIds.openai = runningOpenai;
+    onUnfinished(
+      runningAnthropic || runningOpenai
+        ? { description, comparisonId, jobIds }
+        : null,
+    );
+  });
+  useEffect(() => {
+    reportUnfinished();
+  }, [runningAnthropic, runningOpenai]);
   const seedRun = (provider: Provider, live: JobRun): JobRun =>
     seed && seeded === provider
       ? { jobId: seed.job.id, job: seed.job, error: null }
@@ -398,6 +437,10 @@ export const CompareScreen = ({
                 onPrefer={() => void prefer(run.jobId)}
                 onRetry={() => {
                   if (seeded === config.provider) setSeeded(null);
+                  setResumeIds((current) => ({
+                    ...current,
+                    [config.provider]: undefined,
+                  }));
                   setAttempts((current) => ({
                     ...current,
                     [config.provider]: current[config.provider] + 1,

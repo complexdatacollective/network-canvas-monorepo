@@ -44,6 +44,50 @@ const openaiResult = () => {
 };
 
 describe('CompareScreen', () => {
+  it('picks up comparison runs left running instead of starting new ones', async () => {
+    const posts: unknown[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const { url, method } = describeCall(input, init);
+        if (method === 'POST') {
+          posts.push(url);
+          return jsonResponse({ jobId: 'job-new' });
+        }
+        if (url === '/api/jobs/job-a')
+          return jsonResponse(jobStatus({ id: 'job-a', status: 'running' }));
+        if (url === '/api/jobs/job-o')
+          return jsonResponse(
+            jobStatus({ id: 'job-o', provider: 'openai', status: 'running' }),
+          );
+        return jsonResponse({ error: 'unexpected' }, 500);
+      }),
+    );
+    const reported = vi.fn();
+    render(
+      <CompareScreen
+        description="Students name their friends."
+        providers={configResponse(true).providers}
+        resume={{
+          description: 'Students name their friends.',
+          comparisonId: 'cmp-1',
+          jobIds: { anthropic: 'job-a', openai: 'job-o' },
+        }}
+        onUnfinished={reported}
+        onNew={() => {}}
+        onRefused={() => {}}
+      />,
+    );
+    await waitFor(() =>
+      expect(reported).toHaveBeenLastCalledWith({
+        description: 'Students name their friends.',
+        comparisonId: 'cmp-1',
+        jobIds: { anthropic: 'job-a', openai: 'job-o' },
+      }),
+    );
+    expect(posts).toEqual([]);
+  });
+
   it('runs both providers with one comparison id and records the pick', async () => {
     const created: CreateJobRequest[] = [];
     const preferences: unknown[] = [];
@@ -90,6 +134,7 @@ describe('CompareScreen', () => {
       <CompareScreen
         description="Students name their friends."
         providers={configResponse(true).providers}
+        onUnfinished={() => {}}
         onNew={() => {}}
         onRefused={() => {}}
       />,
@@ -164,6 +209,7 @@ describe('CompareScreen', () => {
       <CompareScreen
         description="Students name their friends."
         providers={configResponse(true).providers}
+        onUnfinished={() => {}}
         onNew={() => {}}
         onRefused={() => {}}
       />,

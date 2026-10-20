@@ -614,7 +614,9 @@ export const DescribeScreen = ({
                   className={`${ctaButton} w-full sm:w-auto`}
                 >
                   {comparing
-                    ? 'Generate with both'
+                    ? resumable
+                      ? 'Back to your comparison'
+                      : 'Generate with both'
                     : resumable
                       ? 'Back to your sketch'
                       : 'Generate protocol'}

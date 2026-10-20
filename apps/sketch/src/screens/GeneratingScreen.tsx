@@ -7,7 +7,7 @@ import { ScreenHeading } from '../components/ScreenHeading.tsx';
 import { SiteHeader } from '../components/SiteHeader.tsx';
 import { StepList } from '../components/StepList.tsx';
 import { useElapsed } from '../hooks/useElapsed.ts';
-import { useJobRun } from '../hooks/useJobRun.ts';
+import { isJobFinished, useJobRun } from '../hooks/useJobRun.ts';
 import { excerpt, formatClock } from '../lib/format.ts';
 import { initialSteps, STEP_TITLES, stepProgress } from '../lib/steps.ts';
 import { firstQuestion } from '../lib/study.ts';
@@ -24,7 +24,9 @@ type Props = {
   onCancel: () => void;
   onReady: (job: JobStatus) => void;
   onRefused: (hint: string | null) => void;
-  onFailed: (message: string) => void;
+  // `stillRunning`: Sketch lost track of a job the server is still working
+  // on, so the app keeps it to pick up again.
+  onFailed: (message: string, stillRunning: boolean) => void;
 };
 
 export const GeneratingScreen = ({
@@ -60,13 +62,13 @@ export const GeneratingScreen = ({
   const settle = useEffectEvent((current: typeof run) => {
     const { job: latest } = current;
     if (current.error) {
-      onFailed(current.error);
+      onFailed(current.error, current.jobId !== null && !isJobFinished(latest));
     } else if (latest?.status === 'refused') {
       onRefused(latest.refusalHint);
     } else if (latest?.status === 'failed') {
-      onFailed(latest.error ?? 'Sketch could not finish this protocol.');
+      onFailed(latest.error ?? 'Sketch could not finish this protocol.', false);
     } else if (latest?.status === 'succeeded' && !latest.result) {
-      onFailed('Sketch finished but did not return a protocol.');
+      onFailed('Sketch finished but did not return a protocol.', false);
     }
   });
   useEffect(() => {

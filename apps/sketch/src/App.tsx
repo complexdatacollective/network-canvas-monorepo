@@ -7,7 +7,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { getConfig } from './api/client.ts';
 import { EXAMPLES } from './lib/examples.ts';
 import { composeStudyText } from './lib/study.ts';
-import { type CompareSeed, CompareScreen } from './screens/CompareScreen.tsx';
+import {
+  type CompareSeed,
+  CompareScreen,
+  type UnfinishedComparison,
+} from './screens/CompareScreen.tsx';
 import {
   type ConfigState,
   type DescribeForm,
@@ -44,6 +48,7 @@ type View =
       id: number;
       // A finished run to keep as one side of the comparison.
       seed: CompareSeed | null;
+      resume: UnfinishedComparison | null;
     };
 
 const firstExample = EXAMPLES[0];
@@ -71,6 +76,8 @@ export const App = () => {
     request: CreateJobRequest;
     jobId: string;
   } | null>(null);
+  const [unfinishedComparison, setUnfinishedComparison] =
+    useState<UnfinishedComparison | null>(null);
   // Once the researcher has moved between screens, each new screen takes focus.
   const [navigated, setNavigated] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -129,6 +136,8 @@ export const App = () => {
     backToDescribe();
   };
 
+  const bothAvailable = providers.filter((p) => p.available).length >= 2;
+
   const resumableFor = (description: string, provider: Provider) =>
     unfinished?.request.description === description &&
     unfinished.request.provider === provider
@@ -137,13 +146,16 @@ export const App = () => {
 
   const generate = () => {
     const description = composeStudyText(form);
-    const bothAvailable = providers.filter((p) => p.available).length >= 2;
     if (form.compare && bothAvailable) {
       go({
         name: 'compare',
         description,
         id: Date.now(),
         seed: null,
+        resume:
+          unfinishedComparison?.description === description
+            ? unfinishedComparison
+            : null,
       });
       return;
     }
@@ -185,8 +197,9 @@ export const App = () => {
           refusal={view.refusal}
           onGenerate={generate}
           resumable={
-            !form.compare &&
-            resumableFor(composeStudyText(form), form.provider) !== null
+            form.compare && bothAvailable
+              ? unfinishedComparison?.description === composeStudyText(form)
+              : resumableFor(composeStudyText(form), form.provider) !== null
           }
           focusHeading={navigated}
         />
@@ -212,8 +225,8 @@ export const App = () => {
             setUnfinished(null);
             go({ name: 'describe', refusal: { hint } });
           }}
-          onFailed={(message) => {
-            setUnfinished(null);
+          onFailed={(message, stillRunning) => {
+            if (!stillRunning) setUnfinished(null);
             go({ name: 'failed', message, request });
           }}
         />
@@ -235,6 +248,7 @@ export const App = () => {
               description: view.request.description,
               id: Date.now(),
               seed: { provider: view.request.provider, job: view.job },
+              resume: null,
             })
           }
         />
@@ -247,13 +261,17 @@ export const App = () => {
           message={view.message}
           description={view.request.description}
           onEdit={backToDescribe}
-          onRetry={() =>
+          onRetry={() => {
+            const resume = resumableFor(
+              view.request.description,
+              view.request.provider,
+            );
             go({
               name: 'generating',
-              request: { ...view.request },
-              resumeJobId: null,
-            })
-          }
+              request: resume?.request ?? { ...view.request },
+              resumeJobId: resume?.jobId ?? null,
+            });
+          }}
         />
       );
       break;
@@ -263,6 +281,8 @@ export const App = () => {
           key={view.id}
           description={view.description}
           seed={view.seed}
+          resume={view.resume}
+          onUnfinished={setUnfinishedComparison}
           providers={providers.filter((p) => p.available)}
           onNew={startNew}
           onRefused={(hint) => go({ name: 'describe', refusal: { hint } })}

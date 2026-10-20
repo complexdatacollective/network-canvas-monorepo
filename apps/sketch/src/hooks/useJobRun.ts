@@ -30,7 +30,7 @@ export type JobRun = {
   error: string | null;
 };
 
-const isFinished = (job: JobStatus | null): boolean =>
+export const isJobFinished = (job: JobStatus | null): boolean =>
   job?.status === 'succeeded' ||
   job?.status === 'failed' ||
   job?.status === 'refused';
@@ -115,7 +115,7 @@ export const useJobRun = (
         if (signal.aborted) return;
         failures = 0;
         setRun(() => ({ jobId, job, error: null }));
-        if (isFinished(job)) {
+        if (isJobFinished(job)) {
           settle();
           return;
         }
