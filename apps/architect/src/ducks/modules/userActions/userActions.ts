@@ -757,7 +757,28 @@ const notFoundResult = (): ProtocolOpenResult => ({
 export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
   async ({ id }: { id: string }, { dispatch }): Promise<ProtocolOpenResult> => {
-    const row = await getStoredProtocol(id);
+    let row: Awaited<ReturnType<typeof getStoredProtocol>>;
+    try {
+      row = await getStoredProtocol(id);
+    } catch (error: unknown) {
+      // The library itself could not be read (storage blocked or broken).
+      // Described like any other refusal, so every caller shows a dialog
+      // rather than failing silently.
+      reportError(error, { operation: 'stored-protocol-read' });
+      const { message, detail, localizedMessage } = describeImportFailure(
+        error,
+        PROTOCOL_OPEN_FAILURE_MESSAGE,
+        getArchitectIntl(),
+      );
+      return {
+        status: 'error',
+        title: getArchitectIntl().formatMessage(extraMessages.openError),
+        localizedTitle: { message: extraMessages.openError },
+        message,
+        detail,
+        localizedMessage,
+      };
+    }
     if (!row) return notFoundResult();
 
     let admission: Awaited<ReturnType<typeof admitStoredProtocol>>;

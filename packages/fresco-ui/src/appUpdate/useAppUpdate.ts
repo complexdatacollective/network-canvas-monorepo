@@ -21,6 +21,12 @@ export type UseAppUpdateOptions = {
   currentVersion: string;
   needRefresh: boolean;
   installUpdate: InstallAppUpdate;
+  /**
+   * Describe the update with the newest release on the running major line
+   * only, for a host whose service worker can only ever be replaced by a
+   * release on that line (an archived version's host).
+   */
+  runningMajorOnly?: boolean;
   /** @deprecated Updates are never installed automatically. */
   hasUnsavedWork?: boolean;
   /** @deprecated Updates are never installed automatically. */
@@ -65,6 +71,7 @@ export default function useAppUpdate({
   currentVersion,
   needRefresh,
   installUpdate,
+  runningMajorOnly = false,
 }: UseAppUpdateOptions): UseAppUpdateResult {
   const [justUpdated, setJustUpdated] = useState(false);
   const [releaseNotes, setReleaseNotes] = useState<
@@ -92,7 +99,9 @@ export default function useAppUpdate({
     if (!needRefresh) return undefined;
     let active = true;
     setReleaseNotes((prev) => (prev && prev !== 'loading' ? prev : 'loading'));
-    void fetchLatestReleaseNotes(app).then((notes) => {
+    void fetchLatestReleaseNotes(app, currentVersion, {
+      runningMajorOnly,
+    }).then((notes) => {
       if (!active) return undefined;
       if (!notes) {
         // Fetch failed (offline / rate-limited / release not yet published):
@@ -109,7 +118,7 @@ export default function useAppUpdate({
     return () => {
       active = false;
     };
-  }, [needRefresh, app]);
+  }, [needRefresh, app, currentVersion, runningMajorOnly]);
 
   // On a "just updated" load, prefer the cached notes for the running version
   // (written when it was "available"); otherwise fetch them by tag. Both
