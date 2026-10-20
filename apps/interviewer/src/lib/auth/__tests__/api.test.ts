@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const isPrfSupportedMock = vi.fn<() => Promise<boolean>>();
@@ -16,20 +17,15 @@ vi.mock('../../storage', async () => {
 });
 
 import {
-  deleteLegacyInterviewerDatabase,
+  FROZEN_ROWS,
   fingerprintDatabase,
-  LEGACY_DB_NAME,
-  seedLegacyInterviewerDatabase,
-} from '~/testUtils/legacyInterviewerDatabase';
+  seedAsInterviewer8,
+} from '~/testUtils/interviewer8Database';
 
 import { db } from '../../db/db';
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
+import { DB_NAME, RETIRED_DB_NAMES } from '../../db/storageNames';
 import type { StoredSession } from '../../db/types';
-import {
-  HANDOFF_DB_NAME,
-  stageHandoff,
-  takeHandoff,
-} from '../../handoff/handoffStore';
 import { clearVault } from '../../vault/vaultStore';
 import * as authApi from '../api';
 
@@ -231,33 +227,37 @@ describe('auth/api — revoke wipes and re-locks', () => {
     deleteSpy.mockRestore();
   });
 
-  it("deletes Interviewer 8's database with this app's: they share the lock", async () => {
+  it("deletes the one shared database, Interviewer 8's rows with it", async () => {
     await authApi.enrolWithPin('12345678');
     await db.sessions.put(SESSION_ROW);
-    await seedLegacyInterviewerDatabase({ sessions: [SESSION_ROW] });
-    expect(await fingerprintDatabase(LEGACY_DB_NAME)).toBeDefined();
+    // A row Interviewer 8 at /v8/ wrote into the same database.
+    await seedAsInterviewer8({ sessions: [FROZEN_ROWS.session] });
+    expect(await fingerprintDatabase(DB_NAME)).toBeDefined();
 
     await authApi.revoke();
 
-    expect(await fingerprintDatabase(LEGACY_DB_NAME)).toBeUndefined();
-    expect(await db.sessions.get('to-wipe')).toBeUndefined();
+    expect(await fingerprintDatabase(DB_NAME)).toBeUndefined();
+    expect(await db.sessions.get(FROZEN_ROWS.session.id)).toBeUndefined();
     expect((await authApi.status()).configured).toBe(false);
-    await deleteLegacyInterviewerDatabase();
   });
 
-  it('deletes protocol files staged for a hand-off between the two', async () => {
+  it('deletes the databases an unreleased build left behind', async () => {
     await authApi.enrolWithPin('12345678');
-    const key = await stageHandoff({
-      targetMajor: 9,
-      file: new Blob(['protocol']),
-      fileName: 'study.netcanvas',
-    });
-    expect(await fingerprintDatabase(HANDOFF_DB_NAME)).toBeDefined();
+    for (const name of RETIRED_DB_NAMES) {
+      const retired = new Dexie(name);
+      retired.version(1).stores({ rows: 'id' });
+      await retired.table('rows').put({ id: 'left-behind' });
+      retired.close();
+    }
+    const names = async () =>
+      (await indexedDB.databases()).map((database) => database.name);
+    expect(await names()).toEqual(
+      expect.arrayContaining([...RETIRED_DB_NAMES]),
+    );
 
     await authApi.revoke();
 
-    expect(await fingerprintDatabase(HANDOFF_DB_NAME)).toBeUndefined();
-    // A tab still holding the key finds nothing to import.
-    expect(await takeHandoff(key)).toBeUndefined();
+    const left = await names();
+    for (const name of RETIRED_DB_NAMES) expect(left).not.toContain(name);
   });
 });

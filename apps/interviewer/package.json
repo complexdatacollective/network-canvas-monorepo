@@ -48,6 +48,7 @@
     "lucide-react": "catalog:",
     "motion": "catalog:",
     "posthog-js": "catalog:",
+    "protocol-validation-schema-8": "npm:@codaco/protocol-validation@15.0.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-dropzone": "catalog:",

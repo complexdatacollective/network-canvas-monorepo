@@ -84,4 +84,59 @@ describe('useHistoryBackGuard', () => {
     window.dispatchEvent(new PopStateEvent('popstate'));
     expect(goHome).toHaveBeenCalledTimes(1);
   });
+
+  describe('stepping over a departed frame’s entries', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('steps back again while no popstate comes, and replaces only the entry below the sentinel', () => {
+      vi.useFakeTimers();
+      // Room in the history for the steps below.
+      for (let i = 0; i < 4; i++) window.history.pushState(null, '');
+      window.history.replaceState({ ncBackGuard: true }, '');
+      vi.spyOn(window.history, 'pushState').mockImplementation(() => {});
+      const back = vi
+        .spyOn(window.history, 'back')
+        .mockImplementation(() => {});
+
+      const { result } = renderHook(() => useHistoryBackGuard(false));
+      const goHome = vi.fn();
+      result.current(goHome, { stepOverFrameEntries: true });
+      expect(back).toHaveBeenCalledTimes(1);
+
+      // Two steps over entries the frame pushed: no popstate here.
+      vi.advanceTimersByTime(250);
+      expect(back).toHaveBeenCalledTimes(2);
+      vi.advanceTimersByTime(250);
+      expect(back).toHaveBeenCalledTimes(3);
+      expect(goHome).not.toHaveBeenCalled();
+
+      // The next step reaches this window's entry below the sentinel.
+      window.history.replaceState(null, '');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      expect(goHome).toHaveBeenCalledTimes(1);
+
+      // Done: no further steps.
+      vi.advanceTimersByTime(1_000);
+      expect(back).toHaveBeenCalledTimes(3);
+    });
+
+    it('goes home after at most one step per history entry', () => {
+      vi.useFakeTimers();
+      window.history.replaceState({ ncBackGuard: true }, '');
+      vi.spyOn(window.history, 'pushState').mockImplementation(() => {});
+      const back = vi
+        .spyOn(window.history, 'back')
+        .mockImplementation(() => {});
+
+      const { result } = renderHook(() => useHistoryBackGuard(false));
+      const goHome = vi.fn();
+      result.current(goHome, { stepOverFrameEntries: true });
+      vi.advanceTimersByTime(250 * (window.history.length + 1));
+
+      expect(back).toHaveBeenCalledTimes(window.history.length);
+      expect(goHome).toHaveBeenCalledTimes(1);
+    });
+  });
 });

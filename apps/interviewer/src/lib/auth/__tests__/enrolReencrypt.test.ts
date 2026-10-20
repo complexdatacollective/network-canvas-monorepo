@@ -1,6 +1,5 @@
 // fake-indexeddb must be imported before Dexie opens a database.
 import 'fake-indexeddb/auto';
-import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { NcNetwork } from '@codaco/shared-consts';
@@ -24,14 +23,11 @@ vi.mock('../../vault/webauthn', () => ({
 }));
 
 import {
-  deleteLegacyInterviewerDatabase,
-  fingerprintDatabase,
-  LEGACY_DB_NAME,
-  seedLegacyInterviewerDatabase,
-} from '~/testUtils/legacyInterviewerDatabase';
+  readRawRows,
+  seedAsInterviewer8,
+} from '~/testUtils/interviewer8Database';
 
 import { db } from '../../db/db';
-import { closeLegacyLibrary } from '../../db/legacyLibrary';
 import { encryptSession } from '../../db/recordCrypto';
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
 import type { StoredSession } from '../../db/types';
@@ -92,20 +88,16 @@ beforeEach(async () => {
   setSessionDek(null);
   setReencryptionPending(false);
   await db.sessions.clear();
-  closeLegacyLibrary();
-  await deleteLegacyInterviewerDatabase();
 });
 afterEach(async () => {
   clearVault();
   setSessionDek(null);
   setReencryptionPending(false);
   await db.sessions.clear();
-  closeLegacyLibrary();
-  await deleteLegacyInterviewerDatabase();
 });
 
-// A row Interviewer 8 wrote into its own database before the device had a
-// lock: the shared lock covers it too.
+// A schema 8 interview's row, as Interviewer 8 wrote it into the shared
+// database before the device had a lock.
 const legacySession = (id = 'legacy-1') => ({
   id,
   protocolHash: 'legacy-hash',
@@ -122,15 +114,8 @@ const legacySession = (id = 'legacy-1') => ({
 async function readLegacySession(
   id = 'legacy-1',
 ): Promise<Record<string, unknown> | undefined> {
-  const legacy = new Dexie(LEGACY_DB_NAME);
-  await legacy.open();
-  try {
-    return (await legacy.table('sessions').get(id)) as
-      | Record<string, unknown>
-      | undefined;
-  } finally {
-    legacy.close();
-  }
+  const rows = (await readRawRows('sessions')) as Record<string, unknown>[];
+  return rows.find((row) => row.id === id);
 }
 
 describe('initial enrol sweeps pre-secured plaintext rows', () => {
@@ -239,10 +224,10 @@ describe('resume-on-unlock finishes an interrupted sweep', () => {
   });
 });
 
-describe("the shared lock covers Interviewer 8's database", () => {
-  it('first enrolment encrypts both databases', async () => {
+describe("the shared lock covers Interviewer 8's rows", () => {
+  it("first enrolment encrypts this app's rows and Interviewer 8's", async () => {
     await seedPlaintextSession();
-    await seedLegacyInterviewerDatabase({ sessions: [legacySession()] });
+    await seedAsInterviewer8({ sessions: [legacySession()] });
 
     expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
 
@@ -256,19 +241,19 @@ describe("the shared lock covers Interviewer 8's database", () => {
 
   it('a legacy row that could not be encrypted keeps the retry pending', async () => {
     const { network: _network, ...broken } = legacySession();
-    await seedLegacyInterviewerDatabase({ sessions: [broken] });
+    await seedAsInterviewer8({ sessions: [broken] });
 
     expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
     expect(isReencryptionPending()).toBe(true);
   });
 
-  it('the pending retry on unlock finishes the legacy database too', async () => {
+  it('the pending retry on unlock finishes the legacy rows too', async () => {
     expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
     expect(isReencryptionPending()).toBe(false);
 
     // A legacy plaintext row left behind by an interrupted sweep.
     setSessionDek(null);
-    await seedLegacyInterviewerDatabase({ sessions: [legacySession()] });
+    await seedAsInterviewer8({ sessions: [legacySession()] });
     setReencryptionPending(true);
 
     expect((await authApi.unlockWithPin('12345678')).ok).toBe(true);
@@ -276,11 +261,29 @@ describe("the shared lock covers Interviewer 8's database", () => {
     expect(isReencryptionPending()).toBe(false);
   });
 
-  it('enrolling without a lock never touches the legacy database', async () => {
-    await seedLegacyInterviewerDatabase({ sessions: [legacySession()] });
-    const before = await fingerprintDatabase(LEGACY_DB_NAME);
+  it('a plaintext legacy row written after the sweep finished is encrypted on the next unlock', async () => {
+    expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
+    expect(isReencryptionPending()).toBe(false);
+
+    // A tab of Interviewer 8 left open with no lock commits its row after
+    // the sweep cleared the flag; nothing marked the retry as pending.
+    setSessionDek(null);
+    await seedAsInterviewer8({ sessions: [legacySession('late-1')] });
+    expect(isReencryptionPending()).toBe(false);
+    expect((await readLegacySession('late-1'))?._enc).toBeUndefined();
+
+    expect((await authApi.unlockWithPin('12345678')).ok).toBe(true);
+    const legacy = await readLegacySession('late-1');
+    expect(legacy?._enc).toBeDefined();
+    expect(legacy?.network).toBeUndefined();
+    expect(isReencryptionPending()).toBe(false);
+  });
+
+  it('enrolling without a lock never touches the legacy rows', async () => {
+    await seedAsInterviewer8({ sessions: [legacySession()] });
+    const before = await readRawRows('sessions');
 
     expect((await authApi.enrolWithoutLock()).ok).toBe(true);
-    expect(await fingerprintDatabase(LEGACY_DB_NAME)).toBe(before);
+    expect(await readRawRows('sessions')).toEqual(before);
   });
 });

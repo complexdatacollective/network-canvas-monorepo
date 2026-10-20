@@ -3,12 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runExport } from '../exportSessions';
 import type { ExportWorkerMessage, ExportWorkerStart } from '../exportWorker';
 
-const getSessionsByIds = vi.fn();
+const getSessionsForExport = vi.fn();
 const getProtocolsByHashes = vi.fn();
 const runPipelineWithData = vi.fn();
 
 vi.mock('~/lib/db/api', () => ({
-  getSessionsByIds: (...args: unknown[]) => getSessionsByIds(...args),
+  getSessionsForExport: (...args: unknown[]) => getSessionsForExport(...args),
   getProtocolsByHashes: (...args: unknown[]) => getProtocolsByHashes(...args),
 }));
 
@@ -17,7 +17,7 @@ vi.mock('../exportPipelineRunner', () => ({
 }));
 
 function seedDb() {
-  getSessionsByIds.mockResolvedValue([
+  getSessionsForExport.mockResolvedValue([
     {
       id: 's1',
       caseId: 'case-1',
@@ -134,9 +134,64 @@ describe('runExport via the export worker', () => {
     expect(runPipelineWithData).not.toHaveBeenCalled();
   });
 
+  it('exports a schema 8 interview with its protocol’s codebook as collected', async () => {
+    const schema8Codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: { nickname: { name: 'nickname', type: 'text' } },
+        },
+      },
+    };
+    getSessionsForExport.mockResolvedValue([
+      {
+        id: 's8',
+        caseId: 'case-8',
+        startedAt: 1722772800000,
+        finishedAt: 1722776400000,
+        network: { nodes: [], edges: [], ego: {} },
+        protocolHash: 'hash-8',
+      },
+    ]);
+    getProtocolsByHashes.mockResolvedValue([
+      {
+        hash: 'hash-8',
+        name: 'Schema 8 Protocol',
+        schemaVersion: 8,
+        codebook: schema8Codebook,
+      },
+    ]);
+    vi.stubGlobal('Worker', FakeWorker);
+
+    const exportPromise = runExport({
+      options: exportOptions,
+      sessionIds: ['s8'],
+      onEvent: vi.fn(),
+    });
+    await vi.waitFor(() => {
+      expect(FakeWorker.instances[0]?.posted).toHaveLength(1);
+    });
+    const worker = FakeWorker.instances[0];
+    const start = worker?.posted[0];
+    if (!worker || !start) throw new Error('start message not posted');
+
+    expect(start.data.sessions).toEqual([
+      expect.objectContaining({ id: 's8', finishOutcome: null }),
+    ]);
+    expect(start.data.protocols['hash-8']).toEqual({
+      hash: 'hash-8',
+      name: 'Schema 8 Protocol',
+      codebook: schema8Codebook,
+    });
+
+    worker.reply({ type: 'error', message: 'stop', stack: 'Error: stop' });
+    await expect(exportPromise).rejects.toThrow('stop');
+  });
+
   it("exports each session's finish outcome, and none it did not record", async () => {
     const network = { nodes: [], edges: [], ego: {} };
-    getSessionsByIds.mockResolvedValue([
+    getSessionsForExport.mockResolvedValue([
       {
         id: 'recorded',
         caseId: 'case-1',
@@ -247,7 +302,7 @@ describe('runExport via the export worker', () => {
       }),
     ).rejects.toThrow('Export was cancelled');
 
-    expect(getSessionsByIds).not.toHaveBeenCalled();
+    expect(getSessionsForExport).not.toHaveBeenCalled();
     expect(getProtocolsByHashes).not.toHaveBeenCalled();
     expect(FakeWorker.instances).toHaveLength(0);
   });
@@ -255,7 +310,7 @@ describe('runExport via the export worker', () => {
   it('aborting during the session read stops before the protocol read', async () => {
     const controller = new AbortController();
     // Cancel lands while the session read is in flight.
-    getSessionsByIds.mockImplementation(() => {
+    getSessionsForExport.mockImplementation(() => {
       controller.abort();
       return Promise.resolve([
         {

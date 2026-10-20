@@ -1,15 +1,12 @@
-import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
-import type { ProtocolWithCounts } from '~/lib/db/types';
+import { isSchema8Protocol, type ProtocolWithCounts } from '~/lib/db/types';
 import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 import type { PendingImport } from '~/lib/protocol/useProtocolImport';
 
-// Union shape that determines which card renders in a carousel slot.
+// Union shape that determines which card renders in a carousel slot. A
+// protocol of either schema is a 'protocol' entry: its card says which.
 export type DeckEntry =
   | { kind: 'protocol'; protocol: ProtocolWithCounts }
-  // A schema 8 protocol in Interviewer 8's library, run there. `upgraded`:
-  // an upgraded schema 9 copy of it exists in this app.
-  | { kind: 'legacy'; protocol: LegacyProtocolSummary; upgraded: boolean }
   | { kind: 'sample' }
   | { kind: 'development' }
   | { kind: 'pending'; pending: PendingImport }
@@ -28,10 +25,6 @@ export function entryKey(entry: DeckEntry): string {
   switch (entry.kind) {
     case 'protocol':
       return `hash:${entry.protocol.hash}`;
-    case 'legacy':
-      // Its own namespace: the hash is Interviewer 8's, and never the same
-      // card as one of this app's protocols.
-      return `legacy:${entry.protocol.hash}`;
     case 'sample':
       return `slot:${SAMPLE_PROTOCOL.name}`;
     case 'development':
@@ -48,7 +41,6 @@ export function entryKey(entry: DeckEntry): string {
 function entryName(entry: Exclude<DeckEntry, { kind: 'import' }>): string {
   switch (entry.kind) {
     case 'protocol':
-    case 'legacy':
       return entry.protocol.name;
     case 'sample':
       return SAMPLE_PROTOCOL.name;
@@ -67,7 +59,6 @@ const KIND_PRIORITY = {
   sample: 2,
   development: 2,
   protocol: 1,
-  legacy: 1,
   import: 0,
 } as const;
 
@@ -78,13 +69,15 @@ type BuildDeckArgs = {
   showSampleCard: boolean;
   showDevelopmentCard: boolean;
   pendingImports: PendingImport[];
-  /** Interviewer 8's protocols, shown beside this app's own. */
-  legacyProtocols?: readonly LegacyProtocolSummary[];
-  /** Interviewer 8's protocols that have an upgraded copy here. */
-  upgradedLegacyHashes?: ReadonlySet<string>;
 };
 
-const NONE: ReadonlySet<string> = new Set();
+// The schema 8 copy of the sample protocol an 8.x device installed. This app
+// offers its own schema 9 sample instead, so the schema 8 one is shown only
+// while it holds interviews.
+const isUnusedSchema8Sample = (protocol: ProtocolWithCounts): boolean =>
+  isSchema8Protocol(protocol) &&
+  protocol.name === SAMPLE_PROTOCOL.name &&
+  protocol.sessionCount === 0;
 
 // Merge protocols, the bundled teasers, and in-flight imports into slot-keyed
 // entries sorted by name; the import trigger is always the last card and
@@ -95,35 +88,23 @@ export function buildDeck({
   showSampleCard,
   showDevelopmentCard,
   pendingImports,
-  legacyProtocols = [],
-  upgradedLegacyHashes = NONE,
 }: BuildDeckArgs): DeckEntry[] {
-  const candidates: Exclude<DeckEntry, { kind: 'import' }>[] = protocols.map(
-    (protocol) => ({
-      kind: 'protocol',
-      protocol,
-    }),
-  );
-  // Interviewer 8 installed its own (schema 8) copy of the sample protocol;
-  // this app offers its schema 9 sample instead, so Interviewer 8's is shown
-  // only while it holds interviews, which are reached through its card.
-  for (const protocol of legacyProtocols) {
-    if (protocol.name === SAMPLE_PROTOCOL.name && protocol.sessionCount === 0) {
-      continue;
-    }
-    candidates.push({
-      kind: 'legacy',
-      protocol,
-      upgraded: upgradedLegacyHashes.has(protocol.hash),
-    });
-  }
+  const candidates: Exclude<DeckEntry, { kind: 'import' }>[] = protocols
+    .filter((protocol) => !isUnusedSchema8Sample(protocol))
+    .map((protocol) => ({ kind: 'protocol', protocol }));
   // A teaser offers a protocol the researcher doesn't have yet, so an
   // installed protocol of the same name drops it: that card owns the name, and
   // it is the one carrying the "Start new interview" and delete controls. The
   // caller's flags say whether a teaser is wanted at all (the researcher's
   // preference, the dev build); whether one is redundant is decided here, so
-  // the two teasers can't answer that question differently.
-  const installedNames = new Set(protocols.map((protocol) => protocol.name));
+  // the two teasers can't answer that question differently. The teasers are
+  // schema 9 protocols, so only a schema 9 protocol of the same name stands in
+  // for one.
+  const installedNames = new Set(
+    protocols
+      .filter((protocol) => !isSchema8Protocol(protocol))
+      .map((protocol) => protocol.name),
+  );
   const teasers: Exclude<DeckEntry, { kind: 'import' }>[] = [];
   if (showSampleCard) teasers.push({ kind: 'sample' });
   if (showDevelopmentCard) teasers.push({ kind: 'development' });
@@ -164,12 +145,13 @@ export function buildDeck({
   }
 
   const collator = new Intl.Collator(locale, { sensitivity: 'base' });
-  // Same name: this app's protocol (an upgraded copy, say) before the schema
-  // 8 one it came from.
+  // Same name: the schema 9 protocol before the schema 8 one.
+  const isSchema8Entry = (entry: Exclude<DeckEntry, { kind: 'import' }>) =>
+    entry.kind === 'protocol' && isSchema8Protocol(entry.protocol);
   const sorted = Array.from(bySlot.values()).toSorted(
     (a, b) =>
       collator.compare(entryName(a), entryName(b)) ||
-      Number(a.kind === 'legacy') - Number(b.kind === 'legacy'),
+      Number(isSchema8Entry(a)) - Number(isSchema8Entry(b)),
   );
 
   return [...sorted, { kind: 'import' }];

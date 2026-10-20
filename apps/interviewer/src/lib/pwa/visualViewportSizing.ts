@@ -17,12 +17,28 @@ const VIEWPORT_PROPERTIES = [
 const MIN_KEYBOARD_REDUCTION = 120;
 const SCALE_EPSILON = 0.01;
 
+const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+
+// Read by tag rather than `instanceof`: an element inside a frame belongs to
+// the frame's own window, whose element classes are not this window's.
 function isEditableElement(element: Element | null): boolean {
+  if (element === null) return false;
+  if (element.tagName === 'IFRAME') {
+    // A schema 8 interview runs in a same-origin frame (Interviewer8Frame):
+    // its text field is the frame's focused element, while this document
+    // only sees the frame focused. A frame of another origin throws, and
+    // counts as nothing being edited.
+    try {
+      return isEditableElement(
+        (element as HTMLIFrameElement).contentDocument?.activeElement ?? null,
+      );
+    } catch {
+      return false;
+    }
+  }
   return (
-    element instanceof HTMLInputElement ||
-    element instanceof HTMLTextAreaElement ||
-    element instanceof HTMLSelectElement ||
-    (element instanceof HTMLElement && element.isContentEditable)
+    EDITABLE_TAGS.has(element.tagName) ||
+    (element as HTMLElement).isContentEditable
   );
 }
 

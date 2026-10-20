@@ -22,6 +22,7 @@ import {
   assertLegacyAppOutput,
   assertLegacyRedirects,
   assertLegacyRouteExclusions,
+  assertLegacySameOriginFraming,
   findLegacyPrecacheEntries,
   routeMatcherAt,
 } from '../../../scripts/buildtime/legacy-app-assertions.ts';
@@ -44,14 +45,18 @@ const fail = (msg) => {
 // Interviewer 8 is served at /v8/ from this deploy (dist/v8, see
 // scripts/buildtime/legacy-app.ts), so its stable entry points and hashed
 // assets are held to the same contract as this app's, whether or not this
-// build bundles it, and its deep links must reach its own shell.
+// build bundles it, and its deep links must reach its own shell. This app
+// hosts its interview in a same-origin frame, so /v8/ may be framed by this
+// origin and no other.
 const legacyInterviewer = legacyApp('interviewer');
 try {
+  const headers = readFileSync(path.join(dist, '_headers'), 'utf8');
   assertPwaCacheHeaders({
     additionalStablePaths: ['/interviewer-icon.png'],
     nestedBases: ['/v8/'],
-    text: readFileSync(path.join(dist, '_headers'), 'utf8'),
+    text: headers,
   });
+  assertLegacySameOriginFraming(headers);
   assertLegacyRedirects(
     legacyInterviewer,
     readFileSync(path.join(dist, '_redirects'), 'utf8'),

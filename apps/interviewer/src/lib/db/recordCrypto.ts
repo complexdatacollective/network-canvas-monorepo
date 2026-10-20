@@ -1,8 +1,6 @@
+import { FinishOutcomeSchema } from '@codaco/protocol-validation';
 import {
-  type CurrentProtocol,
-  FinishOutcomeSchema,
-} from '@codaco/protocol-validation';
-import {
+  type NcNetwork,
   NcNetworkSchema,
   StageMetadataSchema,
   type StageMetadata,
@@ -205,12 +203,15 @@ export function withSessionFinish(
   };
 }
 
+// One row shape for every schema: a schema 8 protocol's row is exactly the
+// one Interviewer 8 writes, and so is this app's. `schemaVersion` (plaintext)
+// says which document the row holds.
 export type StoredProtocolRow = Omit<
   StoredProtocol,
   'protocol' | 'codebook'
 > & {
-  protocol?: CurrentProtocol;
-  codebook?: CurrentProtocol['codebook'];
+  protocol?: StoredProtocol['protocol'];
+  codebook?: StoredProtocol['codebook'];
   _enc?: { protocol: EncryptedField; codebook: EncryptedField };
 };
 
@@ -237,8 +238,24 @@ function assetAad(id: string): string {
   return `assets:${id}`;
 }
 
+/**
+ * A session's fields with its answers not (yet) parsed: what a row decrypts
+ * to. A schema 8 session's network and stage metadata are Interviewer 8's,
+ * and are carried as they are rather than read with this app's schemas.
+ */
+export type SessionRecord = Omit<StoredSession, 'network' | 'stageMetadata'> & {
+  network: unknown;
+  stageMetadata?: unknown;
+};
+
+/**
+ * Encrypt a session's answers into its row. A session that has recorded no
+ * finish (every schema 8 session among them) gets exactly the row Interviewer
+ * 8 writes: `network` and, when present, `stageMetadata`, under the
+ * additional data `sessions:<id>`.
+ */
 export async function encryptSession(
-  s: StoredSession,
+  s: SessionRecord,
 ): Promise<StoredSessionRow> {
   const dek = getSessionDek();
   const { network, stageMetadata, finishStageId, finishOutcome, ...rest } = s;
@@ -276,15 +293,14 @@ export async function encryptSession(
   };
 }
 
-/** A stored session decrypted but not yet parsed. */
-type DecryptedSessionRecord = Omit<
-  StoredSession,
-  'network' | 'stageMetadata'
-> & { network: unknown; stageMetadata: unknown };
-
-async function decryptSessionRecord(
+/**
+ * A stored session decrypted but not parsed: its answers exactly as they were
+ * written, by this app or by Interviewer 8. Re-encryption uses this, so it
+ * never changes a value it only re-wraps.
+ */
+export async function decryptSessionRecord(
   row: StoredSessionRow,
-): Promise<DecryptedSessionRecord> {
+): Promise<SessionRecord> {
   const {
     _enc,
     network,
@@ -331,6 +347,11 @@ async function decryptSessionRecord(
   };
 }
 
+/**
+ * A session of this app's own interview engine, parsed with its schemas. Not
+ * for a schema 8 session, whose stage metadata is Interviewer 8's: use
+ * `decryptSessionForExport` or `decryptSessionRecord`.
+ */
 export async function decryptSession(
   row: StoredSessionRow,
 ): Promise<StoredSession> {
@@ -340,6 +361,28 @@ export async function decryptSession(
     network: NcNetworkSchema.parse(network),
     stageMetadata: parseStageMetadata(stageMetadata),
   };
+}
+
+/** A session as the exporter reads it, of any schema. */
+export type ExportedSessionRecord = Omit<SessionRecord, 'stageMetadata'> & {
+  network: NcNetwork;
+};
+
+/**
+ * A session's network, parsed, without its stage metadata, which no export
+ * reads. Any schema: the network's shape is the same at schema 8 and 9 (this
+ * app's network schema accepts Interviewer 8's), while the stage metadata is
+ * each engine's own, and Interviewer 8's is never read with this app's schema.
+ */
+export async function decryptSessionForExport(
+  row: StoredSessionRow,
+): Promise<ExportedSessionRecord> {
+  const {
+    network,
+    stageMetadata: _stageMetadata,
+    ...rest
+  } = await decryptSessionRecord(row);
+  return { ...rest, network: NcNetworkSchema.parse(network) };
 }
 
 export async function encryptProtocol(
@@ -357,11 +400,7 @@ export async function encryptProtocol(
   return { ...rest, _enc: { protocol: encProtocol, codebook: encCodebook } };
 }
 
-/**
- * The fields of a stored protocol row that hold its document. Shared by this
- * app's rows and Interviewer 8's, which are encrypted the same way under the
- * same key.
- */
+/** The fields of a stored protocol row that hold its document. */
 type ProtocolDocumentRow<TProtocol, TCodebook> = {
   hash: string;
   protocol?: TProtocol;
@@ -373,7 +412,7 @@ type ProtocolDocumentRow<TProtocol, TCodebook> = {
  * A stored protocol row's document and codebook, decrypted when the row is
  * encrypted. The caller names the document type the row was written with.
  */
-export async function decryptProtocolDocument<TProtocol, TCodebook>(
+async function decryptProtocolDocument<TProtocol, TCodebook>(
   row: ProtocolDocumentRow<TProtocol, TCodebook>,
 ): Promise<{ protocol: TProtocol; codebook: TCodebook }> {
   const { _enc, protocol, codebook } = row;
@@ -399,7 +438,13 @@ export async function decryptProtocol(
   row: StoredProtocolRow,
 ): Promise<StoredProtocol> {
   const { _enc, protocol: _protocol, codebook: _codebook, ...rest } = row;
-  return { ...rest, ...(await decryptProtocolDocument(row)) };
+  const document = await decryptProtocolDocument<
+    StoredProtocol['protocol'],
+    StoredProtocol['codebook']
+  >(row);
+  // The row's plaintext `schemaVersion` names the document it holds, as it
+  // did when the row was written; the document is not re-validated on read.
+  return { ...rest, ...document } as StoredProtocol;
 }
 
 export async function encryptAsset(a: StoredAsset): Promise<StoredAssetRow> {

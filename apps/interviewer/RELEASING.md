@@ -156,9 +156,16 @@ git push --delete origin '@codaco/interviewer@<version>'
 
 ## Bundled Interviewer 8 (`/v8/`)
 
-Interviewer 9 serves Interviewer 8 at `/v8/` from its own deploy, so a
-researcher can keep running schema 8 protocols and their interviews in
-Interviewer 8 without leaving the site. Interviewer 9 does not build
+Interviewer 9 serves Interviewer 8 at `/v8/` from its own deploy, so schema 8
+interviews keep running in Interviewer 8's interview screen. Only that screen
+is used: every interview is started, resumed and reviewed through
+`/interview/<id>`, which hosts a schema 8 interview in a same-origin iframe
+at `/v8/interview/<id>` (with the same query) and hands it the unlock by
+`postMessage` (`src/lib/interviewer8Embed.ts`), so the researcher unlocks
+once, in Interviewer 9. Both majors share the one `interviewer` database.
+`public/_headers` lets only this origin frame `/v8/*`
+(`frame-ancestors 'self'`, checked by `scripts/assert-pwa-build.mjs`), and
+this app's CSP allows `frame-src 'self'`. Interviewer 9 does not build
 Interviewer 8. Each 8.x release attaches a build of itself made for `/v8/`,
 `interviewer-v8-dist.tgz`, to its GitHub release (the **App Sub-path Dist**
 workflow on the 8.x line), and `legacy-interviewer.json` in this directory
@@ -186,9 +193,11 @@ would land outside the extraction directory, check `dist-info.json`
 pin, drop its `_headers`, `_redirects` and source maps, and move it to
 `dist/v8`. It runs after Vite has generated the service worker, so none of it
 enters this app's precache (`globIgnores` repeats that). The same decision
-sets the `__INTERVIEWER_V8__` define, so the app offers Start, Resume, "Open in
-Interviewer 8" and "Keep on schema 8" exactly when `dist/v8` holds Interviewer 8. With an empty pin the build bundles nothing, leaves no `dist/v8`, and the
-app shows schema 8 protocols as unavailable, with only the upgrade.
+sets the `__INTERVIEWER_V8__` define, so the app starts, resumes and reviews
+schema 8 interviews exactly when `dist/v8` holds Interviewer 8. With an empty
+pin the build bundles nothing, leaves no `dist/v8`, and the app shows schema 8
+protocols as unavailable for interviews (their data can still be exported, and
+they can be deleted).
 
 The tarball comes from `INTERVIEWER_LEGACY_V8_TARBALL` when that names a local
 copy, then from `node_modules/.cache/interviewer-legacy/<sha256>.tgz`, then
@@ -215,10 +224,16 @@ never replays a cached `dist/v8`.
 2. On the Interviewer 9 line, replace `legacy-interviewer.json` with that JSON
    and add a `patch` changeset for `@codaco/interviewer` saying which
    Interviewer 8 is now served at `/v8/`.
-3. Build once locally (`pnpm --filter @codaco/interviewer build`): it
+3. If that Interviewer 8 was built with a different
+   `@codaco/protocol-validation` than the one the
+   `protocol-validation-schema-8` alias in `package.json` names (15.0.0, the
+   version Interviewer 8.4.0 ships), move the alias to it. Importing a schema
+   8 file validates it with that alias, so an imported protocol is one the
+   served Interviewer 8 would have imported.
+4. Build once locally (`pnpm --filter @codaco/interviewer build`): it
    downloads the tarball, verifies it against the pin, and
    `assert-pwa-build.mjs` checks `dist/v8`.
-4. Merge, and release Interviewer 9 as usual. `/v8/` changes only when
+5. Merge, and release Interviewer 9 as usual. `/v8/` changes only when
    Interviewer 9 is redeployed.
 
 Never replace an uploaded tarball without updating the pin: the sub-path build

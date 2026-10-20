@@ -56,11 +56,11 @@ const {
   mockConfirm: vi.fn<(options: ConfirmCall) => Promise<boolean | null>>(),
 }));
 
-const legacyOffline = vi.hoisted(() => ({
-  current: 'not-bundled' as 'not-bundled' | 'checking' | 'ready' | 'not-ready',
+const appOffline = vi.hoisted(() => ({
+  current: 'checking' as 'checking' | 'ready' | 'not-ready',
 }));
-vi.mock('~/lib/pwa/legacyInterviewerOffline', () => ({
-  useLegacyInterviewerOffline: () => legacyOffline.current,
+vi.mock('~/lib/pwa/appOffline', () => ({
+  useAppOffline: () => appOffline.current,
 }));
 
 vi.mock('~/lib/storage', async () => {
@@ -173,10 +173,10 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
-  legacyOffline.current = 'not-bundled';
+  appOffline.current = 'checking';
 });
 
-describe('SettingsDialog Interviewer 8 offline', () => {
+describe('SettingsDialog offline use', () => {
   const findAbout = () =>
     waitFor(
       () =>
@@ -186,20 +186,20 @@ describe('SettingsDialog Interviewer 8 offline', () => {
       { timeout: 5000 },
     );
 
-  it('says whether Interviewer 8 is ready offline', async () => {
-    legacyOffline.current = 'not-ready';
+  it('says whether Interviewer is ready offline', async () => {
+    appOffline.current = 'not-ready';
     render(<SettingsDialog open onClose={vi.fn()} />);
     await findAbout();
-    expect(screen.getByText('Interviewer 8 offline')).toBeInTheDocument();
-    expect(screen.getByTestId('legacy-offline-setting')).toHaveTextContent(
+    expect(screen.getByText('Offline use')).toBeInTheDocument();
+    expect(screen.getByTestId('offline-setting')).toHaveTextContent(
       'Not ready',
     );
   });
 
-  it('has no such row in a build without Interviewer 8', async () => {
+  it('has no such row before it is known', async () => {
     render(<SettingsDialog open onClose={vi.fn()} />);
     await findAbout();
-    expect(screen.queryByText('Interviewer 8 offline')).not.toBeInTheDocument();
+    expect(screen.queryByText('Offline use')).not.toBeInTheDocument();
   });
 });
 
@@ -373,6 +373,33 @@ describe('SettingsDialog synthetic tab — protocol import race', () => {
       );
     });
     expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
+  });
+
+  it('defaults to a schema 9 protocol when the newest protocol is schema 8', async () => {
+    const schema8 = {
+      ...makeProtocol('Schema 8 Protocol', 'hash-8'),
+      schemaVersion: 8,
+    } as unknown as ProtocolWithCounts;
+    mockListProtocols.mockResolvedValue([
+      schema8,
+      makeProtocol('Schema 9 Protocol', 'hash-9'),
+    ]);
+
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-9',
+      );
+    });
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+    await waitFor(() =>
+      expect(mockGenerateSyntheticSessions).toHaveBeenCalledWith(
+        expect.objectContaining({ protocolHash: 'hash-9' }),
+      ),
+    );
   });
 
   it('reports an initial synthetic-data refresh failure instead of leaving an unhandled rejection', async () => {

@@ -1,5 +1,3 @@
-// First: strips this app's entry parameter before analytics can record it.
-import './captureUrlEntryRequests';
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import './styles/globals.css';
@@ -11,7 +9,7 @@ import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBu
 
 import App from './App';
 import { startupLocale } from './i18n/preference';
-import { startHandedOverImport } from './lib/handoff/handedOverImport';
+import { deleteRetiredDatabases } from './lib/db/retiredDatabases';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
@@ -51,10 +49,6 @@ if (import.meta.hot) {
 // React mounts; capture them for Home to import after unlock.
 initFileLaunchCapture();
 
-// A file Interviewer 8 staged for this app (`/?import=<key>`) joins the
-// launched files; hand-offs nobody took are cleaned up.
-startHandedOverImport();
-
 async function startApp(): Promise<void> {
   await Promise.all([
     applyFreshLoadServiceWorkerUpdate({
@@ -82,6 +76,10 @@ async function startApp(): Promise<void> {
     'appinstalled',
     () => void requestPersistentStorage(),
   );
+
+  // Data only an unreleased build wrote, which nothing reads. Not awaited:
+  // best-effort, and never in the way of the first paint.
+  void deleteRetiredDatabases();
 
   const container = document.getElementById('root');
   if (!container) {

@@ -10,7 +10,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import type { StoredAsset, StoredProtocol } from '../../db/types';
+import type { StoredAsset, StoredCurrentProtocol } from '../../db/types';
 
 const getProtocolAssets = vi.fn();
 
@@ -29,7 +29,7 @@ const HASH = 'development-hash';
 
 const bytesByUrl = new Map<string, Buffer>();
 
-function storedProtocol(): StoredProtocol {
+function storedProtocol(): StoredCurrentProtocol {
   return {
     id: HASH,
     hash: HASH,
@@ -38,7 +38,7 @@ function storedProtocol(): StoredProtocol {
     importedAt: new Date().toISOString(),
     codebook: developmentProtocol.codebook,
     protocol: developmentProtocol,
-  } as unknown as StoredProtocol;
+  } as unknown as StoredCurrentProtocol;
 }
 
 beforeAll(() => {

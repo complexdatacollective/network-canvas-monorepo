@@ -17,7 +17,7 @@ export type DeckCardMenuItem = {
 };
 
 // The actions of a card that offers more than removing it (a schema 8
-// protocol's card: open it in Interviewer 8, upgrade it, see its details).
+// protocol's card: see its details, delete it).
 // Sized and styled like the card's remove control, in the same place.
 export function DeckCardMenu({
   label,

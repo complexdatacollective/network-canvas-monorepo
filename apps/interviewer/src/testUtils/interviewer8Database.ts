@@ -5,17 +5,17 @@ import type {
   StoredProtocolRow,
   StoredSessionRow,
 } from '~/lib/db/recordCrypto';
+import { DB_NAME } from '~/lib/db/storageNames';
 import { fromBase64 } from '~/lib/vault/crypto';
 
-// Interviewer 8's database, `interviewer`, exactly as Interviewer 8 declares
-// it. Frozen copies of its released schema history (v1 a4b08d828, v2
-// 04b74a6fc, v3 on main), kept independent of this app's own database: tests
-// seed through these declarations so the native layout is the one a real
-// device has (stores, indexes and native version 30). Never update them to
-// track this app's db.ts.
-export const LEGACY_DB_NAME = 'interviewer';
+// The shared database (`interviewer`) as Interviewer 8 sees it. Frozen copies
+// of Interviewer 8's released declarations (v1 a4b08d828, v2 04b74a6fc, v3 on
+// main) and of its record decoders (main's `lib/db/recordCrypto.ts`), kept
+// independent of this app's own: tests seed an 8.x device through them, and
+// read back what this app wrote the way Interviewer 8 will. Never update them
+// to track this app's db.ts or codec.
 
-const LEGACY_SCHEMA_HISTORY: Record<string, string>[] = [
+const INTERVIEWER_8_SCHEMA_HISTORY: Record<string, string>[] = [
   {
     protocols: 'id, hash, name, importedAt',
     sessions:
@@ -30,35 +30,162 @@ const LEGACY_SCHEMA_HISTORY: Record<string, string>[] = [
   { protocolMigrations: 'previousHash' },
 ];
 
-type LegacySeed = {
+/**
+ * A connection the way Interviewer 8's `InterviewerV8DB` makes it: the same
+ * name, declaring its own versions 1 to 3 and nothing of this app's.
+ */
+export function openAsInterviewer8(): Dexie {
+  const connection = new Dexie(DB_NAME);
+  for (const [index, stores] of INTERVIEWER_8_SCHEMA_HISTORY.entries()) {
+    connection.version(index + 1).stores(stores);
+  }
+  return connection;
+}
+
+type Interviewer8Seed = {
   protocols?: unknown[];
   sessions?: unknown[];
   assets?: unknown[];
   settings?: unknown[];
 };
 
-/** Create Interviewer 8's database at its current version and fill it. */
-export async function seedLegacyInterviewerDatabase(
-  seed: LegacySeed,
+/**
+ * Create the database as an 8.x device has it (native version 30) and fill
+ * it, as Interviewer 8 would have before this app ever ran.
+ */
+export async function seedAsInterviewer8(
+  seed: Interviewer8Seed,
 ): Promise<void> {
-  const legacy = new Dexie(LEGACY_DB_NAME);
-  for (const [index, stores] of LEGACY_SCHEMA_HISTORY.entries()) {
-    legacy.version(index + 1).stores(stores);
-  }
-  await legacy.open();
+  const connection = openAsInterviewer8();
+  await connection.open();
   try {
-    await legacy.table('protocols').bulkPut(seed.protocols ?? []);
-    await legacy.table('sessions').bulkPut(seed.sessions ?? []);
-    await legacy.table('assets').bulkPut(seed.assets ?? []);
-    await legacy.table('settings').bulkPut(seed.settings ?? []);
+    await connection.table('protocols').bulkPut(seed.protocols ?? []);
+    await connection.table('sessions').bulkPut(seed.sessions ?? []);
+    await connection.table('assets').bulkPut(seed.assets ?? []);
+    await connection.table('settings').bulkPut(seed.settings ?? []);
   } finally {
-    legacy.close();
+    connection.close();
   }
 }
 
-/** Remove Interviewer 8's database, whatever is holding it. */
-export async function deleteLegacyInterviewerDatabase(): Promise<void> {
-  await Dexie.delete(LEGACY_DB_NAME);
+/** Every row of `table`, read raw, with no schema or codec of this app's. */
+export async function readRawRows(table: string): Promise<unknown[]> {
+  const idb = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  try {
+    return await new Promise<unknown[]>((resolve, reject) => {
+      const request = idb
+        .transaction(table, 'readonly')
+        .objectStore(table)
+        .getAll();
+      request.onsuccess = () => resolve(request.result as unknown[]);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    idb.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Interviewer 8's record decoders, frozen: AES-GCM, base64 iv and ciphertext,
+// additional data `sessions:<id>`, `protocols:<hash>` and `assets:<row id>`,
+// JSON plaintext for record fields, raw bytes (with `kind` and `mime`) for
+// asset data. Written out here from main's codec rather than borrowed from
+// this app's, so a change to this app's format fails these tests. They do
+// not run main's zod parses, which check the values, not the format.
+// ---------------------------------------------------------------------------
+
+type EncryptedField = { iv: string; ct: string };
+type EncryptedAsset = EncryptedField & {
+  kind: 'string' | 'blob';
+  mime?: string;
+};
+type Row = Record<string, unknown>;
+
+const decryptBytes = async (
+  field: EncryptedField,
+  key: CryptoKey,
+  aad: string,
+): Promise<Uint8Array<ArrayBuffer>> =>
+  new Uint8Array(
+    await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: fromBase64(field.iv),
+        additionalData: new TextEncoder().encode(aad),
+      },
+      key,
+      fromBase64(field.ct),
+    ),
+  );
+
+const decryptField = async (
+  field: EncryptedField,
+  key: CryptoKey,
+  aad: string,
+): Promise<unknown> =>
+  JSON.parse(new TextDecoder().decode(await decryptBytes(field, key, aad)));
+
+const encOf = (row: Row): Record<string, EncryptedField> | undefined =>
+  row._enc as Record<string, EncryptedField> | undefined;
+
+/** Main's `decryptSession`, minus its zod parses. */
+export async function interviewer8DecryptSession(
+  row: Row,
+  key: CryptoKey,
+): Promise<Row> {
+  const { _enc: _ignored, ...rest } = row;
+  const enc = encOf(row);
+  if (!enc) return rest;
+  if (!enc.network) throw new Error('No encrypted network');
+  // Main reads exactly these two fields; anything else in `_enc` is lost.
+  const aad = `sessions:${String(row.id)}`;
+  return {
+    ...rest,
+    network: await decryptField(enc.network, key, aad),
+    stageMetadata: enc.stageMetadata
+      ? await decryptField(enc.stageMetadata, key, aad)
+      : undefined,
+  };
+}
+
+/** Main's `decryptProtocol`. */
+export async function interviewer8DecryptProtocol(
+  row: Row,
+  key: CryptoKey,
+): Promise<Row> {
+  const { _enc: _ignored, ...rest } = row;
+  const enc = encOf(row);
+  if (!enc) return rest;
+  if (!enc.protocol || !enc.codebook) throw new Error('No encrypted document');
+  const aad = `protocols:${String(row.hash)}`;
+  return {
+    ...rest,
+    protocol: await decryptField(enc.protocol, key, aad),
+    codebook: await decryptField(enc.codebook, key, aad),
+  };
+}
+
+/** Main's `decryptAsset`: a string, or a Blob of the recorded type. */
+export async function interviewer8DecryptAsset(
+  row: Row,
+  key: CryptoKey,
+): Promise<Row> {
+  const { _enc: _ignored, ...rest } = row;
+  const enc = row._enc as { data?: EncryptedAsset } | undefined;
+  if (!enc) return rest;
+  if (!enc.data) throw new Error('No encrypted data');
+  const bytes = await decryptBytes(enc.data, key, `assets:${String(row.id)}`);
+  return {
+    ...rest,
+    data:
+      enc.data.kind === 'string'
+        ? new TextDecoder().decode(bytes)
+        : new Blob([bytes], { type: enc.data.mime ?? '' }),
+  };
 }
 
 /**

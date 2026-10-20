@@ -116,10 +116,31 @@ describe('legacyInterviewerOffline', () => {
     stubRegistration({
       scope: `${ORIGIN}/v8/`,
       active: null,
-      installing: {} as ServiceWorker,
+      installing: new EventTarget() as ServiceWorker,
     });
     await refreshLegacyInterviewerOffline();
     expect(getLegacyInterviewerOffline()).toBe('not-ready');
+  });
+
+  it('becomes ready when a worker it found installing finishes, with no further check asked for', async () => {
+    // Interviewer 8 registered its own worker while running an interview.
+    const worker = Object.assign(new EventTarget(), {
+      state: 'installing',
+    }) as unknown as ServiceWorker;
+    const registration: Partial<ServiceWorkerRegistration> = {
+      scope: `${ORIGIN}/v8/`,
+      active: null,
+      installing: worker,
+    };
+    stubRegistration(registration);
+    await refreshLegacyInterviewerOffline();
+    expect(getLegacyInterviewerOffline()).toBe('not-ready');
+
+    Object.assign(registration, { installing: null, active: worker });
+    Object.assign(worker, { state: 'activated' });
+    worker.dispatchEvent(new Event('statechange'));
+
+    await vi.waitFor(() => expect(getLegacyInterviewerOffline()).toBe('ready'));
   });
 
   it("does not take this app's own worker for Interviewer 8's", async () => {

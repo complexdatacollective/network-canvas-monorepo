@@ -696,7 +696,7 @@ CHECKS:
    name-generator stage and add an alter named "resume-probe" (network data
    and the step counter persist through SEPARATE writes — a round-trip that
    only checks the step can miss lost responses). The writes are
-   fire-and-forget: before exiting, poll IndexedDB (database "interviewer-v9")
+   fire-and-forget: before exiting, poll IndexedDB (database "interviewer")
    via page.evaluate until the session row's currentStep matches the
    visible [data-stage-step] AND its stored network includes the
    "resume-probe" node (readable in plaintext — no vault is enrolled in
@@ -929,7 +929,7 @@ CHECKS:
 6. Offline interview: still offline, start an interview (case ID
    "offline-check") and advance through the first 3 stages. Step writes are
    fire-and-forget: BEFORE any reload, record the reached
-   [data-stage-step] and poll IndexedDB (database "interviewer-v9") via
+   [data-stage-step] and poll IndexedDB (database "interviewer") via
    page.evaluate until the session row's currentStep matches it — the
    offline progress must commit first, or a broken write would simply
    re-read its own stale value after reload. THEN — STILL OFFLINE — reload

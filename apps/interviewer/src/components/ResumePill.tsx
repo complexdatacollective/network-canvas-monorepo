@@ -6,15 +6,7 @@ import { useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { updateSettings } from '~/lib/db/api';
-import type { LegacySessionSummary } from '~/lib/db/legacyLibrary';
 import type { StoredSessionLite } from '~/lib/db/types';
-import {
-  type BundledLegacyInterviewer,
-  goToLegacyInterviewer,
-  legacyResumeUrl,
-} from '~/lib/legacyInterviewer';
-
-import { useSettleLockForInterviewer8 } from './useSettleLockForInterviewer8';
 
 const messages = defineMessages({
   identity: {
@@ -140,67 +132,49 @@ export function ResumePillView({
 
 type ResumePillProps = {
   sessions: StoredSessionLite[];
-  // Interviewer 8's interviews, resumed there, when it is bundled.
-  legacySessions?: readonly LegacySessionSummary[];
-  legacyInterviewer?: BundledLegacyInterviewer | null;
+  /** The protocols whose interviews this build can open: see `pickResumable`. */
+  runnableProtocolHashes: ReadonlySet<string>;
 };
 
-type Resumable =
-  | { kind: 'own'; session: StoredSessionLite }
-  | { kind: 'legacy'; session: LegacySessionSummary };
-
 /**
- * The most recently updated unfinished interview, this app's or (when
- * `legacyInterviewer` is given) Interviewer 8's, or undefined.
+ * The most recently updated unfinished interview whose protocol is in
+ * `runnableProtocolHashes`, or undefined. Every schema resumes through
+ * `/interview/<id>`, which opens a schema 8 interview in the bundled
+ * Interviewer 8; a build without it leaves those out, so the pill never leads
+ * to an interview that cannot be opened.
  */
 export function pickResumable(
   sessions: readonly StoredSessionLite[],
-  legacySessions: readonly LegacySessionSummary[],
-  includeLegacy: boolean,
-): Resumable | undefined {
-  const candidates: Resumable[] = [
-    ...sessions.map((session) => ({ kind: 'own' as const, session })),
-    ...(includeLegacy
-      ? legacySessions.map((session) => ({ kind: 'legacy' as const, session }))
-      : []),
-  ];
-  return candidates
-    .filter((candidate) => candidate.session.finishedAt === null)
+  runnableProtocolHashes: ReadonlySet<string>,
+): StoredSessionLite | undefined {
+  return sessions
+    .filter(
+      (session) =>
+        session.finishedAt === null &&
+        runnableProtocolHashes.has(session.protocolHash),
+    )
     .toSorted(
       (a, b) =>
-        new Date(b.session.lastUpdatedAt).getTime() -
-        new Date(a.session.lastUpdatedAt).getTime(),
+        new Date(b.lastUpdatedAt).getTime() -
+        new Date(a.lastUpdatedAt).getTime(),
     )[0];
 }
 
 export function ResumePill({
   sessions,
-  legacySessions = [],
-  legacyInterviewer = null,
+  runnableProtocolHashes,
 }: ResumePillProps) {
   const [, navigate] = useLocation();
-  const { settleLock } = useSettleLockForInterviewer8();
 
   const inProgress = useMemo(
-    () => pickResumable(sessions, legacySessions, legacyInterviewer !== null),
-    [sessions, legacySessions, legacyInterviewer],
+    () => pickResumable(sessions, runnableProtocolHashes),
+    [sessions, runnableProtocolHashes],
   );
 
   if (!inProgress) return null;
 
   const handleResume = async () => {
-    if (inProgress.kind === 'legacy') {
-      // Interviewer 8 runs its own interviews: a full page load to its
-      // interview route, where it asks to unlock as it always has. It cannot
-      // set the shared lock up, so that is settled here first.
-      if (legacyInterviewer && (await settleLock())) {
-        goToLegacyInterviewer(
-          legacyResumeUrl(legacyInterviewer, inProgress.session.id),
-        );
-      }
-      return;
-    }
-    const sessionId = inProgress.session.id;
+    const sessionId = inProgress.id;
     try {
       await updateSettings({ lastActiveSessionId: sessionId });
     } catch {
@@ -210,9 +184,6 @@ export function ResumePill({
   };
 
   return (
-    <ResumePillView
-      session={inProgress.session}
-      onResume={() => void handleResume()}
-    />
+    <ResumePillView session={inProgress} onResume={() => void handleResume()} />
   );
 }

@@ -49,6 +49,16 @@ vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
 }));
 
 const getSettingsMock = vi.fn();
+const getSessionSchemaVersionMock = vi.fn<() => Promise<number | undefined>>();
+const getSessionHeaderMock = async () => {
+  const schemaVersion = await getSessionSchemaVersionMock();
+  return {
+    protocolHash: 'h1',
+    finishedAt: sessionFinishedAt.current,
+    schemaVersion,
+  };
+};
+const sessionFinishedAt: { current: string | null } = { current: null };
 const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
@@ -57,6 +67,7 @@ const updateSettingsMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
+  getSessionHeader: () => getSessionHeaderMock(),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
   updateSession: (...a: unknown[]) => updateSessionMock(...a),
   updateSettings: (...a: unknown[]) => updateSettingsMock(...a),
@@ -71,10 +82,74 @@ vi.mock('~/lib/assets/assetResolver', () => ({
 // gated exit just runs its navigation callback. The returned exit function must
 // be a stable reference (the real hook uses useCallback), or consumers that put
 // it in effect deps re-run every render.
-vi.mock('~/lib/pwa/useHistoryBackGuard', () => {
-  const exit = (goHome: () => void) => goHome();
-  return { useHistoryBackGuard: () => exit };
+const { exitToHomeSpy } = vi.hoisted(() => ({
+  exitToHomeSpy: vi.fn((goHome: () => void) => goHome()),
+}));
+vi.mock('~/lib/pwa/useHistoryBackGuard', () => ({
+  useHistoryBackGuard: () => exitToHomeSpy,
+}));
+
+// Interviewer 8 as a build bundles it (or not). The address itself is the
+// real one.
+const { legacyInterviewer, settleLockMock, lockSettled, lockMock, frameMock } =
+  vi.hoisted(() => ({
+    legacyInterviewer: {
+      current: { version: '8.5.0', path: '/v8/' } as {
+        version: string;
+        path: '/v8/';
+      } | null,
+    },
+    settleLockMock: vi.fn<() => Promise<boolean>>(),
+    lockSettled: { current: true },
+    lockMock: vi.fn(() => Promise.resolve()),
+    frameMock:
+      vi.fn<
+        (props: {
+          src: string;
+          enterAuthorized: boolean;
+          onClosed: () => void;
+          onLost: () => void;
+          onUnavailable: () => void;
+        }) => void
+      >(),
+  }));
+vi.mock('~/lib/legacyInterviewer', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('~/lib/legacyInterviewer')>();
+  return {
+    ...actual,
+    getBundledLegacyInterviewer: () => legacyInterviewer.current,
+  };
 });
+vi.mock('~/components/useSettleLockForInterviewer8', () => ({
+  useSettleLockForInterviewer8: () => ({
+    settled: lockSettled.current,
+    settleLock: () => settleLockMock(),
+  }),
+}));
+vi.mock('~/lib/auth/AuthContext', () => ({
+  useAuth: () => ({ lock: lockMock }),
+}));
+// The frame and its handshake are covered in Interviewer8Frame's own test;
+// here it stands in for itself with the props the route gives it.
+vi.mock('~/components/Interviewer8Frame', () => ({
+  Interviewer8Frame: (props: {
+    src: string;
+    enterAuthorized: boolean;
+    onClosed: () => void;
+    onLost: () => void;
+    onUnavailable: () => void;
+  }) => {
+    frameMock(props);
+    return <iframe title="Interview" src={props.src} />;
+  },
+}));
+
+function lastFrameProps() {
+  const props = frameMock.mock.calls.at(-1)?.[0];
+  if (!props) throw new Error('Interviewer 8 was never hosted');
+  return props;
+}
 vi.mock('~/lib/installationId', () => ({
   getInstallationId: () => 'test-install',
 }));
@@ -275,6 +350,13 @@ async function invoke(fn: () => unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionFinishedAt.current = null;
+  getSessionSchemaVersionMock.mockResolvedValue(
+    COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+  );
+  legacyInterviewer.current = { version: '8.5.0', path: '/v8/' };
+  settleLockMock.mockResolvedValue(true);
+  lockSettled.current = true;
   getSessionMock.mockResolvedValue(makeSession());
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
@@ -465,6 +547,260 @@ describe('InterviewRoute enter gate', () => {
     });
 
     expect(setAuthorizedInterviewIdMock).not.toHaveBeenCalledWith('s1');
+  });
+});
+
+describe('InterviewRoute schema 8 interview', () => {
+  const SCHEMA_8 = 8;
+
+  beforeEach(() => {
+    getSessionSchemaVersionMock.mockResolvedValue(SCHEMA_8);
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: true,
+      requireUnlockOnExit: true,
+      allowStageNavigation: false,
+    });
+  });
+
+  it('hosts it in a frame at /v8/interview/<id> after the same enter gate, without decrypting it', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+
+    const frame = await screen.findByTitle('Interview');
+    expect(frame).toHaveAttribute('src', '/v8/interview/s1');
+    expect(lastFrameProps()).toMatchObject({
+      src: '/v8/interview/s1',
+      enterAuthorized: true,
+    });
+    expect(settleLockMock).toHaveBeenCalledTimes(1);
+    // The one unlock, here; Interviewer 8 is told it was satisfied.
+    expect(requireFreshUnlockMock).toHaveBeenCalledTimes(1);
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(getProtocolByHashMock).not.toHaveBeenCalled();
+    // Home focuses this protocol's card when the interview ends.
+    expect(updateSettingsMock).toHaveBeenCalledWith({
+      lastActiveSessionId: 's1',
+      lastActiveProtocolHash: 'h1',
+    });
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(exitToHomeSpy).not.toHaveBeenCalled();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the search, so a review stays a review', async () => {
+    useSearchMock.mockReturnValue('mode=review');
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTitle('Interview')).toHaveAttribute(
+      'src',
+      '/v8/interview/s1?mode=review',
+    );
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves the last-active protocol alone for a finished interview', async () => {
+    sessionFinishedAt.current = '2026-01-02T00:00:00.000Z';
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await screen.findByTitle('Interview');
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it('asks nothing when the entry was already authorized, as by the lock screen on a reload', async () => {
+    getAuthorizedInterviewIdMock.mockReturnValue('s1');
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await screen.findByTitle('Interview');
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(lastFrameProps().enterAuthorized).toBe(true);
+  });
+
+  it('says the enter step was not needed when unlock-on-enter is off', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await screen.findByTitle('Interview');
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(lastFrameProps().enterAuthorized).toBe(false);
+  });
+
+  it('takes choosing the lock at set-up as the enter step', async () => {
+    lockSettled.current = false;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await waitFor(() =>
+      expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1'),
+    );
+    expect(settleLockMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes home, hosting nothing, when the enter step-up is declined', async () => {
+    requireFreshUnlockMock.mockResolvedValue({ ok: false });
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
+    expect(frameMock).not.toHaveBeenCalled();
+  });
+
+  it('sets up the lock first, and goes home instead when set-up is left', async () => {
+    settleLockMock.mockResolvedValue(false);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
+    expect(settleLockMock).toHaveBeenCalledTimes(1);
+    expect(frameMock).not.toHaveBeenCalled();
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(getSessionMock).not.toHaveBeenCalled();
+  });
+
+  it('hosts only after the lock is settled', async () => {
+    let settle: (settled: boolean) => void = () => undefined;
+    settleLockMock.mockReturnValue(
+      new Promise<boolean>((resolve) => {
+        settle = resolve;
+      }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+    await waitFor(() => expect(settleLockMock).toHaveBeenCalled());
+    expect(frameMock).not.toHaveBeenCalled();
+
+    await act(async () => settle(true));
+    expect(await screen.findByTitle('Interview')).toBeInTheDocument();
+  });
+
+  it('goes home, through the history pin, when Interviewer 8 closes', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+    setAuthorizedInterviewIdMock.mockClear();
+
+    await act(async () => lastFrameProps().onClosed());
+
+    expect(screen.queryByTitle('Interview')).not.toBeInTheDocument();
+    expect(exitToHomeSpy).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    expect(lockMock).not.toHaveBeenCalled();
+  });
+
+  it('locks, and goes home, when the frame is lost without closing', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+
+    await act(async () => lastFrameProps().onLost());
+
+    expect(screen.queryByTitle('Interview')).not.toBeInTheDocument();
+    expect(lockMock).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+    // Over whatever the departed frame left above this route's pin.
+    expect(exitToHomeSpy).toHaveBeenCalledWith(expect.any(Function), {
+      stepOverFrameEntries: true,
+    });
+  });
+
+  it('locks when the route leaves the interview while the frame is still up', async () => {
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+    expect(lockMock).not.toHaveBeenCalled();
+
+    // Back past the frame, as when Interviewer 8's own pin has gone.
+    useRouteMock.mockReturnValue([false, null]);
+    rerender(<InterviewRoute sessionId="s1" />);
+
+    await waitFor(() => expect(lockMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not lock when the route leaves after Interviewer 8 closed', async () => {
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+    await act(async () => lastFrameProps().onClosed());
+
+    useRouteMock.mockReturnValue([false, null]);
+    rerender(<InterviewRoute sessionId="s1" />);
+
+    expect(lockMock).not.toHaveBeenCalled();
+  });
+
+  it('explains, without locking, when Interviewer 8 could not be loaded into the frame', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+
+    await act(async () => lastFrameProps().onUnavailable());
+
+    expect(screen.queryByTitle('Interview')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /interview unavailable/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/has not finished downloading for use without/),
+    ).toBeInTheDocument();
+    expect(lockMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('explains, without opening it, when this build has no Interviewer 8', async () => {
+    legacyInterviewer.current = null;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', { name: /interview unavailable/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/older version of the Network Canvas protocol schema/i),
+    ).toBeInTheDocument();
+    expect(settleLockMock).not.toHaveBeenCalled();
+    expect(frameMock).not.toHaveBeenCalled();
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  it('explains a schema below 8, which no Interviewer here runs', async () => {
+    getSessionSchemaVersionMock.mockResolvedValue(7);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', { name: /interview unavailable/i }),
+    ).toBeInTheDocument();
+    expect(settleLockMock).not.toHaveBeenCalled();
+    expect(frameMock).not.toHaveBeenCalled();
+  });
+
+  it('runs a schema 9 interview here, after its own enter gate', async () => {
+    getSessionSchemaVersionMock.mockResolvedValue(
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(requireFreshUnlockMock).toHaveBeenCalledTimes(1);
+    expect(settleLockMock).not.toHaveBeenCalled();
+    expect(frameMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the missing screen for an interview that is not there', async () => {
+    getSessionSchemaVersionMock.mockResolvedValue(undefined);
+    getSessionMock.mockResolvedValue(undefined);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', { name: /interview not found/i }),
+    ).toBeInTheDocument();
+    expect(frameMock).not.toHaveBeenCalled();
   });
 });
 

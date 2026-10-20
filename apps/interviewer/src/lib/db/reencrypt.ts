@@ -1,4 +1,4 @@
-import { markDatabaseSecured } from './db';
+import { db, markDatabaseSecured } from './db';
 import {
   listAssetIds,
   listProtocolIds,
@@ -88,5 +88,34 @@ export async function reencryptAllRecords(
   for (const id of protocolIds) await runRow(() => reencryptProtocol(id));
   for (const id of assetIds) await runRow(() => reencryptAsset(id));
 
+  // Interviewer 8 at /v8/ writes to this database too, and has no secured
+  // marker to check at commit: an interview it was running when the device
+  // was secured (with no lock, in another tab) can still land a plaintext
+  // session row after the listing above. Such a row counts as a failure, so
+  // the pending flag retries the sweep on a later unlock. (A row that failed
+  // above is likely still plaintext, and is already counted.)
+  if (failed === 0) failed = await countPlaintextRows();
+
   return { total, failed };
+}
+
+/**
+ * Whether any session row is still plaintext. Only sessions are checked:
+ * Interviewer 8 writes nothing else, and a protocol or asset row this app
+ * failed to encrypt is already counted by the sweep that missed it.
+ */
+export async function hasPlaintextSessions(): Promise<boolean> {
+  return (
+    (await db.sessions.filter((row) => row._enc === undefined).count()) > 0
+  );
+}
+
+async function countPlaintextRows(): Promise<number> {
+  const plaintext = (row: { _enc?: unknown }) => row._enc === undefined;
+  const [sessions, protocols, assets] = await Promise.all([
+    db.sessions.filter(plaintext).count(),
+    db.protocols.filter(plaintext).count(),
+    db.assets.filter(plaintext).count(),
+  ]);
+  return sessions + protocols + assets;
 }
