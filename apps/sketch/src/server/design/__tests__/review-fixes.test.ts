@@ -5,6 +5,7 @@
 // in an interview.
 import { describe, expect, it } from 'vitest';
 
+import { analyse } from '../analyse.ts';
 import { buildProtocol } from '../build.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
@@ -854,5 +855,26 @@ describe('compiler review fixes', () => {
     );
     expect(r.validation.success).toBe(true);
     expect(JSON.stringify(r.protocol)).toContain('15 example rows');
+  });
+});
+
+describe('instrument attributes', () => {
+  it('records a scored attribute under the id it ends up with', () => {
+    const scored = {
+      options: ['Never', 'Sometimes', 'Often'],
+      optionScores: [0, 1, 2],
+    };
+    const { design: d } = analyse(
+      parseDesign(
+        design({
+          egoAttributes: [
+            A('stress', 'ordered', 'How often stressed?', scored),
+            A('stress', 'ordered', 'How often tired?', scored),
+          ],
+          stages: [{ kind: 'egoForm', ...c('e'), attributeIds: ['stress'] }],
+        }),
+      ),
+    );
+    expect(d.instrumentAttributes).toEqual(['ego/stress', 'ego/stress_2']);
   });
 });

@@ -359,7 +359,7 @@ export const analyse = (
             `optionScores of "${a.id}" must be one distinct whole number per option (${a.options.length}); they were dropped and options scored 1..n.`,
           );
           a.optionScores = [];
-        } else d.instrumentAttributes.push(`${scope}/${a.id}`);
+        }
       }
       // numberRange
       if (a.numberRange.length && a.kind !== 'number') {
@@ -420,6 +420,9 @@ export const analyse = (
         a.id = x;
       }
       seen.set(a.id, a);
+      // recorded under the final id, after any duplicate rename
+      if (a.optionScores.length)
+        d.instrumentAttributes.push(`${scope}/${a.id}`);
       out.push(a);
     });
     return out;

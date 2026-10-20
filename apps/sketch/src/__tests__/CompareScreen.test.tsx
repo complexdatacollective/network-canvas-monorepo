@@ -88,6 +88,48 @@ describe('CompareScreen', () => {
     expect(posts).toEqual([]);
   });
 
+  it('keeps a finished side in the record while the other side runs', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const { url, method } = describeCall(input, init);
+        if (url === '/api/jobs' && method === 'POST') {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
+          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          return jsonResponse({ jobId: `job-${body.provider}` });
+        }
+        if (url === '/api/jobs/job-anthropic')
+          return jsonResponse(succeededJob({ id: 'job-anthropic' }));
+        if (url === '/api/jobs/job-openai')
+          return jsonResponse(
+            jobStatus({
+              id: 'job-openai',
+              provider: 'openai',
+              status: 'running',
+            }),
+          );
+        return jsonResponse({ error: 'unexpected' }, 500);
+      }),
+    );
+    const reported = vi.fn();
+    render(
+      <CompareScreen
+        description="Students name their friends."
+        providers={configResponse(true).providers}
+        onUnfinished={reported}
+        onNew={() => {}}
+        onRefused={() => {}}
+      />,
+    );
+    await waitFor(() =>
+      expect(reported).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          jobIds: { anthropic: 'job-anthropic', openai: 'job-openai' },
+        }),
+      ),
+    );
+  });
+
   it('runs both providers with one comparison id and records the pick', async () => {
     const created: CreateJobRequest[] = [];
     const preferences: unknown[] = [];
