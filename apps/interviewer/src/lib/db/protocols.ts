@@ -213,21 +213,65 @@ export async function listAssetIds(): Promise<string[]> {
 // Re-encrypt a single protocol row under the currently-held DEK, preserving
 // every field value exactly (decrypt → encrypt round-trip; no timestamp is
 // stamped). A plaintext row written while unconfigured gains `_enc`; a row
-// already encrypted under this DEK round-trips unchanged. Unlike sessions,
-// protocol/asset rows are only written by user-initiated import, so no per-id
-// serializer is needed.
+// already encrypted under this DEK round-trips unchanged.
+//
+// An import in another tab can replace the protocol and its assets while a
+// row is being re-wrapped, so the row is replaced only if the protocol's
+// `importedAt`, which every save stamps, is unchanged since it was read;
+// otherwise it is read and re-wrapped again. A protocol's assets are saved in
+// the same transaction as the protocol, so its `importedAt` is their revision
+// too.
+const REENCRYPT_ATTEMPTS = 5;
+
+async function protocolRevision(hash: string): Promise<string | undefined> {
+  const row = await db.protocols.where('hash').equals(hash).first();
+  return row?.importedAt;
+}
+
 export async function reencryptProtocol(id: string): Promise<void> {
-  const existingRow = await db.protocols.get(id);
-  if (!existingRow) return;
-  const existing = await decryptProtocol(existingRow);
-  const row = await encryptProtocol(existing);
-  await db.protocols.put(row);
+  for (let attempt = 0; attempt < REENCRYPT_ATTEMPTS; attempt += 1) {
+    const existingRow = await db.protocols.get(id);
+    if (!existingRow) return;
+    const existing = await decryptProtocol(existingRow);
+    const row = await encryptProtocol(existing);
+    const replaced = await db.transaction('rw', db.protocols, async () => {
+      const latest = await db.protocols.get(id);
+      if (!latest) return true;
+      if (latest.importedAt !== existingRow.importedAt) return false;
+      await db.protocols.put(row);
+      return true;
+    });
+    if (replaced) return;
+  }
+  throw new Error(
+    `Protocol ${id} kept changing while it was being re-encrypted`,
+  );
 }
 
 export async function reencryptAsset(id: string): Promise<void> {
-  const existingRow = await db.assets.get(id);
-  if (!existingRow) return;
-  const existing = await decryptAsset(existingRow);
-  const row = await encryptAsset(existing);
-  await db.assets.put(row);
+  for (let attempt = 0; attempt < REENCRYPT_ATTEMPTS; attempt += 1) {
+    const existingRow = await db.assets.get(id);
+    if (!existingRow) return;
+    const revision = await protocolRevision(existingRow.protocolHash);
+    // Read again under this revision: a save between the two reads would
+    // otherwise pair new bytes' revision with the old bytes.
+    const currentRow = await db.assets.get(id);
+    if (!currentRow) return;
+    const existing = await decryptAsset(currentRow);
+    const row = await encryptAsset(existing);
+    const replaced = await db.transaction(
+      'rw',
+      [db.protocols, db.assets],
+      async () => {
+        if (!(await db.assets.get(id))) return true;
+        if ((await protocolRevision(currentRow.protocolHash)) !== revision) {
+          return false;
+        }
+        await db.assets.put(row);
+        return true;
+      },
+    );
+    if (replaced) return;
+  }
+  throw new Error(`Asset ${id} kept changing while it was being re-encrypted`);
 }
