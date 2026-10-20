@@ -117,13 +117,13 @@ describe('SketchImport', () => {
     });
   });
 
-  it('shows the waiting heading as the route focus target', () => {
+  it('shows only a spinner while it waits', () => {
     render(<SketchImport />);
-    const heading = screen.getByRole('heading', {
-      level: 1,
-      name: 'Receiving your protocol from Sketch…',
-    });
-    expect(heading).toHaveAttribute('data-route-focus-target');
+    expect(screen.getByRole('main', { name: 'Loading…' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 
   it("posts ready to the opener with target origin '*'", () => {
@@ -176,11 +176,7 @@ describe('SketchImport', () => {
     post(openerStub, 'hello');
     await flush();
     expect(openSketchProtocol).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole('heading', {
-        name: 'Receiving your protocol from Sketch…',
-      }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('main', { name: 'Loading…' })).toBeInTheDocument();
   });
 
   it.each([
@@ -306,27 +302,19 @@ describe('SketchImport', () => {
     expect(readyCalls()).toHaveLength(asked);
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Return to start screen' }),
+      screen.getByRole('button', { name: 'Return to Start Screen' }),
     );
     expect(setLocation).toHaveBeenCalledWith('/');
   });
 
-  it('explains how to use the page when it has no opener', () => {
+  it('sends a visitor who did not come from Sketch to the start screen', () => {
     Object.defineProperty(window, 'opener', {
       value: null,
       configurable: true,
     });
-    render(<SketchImport />);
+    const { container } = render(<SketchImport />);
 
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Open this page from Sketch',
-      }),
-    ).toHaveAttribute('data-route-focus-target');
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Return to start screen' }),
-    );
-    expect(setLocation).toHaveBeenCalledWith('/');
+    expect(setLocation).toHaveBeenCalledWith('/', { replace: true });
+    expect(container).toBeEmptyDOMElement();
   });
 });

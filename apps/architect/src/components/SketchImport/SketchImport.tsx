@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
@@ -9,6 +10,7 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
+import { returnToStartScreenMessage } from '~/components/returnToStartScreenMessage';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { isAllowedSketchOrigin } from '~/config/sketchOrigins';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -28,25 +30,6 @@ import {
 } from './messages';
 
 const messages = defineMessages({
-  receiving: {
-    id: 'architect.sketchImport.receiving',
-    defaultMessage: 'Receiving your protocol from Sketch…',
-    description:
-      'Heading shown while Architect waits for Sketch, a separate study-design website, to send it a protocol. Keep "Sketch" untranslated: it is a product name.',
-  },
-  noOpenerTitle: {
-    id: 'architect.sketchImport.noOpenerTitle',
-    defaultMessage: 'Open this page from Sketch',
-    description:
-      'Heading shown when the Sketch import page was opened directly rather than by Sketch, a separate study-design website. Keep "Sketch" untranslated: it is a product name.',
-  },
-  noOpenerBody: {
-    id: 'architect.sketchImport.noOpenerBody',
-    defaultMessage:
-      'This page receives protocols sent from Sketch. Go back to Sketch and send your protocol to Architect from there.',
-    description:
-      'Explains that the Sketch import page only works when Sketch, a separate study-design website, opens it. Keep "Sketch" untranslated: it is a product name.',
-  },
   timeoutTitle: {
     id: 'architect.sketchImport.timeoutTitle',
     defaultMessage: "Your protocol didn't arrive",
@@ -65,12 +48,6 @@ const messages = defineMessages({
       'Go back to Sketch and try again, or download the protocol there and open the file in Architect.',
     description:
       'Next steps after a protocol from Sketch, a separate study-design website, did not arrive or could not be opened. "Download" means saving it as a .netcanvas file. Keep "Sketch" untranslated: it is a product name.',
-  },
-  returnToStartScreen: {
-    id: 'architect.sketchImport.returnToStartScreen',
-    defaultMessage: 'Return to start screen',
-    description:
-      "Button that leaves the Sketch import page for Architect's start screen.",
   },
 });
 
@@ -112,7 +89,6 @@ export default function SketchImport() {
   const [opener] = useState(() => window.opener as Window | null);
   const [state, setState] = useState<ImportState>('waiting');
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const isFirstState = useRef(true);
   // Set once a payload is accepted or the wait times out. Held outside the
   // effect so a re-run can never re-arm a handshake that has already ended.
   const settled = useRef(false);
@@ -224,53 +200,40 @@ export default function SketchImport() {
     };
   }, [opener, dispatch, openDialog]);
 
-  // RouteFocus lands on the first heading. A later change of state replaces
-  // that heading, so focus follows it to the new one rather than dropping to
-  // <body> with nothing announced.
-  // ('importing' keeps the waiting heading, so focus stays where it is.)
+  // The waiting spinner has no heading, so when the wait ends in a timeout or
+  // an error, focus moves to the new heading and the outcome is announced.
   useEffect(() => {
-    if (isFirstState.current) {
-      isFirstState.current = false;
-      return;
-    }
-    if (state === 'importing') return;
-    headingRef.current?.focus();
+    if (state === 'timeout' || state === 'error') headingRef.current?.focus();
   }, [state]);
+
+  // Only Sketch opens this page, so without an opener there is nothing to
+  // receive: go straight to the start screen.
+  useEffect(() => {
+    if (!opener) setLocation('/', { replace: true });
+  }, [opener, setLocation]);
 
   const goHome = () => setLocation('/');
 
-  const screen = (() => {
-    if (!opener) {
-      return {
-        title: messages.noOpenerTitle,
-        body: messages.noOpenerBody,
-        busy: false,
-      };
-    }
-    switch (state) {
-      case 'timeout':
-        return {
-          title: messages.timeoutTitle,
-          body: messages.tryAgainBody,
-          busy: false,
-        };
-      case 'error':
-        return {
-          title: messages.errorTitle,
-          body: messages.tryAgainBody,
-          busy: false,
-        };
-      default:
-        return { title: messages.receiving, body: null, busy: true };
-    }
-  })();
+  if (!opener) return null;
+
+  // While waiting, show the same bare spinner as opening a protocol file.
+  if (state === 'waiting' || state === 'importing') {
+    return (
+      <main
+        className="flex min-h-dvh w-full items-center justify-center"
+        aria-busy
+        aria-label={intl.formatMessage(commonMessages.loading)}
+      >
+        <Spinner />
+      </main>
+    );
+  }
+
+  const title =
+    state === 'timeout' ? messages.timeoutTitle : messages.errorTitle;
 
   return (
-    <main
-      className="flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-8 text-center"
-      aria-busy={screen.busy}
-    >
-      {screen.busy && <Spinner />}
+    <main className="flex min-h-dvh w-full flex-col items-center justify-center gap-6 p-8 text-center">
       <Heading
         ref={headingRef}
         level="h1"
@@ -278,18 +241,14 @@ export default function SketchImport() {
         className="max-w-2xl"
         {...routeFocusTargetProps}
       >
-        {intl.formatMessage(screen.title)}
+        {intl.formatMessage(title)}
       </Heading>
-      {screen.body && (
-        <Paragraph margin="none" className="max-w-xl">
-          {intl.formatMessage(screen.body)}
-        </Paragraph>
-      )}
-      {!screen.busy && (
-        <Button color="primary" onClick={goHome}>
-          {intl.formatMessage(messages.returnToStartScreen)}
-        </Button>
-      )}
+      <Paragraph margin="none" className="max-w-xl">
+        {intl.formatMessage(messages.tryAgainBody)}
+      </Paragraph>
+      <Button color="primary" onClick={goHome}>
+        {intl.formatMessage(returnToStartScreenMessage)}
+      </Button>
     </main>
   );
 }
