@@ -47,6 +47,7 @@ const firstExample = EXAMPLES[0];
 
 const initialForm: DescribeForm = {
   questions: firstExample?.questions ?? [''],
+  population: firstExample?.population ?? '',
   synopsis: firstExample?.synopsis ?? '',
   picked: firstExample?.id ?? null,
   provider: 'anthropic',
@@ -113,6 +114,7 @@ export const App = () => {
     setForm((current) => ({
       ...current,
       questions: [''],
+      population: '',
       synopsis: '',
       picked: null,
     }));

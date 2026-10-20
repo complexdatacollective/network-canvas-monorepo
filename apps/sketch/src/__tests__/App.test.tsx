@@ -44,7 +44,16 @@ const question = (n: number) =>
 const synopsis = () =>
   screen.getByRole<HTMLTextAreaElement>('textbox', { name: /Study synopsis/ });
 
-const enterStudy = (questions: string[], text = '') => {
+const population = () =>
+  screen.getByRole<HTMLTextAreaElement>('textbox', {
+    name: 'Research population',
+  });
+
+const enterStudy = (
+  questions: string[],
+  text = '',
+  who = 'Adults in the study setting',
+) => {
   fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
   questions.forEach((value, index) => {
     if (index > 0)
@@ -53,6 +62,7 @@ const enterStudy = (questions: string[], text = '') => {
       );
     fireEvent.change(question(index + 1), { target: { value } });
   });
+  fireEvent.change(population(), { target: { value: who } });
   fireEvent.change(synopsis(), { target: { value: text } });
 };
 
@@ -74,6 +84,7 @@ describe('Sketch flow', () => {
         'Which nurses are central in the ward advice network?',
         'Do advice ties cross shift boundaries?',
       ],
+      'A sociocentric study.',
       'All nurses on one acute ward.',
     );
     await waitFor(() =>
@@ -98,7 +109,7 @@ describe('Sketch flow', () => {
     expect(api.posts).toEqual([
       {
         description:
-          'Research questions\n1. Which nurses are central in the ward advice network?\n2. Do advice ties cross shift boundaries?\n\nStudy synopsis\nAll nurses on one acute ward.',
+          'Research questions\n1. Which nurses are central in the ward advice network?\n2. Do advice ties cross shift boundaries?\n\nResearch population\nAll nurses on one acute ward.\n\nStudy synopsis\nA sociocentric study.',
         provider: 'anthropic',
         tier: 'standard',
       },
@@ -144,7 +155,8 @@ describe('Sketch flow', () => {
         })
       ).value,
     ).toBe('Do advice ties cross shift boundaries?');
-    expect(synopsis().value).toBe('All nurses on one acute ward.');
+    expect(population().value).toBe('All nurses on one acute ward.');
+    expect(synopsis().value).toBe('A sociocentric study.');
   });
 
   it('shows the not-a-study notice on the describe screen when refused', async () => {
@@ -192,11 +204,20 @@ describe('Sketch flow', () => {
     ).toBeTruthy();
 
     fireEvent.change(question(1), { target: { value: 'Too short' } });
+    fireEvent.change(population(), {
+      target: { value: 'Nurses on one ward' },
+    });
     expect(generateButton()).toHaveProperty('disabled', true);
     fireEvent.change(question(1), {
       target: { value: 'How do nurses seek clinical advice?' },
     });
     expect(generateButton()).toHaveProperty('disabled', false);
+    // The population is required.
+    fireEvent.change(population(), { target: { value: '' } });
+    expect(generateButton()).toHaveProperty('disabled', true);
+    fireEvent.change(population(), {
+      target: { value: 'Nurses on one ward' },
+    });
 
     fireEvent.click(
       screen.getByRole('button', { name: /Add a research question/ }),

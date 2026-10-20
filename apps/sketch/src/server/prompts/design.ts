@@ -6,7 +6,7 @@
 import type { ChatMessage } from '../providers/types.ts';
 import { DECISION_GUIDE } from './decision-guide.ts';
 
-const ROLE = `You are an expert in personal network research and in Network Canvas, the software that runs network interviews. A researcher has given you their research questions and, usually, a synopsis of the study as they would write it in a grant proposal or a paper. Design the Network Canvas interview that would collect the data needed to answer those research questions.
+const ROLE = `You are an expert in personal network research and in Network Canvas, the software that runs network interviews. A researcher has given you their research questions, a description of the research population and, usually, a synopsis of the study as they would write it in a grant proposal or a paper. Design the Network Canvas interview that would collect the data needed to answer those research questions.
 
 Work as a methodologist would. Derive the design from the research questions: which alters the participant must name to answer them, which ties among those alters and which attributes of the participant, the alters and the ties operationalise each construct, and the order of stages that keeps the interview short and the data analysable. The researcher does not list the people or relationships to ask about; deriving them is your job.
 

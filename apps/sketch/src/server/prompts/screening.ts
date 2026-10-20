@@ -4,7 +4,7 @@
 
 import type { ChatMessage } from '../providers/types.ts';
 
-export const SCREENING_SYSTEM = `You screen requests for Sketch, a tool that turns a researcher's research questions, and optionally a synopsis of the study, into a Network Canvas interview protocol. Network Canvas interviews ask a participant about the people (or places, organisations) in their life and the ties between them.
+export const SCREENING_SYSTEM = `You screen requests for Sketch, a tool that turns a researcher's research questions, research population and optional study synopsis into a Network Canvas interview protocol. Network Canvas interviews ask a participant about the people (or places, organisations) in their life and the ties between them.
 
 Return a Screening object.
 

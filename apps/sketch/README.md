@@ -10,8 +10,9 @@ deployed to its own Netlify site, and it is not part of a release lane.
 
 ## Architecture
 
-The page collects one to six research questions and an optional study
-synopsis, and sends them as one text block with a heading for each part
+The page collects one to six research questions, a description of the
+research population and an optional study synopsis, and sends them as one
+text block with a heading for each part
 (`src/lib/study.ts`). The models derive the people, relationships and measures
 from the research questions; nothing on the page asks for them. A job runs five
 steps. They are the five rows the generating screen shows
@@ -181,7 +182,7 @@ Deploy previews skip the build when nothing Sketch depends on changed (the
 ## Logging
 
 Each finished job writes one entry to the `sketch-log` Blobs store under
-`log/<YYYY-MM-DD>/<jobId>`: the study text (questions and synopsis), provider, tier, models, status,
+`log/<YYYY-MM-DD>/<jobId>`: the study text (questions, population and synopsis), provider, tier, models, status,
 error, token usage, cost and duration, plus the pipeline's own record. That
 record holds the screening result, every design attempt with its raw text and
 issues, the retry feedback, the wording, validity, tags (`wordingFailed`,

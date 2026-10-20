@@ -11,7 +11,7 @@
 
 export const DECISION_GUIDE = `# Sketch decision guide v2
 
-This guide is how an experienced Network Canvas designer turns a researcher's research questions and study synopsis into a StudyDesign. Follow it unless the study clearly asks for something else that the schema can express.
+This guide is how an experienced Network Canvas designer turns a researcher's research questions, research population and study synopsis into a StudyDesign. Follow it unless the study clearly asks for something else that the schema can express.
 
 ## 1. The interview arc
 

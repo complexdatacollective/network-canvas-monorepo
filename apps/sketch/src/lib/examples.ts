@@ -5,6 +5,7 @@ export type Example = {
   label: string;
   dot: string;
   questions: string[];
+  population: string;
   synopsis: string;
 };
 
@@ -18,8 +19,10 @@ export const EXAMPLES: Example[] = [
       "Is the drinking behaviour of a student's close friends associated with the student's own alcohol use and wellbeing?",
       'Do students whose friends are densely interconnected report higher wellbeing than students with sparse networks?',
     ],
+    population:
+      'First-year undergraduates aged 18 to 21 at a large public university, recruited from residence halls.',
     synopsis:
-      'A cross-sectional egocentric network survey of first-year undergraduates at a large public university, administered in week 10 of the first semester. Alcohol use is measured with the AUDIT-C and wellbeing with the WHO-5. Perceived alter drinking and the social settings in which students socialise are secondary measures.',
+      'A cross-sectional egocentric network survey administered in week 10 of the first semester. Alcohol use is measured with the AUDIT-C and wellbeing with the WHO-5. Perceived alter drinking and the social settings in which students socialise are secondary measures.',
   },
   {
     id: 'aging',
@@ -29,8 +32,10 @@ export const EXAMPLES: Example[] = [
       'How does the composition of older adults’ support networks change after a move into assisted living?',
       'Is geographic proximity to support providers associated with the frequency of contact and the type of support received?',
     ],
+    population:
+      'Adults aged 70 and over who moved into an assisted living facility within the past six months.',
     synopsis:
-      'Interviewer-administered personal network interviews with adults aged 70 and over, conducted within six months of their move into an assisted living facility. Participants describe who provides practical, emotional and informational support, and where each person lives.',
+      'Interviewer-administered personal network interviews. Participants describe who provides practical, emotional and informational support, and where each person lives.',
   },
   {
     id: 'prep',
@@ -40,8 +45,10 @@ export const EXAMPLES: Example[] = [
       'How do overlapping sexual and drug-use partnerships structure HIV risk among young men who have sex with men?',
       'Is awareness of PrEP among partners associated with condom use within each partnership?',
     ],
+    population:
+      'Young men who have sex with men, aged 18 to 29, recruited through community organisations.',
     synopsis:
-      'A community-recruited sample of young men who have sex with men, aged 18 to 29. The reference period is the past six months. Data are collected by computer-assisted self-interview.',
+      'The reference period is the past six months. Data are collected by computer-assisted self-interview.',
   },
   {
     id: 'ward',
@@ -51,7 +58,8 @@ export const EXAMPLES: Example[] = [
       'Which nurses occupy central positions in the clinical advice network of a hospital ward?',
       'Do advice-seeking ties cross professional role and shift boundaries?',
     ],
+    population: 'All registered and enrolled nurses on one acute medical ward.',
     synopsis:
-      'A sociocentric study of all registered and enrolled nurses on one acute medical ward. A staff roster is available, so participants select colleagues from a list rather than recalling names.',
+      'A sociocentric study. A staff roster is available, so participants select colleagues from a list rather than recalling names.',
   },
 ];

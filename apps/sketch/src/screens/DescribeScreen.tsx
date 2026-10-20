@@ -17,8 +17,10 @@ import { EXAMPLES } from '../lib/examples.ts';
 import {
   filledQuestions,
   MAX_QUESTION_LENGTH,
+  MAX_POPULATION_LENGTH,
   MAX_QUESTIONS,
   MAX_SYNOPSIS_LENGTH,
+  MIN_POPULATION_LENGTH,
   MIN_QUESTION_LENGTH,
   studyIsComplete,
 } from '../lib/study.ts';
@@ -30,6 +32,7 @@ import {
 
 export type DescribeForm = {
   questions: string[];
+  population: string;
   synopsis: string;
   // The example the text came from, until the researcher edits it.
   picked: string | null;
@@ -129,6 +132,9 @@ export const DescribeScreen = ({
   const synopsisCountId = useId();
   const refusalId = useId();
   const synopsisId = useId();
+  const populationId = useId();
+  const populationHintId = useId();
+  const populationCountId = useId();
   const firstExample = useRef<HTMLButtonElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const questionInputs = useRef<(HTMLTextAreaElement | null)[]>([]);
@@ -176,7 +182,10 @@ export const DescribeScreen = ({
     });
   };
   const hasText =
-    form.questions.some((q) => q.trim()) || form.synopsis.trim().length > 0;
+    form.questions.some((q) => q.trim()) ||
+    form.population.trim().length > 0 ||
+    form.synopsis.trim().length > 0;
+  const populationLength = form.population.trim().length;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -320,6 +329,47 @@ export const DescribeScreen = ({
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col gap-1">
                   <label
+                    htmlFor={populationId}
+                    className="font-display text-xl font-extrabold sm:text-[1.375rem]"
+                  >
+                    Research population
+                  </label>
+                  <span
+                    id={populationHintId}
+                    className="text-sm text-[oklch(0.42_0.06_281)] sm:text-[0.9375rem]"
+                  >
+                    Who will be interviewed: eligibility criteria, age range,
+                    setting and how participants are recruited.
+                  </span>
+                </div>
+                <textarea
+                  id={populationId}
+                  rows={2}
+                  value={form.population}
+                  maxLength={MAX_POPULATION_LENGTH}
+                  aria-describedby={`${populationHintId} ${populationCountId}`}
+                  onChange={(event) =>
+                    update({ population: event.target.value, picked: null })
+                  }
+                  placeholder="For example: First-year undergraduates aged 18 to 21 at a large public university, recruited from residence halls."
+                  className={`${textareaClass} border-paper-line field-sizing-content min-h-[76px]`}
+                />
+                <span
+                  id={populationCountId}
+                  className="px-1 text-[0.8125rem] text-[oklch(0.45_0.05_281)]"
+                >
+                  {populationLength > 0 &&
+                  populationLength < MIN_POPULATION_LENGTH
+                    ? `Describe the population in at least ${MIN_POPULATION_LENGTH} characters.`
+                    : populationLength === 0
+                      ? 'Required.'
+                      : `${form.population.length} of ${MAX_POPULATION_LENGTH} characters`}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                  <label
                     htmlFor={synopsisId}
                     className="font-display text-xl font-extrabold sm:text-[1.375rem]"
                   >
@@ -332,7 +382,7 @@ export const DescribeScreen = ({
                     id={synopsisHintId}
                     className="text-sm text-[oklch(0.42_0.06_281)] sm:text-[0.9375rem]"
                   >
-                    Population, setting, design, reference period and any
+                    Setting, design, sampling, reference period and any
                     instruments you plan to use. What you specify is kept; where
                     you leave something out, Sketch makes the standard choice
                     and explains it.
@@ -359,7 +409,12 @@ export const DescribeScreen = ({
                       type="button"
                       onClick={() => {
                         focusQuestion.current = 0;
-                        update({ questions: [''], synopsis: '', picked: null });
+                        update({
+                          questions: [''],
+                          population: '',
+                          synopsis: '',
+                          picked: null,
+                        });
                       }}
                       className="-my-1.5 min-h-11 min-w-11 cursor-pointer rounded-md border-0 bg-transparent px-3 font-[inherit] font-semibold text-[oklch(0.42_0.1_281)]"
                     >
@@ -393,6 +448,7 @@ export const DescribeScreen = ({
                         onClick={() =>
                           update({
                             questions: example.questions,
+                            population: example.population,
                             synopsis: example.synopsis,
                             picked: example.id,
                           })

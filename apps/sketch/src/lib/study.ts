@@ -7,35 +7,56 @@ import { MAX_DESCRIPTION_LENGTH } from '../shared/api.ts';
 export const MAX_QUESTIONS = 6;
 export const MAX_QUESTION_LENGTH = 350;
 export const MIN_QUESTION_LENGTH = 10;
-// Six full questions, the synopsis and the headings stay under the limit.
-export const MAX_SYNOPSIS_LENGTH = 3500;
+export const MIN_POPULATION_LENGTH = 10;
+export const MAX_POPULATION_LENGTH = 600;
+// Six full questions, the population, the synopsis and the headings stay
+// under the limit.
+export const MAX_SYNOPSIS_LENGTH = 3000;
 
 const QUESTIONS_HEADING = 'Research questions';
+const POPULATION_HEADING = 'Research population';
 const SYNOPSIS_HEADING = 'Study synopsis';
 
-export type StudyInput = { questions: string[]; synopsis: string };
+export type StudyInput = {
+  questions: string[];
+  population: string;
+  synopsis: string;
+};
 
 export const filledQuestions = (questions: string[]) =>
   questions.map((q) => q.trim().replace(/\s+/g, ' ')).filter(Boolean);
 
-/** At least one question long enough to design from, and nothing too long. */
-export const studyIsComplete = ({ questions, synopsis }: StudyInput) => {
+/**
+ * At least one question and a population long enough to design from, and
+ * nothing too long.
+ */
+export const studyIsComplete = (study: StudyInput) => {
+  const { questions, population, synopsis } = study;
   const filled = filledQuestions(questions);
+  const populationLength = population.trim().length;
   return (
     filled.length > 0 &&
+    populationLength >= MIN_POPULATION_LENGTH &&
+    populationLength <= MAX_POPULATION_LENGTH &&
     filled.every((q) => q.length >= MIN_QUESTION_LENGTH) &&
     filled.length <= MAX_QUESTIONS &&
     filled.every((q) => q.length <= MAX_QUESTION_LENGTH) &&
     synopsis.trim().length <= MAX_SYNOPSIS_LENGTH &&
-    composeStudyText({ questions, synopsis }).length <= MAX_DESCRIPTION_LENGTH
+    composeStudyText(study).length <= MAX_DESCRIPTION_LENGTH
   );
 };
 
-export const composeStudyText = ({ questions, synopsis }: StudyInput) => {
+export const composeStudyText = ({
+  questions,
+  population,
+  synopsis,
+}: StudyInput) => {
   const filled = filledQuestions(questions);
   const parts = [
     `${QUESTIONS_HEADING}\n${filled.map((q, i) => `${i + 1}. ${q}`).join('\n')}`,
   ];
+  if (population.trim())
+    parts.push(`${POPULATION_HEADING}\n${population.trim()}`);
   if (synopsis.trim()) parts.push(`${SYNOPSIS_HEADING}\n${synopsis.trim()}`);
   return parts.join('\n\n');
 };
