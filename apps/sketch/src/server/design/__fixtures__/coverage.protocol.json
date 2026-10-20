@@ -226,7 +226,7 @@
           "place_type": {
             "name": "place_type",
             "type": "categorical",
-            "component": "CheckboxGroup",
+            "component": "ToggleButtonGroup",
             "options": [
               {
                 "label": "Study",
@@ -244,7 +244,10 @@
                 "label": "Exercise",
                 "value": "exercise"
               }
-            ]
+            ],
+            "validation": {
+              "maxSelected": 1
+            }
           },
           "place_type_other": {
             "name": "place_type_other",

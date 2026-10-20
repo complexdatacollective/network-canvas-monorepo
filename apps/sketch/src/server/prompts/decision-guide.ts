@@ -74,7 +74,7 @@ Every stage costs the participant a transition and an instruction to read, and e
 - **prompt tags** on a name generator: record which prompt produced each person at no cost at all; prefer them to asking again.
 - **geospatial**: location by country (see §6).
 
-Typical trade-offs: two single categorical items about everyone can share one bins stage (up to 3 prompts) rather than two stages; a lone categorical item in a design that already asks a per-person form usually joins that form; a design with no per-person form and three ordered items is usually lighter as one bins stage with three prompts than as a new form. Never put a yes_no in bins.
+Typical trade-offs: two single categorical items about everyone can share one bins stage (up to 3 prompts) rather than two stages; a lone categorical item in a design that already asks a per-person form usually joins that form; a design with no per-person form and three ordered items is usually lighter as one bins stage with three prompts than as a new form. Never put a yes_no or multi_choice in bins: a person goes in one bin, so several choices belong in an alterForm.
 
 A bins stage takes 1-3 prompts, each on its own attribute. Ask about each attribute once, with one stage, and reuse it everywhere (filters, narrative groups). An attribute recorded by bins, a sociogram highlight, a prompt tag or a census strength never also appears in a form: those stages skip the form's validation, so the two would disagree.
 

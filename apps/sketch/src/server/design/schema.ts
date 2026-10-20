@@ -335,12 +335,12 @@ const BinsStage = z
         z.object({
           text: promptText,
           attributeId: Ref(
-            'an ordered, single_choice or multi_choice attribute of nodeTypeId',
+            'an ordered or single_choice attribute of nodeTypeId (never multi_choice: one drop replaces the answer)',
           ),
           allowOther: z
             .boolean()
             .describe(
-              'single_choice / multi_choice only: add an "Other" bin with a free-text follow-up. false otherwise.',
+              'single_choice only: add an "Other" bin with a free-text follow-up. false otherwise.',
             ),
         }),
       )

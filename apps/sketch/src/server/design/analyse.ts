@@ -1126,7 +1126,8 @@ export const analyse = (
               p.attributeId,
               scope,
               `${path}.prompts[${i}].attributeId`,
-              ['ordered', 'single_choice', 'multi_choice'],
+              // a drop replaces the value, so bins cannot record several choices
+              ['ordered', 'single_choice'],
               'Bin attribute',
             );
             if (!a || !p.text) {

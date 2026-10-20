@@ -316,6 +316,34 @@ describe('compiler review fixes', () => {
     );
   });
 
+  it('keeps multi_choice attributes out of bins, which record one choice', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('roles', 'multi_choice', 'Roles?', {
+              options: ['friend', 'family'],
+            }),
+          ]),
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'bins',
+            ...c('b'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            prompts: [
+              { text: 'Roles?', attributeId: 'roles', allowOther: false },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).toContain('WRONG_KIND');
+    expect(r.stages.some((s) => s.type === 'CategoricalBin')).toBe(false);
+  });
+
   it('drops a tag whose id has no usable characters instead of emitting an empty variable', async () => {
     const r = await build(
       design({

@@ -97,7 +97,7 @@ export const coverageDesign: StudyDesign = {
         A('visit_freq', 'ordered', 'How often do you go there?', {
           options: ['Rarely', 'Monthly', 'Weekly', 'Daily'],
         }),
-        A('place_type', 'multi_choice', 'What do you do there?', {
+        A('place_type', 'single_choice', 'What do you mostly do there?', {
           options: ['Study', 'Eat', 'Socialise', 'Exercise'],
         }),
         A('hours', 'number', 'How many hours a week do you spend there?'),

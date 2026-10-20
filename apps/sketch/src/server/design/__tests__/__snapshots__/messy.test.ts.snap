@@ -18,7 +18,7 @@ Design problems (paths refer to your design JSON):
 - [UNKNOWN_ATTRIBUTE] stages[3].attributeIds[3]: Form attribute "closeness" is not an attribute of egoAttributes. Matching attributes there: age (number), age_2 (text), smokes (yes_no), mood (text), scale (ordered).
 - [EMPTY_PROMPT] stages[4].prompts[1]: Prompt without text removed.
 - [BAD_CONDITION] stages[5].filter.conditions[0]: a yes_no value must be "yes" or "no" (got "maybe"). Condition removed.
-- [WRONG_KIND] stages[5].prompts[0].attributeId: Bin attribute "close" on node type "person" is yes_no, but this needs ordered or single_choice or multi_choice. Matching attributes there: person_closeness (ordered).
+- [WRONG_KIND] stages[5].prompts[0].attributeId: Bin attribute "close" on node type "person" is yes_no, but this needs ordered or single_choice. Matching attributes there: person_closeness (ordered).
 - [NARRATIVE_WITHOUT_MAP] stages[6]: narrative "story" needs an EARLIER sociogram of node type "person" (it reuses that map's positions). Add one, or remove the narrative. The stage was removed.
 - [UNKNOWN_TYPE] stages[7].prompts[0].relationshipId: relationship "knows" is not declared. Declared: person_2.
 - [WRONG_KIND] stages[7].prompts[1].attributeId: Highlight "person_closeness" is ordered; highlights must be yes_no. Prompt removed.
