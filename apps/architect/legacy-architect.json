@@ -1,1 +1,8 @@
-{ "v8": null }
+{
+  "v8": {
+    "version": "8.5.0",
+    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/%40codaco%2Farchitect%408.5.0/architect-v8-dist.tgz",
+    "sha256": "6307debcbe1efe739138b42146ca754c887c256912501fa94083ac17d70c51b6",
+    "cachePrefix": "architect-v8-"
+  }
+}

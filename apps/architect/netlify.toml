@@ -2,7 +2,9 @@
 # write-build-info.mjs stamps dist/build-info.json with the deployed commit
 # AFTER the turbo-cached build: baked into the build it would survive cache
 # restoration and describe whichever commit originally built the artifact.
-command = "pnpm exec turbo run build --filter=@codaco/architect && node apps/architect/scripts/write-build-info.mjs"
+# PREVIEW ONLY (this branch is never merged): bundle the Architect 8.5.0
+# build committed under preview-v8/, which is not released yet.
+command = "ARCHITECT_LEGACY_V8_TARBALL=\"$PWD/apps/architect/preview-v8/architect-v8-dist.tgz\" pnpm exec turbo run build --filter=@codaco/architect && node apps/architect/scripts/write-build-info.mjs"
 publish = "apps/architect/dist"
 
 [build.environment]
