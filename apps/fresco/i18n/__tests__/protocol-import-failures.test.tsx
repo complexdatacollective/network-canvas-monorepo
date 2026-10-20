@@ -299,7 +299,7 @@ describe('truthful protocol import failure messages', () => {
         name: 'How do you want to import this protocol?',
       }),
     ).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Import as schema 8' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep schema 8' }));
 
     await waitFor(() => expect(insertProtocol).toHaveBeenCalledTimes(1));
     const [{ protocol }] = insertProtocol.mock.calls[0] as [

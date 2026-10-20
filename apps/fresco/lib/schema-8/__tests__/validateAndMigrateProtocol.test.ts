@@ -76,10 +76,11 @@ describe('validateAndMigrateLegacyProtocol', () => {
   });
 
   it('refuses a schema 8 protocol that schema 8 itself would reject', async () => {
-    const result = await validateAndMigrateLegacyProtocol({
+    const protocol = {
       ...protocolAt(8),
       stages: [{ ...stages[0], type: 'NotAnInterface' }],
-    });
+    };
+    const result = await validateAndMigrateLegacyProtocol(protocol);
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe('validation-failed');

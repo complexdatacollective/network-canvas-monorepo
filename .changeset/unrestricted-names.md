@@ -16,10 +16,9 @@ accented letter is stored the same way however it was typed.
 Protocols now use schema 9, the protocol version that allows these names. When
 you open a protocol made with an earlier version, Architect creates an upgraded
 copy and leaves the original as it was. Existing names are kept exactly as
-they are. Interviewer asks whether to keep an older protocol on schema 8 or
-upgrade it, and never upgrades one on its own. Fresco upgrades older protocols
-to schema 9 when they are imported, and upgrades the protocols it already holds
-when it is updated. Update Interviewer and Fresco to
+they are. Interviewer and Fresco ask whether to keep an older protocol on schema 8
+or upgrade it when it is imported, and never upgrade one on their own. Update
+Interviewer and Fresco to
 this release before you use a schema 9 protocol with them, because earlier
 versions can't open it. A protocol made with a newer version of Network Canvas
 than the app can run is now reported as needing an update to the app, rather

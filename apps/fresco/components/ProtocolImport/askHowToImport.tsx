@@ -64,9 +64,9 @@ const messages = defineMessages({
   },
   keep: {
     id: 'fresco.protocolImport.upgradeChoice.keep',
-    defaultMessage: 'Import as schema {version}',
+    defaultMessage: 'Keep schema {version}',
     description:
-      'Button in the dialog shown when importing a protocol made for an older schema version. Imports the protocol without upgrading it, so its interviews run as the protocol was designed. {version} is the older schema version number (for example 8).',
+      'Button in the dialog shown when importing a protocol made for an older schema version, beside the button that upgrades it. Imports the protocol without upgrading it, keeping its older schema version, so its interviews run as the protocol was designed. {version} is that older schema version number (for example 8).',
   },
 });
 
