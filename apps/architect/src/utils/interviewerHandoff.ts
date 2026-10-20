@@ -50,14 +50,22 @@ type DeliverOptions = {
   host?: Window;
 };
 
+type HandoffFile = { blob: Blob; fileName: string };
+
 /**
- * Send a bundled protocol to a tab `openInterviewerTab` opened, once it says
- * it is ready. Resolves with Interviewer's answer, or `not-reached` when the
- * tab never became ready, stopped answering, or was closed first.
+ * Send a protocol to a tab `openInterviewerTab` opened, once the tab says it
+ * is ready and the protocol is bundled, whichever comes last. Resolves with
+ * Interviewer's answer, or `not-reached` when the tab never became ready,
+ * stopped answering, or was closed first, or the protocol could not be
+ * bundled (the caller explains that one).
+ *
+ * Call it as soon as the tab is open, with the bundle still in progress: the
+ * tab only asks for the protocol for a limited time after it loads, so a
+ * listener started after a slow bundle could miss every request.
  */
 export function deliverToInterviewer(
   tab: InterviewerTab,
-  file: { blob: Blob; fileName: string },
+  file: Promise<HandoffFile>,
   {
     readyTimeoutMs = READY_TIMEOUT_MS,
     resultTimeoutMs = RESULT_TIMEOUT_MS,
@@ -65,10 +73,15 @@ export function deliverToInterviewer(
   }: DeliverOptions = {},
 ): Promise<InterviewerHandoffOutcome> {
   return new Promise((resolve) => {
+    let settled = false;
+    let ready = false;
     let sent = false;
+    let bundled: HandoffFile | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const finish = (outcome: InterviewerHandoffOutcome) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       clearInterval(closedPoll);
       host.removeEventListener('message', onMessage);
@@ -80,20 +93,29 @@ export function deliverToInterviewer(
       timer = setTimeout(() => finish('not-reached'), ms);
     };
 
+    const sendWhenBothArrive = () => {
+      if (settled || sent || !ready || !bundled) return;
+      sent = true;
+      const payload: InterviewerHandoffPayload = {
+        type: 'interviewer-handoff:payload',
+        version: INTERVIEWER_HANDOFF_VERSION,
+        fileName: bundled.fileName,
+        file: bundled.blob,
+      };
+      tab.window.postMessage(payload, tab.origin);
+      arm(resultTimeoutMs);
+    };
+
     function onMessage(event: MessageEvent) {
       if (event.source !== tab.window || event.origin !== tab.origin) return;
       const reply = readInterviewerHandoffReply(event.data);
       if (reply === 'ready') {
-        if (sent) return;
-        sent = true;
-        const payload: InterviewerHandoffPayload = {
-          type: 'interviewer-handoff:payload',
-          version: INTERVIEWER_HANDOFF_VERSION,
-          fileName: file.fileName,
-          file: file.blob,
-        };
-        tab.window.postMessage(payload, tab.origin);
-        arm(resultTimeoutMs);
+        if (!ready) {
+          ready = true;
+          // The tab has loaded; from here only the bundle is awaited.
+          clearTimeout(timer);
+        }
+        sendWhenBothArrive();
         return;
       }
       if (reply === 'received' || reply === 'error') finish(reply);
@@ -101,6 +123,13 @@ export function deliverToInterviewer(
 
     host.addEventListener('message', onMessage);
     arm(readyTimeoutMs);
+    file.then(
+      (value) => {
+        bundled = value;
+        sendWhenBothArrive();
+      },
+      () => finish('not-reached'),
+    );
     // A tab the researcher closes settles straight away rather than at the
     // timeout.
     const closedPoll = setInterval(() => {

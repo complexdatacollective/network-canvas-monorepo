@@ -76,7 +76,8 @@ const fileNameFor = (protocol: CurrentProtocol) =>
  *
  * Must be called from the click that asked for it, because the tab is opened
  * before anything is awaited (a browser blocks a tab opened later). The
- * protocol is read and bundled while the tab loads; a protocol that cannot be
+ * protocol is read and bundled while the tab loads, and handed over as soon as
+ * both are done; a protocol that cannot be
  * bundled closes the tab again and is refused for the same reasons a download
  * is. Resolves `true` once Interviewer has received the protocol.
  *
@@ -104,12 +105,25 @@ export const sendProtocolToInterviewer = async (
   // protocol between bundling it and Interviewer receiving it.
   const finishExport = beginExport();
   try {
-    let protocol: CurrentProtocol;
-    let blob: Blob;
-    try {
+    const prepared = (async () => {
       const read = await readProtocol();
-      protocol = read.protocol;
-      blob = await bundleProtocol(protocol, read.protocolId);
+      const blob = await bundleProtocol(read.protocol, read.protocolId);
+      return { protocol: read.protocol, blob };
+    })();
+    // Listening starts now, while the protocol is still being bundled; see
+    // `deliverToInterviewer`. A bundle that fails settles this as not
+    // reached, and is explained below instead.
+    const delivery = deliverToInterviewer(
+      tab,
+      prepared.then(({ protocol, blob }) => ({
+        blob,
+        fileName: fileNameFor(protocol),
+      })),
+    );
+
+    let protocol: CurrentProtocol;
+    try {
+      ({ protocol } = await prepared);
     } catch (error) {
       tab.window.close();
       if (error instanceof MissingFinishStageTextError) {
@@ -148,10 +162,7 @@ export const sendProtocolToInterviewer = async (
       return false;
     }
 
-    const outcome = await deliverToInterviewer(tab, {
-      blob,
-      fileName: fileNameFor(protocol),
-    });
+    const outcome = await delivery;
     if (outcome !== 'received') {
       showNotSent(
         openDialog,

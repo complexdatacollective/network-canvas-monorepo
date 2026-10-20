@@ -511,6 +511,19 @@ const ProjectActions = ({
           aria-label={intl.formatMessage(messages.downloadActions)}
         >
           <ToolbarButton
+            icon={sendSuccess ? <Check /> : <Send />}
+            disabled={isSending}
+            onClick={handleSend}
+          >
+            {sendSuccess
+              ? intl.formatMessage(messages.sent)
+              : isSending
+                ? intl.formatMessage(messages.sending)
+                : intl.formatMessage(messages.sendToInterviewer)}
+          </ToolbarButton>
+          {/* Download stays last: it is the action an overflowing toolbar
+              keeps in view. */}
+          <ToolbarButton
             icon={downloadSuccess ? <Check /> : <Download />}
             variant="default"
             className="bg-sea-green text-white"
@@ -522,17 +535,6 @@ const ProjectActions = ({
               : isExporting
                 ? intl.formatMessage(messages.downloading)
                 : intl.formatMessage(messages.download)}
-          </ToolbarButton>
-          <ToolbarButton
-            icon={sendSuccess ? <Check /> : <Send />}
-            disabled={isSending}
-            onClick={handleSend}
-          >
-            {sendSuccess
-              ? intl.formatMessage(messages.sent)
-              : isSending
-                ? intl.formatMessage(messages.sending)
-                : intl.formatMessage(messages.sendToInterviewer)}
           </ToolbarButton>
         </ToolbarGroup>,
         canSaveToSource ? <ToolbarSeparator key="source-separator" /> : null,

@@ -10,8 +10,12 @@ import { takeArchitectRequest } from './urlEntryRequests';
 
 /** How often `ready` is re-posted while no payload has arrived. */
 const READY_INTERVAL_MS = 1_000;
-/** How long to wait for Architect's payload before giving up. */
-export const PAYLOAD_TIMEOUT_MS = 30_000;
+/**
+ * How long to wait for Architect's payload before giving up. Architect bundles
+ * the protocol while this tab loads, and a protocol with large resources can
+ * take a while to bundle, so this is generous.
+ */
+export const PAYLOAD_TIMEOUT_MS = 300_000;
 
 /**
  * Receive the protocol Architect's "Send to Interviewer" opened this tab for

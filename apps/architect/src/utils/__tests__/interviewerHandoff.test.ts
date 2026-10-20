@@ -40,6 +40,11 @@ const reply = (
 };
 
 const file = { blob: new Blob(['zip']), fileName: 'Study.netcanvas' };
+const bundled = () => Promise.resolve(file);
+// Lets the bundle's promise callbacks run.
+const flush = async () => {
+  for (let i = 0; i < 5; i += 1) await Promise.resolve();
+};
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -69,7 +74,8 @@ describe('openInterviewerTab', () => {
 describe('deliverToInterviewer', () => {
   it('sends the file once on ready and resolves with the answer', async () => {
     const tab = makeTab();
-    const outcome = deliverToInterviewer(tab, file);
+    const outcome = deliverToInterviewer(tab, bundled());
+    await flush();
 
     reply(tab, ready);
     reply(tab, ready);
@@ -90,7 +96,8 @@ describe('deliverToInterviewer', () => {
 
   it('passes on an error answer', async () => {
     const tab = makeTab();
-    const outcome = deliverToInterviewer(tab, file);
+    const outcome = deliverToInterviewer(tab, bundled());
+    await flush();
     reply(tab, ready);
     reply(tab, result('error'));
     await expect(outcome).resolves.toBe('error');
@@ -98,7 +105,9 @@ describe('deliverToInterviewer', () => {
 
   it('ignores messages from another window or origin', async () => {
     const tab = makeTab();
-    const outcome = deliverToInterviewer(tab, file, { readyTimeoutMs: 1_000 });
+    const outcome = deliverToInterviewer(tab, bundled(), {
+      readyTimeoutMs: 1_000,
+    });
 
     reply({ window: { postMessage: vi.fn() } }, ready);
     reply(tab, ready, 'https://evil.example');
@@ -110,15 +119,50 @@ describe('deliverToInterviewer', () => {
 
   it('gives up when Interviewer never answers the payload', async () => {
     const tab = makeTab();
-    const outcome = deliverToInterviewer(tab, file, { resultTimeoutMs: 500 });
+    const outcome = deliverToInterviewer(tab, bundled(), {
+      resultTimeoutMs: 500,
+    });
+    await flush();
     reply(tab, ready);
     vi.advanceTimersByTime(500);
     await expect(outcome).resolves.toBe('not-reached');
   });
 
+  it('waits for a slow bundle once the tab is ready, then sends it', async () => {
+    const tab = makeTab();
+    let finishBundling: (value: typeof file) => void = () => {};
+    const slow = new Promise<typeof file>((resolve) => {
+      finishBundling = resolve;
+    });
+    const outcome = deliverToInterviewer(tab, slow, { readyTimeoutMs: 1_000 });
+
+    reply(tab, ready);
+    // Longer than the tab had to become ready: it did, so this is not a
+    // timeout.
+    vi.advanceTimersByTime(5_000);
+    expect(tab.window.postMessage).not.toHaveBeenCalled();
+
+    finishBundling(file);
+    await flush();
+    expect(tab.window.postMessage).toHaveBeenCalledTimes(1);
+    reply(tab, result('received'));
+    await expect(outcome).resolves.toBe('received');
+  });
+
+  it('gives up quietly when the protocol cannot be bundled', async () => {
+    const tab = makeTab();
+    const outcome = deliverToInterviewer(
+      tab,
+      Promise.reject(new Error('unreadable')),
+    );
+    reply(tab, ready);
+    await expect(outcome).resolves.toBe('not-reached');
+    expect(tab.window.postMessage).not.toHaveBeenCalled();
+  });
+
   it('settles as soon as the tab is closed', async () => {
     const tab = makeTab();
-    const outcome = deliverToInterviewer(tab, file);
+    const outcome = deliverToInterviewer(tab, bundled());
     tab.window.closed = true;
     vi.advanceTimersByTime(500);
     await expect(outcome).resolves.toBe('not-reached');

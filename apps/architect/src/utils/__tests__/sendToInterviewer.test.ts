@@ -42,7 +42,13 @@ beforeEach(() => {
     tab as unknown as ReturnType<typeof openInterviewerTab>,
   );
   vi.mocked(bundleProtocol).mockResolvedValue(new Blob(['zip']));
-  vi.mocked(deliverToInterviewer).mockResolvedValue('received');
+  // Like the real one, it handles the bundle failing.
+  vi.mocked(deliverToInterviewer).mockImplementation((_tab, file) =>
+    file.then(
+      () => 'received' as const,
+      () => 'not-reached' as const,
+    ),
+  );
 });
 
 describe('sendProtocolToInterviewer', () => {
@@ -51,7 +57,9 @@ describe('sendProtocolToInterviewer', () => {
       true,
     );
     expect(bundleProtocol).toHaveBeenCalledWith(PROTOCOL, 'protocol-1');
-    expect(deliverToInterviewer).toHaveBeenCalledWith(tab, {
+    const [toTab, file] = vi.mocked(deliverToInterviewer).mock.calls[0] ?? [];
+    expect(toTab).toBe(tab);
+    await expect(file).resolves.toEqual({
       blob: expect.any(Blob),
       fileName: 'Study.netcanvas',
     });
@@ -62,10 +70,13 @@ describe('sendProtocolToInterviewer', () => {
     );
   });
 
-  it('opens the tab before anything is awaited', () => {
+  it('opens the tab, and listens to it, before anything is awaited', () => {
     void sendProtocolToInterviewer(openDialog, read);
     // Still inside the click: a tab opened after an await would be blocked.
     expect(openInterviewerTab).toHaveBeenCalledTimes(1);
+    // And before the protocol is bundled: the tab only asks for a while.
+    expect(deliverToInterviewer).toHaveBeenCalledTimes(1);
+    expect(bundleProtocol).not.toHaveBeenCalled();
   });
 
   it('explains a blocked tab without bundling anything', async () => {
@@ -85,12 +96,14 @@ describe('sendProtocolToInterviewer', () => {
       false,
     );
     expect(tab.window.close).toHaveBeenCalled();
-    expect(deliverToInterviewer).not.toHaveBeenCalled();
     expect(openDialog).toHaveBeenCalledTimes(1);
+    expect(posthog.capture).not.toHaveBeenCalled();
   });
 
   it('explains when Interviewer was not reached', async () => {
-    vi.mocked(deliverToInterviewer).mockResolvedValue('not-reached');
+    vi.mocked(deliverToInterviewer).mockImplementation((_tab, file) =>
+      file.then(() => 'not-reached' as const),
+    );
     await expect(sendProtocolToInterviewer(openDialog, read)).resolves.toBe(
       false,
     );
