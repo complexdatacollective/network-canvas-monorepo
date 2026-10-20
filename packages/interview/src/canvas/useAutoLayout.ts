@@ -34,6 +34,7 @@ import {
 
 import { useContractFlags } from '../contract/context';
 import type { AppDispatch } from '../store/store';
+import { compareCodeUnits } from '../utils/compareCodeUnits';
 import {
   createAutoLayoutMockWorker,
   createAutoLayoutWorker,
@@ -146,7 +147,7 @@ export function useAutoLayout({
     () =>
       nodes
         .map((n) => n[entityPrimaryKeyProperty])
-        .toSorted((a, b) => a.localeCompare(b))
+        .toSorted(compareCodeUnits)
         .join(','),
     [nodes],
   );
@@ -163,7 +164,7 @@ export function useAutoLayout({
             getGroupKeys(node, groupVariable),
           ]),
         )
-        .toSorted((a, b) => a.localeCompare(b))
+        .toSorted(compareCodeUnits)
         .join(','),
     [nodes, groupVariable],
   );
@@ -175,7 +176,7 @@ export function useAutoLayout({
         .map(
           (e) => `${e[edgeSourceProperty]}-${e[edgeTargetProperty]}-${e.type}`,
         )
-        .toSorted((a, b) => a.localeCompare(b))
+        .toSorted(compareCodeUnits)
         .join(','),
     [edges],
   );

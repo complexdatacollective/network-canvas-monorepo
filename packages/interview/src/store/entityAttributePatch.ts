@@ -5,6 +5,8 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { writeOwnProperty } from '../utils/ownProperty';
+
 export type AttributePatch = Readonly<{
   set: Readonly<Record<string, VariableValue>>;
   unset: readonly string[];
@@ -25,19 +27,6 @@ type SecureAttributeMetadata = NonNullable<
 >;
 
 type LegacyAttributeValue = VariableValue | null | undefined;
-
-function writeOwnProperty<T>(
-  target: Record<string, T>,
-  key: string,
-  value: T,
-): void {
-  Object.defineProperty(target, key, {
-    configurable: true,
-    enumerable: true,
-    value,
-    writable: true,
-  });
-}
 
 export function validateAttributePatch(
   patch: AttributePatch,

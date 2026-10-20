@@ -3,7 +3,7 @@
     - button "Ash"
     - button "Bea"
     - button "Cy"
-  - button "Collapse drawer" [expanded]: 2 unplaced
+  - button "2 unplaced Collapse drawer" [expanded]
   - button "Dee"
   - button "Eve"
   - button "Hide instructions" [expanded]

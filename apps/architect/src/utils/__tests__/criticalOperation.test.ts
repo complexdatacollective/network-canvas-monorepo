@@ -1,16 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  beginExport,
   beginProtocolCommit,
   isCriticalOperationInProgress,
-  setExportInProgress,
   setImportInProgress,
   subscribeCriticalOperation,
+  whenCriticalOperationsSettle,
 } from '../criticalOperation';
 
+// Each test finishes what it began; this only clears the boolean import flag.
 afterEach(() => {
   setImportInProgress(false);
-  setExportInProgress(false);
 });
 
 describe('criticalOperation signal', () => {
@@ -23,16 +24,32 @@ describe('criticalOperation signal', () => {
     setImportInProgress(false);
     expect(isCriticalOperationInProgress()).toBe(false);
 
-    setExportInProgress(true);
+    const finishExport = beginExport();
     expect(isCriticalOperationInProgress()).toBe(true);
+    finishExport();
+    expect(isCriticalOperationInProgress()).toBe(false);
   });
 
   it('stays true until every operation clears', () => {
     setImportInProgress(true);
-    setExportInProgress(true);
+    const finishExport = beginExport();
     setImportInProgress(false);
     expect(isCriticalOperationInProgress()).toBe(true);
-    setExportInProgress(false);
+    finishExport();
+    expect(isCriticalOperationInProgress()).toBe(false);
+  });
+
+  it('stays critical until every overlapping export settles', () => {
+    // Two library rows downloading at once: the first to finish must not
+    // release the second, or leaving for Architect 8 would cut it off.
+    const finishFirst = beginExport();
+    const finishSecond = beginExport();
+
+    finishFirst();
+    finishFirst();
+    expect(isCriticalOperationInProgress()).toBe(true);
+
+    finishSecond();
     expect(isCriticalOperationInProgress()).toBe(false);
   });
 
@@ -73,5 +90,28 @@ describe('criticalOperation signal', () => {
 
     finishSecond();
     expect(isCriticalOperationInProgress()).toBe(false);
+  });
+});
+
+describe('whenCriticalOperationsSettle', () => {
+  it('resolves at once when nothing is in flight', async () => {
+    await expect(whenCriticalOperationsSettle()).resolves.toBeUndefined();
+  });
+
+  it('waits for every in-flight commit and operation to finish', async () => {
+    const finishCommit = beginProtocolCommit();
+    const finishExport = beginExport();
+    let settled = false;
+    const waiting = whenCriticalOperationsSettle().then(() => {
+      settled = true;
+    });
+
+    finishCommit();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    finishExport();
+    await waiting;
+    expect(settled).toBe(true);
   });
 });

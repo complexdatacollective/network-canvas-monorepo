@@ -333,6 +333,17 @@ type DeckCardData = Pick<
 
 export type DeckCardProps = {
   requiresInternetConnection?: boolean;
+  // Further badges for the controls row, before the requires-internet one
+  // (`DeckCardBadge`): a schema 8 protocol's schema, its upgraded copy, its
+  // availability.
+  badges?: ReactNode;
+  // A menu control (`DeckCardMenu`) in the place of the remove control, for
+  // a card whose actions are more than removing it.
+  menu?: ReactNode;
+  // Where the interview count leads. By default this app's data view, through
+  // the router; a string is a full-page address (Interviewer 8's data view);
+  // null states the count without a link.
+  sessionCountHref?: string | null;
   // Content for the card's footer slot — a start button, install button,
   // import progress, or a case-ID form. Rendered beneath a divider in a
   // presence group keyed by this element's key (normally
@@ -356,7 +367,7 @@ export type DeckCardProps = {
 } & (
   | {
       loading?: false;
-      protocol: ProtocolWithCounts;
+      protocol: DeckCardData & { name: string };
       isActive: boolean;
       sessionCount: number;
       onActivate: () => void;
@@ -403,6 +414,9 @@ export function DeckCard(props: DeckCardProps) {
     hideDescription = false,
     hideControls = false,
     requiresInternetConnection = false,
+    badges,
+    menu,
+    sessionCountHref,
     footer,
   } = props;
   const loading = props.loading === true;
@@ -510,6 +524,12 @@ export function DeckCard(props: DeckCardProps) {
                   // deletable) never reflows the content below the row.
                   className="flex min-h-[max(40px,10cqi)] shrink-0 items-center justify-end gap-4"
                 >
+                  {badges != null && (
+                    // Wraps rather than pushing the menu off a small card.
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+                      {badges}
+                    </div>
+                  )}
                   {requiresInternetConnection && (
                     <Badge
                       render={
@@ -533,7 +553,18 @@ export function DeckCard(props: DeckCardProps) {
                   popLayout frees the control's row space at exit START so
                   the pill glides concurrently with the fade. */}
                   <AnimatePresence mode="popLayout" initial={false}>
-                    {onDelete && (
+                    {menu ? (
+                      <motion.div
+                        key="menu"
+                        initial={PRESENCE_INITIAL}
+                        animate={PRESENCE_ENTER}
+                        exit={PRESENCE_EXIT}
+                        transition={REGION_TRANSITION}
+                      >
+                        {menu}
+                      </motion.div>
+                    ) : null}
+                    {!menu && onDelete && (
                       <motion.div
                         key="delete"
                         initial={PRESENCE_INITIAL}
@@ -709,11 +740,23 @@ export function DeckCard(props: DeckCardProps) {
                         })}
                       </span>
                     )
+                  ) : sessionCountHref === null ? (
+                    <span>
+                      {intl.formatMessage(messages.interviewCount, {
+                        count: sessionCount ?? 0,
+                      })}
+                    </span>
                   ) : (
                     <NativeLink
-                      render={
-                        <Link href={protocolDataViewPath(protocol.name)} />
-                      }
+                      {...(sessionCountHref === undefined
+                        ? {
+                            render: (
+                              <Link
+                                href={protocolDataViewPath(protocol.name)}
+                              />
+                            ),
+                          }
+                        : { href: sessionCountHref })}
                     >
                       {intl.formatMessage(messages.interviewCount, {
                         count: sessionCount ?? 0,
@@ -791,6 +834,30 @@ export function DeckCard(props: DeckCardProps) {
   );
 }
 
+// A badge for the controls row, gliding with its neighbours like the
+// requires-internet badge.
+export function DeckCardBadge({
+  tone,
+  icon,
+  children,
+}: {
+  tone: 'neutral' | 'info' | 'success' | 'warning';
+  icon?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Badge
+      render={<motion.div layout="position" transition={REGION_TRANSITION} />}
+      tone={tone}
+      uppercase
+      icon={icon}
+      className="whitespace-nowrap"
+    >
+      {children}
+    </Badge>
+  );
+}
+
 // Footer building blocks for the slot above, co-located so every footer
 // shares the card's container-query sizing.
 
@@ -831,6 +898,15 @@ export function DeckCardFooterButton({
       {icon}
       {children}
     </button>
+  );
+}
+
+// Footer text in place of an action, for a card that has none to offer.
+export function DeckCardFooterNote({ children }: { children: ReactNode }) {
+  return (
+    <p className="m-0 py-[1.5cqi] text-[max(12px,3cqi)] leading-snug text-current/80">
+      {children}
+    </p>
   );
 }
 

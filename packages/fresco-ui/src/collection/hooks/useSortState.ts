@@ -43,6 +43,7 @@ export function useSortState(props: SortProps = {}): SortManager {
     defaultSortDirection = 'asc',
     onSortChange,
     sortRules: controlledSortRules,
+    sortLocale,
   } = props;
 
   const storeApi = useCollectionStoreApi<unknown>();
@@ -85,6 +86,16 @@ export function useSortState(props: SortProps = {}): SortManager {
       sortRules: state.sortRules,
     })),
   );
+
+  // Re-order when the language the text is sorted in changes. The store was
+  // seeded with the locale the first render used, so this does nothing until it
+  // differs from that.
+  useEffect(() => {
+    const store = storeApi.getState();
+    if (store.sortLocale === sortLocale) return;
+    store.setSortLocale(sortLocale);
+    store.resortItems();
+  }, [storeApi, sortLocale]);
 
   // Sync controlled sort props
   useEffect(() => {

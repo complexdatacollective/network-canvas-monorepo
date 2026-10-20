@@ -210,7 +210,12 @@ function racedByACollaborator(host: InMemoryHost): ProtocolBuilderAdapter {
       requestId: 'ana-adds-the-first-attribute',
       kind: 'codebookEgo',
       document: Redacted.make({
-        variables: { pronouns: { name: 'pronouns', type: 'text' } },
+        variables: {
+          pronouns: {
+            name: 'pronouns',
+            type: 'text',
+          },
+        },
       }),
     });
   });

@@ -65,6 +65,26 @@ written.healthy = await write(
   archiveOf(protocol, { withMedia: true }),
 );
 
+// The schema 9 protocol the schema 9 walk conducts (schema9-interview-lane.mjs),
+// and the schema 8 protocol the upgrade lane seeds on the released image for
+// the schema 9 migration to carry (migration-lane.mjs). Neither has media.
+for (const [key, directory, file] of [
+  ['schema9', 'fresco-release-test-v9', 'fresco-release-test-v9.netcanvas'],
+  [
+    'migration',
+    'fresco-release-test-migration',
+    'fresco-release-test-migration.netcanvas',
+  ],
+]) {
+  const document = JSON.parse(
+    readFileSync(
+      join(repoRoot, 'packages/protocols/e2e', directory, 'protocol.json'),
+      'utf8',
+    ),
+  );
+  written[key] = await write(file, archiveOf(document, { withMedia: false }));
+}
+
 // A protocol whose manifest names a file the archive does not contain. Fresco
 // refuses it — a resource that never loads would surface to a participant
 // mid-interview — and the refusal names the resource the way the researcher
@@ -119,7 +139,9 @@ written.missingAsset = await write(
 // records a normalised 0-1 reading and an integer-only value could express no
 // comparison across it — but the operators that COUNT SELECTED OPTIONS still
 // take a whole number, and now say so. Testing only the refusal would prove
-// nothing: a file refused for some other reason looks identical.
+// nothing: a file refused for some other reason looks identical. The protocol
+// is schema 8, which allowed a fractional COUNT, so its refusal is a failed
+// upgrade, which Fresco reports both as a refused protocol and as an error.
 const filtered = (rule) => {
   const document = structuredClone(protocol);
   document.stages.find((entry) => entry.id === 'stage-socio').filter = {

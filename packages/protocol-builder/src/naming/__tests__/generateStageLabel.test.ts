@@ -148,6 +148,8 @@ describe('STAGE_TYPE_NAMES', () => {
       EgoForm: 'Ego Form',
       Information: 'Information',
       Anonymisation: 'Anonymisation',
+      LanguageChooser: 'Language Chooser',
+      FinishSession: 'Finish Screen',
     };
     expect(STAGE_TYPE_NAMES).toStrictEqual(expected);
   });

@@ -37,8 +37,17 @@ function getNodeById(nodes: Element[], id: string) {
 const getChildElements = (parentEl: Element, elements: LiveNodeList<Element>) =>
   Array.from(elements).filter((el) => el.parentNode === parentEl);
 
-const buildXML = async (...args: Parameters<typeof graphMLGenerator>) => {
-  const xmlString = await graphMLGenerator(...args);
+const buildXML = async (
+  network: Parameters<typeof graphMLGenerator>[0],
+  codebook: Parameters<typeof graphMLGenerator>[1],
+  options: Parameters<typeof graphMLGenerator>[2],
+) => {
+  const xmlString = await graphMLGenerator(
+    network,
+    codebook,
+    options,
+    () => undefined,
+  );
 
   const parser = new DOMParser();
   const result = parser.parseFromString(xmlString, MIME_TYPE.XML_APPLICATION);
@@ -330,13 +339,16 @@ describe('buildGraphML', () => {
           ...representedNodeType,
           variables: {
             ...representedNodeType.variables,
-            unansweredNumber: { name: 'unansweredNumber', type: 'number' },
+            unansweredNumber: {
+              name: 'unansweredNumber',
+              type: 'number',
+            },
             unansweredNumericOrdinal: {
               name: 'unansweredNumericOrdinal',
               type: 'ordinal',
               options: [
-                { label: 'One', value: 1 },
-                { label: 'Two', value: 2 },
+                { label: { en: 'One' }, value: 1 },
+                { label: { en: 'Two' }, value: 2 },
               ],
             },
           },
@@ -354,16 +366,16 @@ describe('buildGraphML', () => {
               name: 'unrepresentedNumericOrdinal',
               type: 'ordinal',
               options: [
-                { label: 'One', value: 1 },
-                { label: 'Two', value: 2 },
+                { label: { en: 'One' }, value: 1 },
+                { label: { en: 'Two' }, value: 2 },
               ],
             },
             stringOrdinal: {
               name: 'stringOrdinal',
               type: 'ordinal',
               options: [
-                { label: 'One', value: 'one' },
-                { label: 'Two', value: 'two' },
+                { label: { en: 'One' }, value: 'one' },
+                { label: { en: 'Two' }, value: 'two' },
               ],
             },
             emptyOrdinal: {
@@ -372,13 +384,16 @@ describe('buildGraphML', () => {
               options: [],
             },
             text: { name: 'text', type: 'text' },
-            boolean: { name: 'boolean', type: 'boolean' },
+            boolean: {
+              name: 'boolean',
+              type: 'boolean',
+            },
             categorical: {
               name: 'categorical',
               type: 'categorical',
               options: [
-                { label: 'One', value: 1 },
-                { label: 'Two', value: 2 },
+                { label: { en: 'One' }, value: 1 },
+                { label: { en: 'Two' }, value: 2 },
               ],
             },
           },
@@ -494,7 +509,10 @@ describe('buildGraphML', () => {
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            shared: { name: 'declaredShared', type: 'text' },
+            shared: {
+              name: 'declaredShared',
+              type: 'text',
+            },
           },
         },
       },

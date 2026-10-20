@@ -1,7 +1,9 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
+import { SummaryText, useMultilingualSummary } from '../SummaryText';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
   pageHeading: {
@@ -13,16 +15,23 @@ const messages = defineMessages({
 });
 
 type PageHeadingProps = {
-  heading?: string | null;
+  heading?: LocalizedString | null;
 };
 const PageHeading = ({ heading = null }: PageHeadingProps) => {
   const intl = useAppIntl();
+  const multilingual = useMultilingualSummary();
   if (!heading) {
     return null;
   }
   return (
     <SectionFrame title={intl.formatMessage(messages.pageHeading)}>
-      <Heading level="h2">{heading}</Heading>
+      {multilingual ? (
+        <SummaryText value={heading} />
+      ) : (
+        <Heading level="h2">
+          <SummaryText value={heading} />
+        </Heading>
+      )}
     </SectionFrame>
   );
 };

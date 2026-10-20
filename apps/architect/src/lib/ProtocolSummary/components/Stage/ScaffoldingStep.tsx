@@ -1,10 +1,11 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Markdown from '~/components/Markdown';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import MiniTable from '../MiniTable';
+import { SummaryMarkdown } from '../SummaryText';
 const messages = defineMessages({
   scaffoldingStepInstructions: {
     id: 'architect.protocolSummary.stage.scaffoldingStep.scaffoldingStepInstructions',
@@ -16,7 +17,7 @@ const messages = defineMessages({
 
 type ScaffoldingStepProps = {
   scaffoldingStep?: {
-    text: string;
+    text: LocalizedString;
     showQuickStartModal: boolean;
   } | null;
 };
@@ -30,7 +31,7 @@ const ScaffoldingStep = ({ scaffoldingStep = null }: ScaffoldingStepProps) => {
       <Heading level="h4">
         {intl.formatMessage(messages.scaffoldingStepInstructions)}
       </Heading>
-      <Markdown label={scaffoldingStep.text} />
+      <SummaryMarkdown value={scaffoldingStep.text} />
       <MiniTable
         rotated
         rows={[

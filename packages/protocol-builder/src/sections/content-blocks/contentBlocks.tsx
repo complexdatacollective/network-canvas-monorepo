@@ -1,7 +1,5 @@
 import type { StageSection } from '../../editors/defineStageEditor.tsx';
-import PageContentSection, {
-  type PageContentVariant,
-} from '../page-content/PageContentSection.tsx';
+import PageContentSection from '../page-content/PageContentSection.tsx';
 import ContentBlockEditor, {
   contentBlockDescription,
 } from './ContentBlockEditor.tsx';
@@ -15,23 +13,12 @@ import { contentBlockSlots } from './contentBlockTypes.ts';
  * belongs to `PageContentSection`, and what a block may be — prose, an image,
  * audio, video — belongs here, so an interface composing a page of content
  * chooses the pair rather than wiring them together itself.
- *
- * `variant` says what the page is TO the stage around it — the stage itself,
- * or an introduction shown before the task it does — which decides where the
- * blocks live, whether there is a heading above them and whether the whole
- * thing can be switched off. See `PageContentVariant`; a stage that IS its
- * page leaves it out.
  */
-export const contentBlocks =
-  ({
-    variant,
-  }: Readonly<{ variant?: PageContentVariant }> = {}): StageSection =>
-  () => (
-    <PageContentSection
-      variant={variant}
-      ItemEditor={ContentBlockEditor}
-      itemDescription={contentBlockDescription}
-      ItemPreview={ContentBlockPreview}
-      slots={contentBlockSlots}
-    />
-  );
+export const contentBlocks = (): StageSection => () => (
+  <PageContentSection
+    ItemEditor={ContentBlockEditor}
+    itemDescription={contentBlockDescription}
+    ItemPreview={ContentBlockPreview}
+    slots={contentBlockSlots}
+  />
+);

@@ -1,6 +1,12 @@
 - main:
-  - heading "Intro" [level=1]
-  - paragraph: Intro copy
+  - text: Alpha and Bravo
+  - button "Alpha"
+  - button "Bravo"
+  - status:
+    - heading "Do they know each other?" [level=2]
+  - radiogroup "Alpha and Bravo Do they know each other?":
+    - radio "Yes"
+    - radio "No"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

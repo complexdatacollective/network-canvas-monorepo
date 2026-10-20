@@ -1,6 +1,16 @@
 import type { Page } from '@playwright/test';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  type CurrentProtocol,
+  type Protocol,
+} from '@codaco/protocol-validation';
+
+import {
+  LEGACY_LIBRARIES,
+  PROTOCOL_DB_NAME,
+  SESSION_PREFIX,
+} from '../../src/utils/storageNames.js';
 
 export type SeedAsset = {
   assetId: string;
@@ -16,7 +26,7 @@ export type SeedAsset = {
   data: string;
 };
 
-const DB_NAME = 'ArchitectProtocolDB';
+const DB_NAME = PROTOCOL_DB_NAME;
 
 // Deterministic id so create-from-scratch snapshots are stable across runs.
 const FIXED_ID = 'e2e-protocol';
@@ -44,7 +54,7 @@ export async function seedProtocol(
   const seededProtocol: CurrentProtocol =
     opts.name === undefined ? protocol : { ...protocol, name };
 
-  // 1. Navigate once so Dexie creates ArchitectProtocolDB, then write the
+  // 1. Navigate once so Dexie creates the app's library, then write the
   //    durable protocol row + asset rows via raw IndexedDB (Dexie isn't on
   //    `window`, so this talks to the native API directly).
   await page.goto('/');
@@ -128,28 +138,131 @@ export async function seedProtocol(
   //    same canonical IndexedDB restore path as a real tab refresh. Delete the
   //    legacy body key explicitly so a stale test context cannot mask a
   //    regression by rehydrating protocol content from sessionStorage.
-  await page.evaluate((storageId) => {
-    sessionStorage.setItem(
-      '@@remember-app',
-      JSON.stringify({ activeProtocolId: storageId }),
-    );
-    sessionStorage.removeItem('@@remember-activeProtocol');
-  }, id);
+  await page.evaluate(
+    ({ storageId, sessionPrefix }) => {
+      sessionStorage.setItem(
+        `${sessionPrefix}app`,
+        JSON.stringify({ activeProtocolId: storageId }),
+      );
+      sessionStorage.removeItem(`${sessionPrefix}activeProtocol`);
+      sessionStorage.removeItem('@@remember-activeProtocol');
+    },
+    { storageId: id, sessionPrefix: SESSION_PREFIX },
+  );
   await page.reload();
 
   return id;
 }
 
-// A minimal empty schema-8 protocol for create-from-scratch specs. Built to
-// satisfy `CurrentProtocolSchema` directly (all four fields are the schema's
-// only required top-level keys; `codebook`'s `node`/`edge`/`ego` are all
-// optional) rather than asserting, so a schema drift here is a real type
-// error instead of a silently-stale cast.
-export function emptyProtocol(): CurrentProtocol {
+const [{ dbName: LEGACY_DB_NAME }] = LEGACY_LIBRARIES;
+
+// Architect 8's Dexie declares `version(1).stores({ protocols: 'id, updatedAt',
+// assets: 'id, protocolId' })`; Dexie multiplies a declared version by ten.
+const LEGACY_DB_NATIVE_VERSION = 10;
+
+export type LegacySeed = {
+  /** Architect 8 names its rows with `crypto.randomUUID()`. */
+  id: string;
+  protocol: Protocol<8>;
+  assets?: SeedAsset[];
+  updatedAt?: number;
+};
+
+// Writes protocols into Architect 8's own library, `ArchitectProtocolDB`, which
+// Architect 9 lists beside its own and must never write. The database is
+// created exactly as Architect 8's Dexie creates it — same native version,
+// stores, key paths and indexes — because anything else would make Architect 8
+// bump its schema the next time it opened it, and the "never touched" oracles
+// in `read-store.ts` would then be comparing against a library Architect 8
+// itself would not have made.
+//
+// Architect 9 lists that library once, when the library view mounts, so this
+// reloads afterwards for the rows to appear.
+export async function seedLegacyProtocols(
+  page: Page,
+  rows: LegacySeed[],
+): Promise<void> {
+  await page.goto('/');
+  await page.evaluate(
+    async ({ dbName, version, seeds }) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open(dbName, version);
+        req.onupgradeneeded = (event) => {
+          if (event.oldVersion !== 0) return;
+          const protocols = req.result.createObjectStore('protocols', {
+            keyPath: 'id',
+          });
+          protocols.createIndex('updatedAt', 'updatedAt');
+          const assets = req.result.createObjectStore('assets', {
+            keyPath: 'id',
+          });
+          assets.createIndex('protocolId', 'protocolId');
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error(`${dbName} open blocked`));
+      });
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['protocols', 'assets'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        for (const { id, protocol, assets, updatedAt } of seeds) {
+          tx.objectStore('protocols').put({
+            id,
+            protocol,
+            name: protocol.name,
+            description: protocol.description,
+            schemaVersion: protocol.schemaVersion,
+            validated: true,
+            createdAt: updatedAt,
+            updatedAt,
+          });
+          for (const asset of assets) {
+            tx.objectStore('assets').put({
+              id: `${id}::${asset.assetId}`,
+              assetId: asset.assetId,
+              protocolId: id,
+              name: asset.name,
+              // Built here, in the browser, for the reason `seedProtocol` gives.
+              data: new Blob([asset.data]),
+            });
+          }
+        }
+      });
+      db.close();
+    },
+    {
+      dbName: LEGACY_DB_NAME,
+      version: LEGACY_DB_NATIVE_VERSION,
+      seeds: rows.map((row) => ({
+        id: row.id,
+        protocol: row.protocol,
+        assets: row.assets ?? [],
+        updatedAt: row.updatedAt ?? Date.now(),
+      })),
+    },
+  );
+  await page.reload();
+}
+
+// A minimal current-schema protocol for create-from-scratch specs: what
+// Architect's New Protocol makes, a protocol holding only the finish stage
+// that ends the interview. Built to satisfy `CurrentProtocolSchema` directly
+// (all five fields are the schema's only required top-level keys;
+// `codebook`'s `node`/`edge`/`ego` are all optional) rather than asserting, so
+// a schema drift here is a real type error instead of a silently-stale cast.
+// A stage created in it goes before the finish stage, so it is stage 0.
+export function emptyProtocol(
+  localization: CurrentProtocol['localization'] = {
+    defaultLocale: 'en',
+    locales: ['en'],
+  },
+): CurrentProtocol {
   return {
     name: 'E2E Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization,
     codebook: {},
-    stages: [],
+    stages: [createDefaultFinishSessionStage({ id: 'finish', localization })],
   };
 }

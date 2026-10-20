@@ -2,5 +2,16 @@
   "networkExporters.stage.fetching": "Recupero dei dati delle interviste…",
   "networkExporters.stage.formatting": "Formattazione delle sessioni…",
   "networkExporters.stage.generating": "Generazione dei file…",
-  "networkExporters.stage.outputting": "Scrittura dei file di output…"
+  "networkExporters.stage.outputting": "Scrittura dei file di output…",
+  "networkExporters.warning.columnRenamed.description": "Alcune colonne avrebbero avuto lo stesso nome di un’altra colonna nello stesso file. Per non perdere alcuna risposta, ciascuna è stata scritta con un nome numerato. Le colonne rinominate sono:",
+  "networkExporters.warning.columnRenamed.fromVariableItem": "Nei file {format, select, csv {CSV} other {GraphML}} del protocollo «{protocolName}», la colonna «{column}» {entity, select, ego {di ego} other {del tipo «{entityTypeName}»}}, che deriva dalla variabile «{variable}», è stata scritta come «{renamedTo}».",
+  "networkExporters.warning.columnRenamed.item": "Nei file {format, select, csv {CSV} other {GraphML}} del protocollo «{protocolName}», la colonna «{column}» {entity, select, ego {di ego} other {del tipo «{entityTypeName}»}} è stata scritta come «{renamedTo}».",
+  "networkExporters.warning.columnRenamed.title": "Alcune colonne sono state rinominate",
+  "networkExporters.warning.protocolText.description": "Alcuni testi del protocollo contenevano caratteri che GraphML non può memorizzare, quindi nei file GraphML quei caratteri sono stati rimossi. Di solito sono caratteri invisibili, perciò ciascuno è indicato con il suo punto di codice Unicode, ad esempio U+0007. I testi interessati sono:",
+  "networkExporters.warning.protocolText.item": "{text, select, protocolName {Il nome del protocollo «{name}» (caratteri rimossi: {characters})} nodeTypeName {Il nome del tipo di nodo «{name}» nel protocollo «{protocolName}» (caratteri rimossi: {characters})} edgeTypeName {Il nome del tipo di legame «{name}» nel protocollo «{protocolName}» (caratteri rimossi: {characters})} other {Il nome della colonna «{name}» nel protocollo «{protocolName}» (caratteri rimossi: {characters})}}",
+  "networkExporters.warning.protocolText.title": "Alcuni caratteri sono stati rimossi dal testo del protocollo nei file GraphML",
+  "networkExporters.warning.xmlCharacters.caseId": "ID caso",
+  "networkExporters.warning.xmlCharacters.description": "Alcune risposte contenevano caratteri che GraphML non può memorizzare, perciò quei caratteri sono stati rimossi solo nei file GraphML. I file CSV conservano ogni risposta invariata. Le interviste e le variabili interessate sono:",
+  "networkExporters.warning.xmlCharacters.interview": "Intervista {caseId}: {variables}",
+  "networkExporters.warning.xmlCharacters.title": "Alcuni caratteri sono stati rimossi dai file GraphML"
 }

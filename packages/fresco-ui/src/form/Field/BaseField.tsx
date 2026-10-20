@@ -5,6 +5,12 @@ import type { ReactNode } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import {
+  isPresentationalText,
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { cx } from '../../utils/cva';
 import FieldErrors from '../FieldErrors';
 import { FieldLabel } from '../FieldLabel';
@@ -39,8 +45,8 @@ type ExcludeMotionConflicts<T> = Omit<
 type BaseFieldProps = {
   id: string;
   name?: string;
-  label: ReactNode;
-  hint?: ReactNode;
+  label: ReactNode | PresentationalText;
+  hint?: ReactNode | PresentationalText;
   validationSummary?: ReactNode;
   required?: boolean;
   errors?: string[];
@@ -87,7 +93,7 @@ export function BaseField({
       className={cx('group/field w-full grow not-last:mb-8', 'flex flex-col')}
     >
       {/*
-        Only `inline` fields query this element (see the `@min-lg:`
+        Only `inline` fields query this element (see the `@min-md:`
         utilities below), so only they make it a query container. Every other
         container-query consumer in the design system establishes its own
         container, so nothing else is scoped to this one.
@@ -108,7 +114,7 @@ export function BaseField({
             // field's own CONTAINER is wide enough, and stack when it's narrow —
             // a container query, not a viewport breakpoint, so a field adapts to
             // where it's placed (e.g. a narrow sidebar) rather than the screen.
-            inline && '@min-lg:flex-row @min-lg:justify-between @min-lg:gap-4',
+            inline && '@min-md:flex-row @min-md:justify-between @min-md:gap-4',
             'flex flex-col',
           )}
         >
@@ -119,7 +125,7 @@ export function BaseField({
               // remains there — the label itself, or a hint under a hidden label.
               !inline && (!labelHidden || hasVisibleHint) && 'mb-2',
               // inline needs bottom margin too, but must correspond to when it switches to stacked layout
-              inline && '@max-lg:mb-2',
+              inline && '@max-md:mb-2',
             )}
           >
             <FieldLabel
@@ -127,8 +133,11 @@ export function BaseField({
               htmlFor={id}
               required={required}
               className={labelHidden ? 'sr-only' : undefined}
+              {...presentationalTextProps(label)}
             >
-              {label}
+              {isPresentationalText(label)
+                ? presentationalTextValue(label)
+                : label}
             </FieldLabel>
             {required && (
               <span id={elementIds.required} className="sr-only">

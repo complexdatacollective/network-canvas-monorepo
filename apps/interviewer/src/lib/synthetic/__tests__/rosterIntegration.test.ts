@@ -34,7 +34,7 @@ function storedProtocol(): StoredProtocol {
     id: HASH,
     hash: HASH,
     name: 'Development Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: new Date().toISOString(),
     codebook: developmentProtocol.codebook,
     protocol: developmentProtocol,

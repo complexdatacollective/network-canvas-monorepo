@@ -5,6 +5,7 @@ import type { MapMouseEvent } from 'mapbox-gl/esm';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ColorReference, MapOptions } from '@codaco/protocol-validation';
 
+import { getMapLanguage } from './mapboxLanguage';
 import { getMapboxLocale, updateMapboxControlLocale } from './mapboxLocale';
 
 export type ExtendedMapOptions = MapOptions & {
@@ -18,6 +19,7 @@ import { useSelector } from 'react-redux';
 
 import { useCaptureException } from '../../analytics/useTrack';
 import { useContractFlags } from '../../contract/context';
+import { useProtocolLocale } from '../../localization/ProtocolLocalizationProvider';
 import { makeGetApiKeyAssetValue } from '../../selectors/protocol';
 
 // `interface` is required (not `type`) so this declaration MERGES with the
@@ -139,6 +141,18 @@ export const useMapbox = ({
   useEffect(() => {
     intlRef.current = intl;
   }, [intl]);
+  // Map labels follow the protocol language the participant is reading, which
+  // is not the interface language. Read through a ref by the construction
+  // effect so a language change updates the live map instead of rebuilding it.
+  const { locale: protocolLocale } = useProtocolLocale();
+  const mapLanguage = getMapLanguage(protocolLocale);
+  const mapLanguageRef = useRef(mapLanguage);
+  useEffect(() => {
+    mapLanguageRef.current = mapLanguage;
+  }, [mapLanguage]);
+  // The language the live map was last given, so the effect below touches the
+  // map only when the language differs from it.
+  const appliedMapLanguageRef = useRef<string | undefined>(mapLanguage);
   const { isE2E } = useContractFlags();
   const captureException = useCaptureException();
   const {
@@ -207,6 +221,7 @@ export const useMapbox = ({
     setMapError(null);
 
     try {
+      appliedMapLanguageRef.current = mapLanguageRef.current;
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
         center,
@@ -214,6 +229,11 @@ export const useMapbox = ({
         style,
         accessToken,
         locale: getMapboxLocale(intlRef.current),
+        // Omitted when Mapbox has no labels in the language, so each label
+        // shows in its place's own language.
+        ...(mapLanguageRef.current === undefined
+          ? {}
+          : { language: mapLanguageRef.current }),
       });
     } catch (err) {
       // mapbox-gl's Map constructor throws synchronously when the environment
@@ -487,6 +507,30 @@ export const useMapbox = ({
     updateMapboxControlLocale(mapRef.current, intl);
   }, [intl]);
 
+  // The highlighted area is the saved location as it can be read now, and this
+  // is its only writer: none while nothing is saved or the saved location
+  // cannot be read, and a picked area only once the pick is saved. The filter
+  // is set as soon as the selection layer exists: `isStyleLoaded()` is no
+  // guide, as it is false whenever tiles are still loading. A map being
+  // rebuilt has no layer yet, and is filtered once it loads.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!isMapLoaded || !map?.getLayer('selection')) return;
+    map.setFilter('selection', [
+      '==',
+      targetFeatureProperty,
+      initialSelectionValue ?? '',
+    ]);
+  }, [isMapLoaded, initialSelectionValue, targetFeatureProperty]);
+
+  // setLanguage re-requests the vector sources (including the transit source
+  // added on load) and keeps the camera and our layers. Undefined removes the
+  // language, returning to local names.
+  useEffect(() => {
+    if (appliedMapLanguageRef.current === mapLanguage) return;
+    appliedMapLanguageRef.current = mapLanguage;
+    mapRef.current?.setLanguage(mapLanguage);
+  }, [mapLanguage]);
   // The highlighted area is the saved location as it can be read now, and this
   // is its only writer: none while nothing is saved or the saved location
   // cannot be read, and a picked area only once the pick is saved. The filter

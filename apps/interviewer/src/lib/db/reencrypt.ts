@@ -1,3 +1,4 @@
+import { markDatabaseSecured } from './db';
 import {
   listAssetIds,
   listProtocolIds,
@@ -54,6 +55,11 @@ export async function reencryptAllRecords(
       'reencryptAllRecords requires an unlocked session DEK (call it after enrolment sets the key)',
     );
   }
+
+  // Before listing: a write that prepared plaintext rows before the device
+  // was secured either commits before this mark, and so before the listing
+  // that encrypts its rows, or sees the mark and writes nothing.
+  await markDatabaseSecured();
 
   const [sessionIds, protocolIds, assetIds] = await Promise.all([
     listSessionIds(),

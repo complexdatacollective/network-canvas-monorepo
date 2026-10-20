@@ -80,8 +80,16 @@ vi.mock('~/components/ProtocolCarousel/ProtocolDeck', () => ({
     ),
 }));
 
-vi.mock('~/components/ResumePill', () => ({
+vi.mock('~/components/ResumePill', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/components/ResumePill')>()),
   ResumePill: () => <div>Resume last interview</div>,
+}));
+
+vi.mock('~/components/useSettleLockForInterviewer8', () => ({
+  useSettleLockForInterviewer8: () => ({
+    settled: true,
+    settleLock: () => Promise.resolve(true),
+  }),
 }));
 
 vi.mock('~/components/SettingsDialog', () => ({
@@ -101,7 +109,8 @@ import { HomeRoute } from '../Home';
 const protocolDefinition: CurrentProtocol = {
   name: 'Test protocol',
   description: 'A test protocol.',
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {},
   stages: [],
 };
@@ -138,6 +147,9 @@ describe('HomeRoute resume notification', () => {
       protocols: [protocol],
       sessions: [resumableSession],
       settings: DEFAULT_SETTINGS,
+      legacyProtocols: [],
+      legacySessions: [],
+      upgradedLegacyHashes: new Set(),
       reload: vi.fn(),
     });
   });

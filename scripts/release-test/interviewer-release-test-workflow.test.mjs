@@ -1602,3 +1602,90 @@ test('every journey prompt numbers its checks 1..N to match expectedChecks', asy
     );
   }
 });
+
+test('conduct-offline maps every step the walker records onto a check', () => {
+  // The prompt binds the walker's result.json steps to checks by name; a
+  // step the walker records but the prompt never names is a result the
+  // journey cannot report against any check.
+  const walker = readFileSync(
+    path.join(
+      repoRoot,
+      'scripts',
+      'release-test',
+      'interviewer-release-smoke-walker.mjs',
+    ),
+    'utf8',
+  );
+  const recorded = new Set(
+    [...walker.matchAll(/record\(\s*'([a-z0-9-]+)'/g)].map((m) => m[1]),
+  );
+  // Harness outcomes, not checks: the prompt handles them generically.
+  for (const harness of ['setup', 'watchdog', 'walk'])
+    assert.ok(recorded.delete(harness), `walker no longer records ${harness}`);
+  assert.ok(recorded.size >= 20, `found only ${recorded.size} walker steps`);
+  const start = source.indexOf("key: 'conduct-offline'");
+  const end = source.indexOf("key: 'session-management'");
+  assert.ok(start !== -1 && end > start, 'conduct-offline prompt not found');
+  const prompt = source.slice(start, end);
+  const unmapped = [...recorded].filter(
+    (step) => !prompt.includes(`"${step}"`),
+  );
+  assert.deepEqual(unmapped, []);
+});
+
+test("the walkers read the app's own database and never create one", async () => {
+  // Interviewer keeps each major's data in its own IndexedDB database. A
+  // walker that reads a literal name drifts onto the wrong database when the
+  // app's changes, and a bare open of a name that does not exist creates an
+  // empty one, so the read throws on missing stores and the stray database
+  // misleads the app's own existence checks.
+  const { DB_NAME } = await import(
+    path.join(repoRoot, 'apps/interviewer/src/lib/db/storageNames.ts')
+  );
+  for (const name of [
+    'interviewer-release-smoke-walker.mjs',
+    'interviewer-security-vault-walker.mjs',
+  ]) {
+    const walker = readFileSync(
+      path.join(repoRoot, 'scripts', 'release-test', name),
+      'utf8',
+    );
+    assert.match(
+      walker,
+      /import \{[^}]*\bDB_NAME\b[^}]*\} from '\.\.\/\.\.\/apps\/interviewer\/src\/lib\/db\/storageNames\.ts';/,
+      `${name} must take the database name from storageNames`,
+    );
+    const opens = [...walker.matchAll(/indexedDB\.open\(([^)]*)\)/g)];
+    assert.ok(opens.length > 0, `${name} no longer reads IndexedDB`);
+    for (const open of opens) {
+      assert.equal(
+        open[1],
+        'dbName',
+        `${name} opens ${open[1]}; open only the name passed in from DB_NAME`,
+      );
+      // The listing must come before the open inside the same evaluate.
+      const before = walker.slice(0, open.index);
+      const evaluateAt = before.lastIndexOf('page.evaluate(');
+      assert.ok(
+        evaluateAt !== -1 &&
+          before.slice(evaluateAt).includes('indexedDB.databases()'),
+        `${name} opens a database without listing it first`,
+      );
+      assert.match(
+        before.slice(evaluateAt),
+        /^page\.evaluate\(\s*async \(\{? ?dbName\b/,
+        `${name} must take the database name as the evaluate's argument`,
+      );
+    }
+    // Each of those evaluates is handed DB_NAME.
+    const passed =
+      walker.match(/\},\s*(?:DB_NAME|\{ dbName: DB_NAME\b)/g) ?? [];
+    assert.equal(passed.length, opens.length, `${name} must pass DB_NAME`);
+  }
+  assert.equal(DB_NAME, 'interviewer-v9');
+  assert.ok(
+    !source.includes('database "interviewer")'),
+    'the release-test prompts must name the app database, not Interviewer 8’s',
+  );
+  assert.ok(source.includes(`database "${DB_NAME}"`));
+});

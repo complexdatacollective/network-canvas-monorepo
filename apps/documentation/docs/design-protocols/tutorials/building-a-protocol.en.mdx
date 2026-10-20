@@ -403,9 +403,21 @@ Click <AppOnly app="current">**Finished Editing**</AppOnly><AppOnly app="classic
 
 ## Creating a Per-Alter Form
 
-Next, repeat that process, but this time create a form that will capture data from alters on the Per-Alter Form interface. Create a new stage using the Per-Alter Form interface and set the stage name. Next, select the node type "University" and scroll down to configure the information panel.
+Next, repeat that process, but this time create a form that will capture data from alters on the Per-Alter Form interface. Create a new stage using the Per-Alter Form interface and set the stage name. Next, select the node type "University".
+
+<AppOnly app="current">
+
+To explain the task to the participant, add an [Information](/en/design-protocols/interface-documentation/information) stage just before the Per-Alter Form — for example, explaining that the next screens show a form for each university they named.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Then scroll down to configure the information panel.
 
 <Screenshot axis="architect" name="per-alter-form"></Screenshot>
+
+</AppOnly>
 
 Add just two fields to this form. Here are the details you need, following the same process as above:
 
@@ -502,7 +514,19 @@ We define the rule by selecting the alter node type of "Classmate", then selecti
 
 <Screenshot axis="architect" name="dyad-skip"></Screenshot>
 
-As on other name interpreter interfaces, we will also configure the Introduction Panel and define a prompt. For this stage, we enter the prompt, "To the best of your knowledge, do these two people spend time together outside of class?"
+<AppOnly app="current">
+
+As with the Per-Alter Form, you can explain the task with an [Information](/en/design-protocols/interface-documentation/information) stage placed just before the Dyad Census. Give it the same skip logic, so the explanation is skipped whenever the Dyad Census is.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+As on other name interpreter interfaces, we will also configure the Introduction Panel.
+
+</AppOnly>
+
+Next, we define a prompt. For this stage, we enter the prompt, "To the best of your knowledge, do these two people spend time together outside of class?"
 We previously created two edge types on the sociogram which appear available for our use on this prompt. We will select the "know" edge type since we are asking the participant whether any two classmates know one another.
 
 <Screenshot axis="architect" name="dyad-prompt"></Screenshot>
@@ -689,7 +713,7 @@ Repositioning on the Narrative Interface enables a participant to drag their alt
 
 Architect saves your protocol automatically. When you are ready to use it, click **Download** on the protocol overview screen to export it as a `.netcanvas` file. The file name uniquely identifies the protocol in the apps that run it.
 
-Protocols built in Architect use schema 8, so they run in **Fresco** and in the new **Interviewer** app — they cannot be run in Interviewer Classic.
+Protocols built in Architect use the latest schema version (currently schema 9), so they run in **Fresco** and in the new **Interviewer** app — they cannot be run in Interviewer Classic.
 
 #### Fresco
 
@@ -705,7 +729,7 @@ Protocols built in Architect use schema 8, so they run in **Fresco** and in the 
 
 Make sure to save your file. The file name of the protocol will uniquely identify it in the Network Canvas Interviewer app and in [Fresco](/en/collect-data/fresco/using-fresco#uploading-protocols).
 
-Protocols built in Architect Classic use schema 7, so they run in **Interviewer Classic**, and can be automatically upgraded to schema 8 when uploading to **Fresco**.
+Protocols built in Architect Classic use schema 7, so they run in **Interviewer Classic**, and can be automatically upgraded to the latest schema version when uploading to **Fresco**.
 
 There are numerous ways to transition from building the protocol within Architect to deployment.
 

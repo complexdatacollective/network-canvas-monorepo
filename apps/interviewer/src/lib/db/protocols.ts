@@ -1,11 +1,13 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-import { db } from './db';
+import { db, type LegacyUpgradeRecord } from './db';
 import {
+  assertPlaintextStillAllowed,
   decryptAsset,
   decryptProtocol,
   encryptAsset,
   encryptProtocol,
+  preparingPlaintext,
 } from './recordCrypto';
 import type { ProtocolWithCounts, StoredAsset, StoredProtocol } from './types';
 
@@ -50,6 +52,10 @@ export async function saveProtocol(
   protocol: CurrentProtocol,
   hash: string,
   assets: { id: string; name: string; data: Blob | string }[],
+  options: {
+    /** Written in the same transaction: this save is that upgrade's copy. */
+    legacyUpgrade?: LegacyUpgradeRecord;
+  } = {},
 ): Promise<StoredProtocol> {
   const existing = await getProtocolByHash(hash);
   const id = existing?.id ?? hash;
@@ -92,28 +98,56 @@ export async function saveProtocol(
 
   // Encrypt BEFORE opening the transaction (transaction-liveness rule): the
   // crypto.subtle awaits would let Dexie auto-commit an open tx mid-await.
+  const plaintext = preparingPlaintext();
   const protocolRow = await encryptProtocol(stored);
   const assetRows = await Promise.all(
     assetRecords.map((record) => encryptAsset(record)),
   );
 
-  await db.transaction('rw', db.protocols, db.assets, async () => {
-    await db.protocols.put(protocolRow);
-    await db.assets.where('protocolHash').equals(hash).delete();
-    if (assetRows.length > 0) {
-      await db.assets.bulkPut(assetRows);
-    }
-  });
+  const { legacyUpgrade } = options;
+  await db.transaction(
+    'rw',
+    [db.protocols, db.assets, db.settings, db.legacyUpgrades],
+    async () => {
+      await assertPlaintextStillAllowed(plaintext);
+      await db.protocols.put(protocolRow);
+      await db.assets.where('protocolHash').equals(hash).delete();
+      if (assetRows.length > 0) {
+        await db.assets.bulkPut(assetRows);
+      }
+      if (legacyUpgrade) await db.legacyUpgrades.put(legacyUpgrade);
+    },
+  );
 
   return stored;
 }
 
 export async function deleteProtocol(hash: string): Promise<void> {
-  await db.transaction('rw', db.protocols, db.sessions, db.assets, async () => {
-    await db.assets.where('protocolHash').equals(hash).delete();
-    await db.sessions.where('protocolHash').equals(hash).delete();
-    await db.protocols.where('hash').equals(hash).delete();
-  });
+  await db.transaction(
+    'rw',
+    [db.protocols, db.sessions, db.assets, db.legacyUpgrades],
+    async () => {
+      await db.assets.where('protocolHash').equals(hash).delete();
+      await db.sessions.where('protocolHash').equals(hash).delete();
+      await db.protocols.where('hash').equals(hash).delete();
+      // The schema 8 original is no longer "upgraded" once its copy is gone.
+      await db.legacyUpgrades
+        .filter((record) => record.upgradedHash === hash)
+        .delete();
+    },
+  );
+}
+
+/** That `legacyHash` was upgraded into this database, if it was. */
+export async function getLegacyUpgrade(
+  legacyHash: string,
+): Promise<LegacyUpgradeRecord | undefined> {
+  return db.legacyUpgrades.get(legacyHash);
+}
+
+/** Every schema 8 protocol upgraded into this database. */
+export async function listLegacyUpgrades(): Promise<LegacyUpgradeRecord[]> {
+  return db.legacyUpgrades.toArray();
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {

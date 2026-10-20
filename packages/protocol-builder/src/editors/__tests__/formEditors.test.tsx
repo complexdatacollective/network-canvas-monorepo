@@ -39,7 +39,11 @@ type FormEditorCase = Readonly<{
   editor: Partial<StageEditorRegistry>;
   /** Every section the editor lists, in the order it lists them. */
   sections: readonly string[];
-  /** The top-level stage keys those sections have a field for. */
+  /**
+   * The top-level stage keys those sections have a field for, and
+   * `dynamicValues`, which every stage editor registers for the values its
+   * text may show.
+   */
   ownedKeys: readonly string[];
 }>;
 
@@ -58,7 +62,7 @@ const FORM_EDITORS: FormEditorCase[] = [
     stageId: 'information-1',
     editor: informationStageEditor,
     sections: ['Page content', 'Skip logic', 'Interviewer guidance'],
-    ownedKeys: ['items', 'label', 'title'],
+    ownedKeys: ['dynamicValues', 'items', 'label', 'title'],
   },
   {
     interfaceName: 'EgoForm',
@@ -70,7 +74,7 @@ const FORM_EDITORS: FormEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['form', 'introductionPanel', 'label'],
+    ownedKeys: ['dynamicValues', 'form', 'introductionPanel', 'label'],
   },
   {
     interfaceName: 'AlterForm',
@@ -79,12 +83,11 @@ const FORM_EDITORS: FormEditorCase[] = [
     sections: [
       'Node setup',
       'Stage filter',
-      'Task introduction',
       'Form configuration',
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['form', 'introductionPanel', 'label', 'subject'],
+    ownedKeys: ['dynamicValues', 'form', 'label', 'subject'],
   },
   {
     interfaceName: 'AlterEdgeForm',
@@ -93,12 +96,11 @@ const FORM_EDITORS: FormEditorCase[] = [
     sections: [
       'Edge setup',
       'Stage filter',
-      'Task introduction',
       'Form configuration',
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['form', 'introductionPanel', 'label', 'subject'],
+    ownedKeys: ['dynamicValues', 'form', 'label', 'subject'],
   },
 ];
 

@@ -19,6 +19,7 @@ import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import SlidesForm from '../SlidesForm';
 
 class StubResizeObserver {
@@ -61,8 +62,8 @@ beforeAll(() => {
 
 const form: TitlelessForm = {
   fields: [
-    { variable: 'name' as never, prompt: 'Person name' },
-    { variable: 'met_on' as never, prompt: 'When you met' },
+    { variable: 'name' as never, prompt: { en: 'Person name' } },
+    { variable: 'met_on' as never, prompt: { en: 'When you met' } },
   ],
 };
 
@@ -79,7 +80,11 @@ const codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        name: { name: 'Name', type: 'text', component: 'Text' },
+        name: {
+          name: 'Name',
+          type: 'text',
+          component: 'Text',
+        },
         met_on: {
           name: 'Met on',
           type: 'datetime',
@@ -132,15 +137,15 @@ const renderSlidesForm = () => {
       protocol: {
         id: 'protocol',
         hash: 'hash',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [
           {
             id: 'alter-form',
             type: 'AlterForm',
-            label: 'Alter form',
+            label: { en: 'Alter form' },
             subject: { entity: 'node', type: 'person' },
-            introductionPanel: { title: 'About this person', text: '' },
             form,
           },
         ],
@@ -154,25 +159,27 @@ const renderSlidesForm = () => {
   const tracker: Tracker = { track, captureException: vi.fn() };
 
   render(
-    <Provider store={store}>
-      <AnalyticsContext.Provider value={tracker}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DialogProvider>
-            <StageMetadataProvider value={vi.fn()}>
-              <SlidesForm
-                form={form}
-                items={[person]}
-                subject={{ entity: 'node', type: 'person' }}
-                updateItem={vi.fn().mockResolvedValue({ success: true })}
-                moveForward={vi.fn()}
-                renderHeader={() => <span>Person header</span>}
-                form_kind="alter"
-              />
-            </StageMetadataProvider>
-          </DialogProvider>
-        </CurrentStepProvider>
-      </AnalyticsContext.Provider>
-    </Provider>,
+    <TestProtocolLocalization>
+      <Provider store={store}>
+        <AnalyticsContext.Provider value={tracker}>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <StageMetadataProvider value={vi.fn()}>
+                <SlidesForm
+                  form={form}
+                  items={[person]}
+                  subject={{ entity: 'node', type: 'person' }}
+                  updateItem={vi.fn().mockResolvedValue({ success: true })}
+                  moveForward={vi.fn()}
+                  renderHeader={() => <span>Person header</span>}
+                  form_kind="alter"
+                />
+              </StageMetadataProvider>
+            </DialogProvider>
+          </CurrentStepProvider>
+        </AnalyticsContext.Provider>
+      </Provider>
+    </TestProtocolLocalization>,
   );
 
   return track;
@@ -214,22 +221,22 @@ describe('SlidesForm analytics', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -263,15 +270,17 @@ describe('SlidesForm analytics', () => {
     }
 
     render(
-      <Provider store={store}>
-        <AnalyticsContext.Provider value={tracker}>
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <DialogProvider>
-              <Harness />
-            </DialogProvider>
-          </CurrentStepProvider>
-        </AnalyticsContext.Provider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <AnalyticsContext.Provider value={tracker}>
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <DialogProvider>
+                <Harness />
+              </DialogProvider>
+            </CurrentStepProvider>
+          </AnalyticsContext.Provider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     expect(

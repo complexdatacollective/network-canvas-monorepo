@@ -1,6 +1,38 @@
 - main:
-  - heading "Relationship details" [level=1]
-  - paragraph: Answer the following for each relationship.
+  - button "Alex"
+  - button "Sam"
+  - text: Give this relationship a code name.
+  - textbox "Give this relationship a code name."
+  - text: Field A
+  - textbox "Field A"
+  - text: Field B
+  - textbox "Field B"
+  - text: Field C
+  - textbox "Field C"
+  - text: Start value
+  - button "Decrease value"
+  - spinbutton "Start value"
+  - button "Increase value"
+  - text: End value
+  - button "Decrease value"
+  - spinbutton "End value"
+  - button "Increase value"
+  - text: Floor value
+  - button "Decrease value"
+  - spinbutton "Floor value"
+  - button "Increase value"
+  - text: Ceiling value
+  - button "Decrease value"
+  - spinbutton "Ceiling value"
+  - button "Increase value"
+  - text: Cap value
+  - button "Decrease value"
+  - spinbutton "Cap value"
+  - button "Increase value"
+  - text: Cap-equal value
+  - button "Decrease value"
+  - spinbutton "Cap-equal value"
+  - button "Increase value"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

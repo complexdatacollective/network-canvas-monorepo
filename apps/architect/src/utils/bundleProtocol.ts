@@ -1,8 +1,17 @@
 import JSZip from 'jszip';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  type FinishStageTextProblem,
+  findFinishStageTextProblems,
+} from '@codaco/protocol-validation';
 
 import { getAssetById } from './assetUtils';
+import {
+  type LegacyProtocol,
+  type LegacyStoredProtocolRow,
+  readLegacyProtocolSnapshot,
+} from './legacyProtocolLibrary';
 
 /**
  * A resource the protocol declares but whose bytes Architect could not read.
@@ -29,6 +38,28 @@ export class UnresolvedAssetsError extends Error {
     );
     this.name = 'UnresolvedAssetsError';
     this.assetNames = assetNames;
+  }
+}
+
+/**
+ * The stage that ends the interview has no heading or text in the protocol's
+ * default language. Architect lets a protocol be written and saved like this
+ * — a new protocol in a language Network Canvas supplies no closing text for
+ * starts so — but not handed out: every host refuses to import it, and a
+ * participant would finish the interview on an empty screen.
+ *
+ * Checked here, where every download and export is produced, so no path can
+ * hand one out.
+ */
+export class MissingFinishStageTextError extends Error {
+  readonly problem: FinishStageTextProblem;
+
+  constructor(problem: FinishStageTextProblem) {
+    super(
+      `The finish stage has no ${problem.missing.join(' or ')} in ${problem.locale}`,
+    );
+    this.name = 'MissingFinishStageTextError';
+    this.problem = problem;
   }
 }
 
@@ -72,28 +103,30 @@ const entryNameFor = (
   return entryName;
 };
 
-const getAllProtocolAssets = async (
-  protocol: CurrentProtocol,
-  protocolId?: string,
+// The fields of a manifest entry that bundling reads. Every schema's entries
+// have them; `apikey` entries carry their value inline and have no `source`.
+type BundledManifestEntry = { type: string; name: string; source?: string };
+
+type AssetLookup = (
+  assetId: string,
+) => Promise<{ data: Blob | string } | undefined>;
+
+const resolveManifestAssets = async (
+  manifest: Record<string, BundledManifestEntry>,
+  lookup: AssetLookup,
 ): Promise<ResolvedAsset[]> => {
   const resolved: ResolvedAsset[] = [];
   const unresolved: string[] = [];
   // Guards against two distinct ids sanitising to the same zip entry name.
   const usedEntryNames = new Set<string>();
 
-  if (!protocol.assetManifest) {
-    return resolved;
-  }
-
-  for (const [assetId, assetDefinition] of Object.entries(
-    protocol.assetManifest,
-  )) {
+  for (const [assetId, assetDefinition] of Object.entries(manifest)) {
     // apikey assets have no file data to bundle (and no `source`).
     if (assetDefinition.type === 'apikey') {
       continue;
     }
 
-    const assetData = await getAssetById(assetId, protocolId);
+    const assetData = await lookup(assetId);
 
     if (!assetData) {
       unresolved.push(assetDefinition.name);
@@ -110,7 +143,11 @@ const getAllProtocolAssets = async (
 
     resolved.push({
       id: assetId,
-      entryName: entryNameFor(assetId, assetDefinition.source, usedEntryNames),
+      entryName: entryNameFor(
+        assetId,
+        assetDefinition.source ?? '',
+        usedEntryNames,
+      ),
       data: assetData.data,
     });
   }
@@ -124,51 +161,47 @@ const getAllProtocolAssets = async (
   return resolved;
 };
 
-type AssetManifest = NonNullable<CurrentProtocol['assetManifest']>;
-
 // Produce the manifest to write into the exported protocol.json: point each
 // resolved asset's `source` at its collision-free zip entry name.
 //
 // Every file entry is present in `resolved` — `getAllProtocolAssets` refuses
 // the export otherwise — so nothing is dropped here and the manifest and the
 // zip cannot disagree.
-const rewriteManifest = (
-  manifest: AssetManifest,
+const rewriteManifest = <Entry extends BundledManifestEntry>(
+  manifest: Record<string, Entry>,
   resolved: ResolvedAsset[],
-): AssetManifest => {
+): Record<string, Entry> => {
   const entryNamesById = new Map(resolved.map((r) => [r.id, r.entryName]));
-  const rewritten: AssetManifest = {};
 
-  for (const [assetId, asset] of Object.entries(manifest)) {
-    if (asset.type === 'apikey') {
-      rewritten[assetId] = asset;
-      continue;
-    }
-    rewritten[assetId] = {
-      ...asset,
-      source: entryNamesById.get(assetId) ?? asset.source,
-    };
-  }
-
-  return rewritten;
+  // Built with fromEntries so that an ID such as `__proto__` stays an entry
+  // of its own rather than reaching the prototype setter.
+  return Object.fromEntries(
+    Object.entries(manifest).map(([assetId, asset]): [string, Entry] => [
+      assetId,
+      asset.type === 'apikey'
+        ? asset
+        : { ...asset, source: entryNamesById.get(assetId) ?? asset.source },
+    ]),
+  );
 };
 
-export const bundleProtocol = async (
-  protocol: CurrentProtocol,
-  protocolId?: string,
+// Zip a protocol document and the bytes of every file its manifest lists.
+const zipProtocol = async <Entry extends BundledManifestEntry>(
+  document: object,
+  manifest: Record<string, Entry> | undefined,
+  lookup: AssetLookup,
 ): Promise<Blob> => {
   const zip = new JSZip();
 
-  const resolved = protocol.assetManifest
-    ? await getAllProtocolAssets(protocol, protocolId)
+  const resolved = manifest
+    ? await resolveManifestAssets(manifest, lookup)
     : [];
 
   // The exported protocol.json must stay self-consistent with the zip: rewrite
   // each resolved asset's `source` to its collision-free entry name.
-  const sourceManifest = protocol.assetManifest;
-  const exportedProtocol = sourceManifest
-    ? { ...protocol, assetManifest: rewriteManifest(sourceManifest, resolved) }
-    : protocol;
+  const exportedProtocol = manifest
+    ? { ...document, assetManifest: rewriteManifest(manifest, resolved) }
+    : document;
 
   zip.file('protocol.json', JSON.stringify(exportedProtocol, null, 2));
 
@@ -187,39 +220,130 @@ export const bundleProtocol = async (
   });
 };
 
+export const bundleProtocol = async (
+  protocol: CurrentProtocol,
+  protocolId?: string,
+): Promise<Blob> => {
+  const [finishStageTextProblem] = findFinishStageTextProblems(protocol);
+  if (finishStageTextProblem !== undefined) {
+    throw new MissingFinishStageTextError(finishStageTextProblem);
+  }
+
+  return zipProtocol(protocol, protocol.assetManifest, (assetId) =>
+    getAssetById(assetId, protocolId),
+  );
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// A schema 8 (or older) document is not validated here, so its manifest is
+// read defensively: an entry without a name or type cannot be bundled and is
+// reported as unresolved rather than written out half-formed.
+const readLegacyManifest = (
+  protocol: LegacyProtocol,
+): Record<string, BundledManifestEntry> | undefined => {
+  const manifest: unknown = protocol.assetManifest;
+  if (!isRecord(manifest)) return undefined;
+  // Built with fromEntries so that an ID such as `__proto__` stays an entry
+  // of its own rather than reaching the prototype setter.
+  return Object.fromEntries(
+    Object.entries(manifest).map(([assetId, entry]) => {
+      const name =
+        isRecord(entry) && typeof entry.name === 'string'
+          ? entry.name
+          : assetId;
+      if (!isRecord(entry) || typeof entry.type !== 'string') {
+        throw new UnresolvedAssetsError([name]);
+      }
+      const bundled: BundledManifestEntry = {
+        ...entry,
+        type: entry.type,
+        name,
+        source: typeof entry.source === 'string' ? entry.source : undefined,
+      };
+      return [assetId, bundled];
+    }),
+  );
+};
+
+/**
+ * Bundle a protocol from Architect 8's library exactly as it is stored there,
+ * with its resources read from that library, into a `.netcanvas` Architect 8
+ * (or this app, which offers to upgrade it) can open.
+ *
+ * The row and its resources are read again, together: Architect 8 may have
+ * saved this protocol since the library listed `row`, and a document from one
+ * moment with resources from another is not a protocol anyone saved.
+ *
+ * No finish-stage text check: that requirement belongs to schema 9, and a
+ * schema 8 document has no localization for it to read.
+ */
+export const bundleLegacyProtocol = async (
+  row: LegacyStoredProtocolRow,
+): Promise<Blob> => {
+  const snapshot = await readLegacyProtocolSnapshot(row.id);
+  if (!snapshot) {
+    throw new Error('The protocol is no longer in Architect 8’s library.');
+  }
+  const { protocol } = snapshot.row;
+  const byAssetId = new Map(
+    snapshot.assets.map((asset) => [asset.assetId, asset]),
+  );
+  return zipProtocol(protocol, readLegacyManifest(protocol), (assetId) =>
+    Promise.resolve(byAssetId.get(assetId)),
+  );
+};
+
+// Hand a bundled protocol to the browser as a file download.
+const saveNetcanvas = (blob: Blob, protocolName?: string): void => {
+  // build local timestamp YYYY-MM-DD_HH-MM
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const timestamp = `${year}-${month}-${day}_${hours}-${minutes}`;
+
+  // Use provided name, or default to "protocol"
+  const fileName = `${(protocolName ?? 'protocol').replace(/\s+/g, '_')}-${timestamp}.netcanvas`;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Download a protocol from Architect 8's library. Fails with
+ * `UnresolvedAssetsError` when a resource cannot be read, like any download.
+ */
+export const downloadLegacyProtocolAsNetcanvas = async (
+  row: LegacyStoredProtocolRow,
+): Promise<void> => {
+  saveNetcanvas(await bundleLegacyProtocol(row), row.name);
+};
+
 export async function downloadProtocolAsNetcanvas(
   protocol: CurrentProtocol,
   protocolName?: string,
   protocolId?: string,
 ): Promise<void> {
   try {
-    const blob = await bundleProtocol(protocol, protocolId);
-
-    // build local timestamp YYYY-MM-DD_HH-MM
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const timestamp = `${year}-${month}-${day}_${hours}-${minutes}`;
-
-    // Use provided name, or default to "protocol"
-    const fileName = `${(protocolName ?? 'protocol').replace(/\s+/g, '_')}-${timestamp}.netcanvas`;
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    saveNetcanvas(await bundleProtocol(protocol, protocolId), protocolName);
   } catch (error) {
-    // Passed through rather than wrapped: the caller describes this one to the
-    // researcher by naming the resources, and wrapping would hide the type
+    // Passed through rather than wrapped: the caller describes these to the
+    // researcher by naming what is missing, and wrapping would hide the type
     // behind a message no dialog should ever show.
-    if (error instanceof UnresolvedAssetsError) {
+    if (
+      error instanceof UnresolvedAssetsError ||
+      error instanceof MissingFinishStageTextError
+    ) {
       throw error;
     }
     throw new Error(

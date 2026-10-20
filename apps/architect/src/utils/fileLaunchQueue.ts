@@ -29,15 +29,47 @@ const reportLaunchReadFailure = (failedCount: number): void => {
   emitReadFailure();
 };
 
-export const initFileLaunchCapture = (): void => {
+// Count a read in flight for `hasPendingLaunchFiles`, so the startup update
+// check holds while it runs, then queue whatever files it produced.
+const trackLaunchRead = (
+  read: () => Promise<File[]>,
+  operation: string,
+): void => {
+  pendingLaunchReads += 1;
+  emit();
+  void read()
+    .then((files) => {
+      if (files.length === 0) return;
+      pendingFiles = [...pendingFiles, ...files];
+      emit();
+    })
+    .catch((error: unknown) => {
+      reportError(error, { operation });
+    })
+    .finally(() => {
+      pendingLaunchReads -= 1;
+      emit();
+    });
+};
+
+type LaunchCaptureOptions = {
+  /**
+   * Decide what happens to launched .netcanvas files before they are queued:
+   * resolve with the files this app should still open itself. Architect 8
+   * served inside Architect 9 hands them on to Architect 9 instead.
+   */
+  routeFiles?: (files: File[]) => Promise<File[]>;
+};
+
+export const initFileLaunchCapture = (
+  options: LaunchCaptureOptions = {},
+): void => {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
   const queue = window.launchQueue;
   if (!queue) return;
   queue.setConsumer((params) => {
-    pendingLaunchReads += 1;
-    emit();
-    void (async () => {
+    trackLaunchRead(async () => {
       // allSettled so one unreadable handle (file moved/deleted, volume
       // unmounted between the OS launch and consumption) doesn't drop the whole
       // batch — read what we can and report the rest.
@@ -63,17 +95,9 @@ export const initFileLaunchCapture = (): void => {
       const netcanvas = files.filter((file) =>
         file.name.toLowerCase().endsWith('.netcanvas'),
       );
-      if (netcanvas.length === 0) return;
-      pendingFiles = [...pendingFiles, ...netcanvas];
-      emit();
-    })()
-      .catch((error: unknown) => {
-        reportError(error, { operation: 'fileLaunchHandle' });
-      })
-      .finally(() => {
-        pendingLaunchReads -= 1;
-        emit();
-      });
+      if (netcanvas.length === 0) return [];
+      return options.routeFiles ? options.routeFiles(netcanvas) : netcanvas;
+    }, 'fileLaunchHandle');
   });
 };
 

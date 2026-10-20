@@ -233,8 +233,10 @@
       "DyadCensus": "Censo de díadas",
       "EgoForm": "Formulario de ego",
       "FamilyPedigree": "Genograma familiar",
+      "FinishSession": "Pantalla de finalización",
       "Geospatial": "Interfaz geoespacial",
       "Information": "Información",
+      "LanguageChooser": "Selector de idioma",
       "NameGenerator": "Generador de nombres (con formularios)",
       "NameGeneratorQuickAdd": "Generador de nombres (adición rápida)",
       "NameGeneratorRoster": "Generador de nombres a partir de listas",
@@ -275,8 +277,6 @@
       },
       "loading": "Preparando la previsualización…",
       "finishConfirmation": "Esto es una previsualización, así que no se guarda nada. Finalizar termina esta ejecución del protocolo, y después puede volver a iniciarla.",
-      "finishedHeading": "Previsualización finalizada",
-      "finishedDescription": "La entrevista finalizó tal como lo haría para un participante. No se guardó nada.",
       "restart": "Iniciar la previsualización de nuevo",
       "backToProtocol": "Volver al protocolo",
       "errorHeading": "Este protocolo no se puede previsualizar",
@@ -336,7 +336,7 @@
       "bestFor": "Ideal para",
       "downloadVersion": "Descargar la versión {version}",
       "platformAccessibleName": "{platform} para {app}",
-      "schemaVersionInfo": "Architect Classic e Interviewer Classic admiten protocolos de esquema 7. Architect, Interviewer y Fresco basados en el navegador utilizan el esquema 8, que incluye las funciones más recientes. La actualización de un protocolo es unidireccional, así que conserve el archivo original de esquema 7 si todavía necesita las aplicaciones Classic.",
+      "schemaVersionInfo": "Architect Classic e Interviewer Classic admiten protocolos de esquema 7. Architect, Interviewer y Fresco basados en el navegador utilizan el esquema 9, que incluye las funciones más recientes. La actualización de un protocolo es unidireccional, así que conserve el archivo original de esquema 7 si todavía necesita las aplicaciones Classic.",
       "schemaVersionLink": "Más información sobre las versiones del esquema"
     },
     "platforms": {

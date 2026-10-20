@@ -52,11 +52,23 @@ export const interfaceNameMessages = defineMessages({
     description:
       'Researcher-facing interface name. Interface for locating network members on a map. Not a protocol-authored stage label.',
   },
+  FinishSession: {
+    id: 'protocolBuilder.interface.finishSession',
+    defaultMessage: 'Finish Screen',
+    description:
+      'Researcher-facing interface name. The screen that ends the interview, where the participant reads closing text and finishes the interview. Not a protocol-authored stage label.',
+  },
   Information: {
     id: 'protocolBuilder.interface.information',
     defaultMessage: 'Information',
     description:
       'Researcher-facing interface name. Interface for presenting researcher-authored information. Not a protocol-authored stage label.',
+  },
+  LanguageChooser: {
+    id: 'protocolBuilder.interface.languageChooser',
+    defaultMessage: 'Language Chooser',
+    description:
+      'Researcher-facing interface name. Interface where the participant chooses which of the protocol languages the rest of the interview is shown in. Not a protocol-authored stage label.',
   },
   NameGenerator: {
     id: 'protocolBuilder.interface.nameGenerator',

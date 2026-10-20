@@ -42,6 +42,12 @@ vi.mock('~/lib/posthog-server', () => ({
   flushPostHog: vi.fn(),
 }));
 
+import {
+  encryptedNetwork,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
+import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
+
 import { POST } from '../route';
 
 const legacyNetwork = {
@@ -65,6 +71,8 @@ const legacyNetwork = {
   },
 };
 
+const PROTOCOL_HASH = 'protocol-hash';
+
 function makeRequest(network: unknown, extra: Record<string, unknown> = {}) {
   return new NextRequest('http://localhost/interview/interview-1/sync', {
     method: 'POST',
@@ -75,6 +83,7 @@ function makeRequest(network: unknown, extra: Record<string, unknown> = {}) {
       currentStep: 2,
       lastUpdated: '2026-08-12T00:00:00.000Z',
       syncRevision: 1,
+      protocolHash: PROTOCOL_HASH,
       ...extra,
     }),
   });
@@ -113,10 +122,12 @@ function installInterviewRow(
     stageMetadata: unknown;
     finishTime: Date | null;
     currentStep: number;
+    protocol: { hash: string };
   } | null = initial
     ? {
         stageMetadata: null,
         finishTime: null,
+        protocol: { hash: PROTOCOL_HASH },
         ...initial,
         currentStep: 0,
       }
@@ -131,6 +142,7 @@ function installInterviewRow(
         id: string;
         syncRevision: { lt: number; gte: number };
         finishTime?: null;
+        protocol: { hash: string };
       };
       data: { syncRevision: number; network: unknown; currentStep: number };
     }) => {
@@ -139,7 +151,8 @@ function installInterviewRow(
       if (
         row.syncRevision >= where.syncRevision.lt ||
         row.syncRevision < where.syncRevision.gte ||
-        (where.finishTime === null && row.finishTime !== null)
+        (where.finishTime === null && row.finishTime !== null) ||
+        row.protocol.hash !== where.protocol.hash
       ) {
         return Promise.resolve({ count: 0 });
       }
@@ -164,6 +177,7 @@ describe('interview sync route', () => {
       stageMetadata: null,
       finishTime: null,
       syncRevision: 0,
+      protocol: { hash: PROTOCOL_HASH },
     });
   });
 
@@ -177,6 +191,7 @@ describe('interview sync route', () => {
       where: {
         id: 'interview-1',
         syncRevision: { lt: 1, gte: 1 - 10_000 },
+        protocol: { hash: PROTOCOL_HASH },
       },
       data: {
         network: {
@@ -224,6 +239,43 @@ describe('interview sync route', () => {
     expect(updateManyMock).not.toHaveBeenCalled();
   });
 
+  it('refuses a write from a page loaded before an upgrade, leaving the row as it is', async () => {
+    // No hash is what a bundle from before an upgrade to schema 9 sends; a
+    // different one is a page loaded before an upgrade rewrote its protocol,
+    // whether or not that upgrade changed the schema version.
+    for (const extra of [
+      { protocolHash: undefined },
+      { protocolHash: 'hash-before-the-upgrade' },
+    ]) {
+      const response = await post(
+        makeRequest(networkNamed('stale'), { syncRevision: 1, ...extra }),
+      );
+      expect(response.status).toBe(409);
+    }
+    expect(updateManyMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses a write when an upgrade rewrites the protocol while the write is in flight', async () => {
+    const readRow = installInterviewRow({
+      syncRevision: 4,
+      network: networkNamed('upgraded'),
+    });
+    findUniqueMock.mockImplementationOnce(() => {
+      const snapshot = { ...readRow() };
+      const row = readRow();
+      if (row) row.protocol = { hash: 'hash-after-the-upgrade' };
+      return Promise.resolve(snapshot);
+    });
+
+    const response = await post(
+      makeRequest(networkNamed('stale'), { syncRevision: 5 }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(readRow()?.network).toEqual(networkNamed('upgraded'));
+    expect(readRow()?.syncRevision).toBe(4);
+  });
+
   it('keeps the generic HTTP 400 response for malformed JSON', async () => {
     const request = new NextRequest(
       'http://localhost/interview/interview-1/sync',
@@ -244,6 +296,51 @@ describe('interview sync route', () => {
     });
     expect(updateManyMock).not.toHaveBeenCalled();
   });
+  describe('encrypted interviews', () => {
+    // The next page load reads the row with exactly this call, and refuses to
+    // start the interview when the parse fails.
+    const loadStoredNetwork = (stored: unknown) => {
+      const parsed = parseStoredInterviewSession({
+        network: stored,
+        stageMetadata: null,
+      });
+      if (!parsed.success) throw new Error('The stored network did not parse');
+      return parsed.data.network;
+    };
+
+    it.each([
+      {
+        label: 'IV-only values',
+        network: encryptedNetwork,
+      },
+      {
+        label: 'schema 8 values',
+        network: schema8EncryptedNetwork,
+      },
+    ])(
+      'keeps $label unchanged from a sync to the next load',
+      async ({ network }) => {
+        const readRow = installInterviewRow({
+          syncRevision: 0,
+          network: networkNamed('initial'),
+        });
+
+        const response = await post(makeRequest(network, { syncRevision: 1 }));
+
+        await expect(response.json()).resolves.toEqual({
+          success: true,
+          applied: true,
+          syncRevision: 1,
+        });
+        expect(readRow()?.network).toStrictEqual(network);
+
+        // What a jsonb column hands back.
+        const stored: unknown = JSON.parse(JSON.stringify(readRow()?.network));
+        expect(loadStoredNetwork(stored)).toStrictEqual(network);
+      },
+    );
+  });
+
   describe('write ordering', () => {
     it('discards a write that lands after a newer one instead of rolling the interview back', async () => {
       const readRow = installInterviewRow({
@@ -333,8 +430,7 @@ describe('interview sync route', () => {
 
     it('refuses a write that carries no revision, rather than applying it unordered', async () => {
       // There is no shape of request that reaches the row without an order to
-      // be judged in. An upgrade takes the deployment down, so no browser is
-      // left running a bundle that does not send one.
+      // be judged in.
       const request = new NextRequest(
         'http://localhost/interview/interview-1/sync',
         {
@@ -345,6 +441,7 @@ describe('interview sync route', () => {
             network: networkNamed('unnumbered'),
             currentStep: 2,
             lastUpdated: '2026-08-12T00:00:00.000Z',
+            protocolHash: PROTOCOL_HASH,
           }),
         },
       );
@@ -365,6 +462,7 @@ describe('interview sync route', () => {
       findUniqueMock.mockResolvedValue({
         finishTime: new Date('2026-08-12T00:00:00.000Z'),
         syncRevision: 9,
+        protocol: { hash: PROTOCOL_HASH },
       });
 
       const response = await post(

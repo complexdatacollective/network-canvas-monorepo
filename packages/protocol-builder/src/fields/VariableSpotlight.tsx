@@ -23,11 +23,17 @@ import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { normalizeForComparison } from '@codaco/shared-consts';
+import {
+  normalizeCodebookName,
+  normalizeForComparison,
+} from '@codaco/shared-consts';
 
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import AttributePill from './AttributePill.tsx';
-import { variableNameRefusal } from './variableNameRules.ts';
+import {
+  variableNameRefusal,
+  type VariableNameScope,
+} from './variableNameRules.ts';
 import type { VariablePickerOption } from './VariablePickerField.tsx';
 
 const messages = defineMessages({
@@ -183,14 +189,16 @@ export type VariableSpotlightProps = Readonly<{
    */
   'onCreate'?: (name: string) => Promise<CreateRowOutcome>;
   /**
-   * Every attribute name the type this would be created on already holds.
+   * Every attribute the type this would be created on already holds.
    *
    * Wider than `options`, which the caller has narrowed to the kinds of answer
    * it can use: a name is taken by a date attribute just as firmly as by a
    * text one, and offering to create it would ask the codebook for a name it
-   * already holds.
+   * already holds — or for export columns another attribute already writes.
    */
-  'namesInUse'?: readonly string[];
+  'nameScope'?: VariableNameScope;
+  /** The kind of answer the attribute this creates will record, if known. */
+  'newVariableType'?: string;
   /** Names the dialog after the label of the field that opened it. */
   'aria-labelledby'?: string;
   'finalFocus'?: ComponentProps<typeof ModalPopup>['finalFocus'];
@@ -213,7 +221,8 @@ export default function VariableSpotlight({
   options,
   onSelect,
   onCreate,
-  namesInUse,
+  nameScope,
+  newVariableType,
   'aria-labelledby': ariaLabelledBy,
   finalFocus,
 }: VariableSpotlightProps) {
@@ -289,6 +298,11 @@ export default function VariableSpotlight({
     );
   }, [sorted, term]);
 
+  // What the codebook would be asked to store: the name as typed, trimmed and
+  // canonical. A leading space is not a different attribute, and a search of
+  // spaces alone has nothing to create.
+  const typedName = normalizeCodebookName(term);
+
   /**
    * Why the typed name cannot be created, or `undefined` while it can.
    *
@@ -303,13 +317,14 @@ export default function VariableSpotlight({
    */
   const refusal = useMemo(
     () =>
-      term === ''
+      typedName === ''
         ? undefined
-        : variableNameRefusal(term, {
+        : variableNameRefusal(typedName, {
             intl,
-            ...(namesInUse === undefined ? {} : { namesInUse }),
+            ...(nameScope === undefined ? {} : { scope: nameScope }),
+            ...(newVariableType === undefined ? {} : { type: newVariableType }),
           }),
-    [intl, namesInUse, term],
+    [intl, nameScope, newVariableType, typedName],
   );
 
   /**
@@ -320,12 +335,13 @@ export default function VariableSpotlight({
    * answer.
    */
   const exactMatch = useMemo(() => {
-    const typed = normalizeForComparison(term);
+    const typed = normalizeForComparison(typedName);
     return options.some(
       (option) => normalizeForComparison(option.label) === typed,
     );
-  }, [options, term]);
-  const offersCreate = onCreate !== undefined && term !== '' && !exactMatch;
+  }, [options, typedName]);
+  const offersCreate =
+    onCreate !== undefined && typedName !== '' && !exactMatch;
 
   const rows = useMemo<SpotlightRow[]>(() => {
     const attributes = matching.map((option): SpotlightRow => ({
@@ -336,16 +352,16 @@ export default function VariableSpotlight({
     if (!offersCreate) return attributes;
     return [
       refusal === undefined
-        ? { id: `create:${term}`, kind: 'create', name: term }
+        ? { id: `create:${typedName}`, kind: 'create', name: typedName }
         : {
-            id: `refused:${term}`,
+            id: `refused:${typedName}`,
             kind: 'refused',
-            name: term,
+            name: typedName,
             reason: refusal,
           },
       ...attributes,
     ];
-  }, [matching, offersCreate, refusal, term]);
+  }, [matching, offersCreate, refusal, typedName]);
 
   /**
    * The rows Enter and a click do nothing on: a refused name, and — while a
@@ -443,7 +459,7 @@ export default function VariableSpotlight({
       // happens to contain it.
       if (offersCreate) {
         event.preventDefault();
-        if (refusal === undefined) void requestCreate(term);
+        if (refusal === undefined) void requestCreate(typedName);
         return;
       }
 
@@ -461,7 +477,7 @@ export default function VariableSpotlight({
       requestCreate,
       resultsId,
       rows.length,
-      term,
+      typedName,
     ],
   );
 

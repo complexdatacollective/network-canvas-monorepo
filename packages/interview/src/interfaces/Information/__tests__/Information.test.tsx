@@ -4,12 +4,18 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { Item } from '@codaco/protocol-validation';
+import type {
+  Item,
+  LocaleTag,
+  LocalizationDeclaration,
+  LocalizedString,
+} from '@codaco/protocol-validation';
 
 import { ContractProvider } from '../../../contract/context';
 import type { ResolvedAsset } from '../../../contract/types';
 import protocol from '../../../store/modules/protocol';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import Information from '../Information';
 
 type InformationStage = StageProps<'Information'>['stage'];
@@ -26,14 +32,22 @@ beforeAll(() => {
   vi.stubGlobal('ResizeObserver', StubResizeObserver);
 });
 
-function makeStore(assets: ResolvedAsset[]) {
+const ENGLISH_ONLY: LocalizationDeclaration = {
+  defaultLocale: 'en',
+  locales: ['en'],
+};
+
+function makeStore(
+  assets: ResolvedAsset[],
+  localization: LocalizationDeclaration,
+) {
   return configureStore({
     reducer: { protocol },
     preloadedState: {
       // Partial protocol slice — only `assets` is read by the Information
       // stage. Mirrors the `as never` preloadedState idiom used by the other
       // interface tests (a full ProtocolPayload is not needed here).
-      protocol: { assets } as never,
+      protocol: { assets, localization } as never,
     },
   });
 }
@@ -41,17 +55,24 @@ function makeStore(assets: ResolvedAsset[]) {
 function renderInformation(
   stage: InformationStage,
   assets: ResolvedAsset[],
-  onRequestAsset: (id: string) => Promise<string> = () =>
-    Promise.resolve('blob://asset'),
+  {
+    localization = ENGLISH_ONLY,
+    locale = null,
+  }: { localization?: LocalizationDeclaration; locale?: LocaleTag | null } = {},
 ) {
-  const store = makeStore(assets);
+  const store = makeStore(assets, localization);
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider onFinish={vi.fn()} onRequestAsset={onRequestAsset}>
-          {children}
-        </ContractProvider>
+        <TestProtocolLocalization localization={localization} locale={locale}>
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={() => Promise.resolve('blob://asset')}
+          >
+            {children}
+          </ContractProvider>
+        </TestProtocolLocalization>
       </Provider>
     );
   }
@@ -68,11 +89,14 @@ function renderInformation(
   );
 }
 
-const makeStage = (items: Item[]): InformationStage => ({
+const makeStage = (
+  items: Item[],
+  title: LocalizedString = { en: 'Information' },
+): InformationStage => ({
   id: 'info-1',
   type: 'Information',
-  label: 'Info',
-  title: 'Information',
+  label: { en: 'Info' },
+  title,
   items,
 });
 
@@ -159,8 +183,8 @@ describe('Information media MIME type derives from source', () => {
  * An item's `description` is what the researcher wrote about the file, and it
  * is the only thing a participant who cannot see or hear it is given: an
  * image's alt text, and the accessible name of an audio or video player. The
- * asset's own name is a filing label — "Intro Clip" — and is what is left only
- * when nobody has written a description.
+ * asset's own name is a filing label — "Intro Clip" — in no particular
+ * language, so a player nobody described is named only for what it is.
  */
 describe('what a participant who cannot see a media item is told', () => {
   const named = async (selector: string) => {
@@ -174,7 +198,7 @@ describe('what a participant who cannot see a media item is told', () => {
         id: 'i1',
         type: 'asset',
         content: 'img-1',
-        description: 'Two people talking at a kitchen table.',
+        description: { en: 'Two people talking at a kitchen table.' },
       },
     ]);
 
@@ -194,7 +218,7 @@ describe('what a participant who cannot see a media item is told', () => {
         id: 'i1',
         type: 'asset',
         content: 'aud-1',
-        description: 'A researcher explaining what happens next.',
+        description: { en: 'A researcher explaining what happens next.' },
       },
     ]);
 
@@ -218,7 +242,9 @@ describe('what a participant who cannot see a media item is told', () => {
         id: 'i1',
         type: 'asset',
         content: 'vid-1',
-        description: 'A researcher demonstrating how to draw a connection.',
+        description: {
+          en: 'A researcher demonstrating how to draw a connection.',
+        },
       },
     ]);
 
@@ -236,7 +262,7 @@ describe('what a participant who cannot see a media item is told', () => {
     );
   });
 
-  it('falls back to the file’s name when nobody described the video', async () => {
+  it('names an undescribed video player as a video, not after the file', async () => {
     const stage = makeStage([{ id: 'i1', type: 'asset', content: 'vid-1' }]);
 
     renderInformation(stage, [
@@ -248,7 +274,22 @@ describe('what a participant who cannot see a media item is told', () => {
       },
     ]);
 
-    expect(await named('video')).toBe('Intro Clip');
+    expect(await named('video')).toBe('Video');
+  });
+
+  it('names an undescribed audio player as audio, not after the file', async () => {
+    const stage = makeStage([{ id: 'i1', type: 'asset', content: 'aud-1' }]);
+
+    renderInformation(stage, [
+      {
+        assetId: 'aud-1',
+        name: 'Intro Clip',
+        type: 'audio',
+        source: 'clip.mp3',
+      },
+    ]);
+
+    expect(await named('audio')).toBe('Audio');
   });
 });
 
@@ -258,8 +299,8 @@ describe('what a participant who cannot see a media item is told', () => {
  * The schema accepts any optional string, so an imported or hand-authored
  * protocol can carry `""` or `"   "`, and an item nobody has reopened in the
  * builder is never rewritten. Read literally, such a description names the
- * player nothing at all — an empty accessible name, which is strictly worse
- * than the file's own name — so blank and absent have to be the same answer.
+ * player nothing at all — an empty accessible name — so blank and absent have
+ * to be the same answer.
  */
 describe('a media item described with nothing but whitespace', () => {
   const blank = '   ';
@@ -269,9 +310,9 @@ describe('a media item described with nothing but whitespace', () => {
     return document.querySelector(selector)?.getAttribute('aria-label');
   };
 
-  it('names a video player after the file', async () => {
+  it('names a video player as a video', async () => {
     const stage = makeStage([
-      { id: 'i1', type: 'asset', content: 'vid-1', description: blank },
+      { id: 'i1', type: 'asset', content: 'vid-1', description: { en: blank } },
     ]);
 
     renderInformation(stage, [
@@ -283,12 +324,12 @@ describe('a media item described with nothing but whitespace', () => {
       },
     ]);
 
-    expect(await named('video')).toBe('Intro Clip');
+    expect(await named('video')).toBe('Video');
   });
 
-  it('names an audio player after the file', async () => {
+  it('names an audio player as audio', async () => {
     const stage = makeStage([
-      { id: 'i1', type: 'asset', content: 'aud-1', description: blank },
+      { id: 'i1', type: 'asset', content: 'aud-1', description: { en: blank } },
     ]);
 
     renderInformation(stage, [
@@ -300,7 +341,7 @@ describe('a media item described with nothing but whitespace', () => {
       },
     ]);
 
-    expect(await named('audio')).toBe('Intro Clip');
+    expect(await named('audio')).toBe('Audio');
   });
 
   /**
@@ -312,7 +353,7 @@ describe('a media item described with nothing but whitespace', () => {
    */
   it('leaves a picture decorative rather than alt-texting the blank', async () => {
     const stage = makeStage([
-      { id: 'i1', type: 'asset', content: 'img-1', description: blank },
+      { id: 'i1', type: 'asset', content: 'img-1', description: { en: blank } },
     ]);
 
     renderInformation(stage, [
@@ -321,5 +362,117 @@ describe('a media item described with nothing but whitespace', () => {
 
     await waitFor(() => expect(document.querySelector('img')).toBeTruthy());
     expect(document.querySelector('img')?.getAttribute('alt')).toBe('');
+  });
+});
+
+describe('protocol text in the interview language', () => {
+  const ENGLISH_AND_ARABIC: LocalizationDeclaration = {
+    defaultLocale: 'en',
+    locales: ['en', 'ar'],
+  };
+
+  it('leaves a title shown in a fallback language to the interview’s boundary', () => {
+    renderInformation(makeStage([], { en: 'Before you begin' }), [], {
+      localization: ENGLISH_AND_ARABIC,
+      locale: 'ar',
+    });
+
+    const heading = screen.getByRole('heading', { name: 'Before you begin' });
+    expect(heading.closest('[lang], [dir]')).toBeNull();
+  });
+
+  it('shows a translated title with no language of its own', () => {
+    renderInformation(
+      makeStage([], { en: 'Before you begin', ar: 'قبل أن تبدأ' }),
+      [],
+      { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
+    );
+
+    const heading = screen.getByRole('heading', { name: 'قبل أن تبدأ' });
+    expect(heading.closest('[lang], [dir]')).toBeNull();
+  });
+
+  it('formats a text item as a message before rendering it as markdown', () => {
+    renderInformation(
+      makeStage([
+        {
+          id: 'i1',
+          type: 'text',
+          content: { en: "Press '{'Next'}' when you are **ready**." },
+        },
+      ]),
+      [],
+    );
+
+    expect(screen.getByText('ready').tagName).toBe('STRONG');
+    expect(
+      screen.getByText((_, element) =>
+        element?.tagName === 'P'
+          ? element.textContent === 'Press {Next} when you are ready.'
+          : false,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the blocks of a text item beside the title', () => {
+    renderInformation(
+      makeStage(
+        [
+          {
+            id: 'i1',
+            type: 'text',
+            content: { en: '## Section\n\nSome **context**.' },
+          },
+        ],
+        { en: 'Before you begin' },
+      ),
+      [],
+    );
+
+    // Siblings: the typography's `not-first:`/`not-last:` spacing reads that
+    // order, so a wrapper around the item would respace it.
+    const title = screen.getByRole('heading', { name: 'Before you begin' });
+    const section = screen.getByRole('heading', { name: 'Section' });
+    expect(section.previousElementSibling).toBe(title);
+    expect(section.nextElementSibling).toBe(
+      screen.getByText('context').closest('p'),
+    );
+  });
+
+  it('leaves a text item’s language to the interview’s boundary', () => {
+    renderInformation(
+      makeStage([
+        { id: 'i1', type: 'text', content: { en: 'Some **context**.' } },
+      ]),
+      [],
+      { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
+    );
+
+    // Even shown in a fallback language, the item names none of its own: the
+    // interview sets one language for everything it renders.
+    expect(screen.getByText('context').closest('[lang], [dir]')).toBeNull();
+  });
+
+  it('leaves an image description shown in a fallback language to the interview’s boundary', async () => {
+    renderInformation(
+      makeStage([
+        {
+          id: 'i1',
+          type: 'asset',
+          content: 'img-1',
+          description: { en: 'Two people talking at a kitchen table.' },
+        },
+      ]),
+      [{ assetId: 'img-1', name: 'Photo', type: 'image', source: 'photo.png' }],
+      { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
+    );
+
+    await waitFor(() => expect(document.querySelector('img')).toBeTruthy());
+    const image = document.querySelector('img');
+    expect(image).toHaveAttribute(
+      'alt',
+      'Two people talking at a kitchen table.',
+    );
+    expect(image?.closest('[lang], [dir]')).toBeNull();
   });
 });

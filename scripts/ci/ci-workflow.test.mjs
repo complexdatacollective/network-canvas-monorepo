@@ -2763,3 +2763,76 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     /github\.event\.action == 'closed'/,
   );
 });
+
+// Architect 9 and Interviewer 9 each serve their 8.x line at /v8/ from their
+// own deploy, extracted at build time from the tarball apps/<app>/legacy-<app>.json
+// pins. A production deploy without it would strand every researcher who kept
+// a schema 8 protocol on 8.x, so both lanes that deploy each app require it in
+// the build (which fails while nothing is pinned) and check the built dist
+// again, outside the turbo cache, before anything goes out.
+for (const { app, label, envName } of [
+  {
+    app: 'architect',
+    label: 'Architect 8',
+    envName: 'ARCHITECT_REQUIRE_LEGACY_V8',
+  },
+  {
+    app: 'interviewer',
+    label: 'Interviewer 8',
+    envName: 'INTERVIEWER_REQUIRE_LEGACY_V8',
+  },
+]) {
+  test(`every ${app} production build requires the bundled ${label}`, () => {
+    const hotfixWorkflow = parse(
+      readFileSync(new URL('hotfix-release.yml', WORKFLOW_DIR), 'utf8'),
+    );
+    const lanes = [
+      {
+        name: `apps-release-${app}`,
+        steps: parsedWorkflow.jobs[`apps-release-${app}`].steps,
+        required: 'true',
+        firstOutward: `Deploy ${app} to production`,
+      },
+      {
+        name: 'hotfix-release',
+        steps: hotfixWorkflow.jobs['hotfix-release'].steps,
+        required: `\${{ inputs.app == '${app}' && hashFiles('apps/${app}/legacy-${app}.json') != '' && 'true' || '' }}`,
+        // The tag is claimed before the deploy; neither may happen first.
+        firstOutward: 'Claim the release tag',
+      },
+    ];
+
+    for (const { name, steps, required, firstOutward } of lanes) {
+      const buildIndex = steps.findIndex((step) =>
+        new RegExp(
+          `turbo run build --filter="?@codaco\\/(?:${app}|\\$APP)"?$`,
+        ).test(step.run?.trim() ?? ''),
+      );
+      assert.notEqual(buildIndex, -1, `${name} builds ${app}`);
+      assert.equal(
+        steps[buildIndex].env?.[envName],
+        required,
+        `${name}'s build requires ${label}`,
+      );
+
+      const checkIndex = steps.findIndex(
+        (step) => step.name === `Check ${label} is bundled`,
+      );
+      const outwardIndex = steps.findIndex(
+        (step) => step.name === firstOutward,
+      );
+      assert.ok(
+        buildIndex < checkIndex && checkIndex < outwardIndex,
+        `${name} checks dist/v8 after building and before "${firstOutward}"`,
+      );
+      assert.match(
+        steps[checkIndex].run,
+        /for file in index\.html sw\.js dist-info\.json; do/,
+      );
+      assert.ok(
+        steps[checkIndex].run.includes(`-f "apps/${app}/dist/v8/$file"`),
+        `${name} checks apps/${app}/dist/v8`,
+      );
+    }
+  });
+}

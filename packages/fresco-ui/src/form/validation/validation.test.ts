@@ -216,7 +216,10 @@ describe('Validation Utils', () => {
       codebook: {
         ego: {
           variables: {
-            yearsHere: { name: 'yearsHere', type: 'number' },
+            yearsHere: {
+              name: 'yearsHere',
+              type: 'number',
+            },
           },
         },
       },
@@ -247,7 +250,7 @@ describe('Validation Utils', () => {
           }),
         ),
       ).toEqual([
-        "Must be greater than your answer to 'How many years have you lived here?'.",
+        "Your answer must be greater than your answer to 'How many years have you lived here?'.",
       ]);
     });
 
@@ -259,7 +262,7 @@ describe('Validation Utils', () => {
             validationContext: comparisonContext(),
           }),
         ),
-      ).toEqual(['Must be greater than your earlier answer.']);
+      ).toEqual(['Your answer must be greater than your earlier answer.']);
     });
   });
 

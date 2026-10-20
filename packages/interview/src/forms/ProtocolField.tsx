@@ -1,3 +1,7 @@
+'use client';
+
+import type { ReactNode } from 'react';
+
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type {
   FieldValue,
@@ -16,8 +20,18 @@ import ToggleButtonGroupField from '@codaco/fresco-ui/form/fields/ToggleButtonGr
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import type { ComponentType, Variable } from '@codaco/protocol-validation';
+import type {
+  ComponentType,
+  LocalizedString,
+  Variable,
+} from '@codaco/protocol-validation';
 
+import { DynamicMarkdown } from '../dynamicValues/DynamicText';
+import { markdownSource } from '../dynamicValues/resolveDynamicText';
+import {
+  type ResolvedProtocolText,
+  useResolveLocalizedString,
+} from '../localization/ProtocolLocalizationProvider';
 import { buildDatePickerBoundProps } from './buildDatePickerBoundProps';
 import { buildFieldValidationProps } from './buildFieldValidationProps';
 import { resolveRenderedControl } from './resolveRenderedControl';
@@ -37,21 +51,56 @@ const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
   RelativeDatePicker: RelativeDatePickerField,
 };
 
+type ProtocolFieldOption = {
+  label: LocalizedString;
+  value: string | number | boolean;
+  negative?: boolean;
+};
+
 export type ProtocolFieldDefinition = {
   variable: string;
-  label: string;
+  label: LocalizedString;
   type: Variable['type'];
   component: ComponentType;
-  hint?: string;
+  hint?: LocalizedString;
   showValidationHints?: boolean;
-  options?: unknown[];
+  options?: readonly ProtocolFieldOption[];
   parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
 };
 
+// `parameters` is a loose record (a NetworkComposer field may carry any key),
+// so a scale's end label is checked for the localized shape before it is used.
+const isLocalizedString = (value: unknown): value is LocalizedString =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.keys(value).length > 0 &&
+  Object.values(value).every((text) => typeof text === 'string');
+
+/**
+ * A caption, with any dynamic values in it marked out. The field's label
+ * renders a string caption as markdown but shows a node as it is, so a
+ * caption with values is rendered as markdown here, with the values kept out
+ * of it.
+ */
+export const shownLabel = ({ text, parts }: ResolvedProtocolText): ReactNode =>
+  parts === undefined ? text : <DynamicMarkdown parts={parts} />;
+
+/**
+ * A hint, which the field renders as markdown, with any dynamic values in it
+ * marked out and kept out of the markdown.
+ */
+const shownHint = ({ text, parts }: ResolvedProtocolText): ReactNode =>
+  parts === undefined ? text : <DynamicMarkdown parts={parts} />;
+
 type ProtocolFieldProps = {
   field: ProtocolFieldDefinition;
   name?: string;
+  /** Shown in place of the field's authored label. */
+  label?: ReactNode;
+  /** Shown in place of the field's authored hint. */
+  hint?: ReactNode;
   initialValue?: FieldValue;
   autoFocus?: boolean;
   validationContext?: ValidationContext;
@@ -68,10 +117,13 @@ type ProtocolFieldProps = {
 export default function ProtocolField({
   field,
   name = field.variable,
+  label,
+  hint,
   initialValue,
   autoFocus,
   validationContext,
 }: ProtocolFieldProps) {
+  const resolve = useResolveLocalizedString();
   const { component, optionsApply } = resolveRenderedControl({
     type: field.type,
     component: field.component,
@@ -81,10 +133,12 @@ export default function ProtocolField({
   const props: {
     name: string;
     nameMode: 'opaque';
-    label: string;
-    hint?: string;
+    label: ReactNode;
+    hint?: ReactNode | string;
     showValidationHints?: boolean;
-    options?: unknown[];
+    options?: (Omit<ProtocolFieldOption, 'label'> & {
+      label: string;
+    })[];
     useColumns?: boolean;
     type?: string;
     minLabel?: string;
@@ -100,8 +154,10 @@ export default function ProtocolField({
   } & Partial<ValidationPropsCatalogue> = {
     name,
     nameMode: 'opaque',
-    label: field.label,
-    ...(field.hint !== undefined && { hint: field.hint }),
+    label: label ?? shownLabel(resolve(field.label)),
+    ...(hint !== undefined
+      ? { hint }
+      : field.hint !== undefined && { hint: shownHint(resolve(field.hint)) }),
     ...(field.showValidationHints !== undefined && {
       showValidationHints: field.showValidationHints,
     }),
@@ -125,7 +181,10 @@ export default function ProtocolField({
   // replacement asks its own two-valued question, so the codebook's boolean
   // options would change the question's answer domain.
   if (field.options && optionsApply) {
-    props.options = field.options;
+    props.options = field.options.map((option) => ({
+      ...option,
+      label: resolve(option.label).text,
+    }));
     if (
       (component === 'CheckboxGroup' || component === 'RadioGroup') &&
       field.options.length > 6
@@ -139,8 +198,12 @@ export default function ProtocolField({
 
   if (component === 'VisualAnalogScale' && field.parameters) {
     const { minLabel, maxLabel } = field.parameters;
-    if (typeof minLabel === 'string') props.minLabel = minLabel;
-    if (typeof maxLabel === 'string') props.maxLabel = maxLabel;
+    if (isLocalizedString(minLabel)) {
+      props.minLabel = markdownSource(resolve(minLabel));
+    }
+    if (isLocalizedString(maxLabel)) {
+      props.maxLabel = markdownSource(resolve(maxLabel));
+    }
   }
 
   if (component === 'DatePicker' && field.parameters) {

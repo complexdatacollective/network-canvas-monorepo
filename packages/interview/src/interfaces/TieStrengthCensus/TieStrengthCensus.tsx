@@ -2,16 +2,18 @@
 
 import { get } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
+import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import type {
+  LocalizedString,
   VariableOptions,
   VariableOptionValue,
 } from '@codaco/protocol-validation';
@@ -26,9 +28,13 @@ import Pair from '../../components/Pair';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
+import { markdownSource } from '../../dynamicValues/resolveDynamicText';
+import { useValuesUntilExit } from '../../dynamicValues/useValuesUntilExit';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import useStageValidation from '../../hooks/useStageValidation';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getNodePairs } from '../../selectors/dyad-census';
 import {
   getEdgeColorForType,
@@ -46,14 +52,13 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import {
   getNodePair,
   getStageMetadataResponse,
   isDyadCensusMetadata,
   matchEntry,
 } from '../DyadCensus/helpers';
-import { interfaceMessages } from '../messages';
-import IntroPanel from '../SlidesForm/IntroPanel';
 import { getTieStrengthHasEdge } from './helpers';
 
 const fadeVariants = {
@@ -99,8 +104,49 @@ function getDeclineValue(
   return candidate;
 }
 
+/**
+ * The answer cards for the pair on screen. Their labels are resolved here,
+ * beneath the pair's `DynamicValueEntity`, so a decline label naming either
+ * person reads the pair shown rather than nobody.
+ */
+function TieStrengthChoices({
+  options,
+  negativeLabel,
+  declineValue,
+  value,
+  onChange,
+  labelledBy,
+}: {
+  options: VariableOptions;
+  negativeLabel: LocalizedString;
+  declineValue: string;
+  value: string | number | undefined;
+  onChange: ComponentProps<typeof RichSelectGroupField>['onChange'];
+  labelledBy: string;
+}) {
+  const resolve = useResolveLocalizedString();
+  const richSelectOptions: RichSelectOption[] = [
+    ...options.flatMap((option) =>
+      typeof option.value === 'boolean'
+        ? []
+        : [{ value: option.value, label: resolve(option.label).text }],
+    ),
+    { value: declineValue, label: markdownSource(resolve(negativeLabel)) },
+  ];
+  return (
+    <RichSelectGroupField
+      orientation="horizontal"
+      options={richSelectOptions}
+      autoFocus
+      value={value}
+      onChange={onChange}
+      aria-labelledby={labelledBy}
+    />
+  );
+}
+
 export default function TieStrengthCensus(props: TieStrengthCensusProps) {
-  const { stage, getNavigationHelpers } = props;
+  const { getNavigationHelpers } = props;
   const { moveForward } = getNavigationHelpers();
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
@@ -110,7 +156,6 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const pairLabelId = `${baseId}-pair`;
   const promptLabelId = `${baseId}-prompt`;
 
-  const [isIntroduction, setIsIntroduction] = useState(true);
   const [isForwards, setIsForwards] = useState(true);
   const [pairIndex, setPairIndex] = useState(0);
 
@@ -120,7 +165,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   } = usePrompts<{
     createEdge: string;
     edgeVariable?: string;
-    negativeLabel: string;
+    negativeLabel: LocalizedString;
   }>();
 
   const nodes = useStageSelector(getNetworkNodesForType);
@@ -129,6 +174,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const stageMetadata = useStageSelector(getStageMetadata);
   const codebook = useSelector(getCodebook);
   const pairs = useStageSelector(getNodePairs);
+  const hasPairs = pairs.length > 0;
 
   const edgeVariableOptions = (
     edgeVariable
@@ -142,24 +188,16 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       : []
   ) as VariableOptions;
 
-  const realOptions: RichSelectOption[] = edgeVariableOptions.flatMap(
-    (option) =>
-      typeof option.value === 'boolean'
-        ? []
-        : [{ value: option.value, label: option.label }],
-  );
-
   // Collision-free decline sentinel: must never equal a real option value, so a
   // legitimate option valued e.g. '__none__' is treated as data, not decline.
   const declineValue = getDeclineValue(
     baseId,
-    new Set(realOptions.map((option) => option.value)),
+    new Set(
+      edgeVariableOptions.flatMap((option) =>
+        typeof option.value === 'boolean' ? [] : [option.value],
+      ),
+    ),
   );
-
-  const richSelectOptions: RichSelectOption[] = [
-    ...realOptions,
-    { value: declineValue, label: negativeLabel },
-  ];
 
   const pair =
     pairIndex >= 0 && pairIndex < pairs.length
@@ -169,10 +207,10 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 
   const track = useTrack();
   useEffect(() => {
-    if (pair && !isIntroduction) {
+    if (pair) {
       track('pair_shown', { node_a_id: pair[0], node_b_id: pair[1] });
     }
-  }, [pair, isIntroduction, track]);
+  }, [pair, track]);
 
   // Compute edge state directly from Redux
   const existingEdgeId =
@@ -225,12 +263,10 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     constraints: [
       {
         direction: 'forwards',
-        isMet: isIntroduction || hasEdge !== null,
+        isMet: !hasPairs || hasEdge !== null,
         kind: 'comparison_response_required',
         toast: {
-          description: (
-            <AppMessage message={interfaceMessages.selectResponse} />
-          ),
+          description: <AppMessage message={validationMessages.required} />,
           variant: 'destructive',
           anchor: 'forward',
         },
@@ -248,12 +284,9 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     if (direction === 'forwards') {
       setIsForwards(true);
 
-      if (isIntroduction) {
-        if (pairs.length === 0) {
-          return 'FORCE';
-        }
-        setIsIntroduction(false);
-        return false;
+      // Nothing to ask about: leave the stage, skipping any further prompts.
+      if (!hasPairs) {
+        return 'FORCE';
       }
 
       const isLastPair = pairIndex === pairs.length - 1;
@@ -269,19 +302,15 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     if (direction === 'backwards') {
       setIsForwards(false);
 
-      if (isIntroduction) {
-        return true;
-      }
-
       if (pairIndex > 0) {
         setPairIndex((i) => i - 1);
         return false;
       }
 
-      // pairIndex === 0
+      // pairIndex === 0: step back to the previous prompt's last pair, or
+      // leave the stage from the first prompt.
       if (promptIndex === 0) {
-        setIsIntroduction(true);
-        return false;
+        return true;
       }
 
       setPairIndex(pairs.length - 1);
@@ -385,18 +414,24 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     }
   };
 
+  // The pair the prompts name stays the outgoing one until it has left.
+  const fromLabel = useNodeLabel(fromNode);
+  const toLabel = useNodeLabel(toNode);
+  const pairOnScreen = useValuesUntilExit(`${promptIndex}_${pairIndex}`, {
+    attributes: {
+      dyadSource: fromNode?.[entityAttributesProperty],
+      dyadTarget: toNode?.[entityAttributesProperty],
+    },
+    labels: { dyadSource: fromLabel, dyadTarget: toLabel },
+  });
+
   return (
-    <div className="interface">
-      <AnimatePresence initial={false} mode="wait">
-        {isIntroduction ? (
-          <IntroPanel
-            title={stage.introductionPanel.title}
-            text={stage.introductionPanel.text}
-            key="intro"
-          />
-        ) : (
+    // The pair on screen is who the prompts can name: the first and second
+    // person, as the pair shows them.
+    <DynamicValueEntity {...pairOnScreen.values}>
+      <div className="interface">
+        {hasPairs && (
           <motion.div
-            key="content"
             variants={fadeVariants}
             initial="initial"
             exit="exit"
@@ -404,7 +439,12 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
             className="flex w-full flex-1 flex-col items-center"
           >
             <motion.div className="flex w-full grow flex-col items-center justify-center">
-              <AnimatePresence mode="wait" custom={isForwards} initial={false}>
+              <AnimatePresence
+                mode="wait"
+                custom={isForwards}
+                initial={false}
+                onExitComplete={pairOnScreen.onExitComplete}
+              >
                 <Pair
                   key={`${promptIndex}_${pairIndex}`}
                   edgeColor={edgeColor}
@@ -433,10 +473,10 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
                   animate="animate"
                   exit="exit"
                 >
-                  <RichSelectGroupField
-                    orientation="horizontal"
-                    options={richSelectOptions}
-                    autoFocus
+                  <TieStrengthChoices
+                    options={edgeVariableOptions}
+                    negativeLabel={negativeLabel}
+                    declineValue={declineValue}
                     value={
                       hasEdge === false
                         ? declineValue
@@ -454,14 +494,14 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
                         handleChange(next);
                       }
                     }}
-                    aria-labelledby={`${pairLabelId} ${promptLabelId}`}
+                    labelledBy={`${pairLabelId} ${promptLabelId}`}
                   />
                 </motion.div>
               </AnimatePresence>
             </MotionSurface>
           </motion.div>
         )}
-      </AnimatePresence>
-    </div>
+      </div>
+    </DynamicValueEntity>
   );
 }

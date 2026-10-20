@@ -1,5 +1,6 @@
 'use client';
 
+import { Check, LoaderCircle, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -9,7 +10,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '../Badge';
 import Button from '../Button';
 import Dialog from '../dialogs/Dialog';
-import Icon from '../Icon';
 import Surface from '../layout/Surface';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
@@ -205,7 +205,11 @@ export default function AppUpdateIndicator({
       size={size}
       mono
       icon={
-        <Icon name={isAvailable ? 'RefreshCw' : 'Check'} className="size-3.5" />
+        isAvailable ? (
+          <RefreshCw className="size-3.5" />
+        ) : (
+          <Check className="size-3.5" />
+        )
       }
       className={cx(
         'focusable cursor-pointer whitespace-nowrap transition-colors',
@@ -310,7 +314,7 @@ export default function AppUpdateIndicator({
         disabled={installState === 'installing'}
         icon={
           installState === 'installing' ? (
-            <Icon name="LoaderCircle" className="size-4 animate-spin" />
+            <LoaderCircle className="size-4 animate-spin" />
           ) : undefined
         }
         onClick={() => void handleInstall()}

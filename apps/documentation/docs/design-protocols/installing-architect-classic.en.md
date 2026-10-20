@@ -6,7 +6,7 @@ toc: true
 
 Not sure whether you need Architect Classic at all? See [Choosing Architect or Architect Classic](/en/design-protocols/choosing-architect).
 
-For all new studies, we recommend using [Architect](/en/design-protocols/getting-started), which runs entirely in your browser with nothing to download or install (and can be installed as a Progressive Web App for offline use). It creates schema 8 protocols, which can be used in [Fresco](/en/collect-data/fresco) and [Interviewer](/en/collect-data/interviewer).
+For all new studies, we recommend using [Architect](/en/design-protocols/getting-started), which runs entirely in your browser with nothing to download or install (and can be installed as a Progressive Web App for offline use). It creates schema 9 protocols, which can be used in [Fresco](/en/collect-data/fresco) and [Interviewer](/en/collect-data/interviewer).
 
 However, if you need to create a schema 7 protocol, you can use **Architect Classic**. It can be downloaded and installed individually from the [download page](https://networkcanvas.com/get-started) — you do not need to install any of the other Network Canvas applications to use it.
 

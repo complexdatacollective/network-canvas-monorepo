@@ -20,6 +20,7 @@ import {
   useDiscardStageValues,
   useStageValue,
 } from '../../../form/stageFormHooks.ts';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useOnResearcherChange } from '../../../sections/researcherChange.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
@@ -95,6 +96,7 @@ const SOURCE_CHANGE_QUESTION: SourceChangeQuestion = Object.freeze({
  */
 export default function SourcePedigreeSection() {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
   const { creation, identity, storeApi } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const sourceStageId = useStageValue(SOURCE_FIELD);
@@ -138,10 +140,10 @@ export default function SourcePedigreeSection() {
       value: option.value,
       label: intl.formatMessage(narrativePedigreeMessages.sourceStageOption, {
         position: option.position,
-        stageLabel: option.label,
+        stageLabel: localize(option.label).text,
       }),
     }),
-    [intl],
+    [intl, localize],
   );
 
   // A stored choice the list no longer contains is still offered, as the
@@ -150,23 +152,24 @@ export default function SourcePedigreeSection() {
   // write the blank back over it. Named as the researcher named it while the
   // stage is still there; by its identifier only once there is no stage left
   // to read a name from.
-  const selectOptions = useMemo<SourcePedigreeOption[]>(
-    () =>
-      problem === null || typeof sourceStageId !== 'string'
-        ? options.map(numbered)
-        : [
-            ...options.map(numbered),
-            {
-              value: sourceStageId,
-              label: intl.formatMessage(
-                narrativePedigreeMessages.sourceUnusableOption,
-                { stageName: chosenLabel ?? sourceStageId },
-              ),
-              disabled: true,
-            },
-          ],
-    [chosenLabel, intl, numbered, options, problem, sourceStageId],
-  );
+  const selectOptions = useMemo<SourcePedigreeOption[]>(() => {
+    if (problem === null || typeof sourceStageId !== 'string') {
+      return options.map(numbered);
+    }
+    const chosenName =
+      chosenLabel === undefined ? '' : localize(chosenLabel).text;
+    return [
+      ...options.map(numbered),
+      {
+        value: sourceStageId,
+        label: intl.formatMessage(
+          narrativePedigreeMessages.sourceUnusableOption,
+          { stageName: chosenName === '' ? sourceStageId : chosenName },
+        ),
+        disabled: true,
+      },
+    ];
+  }, [chosenLabel, intl, localize, numbered, options, problem, sourceStageId]);
 
   /**
    * The resolver's verdict, expressed as the control's own validation.

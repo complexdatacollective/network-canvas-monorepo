@@ -6,6 +6,7 @@ import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
 import type {
   ProtocolWithCounts,
   StoredSession,
@@ -19,7 +20,7 @@ import {
   type DeckCarouselSlide,
 } from './DeckCarousel';
 import { buildDeck, type DeckEntry, entryKey } from './deckEntries';
-import { DeckSlotCard } from './DeckSlotCard';
+import { DeckSlotCard, type LegacyCardActions } from './DeckSlotCard';
 import { ImportTriggerCard } from './ImportTriggerCard';
 import { useDeckKeyboard } from './useDeckKeyboard';
 
@@ -97,6 +98,14 @@ type ProtocolDeckProps = {
   onInstallSample?: () => void;
   onDismissSample?: () => void;
   onInstallDevelopment?: () => void;
+  // Interviewer 8's protocols, as cards beside this app's own, and what
+  // those cards offer.
+  legacyProtocols?: readonly LegacyProtocolSummary[];
+  upgradedLegacyHashes?: ReadonlySet<string>;
+  legacy?: LegacyCardActions;
+  // Bring this protocol's card to the front once it is in the deck (an
+  // upgraded copy that was just made, or found). A new object asks again.
+  focusRequest?: { protocolHash: string } | null;
   // When set, swipe/keyboard navigation is locked and the matching protocol
   // card is isolated above a modal backdrop with the case-ID form.
   newSessionProtocolHash?: string | null;
@@ -145,6 +154,10 @@ export function ProtocolDeck({
   onInstallSample = () => {},
   onDismissSample = () => {},
   onInstallDevelopment = () => {},
+  legacyProtocols,
+  upgradedLegacyHashes,
+  legacy,
+  focusRequest,
   newSessionProtocolHash,
   onCancelNewSession,
   onSessionCreated,
@@ -196,6 +209,8 @@ export function ProtocolDeck({
         showSampleCard,
         showDevelopmentCard,
         pendingImports,
+        legacyProtocols,
+        upgradedLegacyHashes,
       }),
     [
       intl.locale,
@@ -203,6 +218,8 @@ export function ProtocolDeck({
       showSampleCard,
       showDevelopmentCard,
       pendingImports,
+      legacyProtocols,
+      upgradedLegacyHashes,
     ],
   );
 
@@ -250,11 +267,15 @@ export function ProtocolDeck({
           onActivate:
             entry.kind === 'protocol'
               ? () => onStartInterview(entry.protocol.hash)
-              : entry.kind === 'sample'
-                ? onInstallSample
-                : entry.kind === 'development'
-                  ? onInstallDevelopment
-                  : undefined,
+              : entry.kind === 'legacy'
+                ? legacy?.interviewer
+                  ? () => legacy.onStart(entry.protocol)
+                  : undefined
+                : entry.kind === 'sample'
+                  ? onInstallSample
+                  : entry.kind === 'development'
+                    ? onInstallDevelopment
+                    : undefined,
           render: (isActive: boolean, activate: () => void) => (
             <DeckSlotCard
               entry={entry}
@@ -263,8 +284,11 @@ export function ProtocolDeck({
               sessionCount={
                 entry.kind === 'protocol'
                   ? (sessionCounts.get(entry.protocol.hash) ?? 0)
-                  : 0
+                  : entry.kind === 'legacy'
+                    ? entry.protocol.sessionCount
+                    : 0
               }
+              legacy={legacy}
               onDeleteProtocol={onDeleteProtocol}
               onDismissSample={onDismissSample}
               onInstallSample={onInstallSample}
@@ -289,6 +313,7 @@ export function ProtocolDeck({
       onDeleteProtocol,
       onCancelNewSession,
       onSessionCreated,
+      legacy,
     ],
   );
 
@@ -401,6 +426,24 @@ export function ProtocolDeck({
       return next;
     });
   }, [slides, initialProtocolHash]);
+
+  // Travel to a requested card once it is in the deck. Kept apart from the
+  // effect above: the protocol arrives with a reload after the request, and
+  // each request is honoured once.
+  const handledFocusRequestRef = useRef<typeof focusRequest>(null);
+  useEffect(() => {
+    if (!focusRequest || handledFocusRequestRef.current === focusRequest) {
+      return;
+    }
+    const idx = slides.findIndex(
+      (s) =>
+        s.entry.kind === 'protocol' &&
+        s.entry.protocol.hash === focusRequest.protocolHash,
+    );
+    if (idx < 0) return;
+    handledFocusRequestRef.current = focusRequest;
+    setActiveIndex(idx);
+  }, [focusRequest, slides, setActiveIndex]);
 
   // Observe the section (not the outer container) so cardHeight tracks the
   // space actually available to the carousel. Freeze the last resting size

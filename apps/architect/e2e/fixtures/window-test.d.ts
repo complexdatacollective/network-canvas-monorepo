@@ -11,4 +11,9 @@ interface Window {
   // print() call so the test can assert the pdf-styled title was live while
   // printing, before usePrintProtocolAction restores it.
   __printTitles?: string[];
+  // Set by the legacy-library spec's `indexedDB.open` recorder
+  // (specs/legacy-library.spec.ts): the name of every database the page asked
+  // to open, so the spec can prove Architect 8's library was never opened —
+  // even an open that Dexie undoes by deleting the database it created.
+  __indexedDbOpens?: string[];
 }

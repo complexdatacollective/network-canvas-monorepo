@@ -3,6 +3,7 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   type Codebook,
   type ColorReference,
+  type LocalizedString,
   DATE_FORMATS_KEYS,
   DATE_RESOLUTION,
   type DateFormat,
@@ -33,6 +34,7 @@ import {
   operatorsForSubject,
   rangeSatisfiesComparison,
   type RuleOperatorOption,
+  type RuleOperatorSubject,
 } from './operators.ts';
 
 /**
@@ -63,6 +65,10 @@ export type RuleVariableOption = Readonly<{
    * apart. It read a stored layout reference, still described by the codebook
    * and still on screen in the codebook editor, as an attribute that had been
    * deleted.
+   *
+   * An encrypted attribute is usable everywhere. Where a rule set reads
+   * interview answers it is offered only the presence operators — see
+   * `ruleOperatorSubject` — rather than being kept out of the picker.
    */
   usable: boolean;
 }>;
@@ -323,17 +329,10 @@ const DATE_FORMAT_NAMES: ReadonlySet<string> = new Set(DATE_FORMATS_KEYS);
 const isDateFormat = (value: unknown): value is DateFormat =>
   typeof value === 'string' && DATE_FORMAT_NAMES.has(value);
 
-/**
- * The authored option set of a categorical/ordinal attribute, if it has one.
- *
- * The stored operand is compared against these values, so they keep the type
- * the codebook authored them with — coercing a numeric option to a string
- * here would save a rule that no longer matches anything.
- */
-export const ruleVariableChoices = (
+const authoredOptions = (
   variables: Readonly<Variables>,
   variableId: string | undefined,
-): RuleChoiceOption[] | undefined => {
+) => {
   const variable = ruleVariable(variables, variableId);
   // Only these two kinds of attribute have a set of choices a rule's operand
   // is picked FROM. A boolean variable also carries `options`, but they are
@@ -343,17 +342,63 @@ export const ruleVariableChoices = (
   if (variable?.type !== 'categorical' && variable?.type !== 'ordinal') {
     return undefined;
   }
-  const choices = variable.options.map(({ value, label }) => ({
-    value,
-    label: label === '' ? String(value) : label,
-  }));
-  return choices.length > 0 ? choices : undefined;
+  return variable.options.length > 0 ? variable.options : undefined;
 };
 
 /**
- * The operators offered for an attribute of this type. A rule with no
- * attribute yet — a presence rule, or a variable rule mid-authoring — gets the
- * existence operators, which is what the `exists` subject holds.
+ * The authored option set of a categorical/ordinal attribute, if it has one.
+ *
+ * The stored operand is compared against these values, so they keep the type
+ * the codebook authored them with — coercing a numeric option to a string
+ * here would save a rule that no longer matches anything.
+ *
+ * An option's label is written in each of the protocol's languages, and which
+ * one a rule is read in is the caller's to say: `labelText` turns a label into
+ * the words shown. An option with no words in that language is named by its
+ * value.
+ */
+export const ruleVariableChoices = (
+  variables: Readonly<Variables>,
+  variableId: string | undefined,
+  labelText: (label: LocalizedString) => string,
+): RuleChoiceOption[] | undefined =>
+  authoredOptions(variables, variableId)?.map(({ value, label }) => {
+    const text = labelText(label);
+    return { value, label: text === '' ? String(value) : text };
+  });
+
+/**
+ * What a rule's operator list is chosen for, once its attribute is known.
+ *
+ * An encrypted attribute in a rule set that reads interview answers is its
+ * own subject: rules there are checked without the participant's passphrase,
+ * so its answers are ciphertext to them and only whether it was answered can
+ * be asked. A rule with no attribute, or one the codebook no longer types, is
+ * offered the presence operators, as before an attribute is chosen.
+ */
+export const ruleOperatorSubject = (
+  variables: Readonly<Variables>,
+  variableId: string | undefined,
+  {
+    allowEncryptedAttributes = false,
+  }: Readonly<{
+    /** Whether the rule set may compare an encrypted attribute; see `describeRule`. */
+    allowEncryptedAttributes?: boolean;
+  }> = {},
+): RuleOperatorSubject => {
+  const variableType = ruleVariableType(variables, variableId);
+  if (variableType === undefined) return 'exists';
+  return ruleVariable(variables, variableId)?.encrypted === true &&
+    !allowEncryptedAttributes
+    ? 'encrypted'
+    : variableType;
+};
+
+/**
+ * The operators offered for a rule's subject: an attribute of a given type,
+ * an encrypted one, or — for a rule with no attribute yet, a presence rule or
+ * a variable rule mid-authoring — the existence operators the `exists`
+ * subject holds.
  *
  * The operator the rule ALREADY holds is added to the list when the list does
  * not contain it, in the same way `stageDestinationOptions` keeps an
@@ -369,23 +414,26 @@ export const ruleVariableChoices = (
  * Whether the extra option can be CHOSEN again is the difference between the
  * two cases. One the schema still accepts is the researcher's own rule, so it
  * stays selectable; one the attribute's type does not allow has to be replaced,
- * so it is shown and disabled.
+ * so it is shown and disabled. An encrypted attribute's list already holds
+ * every operator the schema accepts for it, so anything else is disabled.
  */
 export const ruleOperatorOptions = (
-  variableType: VariableType | undefined,
+  subject: RuleOperatorSubject,
   operator?: unknown,
   intl: IntlShape = englishIntl,
 ): RuleOperatorOption[] => {
-  const allowed =
-    variableType === undefined
-      ? operatorsForSubject('exists')
-      : operatorsForSubject(variableType);
+  const allowed = operatorsForSubject(subject);
   const offered = operatorsAsOptions(intl).filter((option) =>
     allowed.has(option.value),
   );
   if (!isFilterOperator(operator) || allowed.has(operator)) return offered;
 
-  const stillValid = isOperatorValidForAttributeType(operator, variableType);
+  const stillValid =
+    subject !== 'encrypted' &&
+    isOperatorValidForAttributeType(
+      operator,
+      subject === 'exists' ? undefined : subject,
+    );
   return [
     ...offered,
     {
@@ -584,7 +632,7 @@ const isUnenteredOperand = (value: unknown): boolean =>
  *
  * Membership is by identity, which is how the interview compares them: the
  * option whose value is the number `1` is not matched by the string `"1"`, and
- * `ruleVariableChoices` keeps the authored type for exactly this reason.
+ * `authoredOptions` keeps the authored type for exactly this reason.
  *
  * Returns the offending values rather than a verdict, so a caller can say
  * which option went missing. Empty for every comparison whose operand is not
@@ -602,8 +650,8 @@ export const operandOptionProblems = (
   if (isUnenteredOperand(value)) return [];
 
   const authored = new Set<string | number>(
-    (ruleVariableChoices(variables, variableId) ?? []).map(
-      (choice) => choice.value,
+    (authoredOptions(variables, variableId) ?? []).map(
+      (option) => option.value,
     ),
   );
   const items: unknown[] = Array.isArray(value) ? value : [value];
@@ -800,7 +848,7 @@ export const operandNumberProblems = (
   const range = operandNumberRange(
     variableType,
     operator,
-    ruleVariableChoices(variables, variableId)?.length,
+    authoredOptions(variables, variableId)?.length,
   );
   if (range === undefined) return [];
   if (rangeSatisfiesComparison(operator, range, value)) return [];

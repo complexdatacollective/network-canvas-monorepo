@@ -138,6 +138,7 @@ describe('createInterview', () => {
       schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
       stages: [],
       codebook: { node: {}, edge: {} },
+      localization: { defaultLocale: 'en', locales: ['en'] },
       experiments: null,
     });
   });

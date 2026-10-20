@@ -3,6 +3,11 @@
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox';
 import { AnimatePresence, motion } from 'motion/react';
 
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
@@ -114,7 +119,7 @@ const selectionSpring = {
 
 type ToggleButtonOption = {
   value: string | number;
-  label: string;
+  label: PresentationalText;
   disabled?: boolean;
 };
 
@@ -205,7 +210,10 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
               }
             }}
             disabled={isOptionDisabled}
-            aria-label={option.label}
+            // On the button rather than the text span: the accessible name
+            // comes from `aria-label`, which takes the element's own language.
+            {...presentationalTextProps(option.label)}
+            aria-label={presentationalTextValue(option.label)}
             aria-readonly={readOnly || undefined}
             nativeButton
             render={
@@ -236,7 +244,9 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
               )}
             </AnimatePresence>
             <span className="relative z-10 line-clamp-3 max-w-full overflow-hidden leading-tight text-balance">
-              <RenderMarkdown>{option.label}</RenderMarkdown>
+              <RenderMarkdown>
+                {presentationalTextValue(option.label)}
+              </RenderMarkdown>
             </span>
           </BaseCheckbox.Root>
         );

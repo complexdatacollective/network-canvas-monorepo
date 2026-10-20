@@ -9,17 +9,17 @@
       - button "Previous preset" [disabled]
       - button "View A" [expanded]
       - dialog:
-        - heading "Attributes" [level=3]:
-          - button "Attributes" [expanded]
-        - region "Attributes":
+        - heading "Traits - matrix check" [level=3]:
+          - button "Traits - matrix check" [expanded]
+        - region "Traits - matrix check":
           - radiogroup:
             - radio "CloseFriend" [checked]
             - text: CloseFriend
             - radio "Trusted"
             - text: Trusted
-        - heading "Links" [level=3]:
-          - button "Links" [expanded]
-        - region "Links": Friendship
+        - heading "Ties - matrix check" [level=3]:
+          - button "Ties - matrix check" [expanded]
+        - region "Ties - matrix check": Friendship
       - button "Next preset"
   - status
   - navigation:

@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
 /**
  * A stage the protocol refuses at a key this mount has no control for: the
- * schema will not take an Information stage with an empty `title`, and nothing
+ * schema will not take an Information stage without a `title`, and nothing
  * here edits it.
  */
 const untitledStage = {
   id: 'information-unowned',
   type: 'Information',
-  fields: { label: 'Named', title: '', items: [] },
+  fields: { label: { 'en-US': 'Named' }, items: [] },
 } as const;
 
 describe('what the protocol refuses that no section answers for', () => {
@@ -45,7 +45,11 @@ describe('what the protocol refuses that no section answers for', () => {
       stage: untitledStage,
       sections: (
         <BuilderSection title="Page content">
-          <Field name="title" label="Page heading" component={InputField} />
+          <Field
+            name="title"
+            label="Page heading"
+            component={LocalizedInputField}
+          />
         </BuilderSection>
       ),
     });

@@ -1,0 +1,13 @@
+- main:
+  - status:
+    - heading "People named before the update" [level=2]
+  - listbox "Added Nodes":
+    - option "Answer unavailable"
+  - button "Add a person":
+    - img "Add a person"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

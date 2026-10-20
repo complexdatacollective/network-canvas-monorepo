@@ -5,7 +5,7 @@
     - heading "Friend" [level=4]
   - button "Category Friend, 0 items":
     - heading "Friend" [level=4]
-  - button "Collapse drawer" [expanded]: 1 unplaced
+  - button "1 unplaced Collapse drawer" [expanded]
   - button "Alex"
   - navigation:
     - button "Settings"

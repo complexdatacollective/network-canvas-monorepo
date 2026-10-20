@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buttonVariants } from '@codaco/fresco-ui/Button';
 
-import PedigreeNodeConfigurationSection from '../../editors/family-pedigree/sections/PedigreeNodeConfigurationSection.tsx';
+import SubjectSection from '../../sections/subject-picker/SubjectSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
 const classesOf = (className: string) =>
@@ -44,7 +44,7 @@ describe('the size of the type picker’s create and edit buttons', () => {
     async (name) => {
       const harness = renderStageEditor({
         stageId: 'family-pedigree-1',
-        sections: <PedigreeNodeConfigurationSection />,
+        sections: <SubjectSection entity="node" />,
       });
       await harness.opened();
 

@@ -72,6 +72,7 @@ get_all_interviews <- function(...) {
       protocol_name = interview$protocol$name,
       start_time = interview$startTime,
       finish_time = ifelse(is.null(interview$finishTime), NA, interview$finishTime),
+      finish_outcome = ifelse(is.null(interview$finishOutcome), NA, interview$finishOutcome),
       current_step = interview$currentStep,
       stringsAsFactors = FALSE
     )
@@ -86,11 +87,12 @@ cat(sprintf("Total interviews: %d\n", result$meta$total))
 
 for (interview in result$data) {
   cat(sprintf(
-    "  %s  participant=%s  protocol=%s  finished=%s\n",
+    "  %s  participant=%s  protocol=%s  finished=%s  outcome=%s\n",
     interview$id,
     interview$participant$identifier,
     interview$protocol$name,
-    ifelse(is.null(interview$finishTime), "NA", interview$finishTime)
+    ifelse(is.null(interview$finishTime), "NA", interview$finishTime),
+    ifelse(is.null(interview$finishOutcome), "NA", interview$finishOutcome)
   ))
 }
 

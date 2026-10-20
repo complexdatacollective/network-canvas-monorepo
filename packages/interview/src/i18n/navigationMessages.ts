@@ -31,11 +31,6 @@ export const navigationMessages = defineMessages({
     defaultMessage: 'Exit this review?',
     description: 'Confirmation title before leaving an interview review.',
   },
-  exitInterviewTitle: {
-    id: 'interview.navigation.exitInterviewTitle',
-    defaultMessage: 'Exit this interview?',
-    description: 'Confirmation title before leaving an unfinished interview.',
-  },
   exitReviewDescription: {
     id: 'interview.navigation.exitReviewDescription',
     defaultMessage: 'Changes made during this review will not be saved.',
@@ -59,6 +54,13 @@ export const navigationMessages = defineMessages({
     defaultMessage: 'Exit interview',
     description:
       'Action to leave an unfinished interview while preserving answers.',
+  },
+  exitFailed: {
+    id: 'interview.navigation.exitFailed',
+    defaultMessage:
+      'Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.',
+    description:
+      'Recoverable exit-dialog error when pending answers or the interview language could not be saved before leaving; the interview stays open.',
   },
   settings: {
     id: 'interview.navigation.settings',
@@ -110,17 +112,5 @@ export const navigationMessages = defineMessages({
     defaultMessage: 'Go to another screen',
     description:
       'Accessible name for opening the interview screen navigation drawer.',
-  },
-  interfaceLanguage: {
-    id: 'interview.navigation.interfaceLanguage',
-    defaultMessage: 'Interface language',
-    description:
-      "Label for the language of the interview package's built-in controls; protocol text is separate.",
-  },
-  automaticLanguage: {
-    id: 'interview.navigation.automaticLanguage',
-    defaultMessage: 'Automatic',
-    description:
-      "Language option that follows the host's requested interface language.",
   },
 });

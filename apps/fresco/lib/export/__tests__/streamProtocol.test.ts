@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   consumeBatchStream,
   decodeBase64Chunk,
+  DuplicateExportFileError,
   encodeExportEvent,
   type ExportStreamEvent,
   parseExportEventBuffer,
@@ -88,6 +89,81 @@ describe('consumeBatchStream', () => {
     expect(result.failedSessionIds).toEqual(['s1', 's2']);
   });
 
+  it('returns the warnings from the complete event', async () => {
+    const warning = {
+      kind: 'xml-illegal-characters',
+      sessionId: 's1',
+      caseId: 'P-7',
+      variables: ['Nickname'],
+      caseIdChanged: true,
+    } as const;
+    const result = await consumeBatchStream(
+      streamOf([{ type: 'complete', warnings: [warning] }]),
+      () => undefined,
+    );
+    expect(result.warnings).toEqual([warning]);
+  });
+
+  it('returns every kind of warning from the complete event', async () => {
+    const warnings = [
+      {
+        kind: 'xml-illegal-characters-in-protocol',
+        protocolName: 'Study',
+        text: 'node-type-name',
+        name: 'Person',
+        removed: ['U+0001'],
+      },
+      {
+        kind: 'column-renamed',
+        protocolName: 'Study',
+        format: 'csv',
+        entity: 'node',
+        entityTypeName: 'Person',
+        variable: 'nodeID',
+        column: 'nodeID',
+        renamedTo: 'nodeID_2',
+      },
+      {
+        kind: 'column-renamed',
+        protocolName: 'Study',
+        format: 'graphml',
+        entity: 'ego',
+        variable: 'label',
+        column: 'label',
+        renamedTo: 'label_2',
+      },
+    ] as const;
+    const result = await consumeBatchStream(
+      streamOf([{ type: 'complete', warnings: [...warnings] }]),
+      () => undefined,
+    );
+    expect(result.warnings).toEqual(warnings);
+  });
+
+  it('returns no warnings when the complete event has none', async () => {
+    const result = await consumeBatchStream(
+      streamOf([{ type: 'complete', failedSessionIds: [] }]),
+      () => undefined,
+    );
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('ignores a complete event whose warnings are malformed, rather than guess', async () => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            `data: ${JSON.stringify({ type: 'complete', warnings: [{ sessionId: 1 }] })}\n\n`,
+          ),
+        );
+        controller.close();
+      },
+    });
+    await expect(consumeBatchStream(body, () => undefined)).rejects.toThrow(
+      'interrupted',
+    );
+  });
+
   it('reports progress events', async () => {
     const progress: ExportStreamEvent[] = [];
     await consumeBatchStream(
@@ -156,5 +232,58 @@ describe('consumeBatchStream', () => {
         () => undefined,
       ),
     ).rejects.toThrow(/unfinished file/);
+  });
+
+  it.each([
+    ['the same name', 'friend.csv', 'friend.csv'],
+    ['names that differ only in case', 'Friend.csv', 'friend.csv'],
+    [
+      'names that differ only in Unicode normalization',
+      'caf\u00e9.csv',
+      'cafe\u0301.csv',
+    ],
+  ])(
+    'throws, rather than overwrite a file, for %s',
+    async (_, first, second) => {
+      const consumed = consumeBatchStream(
+        streamOf([
+          { type: 'file-open', name: first },
+          { type: 'file-chunk', b64: b64([1]) },
+          { type: 'file-close' },
+          { type: 'file-open', name: second },
+          { type: 'file-chunk', b64: b64([2]) },
+          { type: 'file-close' },
+          { type: 'complete', failedSessionIds: [] },
+        ]),
+        () => undefined,
+      );
+
+      await expect(consumed).rejects.toBeInstanceOf(DuplicateExportFileError);
+      await expect(consumed).rejects.toMatchObject({ fileName: second });
+    },
+  );
+
+  it('accepts files whose names are different, however alike', async () => {
+    const result = await consumeBatchStream(
+      streamOf([
+        { type: 'file-open', name: 'close-friend.csv' },
+        { type: 'file-close' },
+        { type: 'file-open', name: 'close.friend.csv' },
+        { type: 'file-close' },
+        { type: 'file-open', name: '友人.csv' },
+        { type: 'file-close' },
+        { type: 'file-open', name: '家族.csv' },
+        { type: 'file-close' },
+        { type: 'complete', failedSessionIds: [] },
+      ]),
+      () => undefined,
+    );
+
+    expect([...result.files.keys()]).toEqual([
+      'close-friend.csv',
+      'close.friend.csv',
+      '友人.csv',
+      '家族.csv',
+    ]);
   });
 });

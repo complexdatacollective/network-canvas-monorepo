@@ -6,6 +6,10 @@ import { Fragment } from 'react';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import type { LocalizedString } from '@codaco/protocol-validation';
+
+import { DynamicMarkdown } from '../../dynamicValues/DynamicText';
+import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 
 const variants = {
   enter: (backwards: boolean) => ({
@@ -24,7 +28,7 @@ const variants = {
 
 type PromptProps = {
   id: string;
-  text: string;
+  text: LocalizedString;
   backwards?: boolean;
   small?: boolean;
 };
@@ -34,11 +38,14 @@ type PromptProps = {
  */
 const Prompt = ({ id, text, backwards = false, small }: PromptProps) => {
   const promptClasses = cx('font-heading pb-[0.1em] text-center text-2xl');
+  // `markdown` is the natural sentence, values and all, for the tooltip and
+  // anything that speaks the prompt; `parts` marks the values out on screen.
+  const { text: markdown, parts } = useLocalizedString(text);
 
   return (
     <motion.div
       data-testid="prompt"
-      title={text}
+      title={markdown}
       key={id}
       custom={backwards}
       variants={variants}
@@ -56,7 +63,11 @@ const Prompt = ({ id, text, backwards = false, small }: PromptProps) => {
         margin="none"
         className="max-w-[65ch] font-normal"
       >
-        <RenderMarkdown render={<Fragment />}>{text}</RenderMarkdown>
+        {parts === undefined ? (
+          <RenderMarkdown render={<Fragment />}>{markdown}</RenderMarkdown>
+        ) : (
+          <DynamicMarkdown render={<Fragment />} parts={parts} />
+        )}
       </Heading>
     </motion.div>
   );

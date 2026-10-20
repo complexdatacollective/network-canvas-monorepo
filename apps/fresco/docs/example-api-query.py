@@ -64,7 +64,8 @@ if __name__ == "__main__":
             f"  {interview['id']}  "
             f"participant={interview['participant']['identifier']}  "
             f"protocol={interview['protocol']['name']}  "
-            f"finished={interview['finishTime']}"
+            f"finished={interview['finishTime']}  "
+            f"outcome={interview.get('finishOutcome')}"
         )
 
     # Fetch full network data for the first interview

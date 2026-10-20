@@ -1,4 +1,5 @@
 'use client';
+import { Users } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   type RefObject,
@@ -10,6 +11,7 @@ import {
 } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Button from '@codaco/fresco-ui/Button';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import {
   getMarkdownLabelText,
@@ -25,6 +27,7 @@ import NodeList from '../../../components/NodeList';
 import { usePrompts } from '../../../components/Prompts/usePrompts';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { useContentFormat } from '../../../localization/useContentFormat';
 import { getCurrentStageId } from '../../../selectors/session';
 import { interfaceMessages } from '../../messages';
 import BinSummary from './BinSummary';
@@ -51,6 +54,19 @@ type CategoricalBinItemProps = {
    * and not part of the in-flow sequence).
    */
   flowOrdinal: number | undefined;
+  /**
+   * Present in select mode (#1652): tapping the bin places the focal person,
+   * opening it moves to a button of its own, and neither the bin nor its
+   * people take part in drag and drop.
+   */
+  select?: {
+    /** The focal person's name, or undefined once everyone is placed. */
+    focalName: string | undefined;
+    focalNodeId: string | undefined;
+    /** Resolves true only when the placement commits. */
+    onSelect: () => Promise<boolean>;
+    onChoose: (node: NcNode) => void;
+  };
 };
 
 const springTransition = {
@@ -145,6 +161,8 @@ export const useSummaryFits = (
 
 const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   const intl = useAppIntl();
+  // The count sits beside the bin's label, so in the protocol's digits.
+  const contentFormat = useContentFormat();
   const {
     index,
     label,
@@ -154,6 +172,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     onDropNode,
     nodes,
     flowOrdinal,
+    select,
   } = props;
 
   const {
@@ -185,6 +204,12 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     if (committed) celebrate();
   };
 
+  const handleSelect = async () => {
+    if (!select) return;
+    const committed = await select.onSelect();
+    if (committed) celebrate();
+  };
+
   const listId = getCatBinListId(stageId, promptId, index);
   const layoutId = getCatBinLayoutId(promptId, index);
 
@@ -199,6 +224,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
       label: spokenLabel,
     }),
     onDrop: handleDrop,
+    disabled: !!select,
   });
 
   const mergedRef = useCallback(
@@ -223,10 +249,34 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         'shadow-[0_0_24px_var(--cat-color)] ring-4 ring-(--cat-color)',
     );
 
-    const headerClasses = cx(
-      'flex shrink-0 cursor-pointer items-center gap-3 px-4 py-3',
+    const headerRowClasses = cx(
       catColor && 'bg-[oklch(from_var(--cat-color)_l_c_h/0.15)]',
       !catColor && 'bg-surface-1',
+    );
+
+    const headerClasses = cx(
+      'flex shrink-0 cursor-pointer items-center gap-3 px-4 py-3',
+      select ? 'min-w-0 flex-1' : headerRowClasses,
+    );
+
+    const collapseButton = (
+      <button
+        type="button"
+        className={headerClasses}
+        onClick={onToggleExpand}
+        aria-expanded={true}
+        aria-label={intl.formatMessage(
+          interfaceMessages.categoryContentsExpanded,
+          { label: spokenLabel, count: nodes.length },
+        )}
+      >
+        <Heading level="h3" className="[&_strong]:font-black">
+          <RenderMarkdown>{label}</RenderMarkdown>
+        </Heading>
+        <span className="ml-auto text-sm opacity-60">
+          {contentFormat.formatNumber(nodes.length)}
+        </span>
+      </button>
     );
 
     return (
@@ -242,23 +292,33 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         initial="initial"
         animate="animate"
       >
-        <button
-          type="button"
-          className={headerClasses}
-          onClick={onToggleExpand}
-          aria-expanded={true}
-          aria-label={intl.formatMessage(
-            interfaceMessages.categoryContentsExpanded,
-            { label: spokenLabel, count: nodes.length },
-          )}
-        >
-          <Heading level="h3" className="[&_strong]:font-black">
-            <RenderMarkdown>{label}</RenderMarkdown>
-          </Heading>
-          <span className="ml-auto text-sm opacity-60">
-            {intl.formatNumber(nodes.length)}
-          </span>
-        </button>
+        {select ? (
+          // The header keeps opening and closing the bin; placing someone here
+          // is a button of its own beside it.
+          <div className={cx(headerRowClasses, 'flex shrink-0 items-center')}>
+            {collapseButton}
+            <Button
+              size="sm"
+              className="mx-3 shrink-0"
+              onClick={() => void handleSelect()}
+              // Not `disabled`: placing the last person would then drop
+              // keyboard focus to the page.
+              aria-disabled={select.focalNodeId === undefined || undefined}
+              aria-label={
+                select.focalNodeId !== undefined
+                  ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
+                      name: select.focalName ?? '',
+                      label: spokenLabel,
+                    })
+                  : undefined
+              }
+            >
+              {intl.formatMessage(interfaceMessages.binSelectPlaceHere)}
+            </Button>
+          </div>
+        ) : (
+          collapseButton
+        )}
         <div
           ref={dropRef}
           {...dropPropsRest}
@@ -273,6 +333,11 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
                 interfaceMessages.categoryList,
                 { label: spokenLabel },
               )}
+              {...(select && {
+                dragAndDrop: false,
+                onItemClick: select.onChoose,
+                selectedItemId: select.focalNodeId,
+              })}
             />
           </motion.div>
         </div>
@@ -282,7 +347,9 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 
   const circleClasses = cx(
     'catbin-item',
-    'focusable flex min-w-0 cursor-pointer flex-col items-center justify-center overflow-hidden text-center outline-(--cat-color)',
+    select && 'relative',
+    !select && 'focusable',
+    'flex min-w-0 cursor-pointer flex-col items-center justify-center overflow-hidden text-center outline-(--cat-color)',
     'border-4',
     'border-(--cat-color)',
     catColor && 'bg-[oklch(from_var(--cat-color)_l_c_h/0.1)]',
@@ -295,8 +362,6 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   return (
     <motion.div
       ref={mergedRef}
-      role="button"
-      tabIndex={0}
       layout
       layoutId={layoutId}
       {...dropPropsRest}
@@ -306,21 +371,73 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         ...colorStyle,
         borderRadius: '50%',
       }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggleExpand();
-      }}
-      aria-expanded={false}
-      aria-label={intl.formatMessage(interfaceMessages.categoryContents, {
-        label: spokenLabel,
-        count: nodes.length,
-      })}
+      {...(select
+        ? {}
+        : {
+            'role': 'button',
+            'tabIndex': 0,
+            'onClick': (e: React.MouseEvent) => {
+              e.stopPropagation();
+              onToggleExpand();
+            },
+            'aria-expanded': false,
+            'aria-label': intl.formatMessage(
+              interfaceMessages.categoryContents,
+              { label: spokenLabel, count: nodes.length },
+            ),
+          })}
       transition={springTransition}
       variants={binItemVariants}
     >
+      {select && (
+        // The whole circle places the focal person. Opening the bin to see
+        // who is in it moves to the smaller button below, a sibling rather
+        // than a child so neither button sits inside the other.
+        <button
+          type="button"
+          className="focusable absolute inset-0 cursor-pointer rounded-full outline-(--cat-color) focus-visible:-outline-offset-6 aria-disabled:cursor-default"
+          onClick={(e) => {
+            e.stopPropagation();
+            void handleSelect();
+          }}
+          // Not `disabled`: placing the last person would then drop keyboard
+          // focus to the page.
+          aria-disabled={select.focalNodeId === undefined || undefined}
+          aria-label={
+            select.focalNodeId !== undefined
+              ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
+                  name: select.focalName ?? '',
+                  label: spokenLabel,
+                })
+              : intl.formatMessage(interfaceMessages.categoryContents, {
+                  label: spokenLabel,
+                  count: nodes.length,
+                })
+          }
+          data-testid={`catbin-select-${index}`}
+        />
+      )}
+      {select && hasSummary && (
+        <button
+          type="button"
+          className="focusable bg-surface/80 absolute bottom-[3cqb] left-1/2 z-10 flex size-[max(2.75rem,12cqi)] -translate-x-1/2 cursor-pointer items-center justify-center rounded-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleExpand();
+          }}
+          aria-expanded={false}
+          aria-label={intl.formatMessage(
+            interfaceMessages.binSelectShowContents,
+            { label: spokenLabel, count: nodes.length },
+          )}
+          data-testid={`catbin-expand-${index}`}
+        >
+          <Users aria-hidden className="size-1/2" />
+        </button>
+      )}
       <div
         ref={contentRef}
-        className="catbin-content"
+        className={cx('catbin-content', select && 'pointer-events-none')}
         data-has-summary={hasSummary || undefined}
       >
         <BinLabel

@@ -271,6 +271,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 2,
     why: '`SET LOCAL ROLE studio_maintenance` and `RESET ROLE` around the keyring check inside the migration transaction',
   },
+  [`${SERVER}/protocol/upgrade-pinned.ts › protocol.upgradePinnedStudies`]: {
+    count: 6,
+    why: '`SET LOCAL ROLE studio_maintenance` and `RESET ROLE` around the pinned-version upgrade inside the migration transaction, and the `ALTER TABLE … DISABLE`/`ENABLE TRIGGER` of the session pin guard around its re-pinning',
+  },
   [`${SERVER}/db/history.ts › db.history.create`]: {
     count: 1,
     why: '`CREATE TABLE IF NOT EXISTS public.studio_migrations`: DDL for a table kept outside SCHEMA, which drizzle-kit therefore never renders',

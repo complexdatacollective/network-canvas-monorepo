@@ -5,8 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { Toaster } from '@codaco/fresco-ui/Toast';
+import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
 import { useProtocolImport } from '~/hooks/useProtocolImport';
 import { frescoLocales } from '~/i18n/locales';
+import {
+  captureClientEvent,
+  captureClientException,
+} from '~/lib/posthog-client';
 import { frescoCatalogSource } from '~/src/locales/catalogs';
 
 const {
@@ -86,11 +91,18 @@ describe('truthful protocol import failure messages', () => {
     async (operation) => {
       const file = await archiveFile(
         JSON.stringify({
-          schemaVersion: 8,
+          schemaVersion: 9,
           name: 'Fixture',
           lastModified: '2026-09-05T00:00:00.000Z',
-          stages: [],
+          // A schema-9 protocol ends at a finish stage.
+          stages: [
+            createDefaultFinishSessionStage({
+              id: 'finish',
+              localization: { defaultLocale: 'en', locales: ['en'] },
+            }),
+          ],
           codebook: { node: {}, edge: {}, ego: {} },
+          localization: { defaultLocale: 'en', locales: ['en'] },
           assetManifest: {},
         }),
       );
@@ -151,4 +163,92 @@ describe('truthful protocol import failure messages', () => {
       expect(uploadAssets).not.toHaveBeenCalled();
     },
   );
+
+  // A schema 8 protocol that passes schema 8's checks, but whose filter counts
+  // selected options against a fraction, which schema 9 refuses. The upgrade
+  // returns an invalid document, which is a defect in a migration of ours.
+  const unupgradableProtocol = () =>
+    archiveFile(
+      JSON.stringify({
+        schemaVersion: 8,
+        name: 'Fixture',
+        lastModified: '2026-09-05T00:00:00.000Z',
+        assetManifest: {},
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                context: {
+                  name: 'context',
+                  type: 'categorical',
+                  options: [
+                    { label: 'Work', value: 'work' },
+                    { label: 'Family', value: 'family' },
+                  ],
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'stage-info',
+            type: 'Information',
+            label: 'Information',
+            title: 'Information',
+            items: [{ id: 'item', type: 'text', content: 'Hello' }],
+            skipLogic: {
+              action: 'SHOW',
+              filter: {
+                join: 'AND',
+                rules: [
+                  {
+                    id: 'rule',
+                    type: 'node',
+                    options: {
+                      type: 'person',
+                      attribute: 'context',
+                      operator: 'OPTIONS_GREATER_THAN',
+                      value: 1.5,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      }),
+    );
+
+  it('reports a protocol it cannot upgrade as both a refusal and an application error', async () => {
+    render(view('en', await unupgradableProtocol()));
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+    expect(
+      await screen.findByText(
+        'This protocol could not be upgraded to the current version. Nothing has been changed on this device.',
+      ),
+    ).toBeVisible();
+    expect(captureClientEvent).toHaveBeenCalledWith('ProtocolImportFailed', {
+      reason: 'upgradeStepFailed',
+    });
+    expect(captureClientException).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a damaged file as a refusal only', async () => {
+    render(view('en', await archiveFile('{broken json')));
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+    expect(
+      await screen.findByText(
+        "This protocol's contents are damaged and cannot be read. Try a backup, or the copy you originally downloaded.",
+      ),
+    ).toBeVisible();
+    expect(captureClientEvent).toHaveBeenCalledWith('ProtocolImportFailed', {
+      reason: 'damagedJson',
+    });
+    expect(captureClientException).not.toHaveBeenCalled();
+  });
 });

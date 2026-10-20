@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, within } from 'storybook/test';
 
 import CaptureStory, {
   type CaptureParameters,
@@ -35,4 +36,27 @@ export default meta;
 
 export const Capture: StoryObj = {
   render: () => <CaptureStory build={build} currentStep={1} />,
+  // Haemophilia A is selected so the pictured pedigree carries the notation:
+  // affected uncles, a grandmother who carries it, and the possible carriers
+  // and possibly affected relatives down to the participant's children.
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByTestId('narrative-pedigree-condition'),
+    );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole(
+        'menuitemradio',
+        {
+          name: 'Haemophilia A',
+        },
+      ),
+    );
+    await expect(
+      canvas.getByTestId('narrative-pedigree-condition'),
+    ).toHaveTextContent('Haemophilia A');
+    // The picker's button takes focus back once a choice is made; the
+    // picture shouldn't carry its focus ring.
+    canvas.getByTestId('narrative-pedigree-condition').blur();
+  },
 };

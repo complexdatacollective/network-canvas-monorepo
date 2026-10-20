@@ -54,7 +54,7 @@ describe('native Mapbox control localization', () => {
     expect(map.canvas).toHaveAccessibleName('Mapa');
     expect(map.logo).toHaveAccessibleName('Página de inicio de Mapbox');
     expect(map.button).toHaveAccessibleName('Mostrar u ocultar los créditos');
-    expect(map.icon.title).toBe('Mostrar u ocultar los créditos');
+    expect(map.icon).not.toHaveAttribute('title');
     expect(map.container.children).toHaveLength(4);
     expect(map.container.firstChild).toBe(map.canvas);
     expect(map.logo.href).toBe('https://www.mapbox.com/');
@@ -65,6 +65,6 @@ describe('native Mapbox control localization', () => {
     expect(map.canvas).toHaveAccessibleName('Map');
     expect(map.logo).toHaveAccessibleName('Mapbox homepage');
     expect(map.button).toHaveAccessibleName('Toggle attribution');
-    expect(map.icon.title).toBe('Toggle attribution');
+    expect(map.icon).not.toHaveAttribute('title');
   });
 });

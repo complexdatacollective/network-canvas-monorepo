@@ -15,9 +15,21 @@ vi.mock('../../storage', async () => {
   return { ...actual, requestPersistentStorage: requestPersistentStorageMock };
 });
 
+import {
+  deleteLegacyInterviewerDatabase,
+  fingerprintDatabase,
+  LEGACY_DB_NAME,
+  seedLegacyInterviewerDatabase,
+} from '~/testUtils/legacyInterviewerDatabase';
+
 import { db } from '../../db/db';
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
 import type { StoredSession } from '../../db/types';
+import {
+  HANDOFF_DB_NAME,
+  stageHandoff,
+  takeHandoff,
+} from '../../handoff/handoffStore';
 import { clearVault } from '../../vault/vaultStore';
 import * as authApi from '../api';
 
@@ -217,5 +229,35 @@ describe('auth/api — revoke wipes and re-locks', () => {
     expect(getSessionDek()).toBeNull();
     expect((await authApi.status()).configured).toBe(false);
     deleteSpy.mockRestore();
+  });
+
+  it("deletes Interviewer 8's database with this app's: they share the lock", async () => {
+    await authApi.enrolWithPin('12345678');
+    await db.sessions.put(SESSION_ROW);
+    await seedLegacyInterviewerDatabase({ sessions: [SESSION_ROW] });
+    expect(await fingerprintDatabase(LEGACY_DB_NAME)).toBeDefined();
+
+    await authApi.revoke();
+
+    expect(await fingerprintDatabase(LEGACY_DB_NAME)).toBeUndefined();
+    expect(await db.sessions.get('to-wipe')).toBeUndefined();
+    expect((await authApi.status()).configured).toBe(false);
+    await deleteLegacyInterviewerDatabase();
+  });
+
+  it('deletes protocol files staged for a hand-off between the two', async () => {
+    await authApi.enrolWithPin('12345678');
+    const key = await stageHandoff({
+      targetMajor: 9,
+      file: new Blob(['protocol']),
+      fileName: 'study.netcanvas',
+    });
+    expect(await fingerprintDatabase(HANDOFF_DB_NAME)).toBeDefined();
+
+    await authApi.revoke();
+
+    expect(await fingerprintDatabase(HANDOFF_DB_NAME)).toBeUndefined();
+    // A tab still holding the key finds nothing to import.
+    expect(await takeHandoff(key)).toBeUndefined();
   });
 });

@@ -3,8 +3,9 @@
     - heading "Please add anyone you recognise." [level=2]
   - button "Available to add":
     - heading "Available to add" [level=3]
+  - img "Warning"
   - heading "Something went wrong" [level=2]
-  - paragraph: External data could not be loaded.
+  - paragraph: The roster could not load - matrix check
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - navigation:

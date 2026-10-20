@@ -1,19 +1,14 @@
 import type { Variable } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import {
-  type EncryptedValue,
-  getEncryptedValue,
   type OutcomeOf,
+  readEncryptedAttribute,
+  type StoredEncryptedAttribute,
 } from './decryptionScope';
 
 const LOCKED_LABEL = '🔒';
-const FAILED_LABEL = '⚠️';
 
 /**
  * What a node is labelled with: the text of the attribute chosen as its label
@@ -22,27 +17,34 @@ const FAILED_LABEL = '⚠️';
  */
 type NodeLabelSource =
   | { status: 'plain'; text: string | undefined }
-  | { status: 'encrypted'; value: EncryptedValue };
+  | StoredEncryptedAttribute;
 
 export function readNodeLabelSource(
   node: NcNode,
   variables: Record<string, Variable>,
-  encryptionEnabled: boolean,
 ): NodeLabelSource {
   const attributes = node[entityAttributesProperty];
-  const attribute = getNodeLabelAttribute(variables, attributes);
+
+  // The variables as this node stores them: one whose value its record says is
+  // encrypted counts as encrypted when choosing the label, as when reading it,
+  // so a name stored encrypted under a variable the codebook no longer
+  // encrypts is still decrypted and shown as the name.
+  const labelVariables = Object.fromEntries(
+    Object.entries(variables).map(([variableId, variable]) => [
+      variableId,
+      !variable.encrypted && readEncryptedAttribute(node, variableId, variables)
+        ? { ...variable, encrypted: true }
+        : variable,
+    ]),
+  );
+  const attribute = getNodeLabelAttribute(labelVariables, attributes);
   if (!attribute) return { status: 'plain', text: undefined };
 
-  const encrypted = getEncryptedValue(
-    node,
-    attribute,
-    variables,
-    encryptionEnabled,
-  );
-  if (encrypted) return { status: 'encrypted', value: encrypted };
+  const stored = readEncryptedAttribute(node, attribute, variables);
+  if (stored) return stored;
 
   // getNodeLabelAttribute only nominates text/number-valued attributes;
-  // anything else (stale codebook, ciphertext arrays) falls back.
+  // anything else (a stale codebook) falls back.
   const value = attributes[attribute];
   return {
     status: 'plain',
@@ -54,27 +56,27 @@ export function readNodeLabelSource(
 }
 
 type NodeLabelTextOptions = {
-  /** The name of the node's type, which a node with no text of its own shows. */
-  typeLabel: string | undefined;
+  /** The label a node with no text of its own shows. */
+  unnamed: string;
+  /** The label of an answer that can never be read. */
+  unavailable: string;
   outcomeOf: OutcomeOf;
 };
 
 /**
- * The label `node` shows, read from its `source`: the plaintext of an
- * encrypted answer once it has decrypted, the lock while it is locked or still
- * decrypting, and the warning when it could not be decrypted. A node with no
- * text shows its type's name, or its id when its type has none.
+ * The label a node shows, read from its `source`: the plaintext of an
+ * encrypted answer once it has decrypted readable, and never anything derived
+ * from it otherwise, so the lock while it is locked or still decrypting. A
+ * node with no text shows `unnamed`.
  */
 export function nodeLabelText(
-  node: NcNode,
   source: NodeLabelSource,
-  { typeLabel, outcomeOf }: NodeLabelTextOptions,
+  { unnamed, unavailable, outcomeOf }: NodeLabelTextOptions,
 ): string {
-  if (source.status === 'plain') {
-    return source.text ?? typeLabel ?? node[entityPrimaryKeyProperty];
-  }
+  if (source.status === 'plain') return source.text ?? unnamed;
+  if (source.status === 'unreadable') return unavailable;
 
   const outcome = outcomeOf(source.value);
   if (!outcome) return LOCKED_LABEL;
-  return outcome.readable ? outcome.plaintext : FAILED_LABEL;
+  return outcome.readable ? outcome.plaintext : unavailable;
 }

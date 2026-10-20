@@ -120,4 +120,4 @@ Tone rules apply to participant-facing surfaces. Accessibility and international
 
 - **Components:** `packages/fresco-ui/package.json` exports and co-located stories.
 - **Tokens:** `Colors.stories.tsx`, `Elevation.stories.tsx`, `MotionSpring.stories.tsx`, and `tooling/tailwind/fresco/`.
-- **Participant copy and accessibility:** `packages/interview/src/interfaces/FinishSession.tsx`, `components/Navigation.tsx`, `components/Prompts/Prompts.tsx`, and `canvas/useCanvasDrag.ts`.
+- **Participant copy and accessibility:** `packages/interview/src/interfaces/FinishSession/FinishSession.tsx`, `components/Navigation.tsx`, `components/Prompts/Prompts.tsx`, and `canvas/useCanvasDrag.ts`.

@@ -19,6 +19,8 @@ export default defineMain({
   viteFinal: (config) =>
     mergeConfig(config, {
       plugins: [tailwindcss()],
+      // Stories run without a bundled Architect 8 (see `legacyArchitect`).
+      define: { __ARCHITECT_V8__: 'null' },
       resolve: {
         // Match Architect's `~/*` source alias.
         tsconfigPaths: true,

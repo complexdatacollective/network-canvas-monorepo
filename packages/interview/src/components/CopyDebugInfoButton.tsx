@@ -3,8 +3,8 @@
 import { Check, ClipboardCopy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import { Button } from '@codaco/fresco-ui/Button';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
@@ -45,14 +45,14 @@ export default function CopyDebugInfoButton({
   };
 
   return (
-    <Button
+    <IconButton
       onClick={copyDebugInfoToClipboard}
       className={cx(className)}
-      title={intl.formatMessage(messages.copyClipboard)}
       color="primary"
       icon={copied ? <Check /> : <ClipboardCopy />}
-    >
-      <AppMessage message={copied ? messages.copied : messages.copyDebugInfo} />
-    </Button>
+      aria-label={intl.formatMessage(
+        copied ? messages.copied : messages.copyDebugInfo,
+      )}
+    />
   );
 }

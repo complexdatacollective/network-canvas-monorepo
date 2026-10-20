@@ -43,13 +43,16 @@ export function updateMapboxControlLocale(
       'aria-label',
       intl.formatMessage(interfaceMessages.mapboxHomepage),
     );
-  const attributionLabel = intl.formatMessage(
-    interfaceMessages.toggleAttribution,
+  // The name is the accessible name only: the control shows no hover tooltip.
+  const attributionButton = container.querySelector(
+    '.mapboxgl-ctrl-attrib-button',
   );
-  container
-    .querySelector('.mapboxgl-ctrl-attrib-button')
-    ?.setAttribute('aria-label', attributionLabel);
-  container
-    .querySelector('.mapboxgl-ctrl-attrib-button .mapboxgl-ctrl-icon')
-    ?.setAttribute('title', attributionLabel);
+  attributionButton?.setAttribute(
+    'aria-label',
+    intl.formatMessage(interfaceMessages.toggleAttribution),
+  );
+  attributionButton?.removeAttribute('title');
+  attributionButton
+    ?.querySelector('.mapboxgl-ctrl-icon')
+    ?.removeAttribute('title');
 }

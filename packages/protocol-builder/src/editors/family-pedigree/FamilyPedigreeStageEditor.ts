@@ -1,37 +1,40 @@
-import { contentBlocks } from '../../sections/content-blocks/contentBlocks.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
-import { boundaryOptions } from './sections/boundaryOptions.tsx';
-import { censusPrompt } from './sections/censusPrompt.tsx';
-import { framingConfig } from './sections/framingConfig.tsx';
-import { nominationPrompts } from './sections/nominationPrompts.tsx';
-import { pedigreeEdgeConfiguration } from './sections/pedigreeEdgeConfiguration.tsx';
-import { pedigreeNodeConfiguration } from './sections/pedigreeNodeConfiguration.tsx';
+import {
+  completeness,
+  framing,
+  nodeConfiguration,
+  nominationPrompts,
+  participantWording,
+  pedigreePrompt,
+  pedigreeSubject,
+  personFormFields,
+  relationships,
+} from './sections/familyPedigreeSections.tsx';
 
 /**
- * The stage a participant draws their family in.
+ * The stage a participant draws their family on: they select anyone on the
+ * canvas and add that person's parent, sibling, partner or child, describing
+ * each new person in a side panel.
  *
- * The sections run from what the pedigree IS to what it asks. Framing and
- * boundaries decide the language it uses and how far it has to reach; the node
- * and edge configuration bind the codebook attributes the interface writes the
- * family into; the introduction screen is what the participant reads before
- * any of it; and the census and nomination prompts are the questions asked
- * while they build it.
- *
- * The introduction screen is the shared page of content blocks, so a
- * pedigree's introduction offers the same text, image, audio and video blocks
- * an Information stage does — minus the display size, which only that stage's
- * own schema has room for. It is composed as a page shown BEFORE the task
- * rather than as the stage itself, which is what `variant` says.
+ * The sections run in the order a researcher decides them: which node type
+ * people are, the instruction shown while the participant draws their family,
+ * where the interface records what it asks about each person (and whether it
+ * asks about gender identity), how relationships are recorded, the words used for
+ * family members, any further questions about each person, how complete the
+ * family must be, the words the participant sees while drawing, and the
+ * questions asked of the whole family once it is drawn.
  */
 export const familyPedigreeStageEditor = defineStageEditor('FamilyPedigree', [
-  framingConfig(),
-  boundaryOptions(),
-  pedigreeNodeConfiguration(),
-  pedigreeEdgeConfiguration(),
-  contentBlocks({ variant: 'introScreen' }),
-  censusPrompt(),
+  pedigreeSubject(),
+  pedigreePrompt(),
+  nodeConfiguration(),
+  relationships(),
+  framing(),
+  personFormFields(),
+  completeness(),
+  participantWording(),
   nominationPrompts(),
   skipLogic(),
   interviewerGuidance(),

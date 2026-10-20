@@ -1,7 +1,11 @@
+import { useContext } from 'react';
+
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { describeRule } from '@codaco/protocol-builder/rules/ruleDescription';
 import RulePreview from '@codaco/protocol-builder/rules/RulePreview';
 import type { Codebook } from '@codaco/protocol-validation';
+
+import SummaryContext from './SummaryContext';
 
 type RuleProps = {
   /** A stored rule, exactly as the protocol holds it. */
@@ -19,10 +23,16 @@ type RuleProps = {
  */
 const Rule = ({ rule, codebook }: RuleProps) => {
   const intl = useAppIntl();
+  const { protocol } = useContext(SummaryContext);
 
   return (
     <RulePreview
-      description={describeRule({ rule, codebook, intl })}
+      description={describeRule({
+        rule,
+        codebook,
+        intl,
+        localization: protocol.localization,
+      })}
       variant="summary"
     />
   );

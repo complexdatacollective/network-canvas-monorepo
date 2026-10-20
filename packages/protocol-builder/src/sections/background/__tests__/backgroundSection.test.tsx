@@ -59,7 +59,7 @@ describe('what the participant sees behind the nodes', () => {
     // The stage's name, the type it arranges, what it asks and how it arranges
     // belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['subject', 'prompts', 'behaviours'],
+      unowned: ['subject', 'prompts', 'behaviours', 'tooltips'],
     });
   });
 
@@ -105,7 +105,7 @@ describe('what the participant sees behind the nodes', () => {
       await screen.findByRole('button', { name: 'Change the image' }),
     ).toBeVisible();
     await harness.roundTrip({
-      unowned: ['subject', 'prompts', 'behaviours'],
+      unowned: ['subject', 'prompts', 'behaviours', 'tooltips'],
     });
   });
 
