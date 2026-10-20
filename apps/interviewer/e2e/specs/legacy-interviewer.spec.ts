@@ -762,6 +762,14 @@ test('when Interviewer 8 cannot be loaded into the frame, it says so and does no
   ).toBeVisible();
   await expect(page.getByTestId('interviewer-8-frame')).toHaveCount(0);
   await expect(lockScreen(page)).toHaveCount(0);
+
+  // The failed first load replaced the frame's initial blank page rather than
+  // adding a history entry, so the ordinary way home still reaches it.
+  await page.getByRole('button', { name: 'Return home' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole('heading', { name: 'Interview unavailable' }),
+  ).toHaveCount(0);
   await context.setOffline(false);
 });
 
