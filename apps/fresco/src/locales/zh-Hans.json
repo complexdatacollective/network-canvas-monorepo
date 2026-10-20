@@ -625,6 +625,7 @@
   "fresco.protocolImport.operationalFailure": "无法导入该协议。请检查网络连接和存储配置，然后重试。",
   "fresco.protocolImport.protocolMismatch": "上传的协议文件与请求的文件不匹配。",
   "fresco.protocolImport.validation.invalidProtocol": "上传的文件不包含有效的协议。",
+  "fresco.protocolImport.validation.missingDependencies": "迁移失败：缺少 {dependencies}。",
   "fresco.protocolImport.validation.unsupportedVersion": "不支持该协议版本。Fresco 支持的{count, plural, other {版本}}为 {versions}。",
   "fresco.protocolImport.validation.validationFailed": "协议无效。请检查协议结构。",
   "fresco.protocolSize.tooLarge": "此协议大小为 {size, number} MB。要导入的协议不得超过 {limit, number} MB。",

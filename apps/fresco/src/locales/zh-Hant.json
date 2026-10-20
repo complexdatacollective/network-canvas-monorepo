@@ -625,6 +625,7 @@
   "fresco.protocolImport.operationalFailure": "無法匯入協定。請檢查您的網路連線與儲存空間設定，然後再試一次。",
   "fresco.protocolImport.protocolMismatch": "上傳的協定檔案與要求的檔案不符。",
   "fresco.protocolImport.validation.invalidProtocol": "上傳的檔案不包含有效的協定。",
+  "fresco.protocolImport.validation.missingDependencies": "移轉失敗：缺少 {dependencies}。",
   "fresco.protocolImport.validation.unsupportedVersion": "不支援此協定版本。Fresco 支援的{count, plural, other {版本}}為 {versions}。",
   "fresco.protocolImport.validation.validationFailed": "協定無效。請檢查協定結構。",
   "fresco.protocolSize.tooLarge": "此協定大小為 {size, number} MB。協定必須小於或等於 {limit, number} MB 才能匯入。",

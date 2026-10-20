@@ -625,6 +625,7 @@
   "fresco.protocolImport.operationalFailure": "Das Protokoll konnte nicht importiert werden. Prüfen Sie Ihre Verbindung und die Speicherkonfiguration und versuchen Sie es erneut.",
   "fresco.protocolImport.protocolMismatch": "Die hochgeladene Protokolldatei stimmte nicht mit der angeforderten Datei überein.",
   "fresco.protocolImport.validation.invalidProtocol": "Die hochgeladene Datei enthält kein gültiges Protokoll.",
+  "fresco.protocolImport.validation.missingDependencies": "Migration fehlgeschlagen. Fehlende Abhängigkeiten: {dependencies}.",
   "fresco.protocolImport.validation.unsupportedVersion": "Diese Protokollversion wird nicht unterstützt. Fresco unterstützt {count, plural, one {die Version} other {die Versionen}} {versions}.",
   "fresco.protocolImport.validation.validationFailed": "Das Protokoll ist ungültig. Bitte überprüfen Sie die Struktur des Protokolls.",
   "fresco.protocolSize.tooLarge": "Dieses Protokoll ist {size, number} MB groß. Protokolle dürfen für den Import höchstens {limit, number} MB groß sein.",

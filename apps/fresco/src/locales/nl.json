@@ -625,6 +625,7 @@
   "fresco.protocolImport.operationalFailure": "Het protocol kan niet worden geïmporteerd. Controleer je verbinding en je opslagconfiguratie en probeer het opnieuw.",
   "fresco.protocolImport.protocolMismatch": "Het geüploade protocolbestand komt niet overeen met het gevraagde bestand.",
   "fresco.protocolImport.validation.invalidProtocol": "Het geüploade bestand bevat geen geldig protocol.",
+  "fresco.protocolImport.validation.missingDependencies": "Migratie mislukt. Ontbrekende afhankelijkheden: {dependencies}.",
   "fresco.protocolImport.validation.unsupportedVersion": "Deze protocolversie wordt niet ondersteund. Fresco ondersteunt {count, plural, one {versie} other {versies}} {versions}.",
   "fresco.protocolImport.validation.validationFailed": "Het protocol is ongeldig. Controleer de structuur van het protocol.",
   "fresco.protocolSize.tooLarge": "Dit protocol is {size, number} MB. Protocollen mogen maximaal {limit, number} MB zijn om te kunnen worden geïmporteerd.",

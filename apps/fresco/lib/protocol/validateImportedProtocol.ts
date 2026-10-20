@@ -12,6 +12,11 @@ type ProtocolValidationSuccess = {
 export type ProtocolValidationError =
   | { success: false; error: 'invalid-object' }
   | { success: false; error: 'unsupported-version'; version: unknown }
+  | {
+      success: false;
+      error: 'missing-dependencies';
+      missingDependencies: string[];
+    }
   | { success: false; error: 'validation-failed'; validationResult: unknown };
 
 type ProtocolValidationResult =
@@ -21,9 +26,9 @@ type ProtocolValidationResult =
 /**
  * Validate a protocol imported at the current schema version, as it is.
  *
- * Fresco never upgrades a protocol: each schema version it accepts is stored
- * at that version, and a schema 8 protocol is validated by
- * `validateImportedLegacyProtocol` instead. Any other version is refused.
+ * Fresco never upgrades a protocol to the current schema: a protocol at schema
+ * 8 or older is validated by `validateImportedLegacyProtocol` instead, and
+ * any other version is refused.
  */
 export async function validateImportedProtocol(
   protocolJson: unknown,

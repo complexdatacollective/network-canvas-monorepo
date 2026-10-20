@@ -2503,6 +2503,10 @@
     "defaultMessage": "The uploaded file does not contain a valid protocol.",
     "description": "Researcher-facing protocolImport.validation: The uploaded file does not contain a valid protocol."
   },
+  "fresco.protocolImport.validation.missingDependencies": {
+    "defaultMessage": "Migration failed: missing {dependencies}.",
+    "description": "Researcher-facing protocolImport.validation: Migration failed: missing dependencies."
+  },
   "fresco.protocolImport.validation.unsupportedVersion": {
     "defaultMessage": "Protocol version not supported. Fresco supports {count, plural, one {version} other {versions}} {versions}.",
     "description": "Researcher-facing protocolImport.validation: Protocol version not supported. Fresco supports count, plural, one version other versions versions."

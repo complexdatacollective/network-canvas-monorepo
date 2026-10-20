@@ -175,37 +175,36 @@ describe('truthful protocol import failure messages', () => {
     expect(captureClientException).not.toHaveBeenCalled();
   });
 
-  // A schema 8 protocol as schema 8's own validation accepts it.
-  const schema8Protocol = () =>
-    archiveFile(
-      JSON.stringify({
-        schemaVersion: 8,
-        name: 'Fixture',
-        lastModified: '2026-09-05T00:00:00.000Z',
-        assetManifest: {},
-        codebook: {
-          node: {
-            person: {
-              name: 'Person',
-              color: 'node-color-seq-1',
-              shape: { default: 'circle' },
-              variables: {},
-            },
-          },
-          edge: {},
-          ego: {},
+  // A protocol as schema 8's own validation accepts it; at schema 7 it has
+  // no name, which the upgrade to schema 8 adds.
+  const legacyProtocol = (schemaVersion: 7 | 8) => ({
+    schemaVersion,
+    ...(schemaVersion === 8 ? { name: 'Fixture' } : {}),
+    lastModified: '2026-09-05T00:00:00.000Z',
+    assetManifest: {},
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {},
         },
-        stages: [
-          {
-            id: 'stage-info',
-            type: 'Information',
-            label: 'Information',
-            title: 'Information',
-            items: [{ id: 'item', type: 'text', content: 'Hello' }],
-          },
-        ],
-      }),
-    );
+      },
+      edge: {},
+      ego: {},
+    },
+    stages: [
+      {
+        id: 'stage-info',
+        type: 'Information',
+        label: 'Information',
+        title: 'Information',
+        items: [{ id: 'item', type: 'text', content: 'Hello' }],
+      },
+    ],
+  });
+  const schema8Protocol = () => archiveFile(JSON.stringify(legacyProtocol(8)));
 
   it('imports a schema 8 protocol unchanged, at schema 8, without asking', async () => {
     render(view('en', await schema8Protocol()));
@@ -221,10 +220,25 @@ describe('truthful protocol import failure messages', () => {
     expect(captureClientException).not.toHaveBeenCalled();
   });
 
-  it('refuses a schema 7 protocol rather than upgrading it', async () => {
+  it('brings a schema 7 protocol up to schema 8, and no further, without asking', async () => {
+    const file = await archiveFile(JSON.stringify(legacyProtocol(7)));
+    render(view('en', file));
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+    await waitFor(() => expect(insertProtocol).toHaveBeenCalledTimes(1));
+    const [{ protocol }] = insertProtocol.mock.calls[0] as [
+      { protocol: { schemaVersion: number; name: string } },
+    ];
+    expect(protocol.schemaVersion).toBe(8);
+    // Schema 8 requires a name, which the upgrade takes from the file name.
+    expect(protocol.name).toBe('fixture');
+    expect(captureClientException).not.toHaveBeenCalled();
+  });
+
+  it('refuses a protocol older than schema 7', async () => {
     const file = await archiveFile(
       JSON.stringify({
-        schemaVersion: 7,
+        schemaVersion: 6,
         lastModified: '2026-09-05T00:00:00.000Z',
         assetManifest: {},
         codebook: { node: {}, edge: {}, ego: {} },
@@ -236,7 +250,7 @@ describe('truthful protocol import failure messages', () => {
 
     expect(
       await screen.findByText(
-        'Protocol version not supported. Fresco supports versions 8 and 9.',
+        'Protocol version not supported. Fresco supports versions 7, 8, and 9.',
       ),
     ).toBeVisible();
     expect(getProtocolByHash).not.toHaveBeenCalled();

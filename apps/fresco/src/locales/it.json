@@ -625,6 +625,7 @@
   "fresco.protocolImport.operationalFailure": "Non è stato possibile importare il protocollo. Controlla la connessione e la configurazione dell’archiviazione, poi riprova.",
   "fresco.protocolImport.protocolMismatch": "Il file del protocollo caricato non corrisponde al file richiesto.",
   "fresco.protocolImport.validation.invalidProtocol": "Il file caricato non contiene un protocollo valido.",
+  "fresco.protocolImport.validation.missingDependencies": "Migrazione non riuscita: dipendenze mancanti: {dependencies}.",
   "fresco.protocolImport.validation.unsupportedVersion": "Versione del protocollo non supportata. Fresco supporta {count, plural, one {la versione} other {le versioni}} {versions}.",
   "fresco.protocolImport.validation.validationFailed": "Il protocollo non è valido. Controlla la struttura del protocollo.",
   "fresco.protocolSize.tooLarge": "Questo protocollo pesa {size, number} MB. Per poter essere importati, i protocolli devono pesare al massimo {limit, number} MB.",

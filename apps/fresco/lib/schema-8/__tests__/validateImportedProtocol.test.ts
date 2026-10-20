@@ -45,13 +45,33 @@ describe('validateImportedLegacyProtocol', () => {
     ]);
   });
 
-  it('refuses a schema 7 protocol rather than upgrading it', async () => {
+  it('brings a schema 7 protocol up to schema 8 and no further', async () => {
+    // Import names the protocol after its file, which schema 8 requires.
+    const result = await validateImportedLegacyProtocol(protocolAt(7), {
+      name: 'Fixture',
+    });
+
+    if (!result.success) throw new Error(`Expected success: ${result.error}`);
+    expect(result.protocol.schemaVersion).toBe(8);
+  });
+
+  it('asks for the dependencies the schema 8 migration needs', async () => {
     const result = await validateImportedLegacyProtocol(protocolAt(7));
 
     expect(result).toEqual({
       success: false,
+      error: 'missing-dependencies',
+      missingDependencies: ['name'],
+    });
+  });
+
+  it('refuses a protocol older than schema 7', async () => {
+    const result = await validateImportedLegacyProtocol(protocolAt(6));
+
+    expect(result).toEqual({
+      success: false,
       error: 'unsupported-version',
-      version: 7,
+      version: 6,
     });
   });
 
