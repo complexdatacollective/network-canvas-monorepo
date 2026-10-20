@@ -42,15 +42,15 @@ vi.mock('~/lib/posthog-client', () => ({
   captureClientException: vi.fn(),
 }));
 
-function ImportButton({ file }: { file: File }) {
+function ImportButton({ files }: { files: File[] }) {
   const { importProtocols } = useProtocolImport();
-  return <button onClick={() => importProtocols([file])}>Start import</button>;
+  return <button onClick={() => importProtocols(files)}>Start import</button>;
 }
 // Loaded up front, so every render and formatter below has Spanish
 // synchronously.
 await frescoCatalogSource.load('es');
 
-const view = (locale: string, file: File) => (
+const view = (locale: string, file: File | File[]) => (
   <AppI18nProvider
     locale={locale}
     locales={frescoLocales}
@@ -58,20 +58,17 @@ const view = (locale: string, file: File) => (
   >
     <Toast.Provider>
       <DialogProvider>
-        <ImportButton file={file} />
+        <ImportButton files={Array.isArray(file) ? file : [file]} />
       </DialogProvider>
       <Toaster />
     </Toast.Provider>
   </AppI18nProvider>
 );
 
-async function archiveFile(contents: string) {
+async function archiveFile(contents: string, fileName = 'fixture.netcanvas') {
   const zip = new JSZip();
   zip.file('protocol.json', contents);
-  return new File(
-    [await zip.generateAsync({ type: 'arraybuffer' })],
-    'fixture.netcanvas',
-  );
+  return new File([await zip.generateAsync({ type: 'arraybuffer' })], fileName);
 }
 
 beforeEach(() => {
@@ -259,7 +256,7 @@ describe('truthful protocol import failure messages', () => {
   });
 
   // A schema 8 protocol as schema 8's own validation accepts it.
-  const schema8Protocol = () =>
+  const schema8Protocol = (fileName?: string) =>
     archiveFile(
       JSON.stringify({
         schemaVersion: 8,
@@ -288,6 +285,7 @@ describe('truthful protocol import failure messages', () => {
           },
         ],
       }),
+      fileName,
     );
 
   it('imports a schema 8 protocol the researcher keeps, unchanged, at schema 8', async () => {
@@ -309,6 +307,45 @@ describe('truthful protocol import failure messages', () => {
     // Kept as it was: an upgrade would have added a finish stage.
     expect(protocol.stages.map((stage) => stage.id)).toEqual(['stage-info']);
     expect(captureClientException).not.toHaveBeenCalled();
+  });
+
+  it('asks about one file at a time, naming it, with its progress put away', async () => {
+    uploadAssets.mockImplementation(async (files: File[]) =>
+      files.map((file) => ({
+        name: file.name,
+        key: `${file.name}-key`,
+        url: `https://example.test/${file.name}`,
+      })),
+    );
+    render(
+      view('en', [
+        await schema8Protocol('first.netcanvas'),
+        await schema8Protocol('second.netcanvas'),
+      ]),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+
+    const question = { name: 'How do you want to import this protocol?' };
+    const first = await screen.findByRole('dialog', question);
+    expect(first).toHaveTextContent('first.netcanvas');
+    expect(screen.getAllByRole('dialog', question)).toHaveLength(1);
+    // The progress toast would cover the dialog's buttons.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'first.netcanvas' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep schema 8' }));
+    await waitFor(() =>
+      expect(screen.getByRole('dialog', question)).toHaveTextContent(
+        'second.netcanvas',
+      ),
+    );
+    expect(screen.getAllByRole('dialog', question)).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep schema 8' }));
+
+    await waitFor(() => expect(insertProtocol).toHaveBeenCalledTimes(2));
   });
 
   it('imports nothing when the researcher cancels the choice', async () => {

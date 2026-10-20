@@ -113,11 +113,13 @@ export type ImportChoice = 'upgrade' | 'keep';
  * Ask how to import a protocol made for an older schema: upgraded to the
  * current schema, or as it is, at schema 8, to run in the schema 8 interview
  * Fresco bundles. The dialog matches the one Architect shows when it opens
- * such a protocol. Resolves null when the researcher cancels.
+ * such a protocol, naming the file it asks about. Resolves null when the
+ * researcher cancels.
  */
 export async function askHowToImport(
   openDialog: DialogContextType['openDialog'],
   fromVersion: SchemaVersion,
+  fileName: string,
 ): Promise<ImportChoice | null> {
   const choice = await openDialog({
     type: 'choice',
@@ -125,6 +127,8 @@ export async function askHowToImport(
     intent: 'info',
     size: 'editor',
     title: <AppMessage message={messages.title} />,
+    // Names the file, as several can be imported at once.
+    description: fileName,
     children: (
       <>
         <Paragraph>

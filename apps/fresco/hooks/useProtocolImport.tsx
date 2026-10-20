@@ -181,6 +181,19 @@ export const useProtocolImport = () => {
   toastRef.current = { add, update, close };
   const openDialogRef = useRef(openDialog);
   openDialogRef.current = openDialog;
+  // Two files import at once, but only one question is open at a time: each
+  // asks after the one before it is answered.
+  const questionTurn = useRef<Promise<unknown>>(Promise.resolve());
+
+  const addImportToast = (toastId: string, fileName: string) => {
+    toastRef.current.add({
+      id: toastId,
+      title: fileName,
+      description: <ImportToastContent phase="parsing" progress={0} />,
+      icon: <Spinner size="xs" />,
+      timeout: 0,
+    });
+  };
 
   const updateToastPhase = (
     toastId: string,
@@ -244,11 +257,12 @@ export const useProtocolImport = () => {
 
   const processJob = async ({
     file,
-    toastId,
+    toastId: queuedToastId,
   }: {
     file: File;
     toastId: string;
   }) => {
+    let toastId = queuedToastId;
     const fileName = file.name;
     const protocolName = fileName.replace(/\.netcanvas$/i, '');
 
@@ -281,11 +295,26 @@ export const useProtocolImport = () => {
         fromVersion < CURRENT_SCHEMA_VERSION &&
         APP_SUPPORTED_SCHEMA_VERSIONS.includes(fromVersion)
       ) {
-        const answer = await askHowToImport(openDialogRef.current, fromVersion);
-        if (answer === null) {
-          toastRef.current.close(toastId);
-          return;
+        // The toast is put away while Fresco asks: it would otherwise sit
+        // over the dialog's buttons. It comes back as a new one, as a closed
+        // toast cannot be shown again.
+        toastRef.current.close(toastId);
+        const turn = questionTurn.current.then(() =>
+          askHowToImport(openDialogRef.current, fromVersion, fileName),
+        );
+        questionTurn.current = turn.catch(() => undefined);
+        let answer: ImportChoice | null;
+        try {
+          answer = await turn;
+        } catch (error) {
+          // Back on screen, so the failure below has a toast to show in.
+          toastId = generateJobId();
+          addImportToast(toastId, fileName);
+          throw error;
         }
+        if (answer === null) return;
+        toastId = generateJobId();
+        addImportToast(toastId, fileName);
         choice = answer;
       }
 
@@ -555,13 +584,7 @@ export const useProtocolImport = () => {
       activeJobs.current.add(file.name);
 
       const toastId = generateJobId();
-      toastRef.current.add({
-        id: toastId,
-        title: file.name,
-        description: <ImportToastContent phase="parsing" progress={0} />,
-        icon: <Spinner size="xs" />,
-        timeout: 0,
-      });
+      addImportToast(toastId, file.name);
 
       jobQueue.current.push({ file, toastId }).catch((error) => {
         // eslint-disable-next-line no-console
