@@ -28,7 +28,8 @@ import {
  * stub page at /v8/ (see `fixtures/legacy-architect.ts`). The stub is enough:
  * what Architect 9 owes Architect 8 is the URL it goes to and what it stored
  * before going, and both are asserted here. Architect 8's side of `?open=` and
- * `?import=` is tested on its own branch.
+ * `?import=` is tested on its own branch. Architect 8 never sends a protocol
+ * back, so nothing here comes the other way.
  *
  * The tests share one build per worker, so they run in order in one worker.
  */
@@ -150,27 +151,5 @@ test('keeping a library protocol in Architect 8 opens it there and is remembered
   await libraryRow(architectPage).click();
   await expect(architectPage).toHaveURL(`/v8/?open=${LEGACY_ID}`);
   await expectOnStub(architectPage);
-
-  // Architect 8's own "Upgrade to schema 9" is a decision made there, so it
-  // overrides the remembered choice: it asks to upgrade, and offers nothing
-  // else.
-  await architectPage.goto(`/?upgrade=${LEGACY_ID}`);
-  const confirm = architectPage.getByRole('dialog', {
-    name: 'Upgrade to continue',
-  });
-  await expect(
-    confirm.getByRole('button', { name: 'Upgrade to schema 9' }),
-  ).toBeFocused();
-  await expect(
-    confirm.getByRole('button', { name: 'Keep editing as schema 8' }),
-  ).toHaveCount(0);
-  await confirm.getByRole('button', { name: 'Upgrade to schema 9' }).click();
-  await expect(architectPage).toHaveURL(/\/protocol$/);
-  await expect(
-    architectPage.getByRole('textbox', { name: 'Protocol name' }),
-  ).toHaveValue(LEGACY_NAME);
-  expect(await readLibraryRows(architectPage, 'legacyProtocolChoices')).toEqual(
-    [expect.objectContaining({ legacyId: LEGACY_ID, choice: 'upgraded' })],
-  );
   expect(await readLegacyLibraryFingerprint(architectPage)).toBe(before);
 });

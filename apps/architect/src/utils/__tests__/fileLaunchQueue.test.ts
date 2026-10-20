@@ -178,49 +178,4 @@ describe('fileLaunchQueue', () => {
     expect(mod.hasPendingLaunchFiles()).toBe(false);
     expect(mod.getLaunchFiles()).toEqual([]);
   });
-
-  describe('enqueueLaunchRead', () => {
-    it('queues the file a staged read produces, pending while it reads', async () => {
-      const { mod, settle } = await loadModule();
-      let resolveRead: (file: File) => void = () => {};
-
-      mod.enqueueLaunchRead(
-        () =>
-          new Promise<File>((resolve) => {
-            resolveRead = resolve;
-          }),
-      );
-      expect(mod.hasPendingLaunchFiles()).toBe(true);
-      expect(mod.getLaunchFiles()).toEqual([]);
-
-      resolveRead(new File(['zip'], 'staged.netcanvas'));
-      await settle();
-
-      expect(mod.getLaunchFiles().map((f) => f.name)).toEqual([
-        'staged.netcanvas',
-      ]);
-      expect(mod.takeLaunchReadFailures()).toEqual([]);
-    });
-
-    it('reports a read that finds nothing as an unreadable launch', async () => {
-      const { mod, settle } = await loadModule();
-
-      mod.enqueueLaunchRead(() => Promise.resolve(null));
-      await settle();
-
-      expect(mod.getLaunchFiles()).toEqual([]);
-      expect(mod.hasPendingLaunchFiles()).toBe(false);
-      expect(mod.takeLaunchReadFailures()).toEqual([1]);
-    });
-
-    it('reports a read that fails as an unreadable launch', async () => {
-      const { mod, settle } = await loadModule();
-
-      mod.enqueueLaunchRead(() => Promise.reject(new Error('IDB closed')));
-      await settle();
-
-      expect(mod.hasPendingLaunchFiles()).toBe(false);
-      expect(mod.takeLaunchReadFailures()).toEqual([1]);
-    });
-  });
 });

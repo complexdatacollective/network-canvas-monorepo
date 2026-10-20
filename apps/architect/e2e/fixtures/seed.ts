@@ -6,7 +6,6 @@ import {
   type Protocol,
 } from '@codaco/protocol-validation';
 
-import { HANDOFF_DB_NAME } from '../../src/utils/handoffStore.js';
 import {
   LEGACY_LIBRARIES,
   PROTOCOL_DB_NAME,
@@ -244,72 +243,6 @@ export async function seedLegacyProtocols(
     },
   );
   await page.reload();
-}
-
-// Both Architect majors declare `ArchitectHandoffDB` as `version(1).stores({
-// handoffs: 'key, createdAt' })`, which Dexie opens as native version 10.
-const HANDOFF_DB_NATIVE_VERSION = 10;
-
-export type HandoffSeed = {
-  key: string;
-  targetMajor: 8 | 9;
-  fileName: string;
-  file: Buffer;
-  createdAt?: number;
-};
-
-// Stages a file in the hand-off store as the other Architect major does before
-// it navigates here, written with exactly the layout that major's Dexie
-// creates. Call it on a page of this origin; it does not navigate.
-export async function seedHandoffRecord(
-  page: Page,
-  record: HandoffSeed,
-): Promise<void> {
-  await page.evaluate(
-    async ({ dbName, version, seed }) => {
-      const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const req = indexedDB.open(dbName, version);
-        req.onupgradeneeded = (event) => {
-          if (event.oldVersion !== 0) return;
-          req.result
-            .createObjectStore('handoffs', { keyPath: 'key' })
-            .createIndex('createdAt', 'createdAt');
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-        req.onblocked = () => reject(new Error(`${dbName} open blocked`));
-      });
-      await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction('handoffs', 'readwrite');
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        const bytes = Uint8Array.from(atob(seed.fileBase64), (char) =>
-          char.charCodeAt(0),
-        );
-        tx.objectStore('handoffs').put({
-          key: seed.key,
-          kind: 'import',
-          targetMajor: seed.targetMajor,
-          fileName: seed.fileName,
-          // Built here, in the browser, for the reason `seedProtocol` gives.
-          file: new Blob([bytes]),
-          createdAt: seed.createdAt,
-        });
-      });
-      db.close();
-    },
-    {
-      dbName: HANDOFF_DB_NAME,
-      version: HANDOFF_DB_NATIVE_VERSION,
-      seed: {
-        key: record.key,
-        targetMajor: record.targetMajor,
-        fileName: record.fileName,
-        fileBase64: record.file.toString('base64'),
-        createdAt: record.createdAt ?? Date.now(),
-      },
-    },
-  );
 }
 
 // A minimal current-schema protocol for create-from-scratch specs: what

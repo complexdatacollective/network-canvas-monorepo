@@ -37,8 +37,8 @@ import { legacyProtocolMessages } from './legacyProtocolMessages';
 
 // Every way of opening a protocol made for an older schema ends here, so the
 // researcher meets one dialog and one set of outcomes wherever they started:
-// the library, Open file and drag-and-drop on Home, a file the OS launched
-// Architect with, and a file Architect 8 handed over (`/?import=`). The choice
+// the library, Open file and drag-and-drop on Home, and a file the OS launched
+// Architect with. The choice
 // is the same everywhere — upgrade a copy into this app, or keep editing the
 // protocol unchanged in the bundled Architect 8 — and only what "keep" does
 // differs: a file is staged for Architect 8 to import, a library row is opened
@@ -255,8 +255,7 @@ export const openLegacyLibraryProtocol = async ({
 
 /**
  * Offer to upgrade a protocol from Architect 8's library, and nothing else:
- * the library menu's "Upgrade to schema 9", and Architect 8's own Upgrade
- * action arriving as `/?upgrade=<id>`. The researcher has already chosen to
+ * the library menu's "Upgrade to schema 9". The researcher has already chosen to
  * upgrade, so an earlier decision to keep it in Architect 8 does not apply.
  * The migration notes are still shown before anything is made.
  */

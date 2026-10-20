@@ -627,7 +627,7 @@ test('narrow Spanish settings retain readable controls and keyboard tab navigati
   });
 });
 
-test('welcome and setup language selectors retain the complete PIN form on a phone', async ({
+test('the language chosen on welcome carries through the complete PIN setup on a phone', async ({
   page,
   vault,
 }, testInfo) => {
@@ -656,25 +656,12 @@ test('welcome and setup language selectors retain the complete PIN form on a pho
     })
     .check();
   const before = await vault.readPersistedVaultRaw();
-  await wizard
-    .getByRole('combobox', { name: 'Idioma de la aplicación', exact: true })
-    .selectOption('en-GB');
+  // Language is asked once, on the welcome screen, not on each setup step.
   await expect(
-    wizard.getByRole('checkbox', {
-      name: 'I understand there is no recovery',
-      exact: true,
+    wizard.getByRole('combobox', {
+      name: /^(App language|Idioma de la aplicación)$/,
     }),
-  ).toBeChecked();
-  for (const field of [pin, confirmation]) {
-    for (let index = 0; index < 8; index++)
-      await expect(field.locator('input').nth(index)).toHaveValue(
-        String(index + 1),
-      );
-  }
-  expect(await vault.readPersistedVaultRaw()).toBe(before);
-  await wizard
-    .getByRole('combobox', { name: 'App language', exact: true })
-    .selectOption('es');
+  ).toHaveCount(0);
   await pin.locator('input').first().focus();
   await expect(pin.locator('input').first()).toBeFocused();
   await testInfo.attach('spanish-phone-complete-pin-setup', {

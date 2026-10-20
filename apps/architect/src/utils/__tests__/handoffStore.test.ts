@@ -9,10 +9,8 @@ import {
   HANDOFF_DB_NAME,
   HANDOFF_DB_SCHEMA,
   HANDOFF_TTL_MS,
-  isHandoffKey,
   pruneExpiredHandoffs,
   stageHandoff,
-  takeHandoff,
 } from '../handoffStore';
 
 // jsdom's Blob cannot cross fake-indexeddb's structured clone; Node's can, and
@@ -109,7 +107,9 @@ describe('hand-off store contract', () => {
       fileName: 'Study.netcanvas',
     });
 
-    expect(isHandoffKey(key)).toBe(true);
+    expect(key).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
     const [record] = await readAllRaw();
     expect(record).toEqual({
       key,
@@ -122,58 +122,6 @@ describe('hand-off store contract', () => {
     const { createdAt, file } = record as { createdAt: number; file: Blob };
     expect(createdAt).toBeGreaterThanOrEqual(before);
     expect(await file.text()).toBe('protocol bytes');
-  });
-});
-
-describe('takeHandoff', () => {
-  it('returns a record staged for this app and deletes it', async () => {
-    const key = await stageHandoff({
-      targetMajor: 9,
-      file: makeFile('schema 9 file'),
-      fileName: 'Launched.netcanvas',
-    });
-
-    const record = await takeHandoff(key);
-
-    expect(record).toMatchObject({
-      key,
-      kind: 'import',
-      targetMajor: 9,
-      fileName: 'Launched.netcanvas',
-    });
-    expect(await record?.file.text()).toBe('schema 9 file');
-    expect(await readAllRaw()).toEqual([]);
-    // Consumed exactly once.
-    await expect(takeHandoff(key)).resolves.toBeUndefined();
-  });
-
-  it('leaves a record meant for Architect 8 for Architect 8', async () => {
-    const key = await stageHandoff({
-      targetMajor: 8,
-      file: makeFile('schema 8 file'),
-      fileName: 'Older.netcanvas',
-    });
-
-    await expect(takeHandoff(key)).resolves.toBeUndefined();
-    expect(await readAllRaw()).toHaveLength(1);
-  });
-
-  it('discards a record that has outlived its time', async () => {
-    const key = await stageHandoff({
-      targetMajor: 9,
-      file: makeFile('stale'),
-      fileName: 'Stale.netcanvas',
-    });
-
-    await expect(
-      takeHandoff(key, Date.now() + HANDOFF_TTL_MS + 1),
-    ).resolves.toBeUndefined();
-    expect(await readAllRaw()).toEqual([]);
-  });
-
-  it('ignores a key that is not UUID-shaped without opening anything', async () => {
-    await expect(takeHandoff('../not-a-key')).resolves.toBeUndefined();
-    expect(await databaseNames()).not.toContain(HANDOFF_DB_NAME);
   });
 });
 

@@ -13,11 +13,10 @@ import {
   legacyProtocol,
   legacyProtocolAssets,
 } from '../fixtures/legacy-protocol.js';
-import { seedHandoffRecord, seedLegacyProtocols } from '../fixtures/seed.js';
+import { seedLegacyProtocols } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import {
   readDatabaseNames,
-  readHandoffRecords,
   readLegacyLibraryFingerprint,
   readLibraryRows,
   readStoreCounts,
@@ -193,118 +192,6 @@ test('offers to keep an older file in Architect 8 only when this build bundles i
     protocols: 0,
     assets: 0,
   });
-});
-
-// The other direction of the hand-off: a file an Architect 8 window was
-// launched with, forwarded here as `/?import=<key>`.
-test('/?import= opens the file Architect 8 staged for this app, once', async ({
-  architectPage,
-}) => {
-  const key = '3d2c1b0a-9f8e-4d7c-8b6a-5f4e3d2c1b0a';
-  await architectPage.goto('/');
-  await seedHandoffRecord(architectPage, {
-    key,
-    targetMajor: 9,
-    fileName: 'legacy-study.netcanvas',
-    file: await legacyNetcanvas(LEGACY_NAME),
-  });
-
-  await architectPage.goto(`/?import=${key}`);
-
-  // The same dialog as any other older file, under the file's own protocol.
-  const dialog = architectPage.getByRole('dialog', {
-    name: SUITE_BUILD_BUNDLES_ARCHITECT_8
-      ? 'How do you want to open this protocol?'
-      : 'Upgrade to continue',
-  });
-  await expect(
-    dialog.getByRole('button', { name: 'Upgrade to schema 9' }),
-  ).toBeFocused();
-  // Taken from the address, so a reload cannot ask again, and taken from the
-  // store, so another tab cannot open it again.
-  await expect(architectPage).toHaveURL(/\/$/);
-  expect(await readHandoffRecords(architectPage)).toEqual([]);
-
-  await dialog.getByRole('button', { name: 'Upgrade to schema 9' }).click();
-  await expect(architectPage).toHaveURL(/\/protocol$/);
-  await expect(
-    architectPage.getByRole('textbox', { name: 'Protocol name' }),
-  ).toHaveValue(LEGACY_NAME);
-});
-
-test('/?import= leaves a file staged for Architect 8 alone and says it could not open one', async ({
-  architectPage,
-}) => {
-  const key = '4e3d2c1b-0a9f-4e8d-9c7b-6a5f4e3d2c1b';
-  await architectPage.goto('/');
-  await seedHandoffRecord(architectPage, {
-    key,
-    targetMajor: 8,
-    fileName: 'legacy-study.netcanvas',
-    file: await legacyNetcanvas(LEGACY_NAME),
-  });
-
-  await architectPage.goto(`/?import=${key}`);
-
-  const dialog = architectPage.getByRole('dialog', {
-    name: 'Could not open file',
-  });
-  await expect(dialog).toBeVisible();
-  await expect(architectPage).toHaveURL(/\/$/);
-  expect(await readHandoffRecords(architectPage)).toEqual([
-    expect.objectContaining({ key, targetMajor: 8 }),
-  ]);
-  expect(await readStoreCounts(architectPage)).toEqual({
-    protocols: 0,
-    assets: 0,
-  });
-});
-
-test('/?upgrade= from Architect 8 asks before upgrading, and Cancel writes nothing', async ({
-  architectPage,
-}) => {
-  await seedLegacyStudy(architectPage);
-  const before = await readLegacyLibraryFingerprint(architectPage);
-
-  await architectPage.goto(`/?upgrade=${LEGACY_ID}`);
-  // Taken out of the address at startup, so a reload does not ask again.
-  await expect(architectPage).toHaveURL(/\/$/);
-  const dialog = architectPage.getByRole('dialog', {
-    name: 'Upgrade to continue',
-  });
-  await expect(dialog).toContainText('This protocol uses schema version 8,');
-  await expect(dialog).toContainText('Changes in schema version 9:');
-  await expect(
-    dialog.getByRole('button', { name: 'Upgrade to schema 9' }),
-  ).toBeFocused();
-  // Upgrade-only: the researcher chose to upgrade in Architect 8.
-  await expect(
-    dialog.getByRole('button', { name: 'Keep editing as schema 8' }),
-  ).toHaveCount(0);
-
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(architectPage).toHaveURL(/\/$/);
-  expect(await readStoreCounts(architectPage)).toEqual({
-    protocols: 0,
-    assets: 0,
-  });
-  expect(await readLibraryRows(architectPage, 'legacyProtocolChoices')).toEqual(
-    [],
-  );
-  expect(await readLegacyLibraryFingerprint(architectPage)).toBe(before);
-
-  // The same request, confirmed, makes the copy.
-  await architectPage.goto(`/?upgrade=${LEGACY_ID}`);
-  await architectPage
-    .getByRole('dialog', { name: 'Upgrade to continue' })
-    .getByRole('button', { name: 'Upgrade to schema 9' })
-    .click();
-  await expect(architectPage).toHaveURL(/\/protocol$/);
-  await expect(
-    architectPage.getByRole('textbox', { name: 'Protocol name' }),
-  ).toHaveValue(LEGACY_NAME);
-  expect(await readLegacyLibraryFingerprint(architectPage)).toBe(before);
 });
 
 test('Clear all removes this library and leaves Architect 8’s alone', async ({
