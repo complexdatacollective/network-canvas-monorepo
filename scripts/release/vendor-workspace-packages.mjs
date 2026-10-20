@@ -621,13 +621,35 @@ export function onVendoredLine(version, vendoredVersion) {
     : v.minor >= floor.minor;
 }
 
+// The exact releases the bundled schema 8 interview pins
+// (`apps/fresco/schema-8`), by name, as the staged tree carries them. Those
+// edges must keep the released code, whatever is vendored.
+export function keptVersions(stageDir) {
+  const manifestPath = join(stageDir, 'schema-8', 'package.json');
+  if (!existsSync(manifestPath)) return {};
+  const { dependencies = {} } = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  return Object.fromEntries(
+    Object.entries(dependencies).filter(([, version]) =>
+      /^\d+\.\d+\.\d+$/.test(version),
+    ),
+  );
+}
+
 // The override key for a vendored package. pnpm overrides a range keyed by a
 // selector wherever the dependency's own range intersects it, so the key
 // reaches every range on the vendored version's release line and later ones,
 // and nothing older. Older lines are deliberate: Fresco bundles the schema 8
 // interview (`apps/fresco/schema-8`), which pins the schema 8 releases of
 // these packages, and a bare-name key would swap the pending code into it.
-export function overrideSelector(name, vendoredVersion) {
+// When that pin (`keptVersion`) is on the vendored line itself, as a minor
+// release leaves it, the key starts just above the pin instead: the pin's
+// exact edge keeps the released code, while the app's caret range on the line
+// still intersects the key, even when the pending code carries the pin's
+// version number because its bump is not applied yet.
+export function overrideSelector(name, vendoredVersion, keptVersion) {
+  if (keptVersion && onVendoredLine(keptVersion, vendoredVersion)) {
+    return `${name}@>${keptVersion}`;
+  }
   return `${name}@>=${releaseLineFloor(vendoredVersion)}-0`;
 }
 
@@ -721,8 +743,9 @@ export function patchDockerfileForVendor(dockerfile, tarballs) {
 // comment written above the overrides, naming which caller put them there.
 export function vendorPackages({ stageDir, names, closure, wsPackages, note }) {
   const registry = closure.filter((name) => !names.includes(name));
-  const manifest = { vendored: {}, registry };
+  const manifest = { vendored: {}, registry, kept: {} };
   if (names.length === 0) return manifest;
+  const pins = keptVersions(stageDir);
 
   const vendorDir = join(stageDir, 'vendor');
 
@@ -754,10 +777,13 @@ export function vendorPackages({ stageDir, names, closure, wsPackages, note }) {
     );
   }
   const overrideLines = names
-    .map(
-      (name) =>
-        `  '${overrideSelector(name, wsPackages[name].version)}': 'file:vendor/${tarballs[name]}'`,
-    )
+    .map((name) => {
+      const { version } = wsPackages[name];
+      if (pins[name] && onVendoredLine(pins[name], version)) {
+        manifest.kept[name] = pins[name];
+      }
+      return `  '${overrideSelector(name, version, pins[name])}': 'file:vendor/${tarballs[name]}'`;
+    })
     .join('\n');
   writeFileSync(
     workspaceYamlPath,
@@ -802,12 +828,15 @@ export function assertVendoredLockfile(stageDir, manifest) {
     const registryVersions = [
       ...lockfile.matchAll(new RegExp(`${name}@(\\d+\\.\\d+\\.\\d+)`, 'g')),
     ].map((match) => match[1]);
-    // An older release line is the bundled schema 8 interview's, which the
-    // override leaves alone on purpose (`overrideSelector`).
+    // An older release line, or the exact release it pins, is the bundled
+    // schema 8 interview's, which the override leaves alone on purpose
+    // (`overrideSelector`).
+    const kept = manifest.kept?.[name];
     if (
       registryVersions.some(
         (version) =>
-          !vendoredVersion || onVendoredLine(version, vendoredVersion),
+          version !== kept &&
+          (!vendoredVersion || onVendoredLine(version, vendoredVersion)),
       )
     ) {
       problems.push(`${name}: vendored but also resolved from the registry`);

@@ -11,6 +11,7 @@ import {
   assertSpecifierDrivenChanges,
   assertVendoredLockfile,
   collectClosure,
+  keptVersions,
   lockfileEdges,
   onVendoredLine,
   overrideSelector,
@@ -361,6 +362,63 @@ test('an override reaches the vendored release line and later ones, never older 
   assert.equal(onVendoredLine('11.0.0', '11.2.0'), true);
   assert.equal(onVendoredLine('0.3.0', '0.4.1'), false);
   assert.equal(onVendoredLine('1.0.0', '0.4.1'), true);
+});
+
+test('an override leaves the exact release the schema 8 interview pins on the vendored line', () => {
+  // A minor release keeps fresco-ui on the 8 line the schema 8 interview pins.
+  assert.equal(
+    overrideSelector('@codaco/fresco-ui', '8.1.0', '8.0.0'),
+    '@codaco/fresco-ui@>8.0.0',
+  );
+  // A pin on an older line is already out of reach.
+  assert.equal(
+    overrideSelector('@codaco/interview', '11.0.0', '10.0.0'),
+    '@codaco/interview@>=11.0.0-0',
+  );
+  // Pending code whose bump is not applied yet carries the pin's number; the
+  // key still leaves the pin's exact edge alone.
+  assert.equal(
+    overrideSelector('@codaco/fresco-ui', '8.0.0', '8.0.0'),
+    '@codaco/fresco-ui@>8.0.0',
+  );
+});
+
+test('the schema 8 pins are read from the staged tree', () => {
+  const stage = mkdtempSync(join(tmpdir(), 'stage-'));
+  assert.deepEqual(keptVersions(stage), {});
+  mkdirSync(join(stage, 'schema-8'));
+  writeFileSync(
+    join(stage, 'schema-8', 'package.json'),
+    JSON.stringify({
+      dependencies: { '@x/ui': '8.0.0', '@x/i18n': '^0.3.0' },
+    }),
+  );
+  // Only exact pins: a range is not a release the interview keeps.
+  assert.deepEqual(keptVersions(stage), { '@x/ui': '8.0.0' });
+});
+
+test('the lockfile guard leaves the exact release the schema 8 interview pins', () => {
+  const stage = mkdtempSync(join(tmpdir(), 'stage-'));
+  const manifest = {
+    vendored: { '@x/ui': 'x-ui-8.1.0.tgz' },
+    registry: [],
+    kept: { '@x/ui': '8.0.0' },
+  };
+  writeFileSync(
+    join(stage, 'pnpm-lock.yaml'),
+    "packages:\n  '@x/ui@8.0.0': {}\n  '@x/ui@file:vendor/x-ui-8.1.0.tgz': {}\n",
+  );
+  assert.match(assertVendoredLockfile(stage, manifest), /1 vendored/);
+
+  // Any other registry release on that line is still refused.
+  writeFileSync(
+    join(stage, 'pnpm-lock.yaml'),
+    "packages:\n  '@x/ui@8.0.1': {}\n  '@x/ui@file:vendor/x-ui-8.1.0.tgz': {}\n",
+  );
+  assert.throws(
+    () => assertVendoredLockfile(stage, manifest),
+    /also resolved from the registry/,
+  );
 });
 
 // The lines of apps/fresco/Dockerfile the patches anchor on, in order.
