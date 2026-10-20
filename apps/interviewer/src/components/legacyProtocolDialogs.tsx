@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, type ReactNode } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -17,14 +17,19 @@ import {
   type SchemaVersion,
 } from '@codaco/protocol-validation';
 import { formatMigrationNotes } from '@codaco/protocol-validation/messages';
-import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
+import type { ProtocolWithCounts } from '~/lib/db/types';
 import { LEGACY_INTERVIEWER_MAJOR } from '~/lib/legacyInterviewer';
 
+import { ExternalLink } from './ExternalLink';
 import { legacyProtocolMessages } from './legacyProtocolMessages';
 
-// The dialogs for a protocol made for an older schema: confirming its upgrade
-// (with the migration's notes), choosing what to do with an older file being
-// imported, a schema 8 protocol's details, and a failed hand-over.
+// The dialogs for a protocol made for an older schema: choosing what to do
+// with an older file being imported, confirming its upgrade (with the
+// migration's notes), and a stored schema 8 protocol's details.
+
+/** The documentation page on protocol schema versions. */
+const PROTOCOL_SCHEMA_INFORMATION_URL =
+  'https://documentation.networkcanvas.com/en/get-started/protocol-schema-information';
 
 const messages = defineMessages({
   upgradeTitle: {
@@ -33,26 +38,40 @@ const messages = defineMessages({
     description:
       'Title of the dialog that asks a researcher to confirm upgrading an older protocol to the current schema version, after reading what the upgrade changes. {version} is the current schema version number (for example 9).',
   },
-  upgradeMakesCopyOfLegacy: {
-    id: 'interviewer.legacyProtocolDialogs.upgradeMakesCopyOfLegacy',
+  upgradeUnavailableIntro: {
+    id: 'interviewer.legacyProtocolDialogs.upgradeUnavailableIntro',
     defaultMessage:
-      'Upgrading makes a new schema {currentVersion} copy of this protocol for this version of Interviewer. The schema {legacyVersion} protocol and its interviews stay unchanged in Interviewer {legacyVersion}, and no interviews are copied.',
+      'This protocol uses an older version of the Network Canvas protocol schema (<link>more information</link>). Interviews cannot be started with it in this version of Interviewer, but you can upgrade it to the latest version, which will unlock new features and functionality.',
     description:
-      'Paragraph in the dialog confirming the upgrade of an older protocol stored in the previous version of Interviewer. {currentVersion} is the current schema version number (for example 9); {legacyVersion} is the older schema and previous Interviewer version number (for example 8).',
+      'First paragraph of the dialog confirming the upgrade of an older protocol file being imported, shown when this version of Interviewer does not include the previous version that runs older protocols, so the protocol cannot be used as it is. <link>…</link> wraps the words that open the documentation page about protocol schema versions; keep the tags around the translated words.',
+  },
+  importChoiceIntro: {
+    id: 'interviewer.legacyProtocolDialogs.importChoiceIntro',
+    defaultMessage:
+      'This protocol uses an older version of the Network Canvas protocol schema (<link>more information</link>). You can either import it and use it as normal, or you can upgrade it to the latest version, which will unlock new features and functionality.',
+    description:
+      'First paragraph of the dialog shown when a researcher imports a protocol file made for an older schema version, offering to import it as it is or upgrade it. <link>…</link> wraps the words that open the documentation page about protocol schema versions; keep the tags around the translated words.',
+  },
+  upgradePleaseNote: {
+    id: 'interviewer.legacyProtocolDialogs.upgradePleaseNote',
+    defaultMessage:
+      '<strong>Please note:</strong> upgrading may change the interview experience for participants.',
+    description:
+      'Caution in the dialogs that offer to upgrade an older protocol file being imported. <strong>…</strong> marks the bold lead-in; keep the tags around the translated words.',
+  },
+  upgradeChangesIntro: {
+    id: 'interviewer.legacyProtocolDialogs.upgradeChangesIntro',
+    defaultMessage:
+      'If you upgrade, the following changes will be made to your protocol:',
+    description:
+      'Sentence directly above the list of changes an upgrade makes to an older protocol, in the dialog confirming the upgrade.',
   },
   upgradeMakesCopyOfFile: {
     id: 'interviewer.legacyProtocolDialogs.upgradeMakesCopyOfFile',
     defaultMessage:
-      'Upgrading imports a schema {version} copy of this protocol into this version of Interviewer. Your file is not changed.',
+      'Upgrading makes a copy of this protocol on schema {version} and imports that copy into this version of Interviewer. The original file is left unchanged.',
     description:
-      'Paragraph in the dialog confirming the upgrade of an older protocol file the researcher is importing. {version} is the current schema version number (for example 9).',
-  },
-  readTheNotes: {
-    id: 'interviewer.legacyProtocolDialogs.readTheNotes',
-    defaultMessage:
-      'The upgrade changes the protocol, so interviews with the copy can differ from interviews with the original. Read these notes carefully before you continue.',
-    description:
-      'Paragraph above the list of changes an upgrade makes to an older protocol, in the dialog confirming the upgrade.',
+      'Paragraph in the dialogs that offer to upgrade an older protocol file being imported: upgrading never changes the file itself, it imports an upgraded copy of it. {version} is the current schema version number (for example 9).',
   },
   changesInSchemaVersion: {
     id: 'interviewer.legacyProtocolDialogs.changesInSchemaVersion',
@@ -65,20 +84,6 @@ const messages = defineMessages({
     defaultMessage: 'This protocol uses schema {version}',
     description:
       'Title of the dialog shown when a researcher imports a protocol file made for an older schema version. {version} is the file’s schema version number (for example 8).',
-  },
-  importChoiceKeep: {
-    id: 'interviewer.legacyProtocolDialogs.importChoiceKeep',
-    defaultMessage:
-      'Keep it on schema {legacyVersion} to run it exactly as it was designed, in Interviewer {legacyVersion}, which is included with this version of Interviewer.',
-    description:
-      'Paragraph in the dialog shown when importing an older protocol file, describing the first choice: install it unchanged in the previous version of Interviewer, which is included with this one. {legacyVersion} is the older schema and previous Interviewer version number (for example 8).',
-  },
-  importChoiceUpgrade: {
-    id: 'interviewer.legacyProtocolDialogs.importChoiceUpgrade',
-    defaultMessage:
-      'Or upgrade it to schema {currentVersion} to use it in this version of Interviewer. Upgrading changes some of the protocol, so you will see what changes before anything is imported.',
-    description:
-      'Paragraph in the dialog shown when importing an older protocol file, describing the second choice: upgrade it to the current schema. {currentVersion} is the current schema version number (for example 9).',
   },
   infoSchemaVersion: {
     id: 'interviewer.legacyProtocolDialogs.infoSchemaVersion',
@@ -104,14 +109,57 @@ const messages = defineMessages({
     description:
       'Label in the details dialog of an older protocol, before the number of interviews collected with it.',
   },
-  infoRunsInLegacy: {
-    id: 'interviewer.legacyProtocolDialogs.infoRunsInLegacy',
-    defaultMessage:
-      'This protocol runs in Interviewer {version}, which also keeps its interviews and exports them.',
-    description:
-      'Paragraph in the details dialog of an older protocol. {version} is the previous Interviewer version number (for example 8), which runs this protocol and holds its interviews.',
-  },
 });
+
+// Rich-text chunk formatters for the messages above, at module scope so they
+// keep one identity across renders.
+const renderSchemaInformationLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={PROTOCOL_SCHEMA_INFORMATION_URL}>{chunks}</ExternalLink>
+);
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
+const olderSchemaIntroMessages = {
+  // The choice a file gets when Interviewer 8 is bundled.
+  importChoice: messages.importChoiceIntro,
+  // In a build without Interviewer 8: only an upgrade can use it.
+  unavailable: messages.upgradeUnavailableIntro,
+} as const;
+
+/** That an upgrade copies the file, which itself stays as it is. */
+function UpgradeMakesCopy() {
+  return (
+    <Paragraph>
+      <AppMessage
+        message={messages.upgradeMakesCopyOfFile}
+        values={{ version: COMPATIBLE_PROTOCOL_SCHEMA_VERSION }}
+      />
+    </Paragraph>
+  );
+}
+
+function OlderSchemaIntro({
+  variant,
+}: {
+  variant: keyof typeof olderSchemaIntroMessages;
+}) {
+  return (
+    <>
+      <Paragraph>
+        <AppMessage
+          message={olderSchemaIntroMessages[variant]}
+          values={{ link: renderSchemaInformationLink }}
+        />
+      </Paragraph>
+      <Paragraph>
+        <AppMessage
+          message={messages.upgradePleaseNote}
+          values={{ strong: renderStrong }}
+        />
+      </Paragraph>
+      <UpgradeMakesCopy />
+    </>
+  );
+}
 
 /** A real schema version (the reader checks it is a number, not which). */
 const isSchemaVersion = (value: number): value is SchemaVersion =>
@@ -131,7 +179,7 @@ export function MigrationNotes({ fromVersion }: { fromVersion: number }) {
   return (
     <>
       <Paragraph>
-        <AppMessage message={messages.readTheNotes} />
+        <AppMessage message={messages.upgradeChangesIntro} />
       </Paragraph>
       <div className="bg-surface-2 max-h-72 overflow-y-auto rounded-sm px-4 py-2 [&_li]:mb-2 [&_li]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5">
         {notes.map(({ version, notes: text }) => (
@@ -155,18 +203,25 @@ export function MigrationNotes({ fromVersion }: { fromVersion: number }) {
 type OpenDialog = DialogContextType['openDialog'];
 
 /**
- * Ask to confirm upgrading a protocol made for `fromVersion`, showing what
- * the upgrade changes. Resolves true only for the Upgrade action.
+ * Ask to confirm upgrading a protocol file made for `fromVersion` as it is
+ * imported, saying that the upgrade imports a copy and leaves the file as it
+ * is, and showing what the upgrade changes. Resolves true only for the Upgrade
+ * action. A protocol already on this device is never upgraded: upgrading is
+ * offered only at import.
  */
 export async function confirmProtocolUpgrade(
   openDialog: OpenDialog,
   {
     fromVersion,
-    source,
+    legacyInterviewerBundled,
   }: {
     fromVersion: number;
-    /** A schema 8 protocol in Interviewer 8's library, or a file. */
-    source: 'legacy-library' | 'file';
+    /**
+     * Whether this build includes Interviewer 8. Without it a schema 8
+     * protocol cannot be used as it is, and a file reaches this dialog
+     * without the import choice, so this dialog says all of it.
+     */
+    legacyInterviewerBundled: boolean;
   },
 ): Promise<boolean> {
   const choice = await openDialog({
@@ -180,22 +235,13 @@ export async function confirmProtocolUpgrade(
     }),
     children: (
       <>
-        <Paragraph>
-          {source === 'legacy-library' ? (
-            <AppMessage
-              message={messages.upgradeMakesCopyOfLegacy}
-              values={{
-                currentVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-                legacyVersion: LEGACY_INTERVIEWER_MAJOR,
-              }}
-            />
-          ) : (
-            <AppMessage
-              message={messages.upgradeMakesCopyOfFile}
-              values={{ version: COMPATIBLE_PROTOCOL_SCHEMA_VERSION }}
-            />
-          )}
-        </Paragraph>
+        {legacyInterviewerBundled ? (
+          // The import choice has already given the schema intro and the
+          // caution; the copy is said again where the upgrade is confirmed.
+          <UpgradeMakesCopy />
+        ) : (
+          <OlderSchemaIntro variant="unavailable" />
+        )}
         <MigrationNotes fromVersion={fromVersion} />
       </>
     ),
@@ -222,9 +268,9 @@ export type ImportRouteChoice = 'keep' | 'upgrade' | null;
 
 /**
  * The choice for a file below this app's schema, when Interviewer 8 is
- * bundled: keep it on schema 8 (primary: Interviewer 8 runs it as designed),
- * upgrade it, or cancel. Schema 7 counts as schema 8: Interviewer 8 upgrades
- * it to 8 itself when it imports it.
+ * bundled: keep it on schema 8 (primary: imported and used as normal, its
+ * interviews run as designed), upgrade it, or cancel. A schema 7 file is kept
+ * on schema 8, as Interviewer 8 itself always imported it.
  */
 export async function chooseImportRoute(
   openDialog: OpenDialog,
@@ -237,22 +283,7 @@ export async function chooseImportRoute(
       message: messages.importChoiceTitle,
       values: { version: schemaVersion },
     }),
-    children: (
-      <>
-        <Paragraph>
-          <AppMessage
-            message={messages.importChoiceKeep}
-            values={{ legacyVersion: LEGACY_INTERVIEWER_MAJOR }}
-          />
-        </Paragraph>
-        <Paragraph>
-          <AppMessage
-            message={messages.importChoiceUpgrade}
-            values={{ currentVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION }}
-          />
-        </Paragraph>
-      </>
-    ),
+    children: <OlderSchemaIntro variant="importChoice" />,
     actions: {
       primary: {
         label: createElement(AppMessage, {
@@ -277,33 +308,11 @@ export async function chooseImportRoute(
   return choice === 'keep' || choice === 'upgrade' ? choice : null;
 }
 
-/** A file could not be staged for Interviewer 8; nothing was changed. */
-export async function showHandoffFailed(openDialog: OpenDialog) {
-  await openDialog({
-    type: 'acknowledge',
-    intent: 'destructive',
-    title: createElement(AppMessage, {
-      message: legacyProtocolMessages.couldNotOpenInInterviewer,
-      values: { version: LEGACY_INTERVIEWER_MAJOR },
-    }),
-    description: createElement(AppMessage, {
-      message: legacyProtocolMessages.handoffFailed,
-      values: { version: LEGACY_INTERVIEWER_MAJOR },
-    }),
-    actions: {
-      primary: {
-        label: createElement(AppMessage, { message: commonMessages.close }),
-        value: true,
-      },
-    },
-  });
-}
-
-/** A schema 8 protocol's details, as Interviewer 8's library has them. */
+/** A schema 8 protocol's details. */
 export function LegacyProtocolInfo({
   protocol,
 }: {
-  protocol: LegacyProtocolSummary;
+  protocol: ProtocolWithCounts;
 }) {
   const intl = useAppIntl();
   const rows = [
@@ -341,19 +350,13 @@ export function LegacyProtocolInfo({
           </div>
         ))}
       </dl>
-      <Paragraph>
-        <AppMessage
-          message={messages.infoRunsInLegacy}
-          values={{ version: LEGACY_INTERVIEWER_MAJOR }}
-        />
-      </Paragraph>
     </>
   );
 }
 
 export async function showLegacyProtocolInfo(
   openDialog: OpenDialog,
-  protocol: LegacyProtocolSummary,
+  protocol: ProtocolWithCounts,
 ) {
   await openDialog({
     type: 'acknowledge',

@@ -2,28 +2,22 @@
 '@codaco/interviewer': major
 ---
 
-Interviewer 8 now comes with Interviewer 9, so studies running schema 8
-protocols carry on exactly as before. Interviewer 9 never changes a schema 8
-protocol or its interviews: they stay in Interviewer 8, which opens in the same
-window, at `/v8/` on the Interviewer site.
+Schema 8 protocols keep working in Interviewer 9, exactly as before. Interviewer
+9 includes Interviewer 8's interview screen, so an interview with a schema 8
+protocol runs just as it did in Interviewer 8.
 
-- Your schema 8 protocols appear among your protocols, marked with their schema
-  version. Starting an interview with one, or resuming one of its unfinished
-  interviews, opens it in Interviewer 8. The data screen says how many
-  interviews Interviewer 8 keeps, with a button to open its data screen, where
-  you export them.
-- **Upgrade to schema 9** on a schema 8 protocol shows what the upgrade
-  changes and then adds an upgraded copy, with no interviews, beside the
-  original. The original and its interviews stay in Interviewer 8, so a study
-  can finish its current wave on schema 8.
+- Your schema 8 protocols and their interviews stay where they are, and appear
+  among your protocols and on the data screen like any other, with the
+  protocol's schema version shown on its card. Starting, resuming and
+  reviewing their interviews, exporting and deleting all work as usual.
 - Importing a protocol made for schema 8 or earlier asks what to do with it:
-  **Keep on schema 8** adds it to Interviewer 8 unchanged, and **Upgrade to
-  schema 9** imports an upgraded copy. Interviewer no longer upgrades a
-  protocol without asking.
-- One passcode or biometric lock protects both. You set it up, change it and
-  reset it in Interviewer 9, and resetting the device clears Interviewer 8's
-  data too. Your device settings are carried over from Interviewer 8 the first
-  time Interviewer 9 starts.
-- Interviewer 8 downloads for offline use in the background after Interviewer
-  9 has started. The status bar and Settings say when it is ready, so you can
-  check before going into the field.
+  **Keep on schema 8** imports it to use as normal, and **Upgrade to schema
+  9** shows what the upgrade changes and then imports an upgraded copy,
+  leaving your file unchanged. Interviewer no longer upgrades a protocol
+  without asking, and a protocol already on the device is not upgraded.
+- One passcode or biometric lock protects every interview. You unlock once,
+  in Interviewer, whichever schema the interview uses, and you set the lock
+  up, change it and reset it in Interviewer as usual.
+- The schema 8 interview screen downloads for offline use in the background
+  after Interviewer has started. The status bar and Settings say when it is
+  ready, so you can check before going into the field.

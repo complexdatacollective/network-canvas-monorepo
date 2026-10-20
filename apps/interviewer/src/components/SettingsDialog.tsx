@@ -55,7 +55,11 @@ import {
   listProtocols,
   updateSettings,
 } from '~/lib/db/api';
-import type { ProtocolWithCounts, StoredSettings } from '~/lib/db/types';
+import {
+  isCurrentProtocol,
+  type ProtocolWithCounts,
+  type StoredSettings,
+} from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { LEGACY_INTERVIEWER_MAJOR } from '~/lib/legacyInterviewer';
 import { useLegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
@@ -592,7 +596,8 @@ export function SettingsDialog({
       countSyntheticSessions(),
     ]);
     if (seq !== reloadSyntheticSeq.current) return;
-    setProtocols(ps);
+    // Synthetic interviews are generated for schema 9 protocols only.
+    setProtocols(ps.filter(isCurrentProtocol));
     setSyntheticCount(n);
     // Default to the first protocol when none is selected yet.
     setSelectedProtocolHash((current) => {

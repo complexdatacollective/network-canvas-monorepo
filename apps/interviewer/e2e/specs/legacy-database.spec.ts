@@ -4,20 +4,21 @@ import { DB_NAME } from '../../src/lib/db/storageNames.js';
 import { expect, test } from '../fixtures/test.js';
 import {
   dumpDatabase,
-  LEGACY_DB_NAME,
-  seedLegacyDatabase,
+  INTERVIEWER_8_NATIVE_VERSION,
+  seedAsInterviewer8,
 } from '../helpers/legacy-database.js';
 
-// Interviewer 8's database, `interviewer`, belongs to Interviewer 8 (served at
-// /v8/). Booting Interviewer 9 beside it must leave it byte for byte as it
-// was, keep Interviewer 9's data in a database of its own, and carry the
-// device's settings over once. These tests seed that database for real (see
+// One database, `interviewer`, for both majors. An 8.x device already has it,
+// at Interviewer 8's version 3 (native 30); booting Interviewer 9 must upgrade
+// it in place to a version above that, keep every store and index Interviewer
+// 8 declares, and leave every row exactly as Interviewer 8 wrote it, Blobs
+// included. These tests seed that database for real (see
 // helpers/legacy-database.ts).
 //
-// The unit-level counterparts are src/lib/db/__tests__/legacyLibrary.test.ts,
-// settingsCarryOver.test.ts and db.schema.test.ts; this spec covers what
-// jsdom cannot: the full boot path in a real browser, including plaintext Blob
-// assets, which jsdom's fake-indexeddb cannot round-trip.
+// The unit-level counterparts are src/lib/db/__tests__/db.schema.test.ts and
+// interviewer8RowFormat.test.ts; this spec covers what jsdom cannot: the full
+// boot path in a real browser, including plaintext Blob assets, which jsdom's
+// fake-indexeddb cannot round-trip.
 const LEGACY_HASH = 'legacy-e2e-protocol-hash';
 const PNG_BYTES = [137, 80, 78, 71, 13, 10, 26, 10];
 
@@ -31,6 +32,7 @@ const LEGACY_SEED = {
     codebook: { node: {}, edge: {}, ego: {} },
     protocol: {
       schemaVersion: 8,
+      name: 'Legacy Study',
       codebook: { node: {}, edge: {}, ego: {} },
       stages: [],
     },
@@ -46,6 +48,7 @@ const LEGACY_SEED = {
     exportedAt: null,
     currentStep: 0,
     network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
+    isSynthetic: false,
   },
   imageAsset: {
     id: `${LEGACY_HASH}::legacy-image`,
@@ -58,12 +61,34 @@ const LEGACY_SEED = {
     id: 'device',
     exportGraphML: false,
     idleTimeoutMinutes: 30,
-    sampleProtocolDismissed: true,
   },
 };
 
-const seedLegacy = (page: Page) =>
-  seedLegacyDatabase(page, {
+// Every store and index Interviewer 8's version 3 declares.
+const INTERVIEWER_8_STORES: Record<
+  string,
+  { keyPath: string; indexes: string[] }
+> = {
+  assets: { keyPath: 'id', indexes: ['assetId', 'protocolHash'] },
+  protocolMigrations: { keyPath: 'previousHash', indexes: [] },
+  protocols: { keyPath: 'id', indexes: ['hash', 'importedAt', 'name'] },
+  sessions: {
+    keyPath: 'id',
+    indexes: [
+      'caseId',
+      'exportedAt',
+      'finishedAt',
+      'isSynthetic',
+      'lastUpdatedAt',
+      'protocolHash',
+      'startedAt',
+    ],
+  },
+  settings: { keyPath: 'id', indexes: [] },
+};
+
+const seedDevice = (page: Page) =>
+  seedAsInterviewer8(page, {
     protocols: [LEGACY_SEED.protocol],
     sessions: [LEGACY_SEED.session],
     assets: [
@@ -72,62 +97,58 @@ const seedLegacy = (page: Page) =>
     settings: [LEGACY_SEED.settings],
   });
 
-test.describe('booting beside Interviewer 8’s database', () => {
-  test('leaves it untouched, keeps its own database and carries the settings over', async ({
+test.describe('booting on an 8.x device’s database', () => {
+  test('upgrades it in place, keeping every store, index and row', async ({
     page,
   }) => {
-    await seedLegacy(page);
-    const before = await dumpDatabase(page, LEGACY_DB_NAME);
-    expect(before?.version).toBe(30);
+    await seedDevice(page);
+    const before = await dumpDatabase(page);
+    expect(before?.version).toBe(INTERVIEWER_8_NATIVE_VERSION);
 
     await page.goto('/');
+    // The schema 8 protocol is on the deck, read from the same database.
     await expect(
-      page.getByRole('heading', { name: 'Sample Protocol' }),
+      page.getByRole('heading', { name: 'Legacy Study' }),
     ).toBeVisible();
 
-    // Interviewer 9's own database, at its own first version.
     await expect
-      .poll(async () => (await dumpDatabase(page, DB_NAME))?.stores.settings)
-      .toBeDefined();
-    const own = await dumpDatabase(page, DB_NAME);
-    expect(own?.version).toBe(10);
-    expect(Object.keys(own?.stores ?? {})).toEqual([
-      'assets',
-      'legacyUpgrades',
-      'protocols',
-      'sessions',
-      'settings',
+      .poll(async () => (await dumpDatabase(page))?.version)
+      .toBeGreaterThan(INTERVIEWER_8_NATIVE_VERSION);
+    const after = await dumpDatabase(page);
+    for (const [name, expected] of Object.entries(INTERVIEWER_8_STORES)) {
+      expect(after?.stores[name]?.keyPath).toBe(expected.keyPath);
+      expect(after?.stores[name]?.indexes).toEqual(
+        expect.arrayContaining(expected.indexes),
+      );
+    }
+
+    // Byte for byte as Interviewer 8 wrote them, Blob included.
+    for (const store of ['protocols', 'sessions', 'assets']) {
+      expect(after?.stores[store]?.rows).toEqual(before?.stores[store]?.rows);
+    }
+    // The settings row is the one Interviewer 8 wrote, under the same id.
+    expect(after?.stores.settings?.rows).toEqual([
+      expect.objectContaining(LEGACY_SEED.settings),
     ]);
-    // None of Interviewer 8's protocols or interviews were copied in.
-    expect(own?.stores.sessions?.rows).toEqual([]);
-    expect(
-      own?.stores.protocols?.rows.some(
-        (row) => (row as { hash?: string }).hash === LEGACY_HASH,
-      ),
-    ).toBe(false);
-
-    // The device's preferences came across; what names Interviewer 8's own
-    // library did not (the sample card above is this app's own).
-    const settings = own?.stores.settings?.rows.find(
-      (row) => (row as { id?: string }).id === 'device',
-    );
-    expect(settings).toMatchObject({
-      exportGraphML: false,
-      idleTimeoutMinutes: 30,
-      sampleProtocolDismissed: false,
-    });
-
-    // Byte for byte as it was, Blob included.
-    expect(await dumpDatabase(page, LEGACY_DB_NAME)).toEqual(before);
   });
 
-  test('creates no Interviewer 8 database on a device that never had one', async ({
+  test('makes only the one database on a device that never had one', async ({
     page,
   }) => {
     await page.goto('/');
     await expect(
       page.getByRole('heading', { name: 'Sample Protocol' }),
     ).toBeVisible();
-    expect(await dumpDatabase(page, LEGACY_DB_NAME)).toBeNull();
+    // The app's own databases (a service worker may keep one of its own, such
+    // as Workbox's expiration store, which is not the app's).
+    await expect
+      .poll(() =>
+        page.evaluate(async () =>
+          (await indexedDB.databases())
+            .map(({ name }) => name ?? '')
+            .filter((name) => name.startsWith('interviewer')),
+        ),
+      )
+      .toEqual([DB_NAME]);
   });
 });

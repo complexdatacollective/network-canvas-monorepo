@@ -248,7 +248,7 @@ describe('useProtocolImport', () => {
       onMigrationRequired?: Parameters<
         typeof useProtocolImport
       >[0]['onMigrationRequired'],
-      allowMigration?: boolean,
+      olderSchema?: 'upgrade' | 'keep',
     ) => {
       const { result } = renderHook(() =>
         useProtocolImport({ onInstalled: () => {}, onMigrationRequired }),
@@ -258,7 +258,7 @@ describe('useProtocolImport', () => {
           source: 'file',
           file,
           label: 'older.netcanvas',
-          allowMigration,
+          olderSchema,
         });
       });
       await act(async () => {
@@ -280,7 +280,7 @@ describe('useProtocolImport', () => {
         file,
         expect.any(Function),
         undefined,
-        { allowMigration: false },
+        { olderSchema: undefined },
       );
       expect(onMigrationRequired).toHaveBeenCalledWith({
         file,
@@ -310,12 +310,22 @@ describe('useProtocolImport', () => {
     });
 
     it('passes the researcher’s choice to upgrade through to the import', async () => {
-      await runImport(vi.fn(), true);
+      await runImport(vi.fn(), 'upgrade');
       expect(importProtocolFromFile).toHaveBeenCalledWith(
         file,
         expect.any(Function),
         undefined,
-        { allowMigration: true },
+        { olderSchema: 'upgrade' },
+      );
+    });
+
+    it('passes the researcher’s choice to keep it on schema 8 through to the import', async () => {
+      await runImport(vi.fn(), 'keep');
+      expect(importProtocolFromFile).toHaveBeenCalledWith(
+        file,
+        expect.any(Function),
+        undefined,
+        { olderSchema: 'keep' },
       );
     });
   });

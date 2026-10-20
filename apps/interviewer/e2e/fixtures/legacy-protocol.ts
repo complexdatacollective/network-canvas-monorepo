@@ -2,17 +2,26 @@ import JSZip from 'jszip';
 
 import type { Protocol } from '@codaco/protocol-validation';
 
-import type { LegacySeed } from '../helpers/legacy-database.js';
+import type { Interviewer8Seed } from '../helpers/legacy-database.js';
 
-// A schema 8 protocol as Interviewer 8 keeps it, with one image asset and one
-// unfinished interview: small enough to read at a glance and valid enough to
-// upgrade. Its `name` is part of the document because schema 8 requires one.
+// A schema 8 protocol as Interviewer 8 keeps it in the shared database, with
+// one image asset, one unfinished interview and one finished one: small enough
+// to read at a glance and valid enough to upgrade. Its `name` is part of the
+// document because schema 8 requires one. The rows are in Interviewer 8's own
+// format (its `saveProtocol` and `createSession`), unencrypted, as a device
+// with no lock has them.
 
 export const LEGACY_PROTOCOL_NAME = 'Legacy Study';
 // Interviewer stores a protocol under the sha256 of its content; any
 // 64-hex-character value passes the hash checks on both sides.
 export const LEGACY_PROTOCOL_HASH = 'c0ffee'.padEnd(64, '0');
-const LEGACY_SESSION_ID = '5f0e3c1a-9d2b-4e8f-a6c7-1b2d3e4f5a6b';
+/** The unfinished interview. */
+export const LEGACY_SESSION_ID = '5f0e3c1a-9d2b-4e8f-a6c7-1b2d3e4f5a6b';
+/** The finished interview, whose network holds one person. */
+export const LEGACY_FINISHED_SESSION_ID =
+  '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
+/** The name given to the one person in the finished interview. */
+export const LEGACY_NODE_NICKNAME = 'Ada from schema 8';
 
 const IMAGE_ASSET_ID = 'map';
 const IMAGE_FILE_NAME = 'map.png';
@@ -23,7 +32,7 @@ function legacyProtocol(name = LEGACY_PROTOCOL_NAME): Protocol<8> {
   return {
     schemaVersion: 8,
     name,
-    description: 'Run in Interviewer 8',
+    description: 'A schema 8 study',
     codebook: {
       node: {
         person: {
@@ -57,8 +66,8 @@ function legacyProtocol(name = LEGACY_PROTOCOL_NAME): Protocol<8> {
   };
 }
 
-/** Interviewer 8's library holding `legacyProtocol` and one interview. */
-export function legacyLibrarySeed(): LegacySeed {
+/** An 8.x device's rows: `legacyProtocol`, its asset and two interviews. */
+export function legacyLibrarySeed(): Interviewer8Seed {
   const protocol = legacyProtocol();
   return {
     protocols: [
@@ -85,6 +94,30 @@ export function legacyLibrarySeed(): LegacySeed {
         exportedAt: null,
         currentStep: 0,
         network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
+        isSynthetic: false,
+      },
+      {
+        id: LEGACY_FINISHED_SESSION_ID,
+        protocolHash: LEGACY_PROTOCOL_HASH,
+        protocolName: protocol.name,
+        caseId: 'legacy-finished',
+        startedAt: '2026-01-08T10:00:00.000Z',
+        lastUpdatedAt: '2026-01-08T10:40:00.000Z',
+        finishedAt: '2026-01-08T10:40:00.000Z',
+        exportedAt: null,
+        currentStep: 0,
+        network: {
+          ego: { _uid: 'ego', attributes: {} },
+          nodes: [
+            {
+              _uid: 'node-ada',
+              type: 'person',
+              attributes: { nickname: LEGACY_NODE_NICKNAME },
+            },
+          ],
+          edges: [],
+        },
+        isSynthetic: false,
       },
     ],
     assets: [

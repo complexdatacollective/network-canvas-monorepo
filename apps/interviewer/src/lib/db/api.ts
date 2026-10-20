@@ -3,8 +3,8 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import * as dexieSettings from './db';
-import type { LegacyUpgradeRecord } from './db';
 import * as dexieProtocols from './protocols';
+import type { ExportedSessionRecord } from './recordCrypto';
 import { reencryptAllRecords as dexieReencryptAllRecords } from './reencrypt';
 import type { ReencryptProgress, ReencryptResult } from './reencrypt';
 import * as dexieSessions from './sessions';
@@ -36,21 +36,15 @@ export async function getProtocolsByHashes(
 }
 
 export async function saveProtocol(
-  protocol: CurrentProtocol,
+  protocol: StoredProtocol['protocol'],
   hash: string,
   assets: { id: string; name: string; data: Blob | string }[],
-  options?: Parameters<typeof dexieProtocols.saveProtocol>[3],
 ): Promise<StoredProtocol> {
-  return dexieProtocols.saveProtocol(protocol, hash, assets, options);
+  return dexieProtocols.saveProtocol(protocol, hash, assets);
 }
 
 export async function deleteProtocol(hash: string): Promise<void> {
   return dexieProtocols.deleteProtocol(hash);
-}
-
-/** Which schema 8 protocols have an upgraded copy here, and which copy. */
-export async function listLegacyUpgrades(): Promise<LegacyUpgradeRecord[]> {
-  return dexieProtocols.listLegacyUpgrades();
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
@@ -86,10 +80,16 @@ export async function getSession(
   return dexieSessions.getSession(id);
 }
 
-export async function getSessionsByIds(
+export async function getSessionSchemaVersion(
+  id: string,
+): Promise<number | undefined> {
+  return dexieSessions.getSessionSchemaVersion(id);
+}
+
+export async function getSessionsForExport(
   ids: readonly string[],
-): Promise<StoredSession[]> {
-  return dexieSessions.getSessionsByIds(ids);
+): Promise<ExportedSessionRecord[]> {
+  return dexieSessions.getSessionsForExport(ids);
 }
 
 export async function createSession(args: {

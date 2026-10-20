@@ -75,6 +75,10 @@ export const CSP_DIRECTIVES = [
   "font-src 'self' data:",
   `connect-src 'self' https://api.github.com https://api.mapbox.com https://events.mapbox.com ${POSTHOG_RELAY_ORIGIN} blob:`,
   "worker-src 'self' blob:",
+  // A schema 8 interview runs in Interviewer 8, at /v8/ on this origin,
+  // hosted in a frame (src/components/Interviewer8Frame.tsx). Nothing else is
+  // framed.
+  "frame-src 'self'",
   "base-uri 'none'",
   "object-src 'none'",
   "form-action 'self'",

@@ -14,6 +14,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { InstallBanner } from '~/components/InstallBanner';
@@ -24,7 +25,7 @@ import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
-import type { StoredSession } from '~/lib/db/types';
+import { isSchema8Protocol, type StoredSession } from '~/lib/db/types';
 import {
   type ImportRequest,
   useProtocolImport,
@@ -76,22 +77,13 @@ function viewFromLocation(location: string): View {
 }
 
 export function HomeRoute() {
-  const {
-    protocols,
-    sessions,
-    settings,
-    legacyProtocols,
-    legacySessions,
-    upgradedLegacyHashes,
-    reload,
-  } = useHomeData();
-  // The choice an older file gets upgrades it through the import, which
-  // itself asks for that choice: the ref closes the loop.
+  const { protocols, sessions, settings, reload } = useHomeData();
+  // The choice an older file gets imports it again with that choice, through
+  // the import that itself asks for it: the ref closes the loop.
   const startImportRef = useRef<((request: ImportRequest) => void) | null>(
     null,
   );
   const legacyActions = useLegacyProtocolActions({
-    reload,
     startImport: useCallback((request: ImportRequest) => {
       startImportRef.current?.(request);
     }, []),
@@ -127,14 +119,28 @@ export function HomeRoute() {
     pendingProtocolHash !== null &&
     protocols.some((p) => p.hash === pendingProtocolHash);
 
-  const legacyInterviewer = legacyActions.legacy.interviewer;
-  // Mirrors ResumePill's own render predicate (an in-progress session exists,
-  // this app's or, when it is bundled, Interviewer 8's). When it does, the
-  // pill occupies the band just below the header in portrait, so the
-  // protocols column reserves top space to clear it.
+  // The protocols whose interviews this build can open: every schema 9 one,
+  // and the schema 8 ones when Interviewer 8 is bundled to run them.
+  const legacyInterviewer = legacyActions.schema8.interviewer;
+  const runnableProtocolHashes = useMemo(
+    () =>
+      new Set(
+        protocols
+          .filter(
+            (protocol) =>
+              protocol.schemaVersion === COMPATIBLE_PROTOCOL_SCHEMA_VERSION ||
+              (isSchema8Protocol(protocol) && legacyInterviewer !== null),
+          )
+          .map((protocol) => protocol.hash),
+      ),
+    [protocols, legacyInterviewer],
+  );
+  // Mirrors ResumePill's own render predicate (an in-progress session it can
+  // open exists). When it does, the pill occupies the band just below the
+  // header in portrait, so the protocols column reserves top space to clear
+  // it.
   const hasResumableSession =
-    pickResumable(sessions, legacySessions, legacyInterviewer !== null) !==
-    undefined;
+    pickResumable(sessions, runnableProtocolHashes) !== undefined;
   const showResumePill =
     view === 'protocols' && !newSessionActive && hasResumableSession;
 
@@ -306,8 +312,7 @@ export function HomeRoute() {
               <ResumePill
                 key="resume-pill"
                 sessions={sessions}
-                legacySessions={legacySessions}
-                legacyInterviewer={legacyInterviewer}
+                runnableProtocolHashes={runnableProtocolHashes}
               />
             ) : null}
           </AnimatePresence>
@@ -349,10 +354,7 @@ export function HomeRoute() {
               onInstallSample={handleInstallSample}
               onDismissSample={handleDismissSample}
               onInstallDevelopment={handleInstallDevelopment}
-              legacyProtocols={legacyProtocols}
-              upgradedLegacyHashes={upgradedLegacyHashes}
-              legacy={legacyActions.legacy}
-              focusRequest={legacyActions.focusRequest}
+              schema8={legacyActions.schema8}
               newSessionProtocolHash={pendingProtocolHash}
               onCancelNewSession={closeNewSession}
               onSessionCreated={handleSessionCreated}
@@ -369,8 +371,6 @@ export function HomeRoute() {
           <DataView
             key="data"
             protocols={protocols}
-            legacyInterviewCount={legacySessions.length}
-            onOpenLegacyData={legacyActions.onOpenLegacyData}
             onReload={reload}
             refreshKey={dataRefreshKey}
           />

@@ -1,67 +1,32 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { missingAssetsError } from '@codaco/protocol-validation';
-import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
+import type { ProtocolWithCounts } from '~/lib/db/types';
 import type { BundledLegacyInterviewer } from '~/lib/legacyInterviewer';
 
 const mocks = vi.hoisted(() => ({
   bundled: null as BundledLegacyInterviewer | null,
-  goToLegacyInterviewer: vi.fn(),
   confirmProtocolUpgrade: vi.fn(),
   chooseImportRoute: vi.fn(),
-  showHandoffFailed: vi.fn(),
   showLegacyProtocolInfo: vi.fn(),
-  upgradeLegacyProtocol: vi.fn(),
-  findUpgradedCopy: vi.fn<() => Promise<string | null>>(),
-  listLegacyProtocols: vi.fn<() => Promise<LegacyProtocolSummary[]>>(),
-  keepOnInterviewer8: vi.fn(),
   track: vi.fn(),
-  captureException: vi.fn(),
-  addToast: vi.fn(),
   openDialog: vi.fn(),
-  lockSettled: true,
-  settleLock: vi.fn<() => Promise<boolean>>(),
 }));
 
 vi.mock('~/lib/legacyInterviewer', async (importOriginal) => ({
   ...(await importOriginal<typeof import('~/lib/legacyInterviewer')>()),
   getBundledLegacyInterviewer: () => mocks.bundled,
-  goToLegacyInterviewer: mocks.goToLegacyInterviewer,
 }));
 vi.mock('~/components/legacyProtocolDialogs', () => ({
   confirmProtocolUpgrade: mocks.confirmProtocolUpgrade,
   chooseImportRoute: mocks.chooseImportRoute,
-  showHandoffFailed: mocks.showHandoffFailed,
   showLegacyProtocolInfo: mocks.showLegacyProtocolInfo,
 }));
-vi.mock('~/lib/protocol/upgradeLegacyProtocol', () => ({
-  upgradeLegacyProtocol: mocks.upgradeLegacyProtocol,
-  findUpgradedCopy: mocks.findUpgradedCopy,
-}));
-vi.mock('~/lib/db/legacyLibrary', () => ({
-  listLegacyProtocols: mocks.listLegacyProtocols,
-}));
-vi.mock('~/lib/protocol/importRouting', () => ({
-  keepOnInterviewer8: mocks.keepOnInterviewer8,
-}));
 vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
-  useAnalytics: () => ({
-    track: mocks.track,
-    captureException: mocks.captureException,
-  }),
-}));
-vi.mock('@codaco/fresco-ui/Toast', () => ({
-  useToast: () => ({ add: mocks.addToast }),
+  useAnalytics: () => ({ track: mocks.track }),
 }));
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => ({ openDialog: mocks.openDialog }),
-}));
-vi.mock('~/components/useSettleLockForInterviewer8', () => ({
-  useSettleLockForInterviewer8: () => ({
-    settled: mocks.lockSettled,
-    settleLock: mocks.settleLock,
-  }),
 }));
 vi.mock('~/lib/pwa/legacyInterviewerOffline', () => ({
   useLegacyInterviewerOffline: () => 'ready',
@@ -72,317 +37,78 @@ const { useLegacyProtocolActions } =
 
 const INTERVIEWER_8 = { version: '8.5.0', path: '/v8/' } as const;
 
-const legacyProtocol: LegacyProtocolSummary = {
+const schema8Protocol = {
   id: 'row',
-  hash: 'legacy-hash',
+  hash: 'schema-8-hash',
   name: 'Wave One',
   schemaVersion: 8,
   importedAt: '2025-05-20T10:00:00.000Z',
+  codebook: {},
+  protocol: { name: 'Wave One', schemaVersion: 8, codebook: {}, stages: [] },
   sessionCount: 2,
-};
+} as ProtocolWithCounts;
 
 const file = new File(['zip'], 'older.netcanvas');
 const migrationRequest = { file, label: 'Older', schemaVersion: 8 };
 
 const setup = () => {
-  const reload = vi.fn(() => Promise.resolve());
   const startImport = vi.fn();
-  const hook = renderHook(() =>
-    useLegacyProtocolActions({ reload, startImport }),
-  );
-  return { ...hook, reload, startImport };
+  const hook = renderHook(() => useLegacyProtocolActions({ startImport }));
+  return { ...hook, startImport };
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.bundled = INTERVIEWER_8;
-  mocks.lockSettled = true;
-  mocks.settleLock.mockResolvedValue(true);
-  mocks.findUpgradedCopy.mockResolvedValue(null);
-  mocks.listLegacyProtocols.mockResolvedValue([legacyProtocol]);
 });
 
 describe('useLegacyProtocolActions: schema 8 cards', () => {
-  it('starts an interview in Interviewer 8 by full page load', async () => {
-    const { result } = setup();
-    result.current.legacy.onStart(legacyProtocol);
-    await waitFor(() =>
-      expect(mocks.goToLegacyInterviewer).toHaveBeenCalledWith(
-        '/v8/?start=legacy-hash',
-      ),
-    );
-    expect(mocks.settleLock).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    ['starting an interview', 'onStart'],
-    ['opening Interviewer 8', 'onOpenInInterviewer'],
-  ] as const)(
-    'stays here when %s while the researcher leaves lock set-up',
-    async (_, action) => {
-      // Interviewer 8 cannot set the shared lock up and sends an unconfigured
-      // device straight back, so nothing opens until it is settled here.
-      mocks.settleLock.mockResolvedValue(false);
-      const { result } = setup();
-      result.current.legacy[action](legacyProtocol);
-      await waitFor(() => expect(mocks.settleLock).toHaveBeenCalledOnce());
-      await act(async () => {});
-      expect(mocks.goToLegacyInterviewer).not.toHaveBeenCalled();
-    },
-  );
-
-  it('opens Interviewer 8’s data view once the lock is settled', async () => {
-    const { result } = setup();
-    result.current.onOpenLegacyData?.();
-    await waitFor(() =>
-      expect(mocks.goToLegacyInterviewer).toHaveBeenCalledWith('/v8/data'),
-    );
-
-    vi.clearAllMocks();
-    mocks.settleLock.mockResolvedValue(false);
-    result.current.onOpenLegacyData?.();
-    await waitFor(() => expect(mocks.settleLock).toHaveBeenCalledOnce());
-    await act(async () => {});
-    expect(mocks.goToLegacyInterviewer).not.toHaveBeenCalled();
-  });
-
-  it('links the interview count to Interviewer 8 only once a lock is in place', () => {
-    expect(setup().result.current.legacy.sessionsHref).toBe('/v8/data');
-    mocks.lockSettled = false;
-    expect(setup().result.current.legacy.sessionsHref).toBeNull();
-  });
-
-  it('goes nowhere without a bundled Interviewer 8', () => {
+  it('says whether Interviewer 8 is there to run their interviews', () => {
+    expect(setup().result.current.schema8).toMatchObject({
+      interviewer: INTERVIEWER_8,
+      offline: 'ready',
+    });
     mocks.bundled = null;
-    const { result } = setup();
-    expect(result.current.legacy.interviewer).toBeNull();
-    expect(result.current.onOpenLegacyData).toBeNull();
-    expect(result.current.legacy.sessionsHref).toBeNull();
-    result.current.legacy.onStart(legacyProtocol);
-    result.current.legacy.onOpenInInterviewer(legacyProtocol);
-    expect(mocks.goToLegacyInterviewer).not.toHaveBeenCalled();
+    expect(setup().result.current.schema8.interviewer).toBeNull();
   });
 
-  it('upgrades only after confirmation', async () => {
-    mocks.confirmProtocolUpgrade.mockResolvedValue(false);
+  it('shows a protocol’s details', () => {
     const { result } = setup();
-    result.current.legacy.onUpgrade(legacyProtocol);
-    await waitFor(() =>
-      expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledWith(
-        mocks.openDialog,
-        { fromVersion: 8, source: 'legacy-library' },
-      ),
-    );
-    expect(mocks.upgradeLegacyProtocol).not.toHaveBeenCalled();
-  });
-
-  it('brings the new copy into view after an upgrade, with level-1 analytics only', async () => {
-    mocks.confirmProtocolUpgrade.mockResolvedValue(true);
-    mocks.upgradeLegacyProtocol.mockResolvedValue({
-      status: 'upgraded',
-      hash: 'new-hash',
-      protocol: { name: 'Wave One' },
-    });
-    const { result, reload } = setup();
-
-    await act(async () => {
-      result.current.legacy.onUpgrade(legacyProtocol);
-    });
-
-    await waitFor(() =>
-      expect(result.current.focusRequest).toEqual({ protocolHash: 'new-hash' }),
-    );
-    expect(mocks.upgradeLegacyProtocol).toHaveBeenCalledWith('legacy-hash');
-    expect(reload).toHaveBeenCalled();
-    expect(mocks.track).toHaveBeenCalledWith('legacy_protocol_upgraded', {
-      from_schema: 8,
-      to_schema: 9,
-      existing: false,
-    });
-    expect(mocks.addToast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'success' }),
+    result.current.schema8.onShowInfo(schema8Protocol);
+    expect(mocks.showLegacyProtocolInfo).toHaveBeenCalledWith(
+      mocks.openDialog,
+      schema8Protocol,
     );
   });
 
-  it('shows the existing copy when the protocol was upgraded before', async () => {
-    mocks.confirmProtocolUpgrade.mockResolvedValue(true);
-    mocks.upgradeLegacyProtocol.mockResolvedValue({
-      status: 'existing',
-      hash: 'earlier-hash',
-    });
-    const { result } = setup();
-
-    await act(async () => {
-      result.current.legacy.onUpgrade(legacyProtocol);
-    });
-
-    await waitFor(() =>
-      expect(result.current.focusRequest).toEqual({
-        protocolHash: 'earlier-hash',
-      }),
-    );
-  });
-
-  it('shows an upgraded copy that is still here without asking to make one', async () => {
-    // The confirmation promises a new copy; none is made.
-    mocks.findUpgradedCopy.mockResolvedValue('earlier-hash');
-    const { result } = setup();
-
-    await act(async () => {
-      result.current.legacy.onUpgrade(legacyProtocol);
-    });
-
-    await waitFor(() =>
-      expect(result.current.focusRequest).toEqual({
-        protocolHash: 'earlier-hash',
-      }),
-    );
-    expect(mocks.findUpgradedCopy).toHaveBeenCalledWith(legacyProtocol);
-    expect(mocks.confirmProtocolUpgrade).not.toHaveBeenCalled();
-    expect(mocks.upgradeLegacyProtocol).not.toHaveBeenCalled();
-    expect(mocks.addToast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'info' }),
-    );
-    expect(mocks.track).toHaveBeenCalledWith('legacy_protocol_upgraded', {
-      from_schema: 8,
-      to_schema: 9,
-      existing: true,
-    });
-  });
-
-  it('matches the copy against the original as Interviewer 8 holds it now', async () => {
-    // Re-imported in Interviewer 8 since Home listed it: the copy made from
-    // the earlier import is not this one's.
-    const reimported = {
-      ...legacyProtocol,
-      importedAt: '2025-06-01T10:00:00.000Z',
-    };
-    mocks.listLegacyProtocols.mockResolvedValue([reimported]);
-    mocks.confirmProtocolUpgrade.mockResolvedValue(false);
-    const { result } = setup();
-
-    await act(async () => {
-      result.current.legacy.onUpgrade(legacyProtocol);
-    });
-
-    await waitFor(() =>
-      expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledOnce(),
-    );
-    expect(mocks.findUpgradedCopy).toHaveBeenCalledExactlyOnceWith(reimported);
-  });
-
-  it('names the resource an upgrade found missing', async () => {
-    mocks.confirmProtocolUpgrade.mockResolvedValue(true);
-    mocks.upgradeLegacyProtocol.mockResolvedValue({
-      status: 'failed',
-      reason: 'missing-assets',
-      cause: missingAssetsError([
-        { id: 'map', name: 'Neighbourhood map', source: 'map' },
-      ]),
-    });
-    const { result } = setup();
-
-    await act(async () => {
-      result.current.legacy.onUpgrade(legacyProtocol);
-    });
-
-    await waitFor(() =>
-      expect(mocks.addToast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'destructive' }),
-      ),
-    );
-    const [{ description }] = mocks.addToast.mock.calls[0] as [
-      { description: { props: { values?: Record<string, unknown> } } },
-    ];
-    expect(description.props.values).toEqual({
-      assetName: 'Neighbourhood map',
-    });
-  });
-
-  it('asks to confirm when it cannot tell whether a copy exists', async () => {
-    mocks.findUpgradedCopy.mockRejectedValue(new Error('storage'));
-    mocks.confirmProtocolUpgrade.mockResolvedValue(false);
-    const { result } = setup();
-
-    await act(async () => {
-      result.current.legacy.onUpgrade(legacyProtocol);
-    });
-
-    await waitFor(() =>
-      expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledOnce(),
-    );
-    expect(mocks.upgradeLegacyProtocol).not.toHaveBeenCalled();
-  });
-
-  it('reports a failed upgrade and focuses nothing', async () => {
-    mocks.confirmProtocolUpgrade.mockResolvedValue(true);
-    mocks.upgradeLegacyProtocol.mockResolvedValue({
-      status: 'failed',
-      reason: 'read-failed',
-    });
-    const { result } = setup();
-
-    await act(async () => {
-      result.current.legacy.onUpgrade(legacyProtocol);
-    });
-
-    await waitFor(() =>
-      expect(mocks.addToast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'destructive' }),
-      ),
-    );
-    expect(result.current.focusRequest).toBeNull();
-    expect(mocks.track).toHaveBeenCalledWith('legacy_protocol_upgrade_failed', {
-      reason: 'read-failed',
-    });
+  it('offers no upgrade of a stored protocol: only an import upgrades', () => {
+    expect(Object.keys(setup().result.current.schema8).toSorted()).toEqual([
+      'interviewer',
+      'offline',
+      'onShowInfo',
+    ]);
   });
 });
 
 describe('useLegacyProtocolActions: an older file being imported', () => {
-  it('keeps it on schema 8 by handing it to Interviewer 8', async () => {
+  it('keeps it on schema 8 through the normal import', async () => {
     mocks.chooseImportRoute.mockResolvedValue('keep');
-    mocks.keepOnInterviewer8.mockResolvedValue({ ok: true });
     const { result, startImport } = setup();
 
     result.current.onMigrationRequired(migrationRequest);
 
     await waitFor(() =>
-      expect(mocks.keepOnInterviewer8).toHaveBeenCalledWith(
+      expect(startImport).toHaveBeenCalledWith({
+        source: 'file',
         file,
-        INTERVIEWER_8,
-      ),
+        label: 'Older',
+        olderSchema: 'keep',
+      }),
     );
-    expect(startImport).not.toHaveBeenCalled();
-    expect(mocks.showHandoffFailed).not.toHaveBeenCalled();
-  });
-
-  it('stages nothing until the lock is settled', async () => {
-    // A file staged for an Interviewer 8 that sends the researcher straight
-    // back would be lost.
-    mocks.chooseImportRoute.mockResolvedValue('keep');
-    mocks.settleLock.mockResolvedValue(false);
-    const { result } = setup();
-
-    result.current.onMigrationRequired(migrationRequest);
-
-    await waitFor(() => expect(mocks.settleLock).toHaveBeenCalledOnce());
-    await act(async () => {});
-    expect(mocks.keepOnInterviewer8).not.toHaveBeenCalled();
-  });
-
-  it('shows an error when the file cannot be handed over', async () => {
-    mocks.chooseImportRoute.mockResolvedValue('keep');
-    mocks.keepOnInterviewer8.mockResolvedValue({
-      ok: false,
-      error: new Error('quota'),
+    expect(mocks.confirmProtocolUpgrade).not.toHaveBeenCalled();
+    expect(mocks.track).toHaveBeenCalledWith('protocol_kept_on_legacy', {
+      schema_version: 8,
     });
-    const { result } = setup();
-
-    result.current.onMigrationRequired(migrationRequest);
-
-    await waitFor(() =>
-      expect(mocks.showHandoffFailed).toHaveBeenCalledWith(mocks.openDialog),
-    );
   });
 
   it('upgrades it, after the migration notes, through the normal import', async () => {
@@ -397,12 +123,12 @@ describe('useLegacyProtocolActions: an older file being imported', () => {
         source: 'file',
         file,
         label: 'Older',
-        allowMigration: true,
+        olderSchema: 'upgrade',
       }),
     );
     expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledWith(
       mocks.openDialog,
-      { fromVersion: 8, source: 'file' },
+      { fromVersion: 8, legacyInterviewerBundled: true },
     );
   });
 
@@ -426,7 +152,7 @@ describe('useLegacyProtocolActions: an older file being imported', () => {
     result.current.onMigrationRequired(migrationRequest);
 
     await waitFor(() => expect(mocks.chooseImportRoute).toHaveBeenCalled());
-    expect(mocks.keepOnInterviewer8).not.toHaveBeenCalled();
+    await act(async () => {});
     expect(mocks.confirmProtocolUpgrade).not.toHaveBeenCalled();
     expect(startImport).not.toHaveBeenCalled();
   });
@@ -440,10 +166,16 @@ describe('useLegacyProtocolActions: an older file being imported', () => {
 
     await waitFor(() =>
       expect(startImport).toHaveBeenCalledWith(
-        expect.objectContaining({ allowMigration: true }),
+        expect.objectContaining({ olderSchema: 'upgrade' }),
       ),
     );
     expect(mocks.chooseImportRoute).not.toHaveBeenCalled();
-    expect(mocks.keepOnInterviewer8).not.toHaveBeenCalled();
+    // The confirmation is told it is the only dialog, so it gives the schema
+    // intro and the caution itself (legacyProtocolDialogs.test.tsx pins the
+    // words it then shows).
+    expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledWith(
+      mocks.openDialog,
+      { fromVersion: 8, legacyInterviewerBundled: false },
+    );
   });
 });

@@ -16,7 +16,7 @@ import { setSessionDek } from '../sessionKey';
 import {
   createSession,
   getSession,
-  getSessionsByIds,
+  getSessionsForExport,
   listSessions,
   markSessionFinished,
   markSessionUnfinished,
@@ -196,7 +196,7 @@ describe('sessions repo — encryption at boundary', () => {
     const back = await getSession(created.id);
     expect(back?.network).toEqual(initialNetwork);
 
-    const byIds = await getSessionsByIds([created.id]);
+    const byIds = await getSessionsForExport([created.id]);
     expect(byIds[0]?.network).toEqual(initialNetwork);
   });
 
@@ -289,7 +289,7 @@ describe('sessions repo — participant passphrase encryption', () => {
 
       await updateSession(created.id, { network, currentStep: 2 });
       expect((await getSession(created.id))?.network).toStrictEqual(network);
-      const [exported] = await getSessionsByIds([created.id]);
+      const [exported] = await getSessionsForExport([created.id]);
       expect(exported?.network).toStrictEqual(network);
     },
   );

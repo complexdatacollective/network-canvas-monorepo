@@ -6,7 +6,7 @@ import type { ProtocolWithCounts } from '~/lib/db/types';
 import type { LegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 
 import type { DeckEntry } from './deckEntries';
-import { DeckSlotCard, type LegacyCardActions } from './DeckSlotCard';
+import { DeckSlotCard, type Schema8CardActions } from './DeckSlotCard';
 
 // DeckSlotCard is the single entry point every carousel slot renders
 // through, regardless of the entry's kind (protocol / sample / pending
@@ -74,27 +74,23 @@ function ResizableFrame({
 }
 
 type StoryArgs = {
-  kind: 'protocol' | 'legacy' | 'sample' | 'development' | 'pending';
+  kind: 'protocol' | 'schema8' | 'sample' | 'development' | 'pending';
   isActive: boolean;
   sessionCount: number;
   size: number;
   progress: number;
-  // kind="legacy" only: a schema 8 protocol from Interviewer 8's library.
+  // kind="schema8" only: a schema 8 protocol, whose interviews run in the
+  // bundled Interviewer 8.
   legacyBundled: boolean;
   legacyOffline: Exclude<LegacyInterviewerOffline, 'not-bundled'>;
-  legacyUpgraded: boolean;
 };
 
-const legacyActions = (
+const schema8Actions = (
   bundled: boolean,
   offline: StoryArgs['legacyOffline'],
-): LegacyCardActions => ({
+): Schema8CardActions => ({
   interviewer: bundled ? { version: '8.5.0', path: '/v8/' } : null,
   offline: bundled ? offline : 'not-bundled',
-  sessionsHref: bundled ? '/v8/data' : null,
-  onStart: () => {},
-  onOpenInInterviewer: () => {},
-  onUpgrade: () => {},
   onShowInfo: () => {},
 });
 
@@ -102,17 +98,16 @@ function entryForKind(
   kind: StoryArgs['kind'],
   progress: number,
   sessionCount: number,
-  upgraded: boolean,
 ): Exclude<DeckEntry, { kind: 'import' }> {
   switch (kind) {
     case 'protocol':
       return { kind: 'protocol', protocol: makeProtocol() };
-    case 'legacy': {
+    case 'schema8': {
       const { id, hash, name, description, importedAt } = makeProtocol({
         name: 'Wave One Support Networks',
       });
       return {
-        kind: 'legacy',
+        kind: 'protocol',
         protocol: {
           id,
           hash,
@@ -120,9 +115,10 @@ function entryForKind(
           description,
           importedAt,
           schemaVersion: 8,
+          codebook: {},
+          protocol: { name, schemaVersion: 8, codebook: {}, stages: [] },
           sessionCount,
         },
-        upgraded,
       };
     }
     case 'sample':
@@ -163,12 +159,11 @@ const meta: Meta<StoryArgs> = {
     progress: 0.5,
     legacyBundled: true,
     legacyOffline: 'ready',
-    legacyUpgraded: false,
   },
   argTypes: {
     kind: {
       control: 'inline-radio',
-      options: ['protocol', 'legacy', 'sample', 'development', 'pending'],
+      options: ['protocol', 'schema8', 'sample', 'development', 'pending'],
       description: 'Which DeckEntry kind fills this slot',
     },
     isActive: {
@@ -183,16 +178,12 @@ const meta: Meta<StoryArgs> = {
     },
     legacyBundled: {
       control: 'boolean',
-      description: 'Whether this build bundles Interviewer 8 (kind="legacy")',
+      description: 'Whether this build bundles Interviewer 8 (kind="schema8")',
     },
     legacyOffline: {
       control: 'inline-radio',
       options: ['checking', 'ready', 'not-ready'],
-      description: 'Interviewer 8 offline readiness (kind="legacy")',
-    },
-    legacyUpgraded: {
-      control: 'boolean',
-      description: 'An upgraded copy exists (kind="legacy")',
+      description: 'Interviewer 8 offline readiness (kind="schema8")',
     },
   },
   render: ({
@@ -203,11 +194,10 @@ const meta: Meta<StoryArgs> = {
     progress,
     legacyBundled,
     legacyOffline,
-    legacyUpgraded,
   }) => (
     <ResizableFrame size={size}>
       <DeckSlotCard
-        entry={entryForKind(kind, progress, sessionCount, legacyUpgraded)}
+        entry={entryForKind(kind, progress, sessionCount)}
         isActive={isActive}
         activate={() => {}}
         sessionCount={sessionCount}
@@ -215,7 +205,7 @@ const meta: Meta<StoryArgs> = {
         onDismissSample={() => {}}
         onInstallSample={() => {}}
         onInstallDevelopment={() => {}}
-        legacy={legacyActions(legacyBundled, legacyOffline)}
+        schema8={schema8Actions(legacyBundled, legacyOffline)}
       />
     </ResizableFrame>
   ),
@@ -249,19 +239,19 @@ export const PendingImport: Story = {
 };
 
 /**
- * A schema 8 protocol from Interviewer 8's library: its schema badge, a menu
- * (Open in Interviewer 8, Upgrade to schema 9, Info) in place of Delete, and
- * Start, which opens Interviewer 8.
+ * A schema 8 protocol: a protocol card like any other, with its schema badge
+ * and a menu (Info, Delete) in place of Delete. Start
+ * opens the normal new-interview form; the interview runs in Interviewer 8.
  */
 export const SchemaEightProtocol: Story = {
-  args: { kind: 'legacy' },
+  args: { kind: 'schema8' },
 };
 
-export const SchemaEightUpgradedNotReadyOffline: Story = {
-  args: { kind: 'legacy', legacyUpgraded: true, legacyOffline: 'not-ready' },
+export const SchemaEightNotReadyOffline: Story = {
+  args: { kind: 'schema8', legacyOffline: 'not-ready' },
 };
 
-/** This build has no Interviewer 8: only Upgrade and Info are offered. */
+/** This build has no Interviewer 8: no interview can be started. */
 export const SchemaEightUnavailable: Story = {
-  args: { kind: 'legacy', legacyBundled: false },
+  args: { kind: 'schema8', legacyBundled: false },
 };

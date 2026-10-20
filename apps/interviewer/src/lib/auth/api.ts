@@ -1,12 +1,8 @@
 import type { LocalizedMessage } from '../../i18n/messageResult';
 import { reencryptAllRecords } from '../db/api';
 import { db } from '../db/db';
-import {
-  deleteLegacyDatabases,
-  encryptLegacyDatabases,
-} from '../db/legacyVaultMaintenance';
+import { deleteRetiredDatabases } from '../db/retiredDatabases';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
-import { deleteHandoffDatabase } from '../handoff/handoffStore';
 import { requestPersistentStorage } from '../storage';
 import * as vault from '../vault/vault';
 import { isPrfSupported } from '../vault/webauthn';
@@ -45,14 +41,13 @@ async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
 // ("secured ⇒ existing data encrypted") is only met once the flag is cleared (a
 // run with zero failed rows).
 //
-// The lock is shared with Interviewer 8 (served at /v8/ on this origin), so the
-// same sweep encrypts Interviewer 8's plaintext rows too, and the same flag
-// covers both databases: it clears only once neither has a failure left.
+// The lock and the database are shared with Interviewer 8 (served at /v8/ on
+// this origin), so the sweep covers the rows of schema 8 protocols too, and
+// writes them in Interviewer 8's format (see `reencryptAllRecords`).
 async function runReencryptionSweep(): Promise<void> {
   try {
-    const own = await reencryptAllRecords();
-    const legacy = await encryptLegacyDatabases();
-    setReencryptionPending(own.failed + legacy.failed > 0);
+    const { failed } = await reencryptAllRecords();
+    setReencryptionPending(failed > 0);
   } catch (error) {
     // No other reporting exists for this background sweep, and the security
     // invariant depends on knowing why it failed.
@@ -221,13 +216,12 @@ export async function revoke(): Promise<void> {
   // Drop the encrypted data DB first, then clear the vault record. If we fail
   // mid-revoke, leaving the vault record keeps a recoverable "configured but
   // locked" state instead of an orphaned DB without a vault. Every reset, mode
-  // switch and recovery-by-resetting comes through here, and the lock is
-  // shared with Interviewer 8, so its database goes too: its rows are
-  // encrypted under the key about to be discarded. Protocol files staged
-  // for a hand-off between the two are stored protocols too.
+  // switch and recovery-by-resetting comes through here. The database is the
+  // one Interviewer 8 at /v8/ uses too, so this clears every protocol and
+  // interview of either schema. The databases an unreleased build left behind
+  // go too: one holds rows under the key about to be discarded.
   await db.delete({ disableAutoOpen: false });
-  await deleteLegacyDatabases();
-  await deleteHandoffDatabase();
+  await deleteRetiredDatabases();
   await vault.revoke(); // clears the localStorage vault record + best-effort passkey delete
   setSessionDek(null);
 }

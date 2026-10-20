@@ -5,6 +5,7 @@ import {
   getLastAvailableAuthoredStageIndex,
   type SessionFinish,
 } from '@codaco/interview';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
@@ -12,7 +13,10 @@ import { db } from './db';
 import {
   assertPlaintextStillAllowed,
   decryptSession,
+  decryptSessionForExport,
+  decryptSessionRecord,
   encryptSession,
+  type ExportedSessionRecord,
   preparingPlaintext,
   type StoredSessionRow,
   prepareSessionFinish,
@@ -259,12 +263,33 @@ export function getSession(id: string): Promise<StoredSession | undefined> {
   });
 }
 
-export async function getSessionsByIds(
+/**
+ * The schema version of the protocol session `id` was recorded with, read
+ * from plaintext fields alone, so nothing is decrypted to find out which
+ * interview engine runs it. `undefined` when the session or its protocol is
+ * not stored.
+ */
+export async function getSessionSchemaVersion(
+  id: string,
+): Promise<number | undefined> {
+  return db.transaction('r', db.sessions, db.protocols, async () => {
+    const session = await db.sessions.get(id);
+    if (!session) return undefined;
+    const protocol = await db.protocols
+      .where('hash')
+      .equals(session.protocolHash)
+      .first();
+    return protocol?.schemaVersion;
+  });
+}
+
+/** The sessions `ids`, of any schema, as the exporter reads them. */
+export async function getSessionsForExport(
   ids: readonly string[],
-): Promise<StoredSession[]> {
+): Promise<ExportedSessionRecord[]> {
   const rows = await db.sessions.bulkGet([...ids]);
   const present = rows.filter((r): r is StoredSessionRow => Boolean(r));
-  return Promise.all(present.map((row) => decryptSession(row)));
+  return Promise.all(present.map((row) => decryptSessionForExport(row)));
 }
 
 export async function createSession(args: {
@@ -463,7 +488,9 @@ export function markSessionFinished(
 
 /**
  * Reopen a finished session at its last available stage of `stages`, the
- * stages of its protocol.
+ * stages of its protocol. Only a session of this app's own schema: where a
+ * schema 8 interview resumes is Interviewer 8's to work out, so its session is
+ * refused, unchanged.
  */
 export function markSessionUnfinished(
   id: string,
@@ -472,6 +499,15 @@ export function markSessionUnfinished(
   return enqueueSessionMutation(id, async () => {
     const existingRow = await db.sessions.get(id);
     if (!existingRow?.finishedAt) return;
+    const schemaVersion = await getSessionSchemaVersion(id);
+    if (
+      schemaVersion !== undefined &&
+      schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION
+    ) {
+      throw new Error(
+        `Interview ${id} is not at schema ${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}, so it cannot be marked unfinished here`,
+      );
+    }
 
     const existing = await decryptSession(existingRow);
     const lastAvailableStage = getLastAvailableAuthoredStageIndex(
@@ -526,11 +562,15 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
 // callers can decide whether to continue. Precondition: a DEK must be held
 // (encryptSession throws for a locked secured vault); under mode `none` this is
 // a plaintext-preserving no-op and callers should not invoke it.
+//
+// The answers are re-wrapped exactly as stored, never parsed: a schema 8
+// session's are Interviewer 8's, and come out in Interviewer 8's own row
+// format.
 export async function reencryptSession(id: string): Promise<void> {
   await enqueueSessionMutation(id, async () => {
     const existingRow = await db.sessions.get(id);
     if (!existingRow) return;
-    const existing = await decryptSession(existingRow);
+    const existing = await decryptSessionRecord(existingRow);
     const row = await encryptSession(existing);
     await db.sessions.put(row);
   });

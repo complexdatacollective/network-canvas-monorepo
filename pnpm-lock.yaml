@@ -1429,6 +1429,9 @@ importers:
       posthog-js:
         specifier: 'catalog:'
         version: 1.435.3(@types/react@19.3.0)(react@19.3.0)
+      protocol-validation-schema-8:
+        specifier: npm:@codaco/protocol-validation@15.0.0
+        version: '@codaco/protocol-validation@15.0.0(@codaco/app-i18n@packages+app-i18n)'
       react:
         specifier: 'catalog:'
         version: 19.3.0
@@ -4630,6 +4633,15 @@ packages:
     resolution: {integrity: sha512-AMSU9nf3Bf8bxvPNW0BdxGVmE5t0vNpnGc5XuWr6OldCUxMUqDponO/YiY+x/AYnE/6KdQDQHvYgYk8nk502Iw==}
     hasBin: true
 
+  '@codaco/protocol-validation@15.0.0':
+    resolution: {integrity: sha512-l4kT6VS+KGaLsm2rfTBwWbaq38NB3ERkF5RXVStwMkClhNSC2MsSRsiqKpBf/A+tGcXOP6vce59kH98QkTgrPQ==}
+    hasBin: true
+    peerDependencies:
+      '@codaco/app-i18n': ^0.3.0
+    peerDependenciesMeta:
+      '@codaco/app-i18n':
+        optional: true
+
   '@codaco/protocol-validation@3.0.0':
     resolution: {integrity: sha512-23/nKuVKyKzHfEzQKVFFpCIibe+j3biLPuYKK+Ly7kyNygeEO/MydMGHWYTQUoAKUjIlBXRryGhdHt5uen9/8A==}
 
@@ -4638,6 +4650,10 @@ packages:
 
   '@codaco/shared-consts@5.5.0':
     resolution: {integrity: sha512-n2GJiGcZm8X+ZAtU27RY07zKL2l5nLakdoT+3kX/jnDw+E8JGSOAB+/RdqkAzbihFgi2272eWBwvHpsho6v4dg==}
+    engines: {node: '>=20.0.0'}
+
+  '@codaco/shared-consts@6.2.0':
+    resolution: {integrity: sha512-33N4vkFJ4+2JuFRsJNYUtCa3V8zN24xYIOFGz+evioQTRzOR9SXgKtZeqszCRHDmN8BgIIiHxrOy1IaKKw62eg==}
     engines: {node: '>=20.0.0'}
 
   '@codaco/ui@5.8.6':
@@ -19220,11 +19236,24 @@ snapshots:
       ohash: 2.0.12
       zod: 4.6.5
 
+  '@codaco/protocol-validation@15.0.0(@codaco/app-i18n@packages+app-i18n)':
+    dependencies:
+      '@codaco/shared-consts': 6.2.0
+      jszip: 3.10.2
+      ohash: 2.0.12
+      zod: 4.6.5
+    optionalDependencies:
+      '@codaco/app-i18n': link:packages/app-i18n
+
   '@codaco/protocol-validation@3.0.0': {}
 
   '@codaco/shared-consts@0.0.2': {}
 
   '@codaco/shared-consts@5.5.0':
+    dependencies:
+      zod: 4.6.5
+
+  '@codaco/shared-consts@6.2.0':
     dependencies:
       zod: 4.6.5
 

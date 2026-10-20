@@ -2,8 +2,8 @@
 // served at /v8/ from the same deploy, out of the newer app's way: the newer
 // worker must never precache, answer or cache anything under /v8/, the
 // hosting rules must hand /v8/ deep links to the older major's shell
-// (without a redirect loop), and dist/v8 must hold exactly what the pin names
-// (or nothing at all). Kept apart from those scripts, which run on import, so
+// (without a redirect loop) and let the newer app frame it (and no one else),
+// and dist/v8 must hold exactly what the pin names (or nothing at all). Kept apart from those scripts, which run on import, so
 // they can be tested.
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -167,6 +167,93 @@ export const assertLegacyRedirects = (app: LegacyApp, text: string): void => {
     throw new Error(
       `_redirects does not send /v8/* to ${app.label}’s shell before its catch-all`,
     );
+  }
+};
+
+type HeaderRule = { path: string; headers: Map<string, string> };
+
+const parseHeaderRules = (text: string): HeaderRule[] => {
+  const rules: HeaderRule[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed === '' || trimmed.startsWith('#')) continue;
+    if (/^\s/.test(line)) {
+      const separator = trimmed.indexOf(':');
+      const rule = rules.at(-1);
+      if (separator === -1 || !rule) continue;
+      rule.headers.set(
+        trimmed.slice(0, separator).trim().toLowerCase(),
+        trimmed.slice(separator + 1).trim(),
+      );
+      continue;
+    }
+    rules.push({ path: trimmed, headers: new Map() });
+  }
+  return rules;
+};
+
+// A Netlify `_headers` path: `*` matches anything after it.
+const ruleMatches = (rulePath: string, path: string) =>
+  new RegExp(
+    `^${rulePath
+      .split('*')
+      .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*')}$`,
+  ).test(path);
+
+// Paths the older major serves: its shell, its entry document and a deep link
+// to the interview route, which Netlify rewrites to the shell.
+const LEGACY_FRAMED_PATHS = ['/v8/', '/v8/index.html', '/v8/interview/id'];
+
+const frameAncestorsOf = (policy: string): string[] | undefined => {
+  const directive = policy
+    .split(';')
+    .map((part) => part.trim().split(/\s+/))
+    .find(([name]) => name?.toLowerCase() === 'frame-ancestors');
+  return directive?.slice(1);
+};
+
+/**
+ * Every page under /v8/ may be framed by this origin, and by no other: the
+ * newer app hosts the older major's interview in a same-origin iframe. Each
+ * rule matching a /v8/ path that sends a Content-Security-Policy must limit
+ * frame-ancestors to exactly 'self' (and at least one must send it), and none
+ * may send an X-Frame-Options other than SAMEORIGIN. Several matching rules
+ * may each send their own policy, and a browser enforces all of them, so one
+ * rule's `frame-ancestors 'none'` would block the frame whatever another says.
+ */
+export const assertLegacySameOriginFraming = (text: string): void => {
+  const rules = parseHeaderRules(text);
+  for (const path of LEGACY_FRAMED_PATHS) {
+    const matching = rules.filter((rule) => ruleMatches(rule.path, path));
+    const policies = matching.flatMap((rule) => {
+      const policy = rule.headers.get('content-security-policy');
+      return policy === undefined ? [] : [{ rule: rule.path, policy }];
+    });
+    if (policies.length === 0) {
+      throw new Error(
+        `_headers sends no Content-Security-Policy frame-ancestors for ${path}, so the newer app's frame is not limited to this origin`,
+      );
+    }
+    for (const { rule, policy } of policies) {
+      const ancestors = frameAncestorsOf(policy);
+      if (ancestors?.length !== 1 || ancestors[0] !== "'self'") {
+        throw new Error(
+          `_headers rule ${rule} sends "${policy}" for ${path}: its frame-ancestors must be exactly 'self'`,
+        );
+      }
+    }
+    for (const rule of matching) {
+      const frameOptions = rule.headers.get('x-frame-options');
+      if (
+        frameOptions !== undefined &&
+        frameOptions.toUpperCase() !== 'SAMEORIGIN'
+      ) {
+        throw new Error(
+          `_headers rule ${rule.path} sends X-Frame-Options: ${frameOptions} for ${path}, which blocks the newer app's frame`,
+        );
+      }
+    }
   }
 };
 

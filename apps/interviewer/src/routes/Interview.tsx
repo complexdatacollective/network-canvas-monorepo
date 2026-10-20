@@ -43,6 +43,9 @@ import {
   getLocaleMetadata,
   type LocalizationDeclaration,
 } from '@codaco/protocol-validation';
+import { Interviewer8Frame } from '~/components/Interviewer8Frame';
+import { legacyOfflineMessages } from '~/components/legacyProtocolMessages';
+import { useSettleLockForInterviewer8 } from '~/components/useSettleLockForInterviewer8';
 import { interviewerLocales } from '~/i18n/locales';
 import { browserLanguages } from '~/i18n/preference';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -52,10 +55,12 @@ import {
   buildResolvedAssets,
   makeAssetResolver,
 } from '~/lib/assets/assetResolver';
+import { useAuth } from '~/lib/auth/AuthContext';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   getProtocolByHash,
   getSession,
+  getSessionSchemaVersion,
   getSettings,
   markSessionFinished,
   updateSession,
@@ -63,6 +68,11 @@ import {
 } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import {
+  getBundledLegacyInterviewer,
+  LEGACY_INTERVIEWER_MAJOR,
+  legacyInterviewUrl,
+} from '~/lib/legacyInterviewer';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
@@ -93,6 +103,13 @@ const messages = defineMessages({
     defaultMessage:
       'The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.',
     description: 'Visible copy in Interviewer Interview.',
+  },
+  thisInterviewUsesAnOlderSchema: {
+    id: 'interviewer.interview.thisInterviewUsesAnOlderSchema',
+    defaultMessage:
+      'The protocol this interview uses is on an older version of the Network Canvas protocol schema, which this version of Interviewer cannot run, so this interview cannot be opened here. Its responses remain available on the data screen.',
+    description:
+      'Shown in place of an interview whose protocol uses an older protocol schema when this build of Interviewer does not include the previous version that runs such interviews. The responses can still be exported from the data screen.',
   },
   returnHome: {
     id: 'interviewer.interview.returnHome',
@@ -173,7 +190,24 @@ type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
   | { kind: 'incompatible' }
+  | { kind: 'legacy-not-bundled' }
+  // Interviewer 8's page could not be loaded into the frame (offline before
+  // it was saved for offline use).
+  | { kind: 'interviewer8-unreachable' }
   | { kind: 'unreadable' }
+  | {
+      // A schema 8 interview, run by the bundled Interviewer 8 in a frame.
+      kind: 'hosted';
+      sessionId: string;
+      src: string;
+      enterAuthorized: boolean;
+    }
+  | {
+      // The hosted interview has ended, or its frame was lost: the frame is
+      // gone and the route is on its way home (`lock`: locking as it goes).
+      kind: 'leaving-hosted';
+      lock: boolean;
+    }
   | {
       kind: 'ready';
       sessionId: string;
@@ -195,15 +229,23 @@ type SessionWriteState = {
 };
 
 const loadFailureCopy = {
-  incompatible: {
+  'incompatible': {
     heading: messages.interviewUnavailable,
     body: messages.theProtocolThisInterviewUsesCouldNot,
   },
-  missing: {
+  'legacy-not-bundled': {
+    heading: messages.interviewUnavailable,
+    body: messages.thisInterviewUsesAnOlderSchema,
+  },
+  'interviewer8-unreachable': {
+    heading: messages.interviewUnavailable,
+    body: legacyOfflineMessages.notReadyHelp,
+  },
+  'missing': {
     heading: messages.interviewNotFound,
     body: messages.thisInterviewMayHaveBeenDeletedOr,
   },
-  unreadable: {
+  'unreadable': {
     heading: messages.interviewCouldNotBeOpened,
     body: messages.theDataSavedForThisInterviewCouldNot,
   },
@@ -224,9 +266,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // handlers bound to the new id, and its next step change would write the old
   // interview's progress into the new session.
   const state: LoadState =
-    loadState.kind === 'ready' && loadState.sessionId !== sessionId
+    (loadState.kind === 'ready' || loadState.kind === 'hosted') &&
+    loadState.sessionId !== sessionId
       ? { kind: 'loading' }
       : loadState;
+  const hosting = state.kind === 'hosted' || state.kind === 'leaving-hosted';
   const [, navigate] = useLocation();
   const search = useSearch();
   const reviewRequested = new URLSearchParams(search).get('mode') === 'review';
@@ -270,11 +314,119 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // the requireUnlockOnExit gate. Pin the history for the life of the route;
   // gated forward exits go through `exitToHome` so the pinned entry is consumed
   // rather than left buried (which would let Back from Home re-enter).
-  const exitToHome = useHistoryBackGuard(true);
+  //
+  // While Interviewer 8 is hosted it pins the history itself, above this
+  // route's pin, and nothing here may push an entry: the two share one joint
+  // session history, and a push here would cut Interviewer 8's entries off.
+  // So the pin stops re-pinning then; the entry it pushed when the route
+  // mounted stays, and the exit below still consumes it.
+  const { lock } = useAuth();
+  const exitToHome = useHistoryBackGuard(!hosting);
   const goHome = useCallback(
     () => exitToHome(() => navigate('/', { replace: true })),
     [exitToHome, navigate],
   );
+
+  // A schema 8 interview runs in the bundled Interviewer 8, hosted here in a
+  // same-origin frame at `/v8/interview/<id>` with the same search
+  // (`?mode=review` for review), so its participants see the interview they
+  // always have. Both apps keep it in the one shared database. Nothing of it
+  // is decrypted here.
+  //
+  // The way in is the one a schema 9 interview takes, so the researcher
+  // unlocks once, here, and Interviewer 8 never shows its own lock screen on
+  // the way in: the lock is set up first when the device has none (only this
+  // app can set it up, and leaving set-up goes home), then this route's own
+  // enter step-up when requireUnlockOnEnter is set. The frame is then handed
+  // this app's key and told whether that step was satisfied.
+  //
+  // An effect event, not a load-effect dependency: settling the lock changes
+  // the auth state it reads, and re-running the load must not follow from it.
+  const { settled: lockSettled, settleLock } = useSettleLockForInterviewer8();
+  const hostInInterviewer8 = useEffectEvent(
+    async (isActive: () => boolean): Promise<boolean> => {
+      const interviewer = getBundledLegacyInterviewer();
+      if (!interviewer) return false;
+      const settingUp = !lockSettled;
+      const settled = await settleLock();
+      // Choosing the lock just now was a fresh authentication: it stands in
+      // for the enter step. Recorded before the active check, because set-up
+      // changes the auth state and re-runs this load, and that run must not
+      // ask again.
+      if (settled && settingUp) setAuthorizedInterviewId(sessionId);
+      if (!isActive()) return true;
+      if (!settled) {
+        goHome();
+        return true;
+      }
+      const settings = await getSettings();
+      if (!isActive()) return true;
+      const alreadyAuthorized = getAuthorizedInterviewId() === sessionId;
+      if (settings.requireUnlockOnEnter && !alreadyAuthorized) {
+        const result = await requireFreshUnlock();
+        if (!result.ok) {
+          if (isActive()) goHome();
+          return true;
+        }
+      }
+      if (!isActive()) return true;
+      setAuthorizedInterviewId(sessionId);
+      setLoadState({
+        kind: 'hosted',
+        sessionId,
+        src: legacyInterviewUrl(
+          interviewer,
+          sessionId,
+          search ? `?${search}` : '',
+        ),
+        enterAuthorized: settings.requireUnlockOnEnter,
+      });
+      return true;
+    },
+  );
+
+  // Interviewer 8 ended its interview (its own exit gate has run inside the
+  // frame), or the frame went away without saying so (a crash, a reload, a
+  // navigation inside it), after which this app cannot vouch for what the
+  // device was doing and locks. The frame is taken away first; the effect
+  // below then leaves as a schema 9 interview's exit does. Home loads its
+  // deck, resume pill and data view afresh when it mounts.
+  const handleHostedClosed = useCallback(() => {
+    setLoadState({ kind: 'leaving-hosted', lock: false });
+  }, []);
+  const handleHostedLost = useCallback(() => {
+    setLoadState({ kind: 'leaving-hosted', lock: true });
+  }, []);
+  const handleHostedUnavailable = useCallback(() => {
+    setLoadState({ kind: 'interviewer8-unreachable' });
+  }, []);
+  const leavingHosted = state.kind === 'leaving-hosted' ? state : null;
+  useEffect(() => {
+    if (!leavingHosted) return;
+    setAuthorizedInterviewId(null);
+    // Entries the departed frame pushed (Interviewer 8 pins its own, and a
+    // frame that crashed or navigated away never popped it) may lie above
+    // this route's pin. Stepping back over them fires nothing here, so the
+    // unwinding steps over them until it reaches this window's own entry, and
+    // only that entry is replaced with Home: Back from Home cannot re-enter.
+    exitToHome(() => navigate('/', { replace: true }), {
+      stepOverFrameEntries: true,
+    });
+    if (leavingHosted.lock) void lock();
+  }, [leavingHosted, exitToHome, lock, navigate, setAuthorizedInterviewId]);
+
+  // The route stopped being this interview while the frame was still up, by
+  // neither 'closed' nor a lost frame: the history went back past it (under
+  // Interviewer 8's error screen, say, its own pin is gone, and this route's
+  // pin does not re-pin while hosting). That is a way out without the exit
+  // step, so it locks, as a lost frame does.
+  const hostedSessionId =
+    loadState.kind === 'hosted' ? loadState.sessionId : null;
+  useEffect(() => {
+    if (hostedSessionId === null) return;
+    if (isLiveRoute && hostedSessionId === sessionId) return;
+    void lock();
+  }, [hostedSessionId, isLiveRoute, sessionId, lock]);
 
   // Participant text-size choice, persisted per session in sessionStorage so
   // an idle-lock/unlock cycle — which unmounts and remounts this route —
@@ -343,6 +495,22 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     if (!isLiveRoute) return undefined;
     let active = true;
     const load = async () => {
+      // Schema detection first, from the plaintext columns alone: nothing of a
+      // schema 8 interview is unlocked or decrypted by this app.
+      const schemaVersion = await getSessionSchemaVersion(sessionId);
+      if (!active) return;
+      if (
+        schemaVersion !== undefined &&
+        schemaVersion < COMPATIBLE_PROTOCOL_SCHEMA_VERSION
+      ) {
+        // Only schema 8 has an Interviewer to run it; anything older (none
+        // should exist) is explained, as is a build without Interviewer 8.
+        const hosted =
+          schemaVersion === LEGACY_INTERVIEWER_MAJOR &&
+          (await hostInInterviewer8(() => active));
+        if (!hosted && active) setLoadState({ kind: 'legacy-not-bundled' });
+        return;
+      }
       const settings = await getSettings();
       // Skip the enter gate when this interview's entry was already authorized
       // in the current unlock session — i.e. an idle-lock/unlock cycle remounted
@@ -557,6 +725,24 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     [readOnly, sessionId],
   );
 
+  if (state.kind === 'hosted') {
+    return (
+      <Interviewer8Frame
+        // One frame per interview: a new address is a new frame.
+        key={state.src}
+        src={state.src}
+        enterAuthorized={state.enterAuthorized}
+        onClosed={handleHostedClosed}
+        onLost={handleHostedLost}
+        onUnavailable={handleHostedUnavailable}
+      />
+    );
+  }
+
+  if (state.kind === 'leaving-hosted') {
+    return <div className="bg-background h-full" />;
+  }
+
   if (state.kind === 'loading') {
     return (
       <div className="bg-background flex h-full items-center justify-center">
@@ -567,6 +753,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   if (
     state.kind === 'incompatible' ||
+    state.kind === 'legacy-not-bundled' ||
+    state.kind === 'interviewer8-unreachable' ||
     state.kind === 'missing' ||
     state.kind === 'unreadable'
   ) {
@@ -574,7 +762,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     return (
       <LoadFailure
         heading={intl.formatMessage(copy.heading)}
-        body={intl.formatMessage(copy.body)}
+        body={intl.formatMessage(copy.body, {
+          version: LEGACY_INTERVIEWER_MAJOR,
+        })}
         onReturnHome={() => {
           // Not gated (don't trap the user on an error screen), but clear the
           // entry authorization so a transient load failure can't leave a

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import type { StoredAsset, StoredProtocol } from '../../db/types';
+import type { StoredAsset, StoredCurrentProtocol } from '../../db/types';
 
 const getProtocolAssets = vi.fn();
 
@@ -37,7 +37,7 @@ function storedAsset(partial: Partial<StoredAsset>): StoredAsset {
 function storedProtocol(
   stages: unknown[],
   manifest: Record<string, { type: string; name: string; source?: string }>,
-): StoredProtocol {
+): StoredCurrentProtocol {
   return {
     id: HASH,
     hash: HASH,
@@ -55,7 +55,7 @@ function storedProtocol(
       },
     },
     protocol: { stages, assetManifest: manifest },
-  } as unknown as StoredProtocol;
+  } as unknown as StoredCurrentProtocol;
 }
 
 function rosterStage(overrides?: Record<string, unknown>) {

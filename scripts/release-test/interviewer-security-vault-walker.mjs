@@ -29,15 +29,10 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// The app's database names (an import-free module, loaded through Node's type
-// stripping), so the walker reads the database the deployed app writes and
-// checks that the earlier majors' databases are gone after a wipe.
-import {
-  DB_NAME,
-  LEGACY_LIBRARIES,
-} from '../../apps/interviewer/src/lib/db/storageNames.ts';
-
-const LEGACY_DB_NAMES = LEGACY_LIBRARIES.map((library) => library.dbName);
+// The app's database name (an import-free module, loaded through Node's type
+// stripping), so the walker reads the one database the deployed app writes,
+// which Interviewer 8 at /v8/ shares.
+import { DB_NAME } from '../../apps/interviewer/src/lib/db/storageNames.ts';
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -362,38 +357,31 @@ async function checkPhantomStepUp(stepName) {
 // Every read lists the databases before opening one: a bare open of a missing
 // name CREATES an empty database, which would make a later count throw on its
 // missing stores and leave a stray database for the app to find. A database
-// that does not exist holds no rows. `legacyPresent` names the earlier majors'
-// databases still on the origin, which a wipe must also have removed.
+// that does not exist holds no rows.
 const rawStoreCounts = () =>
-  page.evaluate(
-    async ({ dbName, legacyDbNames }) => {
-      const names = new Set((await indexedDB.databases()).map((d) => d.name));
-      const legacyPresent = legacyDbNames.filter((name) => names.has(name));
-      if (!names.has(dbName))
-        return { protocols: 0, sessions: 0, assets: 0, legacyPresent };
-      const db = await new Promise((res, rej) => {
-        const req = indexedDB.open(dbName);
-        req.onsuccess = () => res(req.result);
-        req.onerror = () => rej(req.error);
+  page.evaluate(async (dbName) => {
+    const names = new Set((await indexedDB.databases()).map((d) => d.name));
+    if (!names.has(dbName)) return { protocols: 0, sessions: 0, assets: 0 };
+    const db = await new Promise((res, rej) => {
+      const req = indexedDB.open(dbName);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+    const count = (store) =>
+      new Promise((res, rej) => {
+        const tx = db.transaction(store, 'readonly');
+        const rq = tx.objectStore(store).count();
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = () => rej(rq.error);
       });
-      const count = (store) =>
-        new Promise((res, rej) => {
-          const tx = db.transaction(store, 'readonly');
-          const rq = tx.objectStore(store).count();
-          rq.onsuccess = () => res(rq.result);
-          rq.onerror = () => rej(rq.error);
-        });
-      const out = {
-        protocols: await count('protocols'),
-        sessions: await count('sessions'),
-        assets: await count('assets'),
-        legacyPresent,
-      };
-      db.close();
-      return out;
-    },
-    { dbName: DB_NAME, legacyDbNames: LEGACY_DB_NAMES },
-  );
+    const out = {
+      protocols: await count('protocols'),
+      sessions: await count('sessions'),
+      assets: await count('assets'),
+    };
+    db.close();
+    return out;
+  }, DB_NAME);
 
 // --- the walk -------------------------------------------------------------
 try {
@@ -1099,13 +1087,12 @@ try {
     noLockAfterRevoke &&
     afterRevoke.protocols === 0 &&
     afterRevoke.sessions === 0 &&
-    afterRevoke.assets === 0 &&
-    afterRevoke.legacyPresent.length === 0;
+    afterRevoke.assets === 0;
   await shot('after-revoke');
   record(
     'revoke-wipe',
     wiped,
-    `0/0 counters, no lock, raw stores protocols=${afterRevoke.protocols} sessions=${afterRevoke.sessions} assets=${afterRevoke.assets}, earlier majors' databases left: ${JSON.stringify(afterRevoke.legacyPresent)}`,
+    `0/0 counters, no lock, raw stores protocols=${afterRevoke.protocols} sessions=${afterRevoke.sessions} assets=${afterRevoke.assets}`,
   );
 
   // 9. Passphrase enrolment: a weak passphrase must refuse to advance; the
@@ -1202,13 +1189,12 @@ try {
     (await page.getByRole('heading', { name: 'Welcome back' }).count()) === 0 &&
     afterReset.protocols === 0 &&
     afterReset.sessions === 0 &&
-    afterReset.assets === 0 &&
-    afterReset.legacyPresent.length === 0;
+    afterReset.assets === 0;
   await shot('after-reset');
   record(
     'reset-path',
     resetClean,
-    `0/0 counters, lock cleared, raw stores protocols=${afterReset.protocols} sessions=${afterReset.sessions} assets=${afterReset.assets}, earlier majors' databases left: ${JSON.stringify(afterReset.legacyPresent)}`,
+    `0/0 counters, lock cleared, raw stores protocols=${afterReset.protocols} sessions=${afterReset.sessions} assets=${afterReset.assets}`,
   );
 
   // Cross-cutting: every non-whitelisted console error collected across the

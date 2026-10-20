@@ -6,14 +6,17 @@ import { useAuth } from '~/lib/auth/AuthContext';
 import { useSetupWizard } from './SetupWizardDialog';
 
 // The two Interviewers share one lock, and only this one can set it up:
-// Interviewer 8 at `/v8/` only unlocks, and while no lock has been set up it
-// sends the researcher straight back here. An installed app never runs
-// unconfigured (AuthGate opens set-up first), but a browser tab does, so every
-// way into Interviewer 8 asks `settleLock` before it leaves. With a lock (or
+// Interviewer 8 at `/v8/` only unlocks (and, hosted here, is handed this app's
+// unlock), and while no lock has been set up it ends the interview at once.
+// An installed app never runs unconfigured (AuthGate opens set-up first), but
+// a browser tab does, so every way into a schema 8 interview asks `settleLock`
+// before Interviewer 8 is hosted. With a lock (or
 // the explicit choice of none) in place it answers at once; otherwise it opens
 // the set-up wizard, and the page goes only once the researcher has chosen.
 // Leaving the wizard leaves the device unconfigured, as it found it, and
-// nothing is opened.
+// nothing is opened. Choosing the lock is a fresh authentication, so the way
+// in asks for no step-up straight after it (`settled` says whether it will
+// have to set up first).
 export function useSettleLockForInterviewer8() {
   const { kind, refresh } = useAuth();
   // The data both apps already hold stays: set-up encrypts it rather than

@@ -184,7 +184,7 @@ const network: NcNetwork = {
   edges: [],
 };
 
-// A schema 7 study; `saveProtocol` stores it migrated to the current schema.
+// A schema 7 study, stored as it is: these tests only race its writes.
 const formStudy = (): Record<string, unknown> => ({
   schemaVersion: 7,
   codebook: { node: {}, edge: {}, ego: {} },
@@ -204,15 +204,17 @@ function storedProtocol(
   hash: string,
   document: Record<string, unknown>,
 ): StoredProtocol {
+  // The document's own version, whatever it is (a stored row is schema 8 or
+  // 9; this one is older): nothing here runs it.
   return {
     id: hash,
     hash,
     name: 'Form Study',
-    schemaVersion: document.schemaVersion as number,
+    schemaVersion: document.schemaVersion,
     importedAt: '2026-01-01T00:00:00.000Z',
-    codebook: document.codebook as CurrentProtocol['codebook'],
-    protocol: document as unknown as CurrentProtocol,
-  };
+    codebook: document.codebook,
+    protocol: document,
+  } as unknown as StoredProtocol;
 }
 
 function storedSession(id: string, protocolHash: string): StoredSession {

@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import { getInterviewProgress } from '@codaco/interview';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { generateNetwork } from '@codaco/protocol-utilities';
 import { StageMetadataSchema } from '@codaco/shared-consts';
 import {
@@ -9,6 +10,7 @@ import {
   getProtocolByHash,
   updateSession,
 } from '~/lib/db/api';
+import { isCurrentProtocol } from '~/lib/db/types';
 
 import { loadRosterNodesForStages } from './loadRosterData';
 
@@ -39,6 +41,14 @@ export async function generateSyntheticSessions(
   const protocol = await getProtocolByHash(protocolHash);
   if (!protocol) {
     throw new Error(`Protocol not found for hash "${protocolHash}".`);
+  }
+  // Synthetic interviews are generated for schema 9 protocols only: the
+  // generator reads schema 9 stages, and a schema 8 interview is Interviewer
+  // 8's to write.
+  if (!isCurrentProtocol(protocol)) {
+    throw new Error(
+      `Protocol "${protocolHash}" is not at schema ${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}.`,
+    );
   }
 
   const externalData = await loadRosterNodesForStages(protocol);

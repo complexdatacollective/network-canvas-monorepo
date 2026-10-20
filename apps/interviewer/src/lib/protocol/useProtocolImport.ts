@@ -13,6 +13,7 @@ import {
   type ImportProtocolResult,
   importBundledProtocol,
   importProtocolFromFile,
+  type OlderSchemaChoice,
   peekProtocolName,
 } from './importProtocol';
 import { openProtocolValidationDetailsDialog } from './ProtocolValidationDetailsDialog';
@@ -59,10 +60,10 @@ export type ImportRequest = {
   file: File;
   label: string;
   /**
-   * The researcher chose to upgrade this file to this app's schema. Without
-   * it, a file below the schema is never migrated.
+   * What the researcher chose for a file below this app's schema: upgrade it,
+   * or keep it on schema 8. Without it, such a file is never imported.
    */
-  allowMigration?: boolean;
+  olderSchema?: OlderSchemaChoice;
 };
 
 /** A file below this app's schema that needs the researcher's choice. */
@@ -128,8 +129,8 @@ type UseProtocolImportOptions = {
   onInstalled: () => Promise<void> | void;
   /**
    * Offer the choice for a file below this app's schema: keep it on schema 8
-   * (`keepOnInterviewer8`) or upgrade it (`startImport` again with
-   * `allowMigration`). Without it, the import is refused with a message.
+   * or upgrade it (`startImport` again with that `olderSchema`). Without it,
+   * the import is refused with a message.
    */
   onMigrationRequired?: (request: MigrationChoiceRequest) => void;
 };
@@ -194,7 +195,7 @@ export function useProtocolImport({
             request.file,
             onProgress,
             peekedName ?? undefined,
-            { allowMigration: request.allowMigration === true },
+            { olderSchema: request.olderSchema },
           );
         } else if (request.source === 'development') {
           // Dev-only, like the trigger in Home. The import sits behind
@@ -253,7 +254,7 @@ export function useProtocolImport({
             description: createElement(AppMessage, {
               message: messages.importSuccess,
               values: {
-                name: result.protocol.name,
+                name: result.name,
                 migrated: String(result.migrated),
               },
             }),

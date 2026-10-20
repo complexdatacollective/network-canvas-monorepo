@@ -1,6 +1,8 @@
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type {
   CurrentProtocol,
   FinishOutcome,
+  Protocol,
 } from '@codaco/protocol-validation';
 import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
@@ -21,17 +23,61 @@ export type StoredAsset = {
   data: Blob | string;
 };
 
-export type StoredProtocol = {
+/**
+ * A protocol document at schema 8. Stored and run unchanged: its interviews
+ * run in the Interviewer 8 bundled at `/v8/`, which reads the same rows.
+ */
+export type Schema8Protocol = Protocol<8>;
+
+type StoredProtocolFields = {
   id: string;
   hash: string;
   name: string;
-  schemaVersion: number;
   lastModified?: string;
   importedAt: string;
   description?: string;
+};
+
+/** A protocol this app's interview engine runs. */
+export type StoredCurrentProtocol = StoredProtocolFields & {
+  schemaVersion: CurrentProtocol['schemaVersion'];
   codebook: CurrentProtocol['codebook'];
   protocol: CurrentProtocol;
 };
+
+/**
+ * A schema 8 protocol, in exactly the row Interviewer 8 writes (see
+ * `protocols.ts`). Interviewer 8 at `/v8/` runs its interviews.
+ */
+export type StoredSchema8Protocol = StoredProtocolFields & {
+  schemaVersion: Schema8Protocol['schemaVersion'];
+  codebook: Schema8Protocol['codebook'];
+  protocol: Schema8Protocol;
+};
+
+/**
+ * Every protocol lives in one table, whatever its schema, told apart by
+ * `schemaVersion`.
+ */
+export type StoredProtocol = StoredCurrentProtocol | StoredSchema8Protocol;
+
+const SCHEMA_8: Schema8Protocol['schemaVersion'] = 8;
+
+/** Whether `protocol` runs in this app's own interview engine. */
+export const isCurrentProtocol = <T extends { schemaVersion: number }>(
+  protocol: T,
+): protocol is Extract<
+  T,
+  { schemaVersion: CurrentProtocol['schemaVersion'] }
+> => protocol.schemaVersion === COMPATIBLE_PROTOCOL_SCHEMA_VERSION;
+
+/** Whether `protocol` is a schema 8 protocol, run by Interviewer 8. */
+export const isSchema8Protocol = <T extends { schemaVersion: number }>(
+  protocol: T,
+): protocol is Extract<
+  T,
+  { schemaVersion: Schema8Protocol['schemaVersion'] }
+> => protocol.schemaVersion === SCHEMA_8;
 
 export type StoredSession = {
   id: string;

@@ -11,6 +11,7 @@ import {
   getProtocolAssets,
   getProtocolByHash,
 } from '../db/api';
+import { isCurrentProtocol } from '../db/types';
 
 // One owner for the whole app, so an asset has exactly one live URL at a time
 // and that URL has exactly one owner, no matter which resolver minted it. The
@@ -50,7 +51,12 @@ export async function buildResolvedAssets(
   // The original `source` filename lives in the protocol's asset manifest
   // (apikey assets carry no source). It drives MIME-type and CSV/JSON
   // decisions downstream, where the display `name` may lack an extension.
-  const manifest = protocol?.protocol.assetManifest;
+  // Only a schema 9 protocol's interviews run here (a schema 8 one runs in
+  // Interviewer 8, which resolves its own assets).
+  const manifest =
+    protocol && isCurrentProtocol(protocol)
+      ? protocol.protocol.assetManifest
+      : undefined;
   return records.map((r) => {
     const manifestEntry = manifest?.[r.assetId];
     const source =
