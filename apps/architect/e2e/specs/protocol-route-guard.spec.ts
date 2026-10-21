@@ -107,6 +107,8 @@ const VIEW_CONTROLS: readonly ViewControl[] = [
   { role: 'button', name: /^open menu$/i },
   { role: 'combobox', name: /^interface language:/i },
   { role: 'button', name: /^download$/i },
+  // Sends the saved copy, as Download does; it writes nothing here.
+  { role: 'button', name: /^send to interviewer$/i },
   { role: 'button', name: /^print$/i },
   // The browser's own storage warning, offering to install the app.
   {

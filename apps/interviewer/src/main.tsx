@@ -1,3 +1,5 @@
+// First: strips this app's entry parameter before analytics can record it.
+import './captureUrlEntryRequests';
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import './styles/globals.css';
@@ -10,6 +12,7 @@ import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBu
 import App from './App';
 import { startupLocale } from './i18n/preference';
 import { deleteRetiredDatabases } from './lib/db/retiredDatabases';
+import { startArchitectHandoff } from './lib/handoff/architectHandoff';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
@@ -48,6 +51,10 @@ if (import.meta.hot) {
 // OS-launched .netcanvas files (installed-PWA file handler) can arrive before
 // React mounts; capture them for Home to import after unlock.
 initFileLaunchCapture();
+
+// A protocol Architect's "Send to Interviewer" opened this tab for
+// (`/?from=architect`) joins the launched files, once Architect posts it.
+startArchitectHandoff();
 
 async function startApp(): Promise<void> {
   await Promise.all([
