@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -42,12 +42,10 @@ const renderCard = (
   {
     activate = noop,
     onDeleteProtocol = noop,
-    onShowProtocolInfo = noop,
     newSession,
   }: {
     activate?: () => void;
     onDeleteProtocol?: (hash: string) => void;
-    onShowProtocolInfo?: (protocol: ProtocolWithCounts) => void;
     newSession?: { onCancel: () => void; onCreated: () => void };
   } = {},
 ) =>
@@ -61,18 +59,10 @@ const renderCard = (
       onDismissSample={noop}
       onInstallSample={noop}
       onInstallDevelopment={noop}
-      onShowProtocolInfo={onShowProtocolInfo}
       schema8={schema8}
       newSession={newSession}
     />,
   );
-
-const openMenu = async () => {
-  await userEvent.click(
-    screen.getByRole('button', { name: 'Actions for Wave One' }),
-  );
-  return screen.findByRole('menu');
-};
 
 describe('DeckSlotCard for a schema 8 protocol', () => {
   it('is a protocol card with its schema shown as older, starting interviews like any other', async () => {
@@ -106,32 +96,19 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
     );
   });
 
-  it('offers Info and the normal Delete, and no upgrade or anything that leaves the app', async () => {
+  it('offers the normal Delete, and no upgrade or anything that leaves the app', async () => {
     const onDeleteProtocol = vi.fn();
-    const onShowProtocolInfo = vi.fn();
-    renderCard(makeActions(), { onDeleteProtocol, onShowProtocolInfo });
-
-    const menu = await openMenu();
-    expect(
-      within(menu)
-        .getAllByRole('menuitem')
-        .map((item) => item.textContent),
-    ).toEqual(['Info', 'Delete']);
-
-    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Info' }));
-    expect(onShowProtocolInfo).toHaveBeenCalledWith(protocol);
+    renderCard(makeActions(), { onDeleteProtocol });
 
     await userEvent.click(
-      within(await openMenu()).getByRole('menuitem', { name: 'Delete' }),
+      screen.getByRole('button', { name: 'Delete Protocol' }),
     );
     expect(onDeleteProtocol).toHaveBeenCalledWith('schema-8-hash');
     expect(screen.queryByText(/Interviewer 8/)).not.toBeInTheDocument();
   });
 
-  it('starts no interview, and says why, when Interviewer 8 is not bundled', async () => {
-    renderCard(makeActions({ interviewer: null }), {
-      onShowProtocolInfo: vi.fn(),
-    });
+  it('starts no interview, and says why, when Interviewer 8 is not bundled', () => {
+    renderCard(makeActions({ interviewer: null }));
 
     expect(screen.getByText('Not available')).toBeInTheDocument();
     expect(
@@ -141,12 +118,8 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
       screen.getByText(/interviews cannot be started with this protocol here/),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '3 interviews' })).toBeVisible();
-
-    const menu = await openMenu();
     expect(
-      within(menu)
-        .getAllByRole('menuitem')
-        .map((item) => item.textContent),
-    ).toEqual(['Info', 'Delete']);
+      screen.getByRole('button', { name: 'Delete Protocol' }),
+    ).toBeInTheDocument();
   });
 });

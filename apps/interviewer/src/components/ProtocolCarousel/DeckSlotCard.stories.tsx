@@ -209,7 +209,6 @@ const meta: Meta<StoryArgs> = {
         onDismissSample={() => {}}
         onInstallSample={() => {}}
         onInstallDevelopment={() => {}}
-        onShowProtocolInfo={() => {}}
         schema8={schema8Actions(legacyBundled)}
       />
     </ResizableFrame>

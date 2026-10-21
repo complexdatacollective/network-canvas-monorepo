@@ -374,9 +374,6 @@ export type DeckCardProps = {
   // Further badges for the controls row, before the requires-internet one
   // (`DeckCardBadge`): a schema 8 protocol's availability.
   badges?: ReactNode;
-  // A menu control (`DeckCardMenu`) in the place of the remove control, for
-  // a card whose actions are more than removing it (every protocol's card).
-  menu?: ReactNode;
   // Content for the card's footer slot — a start button, install button,
   // import progress, or a case-ID form. Rendered beneath a divider in a
   // presence group keyed by this element's key (normally
@@ -449,7 +446,6 @@ export function DeckCard(props: DeckCardProps) {
     requiresInternetConnection = false,
     schemaVersion,
     badges,
-    menu,
     footer,
   } = props;
   const loading = props.loading === true;
@@ -564,7 +560,7 @@ export function DeckCard(props: DeckCardProps) {
                 >
                   {(badges != null || requiresInternetConnection) && (
                     // One group, so the badges line up with each other and
-                    // wrap together rather than pushing the menu off a small
+                    // wrap together rather than pushing the delete control off a small
                     // card.
                     <div className="flex min-w-0 flex-1 flex-wrap items-center justify-start gap-2">
                       {badges}
@@ -593,18 +589,7 @@ export function DeckCard(props: DeckCardProps) {
                   popLayout frees the control's row space at exit START so
                   the pill glides concurrently with the fade. */}
                   <AnimatePresence mode="popLayout" initial={false}>
-                    {menu ? (
-                      <motion.div
-                        key="menu"
-                        initial={PRESENCE_INITIAL}
-                        animate={PRESENCE_ENTER}
-                        exit={PRESENCE_EXIT}
-                        transition={REGION_TRANSITION}
-                      >
-                        {menu}
-                      </motion.div>
-                    ) : null}
-                    {!menu && onDelete && (
+                    {onDelete && (
                       <motion.div
                         key="delete"
                         initial={PRESENCE_INITIAL}
