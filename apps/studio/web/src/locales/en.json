@@ -16,8 +16,8 @@
     "description": "Shown when the server refuses to let this researcher create a team."
   },
   "studio.createTeam.nameBlank": {
-    "defaultMessage": "Enter a name that is not only spaces.",
-    "description": "Shown when the team name contains only whitespace."
+    "defaultMessage": "Enter a name for the team.",
+    "description": "Shown when the team name is empty or contains only spaces."
   },
   "studio.createTeam.nameHint": {
     "defaultMessage": "Usually your lab, group or project.",
