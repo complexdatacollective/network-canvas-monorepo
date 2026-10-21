@@ -33,7 +33,7 @@ Order stages like this, leaving out what the study does not need:
 8. **narrative** (face_to_face qualitative studies only): a closing view of the map for the interviewer and participant to discuss.
 9. **information** (role closing): thanks, what happens next, and support resources (helplines, services) whenever the topic is sensitive (health, substance use, violence, loss, sexuality, mental health).
 
-Name everyone before interpreting them: do not zigzag between generators and interpreters. Use role instructions or transition screens sparingly, before an unfamiliar task (the first map, a census), not between every stage.
+Name everyone before interpreting them: do not zigzag between generators and interpreters. Sketch adds a screen explaining each new kind of task; never add instructions screens. Use transitions only where the topic changes.
 
 ## 2. Node types and relationships
 

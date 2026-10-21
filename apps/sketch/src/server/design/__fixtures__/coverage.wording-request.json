@@ -18,12 +18,28 @@
       "draft": ""
     },
     {
+      "stageKey": "classmates/intro",
+      "kind": "introduction to nameGenerator",
+      "purpose": "Purpose of classmates.",
+      "title": "introduction screen title; draft: \"Naming classmates\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see a list of classmates. Find everyone the question describes, using the search if it helps, and drag each one into the panel of people you have added."
+    },
+    {
       "stageKey": "classmates",
       "kind": "nameGenerator",
       "purpose": "Purpose of classmates.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "places/intro",
+      "kind": "introduction to nameGenerator",
+      "purpose": "Purpose of places.",
+      "title": "introduction screen title; draft: \"Naming places\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will be asked a question. For each place who comes to mind, tap the add button, answer a few short questions about them, and save. Move on when you have added everyone."
     },
     {
       "stageKey": "places",
@@ -34,12 +50,28 @@
       "draft": ""
     },
     {
+      "stageKey": "more_classmates/intro",
+      "kind": "introduction to nameGenerator",
+      "purpose": "Purpose of more_classmates.",
+      "title": "introduction screen title; draft: \"Naming classmates\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will be asked a question. Tap the add button, then type the name of each classmate who comes to mind and press Enter. Move on when you have added everyone."
+    },
+    {
       "stageKey": "more_classmates",
       "kind": "nameGenerator",
       "purpose": "Purpose of more_classmates.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "friend_strength/intro",
+      "kind": "introduction to relationshipCensus",
+      "purpose": "Purpose of friend_strength.",
+      "title": "introduction screen title; draft: \"How the classmates you named are connected\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see pairs of the classmates you named. For each pair, choose the answer that describes them best."
     },
     {
       "stageKey": "friend_strength",
@@ -50,12 +82,28 @@
       "draft": ""
     },
     {
+      "stageKey": "study_ties/intro",
+      "kind": "introduction to relationshipCensus",
+      "purpose": "Purpose of study_ties.",
+      "title": "introduction screen title; draft: \"How the classmates you named are connected\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the classmates you named one at a time. For each one, tap everyone else the question describes, then move on."
+    },
+    {
       "stageKey": "study_ties",
       "kind": "relationshipCensus",
       "purpose": "Purpose of study_ties.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "conflicts/intro",
+      "kind": "introduction to relationshipCensus",
+      "purpose": "Purpose of conflicts.",
+      "title": "introduction screen title; draft: \"How the classmates you named are connected\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see pairs of the classmates you named. Answer the question for each pair."
     },
     {
       "stageKey": "conflicts",
@@ -66,12 +114,28 @@
       "draft": ""
     },
     {
+      "stageKey": "friendship_details/intro",
+      "kind": "introduction to relationshipForm",
+      "purpose": "Purpose of friendship_details.",
+      "title": "introduction screen title; draft: \"About these relationships\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "Next, you will answer a few questions about each \"friends\" relationship you described, one at a time."
+    },
+    {
       "stageKey": "friendship_details",
       "kind": "relationshipForm",
       "purpose": "Purpose of friendship_details.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "place_bins/intro",
+      "kind": "introduction to bins",
+      "purpose": "Purpose of place_bins.",
+      "title": "introduction screen title; draft: \"Sorting the places you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the places you named and a set of boxes. Drag each place into the box that describes them best."
     },
     {
       "stageKey": "place_bins",
@@ -82,12 +146,28 @@
       "draft": ""
     },
     {
+      "stageKey": "advisors/intro",
+      "kind": "introduction to bins",
+      "purpose": "Purpose of advisors.",
+      "title": "introduction screen title; draft: \"Sorting the classmates you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the classmates you named and a set of boxes. Drag each classmate into the box that describes them best."
+    },
+    {
       "stageKey": "advisors",
       "kind": "bins",
       "purpose": "Purpose of advisors.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "home_countries/intro",
+      "kind": "introduction to geospatial",
+      "purpose": "Purpose of home_countries.",
+      "title": "introduction screen title; draft: \"On the map\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see a map. For each of the classmates you named, tap the place the question asks about."
     },
     {
       "stageKey": "home_countries",
@@ -98,12 +178,28 @@
       "draft": ""
     },
     {
+      "stageKey": "classmate_form/intro",
+      "kind": "introduction to alterForm",
+      "purpose": "Purpose of classmate_form.",
+      "title": "introduction screen title; draft: \"About the classmates you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "Next, you will answer a few questions about each of the classmates you named, one at a time."
+    },
+    {
       "stageKey": "classmate_form",
       "kind": "alterForm",
       "purpose": "Purpose of classmate_form.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "place_map/intro",
+      "kind": "introduction to sociogram",
+      "purpose": "Purpose of place_map.",
+      "title": "introduction screen title; draft: \"Your network map\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the places you named on a map, with you at the centre.\n\nTap each place the question describes. Tap them again to undo."
     },
     {
       "stageKey": "place_map",
@@ -122,12 +218,28 @@
       "draft": ""
     },
     {
+      "stageKey": "class_map/intro",
+      "kind": "introduction to sociogram",
+      "purpose": "Purpose of class_map.",
+      "title": "introduction screen title; draft: \"Your network map\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the classmates you named on a map, with you at the centre.\n\nDrag each of the classmates onto the circles. The closer to the centre you place someone, the closer they are to you."
+    },
+    {
       "stageKey": "class_map",
       "kind": "sociogram",
       "purpose": "Purpose of class_map.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "mentor_canvas/intro",
+      "kind": "introduction to networkComposer",
+      "purpose": "Purpose of mentor_canvas.",
+      "title": "introduction screen title; draft: \"Drawing your network\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "Next, you and the interviewer will draw your network together. Add mentors and move them around. You can answer a few questions about each mentor. You can put mentors into groups. You can draw lines between mentors who are connected."
     },
     {
       "stageKey": "mentor_canvas",
