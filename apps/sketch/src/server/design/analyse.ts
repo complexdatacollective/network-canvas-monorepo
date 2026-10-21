@@ -1967,11 +1967,22 @@ export const analyse = (
         ),
       );
   });
-  // whether a stage's filter or skip logic tests the attribute behind key
+  // whether a stage's filter, skip logic or narrative views read the
+  // attribute behind key
   const testsKey = (s: NStage, key: string) => {
     const [scope, attr] = key.split('/');
     const filter = 'filter' in s ? s.filter : null;
     const typeId = 'nodeTypeId' in s ? s.nodeTypeId : null;
+    if (
+      s.kind === 'narrative' &&
+      `node:${s.nodeTypeId}` === scope &&
+      s.views.some(
+        (v) =>
+          v.groupByAttributeId === attr ||
+          v.highlightAttributeIds.includes(attr!),
+      )
+    )
+      return true;
     if (
       filter &&
       `node:${typeId}` === scope &&

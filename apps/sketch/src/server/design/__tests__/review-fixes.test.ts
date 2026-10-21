@@ -2392,4 +2392,85 @@ describe('instrument attributes', () => {
     expect(JSON.stringify(stageById(r.stages, 'b'))).toContain('Role?');
     expect(r.stages.map((s) => s.id)).toContain('friends');
   });
+
+  it('keeps an earlier writer when a narrative before the form groups by it', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('close', 'yes_no', 'Close?'),
+            A('role', 'single_choice', 'Role?', {
+              options: ['friend', 'family'],
+            }),
+          ]),
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'alterForm',
+            ...c('af0'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['close'],
+          },
+          {
+            kind: 'bins',
+            ...c('b'),
+            nodeTypeId: 'person',
+            filter: {
+              match: 'all',
+              conditions: [
+                {
+                  about: 'nodes',
+                  typeId: 'person',
+                  attributeId: 'close',
+                  operator: 'is',
+                  value: 'yes',
+                },
+              ],
+            },
+            prompts: [
+              { text: 'Role?', attributeId: 'role', allowOther: false },
+            ],
+          },
+          {
+            kind: 'sociogram',
+            ...c('map'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            prompts: [
+              {
+                task: 'position',
+                text: 'Place them.',
+                relationshipId: '',
+                attributeId: '',
+              },
+            ],
+          },
+          {
+            kind: 'narrative',
+            ...c('story'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            views: [
+              {
+                label: 'Roles',
+                groupByAttributeId: 'role',
+                relationshipIds: [],
+                highlightAttributeIds: [],
+              },
+            ],
+          },
+          {
+            kind: 'alterForm',
+            ...c('af2'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['role'],
+          },
+        ],
+      }),
+    );
+    expect(JSON.stringify(stageById(r.stages, 'b'))).toContain('Role?');
+  });
 });
