@@ -7,11 +7,14 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import { RateLimited } from '@codaco/studio-contract/schema/errors';
 import { TeamCommandError } from '@codaco/studio-contract/schema/team';
 
 import { authClient } from '../lib/auth.ts';
+import { invalidateMemberships } from '../lib/landing.ts';
 import { rpcCall, rpcKey } from '../runtime/rpc.ts';
 
 const messages = defineMessages({
@@ -69,78 +72,107 @@ const messages = defineMessages({
   },
 });
 
-export function useCreateTeam(): () => Promise<void> {
+export const createTeamMessages = messages;
+
+export function TeamNameField() {
   const intl = useAppIntl();
-  const { openDialog } = useDialog();
+  return (
+    <Field
+      name="name"
+      label={intl.formatMessage(messages.nameLabel)}
+      hint={intl.formatMessage(messages.nameHint)}
+      component={InputField}
+      required
+      maxLength={120}
+    />
+  );
+}
+
+type TeamCreationOutcome = {
+  result: FormSubmissionResult;
+  teamId?: string;
+};
+
+export function useTeamCreation(): {
+  create: (values: Record<string, FieldValue>) => Promise<TeamCreationOutcome>;
+  openTeam: (teamId: string) => Promise<void>;
+} {
+  const intl = useAppIntl();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const teams = authClient.useListOrganizations();
 
-  return useCallback(async () => {
-    let createdTeamId: string | undefined;
-
-    const refreshTeams = () =>
+  const refreshTeams = useCallback(
+    () =>
       Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: rpcKey('me') }),
+        invalidateMemberships(queryClient),
         teams.refetch(),
-      ]);
+      ]),
+    [queryClient, teams],
+  );
+
+  const create = useCallback(
+    async (
+      values: Record<string, FieldValue>,
+    ): Promise<TeamCreationOutcome> => {
+      const name = typeof values.name === 'string' ? values.name.trim() : '';
+      const refused = (message: string): TeamCreationOutcome => ({
+        result: { success: false, formErrors: [message] },
+      });
+      if (name === '') return refused(intl.formatMessage(messages.nameBlank));
+      try {
+        const created = await rpcCall('team.create', {
+          name: Redacted.make(name),
+        });
+        return { result: { success: true }, teamId: created.teamId };
+      } catch (error) {
+        if (error instanceof TeamCommandError && error.code === 'FORBIDDEN') {
+          return refused(intl.formatMessage(messages.forbidden));
+        }
+        if (error instanceof RateLimited) {
+          return refused(intl.formatMessage(messages.rateLimited));
+        }
+        await refreshTeams();
+        return refused(intl.formatMessage(messages.unconfirmed));
+      }
+    },
+    [intl, refreshTeams],
+  );
+
+  const openTeam = useCallback(
+    async (teamId: string) => {
+      await refreshTeams();
+      await navigate({ to: '/team/$teamId', params: { teamId } });
+    },
+    [navigate, refreshTeams],
+  );
+
+  return { create, openTeam };
+}
+
+export function useCreateTeam(): () => Promise<void> {
+  const intl = useAppIntl();
+  const { openDialog } = useDialog();
+  const { create, openTeam } = useTeamCreation();
+
+  return useCallback(async () => {
+    let createdTeamId: string | undefined;
 
     const result = await openDialog({
       type: 'form',
       title: intl.formatMessage(messages.title),
       description: intl.formatMessage(messages.description),
       submitLabel: intl.formatMessage(messages.submit),
-      children: (
-        <Field
-          name="name"
-          label={intl.formatMessage(messages.nameLabel)}
-          hint={intl.formatMessage(messages.nameHint)}
-          component={InputField}
-          required
-          maxLength={120}
-        />
-      ),
+      children: <TeamNameField />,
       onSubmit: async (values) => {
-        const name = typeof values.name === 'string' ? values.name.trim() : '';
-        if (name === '') {
-          return {
-            success: false,
-            formErrors: [intl.formatMessage(messages.nameBlank)],
-          };
-        }
-        try {
-          const created = await rpcCall('team.create', {
-            name: Redacted.make(name),
-          });
-          createdTeamId = created.teamId;
-          return { success: true };
-        } catch (error) {
-          if (error instanceof TeamCommandError && error.code === 'FORBIDDEN') {
-            return {
-              success: false,
-              formErrors: [intl.formatMessage(messages.forbidden)],
-            };
-          }
-          if (error instanceof RateLimited) {
-            return {
-              success: false,
-              formErrors: [intl.formatMessage(messages.rateLimited)],
-            };
-          }
-          await refreshTeams();
-          return {
-            success: false,
-            formErrors: [intl.formatMessage(messages.unconfirmed)],
-          };
-        }
+        const outcome = await create(values);
+        createdTeamId = outcome.teamId;
+        return outcome.result;
       },
     });
 
     if (result === null || createdTeamId === undefined) return;
-    await refreshTeams();
-    await navigate({
-      to: '/team/$teamId',
-      params: { teamId: createdTeamId },
-    });
-  }, [intl, navigate, openDialog, queryClient, teams]);
+    await openTeam(createdTeamId);
+  }, [create, intl, openDialog, openTeam]);
 }

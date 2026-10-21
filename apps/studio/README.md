@@ -1260,9 +1260,11 @@ them:
   `--force`, and it refuses to give a non-loopback database the published
   admin password: set `STUDIO_SEED_ADMIN_PASSWORD` to a value chosen for that
   instance, because the published one is a working credential on any
-  reachable instance that keeps it. Real onboarding (the first team owner and
-  team invitations) replaces this step on #1256; until then, it is how any
-  fresh instance gets something to sign in to.
+  reachable instance that keeps it. A fresh instance does not need it: on the
+  managed service a researcher creates an account at `/sign-up` and names
+  their first team at `/sign-up/team`, and on a self-hosted instance the owner
+  created at [first-run setup](#first-run-setup) creates teams and invites
+  everyone else.
 
 ### First-run setup
 
@@ -1285,7 +1287,10 @@ account and name this instance.
 Open `/setup` on that instance, paste the token, name the instance and create
 the owner's account. The instance is then set up: the token is spent, the
 browser is signed in as the owner, and `/setup` answers as a not-found from
-then on — so re-running a deploy can never reopen it. Only a sha256 of the
+then on — so re-running a deploy can never reopen it. The owner has no team
+yet, so they land on `/no-team`, which offers to create one; on a self-hosted
+instance only the owner can create teams, and everyone else joins one by
+invitation. Only a sha256 of the
 token is stored, so nothing on the server can print it a second time; **if it
 is lost, run the schema step again** against the still-ownerless database and
 it issues a new one. An instance that already has an owner issues nothing and

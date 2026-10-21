@@ -35,6 +35,7 @@ const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   deployment: { mode: 'managed' as DeploymentMode, billing: false },
   getSession: vi.fn(),
+  teams: [] as { id: string; name: string; slug: string }[],
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -64,9 +65,7 @@ vi.mock('../../lib/auth.ts', () => ({
     }),
     organization: {
       setActive: vi.fn().mockResolvedValue({ error: null }),
-      list: vi.fn(() =>
-        Promise.resolve({ data: [fixtures.TEAM], error: null }),
-      ),
+      list: vi.fn(() => Promise.resolve({ data: fixtures.teams, error: null })),
     },
     signOut: vi.fn(),
   },
@@ -121,6 +120,7 @@ const NOT_AVAILABLE = 'Page not available';
 
 beforeEach(() => {
   fixtures.deployment = { mode: 'managed', billing: false };
+  fixtures.teams = [fixtures.TEAM];
   fixtures.getSession.mockResolvedValue({
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
     error: null,
@@ -178,6 +178,11 @@ describe('the managed service', () => {
   it.each([...MANAGED_ONLY_PATHS])('serves %s', async (routePath) => {
     // The other half of the guard, and what stops it being satisfied by
     // refusing everything: these are exactly the screens this topology has.
+    // The sign-up steps belong to a session that has not finished them.
+    if (routePath === '/sign-up') {
+      fixtures.getSession.mockResolvedValue({ data: null, error: null });
+    }
+    if (routePath === '/sign-up/team') fixtures.teams = [];
     expect(await headingAt(requestPath(routePath))).toBe(HEADINGS[routePath]);
   });
 });
