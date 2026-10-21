@@ -255,8 +255,10 @@ if (stagePreviewAssets.length === 0) {
 
 // Interviewer 9 installs a sub-path build's worker in the background, so its
 // first visit may be offline: every font must be precached there. The root
-// build leaves them to its runtime cache, and the hashed header mark too
-// (Home's, which a sub-path build does not ship).
+// build leaves them to its runtime cache. The hashed header mark (Home's,
+// which a sub-path build does not ship) is precached by the root build: the
+// installing page is not controlled, so the runtime cache never sees it before
+// the first offline launch.
 const offlineFirstVisitAssets = assetFiles
   .filter((f) => f.endsWith('.woff2'))
   .map((f) => `assets/${f}`);
@@ -281,12 +283,17 @@ if (isSubpath) {
     );
   }
 } else {
-  const added = [
-    ...offlineFirstVisitAssets,
-    ...headerMarks.map((f) => `assets/${f}`),
-  ].filter((url) => manifestUrls.has(url));
+  const added = offlineFirstVisitAssets.filter((url) => manifestUrls.has(url));
   if (added.length > 0) {
     fail(`the root build precaches runtime-cached assets: ${added.join(', ')}`);
+  }
+  const missingMarks = headerMarks
+    .map((f) => `assets/${f}`)
+    .filter((url) => !manifestUrls.has(url));
+  if (missingMarks.length > 0) {
+    fail(
+      `the header mark is not precached, so it breaks on the first offline launch: ${missingMarks.join(', ')}`,
+    );
   }
 }
 

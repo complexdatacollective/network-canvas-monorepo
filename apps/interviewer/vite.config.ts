@@ -210,6 +210,11 @@ export default defineConfig(() =>
             // fills the runtime font cache. Precache the fonts every screen
             // renders.
             ...(isSubpath ? ['**/*.woff2'] : []),
+            // Home and onboarding render the header mark. The page that
+            // installs the worker is not controlled by it, so its request never
+            // fills the runtime image cache, and the first offline launch
+            // would show a broken image. A sub-path build does not ship it.
+            ...(isSubpath ? [] : ['**/NC-Flat-*.png']),
           ],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
