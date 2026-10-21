@@ -328,6 +328,10 @@ export const seedStudies = Effect.fnUntraced(function* (
       updatedAt,
     ]);
 
+    // Every seeded date is relative to a fixed anchor already in the past, so
+    // a collecting study's newest wave and its links never close or expire:
+    // otherwise no seeded link could start an interview.
+    const collecting = plan.state === 'live' || plan.state === 'paused';
     const waves: SeedWave[] = [];
     for (let index = 0; index < plan.waveCount; index++) {
       const opensAt = shiftDays(createdAt, 20 + index * 60);
@@ -340,7 +344,10 @@ export const seedStudies = Effect.fnUntraced(function* (
             ? null
             : line.versions[plan.pinnedVersion].versionId,
         opensAt,
-        closesAt: shiftDays(opensAt, 45),
+        closesAt:
+          collecting && index === plan.waveCount - 1
+            ? null
+            : shiftDays(opensAt, 45),
       });
     }
     for (const wave of waves) {
@@ -424,7 +431,7 @@ export const seedStudies = Effect.fnUntraced(function* (
         null,
         'anonymous',
         hash,
-        shiftDays(createdAt, 200),
+        null,
         null,
         0,
         null,
