@@ -205,7 +205,7 @@ export const DescribeScreen = ({
                 aria-hidden="true"
                 className="bg-sea-green size-2 rounded-full"
               />
-              Experimental · builds schema 8 protocols
+              Experimental · builds schema 9 protocols
             </span>
             <ScreenHeading
               focusOnMount={focusHeading}

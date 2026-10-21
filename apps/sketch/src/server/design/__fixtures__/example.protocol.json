@@ -1,8 +1,12 @@
 {
   "name": "First-Year Friendships and Drinking",
   "description": "Maps the friendships first-year students form in their first semester and links friends' drinking to the participant's own drinking (AUDIT-C) and wellbeing (WHO-5).",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "lastModified": "2026-10-20T00:00:00.000Z",
+  "localization": {
+    "defaultLocale": "en",
+    "locales": ["en"]
+  },
   "codebook": {
     "ego": {
       "variables": {
@@ -12,11 +16,15 @@
           "component": "Boolean",
           "options": [
             {
-              "label": "Yes, I agree to take part",
+              "label": {
+                "en": "Yes, I agree to take part"
+              },
               "value": true
             },
             {
-              "label": "No, I do not want to take part",
+              "label": {
+                "en": "No, I do not want to take part"
+              },
               "value": false,
               "negative": true
             }
@@ -41,23 +49,33 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
-              "label": "Woman",
+              "label": {
+                "en": "Woman"
+              },
               "value": "woman"
             },
             {
-              "label": "Man",
+              "label": {
+                "en": "Man"
+              },
               "value": "man"
             },
             {
-              "label": "Non-binary",
+              "label": {
+                "en": "Non-binary"
+              },
               "value": "non_binary"
             },
             {
-              "label": "Another gender",
+              "label": {
+                "en": "Another gender"
+              },
               "value": "another_gender"
             },
             {
-              "label": "Prefer not to say",
+              "label": {
+                "en": "Prefer not to say"
+              },
               "value": "prefer_not_to_say"
             }
           ],
@@ -71,11 +89,15 @@
           "component": "Boolean",
           "options": [
             {
-              "label": "Yes",
+              "label": {
+                "en": "Yes"
+              },
               "value": true
             },
             {
-              "label": "No",
+              "label": {
+                "en": "No"
+              },
               "value": false,
               "negative": true
             }
@@ -87,23 +109,33 @@
           "component": "LikertScale",
           "options": [
             {
-              "label": "Never",
+              "label": {
+                "en": "Never"
+              },
               "value": 0
             },
             {
-              "label": "Monthly or less",
+              "label": {
+                "en": "Monthly or less"
+              },
               "value": 1
             },
             {
-              "label": "2 to 4 times a month",
+              "label": {
+                "en": "2 to 4 times a month"
+              },
               "value": 2
             },
             {
-              "label": "2 to 3 times a week",
+              "label": {
+                "en": "2 to 3 times a week"
+              },
               "value": 3
             },
             {
-              "label": "4 or more times a week",
+              "label": {
+                "en": "4 or more times a week"
+              },
               "value": 4
             }
           ],
@@ -117,23 +149,33 @@
           "component": "LikertScale",
           "options": [
             {
-              "label": "1 or 2",
+              "label": {
+                "en": "1 or 2"
+              },
               "value": 0
             },
             {
-              "label": "3 or 4",
+              "label": {
+                "en": "3 or 4"
+              },
               "value": 1
             },
             {
-              "label": "5 or 6",
+              "label": {
+                "en": "5 or 6"
+              },
               "value": 2
             },
             {
-              "label": "7 to 9",
+              "label": {
+                "en": "7 to 9"
+              },
               "value": 3
             },
             {
-              "label": "10 or more",
+              "label": {
+                "en": "10 or more"
+              },
               "value": 4
             }
           ]
@@ -144,23 +186,33 @@
           "component": "LikertScale",
           "options": [
             {
-              "label": "Never",
+              "label": {
+                "en": "Never"
+              },
               "value": 0
             },
             {
-              "label": "Less than monthly",
+              "label": {
+                "en": "Less than monthly"
+              },
               "value": 1
             },
             {
-              "label": "Monthly",
+              "label": {
+                "en": "Monthly"
+              },
               "value": 2
             },
             {
-              "label": "Weekly",
+              "label": {
+                "en": "Weekly"
+              },
               "value": 3
             },
             {
-              "label": "Daily or almost daily",
+              "label": {
+                "en": "Daily or almost daily"
+              },
               "value": 4
             }
           ]
@@ -171,27 +223,39 @@
           "component": "RadioGroup",
           "options": [
             {
-              "label": "At no time",
+              "label": {
+                "en": "At no time"
+              },
               "value": 0
             },
             {
-              "label": "Some of the time",
+              "label": {
+                "en": "Some of the time"
+              },
               "value": 1
             },
             {
-              "label": "Less than half of the time",
+              "label": {
+                "en": "Less than half of the time"
+              },
               "value": 2
             },
             {
-              "label": "More than half of the time",
+              "label": {
+                "en": "More than half of the time"
+              },
               "value": 3
             },
             {
-              "label": "Most of the time",
+              "label": {
+                "en": "Most of the time"
+              },
               "value": 4
             },
             {
-              "label": "All of the time",
+              "label": {
+                "en": "All of the time"
+              },
               "value": 5
             }
           ],
@@ -205,27 +269,39 @@
           "component": "RadioGroup",
           "options": [
             {
-              "label": "At no time",
+              "label": {
+                "en": "At no time"
+              },
               "value": 0
             },
             {
-              "label": "Some of the time",
+              "label": {
+                "en": "Some of the time"
+              },
               "value": 1
             },
             {
-              "label": "Less than half of the time",
+              "label": {
+                "en": "Less than half of the time"
+              },
               "value": 2
             },
             {
-              "label": "More than half of the time",
+              "label": {
+                "en": "More than half of the time"
+              },
               "value": 3
             },
             {
-              "label": "Most of the time",
+              "label": {
+                "en": "Most of the time"
+              },
               "value": 4
             },
             {
-              "label": "All of the time",
+              "label": {
+                "en": "All of the time"
+              },
               "value": 5
             }
           ],
@@ -239,27 +315,39 @@
           "component": "RadioGroup",
           "options": [
             {
-              "label": "At no time",
+              "label": {
+                "en": "At no time"
+              },
               "value": 0
             },
             {
-              "label": "Some of the time",
+              "label": {
+                "en": "Some of the time"
+              },
               "value": 1
             },
             {
-              "label": "Less than half of the time",
+              "label": {
+                "en": "Less than half of the time"
+              },
               "value": 2
             },
             {
-              "label": "More than half of the time",
+              "label": {
+                "en": "More than half of the time"
+              },
               "value": 3
             },
             {
-              "label": "Most of the time",
+              "label": {
+                "en": "Most of the time"
+              },
               "value": 4
             },
             {
-              "label": "All of the time",
+              "label": {
+                "en": "All of the time"
+              },
               "value": 5
             }
           ],
@@ -273,27 +361,39 @@
           "component": "RadioGroup",
           "options": [
             {
-              "label": "At no time",
+              "label": {
+                "en": "At no time"
+              },
               "value": 0
             },
             {
-              "label": "Some of the time",
+              "label": {
+                "en": "Some of the time"
+              },
               "value": 1
             },
             {
-              "label": "Less than half of the time",
+              "label": {
+                "en": "Less than half of the time"
+              },
               "value": 2
             },
             {
-              "label": "More than half of the time",
+              "label": {
+                "en": "More than half of the time"
+              },
               "value": 3
             },
             {
-              "label": "Most of the time",
+              "label": {
+                "en": "Most of the time"
+              },
               "value": 4
             },
             {
-              "label": "All of the time",
+              "label": {
+                "en": "All of the time"
+              },
               "value": 5
             }
           ],
@@ -307,27 +407,39 @@
           "component": "RadioGroup",
           "options": [
             {
-              "label": "At no time",
+              "label": {
+                "en": "At no time"
+              },
               "value": 0
             },
             {
-              "label": "Some of the time",
+              "label": {
+                "en": "Some of the time"
+              },
               "value": 1
             },
             {
-              "label": "Less than half of the time",
+              "label": {
+                "en": "Less than half of the time"
+              },
               "value": 2
             },
             {
-              "label": "More than half of the time",
+              "label": {
+                "en": "More than half of the time"
+              },
               "value": 3
             },
             {
-              "label": "Most of the time",
+              "label": {
+                "en": "Most of the time"
+              },
               "value": 4
             },
             {
-              "label": "All of the time",
+              "label": {
+                "en": "All of the time"
+              },
               "value": 5
             }
           ],
@@ -375,11 +487,15 @@
             "component": "Boolean",
             "options": [
               {
-                "label": "Yes",
+                "label": {
+                  "en": "Yes"
+                },
                 "value": true
               },
               {
-                "label": "No, or I'm not sure",
+                "label": {
+                  "en": "No, or I'm not sure"
+                },
                 "value": false,
                 "negative": true
               }
@@ -399,19 +515,27 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": "Not very close",
+                "label": {
+                  "en": "Not very close"
+                },
                 "value": 1
               },
               {
-                "label": "Somewhat close",
+                "label": {
+                  "en": "Somewhat close"
+                },
                 "value": 2
               },
               {
-                "label": "Close",
+                "label": {
+                  "en": "Close"
+                },
                 "value": 3
               },
               {
-                "label": "Very close",
+                "label": {
+                  "en": "Very close"
+                },
                 "value": 4
               }
             ]
@@ -422,23 +546,33 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "Same accommodation",
+                "label": {
+                  "en": "Same accommodation"
+                },
                 "value": "same_accommodation"
               },
               {
-                "label": "Same course",
+                "label": {
+                  "en": "Same course"
+                },
                 "value": "same_course"
               },
               {
-                "label": "Club or society",
+                "label": {
+                  "en": "Club or society"
+                },
                 "value": "club_or_society"
               },
               {
-                "label": "Through other friends",
+                "label": {
+                  "en": "Through other friends"
+                },
                 "value": "through_other_friends"
               },
               {
-                "label": "Knew before university",
+                "label": {
+                  "en": "Knew before university"
+                },
                 "value": "knew_before_university"
               }
             ],
@@ -457,15 +591,21 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "Yes",
+                "label": {
+                  "en": "Yes"
+                },
                 "value": "yes"
               },
               {
-                "label": "No",
+                "label": {
+                  "en": "No"
+                },
                 "value": "no"
               },
               {
-                "label": "I don't know",
+                "label": {
+                  "en": "I don't know"
+                },
                 "value": "i_dont_know"
               }
             ],
@@ -484,19 +624,27 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": "Less than monthly",
+                "label": {
+                  "en": "Less than monthly"
+                },
                 "value": 1
               },
               {
-                "label": "Monthly",
+                "label": {
+                  "en": "Monthly"
+                },
                 "value": 2
               },
               {
-                "label": "Weekly",
+                "label": {
+                  "en": "Weekly"
+                },
                 "value": 3
               },
               {
-                "label": "Several times a week",
+                "label": {
+                  "en": "Several times a week"
+                },
                 "value": 4
               }
             ]
@@ -515,42 +663,62 @@
     {
       "id": "researcher_notes",
       "type": "Information",
-      "label": "Researcher notes (delete before fielding)",
-      "title": "Notes for the research team",
+      "label": {
+        "en": "Researcher notes (delete before fielding)"
+      },
+      "title": {
+        "en": "Notes for the research team"
+      },
       "items": [
         {
           "id": "text",
           "type": "text",
-          "content": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).\n\n**Design rationale.** One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects \"know each other\" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.\n\n**Validated instruments.** Check the wording and scoring of audit_frequency, audit_typical, audit_heavy, who5_cheerful, who5_calm, who5_active, who5_rested, who5_interest against the published instrument; Sketch reproduces them from memory."
+          "content": {
+            "en": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).\n\n**Design rationale.** One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects \"know each other\" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.\n\n**Validated instruments.** Check the wording and scoring of audit_frequency, audit_typical, audit_heavy, who5_cheerful, who5_calm, who5_active, who5_rested, who5_interest against the published instrument; Sketch reproduces them from memory."
+          }
         }
       ]
     },
     {
       "id": "welcome",
       "type": "Information",
-      "label": "Welcome",
-      "title": "Welcome to the study",
+      "label": {
+        "en": "Welcome"
+      },
+      "title": {
+        "en": "Welcome to the study"
+      },
       "items": [
         {
           "id": "text",
           "type": "text",
-          "content": "Thank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
+          "content": {
+            "en": "Thank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
+          }
         }
       ]
     },
     {
       "id": "consent",
       "type": "EgoForm",
-      "label": "Consent",
+      "label": {
+        "en": "Consent"
+      },
       "introductionPanel": {
-        "title": "Taking part",
-        "text": "This study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time."
+        "title": {
+          "en": "Taking part"
+        },
+        "text": {
+          "en": "This study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_consent",
-            "prompt": "Do you agree to take part in this study?"
+            "prompt": {
+              "en": "Do you agree to take part in this study?"
+            }
           }
         ]
       }
@@ -558,24 +726,36 @@
     {
       "id": "about_you",
       "type": "EgoForm",
-      "label": "About you",
+      "label": {
+        "en": "About you"
+      },
       "introductionPanel": {
-        "title": "A little about you",
-        "text": "First, a few questions about yourself."
+        "title": {
+          "en": "A little about you"
+        },
+        "text": {
+          "en": "First, a few questions about yourself."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_age",
-            "prompt": "What is your age in years?"
+            "prompt": {
+              "en": "What is your age in years?"
+            }
           },
           {
             "variable": "ego_gender",
-            "prompt": "How do you describe your gender?"
+            "prompt": {
+              "en": "How do you describe your gender?"
+            }
           },
           {
             "variable": "ego_lives_in_halls",
-            "prompt": "Do you live in university accommodation (halls)?"
+            "prompt": {
+              "en": "Do you live in university accommodation (halls)?"
+            }
           }
         ]
       },
@@ -602,7 +782,9 @@
     {
       "id": "name_friends",
       "type": "NameGeneratorQuickAdd",
-      "label": "Naming friends",
+      "label": {
+        "en": "Naming friends"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -610,7 +792,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Since **starting university this semester**, who have you **become friends with**?",
+          "text": {
+            "en": "Since **starting university this semester**, who have you **become friends with**?"
+          },
           "additionalAttributes": [
             {
               "variable": "person_new_friend",
@@ -620,11 +804,15 @@
         },
         {
           "id": "p2",
-          "text": "Who do you **spend most of your free time with** at university?"
+          "text": {
+            "en": "Who do you **spend most of your free time with** at university?"
+          }
         },
         {
           "id": "p3",
-          "text": "Who would you **turn to for support** if something was worrying you?",
+          "text": {
+            "en": "Who would you **turn to for support** if something was worrying you?"
+          },
           "additionalAttributes": [
             {
               "variable": "person_support",
@@ -640,15 +828,25 @@
       "panels": [
         {
           "id": "existing",
-          "title": "Already mentioned",
+          "title": {
+            "en": "Already mentioned"
+          },
           "dataSource": "existing"
         }
-      ]
+      ],
+      "maxNodesNotice": {
+        "en": "You have completed this task. Click the next arrow to continue."
+      },
+      "quickAddHint": {
+        "en": "Press Enter when you are finished."
+      }
     },
     {
       "id": "friend_details",
       "type": "AlterForm",
-      "label": "Friend details",
+      "label": {
+        "en": "Friend details"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -668,19 +866,19 @@
         "entity": "node",
         "type": "person"
       },
-      "introductionPanel": {
-        "title": "About the people you named",
-        "text": "Next, two quick questions about each person."
-      },
       "form": {
         "fields": [
           {
             "variable": "person_is_first_year",
-            "prompt": "Is this person also a first-year student?"
+            "prompt": {
+              "en": "Is this person also a first-year student?"
+            }
           },
           {
             "variable": "person_first_met",
-            "prompt": "When did you first meet this person?"
+            "prompt": {
+              "en": "When did you first meet this person?"
+            }
           }
         ]
       }
@@ -688,7 +886,9 @@
     {
       "id": "friend_bins",
       "type": "OrdinalBin",
-      "label": "Closeness, meeting, drinking",
+      "label": {
+        "en": "Closeness, meeting, drinking"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -711,7 +911,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Drag each person into the box that best describes **how close you feel** to them.",
+          "text": {
+            "en": "Drag each person into the box that best describes **how close you feel** to them."
+          },
           "variable": "person_closeness",
           "color": "ord-color-seq-1"
         }
@@ -720,7 +922,9 @@
     {
       "id": "friend_bins_2",
       "type": "CategoricalBin",
-      "label": "Closeness, meeting, drinking (2)",
+      "label": {
+        "en": "Closeness, meeting, drinking (2)"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -743,15 +947,23 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "How did you **first meet** each person?",
+          "text": {
+            "en": "How did you **first meet** each person?"
+          },
           "variable": "person_how_met",
           "otherVariable": "person_how_met_other",
-          "otherVariablePrompt": "Please describe",
-          "otherOptionLabel": "Other"
+          "otherVariablePrompt": {
+            "en": "Please describe"
+          },
+          "otherOptionLabel": {
+            "en": "Other"
+          }
         },
         {
           "id": "p2",
-          "text": "As far as you know, does each person often **drink heavily** (five or more drinks on one occasion)?",
+          "text": {
+            "en": "As far as you know, does each person often **drink heavily** (five or more drinks on one occasion)?"
+          },
           "variable": "person_drinks_heavily"
         }
       ]
@@ -759,7 +971,9 @@
     {
       "id": "friend_map",
       "type": "Sociogram",
-      "label": "Friendship map",
+      "label": {
+        "en": "Friendship map"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -789,14 +1003,18 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Place the people you are **closest to** nearest the centre.",
+          "text": {
+            "en": "Place the people you are **closest to** nearest the centre."
+          },
           "layout": {
             "layoutVariable": "person_layout"
           }
         },
         {
           "id": "p2",
-          "text": "Draw a line between any two people who **know each other**.",
+          "text": {
+            "en": "Draw a line between any two people who **know each other**."
+          },
           "layout": {
             "layoutVariable": "person_layout"
           },
@@ -807,7 +1025,9 @@
         },
         {
           "id": "p3",
-          "text": "Tap everyone you **usually drink alcohol with**.",
+          "text": {
+            "en": "Tap everyone you **usually drink alcohol with**."
+          },
           "layout": {
             "layoutVariable": "person_layout"
           },
@@ -824,7 +1044,9 @@
     {
       "id": "drinking_together",
       "type": "OrdinalBin",
-      "label": "Drinking together",
+      "label": {
+        "en": "Drinking together"
+      },
       "skipLogic": {
         "action": "SHOW",
         "filter": {
@@ -858,7 +1080,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "How often do you **drink alcohol together** with each person?",
+          "text": {
+            "en": "How often do you **drink alcohol together** with each person?"
+          },
           "variable": "person_drink_together_freq",
           "color": "ord-color-seq-2"
         }
@@ -881,16 +1105,24 @@
     {
       "id": "your_drinking",
       "type": "EgoForm",
-      "label": "Your drinking",
+      "label": {
+        "en": "Your drinking"
+      },
       "introductionPanel": {
-        "title": "Your drinking",
-        "text": "These questions are about your own drinking."
+        "title": {
+          "en": "Your drinking"
+        },
+        "text": {
+          "en": "These questions are about your own drinking."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_audit_frequency",
-            "prompt": "How often do you have a drink containing alcohol?"
+            "prompt": {
+              "en": "How often do you have a drink containing alcohol?"
+            }
           }
         ]
       }
@@ -898,7 +1130,9 @@
     {
       "id": "drinking_amount",
       "type": "EgoForm",
-      "label": "Drinking amount",
+      "label": {
+        "en": "Drinking amount"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -916,18 +1150,26 @@
         }
       },
       "introductionPanel": {
-        "title": "Your drinking",
-        "text": "A little more about how much you drink."
+        "title": {
+          "en": "Your drinking"
+        },
+        "text": {
+          "en": "A little more about how much you drink."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_audit_typical",
-            "prompt": "How many drinks containing alcohol do you have on a typical day when you are drinking?"
+            "prompt": {
+              "en": "How many drinks containing alcohol do you have on a typical day when you are drinking?"
+            }
           },
           {
             "variable": "ego_audit_heavy",
-            "prompt": "How often do you have six or more drinks on one occasion?"
+            "prompt": {
+              "en": "How often do you have six or more drinks on one occasion?"
+            }
           }
         ]
       }
@@ -935,32 +1177,48 @@
     {
       "id": "wellbeing",
       "type": "EgoForm",
-      "label": "Wellbeing (WHO-5)",
+      "label": {
+        "en": "Wellbeing (WHO-5)"
+      },
       "introductionPanel": {
-        "title": "How you have been feeling",
-        "text": "Please think about the last two weeks."
+        "title": {
+          "en": "How you have been feeling"
+        },
+        "text": {
+          "en": "Please think about the last two weeks."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_who5_cheerful",
-            "prompt": "Over the last two weeks: I have felt cheerful and in good spirits."
+            "prompt": {
+              "en": "Over the last two weeks: I have felt cheerful and in good spirits."
+            }
           },
           {
             "variable": "ego_who5_calm",
-            "prompt": "Over the last two weeks: I have felt calm and relaxed."
+            "prompt": {
+              "en": "Over the last two weeks: I have felt calm and relaxed."
+            }
           },
           {
             "variable": "ego_who5_active",
-            "prompt": "Over the last two weeks: I have felt active and vigorous."
+            "prompt": {
+              "en": "Over the last two weeks: I have felt active and vigorous."
+            }
           },
           {
             "variable": "ego_who5_rested",
-            "prompt": "Over the last two weeks: I woke up feeling fresh and rested."
+            "prompt": {
+              "en": "Over the last two weeks: I woke up feeling fresh and rested."
+            }
           },
           {
             "variable": "ego_who5_interest",
-            "prompt": "Over the last two weeks: My daily life has been filled with things that interest me."
+            "prompt": {
+              "en": "Over the last two weeks: My daily life has been filled with things that interest me."
+            }
           }
         ]
       }
@@ -968,7 +1226,9 @@
     {
       "id": "review",
       "type": "Narrative",
-      "label": "Talking about your map",
+      "label": {
+        "en": "Talking about your map"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -991,25 +1251,52 @@
       "presets": [
         {
           "id": "view1",
-          "label": "Who drinks heavily",
+          "label": {
+            "en": "Who drinks heavily"
+          },
           "layoutVariable": "person_layout",
           "groupVariable": "person_drinks_heavily",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en": "Know each other"
+                }
+              }
+            ]
           }
         },
         {
           "id": "view2",
-          "label": "Who you drink with",
+          "label": {
+            "en": "Who you drink with"
+          },
           "layoutVariable": "person_layout",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en": "Know each other"
+                }
+              }
+            ]
           },
-          "highlight": ["person_drinks_with"]
+          "highlight": [
+            {
+              "variable": "person_drinks_with",
+              "label": {
+                "en": "Drinks with participant"
+              }
+            }
+          ]
         },
         {
           "id": "view3",
-          "label": "How you met",
+          "label": {
+            "en": "How you met"
+          },
           "layoutVariable": "person_layout",
           "groupVariable": "person_how_met"
         }
@@ -1022,20 +1309,145 @@
         "automaticLayout": false,
         "allowRepositioning": true,
         "freeDraw": true
+      },
+      "attributesHeading": {
+        "en": "Attributes"
+      },
+      "linksHeading": {
+        "en": "Links"
+      },
+      "groupsHeading": {
+        "en": "Groups"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en": "Reset annotations"
+        }
       }
     },
     {
       "id": "thanks",
       "type": "Information",
-      "label": "Thank you",
-      "title": "Thank you",
+      "label": {
+        "en": "Thank you"
+      },
+      "title": {
+        "en": "Thank you"
+      },
       "items": [
         {
           "id": "text",
           "type": "text",
-          "content": "Thank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
+          "content": {
+            "en": "Thank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
+          }
         }
       ]
+    },
+    {
+      "id": "finish",
+      "type": "FinishSession",
+      "mode": "confirmation",
+      "label": {
+        "en": "Finish Interview"
+      },
+      "content": {
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "finishedContent": {
+        "en": "# Interview Finished\n\nThank you for participating!"
+      },
+      "finishLabel": {
+        "en": "Finish"
+      },
+      "finishConfirmation": {
+        "en": "Are you sure you want to finish the interview?"
+      },
+      "finishFailed": {
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "navigation": {
+      "exitInterview": {
+        "en": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en": "Your answers so far will be saved and you can continue later."
+      },
+      "back": {
+        "en": "Back"
+      },
+      "continue": {
+        "en": "Continue"
+      }
+    },
+    "buttons": {
+      "cancel": {
+        "en": "Cancel"
+      },
+      "done": {
+        "en": "Done"
+      },
+      "delete": {
+        "en": "Delete"
+      },
+      "yes": {
+        "en": "Yes"
+      },
+      "no": {
+        "en": "No"
+      }
+    },
+    "messages": {
+      "stageError": {
+        "en": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en": "This item could not be displayed."
+      },
+      "error": {
+        "en": "An error occurred."
+      }
+    },
+    "forms": {
+      "discardChangesTitle": {
+        "en": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en": "Do you want to discard your changes?"
+      }
+    },
+    "validation": {
+      "required": {
+        "en": "You must answer this question before continuing."
+      },
+      "minValue": {
+        "en": "Enter a value greater than or equal to {min}."
+      },
+      "maxValue": {
+        "en": "Enter a value less than or equal to {max}."
+      },
+      "maxSelected": {
+        "en": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
+      },
+      "unique": {
+        "en": "Must be unique."
+      }
+    }
+  }
 }

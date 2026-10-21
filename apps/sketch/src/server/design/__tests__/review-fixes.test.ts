@@ -12,11 +12,13 @@ import { buildProtocol } from '../build.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
 type Json = Record<string, unknown>;
+/** Participant-facing text, in Sketch's one language. */
+type LocalizedText = { en: string };
 type Stage = Json & {
   id: string;
   type: string;
   panels?: { dataSource: string }[];
-  prompts?: { text: string }[];
+  prompts?: { text: LocalizedText }[];
   filter?: { rules: { options: Json }[] };
   skipLogic?: {
     action: string;
@@ -695,7 +697,7 @@ describe('compiler review fixes', () => {
       }),
     );
     expect(stageById(r.stages, 'rc').prompts?.map((p) => p.text)).toEqual([
-      'How strong?',
+      { en: 'How strong?' },
     ]);
     const removed = r.issues.find((i) => i.code === 'NO_STRENGTH_REMOVED');
     expect(removed?.message).toContain('"Dating?" was removed');
@@ -793,12 +795,12 @@ describe('compiler review fixes', () => {
     const ids = r.stages.map((s) => s.id);
     expect(ids.indexOf('roster_overlap')).toBe(ids.indexOf('roster') + 1);
     const form = stageById(r.stages, 'roster_overlap') as Stage & {
-      form: { fields: { prompt: string }[] };
+      form: { fields: { prompt: LocalizedText }[] };
     };
     expect(form.type).toBe('AlterForm');
     expect(form.form.fields.map((f) => f.prompt)).toEqual([
-      'Who are you **close** to?',
-      'Who do you ask for **advice**?',
+      { en: 'Who are you **close** to?' },
+      { en: 'Who do you ask for **advice**?' },
     ]);
     // the form is the only writer, so its validation is never bypassed
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
@@ -991,10 +993,10 @@ describe('compiler review fixes', () => {
     expect(r.validation.success).toBe(true);
     const fields = (
       stageById(r.stages, 'e') as Stage & {
-        form: { fields: { prompt: string }[] };
+        form: { fields: { prompt: LocalizedText }[] };
       }
     ).form.fields.map((f) => f.prompt);
-    expect(fields).toEqual(['Nickname?', 'Full name?']);
+    expect(fields).toEqual([{ en: 'Nickname?' }, { en: 'Full name?' }]);
   });
 
   it('gives a second map question on the same location its own answer', async () => {
@@ -1932,7 +1934,7 @@ describe('instrument attributes', () => {
     );
     expect(r.validation.success).toBe(true);
     const form = stageById(r.stages, 'roster_overlap_2') as Stage & {
-      form: { fields: { prompt: string }[] };
+      form: { fields: { prompt: LocalizedText }[] };
     };
     expect(form.form.fields).toHaveLength(2);
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
@@ -2472,5 +2474,69 @@ describe('instrument attributes', () => {
       }),
     );
     expect(JSON.stringify(stageById(r.stages, 'b'))).toContain('Role?');
+  });
+
+  describe('schema 9', () => {
+    const egoForm = {
+      kind: 'egoForm',
+      ...c('about'),
+      attributeIds: ['age'],
+    };
+    const alterForm = {
+      kind: 'alterForm',
+      ...c('af'),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      attributeIds: ['age'],
+    };
+
+    it('gives only the Ego Form an introduction panel, and ends at a finish stage', async () => {
+      const r = await build(
+        design({
+          egoAttributes: [A('age', 'number', 'Your age?')],
+          nodeTypes: [person([A('age', 'number', 'Their age?')])],
+          stages: [egoForm, ng(), alterForm],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(stageById(r.stages, 'about').introductionPanel).toBeDefined();
+      expect(stageById(r.stages, 'af').introductionPanel).toBeUndefined();
+      expect(r.stages.at(-1)?.type).toBe('FinishSession');
+      expect(r.protocol.schemaVersion).toBe(9);
+      expect(r.protocol.localization).toEqual({
+        defaultLocale: 'en',
+        locales: ['en'],
+      });
+    });
+
+    it('shows braces the models wrote as written', async () => {
+      const r = await build(
+        design({
+          stages: [
+            ng('ng', {
+              prompts: [{ text: 'Who {else}?', tagAttributeId: '' }],
+            }),
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(stageById(r.stages, 'ng').prompts?.[0]?.text).toEqual({
+        en: "Who '{'else'}'?",
+      });
+    });
+
+    it('writes a type name as one unpadded NFC line', async () => {
+      const r = await build(
+        design({
+          nodeTypes: [{ ...person(), singular: ' Cafe\u0301\nregular ' }],
+          stages: [ng()],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      const codebook = r.protocol.codebook as {
+        node: Record<string, { name: string }>;
+      };
+      expect(codebook.node.person?.name).toBe('Café regular');
+    });
   });
 });

@@ -4,6 +4,8 @@
 // person, per-pair work once per pair, and filtered stages at half the
 // people, since a filter usually keeps a subset.
 
+import { SKETCH_LOCALE } from './rules.ts';
+
 export type Burden = {
   people: number;
   stages: number;
@@ -15,7 +17,8 @@ export type Burden = {
 type Fields = { fields?: unknown[] };
 type ProtocolStage = {
   type: string;
-  label?: string;
+  /** Localized, in Sketch's one language. */
+  label?: Partial<Record<typeof SKETCH_LOCALE, string>>;
   filter?: unknown;
   form?: Fields;
   nodeForm?: Fields;
@@ -145,7 +148,7 @@ export const stageCosts = (
 ): StageCost[] => {
   const n = Math.max(1, Math.round(people));
   return (protocol.stages as ProtocolStage[]).map((s) => ({
-    label: s.label ?? s.type,
+    label: s.label?.[SKETCH_LOCALE] ?? s.type,
     ...costOf(s, n),
   }));
 };

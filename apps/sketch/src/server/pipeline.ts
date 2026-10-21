@@ -3,7 +3,7 @@
 //   design   design model, then the deterministic preflight; at most one retry
 //   wording  cheap model polishes the drafts; failure is not fatal
 //   compile  compile the design with the wording
-//   validate schema 8 validation; falls back to the preflight protocol
+//   validate schema 9 validation; falls back to the preflight protocol
 //
 // Pure apart from the injected adapters and onProgress, so it is tested with
 // fake providers.

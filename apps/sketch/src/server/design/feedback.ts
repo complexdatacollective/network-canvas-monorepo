@@ -48,7 +48,7 @@ export const formatRetryFeedback = (
   if (validationIssues.length) {
     lines.push(
       '',
-      'Schema 8 validation problems in the protocol compiled from your design:',
+      'Schema 9 validation problems in the protocol compiled from your design:',
     );
     const seen = new Set<string>();
     let shown = 0;
@@ -140,8 +140,9 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
         slot('introduction title', 'introduction text');
         s.attributeIds.forEach((a) => q('ego', a, attr('ego', a).question));
         break;
+      // Schema 9 gives only an Ego Form an introduction panel.
       case 'alterForm':
-        slot('introduction title', 'introduction text');
+        slot('none: return ""', 'none: return ""');
         s.attributeIds.forEach((a) =>
           q(
             `node:${s.nodeTypeId}`,
@@ -151,7 +152,7 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
         );
         break;
       case 'relationshipForm':
-        slot('introduction title', 'introduction text');
+        slot('none: return ""', 'none: return ""');
         s.attributeIds.forEach((a) =>
           q(
             `rel:${s.relationshipId}`,
@@ -194,16 +195,6 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
               attr(`rel:${e.relationshipId}`, a).question,
             ),
           ),
-        );
-        break;
-      case 'relationshipCensus':
-        slot(
-          s.method === 'one_at_a_time'
-            ? 'none: return ""'
-            : 'introduction title',
-          s.method === 'one_at_a_time'
-            ? 'none: return ""'
-            : 'introduction text',
         );
         break;
       default:

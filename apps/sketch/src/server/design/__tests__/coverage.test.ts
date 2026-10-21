@@ -21,6 +21,7 @@ const EMITTED_TYPES = [
   'CategoricalBin',
   'DyadCensus',
   'EgoForm',
+  'FinishSession',
   'Geospatial',
   'Information',
   'NameGenerator',

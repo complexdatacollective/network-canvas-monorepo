@@ -45,8 +45,8 @@
       "stageKey": "friend_strength",
       "kind": "relationshipCensus",
       "purpose": "Purpose of friend_strength.",
-      "title": "introduction title",
-      "text": "introduction text",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
       "draft": ""
     },
     {
@@ -61,16 +61,16 @@
       "stageKey": "conflicts",
       "kind": "relationshipCensus",
       "purpose": "Purpose of conflicts.",
-      "title": "introduction title",
-      "text": "introduction text",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
       "draft": ""
     },
     {
       "stageKey": "friendship_details",
       "kind": "relationshipForm",
       "purpose": "Purpose of friendship_details.",
-      "title": "introduction title",
-      "text": "introduction text",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
       "draft": ""
     },
     {
@@ -101,8 +101,8 @@
       "stageKey": "classmate_form",
       "kind": "alterForm",
       "purpose": "Purpose of classmate_form.",
-      "title": "introduction title",
-      "text": "introduction text",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
       "draft": ""
     },
     {

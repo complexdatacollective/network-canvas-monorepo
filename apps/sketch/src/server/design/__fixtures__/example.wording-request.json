@@ -37,8 +37,8 @@
       "stageKey": "friend_details",
       "kind": "alterForm",
       "purpose": "When and where each tie formed.",
-      "title": "introduction title",
-      "text": "introduction text",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
       "draft": ""
     },
     {
