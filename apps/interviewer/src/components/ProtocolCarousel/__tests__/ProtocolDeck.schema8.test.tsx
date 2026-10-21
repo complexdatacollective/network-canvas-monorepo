@@ -61,7 +61,6 @@ const makeSchema8 = (
   overrides: Partial<Schema8CardActions> = {},
 ): Schema8CardActions => ({
   interviewer: { version: '8.5.0', path: '/v8/' },
-  onShowInfo: vi.fn(),
   ...overrides,
 });
 

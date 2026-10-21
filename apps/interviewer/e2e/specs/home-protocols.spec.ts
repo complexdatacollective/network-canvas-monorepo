@@ -102,15 +102,15 @@ test.describe('protocol import & delete', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    // The teaser and the installed card carry different delete controls
-    // ("Dismiss the sample protocol" vs "Delete Protocol"), which is the
+    // The teaser and the installed card carry different controls ("Dismiss
+    // the sample protocol" vs the protocol's actions menu), which is the
     // clearest signal of which one holds the slot.
     const installedCardControls = async () => {
       await expect(
         page.getByRole('heading', { name: 'Sample Protocol' }),
       ).toHaveCount(1);
       await expect(
-        page.getByRole('button', { name: 'Delete Protocol' }),
+        page.getByRole('button', { name: 'Actions for Sample Protocol' }),
       ).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Dismiss the sample protocol' }),
@@ -157,17 +157,20 @@ test.describe('protocol import & delete', () => {
       tag: '@visual',
     },
     async ({ protocol, page, capture }) => {
-      // Import leaves the single imported card active, so the Delete Protocol
-      // control targets it directly.
+      // Import leaves the single imported card active, so its actions menu
+      // targets it directly.
       await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
       // force: true — see the comment on ProtocolFixture.delete(): the active
-      // card's delete control sits under the next card's bounding box in the
+      // card's menu button sits under the next card's bounding box in the
       // deck's fanned 3D layout, which fools Playwright's actionability
       // pre-check even though a real click there is delivered correctly.
       await clickWhenDeckSettles(
-        page.getByRole('button', { name: 'Delete Protocol' }),
+        page.getByRole('button', {
+          name: `Actions for ${LEAN_E2E_PROTOCOL_NAME}`,
+        }),
         { force: true },
       );
+      await page.getByRole('menuitem', { name: 'Delete' }).click();
       const dialog = page.getByRole('dialog');
       await expect(
         dialog.getByRole('heading', { name: 'Delete this protocol?' }),

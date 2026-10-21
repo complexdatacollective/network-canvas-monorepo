@@ -36,9 +36,9 @@ export class ProtocolFixture {
     });
   }
 
-  // Deletes the currently-active deck card. Assumes `name` is the active card.
-  async delete(): Promise<void> {
-    // force: true — the active card's delete control sits in its top-right
+  // Deletes the currently-active deck card, `name`, through its actions menu.
+  async delete(name: string): Promise<void> {
+    // force: true — the active card's menu button sits in its top-right
     // corner, which the deck's fanned 3D layout (DeckCarousel's
     // perspective/preserve-3d slide transforms) geometrically overlaps with
     // the next card's 2D bounding box. Playwright's pre-click actionability
@@ -49,9 +49,10 @@ export class ProtocolFixture {
     // settled after a reload) always lands on and activates the intended
     // button. force bypasses only that pre-check, not the real click.
     await clickWhenDeckSettles(
-      this.page.getByRole('button', { name: 'Delete Protocol' }),
+      this.page.getByRole('button', { name: `Actions for ${name}` }),
       { force: true },
     );
+    await this.page.getByRole('menuitem', { name: 'Delete' }).click();
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await dialog.getByTestId('dialog-primary').click();
