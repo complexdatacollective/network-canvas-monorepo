@@ -2606,7 +2606,7 @@ describe('instrument attributes', () => {
       };
       expect(intro.type).toBe('Information');
       expect(intro.title).toEqual({ en: 'Naming people' });
-      expect(intro.items[0]?.content.en).toContain('Type the name');
+      expect(intro.items[0]?.content.en).toContain('type the name');
     });
 
     it('shows the screen exactly when its stage shows', async () => {
@@ -2803,7 +2803,7 @@ describe('instrument attributes', () => {
         buildWordingRequest(normalized).stages.find(
           (x) => x.stageKey === 'ng/intro',
         )?.draft,
-      ).toContain('Type the name');
+      ).toContain('type the name');
       const r = await buildProtocol(
         d,
         {

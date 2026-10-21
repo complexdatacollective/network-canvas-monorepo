@@ -31,7 +31,7 @@
       "purpose": "Elicit friends and the people the participant spends time with at university.",
       "title": "introduction screen title; draft: \"Naming people\"",
       "text": "introduction screen text: what the next screen asks the participant to do, and how",
-      "draft": "On the next screen you will be asked a question. Type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
+      "draft": "On the next screen you will be asked a question. Tap the add button, then type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
     },
     {
       "stageKey": "name_friends",

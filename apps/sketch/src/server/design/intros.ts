@@ -67,10 +67,10 @@ const draft = (
         title: `Naming ${plural}`,
         text:
           s.method === 'roster'
-            ? `On the next screen you will see a list of ${plural}. Find everyone the question describes, using the search if it helps, and select them.`
+            ? `On the next screen you will see a list of ${plural}. Find everyone the question describes, using the search if it helps, and drag each one into the panel of people you have added.`
             : s.method === 'form'
-              ? `On the next screen you will be asked a question. Add each ${singular} who comes to mind, answer a few short questions about them, and save. Move on when you have added everyone.`
-              : `On the next screen you will be asked a question. Type the name of each ${singular} who comes to mind and press Enter. Move on when you have added everyone.`,
+              ? `On the next screen you will be asked a question. For each ${singular} who comes to mind, tap the add button, answer a few short questions about them, and save. Move on when you have added everyone.`
+              : `On the next screen you will be asked a question. Tap the add button, then type the name of each ${singular} who comes to mind and press Enter. Move on when you have added everyone.`,
       };
     case 'alterForm':
       return {

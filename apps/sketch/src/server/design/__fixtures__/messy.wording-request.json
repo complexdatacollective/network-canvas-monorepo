@@ -31,7 +31,7 @@
       "purpose": "Purpose of names.",
       "title": "introduction screen title; draft: \"Naming persons\"",
       "text": "introduction screen text: what the next screen asks the participant to do, and how",
-      "draft": "On the next screen you will be asked a question. Add each person who comes to mind, answer a few short questions about them, and save. Move on when you have added everyone."
+      "draft": "On the next screen you will be asked a question. For each person who comes to mind, tap the add button, answer a few short questions about them, and save. Move on when you have added everyone."
     },
     {
       "stageKey": "names",
