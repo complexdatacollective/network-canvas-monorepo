@@ -2,9 +2,9 @@
 
 ## 8.5.1
 
-### Patch Changes
+### Bug fixes
 
-- 7010479: The Network Canvas logo on the home and welcome screens now shows when you open Interviewer offline for the first time after installing it. Before, it could appear as a broken image until you had opened the app online again.
+- The Network Canvas logo on the home and welcome screens now shows the first time you open Interviewer offline after installing it. Before, it could appear as a broken image until you had opened the app online again.
 
 ## 8.5.0
 

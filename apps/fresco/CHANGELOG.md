@@ -2,9 +2,9 @@
 
 ## 4.3.2
 
-### Patch Changes
+### Bug fixes
 
-- dc3b625: Fresco now sends one usage-statistics event when an interview starts and one when a protocol is installed. Before this, each was counted twice, which inflated the totals seen by the Network Canvas team. The protocol-installed event also no longer includes the protocol's file name.
+- Usage statistics now count each interview start and each protocol install once. Before, both were counted twice. The protocol-install event also no longer includes the protocol's file name.
 
 ## 4.3.1
 
