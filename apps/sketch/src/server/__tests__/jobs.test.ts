@@ -843,6 +843,208 @@ describe('generate-background and GET /api/jobs/:id', () => {
     expect((await readJob(jobs, 'job-9'))?.comparisonId).toBeNull();
   });
 
+  it('keeps a joined seed when tagging its log entry fails, and tags it when either run is preferred', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    const setJSON = log.setJSON;
+    let failures = 1;
+    log.setJSON = async (key, value) => {
+      if (key === 'log/2026-10-20/job-9' && failures-- > 0)
+        throw new Error('blobs down');
+      return setJSON(key, value);
+    };
+    const res = await handleCreateJob(
+      post({
+        ...validRequest,
+        provider: 'anthropic',
+        comparisonId: 'cmp-new',
+        seedJobId: 'job-9',
+      }),
+      {
+        jobs,
+        log,
+        adapters: fake.adapters,
+        startBackground: async () => {},
+        now: () => NOW,
+        newId: () => 'job-11',
+      },
+    );
+    expect(res.status).toBe(202);
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-new');
+    const seedKey = 'log/2026-10-20/job-9';
+    // the tag failed, so the entry still names its earlier comparison
+    expect((log.data.get(seedKey) as LogEntry).comparisonId).toBe('cmp-9');
+    const preferred = await handlePreference(
+      new Request('https://sketch.test/api/preference', {
+        method: 'POST',
+        body: JSON.stringify({
+          comparisonId: 'cmp-new',
+          preferredJobId: 'job-11',
+        }),
+      }),
+      { jobs, log, now: () => NOW },
+    );
+    expect(preferred.status).toBe(200);
+    expect((log.data.get(seedKey) as LogEntry).comparisonId).toBe('cmp-new');
+  });
+
+  it('joins the seed before restarting a queued comparison job', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const create = (
+      extra: Record<string, string>,
+      startBackground: () => Promise<void>,
+    ) =>
+      handleCreateJob(
+        post({
+          ...validRequest,
+          provider: 'anthropic',
+          comparisonId: 'cmp-new',
+          ...extra,
+        }),
+        {
+          jobs,
+          log,
+          adapters: fake.adapters,
+          startBackground,
+          now: () => NOW,
+          newId: () => 'job-retry-0000000011',
+        },
+      );
+    // a first create that stopped before its seed joined leaves job-11 queued
+    expect((await create({}, async () => {})).status).toBe(202);
+    expect((await readJob(jobs, 'job-retry-0000000011'))?.status).toBe(
+      'queued',
+    );
+    // job-9 already belongs to cmp-9, so the retry cannot add it
+    const start = vi.fn(async () => {});
+    const taken = await create(
+      { jobId: 'job-retry-0000000011', seedJobId: 'job-9' },
+      start,
+    );
+    expect(taken.status).toBe(409);
+    expect(start).not.toHaveBeenCalled();
+    expect((await readJob(jobs, 'job-retry-0000000011'))?.status).toBe(
+      'failed',
+    );
+
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    jobs.data.delete('jobs/job-retry-0000000011');
+    expect((await create({}, async () => {})).status).toBe(202);
+    const joined = await create(
+      { jobId: 'job-retry-0000000011', seedJobId: 'job-9' },
+      start,
+    );
+    expect(joined.status).toBe(202);
+    expect(start).toHaveBeenCalledWith('job-retry-0000000011');
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-new');
+  });
+
+  it('frees a seed a queued retry added when its start fails', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    const id = 'job-retry-0000000012';
+    const create = (
+      extra: Record<string, string>,
+      startBackground: () => Promise<void>,
+    ) =>
+      handleCreateJob(
+        post({
+          ...validRequest,
+          provider: 'anthropic',
+          comparisonId: 'cmp-new',
+          ...extra,
+        }),
+        {
+          jobs,
+          log,
+          adapters: fake.adapters,
+          startBackground,
+          now: () => NOW,
+          newId: () => id,
+        },
+      );
+    expect((await create({}, async () => {})).status).toBe(202);
+    const retry = { jobId: id, seedJobId: 'job-9' };
+    const failed = await create(retry, async () => {
+      throw new Error('502');
+    });
+    // the job is failed while still queued, so the seed is free again
+    expect(failed.status).toBe(202);
+    expect((await readJob(jobs, id))?.status).toBe('failed');
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBeNull();
+  });
+
+  it('keeps the seed when a retry fails to start a job another request started', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    const id = 'job-retry-0000000013';
+    const deps = (startBackground: () => Promise<void>) => ({
+      jobs,
+      log,
+      adapters: fake.adapters,
+      startBackground,
+      now: () => NOW,
+      newId: () => id,
+    });
+    const body = {
+      ...validRequest,
+      provider: 'anthropic',
+      comparisonId: 'cmp-new',
+    };
+    expect(
+      (
+        await handleCreateJob(
+          post(body),
+          deps(async () => {}),
+        )
+      ).status,
+    ).toBe(202);
+    // a concurrent retry claims the job just before this one's start fails
+    const res = await handleCreateJob(
+      post({ ...body, jobId: id, seedJobId: 'job-9' }),
+      deps(async () => {
+        const job = (await readJob(jobs, id))!;
+        await writeJob(jobs, { ...job, status: 'running' });
+        throw new Error('502');
+      }),
+    );
+    expect(res.status).toBe(202);
+    expect((await readJob(jobs, id))?.status).toBe('running');
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-new');
+  });
+
+  it('joins the seed a queued job recorded when a resumed retry names only the job', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    const id = 'job-retry-0000000014';
+    const deps = {
+      jobs,
+      log,
+      adapters: fake.adapters,
+      startBackground: async () => {},
+      now: () => NOW,
+      newId: () => id,
+    };
+    const body = { ...validRequest, provider: 'anthropic' };
+    await handleCreateJob(post({ ...body, comparisonId: 'cmp-new' }), deps);
+    // the first create stored its seed but stopped before the seed joined
+    const queued = (await readJob(jobs, id))!;
+    await writeJob(jobs, { ...queued, seedJobId: 'job-9' });
+    const res = await handleCreateJob(post({ ...body, jobId: id }), deps);
+    expect(res.status).toBe(202);
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-new');
+  });
+
   it('answers 404 for unknown jobs', async () => {
     expect((await handleGetJob('nope', { jobs: memoryStore() })).status).toBe(
       404,

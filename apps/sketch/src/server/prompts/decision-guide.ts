@@ -131,10 +131,10 @@ One shared map, 1-4 prompts, each with one task:
 - **filter** = which nodes a stage shows. **skipLogic** = whether the stage shows at all. Every stage has skipLogic; the usual value is mode always_show, whenSkipped next_stage, match all, conditions []. The usual filter is match all, conditions [].
 - A filter tests attributes of the stage's own node type only, never participant attributes. A participant condition belongs in skipLogic (about participant).
 - Conditions may only test something collected in an EARLIER stage. about nodes or relationships means "at least one matches": counts ("fewer than 3 friends") cannot be expressed.
-- Operators by kind: yes_no is / is_not with "yes" or "no"; single_choice and multi_choice includes / excludes an option label; ordered is / is_not / at_least / at_most / greater_than / less_than an option label; number is / is_not / greater_than / less_than / at_least / at_most a number; text and long_text contains / does_not_contain; any kind answered / not_answered (value ""); any_exist / none_exist for whether any node or tie of typeId exists (skip logic only). Values are option LABELS exactly as declared.
-- Sketch already skips node stages when nobody was named and tie stages when no ties exist: do not write skip logic for that.
-- Use whenSkipped end_interview only when nothing after the stage can apply (a screening question that makes the participant ineligible).
-- Prefer match all with one condition; several conditions joined with all quickly become too specific.
+- Operators by kind: yes_no is / is_not with "yes" or "no"; single_choice and multi_choice includes / excludes an option label; ordered and number is / is_not / at_least / at_most / greater_than / less_than an option label or a number; text and long_text contains / does_not_contain; any kind answered / not_answered (value ""); any_exist / none_exist for whether any node or tie of typeId exists (skip logic only). Values are option LABELS exactly as declared. Except yes_no asked in a form, is_not / excludes / does_not_contain also match blanks; add answered (match all) to exclude them.
+- Sketch already skips node stages with nobody named and tie stages with no ties: write no skip logic for that.
+- Use whenSkipped end_interview only when nothing after the stage can apply (a screening question ruling the participant out).
+- Prefer one condition; more quickly get too specific.
 
 ## 9. Writing prompts and questions
 

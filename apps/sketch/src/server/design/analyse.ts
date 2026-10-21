@@ -851,6 +851,9 @@ export const analyse = (
     }
   };
 
+  // generated roster overlap forms, keyed to their roster: a free id may
+  // carry a suffix, so the id alone does not identify them
+  const overlapForms = new WeakMap<NStage, NStage>();
   for (const s of d.stages) {
     const path = `stages[${s.rawIndex}]`;
     let followUp: NStage | null = null;
@@ -1085,6 +1088,7 @@ export const analyse = (
             filter: { match: 'all', conditions: [] },
             attributeIds: [...new Set(rosterTags)],
           };
+          overlapForms.set(followUp, s);
           add(
             'adjusted',
             'ROSTER_OVERLAP_FORM',
@@ -1762,11 +1766,63 @@ export const analyse = (
   const formAt = new Map<string, number>();
   const unvalidated: (Writer & { key: string })[] = [];
   const binsKeys = new Set<string>();
+  // the filters of the highlight questions asked so far, by attribute
+  type MapFilter = { match: string; conditions: FilterCondition[] };
+  type FilterCondition = {
+    attributeId: string;
+    operator: string;
+    value: string;
+  };
+  const highlightFilters = new Map<string, MapFilter[]>();
+  // Two map filters provably show different people only when each requires
+  // a different single value of the same one-value attribute (group is
+  // "case" / group is "control"). Anything else may overlap.
+  const disjoint = (a: MapFilter, b: MapFilter, typeId: string) => {
+    const required = (f: MapFilter) =>
+      f.match === 'all' || f.conditions.length === 1
+        ? f.conditions.filter(
+            (c) => c.operator === 'is' || c.operator === 'includes',
+          )
+        : [];
+    return required(a).some((x) =>
+      required(b).some((y) => {
+        if (x.attributeId !== y.attributeId) return false;
+        const attr = listOf(`node:${typeId}`).find(
+          (t) => t.id === x.attributeId,
+        );
+        if (
+          attr?.kind !== 'single_choice' &&
+          attr?.kind !== 'yes_no' &&
+          attr?.kind !== 'ordered'
+        )
+          return false;
+        // compare the values the conditions compile to, so "Yes" and "true"
+        // or a label and its slug count as the same answer
+        const value = (c: FilterCondition) => {
+          const r = resolveCondition(
+            'node',
+            typeId,
+            attr,
+            c.attributeId,
+            c.operator as never,
+            c.value,
+            true,
+          );
+          return typeof r === 'string' ? null : JSON.stringify(r.value);
+        };
+        const vx = value(x);
+        const vy = value(y);
+        return vx !== null && vy !== null && vx !== vy;
+      }),
+    );
+  };
   // Whether an earlier form asking each attribute reaches everyone: a later
   // form would ask it again and overwrite the answer that intervening skip
   // logic or filters used. After only filtered forms, a later form still asks
   // it, since the people the filters left out have no answer yet.
   const formEveryone = new Map<string, boolean>();
+  // where the first form that reaches everyone asks each attribute
+  const formEveryoneAt = new Map<string, number>();
   const askOnce = (
     scope: string,
     ids: string[],
@@ -1787,6 +1843,7 @@ export const analyse = (
         return false;
       }
       formEveryone.set(k, Boolean(earlier) || everyone);
+      if (everyone && !formEveryoneAt.has(k)) formEveryoneAt.set(k, at);
       if (!formAt.has(k)) formAt.set(k, at);
       return true;
     });
@@ -1859,24 +1916,39 @@ export const analyse = (
         });
       });
     if (s.kind === 'sociogram')
-      s.prompts.forEach((p) => {
-        if (p.task === 'highlight')
-          site(
-            `node:${s.nodeTypeId}/${p.attributeId}`,
-            'highlight prompt',
-            () => {
-              // A narrative may reuse this map, so its last prompt stays as
-              // a plain arrangement task rather than removing the stage.
-              if (s.prompts.length > 1)
-                s.prompts = s.prompts.filter((x) => x !== p);
-              else {
-                const plural = nodeType(s.nodeTypeId)?.plural ?? 'People';
-                p.task = 'position';
-                p.attributeId = '';
-                p.text = `Arrange the ${plural.toLowerCase()} on the map in a way that makes sense to you.`;
-              }
-            },
+      [...s.prompts].forEach((p) => {
+        if (p.task !== 'highlight') return;
+        const key = `node:${s.nodeTypeId}/${p.attributeId}`;
+        // A narrative may reuse this map, so its last prompt stays as a
+        // plain arrangement task rather than removing the stage.
+        const dropHighlight = () => {
+          if (s.prompts.length > 1)
+            s.prompts = s.prompts.filter((x) => x !== p);
+          else {
+            const plural = nodeType(s.nodeTypeId)?.plural ?? 'People';
+            p.task = 'position';
+            p.attributeId = '';
+            p.text = `Arrange the ${plural.toLowerCase()} on the map in a way that makes sense to you.`;
+          }
+        };
+        // Highlighting toggles the stored value, so a second highlight
+        // question on the same attribute starts from, and can undo, the
+        // first one's answers. Maps whose filters show different people
+        // (cases and controls) keep both.
+        const earlier = highlightFilters.get(key) ?? [];
+        if (earlier.some((f) => !disjoint(f, s.filter, s.nodeTypeId))) {
+          const attr = p.attributeId;
+          dropHighlight();
+          add(
+            'degraded',
+            'DUPLICATE_HIGHLIGHT_WRITER',
+            `stages[${s.rawIndex}]`,
+            `"${attr}" is already highlighted by an earlier question, so this one would change its answers. Prompt removed; give a distinct question its own attribute.`,
           );
+          return;
+        }
+        highlightFilters.set(key, [...earlier, s.filter]);
+        site(key, 'highlight prompt', dropHighlight);
       });
     if (s.kind === 'networkComposer' && s.groupAttributeId)
       site(`node:${s.nodeTypeId}/${s.groupAttributeId}`, 'group', () => {
@@ -1895,20 +1967,62 @@ export const analyse = (
         ),
       );
   });
+  // whether a stage's filter, skip logic or narrative views read the
+  // attribute behind key
+  const testsKey = (s: NStage, key: string) => {
+    const [scope, attr] = key.split('/');
+    const filter = 'filter' in s ? s.filter : null;
+    const typeId = 'nodeTypeId' in s ? s.nodeTypeId : null;
+    if (
+      s.kind === 'narrative' &&
+      `node:${s.nodeTypeId}` === scope &&
+      s.views.some(
+        (v) =>
+          v.groupByAttributeId === attr ||
+          v.highlightAttributeIds.includes(attr!),
+      )
+    )
+      return true;
+    if (
+      filter &&
+      `node:${typeId}` === scope &&
+      filter.conditions.some((c) => c.attributeId === attr)
+    )
+      return true;
+    return s.skipLogic.conditions.some(
+      (c) =>
+        c.attributeId === attr &&
+        ((c.about === 'nodes' && `node:${c.typeId}` === scope) ||
+          (c.about === 'relationships' && `rel:${c.typeId}` === scope)),
+    );
+  };
   const fromForms = new Set<string>();
   for (const w of unvalidated) {
     const formIndex = formAt.get(w.key);
     if (formIndex === undefined) continue;
     const form = d.stages[formIndex]!;
-    // An earlier form keeps the attribute unless it misses some people and
-    // the later writer reaches everyone: then the writer asks it of all.
+    // A form that reaches everyone keeps the attribute over a writer that
+    // misses some people, whichever comes first. Otherwise an earlier form
+    // keeps it unless it misses some people and the later writer reaches
+    // everyone: then the writer asks it of all.
     const writerReachesAll =
       w.stage.skipLogic.mode === 'always_show' &&
       !('filter' in w.stage && w.stage.filter.conditions.length);
+    const formReachesAll = formEveryone.get(w.key) === true;
+    // A stage between the writer and the form that asks everyone, testing
+    // the attribute, needs the earlier writer: an earlier filtered form
+    // leaves some people without an answer.
+    const everyoneAt = formEveryoneAt.get(w.key) ?? formIndex;
+    const readBetween =
+      everyoneAt > w.at &&
+      d.stages.slice(w.at + 1, everyoneAt).some((s) => testsKey(s, w.key));
     const formWins =
+      (formReachesAll && !writerReachesAll && !readBetween) ||
+      // An earlier form keeps it, unless the form that asks everyone comes
+      // after the writer and a stage between them tests it.
       (formIndex < w.at &&
-        (formEveryone.get(w.key) === true || !writerReachesAll)) ||
-      form.id === `${w.stage.id}_overlap`;
+        (formReachesAll ? !readBetween : !writerReachesAll)) ||
+      overlapForms.get(form) === w.stage;
     const attr = w.key.split('/')[1];
     if (formWins) {
       w.drop();

@@ -109,6 +109,120 @@ type CreateJobDeps = {
   newId?: () => string;
 };
 
+type Seed = {
+  stores: { jobs: JsonStore; log: JsonStore };
+  seedJobId: string;
+  comparisonId: string;
+};
+
+const seedOf = (
+  request: { seedJobId?: string | null; comparisonId?: string | null },
+  deps: CreateJobDeps,
+): Seed | null =>
+  request.seedJobId && request.comparisonId && deps.log
+    ? {
+        stores: { jobs: deps.jobs, log: deps.log },
+        seedJobId: request.seedJobId,
+        comparisonId: request.comparisonId,
+      }
+    : null;
+
+// A seed that cannot join would show a "Prefer this one" that never records,
+// so the comparison does not start without it: the queued job is failed and
+// its reservation handed back. Resolves to that refusal, or to whether this
+// call added the seed.
+const joinSeed = async (
+  seed: Seed,
+  deps: CreateJobDeps,
+  jobId: string,
+  spendDate: string,
+  reservedUsd: number,
+): Promise<Response | boolean> => {
+  let joined: JoinOutcome | null = null;
+  try {
+    joined = await joinComparison(
+      seed.stores,
+      seed.seedJobId,
+      seed.comparisonId,
+    );
+  } catch {
+    // handled with a refusal below
+  }
+  if (joined === 'joined' || joined === 'member') return joined === 'joined';
+  await failQueuedJob(
+    deps.jobs,
+    jobId,
+    'Sketch could not start the comparison. Please try again.',
+    new Date(),
+  )
+    .then((failed) =>
+      failed ? settleSpend(deps.jobs, spendDate, 0, reservedUsd) : undefined,
+    )
+    .catch(() => {
+      // The reservation stays counted for the day: errs on the safe side.
+    });
+  return joined === 'taken'
+    ? apiError('That design is already part of another comparison.', 409)
+    : apiError('Sketch could not start the comparison. Please try again.', 503);
+};
+
+// Starts the background run. If it cannot start, the job is failed while it
+// is still queued, and only then are a seed this request added and the
+// job's reservation handed back: a job another request already started is
+// left running.
+const startOrFail = async (
+  deps: CreateJobDeps,
+  jobId: string,
+  seed: Seed | null,
+  joinedSeed: boolean,
+  spendDate: string,
+  reservedUsd: number,
+): Promise<Response> => {
+  try {
+    await deps.startBackground(jobId);
+  } catch {
+    // The invocation may have been accepted even though its response was
+    // lost. Fail the job only while it is still queued; once the background
+    // function has claimed it, it is running and the client should follow it.
+    let failed: JobRecord | null = null;
+    try {
+      failed = await failQueuedJob(
+        deps.jobs,
+        jobId,
+        'Sketch could not start working on your study. Please try again.',
+        new Date(),
+      );
+    } catch {
+      // Unknown state: leave the job and its reservation alone. A job that
+      // never starts is failed by the stale-job check when it is next read.
+      return apiError('Sketch could not start the job. Please try again.', 502);
+    }
+    if (!failed) return json({ jobId } satisfies CreateJobResponse, 202);
+    // Nothing ran: free the seed for another comparison and hand the
+    // reservation back. If either write fails, the seed stays joined or the
+    // reservation stays counted for the day, which errs on the safe side.
+    // only a seed this request added: one already in the comparison stays
+    if (seed && joinedSeed)
+      await leaveComparison(
+        seed.stores,
+        seed.seedJobId,
+        seed.comparisonId,
+      ).catch(() => {
+        // See above.
+      });
+    try {
+      await settleSpend(deps.jobs, spendDate, 0, reservedUsd);
+    } catch {
+      // See above.
+    }
+    // The job is now failed for good. Answering with its id lets the client
+    // read that failure and start afresh, rather than keep an id that only
+    // ever reports the same failure.
+    return json({ jobId } satisfies CreateJobResponse, 202);
+  }
+  return json({ jobId } satisfies CreateJobResponse, 202);
+};
+
 export const handleCreateJob = async (
   req: Request,
   deps: CreateJobDeps,
@@ -167,14 +281,36 @@ export const handleCreateJob = async (
           );
         }
       } else if (existing.status === 'queued') {
-        try {
-          await deps.startBackground(jobId);
-        } catch {
-          return apiError(
-            'Sketch could not start the job. Please try again.',
-            503,
+        // The first create may also have stopped before its seed joined. The
+        // job records its comparison and seed, since a resumed comparison
+        // retries by job id alone.
+        const seed = seedOf(
+          {
+            seedJobId: existing.seedJobId ?? request.seedJobId,
+            comparisonId: existing.comparisonId ?? request.comparisonId,
+          },
+          deps,
+        );
+        let joinedSeed = false;
+        if (seed) {
+          const joined = await joinSeed(
+            seed,
+            deps,
+            jobId,
+            spendDate,
+            existing.reservedUsd ?? 0,
           );
+          if (joined instanceof Response) return joined;
+          joinedSeed = joined;
         }
+        return startOrFail(
+          deps,
+          jobId,
+          seed,
+          joinedSeed,
+          spendDate,
+          existing.reservedUsd ?? 0,
+        );
       }
       return json({ jobId } satisfies CreateJobResponse, 202);
     }
@@ -211,96 +347,29 @@ export const handleCreateJob = async (
     }
     return json({ jobId } satisfies CreateJobResponse, 202);
   }
-  // A seed that cannot join would show a "Prefer this one" that never
-  // records, so the comparison does not start without it. The seed joins only
-  // once this job exists, so a create refused earlier leaves it free.
-  const seed =
-    request.seedJobId && request.comparisonId && deps.log
-      ? {
-          stores: { jobs: deps.jobs, log: deps.log },
-          seedJobId: request.seedJobId,
-          comparisonId: request.comparisonId,
-        }
-      : null;
+  // The seed joins only once this job exists, so a create refused earlier
+  // leaves it free.
+  const seed = seedOf(request, deps);
   let joinedSeed = false;
   if (seed) {
-    let joined: JoinOutcome | null = null;
-    try {
-      joined = await joinComparison(
-        seed.stores,
-        seed.seedJobId,
-        seed.comparisonId,
-      );
-    } catch {
-      // handled with a refusal below
-    }
-    if (joined !== 'joined' && joined !== 'member') {
-      await failQueuedJob(
-        deps.jobs,
-        jobId,
-        'Sketch could not start the comparison. Please try again.',
-        new Date(),
-      )
-        .then((failed) =>
-          failed
-            ? settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd)
-            : undefined,
-        )
-        .catch(() => {
-          // The reservation stays counted for the day: errs on the safe side.
-        });
-      return joined === 'taken'
-        ? apiError('That design is already part of another comparison.', 409)
-        : apiError(
-            'Sketch could not start the comparison. Please try again.',
-            503,
-          );
-    }
-    joinedSeed = joined === 'joined';
+    const joined = await joinSeed(
+      seed,
+      deps,
+      jobId,
+      budget.spendDate,
+      reservedUsd,
+    );
+    if (joined instanceof Response) return joined;
+    joinedSeed = joined;
   }
-  try {
-    await deps.startBackground(jobId);
-  } catch {
-    // The invocation may have been accepted even though its response was
-    // lost. Fail the job only while it is still queued; once the background
-    // function has claimed it, it is running and the client should follow it.
-    let failed: JobRecord | null = null;
-    try {
-      failed = await failQueuedJob(
-        deps.jobs,
-        jobId,
-        'Sketch could not start working on your study. Please try again.',
-        new Date(),
-      );
-    } catch {
-      // Unknown state: leave the job and its reservation alone. A job that
-      // never starts is failed by the stale-job check when it is next read.
-      return apiError('Sketch could not start the job. Please try again.', 502);
-    }
-    if (!failed) return json({ jobId } satisfies CreateJobResponse, 202);
-    // Nothing ran: free the seed for another comparison and hand the
-    // reservation back. If either write fails, the seed stays joined or the
-    // reservation stays counted for the day, which errs on the safe side.
-    // only a seed this request added: one already in the comparison stays
-    if (seed && joinedSeed)
-      await leaveComparison(
-        seed.stores,
-        seed.seedJobId,
-        seed.comparisonId,
-      ).catch(() => {
-        // See above.
-      });
-    try {
-      await settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd);
-    } catch {
-      // See above.
-    }
-    // The job is now failed for good. Answering with its id lets the client
-    // read that failure and start afresh, rather than keep an id that only
-    // ever reports the same failure.
-    return json({ jobId } satisfies CreateJobResponse, 202);
-  }
-  return json({ jobId } satisfies CreateJobResponse, 202);
+  return startOrFail(
+    deps,
+    jobId,
+    seed,
+    joinedSeed,
+    budget.spendDate,
+    reservedUsd,
+  );
 };
 
 // ---------------------------------------------------------------------------
