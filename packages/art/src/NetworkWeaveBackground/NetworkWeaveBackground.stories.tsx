@@ -107,7 +107,7 @@ export const BehindContent: Story = {
         <p
           style={{
             margin: '0 0 1rem',
-            color: 'oklch(0.5833 0.2484 11.57)',
+            color: 'var(--color-neon-coral)',
             fontSize: '0.8rem',
             fontWeight: 800,
             letterSpacing: '0.16em',
