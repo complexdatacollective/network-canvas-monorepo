@@ -2699,6 +2699,9 @@ jobs:
       # with a spec's own page.evaluate/addStyleTag calls and surfaces as a
       # spurious action failure (the suite's run.sh explains this at length).
       VITE_DISABLE_ANALYTICS: 'true'
+      # The suite builds without the pinned Interviewer 8, as the pixel lane
+      # does (its run.sh says why).
+      INTERVIEWER_SKIP_LEGACY_V8: 'true'
       # Makes a stray pixel capture throw here rather than silently
       # comparing container-rasterised baselines against this runner's fonts
       # (see the suite's capture helper).

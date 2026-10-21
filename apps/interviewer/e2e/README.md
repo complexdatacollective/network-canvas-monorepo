@@ -65,8 +65,10 @@ real, in Dexie's own layout from Interviewer 8's frozen schema history, on a
 blank same-origin page before the app first loads, and dumps it through the
 raw IndexedDB API so a spec can compare rows byte for byte (Blobs included).
 
-The suite's own build bundles no Interviewer 8 while
-`apps/interviewer/legacy-interviewer.json` pins nothing, so the specs that
+The suite's own build leaves out the Interviewer 8 that
+`apps/interviewer/legacy-interviewer.json` pins (`run.sh` and CI build with
+`INTERVIEWER_SKIP_LEGACY_V8=true`, so its background download cannot race the
+offline-readiness status), so the specs that
 host a schema 8 interview from `/v8/` (`legacy-interviewer.spec.ts`) use the
 `fixtures/legacy-interviewer.ts` test instead: once per worker it builds the app
 with `__INTERVIEWER_V8__` set (`scripts/buildtime/preview-with-legacy-app.mjs`),
