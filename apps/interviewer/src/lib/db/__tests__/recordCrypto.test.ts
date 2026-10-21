@@ -18,7 +18,11 @@ import {
   type StoredSessionRow,
 } from '../recordCrypto';
 import { setSessionDek } from '../sessionKey';
-import type { StoredAsset, StoredProtocol, StoredSession } from '../types';
+import type {
+  StoredAsset,
+  StoredCurrentProtocol,
+  StoredSession,
+} from '../types';
 
 async function makeDek(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
@@ -126,7 +130,7 @@ async function makeEncryptedSessionRow(
   };
 }
 
-const protocol: StoredProtocol = {
+const protocol: StoredCurrentProtocol = {
   id: 'h1',
   hash: 'h1',
   name: 'Study',
@@ -141,7 +145,7 @@ const protocol: StoredProtocol = {
     localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
-  } as StoredProtocol['protocol'],
+  } as StoredCurrentProtocol['protocol'],
 };
 
 const blobAsset: StoredAsset = {

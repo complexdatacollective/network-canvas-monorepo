@@ -6,7 +6,8 @@ import type {
 import type { ExportOptions } from '@codaco/network-exporters/options';
 
 import { APP_VERSION } from '../appVersion';
-import { getProtocolsByHashes, getSessionsByIds } from '../db/api';
+import { getProtocolsByHashes, getSessionsForExport } from '../db/api';
+import type { StoredProtocol } from '../db/types';
 import {
   type ExportPipelineData,
   type ExportRun,
@@ -34,7 +35,7 @@ async function fetchExportInputs(
   sessionIds: string[],
   signal?: AbortSignal,
 ): Promise<ExportPipelineData> {
-  const records = await getSessionsByIds(sessionIds);
+  const records = await getSessionsForExport(sessionIds);
   if (signal?.aborted) throw new Error(CANCELLED_MESSAGE);
   const sessions: InterviewExportInput[] = records.map((record) => ({
     id: record.id,
@@ -44,7 +45,7 @@ async function fetchExportInputs(
     network: record.network,
     protocolHash: record.protocolHash,
     // Null when the session is unfinished, or was finished before outcomes
-    // were recorded; never inferred.
+    // were recorded, which every schema 8 interview was; never inferred.
     finishOutcome: record.finishedAt ? (record.finishOutcome ?? null) : null,
   }));
   const hashes = [...new Set(records.map((record) => record.protocolHash))];
@@ -54,10 +55,26 @@ async function fetchExportInputs(
     protocols[protocol.hash] = {
       hash: protocol.hash,
       name: protocol.name,
-      codebook: protocol.codebook,
+      codebook: exportedCodebook(protocol),
     };
   }
   return { sessions, protocols };
+}
+
+/**
+ * The codebook the exporter reads. A schema 8 protocol is exported as it was
+ * collected, never converted to schema 9: its codebook is handed over as it
+ * is, typed as the exporter's input. The exporter reads only what the two
+ * schemas share (entity types, variable names, types and options), and its
+ * own handling of each variable type covers schema 8's.
+ */
+function exportedCodebook(
+  protocol: StoredProtocol,
+): ProtocolExportInput['codebook'] {
+  if (protocol.schemaVersion !== 8) return protocol.codebook;
+  // The two codebook types differ only in fields the exporter never reads.
+  const codebook: unknown = protocol.codebook;
+  return codebook as ProtocolExportInput['codebook'];
 }
 
 function runOnWorker({

@@ -77,13 +77,9 @@ When exporting this data, the encrypted attributes will not be included in the e
 
 ### Answers protected by the experimental version
 
-In schema 8 protocols, the Anonymisation interface was an experimental feature, and it protected answers in an earlier format. Answers protected that way cannot be read after you upgrade to schema 9, even with the right passphrase. After the upgrade:
+In schema 8 protocols, the Anonymisation interface was an experimental feature, and it protected answers in an earlier format. Fresco and Interviewer never upgrade a protocol to schema 9, so a schema 8 protocol and its interviews keep running as schema 8, and answers protected this way can still be read there with the right passphrase.
 
-- Interviews that contain these answers still open.
-- The earlier protected answers appear as "Answer unavailable" where the interview would have shown them. They are still exported as `ENCRYPTED`.
-- New answers are protected in the way described on this page, once the participant chooses a new passphrase.
-
-If you have interviews in progress that use the experimental version, consider finishing them before you upgrade the app. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9) for what else changes when you migrate a protocol.
+Upgrading a protocol to schema 9 in Architect creates a new protocol. Interviews you collected with the schema 8 protocol stay with it, and the upgraded protocol protects new answers in the way described on this page. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9) for what else changes when you migrate a protocol.
 
 ### Best Practices
 

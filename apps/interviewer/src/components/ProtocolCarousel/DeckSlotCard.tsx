@@ -1,19 +1,9 @@
-import {
-  CircleAlert,
-  CircleArrowUp,
-  CloudOff,
-  CopyCheck,
-  Download,
-  ExternalLink,
-  Info,
-} from 'lucide-react';
+import { CircleAlert, Download } from 'lucide-react';
 
 import type { MessageDescriptor, IntlShape } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
-import type { StoredSession } from '~/lib/db/types';
+import { isSchema8Protocol, type StoredSession } from '~/lib/db/types';
 import {
   type BundledLegacyInterviewer,
   LEGACY_INTERVIEWER_MAJOR,
@@ -22,7 +12,6 @@ import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
-import type { LegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
 
 import { legacyProtocolMessages } from '../legacyProtocolMessages';
 import { NewSessionForm } from '../NewSessionForm';
@@ -35,7 +24,6 @@ import {
   type DeckCardProps,
   DeckCardProgressFooter,
 } from './DeckCard';
-import { DeckCardMenu } from './DeckCardMenu';
 import type { DeckEntry } from './deckEntries';
 
 const messages = defineMessages({
@@ -79,18 +67,11 @@ const PHASE_LABEL: Record<ImportPhase, MessageDescriptor> = {
   saving: messages.saving,
 };
 
-// What a schema 8 card offers, and the state of the Interviewer 8 that runs
-// it. `interviewer` is null when this build bundles no Interviewer 8: the
-// card then offers only Upgrade and Info.
-export type LegacyCardActions = {
+// The bundled Interviewer 8 a schema 8 card's interviews run in. `interviewer`
+// is null when this build bundles none: the card then starts no interview,
+// and says why.
+export type Schema8CardActions = {
   interviewer: BundledLegacyInterviewer | null;
-  offline: LegacyInterviewerOffline;
-  /** Interviewer 8's data view, where these interviews are, when linkable. */
-  sessionsHref: string | null;
-  onStart: (protocol: LegacyProtocolSummary) => void;
-  onOpenInInterviewer: (protocol: LegacyProtocolSummary) => void;
-  onUpgrade: (protocol: LegacyProtocolSummary) => void;
-  onShowInfo: (protocol: LegacyProtocolSummary) => void;
 };
 
 type DeckSlotCardProps = {
@@ -104,7 +85,7 @@ type DeckSlotCardProps = {
   onDismissSample: () => void;
   onInstallSample: () => void;
   onInstallDevelopment: () => void;
-  legacy?: LegacyCardActions;
+  schema8?: Schema8CardActions;
   // When set, the case-ID form replaces the protocol card's footer.
   newSession?: {
     onCancel: () => void;
@@ -122,20 +103,22 @@ function slotCardProps(
     onDismissSample,
     onInstallSample,
     onInstallDevelopment,
-    legacy,
+    schema8,
     newSession,
   }: DeckSlotCardProps,
   intl: IntlShape,
 ): DeckCardProps {
-  if (entry.kind === 'legacy') {
-    return legacySlotCardProps(entry, { isActive, activate, legacy }, intl);
-  }
   if (entry.kind === 'protocol') {
+    const { protocol } = entry;
+    const schema8Props = isSchema8Protocol(protocol)
+      ? schema8CardProps({ isActive, schema8 }, intl)
+      : null;
     return {
       protocol: entry.protocol,
       isActive,
       sessionCount,
       requiresInternetConnection: protocolRequiresInternet(entry.protocol),
+      schemaVersion: protocol.schemaVersion,
       onActivate: activate,
       // While the case-ID form is open it takes over the card: the
       // controls row, description, and metadata animate out (their exits
@@ -144,7 +127,7 @@ function slotCardProps(
       hideDescription: newSession !== undefined,
       hideMetadata: newSession !== undefined,
       hideControls: newSession !== undefined,
-      onDelete: () => onDeleteProtocol(entry.protocol.hash),
+      onDelete: () => onDeleteProtocol(protocol.hash),
       footer: newSession ? (
         <DeckCardFooter key="new-session">
           <NewSessionForm
@@ -153,6 +136,8 @@ function slotCardProps(
             onCreated={newSession.onCreated}
           />
         </DeckCardFooter>
+      ) : schema8Props?.unavailableFooter ? (
+        schema8Props.unavailableFooter
       ) : isActive ? (
         <DeckCardFooter key="start-interview">
           <DeckCardFooterButton onClick={activate}>
@@ -160,6 +145,7 @@ function slotCardProps(
           </DeckCardFooterButton>
         </DeckCardFooter>
       ) : undefined,
+      badges: schema8Props?.badges,
     };
   }
   if (entry.kind === 'sample') {
@@ -243,118 +229,35 @@ function slotCardProps(
 
 const iconClassName = 'size-4';
 
-function legacySlotCardProps(
-  entry: Extract<DeckEntry, { kind: 'legacy' }>,
-  {
-    isActive,
-    activate,
-    legacy,
-  }: Pick<DeckSlotCardProps, 'isActive' | 'activate' | 'legacy'>,
+// What a schema 8 protocol's card adds to any protocol card's: when this
+// build has no Interviewer 8 to run its interviews, a badge and a note
+// instead of the start button.
+function schema8CardProps(
+  { isActive, schema8 }: Pick<DeckSlotCardProps, 'isActive' | 'schema8'>,
   intl: IntlShape,
-): DeckCardProps {
-  const { protocol, upgraded } = entry;
-  const interviewer = legacy?.interviewer ?? null;
-  const legacyVersion = { version: LEGACY_INTERVIEWER_MAJOR };
-  const menuItems = [
-    ...(interviewer && legacy
-      ? [
-          {
-            key: 'open',
-            label: intl.formatMessage(
-              legacyProtocolMessages.openInInterviewer,
-              legacyVersion,
-            ),
-            icon: <ExternalLink />,
-            onSelect: () => legacy.onOpenInInterviewer(protocol),
-          },
-        ]
-      : []),
-    ...(legacy
-      ? [
-          {
-            key: 'upgrade',
-            label: intl.formatMessage(legacyProtocolMessages.upgradeToSchema, {
-              version: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-            }),
-            icon: <CircleArrowUp />,
-            onSelect: () => legacy.onUpgrade(protocol),
-          },
-          {
-            key: 'info',
-            label: intl.formatMessage(legacyProtocolMessages.protocolInfo),
-            icon: <Info />,
-            onSelect: () => legacy.onShowInfo(protocol),
-          },
-        ]
-      : []),
-  ];
-
+): Pick<DeckCardProps, 'badges'> & {
+  unavailableFooter: DeckCardProps['footer'];
+} {
+  const interviewer = schema8?.interviewer ?? null;
   return {
-    protocol,
-    isActive,
-    sessionCount: protocol.sessionCount,
-    onActivate: activate,
-    // Interviewer 8 keeps these interviews and exports them; this app's data
-    // view has none of them.
-    sessionCountHref: legacy?.sessionsHref ?? null,
-    badges: (
-      <>
-        <DeckCardBadge tone="info">
-          {intl.formatMessage(legacyProtocolMessages.schemaBadge, {
-            version: protocol.schemaVersion,
-          })}
-        </DeckCardBadge>
-        {upgraded && (
-          <DeckCardBadge
-            tone="success"
-            icon={<CopyCheck className={iconClassName} />}
-          >
-            {intl.formatMessage(legacyProtocolMessages.upgradedBadge)}
-          </DeckCardBadge>
-        )}
-        {!interviewer && (
-          <DeckCardBadge
-            tone="warning"
-            icon={<CircleAlert className={iconClassName} />}
-          >
-            {intl.formatMessage(legacyProtocolMessages.notAvailable)}
-          </DeckCardBadge>
-        )}
-        {interviewer && legacy?.offline === 'not-ready' && (
-          <DeckCardBadge
-            tone="warning"
-            icon={<CloudOff className={iconClassName} />}
-          >
-            {intl.formatMessage(legacyProtocolMessages.notReadyOffline)}
-          </DeckCardBadge>
-        )}
-      </>
+    badges: interviewer ? undefined : (
+      <DeckCardBadge
+        tone="warning"
+        icon={<CircleAlert className={iconClassName} />}
+      >
+        {intl.formatMessage(legacyProtocolMessages.notAvailable)}
+      </DeckCardBadge>
     ),
-    menu:
-      menuItems.length > 0 ? (
-        <DeckCardMenu
-          label={intl.formatMessage(legacyProtocolMessages.protocolActions, {
-            name: protocol.name,
-          })}
-          items={menuItems}
-        />
+    unavailableFooter:
+      isActive && !interviewer ? (
+        <DeckCardFooter key="schema-8-unavailable">
+          <DeckCardFooterNote>
+            {intl.formatMessage(legacyProtocolMessages.notAvailableHelp, {
+              legacyVersion: LEGACY_INTERVIEWER_MAJOR,
+            })}
+          </DeckCardFooterNote>
+        </DeckCardFooter>
       ) : undefined,
-    footer: !isActive ? undefined : interviewer ? (
-      <DeckCardFooter key="start-legacy-interview">
-        <DeckCardFooterButton onClick={activate}>
-          {intl.formatMessage(messages.startNewInterview)}
-        </DeckCardFooterButton>
-      </DeckCardFooter>
-    ) : (
-      <DeckCardFooter key="legacy-unavailable">
-        <DeckCardFooterNote>
-          {intl.formatMessage(legacyProtocolMessages.notAvailableHelp, {
-            legacyVersion: LEGACY_INTERVIEWER_MAJOR,
-            currentVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-          })}
-        </DeckCardFooterNote>
-      </DeckCardFooter>
-    ),
   };
 }
 

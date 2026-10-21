@@ -307,8 +307,7 @@ then runs two Docker stacks via
 - **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR
   image through its setup wizard (sample protocol, synthetic interviews, data
   export), and leaves one interview of a schema 8 protocol unfinished
-  (`migration-lane.mjs --phase seed`, answering "Keep schema 8" if the
-  released build asks how to import it): it builds a family on the schema 8
+  (`migration-lane.mjs --phase seed`): it builds a family on the schema 8
   Family Pedigree with that stage's quick-start questions and finalizes it,
   then stops on the stage behind an introduction panel, whose skip logic is
   false for that interview. It then swaps the app container to the pending
@@ -320,19 +319,20 @@ then runs two Docker stacks via
   `/v8/interview/<id>`, which opens on the same stage with the panel shown,
   the schema 8 pedigree still draws the family, and the interview can be
   finished on the schema 8 finish screen and exported with every answer in
-  its own record. It then imports two copies of the schema 8 fixture, one
-  answered "Keep schema 8" (stored at schema 8 and badged "Schema 8" in the
-  protocols table) and one answered "Upgrade to schema 9" (stored at schema 9,
-  ending in a Finish Session stage, unbadged) (`--phase resume`). Finally it
-  verifies data integrity (two more protocols than the seed left), dashboard
+  its own record. It then imports a copy of the schema 8 fixture, which must
+  be stored as it is, with the fixture's own stages, and a copy of the
+  schema 7 sample protocol, which must be upgraded to schema 8 and no further;
+  nothing may ask how to import either, and both are badged "Schema 8" in the
+  protocols table (`--phase resume`). Finally it verifies data integrity (two more protocols than the seed left), dashboard
   CRUD, settings, and the interview data API, and diffs pre- vs post-upgrade
   exports (`release-test/scripts/diff-exports.mjs`), which must be identical.
   A later schema bump needs its own fixture for the release that still stores
   the old schema, and the seed fails loudly until it has one.
 - **Fresh lane** (ports 3211/5534/9311): verifies the new-deployment setup
-  process of the pending image end-to-end, and then runs the script-driven
-  checks on that instance — a whole interview conducted from the first stage to
-  the finish screen and out through an export; a schema 9 interview conducted
+  process of the pending image end-to-end (its schema 7 sample protocol is
+  imported without a question and stored at schema 8), and then runs the
+  script-driven checks on that instance — a whole interview conducted from the
+  first stage to the finish screen and out through an export; a schema 9 interview conducted
   in Spanish (language chooser, dynamic values, an encrypted answer and the
   pedigree's other answers about that relative, bins with tap-to-place and
   the completion gate, a skipped empty stage, both finish stages and the
@@ -343,11 +343,12 @@ then runs two Docker stacks via
   analytics **enabled**, against a sink that terminates TLS and records every
   request. It also imports the damaged protocol fixtures, because "opening a
   damaged file is no longer recorded as an application error" is a claim about
-  what is sent. The fractional COUNT fixture is a schema 8 protocol schema 9
-  cannot take; the lane answers the import dialog with "Upgrade to schema 9",
-  and a protocol Fresco cannot upgrade is a migration bug, so it must arrive
-  both as a `ProtocolImportFailed` refusal and as an exception. Nothing is
-  upgraded at deploy, so no lane expects a failed-upgrade report from one.
+  what is sent. Every readable fixture it imports there is schema 8 or 9,
+  which Fresco stores as it is, so none can fail an upgrade: a damaged file
+  is reported as a `ProtocolImportFailed` refusal of its kind and never as an
+  exception, the schema 9 fractional COUNT fixture is refused as an invalid
+  protocol, which sends neither, and a refusal naming a failed upgrade fails
+  the run. Nothing is upgraded at deploy either.
 - **Two-factor lane** (ports 3213/5536/9313): a deployment that sets
   `REQUIRE_TWO_FACTOR`.
 
@@ -424,12 +425,15 @@ The protocol fixtures are built rather than committed
 (`release-test/scripts/make-fixtures.mjs`, from
 `packages/protocols/e2e/fresco-release-test`,
 `fresco-release-test-v9` and `fresco-release-test-migration`): the protocol an
-interview is conducted with, the schema 9 protocol in English and Spanish,
-the schema 8 protocol the upgrade keeps, two copies of it (relabelled so
-their hashes differ from the seeded one's and each other's) that the resume
-phase imports kept and upgraded, and the damaged ones — a missing resource, a damaged archive, a
-protocol that inflates past the shared limit, and the pair of filters that
-shows a fractional comparison value accepted and a fractional COUNT refused. A
+interview is conducted with (upgraded from its schema 8 source to schema 9
+with the pending `migrateProtocol`, because Fresco never upgrades to schema 9
+itself), the schema 9 protocol in English and Spanish, the schema 8 protocol
+the upgrade keeps, the copies of it and of the schema 7 sample protocol
+(relabelled so their hashes differ from those the seed imported) that the
+resume phase imports, and the damaged ones — a missing resource (schema 8),
+a damaged archive, a protocol that inflates past the shared limit, and the
+schema 9 pair of filters that shows a fractional comparison value accepted
+and a fractional COUNT refused. A
 repository is the wrong place for a deliberately corrupt archive and an entry
 that expands to more than a gigabyte.
 
@@ -671,7 +675,7 @@ lib/
 ├── cache/          # Typesafe cache-tag wrappers
 ├── db/             # Prisma schema, client, migrations
 ├── export/         # Export orchestration (@codaco/network-exporters)
-├── protocol/       # Protocol import and migration
+├── protocol/       # Protocol import
 ├── storage/        # S3 / UploadThing asset storage
 └── uploadthing/
 ```
@@ -697,8 +701,10 @@ lib/
   declares any other schema. `lib/schema-8/version.ts` decides which route an
   interview takes. Nothing under `/v8` but the interview and its thank-you
   page: listing, export, the API and every dashboard page stay in the current
-  app and read schema 8 rows with the pinned schemas. A researcher upgrades a
-  protocol only when importing it, by choosing to in the import dialog.
+  app and read schema 8 rows with the pinned schemas. Import never upgrades
+  to schema 9 either: a schema 8 or schema 9 protocol is stored as it is, a
+  schema 7 protocol is brought up to schema 8 (as Fresco 4 did), and anything
+  older is refused (`OLDEST_SUPPORTED_SCHEMA_VERSION` in `fresco.config.ts`).
   `migrate-and-start.sh` runs `scripts/setup-database.ts`, which applies the
   Prisma migrations and a categorical-answer clean-up, in one transaction. The
   pinned packages and the vendoring overrides of the release test and hotfix

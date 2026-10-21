@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 
 import type { AuthMode } from '~/lib/auth/api';
-import type { LegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
+import type { AppOffline } from '~/lib/pwa/appOffline';
 
 import { StatusRowView } from './StatusRow';
 
@@ -19,7 +19,9 @@ type StoryArgs = {
   installed: boolean;
   usage: number;
   version: string;
-  legacyOffline: LegacyInterviewerOffline;
+  offline: AppOffline;
+  /** How far the download for offline use has got; null when unknown. */
+  downloadProgress: number | null | undefined;
 };
 
 const meta: Meta<StoryArgs> = {
@@ -32,7 +34,8 @@ const meta: Meta<StoryArgs> = {
     installed: false,
     usage: 4.2 * 1024 * 1024,
     version: '0.0.0',
-    legacyOffline: 'not-bundled',
+    offline: 'ready',
+    downloadProgress: undefined,
   },
   argTypes: {
     mode: {
@@ -55,11 +58,16 @@ const meta: Meta<StoryArgs> = {
       control: 'text',
       description: 'Fixed story fixture; production reads the package version',
     },
-    legacyOffline: {
+    offline: {
       control: 'inline-radio',
-      options: ['not-bundled', 'checking', 'ready', 'not-ready'],
+      options: ['checking', 'ready', 'not-ready'],
       description:
-        'Whether the bundled Interviewer 8 is installed for offline use',
+        'Whether Interviewer, with everything it runs, is saved for offline use',
+    },
+    downloadProgress: {
+      control: { type: 'range', min: 0, max: 1, step: 0.01 },
+      description:
+        'While not ready: the share downloaded (undefined when nothing is downloading, null when it cannot be told)',
     },
   },
   render: ({
@@ -70,7 +78,8 @@ const meta: Meta<StoryArgs> = {
     installed,
     usage,
     version,
-    legacyOffline,
+    offline,
+    downloadProgress,
   }) => (
     <StatusRowView
       protocolCount={protocolCount}
@@ -78,7 +87,12 @@ const meta: Meta<StoryArgs> = {
       mode={mode}
       durability={{ persisted, usage }}
       installed={installed}
-      legacyOffline={legacyOffline}
+      offline={offline}
+      download={
+        downloadProgress === undefined
+          ? undefined
+          : { downloading: true, progress: downloadProgress }
+      }
       versionSlot={<span>Interviewer {version}</span>}
     />
   ),
@@ -125,12 +139,27 @@ export const InstalledBestEffort: Story = {
   args: { persisted: false, installed: true },
 };
 
-/** The bundled Interviewer 8 is installed and works without a network. */
-export const InterviewerEightReadyOffline: Story = {
-  args: { legacyOffline: 'ready' },
+/** Interviewer has not finished downloading for offline use yet. */
+export const NotReadyOffline: Story = {
+  args: { offline: 'not-ready' },
 };
 
-/** Interviewer 8 has not finished downloading for offline use yet. */
-export const InterviewerEightNotReadyOffline: Story = {
-  args: { legacyOffline: 'not-ready' },
+/**
+ * Interviewer is downloading what it needs offline: the chip says how far it
+ * has got, and its explanation shows the progress. Ends with the explanation
+ * open so Chromatic captures it.
+ */
+export const DownloadingOffline: Story = {
+  args: { offline: 'not-ready', downloadProgress: 0.42 },
+  play: async ({ canvas, userEvent }) => {
+    const trigger = canvas.getByTestId('offline-status-trigger');
+    await expect(trigger).toHaveTextContent('Downloading for offline: 42%');
+    await userEvent.click(trigger);
+    const body = within(document.body);
+    await waitFor(() =>
+      expect(
+        body.getByRole('progressbar', { name: 'Download for offline use' }),
+      ).toBeVisible(),
+    );
+  },
 };

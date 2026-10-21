@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { hashProtocol } from '@codaco/protocol-validation';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { importProtocolFromFile } from '../importProtocol';
@@ -138,12 +139,7 @@ describe('importProtocolFromFile error reporting', () => {
       ),
     );
 
-    const result = await importProtocolFromFile(
-      asFile(bytes),
-      undefined,
-      undefined,
-      { allowMigration: true },
-    );
+    const result = await importProtocolFromFile(asFile(bytes));
 
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -222,7 +218,97 @@ describe('importing a file below this app’s schema', () => {
     saveProtocolMock.mockResolvedValue(undefined);
   });
 
-  it('never migrates on its own: it asks for the researcher’s choice', async () => {
+  it('never upgrades it: it is kept on schema 8 without asking', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(schema8),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result).toMatchObject({ success: true });
+    if (!result.success) return;
+    expect(result.protocol.schemaVersion).toBe(8);
+    expect(saveProtocolMock).toHaveBeenCalledWith(schema8, result.hash, []);
+  });
+
+  it('imports a file at this app’s schema as it is', async () => {
+    const current = {
+      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      name: 'Current study',
+      description: '',
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      stages: [
+        {
+          id: 'finish',
+          type: 'FinishSession',
+          mode: 'confirmation',
+          label: { en: 'Finish' },
+          content: { en: '# Finish\n\nThank you.' },
+          finishedContent: { en: '# Finished\n\nThank you.' },
+          finishLabel: { en: 'Finish' },
+          finishConfirmation: { en: 'Finish?' },
+          finishFailed: { en: 'Not finished.' },
+          outcome: 'completed',
+        },
+      ],
+      codebook: { node: {}, edge: {}, ego: {} },
+      assetManifest: {},
+    };
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(current),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result).toMatchObject({ success: true });
+    if (!result.success) return;
+    expect(result.protocol.schemaVersion).toBe(
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    );
+    expect(saveProtocolMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('keeping a file below this app’s schema on schema 8', () => {
+  const schema8 = {
+    schemaVersion: 8 as const,
+    name: 'Older study',
+    description: '',
+    stages: [],
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {},
+        },
+      },
+      edge: {},
+      ego: {},
+    },
+    assetManifest: {},
+  };
+  const schema7 = {
+    schemaVersion: 7,
+    description: '',
+    stages: [],
+    codebook: {
+      node: {
+        person: { name: 'Person', color: 'node-color-seq-1', variables: {} },
+      },
+      edge: {},
+      ego: {},
+    },
+    assetManifest: {},
+  };
+
+  beforeEach(() => {
+    saveProtocolMock.mockReset();
+    saveProtocolMock.mockResolvedValue(undefined);
+  });
+
+  it('stores a schema 8 file as it is, hashed as Interviewer 8 hashes it', async () => {
     const bytes = await buildArchive({
       'protocol.json': JSON.stringify(schema8),
     });
@@ -230,35 +316,32 @@ describe('importing a file below this app’s schema', () => {
     const result = await importProtocolFromFile(asFile(bytes));
 
     expect(result).toMatchObject({
-      success: false,
-      error: 'migration-required',
-      schemaVersion: 8,
+      success: true,
+      name: 'Older study',
     });
-    if (result.success) return;
-    expect(result.message).toBe(
-      'This protocol could not be upgraded to the current version.',
-    );
-    expect(result.message).not.toMatch(IMPLEMENTATION_DETAIL);
-    expect(saveProtocolMock).not.toHaveBeenCalled();
+    if (!result.success) return;
+    expect(result.protocol).toEqual(schema8);
+    expect(result.hash).toBe(hashProtocol(schema8));
+    expect(saveProtocolMock).toHaveBeenCalledWith(schema8, result.hash, []);
   });
 
-  it('migrates, validates, hashes and saves it once the researcher chose to upgrade', async () => {
+  it('brings a schema 7 file to schema 8 and no further, named from the file', async () => {
     const bytes = await buildArchive({
-      'protocol.json': JSON.stringify(schema8),
+      'protocol.json': JSON.stringify(schema7),
     });
 
     const result = await importProtocolFromFile(
-      asFile(bytes),
-      undefined,
-      undefined,
-      { allowMigration: true },
+      asFile(bytes, 'Classic Study.netcanvas'),
     );
 
-    expect(result).toMatchObject({ success: true, migrated: true });
+    expect(result).toMatchObject({
+      success: true,
+      name: 'Classic Study',
+    });
     if (!result.success) return;
-    expect(result.protocol.schemaVersion).toBe(
-      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-    );
+    expect(result.protocol.schemaVersion).toBe(8);
+    expect(result.protocol).toMatchObject({ name: 'Classic Study' });
+    expect(result.hash).toBe(hashProtocol(result.protocol));
     expect(saveProtocolMock).toHaveBeenCalledWith(
       result.protocol,
       result.hash,
@@ -266,25 +349,140 @@ describe('importing a file below this app’s schema', () => {
     );
   });
 
-  it('imports a file at this app’s schema without asking', async () => {
+  it('refuses a schema 8 file with no name, which Interviewer 8 requires', async () => {
+    const { name: _name, ...unnamed } = schema8;
     const bytes = await buildArchive({
-      'protocol.json': JSON.stringify(schema8),
+      'protocol.json': JSON.stringify(unnamed),
     });
-    const upgraded = await importProtocolFromFile(
-      asFile(bytes),
-      undefined,
-      undefined,
-      { allowMigration: true },
-    );
-    if (!upgraded.success) throw new Error('expected the upgrade to succeed');
-    saveProtocolMock.mockClear();
 
-    const current = await buildArchive({
-      'protocol.json': JSON.stringify(upgraded.protocol),
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result).toMatchObject({
+      success: false,
+      error: 'validation-failed',
+      issues: [{ path: 'name' }],
     });
-    const result = await importProtocolFromFile(asFile(current));
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
 
-    expect(result).toMatchObject({ success: true, migrated: false });
-    expect(saveProtocolMock).toHaveBeenCalledTimes(1);
+  it('refuses a file that is not a schema 8 protocol in outline', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify({ ...schema8, stages: 'none' }),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result).toMatchObject({
+      success: false,
+      error: 'validation-failed',
+    });
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+
+  // Validated as Interviewer 8 validates its imports (its frozen schema 8
+  // validator), so a file Interviewer 8 would refuse is refused here too,
+  // rather than kept and then run at /v8/ by an engine that cannot read it.
+  const keepRefuses = async (document: unknown) => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(document),
+    });
+    const result = await importProtocolFromFile(asFile(bytes));
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+    return result;
+  };
+
+  it('refuses a file with a key Interviewer 8’s schema does not know', async () => {
+    expect(
+      await keepRefuses({ ...schema8, notASchema8Key: true }),
+    ).toMatchObject({
+      success: false,
+      error: 'validation-failed',
+      issues: [{ path: '', message: 'Unrecognized key: "notASchema8Key"' }],
+    });
+  });
+
+  it('refuses a stage of a type Interviewer 8 does not have', async () => {
+    expect(
+      await keepRefuses({
+        ...schema8,
+        stages: [{ id: 's1', type: 'NotAStage', label: 'Unknown' }],
+      }),
+    ).toMatchObject({
+      success: false,
+      error: 'validation-failed',
+      issues: [{ path: 'stages.0.type' }],
+    });
+  });
+
+  it('refuses a node type without the shape Interviewer 8 requires', async () => {
+    expect(
+      await keepRefuses({
+        ...schema8,
+        codebook: {
+          ...schema8.codebook,
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {},
+            },
+          },
+        },
+      }),
+    ).toMatchObject({
+      success: false,
+      error: 'validation-failed',
+      issues: [{ path: 'codebook.node.person.shape' }],
+    });
+  });
+
+  it('refuses a stage whose subject is not in the codebook', async () => {
+    const result = await keepRefuses({
+      ...schema8,
+      stages: [
+        {
+          id: 's1',
+          type: 'NameGenerator',
+          label: 'Names',
+          subject: { entity: 'node', type: 'missing' },
+          form: { title: 'Add', fields: [] },
+          prompts: [{ id: 'p1', text: 'Name people' }],
+        },
+      ],
+    });
+    expect(result).toMatchObject({
+      success: false,
+      error: 'validation-failed',
+    });
+    if (result.success || result.error !== 'validation-failed') return;
+    expect(result.issues).toContainEqual({
+      path: 'stages.0.subject',
+      message: 'Stage subject is not defined in the codebook',
+    });
+  });
+
+  it('keeps a file with stages Interviewer 8 validates', async () => {
+    const withStage = {
+      ...schema8,
+      stages: [
+        {
+          id: 's1',
+          type: 'Information',
+          label: 'Welcome',
+          title: 'Welcome',
+          items: [{ id: 'i1', type: 'text', content: 'Hello' }],
+        },
+      ],
+    };
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(withStage),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result).toMatchObject({ success: true });
+    if (!result.success) return;
+    expect(result.protocol).toEqual(withStage);
+    expect(saveProtocolMock).toHaveBeenCalledWith(withStage, result.hash, []);
   });
 });

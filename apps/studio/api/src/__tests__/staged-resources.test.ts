@@ -124,6 +124,11 @@ describe('staging a roster the interview could not load', () => {
       'the roster holds no nodes',
     ],
     [
+      'a JSON roster with edges but no nodes',
+      roster('people.json', JSON.stringify({ nodes: [], edges: [{}] })),
+      'the roster holds no nodes',
+    ],
+    [
       'JSON that does not parse',
       roster('people.json', '{"nodes": ['),
       'the roster cannot be read as JSON',

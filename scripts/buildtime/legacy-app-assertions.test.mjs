@@ -10,6 +10,7 @@ import {
   assertLegacyAppOutput,
   assertLegacyRedirects,
   assertLegacyRouteExclusions,
+  assertLegacySameOriginFraming,
   findLegacyPrecacheEntries,
   routeMatcherAt,
 } from './legacy-app-assertions.ts';
@@ -321,5 +322,61 @@ describe.each(APPS)('%s hosting and output', (name) => {
         /must not serve: _redirects, assets\/main-abc\.js\.map/,
       );
     });
+  });
+});
+
+describe('assertLegacySameOriginFraming', () => {
+  const NO_STORE = '  Cache-Control: no-store\n';
+
+  it('accepts the committed apps/interviewer/public/_headers', () => {
+    const committed = readFileSync(
+      join(repositoryRoot, 'apps/interviewer/public/_headers'),
+      'utf8',
+    );
+    expect(() => assertLegacySameOriginFraming(committed)).not.toThrow();
+  });
+
+  it('accepts a /* rule that limits every path to this origin', () => {
+    expect(() =>
+      assertLegacySameOriginFraming(
+        "/*\n  Content-Security-Policy: frame-ancestors 'self'\n  X-Frame-Options: SAMEORIGIN\n",
+      ),
+    ).not.toThrow();
+  });
+
+  it('refuses a deploy that says nothing about framing /v8/', () => {
+    expect(() =>
+      assertLegacySameOriginFraming(`/*\n${NO_STORE}/v8/\n${NO_STORE}`),
+    ).toThrow(/no Content-Security-Policy frame-ancestors for \/v8\//);
+  });
+
+  it('refuses any framing beyond this origin', () => {
+    for (const ancestors of [
+      "'self' https://elsewhere.example",
+      '*',
+      "'none'",
+    ]) {
+      expect(() =>
+        assertLegacySameOriginFraming(
+          `/v8/*\n  Content-Security-Policy: frame-ancestors ${ancestors}\n`,
+        ),
+      ).toThrow(/must be exactly 'self'/);
+    }
+  });
+
+  it('refuses another matching rule whose policy would block the frame', () => {
+    expect(() =>
+      assertLegacySameOriginFraming(
+        "/*\n  Content-Security-Policy: frame-ancestors 'none'\n/v8/*\n  Content-Security-Policy: frame-ancestors 'self'\n",
+      ),
+    ).toThrow(/rule \/\* sends/);
+  });
+
+  it('refuses X-Frame-Options: DENY on a /v8/ path', () => {
+    expect(() =>
+      assertLegacySameOriginFraming(
+        "/v8/*\n  Content-Security-Policy: frame-ancestors 'self'\n/v8/index.html\n  X-Frame-Options: DENY\n",
+      ),
+    ).toThrow(/X-Frame-Options: DENY for \/v8\/index\.html/);
   });
 });

@@ -100,6 +100,26 @@ describe('mapInterviewPayload', () => {
     expect(initialSyncRevision).toBe(7);
   });
 
+  it('keeps the URL of a resource whose ID is __proto__', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    source.protocol.assets = [
+      {
+        key: 'asset-key-1',
+        assetId: '__proto__',
+        name: 'Photo',
+        type: 'image',
+        url: 'https://files.example/photo.jpg',
+        size: 10,
+        value: null,
+      },
+    ];
+
+    const { assetUrls } = mapReady(source);
+
+    expect(Object.keys(assetUrls)).toEqual(['__proto__']);
+    expect(assetUrls['__proto__']).toBe('https://files.example/photo.jpg');
+  });
+
   it('offers every declared locale, with its text direction', () => {
     const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
     const { payload } = mapReady({

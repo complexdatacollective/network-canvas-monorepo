@@ -4213,6 +4213,30 @@ test('both export diffs hold the exports to being identical', async () => {
   );
 });
 
+// Fresco asks nothing on import and never makes a protocol schema 9: a
+// schema 7 sample is upgraded to schema 8 by the released and pending builds
+// alike. A checklist still told to answer an import dialog would wait on a
+// question nobody asks, or pass an import it should have failed.
+test('the setup checklists import the schema 7 sample without a question', async () => {
+  const { prompts } = await run(happyPath());
+  for (const label of ['seed-baseline', 'verify-fresh-setup']) {
+    const prompt = promptFor(prompts, label);
+    assert.doesNotMatch(prompt, /How do you want to import/, label);
+    assert.doesNotMatch(prompt, /Keep schema|Upgrade to schema/, label);
+    assert.match(prompt, /schema 7 protocol, which [^.]*schema 8/, label);
+  }
+  assert.match(
+    promptFor(prompts, 'verify-fresh-setup'),
+    /fails if anything asks how to import it, or if the protocol is not stored[^.]*"schemaVersion" 8/,
+  );
+  const integrity = promptFor(prompts, 'verify-data-integrity');
+  assert.match(
+    integrity,
+    /"release-test-kept-schema-8" and "release-test-schema-7"/,
+  );
+  assert.match(integrity, /exactly 2 more than before the upgrade/);
+});
+
 // Every id this workflow expects has to be one its driver actually emits, and
 // every id a driver emits has to be one this workflow expects. Without this
 // the two drift silently: a renamed check would read as "the lane did not

@@ -13,6 +13,7 @@ import useAppUpdate, {
   type UseAppUpdateResult,
 } from '@codaco/fresco-ui/appUpdate/useAppUpdate';
 import { APP_VERSION } from '~/lib/appVersion';
+import { refreshAppOffline } from '~/lib/pwa/appOffline';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
 
@@ -43,6 +44,8 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   } = useRegisterSW({
     onRegisteredSW: (_swScriptUrl, swRegistration) => {
       setRegistration(swRegistration);
+      // Whether the app is ready offline follows this worker's install.
+      void refreshAppOffline();
     },
     // The shared install action is the sole reload owner. vite-plugin-pwa's
     // default callback reloads as soon as the new worker takes control, which

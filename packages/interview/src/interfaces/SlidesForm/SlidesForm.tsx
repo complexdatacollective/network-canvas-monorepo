@@ -47,6 +47,7 @@ import {
   buildProtocolFieldErrors,
   type ProtocolFieldErrorEntry,
 } from '../../forms/buildProtocolFieldErrors';
+import QuestionFlow from '../../forms/QuestionFlow';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useFormReadyToContinue from '../../forms/useFormReadyToContinue';
 import useProtocolForm from '../../forms/useProtocolForm';
@@ -118,6 +119,10 @@ type SlideContentProps = {
   submitButton: ReactNode;
   onUpdate: SlidesFormProps['updateItem'];
   onReadyChange: (ready: boolean) => void;
+  /** Moves on once a chosen option leaves nothing in the form to answer. */
+  onComplete: () => void;
+  /** The slide was reached by the one before it moving on by itself. */
+  focusFirst: boolean;
   form_kind: FormKind;
 };
 
@@ -136,6 +141,8 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       submitButton,
       onUpdate,
       onReadyChange,
+      onComplete,
+      focusFirst,
       form_kind,
       initialValues,
       unavailableVariables,
@@ -267,7 +274,9 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
               className="[&_.form-field-container]:break-inside-avoid"
             >
               {/* Wrap fields so the last field's :last-child match isn't broken by the hidden submit button. */}
-              <div>{fieldComponents}</div>
+              <QuestionFlow onComplete={onComplete} focusFirst={focusFirst}>
+                {fieldComponents}
+              </QuestionFlow>
               {submitButton}
             </FormWithoutProvider>
           </Surface>
@@ -433,7 +442,41 @@ export default function SlidesForm({
     setIsReadyForNext(slideReady);
   }, [setIsReadyForNext, slideReady]);
 
+  // A slide already on its way to another one, or out of the stage, ignores
+  // a second request to move: Next pressed while a completed form is moving
+  // on by itself (or the other way round) would otherwise save and pass the
+  // slide after it too.
+  const navigating = useRef(false);
+  const movingOnByItself = useRef(false);
+  // The slide a completed form moved on to, which takes the focus: the
+  // answer that had it left with the slide before.
+  const [focusedSlide, setFocusedSlide] = useState<number | null>(null);
+
+  const shownIndex = useRef(activeIndex);
+  useLayoutEffect(() => {
+    shownIndex.current = activeIndex;
+  }, [activeIndex]);
+
+  const moveOn = (index: number) => {
+    // A slide still leaving after Next was pressed does not move on again.
+    if (navigating.current || index !== shownIndex.current) return;
+    movingOnByItself.current = true;
+    void Promise.resolve(moveForward()).finally(() => {
+      movingOnByItself.current = false;
+    });
+  };
+
   const beforeNext: BeforeNextFunction = async (direction, intent) => {
+    if (navigating.current) return false;
+    navigating.current = true;
+    try {
+      return await moveSlides(direction, intent);
+    } finally {
+      navigating.current = false;
+    }
+  };
+
+  const moveSlides: BeforeNextFunction = async (direction, intent) => {
     if (items.length === 0) {
       return true;
     }
@@ -488,6 +531,7 @@ export default function SlidesForm({
         return true;
       }
 
+      setFocusedSlide(null);
       setActiveIndex((prev) => prev - 1);
       return false;
     }
@@ -511,6 +555,7 @@ export default function SlidesForm({
       return true;
     }
 
+    setFocusedSlide(movingOnByItself.current ? activeIndex + 1 : null);
     setActiveIndex((prev) => prev + 1);
     return false;
   };
@@ -550,6 +595,8 @@ export default function SlidesForm({
             header={renderHeader(currentItem)}
             onUpdate={updateItem}
             onReadyChange={setSlideReady}
+            onComplete={() => moveOn(activeIndex)}
+            focusFirst={focusedSlide === activeIndex}
             submitButton={
               <button
                 type="submit"

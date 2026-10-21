@@ -13,8 +13,8 @@
 //   --phase seed      on the released image, before the swap: imports a
 //                     schema 8 protocol with introduction panels and a Family
 //                     Pedigree (packages/protocols/e2e/
-//                     fresco-release-test-migration), keeping it at schema 8
-//                     if the released build asks; conducts an interview of it
+//                     fresco-release-test-migration), which the released
+//                     build stores as it is; conducts an interview of it
 //                     through the schema 8 pedigree (a family of three, built
 //                     with its quick-start questions and finalized) to the
 //                     Alter Form behind its introduction panel and leaves it
@@ -31,9 +31,10 @@
 //                     participant comes back at /interview/<id>, is sent to
 //                     /v8/interview/<id>, finds the interview where they left
 //                     it with every answer and the family still there, and
-//                     finishes it; the researcher exports it, then imports
-//                     the schema 8 fixture twice more, once kept at schema 8
-//                     and once upgraded to schema 9.
+//                     finishes it; the researcher exports it, then imports a
+//                     copy of the schema 8 fixture, which is stored as it is,
+//                     and a schema 7 protocol, which is upgraded to schema 8
+//                     and no further, neither of them asking anything.
 //
 // The seed phase's interview is one of the seeded interviews the upgrade lane
 // compares before and after the upgrade, so it is created before the seed
@@ -48,7 +49,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { CURRENT_SCHEMA_VERSION } from '../../../../packages/protocol-validation/src/schemas/index.ts';
 import {
   ncSourceUUID,
   ncTargetUUID,
@@ -59,6 +59,7 @@ import {
   launch,
   newPage,
   recordDiagnosticsTo,
+  repoRoot,
   report,
   signIn,
   uploadProtocol,
@@ -131,13 +132,14 @@ const PARKED_AT = 'each-person';
 const PEDIGREE = 'family';
 
 /**
- * The copies of the fixture the researcher imports after the upgrade, by the
- * answer each is given (make-fixtures.mjs builds them). Fresco names a
- * protocol after its file.
+ * The protocols the researcher imports after the upgrade, by the schema each
+ * is made for (make-fixtures.mjs builds them): a relabelled copy of this
+ * lane's schema 8 fixture, and one of the schema 7 sample protocol. Fresco
+ * names a protocol after its file.
  */
 const IMPORTS = {
-  keep: 'release-test-kept-schema-8',
-  upgrade: 'release-test-upgraded-schema-9',
+  schema8: 'release-test-kept-schema-8',
+  schema7: 'release-test-schema-7',
 };
 
 /** The fixture's Family Pedigree person and relationship, and their attributes. */
@@ -272,8 +274,7 @@ async function seed() {
   await signIn(page, { lane: laneName });
   await page.waitForURL(/\/dashboard/, { timeout: 90_000 });
 
-  // Fresco 4 imports a schema 8 protocol as it is. A released build that
-  // asks how to import one is told to keep it, which is the same thing.
+  // Fresco 4 imports a schema 8 protocol as it is.
   checks.push(
     await attempt('migration-seed-protocol-imported', async () => {
       const id = await importProtocol(page, {
@@ -282,7 +283,6 @@ async function seed() {
         path: join(fixtures, 'fresco-release-test-migration.netcanvas'),
         fileStem: 'fresco-release-test-migration',
         upload: uploadProtocol,
-        schemaChoice: 'keep',
       });
       result.protocolId = id;
       const version = id
@@ -838,25 +838,40 @@ async function resume() {
     }),
   );
 
-  // The two ways an older protocol can still be imported: kept at schema 8,
-  // to run in the schema 8 interview like the one carried across, or
-  // upgraded to a schema 9 copy. Fresco has to ask; uploadProtocol fails
-  // when it does not.
-  const importAs = (choice) =>
+  // An older protocol imported now goes in without a question and is never
+  // made schema 9: a schema 8 one is stored as it is, and a schema 7 one is
+  // upgraded to schema 8 and no further. Either runs in the schema 8
+  // interview, like the one carried across. An import that waited on a
+  // question would never be stored, so whatever dialog is open by then is
+  // reported.
+  const importOf = (key) =>
     importProtocol(desk, {
       baseUrl: config.baseUrl,
       psql,
-      path: join(fixtures, `${IMPORTS[choice]}.netcanvas`),
-      fileStem: IMPORTS[choice],
-      upload: (target, path) =>
-        uploadProtocol(target, path, { olderSchema: choice }),
+      path: join(fixtures, `${IMPORTS[key]}.netcanvas`),
+      fileStem: IMPORTS[key],
+      upload: uploadProtocol,
     });
+  const openDialog = async () => {
+    const dialog = desk.getByRole('dialog').first();
+    if (!(await dialog.isVisible().catch(() => false))) return null;
+    const text = (await dialog.textContent().catch(() => '')) ?? '';
+    return text.trim().slice(0, 160) || '(a dialog with no text)';
+  };
+  // The stored schema and the ids of the stored stages, in order.
   const stored = (id) =>
     id
-      ? psql(
-          `select "schemaVersion" || '|' || coalesce(stages::jsonb -> -1 ->> 'type', '') from "Protocol" where id = ${sqlText(id)};`,
-        )
-      : '';
+      ? {
+          schema: psql(
+            `select "schemaVersion" from "Protocol" where id = ${sqlText(id)};`,
+          ),
+          stages: JSON.parse(
+            psql(
+              `select coalesce(json_agg(stage->>'id' order by position), '[]') from "Protocol", jsonb_array_elements(stages::jsonb) with ordinality as entry(stage, position) where id = ${sqlText(id)};`,
+            ) || '[]',
+          ),
+        }
+      : { schema: '', stages: [] };
   // The schema badges a protocol's row in the protocols table carries, or
   // null when the table has no row for it: an absent row carries no badge
   // either, and must not read as a protocol that needs none.
@@ -874,40 +889,66 @@ async function resume() {
 
   const listing = (badges) =>
     badges === null ? 'not listed' : `badged ${JSON.stringify(badges)}`;
+  const badge = `Schema ${KEPT_SCHEMA}`;
 
   checks.push(
     await attempt('migration-import-keeps-schema-8', async () => {
-      const id = await importAs('keep');
+      const id = await importOf('schema8');
+      const asked = await openDialog();
       const row = stored(id);
-      const badges = await badgesOf(IMPORTS.keep);
+      // The fixture's own stages, in its own order: a protocol stored as it
+      // is has exactly these, and one that was upgraded has gained a finish
+      // stage.
+      const source = JSON.parse(
+        readFileSync(
+          join(
+            repoRoot,
+            'packages/protocols/e2e/fresco-release-test-migration/protocol.json',
+          ),
+          'utf8',
+        ),
+      ).stages.map((stage) => stage.id);
+      const badges = await badgesOf(IMPORTS.schema8);
       // The protocol carried across the upgrade is marked the same way.
       const carried = await badgesOf(protocol?.name ?? '(no seeded protocol)');
-      const badge = `Schema ${KEPT_SCHEMA}`;
       return {
         pass:
           Boolean(id) &&
-          row.startsWith(`${KEPT_SCHEMA}|`) &&
-          row !== `${KEPT_SCHEMA}|FinishSession` &&
+          asked === null &&
+          row.schema === String(KEPT_SCHEMA) &&
+          same(row.stages, source) &&
           same(badges, [badge]) &&
           same(carried, [badge]),
         detail: id
-          ? `"Keep schema ${KEPT_SCHEMA}" stored ${IMPORTS.keep} as ${id}, schema|last stage = ${row}; in the protocols table it is ${listing(badges)}, and the protocol carried across the upgrade ${listing(carried)} (expected badged ["${badge}"] for both)`
-          : `the protocol kept at schema ${KEPT_SCHEMA} never appeared in the database within 120s`,
+          ? `stored ${IMPORTS.schema8} as ${id} at schema ${row.schema} with stages ${JSON.stringify(row.stages)} (expected schema ${KEPT_SCHEMA} with the fixture's ${JSON.stringify(source)}); ${asked === null ? 'nothing was asked' : `a dialog was open: "${asked}"`}; in the protocols table it is ${listing(badges)}, and the protocol carried across the upgrade ${listing(carried)} (expected badged ["${badge}"] for both)`
+          : `${IMPORTS.schema8} never appeared in the database within 120s${asked === null ? '' : `, while a dialog was open: "${asked}"`}`,
       };
     }),
   );
 
   checks.push(
-    await attempt('migration-import-upgrades-to-schema-9', async () => {
-      const id = await importAs('upgrade');
+    await attempt('migration-import-upgrades-schema-7-to-8', async () => {
+      const id = await importOf('schema7');
+      const asked = await openDialog();
       const row = stored(id);
-      const badges = await badgesOf(IMPORTS.upgrade);
-      const want = `${CURRENT_SCHEMA_VERSION}|FinishSession`;
+      const badges = await badgesOf(IMPORTS.schema7);
+      // Upgraded no further than schema 8: no finish stage, which the
+      // upgrade to schema 9 appends, at the end of it.
+      const last = psql(
+        id
+          ? `select coalesce(stages::jsonb -> -1 ->> 'type', '') from "Protocol" where id = ${sqlText(id)};`
+          : 'select null;',
+      );
       return {
-        pass: Boolean(id) && row === want && same(badges, []),
+        pass:
+          Boolean(id) &&
+          asked === null &&
+          row.schema === String(KEPT_SCHEMA) &&
+          last !== 'FinishSession' &&
+          same(badges, [badge]),
         detail: id
-          ? `"Upgrade to schema ${CURRENT_SCHEMA_VERSION}" stored ${IMPORTS.upgrade} as ${id}, schema|last stage = ${row} (expected ${want}); in the protocols table it is ${listing(badges)} (expected listed with no badge)`
-          : `the upgraded protocol never appeared in the database within 120s`,
+          ? `stored ${IMPORTS.schema7} as ${id} at schema ${row.schema} (expected ${KEPT_SCHEMA}), ending in a ${last || '(no)'} stage; ${asked === null ? 'nothing was asked' : `a dialog was open: "${asked}"`}; in the protocols table it is ${listing(badges)} (expected badged ["${badge}"])`
+          : `${IMPORTS.schema7} never appeared in the database within 120s${asked === null ? '' : `, while a dialog was open: "${asked}"`}`,
       };
     }),
   );

@@ -272,12 +272,12 @@ const THEME_PATH = resolve(
   '../../../../../tooling/tailwind/fresco/themes/default.css',
 );
 
-/** `--node-3: oklch(var(--purple-pizazz));` -> `{ 'node-3': 'purple-pizazz' }` */
+/** `--cat-2: oklch(var(--purple-pizazz));` -> `{ 'cat-2': 'purple-pizazz' }` */
 const readThemeHues = (): Map<string, string> => {
   const css = readFileSync(THEME_PATH, 'utf8');
   const hues = new Map<string, string>();
   const declaration =
-    /--((?:node|edge|ord|cat)-\d+)\s*:\s*oklch\(var\(--([a-z-]+)\)\)/g;
+    /--((?:node|edge|ord|cat)-\d+)\s*:\s*oklch\(\s*(?:from\s+oklch\()?var\(--([a-z-]+)\)\)/g;
   let match = declaration.exec(css);
   while (match) {
     const [, token, hue] = match;

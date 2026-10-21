@@ -2,21 +2,23 @@ import { createRequire } from 'node:module';
 
 import type { Page } from '@playwright/test';
 
-import { LEGACY_LIBRARIES } from '../../src/lib/db/storageNames.js';
+import { DB_NAME } from '../../src/lib/db/storageNames.js';
 
-// Interviewer 8's database, `interviewer`, belongs to Interviewer 8 (served at
-// /v8/). These helpers seed it for real, on a blank same-origin page before
-// any app code has run, by injecting Dexie's own UMD bundle and declaring the
-// schema history Interviewer 8 shipped (Dexie's native layout: version 3 is
-// IndexedDB version 30), and read any database back through the raw API so a
-// spec can compare it byte for byte.
+// The one database, `interviewer`, as an 8.x device has it. Interviewer 8
+// (served at /v8/) and this app share it: Interviewer 9 upgrades it in place
+// above Interviewer 8's version 3. These helpers seed it for real, on a blank
+// same-origin page before any app code has run, by injecting Dexie's own UMD
+// bundle and declaring the schema history Interviewer 8 shipped (Dexie's
+// native layout: version 3 is IndexedDB version 30), and read it back through
+// the raw API so a spec can compare it byte for byte.
 
 const DEXIE_UMD_PATH = createRequire(import.meta.url).resolve('dexie');
 
-export const [{ dbName: LEGACY_DB_NAME }] = LEGACY_LIBRARIES;
+/** Interviewer 8's version 3, in IndexedDB's numbering. */
+export const INTERVIEWER_8_NATIVE_VERSION = 30;
 
 /** A row of Interviewer 8's `assets` table; `bytes` become its Blob. */
-export type LegacySeedAsset = {
+export type Interviewer8SeedAsset = {
   id: string;
   protocolHash: string;
   assetId: string;
@@ -26,10 +28,10 @@ export type LegacySeedAsset = {
   bytes: number[];
 };
 
-export type LegacySeed = {
+export type Interviewer8Seed = {
   protocols?: Record<string, unknown>[];
   sessions?: Record<string, unknown>[];
-  assets?: LegacySeedAsset[];
+  assets?: Interviewer8SeedAsset[];
   settings?: Record<string, unknown>[];
 };
 
@@ -41,24 +43,24 @@ export type DatabaseDump = {
   >;
 };
 
-// Seeds the legacy database on a blank same-origin page. Must run before the
-// app has ever been navigated to in this context.
-export async function seedLegacyDatabase(
+// Seeds the database as Interviewer 8 would have, on a blank same-origin page.
+// Must run before the app has ever been navigated to in this context.
+export async function seedAsInterviewer8(
   page: Page,
-  seed: LegacySeed,
+  seed: Interviewer8Seed,
 ): Promise<void> {
-  await page.route('**/__legacy-seed__', (route) =>
+  await page.route('**/__interviewer8-seed__', (route) =>
     route.fulfill({
       contentType: 'text/html',
-      body: '<!doctype html><title>legacy seed</title>',
+      body: '<!doctype html><title>Interviewer 8 seed</title>',
     }),
   );
-  await page.goto('/__legacy-seed__');
+  await page.goto('/__interviewer8-seed__');
   await page.addScriptTag({ path: DEXIE_UMD_PATH });
 
   await page.evaluate(
-    async ({ name, seed: rows }) => {
-      type LegacyDexie = {
+    async ({ name, nativeVersion, seed: rows }) => {
+      type Interviewer8Dexie = {
         version(no: number): { stores(schema: Record<string, string>): void };
         open(): Promise<unknown>;
         close(): void;
@@ -66,55 +68,52 @@ export async function seedLegacyDatabase(
         table(table: string): { put(row: unknown): Promise<unknown> };
       };
       const DexieCtor = (
-        window as { Dexie?: new (dbName: string) => LegacyDexie }
+        window as { Dexie?: new (dbName: string) => Interviewer8Dexie }
       ).Dexie;
       if (!DexieCtor) throw new Error('Dexie UMD bundle was not injected');
 
-      const legacy = new DexieCtor(name);
+      const interviewer8 = new DexieCtor(name);
       // Frozen copy of Interviewer 8's released schema history. Never update
       // it to track this app's db.ts.
-      legacy.version(1).stores({
+      interviewer8.version(1).stores({
         protocols: 'id, hash, name, importedAt',
         sessions:
           'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt',
         assets: 'id, protocolHash, assetId',
         settings: 'id',
       });
-      legacy.version(2).stores({
+      interviewer8.version(2).stores({
         sessions:
           'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, isSynthetic',
       });
-      legacy.version(3).stores({ protocolMigrations: 'previousHash' });
-      await legacy.open();
-      if (legacy.backendDB().version !== 30) {
+      interviewer8.version(3).stores({ protocolMigrations: 'previousHash' });
+      await interviewer8.open();
+      if (interviewer8.backendDB().version !== nativeVersion) {
         throw new Error('expected Interviewer 8’s database at native 30');
       }
       for (const row of rows.protocols ?? []) {
-        await legacy.table('protocols').put(row);
+        await interviewer8.table('protocols').put(row);
       }
       for (const row of rows.sessions ?? []) {
-        await legacy.table('sessions').put(row);
+        await interviewer8.table('sessions').put(row);
       }
       for (const { bytes, mimeType, ...row } of rows.assets ?? []) {
-        await legacy.table('assets').put({
+        await interviewer8.table('assets').put({
           ...row,
           data: new Blob([new Uint8Array(bytes)], { type: mimeType }),
         });
       }
       for (const row of rows.settings ?? []) {
-        await legacy.table('settings').put(row);
+        await interviewer8.table('settings').put(row);
       }
-      legacy.close();
+      interviewer8.close();
     },
-    { name: LEGACY_DB_NAME, seed },
+    { name: DB_NAME, nativeVersion: INTERVIEWER_8_NATIVE_VERSION, seed },
   );
 }
 
-/** Everything in a database through the raw API; null when it is absent. */
-export function dumpDatabase(
-  page: Page,
-  name: string,
-): Promise<DatabaseDump | null> {
+/** Everything in the database through the raw API; null when it is absent. */
+export function dumpDatabase(page: Page): Promise<DatabaseDump | null> {
   return page.evaluate(async (dbName) => {
     const listed = await indexedDB.databases();
     if (!listed.some((database) => database.name === dbName)) return null;
@@ -174,5 +173,5 @@ export function dumpDatabase(
     } finally {
       idb.close();
     }
-  }, name);
+  }, DB_NAME);
 }

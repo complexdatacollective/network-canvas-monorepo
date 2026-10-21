@@ -26,7 +26,7 @@ const config: KnipConfig = {
     'actions/webauthn.ts': ['exports'],
 
     // Pre-existing unused type exports
-    'lib/protocol/validateAndMigrateProtocol.ts': ['types'],
+    'lib/protocol/validateImportedProtocol.ts': ['types'],
   },
 };
 

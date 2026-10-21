@@ -101,7 +101,9 @@ describe('bundled sample protocol', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.migrated).toBe(false); // already at the current schema
+      expect(result.protocol.schemaVersion).toBe(
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      ); // already at the current schema
     }
     expect(saveProtocol).toHaveBeenCalledTimes(1);
     expect(throwingFetch).not.toHaveBeenCalled();

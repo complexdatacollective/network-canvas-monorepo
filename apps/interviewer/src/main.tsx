@@ -11,8 +11,8 @@ import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBu
 
 import App from './App';
 import { startupLocale } from './i18n/preference';
+import { deleteRetiredDatabases } from './lib/db/retiredDatabases';
 import { startArchitectHandoff } from './lib/handoff/architectHandoff';
-import { startHandedOverImport } from './lib/handoff/handedOverImport';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
@@ -52,12 +52,8 @@ if (import.meta.hot) {
 // React mounts; capture them for Home to import after unlock.
 initFileLaunchCapture();
 
-// A file Interviewer 8 staged for this app (`/?import=<key>`) joins the
-// launched files; hand-offs nobody took are cleaned up.
-startHandedOverImport();
-
 // A protocol Architect's "Send to Interviewer" opened this tab for
-// (`/?from=architect`) joins them too, once Architect posts it.
+// (`/?from=architect`) joins the launched files, once Architect posts it.
 startArchitectHandoff();
 
 async function startApp(): Promise<void> {
@@ -87,6 +83,10 @@ async function startApp(): Promise<void> {
     'appinstalled',
     () => void requestPersistentStorage(),
   );
+
+  // Data only an unreleased build wrote, which nothing reads. Not awaited:
+  // best-effort, and never in the way of the first paint.
+  void deleteRetiredDatabases();
 
   const container = document.getElementById('root');
   if (!container) {

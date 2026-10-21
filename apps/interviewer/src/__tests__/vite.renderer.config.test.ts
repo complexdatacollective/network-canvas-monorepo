@@ -12,4 +12,10 @@ describe('production content security policy', () => {
       "connect-src 'self' https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com blob:",
     );
   });
+
+  it('permits framing this origin only, for the hosted Interviewer 8', () => {
+    expect(
+      CSP_DIRECTIVES.filter((directive) => directive.startsWith('frame-src')),
+    ).toEqual(["frame-src 'self'"]);
+  });
 });

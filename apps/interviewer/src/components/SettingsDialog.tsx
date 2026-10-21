@@ -1,5 +1,6 @@
 import {
   CloudCheck,
+  CloudDownload,
   CloudOff,
   FlaskConical,
   Info,
@@ -34,11 +35,11 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
 import { GenerationFailureDescription } from '~/components/GenerationFailureDescription';
 import { HomeModal } from '~/components/HomeModal';
-import { legacyOfflineMessages } from '~/components/legacyProtocolMessages';
 import {
   ManageAuthenticator,
   ResetDeviceRow,
 } from '~/components/ManageAuthenticator';
+import { offlineMessages } from '~/components/offlineMessages';
 import SecurityBehaviorControls, {
   type Behavior,
 } from '~/components/SecurityBehaviorControls';
@@ -55,10 +56,14 @@ import {
   listProtocols,
   updateSettings,
 } from '~/lib/db/api';
-import type { ProtocolWithCounts, StoredSettings } from '~/lib/db/types';
+import {
+  isCurrentProtocol,
+  type ProtocolWithCounts,
+  type StoredSettings,
+} from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
-import { LEGACY_INTERVIEWER_MAJOR } from '~/lib/legacyInterviewer';
-import { useLegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline';
+import { useAppOffline } from '~/lib/pwa/appOffline';
+import { useOfflineDownload } from '~/lib/pwa/offlineDownload';
 import {
   estimateStorage,
   formatBytes,
@@ -540,7 +545,9 @@ export function SettingsDialog({
     return () => media.removeEventListener('change', update);
   }, []);
   const [section, setSection] = useState<Section>('about');
-  const legacyOffline = useLegacyInterviewerOffline();
+  const offline = useAppOffline();
+  const download = useOfflineDownload();
+  const downloadingOffline = offline === 'not-ready' && download.downloading;
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [storage, setStorage] = useState<StorageEstimate>({
     usage: null,
@@ -592,12 +599,14 @@ export function SettingsDialog({
       countSyntheticSessions(),
     ]);
     if (seq !== reloadSyntheticSeq.current) return;
-    setProtocols(ps);
+    // Synthetic interviews are generated for schema 9 protocols only.
+    const current = ps.filter(isCurrentProtocol);
+    setProtocols(current);
     setSyntheticCount(n);
     // Default to the first protocol when none is selected yet.
-    setSelectedProtocolHash((current) => {
-      if (current && ps.some((p) => p.hash === current)) return current;
-      return ps[0]?.hash ?? '';
+    setSelectedProtocolHash((selected) => {
+      if (selected && current.some((p) => p.hash === selected)) return selected;
+      return current[0]?.hash ?? '';
     });
   }, []);
 
@@ -914,36 +923,49 @@ export function SettingsDialog({
                     }
                   />
                 ) : null}
-                {legacyOffline === 'ready' || legacyOffline === 'not-ready' ? (
+                {downloadingOffline ? (
                   <SettingsRow
-                    title={intl.formatMessage(
-                      legacyOfflineMessages.settingTitle,
-                      { version: LEGACY_INTERVIEWER_MAJOR },
-                    )}
+                    title={intl.formatMessage(offlineMessages.settingTitle)}
+                    desc={intl.formatMessage(offlineMessages.downloadingHelp)}
+                    control={
+                      <span
+                        data-testid="offline-setting"
+                        className="text-info inline-flex items-center gap-1.5 text-xs"
+                      >
+                        <CloudDownload className="size-3.5" aria-hidden />
+                        {intl.formatMessage(offlineMessages.downloading, {
+                          hasProgress: String(download.progress !== null),
+                          percent: intl.formatNumber(download.progress ?? 0, {
+                            style: 'percent',
+                          }),
+                        })}
+                      </span>
+                    }
+                  />
+                ) : offline === 'ready' || offline === 'not-ready' ? (
+                  <SettingsRow
+                    title={intl.formatMessage(offlineMessages.settingTitle)}
                     desc={intl.formatMessage(
-                      legacyOffline === 'ready'
-                        ? legacyOfflineMessages.readyHelp
-                        : legacyOfflineMessages.notReadyHelp,
-                      { version: LEGACY_INTERVIEWER_MAJOR },
+                      offline === 'ready'
+                        ? offlineMessages.readyHelp
+                        : offlineMessages.notReadyHelp,
                     )}
                     control={
                       <span
-                        data-testid="legacy-offline-setting"
+                        data-testid="offline-setting"
                         className={`inline-flex items-center gap-1.5 text-xs ${
-                          legacyOffline === 'ready'
-                            ? 'text-text/60'
-                            : 'text-warning'
+                          offline === 'ready' ? 'text-text/60' : 'text-warning'
                         }`}
                       >
-                        {legacyOffline === 'ready' ? (
+                        {offline === 'ready' ? (
                           <CloudCheck className="size-3.5" aria-hidden />
                         ) : (
                           <CloudOff className="size-3.5" aria-hidden />
                         )}
                         {intl.formatMessage(
-                          legacyOffline === 'ready'
-                            ? legacyOfflineMessages.ready
-                            : legacyOfflineMessages.notReady,
+                          offline === 'ready'
+                            ? offlineMessages.ready
+                            : offlineMessages.notReady,
                         )}
                       </span>
                     }

@@ -2,11 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getBundledLegacyInterviewer,
+  LEGACY_INTERVIEWER_CACHE_PREFIX,
   LEGACY_INTERVIEWER_MAJOR,
-  legacyDataUrl,
-  legacyImportUrl,
-  legacyResumeUrl,
-  legacyStartUrl,
+  legacyInterviewUrl,
 } from '../legacyInterviewer';
 
 const INTERVIEWER_8 = { version: '8.5.0', path: '/v8/' } as const;
@@ -16,27 +14,26 @@ describe('legacyInterviewer', () => {
     expect(getBundledLegacyInterviewer()).toBeNull();
   });
 
-  it('is the schema 8 Interviewer', () => {
+  it('is the schema 8 Interviewer, caching under its own prefix', () => {
     expect(LEGACY_INTERVIEWER_MAJOR).toBe(8);
+    expect(LEGACY_INTERVIEWER_CACHE_PREFIX).toBe('interviewer-v8-');
   });
 
-  it('builds the hand-over addresses of the shared contract', () => {
-    expect(legacyStartUrl(INTERVIEWER_8, 'abc123')).toBe('/v8/?start=abc123');
-    expect(legacyResumeUrl(INTERVIEWER_8, 'session-1')).toBe(
+  it("addresses Interviewer 8's interview route, keeping the search", () => {
+    expect(legacyInterviewUrl(INTERVIEWER_8, 'session-1', '')).toBe(
       '/v8/interview/session-1',
     );
-    expect(
-      legacyImportUrl(INTERVIEWER_8, '5f0e1f8e-6c0e-4d2a-9a51-2f7d3c9e8a11'),
-    ).toBe('/v8/?import=5f0e1f8e-6c0e-4d2a-9a51-2f7d3c9e8a11');
-    expect(legacyDataUrl(INTERVIEWER_8)).toBe('/v8/data');
+    expect(legacyInterviewUrl(INTERVIEWER_8, 'session-1', '?mode=review')).toBe(
+      '/v8/interview/session-1?mode=review',
+    );
   });
 
   it('never lets an id change the address it is put in', () => {
-    expect(legacyStartUrl(INTERVIEWER_8, 'a&import=b')).toBe(
-      '/v8/?start=a%26import%3Db',
-    );
-    expect(legacyResumeUrl(INTERVIEWER_8, '../data')).toBe(
+    expect(legacyInterviewUrl(INTERVIEWER_8, '../data', '')).toBe(
       '/v8/interview/..%2Fdata',
+    );
+    expect(legacyInterviewUrl(INTERVIEWER_8, 'a?mode=review', '')).toBe(
+      '/v8/interview/a%3Fmode%3Dreview',
     );
   });
 });

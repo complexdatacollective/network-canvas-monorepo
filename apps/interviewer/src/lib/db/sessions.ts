@@ -5,6 +5,7 @@ import {
   getLastAvailableAuthoredStageIndex,
   type SessionFinish,
 } from '@codaco/interview';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
@@ -12,7 +13,10 @@ import { db } from './db';
 import {
   assertPlaintextStillAllowed,
   decryptSession,
+  decryptSessionForExport,
+  decryptSessionRecord,
   encryptSession,
+  type ExportedSessionRecord,
   preparingPlaintext,
   type StoredSessionRow,
   prepareSessionFinish,
@@ -259,12 +263,42 @@ export function getSession(id: string): Promise<StoredSession | undefined> {
   });
 }
 
-export async function getSessionsByIds(
+/**
+ * Session `id`'s plaintext fields: its protocol, whether it is finished, and
+ * the schema version that protocol was recorded with (`undefined` when the
+ * protocol is not stored). Nothing is decrypted, so this is how the interview
+ * engine that runs it is chosen. `undefined` when the session is not stored.
+ */
+export async function getSessionHeader(id: string): Promise<
+  | {
+      protocolHash: string;
+      finishedAt: string | null;
+      schemaVersion: number | undefined;
+    }
+  | undefined
+> {
+  return db.transaction('r', db.sessions, db.protocols, async () => {
+    const session = await db.sessions.get(id);
+    if (!session) return undefined;
+    const protocol = await db.protocols
+      .where('hash')
+      .equals(session.protocolHash)
+      .first();
+    return {
+      protocolHash: session.protocolHash,
+      finishedAt: session.finishedAt,
+      schemaVersion: protocol?.schemaVersion,
+    };
+  });
+}
+
+/** The sessions `ids`, of any schema, as the exporter reads them. */
+export async function getSessionsForExport(
   ids: readonly string[],
-): Promise<StoredSession[]> {
+): Promise<ExportedSessionRecord[]> {
   const rows = await db.sessions.bulkGet([...ids]);
   const present = rows.filter((r): r is StoredSessionRow => Boolean(r));
-  return Promise.all(present.map((row) => decryptSession(row)));
+  return Promise.all(present.map((row) => decryptSessionForExport(row)));
 }
 
 export async function createSession(args: {
@@ -463,7 +497,9 @@ export function markSessionFinished(
 
 /**
  * Reopen a finished session at its last available stage of `stages`, the
- * stages of its protocol.
+ * stages of its protocol. Only a session of this app's own schema: where a
+ * schema 8 interview resumes is Interviewer 8's to work out, so its session is
+ * refused, unchanged.
  */
 export function markSessionUnfinished(
   id: string,
@@ -472,6 +508,15 @@ export function markSessionUnfinished(
   return enqueueSessionMutation(id, async () => {
     const existingRow = await db.sessions.get(id);
     if (!existingRow?.finishedAt) return;
+    const schemaVersion = (await getSessionHeader(id))?.schemaVersion;
+    if (
+      schemaVersion !== undefined &&
+      schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION
+    ) {
+      throw new Error(
+        `Interview ${id} is not at schema ${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}, so it cannot be marked unfinished here`,
+      );
+    }
 
     const existing = await decryptSession(existingRow);
     const lastAvailableStage = getLastAvailableAuthoredStageIndex(
@@ -526,13 +571,36 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
 // callers can decide whether to continue. Precondition: a DEK must be held
 // (encryptSession throws for a locked secured vault); under mode `none` this is
 // a plaintext-preserving no-op and callers should not invoke it.
+//
+// The answers are re-wrapped exactly as stored, never parsed: a schema 8
+// session's are Interviewer 8's, and come out in Interviewer 8's own row
+// format.
+//
+// Interviewer 8, running a schema 8 interview in a frame or another tab, does
+// not share the per-id serializer, so the row is replaced only if no write
+// has stamped it since it was read; otherwise it is read and re-wrapped
+// again. Every write stamps `lastUpdatedAt`; a re-encryption does not.
+const REENCRYPT_ATTEMPTS = 5;
+
 export async function reencryptSession(id: string): Promise<void> {
   await enqueueSessionMutation(id, async () => {
-    const existingRow = await db.sessions.get(id);
-    if (!existingRow) return;
-    const existing = await decryptSession(existingRow);
-    const row = await encryptSession(existing);
-    await db.sessions.put(row);
+    for (let attempt = 0; attempt < REENCRYPT_ATTEMPTS; attempt += 1) {
+      const existingRow = await db.sessions.get(id);
+      if (!existingRow) return;
+      const existing = await decryptSessionRecord(existingRow);
+      const row = await encryptSession(existing);
+      const replaced = await db.transaction('rw', db.sessions, async () => {
+        const latest = await db.sessions.get(id);
+        if (!latest) return true;
+        if (latest.lastUpdatedAt !== existingRow.lastUpdatedAt) return false;
+        await db.sessions.put(row);
+        return true;
+      });
+      if (replaced) return;
+    }
+    throw new Error(
+      `Interview ${id} kept changing while it was being re-encrypted`,
+    );
   });
 }
 

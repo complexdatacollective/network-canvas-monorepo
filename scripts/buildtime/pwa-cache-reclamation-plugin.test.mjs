@@ -415,6 +415,26 @@ describe('PWA cache reclamation beside a nested app', () => {
     assert.deepEqual(harness.caches.deleted, [cacheName(ROOT_8_BUILD)]);
   });
 
+  it('records, with its build, which nested app caches it keeps', async () => {
+    // A page of a newer deploy reads this to tell whether the active worker
+    // will keep what the nested app downloads.
+    const harness = createWorkerHarness({
+      cacheNames: [cacheName(ROOT_BUILD)],
+      clients: [modernClient('current-tab', ROOT_BUILD)],
+      options: ROOT_WITH_NESTED_8_OPTIONS,
+    });
+
+    await harness.dispatchExtendable('activate');
+
+    const record = harness.caches.entries.get(
+      'architect-pwa-cache-metadata:https://architect.example/__pwa-active-build-foreign-prefixes__',
+    );
+    assert.deepEqual(JSON.parse(await record?.text()), {
+      buildId: ROOT_BUILD,
+      foreignCachePrefixes: ['architect-v8-'],
+    });
+  });
+
   it('reclaims the nested app precache without the foreign prefix option', async () => {
     // The same caches without foreignCachePrefixes: the nested precache is
     // matched by 'architect-' and deleted, which the option above prevents.

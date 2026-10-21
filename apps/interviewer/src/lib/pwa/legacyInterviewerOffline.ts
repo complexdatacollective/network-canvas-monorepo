@@ -5,6 +5,7 @@ import {
   getBundledLegacyInterviewer,
   LEGACY_INTERVIEWER_CACHE_PREFIX,
 } from '../legacyInterviewer';
+import { getRegistrationForScope } from './registrationForScope';
 
 // Whether the bundled Interviewer 8 can run on this device without a network.
 //
@@ -19,7 +20,9 @@ import {
 // ready: its precache is complete, and Interviewer 8 applies it when it next
 // loads, offline too. This module holds the answer for the status row,
 // Settings and the schema 8 cards; the code that registers the worker calls
-// `refreshLegacyInterviewerOffline` when the registration changes.
+// `refreshLegacyInterviewerOffline` when the registration changes. Interviewer
+// 8 also registers its worker itself when it first runs an interview, so a
+// check that finds a worker installing follows it until it settles.
 
 export type LegacyInterviewerOffline =
   /** This build has no Interviewer 8. */
@@ -74,12 +77,24 @@ export async function hasLegacyInterviewerPrecache(
   }
 }
 
+const followed = new WeakSet<ServiceWorker>();
+
+/** Check again each time `worker` changes state, until it settles. */
+const followInstalling = (worker: ServiceWorker) => {
+  if (followed.has(worker)) return;
+  followed.add(worker);
+  worker.addEventListener('statechange', function onStateChange() {
+    void refreshLegacyInterviewerOffline();
+    if (worker.state === 'activated' || worker.state === 'redundant') {
+      worker.removeEventListener('statechange', onStateChange);
+    }
+  });
+};
+
 /**
  * Read the answer again from the browser: has a worker finished installing
  * for exactly Interviewer 8's scope, with nothing newer still installing, and
- * is the pinned build's precache there? (`getRegistration` answers with the
- * closest enclosing registration, which is this app's own `/` worker until
- * Interviewer 8 has one, so the scope is checked.) Never rejects.
+ * is the pinned build's precache there? Never rejects.
  */
 export async function refreshLegacyInterviewerOffline(): Promise<void> {
   checked = true;
@@ -95,10 +110,15 @@ export async function refreshLegacyInterviewerOffline(): Promise<void> {
     return;
   }
   try {
-    const registration = await container.getRegistration(interviewer.path);
+    const registration = await getRegistrationForScope(
+      container,
+      interviewer.path,
+    );
+    if (registration?.installing) {
+      followInstalling(registration.installing);
+    }
     const installed =
       registration !== undefined &&
-      new URL(registration.scope).pathname === interviewer.path &&
       !registration.installing &&
       Boolean(registration.active ?? registration.waiting);
     setState(

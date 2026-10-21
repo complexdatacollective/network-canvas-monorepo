@@ -220,9 +220,6 @@ function jsonRosterProblem(text: string): string | undefined {
     ? parsed.nodes
     : undefined;
   if (nodes === undefined) return 'the roster has no list of nodes';
-  const edges: readonly unknown[] = Array.isArray(parsed.edges)
-    ? parsed.edges
-    : [];
 
   const nodeAttributes: Record<string, unknown>[] = [];
   for (const [index, node] of nodes.entries()) {
@@ -243,7 +240,8 @@ function jsonRosterProblem(text: string): string | undefined {
     nodeAttributes.push(attributes);
   }
 
-  if (nodes.length === 0 && edges.length === 0) return EMPTY_ROSTER;
+  // The interview reads only a roster's nodes, so edges alone are empty.
+  if (nodes.length === 0) return EMPTY_ROSTER;
   return attributeNameProblem(nodeAttributes);
 }
 

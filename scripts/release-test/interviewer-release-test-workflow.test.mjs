@@ -1634,9 +1634,9 @@ test('conduct-offline maps every step the walker records onto a check', () => {
 });
 
 test("the walkers read the app's own database and never create one", async () => {
-  // Interviewer keeps each major's data in its own IndexedDB database. A
-  // walker that reads a literal name drifts onto the wrong database when the
-  // app's changes, and a bare open of a name that does not exist creates an
+  // Interviewer keeps its data, and Interviewer 8's at /v8/, in one IndexedDB
+  // database. A walker that reads a literal name drifts onto the wrong
+  // database if the app's ever changes, and a bare open of a name that does not exist creates an
   // empty one, so the read throws on missing stores and the stray database
   // misleads the app's own existence checks.
   const { DB_NAME } = await import(
@@ -1682,10 +1682,10 @@ test("the walkers read the app's own database and never create one", async () =>
       walker.match(/\},\s*(?:DB_NAME|\{ dbName: DB_NAME\b)/g) ?? [];
     assert.equal(passed.length, opens.length, `${name} must pass DB_NAME`);
   }
-  assert.equal(DB_NAME, 'interviewer-v9');
-  assert.ok(
-    !source.includes('database "interviewer")'),
-    'the release-test prompts must name the app database, not Interviewer 8’s',
-  );
+  assert.equal(DB_NAME, 'interviewer');
   assert.ok(source.includes(`database "${DB_NAME}"`));
+  assert.ok(
+    !source.includes('database "interviewer-v9"'),
+    'the release-test prompts must name the one shared database',
+  );
 });

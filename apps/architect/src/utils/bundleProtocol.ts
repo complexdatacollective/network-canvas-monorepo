@@ -84,8 +84,11 @@ const entryNameFor = (
   source: string,
   usedEntryNames: Set<string>,
 ): string => {
-  const dot = source.lastIndexOf('.');
-  const extension = dot > 0 ? source.slice(dot) : '';
+  // Only a plain extension is kept: an unvalidated Architect 8 source such as
+  // `photo.jpg/../evil` must not carry separators into the entry name.
+  const extensionMatch = /\.[A-Za-z0-9]+$/.exec(source);
+  const extension =
+    extensionMatch && extensionMatch.index > 0 ? extensionMatch[0] : '';
   // `assetId` is a manifest record key, which the schema doesn't constrain to a
   // safe basename, so a crafted id (`../evil`, `a/b`) must not become a
   // path-traversal zip entry. Reduce it to safe characters and collapse `..`.

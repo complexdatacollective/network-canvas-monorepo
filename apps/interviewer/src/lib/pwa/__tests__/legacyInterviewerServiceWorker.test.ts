@@ -4,6 +4,7 @@ import { createPwaCacheReclamationWorkerSource } from '../../../../../../scripts
 import type { BundledLegacyInterviewer } from '../../legacyInterviewer';
 import {
   ACTIVE_BUILD_CACHE,
+  ACTIVE_BUILD_FOREIGN_PREFIXES_KEY,
   ACTIVE_BUILD_KEY,
   IDLE_FALLBACK_DELAY_MS,
   IDLE_TIMEOUT_MS,
@@ -75,6 +76,9 @@ let registered: ServiceWorkerRegistration;
 let readActiveRootBuild: ReturnType<
   typeof vi.fn<(scope: string) => Promise<string | undefined>>
 >;
+let readActiveRootForeignPrefixes: ReturnType<
+  typeof vi.fn<(scope: string) => Promise<readonly string[]>>
+>;
 let hasPrecache: ReturnType<typeof vi.fn<() => Promise<boolean>>>;
 let container: {
   ready: Promise<ServiceWorkerRegistration>;
@@ -93,6 +97,7 @@ const install = (
     origin: ORIGIN,
     buildId: BUILD_ID,
     readActiveRootBuild,
+    readActiveRootForeignPrefixes,
     hasPrecache,
     whenIdle: (callback) => {
       idle = callback;
@@ -128,6 +133,9 @@ beforeEach(() => {
   readActiveRootBuild = vi.fn<(scope: string) => Promise<string | undefined>>(
     () => Promise.resolve(BUILD_ID),
   );
+  readActiveRootForeignPrefixes = vi.fn<
+    (scope: string) => Promise<readonly string[]>
+  >(() => Promise.resolve([]));
   hasPrecache = vi.fn<() => Promise<boolean>>(() => Promise.resolve(true));
   refresh = vi.fn<() => void>();
   report = vi.fn<(error: unknown) => void>();
@@ -281,6 +289,52 @@ describe('installLegacyInterviewerInBackground', () => {
     },
   );
 
+  it('goes ahead under another build that keeps Interviewer 8’s caches', async () => {
+    // After a deploy the page is the new build while the root worker stays on
+    // the one it activated until the update is installed.
+    readActiveRootBuild.mockResolvedValue('interviewer-9.0.0-turbo-earlier');
+    readActiveRootForeignPrefixes.mockResolvedValue(['interviewer-v8-']);
+
+    await expect(installWhenIdle()).resolves.toBe('registered');
+    expect(readActiveRootForeignPrefixes).toHaveBeenCalledWith(`${ORIGIN}/`);
+  });
+
+  it('waits for the root worker to finish activating before reading its record', async () => {
+    const activating = fakeWorker(`${ORIGIN}/sw.js`, 'activating');
+    container.ready = Promise.resolve({
+      scope: ROOT.scope,
+      active: activating,
+    } as unknown as ServiceWorkerRegistration);
+    const outcome = install();
+    await flush();
+    idle?.();
+    await flush();
+    expect(readActiveRootForeignPrefixes).not.toHaveBeenCalled();
+
+    activating.setState('activated');
+    await expect(outcome).resolves.toBe('registered');
+  });
+
+  it('waits for this app’s new worker to finish downloading before starting', async () => {
+    // After a deploy `ready` answers with the worker already active while
+    // the new build's is still installing.
+    const installing = fakeWorker(`${ORIGIN}/sw.js`);
+    container.ready = Promise.resolve({
+      scope: ROOT.scope,
+      active: fakeWorker(`${ORIGIN}/sw.js`, 'activated'),
+      installing,
+    } as unknown as ServiceWorkerRegistration);
+    readActiveRootForeignPrefixes.mockResolvedValue(['interviewer-v8-']);
+    const outcome = install();
+    await flush();
+    idle?.();
+    await flush();
+    expect(container.register).not.toHaveBeenCalled();
+
+    installing.setState('installed');
+    await expect(outcome).resolves.toBe('registered');
+  });
+
   it('waits for a later load when this build does not know its own id', async () => {
     await expect(installWhenIdle({ buildId: undefined })).resolves.toBe(
       'deferred',
@@ -364,10 +418,44 @@ describe('reading the active root build', () => {
         refresh,
       }),
     ).resolves.toBe('registered');
-    expect(match).toHaveBeenCalledExactlyOnceWith(
-      `${ORIGIN}/__pwa-active-build__`,
-      { cacheName: 'interviewer-pwa-cache-metadata' },
+    expect(match).toHaveBeenCalledWith(`${ORIGIN}/__pwa-active-build__`, {
+      cacheName: 'interviewer-pwa-cache-metadata',
+    });
+  });
+
+  it.each([
+    ['trusts the prefixes the active build recorded', BUILD_ID, 'registered'],
+    [
+      'ignores prefixes another build recorded',
+      'interviewer-9.0.0-turbo-other',
+      'deferred',
+    ],
+  ])('%s', async (_, recordedBy, expected) => {
+    // The root worker is on BUILD_ID; this page is a newer deploy.
+    const records: Record<string, string> = {
+      [`${ORIGIN}/${ACTIVE_BUILD_KEY}`]: BUILD_ID,
+      [`${ORIGIN}/${ACTIVE_BUILD_FOREIGN_PREFIXES_KEY}`]: JSON.stringify({
+        buildId: recordedBy,
+        foreignCachePrefixes: ['interviewer-v8-'],
+      }),
+    };
+    const match = vi.fn((key: string) =>
+      Promise.resolve(key in records ? new Response(records[key]) : undefined),
     );
+    vi.stubGlobal('caches', { match });
+    ready.resolve();
+
+    await expect(
+      installLegacyInterviewerInBackground(report, {
+        interviewer: INTERVIEWER,
+        container: container as unknown as ServiceWorkerContainer,
+        origin: ORIGIN,
+        buildId: 'interviewer-9.0.0-turbo-newer-page',
+        hasPrecache,
+        whenIdle: (callback) => callback(),
+        refresh,
+      }),
+    ).resolves.toBe(expected);
   });
 
   it('names the record the generated root worker writes', () => {
@@ -384,6 +472,9 @@ describe('reading the active root build', () => {
     expect(source).toContain('const appCachePrefix = "interviewer-";');
     expect(source).toContain(
       `new URL('${ACTIVE_BUILD_KEY}', self.registration.scope)`,
+    );
+    expect(source).toContain(
+      `new URL('${ACTIVE_BUILD_FOREIGN_PREFIXES_KEY}', self.registration.scope)`,
     );
   });
 });

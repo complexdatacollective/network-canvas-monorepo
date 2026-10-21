@@ -469,9 +469,10 @@ describe('StatusRow', () => {
   });
 });
 
-describe('StatusRowView: Interviewer 8 offline', () => {
+describe('StatusRowView: offline use', () => {
   const view = (
-    legacyOffline?: 'not-bundled' | 'checking' | 'ready' | 'not-ready',
+    offline?: 'checking' | 'ready' | 'not-ready',
+    download?: { downloading: boolean; progress: number | null },
   ) =>
     render(
       <StatusRowView
@@ -480,22 +481,23 @@ describe('StatusRowView: Interviewer 8 offline', () => {
         mode="pin"
         durability={null}
         installed={false}
-        legacyOffline={legacyOffline}
+        offline={offline}
+        download={download}
       />,
     );
 
-  it('says when Interviewer 8 is ready offline', () => {
+  it('says when Interviewer is ready offline', () => {
     view('ready');
-    expect(
-      screen.getByTestId('legacy-offline-status-trigger'),
-    ).toHaveTextContent('Interviewer 8 ready offline');
+    expect(screen.getByTestId('offline-status-trigger')).toHaveTextContent(
+      'Ready for offline',
+    );
   });
 
-  it('warns while Interviewer 8 is not ready offline, and says what to do', async () => {
+  it('warns while Interviewer is not ready offline, and says what to do', async () => {
     const user = userEvent.setup();
     view('not-ready');
-    const trigger = screen.getByTestId('legacy-offline-status-trigger');
-    expect(trigger).toHaveTextContent('Interviewer 8 not ready offline');
+    const trigger = screen.getByTestId('offline-status-trigger');
+    expect(trigger).toHaveTextContent('Not ready for offline');
     expect(trigger).toHaveClass('text-warning');
     await user.hover(trigger);
     expect(
@@ -503,11 +505,41 @@ describe('StatusRowView: Interviewer 8 offline', () => {
     ).toBeInTheDocument();
   });
 
-  it('says nothing without Interviewer 8, or before it is known', () => {
-    for (const state of [undefined, 'not-bundled', 'checking'] as const) {
+  it('says how far the download has got while it runs', async () => {
+    const user = userEvent.setup();
+    view('not-ready', { downloading: true, progress: 0.42 });
+    const trigger = screen.getByTestId('offline-status-trigger');
+    expect(trigger).toHaveTextContent('Downloading for offline: 42%');
+    await user.hover(trigger);
+    expect(
+      await screen.findByRole('progressbar', {
+        name: 'Download for offline use',
+      }),
+    ).toHaveAttribute('aria-valuenow', '42');
+    expect(
+      screen.getByText(/^Interviewer is downloading all data required/),
+    ).toBeInTheDocument();
+  });
+
+  it('says it is downloading when it cannot tell how far it has got', () => {
+    view('not-ready', { downloading: true, progress: null });
+    expect(screen.getByTestId('offline-status-trigger')).toHaveTextContent(
+      /^Downloading for offline$/,
+    );
+  });
+
+  it('warns once nothing is downloading any more', () => {
+    view('not-ready', { downloading: false, progress: null });
+    expect(screen.getByTestId('offline-status-trigger')).toHaveTextContent(
+      'Not ready for offline',
+    );
+  });
+
+  it('says nothing before it is known', () => {
+    for (const state of [undefined, 'checking'] as const) {
       const { unmount } = view(state);
       expect(
-        screen.queryByTestId('legacy-offline-status-trigger'),
+        screen.queryByTestId('offline-status-trigger'),
       ).not.toBeInTheDocument();
       unmount();
     }

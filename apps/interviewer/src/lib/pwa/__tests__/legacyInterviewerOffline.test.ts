@@ -26,12 +26,14 @@ const stubCaches = (names: string[]) =>
 const stubRegistration = (
   registration: Partial<ServiceWorkerRegistration> | undefined,
 ) => {
-  const getRegistration = vi.fn(() => Promise.resolve(registration));
+  const getRegistrations = vi.fn(() =>
+    Promise.resolve(registration ? [registration] : []),
+  );
   vi.stubGlobal('navigator', {
     ...navigator,
-    serviceWorker: { getRegistration },
+    serviceWorker: { getRegistrations },
   });
-  return getRegistration;
+  return getRegistrations;
 };
 
 beforeEach(() => {
@@ -48,16 +50,16 @@ describe('legacyInterviewerOffline', () => {
   it('says there is nothing to install when no Interviewer 8 is bundled', async () => {
     bundled.current = null;
     resetLegacyInterviewerOffline();
-    const getRegistration = stubRegistration(undefined);
+    const getRegistrations = stubRegistration(undefined);
 
     expect(getLegacyInterviewerOffline()).toBe('not-bundled');
     await refreshLegacyInterviewerOffline();
     expect(getLegacyInterviewerOffline()).toBe('not-bundled');
-    expect(getRegistration).not.toHaveBeenCalled();
+    expect(getRegistrations).not.toHaveBeenCalled();
   });
 
   it('is ready once a worker is active for exactly /v8/', async () => {
-    const getRegistration = stubRegistration({
+    const getRegistrations = stubRegistration({
       scope: `${ORIGIN}/v8/`,
       active: {} as ServiceWorker,
     });
@@ -65,7 +67,7 @@ describe('legacyInterviewerOffline', () => {
     expect(getLegacyInterviewerOffline()).toBe('checking');
     await refreshLegacyInterviewerOffline();
     expect(getLegacyInterviewerOffline()).toBe('ready');
-    expect(getRegistration).toHaveBeenCalledWith('/v8/');
+    expect(getRegistrations).toHaveBeenCalled();
   });
 
   it('is not ready while a new pin installs beside the active build', async () => {
@@ -116,14 +118,34 @@ describe('legacyInterviewerOffline', () => {
     stubRegistration({
       scope: `${ORIGIN}/v8/`,
       active: null,
-      installing: {} as ServiceWorker,
+      installing: new EventTarget() as ServiceWorker,
     });
     await refreshLegacyInterviewerOffline();
     expect(getLegacyInterviewerOffline()).toBe('not-ready');
   });
 
+  it('becomes ready when a worker it found installing finishes, with no further check asked for', async () => {
+    // Interviewer 8 registered its own worker while running an interview.
+    const worker = Object.assign(new EventTarget(), {
+      state: 'installing',
+    }) as unknown as ServiceWorker;
+    const registration: Partial<ServiceWorkerRegistration> = {
+      scope: `${ORIGIN}/v8/`,
+      active: null,
+      installing: worker,
+    };
+    stubRegistration(registration);
+    await refreshLegacyInterviewerOffline();
+    expect(getLegacyInterviewerOffline()).toBe('not-ready');
+
+    Object.assign(registration, { installing: null, active: worker });
+    Object.assign(worker, { state: 'activated' });
+    worker.dispatchEvent(new Event('statechange'));
+
+    await vi.waitFor(() => expect(getLegacyInterviewerOffline()).toBe('ready'));
+  });
+
   it("does not take this app's own worker for Interviewer 8's", async () => {
-    // getRegistration('/v8/') answers with the closest enclosing scope.
     stubRegistration({ scope: `${ORIGIN}/`, active: {} as ServiceWorker });
     await refreshLegacyInterviewerOffline();
     expect(getLegacyInterviewerOffline()).toBe('not-ready');
@@ -133,7 +155,7 @@ describe('legacyInterviewerOffline', () => {
     vi.stubGlobal('navigator', {
       ...navigator,
       serviceWorker: {
-        getRegistration: () => Promise.reject(new Error('insecure context')),
+        getRegistrations: () => Promise.reject(new Error('insecure context')),
       },
     });
     await refreshLegacyInterviewerOffline();

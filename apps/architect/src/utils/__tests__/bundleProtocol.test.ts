@@ -126,6 +126,36 @@ describe('bundleProtocol', () => {
     expect(assetEntries).toHaveLength(2);
   });
 
+  it('keeps a source with path components inside the assets folder', async () => {
+    const protocol = makeProtocol({
+      'id-1': asset('image', 'photo.jpg/../../evil', 'Crafted source'),
+      'id-2': asset('image', 'a.b/c.png', 'Nested source'),
+    });
+
+    getAssetById.mockImplementation((id: string) =>
+      Promise.resolve({ data: new Blob([`bytes-${id}`]) }),
+    );
+
+    const blob = await bundleProtocol(protocol);
+
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const exported = JSON.parse(
+      (await zip.file('protocol.json')?.async('string')) ?? '{}',
+    ) as CurrentProtocol;
+    const manifest = exported.assetManifest ?? {};
+
+    expect((manifest['id-1'] as { source: string }).source).toBe('id-1');
+    expect((manifest['id-2'] as { source: string }).source).toBe('id-2.png');
+    const files = Object.keys(zip.files).filter(
+      (path) => !zip.files[path]?.dir,
+    );
+    expect(files.sort()).toEqual([
+      'assets/id-1',
+      'assets/id-2.png',
+      'protocol.json',
+    ]);
+  });
+
   it('refuses to write a file when an asset cannot be read (F10)', async () => {
     const protocol = makeProtocol({
       'id-ok': asset('image', 'good.jpg', 'Good asset'),
