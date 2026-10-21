@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,6 +16,7 @@ import type { SuccessOf } from '@codaco/effect-query/types';
 import { Forbidden, RateLimited } from '@codaco/studio-contract/schema/errors';
 import {
   DraftId,
+  MemberId,
   ProtocolId,
   StudyId,
   TeamId,
@@ -64,6 +66,11 @@ const STUDY_2: StudyFixture = {
 };
 
 const logTeams = vi.hoisted((): Array<string | undefined> => []);
+
+const teamCreation = vi.hoisted(() => ({
+  allowed: false,
+  names: [] as string[],
+}));
 
 const updateCheck = vi.hoisted(() => ({
   fails: false,
@@ -211,6 +218,8 @@ beforeEach(() => {
   fixtures.studyListRequests = [];
   fixtures.studyGetRequests = [];
   logTeams.length = 0;
+  teamCreation.allowed = false;
+  teamCreation.names = [];
   updateCheck.fails = false;
   updateCheck.answer = Promise.resolve();
   installRpcHarness({
@@ -249,6 +258,16 @@ beforeEach(() => {
           // Comma-separated, as Better Auth stores a legacy multi-role membership.
           { teamId: TeamId.make(fixtures.TEAM_B.id), role: 'admin,member' },
         ],
+        canCreateTeam: teamCreation.allowed,
+      }),
+    'team.create': ({ name }) =>
+      Effect.sync(() => {
+        teamCreation.names.push(Redacted.value(name));
+        return {
+          teamId: TeamId.make('team-new'),
+          teamName: name,
+          memberId: MemberId.make('member-new'),
+        };
       }),
     'studies.list': ({ teamId }) =>
       Effect.sync(() => {
@@ -595,6 +614,42 @@ describe('header team switcher', () => {
     expect(face).not.toBeNull();
     expect(face).toHaveTextContent('Team');
     expect(screen.queryByText('Choose a team')).toBeNull();
+  });
+
+  it('offers no team creation to a researcher who may not create teams', async () => {
+    renderAt('/team/team-a');
+    fireEvent.click(
+      await screen.findByRole('combobox', { name: 'Team Alpha research team' }),
+    );
+    await screen.findByRole('link', { name: 'Team administration' });
+    expect(screen.queryByRole('button', { name: 'Create a team' })).toBeNull();
+  });
+
+  it('creates a team from the switcher and opens it', async () => {
+    teamCreation.allowed = true;
+    const router = renderAt('/team/team-a');
+    fireEvent.click(
+      await screen.findByRole('combobox', { name: 'Team Alpha research team' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a team' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /Team name/ }),
+      {
+        target: { value: '  Lab of Networks  ' },
+      },
+    );
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Create team' }),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-new'),
+    );
+    expect(teamCreation.names).toEqual(['Lab of Networks']);
   });
 });
 

@@ -43,6 +43,7 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
     reason:
       'First-run setup precedes every team and every account, so it has no tenant to be audited under; the owned installation row is its own record.',
   },
+  'team.create': { kind: 'required' },
   'team.acceptInvitation': { kind: 'required' },
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },

@@ -7,6 +7,42 @@
     "defaultMessage": "Studio could not switch to this team. Screens that depend on it will stay empty until it does.",
     "description": "Shown above every screen when the active team could not follow the team in the URL."
   },
+  "studio.createTeam.description": {
+    "defaultMessage": "You will be the team’s owner, and can invite others once it exists.",
+    "description": "Explains what creating a team does, under its heading."
+  },
+  "studio.createTeam.forbidden": {
+    "defaultMessage": "Only the owner of this Studio instance can create teams. Ask them to create one and invite you.",
+    "description": "Shown when the server refuses to let this researcher create a team."
+  },
+  "studio.createTeam.nameBlank": {
+    "defaultMessage": "Enter a name that is not only spaces.",
+    "description": "Shown when the team name contains only whitespace."
+  },
+  "studio.createTeam.nameHint": {
+    "defaultMessage": "Usually your lab, group or project.",
+    "description": "Hint under the field that names the new team."
+  },
+  "studio.createTeam.nameLabel": {
+    "defaultMessage": "Team name",
+    "description": "Label of the field that names the new team."
+  },
+  "studio.createTeam.rateLimited": {
+    "defaultMessage": "You have created several teams recently. Wait a while, then try again.",
+    "description": "Shown when the researcher has created too many teams in a short time."
+  },
+  "studio.createTeam.submit": {
+    "defaultMessage": "Create team",
+    "description": "Button that creates the team named in the dialog."
+  },
+  "studio.createTeam.title": {
+    "defaultMessage": "Create a team",
+    "description": "Heading of the dialog that creates a new team."
+  },
+  "studio.createTeam.unconfirmed": {
+    "defaultMessage": "Studio could not confirm that the team was created. Check the team list before trying again.",
+    "description": "Shown when creating a team failed in a way that leaves its outcome unknown."
+  },
   "studio.deployment.billingManagedOnly": {
     "defaultMessage": "Managed deployments only",
     "description": "Shown on the disabled Billing sidebar row of a self-hosted instance, which does not serve billing at all."
@@ -406,6 +442,10 @@
   "studio.lockup.chooseTeam": {
     "defaultMessage": "Choose a team",
     "description": "Shown on the team switcher when no listed team matches the current one."
+  },
+  "studio.lockup.createTeam": {
+    "defaultMessage": "Create a team",
+    "description": "Command beneath the team switcher's list that opens the dialog creating a new team."
   },
   "studio.lockup.studyAccessibleName": {
     "defaultMessage": "Study {name}",

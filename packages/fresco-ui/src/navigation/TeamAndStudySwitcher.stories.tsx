@@ -429,7 +429,10 @@ export const ActionReachableByKeyboard: Story = {
     await waitFor(() => expect(action).toHaveFocus());
 
     await userEvent.keyboard('{Enter}');
-    await expect(args.team?.action?.onSelect).toHaveBeenCalledTimes(1);
+    const command = args.team?.action;
+    await expect(
+      command && 'label' in command ? command.onSelect : undefined,
+    ).toHaveBeenCalledTimes(1);
     await expect(args.team?.onSelect).not.toHaveBeenCalled();
   },
 };
@@ -550,6 +553,41 @@ export const SingleItemWithAction: Story = {
     await expect(
       within(canvasElement).getByRole('combobox', { name: /^Team/ }),
     ).toBeInTheDocument();
+  },
+};
+
+const administer = fn();
+const createTeam = fn();
+
+/** Several rows under the list, in the order given, each its own control. */
+export const SeveralActions: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      action: [
+        { label: 'Team administration', onSelect: administer },
+        { label: 'Create a team', onSelect: createTeam },
+      ],
+    },
+    study: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('combobox', { name: /^Team/ }),
+    );
+    const popup = within(document.body);
+    const administration = await popup.findByRole('button', {
+      name: 'Team administration',
+    });
+    const create = popup.getByRole('button', { name: 'Create a team' });
+    await expect(
+      administration.compareDocumentPosition(create) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await userEvent.click(create);
+    await expect(createTeam).toHaveBeenCalledTimes(1);
+    await expect(administer).not.toHaveBeenCalled();
   },
 };
 

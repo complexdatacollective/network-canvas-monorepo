@@ -101,6 +101,16 @@ const draftInterfaceTypes = Effect.fnUntraced(function* (
 export const AUDIT_USAGE_DECISIONS: {
   readonly [Type in AuditEventType]: AuditUsageDecision<Type>;
 } = {
+  'team.created': {
+    kind: 'event',
+    usage: (event, occurredAt) =>
+      Effect.succeed({
+        event: 'team_created',
+        occurredAt,
+        accountId: event.actorId,
+        teamId: event.teamId,
+      }),
+  },
   'team.member.role_changed': {
     kind: 'event',
     usage: (event, occurredAt) =>

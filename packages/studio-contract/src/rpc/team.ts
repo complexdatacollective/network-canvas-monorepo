@@ -13,8 +13,10 @@ import {
   AcceptTeamInvitationResult,
   CancelTeamInvitationInput,
   CancelTeamInvitationResult,
+  CreateTeamInput,
   CreateTeamInvitationInput,
   CreateTeamInvitationResult,
+  CreateTeamResult,
   TeamCommandError,
   UpdateTeamMemberRoleInput,
   UpdateTeamMemberRoleResult,
@@ -29,6 +31,11 @@ const TeamCommandErrors = Schema.Union([
 ]);
 
 export const TeamRpcs = RpcGroup.make(
+  Rpc.make('team.create', {
+    payload: CreateTeamInput,
+    success: CreateTeamResult,
+    error: TeamCommandErrors,
+  }),
   Rpc.make('team.acceptInvitation', {
     payload: AcceptTeamInvitationInput,
     success: AcceptTeamInvitationResult,

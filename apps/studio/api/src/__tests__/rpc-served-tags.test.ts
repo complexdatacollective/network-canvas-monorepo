@@ -42,6 +42,7 @@ const STUDIO_TAGS = [
   'studies.list',
   'team.acceptInvitation',
   'team.cancelInvitation',
+  'team.create',
   'team.createInvitation',
   'team.updateMemberRole',
   'telemetry.report',

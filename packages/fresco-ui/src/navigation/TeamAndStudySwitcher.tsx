@@ -18,6 +18,14 @@ import { cx } from '../utils/cva';
 
 export type SwitcherStatus = 'ready' | 'loading';
 
+export type SwitcherAction =
+  | {
+      label: string;
+      render: ReactElement<Record<string, unknown>>;
+      onSelect?: undefined;
+    }
+  | { label: string; onSelect: () => void; render?: undefined };
+
 export type SwitcherItem = {
   /** Stable id. Identifies the item to `onSelect` and colours its mark. */
   id: string;
@@ -50,20 +58,14 @@ type SwitcherSegmentBase = {
   /** Stands in for the name when `currentId` names nothing in `items`. */
   placeholder?: string;
   /**
-   * The row under the list, as either a destination or a command.
+   * The rows under the list, in order, each either a destination or a command.
    *
    * A destination passes `render` — a router link element, cloned here with
    * the row's styling — so it stays a real link: openable in a new tab,
    * copyable, and announced as a link. A command passes `onSelect` and gets a
    * button, because there is nowhere to go until it has run.
    */
-  action?:
-    | {
-        label: string;
-        render: ReactElement<Record<string, unknown>>;
-        onSelect?: undefined;
-      }
-    | { label: string; onSelect: () => void; render?: undefined };
+  action?: SwitcherAction | ReadonlyArray<SwitcherAction>;
   /**
    * Replaces the default `IdentityMark` in both the trigger and the list.
    * `item.leading` wins over it for a single item.
@@ -216,6 +218,8 @@ function Segment({
     status = 'ready',
   } = segment;
   const portalContainer = usePortalContainer();
+  const actions: ReadonlyArray<SwitcherAction> =
+    action === undefined ? [] : 'label' in action ? [action] : action;
 
   // Held here rather than left to Base UI because the rows beneath the list
   // are ours: a plain button does not close the popup the way a `Select.Item`
@@ -254,7 +258,7 @@ function Segment({
 
   // What the list is for. None of these means the segment is a label in a
   // frame rather than a control.
-  const hasList = action !== undefined || items.length > 1;
+  const hasList = actions.length > 0 || items.length > 1;
 
   // What the mark slot will actually draw, computed once and rendered below.
   // `renderMark` and `item.leading` are both `ReactNode`, so either may be
@@ -491,12 +495,12 @@ function Segment({
                 </Select.Group>
               )}
             </Select.List>
-            {action && (
+            {actions.length > 0 && (
               <>
                 {items.length > 0 && (
                   <Select.Separator className={SEPARATOR_CLASS} />
                 )}
-                {(() => {
+                {actions.map((row) => {
                   const body = (
                     <>
                       {/* A dashed tile where a mark would be, at the mark's
@@ -506,9 +510,7 @@ function Segment({
                       <span className="border-outline flex size-8 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
                         <Plus aria-hidden className="size-4" />
                       </span>
-                      <span className="text-sm font-semibold">
-                        {action.label}
-                      </span>
+                      <span className="text-sm font-semibold">{row.label}</span>
                     </>
                   );
                   const className = cx(
@@ -519,12 +521,13 @@ function Segment({
                   // Closing the popup is still ours to do — composed with the
                   // element's own handler rather than replacing it, since a
                   // caller may guard the navigation or record it.
-                  return action.render ? (
-                    cloneElement(action.render, {
+                  return row.render ? (
+                    cloneElement(row.render, {
+                      key: row.label,
                       className,
                       onClick: composeEventHandlers(
                         () => setOpen(false),
-                        action.render.props.onClick as
+                        row.render.props.onClick as
                           | ((event: unknown) => void)
                           | undefined,
                       ),
@@ -532,14 +535,15 @@ function Segment({
                     })
                   ) : (
                     <button
+                      key={row.label}
                       type="button"
-                      onClick={closeThen(action.onSelect)}
+                      onClick={closeThen(row.onSelect)}
                       className={className}
                     >
                       {body}
                     </button>
                   );
-                })()}
+                })}
               </>
             )}
           </Select.Popup>

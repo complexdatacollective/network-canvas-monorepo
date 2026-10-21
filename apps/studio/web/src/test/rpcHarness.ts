@@ -72,6 +72,7 @@ const unimplementedHandlers: StudioHandlers = {
   'studies.list': unimplemented('studies.list'),
   'team.acceptInvitation': unimplemented('team.acceptInvitation'),
   'team.cancelInvitation': unimplemented('team.cancelInvitation'),
+  'team.create': unimplemented('team.create'),
   'team.createInvitation': unimplemented('team.createInvitation'),
   'team.updateMemberRole': unimplemented('team.updateMemberRole'),
   'telemetry.report': unimplemented('telemetry.report'),

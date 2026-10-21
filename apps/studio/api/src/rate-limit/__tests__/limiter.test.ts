@@ -37,6 +37,7 @@ const INJECTED: RateLimitSettings = {
   error_report_address: { max: 15, windowMs: 60_000 },
   researcher_log: { max: 16, windowMs: 60_000 },
   participant_log: { max: 17, windowMs: 60_000 },
+  team_create: { max: 18, windowMs: 60_000 },
 };
 
 const limiterWith = (limits: Partial<RateLimitSettings> = {}) =>

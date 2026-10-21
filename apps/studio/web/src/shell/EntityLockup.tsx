@@ -6,6 +6,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   TeamAndStudySwitcher,
+  type SwitcherAction,
   type SwitcherItem,
   type SwitcherSegment,
   type SwitcherStatus,
@@ -21,6 +22,7 @@ import {
 } from '../lib/studyState.ts';
 import { teamRolesLabel } from '../lib/teamRoles.ts';
 import { rpcKey, rpcQuery } from '../runtime/rpc.ts';
+import { useCreateTeam } from './useCreateTeam.tsx';
 
 /**
  * The header's team ▸ study lockup (§5.5): the team the researcher is acting
@@ -81,6 +83,12 @@ const messages = defineMessages({
     defaultMessage: 'Team administration',
     description:
       "Link beneath the team switcher's list to the current team's settings.",
+  },
+  createTeam: {
+    id: 'studio.lockup.createTeam',
+    defaultMessage: 'Create a team',
+    description:
+      "Command beneath the team switcher's list that opens the dialog creating a new team.",
   },
   allStudies: {
     id: 'studio.lockup.allStudies',
@@ -319,6 +327,31 @@ export default function EntityLockup({ className }: { className?: string }) {
   // a bookmarked study belongs to whichever team owns it, which is not
   // necessarily the team the session last had active (§6.3, §5.6).
   const study = useStudySegment(studyId);
+  const createTeam = useCreateTeam();
+
+  const teamActions: SwitcherAction[] = [
+    ...(current
+      ? [
+          {
+            label: intl.formatMessage(messages.teamAdministration),
+            render: (
+              <Link
+                to="/team/$teamId/settings"
+                params={{ teamId: current.id }}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(me.data?.canCreateTeam
+      ? [
+          {
+            label: intl.formatMessage(messages.createTeam),
+            onSelect: () => void createTeam(),
+          },
+        ]
+      : []),
+  ];
 
   const teamSegment: SwitcherSegment | undefined = hasTeamSegment
     ? {
@@ -342,25 +375,10 @@ export default function EntityLockup({ className }: { className?: string }) {
         onSelect: (id: string) =>
           // Not awaited, for the reason `SwitcherWithStudy` records.
           void navigate({ to: '/team/$teamId', params: { teamId: id } }),
-        // Team administration beneath the list, as §5.5 places it: choosing a
-        // team and administering one are different acts, and the separator the
-        // switcher draws is what says so. It navigates rather than being a
-        // link because that is the shape the switcher's trailing command
-        // takes; the destination is a registered route either way, which is
-        // what `routeTable.test.tsx` asserts.
-        //
-        // "Create a team" belongs here too. It is a command rather than a
-        // destination — #1249 owns the flow and there is none — and an entry
-        // that opened nothing would be worse than its absence.
-        // A destination, not a command, so it renders as a link: openable in
-        // a new tab, copyable, and announced as a link. "Create a team" stays
-        // a command when it exists — there is nowhere to go until it has run.
-        action: current && {
-          label: intl.formatMessage(messages.teamAdministration),
-          render: (
-            <Link to="/team/$teamId/settings" params={{ teamId: current.id }} />
-          ),
-        },
+        // Team administration and team creation beneath the list, as §5.5
+        // places them: choosing a team and acting on teams are different acts,
+        // and the separator the switcher draws is what says so.
+        action: teamActions.length > 0 ? teamActions : undefined,
       }
     : undefined;
 

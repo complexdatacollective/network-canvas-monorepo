@@ -64,6 +64,7 @@ function me(): Me {
     name: Redacted.make('Researcher'),
     locale: fixtures.meLocale,
     teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
+    canCreateTeam: false,
   };
 }
 

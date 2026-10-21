@@ -74,6 +74,7 @@ export const usageCapture = (
   switch (usage.event) {
     case 'researcher_signed_up':
     case 'researcher_signed_in':
+    case 'team_created':
       return researcherCapture(usage, {});
     case 'team_invitation_sent':
     case 'team_invitation_accepted':
