@@ -63,15 +63,14 @@ const openOnInterviewer8Device = async (page: Page) => {
   return before;
 };
 
-// force: true, as for the delete control (see ProtocolFixture.delete): the
-// menu button sits in the active card's top-right corner, under the next
-// card's bounding box in the deck's fanned 3D layout, which defeats
-// Playwright's actionability pre-check though a real click there lands.
-const openActionsMenu = (page: Page) =>
-  clickWhenDeckSettles(
-    page.getByRole('button', { name: `Actions for ${LEGACY_PROTOCOL_NAME}` }),
-    { force: true },
-  );
+// force: true, as in ProtocolFixture.delete: the delete button sits in the
+// active card's top-right corner, under the next card's bounding box in the
+// deck's fanned 3D layout, which defeats Playwright's actionability
+// pre-check though a real click there lands.
+const clickDeleteProtocol = (page: Page) =>
+  clickWhenDeckSettles(page.getByRole('button', { name: 'Delete Protocol' }), {
+    force: true,
+  });
 
 type Row = Record<string, unknown>;
 
@@ -261,14 +260,12 @@ test('shows a schema 8 protocol as a protocol card with its schema', async ({
     page.getByRole('button', { name: 'Start new interview' }),
   ).toBeVisible();
 
-  await openActionsMenu(page);
-  // A schema 8 protocol is never upgraded.
-  await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText([
-    'Info',
-    'Delete',
-  ]);
+  // Like any protocol card, it offers Delete; a schema 8 protocol is never
+  // upgraded.
+  await expect(
+    page.getByRole('button', { name: 'Delete Protocol' }),
+  ).toBeVisible();
   await expect(page.getByText('Upgrade to schema 9')).toHaveCount(0);
-  await page.keyboard.press('Escape');
 
   // Nothing about showing it is a write.
   const after = await dumpDatabase(page);
@@ -438,8 +435,7 @@ test('deleting a schema 8 protocol removes it, its interviews and its assets', a
   await openOnInterviewer8Device(page);
 
   await page.getByRole('button', { name: 'Go to card 1' }).click();
-  await openActionsMenu(page);
-  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await clickDeleteProtocol(page);
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await dialog.getByTestId('dialog-primary').click();

@@ -1,14 +1,9 @@
-import { CircleAlert, Download, Info, Trash2 } from 'lucide-react';
+import { CircleAlert, Download } from 'lucide-react';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor, IntlShape } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  isSchema8Protocol,
-  type ProtocolWithCounts,
-  type StoredSession,
-} from '~/lib/db/types';
+import { isSchema8Protocol, type StoredSession } from '~/lib/db/types';
 import {
   type BundledLegacyInterviewer,
   LEGACY_INTERVIEWER_MAJOR,
@@ -29,7 +24,6 @@ import {
   type DeckCardProps,
   DeckCardProgressFooter,
 } from './DeckCard';
-import { DeckCardMenu } from './DeckCardMenu';
 import type { DeckEntry } from './deckEntries';
 
 const messages = defineMessages({
@@ -65,18 +59,6 @@ const messages = defineMessages({
     description:
       'Pending protocol card while validated protocol content is saved on this device.',
   },
-  protocolInfo: {
-    id: 'interviewer.deckSlotCard.protocolInfo',
-    defaultMessage: 'Info',
-    description:
-      'Menu item on a protocol’s card on the home screen. Shows details about the protocol (its schema version, when it was imported and how many interviews it has).',
-  },
-  protocolActions: {
-    id: 'interviewer.deckSlotCard.protocolActions',
-    defaultMessage: 'Actions for {name}',
-    description:
-      'Accessible name of the button that opens the menu of actions for a protocol’s card on the home screen. {name} is the researcher-authored protocol name.',
-  },
 });
 
 // Status line shown on the loading card for each import phase.
@@ -103,9 +85,6 @@ type DeckSlotCardProps = {
   onDismissSample: () => void;
   onInstallSample: () => void;
   onInstallDevelopment: () => void;
-  // The Info item of a protocol card's menu. Without it the menu offers
-  // only Delete.
-  onShowProtocolInfo?: (protocol: ProtocolWithCounts) => void;
   schema8?: Schema8CardActions;
   // When set, the case-ID form replaces the protocol card's footer.
   newSession?: {
@@ -124,7 +103,6 @@ function slotCardProps(
     onDismissSample,
     onInstallSample,
     onInstallDevelopment,
-    onShowProtocolInfo,
     schema8,
     newSession,
   }: DeckSlotCardProps,
@@ -135,24 +113,6 @@ function slotCardProps(
     const schema8Props = isSchema8Protocol(protocol)
       ? schema8CardProps({ isActive, schema8 }, intl)
       : null;
-    const menuItems = [
-      ...(onShowProtocolInfo
-        ? [
-            {
-              key: 'info',
-              label: intl.formatMessage(messages.protocolInfo),
-              icon: <Info />,
-              onSelect: () => onShowProtocolInfo(protocol),
-            },
-          ]
-        : []),
-      {
-        key: 'delete',
-        label: intl.formatMessage(commonMessages.delete),
-        icon: <Trash2 />,
-        onSelect: () => onDeleteProtocol(protocol.hash),
-      },
-    ];
     return {
       protocol: entry.protocol,
       isActive,
@@ -167,6 +127,7 @@ function slotCardProps(
       hideDescription: newSession !== undefined,
       hideMetadata: newSession !== undefined,
       hideControls: newSession !== undefined,
+      onDelete: () => onDeleteProtocol(protocol.hash),
       footer: newSession ? (
         <DeckCardFooter key="new-session">
           <NewSessionForm
@@ -185,14 +146,6 @@ function slotCardProps(
         </DeckCardFooter>
       ) : undefined,
       badges: schema8Props?.badges,
-      menu: (
-        <DeckCardMenu
-          label={intl.formatMessage(messages.protocolActions, {
-            name: protocol.name,
-          })}
-          items={menuItems}
-        />
-      ),
     };
   }
   if (entry.kind === 'sample') {

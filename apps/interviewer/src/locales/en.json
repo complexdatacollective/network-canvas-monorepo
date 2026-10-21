@@ -295,14 +295,6 @@
     "defaultMessage": "Install sample protocol",
     "description": "Visible copy in Interviewer Deck Slot Card."
   },
-  "interviewer.deckSlotCard.protocolActions": {
-    "defaultMessage": "Actions for {name}",
-    "description": "Accessible name of the button that opens the menu of actions for a protocol’s card on the home screen. {name} is the researcher-authored protocol name."
-  },
-  "interviewer.deckSlotCard.protocolInfo": {
-    "defaultMessage": "Info",
-    "description": "Menu item on a protocol’s card on the home screen. Shows details about the protocol (its schema version, when it was imported and how many interviews it has)."
-  },
   "interviewer.deckSlotCard.saving": {
     "defaultMessage": "Saving…",
     "description": "Pending protocol card while validated protocol content is saved on this device."
@@ -914,22 +906,6 @@
   "interviewer.protocolImport.viewDetails": {
     "defaultMessage": "View details",
     "description": "User-facing message in Interviewer Protocol Import."
-  },
-  "interviewer.protocolInfoDialog.infoImported": {
-    "defaultMessage": "Imported",
-    "description": "Label in a protocol’s details dialog, before how long ago it was imported."
-  },
-  "interviewer.protocolInfoDialog.infoInterviews": {
-    "defaultMessage": "Interviews",
-    "description": "Label in a protocol’s details dialog, before the number of interviews collected with it."
-  },
-  "interviewer.protocolInfoDialog.infoLastChanged": {
-    "defaultMessage": "Last changed",
-    "description": "Label in a protocol’s details dialog, before how long ago the protocol itself was last changed by its author."
-  },
-  "interviewer.protocolInfoDialog.infoSchemaVersion": {
-    "defaultMessage": "Schema version",
-    "description": "Label in a protocol’s details dialog, before its schema version number."
   },
   "interviewer.protocolValidationDetailsDialog.copied": {
     "defaultMessage": "Copied",
