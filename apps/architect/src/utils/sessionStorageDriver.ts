@@ -1,5 +1,7 @@
 import type { Driver } from 'redux-remember';
 
+import { SESSION_PREFIX } from './storageNames';
+
 // A redux-remember Driver backed by the tab's own sessionStorage, so the active
 // protocol id and other app preferences are per-tab rather than origin-wide.
 // sessionStorage survives reload but is cleared when the tab closes; protocol
@@ -22,7 +24,9 @@ const getSessionStorage = (): globalThis.Storage | null => {
   }
 };
 
-const REMEMBERED_APP_SESSION_KEY = '@@remember-app';
+// redux-remember stores each remembered slice under `${prefix}${key}`; the
+// store passes the same prefix, so this is the key the `app` slice lands in.
+const REMEMBERED_APP_SESSION_KEY = `${SESSION_PREFIX}app`;
 
 // A failed startup rehydration may leave malformed or stale remembered state
 // behind. Remove it directly because redux-remember installs its persistence

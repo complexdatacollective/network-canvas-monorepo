@@ -28,6 +28,12 @@ describe('stage-linear node writes', () => {
     const stage = {
       id: 'stage-people',
       type: 'NameGenerator',
+      minNodesNotice: {
+        en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        en: 'You have completed this task. Click the next arrow to continue.',
+      },
       label: 'People',
       subject: { entity: 'node', type: 'person' },
       prompts: [
@@ -102,6 +108,12 @@ describe('stage-linear node writes', () => {
     const people = {
       id: 'stage-people',
       type: 'NameGenerator',
+      minNodesNotice: {
+        en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        en: 'You have completed this task. Click the next arrow to continue.',
+      },
       label: 'People',
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'people', text: 'Name people' }],

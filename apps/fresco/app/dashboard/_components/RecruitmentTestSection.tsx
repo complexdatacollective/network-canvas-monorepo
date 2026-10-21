@@ -8,7 +8,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
-import type { Participant, Protocol } from '~/lib/db/generated/client';
+import type { Participant } from '~/lib/db/generated/client';
 import {
   type GetParticipantsForSelectQuery,
   type GetParticipantsForSelectReturnType,
@@ -63,7 +63,8 @@ export default function RecruitmentTestSection({
     SuperJSON.parse<GetParticipantsForSelectQuery>(rawParticipants);
   const allowAnonymousRecruitment = use(allowAnonymousRecruitmentPromise);
 
-  const [selectedProtocol, setSelectedProtocol] = useState<Partial<Protocol>>();
+  const [selectedProtocol, setSelectedProtocol] =
+    useState<GetProtocolsQuery[number]>();
   const [selectedParticipant, setSelectedParticipant] = useState<Participant>();
 
   const router = useRouter();
@@ -103,7 +104,7 @@ export default function RecruitmentTestSection({
           onChange={(value) => {
             const protocol = protocols.find(
               (candidate) => candidate.id === value,
-            ) as Protocol;
+            );
 
             setSelectedProtocol(protocol);
           }}

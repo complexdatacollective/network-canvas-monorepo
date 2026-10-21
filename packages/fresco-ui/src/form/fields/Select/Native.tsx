@@ -3,6 +3,10 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import {
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../../PresentationalText';
 import { nativeSelectVariants } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
@@ -107,15 +111,19 @@ export default function SelectField(props: SelectProps) {
           isSelectOptionGroup(option) ? (
             // Keyed by label: a group carries no value, and its label is what
             // distinguishes it from its siblings.
-            <optgroup key={`group:${option.label}`} label={option.label}>
+            <optgroup
+              key={`group:${presentationalTextValue(option.label)}`}
+              label={presentationalTextValue(option.label)}
+              {...presentationalTextProps(option.label)}
+            >
               {option.options.map((groupedOption) => (
                 <option
                   key={groupedOption.value}
                   value={groupedOption.value}
                   disabled={groupedOption.disabled}
-                  lang={groupedOption.lang}
+                  {...presentationalTextProps(groupedOption.label)}
                 >
-                  {groupedOption.label}
+                  {presentationalTextValue(groupedOption.label)}
                 </option>
               ))}
             </optgroup>
@@ -124,9 +132,9 @@ export default function SelectField(props: SelectProps) {
               key={option.value}
               value={option.value}
               disabled={option.disabled}
-              lang={option.lang}
+              {...presentationalTextProps(option.label)}
             >
-              {option.label}
+              {presentationalTextValue(option.label)}
             </option>
           ),
         )}

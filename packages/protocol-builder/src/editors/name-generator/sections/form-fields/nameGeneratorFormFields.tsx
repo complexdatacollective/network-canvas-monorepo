@@ -11,9 +11,9 @@ import type { StageSection } from '../../../defineStageEditor.tsx';
  *
  * The shared form section, because a name generator's form asks for an
  * attribute and a question exactly as every other form does. It has a title
- * the researcher authors, which is what separates it from the three form
- * stages: the interview shows this form's own heading above it, while a form
- * stage's own name does that job.
+ * the researcher authors, as an ego form's does: the interview shows this
+ * form's own heading above it, while an alter or alter edge form's own stage
+ * name does that job.
  *
  * The two sections write the same subject with opposite validation: a field
  * asks the participant and checks the answer, a stamp sets a value with nobody

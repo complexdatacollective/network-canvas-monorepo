@@ -65,12 +65,17 @@ for arg in "$@"; do
   FORWARDED_ARGS="${FORWARDED_ARGS} $(printf '%q' "$arg")"
 done
 
+# ARCHITECT_SKIP_LEGACY_V8=true leaves the pinned Architect 8 out of the build
+# under test, so its worker's background download takes no part in the run.
+# The specs that follow a protocol out to /v8/ build their own copy with a stub
+# there (e2e/fixtures/legacy-architect.ts).
 # shellcheck disable=SC2086 # PLATFORM_FLAG intentionally word-splits
 docker run --rm \
   ${PLATFORM_FLAG} \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
   -e VITE_DISABLE_ANIMATIONS=true \
+  -e ARCHITECT_SKIP_LEGACY_V8=true \
   -v "$(pwd)":/workspace \
   -v "${VOLUME}":/workspace/node_modules \
   -v "${TURBO_VOLUME}":/workspace/.turbo/cache \

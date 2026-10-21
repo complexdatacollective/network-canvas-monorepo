@@ -22,6 +22,11 @@ vi.mock('../../vault/webauthn', () => ({
   signalCredentialUnknown: () => Promise.resolve(),
 }));
 
+import {
+  readRawRows,
+  seedAsInterviewer8,
+} from '~/testUtils/interviewer8Database';
+
 import { db } from '../../db/db';
 import { encryptSession } from '../../db/recordCrypto';
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
@@ -90,6 +95,28 @@ afterEach(async () => {
   setReencryptionPending(false);
   await db.sessions.clear();
 });
+
+// A schema 8 interview's row, as Interviewer 8 wrote it into the shared
+// database before the device had a lock.
+const legacySession = (id = 'legacy-1') => ({
+  id,
+  protocolHash: 'legacy-hash',
+  protocolName: 'Old Study',
+  caseId: 'legacy-case',
+  startedAt: PRE_SECURED_TIMESTAMP,
+  lastUpdatedAt: PRE_SECURED_TIMESTAMP,
+  finishedAt: null,
+  exportedAt: null,
+  currentStep: 1,
+  network,
+});
+
+async function readLegacySession(
+  id = 'legacy-1',
+): Promise<Record<string, unknown> | undefined> {
+  const rows = (await readRawRows('sessions')) as Record<string, unknown>[];
+  return rows.find((row) => row.id === id);
+}
 
 describe('initial enrol sweeps pre-secured plaintext rows', () => {
   it('enrolWithPin re-encrypts the existing plaintext session', async () => {
@@ -194,5 +221,69 @@ describe('resume-on-unlock finishes an interrupted sweep', () => {
     expect((await db.sessions.get('s1'))?._enc?.network).toBeDefined();
     expect((await db.sessions.get('s1'))?.network).toBeUndefined();
     expect(isReencryptionPending()).toBe(false);
+  });
+});
+
+describe("the shared lock covers Interviewer 8's rows", () => {
+  it("first enrolment encrypts this app's rows and Interviewer 8's", async () => {
+    await seedPlaintextSession();
+    await seedAsInterviewer8({ sessions: [legacySession()] });
+
+    expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
+
+    expect((await db.sessions.get('s1'))?._enc?.network).toBeDefined();
+    const legacy = await readLegacySession();
+    expect(legacy?._enc).toBeDefined();
+    expect(legacy?.network).toBeUndefined();
+    expect(legacy?.lastUpdatedAt).toBe(PRE_SECURED_TIMESTAMP);
+    expect(isReencryptionPending()).toBe(false);
+  });
+
+  it('a legacy row that could not be encrypted keeps the retry pending', async () => {
+    const { network: _network, ...broken } = legacySession();
+    await seedAsInterviewer8({ sessions: [broken] });
+
+    expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
+    expect(isReencryptionPending()).toBe(true);
+  });
+
+  it('the pending retry on unlock finishes the legacy rows too', async () => {
+    expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
+    expect(isReencryptionPending()).toBe(false);
+
+    // A legacy plaintext row left behind by an interrupted sweep.
+    setSessionDek(null);
+    await seedAsInterviewer8({ sessions: [legacySession()] });
+    setReencryptionPending(true);
+
+    expect((await authApi.unlockWithPin('12345678')).ok).toBe(true);
+    expect((await readLegacySession())?._enc).toBeDefined();
+    expect(isReencryptionPending()).toBe(false);
+  });
+
+  it('a plaintext legacy row written after the sweep finished is encrypted on the next unlock', async () => {
+    expect((await authApi.enrolWithPin('12345678')).ok).toBe(true);
+    expect(isReencryptionPending()).toBe(false);
+
+    // A tab of Interviewer 8 left open with no lock commits its row after
+    // the sweep cleared the flag; nothing marked the retry as pending.
+    setSessionDek(null);
+    await seedAsInterviewer8({ sessions: [legacySession('late-1')] });
+    expect(isReencryptionPending()).toBe(false);
+    expect((await readLegacySession('late-1'))?._enc).toBeUndefined();
+
+    expect((await authApi.unlockWithPin('12345678')).ok).toBe(true);
+    const legacy = await readLegacySession('late-1');
+    expect(legacy?._enc).toBeDefined();
+    expect(legacy?.network).toBeUndefined();
+    expect(isReencryptionPending()).toBe(false);
+  });
+
+  it('enrolling without a lock never touches the legacy rows', async () => {
+    await seedAsInterviewer8({ sessions: [legacySession()] });
+    const before = await readRawRows('sessions');
+
+    expect((await authApi.enrolWithoutLock()).ok).toBe(true);
+    expect(await readRawRows('sessions')).toEqual(before);
   });
 });

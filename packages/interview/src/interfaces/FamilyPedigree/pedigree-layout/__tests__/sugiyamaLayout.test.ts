@@ -71,6 +71,46 @@ describe('buildPedigreeGraph', () => {
     expect(graph.layers[2]).toBe(graph.layers[0]);
   });
 
+  it('one carrier for two unrelated couples carries two sibships, one family unit each', () => {
+    // Gail carried Ego for Amy and Rob, and Sib for Sam and Pat. A sibship
+    // is the children who share their biological parents (Josh, 12 Oct
+    // 2026): Ego and Sib share none, so they are two sibships, though both
+    // lines of descent come from Gail.
+    const carried = (parentIndex: number) => ({
+      parentIndex,
+      edgeType: 'surrogate' as const,
+      isGestationalCarrier: true,
+    });
+    const graph = buildPedigreeGraph({
+      id: ['amy', 'rob', 'gail', 'sam', 'pat', 'ego', 'sib'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'biological' },
+          carried(2),
+        ],
+        [
+          { parentIndex: 3, edgeType: 'biological' },
+          { parentIndex: 4, edgeType: 'biological' },
+          carried(2),
+        ],
+      ],
+      partners: [
+        { partnerIndex1: 0, partnerIndex2: 1, isActive: true },
+        { partnerIndex1: 3, partnerIndex2: 4, isActive: true },
+      ],
+    });
+    expect(graph.owners[5]!.descent?.parents).toEqual([2]);
+    expect(graph.owners[6]!.descent?.parents).toEqual([2]);
+    expect(graph.familyUnits.map((unit) => unit.children)).toEqual([[5], [6]]);
+    expect(graph.siblingGroups).toHaveLength(0);
+  });
+
   it('single parent: 1 parent + 1 child', () => {
     const graph = buildPedigreeGraph(singleParent);
 
@@ -266,9 +306,9 @@ describe('minimizeCrossings', () => {
   it('reflects a frozen sibship block to reach the mirror orientation', () => {
     // Two intermarrying sibships form ONE gen-II block whose couples' left/right
     // orientation is frozen by ascending node index. The barycentric sweeps only
-    // reorder whole blocks, never reflect one, so without the block-reversal pass
-    // this ordering keeps a spurious crossing (2). The reflection pass reaches the
-    // mirror orientation that removes it.
+    // reorder whole blocks, never reflect one, so without the seating search
+    // this ordering keeps a spurious crossing (2). The search turns the block
+    // round, reaching the mirror orientation that removes it.
     const graph = buildPedigreeGraph(twoSibshipIntermarriage);
     const ordering = minimizeCrossings(graph);
 
@@ -344,6 +384,119 @@ describe('minimizeCrossings', () => {
       Math.min(Math.abs(col(aux) - col(0)), Math.abs(col(aux) - col(1)));
     expect(gapTo(2)).toBe(1); // donor adjacent to the couple
     expect(gapTo(3)).toBe(1); // surrogate adjacent to the couple
+  });
+});
+
+/**
+ * Round 3 (Josh, 12 Oct 2026, amending ruling 27): a donor's line meets the
+ * line of descent of the children they gave to once, so siblings are
+ * grouped by their donors and surrogates, the groups in the order their
+ * first children were added and each group in the order added; and each
+ * donor sits on the side of the run of children they gave to, a donor of a
+ * run further out further out.
+ */
+describe('siblings who share donors', () => {
+  const bio = (parentIndex: number) => ({
+    parentIndex,
+    edgeType: 'biological' as const,
+  });
+  const donor = (parentIndex: number) => ({
+    parentIndex,
+    edgeType: 'donor' as const,
+  });
+  /** The people of the row someone sits on, left to right. */
+  const rowOf = (ped: PedigreeInput, person: string) => {
+    const layout = sugiyamaLayout(ped);
+    const row = layout.nid
+      .map((ids, layer) => ids.slice(0, layout.n[layer]))
+      .find((ids) => ids.includes(ped.id.indexOf(person)))!;
+    return row.map((index) => ped.id[index]!);
+  };
+  const eitherWay = (row: string[]) => [row, row.toReversed()];
+
+  it('sit together, in the order their first child was added', () => {
+    // Ruby, who shares Paul with the participant, was added after Theo.
+    const ped: PedigreeInput = {
+      id: ['ego', 'hannah', 'paul', 'theo', 'theoDonor', 'ruby'],
+      parents: [
+        [bio(1), donor(2)],
+        [],
+        [],
+        [bio(1), donor(4)],
+        [],
+        [bio(1), donor(2)],
+      ],
+    };
+    expect(eitherWay(['ego', 'ruby', 'theo'])).toContainEqual(
+      rowOf(ped, 'ego'),
+    );
+  });
+
+  it('have each run’s donor seated on its side, the outer runs’ outermost', () => {
+    const ped: PedigreeInput = {
+      id: [
+        'ego',
+        'hannah',
+        'paul',
+        'ruby',
+        'theo',
+        'tom',
+        'theoDonor',
+        'mia',
+        'miaDonor',
+      ],
+      parents: [
+        [bio(1), donor(2)],
+        [],
+        [],
+        [bio(1), donor(2)],
+        [bio(1), donor(6)],
+        [bio(1), donor(6)],
+        [],
+        [bio(1), donor(8)],
+        [],
+      ],
+    };
+    const children = rowOf(ped, 'ego');
+    expect(eitherWay(['ego', 'ruby', 'theo', 'tom', 'mia'])).toContainEqual(
+      children,
+    );
+    const parents =
+      children[0] === 'ego'
+        ? rowOf(ped, 'hannah')
+        : rowOf(ped, 'hannah').toReversed();
+    expect(parents).toEqual(['paul', 'hannah', 'theoDonor', 'miaDonor']);
+  });
+});
+
+describe('turning a block round to uncross its lines', () => {
+  it('never seats someone between two partners', () => {
+    // Ma and Pa's four children, three of whom Xan also raises. Turning the
+    // parents' row round, then turning the couple round within it, must
+    // keep Xan beside the couple, not between them.
+    const tie = (
+      parentIndex: number,
+      edgeType: 'biological' | 'social' = 'biological',
+    ) => ({ parentIndex, edgeType });
+    const ped: PedigreeInput = {
+      id: ['k0', 'k1', 'k2', 'k3', 'ma', 'pa', 'xan'],
+      parents: [
+        [tie(4), tie(5), tie(6, 'social')],
+        [tie(4), tie(5)],
+        [tie(4), tie(5), tie(6, 'social')],
+        [tie(4), tie(5), tie(6, 'social')],
+        [],
+        [],
+        [],
+      ],
+      partners: [{ partnerIndex1: 4, partnerIndex2: 5, isActive: true }],
+    };
+    const layout = sugiyamaLayout(ped);
+    const row = layout.nid
+      .map((ids, layer) => ids.slice(0, layout.n[layer]))
+      .find((ids) => ids.includes(4))!
+      .map((index) => ped.id[index]!);
+    expect(Math.abs(row.indexOf('ma') - row.indexOf('pa'))).toBe(1);
   });
 });
 

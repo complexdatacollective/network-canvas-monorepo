@@ -1,10 +1,11 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, CurrentProtocol } from '@codaco/protocol-validation';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 
 import Rule from '../Rule';
+import SummaryContext from '../SummaryContext';
 
 afterEach(cleanup);
 
@@ -21,8 +22,8 @@ const codebook = {
           name: 'Groups',
           type: 'categorical',
           options: [
-            { value: 'a', label: 'Alpha' },
-            { value: 'b', label: 'Bravo' },
+            { value: 'a', label: { en: 'Alpha', fr: 'Alpha (fr)' } },
+            { value: 'b', label: { en: 'Bravo' } },
           ],
         },
       },
@@ -199,4 +200,41 @@ it('names an entity type the codebook no longer has rather than printing nothing
       },
     }),
   ).toBe('gone where age is exactly equal to 1');
+});
+
+// A rule is one sentence, so it names each option once: in the protocol's
+// default language, as the stage it filters is named in the summary.
+it('reads option labels in the default language, falling back as the interview does', () => {
+  const protocol: CurrentProtocol = {
+    name: 'Study',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+    assetManifest: {},
+    codebook,
+    stages: [],
+  };
+  const { container } = render(
+    <ArchitectI18nProvider>
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: 'Study', index: [] }}
+      >
+        <Rule
+          rule={{
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'groups',
+              operator: 'INCLUDES',
+              value: ['a', 'b'],
+            },
+          }}
+          codebook={codebook}
+        />
+      </SummaryContext.Provider>
+    </ArchitectI18nProvider>,
+  );
+
+  expect(readableText(container).replace(/\s+/g, ' ').trim()).toBe(
+    'Person where Groups includes Alpha (fr) and Bravo',
+  );
 });

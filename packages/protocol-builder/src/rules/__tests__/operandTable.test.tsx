@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
+  createDefaultFinishSessionStage,
   type FilterOperator,
   filterRuleSchema,
   filterValueSchema,
@@ -51,22 +52,38 @@ const ATTRIBUTES: Readonly<Record<VariableType, string>> = Object.freeze({
 });
 
 const personVariables: SectionDoc['variables'] = {
-  flag: { name: 'Flag', type: 'boolean', component: 'Boolean' },
-  note: { name: 'Note', type: 'text', component: 'Text' },
-  age: { name: 'Age', type: 'number', component: 'Number' },
+  flag: {
+    name: 'Flag',
+    type: 'boolean',
+    component: 'Boolean',
+  },
+  note: {
+    name: 'Note',
+    type: 'text',
+    component: 'Text',
+  },
+  age: {
+    name: 'Age',
+    type: 'number',
+    component: 'Number',
+  },
   closeness: {
     name: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
   },
-  born: { name: 'Born', type: 'datetime', component: 'DatePicker' },
+  born: {
+    name: 'Born',
+    type: 'datetime',
+    component: 'DatePicker',
+  },
   band: {
     name: 'Band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: [
-      { label: 'Low', value: 1 },
-      { label: 'High', value: 2 },
+      { label: { en: 'Low' }, value: 1 },
+      { label: { en: 'High' }, value: 2 },
     ],
   },
   mood: {
@@ -74,8 +91,8 @@ const personVariables: SectionDoc['variables'] = {
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: 'Happy', value: 'happy' },
-      { label: 'Sad', value: 'sad' },
+      { label: { en: 'Happy' }, value: 'happy' },
+      { label: { en: 'Sad' }, value: 'sad' },
     ],
   },
   // The two the schema calls non-renderable: they are recorded by the stage
@@ -96,14 +113,17 @@ const stageOrderSection = sectionId({ kind: 'stageOrder' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 const stageFields: SectionDoc = {
-  label: 'Details',
+  label: { en: 'Details' },
   subject: { entity: 'node', type: 'person' },
-  form: { fields: [{ variable: 'age', prompt: 'How old are they?' }] },
-  introductionPanel: { title: 'About them', text: 'A few questions.' },
+  form: { fields: [{ variable: 'age', prompt: { en: 'How old are they?' } }] },
 };
 
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Operand table', schemaVersion: 8 },
+  [settingsSection]: {
+    name: 'Operand table',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  },
   [stageOrderSection]: { stages: ['stage-1'] },
   [STAGE_SECTION]: { id: 'stage-1', type: 'AlterForm', ...stageFields },
   [personSection]: personDefinition,
@@ -253,9 +273,12 @@ const buildRule = async (
  * find out whether it IS a valid protocol, and a fixture typed as one would
  * have the question answered by the compiler instead.
  */
+const localization = { defaultLocale: 'en', locales: ['en'] };
+
 const protocolWith = (rule: RuleDraft): unknown => ({
   name: 'Operand table',
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization,
   codebook,
   stages: [
     {
@@ -264,6 +287,7 @@ const protocolWith = (rule: RuleDraft): unknown => ({
       ...stageFields,
       filter: { rules: [rule] },
     },
+    createDefaultFinishSessionStage({ id: 'finish', localization }),
   ],
 });
 

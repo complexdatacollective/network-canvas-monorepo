@@ -27,7 +27,7 @@ const CLAIMED = [
   {
     stageType: 'FamilyPedigree',
     editor: familyPedigreeStageEditor.FamilyPedigree,
-    sections: ['Pedigree framing'],
+    sections: ['Person attributes'],
   },
 ] as const satisfies readonly {
   stageType: StageType;

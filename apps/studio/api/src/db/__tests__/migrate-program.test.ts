@@ -11,6 +11,9 @@ import { Redacted } from 'effect';
 import type pg from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 
+import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation';
+import { type SectionDoc, contentHash } from '@codaco/studio-sync/apply';
+
 import {
   freePort,
   startEntrypoint,
@@ -255,6 +258,158 @@ describe.skipIf(!db)('the migrate command', () => {
       expect(accepted.code).toBe(0);
       expect(await history(scratch.pool)).toEqual([...before, version]);
       expect(await hasProbeColumn(scratch.pool)).toBe(true);
+    },
+    CASE_TIMEOUT_MS,
+  );
+  /**
+   * A study pinned to a schema 8 version, as a release before schema 9 left
+   * it, with one in-flight session holding the given answer. Written straight
+   * into the tables, in one transaction, as that release's store wrote it.
+   */
+  async function seedPinnedStudy(
+    pool: pg.Pool,
+    team: string,
+    answer: unknown,
+  ): Promise<{ versionId: string; sessionId: string }> {
+    const protocolId = randomUUID();
+    const versionId = randomUUID();
+    const studyId = randomUUID();
+    const waveId = randomUUID();
+    const sessionId = randomUUID();
+    const sections: Record<string, SectionDoc> = {
+      'settings': { name: 'Legacy study', schemaVersion: 8 },
+      'stageOrder': { stages: ['intro'] },
+      'stage:intro': {
+        id: 'intro',
+        type: 'Information',
+        label: 'Intro',
+        title: 'Welcome',
+        items: [{ id: 'intro-text', type: 'text', content: 'Hello' }],
+      },
+      'codebook:node:person': {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: { personName: { name: 'Name', type: 'text' } },
+      },
+    };
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, 'Legacy study')`,
+        [protocolId, team],
+      );
+      await client.query(
+        `INSERT INTO protocol_versions
+           (id, protocol_id, team_id, version_number, version_hash, manifest,
+            schema_version, source_manifest_hash)
+         VALUES ($1, $2, $3, 1, 'legacy', '{}'::jsonb, 8, 'legacy')`,
+        [versionId, protocolId, team],
+      );
+      for (const [sectionId, doc] of Object.entries(sections)) {
+        const hash = contentHash(doc);
+        await client.query(
+          `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)`,
+          [team, hash, JSON.stringify(doc)],
+        );
+        await client.query(
+          `INSERT INTO version_sections (version_id, team_id, section_id, section_hash)
+           VALUES ($1, $2, $3, $4)`,
+          [versionId, team, sectionId, hash],
+        );
+      }
+      await client.query(
+        `INSERT INTO studies (id, team_id, name, protocol_id, state, went_live_at)
+         VALUES ($1, $2, 'A study', $3, 'live', now())`,
+        [studyId, team, protocolId],
+      );
+      await client.query(
+        `INSERT INTO study_waves (id, study_id, team_id, wave_number, protocol_version_id)
+         VALUES ($1, $2, $3, 1, $4)`,
+        [waveId, studyId, team, versionId],
+      );
+      await client.query(
+        `INSERT INTO interview_sessions
+           (id, study_id, team_id, wave_id, protocol_version_id, ego_uid)
+         VALUES ($1, $2, $3, $4, $5, 'ego')`,
+        [sessionId, studyId, team, waveId, versionId],
+      );
+      await client.query(
+        `INSERT INTO nodes (team_id, session_id, node_id, type, attributes)
+         VALUES ($1, $2, 'alex', 'person', $3)`,
+        [team, sessionId, JSON.stringify({ personName: answer })],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    return { versionId, sessionId };
+  }
+
+  const pinOf = async (pool: pg.Pool, sessionId: string) =>
+    (
+      await pool.query<{ schema_version: number }>(
+        `SELECT v.schema_version FROM interview_sessions s
+           JOIN protocol_versions v ON v.id = s.protocol_version_id
+          WHERE s.id = $1`,
+        [sessionId],
+      )
+    ).rows[0]?.schema_version;
+
+  it(
+    'upgrades the studies pinned to an older schema, and leaves the database at its previous release when one cannot be',
+    async () => {
+      const scratch = await releasedDatabase();
+      const before = await history(scratch.pool);
+      const team = 'team-migrate-pinned';
+      await seedTeam(scratch.admin, team);
+      // An answer no schema accepts, so the session cannot be carried across.
+      const { versionId, sessionId } = await seedPinnedStudy(
+        scratch.admin,
+        team,
+        { not: 'an answer' },
+      );
+
+      const upgrade = release({
+        slug: 'next_release',
+        delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
+      });
+      const version = upgrade.migrations.at(-1)?.version;
+
+      const refused = await migrate(scratch, upgrade);
+      expect(refused.code).toBe(1);
+      expect(refused.output).toContain(
+        `could not be upgraded to schema version ${CURRENT_SCHEMA_VERSION}`,
+      );
+      expect(refused.output).toContain(
+        `interview session ${sessionId} (protocol version ${versionId} of team ${team})`,
+      );
+      expect(refused.output).toContain(NOTHING_APPLIED);
+      expect(refused.output).not.toMatch(STACK_FRAME);
+      expect(await history(scratch.pool)).toEqual(before);
+      expect(await hasProbeColumn(scratch.pool)).toBe(false);
+      expect(await pinOf(scratch.admin, sessionId)).toBe(8);
+
+      // The positive control: the same upgrade, once the answer is one the
+      // migrated session can hold.
+      await scratch.admin.query(
+        `UPDATE nodes SET attributes = '{"personName": "Alex"}'::jsonb
+          WHERE session_id = $1`,
+        [sessionId],
+      );
+      const accepted = await migrate(scratch, upgrade);
+      expect(accepted.output).toContain(`Applied ${version}.`);
+      expect(accepted.output).toContain(
+        `Upgraded 1 pinned protocol version(s) to schema ${CURRENT_SCHEMA_VERSION}: 1 wave(s) and 1 in-flight interview session(s)`,
+      );
+      expect(accepted.code).toBe(0);
+      expect(await pinOf(scratch.admin, sessionId)).toBe(
+        CURRENT_SCHEMA_VERSION,
+      );
     },
     CASE_TIMEOUT_MS,
   );

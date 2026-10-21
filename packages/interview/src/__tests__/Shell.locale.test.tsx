@@ -11,13 +11,14 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
 import ActionButton from '../components/ActionButton';
-import type { InterviewPayload } from '../contract/types';
+import type { InterviewPayload, SyncHandler } from '../contract/types';
 import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
@@ -42,20 +43,31 @@ vi.mock('../interfaces', async () => {
   const { useEffect } = await import('react');
   const { default: Form } = await import('@codaco/fresco-ui/form/Form');
   const { default: ProtocolField } = await import('../forms/ProtocolField');
-  function AuthoredStage({ stage }: { stage: { title: string } }) {
+  const { useLocalizedString, useProtocolLocale } =
+    await import('../localization/ProtocolLocalizationProvider');
+  function AuthoredStage({
+    stage,
+  }: {
+    stage: { title: Readonly<Record<string, string>> };
+  }) {
     useEffect(() => {
       observed.mounts += 1;
     }, []);
+    const title = useLocalizedString(stage.title);
+    const { setLocale } = useProtocolLocale();
     return (
       <Form onSubmit={() => ({ success: true })}>
-        <h1>{stage.title}</h1>
+        <h1>{title.text}</h1>
+        <button type="button" onClick={() => setLocale('es')}>
+          Prefer Spanish
+        </button>
         <ProtocolField
           field={{
             variable: 'respuesta.original',
             type: 'text',
             component: 'Text',
-            label: 'Nombre elegido por el estudio',
-            hint: 'Texto original: café, Ana & <literal>.',
+            label: { en: 'Nombre elegido por el estudio' },
+            hint: { en: 'Texto original: café, Ana & <literal>.' },
             validation: { required: true },
           }}
         />
@@ -82,41 +94,71 @@ beforeEach(() => {
   document.documentElement.dir = 'ltr';
 });
 
-const payload = {
-  session: {
-    id: 'locale-session',
-    startTime: '2026-01-01T00:00:00.000Z',
-    finishTime: null,
-    exportTime: null,
-    lastUpdated: '2026-01-01T00:00:00.000Z',
-    network: {
-      ego: {
-        [entityPrimaryKeyProperty]: 'ego-1',
-        [entityAttributesProperty]: { original: 'Ana & <literal>' },
+const localization = {
+  defaultLocale: 'en',
+  locales: ['en', 'es', 'ja', 'ar'],
+};
+
+const titles = {
+  en: 'Original question',
+  es: 'Pregunta original',
+  ja: '元の質問',
+  ar: 'السؤال الأصلي',
+};
+
+const PREFERENCE_KEY_PREFIX = 'network-canvas:interview-locale-preference:';
+
+// A language chosen earlier in this tab, as the Shell keeps it.
+function holdPreference(locale: string, interviewId = 'locale-session') {
+  window.sessionStorage.setItem(
+    `${PREFERENCE_KEY_PREFIX}${interviewId}`,
+    locale,
+  );
+}
+
+function makePayload(id = 'locale-session') {
+  return {
+    session: {
+      id,
+      startTime: '2026-01-01T00:00:00.000Z',
+      finishTime: null,
+      exportTime: null,
+      lastUpdated: '2026-01-01T00:00:00.000Z',
+      localeOptions: localization.locales.map((locale) =>
+        getLocaleMetadata(locale),
+      ),
+      network: {
+        ego: {
+          [entityPrimaryKeyProperty]: 'ego-1',
+          [entityAttributesProperty]: { original: 'Ana & <literal>' },
+        },
+        nodes: [],
+        edges: [],
       },
-      nodes: [],
-      edges: [],
     },
-  },
-  protocol: {
-    id: 'locale-protocol',
-    hash: 'stable-original-hash',
-    importedAt: '2026-01-01T00:00:00.000Z',
-    name: 'Protocol name stays literal',
-    schemaVersion: 8,
-    codebook: { ego: { variables: {} }, node: {}, edge: {} },
-    assets: [],
-    stages: [
-      {
-        id: 'authored-screen',
-        type: 'Information',
-        label: 'Literal screen label',
-        title: 'Pregunta original sin traducir',
-        items: [],
-      },
-    ],
-  },
-} satisfies InterviewPayload;
+    protocol: {
+      id: 'locale-protocol',
+      hash: 'stable-original-hash',
+      importedAt: '2026-01-01T00:00:00.000Z',
+      name: 'Protocol name stays literal',
+      schemaVersion: 9,
+      localization,
+      codebook: { ego: { variables: {} }, node: {}, edge: {} },
+      assets: [],
+      stages: [
+        {
+          id: 'authored-screen',
+          type: 'Information',
+          label: { en: 'Literal screen label' },
+          title: titles,
+          items: [],
+        },
+      ],
+    },
+  } satisfies InterviewPayload;
+}
+
+const payload = makePayload();
 
 const handlers = {
   onSync: () => Promise.resolve(),
@@ -125,6 +167,22 @@ const handlers = {
   analytics: { installationId: 'test', hostApp: 'test' },
 };
 
+// The stage fades in on an animation frame after its content mounts, so a
+// heading can be in the document before it is visible.
+async function expectVisibleHeading(
+  name: string,
+  region: HTMLElement = document.body,
+) {
+  const heading = await within(region).findByRole('heading', { name });
+  await waitFor(() => expect(heading).toBeVisible());
+}
+
+function liveStore() {
+  const store = window.__interviewStore;
+  if (!store) throw new Error('The real Shell did not expose its store');
+  return store;
+}
+
 // Loaded before anything renders, as a host loads a language before it
 // mounts an interview, so renders in these languages are synchronous.
 beforeAll(async () => {
@@ -132,144 +190,109 @@ beforeAll(async () => {
     ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
   );
 });
+// The built-in Next button's name, in the language of the catalog it came from.
+const nextStep = { es: 'Siguiente paso', en: 'Next Step' };
 
-describe('Shell built-in interface language', () => {
+describe('Shell interview languages', () => {
   it.each([
-    { preference: 'ja', expectedLocale: 'es', expectedChoice: '__automatic' },
     {
-      preference: 'not_a_locale',
-      expectedLocale: 'es',
-      expectedChoice: '__automatic',
+      requested: ['ja', 'es-MX'],
+      lang: 'ja',
+      next: nextStep.es,
+      title: titles.ja,
     },
-    { preference: 'es-MX', expectedLocale: 'es', expectedChoice: 'es' },
-    { preference: 'en', expectedLocale: 'en', expectedChoice: 'en' },
+    { requested: ['en-GB'], lang: 'en', next: nextStep.en, title: titles.en },
+    {
+      requested: ['not_a_locale'],
+      lang: 'en',
+      next: nextStep.en,
+      title: titles.en,
+    },
+    { requested: [], lang: 'en', next: nextStep.en, title: titles.en },
   ])(
-    'negotiates the controlled preference $preference with the requested fallback chain',
-    async ({ preference, expectedLocale, expectedChoice }) => {
+    "negotiates both languages from the browser's languages $requested",
+    async ({ requested, lang, next, title }) => {
       render(
         <Shell
           {...handlers}
           payload={payload}
-          requestedLocale={['ja', 'es-MX']}
-          localePreference={preference}
+          requestedLocales={requested}
           disableAnalytics
         />,
       );
-      await screen.findByRole('textbox', {
-        name: /^Nombre elegido por el estudio/,
-      });
-      expect(screen.getByRole('main')).toHaveAttribute('lang', expectedLocale);
-      const spanish = expectedLocale === 'es';
-      await userEvent.setup().click(
-        screen.getByRole('button', {
-          name: spanish ? 'Configuración' : 'Settings',
-        }),
-      );
-      expect(
-        screen.getByRole('combobox', {
-          name: spanish ? 'Idioma de la interfaz' : 'Interface language',
-        }),
-      ).toHaveValue(expectedChoice);
-      expect(
-        screen.getByRole('heading', { name: 'Pregunta original sin traducir' }),
-      ).toBeVisible();
+      await expectVisibleHeading(title);
+      const region = screen.getByRole('main');
+      expect(region).toHaveAttribute('lang', lang);
+      expect(within(region).getByRole('button', { name: next })).toBeVisible();
       expect(observed.mounts).toBe(1);
     },
   );
 
-  it('shows a restored explicit host preference and permits a direct Automatic reset', async () => {
-    const change = vi.fn();
-    function Host() {
-      const [preference, setPreference] = useState<string | null>('es');
-      return (
+  it.each([
+    { preference: 'es', next: nextStep.es, title: titles.es },
+    { preference: 'ja', next: nextStep.es, title: titles.ja },
+  ])(
+    'shows the stated preference $preference, and uses it for built-in text only when a catalog has it',
+    async ({ preference, next, title }) => {
+      holdPreference(preference);
+      render(
+        <Shell
+          {...handlers}
+          payload={makePayload()}
+          requestedLocales={['es-MX']}
+          disableAnalytics
+        />,
+      );
+      await expectVisibleHeading(title);
+      const region = screen.getByRole('main');
+      expect(region).toHaveAttribute('lang', preference);
+      expect(within(region).getByRole('button', { name: next })).toBeVisible();
+    },
+  );
+
+  it('sets the interview language and direction once, for the whole Shell', async () => {
+    render(
+      <Shell
+        {...handlers}
+        payload={payload}
+        requestedLocales={['ar']}
+        disableAnalytics
+      />,
+    );
+    const region = screen.getByRole('main');
+    await expectVisibleHeading(titles.ar, region);
+    expect(region).toHaveAttribute('lang', 'ar');
+    expect(region).toHaveAttribute('dir', 'rtl');
+    expect(document.getElementById('stage')).not.toHaveAttribute('lang');
+    expect(document.getElementById('stage')).not.toHaveAttribute('dir');
+    // No Arabic catalog: the built-in text falls back to English.
+    expect(
+      within(region).getByRole('button', { name: 'Next Step' }),
+    ).toBeVisible();
+  });
+
+  it.each([
+    { requested: ['ar'], back: 'chevron-right', next: 'chevron-left' },
+    { requested: ['en'], back: 'chevron-left', next: 'chevron-right' },
+  ])(
+    'points the horizontal Back and Next arrows along the interview direction ($requested)',
+    async ({ requested, back, next }) => {
+      render(
         <Shell
           {...handlers}
           payload={payload}
-          requestedLocale={preference ?? 'en-GB'}
-          localePreference={preference}
+          requestedLocales={requested}
+          navigationOrientation="horizontal"
           disableAnalytics
-          onLocaleChange={(next) => {
-            change(next);
-            setPreference(next);
-          }}
-        />
+        />,
       );
-    }
-    render(<Host />);
-    const user = userEvent.setup();
-    const input = await screen.findByRole('textbox', {
-      name: /^Nombre elegido por el estudio/,
-    });
-    await user.type(input, 'Retained after preference reset');
-    await user.click(screen.getByRole('button', { name: 'Configuración' }));
-    const menu = await screen.findByRole('combobox', {
-      name: 'Idioma de la interfaz',
-    });
-    expect(menu).toHaveValue('es');
-    await user.selectOptions(menu, '__automatic');
-    expect(change).toHaveBeenLastCalledWith(null);
-    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en-GB');
-    expect(
-      screen.getByRole('combobox', { name: 'Interface language' }),
-    ).toHaveValue('__automatic');
-    expect(input).toHaveValue('Retained after preference reset');
-    expect(observed.mounts).toBe(1);
-  });
-
-  it('keeps an acknowledged menu choice explicit so the host preference can be cleared', async () => {
-    const onLocaleChange = vi.fn();
-    function Host() {
-      const [request, setRequest] = useState('en-GB');
-      return (
-        <>
-          <button onClick={() => setRequest('es-MX')}>
-            Change host request
-          </button>
-          <Shell
-            {...handlers}
-            payload={payload}
-            requestedLocale={request}
-            disableAnalytics
-            onLocaleChange={(next) => {
-              onLocaleChange(next);
-              setRequest(next ?? 'en-GB');
-            }}
-          />
-        </>
-      );
-    }
-    render(<Host />);
-    const user = userEvent.setup();
-    const input = await screen.findByRole('textbox', {
-      name: /^Nombre elegido por el estudio/,
-    });
-    await user.type(input, 'Retained answer');
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-    await user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Interface language' }),
-      'es',
-    );
-    expect(
-      screen.getByRole('combobox', { name: 'Idioma de la interfaz' }),
-    ).toHaveValue('es');
-    expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Idioma de la interfaz' }),
-      '__automatic',
-    );
-    expect(onLocaleChange).toHaveBeenLastCalledWith(null);
-    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en-GB');
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Interface language' }),
-      'en',
-    );
-    await user.click(
-      screen.getByRole('button', { name: 'Change host request' }),
-    );
-    expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
-    expect(input).toHaveValue('Retained answer');
-    expect(observed.mounts).toBe(1);
-  });
+      const region = screen.getByRole('main');
+      const arrow = (name: string) =>
+        within(region).getByRole('button', { name }).querySelector('svg');
+      expect(arrow('Previous Step')).toHaveClass(`lucide-${back}`);
+      expect(arrow('Next Step')).toHaveClass(`lucide-${next}`);
+    },
+  );
 
   it('uses its own supported languages and catalogs, independently of the host document', async () => {
     render(
@@ -281,7 +304,7 @@ describe('Shell built-in interface language', () => {
         <Shell
           {...handlers}
           payload={payload}
-          requestedLocale="es-MX"
+          requestedLocales={['es-MX']}
           disableAnalytics
         />
       </AppI18nProvider>,
@@ -295,19 +318,10 @@ describe('Shell built-in interface language', () => {
         within(region).getByRole('button', { name: 'Siguiente paso' }),
       ).toBeVisible(),
     );
-    expect(
-      await within(region).findByRole('heading', {
-        name: 'Pregunta original sin traducir',
-      }),
-    ).toBeVisible();
+    await expectVisibleHeading(titles.es, region);
     expect(
       within(region).getByRole('textbox', {
         name: /^Nombre elegido por el estudio/,
-      }),
-    ).toBeVisible();
-    expect(
-      within(region).getByText('Nombre elegido por el estudio', {
-        exact: true,
       }),
     ).toBeVisible();
     expect(
@@ -315,16 +329,14 @@ describe('Shell built-in interface language', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('changes menu language without remounting fields or rewriting protocol, answers or navigation', async () => {
-    const original = structuredClone(payload);
-    const onLocaleChange = vi.fn();
+  it('applies a stated preference at once without writing to the host', async () => {
+    const onSync = vi.fn<SyncHandler>(() => Promise.resolve());
     render(
       <Shell
         {...handlers}
+        onSync={onSync}
         payload={payload}
-        requestedLocale="en-GB"
-        onLocaleChange={onLocaleChange}
-        allowUserScaling
+        requestedLocales={['en-GB']}
         flags={{ isE2E: true }}
         disableAnalytics
       />,
@@ -333,9 +345,88 @@ describe('Shell built-in interface language', () => {
     const input = await screen.findByRole('textbox', {
       name: /^Nombre elegido por el estudio/,
     });
+    await user.type(input, 'Retained answer');
+    const networkBefore = structuredClone(
+      liveStore().getState().session.network,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Prefer Spanish' }));
+
+    await expectVisibleHeading(titles.es);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
+    expect(onSync).not.toHaveBeenCalled();
+    expect(liveStore().getState().session.network).toEqual(networkBefore);
+    expect(
+      screen.getByRole('textbox', { name: /^Nombre elegido por el estudio/ }),
+    ).toBe(input);
+    expect(input).toHaveValue('Retained answer');
+    expect(observed.mounts).toBe(1);
+  });
+
+  it('replaces a held preference with the language the host states, keeping unsaved input', async () => {
+    holdPreference('es');
+    function Host() {
+      const [stated, setStated] = useState<string | undefined>(undefined);
+      return (
+        <>
+          <button onClick={() => setStated('ja')}>State Japanese</button>
+          <Shell
+            {...handlers}
+            payload={makePayload()}
+            requestedLocales={['en-GB']}
+            statedLocale={stated}
+            flags={{ isE2E: true }}
+            disableAnalytics
+          />
+        </>
+      );
+    }
+    render(<Host />);
+    const user = userEvent.setup();
+    await expectVisibleHeading(titles.es);
+    const input = screen.getByRole('textbox', {
+      name: /^Nombre elegido por el estudio/,
+    });
+    await user.type(input, 'Sin guardar');
+
+    await user.click(screen.getByRole('button', { name: 'State Japanese' }));
+
+    await expectVisibleHeading(titles.ja);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'ja');
+    expect(liveStore().getState().ui.localePreference).toBe('ja');
+    expect(
+      screen.getByRole('textbox', { name: /^Nombre elegido por el estudio/ }),
+    ).toBe(input);
+    expect(input).toHaveValue('Sin guardar');
+    expect(observed.mounts).toBe(1);
+  });
+
+  it("follows a change of the browser's languages without remounting fields or rewriting protocol, answers or navigation", async () => {
+    const original = structuredClone(payload);
+    function Host() {
+      const [requested, setRequested] = useState<readonly string[]>(['en-GB']);
+      return (
+        <>
+          <button onClick={() => setRequested(['es'])}>
+            Change browser languages
+          </button>
+          <Shell
+            {...handlers}
+            payload={payload}
+            requestedLocales={requested}
+            flags={{ isE2E: true }}
+            disableAnalytics
+          />
+        </>
+      );
+    }
+    render(<Host />);
+    const user = userEvent.setup();
+    const input = await screen.findByRole('textbox', {
+      name: /^Nombre elegido por el estudio/,
+    });
     await user.type(input, 'Málaga & <respuesta>');
-    const store = window.__interviewStore;
-    if (!store) throw new Error('The real Shell did not expose its store');
+    const store = liveStore();
     act(() => {
       store.dispatch(
         updateStageMetadata({
@@ -346,92 +437,47 @@ describe('Shell built-in interface language', () => {
     });
     await act(async () => undefined);
     const before = structuredClone(store.getState());
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-    const language = await screen.findByRole('combobox', {
-      name: 'Interface language',
-    });
-    expect(
-      within(language)
-        .getAllByRole('option')
-        .map((option) => option.getAttribute('value')),
-    ).toEqual([
-      '__automatic',
-      'en',
-      'en-GB',
-      'es',
-      'zh-Hans',
-      'zh-Hant',
-      'de',
-      'nl',
-      'pt-BR',
-      'it',
-      'fr',
-    ]);
-    await user.selectOptions(language, 'es');
-    expect(onLocaleChange).toHaveBeenLastCalledWith('es');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Change browser languages' }),
+    );
+
     expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
-    expect(
-      screen.getByRole('combobox', { name: 'Idioma de la interfaz' }),
-    ).toHaveValue('es');
+    await expectVisibleHeading(titles.es);
     expect(
       screen.getByRole('button', { name: 'Siguiente paso' }),
     ).toBeVisible();
     expect(
       screen.getByRole('textbox', { name: /^Nombre elegido por el estudio/ }),
     ).toBe(input);
-    expect(
-      screen.getByText('Nombre elegido por el estudio', { exact: true }),
-    ).toBeVisible();
     expect(input).toHaveValue('Málaga & <respuesta>');
     expect(observed.mounts).toBe(1);
     expect(window.__interviewStore).toBe(store);
-    expect(store.getState()).toEqual(before);
+    const after = store.getState();
+    expect(after.protocol).toEqual(before.protocol);
+    expect(after.session).toEqual(before.session);
     expect(payload).toEqual(original);
     expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Idioma de la interfaz' }),
-      '__automatic',
-    );
-    expect(onLocaleChange).toHaveBeenLastCalledWith(null);
-    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en-GB');
-    expect(input).toHaveValue('Málaga & <respuesta>');
   });
 
-  it('applies new host requests immediately and does not revive an override for an older request', async () => {
-    const view = render(
+  it('has no language control in the settings menu', async () => {
+    render(
       <Shell
         {...handlers}
         payload={payload}
-        requestedLocale="es"
+        requestedLocales={['en']}
+        allowUserScaling
+        onExit={vi.fn()}
         disableAnalytics
       />,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Configuración' }));
-    await user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Idioma de la interfaz' }),
-      'en-GB',
-    );
-    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en-GB');
-    view.rerender(
-      <Shell
-        {...handlers}
-        payload={payload}
-        requestedLocale="ja"
-        disableAnalytics
-      />,
-    );
-    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
-    view.rerender(
-      <Shell
-        {...handlers}
-        payload={payload}
-        requestedLocale="es"
-        disableAnalytics
-      />,
-    );
-    expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
-    expect(observed.mounts).toBe(1);
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
+    expect(
+      await screen.findByRole('button', { name: 'Exit interview' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/language/i)).not.toBeInTheDocument();
   });
 
   it('updates an already-open confirmation while retaining its action and cancel behavior', async () => {
@@ -440,7 +486,7 @@ describe('Shell built-in interface language', () => {
       <Shell
         {...handlers}
         payload={payload}
-        requestedLocale="en"
+        requestedLocales={['en']}
         onExit={onExit}
         disableAnalytics
       />,
@@ -451,19 +497,19 @@ describe('Shell built-in interface language', () => {
       await screen.findByRole('button', { name: 'Exit interview' }),
     );
     const dialog = await screen.findByRole('dialog', {
-      name: 'Exit this interview?',
+      name: 'Exit interview',
     });
     view.rerender(
       <Shell
         {...handlers}
         payload={payload}
-        requestedLocale="es"
+        requestedLocales={['es']}
         onExit={onExit}
         disableAnalytics
       />,
     );
     expect(
-      await screen.findByRole('dialog', { name: '¿Salir de esta entrevista?' }),
+      await screen.findByRole('dialog', { name: 'Salir de la entrevista' }),
     ).toBe(dialog);
     expect(
       within(dialog).getByText(
@@ -489,7 +535,7 @@ describe('Shell built-in interface language', () => {
           <Shell
             {...handlers}
             payload={payload}
-            requestedLocale="es"
+            requestedLocales={['es']}
             disableAnalytics
           />
         </section>
@@ -497,7 +543,7 @@ describe('Shell built-in interface language', () => {
           <Shell
             {...handlers}
             payload={payload}
-            requestedLocale="not_a_locale"
+            requestedLocales={['not_a_locale']}
             disableAnalytics
           />
         </section>
@@ -515,6 +561,7 @@ describe('Shell built-in interface language', () => {
         }),
       ).toBeVisible();
     });
+    await expectVisibleHeading(titles.es, screen.getByTestId('spanish'));
     expect(
       within(screen.getByTestId('fallback')).getByRole('main'),
     ).toHaveAttribute('lang', 'en');
@@ -524,5 +571,419 @@ describe('Shell built-in interface language', () => {
   it('retains provider-optional English for standalone shared controls', () => {
     render(<ActionButton iconName="add-a-person" />);
     expect(screen.getByRole('button', { name: 'Add a person' })).toBeVisible();
+  });
+});
+
+describe("Shell participant's language choice", () => {
+  function renderShell(interviewPayload: InterviewPayload = payload) {
+    return render(
+      <Shell
+        {...handlers}
+        payload={interviewPayload}
+        requestedLocales={['en-GB']}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />,
+    );
+  }
+
+  it('keeps the choice when the same interview is opened again in this tab', async () => {
+    const first = renderShell();
+    await expectVisibleHeading(titles.en);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Prefer Spanish' }));
+    await expectVisibleHeading(titles.es);
+    first.unmount();
+
+    renderShell(makePayload());
+
+    await expectVisibleHeading(titles.es);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
+    expect(liveStore().getState().ui.localePreference).toBe('es');
+  });
+
+  it('opens in a kept choice whose language is still loading only once both its texts can change together', async () => {
+    // French is not loaded yet, and loads only when the test lets it.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { load } = interviewCatalogSource;
+    const gated = (locale: string) =>
+      locale === 'fr' ? gate.then(() => load(locale)) : load(locale);
+    const loadSpy = vi
+      .spyOn(interviewCatalogSource, 'load')
+      .mockImplementation(gated);
+    const attemptSpy = vi
+      .spyOn(interviewCatalogSource, 'attempt')
+      .mockImplementation(gated);
+    try {
+      const french = makePayload('french-session');
+      const withFrench = {
+        ...french,
+        session: {
+          ...french.session,
+          localeOptions: [...localization.locales, 'fr'].map((locale) =>
+            getLocaleMetadata(locale),
+          ),
+        },
+        protocol: {
+          ...french.protocol,
+          localization: {
+            ...localization,
+            locales: [...localization.locales, 'fr'],
+          },
+          stages: [
+            {
+              ...french.protocol.stages[0]!,
+              title: { ...titles, fr: 'Question originale' },
+            },
+          ],
+        },
+      } satisfies InterviewPayload;
+      holdPreference('fr', 'french-session');
+
+      await act(async () => {
+        renderShell(withFrench);
+      });
+      // Neither language's text is on screen while French loads, so the
+      // protocol's French never shows beside English controls.
+      expect(
+        screen.queryByRole('heading', { name: 'Question originale' }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: nextStep.en }),
+      ).not.toBeInTheDocument();
+
+      await act(async () => release());
+      await expectVisibleHeading('Question originale');
+      const region = screen.getByRole('main');
+      expect(region).toHaveAttribute('lang', 'fr');
+      expect(
+        within(region).getByRole('button', { name: 'Étape suivante' }),
+      ).toBeVisible();
+      expect(observed.mounts).toBe(1);
+    } finally {
+      loadSpy.mockRestore();
+      attemptSpy.mockRestore();
+    }
+  });
+
+  it('changes to a chosen language whose built-in text is still loading only once both can change together', async () => {
+    // German is not loaded yet, and loads only when the test lets it.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { load } = interviewCatalogSource;
+    const gated = (locale: string) =>
+      locale === 'de' ? gate.then(() => load(locale)) : load(locale);
+    const loadSpy = vi
+      .spyOn(interviewCatalogSource, 'load')
+      .mockImplementation(gated);
+    const attemptSpy = vi
+      .spyOn(interviewCatalogSource, 'attempt')
+      .mockImplementation(gated);
+    try {
+      const base = makePayload('german-session');
+      const withGerman = {
+        ...base,
+        session: {
+          ...base.session,
+          localeOptions: [...localization.locales, 'de'].map((locale) =>
+            getLocaleMetadata(locale),
+          ),
+        },
+        protocol: {
+          ...base.protocol,
+          localization: {
+            ...localization,
+            locales: [...localization.locales, 'de'],
+          },
+          stages: [
+            {
+              ...base.protocol.stages[0]!,
+              title: { ...titles, de: 'Ursprüngliche Frage' },
+            },
+          ],
+        },
+      } satisfies InterviewPayload;
+      function Host() {
+        const [stated, setStated] = useState<string | undefined>(undefined);
+        return (
+          <>
+            <button onClick={() => setStated('de')}>State German</button>
+            <Shell
+              {...handlers}
+              payload={withGerman}
+              requestedLocales={['en']}
+              statedLocale={stated}
+              flags={{ isE2E: true }}
+              disableAnalytics
+            />
+          </>
+        );
+      }
+      render(<Host />);
+      await expectVisibleHeading(titles.en);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('button', { name: 'State German' }));
+
+      // While German loads, the protocol's German does not show beside
+      // English controls.
+      expect(liveStore().getState().ui.localePreference).toBe('de');
+      expect(
+        screen.getByRole('heading', { name: titles.en }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Ursprüngliche Frage' }),
+      ).toBeNull();
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+
+      await act(async () => release());
+      await expectVisibleHeading('Ursprüngliche Frage');
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'de');
+      expect(
+        screen.queryByRole('button', { name: nextStep.en }),
+      ).not.toBeInTheDocument();
+      expect(observed.mounts).toBe(1);
+    } finally {
+      loadSpy.mockRestore();
+      attemptSpy.mockRestore();
+    }
+  });
+
+  it('keeps the protocol in the language on screen when a chosen language cannot load', async () => {
+    const { load } = interviewCatalogSource;
+    const failing = (locale: string) =>
+      locale === 'nl' ? Promise.reject(new Error('offline')) : load(locale);
+    const loadSpy = vi
+      .spyOn(interviewCatalogSource, 'load')
+      .mockImplementation(failing);
+    const attemptSpy = vi
+      .spyOn(interviewCatalogSource, 'attempt')
+      .mockImplementation(failing);
+    try {
+      const base = makePayload('dutch-session');
+      const withDutch = {
+        ...base,
+        session: {
+          ...base.session,
+          localeOptions: [...localization.locales, 'nl'].map((locale) =>
+            getLocaleMetadata(locale),
+          ),
+        },
+        protocol: {
+          ...base.protocol,
+          localization: {
+            ...localization,
+            locales: [...localization.locales, 'nl'],
+          },
+          stages: [
+            {
+              ...base.protocol.stages[0]!,
+              title: { ...titles, nl: 'Oorspronkelijke vraag' },
+            },
+          ],
+        },
+      } satisfies InterviewPayload;
+      function Host() {
+        const [stated, setStated] = useState<string | undefined>(undefined);
+        return (
+          <>
+            <button onClick={() => setStated('nl')}>State Dutch</button>
+            <Shell
+              {...handlers}
+              payload={withDutch}
+              requestedLocales={['en']}
+              statedLocale={stated}
+              flags={{ isE2E: true }}
+              disableAnalytics
+            />
+          </>
+        );
+      }
+      render(<Host />);
+      await expectVisibleHeading(titles.en);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('button', { name: 'State Dutch' }));
+      await waitFor(() => expect(loadSpy).toHaveBeenCalledWith('nl'));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      expect(liveStore().getState().ui.localePreference).toBe('nl');
+      expect(
+        screen.getByRole('heading', { name: titles.en }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Oorspronkelijke vraag' }),
+      ).toBeNull();
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    } finally {
+      loadSpy.mockRestore();
+      attemptSpy.mockRestore();
+    }
+  });
+
+  it('opens with the protocol in the language on screen when the browser language cannot load', async () => {
+    const { load } = interviewCatalogSource;
+    const failing = (locale: string) =>
+      locale === 'nl' ? Promise.reject(new Error('offline')) : load(locale);
+    const loadSpy = vi
+      .spyOn(interviewCatalogSource, 'load')
+      .mockImplementation(failing);
+    const attemptSpy = vi
+      .spyOn(interviewCatalogSource, 'attempt')
+      .mockImplementation(failing);
+    try {
+      const base = makePayload('dutch-browser-session');
+      const withDutch = {
+        ...base,
+        session: {
+          ...base.session,
+          localeOptions: [...localization.locales, 'nl'].map((locale) =>
+            getLocaleMetadata(locale),
+          ),
+        },
+        protocol: {
+          ...base.protocol,
+          localization: {
+            ...localization,
+            locales: [...localization.locales, 'nl'],
+          },
+          stages: [
+            {
+              ...base.protocol.stages[0]!,
+              title: { ...titles, nl: 'Oorspronkelijke vraag' },
+            },
+          ],
+        },
+      } satisfies InterviewPayload;
+
+      await act(async () => {
+        render(
+          <Shell
+            {...handlers}
+            payload={withDutch}
+            requestedLocales={['nl']}
+            flags={{ isE2E: true }}
+            disableAnalytics
+          />,
+        );
+      });
+
+      await expectVisibleHeading(titles.en);
+      expect(
+        screen.queryByRole('heading', { name: 'Oorspronkelijke vraag' }),
+      ).toBeNull();
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    } finally {
+      loadSpy.mockRestore();
+      attemptSpy.mockRestore();
+    }
+  });
+
+  it('does not carry a choice into another interview', async () => {
+    const first = renderShell();
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: 'Prefer Spanish' }),
+    );
+    await expectVisibleHeading(titles.es);
+    first.unmount();
+
+    renderShell(makePayload('another-session'));
+
+    await expectVisibleHeading(titles.en);
+    await act(async () => undefined);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    expect(liveStore().getState().ui.localePreference).toBeNull();
+  });
+
+  it('ignores a kept choice the protocol does not declare', async () => {
+    holdPreference('de');
+    renderShell();
+
+    await expectVisibleHeading(titles.en);
+    await act(async () => undefined);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    expect(liveStore().getState().ui.localePreference).toBeNull();
+  });
+
+  it('tells a host that follows the language what the participant chose', async () => {
+    const onLocalePreferenceChange = vi.fn();
+    render(
+      <Shell
+        {...handlers}
+        payload={payload}
+        requestedLocales={['en-GB']}
+        onLocalePreferenceChange={onLocalePreferenceChange}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />,
+    );
+    await expectVisibleHeading(titles.en);
+    expect(onLocalePreferenceChange).not.toHaveBeenCalled();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Prefer Spanish' }));
+
+    await expectVisibleHeading(titles.es);
+    expect(onLocalePreferenceChange).toHaveBeenCalledExactlyOnceWith('es');
+  });
+
+  it('never sends the choice, or the language shown, to the host', async () => {
+    const onSync = vi.fn<SyncHandler>(() => Promise.resolve());
+    render(
+      <Shell
+        {...handlers}
+        onSync={onSync}
+        payload={payload}
+        requestedLocales={['en-GB']}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: 'Prefer Spanish' }),
+    );
+    await expectVisibleHeading(titles.es);
+    await act(async () => undefined);
+    const { session } = liveStore().getState();
+    expect(session).not.toHaveProperty('localePreference');
+    expect(session).not.toHaveProperty('locale');
+    expect(onSync).not.toHaveBeenCalled();
+  });
+
+  it('still changes language, in memory, when storage refuses access', async () => {
+    const getItem = vi
+      .spyOn(Storage.prototype, 'getItem')
+      .mockImplementation(() => {
+        throw new DOMException('Access denied', 'SecurityError');
+      });
+    const setItem = vi
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      });
+    try {
+      renderShell();
+      await expectVisibleHeading(titles.en);
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: 'Prefer Spanish' }));
+
+      await expectVisibleHeading(titles.es);
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
+      expect(liveStore().getState().ui.localePreference).toBe('es');
+      expect(getItem).toHaveBeenCalled();
+      expect(setItem).toHaveBeenCalled();
+    } finally {
+      getItem.mockRestore();
+      setItem.mockRestore();
+    }
   });
 });

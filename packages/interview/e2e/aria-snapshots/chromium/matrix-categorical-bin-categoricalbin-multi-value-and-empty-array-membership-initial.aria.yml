@@ -9,7 +9,7 @@
     - paragraph: Multi
   - button "Category School, 0 items":
     - heading "School" [level=4]
-  - button "Collapse drawer" [expanded]: 2 unplaced
+  - button "2 unplaced Collapse drawer" [expanded]
   - button "Empty"
   - button "Unset"
   - navigation:

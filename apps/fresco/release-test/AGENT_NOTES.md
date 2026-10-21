@@ -52,32 +52,34 @@ Garage and inject it:
 
 3. Verify via the network log (presigned OPTIONS 200 + PUT 200 to Garage) or
    the protocols table — the dropzone UI may not visibly react.
+4. Fresco asks nothing on import, whatever schema the protocol was made for,
+   and never makes one schema 9: a schema 9 protocol is stored as it is, a
+   schema 8 one at schema 8, and a schema 7 one (Sample Protocol v4) is
+   upgraded to schema 8 as it is imported, as Fresco 4 did; anything older is
+   refused. In the pending build a schema 8 protocol carries a "Schema 8"
+   badge in the protocols table, and its interviews run at
+   `/v8/interview/<id>`; `/interview/<id>` redirects there. The stored schema is `"schemaVersion"` on the `Protocol`
+   row.
 
-## Capturing a download (exports) — downloads abort in the pane
+## Capturing a download (exports) — never let one reach the pane
 
-A real download attempt shows `[FAILED: net::ERR_ABORTED]`; that alone is NOT
-an export failure. Capture the blob instead:
+A real download in the pane either aborts (`[FAILED: net::ERR_ABORTED]` in a
+cloud session; that alone is NOT an export failure) or, in the Claude desktop
+app, opens a native "Save as…" dialog that no tool can answer and that stays
+on the person's screen. Capture the blob and cancel the download instead:
 
 1. Host, once per capture: `bash apps/fresco/release-test/enable-captures.sh --lane <lane> --name <name>.zip` —
    prints `{"putUrl":"…","getUrl":"…"}`, a presigned pair for that one
    object (Garage has no anonymous access, so there is no public prefix).
-2. Page JS BEFORE triggering the export/download:
-
-```js
-(() => {
-  window.__captures = [];
-  if (!window.__origCreateObjectURL) {
-    window.__origCreateObjectURL = URL.createObjectURL.bind(URL);
-    URL.createObjectURL = (obj) => { if (obj instanceof Blob) window.__captures.push(obj); return window.__origCreateObjectURL(obj); };
-  }
-  return 'hook installed';
-})()
-```
-
+2. Page JS BEFORE triggering the export/download: install the download hook
+   from `scripts/release-test/PANE_DOWNLOADS.md` (again after any navigation
+   or reload). It pushes every blob into `window.__captures`, records each
+   download in `window.__downloads`, and cancels it.
 3. Drive the export UI (menu + "Confirm File Export Options" dialog →
    "Start export process"; the export streams for ~10-30s).
-4. Page JS: check `window.__captures` has a blob, then
-   `await fetch('<putUrl>', { method: 'PUT', body: window.__captures.at(-1) })`.
+4. Page JS: check `window.__downloads` ends with the expected file (a
+   `fresco-export-<date>.zip` whose `blob` is not null), then
+   `await fetch('<putUrl>', { method: 'PUT', body: window.__downloads.at(-1).blob })`.
 5. Host: `curl -fsS -o <dest> '<getUrl>'` (quote it: the URL carries `&`).
 
 ## Backgrounded tabs go dead — check visibility EARLY

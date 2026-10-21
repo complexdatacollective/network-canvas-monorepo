@@ -10,6 +10,10 @@ import {
   excludeValidatedUses,
   type WriterClass,
 } from '../../codebook/variableRoles.ts';
+import {
+  variableNameScope,
+  type VariableNameScope,
+} from '../../fields/variableNameRules.ts';
 import type { VariablePickerOption } from '../../fields/VariablePickerField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
@@ -58,7 +62,6 @@ export const COLLECTABLE_TYPES: readonly VariableType[] = Object.freeze(
 
 const NO_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 const NO_EDGE_TYPES: readonly EdgeTypeChoice[] = Object.freeze([]);
-const NO_NAMES: readonly string[] = Object.freeze([]);
 
 const byLabel = <T extends Readonly<{ value: string; label: string }>>(
   first: T,
@@ -176,27 +179,31 @@ export function useVariableChoices(
 }
 
 /**
- * Every attribute name one type already holds, whatever kind of answer it is.
+ * Every attribute one type already holds, whatever kind of answer it is, as far
+ * as a name has to be judged against them.
  *
  * Wider than `useVariableChoices` on purpose. That narrows to what a control
  * can USE; this answers what the codebook would refuse, and a name is taken by
- * a date attribute just as firmly as by a text one. A picker offering to
- * create an attribute checks the name it was given against this before asking,
- * so a duplicate is said on the row the researcher typed into rather than
- * coming back from a round trip.
+ * a date attribute just as firmly as by a text one — and one attribute's
+ * export columns can be taken by another's. A picker offering to create an
+ * attribute checks the name it was given against this before asking, so a
+ * refusal is said on the row the researcher typed into rather than coming back
+ * from a round trip.
  */
-export function useSubjectVariableNames(
+export function useSubjectVariableScope(
   subject: CodebookSubject | undefined,
-): readonly string[] {
+): VariableNameScope | undefined {
   const protocolContext = useProtocolContext();
-  return useMemo(() => {
-    if (subject === undefined) return NO_NAMES;
-    return Object.freeze(
-      Object.values(variablesForSubject(protocolContext, subject)).map(
-        (variable) => variable.name,
-      ),
-    );
-  }, [protocolContext, subject]);
+  return useMemo(
+    () =>
+      subject === undefined
+        ? undefined
+        : variableNameScope(
+            subject.entity,
+            variablesForSubject(protocolContext, subject),
+          ),
+    [protocolContext, subject],
+  );
 }
 
 /** Every edge type the protocol defines, read live. */

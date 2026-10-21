@@ -1,4 +1,5 @@
 import 'server-only';
+import { type CurrentProtocol as LegacyProtocol } from 'fresco-schema-8/protocol-validation';
 import { z } from 'zod';
 
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
@@ -25,3 +26,14 @@ export const protocolInsertSchema = z.object({
     url: z.string(),
   }),
 });
+
+/**
+ * What `insertProtocol` stores: a protocol at the current schema, or one the
+ * researcher chose to keep at schema 8 when importing it.
+ */
+export type ProtocolInsert = Omit<
+  z.infer<typeof protocolInsertSchema>,
+  'protocol'
+> & {
+  protocol: z.infer<typeof protocolInsertSchema>['protocol'] | LegacyProtocol;
+};

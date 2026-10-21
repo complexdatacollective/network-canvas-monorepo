@@ -12,6 +12,9 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
  * researcher authoring, so there is no type to choose and nothing to filter.
  * That is also why the form fields are told their subject is `ego` rather than
  * reading it from the stage — there is no `subject` in the document to read.
+ *
+ * Its introduction is the heading and text shown above the questions, so the
+ * form itself has no title.
  */
 export const egoFormStageEditor = defineStageEditor('EgoForm', [
   introduction(),

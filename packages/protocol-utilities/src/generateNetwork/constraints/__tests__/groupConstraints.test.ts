@@ -33,7 +33,11 @@ function propagate(entity: EntityConstraints) {
 function chain(minValue: number, maxValue: number): EntityConstraints {
   return buildEntityConstraints(
     {
-      a: { name: 'A', type: 'number', validation: { minValue, maxValue } },
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue, maxValue },
+      },
       b: {
         name: 'B',
         type: 'number',
@@ -84,7 +88,10 @@ function dateChain(
 }
 
 function labelled(values: number[]) {
-  return values.map((value) => ({ label: `Option ${value}`, value }));
+  return values.map((value) => ({
+    label: { 'en-US': `Option ${value}` },
+    value,
+  }));
 }
 
 function groupsOf(entity: EntityConstraints) {
@@ -116,7 +123,11 @@ function crossings(entity: EntityConstraints) {
 function heldEqualOrdinals(a: number[], b: number[]): EntityConstraints {
   return buildEntityConstraints(
     {
-      a: { name: 'Rating A', type: 'ordinal', options: labelled(a) },
+      a: {
+        name: 'Rating A',
+        type: 'ordinal',
+        options: labelled(a),
+      },
       b: {
         name: 'Rating B',
         type: 'ordinal',
@@ -130,7 +141,7 @@ function heldEqualOrdinals(a: number[], b: number[]): EntityConstraints {
 
 function heldEqualBooleans(a: boolean[], b: boolean[]): EntityConstraints {
   const choices = (values: boolean[]) =>
-    values.map((value) => ({ label: String(value), value }));
+    values.map((value) => ({ label: { 'en-US': String(value) }, value }));
 
   return buildEntityConstraints(
     {
@@ -169,7 +180,11 @@ describe('intersectGroupConstraints', () => {
     // over a member that was never going to contribute one.
     const entity = buildEntityConstraints(
       {
-        a: { name: 'Rating A', type: 'ordinal', options: labelled([1, 2]) },
+        a: {
+          name: 'Rating A',
+          type: 'ordinal',
+          options: labelled([1, 2]),
+        },
         b: {
           name: 'Note',
           type: 'text',
@@ -193,12 +208,16 @@ describe('intersectGroupConstraints', () => {
   it('narrows a two-valued Boolean member to the choice shared by its group', () => {
     const entity = buildEntityConstraints(
       {
-        a: { name: 'Flag A', type: 'boolean', component: 'Toggle' },
+        a: {
+          name: 'Flag A',
+          type: 'boolean',
+          component: 'Toggle',
+        },
         b: {
           name: 'Flag B',
           type: 'boolean',
           component: 'Boolean',
-          options: [{ label: 'Yes', value: true }],
+          options: [{ label: { 'en-US': 'Yes' }, value: true }],
           validation: { sameAs: asEntityAttributeReference('a') },
         },
       },
@@ -239,7 +258,11 @@ describe('emptyGroupBounds', () => {
   it('reports nothing about options when only one member has any', () => {
     const entity = buildEntityConstraints(
       {
-        a: { name: 'Rating A', type: 'ordinal', options: labelled([1, 2]) },
+        a: {
+          name: 'Rating A',
+          type: 'ordinal',
+          options: labelled([1, 2]),
+        },
         b: {
           name: 'Note',
           type: 'text',
@@ -362,7 +385,11 @@ describe('emptyGroupBounds', () => {
     // is an array of option values and an ordinal value is a single one.
     const entity = buildEntityConstraints(
       {
-        a: { name: 'Rating', type: 'ordinal', options: labelled([1, 2]) },
+        a: {
+          name: 'Rating',
+          type: 'ordinal',
+          options: labelled([1, 2]),
+        },
         b: {
           name: 'Foods',
           type: 'categorical',
@@ -940,7 +967,11 @@ describe('propagateComparatorBounds', () => {
   ): EntityConstraints {
     return buildEntityConstraints(
       {
-        a: { name: 'A', type: 'datetime', parameters: a },
+        a: {
+          name: 'A',
+          type: 'datetime',
+          parameters: a,
+        },
         b: {
           name: 'B',
           type: 'datetime',
@@ -1017,7 +1048,11 @@ describe('propagateComparatorBounds', () => {
   ): EntityConstraints {
     return buildEntityConstraints(
       {
-        a: { name: 'A', type: 'number', validation: a },
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: a,
+        },
         b: {
           name: 'B',
           type: 'number',

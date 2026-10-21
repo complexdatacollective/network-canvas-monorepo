@@ -133,6 +133,25 @@ document, and every `<data>` element uses the allocated ID. If the same external
 attribute appears on more than one entity kind, GraphML emits one `for="all"`
 key rather than conflicting node and edge keys.
 
+### How an interview ended
+
+Each interview is exported with the outcome of the finish stage it ended at,
+taken from `InterviewExportInput.finishOutcome`: `completed`, `ineligible` or
+`terminated`. `null` means the interview is not finished, or was finished
+before finish outcomes were recorded.
+
+- **CSV**: the ego file has a `networkCanvasFinishOutcome` column, written
+  after the other session columns (`APP_VERSION`, `COMMIT_HASH`) and before
+  the variable columns. The cell is empty when the outcome is
+  `null`.
+- **GraphML**: the `<graph>` element has an `nc:finishOutcome` attribute,
+  omitted when the outcome is `null`.
+
+As with the language, only the printed name `networkCanvasFinishOutcome` is
+reserved: a variable whose column would have that name is written as
+`networkCanvasFinishOutcome_2` and reported as a `column-renamed` warning, and a
+variable named `finishOutcome` is exported unchanged.
+
 ---
 
 ## Public surface
@@ -144,7 +163,7 @@ Imports use sub-paths — the package has no barrel export.
 | `@codaco/network-exporters/pipeline`                     | `exportPipeline`, type `ExportedProtocol`                                                                                                                                                                                |
 | `@codaco/network-exporters/options`                      | `ExportOptions`, `ExportOptionsSchema`, type `ExportFormat`                                                                                                                                                              |
 | `@codaco/network-exporters/input`                        | `InterviewExportInput`, `ProtocolExportInput`, plus session shape types (`FormattedSession`, `SessionVariables`, `SessionWithNetworkEgo`, `NodeWithResequencedID`, `EdgeWithResequencedID`, `SessionWithResequencedIDs`) |
-| `@codaco/network-exporters/output`                       | `ExportResult`, `ExportSuccess`, `ExportFailure`, `ExportReturn`, `OutputEntry`, `OutputResult`, `OutputHandle`                                                                                                          |
+| `@codaco/network-exporters/output`                       | `ExportResult`, `ExportSuccess`, `ExportFailure`, `ExportWarning`, `ExportReturn`, `OutputEntry`, `OutputResult`, `OutputHandle`                                                                                         |
 | `@codaco/network-exporters/events`                       | `ExportEvent`, `stageMessages`                                                                                                                                                                                           |
 | `@codaco/network-exporters/errors`                       | `DatabaseError`, `OutputError`, `ExportGenerationError`, `ProtocolNotFoundError`, `SessionProcessingError`, type `ExportError`, `describeExportError`                                                                    |
 | `@codaco/network-exporters/services/InterviewRepository` | `InterviewRepository` Tag                                                                                                                                                                                                |
@@ -186,6 +205,7 @@ export const PrismaInterviewRepository = Layer.succeed(InterviewRepository, {
         finishTime: row.finishTime,
         network: NcNetworkSchema.parse(row.network),
         protocolHash: row.protocolHash,
+        finishOutcome: row.finishOutcome,
       }));
 
       return inputs;
@@ -460,6 +480,7 @@ const result = await Effect.runPromise(...);
 //   status: "success" | "partial",
 //   successfulExports: ExportSuccess[],
 //   failedExports:     ExportFailure[],
+//   warnings:          ExportWarning[], // changes made to the data; never "partial"
 //   output:            OutputResult,   // host-defined
 // }
 

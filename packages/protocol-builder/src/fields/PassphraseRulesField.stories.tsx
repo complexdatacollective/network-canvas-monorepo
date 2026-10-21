@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { DEFAULT_PASSPHRASE_MIN_LENGTH } from '@codaco/shared-consts';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
@@ -62,7 +63,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Holds what a participant’s passphrase has to look like: a shortest allowed length, a longest, or neither. It is the package’s own validation-rule editor pointed at the passphrase rule catalogue, so a rule is switched on with a checkbox and given its number beside it, and a rule switched on and left empty is kept rather than quietly discarded — which is why the save is refused while one is there. The stage’s own impossibilities are refused here too: a shortest longer than the longest, and a longest of no characters at all, which the interview could never accept because it asks every participant for a passphrase.',
+          'Holds what a participant’s passphrase has to look like: a shortest allowed length, a longest, or neither. It is the package’s own validation-rule editor pointed at the passphrase rule catalogue, so a rule is switched on with a checkbox and given its number beside it, and a rule switched on and left empty is kept rather than quietly discarded — which is why the save is refused while one is there. The stage’s own impossibilities are refused here too: a shortest longer than the longest, and a longest of no characters at all, which the interview could never accept because it asks every participant for a passphrase. A longest shorter than the default minimum is explained rather than refused: with no minimum set, the default drops to that longest, and the minimum row says so.',
       },
     },
   },
@@ -77,9 +78,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** What the minimum row says about the length applied when none is set. */
+const defaultMinimumHint = `Defaults to ${DEFAULT_PASSPHRASE_MIN_LENGTH} characters if no minimum is set.`;
+
 /**
  * No requirements at all: both rules are off and neither has a number, because
- * a rule that is not in force has no length to show.
+ * a rule that is not in force has no length to show. The minimum row still
+ * says what a participant gets then — the interview's own default — and the
+ * maximum, which has none, says nothing.
  */
 export const NoRulesYet: Story = {
   args: { seedEdit: noRules },
@@ -90,19 +96,25 @@ export const NoRulesYet: Story = {
     // in this file awaits its FIRST query for that reason.
     await awaitPassiveEffects();
 
-    await expect(
-      await canvas.findByRole('switch', { name: 'Minimum text length' }),
-    ).not.toBeChecked();
-    await expect(
-      canvas.getByRole('switch', { name: 'Maximum text length' }),
-    ).not.toBeChecked();
+    const minimum = await canvas.findByRole('switch', {
+      name: 'Minimum text length',
+    });
+    await expect(minimum).not.toBeChecked();
+    await expect(minimum).toHaveAccessibleDescription(defaultMinimumHint);
+    const maximum = canvas.getByRole('switch', {
+      name: 'Maximum text length',
+    });
+    await expect(maximum).not.toBeChecked();
+    await expect(maximum).toHaveAccessibleDescription('');
     await expect(canvas.queryAllByRole('spinbutton')).toHaveLength(0);
   },
 };
 
 /**
  * The lengths the fixture's stage holds: between four and twelve characters.
- * Each rule's number sits under the checkbox that switched it on.
+ * Each rule's number sits under the checkbox that switched it on, and the
+ * minimum still names the default it replaces — a minimum the researcher sets
+ * wins even when it is shorter than that.
  */
 export const TheLengthsAStageHolds: Story = {
   play: async ({ canvasElement }) => {
@@ -112,12 +124,49 @@ export const TheLengthsAStageHolds: Story = {
     await expect(
       await canvas.findByRole('switch', { name: 'Minimum text length' }),
     ).toBeChecked();
-    await expect(
-      canvas.getByRole('spinbutton', { name: 'Minimum text length' }),
-    ).toHaveValue(4);
+    const minimum = canvas.getByRole('spinbutton', {
+      name: 'Minimum text length',
+    });
+    await expect(minimum).toHaveValue(4);
+    await expect(minimum).toHaveAccessibleDescription(defaultMinimumHint);
     await expect(
       canvas.getByRole('spinbutton', { name: 'Maximum text length' }),
     ).toHaveValue(12);
+  },
+};
+
+/**
+ * A longest passphrase shorter than the default minimum, and no minimum. The
+ * interview never asks for more than the researcher allows, so the default
+ * minimum drops to the maximum and the minimum row says so. It is explained
+ * rather than refused: a participant can still choose a passphrase. Raising
+ * the maximum past the default restores the usual hint.
+ */
+export const AShortMaximumLowersTheDefault: Story = {
+  args: { seedEdit: holdingLengths({ maxLength: 6 }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const minimum = await canvas.findByRole('switch', {
+      name: 'Minimum text length',
+    });
+    await expect(minimum).not.toBeChecked();
+    await expect(minimum).toHaveAccessibleDescription(
+      `Defaults to the maximum, 6 characters, if no minimum is set, because the maximum is shorter than the usual default of ${DEFAULT_PASSPHRASE_MIN_LENGTH}.`,
+    );
+
+    const maximum = canvas.getByRole('spinbutton', {
+      name: 'Maximum text length',
+    });
+    await userEvent.clear(maximum);
+    await userEvent.type(maximum, '12');
+    // A number box commits when the researcher leaves it.
+    await userEvent.tab();
+
+    await waitFor(async () => {
+      await expect(minimum).toHaveAccessibleDescription(defaultMinimumHint);
+    });
   },
 };
 

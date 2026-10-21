@@ -8,6 +8,7 @@ import type { KeyboardDelegate } from './types';
  * - Left/Right: Move to adjacent item in row
  */
 export class GridKeyboardDelegate implements KeyboardDelegate {
+  readonly horizontalFollowsOrder = true;
   private collection: Collection<unknown>;
   private disabledKeys: Set<Key>;
   private columns: number;

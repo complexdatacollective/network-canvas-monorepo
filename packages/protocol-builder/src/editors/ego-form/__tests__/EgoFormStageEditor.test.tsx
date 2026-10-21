@@ -65,7 +65,8 @@ describe('the editor for a form about the participant', () => {
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
       'Ego Form',
     );
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+    // A rich-text editor rather than an input: it shows its text.
+    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
       'Introduction',
     );
     expect(
@@ -86,7 +87,7 @@ describe('the editor for a form about the participant', () => {
     // name, which is proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Ego Form/);
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe('');
   });
 
   it('saves a new stage once the researcher has written it', async () => {
@@ -118,10 +119,10 @@ describe('the editor for a form about the participant', () => {
     );
 
     const request = await harness.submit();
-    expect(request?.stageDocument.label).toBe('About you');
+    expect(request?.stageDocument.label).toEqual({ 'en-US': 'About you' });
     expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About you',
-      text: 'A few questions about you before we begin.',
+      title: { 'en-US': 'About you' },
+      text: { 'en-US': 'A few questions about you before we begin.' },
     });
     // The id is the row's own identity, minted on add so a reorder or a
     // removal is committed as the operation it was.
@@ -129,7 +130,7 @@ describe('the editor for a form about the participant', () => {
       {
         id: expect.any(String) as unknown as string,
         variable: 'ego_name',
-        prompt: 'What is your name?',
+        prompt: { 'en-US': 'What is your name?' },
       },
     ]);
   });
@@ -202,9 +203,13 @@ describe('the editor for a form about the participant', () => {
   it('refuses to save a stage somebody else is editing', async () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Title' })).toBeDisabled(),
-    );
+    // A rich-text editor, which says it is unavailable and takes no typing,
+    // rather than carrying an input's `disabled`.
+    await waitFor(() => {
+      const title = screen.getByRole('textbox', { name: 'Title' });
+      expect(title).toHaveAttribute('aria-disabled', 'true');
+      expect(title).toHaveAttribute('contenteditable', 'false');
+    });
 
     // The shell's refusal is the guarantee, not the chrome above it: a
     // keyboard, a stale render, or another host's own button can all still

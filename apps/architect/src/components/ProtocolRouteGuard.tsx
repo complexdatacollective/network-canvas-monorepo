@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
+import { navigate } from 'wouter/use-browser-location';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -9,7 +10,6 @@ import { focusRouteTarget } from '~/components/RouteFocus';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { guardState, isProtocolPath } from '~/hooks/useProtocolNavGuard';
 import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
-import { navigateApp } from '~/utils/appBase';
 
 const chromeMessages = defineMessages({
   editingRestored: {
@@ -104,7 +104,7 @@ const ProtocolRouteGuard = ({ children }: ProtocolRouteGuardProps) => {
     // The raw browser-location navigate, not `useLocation`'s setter: the
     // setter passes through the Router's aroundNav, which would raise the
     // leave-editor confirmation over a redirect the user never asked for.
-    navigateApp('/', { replace: true });
+    navigate('/', { replace: true });
   }, [blocked, location]);
 
   if (!onProtocolRoute) return <>{children}</>;

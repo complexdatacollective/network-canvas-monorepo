@@ -4,6 +4,8 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import type { LockedOptionList } from '../codebook/variableRoles.ts';
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
+import type { ResolvedTranslation } from '../localization/localizedText.ts';
+import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 
 /**
  * The values an attribute offers, shown rather than edited.
@@ -24,15 +26,25 @@ import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
  */
 export default function LockedOptions({
   options,
-}: Readonly<{ options: LockedOptionList }>) {
+  caption,
+}: Readonly<{
+  options: LockedOptionList;
+  /**
+   * What says why the list is shown rather than edited, where the usual reason
+   * (an interface sets these) is not the one: a list a stage manages names that
+   * stage.
+   */
+  caption?: string;
+}>) {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
 
   return (
     <div className="bg-surface-2 text-text relative mb-8 rounded p-4">
       <Lock aria-hidden className="absolute top-4 right-4 h-4 w-4" />
       <table className="w-full text-sm">
         <caption className="pr-8 pb-2 text-left text-sm">
-          {intl.formatMessage(binMessages.lockedOptions)}
+          {caption ?? intl.formatMessage(binMessages.lockedOptions)}
         </caption>
         <thead>
           <tr className="text-left">
@@ -45,12 +57,20 @@ export default function LockedOptions({
           </tr>
         </thead>
         <tbody>
-          {options.map((option) => (
-            <tr key={String(option.value)}>
-              <td className="py-1">{option.label}</td>
-              <td className="font-monospace py-1">{String(option.value)}</td>
-            </tr>
-          ))}
+          {options.map((option) => {
+            const label: ResolvedTranslation =
+              typeof option.label === 'string'
+                ? { text: option.label }
+                : localize(option.label);
+            return (
+              <tr key={String(option.value)}>
+                <td className="py-1" lang={label.lang} dir={label.dir}>
+                  {label.text}
+                </td>
+                <td className="font-monospace py-1">{String(option.value)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

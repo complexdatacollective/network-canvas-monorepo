@@ -7,14 +7,17 @@ import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
+import { DynamicTextPreview } from '../../../fields/DynamicTextPreview.tsx';
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
-import RichTextField from '../../../fields/RichTextField.tsx';
+import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
 } from '../../../form/rowDialog.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import { useVariableChoices } from '../../../sections/canvas/codebookChoices.ts';
 import { asText } from '../../../sections/canvas/rowValues.ts';
 import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
@@ -123,13 +126,14 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
 
   return (
     <>
-      <Field<typeof RichTextField>
+      <Field<typeof LocalizedRichTextField>
         name={TEXT_FIELD}
         label={intl.formatMessage(geospatialMessages.promptTextLabel)}
         hint={intl.formatMessage(geospatialMessages.promptTextHint)}
-        component={RichTextField}
+        component={LocalizedRichTextField}
+        dynamicValues="prompt"
         singleLine
-        initialValue={asText(item[TEXT_FIELD]) ?? ''}
+        initialValue={asLocalizedString(item[TEXT_FIELD])}
         required={intl.formatMessage(geospatialMessages.promptTextRequired)}
       />
       <Section
@@ -169,10 +173,14 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
  */
 export function GeospatialPromptPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const text = asText(item[TEXT_FIELD]);
-  return (
-    <RenderMarkdown render={<div />}>
-      {text ?? intl.formatMessage(geospatialMessages.promptPreviewEmpty)}
-    </RenderMarkdown>
-  );
+  const localize = useLocalizedText();
+  const text = localize(item[TEXT_FIELD]);
+  if (text.text === '') {
+    return (
+      <RenderMarkdown render={<div />}>
+        {intl.formatMessage(geospatialMessages.promptPreviewEmpty)}
+      </RenderMarkdown>
+    );
+  }
+  return <DynamicTextPreview value={item[TEXT_FIELD]} />;
 }

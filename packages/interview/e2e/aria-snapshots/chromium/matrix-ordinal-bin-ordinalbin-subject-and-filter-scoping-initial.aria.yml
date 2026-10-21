@@ -7,7 +7,7 @@
   - listbox "Container for the value 'Close'"
   - heading "Very close" [level=4]
   - listbox "Container for the value 'Very close'"
-  - button "Collapse drawer" [expanded]: 2 unplaced
+  - button "2 unplaced Collapse drawer" [expanded]
   - button "Eve"
   - button "Frank"
   - navigation:

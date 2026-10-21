@@ -306,21 +306,49 @@ then runs two Docker stacks via
 
 - **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR
   image through its setup wizard (sample protocol, synthetic interviews, data
-  export), swaps the app container to the pending image against the live
-  volumes so its `migrate-and-start.sh` migrations run on real data, verifies
-  data integrity, dashboard CRUD, settings, and the interview data API, and
-  diffs pre- vs post-upgrade exports (`release-test/scripts/diff-exports.mjs`)
-  for unanticipated differences.
+  export), and leaves one interview of a schema 8 protocol unfinished
+  (`migration-lane.mjs --phase seed`): it builds a family on the schema 8
+  Family Pedigree with that stage's quick-start questions and finalizes it,
+  then stops on the stage behind an introduction panel, whose skip logic is
+  false for that interview. It then swaps the app container to the pending
+  image against the live volumes so `migrate-and-start.sh` runs on real data,
+  and holds every stored protocol and interview, the family included, to
+  being exactly what it was: a schema 8 protocol stays schema 8 and an
+  interview stays on its step (`--phase upgraded`). It captures the exports,
+  and then lets that participant come back: `/interview/<id>` redirects to
+  `/v8/interview/<id>`, which opens on the same stage with the panel shown,
+  the schema 8 pedigree still draws the family, and the interview can be
+  finished on the schema 8 finish screen and exported with every answer in
+  its own record. It then imports a copy of the schema 8 fixture, which must
+  be stored as it is, with the fixture's own stages, and a copy of the
+  schema 7 sample protocol, which must be upgraded to schema 8 and no further;
+  nothing may ask how to import either, and both are badged "Schema 8" in the
+  protocols table (`--phase resume`). Finally it verifies data integrity (two more protocols than the seed left), dashboard
+  CRUD, settings, and the interview data API, and diffs pre- vs post-upgrade
+  exports (`release-test/scripts/diff-exports.mjs`), which must be identical.
+  A later schema bump needs its own fixture for the release that still stores
+  the old schema, and the seed fails loudly until it has one.
 - **Fresh lane** (ports 3211/5534/9311): verifies the new-deployment setup
-  process of the pending image end-to-end, and then runs the script-driven
-  checks on that instance — a whole interview conducted from the first stage to
-  the finish screen and out through an export, what `/api/health` tells an
-  anonymous caller, and the researcher interface in another language.
+  process of the pending image end-to-end (its schema 7 sample protocol is
+  imported without a question and stored at schema 8), and then runs the
+  script-driven checks on that instance — a whole interview conducted from the
+  first stage to the finish screen and out through an export; a schema 9 interview conducted
+  in Spanish (language chooser, dynamic values, an encrypted answer and the
+  pedigree's other answers about that relative, bins with tap-to-place and
+  the completion gate, a skipped empty stage, both finish stages and the
+  outcome each records, and the export, where each answer is read from the
+  one record of the interview, person or relationship it belongs to); what `/api/health`
+  tells an anonymous caller; and the researcher interface in another language.
 - **Analytics lane** (ports 3212/5535/9312): the one deployment in the run with
   analytics **enabled**, against a sink that terminates TLS and records every
   request. It also imports the damaged protocol fixtures, because "opening a
   damaged file is no longer recorded as an application error" is a claim about
-  what is sent.
+  what is sent. Every readable fixture it imports there is schema 8 or 9,
+  which Fresco stores as it is, so none can fail an upgrade: a damaged file
+  is reported as a `ProtocolImportFailed` refusal of its kind and never as an
+  exception, the schema 9 fractional COUNT fixture is refused as an invalid
+  protocol, which sends neither, and a refusal naming a failed upgrade fails
+  the run. Nothing is upgraded at deploy either.
 - **Two-factor lane** (ports 3213/5536/9313): a deployment that sets
   `REQUIRE_TWO_FACTOR`.
 
@@ -329,11 +357,13 @@ run holds four stacks only as long as it has to.
 
 #### The script-driven lanes
 
-Those last three lanes are driven by deterministic scripts under
-`release-test/scripts/` rather than by an agent reading a checklist:
-`interview-lane.mjs`, `health-lane.mjs`, `localization-lane.mjs`,
+Those last three lanes, and the upgrade lane's schema 8 checks, are driven
+by deterministic scripts under `release-test/scripts/` rather than by an agent
+reading a checklist: `interview-lane.mjs`, `schema9-interview-lane.mjs`,
+`migration-lane.mjs`, `health-lane.mjs`, `localization-lane.mjs`,
 `analytics-lane.mjs` and `two-factor-lane.mjs`, over a shared Playwright driver
-(`fresco-driver.mjs`) and a lane table (`lanes.mjs`) that
+(`fresco-driver.mjs`), the interview navigation they share
+(`interview-walk.mjs`), and a lane table (`lanes.mjs`) that
 `scripts/release-test/fresco-release-test-workflow.test.mjs` binds to `up.sh`.
 What they check has a fixed answer — which payload was sent, which page was
 served, whether a request was refused — and an assertion in code is the same
@@ -351,11 +381,30 @@ refuses a lane that came up as the wrong deployment — an analytics lane with
 analytics disabled would send nothing at all, and every payload assertion in it
 would pass over an empty file.
 
+The migration lane's seed phase has to run between two of the seed agent's
+own items — after the synthetic interviews, before the baseline snapshot —
+so that agent runs it, and the workflow binds its checks from the
+`artifacts/migration/seed-result.json` the script leaves rather than from the
+agent's account of them. The migration interview is one of the seeded
+interviews every later count includes (`SEEDED_INTERVIEWS`), so the export
+diff compares it too. The upgrade leaves its schema 8 Family Pedigree alone:
+the upgraded phase holds the family's people, relationships and the stage's
+record in `stageMetadata` to being unchanged (`migration-pedigree-family-kept`),
+naming each one that changed, and after the interview is finished the stored
+family must still equal the one read before the upgrade
+(`migration-pedigree-answers-stored`).
+
 The judgment in those lanes lives in pure modules —
 `relay-payload-protocol.mjs` (what an enabled deployment may send),
-`localization-contract.mjs` (whether a page actually changed language) and
+`localization-contract.mjs` (whether a page actually changed language),
 `interview-export-contract.mjs` (whether an export carries the answers that
-were given) — so each oracle is exercised on synthetic input in
+were given), `schema9-export-contract.mjs` (whether an export records each
+interview's finish outcome, holds each answer in exactly one record per
+format of the interview's ego, person or relationship it belongs to — never
+a search of the whole archive — and keeps an encrypted answer out) and
+`migration-contract.mjs` (that the upgrade left each stored schema 8
+protocol, interview and Family Pedigree family exactly as it was, judged from
+database readings taken either side of the swap and naming what changed) — so each oracle is exercised on synthetic input in
 `scripts/release-test/fresco-release-test-lane-contracts.test.mjs`, where it is
 also shown failing on input that breaks the behaviour it guards. Lists those
 contracts are written against are bound to the application's own: the element
@@ -363,12 +412,28 @@ events and properties to `lib/posthog-client.ts`, the entity-id properties to
 `@codaco/interview`, and the import-failure vocabulary to
 `@codaco/protocol-validation`.
 
+The export diff expects identity. Schema 8 interviews are exported and
+served by schema 8's code, so after normalising the fields that change on
+every export (export times, dated file names, JSON key order) the archives
+must match the released image's byte for byte. Its one reconciliation is in
+the interview API: the pending build selects `finishStageId` and
+`finishOutcome`, which are null for a schema 8 interview, so those keys
+added as null are accepted; any other value, or any other added field, CSV
+column, GraphML key or moved step, is a difference.
+
 The protocol fixtures are built rather than committed
 (`release-test/scripts/make-fixtures.mjs`, from
-`packages/protocols/e2e/fresco-release-test`): the protocol an interview is
-conducted with, and the damaged ones — a missing resource, a damaged archive, a
-protocol that inflates past the shared limit, and the pair of filters that
-shows a fractional comparison value accepted and a fractional COUNT refused. A
+`packages/protocols/e2e/fresco-release-test`,
+`fresco-release-test-v9` and `fresco-release-test-migration`): the protocol an
+interview is conducted with (upgraded from its schema 8 source to schema 9
+with the pending `migrateProtocol`, because Fresco never upgrades to schema 9
+itself), the schema 9 protocol in English and Spanish, the schema 8 protocol
+the upgrade keeps, the copies of it and of the schema 7 sample protocol
+(relabelled so their hashes differ from those the seed imported) that the
+resume phase imports, and the damaged ones — a missing resource (schema 8),
+a damaged archive, a protocol that inflates past the shared limit, and the
+schema 9 pair of filters that shows a fractional comparison value accepted
+and a fractional COUNT refused. A
 repository is the wrong place for a deliberately corrupt archive and an entry
 that expands to more than a gigabyte.
 
@@ -610,7 +675,7 @@ lib/
 ├── cache/          # Typesafe cache-tag wrappers
 ├── db/             # Prisma schema, client, migrations
 ├── export/         # Export orchestration (@codaco/network-exporters)
-├── protocol/       # Protocol import and migration
+├── protocol/       # Protocol import
 ├── storage/        # S3 / UploadThing asset storage
 └── uploadthing/
 ```
@@ -620,6 +685,31 @@ lib/
 - **Next.js** (App Router, Turbopack) with `cacheComponents` and `typedRoutes`
 - **React** with the React Compiler enabled
 - **PostgreSQL** via **Prisma**, schema at `lib/db/schema.prisma`
+- **Stored protocols and interviews are never upgraded.** Each protocol keeps
+  the schema version it was imported at, and so does every interview recorded
+  against it. A schema 9 interview runs at `/interview/<id>`; a schema 8 one
+  runs at `/v8/interview/<id>` in the schema 8 interview Fresco bundles
+  (`schema-8/`, the private `fresco-schema-8` package, installed with
+  `file:./schema-8`). That package pins the npm releases of
+  `@codaco/interview` 10 and every `@codaco` library its stack reaches, so it
+  runs the code Fresco 4 ran: the releases depend on each other by caret
+  range, and a library the stack reaches without a pin of its own would
+  resolve to its newest, schema 9 release. The pin is always the newest `@codaco/interview` release
+  whose `COMPATIBLE_PROTOCOL_SCHEMA_VERSION` is 8 (a schema 8 fix ships as a
+  10.0.x patch from a hotfix branch, and the pin moves to it);
+  `lib/schema-8/__tests__/version.test.ts` fails if the pinned release
+  declares any other schema. `lib/schema-8/version.ts` decides which route an
+  interview takes. Nothing under `/v8` but the interview and its thank-you
+  page: listing, export, the API and every dashboard page stay in the current
+  app and read schema 8 rows with the pinned schemas. Import never upgrades
+  to schema 9 either: a schema 8 or schema 9 protocol is stored as it is, a
+  schema 7 protocol is brought up to schema 8 (as Fresco 4 did), and anything
+  older is refused (`OLDEST_SUPPORTED_SCHEMA_VERSION` in `fresco.config.ts`).
+  `migrate-and-start.sh` runs `scripts/setup-database.ts`, which applies the
+  Prisma migrations and a categorical-answer clean-up, in one transaction. The
+  pinned packages and the vendoring overrides of the release test and hotfix
+  lanes are scoped so pending code never replaces them (`overrideSelector`
+  and `schema8StackEdges` in `scripts/release/vendor-workspace-packages.mjs`).
 - **Auth** is first-party: sessions in `lib/auth/session.ts`, plus WebAuthn
   passkeys and TOTP. There is no third-party auth library.
 - **Tailwind** with `@codaco/tailwind-config`, components from

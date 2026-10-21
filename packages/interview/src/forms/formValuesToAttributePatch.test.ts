@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { formValuesToAttributePatch } from './formValuesToAttributePatch';
 
 describe('formValuesToAttributePatch', () => {
-  it('preserves every defined variable value and unsets mounted fields the participant cleared', () => {
+  it('preserves every defined variable value and unsets unanswered mounted fields', () => {
     const result = formValuesToAttributePatch(
       {
         text: '',
@@ -26,7 +26,6 @@ describe('formValuesToAttributePatch', () => {
         'layout',
         'unanswered',
       ],
-      { unanswered: 'an answer since cleared' },
     );
 
     expect(result).toEqual({
@@ -59,11 +58,11 @@ describe('formValuesToAttributePatch', () => {
       recordArray: [{ nested: 'invalid' }],
     };
 
-    const result = formValuesToAttributePatch(
-      values,
-      ['recordArray', 'valid', 'richText'],
-      {},
-    );
+    const result = formValuesToAttributePatch(values, [
+      'recordArray',
+      'valid',
+      'richText',
+    ]);
 
     if (result.success) {
       dispatch(result.patch);
@@ -92,11 +91,10 @@ describe('formValuesToAttributePatch', () => {
   it('treats dangerous field names as own keys instead of prototype properties', () => {
     const values = Object.fromEntries([['__proto__', 'preserved']]);
 
-    const result = formValuesToAttributePatch(
-      values,
-      ['__proto__', 'constructor'],
-      Object.fromEntries([['constructor', 'an answer since cleared']]),
-    );
+    const result = formValuesToAttributePatch(values, [
+      '__proto__',
+      'constructor',
+    ]);
 
     expect(result).toEqual({
       success: true,
@@ -111,26 +109,18 @@ describe('formValuesToAttributePatch', () => {
     expect(Object.getPrototypeOf(values)).toBe(Object.prototype);
   });
 
-  it('leaves a stored value the form never showed as it is', () => {
-    // Shown with no value, as an answer that cannot be decrypted is.
+  it('leaves a field it was told to keep as stored until it is given a new answer', () => {
+    const keepWhenUnanswered = ['missing', 'blank', 'emptied', 'replaced'];
+
     const result = formValuesToAttributePatch(
-      { name: undefined, age: 41 },
-      ['name', 'age'],
-      { age: 40 },
+      { blank: '   ', emptied: undefined, replaced: 'Alicia', cleared: '' },
+      ['missing', 'blank', 'emptied', 'replaced', 'cleared', 'gone'],
+      { keepWhenUnanswered },
     );
 
     expect(result).toEqual({
       success: true,
-      patch: { set: { age: 41 }, unset: [] },
-    });
-  });
-
-  it('replaces a stored value the form never showed once the participant gives it one', () => {
-    const result = formValuesToAttributePatch({ name: 'Alice' }, ['name'], {});
-
-    expect(result).toEqual({
-      success: true,
-      patch: { set: { name: 'Alice' }, unset: [] },
+      patch: { set: { replaced: 'Alicia', cleared: '' }, unset: ['gone'] },
     });
   });
 });

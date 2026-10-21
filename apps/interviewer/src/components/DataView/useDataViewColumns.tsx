@@ -146,10 +146,11 @@ export function useDataViewColumns({
   // Disables row mutations while a bulk mutation (export/delete) is
   // preparing or in flight, so a session update can't race it.
   mutationsBusy,
+  canMarkUnfinished,
   onMarkUnfinished,
 }: {
-  // Total interview steps (including the appended finish stage) by protocol
-  // hash, for the progress column's step label.
+  // Total interview steps by protocol hash, for the progress column's step
+  // label.
   protocolTotalSteps: Map<string, number>;
   isSelected: (id: string) => boolean;
   toggleRowSelected: (id: string) => void;
@@ -158,6 +159,9 @@ export function useDataViewColumns({
   someOnPageSelected: boolean;
   markingUnfinishedId: string | null;
   mutationsBusy: boolean;
+  // Whether this app can reopen the interview. Not a schema 8 one: reopening
+  // rewrites it, and only Interviewer 8 writes it in its own format.
+  canMarkUnfinished: (session: StoredSessionLite) => boolean;
   onMarkUnfinished: (session: StoredSessionLite) => void;
 }) {
   const intl = useAppIntl();
@@ -280,7 +284,11 @@ export function useDataViewColumns({
                   orientation="horizontal"
                   percentProgress={percent}
                   label={intl.formatMessage(messages.stepProgress, {
-                    step: session.currentStep + 1,
+                    // A protocol's later endings are counted as its first.
+                    step:
+                      totalSteps > 0
+                        ? Math.min(session.currentStep + 1, totalSteps)
+                        : session.currentStep + 1,
                     total: totalSteps,
                     hasTotal: String(totalSteps > 0),
                   })}
@@ -341,21 +349,26 @@ export function useDataViewColumns({
                 >
                   {intl.formatMessage(messages.review)}
                 </Button>
-                <Button
-                  size="sm"
-                  variant="text"
-                  color="dynamic"
-                  icon={<RotateCcw aria-hidden />}
-                  aria-label={intl.formatMessage(messages.markCaseUnfinished, {
-                    caseId: session.caseId,
-                  })}
-                  disabled={markingUnfinishedId !== null || mutationsBusy}
-                  onClick={() => onMarkUnfinished(session)}
-                  className="min-w-max"
-                  data-testid="data-mark-unfinished"
-                >
-                  {intl.formatMessage(messages.markUnfinished)}
-                </Button>
+                {canMarkUnfinished(session) ? (
+                  <Button
+                    size="sm"
+                    variant="text"
+                    color="dynamic"
+                    icon={<RotateCcw aria-hidden />}
+                    aria-label={intl.formatMessage(
+                      messages.markCaseUnfinished,
+                      {
+                        caseId: session.caseId,
+                      },
+                    )}
+                    disabled={markingUnfinishedId !== null || mutationsBusy}
+                    onClick={() => onMarkUnfinished(session)}
+                    className="min-w-max"
+                    data-testid="data-mark-unfinished"
+                  >
+                    {intl.formatMessage(messages.markUnfinished)}
+                  </Button>
+                ) : null}
               </div>
             );
           }
@@ -390,6 +403,7 @@ export function useDataViewColumns({
       markingUnfinishedId,
       mutationsBusy,
       navigate,
+      canMarkUnfinished,
       onMarkUnfinished,
     ],
   );

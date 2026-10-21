@@ -17,7 +17,8 @@ export const stepsAt = (doneCount: number): JobStep[] =>
 export const sampleResult = (): JobResult => ({
   protocol: {
     name: 'Friendship and Wellbeing',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: {},
     assetManifest: {

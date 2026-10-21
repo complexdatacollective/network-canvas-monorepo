@@ -14,7 +14,12 @@ After implementing (and unit-testing) any change under `apps/architect/src/` tha
 ## How the suite works (so failures make sense)
 
 - It serves the **real production build** (`vite preview` of `dist/`) on port 4301 — not the dev server. So a build is required first.
-- It seeds protocols directly into `ArchitectProtocolDB` (IndexedDB) + `@@remember-*` sessionStorage, and asserts the **autosaved protocol row** read back from IndexedDB. There is **no `window` store hook**.
+- It seeds protocols directly into the app's own library, `ArchitectProtocolDB-v9` (IndexedDB), + `@@remember-v9-*` sessionStorage, and asserts the **autosaved protocol row** read back from IndexedDB. There is **no `window` store hook**. Every storage name comes from `apps/architect/src/utils/storageNames.ts`; import it rather than writing a literal.
+- `ArchitectProtocolDB` (no suffix) and `@@remember-*` belong to **Architect 8**, served at `/v8/` on the same origin. Architect 9 only ever reads that database, so a spec must never open it with a versionless `indexedDB.open` (that creates it): check `indexedDB.databases()` first. To seed it, create it exactly as Architect 8's Dexie does — native version `10`, stores `protocols` (keyPath `id`, index `updatedAt`) and `assets` (keyPath `id`, index `protocolId`) — or Architect 8 will bump its schema when it next opens it.
+- Seeded Architect 8 rows appear in the home library as **Schema 8** rows. Clicking one opens the upgrade-or-keep choice; the researcher's last pick per protocol is remembered in the `legacyProtocolChoices` table of `ArchitectProtocolDB-v9` (clear it between tests that depend on the dialog appearing). Files passed to Architect 8 go through `ArchitectHandoffDB` (`HANDOFF_DB_NAME` in `src/utils/handoffStore.ts`) and the `/v8/?import=<key>` URL. Nothing comes back the other way: Architect 8 inside Architect 9 is the editor alone.
+- Every Architect 8 action (the "Keep editing as schema 8" button, "Open in Architect 8") is gated on the `__ARCHITECT_V8__` build define. A build without Architect 8 bundled (and vitest and Storybook, which define it as `null`) shows only the upgrade path, so specs for the keep path need a build that bundles `/v8/`.
+- Helpers for that: `seedLegacyProtocols` (`e2e/fixtures/seed.ts`) writes Architect 8 rows in its native layout; `e2e/fixtures/legacy-protocol.ts` has a schema 8 protocol, its resource rows and a `.netcanvas` of it; `readLegacyLibraryFingerprint`, `readHandoffRecords`, `readLibraryRows` and `readDatabaseNames` (`e2e/helpers/read-store.ts`) list a database before opening it, so they never create one. Assert "Architect 8's library untouched" by comparing fingerprints taken before and after.
+- Specs that follow a protocol out to Architect 8 (`specs/legacy-architect-handoff.spec.ts`) use the `bundledLegacyArchitect` fixture (`e2e/fixtures/legacy-architect.ts`) instead of the suite's build: once per worker it builds the app with `__ARCHITECT_V8__` set (`scripts/buildtime/preview-with-legacy-app.mjs --app architect` at the repository root, about half a minute), serves it with `vite preview` on port 4311+, and puts a stub page at `/v8/index.html`, which the app's preview middleware serves for every `/v8/` URL. They assert the URL and the stored hand-off record or choice, not Architect 8 itself. `specs/legacy-library.spec.ts` covers the rest (legacy rows, upgrade a copy, Clear all) against the suite's own build.
 - Interface specs build each stage **from scratch through the real editor UI**, then snapshot the normalised saved stage JSON via `stageSnapshotJson(...)`.
 - The one deliberately-added app-source seam is `data-field-name` on redux-form fields (fresco-ui `UnconnectedField`). Otherwise, locate by accessible role/name and existing fresco-ui testids.
 - **No real Mapbox traffic, ever.** The all-interfaces fixture carries the shared Mapbox testing token, and a live `mapboxgl.Map` bills it. The `architect-test` fixture installs `installMapboxMocks` (`e2e/fixtures/mapbox-mocks.ts`) on the browser context, so every page in it — second tabs and popups included — gets the mocks, and any other `*.mapbox.com` request is aborted and fails the test in teardown. A failure listing Mapbox paths means a new endpoint needs a mock there — or a spec built its own context outside the fixture and must install them itself.
@@ -33,16 +38,6 @@ pnpm --filter @codaco/architect test:e2e:headed          # (add --trace on / --d
 # Full run inside the pinned Playwright Docker image (the CI path; also compares visual baselines):
 pnpm --filter @codaco/architect test:e2e
 ```
-
-### The /v8/ sub-path suite
-
-Architect 8 also ships inside Architect 9's deploy, built with `ARCHITECT_BASE_PATH=/v8/`. `e2e/playwright.subpath.config.ts` runs `e2e/subpath-specs/` against that build on port 4302 with `baseURL` `http://localhost:4302/v8/`. It covers routes, requests and the preview popup staying under `/v8/`; `?open=` and `?import=` (the `ArchitectHandoffDB` hand-off); and going back to Architect 9's root, stubbed, whenever the editor closes or there is nothing to open. Seed with `seed(protocol, { at: '/' })` there, since `/v8/` itself never stays put. Run it after changing anything path-, URL- or hand-off-related:
-
-```bash
-pnpm --filter @codaco/architect test:e2e:subpath   # builds with ARCHITECT_BASE_PATH=/v8/, then runs
-```
-
-`dist/` holds one base at a time, so rebuild without `ARCHITECT_BASE_PATH` before running the root suite again (the sub-path suite's global setup refuses a root build; the root suite does not check). Specs and shared fixtures navigate with base-relative URLs (`page.goto('./')`, `page.goto('protocol')`), which resolve under either config's `baseURL`; a root-absolute `page.goto('/…')` leaves `/v8/`.
 
 ## Reading a failure
 

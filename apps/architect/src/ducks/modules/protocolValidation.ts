@@ -24,7 +24,7 @@ export const validateProtocolAsync = createAsyncThunk(
   'protocolValidation/validate',
   async (protocol: CurrentProtocol, { rejectWithValue }) => {
     try {
-      const result = await validateProtocol(protocol);
+      const result = await validateProtocol(protocol, { draft: true });
       return { result, protocol };
     } catch (error) {
       return rejectWithValue(

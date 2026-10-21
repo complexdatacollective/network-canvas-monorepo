@@ -1,5 +1,6 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { FinishOutcomeSchema } from '@codaco/protocol-validation';
 import {
+  type NcNetwork,
   NcNetworkSchema,
   StageMetadataSchema,
   type StageMetadata,
@@ -14,6 +15,7 @@ import {
   type EncryptedField,
 } from '../vault/crypto';
 import { readVault } from '../vault/vaultStore';
+import { isDatabaseSecured } from './db';
 import { getSessionDek } from './sessionKey';
 import type { StoredAsset, StoredProtocol, StoredSession } from './types';
 
@@ -22,28 +24,194 @@ import type { StoredAsset, StoredProtocol, StoredSession } from './types';
 // Passing through plaintext for a locked secured vault would silently persist
 // research data unencrypted at rest, so the write side must fail closed exactly
 // as the decrypt side does. Consult the vault mode to disambiguate.
-function assertNotLockedSecuredVault(kind: 'session' | 'protocol' | 'asset') {
+function vaultIsSecured(): boolean {
   const mode = readVault()?.mode;
-  if (mode === 'pin' || mode === 'passphrase' || mode === 'biometric') {
+  return mode === 'pin' || mode === 'passphrase' || mode === 'biometric';
+}
+
+function assertNotLockedSecuredVault(kind: 'session' | 'protocol' | 'asset') {
+  if (vaultIsSecured()) {
     throw new Error(`Cannot encrypt ${kind}: vault is locked (no key)`);
+  }
+}
+
+/**
+ * The device was secured — possibly in another tab — after a write prepared
+ * its rows as plaintext and before it committed them, so nothing was written.
+ */
+export class DeviceSecuredError extends Error {
+  constructor() {
+    super(
+      'This device was secured while the change was being saved, so it was not saved. Unlock the app to continue.',
+    );
+    this.name = 'DeviceSecuredError';
+  }
+}
+
+/**
+ * Whether the rows a write is about to prepare will be plaintext: no key is
+ * held, because no vault is configured. Read it before preparing them, and
+ * pass it to `assertPlaintextStillAllowed` when committing them.
+ */
+export function preparingPlaintext(): boolean {
+  return getSessionDek() === null;
+}
+
+/**
+ * No row may be stored as plaintext once the device is secured. Rows are
+ * encrypted (or, with no vault, left plaintext) before the transaction that
+ * writes them opens, since `crypto.subtle` awaits would end it, and another
+ * tab can secure the device in that gap. Its re-encryption sweep only
+ * encrypts the rows it lists, so plaintext committed after it lists them
+ * would stay plaintext. Call inside the commit transaction, whose scope must
+ * include `db.settings`; throws `DeviceSecuredError`, aborting the
+ * transaction, when `plaintext` rows would land on a secured device.
+ */
+export async function assertPlaintextStillAllowed(
+  plaintext: boolean,
+): Promise<void> {
+  if (!plaintext) return;
+  if (vaultIsSecured() || (await isDatabaseSecured())) {
+    throw new DeviceSecuredError();
   }
 }
 
 export type StoredSessionRow = Omit<
   StoredSession,
-  'network' | 'stageMetadata'
+  'network' | 'stageMetadata' | 'finishStageId' | 'finishOutcome'
 > & {
   network?: unknown;
   stageMetadata?: unknown;
-  _enc?: { network: EncryptedField; stageMetadata?: EncryptedField };
+  // Plaintext only on a row written without a key (vault mode `none`).
+  finishStageId?: unknown;
+  finishOutcome?: unknown;
+  _enc?: {
+    network: EncryptedField;
+    stageMetadata?: EncryptedField;
+    // The finish stage id and outcome, together. Absent while the session is
+    // unfinished, or when it was finished before they were recorded.
+    finish?: EncryptedField;
+  };
 };
 
+type SessionFinishRecord = Pick<
+  StoredSession,
+  'finishStageId' | 'finishOutcome'
+>;
+
+function parseFinishStageId(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+function parseFinishOutcome(value: unknown): StoredSession['finishOutcome'] {
+  const parsed = FinishOutcomeSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+function parseFinishRecord(value: unknown): SessionFinishRecord {
+  if (typeof value !== 'object' || value === null) {
+    return { finishStageId: null, finishOutcome: null };
+  }
+  return {
+    finishStageId: parseFinishStageId(
+      'stageId' in value ? value.stageId : undefined,
+    ),
+    finishOutcome: parseFinishOutcome(
+      'outcome' in value ? value.outcome : undefined,
+    ),
+  };
+}
+
+/**
+ * The row with its finish stage id and outcome removed, in plaintext and
+ * encrypted form alike. Marking a session unfinished uses this, so it needs no
+ * key.
+ */
+export function withoutSessionFinish(row: StoredSessionRow): StoredSessionRow {
+  const {
+    finishStageId: _stageId,
+    finishOutcome: _outcome,
+    _enc,
+    ...rest
+  } = row;
+  if (!_enc) return rest;
+  const { finish: _finish, ...enc } = _enc;
+  return { ...rest, _enc: enc };
+}
+
+/**
+ * A finish stage id and outcome ready to be written onto a stored session: in
+ * plaintext for a row stored without a key, or encrypted for a row whose
+ * answers are encrypted. Prepared apart from the row, so the crypto await
+ * happens before the write and the write can apply it to the freshest row.
+ */
+export type PreparedSessionFinish =
+  | Readonly<{
+      kind: 'plaintext';
+      finishStageId: string;
+      finishOutcome: StoredSession['finishOutcome'];
+    }>
+  | Readonly<{ kind: 'encrypted'; finish: EncryptedField }>;
+
+export async function prepareSessionFinish(
+  row: StoredSessionRow,
+  finish: { stageId: string; outcome: StoredSession['finishOutcome'] },
+): Promise<PreparedSessionFinish> {
+  if (!row._enc) {
+    assertNotLockedSecuredVault('session');
+    return {
+      kind: 'plaintext',
+      finishStageId: finish.stageId,
+      finishOutcome: finish.outcome,
+    };
+  }
+  const dek = getSessionDek();
+  if (!dek) throw new Error('Cannot encrypt session: vault is locked (no key)');
+  return {
+    kind: 'encrypted',
+    finish: await encryptJson(
+      { stageId: finish.stageId, outcome: finish.outcome },
+      dek,
+      sessionAad(row.id),
+    ),
+  };
+}
+
+/**
+ * `row` with a prepared finish recorded on it and nothing else changed, so
+ * recording a finish never parses or rewrites the network. `undefined`
+ * when the row is no longer stored the way the finish was prepared for
+ * (encrypted or not), so the caller prepares it again.
+ */
+export function withSessionFinish(
+  row: StoredSessionRow,
+  prepared: PreparedSessionFinish,
+): StoredSessionRow | undefined {
+  const unfinished = withoutSessionFinish(row);
+  if (prepared.kind === 'plaintext') {
+    if (unfinished._enc) return undefined;
+    return {
+      ...unfinished,
+      finishStageId: prepared.finishStageId,
+      finishOutcome: prepared.finishOutcome,
+    };
+  }
+  if (!unfinished._enc) return undefined;
+  return {
+    ...unfinished,
+    _enc: { ...unfinished._enc, finish: prepared.finish },
+  };
+}
+
+// One row shape for every schema: a schema 8 protocol's row is exactly the
+// one Interviewer 8 writes, and so is this app's. `schemaVersion` (plaintext)
+// says which document the row holds.
 export type StoredProtocolRow = Omit<
   StoredProtocol,
   'protocol' | 'codebook'
 > & {
-  protocol?: CurrentProtocol;
-  codebook?: CurrentProtocol['codebook'];
+  protocol?: StoredProtocol['protocol'];
+  codebook?: StoredProtocol['codebook'];
   _enc?: { protocol: EncryptedField; codebook: EncryptedField };
 };
 
@@ -70,14 +238,37 @@ function assetAad(id: string): string {
   return `assets:${id}`;
 }
 
+/**
+ * A session's fields with its answers not (yet) parsed: what a row decrypts
+ * to. A schema 8 session's network and stage metadata are Interviewer 8's,
+ * and are carried as they are rather than read with this app's schemas.
+ */
+export type SessionRecord = Omit<StoredSession, 'network' | 'stageMetadata'> & {
+  network: unknown;
+  stageMetadata?: unknown;
+};
+
+/**
+ * Encrypt a session's answers into its row. A session that has recorded no
+ * finish (every schema 8 session among them) gets exactly the row Interviewer
+ * 8 writes: `network` and, when present, `stageMetadata`, under the
+ * additional data `sessions:<id>`.
+ */
 export async function encryptSession(
-  s: StoredSession,
+  s: SessionRecord,
 ): Promise<StoredSessionRow> {
   const dek = getSessionDek();
-  const { network, stageMetadata, ...rest } = s;
+  const { network, stageMetadata, finishStageId, finishOutcome, ...rest } = s;
+  const hasFinish =
+    (finishStageId ?? null) !== null || (finishOutcome ?? null) !== null;
   if (!dek) {
     assertNotLockedSecuredVault('session');
-    return { ...rest, network, stageMetadata };
+    return {
+      ...rest,
+      network,
+      stageMetadata,
+      ...(hasFinish ? { finishStageId, finishOutcome } : {}),
+    };
   }
   const aad = sessionAad(s.id);
   const encNetwork = await encryptJson(network, dek, aad);
@@ -85,19 +276,39 @@ export async function encryptSession(
     stageMetadata === undefined
       ? undefined
       : await encryptJson(stageMetadata, dek, aad);
+  const encFinish = hasFinish
+    ? await encryptJson(
+        { stageId: finishStageId ?? null, outcome: finishOutcome ?? null },
+        dek,
+        aad,
+      )
+    : undefined;
   return {
     ...rest,
     _enc: {
       network: encNetwork,
       ...(encStageMetadata ? { stageMetadata: encStageMetadata } : {}),
+      ...(encFinish ? { finish: encFinish } : {}),
     },
   };
 }
 
-export async function decryptSession(
+/**
+ * A stored session decrypted but not parsed: its answers exactly as they were
+ * written, by this app or by Interviewer 8. Re-encryption uses this, so it
+ * never changes a value it only re-wraps.
+ */
+export async function decryptSessionRecord(
   row: StoredSessionRow,
-): Promise<StoredSession> {
-  const { _enc, network, stageMetadata, ...rest } = row;
+): Promise<SessionRecord> {
+  const {
+    _enc,
+    network,
+    stageMetadata,
+    finishStageId,
+    finishOutcome,
+    ...rest
+  } = row;
   if (!_enc) {
     if (network === undefined) {
       throw new Error(
@@ -106,8 +317,16 @@ export async function decryptSession(
     }
     return {
       ...rest,
-      network: NcNetworkSchema.parse(network),
-      stageMetadata: parseStageMetadata(stageMetadata),
+      network,
+      stageMetadata,
+      // Absent on a session that has not recorded a finish: left out rather
+      // than read as null, like `stageMetadata`.
+      ...(finishStageId === undefined && finishOutcome === undefined
+        ? {}
+        : {
+            finishStageId: parseFinishStageId(finishStageId),
+            finishOutcome: parseFinishOutcome(finishOutcome),
+          }),
     };
   }
   const dek = getSessionDek();
@@ -117,11 +336,53 @@ export async function decryptSession(
   const decStageMetadata = _enc.stageMetadata
     ? await decryptJson<unknown>(_enc.stageMetadata, dek, aad)
     : undefined;
+  const finish = _enc.finish
+    ? parseFinishRecord(await decryptJson<unknown>(_enc.finish, dek, aad))
+    : {};
   return {
     ...rest,
-    network: NcNetworkSchema.parse(decNetwork),
-    stageMetadata: parseStageMetadata(decStageMetadata),
+    network: decNetwork,
+    stageMetadata: decStageMetadata,
+    ...finish,
   };
+}
+
+/**
+ * A session of this app's own interview engine, parsed with its schemas. Not
+ * for a schema 8 session, whose stage metadata is Interviewer 8's: use
+ * `decryptSessionForExport` or `decryptSessionRecord`.
+ */
+export async function decryptSession(
+  row: StoredSessionRow,
+): Promise<StoredSession> {
+  const { network, stageMetadata, ...rest } = await decryptSessionRecord(row);
+  return {
+    ...rest,
+    network: NcNetworkSchema.parse(network),
+    stageMetadata: parseStageMetadata(stageMetadata),
+  };
+}
+
+/** A session as the exporter reads it, of any schema. */
+export type ExportedSessionRecord = Omit<SessionRecord, 'stageMetadata'> & {
+  network: NcNetwork;
+};
+
+/**
+ * A session's network, parsed, without its stage metadata, which no export
+ * reads. Any schema: the network's shape is the same at schema 8 and 9 (this
+ * app's network schema accepts Interviewer 8's), while the stage metadata is
+ * each engine's own, and Interviewer 8's is never read with this app's schema.
+ */
+export async function decryptSessionForExport(
+  row: StoredSessionRow,
+): Promise<ExportedSessionRecord> {
+  const {
+    network,
+    stageMetadata: _stageMetadata,
+    ...rest
+  } = await decryptSessionRecord(row);
+  return { ...rest, network: NcNetworkSchema.parse(network) };
 }
 
 export async function encryptProtocol(
@@ -139,33 +400,51 @@ export async function encryptProtocol(
   return { ...rest, _enc: { protocol: encProtocol, codebook: encCodebook } };
 }
 
-export async function decryptProtocol(
-  row: StoredProtocolRow,
-): Promise<StoredProtocol> {
-  const { _enc, protocol, codebook, ...rest } = row;
+/** The fields of a stored protocol row that hold its document. */
+type ProtocolDocumentRow<TProtocol, TCodebook> = {
+  hash: string;
+  protocol?: TProtocol;
+  codebook?: TCodebook;
+  _enc?: { protocol: EncryptedField; codebook: EncryptedField };
+};
+
+/**
+ * A stored protocol row's document and codebook, decrypted when the row is
+ * encrypted. The caller names the document type the row was written with.
+ */
+async function decryptProtocolDocument<TProtocol, TCodebook>(
+  row: ProtocolDocumentRow<TProtocol, TCodebook>,
+): Promise<{ protocol: TProtocol; codebook: TCodebook }> {
+  const { _enc, protocol, codebook } = row;
   if (!_enc) {
     if (protocol === undefined || codebook === undefined) {
       throw new Error(
         `Protocol ${row.hash} has neither plaintext protocol/codebook nor _enc`,
       );
     }
-    return { ...rest, protocol, codebook };
+    return { protocol, codebook };
   }
   const dek = getSessionDek();
   if (!dek)
     throw new Error('Cannot decrypt protocol: vault is locked (no key)');
   const aad = protocolAad(row.hash);
-  const decProtocol = await decryptJson<CurrentProtocol>(
-    _enc.protocol,
-    dek,
-    aad,
-  );
-  const decCodebook = await decryptJson<CurrentProtocol['codebook']>(
-    _enc.codebook,
-    dek,
-    aad,
-  );
-  return { ...rest, protocol: decProtocol, codebook: decCodebook };
+  return {
+    protocol: await decryptJson<TProtocol>(_enc.protocol, dek, aad),
+    codebook: await decryptJson<TCodebook>(_enc.codebook, dek, aad),
+  };
+}
+
+export async function decryptProtocol(
+  row: StoredProtocolRow,
+): Promise<StoredProtocol> {
+  const { _enc, protocol: _protocol, codebook: _codebook, ...rest } = row;
+  const document = await decryptProtocolDocument<
+    StoredProtocol['protocol'],
+    StoredProtocol['codebook']
+  >(row);
+  // The row's plaintext `schemaVersion` names the document it holds, as it
+  // did when the row was written; the document is not re-validated on read.
+  return { ...rest, ...document } as StoredProtocol;
 }
 
 export async function encryptAsset(a: StoredAsset): Promise<StoredAssetRow> {

@@ -18,6 +18,13 @@ export type KeyboardDelegate = {
   /** Get the key of the item to the right (for grid layouts) */
   getKeyRightOf?(key: Key): Key | null;
 
+  /**
+   * Whether `getKeyLeftOf`/`getKeyRightOf` step back and forward through the
+   * items' order rather than measure where items sit. A right-to-left layout
+   * places earlier items on the right, so the left and right arrows swap.
+   */
+  readonly horizontalFollowsOrder?: boolean;
+
   /** Get the first key in the collection */
   getFirstKey(): Key | null;
 

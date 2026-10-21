@@ -114,6 +114,12 @@ export const variableValuesMessages = defineMessages({
     description:
       'Button that adds an empty row to the list of answers a participant may choose from.',
   },
+  optionLabelField: {
+    id: 'protocolBuilder.codebookVariable.optionLabelField',
+    defaultMessage: 'Option {index} label',
+    description:
+      'Label of the field holding what a participant reads for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+  },
 });
 
 export const variableParametersMessages = defineMessages({

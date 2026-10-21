@@ -1,6 +1,6 @@
 import {
   createDebouncedSyncHandler,
-  type SessionPayload,
+  type SessionSnapshot,
   type SyncHandler,
 } from '@codaco/interview/contract';
 
@@ -23,6 +23,12 @@ type Args = {
    * older than what is stored.
    */
   initialSyncRevision: number;
+  /**
+   * The hash of the protocol the page loaded the interview with. Every upgrade
+   * that rewrites a protocol and its interviews gives the protocol a new hash,
+   * so the endpoint uses it to refuse a tab left open across one.
+   */
+  protocolHash: string;
   /** Reads the host's current step at the moment a write is put on the wire. */
   getCurrentStep: () => number;
 };
@@ -76,6 +82,7 @@ async function readOutcome(response: Response): Promise<SyncOutcome> {
 export function createInterviewSyncHandler({
   interviewId,
   initialSyncRevision,
+  protocolHash,
   getCurrentStep,
 }: Args): SyncHandler {
   let inFlight: AbortController | null = null;
@@ -95,7 +102,7 @@ export function createInterviewSyncHandler({
   };
 
   const post = async (
-    session: SessionPayload,
+    session: SessionSnapshot,
     revision: number,
     unloading: boolean,
   ): Promise<SyncOutcome> => {
@@ -114,10 +121,18 @@ export function createInterviewSyncHandler({
 
     const controller = new AbortController();
     inFlight = controller;
+    // Named fields rather than the whole snapshot: the endpoint writes only
+    // these.
     const body = JSON.stringify({
-      ...session,
+      id: session.id,
+      network: session.network,
+      stageMetadata: session.stageMetadata,
+      lastUpdated: session.lastUpdated,
       currentStep: getCurrentStep(),
       syncRevision: revision,
+      // The protocol the page loaded the interview with, so the endpoint can
+      // refuse a tab left open across an upgrade that migrated it.
+      protocolHash,
     });
 
     try {

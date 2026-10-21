@@ -2,5 +2,16 @@
   "networkExporters.stage.fetching": "Obteniendo los datos de las entrevistas…",
   "networkExporters.stage.formatting": "Preparando los datos de las sesiones…",
   "networkExporters.stage.generating": "Generando archivos…",
-  "networkExporters.stage.outputting": "Escribiendo los archivos de exportación…"
+  "networkExporters.stage.outputting": "Escribiendo los archivos de exportación…",
+  "networkExporters.warning.columnRenamed.description": "Algunas columnas habrían tenido el mismo nombre que otra columna del mismo archivo. Para que no se pierda ninguna respuesta, cada una se escribió con un nombre numerado. Las columnas renombradas son:",
+  "networkExporters.warning.columnRenamed.fromVariableItem": "En los archivos {format, select, csv {CSV} other {GraphML}} de «{protocolName}», la columna «{column}» de {entity, select, ego {ego} other {«{entityTypeName}»}}, que procede de la variable «{variable}», se escribió como «{renamedTo}».",
+  "networkExporters.warning.columnRenamed.item": "En los archivos {format, select, csv {CSV} other {GraphML}} de «{protocolName}», la columna «{column}» de {entity, select, ego {ego} other {«{entityTypeName}»}} se escribió como «{renamedTo}».",
+  "networkExporters.warning.columnRenamed.title": "Se cambió el nombre de algunas columnas",
+  "networkExporters.warning.protocolText.description": "Parte del texto del propio protocolo contenía caracteres que GraphML no puede almacenar, así que se eliminaron en los archivos GraphML. Estos caracteres suelen ser invisibles, por lo que cada uno se identifica con su punto de código Unicode, como U+0007. El texto afectado es:",
+  "networkExporters.warning.protocolText.item": "{text, select, protocolName {El nombre del protocolo «{name}», tras eliminar {characters}} nodeTypeName {El nombre del tipo de nodo «{name}» en «{protocolName}», tras eliminar {characters}} edgeTypeName {El nombre del tipo de vínculo «{name}» en «{protocolName}», tras eliminar {characters}} other {El nombre de la columna «{name}» en «{protocolName}», tras eliminar {characters}}}",
+  "networkExporters.warning.protocolText.title": "Se eliminaron algunos caracteres del texto del protocolo en los archivos GraphML",
+  "networkExporters.warning.xmlCharacters.caseId": "ID del caso",
+  "networkExporters.warning.xmlCharacters.description": "Algunas respuestas contenían caracteres que GraphML no puede almacenar, así que se eliminaron solo de los archivos GraphML. Los archivos CSV conservan todas las respuestas sin cambios. Las entrevistas y variables afectadas son:",
+  "networkExporters.warning.xmlCharacters.interview": "Entrevista {caseId}: {variables}",
+  "networkExporters.warning.xmlCharacters.title": "Se eliminaron algunos caracteres de los archivos GraphML"
 }

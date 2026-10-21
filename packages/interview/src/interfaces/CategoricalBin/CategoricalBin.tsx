@@ -2,12 +2,11 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import type { FieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
@@ -20,23 +19,31 @@ import {
 
 import { codebookTypeIndex } from '../../analytics/codebookTypeIndex';
 import { useTrack } from '../../analytics/useTrack';
+import BinPrompts from '../../components/BinPrompts';
+import BinSelectAnnouncer from '../../components/BinSelectAnnouncer';
 import NodeDrawer from '../../components/NodeDrawer';
-import PassphraseRecovery from '../../components/PassphraseRecovery';
-import Prompts from '../../components/Prompts';
+import PassphraseEntry from '../../components/PassphraseEntry';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
-import { buildVariableLabels } from '../../forms/buildVariableLabels';
 import {
-  savingNeedsPassphrase,
-  useValidationNetwork,
-} from '../../forms/useValidationNetwork';
+  useDynamicValueSources,
+  withDynamicValueEntities,
+} from '../../dynamicValues/DynamicValueScope';
+import { buildVariableLabels } from '../../forms/buildVariableLabels';
+import { shownLabel } from '../../forms/ProtocolField';
+import { useValidationNetwork } from '../../forms/useValidationNetwork';
 import {
   writeFailureMessage,
   writeSubmissionResult,
 } from '../../forms/writeSubmissionResult';
-import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { useBinSelection } from '../../hooks/useBinSelection';
+import useCompletePlacement from '../../hooks/useCompletePlacement';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
+import {
+  type ResolvedProtocolText,
+  useResolveLocalizedString,
+  useResolveLocalizedStringIn,
+} from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -44,19 +51,25 @@ import {
 } from '../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import {
+  getNetworkNodesForType,
   getNodeColorSelector,
   getNodeTypeDefinition,
   resolveNodeShape,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
 import { updateNode } from '../../store/modules/session';
-import { useAppDispatch } from '../../store/store';
+import { type RootState, useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
-import { useNodeLabel } from '../Anonymisation/useNodeLabel';
+import {
+  decryptInScope,
+  getDecryptionScope,
+  readEncryptedAttribute,
+} from '../Anonymisation/decryptionScope';
+import { readNodeLabelSource } from '../Anonymisation/nodeLabel';
+import { useCachedOutcomes } from '../Anonymisation/useDecryptionScope';
+import { useNodeLabel, useNodeLabeller } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
-import { interfaceMessages } from '../messages';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
 
@@ -97,83 +110,118 @@ type CategoricalBinPrompts = Extract<
   { type: 'CategoricalBin' }
 >['prompts'][number];
 
-// Queued dialog children subscribe themselves, so the placeholder and fallback
-// label follow a locale switch while the participant keeps their entered answer.
-function OtherResponseField({
-  baseValidationContext,
-  currentEntityId,
+type OtherResponseProps = Pick<
+  ComponentProps<typeof UINode>,
+  'color' | 'shape'
+> & {
+  node: NcNode;
+  variable: string;
+  /** The question, resolved where the person was dropped. */
+  label: ResolvedProtocolText;
+  validationProps: ReturnType<typeof validationPropsFor>;
+  /** The person's current answer, when it can be shown. */
+  initialValue?: string;
+};
+
+/**
+ * The "other" dialog's question about the person dropped. Queued dialog
+ * children subscribe themselves, so the placeholder and fallback label follow
+ * a locale switch while the participant keeps their entered answer, and the
+ * stored answers the question's rules compare with are read as they are now.
+ * When reading them needs the passphrase, it is asked for here: the
+ * navigation can't be reached while the dialog is open.
+ */
+function OtherResponse({
+  node,
+  color,
+  shape,
+  variable,
   label,
-  ...props
-}: Omit<FieldProps<typeof InputField>, 'label' | 'validationContext'> & {
-  baseValidationContext: ReturnType<typeof getValidationContext>;
-  currentEntityId: string;
-  label: string;
-}) {
-  const intl = useAppIntl();
-  const { stageSubject } = baseValidationContext;
-  const validationNetwork = useValidationNetwork(
+  validationProps,
+  initialValue,
+}: OtherResponseProps) {
+  const nodeId = node[entityPrimaryKeyProperty];
+  // Base pieces of the validation context useProtocolForm builds for every
+  // other Field (codebook + network + this stage's subject), scoped to the
+  // dropped node via currentEntityId.
+  const baseValidationContext = useStageSelector(getValidationContext);
+  const { context: validationNetwork, passphraseNeeded } = useValidationNetwork(
     baseValidationContext,
-    stageSubject,
-    [props.name],
-    currentEntityId,
+    baseValidationContext.stageSubject,
+    [variable],
+    nodeId,
   );
+  const labelText = label.text;
+
   // Context-dependent rules (unique, sameAs, differentFrom,
-  // greaterThanVariable, etc.) resolve against the entity being edited and the
-  // live network — mirror useProtocolForm's ValidationContext, scoped to the
-  // dropped node via currentEntityId so e.g. `unique` excludes the node's own
-  // previous value and `differentFrom`/`sameAs` can read a sibling attribute
-  // already recorded on this same node. stageSubject is only ever null for
-  // stage types that carry no subject at all
-  // (Information/Anonymisation/FamilyPedigree/NarrativePedigree); CategoricalBin
-  // always has a node subject, so the undefined fallback is defensive only.
+  // greaterThanVariable, etc.) resolve against the entity being edited and
+  // the live network — mirror useProtocolForm's ValidationContext, scoped
+  // to this dropped node via currentEntityId so e.g. `unique` excludes the
+  // node's own previous value and `differentFrom`/`sameAs` can read a
+  // sibling attribute already recorded on this same node.
+  // stageSubject is only ever null for stage types that carry no subject
+  // at all (Information/Anonymisation/NarrativePedigree);
+  // CategoricalBin always has a node subject, so the undefined fallback
+  // here is defensive only.
   const validationContext = useMemo<ValidationContext | undefined>(
     () =>
-      stageSubject
+      baseValidationContext.stageSubject
         ? {
             codebook: baseValidationContext.codebook,
             ...validationNetwork,
-            stageSubject,
-            currentEntityId,
+            stageSubject: baseValidationContext.stageSubject,
+            currentEntityId: nodeId,
             // …and the same comparison rule must word its error the same way
             // here as it does in a form. The one variable this dialog asks
             // about has exactly one piece of authored, participant-facing
-            // text — the prompt rendered as the field's label. The node's own
-            // label is deliberately not a source: it is the name the
-            // participant typed, not something the researcher authored.
+            // text — the prompt rendered as the field's label below. The
+            // node's own label is deliberately not a source: it is the name
+            // the participant typed, not something the researcher authored.
             variableLabels: buildVariableLabels([
-              { variable: props.name, label },
+              { variable, label: labelText },
             ]),
           }
         : undefined,
-    [
-      baseValidationContext.codebook,
-      validationNetwork,
-      stageSubject,
-      currentEntityId,
-      props.name,
-      label,
-    ],
+    [baseValidationContext, validationNetwork, nodeId, variable, labelText],
   );
+
   return (
-    <Field
-      {...props}
-      label={label}
-      validationContext={validationContext}
-      placeholder={intl.formatMessage(interfaceMessages.responsePlaceholder)}
-    />
+    <>
+      <PassphraseEntry needed={passphraseNeeded} />
+      <div className="flex items-start gap-4">
+        <div className="shrink-0">
+          <OtherResponseNode node={node} color={color} shape={shape} />
+        </div>
+        <Field
+          // A node, so the label's markdown is rendered with any value in it
+          // kept out of the markdown and marked out, as in a form.
+          label={shownLabel(label)}
+          component={InputField}
+          name={variable}
+          nameMode="opaque"
+          {...validationProps}
+          validationContext={validationContext}
+          // A person already in "other" edits their answer rather than
+          // starting again, so saving unchanged keeps it.
+          initialValue={initialValue}
+          autoFocus
+        />
+      </div>
+    </>
   );
 }
 
+// Labelled as everywhere else the person is shown, so a protected name is
+// decrypted rather than shown as stored.
 function OtherResponseNode({
   node,
   ...props
-}: Omit<ComponentProps<typeof UINode>, 'label'> & {
-  node: NcNode;
-}) {
+}: Omit<ComponentProps<typeof UINode>, 'label'> & { node: NcNode }) {
   return <UINode {...props} label={useNodeLabel(node)} />;
 }
 
-const CategoricalBin = (_props: CategoricalBinStageProps) => {
+const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
+  const selectMode = stage.behaviours?.interactionMode === 'select';
   const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
   const track = useTrack();
   const codebook = useSelector(getCodebook);
@@ -196,8 +244,6 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     previousExpandedRef.current = expandedBinIndex;
   }, [expandedBinIndex, track]);
 
-  const lastBinIndexRef = useRef<Map<string, number>>(new Map());
-
   // Collapse expanded bin on document-level click or Escape press, so the wrapping
   // container doesn't need an interactive role.
   useEffect(() => {
@@ -218,12 +264,20 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const { id, variable } = prompt;
 
   const { bins, uncategorisedNodes } = useCategoricalBins();
+  const stageNodes = useStageSelector(getNetworkNodesForType);
+  const { focalNode, settling, choose, advanceFrom } = useBinSelection({
+    enabled: selectMode,
+    nodes: stageNodes,
+    unplacedNodes: uncategorisedNodes,
+    sortRules: prompt.bucketSortOrder,
+  });
+  const focalName = useNodeLabel(focalNode);
 
-  const { updateReady } = useReadyForNextStage();
-
-  useEffect(() => {
-    updateReady(uncategorisedNodes.length === 0);
-  }, [uncategorisedNodes.length, updateReady]);
+  useCompletePlacement({
+    unplacedCount: uncategorisedNodes.length,
+    required: stage.behaviours?.requireCompletePlacement,
+    notice: stage.unplacedNodesNotice,
+  });
 
   // Reset expanded bin when prompt changes. Compared during render so the new
   // prompt is never painted with the previous prompt's bin still expanded.
@@ -246,18 +300,14 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     expandedBinIndex !== null ? bins[expandedBinIndex] : undefined;
 
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const { currentStep } = useCurrentStep();
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
-  // Base pieces of the validation context useProtocolForm builds for every
-  // other Field (codebook + network + this stage's subject); the dialog's
-  // field scopes it to the specific dropped node.
-  const baseValidationContext = useStageSelector(getValidationContext);
   const intl = useAppIntl();
-  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
-    usePassphrase();
+  const { unlocked, requirePassphrase, lockedNotice } = usePassphrase();
   const { showToast } = useInterviewToast();
 
   // A refused write leaves the person where they were; say why.
@@ -273,17 +323,57 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     });
     return false;
   };
+  const resolve = useResolveLocalizedString();
+  const resolveIn = useResolveLocalizedStringIn();
+  const dynamicValueSources = useDynamicValueSources();
+  const labelNode = useNodeLabeller(useCachedOutcomes());
+
+  // The label a node shows, waiting for one that is still decrypting (such as
+  // just after the passphrase is entered), since the dialog's question is
+  // resolved once and would otherwise name the lock for as long as it is open.
+  const readNodeLabel = async (node: NcNode) => {
+    const source = readNodeLabelSource(node, stageVariables);
+    const scope = getDecryptionScope(store.getState);
+    if (source.status === 'encrypted' && scope) {
+      await decryptInScope(scope, source.value);
+    }
+    return labelNode(node, source);
+  };
+
+  const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
+    const stored = node[entityAttributesProperty][otherVariable];
+    // A string is a plaintext answer even under an encrypted variable, such
+    // as one written by external data.
+    if (typeof stored === 'string') return stored;
+    if (!stageVariables[otherVariable]?.encrypted) return undefined;
+    const encrypted = readEncryptedAttribute(
+      node,
+      otherVariable,
+      stageVariables,
+    );
+    const scope = getDecryptionScope(store.getState);
+    if (encrypted?.status !== 'encrypted' || !scope) return undefined;
+    const outcome = await decryptInScope(scope, encrypted.value);
+    return outcome.readable ? outcome.plaintext : undefined;
+  };
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
     const bin = bins[binIndex]!;
+    // The bin they are in now, read from their stored answer so that a move
+    // made after coming back to the stage still counts as a move.
+    const previousIndex = bins.findIndex((candidate) =>
+      candidate.nodes.some(
+        (binNode) => binNode[entityPrimaryKeyProperty] === nodeId,
+      ),
+    );
     const recordCommittedDrop = () => {
-      const previousIndex = lastBinIndexRef.current.get(nodeId);
-      if (previousIndex === undefined) {
+      if (previousIndex === -1) {
         track('node_binned', {
           node_id: nodeId,
           node_type_index: codebookTypeIndex(codebook, 'node', node.type),
           bin_index: binIndex,
+          interaction_mode: selectMode ? 'select' : 'drag',
         });
       } else if (previousIndex !== binIndex) {
         track('node_rebinned', {
@@ -291,28 +381,22 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
           node_type_index: codebookTypeIndex(codebook, 'node', node.type),
           from_bin_index: previousIndex,
           to_bin_index: binIndex,
+          interaction_mode: selectMode ? 'select' : 'drag',
         });
       }
-      lastBinIndexRef.current.set(nodeId, binIndex);
     };
 
     // If the node is being dropped into the 'other' bin, show a dialog to
     // specify the value for the other variable. The schema's prompt union
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
-      const { otherVariable, otherVariablePrompt } = prompt;
-
+      const { otherVariable, otherVariablePrompt, otherOptionLabel } = prompt;
       // An answer that would be encrypted is not asked for until it could be
       // saved.
-      if (
-        isAttributeEncrypted(isEnabled, stageVariables, otherVariable) &&
-        (!passphrase || passphraseInvalid)
-      ) {
+      if (stageVariables[otherVariable]?.encrypted && !unlocked) {
         requirePassphrase();
         showToast({
-          description: intl.formatMessage(
-            runtimeMessages.protectedAnswersLocked,
-          ),
+          description: intl.formatMessage(lockedNotice),
           variant: 'info',
           anchor: 'forward',
         });
@@ -332,59 +416,66 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         ? validationPropsFor(otherValidationMetadata)
         : {};
 
+      // The question is about the node just dropped, so it can name it as
+      // its card does.
+      const nodeLabel = await readNodeLabel(node);
+      const otherPromptLabel = resolveIn(
+        otherVariablePrompt,
+        dynamicValueSources &&
+          withDynamicValueEntities(dynamicValueSources, {
+            attributes: { node: node[entityAttributesProperty] },
+            labels: { node: nodeLabel },
+          }),
+      );
+
+      // The current answer is shown for editing, so confirming the dialog
+      // never blanks it. An encrypted one is decrypted with the key in force;
+      // one that can't be read is left out.
+      const currentOtherAnswer = await readOtherAnswer(node, otherVariable);
+      // A stored answer that can't be read (such as legacy ciphertext) is
+      // kept unless a new one is typed, since it can never be written back.
+      const storedOtherAnswer = node[entityAttributesProperty][otherVariable];
+      const keepsUnreadableAnswer =
+        currentOtherAnswer === undefined &&
+        storedOtherAnswer !== undefined &&
+        storedOtherAnswer !== null;
+
       const result = await openDialog({
         type: 'form',
-        title: <AppMessage message={interfaceMessages.specifyOther} />,
+        title: resolve(otherOptionLabel).text,
         children: (
-          <>
-            {savingNeedsPassphrase(
-              stageVariables,
-              [otherVariable],
-              isEnabled,
-              nodeId,
-            ) && <PassphraseRecovery />}
-            <div className="flex items-start gap-4">
-              <div className="shrink-0">
-                <OtherResponseNode
-                  node={node}
-                  color={nodeColor}
-                  shape={
-                    nodeTypeDefinition
-                      ? resolveNodeShape(
-                          nodeTypeDefinition.shape,
-                          node[entityAttributesProperty],
-                        )
-                      : undefined
-                  }
-                />
-              </div>
-              <OtherResponseField
-                label={otherVariablePrompt}
-                component={InputField}
-                name={otherVariable}
-                nameMode="opaque"
-                {...otherValidationProps}
-                baseValidationContext={baseValidationContext}
-                currentEntityId={nodeId}
-                autoFocus
-              />
-            </div>
-          </>
+          <OtherResponse
+            node={node}
+            color={nodeColor}
+            shape={
+              nodeTypeDefinition
+                ? resolveNodeShape(
+                    nodeTypeDefinition.shape,
+                    node[entityAttributesProperty],
+                  )
+                : undefined
+            }
+            variable={otherVariable}
+            label={otherPromptLabel}
+            validationProps={otherValidationProps}
+            initialValue={currentOtherAnswer}
+          />
         ),
         intent: 'default',
         // Saving inside the dialog means a refused save keeps it open with
         // the answer as typed and the reason shown, ready to retry.
         onSubmit: async (values) => {
           const otherValue = values[otherVariable];
+          const typed = typeof otherValue === 'string' ? otherValue : '';
           return writeSubmissionResult(
             await dispatch(
               updateNode({
                 nodeId,
                 attributePatch: {
-                  set: {
-                    [otherVariable]:
-                      typeof otherValue === 'string' ? otherValue : '',
-                  },
+                  set:
+                    keepsUnreadableAnswer && typed === ''
+                      ? {}
+                      : { [otherVariable]: typed },
                   unset: [variable],
                 },
                 currentStep,
@@ -422,12 +513,48 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     return true;
   };
 
+  /**
+   * Places the focal person in a bin when the participant taps it in select
+   * mode, then moves on. Tapping the bin they are already in lets go of them;
+   * cancelling the "other" question leaves them focal and unplaced.
+   */
+  const handleSelectBin = async (binIndex: number) => {
+    const node = focalNode;
+    if (!node) return false;
+    const nodeId = node[entityPrimaryKeyProperty];
+    const holdsNode = (bin: (typeof bins)[number]) =>
+      bin.nodes.some((binNode) => binNode[entityPrimaryKeyProperty] === nodeId);
+    // Only a person in this bin alone has nothing to change: one with several
+    // answers still has them narrowed to this bin, as a drop does. The "other"
+    // bin asks again, so its answer can be edited, as a drop there does.
+    const onlyHere =
+      holdsNode(bins[binIndex]!) &&
+      bins.every((bin, index) => index === binIndex || !holdsNode(bin));
+    if (onlyHere && !bins[binIndex]!.isOther) {
+      advanceFrom(node);
+      return false;
+    }
+    const placed = await handleDropNode(node, binIndex);
+    if (placed) advanceFrom(node);
+    return placed;
+  };
+
+  const selectFor = (binIndex: number) =>
+    selectMode
+      ? {
+          focalName: focalNode ? focalName : undefined,
+          focalNodeId: focalNode?.[entityPrimaryKeyProperty],
+          onSelect: () => handleSelectBin(binIndex),
+          onChoose: choose,
+        }
+      : undefined;
+
   return (
     <div
       data-testid="categorical-bin-interface"
       className="interface overflow-hidden pb-0"
     >
-      <Prompts />
+      <BinPrompts focalNode={focalNode} />
       <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
         <div className="catbin-outer min-h-0 w-full flex-1">
           <AnimatePresence mode="wait">
@@ -455,6 +582,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                   onToggleExpand={() => setExpandedBinIndex(null)}
                   catColor={getCatColor(expandedBinIndex)}
                   onDropNode={(node) => handleDropNode(node, expandedBinIndex)}
+                  select={selectFor(expandedBinIndex)}
                   nodes={expandedBin.nodes}
                   flowOrdinal={undefined}
                 />
@@ -481,6 +609,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                         onToggleExpand={() => setExpandedBinIndex(index)}
                         catColor={getCatColor(index)}
                         onDropNode={(node) => handleDropNode(node, index)}
+                        select={selectFor(index)}
                         nodes={bin.nodes}
                         flowOrdinal={flowOrdinal}
                       />
@@ -491,7 +620,22 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
             </motion.div>
           </AnimatePresence>
         </div>
-        <NodeDrawer nodes={uncategorisedNodes} itemType="NODE" />
+        {selectMode && (
+          <BinSelectAnnouncer
+            node={focalNode}
+            settling={settling}
+            promptId={prompt.id}
+          />
+        )}
+        <NodeDrawer
+          nodes={uncategorisedNodes}
+          itemType="NODE"
+          draggable={!selectMode}
+          collapsible={!selectMode}
+          selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
+          onNodeClick={selectMode ? choose : undefined}
+          selectionKey={prompt.id}
+        />
       </div>
     </div>
   );

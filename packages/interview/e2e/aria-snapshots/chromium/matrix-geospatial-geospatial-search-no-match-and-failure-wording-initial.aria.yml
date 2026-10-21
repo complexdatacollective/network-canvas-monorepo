@@ -1,0 +1,19 @@
+- main:
+  - button "Search location"
+  - button "Zoom in"
+  - button "Zoom out"
+  - button "Recenter Map"
+  - status:
+    - heading "Search for this person’s neighbourhood." [level=4]
+  - button "Nikita Crist"
+  - button "Outside Selectable Areas"
+  - region "Map"
+  - button "Toggle attribution"
+  - link "Mapbox homepage":
+    - /url: https://www.mapbox.com/
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

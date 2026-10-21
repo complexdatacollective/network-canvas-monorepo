@@ -29,6 +29,11 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// The app's database name (an import-free module, loaded through Node's type
+// stripping), so the walker reads the one database the deployed app writes,
+// which Interviewer 8 at /v8/ shares.
+import { DB_NAME } from '../../apps/interviewer/src/lib/db/storageNames.ts';
+
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -305,10 +310,13 @@ async function expectStageMounted() {
 async function exitInterview() {
   await page.getByTestId('settings-button').click();
   // The "Exit interview" menu item IS exit-button (a menuitem, not a
-  // button); the confirm dialog then titles "Exit this interview?" with a
-  // confirm labelled "Exit interview" (Navigation.tsx).
+  // button); the confirm dialog is titled "Exit interview" and its confirm
+  // button carries the same label (Navigation.tsx).
   await page.getByTestId('exit-button').click();
-  const dialog = page.getByRole('dialog', { name: 'Exit this interview?' });
+  const dialog = page.getByRole('dialog', {
+    name: 'Exit interview',
+    exact: true,
+  });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Exit interview' }).click();
 }
@@ -346,10 +354,16 @@ async function checkPhantomStepUp(stepName) {
 
 // Raw store cardinalities, readable regardless of encryption state — used
 // both to seed the pre-enrolment baseline and to prove destructive wipes.
+// Every read lists the databases before opening one: a bare open of a missing
+// name CREATES an empty database, which would make a later count throw on its
+// missing stores and leave a stray database for the app to find. A database
+// that does not exist holds no rows.
 const rawStoreCounts = () =>
-  page.evaluate(async () => {
+  page.evaluate(async (dbName) => {
+    const names = new Set((await indexedDB.databases()).map((d) => d.name));
+    if (!names.has(dbName)) return { protocols: 0, sessions: 0, assets: 0 };
     const db = await new Promise((res, rej) => {
-      const req = indexedDB.open('interviewer');
+      const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
       req.onerror = () => rej(req.error);
     });
@@ -367,7 +381,7 @@ const rawStoreCounts = () =>
     };
     db.close();
     return out;
-  });
+  }, DB_NAME);
 
 // --- the walk -------------------------------------------------------------
 try {
@@ -409,9 +423,13 @@ try {
   await expect
     .poll(
       () =>
-        page.evaluate(async () => {
+        page.evaluate(async (dbName) => {
+          const listed = (await indexedDB.databases()).some(
+            (d) => d.name === dbName,
+          );
+          if (!listed) return '';
           const db = await new Promise((res, rej) => {
-            const rq = indexedDB.open('interviewer');
+            const rq = indexedDB.open(dbName);
             rq.onsuccess = () => res(rq.result);
             rq.onerror = () => rej(rq.error);
           });
@@ -423,7 +441,7 @@ try {
           });
           db.close();
           return JSON.stringify(rows);
-        }),
+        }, DB_NAME),
       { timeout: 20_000 },
     )
     .toContain(SEEDED_RESPONSE);
@@ -531,9 +549,13 @@ try {
   // Raw session count, readable regardless of encryption — the wrong-PIN
   // rejection must not have created a session row.
   const rawSessionCount = () =>
-    page.evaluate(async () => {
+    page.evaluate(async (dbName) => {
+      const listed = (await indexedDB.databases()).some(
+        (d) => d.name === dbName,
+      );
+      if (!listed) return 0;
       const db = await new Promise((res, rej) => {
-        const req = indexedDB.open('interviewer');
+        const req = indexedDB.open(dbName);
         req.onsuccess = () => res(req.result);
         req.onerror = () => rej(req.error);
       });
@@ -545,7 +567,7 @@ try {
       });
       db.close();
       return n;
-    });
+    }, DB_NAME);
   const sessionsBeforeGate = await rawSessionCount();
   await startInterview('vault-probe');
   await expect(
@@ -662,9 +684,11 @@ try {
 
   // Ciphertext at rest: raw IndexedDB rows must carry {iv, ct} envelopes,
   // never plaintext networks or codebooks.
-  const cipher = await page.evaluate(async () => {
+  const cipher = await page.evaluate(async (dbName) => {
+    const listed = (await indexedDB.databases()).some((d) => d.name === dbName);
+    if (!listed) throw new Error(`IndexedDB ${dbName} does not exist`);
     const db = await new Promise((res, rej) => {
-      const req = indexedDB.open('interviewer');
+      const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
       req.onerror = () => rej(req.error);
     });
@@ -774,7 +798,7 @@ try {
       }),
       leaks: JSON.stringify({ sessions, protocols }).includes('"nodes"'),
     };
-  });
+  }, DB_NAME);
   record(
     'ciphertext-at-rest',
     // Exactly 3 sessions here: pre-enrol-probe (written PLAINTEXT before

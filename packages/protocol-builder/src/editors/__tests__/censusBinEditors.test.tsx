@@ -42,10 +42,6 @@ import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrength
  */
 
 const SUBJECT = { entity: 'node', type: 'person' };
-const INTRODUCTION = {
-  title: 'Introduction',
-  text: 'Some words the participant reads first.',
-};
 const BUCKET_SORT_ORDER = [{ property: 'name', direction: 'asc' }];
 const BIN_SORT_ORDER = [{ property: '*', direction: 'desc' }];
 
@@ -142,7 +138,11 @@ type EditorCase = Readonly<{
    * has three lists chosen out of a data file.
    */
   optionalSections: readonly string[];
-  /** The top-level stage keys those sections have a field for. */
+  /**
+   * The top-level stage keys those sections have a field for, and
+   * `dynamicValues`, which every stage editor registers for the values its
+   * text may show.
+   */
   ownedKeys: readonly string[];
   /** A stage of this type using every key its schema allows. */
   wholeStage: SectionDoc;
@@ -162,21 +162,21 @@ const sortRuleControls = (group: string): readonly Control[] => [
 
 const DYAD_PROMPT = {
   id: 'p1',
-  text: 'Do they know each other?',
+  text: { 'en-US': 'Do they know each other?' },
   createEdge: 'knows',
 };
 
 const TIE_STRENGTH_PROMPT = {
   id: 'p1',
-  text: 'How close?',
+  text: { 'en-US': 'How close?' },
   createEdge: 'knows',
   edgeVariable: 'closeness',
-  negativeLabel: 'Not connected',
+  negativeLabel: { 'en-US': 'Not connected' },
 };
 
 const ONE_TO_MANY_PROMPT = {
   id: 'p1',
-  text: 'Who does this person know?',
+  text: { 'en-US': 'Who does this person know?' },
   createEdge: 'knows',
   bucketSortOrder: BUCKET_SORT_ORDER,
   binSortOrder: BIN_SORT_ORDER,
@@ -184,7 +184,7 @@ const ONE_TO_MANY_PROMPT = {
 
 const ORDINAL_BIN_PROMPT = {
   id: 'p1',
-  text: 'How often?',
+  text: { 'en-US': 'How often?' },
   variable: 'contactFreq',
   color: 'ord-color-seq-1',
   bucketSortOrder: BUCKET_SORT_ORDER,
@@ -213,7 +213,7 @@ const WITHOUT_FILTER: SectionDoc = {
  */
 const PANEL = {
   id: 'panel-1',
-  title: 'People you already named',
+  title: { 'en-US': 'People you already named' },
   dataSource: 'existing',
 };
 
@@ -224,7 +224,7 @@ const PANEL = {
  */
 const NAME_GENERATOR_PROMPT = {
   id: 'p1',
-  text: 'Who are the people you know?',
+  text: { 'en-US': 'Who are the people you know?' },
   additionalAttributes: [{ variable: 'highlighted', value: true }],
 };
 
@@ -258,11 +258,11 @@ const REWRITE_A_STAMP: Rewrite = {
  */
 const CATEGORICAL_BIN_PROMPT = {
   id: 'p1',
-  text: 'What kind of contact?',
+  text: { 'en-US': 'What kind of contact?' },
   variable: 'contactType',
   otherVariable: 'relationship_to_ego',
-  otherOptionLabel: 'Something else',
-  otherVariablePrompt: 'What kind of contact is it?',
+  otherOptionLabel: { 'en-US': 'Something else' },
+  otherVariablePrompt: { 'en-US': 'What kind of contact is it?' },
   bucketSortOrder: BUCKET_SORT_ORDER,
   binSortOrder: BIN_SORT_ORDER,
 };
@@ -297,7 +297,6 @@ const CASES: readonly EditorCase[] = [
     sections: [
       'Node setup',
       'Stage filter',
-      'Task introduction',
       'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
@@ -307,11 +306,10 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['introductionPanel', 'label', 'prompts', 'subject'],
+    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full dyad census',
-      introductionPanel: INTRODUCTION,
+      label: { 'en-US': 'Full dyad census' },
       prompts: [DYAD_PROMPT],
     },
     prompt: DYAD_PROMPT,
@@ -336,7 +334,6 @@ const CASES: readonly EditorCase[] = [
     sections: [
       'Node setup',
       'Stage filter',
-      'Task introduction',
       'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
@@ -346,11 +343,10 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['introductionPanel', 'label', 'prompts', 'subject'],
+    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full tie-strength census',
-      introductionPanel: INTRODUCTION,
+      label: { 'en-US': 'Full tie-strength census' },
       prompts: [TIE_STRENGTH_PROMPT],
     },
     prompt: TIE_STRENGTH_PROMPT,
@@ -362,7 +358,7 @@ const CASES: readonly EditorCase[] = [
     },
     rewrite: {
       key: 'negativeLabel',
-      value: 'Never met',
+      value: { 'en-US': 'Never met' },
       write: (harness) => retype(harness, 'Decline option', 'Never met'),
     },
   },
@@ -383,10 +379,10 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['behaviours', 'label', 'prompts', 'subject'],
+    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full one-to-many dyad census',
+      label: { 'en-US': 'Full one-to-many dyad census' },
       behaviours: { removeAfterConsideration: false },
       prompts: [ONE_TO_MANY_PROMPT],
     },
@@ -419,6 +415,7 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Stage filter',
       'Prompt collection',
+      'Placing nodes',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -427,10 +424,12 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['label', 'prompts', 'subject'],
+    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full ordinal bin',
+      label: { 'en-US': 'Full ordinal bin' },
+      behaviours: { interactionMode: 'select', requireCompletePlacement: true },
+      unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
       prompts: [ORDINAL_BIN_PROMPT],
     },
     prompt: ORDINAL_BIN_PROMPT,
@@ -458,6 +457,7 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Stage filter',
       'Prompt collection',
+      'Placing nodes',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -466,10 +466,12 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['label', 'prompts', 'subject'],
+    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full categorical bin',
+      label: { 'en-US': 'Full categorical bin' },
+      behaviours: { interactionMode: 'select', requireCompletePlacement: true },
+      unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
       prompts: [CATEGORICAL_BIN_PROMPT],
     },
     prompt: CATEGORICAL_BIN_PROMPT,
@@ -503,7 +505,7 @@ const CASES: readonly EditorCase[] = [
     },
     rewrite: {
       key: 'otherOptionLabel',
-      value: 'Anything else',
+      value: { 'en-US': 'Anything else' },
       write: (harness) => retype(harness, 'Other bin label', 'Anything else'),
     },
   },
@@ -517,6 +519,7 @@ const CASES: readonly EditorCase[] = [
       'Prompt collection',
       'Side panels',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -528,11 +531,27 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['label', 'prompts', 'quickAdd', 'subject'],
+    ownedKeys: [
+      'dynamicValues',
+      'label',
+      'prompts',
+      'quickAdd',
+      'quickAddHint',
+      'subject',
+    ],
     wholeStage: {
       ...WITHOUT_FILTER,
-      label: 'Full quick-add name generator',
+      label: { 'en-US': 'Full quick-add name generator' },
       quickAdd: 'name',
+      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
       panels: [PANEL],
       behaviours: { minNodes: 1, maxNodes: 8 },
       prompts: [NAME_GENERATOR_PROMPT],
@@ -549,10 +568,12 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Roster source',
       'Prompt collection',
+      'Roster panel',
       'Card display',
       'Roster sorting',
       'Roster search',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -565,27 +586,50 @@ const CASES: readonly EditorCase[] = [
       'Guía para quien realiza la entrevista',
     ],
     ownedKeys: [
+      'allAddedNotice',
       'behaviours',
       'cardOptions',
       'dataSource',
+      'dynamicValues',
+      'externalDataError',
       'label',
+      'maxNodesNotice',
+      'minNodesNotice',
+      'panelTitle',
       'prompts',
+      'searchLabel',
+      'searchNoMatch',
       'searchOptions',
       'sortOptions',
       'subject',
     ],
     wholeStage: {
       ...WITHOUT_FILTER,
-      label: 'Full roster name generator',
+      label: { 'en-US': 'Full roster name generator' },
       dataSource: 'roster_data',
+      panelTitle: { 'en-US': 'People you could add' },
       cardOptions: {
-        additionalProperties: [{ label: 'Age', variable: 'age' }],
+        additionalProperties: [{ label: { 'en-US': 'Age' }, variable: 'age' }],
       },
       sortOptions: {
         sortOrder: [{ property: 'age', direction: 'desc' }],
-        sortableProperties: [{ label: 'Age', variable: 'age' }],
+        sortableProperties: [{ label: { 'en-US': 'Age' }, variable: 'age' }],
       },
       searchOptions: { fuzziness: 0.5, matchProperties: ['name', 'age'] },
+      searchLabel: { 'en-US': 'Search' },
+      searchNoMatch: { 'en-US': 'Nothing matched your search term.' },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
+      allAddedNotice: {
+        'en-US': 'There is nothing left to add from this list.',
+      },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
       behaviours: { minNodes: 1, maxNodes: 8 },
       prompts: [NAME_GENERATOR_PROMPT],
     },
@@ -771,8 +815,8 @@ describe('a prompt that uses every optional key its interface allows', () => {
  * answered for that the reader is getting in English anyway?
  *
  * Swept as whole EDITORS rather than as their prompt sections, because a census
- * is more than its prompts — it mounts the shared subject, filter,
- * introduction, skip logic and interviewer guidance sections too, and a sweep
+ * is more than its prompts — it mounts the shared subject, filter, skip
+ * logic and interviewer guidance sections too, and a sweep
  * of the prompts alone would miss every sentence those put around them.
  *
  * It shares its reading with `src/__tests__/localeSweep.test.tsx`, which is

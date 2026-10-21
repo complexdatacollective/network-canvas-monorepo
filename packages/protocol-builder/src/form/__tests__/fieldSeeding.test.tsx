@@ -7,8 +7,11 @@ import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+
+const en = (text: string) => ({ 'en-US': text });
 
 const renderField = (fields: SectionDoc, children: ReactNode) =>
   renderStageEditor({
@@ -18,18 +21,32 @@ const renderField = (fields: SectionDoc, children: ReactNode) =>
 
 describe('a field seeded from the document the form was handed', () => {
   it('seeds a field from the path it is really registered under', async () => {
-    renderField(
-      { label: 'Welcome', introductionPanel: { title: 'Before we start' } },
-      <FieldNamespace prefix="introductionPanel">
-        <Field name="title" label="Panel title" component={InputField} />
-      </FieldNamespace>,
-    );
+    renderStageEditor({
+      stage: {
+        type: 'EgoForm',
+        fields: {
+          label: en('About you'),
+          form: { title: en('Before we start') },
+        },
+      },
+      sections: (
+        <BuilderSection title="Introduction">
+          <FieldNamespace prefix="form">
+            <Field
+              name="title"
+              label="Form title"
+              component={LocalizedInputField}
+            />
+          </FieldNamespace>
+        </BuilderSection>
+      ),
+    });
 
     // The namespace is part of where this field lives. Reading the opened
     // document from the root instead would start the control blank and then
     // save that blank over what the author wrote.
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Panel title' })).toHaveValue(
+      expect(screen.getByRole('textbox', { name: 'Form title' })).toHaveValue(
         'Before we start',
       ),
     );
@@ -38,7 +55,7 @@ describe('a field seeded from the document the form was handed', () => {
   it('treats an opaque name as one key rather than a route', async () => {
     renderField(
       {
-        label: 'Welcome',
+        label: en('Welcome'),
         // A protocol-authored variable id, which may contain a dot and is not
         // a path into anything.
         attributes: { 'person.age': 'seeded' },
@@ -123,7 +140,7 @@ const SetBounds = (({
 describe('a field mounting beneath overlapping fields', () => {
   it('starts from the opened document rather than a parked edit beneath a mounted container', async () => {
     const harness = renderField(
-      { label: 'Welcome', settings: { bounds: { min: 'one' } } },
+      { label: en('Welcome'), settings: { bounds: { min: 'one' } } },
       <>
         <Field name="settings" label="Settings" component={ValueOutput} />
         <Collapsible label="bounds">
@@ -168,7 +185,7 @@ const SetItems = (({
   <button
     type="button"
     onClick={() =>
-      onChange?.([{ id: 'item-1', type: 'text', content: 'Rewritten' }])
+      onChange?.([{ id: 'item-1', type: 'text', content: en('Rewritten') }])
     }
   >
     Rewrite the items
@@ -176,9 +193,9 @@ const SetItems = (({
 )) as ComponentType<Record<string, unknown>>;
 
 const SEEDED_ITEMS: SectionDoc = {
-  label: 'Welcome',
-  title: 'Welcome to the study',
-  items: [{ id: 'item-1', type: 'text', content: 'As it was seeded' }],
+  label: en('Welcome'),
+  title: en('Welcome to the study'),
+  items: [{ id: 'item-1', type: 'text', content: en('As it was seeded') }],
 };
 
 /**
@@ -201,7 +218,7 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
           name="items[0].content"
           nameMode="path"
           label="First item"
-          component={InputField}
+          component={LocalizedInputField}
         />
       </Disclosure>
     </>
@@ -242,7 +259,7 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
     const request = await harness.submit();
 
     expect(request?.stageDocument.items).toEqual([
-      { id: 'item-1', type: 'text', content: 'Rewritten' },
+      { id: 'item-1', type: 'text', content: en('Rewritten') },
     ]);
   });
 });

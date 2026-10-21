@@ -3,7 +3,7 @@ import { invariant } from 'es-toolkit';
 import { find, get } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
-import type { Codebook, Variable } from '@codaco/protocol-validation';
+import type { Codebook } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
   entityAttributesProperty,
@@ -17,8 +17,11 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { rememberEncryptedWrite } from '../../interfaces/Anonymisation/decryptionScope';
-import { isAttributeEncrypted } from '../../interfaces/Anonymisation/isAttributeEncrypted';
+import {
+  type DecryptionScope,
+  getDecryptionScope,
+  rememberEncryptedWrite,
+} from '../../interfaces/Anonymisation/decryptionScope';
 import {
   generateSecureAttributes,
   PassphraseRequiredError,
@@ -40,7 +43,6 @@ import {
   validateAttributePatch,
 } from '../entityAttributePatch';
 import type { RootState } from '../store';
-import { getShouldEncryptNames } from './protocol';
 
 // reducer helpers:
 function flipEdge(edge: Partial<NcEdge>) {
@@ -87,7 +89,7 @@ type StageMetadataEntry = StageMetadata[string];
 /**
  * Remove any DyadCensus/TieStrengthCensus metadata entries that reference the
  * given node. Census metadata is stored as `[promptIndex, nodeA, nodeB, value]`
- * tuples; non-census (e.g. FamilyPedigree) entries are objects and are left
+ * tuples; non-census (e.g. NetworkComposer) entries are objects and are left
  * untouched. Pruning prevents a stale 'No' pre-selection from being revived
  * when a node with the same id is re-added later.
  */
@@ -150,48 +152,14 @@ const actionTypes = {
 const initialState = {} as SessionState;
 
 /**
- * The passphrase an encrypted write may use. Throwing rejects the whole write,
- * so a patch that mixes encrypted and plain values is never applied in part.
+ * The scope holding the key an encrypted write must use. Throwing rejects the
+ * whole write, so a patch that mixes encrypted and plain values is never
+ * applied in part.
  */
-function requireUsablePassphrase(state: {
-  ui: { passphrase: string | null; passphraseInvalid: boolean };
-}): string {
-  const { passphrase, passphraseInvalid } = state.ui;
-  if (!passphrase || passphraseInvalid) {
-    throw new PassphraseRequiredError();
-  }
-  return passphrase;
-}
-
-/**
- * Encrypts `attributes` with the usable passphrase in force, which must still
- * be in force and usable once encryption finishes. Deriving the keys takes
- * long enough for the passphrase to be replaced or found not to work in the
- * meantime, and a write encrypted with a passphrase no longer in force could
- * not be read with the one that is, so it is refused.
- */
-async function encryptWithPassphraseInForce(
-  getState: () => RootState,
-  attributes: Record<string, VariableValue>,
-  variables: Record<string, Variable>,
-) {
-  const passphrase = requireUsablePassphrase(getState());
-  const encrypted = await generateSecureAttributes(
-    attributes,
-    variables,
-    passphrase,
-  );
-  if (requireUsablePassphrase(getState()) !== passphrase) {
-    throw new PassphraseRequiredError();
-  }
-  rememberEncryptedWrite(
-    getState,
-    passphrase,
-    attributes,
-    encrypted.encryptedAttributes,
-    encrypted.secureAttributes ?? {},
-  );
-  return encrypted;
+function requireDecryptionScope(getState: () => RootState): DecryptionScope {
+  const scope = getDecryptionScope(getState);
+  if (scope) return scope;
+  throw new PassphraseRequiredError();
 }
 
 type AddNodeArgs = {
@@ -251,27 +219,40 @@ async function prepareNode(args: AddNodeArgs, getState: () => RootState) {
   }
 
   const sessionMeta = getSessionMeta(state, currentStep);
+  // Chosen here rather than in the reducer: an encrypted value is bound to
+  // the node it is written for, so the id must be known before encrypting.
+  const nodeId = modelData?.[entityPrimaryKeyProperty] ?? uuid();
 
   if (!useEncryption) {
     return {
       type,
       attributeData: initialAttributes,
-      modelData,
+      nodeId,
       sessionMeta,
     };
   }
 
+  const scope = requireDecryptionScope(getState);
+
   const { secureAttributes, encryptedAttributes } =
-    await encryptWithPassphraseInForce(
-      getState,
+    await generateSecureAttributes(
       initialAttributes,
       variablesForType,
+      scope.key,
+      nodeId,
     );
+  rememberEncryptedWrite(
+    scope,
+    nodeId,
+    initialAttributes,
+    encryptedAttributes,
+    secureAttributes ?? {},
+  );
 
   return {
     type,
     attributeData: encryptedAttributes,
-    modelData,
+    nodeId,
     secureAttributes,
     sessionMeta,
   };
@@ -400,9 +381,8 @@ export const updateNode = createAppAsyncThunk(
         : `Invalid node attribute patch for type "${node.type}": ${validation.error.keys.join(', ')} ${validation.error.code === 'unknown-keys' ? 'do not exist in protocol codebook' : 'cannot be both set and unset'}`,
     );
 
-    const encryptionEnabled = getShouldEncryptNames(state);
-    const hasEncryptedAttributes = Object.keys(attributePatch.set).some((key) =>
-      isAttributeEncrypted(encryptionEnabled, variablesForType, key),
+    const hasEncryptedAttributes = Object.keys(attributePatch.set).some(
+      (key) => variablesForType[key]?.encrypted,
     );
 
     if (!hasEncryptedAttributes) {
@@ -414,12 +394,22 @@ export const updateNode = createAppAsyncThunk(
       };
     }
 
+    const scope = requireDecryptionScope(thunkApi.getState);
+
     const { secureAttributes, encryptedAttributes } =
-      await encryptWithPassphraseInForce(
-        thunkApi.getState,
+      await generateSecureAttributes(
         attributePatch.set,
         variablesForType,
+        scope.key,
+        nodeId,
       );
+    rememberEncryptedWrite(
+      scope,
+      nodeId,
+      attributePatch.set,
+      encryptedAttributes,
+      secureAttributes ?? {},
+    );
 
     return {
       nodeId,
@@ -459,7 +449,8 @@ export type NodeAttributeSnapshot = Readonly<
 /**
  * Undo/redo support: puts back a node exactly as it was captured. Unlike
  * addNode it neither validates nor encrypts, because the snapshot is already
- * stored state — an encrypted value comes back together with its IV and salt.
+ * stored state — an encrypted value comes back together with its IV, under
+ * the same node id it is bound to.
  */
 export const restoreNode = createAction<NcNode>(actionTypes.restoreNode);
 
@@ -726,22 +717,19 @@ function newNodeFrom(
     attributeData,
     secureAttributes,
     sessionMeta,
-    modelData,
+    nodeId,
   }: Awaited<ReturnType<typeof prepareNode>>,
 ): NcNode {
   const { promptId, stageId } = sessionMeta;
   invariant(stageId, 'Stage ID is required to add a node');
 
-  // If node UUID is provided, check that it doesn't already exist in the network
-  if (modelData?.[entityPrimaryKeyProperty]) {
-    const existingNode = find(network.nodes, {
-      [entityPrimaryKeyProperty]: modelData[entityPrimaryKeyProperty],
-    });
-    invariant(!existingNode, 'Node with this ID already exists in network');
-  }
+  const existingNode = find(network.nodes, {
+    [entityPrimaryKeyProperty]: nodeId,
+  });
+  invariant(!existingNode, 'Node with this ID already exists in network');
 
   return {
-    [entityPrimaryKeyProperty]: modelData?.[entityPrimaryKeyProperty] ?? uuid(),
+    [entityPrimaryKeyProperty]: nodeId,
     type,
     [entityAttributesProperty]: attributeData,
     [entitySecureAttributesMeta]: secureAttributes,
@@ -941,7 +929,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
           );
 
           // Setting a key drops the metadata its current value carries, so a
-          // restored value only ever pairs with its own captured IV and salt.
+          // restored value only ever pairs with its own captured IV.
           const patched = applyEntityAttributePatch(
             node[entityAttributesProperty],
             node[entitySecureAttributesMeta],
@@ -954,13 +942,10 @@ const sessionReducer = createReducer(initialState, (builder) => {
             secureSet,
           );
 
-          const { [entitySecureAttributesMeta]: _stored, ...rest } = node;
           return {
-            ...rest,
+            ...node,
             [entityAttributesProperty]: patched.attributes,
-            ...(patched.secureAttributes
-              ? { [entitySecureAttributesMeta]: patched.secureAttributes }
-              : {}),
+            [entitySecureAttributesMeta]: patched.secureAttributes,
           };
         }),
       },

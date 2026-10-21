@@ -197,4 +197,40 @@ describe('initVisualViewportSizing', () => {
 
     cleanup();
   });
+
+  it('follows the keyboard for a text field inside the hosted Interviewer 8 frame', () => {
+    setInstalled(true);
+    vi.stubGlobal('innerWidth', 1_824);
+    vi.stubGlobal('innerHeight', 1_368);
+    const viewport = installViewport({
+      width: 1_824,
+      height: 1_320,
+      offsetTop: 0,
+      pageTop: 0,
+    });
+    const frame = document.createElement('iframe');
+    root().append(frame);
+    const frameDocument = frame.contentDocument;
+    if (!frameDocument) throw new Error('the frame has no document');
+
+    const cleanup = initVisualViewportSizing();
+
+    // This document only sees the frame focused; the field is the frame's.
+    frame.focus();
+    viewport.update({ height: 526 }, 'resize');
+    expect(root()).not.toHaveAttribute('data-visual-viewport');
+
+    const input = frameDocument.createElement('input');
+    frameDocument.body.append(input);
+    input.focus();
+    viewport.update({ height: 520 }, 'resize');
+
+    expect(document.activeElement).toBe(frame);
+    expect(root()).toHaveAttribute('data-visual-viewport', 'active');
+    expect(root().style.getPropertyValue('--app-viewport-height')).toBe(
+      '520px',
+    );
+
+    cleanup();
+  });
 });

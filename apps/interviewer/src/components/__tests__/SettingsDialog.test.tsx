@@ -56,6 +56,19 @@ const {
   mockConfirm: vi.fn<(options: ConfirmCall) => Promise<boolean | null>>(),
 }));
 
+const appOffline = vi.hoisted(() => ({
+  current: 'checking' as 'checking' | 'ready' | 'not-ready',
+}));
+vi.mock('~/lib/pwa/appOffline', () => ({
+  useAppOffline: () => appOffline.current,
+}));
+const offlineDownload = vi.hoisted(() => ({
+  current: { downloading: false, progress: null as number | null },
+}));
+vi.mock('~/lib/pwa/offlineDownload', () => ({
+  useOfflineDownload: () => offlineDownload.current,
+}));
+
 vi.mock('~/lib/storage', async () => {
   const actual =
     await vi.importActual<typeof import('~/lib/storage')>('~/lib/storage');
@@ -115,7 +128,7 @@ function makeProtocol(name: string, hash: string): ProtocolWithCounts {
   const protocol = {
     name,
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: {},
     stages: [],
   } as unknown as CurrentProtocol;
@@ -123,7 +136,7 @@ function makeProtocol(name: string, hash: string): ProtocolWithCounts {
     id: hash,
     hash,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: '2026-07-01T00:00:00.000Z',
     description: '',
     codebook: {},
@@ -166,6 +179,48 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  appOffline.current = 'checking';
+  offlineDownload.current = { downloading: false, progress: null };
+});
+
+describe('SettingsDialog offline use', () => {
+  const findAbout = () =>
+    waitFor(
+      () =>
+        expect(screen.getAllByText(/offline storage/i).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 5000 },
+    );
+
+  it('says whether Interviewer is ready offline', async () => {
+    appOffline.current = 'not-ready';
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await findAbout();
+    expect(screen.getByText('Offline use')).toBeInTheDocument();
+    expect(screen.getByTestId('offline-setting')).toHaveTextContent(
+      'Not ready',
+    );
+  });
+
+  it('says how far the download has got while it runs', async () => {
+    appOffline.current = 'not-ready';
+    offlineDownload.current = { downloading: true, progress: 0.3 };
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await findAbout();
+    expect(screen.getByTestId('offline-setting')).toHaveTextContent(
+      'Downloading: 30%',
+    );
+    expect(
+      screen.getByText(/^Interviewer is downloading all data required/),
+    ).toBeInTheDocument();
+  });
+
+  it('has no such row before it is known', async () => {
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await findAbout();
+    expect(screen.queryByText('Offline use')).not.toBeInTheDocument();
+  });
 });
 
 describe('SettingsDialog storage durability', () => {
@@ -338,6 +393,33 @@ describe('SettingsDialog synthetic tab — protocol import race', () => {
       );
     });
     expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
+  });
+
+  it('defaults to a schema 9 protocol when the newest protocol is schema 8', async () => {
+    const schema8 = {
+      ...makeProtocol('Schema 8 Protocol', 'hash-8'),
+      schemaVersion: 8,
+    } as unknown as ProtocolWithCounts;
+    mockListProtocols.mockResolvedValue([
+      schema8,
+      makeProtocol('Schema 9 Protocol', 'hash-9'),
+    ]);
+
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-9',
+      );
+    });
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+    await waitFor(() =>
+      expect(mockGenerateSyntheticSessions).toHaveBeenCalledWith(
+        expect.objectContaining({ protocolHash: 'hash-9' }),
+      ),
+    );
   });
 
   it('reports an initial synthetic-data refresh failure instead of leaving an unhandled rejection', async () => {

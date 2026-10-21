@@ -1,5 +1,5 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 
 /** Optional researcher presentation; the core migration notes stay English. */
 export const migrationNoteMessages = defineMessages({
@@ -359,12 +359,188 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 8 migration approval guidance: duplicateFormAttributes. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema9AttributeNames: {
+    id: 'protocolValidation.migrationNotes.schema9.attributeNames',
+    defaultMessage:
+      'Attribute names can now use letters from any language, as well as spaces and punctuation.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
+  schema9DefaultLanguage: {
+    id: 'protocolValidation.migrationNotes.schema9.defaultLanguage',
+    defaultMessage:
+      'Protocols can now be written in multiple languages. Existing protocols are presumed to be in English. If your protocol is written in another language, change its default language on the Languages page in Architect.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Languages" must match the name of the Architect page where languages are managed.',
+  },
+  schema9BlankFieldQuestions: {
+    id: 'protocolValidation.migrationNotes.schema9.blankFieldQuestions',
+    defaultMessage:
+      'Form field questions can no longer be empty. A form field whose question was empty or contained only spaces now uses the name of its attribute as the question.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A form field is one question in a form; its attribute is the piece of information the question collects.',
+  },
+  schema9EncryptedAttributes: {
+    id: 'protocolValidation.migrationNotes.schema9.encryptedAttributes',
+    defaultMessage:
+      'Encrypted attributes are no longer experimental: the Anonymisation interface can be added in Architect like any other interface.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributes. "Encrypted Attributes" is the name of the former experimental feature switch in Architect. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
+  schema9ContradictoryPassphraseRules: {
+    id: 'protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules',
+    defaultMessage:
+      'If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: contradictoryPassphraseRules. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers; the lengths are the shortest and longest passphrase the researcher allowed. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
+  schema9DuplicateOptionValues: {
+    id: 'protocolValidation.migrationNotes.schema9.duplicateOptionValues',
+    defaultMessage:
+      'Ordinal and categorical option values must now be unique. Where existing options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: duplicateOptionValues. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. Skip logic decides whether a stage is shown; a filter decides which people a stage lists. "Requiring more selections" refers to the minimum number of options a participant must choose. Keep 1 and "1" exactly as written.',
+  },
+  schema9OptionValueNames: {
+    id: 'protocolValidation.migrationNotes.schema9.optionValueNames',
+    defaultMessage:
+      'The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. An empty value is replaced by the option\'s label or, when there is none, by "Option" followed by the option\'s position. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: optionValueNames. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. "One standard form" means Unicode normalization (the same letter is always stored with the same characters). "As above" refers to the previous bullet, which says options sharing a value are merged into the first. Skip logic decides whether a stage is shown; a filter decides which people a stage lists; node shapes are the shapes nodes are drawn in according to an answer. Keep "Option" in English and in double quotes: it is the literal text written into protocol data.',
+  },
+  schema9NonBlankText: {
+    id: 'protocolValidation.migrationNotes.schema9.nonBlankText',
+    defaultMessage:
+      'Several places that accepted empty text, or text made up only of spaces, now require some text:',
+    description:
+      'Introduces a nested Markdown list in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: the bullets that follow list the places that now require text. End with a colon.',
+  },
+  schema9IntroductionPanels: {
+    id: 'protocolValidation.migrationNotes.schema9.introductionPanels',
+    defaultMessage:
+      'Introduction panels within interfaces other than the Ego Form have been removed, so participant-facing instructions on those stages use the Information interface. The content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: introductionPanels. An introduction panel is the screen with a title and text that opened a form or census stage before its questions. An Information stage is a stage type that shows a title and text to the participant. Per Alter Form, Per Alter Edge Form, Dyad Census, Tie-Strength Census, Ego Form and Information are names of stage types; translate them as the rest of the app does. Skip logic decides whether a stage is shown. The stage name is the name shown for the stage in the list of stages.',
+  },
+  schema9OtherBinText: {
+    id: 'protocolValidation.migrationNotes.schema9.otherBinText',
+    defaultMessage:
+      'On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other\'s text, or "Other" for the label and "Please specify" for the question.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: otherBinText. Categorical Bin is the name of an interface (stage type) where participants sort people into bins; one bin can collect answers that are not listed, and then asks the participant to describe their answer. "Other" and "Please specify" are literal English defaults written into protocol data: keep them in English.',
+  },
+  schema9TieStrengthDeclineLabel: {
+    id: 'protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel',
+    defaultMessage:
+      'On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: tieStrengthDeclineLabel. Tie-Strength Census is the name of an interface (stage type) where participants rate the strength of the relationship between pairs of people; one option lets them decline to rate it. "No relationship" is a literal English default written into protocol data: keep it in English.',
+  },
+  schema9InformationTitle: {
+    id: 'protocolValidation.migrationNotes.schema9.informationTitle',
+    defaultMessage:
+      'The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: informationTitle. Information is the name of an interface (stage type) that shows text and media to participants.',
+  },
+  schema9ParticipantTextNotBlank: {
+    id: 'protocolValidation.migrationNotes.schema9.participantTextNotBlank',
+    defaultMessage:
+      'Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator\'s form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone; a Family Pedigree\'s prompt now uses the name of the stage, and each of its nomination prompts uses the name of its attribute. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: participantTextNotBlank. Narrative, Name Generator, Family Pedigree and Information are names of interfaces (stage types). A Narrative preset is a saved view of the network that participants can switch between. A node is a person or thing participants name; its node type is the kind of node, such as person. A Family Pedigree is a stage where participants draw their family tree; its nomination prompts then ask who in the family something applies to, each setting an attribute. A hint is extra guidance under a question; a scale is a slider participants answer on. "Preset", "Preset 1", "Add" and "Add Person" are literal English defaults written into protocol data: keep them in English.',
+  },
+  schema9EncryptedAttributeRules: {
+    id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
+    defaultMessage:
+      "Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Check the stages that used the removed rules.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributeRules. An encrypted attribute is one whose answers are stored encrypted with a passphrase the participant chooses. Skip logic decides whether a stage is shown; a filter decides which people a stage or panel lists; each is made of rules. A rule either compares an answer (for example, "the name is Alice") or only checks whether the question was answered. A panel is the side list on a name generator stage. "All rules had to match" and "any one rule could match" are the two ways a set of rules can be combined. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
+  schema9FamilyPedigree: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigree',
+    defaultMessage:
+      'Family Pedigree stages are converted to the redesigned Family Pedigree:',
+    description:
+      'Introduces a nested Markdown list in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: the bullets that follow describe how Family Pedigree stages change. "Family Pedigree" is an interface name. End with a colon.',
+  },
+  schema9FamilyPedigreeLabels: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeLabels',
+    defaultMessage:
+      'The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeLabels. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeCompleteness: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeCompleteness',
+    defaultMessage:
+      "The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, the other biological parent of each of the participant's children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeCompleteness. "Family Pedigree" is an interface name. "Parents" are the participant\'s mother and father or other parents; "biological parents" are those who gave the participant their genes.',
+  },
+  schema9FamilyPedigreeRelativesNotRecorded: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRelativesNotRecorded',
+    defaultMessage:
+      'A new attribute, "relativesNotRecorded", is added for the people in every converted Family Pedigree, to record when a participant says someone has no siblings or no children, or does not know. If the person type already has an attribute with that name, the new attribute\'s name ends in a number instead, such as "relativesNotRecorded2".',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRelativesNotRecorded. "Family Pedigree" is an interface name. Keep the attribute names "relativesNotRecorded" and "relativesNotRecorded2" exactly as written.',
+  },
+  schema9FamilyPedigreeRemoved: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRemoved',
+    defaultMessage:
+      "Two Family Pedigree settings change because the redesigned interface does not use them as they were. Requiring the other biological parent of the participant's children is now part of every completeness setting from parents, siblings and children upwards, and that parent's own family is no longer required. The attribute for which gamete each parent gave is removed, because the interface now works the gamete out from sex assigned at birth; it stays in the codebook with any answers already recorded, but is no longer filled in.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRemoved. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeRelationshipToParticipant: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRelationshipToParticipant',
+    defaultMessage:
+      "The old Family Pedigree could write each person's relationship to the participant as English text. The redesigned interface records it in a categorical attribute with fixed values that do not depend on language, which a text attribute cannot hold, so a converted stage records no relationship. To keep recording it, for example to filter later stages to the participant's parents, choose or create a categorical attribute for it in the Family Pedigree stage in Architect. The old attribute stays in the codebook with any answers already recorded, but is no longer filled in.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRelationshipToParticipant. "Family Pedigree" is an interface name and "Architect" is an app name. A categorical attribute is one whose answers are chosen from a fixed list of options.',
+  },
+  schema9FamilyPedigreeSharedAttributes: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes',
+    defaultMessage:
+      'A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeSharedAttributes. "Family Pedigree" is an interface name and "Architect" is an app name.',
+  },
+  schema9FinishStage: {
+    id: 'protocolValidation.migrationNotes.schema9.finishStage',
+    defaultMessage:
+      'The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Finish Screen" is the name Architect gives the stage type that ends an interview, where the participant reads closing text and presses Finish; use the same name Architect uses for it.',
+  },
+  schema9RosterPanelTitle: {
+    id: 'protocolValidation.migrationNotes.schema9.rosterPanelTitle',
+    defaultMessage:
+      'A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Name Generator Roster" is the name Architect gives the interface; use the same name Architect uses for it. "Available to add" is the English text written into the protocol: keep it in English, in quotation marks.',
+  },
+  schema9PedigreeWording: {
+    id: 'protocolValidation.migrationNotes.schema9.pedigreeWording',
+    defaultMessage:
+      "A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Family Pedigree" is the name Architect gives the interface; use the same name Architect uses for it.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
 // FormatJS normalizes whitespace when compiling defaults, so putting an entire
 // list in one descriptor would silently flatten English production output.
-const migrationNoteSets = {
+// A bullet with `children` introduces a nested list of further bullets.
+type MigrationNote =
+  | MessageDescriptor
+  | { message: MessageDescriptor; children: MessageDescriptor[] };
+
+const migrationNoteSets: Record<
+  number,
+  { prefix: string; suffix: string; messages: MigrationNote[] }
+> = {
   5: {
     prefix: '',
     suffix: '',
@@ -440,12 +616,45 @@ const migrationNoteSets = {
       migrationNoteMessages.schema8DuplicateFormAttributes,
     ],
   },
+  9: {
+    prefix: '',
+    suffix: '',
+    messages: [
+      migrationNoteMessages.schema9IntroductionPanels,
+      migrationNoteMessages.schema9DefaultLanguage,
+      migrationNoteMessages.schema9FinishStage,
+      migrationNoteMessages.schema9EncryptedAttributes,
+      migrationNoteMessages.schema9AttributeNames,
+      migrationNoteMessages.schema9BlankFieldQuestions,
+      migrationNoteMessages.schema9ContradictoryPassphraseRules,
+      migrationNoteMessages.schema9DuplicateOptionValues,
+      migrationNoteMessages.schema9OptionValueNames,
+      {
+        message: migrationNoteMessages.schema9NonBlankText,
+        children: [
+          migrationNoteMessages.schema9OtherBinText,
+          migrationNoteMessages.schema9TieStrengthDeclineLabel,
+          migrationNoteMessages.schema9InformationTitle,
+          migrationNoteMessages.schema9ParticipantTextNotBlank,
+        ],
+      },
+      migrationNoteMessages.schema9EncryptedAttributeRules,
+      {
+        message: migrationNoteMessages.schema9FamilyPedigree,
+        children: [
+          migrationNoteMessages.schema9FamilyPedigreeLabels,
+          migrationNoteMessages.schema9FamilyPedigreeCompleteness,
+          migrationNoteMessages.schema9FamilyPedigreeRelativesNotRecorded,
+          migrationNoteMessages.schema9FamilyPedigreeRemoved,
+          migrationNoteMessages.schema9FamilyPedigreeRelationshipToParticipant,
+          migrationNoteMessages.schema9FamilyPedigreeSharedAttributes,
+          migrationNoteMessages.schema9PedigreeWording,
+        ],
+      },
+      migrationNoteMessages.schema9RosterPanelTitle,
+    ],
+  },
 };
-
-const isKnownMigration = (
-  version: number,
-): version is keyof typeof migrationNoteSets =>
-  Object.hasOwn(migrationNoteSets, version);
 
 /** Format known migration guidance, retaining unknown-version notes as supplied. */
 export function formatMigrationNotes(
@@ -453,12 +662,23 @@ export function formatMigrationNotes(
   notes: string,
   intl: IntlShape,
 ): string {
-  if (!isKnownMigration(version)) return notes;
-  const noteSet = migrationNoteSets[version];
+  const noteSet = Object.hasOwn(migrationNoteSets, version)
+    ? migrationNoteSets[version]
+    : undefined;
+  if (!noteSet) return notes;
   return (
     noteSet.prefix +
     noteSet.messages
-      .map((message) => `- ${intl.formatMessage(message)}`)
+      .map((note) =>
+        'children' in note
+          ? [
+              `- ${intl.formatMessage(note.message)}`,
+              ...note.children.map(
+                (child) => `  - ${intl.formatMessage(child)}`,
+              ),
+            ].join('\n')
+          : `- ${intl.formatMessage(note)}`,
+      )
       .join('\n') +
     noteSet.suffix
   );

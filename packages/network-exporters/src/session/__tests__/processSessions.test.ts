@@ -1,7 +1,10 @@
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entitySecureAttributesMeta,
+} from '@codaco/shared-consts';
 
 import { DatabaseError } from '../../errors';
 import type { InterviewExportInput, ProtocolExportInput } from '../../input';
@@ -24,6 +27,7 @@ const mkSession = (
     ego: { _uid: ego, [entityAttributesProperty]: {} },
   },
   protocolHash: hash,
+  finishOutcome: 'completed',
 });
 
 const protocol = (hash: string): ProtocolExportInput => ({
@@ -132,4 +136,45 @@ describe('processSessions', () => {
       ),
     ).rejects.toThrow();
   });
+
+  it.each([
+    {
+      label: 'metadata without a salt',
+      metadata: { iv: [15, 243, 77] },
+    },
+    {
+      label: 'schema 8 metadata with a salt',
+      metadata: { iv: [15, 243, 77], salt: [44, 130, 213] },
+    },
+  ])(
+    'processes a network with encrypted values: $label',
+    async ({ metadata }) => {
+      const session = mkSession('s1', 'hA');
+      session.network = {
+        nodes: [
+          {
+            _uid: 'node-1',
+            type: 'person',
+            [entityAttributesProperty]: { 'p-name': [201, 17, 93, 4] },
+            [entitySecureAttributesMeta]: { 'p-name': metadata },
+          },
+        ],
+        edges: [],
+        ego: session.network.ego,
+      };
+      const repo = mkRepo({ hA: protocol('hA') });
+
+      const { grouped, failures } = await Effect.runPromise(
+        processSessions([session], opts).pipe(Effect.provide(repo)),
+      );
+
+      expect(failures).toEqual([]);
+      expect(grouped.hA?.[0]?.nodes[0]?.[entityAttributesProperty]).toEqual({
+        'p-name': [201, 17, 93, 4],
+      });
+      expect(grouped.hA?.[0]?.nodes[0]?.[entitySecureAttributesMeta]).toEqual({
+        'p-name': metadata,
+      });
+    },
+  );
 });

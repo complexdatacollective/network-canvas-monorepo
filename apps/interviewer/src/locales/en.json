@@ -263,6 +263,10 @@
     "defaultMessage": "Loading protocol",
     "description": "User-facing message in Interviewer Deck Card."
   },
+  "interviewer.deckCard.olderSchemaVersion": {
+    "defaultMessage": "older version",
+    "description": "Short note after the schema label on a protocol card on the home screen (for example “Schema 8 · older version”), shown when the protocol was made for an older schema version than this version of Interviewer uses. Researcher-facing."
+  },
   "interviewer.deckCard.protocol": {
     "defaultMessage": "Protocol",
     "description": "Fallback protocol label while the real researcher-authored protocol name is unavailable."
@@ -270,6 +274,10 @@
   "interviewer.deckCard.requiresInternet": {
     "defaultMessage": "Requires Internet",
     "description": "Protocol card badge warning that an interview stage needs an internet connection."
+  },
+  "interviewer.deckCard.schemaVersion": {
+    "defaultMessage": "Schema {version}",
+    "description": "Short label above the protocol name on every protocol card on the home screen, giving the schema version the protocol was made for. {version} is that version number (for example 9)."
   },
   "interviewer.deckSlotCard.dismissTheSampleProtocol": {
     "defaultMessage": "Dismiss the sample protocol",
@@ -487,25 +495,25 @@
     "defaultMessage": "This interview may have been deleted, or the protocol it used is no longer installed.",
     "description": "Visible copy in Interviewer Interview."
   },
+  "interviewer.interview.thisInterviewUsesAnOlderSchema": {
+    "defaultMessage": "The protocol this interview uses is on an older version of the Network Canvas protocol schema, which this version of Interviewer cannot run, so this interview cannot be opened here. Its responses remain available on the data screen.",
+    "description": "Shown in place of an interview whose protocol uses an older protocol schema when this build of Interviewer does not include the previous version that runs such interviews. The responses can still be exported from the data screen."
+  },
   "interviewer.interviewComplete.exit": {
     "defaultMessage": "Exit",
     "description": "Participant completion-screen action handing control back to the researcher, with authentication if required."
   },
-  "interviewer.interviewComplete.interviewComplete": {
-    "defaultMessage": "Interview complete",
-    "description": "Visible copy in Interviewer Interview Complete."
-  },
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": {
-    "defaultMessage": "Thank you. This interview is finished and its responses can no longer be changed. Please hand the device back to the researcher.",
-    "description": "Visible copy in Interviewer Interview Complete."
+  "interviewer.interviewer8Frame.title": {
+    "defaultMessage": "Interview",
+    "description": "Accessible name of the full-screen frame in which an interview made with an older protocol schema runs. Read by screen readers only."
   },
   "interviewer.language.failed": {
     "defaultMessage": "The language changed for this session, but the preference could not be saved. Your browser may be blocking device storage.",
     "description": "Error announced when the language applies immediately but cannot persist across reloads."
   },
   "interviewer.language.hint": {
-    "defaultMessage": "Choose the language for Interviewer and its built-in interview controls on this device. This does not change protocol content or collected data.",
-    "description": "Explains that the device language applies to app-provided controls while protocol-authored content and research data stay unchanged."
+    "defaultMessage": "Choose the language Interviewer uses on this device. Interviews follow the participant's browser language, or the language they choose during the interview.",
+    "description": "Explains that this setting changes only Interviewer's own screens on this device, while each interview is shown in the participant's browser language or the language the participant picks during the interview."
   },
   "interviewer.language.label": {
     "defaultMessage": "App language",
@@ -522,6 +530,14 @@
   "interviewer.launchFailureToast.filesUnreadable": {
     "defaultMessage": "{count, plural, one {# launched file could not be read. The file may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. The files may have been moved, deleted, or become unavailable since they were opened.}}",
     "description": "Administration text in Interviewer useLaunchFailureToast."
+  },
+  "interviewer.legacyProtocol.notAvailable": {
+    "defaultMessage": "Not available",
+    "description": "Short badge on an older protocol’s card on the home screen, shown when this version of Interviewer does not include the previous version that runs it, so no interview can be started with it here."
+  },
+  "interviewer.legacyProtocol.notAvailableHelp": {
+    "defaultMessage": "This version of Interviewer cannot run schema {legacyVersion} protocols, so interviews cannot be started with this protocol here.",
+    "description": "Text at the bottom of an older protocol’s card on the home screen, and in place of its new-interview form, when this version of Interviewer does not include the previous version that runs its interviews. {legacyVersion} is the older schema version number, which is also the previous version’s number (for example 8)."
   },
   "interviewer.lockScreen.authenticateToUnlockAndPickUpWhere": {
     "defaultMessage": "Authenticate to unlock and pick up where you left off.",
@@ -695,10 +711,6 @@
     "defaultMessage": "Your new passphrase must be at least 12 characters and combine uppercase, lowercase, numbers, and symbols.",
     "description": "User-facing message in Interviewer Manage Authenticator."
   },
-  "interviewer.manageLock.manageTheLockInInterviewer": {
-    "defaultMessage": "Manage the lock in Interviewer",
-    "description": "Button shown by Interviewer 8 when it runs inside the current Interviewer. It opens the current Interviewer, which is where the shared device lock (PIN, passphrase or biometrics) is set up, changed or reset. \"Interviewer\" is the app name."
-  },
   "interviewer.newSessionForm.caseID": {
     "defaultMessage": "Case ID",
     "description": "The label label in Interviewer New Session Form."
@@ -758,6 +770,50 @@
   "interviewer.notFound.thePageYouWereLookingForDoes": {
     "defaultMessage": "The page you were looking for does not exist.",
     "description": "Visible copy in Interviewer Not Found."
+  },
+  "interviewer.offline.downloadProgressLabel": {
+    "defaultMessage": "Download for offline use",
+    "description": "Accessible name of the progress bar showing how much of what Interviewer needs to work without an internet connection has downloaded."
+  },
+  "interviewer.offline.downloading": {
+    "defaultMessage": "{hasProgress, select, true {Downloading: {percent}} other {Downloading}}",
+    "description": "Short status in Settings, in the “Offline use” row, while Interviewer downloads what it needs to work offline. {percent} is how much has downloaded, already formatted as a percentage (for example “45%”); hasProgress is false when that is not known."
+  },
+  "interviewer.offline.downloadingChip": {
+    "defaultMessage": "{hasProgress, select, true {Downloading for offline: {percent}} other {Downloading for offline}}",
+    "description": "Short status at the bottom of the home screen while Interviewer downloads what it needs to work without an internet connection. {percent} is how much has downloaded, already formatted as a percentage (for example “45%”); hasProgress is false when that is not known."
+  },
+  "interviewer.offline.downloadingHelp": {
+    "defaultMessage": "Interviewer is downloading all data required for fully offline operation. Keep Interviewer open while you are online until it is ready.",
+    "description": "Explanation of the downloading status, shown in the home screen status bar and in Settings while Interviewer downloads what it needs to work without an internet connection, with what to do meanwhile."
+  },
+  "interviewer.offline.notReady": {
+    "defaultMessage": "Not ready",
+    "description": "Short warning status in Settings, in the “Offline use” row: Interviewer cannot be used offline on this device yet."
+  },
+  "interviewer.offline.notReadyChip": {
+    "defaultMessage": "Not ready for offline",
+    "description": "Short warning status at the bottom of the home screen: Interviewer has not finished downloading for use without an internet connection, so protocols cannot be used offline yet."
+  },
+  "interviewer.offline.notReadyHelp": {
+    "defaultMessage": "Interviewer has not finished downloading all data required for fully offline operation. Keep Interviewer open while you are online until it is ready.",
+    "description": "Explanation of the warning that Interviewer cannot be used offline yet, with what to do about it. Shown in the home screen status bar, in Settings, and when an interview cannot be opened because the device is offline."
+  },
+  "interviewer.offline.ready": {
+    "defaultMessage": "Ready",
+    "description": "Short status in Settings, in the “Offline use” row: Interviewer can be used offline on this device."
+  },
+  "interviewer.offline.readyChip": {
+    "defaultMessage": "Ready for offline",
+    "description": "Short status at the bottom of the home screen: Interviewer is saved on this device, so it and every protocol on it work without an internet connection."
+  },
+  "interviewer.offline.readyHelp": {
+    "defaultMessage": "Interviewer is saved on this device, so every protocol can be used without an internet connection.",
+    "description": "Explanation of the offline status, shown in the home screen status bar and in Settings: Interviewer is fully saved on this device."
+  },
+  "interviewer.offline.settingTitle": {
+    "defaultMessage": "Offline use",
+    "description": "Title of the row in Settings that says whether Interviewer can be used without an internet connection on this device."
   },
   "interviewer.onboardingScreen.getStarted": {
     "defaultMessage": "Get started",
@@ -827,16 +883,12 @@
     "defaultMessage": "This protocol could not be saved. This device may be out of space.",
     "description": "Import failure after validation when device storage rejects the save; suggests the likely remedy."
   },
-  "interviewer.protocolImport.cannotUpgrade": {
-    "defaultMessage": "This protocol could not be upgraded to the current version.",
-    "description": "Fallback guidance when an unrecognized protocol migration error prevents import."
-  },
   "interviewer.protocolImport.importFailed": {
     "defaultMessage": "Import failed",
     "description": "User-facing message in Interviewer Protocol Import."
   },
   "interviewer.protocolImport.importSuccess": {
-    "defaultMessage": "{migrated, select, true {{name} was migrated to the current schema.} other {{name} is ready to use.}}",
+    "defaultMessage": "{name} is ready to use.",
     "description": "Administration text in Interviewer useProtocolImport."
   },
   "interviewer.protocolImport.invalidProtocol": {
@@ -1658,22 +1710,6 @@
   "interviewer.storage.unknown": {
     "defaultMessage": "unknown",
     "description": "Storage size when the browser cannot report device usage."
-  },
-  "interviewer.storedProtocolMigration.failedDescription": {
-    "defaultMessage": "{count, plural, =1 {{name} could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.} other {# protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.}}",
-    "description": "Administration text in Interviewer useStoredProtocolMigration."
-  },
-  "interviewer.storedProtocolMigration.failedTitle": {
-    "defaultMessage": "{count, plural, one {Protocol could not be updated} other {Protocols could not be updated}}",
-    "description": "Administration text in Interviewer useStoredProtocolMigration."
-  },
-  "interviewer.storedProtocolMigration.updatedDescription": {
-    "defaultMessage": "{count, plural, =1 {{name} was migrated to the current schema.} other {# protocols were migrated to the current schema.}}",
-    "description": "Administration text in Interviewer useStoredProtocolMigration."
-  },
-  "interviewer.storedProtocolMigration.updatedTitle": {
-    "defaultMessage": "{count, plural, one {Protocol updated} other {Protocols updated}}",
-    "description": "Administration text in Interviewer useStoredProtocolMigration."
   },
   "interviewer.topActionBar.lockApp": {
     "defaultMessage": "Lock app",

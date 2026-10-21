@@ -1,32 +1,16 @@
 - main:
-  - text: Showing all conditions
-  - complementary "Condition key":
-    - heading "Key" [level=4]
-    - heading "Conditions" [level=4]
-    - paragraph: Select a condition to see who it affects.
-    - button "Huntington's Disease"
-    - button "Cystic Fibrosis"
+  - region "Your family":
+    - button "Focus on Rose" [disabled]
+    - button "Focus on David" [disabled]
+    - button "Focus on You" [disabled]
+  - toolbar "Family tree controls":
+    - button "Select a condition"
     - separator
-    - heading "What the symbols mean" [level=4]
-    - text: Has this condition Will develop this condition Carries this condition Not known
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+    - separator
     - button "Save snapshot"
-  - slider "Resize the condition key panel"
-  - button "Focus on Rose" [disabled]:
-    - text: "Huntington's Disease: Status unknown and Cystic Fibrosis: Status unknown"
-    - button "Rose" [disabled]
-  - button "Focus on David" [disabled]:
-    - text: "Huntington's Disease: Status unknown and Cystic Fibrosis: Status unknown"
-    - button "David" [disabled]
-  - button "Focus on You" [disabled]:
-    - text: "Huntington's Disease: Status unknown and Cystic Fibrosis: Status unknown"
-    - button "You" [disabled]
-  - toolbar "Zoom controls":
-    - group "Zoom controls":
-      - button "Zoom out"
-      - button "Zoom in"
-    - separator
-    - group "Viewport controls":
-      - button "Reset zoom"
   - navigation:
     - button "Settings"
     - button "Previous Step"

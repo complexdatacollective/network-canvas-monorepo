@@ -75,7 +75,7 @@ describe('creating a quick-add name generator', () => {
     expect(request?.stageDocument.prompts).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: 'Who are the people you know?',
+        text: { 'en-US': 'Who are the people you know?' },
       },
     ]);
   });

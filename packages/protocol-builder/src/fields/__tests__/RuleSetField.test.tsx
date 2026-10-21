@@ -46,26 +46,37 @@ const personDefinition: SectionDoc = {
       name: 'Mood',
       type: 'categorical',
       options: [
-        { label: 'Happy', value: 'happy' },
-        { label: 'Sad', value: 'sad' },
+        { label: { en: 'Happy' }, value: 'happy' },
+        { label: { en: 'Sad' }, value: 'sad' },
       ],
     },
   },
 };
 
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Rule editing', schemaVersion: 8 },
+  [settingsSection]: {
+    name: 'Rule editing',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  },
   [stageOrderSection]: { stages: ['stage-1'] },
   [stageSection]: {
     id: 'stage-1',
     type: 'Information',
-    label: 'Welcome',
-    title: 'Welcome',
+    label: { en: 'Welcome' },
+    title: { en: 'Welcome' },
     items: [],
   },
   [personSection]: personDefinition,
-  [friendSection]: { name: 'Friend', color: 'edge-color-seq-3' },
-  [egoSection]: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
+  [friendSection]: {
+    name: 'Friend',
+    color: 'edge-color-seq-3',
+  },
+  [egoSection]: {
+    variables: {
+      egoName: { name: 'EgoName', type: 'text' },
+    },
+  },
 };
 
 /**
@@ -718,8 +729,8 @@ describe('a codebook that changes underneath the editor', () => {
           name: 'Age',
           type: 'categorical',
           options: [
-            { label: 'Young', value: 30 },
-            { label: 'Old', value: 60 },
+            { label: { en: 'Young' }, value: 30 },
+            { label: { en: 'Old' }, value: 60 },
           ],
         },
       },

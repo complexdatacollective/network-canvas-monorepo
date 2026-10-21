@@ -1,9 +1,11 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { messageFields } from '~/test/messageText';
-import { admitStoredProtocol } from '~/utils/storedProtocolAdmission';
+import {
+  type CurrentProtocol,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
+import { APP_SCHEMA_VERSION } from '~/config';
 
 import createTimeline from '../middleware/timeline';
 import activeProtocol, { setActiveProtocol } from '../modules/activeProtocol';
@@ -20,12 +22,14 @@ import {
   restoreActiveProtocolFromLibrary,
 } from '../restoreActiveProtocol';
 
-const makeProtocol = (name: string): CurrentProtocol => ({
-  name,
-  schemaVersion: 8,
-  stages: [],
-  codebook: {},
-});
+const makeProtocol = (name: string): CurrentProtocol =>
+  withInterfaceText({
+    name,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    stages: [],
+    codebook: {},
+  });
 
 const reducer = combineReducers({
   app,
@@ -50,7 +54,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
     store.dispatch(setStorageUnavailable(true));
     getStoredProtocol.mockResolvedValue({
       id: 'p1',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: canonical,
       validated: true,
     });
@@ -116,7 +120,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
     store.dispatch(setActiveProtocolId('p2'));
     resolveRead?.({
       id: 'p1',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: makeProtocol('Stale'),
       validated: true,
     });
@@ -178,7 +182,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
     const legacy = makeProtocol('Legacy invalid');
     getStoredProtocol.mockResolvedValue({
       id: 'legacy',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: legacy,
     });
     const refusal = {
@@ -199,15 +203,11 @@ describe('restoreActiveProtocolFromLibrary', () => {
     });
 
     expect(result).toBe('invalid');
-    expect(admit).toHaveBeenCalledWith(
-      {
-        id: 'legacy',
-        schemaVersion: 8,
-        protocol: legacy,
-      },
-      undefined,
-      expect.objectContaining({ locale: 'en' }),
-    );
+    expect(admit).toHaveBeenCalledWith({
+      id: 'legacy',
+      schemaVersion: 9,
+      protocol: legacy,
+    });
     expect(getActiveProtocolId(store.getState())).toBeNull();
     expect(store.getState().activeProtocol.present).toBeNull();
     expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
@@ -215,103 +215,56 @@ describe('restoreActiveProtocolFromLibrary', () => {
   });
 
   // The restored session is the second way into a stored protocol, and it must
-  // reach exactly the same verdicts as a library open — including the upgrade.
+  // reach exactly the same verdicts as a library open.
   describe('schema compatibility of the restored row', () => {
-    const olderProtocol = {
-      ...makeProtocol('Written by an older Architect'),
-      schemaVersion: 7,
-    } as unknown as CurrentProtocol;
-
-    const storeOlderRow = () => {
+    // This library holds only this schema's protocols, so a row claiming an
+    // older one is refused rather than upgraded in place.
+    it('refuses a row that records an older schema, and opens nothing', async () => {
+      const store = makeStore();
+      store.dispatch(setActiveProtocolId('older'));
       getStoredProtocol.mockResolvedValue({
         id: 'older',
         name: 'Older study',
-        schemaVersion: 7,
-        protocol: olderProtocol,
+        schemaVersion: 8,
+        protocol: {
+          ...makeProtocol('Older study'),
+          schemaVersion: 8,
+        } as unknown as CurrentProtocol,
         // Marked valid under the schema of its own day.
         validated: true,
         createdAt: 0,
         updatedAt: 0,
       });
-    };
-
-    it('opens the upgraded document, saves it back, and announces it', async () => {
-      const store = makeStore();
-      store.dispatch(setActiveProtocolId('older'));
-      storeOlderRow();
-      const upgraded = makeProtocol('Written by an older Architect');
-      const persist = vi.fn().mockResolvedValue(true);
-      const notifyUpgraded = vi.fn();
-
-      const result = await restoreActiveProtocolFromLibrary(store, {
-        getStoredProtocol,
-        replaceProtocolRoute,
-        admitStoredProtocol: (row) =>
-          admitStoredProtocol(row, {
-            migrate: vi.fn().mockReturnValue(upgraded),
-            validate: vi
-              .fn()
-              .mockResolvedValue({ success: true, data: upgraded }),
-            persist,
-            notifyUpgraded,
-          }),
-      });
-
-      expect(result).toBe('restored');
-      // The editor holds the UPGRADED document, not the row that was read.
-      expect(store.getState().activeProtocol.present).toEqual(upgraded);
-      expect(persist).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'older' }),
-        expect.objectContaining({ id: 'older', protocol: upgraded }),
-      );
-      expect(notifyUpgraded).toHaveBeenCalledWith({ name: 'Older study' });
-      expect(replaceProtocolRoute).not.toHaveBeenCalled();
-    });
-
-    it('blocks the editor and reports the failure when the upgrade cannot be completed', async () => {
-      const store = makeStore();
-      store.dispatch(setActiveProtocolId('older'));
-      storeOlderRow();
-      const persist = vi.fn();
       const onInvalid = vi.fn();
 
       const result = await restoreActiveProtocolFromLibrary(store, {
         getStoredProtocol,
         replaceProtocolRoute,
         onInvalid,
-        admitStoredProtocol: (row) =>
-          admitStoredProtocol(row, {
-            migrate: vi.fn().mockImplementation(() => {
-              throw new Error('Migration resulted in invalid protocol: nope');
-            }),
-            validate: vi.fn(),
-            persist,
-            notifyUpgraded: vi.fn(),
-          }),
       });
 
       expect(result).toBe('invalid');
       expect(store.getState().activeProtocol.present).toBeNull();
-      expect(persist).not.toHaveBeenCalled();
-      expect(onInvalid).toHaveBeenCalledOnce();
-      expect(messageFields(onInvalid.mock.calls[0]?.[0])).toEqual({
-        status: 'error',
-        title: 'Failed to Open Protocol',
-        message:
-          'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
-        detail: 'Migration resulted in invalid protocol: nope',
+      expect(getActiveProtocolId(store.getState())).toBeNull();
+      expect(onInvalid).toHaveBeenCalledWith({
+        status: 'validation-error',
+        message: expect.stringContaining('schema version 8'),
       });
       expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
     });
 
     it('refuses a row written by a newer Architect', async () => {
+      const newerSchemaVersion = APP_SCHEMA_VERSION + 1;
       const store = makeStore();
       store.dispatch(setActiveProtocolId('newer'));
       getStoredProtocol.mockResolvedValue({
         id: 'newer',
         name: 'Future study',
-        schemaVersion: 9,
-        protocol: { ...makeProtocol('Future study'), schemaVersion: 9 },
+        schemaVersion: newerSchemaVersion,
+        protocol: {
+          ...makeProtocol('Future study'),
+          schemaVersion: newerSchemaVersion,
+        },
         validated: true,
         createdAt: 0,
         updatedAt: 0,
@@ -328,7 +281,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
       expect(store.getState().activeProtocol.present).toBeNull();
       expect(onInvalid).toHaveBeenCalledWith({
         status: 'app-upgrade-required',
-        protocolSchemaVersion: 9,
+        protocolSchemaVersion: newerSchemaVersion,
       });
       expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
     });
@@ -370,7 +323,7 @@ describe('restoreActiveProtocolAfterStoreRehydration', () => {
     store.dispatch(setActiveProtocolId('p1'));
     const getStoredProtocol = vi.fn().mockResolvedValue({
       id: 'p1',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: canonical,
       validated: true,
     });

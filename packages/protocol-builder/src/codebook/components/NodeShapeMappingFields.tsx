@@ -19,6 +19,8 @@ import type { NodeShape } from '@codaco/protocol-validation';
 
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
+import type { ResolvedTranslation } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import {
   eligibleShapeVariables,
   isNodeShape,
@@ -29,8 +31,8 @@ import {
   thresholdInputConfig,
   withDiscreteShape,
   withThresholds,
+  type DiscreteShapeMapEntry,
   type ShapeMappingDraft,
-  type ShapeMappingOption,
   type ShapeMappingVariable,
   type ShapeThreshold,
 } from '../shapeMapping.ts';
@@ -146,27 +148,41 @@ const messages = defineMessages({
   },
 });
 
+type ShapeAnswer = Readonly<{
+  label: ResolvedTranslation;
+  value: DiscreteShapeMapEntry['value'];
+}>;
+
 /**
- * The answers a discrete mapping offers a shape for.
+ * The answers a discrete mapping offers a shape for, with the words each is
+ * shown by.
  *
  * A yes/no attribute keeps its own labels where the protocol gives it some —
  * only the `Boolean` control carries them — and otherwise stands for its two
  * answers in this package's words, writing the raw booleans the interview
  * runtime compares against.
  */
-const discreteOptions = (
+const discreteAnswers = (
   variable: ShapeMappingVariable,
   intl: IntlShape,
-): readonly ShapeMappingOption[] => {
-  if (variable.type === 'boolean') {
-    return (
-      variable.options ?? [
-        { label: intl.formatMessage(messages.shapeAnswerTrue), value: true },
-        { label: intl.formatMessage(messages.shapeAnswerFalse), value: false },
-      ]
-    );
+  localize: (value: unknown) => ResolvedTranslation,
+): readonly ShapeAnswer[] => {
+  if (variable.type === 'boolean' && variable.options === undefined) {
+    return [
+      {
+        label: { text: intl.formatMessage(messages.shapeAnswerTrue) },
+        value: true,
+      },
+      {
+        label: { text: intl.formatMessage(messages.shapeAnswerFalse) },
+        value: false,
+      },
+    ];
   }
-  return variable.options ?? [];
+  return (variable.options ?? []).map(({ label, value }) => ({
+    label: localize(label),
+    value,
+  }));
 };
 
 const parseThresholdValue = (value: string | undefined): number | undefined => {
@@ -371,7 +387,9 @@ export default function NodeShapeMappingFields({
   const selected = selectedId === undefined ? undefined : variables[selectedId];
   const config = thresholdInputConfig(selected);
   const options = eligibleShapeVariables(variables);
-  const answers = selected === undefined ? [] : discreteOptions(selected, intl);
+  const localize = useLocalizedText();
+  const answers =
+    selected === undefined ? [] : discreteAnswers(selected, intl, localize);
   const thresholds = mapping.thresholds ?? [];
   // Absent where the range is used up, and the control that would add one is
   // then not offered at all.
@@ -425,14 +443,20 @@ export default function NodeShapeMappingFields({
           {selected !== undefined && mapping.type === 'discrete' && (
             <div className="flex flex-col gap-3">
               {groupHeading(intl.formatMessage(messages.shapeForEachValue))}
-              {answers.map((answer) => (
+              {answers.map((answer, index) => (
                 <div key={JSON.stringify(answer.value)} className={ROW_CLASSES}>
-                  <span className="min-w-0 flex-1 text-sm">{answer.label}</span>
-                  <div className="w-48 shrink-0">
+                  <span
+                    className="min-w-0 flex-1 text-sm"
+                    lang={answer.label.lang}
+                    dir={answer.label.dir}
+                  >
+                    {answer.label.text}
+                  </span>
+                  <div className="shrink-0">
                     <UnconnectedField
-                      name={`shape-for-${String(answer.value)}`}
+                      name={`shape-for-${index + 1}`}
                       label={intl.formatMessage(messages.shapeForValue, {
-                        value1: answer.label,
+                        value1: answer.label.text,
                       })}
                       labelHidden
                       component={ShapePickerField}
@@ -473,7 +497,7 @@ export default function NodeShapeMappingFields({
                 {/* Mathematical mapping symbol, independent of locale. */}
                 {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
                 <span className="text-xl text-current/70">→</span>
-                <div className="w-48 shrink-0">
+                <div className="shrink-0">
                   <UnconnectedField
                     name="shape-below-first-threshold"
                     label={intl.formatMessage(messages.shapeDefaultSwatch)}

@@ -16,10 +16,8 @@ const build = () => {
 
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   si.addStage('Anonymisation', {
-    explanationText: {
-      title: 'Data Anonymisation',
-      body: 'Your data will be anonymised using a **passphrase** that you create below.\n\nThis passphrase is used to generate a unique encryption key that replaces any identifying information in your responses. Only someone with the same passphrase can link your data back to you.\n\nPlease choose a passphrase that is memorable but not easily guessed.',
-    },
+    explanationText:
+      '# Data Anonymisation\n\nYour data will be anonymised using a **passphrase** that you create below.\n\nThis passphrase is used to generate a unique encryption key that replaces any identifying information in your responses. Only someone with the same passphrase can link your data back to you.\n\nPlease choose a passphrase that is memorable but not easily guessed.',
   });
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
   return si;

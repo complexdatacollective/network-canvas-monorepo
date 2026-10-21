@@ -8,15 +8,15 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
-import RichTextField from './RichTextField.tsx';
+import { LocalizedRichTextField } from './LocalizedStringField.tsx';
 
-/** The prose an anonymisation stage shows before asking for a passphrase. */
-const EXPLANATION_FIELD = 'explanationText.body';
+/** What an anonymisation stage tells the participant before asking for a passphrase. */
+const EXPLANATION_FIELD = 'explanationText';
 const EXPLANATION_LABEL = 'Explanation';
 
-/** The one question a family pedigree asks while the family is being built. */
-const CENSUS_FIELD = 'censusPrompt';
-const CENSUS_LABEL = 'Census prompt';
+/** The instruction a family pedigree shows while the family is being drawn. */
+const CENSUS_FIELD = 'prompt';
+const CENSUS_LABEL = 'Prompt text';
 
 const ANONYMISATION = sectionId({ kind: 'stage', stageId: 'anonymisation-1' });
 
@@ -25,9 +25,9 @@ const ANONYMISATION = sectionId({ kind: 'stage', stageId: 'anonymisation-1' });
  * links are all available, and Enter starts a new paragraph.
  */
 const explanation = (
-  <Field<typeof RichTextField>
+  <Field<typeof LocalizedRichTextField>
     name={EXPLANATION_FIELD}
-    component={RichTextField}
+    component={LocalizedRichTextField}
     label={EXPLANATION_LABEL}
     hint="Say which answers the passphrase protects, who can read them, and that the answers cannot be recovered without it."
     placeholder="Some of your answers are stored so that only you can unlock them."
@@ -44,11 +44,11 @@ const explanation = (
  * reads was saved with a space in front of it.
  */
 const censusPrompt = (
-  <Field<typeof RichTextField>
+  <Field<typeof LocalizedRichTextField>
     name={CENSUS_FIELD}
-    component={RichTextField}
+    component={LocalizedRichTextField}
     label={CENSUS_LABEL}
-    hint="Shown throughout the family-building phase, so it should describe the whole task rather than one step of it."
+    hint="Shown to the participant above the canvas for the whole stage."
     placeholder="Enter your prompt..."
     singleLine
     required={REQUIRED}
@@ -57,20 +57,9 @@ const censusPrompt = (
 
 /** A stage whose participant-facing prose has not been written yet. */
 const nothingWritten = (host: InMemoryHost) => {
-  const { document } = host.store.read(ANONYMISATION);
-  const explanationText = document.explanationText;
-  // Read defensively rather than trusted: the host holds whatever the protocol
-  // last sent, which is a document a collaborator can leave half-written.
-  const title: unknown =
-    typeof explanationText === 'object' && explanationText !== null
-      ? Reflect.get(explanationText, 'title')
-      : undefined;
-  host.store.applyAsCollaborator(ANONYMISATION, {
-    ...document,
-    // The heading beside it is kept: this story is about the box that is
-    // empty, and a stage missing both halves is a different state.
-    explanationText: { title },
-  });
+  const { explanationText: _written, ...rest } =
+    host.store.read(ANONYMISATION).document;
+  host.store.applyAsCollaborator(ANONYMISATION, rest);
 };
 
 const meta = {
@@ -188,9 +177,13 @@ export const OneLineOnly: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
+    const box = await canvas.findByRole('textbox', { name: CENSUS_LABEL });
+    await expect(box).toHaveAttribute('aria-multiline', 'false');
+    // A prompt is one line of VALUE, not a one-line-tall box: it keeps the
+    // tall editing area. Only `compact` fields shrink to the toolbar's height.
     await expect(
-      await canvas.findByRole('textbox', { name: CENSUS_LABEL }),
-    ).toHaveAttribute('aria-multiline', 'false');
+      box.parentElement?.getBoundingClientRect().height,
+    ).toBeGreaterThanOrEqual(120);
     await expect(
       canvas.queryByRole('button', { name: 'Heading 1' }),
     ).toBeNull();

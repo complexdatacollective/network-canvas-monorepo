@@ -15,7 +15,6 @@ import {
 } from '../db/api';
 import { getSessionDek } from '../db/sessionKey';
 import { DEFAULT_SETTINGS } from '../db/types';
-import { IS_EMBEDDED_IN_INTERVIEWER_9 } from '../interviewer9Embed';
 import { VAULT_STORAGE_KEY } from '../vault/vaultStore';
 import * as authApi from './api';
 import type { AuthMode } from './api';
@@ -116,23 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // can only be learned by asking the auth API, asynchronously, once the
   // provider is mounted. The state written here is that answer arriving, so an
   // effect is the right tool.
-  //
-  // Interviewer 8 framed by Interviewer 9 first takes the key Interviewer 9
-  // hands over (see interviewer9Embed.ts), so its first answer is "unlocked"
-  // rather than a lock screen. The state stays 'loading' (a spinner, nothing
-  // that asks for input) until Interviewer 9 replies or the wait times out.
   useEffect(() => {
-    if (!IS_EMBEDDED_IN_INTERVIEWER_9) {
-      void refresh();
-      return undefined;
-    }
-    let active = true;
-    void authApi.adoptInterviewer9Unlock().then(() => {
-      if (active) void refresh();
-    });
-    return () => {
-      active = false;
-    };
+    void refresh();
   }, [refresh]);
 
   // Drop the key now, with no window for anything to finish writing first.

@@ -39,7 +39,7 @@ const COMMITTED_IMAGE: CommittedResource = {
 };
 
 const ASSET_ITEMS: SectionDoc = {
-  title: 'Welcome',
+  title: { 'en-US': 'Welcome' },
   items: [
     { id: 'item-1', type: 'asset', content: '' },
     { id: 'item-2', type: 'asset', content: '' },
@@ -48,7 +48,7 @@ const ASSET_ITEMS: SectionDoc = {
 
 /** Both items already naming one committed image, as a saved stage would. */
 const SHARED_ITEMS: SectionDoc = {
-  title: 'Welcome',
+  title: { 'en-US': 'Welcome' },
   items: [
     { id: 'item-1', type: 'asset', content: COMMITTED_IMAGE.id },
     { id: 'item-2', type: 'asset', content: COMMITTED_IMAGE.id },
@@ -332,7 +332,7 @@ describe('counting the row a dialog is still editing', () => {
   it('refuses a discard the sibling row would be left dangling by', async () => {
     const user = userEvent.setup();
     const { staged } = renderResourceEditor({
-      fields: { title: 'Welcome', items: [] },
+      fields: { title: { 'en-US': 'Welcome' }, items: [] },
       children: <BlockList />,
     });
 

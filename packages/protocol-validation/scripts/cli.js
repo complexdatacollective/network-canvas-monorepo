@@ -6,7 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
+  CURRENT_SCHEMA_VERSION,
   extractProtocol,
+  migrateProtocol,
   missingAssetsError,
   validateProtocol,
 } from '../dist/index.js';
@@ -66,14 +68,30 @@ async function main() {
 
     const result = await validateProtocol(protocol);
 
-    if (result.success) {
-      success('✅ Protocol is valid');
-      process.exit(0);
-    } else {
+    if (!result.success) {
       error('❌ Protocol validation failed:');
       console.error(result.error.message);
       process.exit(1);
     }
+
+    // A superseded schema version is only checked loosely on its own, so an
+    // older protocol is valid when it migrates to a valid current protocol.
+    if (result.data.schemaVersion < CURRENT_SCHEMA_VERSION) {
+      try {
+        migrateProtocol(protocol);
+      } catch (migrationError) {
+        error('❌ Protocol validation failed:');
+        console.error(
+          migrationError instanceof Error
+            ? migrationError.message
+            : String(migrationError),
+        );
+        process.exit(1);
+      }
+    }
+
+    success('✅ Protocol is valid');
+    process.exit(0);
   } catch (_error) {
     process.exit(1);
   }

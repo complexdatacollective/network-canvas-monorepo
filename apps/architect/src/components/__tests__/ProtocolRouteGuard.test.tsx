@@ -40,17 +40,24 @@ vi.mock('wouter/use-browser-location', () => ({
 
 const protocol: CurrentProtocol = {
   name: 'Test Protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {},
 };
 
-const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
+const stage: Stage = {
+  id: 'stage-1',
+  type: 'Information',
+  label: { en: 'A' },
+  title: { en: 'A' },
+  items: [],
+};
 
 // What the form holds after the researcher has typed into it. Genuinely
 // different from the document the editor opened on, so the beacon reports
 // dirty.
-const editedStage = { ...stage, label: 'A, edited' } as Stage;
+const editedStage: Stage = { ...stage, label: { en: 'A, edited' } };
 
 const createTestStore = () =>
   configureStore({
@@ -66,13 +73,23 @@ type TestStore = ReturnType<typeof createTestStore>;
 
 // A stage editor holding a real edit, exactly as its own chrome publishes one.
 const openDirtyStageDraft = () => {
-  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' }, true);
+  publishStageDraft(
+    editedStage,
+    { label: { en: 'A' } },
+    { label: { en: 'A, edited' } },
+    true,
+  );
 };
 
 // A stage editor opened while another tab held the protocol: never granted its
 // stage, so it holds nothing of the researcher's.
 const openReadOnlyStageEditor = () => {
-  publishStageDraft(stage, { label: 'A' }, { label: 'A' }, false);
+  publishStageDraft(
+    stage,
+    { label: { en: 'A' } },
+    { label: { en: 'A' } },
+    false,
+  );
 };
 
 // A page as the routes render one: it asks the guard whether to offer editing.
@@ -187,9 +204,9 @@ describe('ProtocolRouteGuard', () => {
   it.each([
     '/protocol/codebook',
     '/protocol/assets',
+    '/protocol/localization',
     '/protocol/summary',
     '/protocol/stage/new',
-    '/protocol/experiments',
   ])('blocks %s when no protocol is open', (path) => {
     mockLocation.mockReturnValue(path);
 
@@ -283,7 +300,12 @@ describe('ProtocolRouteGuard', () => {
       // editor publishes those. Deliberately against the SAME baseline — a
       // published pair whose baseline had moved too would report clean even if
       // the form still held the edit.
-      publishStageDraft(stage, { label: 'A' }, { label: 'A' }, true);
+      publishStageDraft(
+        stage,
+        { label: { en: 'A' } },
+        { label: { en: 'A' } },
+        true,
+      );
     });
 
     expect(readStageDraft().dirty).toBe(false);

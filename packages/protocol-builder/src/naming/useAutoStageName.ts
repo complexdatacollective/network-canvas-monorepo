@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
 import {
+  forgetStageNameOwnership,
   stageNameOwnership,
   useLiveStageLabel,
   useProposedStageLabel,
@@ -35,6 +37,7 @@ export type AutoStageName = Readonly<{
 export function useAutoStageName(): AutoStageName {
   const { storeApi, creation, readOnly } = useStageEditorForm();
   const isNewStage = creation !== undefined;
+  const languagesKnown = useProtocolLocalization() !== undefined;
   const liveLabel = useLiveStageLabel();
   const proposal = useProposedStageLabel();
   const write = useStageNameWriter();
@@ -46,12 +49,19 @@ export function useAutoStageName(): AutoStageName {
   const proposalRef = useRef(proposal);
   proposalRef.current = proposal;
 
+  // StrictMode tears the editor down and mounts it again at once, and the form
+  // empties its values in between. A record kept across that would read the
+  // emptied name as one the researcher cleared, and never propose it again.
+  useEffect(() => () => forgetStageNameOwnership(storeApi), [storeApi]);
+
   useEffect(() => {
     // Nothing proposed into a stage this session may not write, and no
     // refusal reported for it: nobody asked for this write, and a create still
     // waiting on its acquire would meet a banner about a name nobody typed.
-    // The effect re-runs when the acquire settles.
-    if (readOnly) return;
+    // The effect re-runs when the acquire settles. Likewise before the
+    // protocol's languages are known: there is no default language to name
+    // the stage in yet.
+    if (readOnly || !languagesKnown) return;
     const ownership = stageNameOwnership(storeApi);
     const update = computeAutoNameUpdate({
       isNewStage,
@@ -64,7 +74,15 @@ export function useAutoStageName(): AutoStageName {
     if (update.label !== undefined) {
       write(update.label, 'proposed');
     }
-  }, [isNewStage, liveLabel, proposal, readOnly, storeApi, write]);
+  }, [
+    isNewStage,
+    languagesKnown,
+    liveLabel,
+    proposal,
+    readOnly,
+    storeApi,
+    write,
+  ]);
 
   const onBlur = useCallback(() => {
     if (!isNewStage || readOnly) return;

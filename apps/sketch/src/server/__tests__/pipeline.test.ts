@@ -45,7 +45,7 @@ describe('runPipeline', () => {
     expect(outcome.status).toBe('succeeded');
     expect(outcome.result?.attempts).toBe(1);
     expect(outcome.result?.fixedIssues).toEqual([]);
-    expect(outcome.result?.protocol.schemaVersion).toBe(8);
+    expect(outcome.result?.protocol.schemaVersion).toBe(9);
     expect(outcome.result?.summary.name).toBe(friendshipWording.protocolName);
     expect(outcome.log.protocolValid).toBe(true);
     expect(outcome.steps.map((s) => s.state)).toEqual([

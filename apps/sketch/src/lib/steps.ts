@@ -10,7 +10,7 @@ export const STEP_TITLES: Record<StepId, string> = {
   design: 'Designing the study',
   wording: 'Writing titles and prompts',
   compile: 'Building the protocol',
-  validate: 'Checking it against schema 8',
+  validate: 'Checking it against schema 9',
 };
 
 // Who does each step, for the chip on its row.

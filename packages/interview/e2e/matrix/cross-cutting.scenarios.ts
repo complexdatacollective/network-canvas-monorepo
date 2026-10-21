@@ -285,8 +285,8 @@ const behaviourScenarios: ScenarioDefinition[] = [
 //
 // A skipLogic `destination` turns a local skip into a targeted jump: stages
 // between the hidden stage and its destination are bypassed WITHOUT evaluating
-// their own rules, `{ type: 'finish' }` routes to the engine-appended
-// FinishSession stage, and a destination that is itself hidden chains onward
+// their own rules, `{ type: 'finish' }` routes to the protocol's finish stage,
+// and a destination that is itself hidden chains onward
 // (its own skipLogic is evaluated normally, so its own destination applies).
 // Destinations must point at a later stage, so the source stage's skipLogic is
 // set through its handle's mutable `stageEntry.skipLogic` once the target
@@ -390,8 +390,8 @@ const destinationScenarios: ScenarioDefinition[] = [
       return synth;
     },
     run: async ({ page, interview }) => {
-      // A finish destination resolves to the engine-appended FinishSession
-      // stage (index === protocolStages.length === 3), bypassing 'After'.
+      // A finish destination resolves to the finish stage SyntheticInterview
+      // appends (index 3), bypassing 'After'.
       await interview.next();
       await expect(page).toHaveURL(/step=3/);
       await expect(

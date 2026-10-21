@@ -12,7 +12,6 @@ import {
   PreviewDocumentMetadata,
 } from './i18n/documentMetadata';
 import { loadStartupLocale } from './i18n/imperative';
-import { getAppServiceWorkerContainer } from './utils/pwa';
 
 registerPwaBuildLease(__PWA_BUILD_ID__);
 
@@ -27,10 +26,7 @@ async function startPreview(): Promise<void> {
   // controlling worker. Complete the same pre-render handoff as the main app so
   // deferred preview chunks and offline fallbacks belong to that new shell.
   // Explicit no-reload mode keeps the popup on its original navigation.
-  await applyFreshLoadServiceWorkerUpdate({
-    reload: false,
-    serviceWorker: getAppServiceWorkerContainer(),
-  });
+  await applyFreshLoadServiceWorkerUpdate({ reload: false });
   await startupLocaleReady;
 
   const root = document.getElementById('root');

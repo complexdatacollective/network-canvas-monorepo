@@ -18,7 +18,11 @@
 //
 // It also imports the damaged protocol fixtures, because "opening a damaged
 // file is no longer recorded as an application error" is a claim about what is
-// sent, and can only be checked where something is being sent.
+// sent, and can only be checked where something is being sent. Every readable
+// one is schema 8 or 9, which Fresco stores as it is — it upgrades only a
+// schema 7 protocol, and only to schema 8 — so none can fail an upgrade and
+// nothing may be reported as one; and a protocol refused as invalid is an
+// answer about the file, which sends no exception either.
 //
 // Usage: node analytics-lane.mjs [--lane analytics]
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -79,6 +83,10 @@ const psql = (sql) =>
 /**
  * What each damaged fixture must be told about, and by which message.
  *
+ * The missing resource is a schema 8 protocol, imported as it is, so its
+ * media is reached through schema 8's own validation; the fractional COUNT is
+ * schema 9, so the pending validation is what refuses it.
+ *
  * The messages are the researcher-facing sentences `@codaco/protocol-validation`
  * defines, quoted here by their distinguishing clause rather than in full: what
  * is being checked is that the right KIND of answer comes back — a damaged
@@ -108,8 +116,10 @@ const DAMAGED_FIXTURES = [
   {
     id: 'analytics-fractional-count-refused',
     file: 'fractional-count-filter.netcanvas',
-    expect: /invalid|check the protocol structure/i,
-    why: 'an operator that counts selected options still takes a whole number',
+    // Fresco's own sentence for a protocol its validation refuses, which is
+    // the answer this file gets: it is not damaged, it is invalid.
+    expect: /The protocol is invalid/i,
+    why: 'an operator that counts selected options takes a whole number, so the protocol is refused as invalid',
   },
 ];
 

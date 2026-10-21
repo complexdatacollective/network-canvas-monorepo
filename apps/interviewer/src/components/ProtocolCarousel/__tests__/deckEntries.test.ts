@@ -10,7 +10,8 @@ function makeProtocol(name: string, hash = `hash-${name}`): ProtocolWithCounts {
   const protocol: CurrentProtocol = {
     name,
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };
@@ -18,7 +19,7 @@ function makeProtocol(name: string, hash = `hash-${name}`): ProtocolWithCounts {
     id: `test-${hash}`,
     hash,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: '2026-05-20T10:00:00.000Z',
     description: '',
     codebook: {},
@@ -189,5 +190,95 @@ describe('buildDeck', () => {
     });
     expect(deck).toHaveLength(2);
     expect(deck[0]?.kind).toBe('pending');
+  });
+});
+
+function makeSchema8(
+  name: string,
+  { sessionCount = 0 }: { sessionCount?: number } = {},
+): ProtocolWithCounts {
+  const hash = `schema-8-hash-${name}`;
+  return {
+    id: `schema-8-${name}`,
+    hash,
+    name,
+    schemaVersion: 8,
+    importedAt: '2025-05-20T10:00:00.000Z',
+    codebook: {},
+    protocol: { name, schemaVersion: 8, codebook: {}, stages: [] },
+    sessionCount,
+  };
+}
+
+describe('buildDeck with schema 8 protocols', () => {
+  const base = {
+    protocols: [] as ProtocolWithCounts[],
+    showSampleCard: false,
+    showDevelopmentCard: false,
+    pendingImports: [] as PendingImport[],
+  };
+
+  it('deals them as ordinary protocol cards, by name and hash', () => {
+    const deck = buildDeck({
+      ...base,
+      protocols: [
+        makeProtocol('Bravo'),
+        makeSchema8('Charlie'),
+        makeSchema8('Alpha'),
+      ],
+    });
+    expect(deck.map(entryKey)).toEqual([
+      'hash:schema-8-hash-Alpha',
+      'hash:hash-Bravo',
+      'hash:schema-8-hash-Charlie',
+      'import',
+    ]);
+    expect(deck.map((entry) => entry.kind)).toEqual([
+      'protocol',
+      'protocol',
+      'protocol',
+      'import',
+    ]);
+  });
+
+  it('puts a schema 9 protocol before the schema 8 protocol of the same name', () => {
+    const deck = buildDeck({
+      ...base,
+      protocols: [makeSchema8('Study'), makeProtocol('Study')],
+    });
+    expect(
+      deck.flatMap((entry) =>
+        entry.kind === 'protocol' ? [entry.protocol.schemaVersion] : [],
+      ),
+    ).toEqual([9, 8]);
+  });
+
+  it('hides the schema 8 sample protocol unless it has interviews', () => {
+    const hidden = buildDeck({
+      ...base,
+      protocols: [makeSchema8('Sample Protocol')],
+    });
+    expect(hidden.map((entry) => entry.kind)).toEqual(['import']);
+
+    const shown = buildDeck({
+      ...base,
+      showSampleCard: true,
+      protocols: [makeSchema8('Sample Protocol', { sessionCount: 2 })],
+    });
+    // Beside, not instead of, this app's own schema 9 sample teaser.
+    expect(shown.map(entryKey)).toEqual([
+      'slot:Sample Protocol',
+      'hash:schema-8-hash-Sample Protocol',
+      'import',
+    ]);
+  });
+
+  it('morphs into an import of the same name, like any protocol', () => {
+    const deck = buildDeck({
+      ...base,
+      protocols: [makeSchema8('Study')],
+      pendingImports: [makePending('Study')],
+    });
+    expect(deck.map(entryKey)).toEqual(['slot:Study', 'import']);
   });
 });

@@ -21,6 +21,7 @@ const DECLARED_STAGE_TYPES = [
   'FinishSession',
   'Geospatial',
   'Information',
+  'LanguageChooser',
   'NameGenerator',
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
@@ -84,6 +85,7 @@ export const ANALYTICS_LOCALES: [
 export const STAGE_VALIDATION_KINDS = [
   'unknown',
   'comparison_response_required',
+  'unplaced_nodes',
 ] as const;
 
 export type StageValidationKind = (typeof STAGE_VALIDATION_KINDS)[number];
@@ -129,6 +131,8 @@ const nodeOnly = Schema.Struct({ node_id: EntityId });
 const optionalNode = Schema.Struct({ node_id: Schema.optionalKey(EntityId) });
 
 const binIndex = Schema.Struct({ bin_index: Index });
+
+const BinInteractionMode = Schema.Literals(['select', 'drag']);
 
 export const InterviewAnalyticsEvents = {
   interview_started: noProperties,
@@ -207,12 +211,14 @@ export const InterviewAnalyticsEvents = {
     node_id: EntityId,
     node_type_index: Schema.optionalKey(Index),
     bin_index: Index,
+    interaction_mode: BinInteractionMode,
   }),
   node_rebinned: Schema.Struct({
     node_id: EntityId,
     node_type_index: Schema.optionalKey(Index),
     from_bin_index: Index,
     to_bin_index: Index,
+    interaction_mode: BinInteractionMode,
   }),
   annotation_drawn: noProperties,
   annotations_reset: noProperties,
@@ -259,6 +265,14 @@ export const InterviewExceptionProperties = Schema.Union([
   }),
   Schema.Struct({ feature: Schema.Literal('external-data') }),
   Schema.Struct({ feature: Schema.Literal('geospatial-map-init') }),
+  Schema.Struct({
+    feature: Schema.Literal('encrypted-attributes'),
+    reason: Schema.Literals([
+      'legacy-format',
+      'missing-metadata',
+      'decryption-failed',
+    ]),
+  }),
 ]);
 
 export type InterviewExceptionProperties =

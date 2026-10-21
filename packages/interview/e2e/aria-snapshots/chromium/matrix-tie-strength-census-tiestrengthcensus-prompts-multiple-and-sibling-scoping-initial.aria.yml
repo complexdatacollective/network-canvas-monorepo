@@ -1,6 +1,14 @@
 - main:
-  - heading "Rate Your Relationships" [level=1]
-  - paragraph: Intro.
+  - text: Nikita Crist and Lilliana Wisozk
+  - button "Nikita Crist"
+  - button "Lilliana Wisozk"
+  - status:
+    - heading "Prompt A text" [level=2]
+  - listbox "Nikita Crist and Lilliana Wisozk Prompt A text":
+    - option "Low"
+    - option "Medium"
+    - option "High"
+    - option "No Friendship"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

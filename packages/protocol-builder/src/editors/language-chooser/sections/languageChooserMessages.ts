@@ -1,0 +1,64 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+
+/**
+ * Everything the language-chooser sections say.
+ *
+ * The stage is where a participant picks which of the protocol's languages the
+ * rest of their interview is shown in. The languages themselves are not
+ * chosen here — they are the languages the whole protocol is written in — so
+ * most of what this file says explains where they come from.
+ */
+export const languageChooserMessages = defineMessages({
+  wordingTitle: {
+    id: 'protocolBuilder.languageChooser.wordingTitle',
+    defaultMessage: 'Participant wording',
+    description:
+      'Heading of the section holding the words a participant reads on the stage where they choose the language of their interview.',
+  },
+  wordingDescription: {
+    id: 'protocolBuilder.languageChooser.wordingDescription',
+    defaultMessage:
+      'This starts with wording Network Canvas supplies, which you can change.',
+    description:
+      'Description of the wording section of the language-choosing stage. Its heading starts with wording Network Canvas supplies in each of the protocol’s languages that it has.',
+  },
+  headingLabel: {
+    id: 'protocolBuilder.languageChooser.headingLabel',
+    defaultMessage: 'Heading',
+    description:
+      'Label of the field holding the heading a participant reads above the languages they choose between.',
+  },
+  headingHint: {
+    id: 'protocolBuilder.languageChooser.headingHint',
+    defaultMessage:
+      'Shown above the list of languages. When a participant chooses a language, the heading is shown in that language.',
+    description:
+      'Guidance under the field holding the heading of the language-choosing stage. The heading is shown in the language the participant has chosen, so it changes to that language’s translation as soon as they choose.',
+  },
+  languagesTitle: {
+    id: 'protocolBuilder.languageChooser.languagesTitle',
+    defaultMessage: 'Languages',
+    description:
+      'Heading of the section listing the languages a participant can choose between on this stage.',
+  },
+  languagesDescription: {
+    id: 'protocolBuilder.languageChooser.languagesDescription',
+    defaultMessage:
+      "Participants choose from every language this protocol is written in. The languages belong to the whole protocol, so they can't be changed on this stage.",
+    description:
+      'Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages of the whole protocol. A stage is one step of an interview.',
+  },
+  languagesListLabel: {
+    id: 'protocolBuilder.languageChooser.languagesListLabel',
+    defaultMessage: 'Languages participants can choose',
+    description:
+      'Accessible name of the list of languages a participant can choose between on this stage.',
+  },
+  singleLanguage: {
+    id: 'protocolBuilder.languageChooser.singleLanguage',
+    defaultMessage:
+      'This protocol is written in one language, so participants will see it as their only choice.',
+    description:
+      'Shown under the list of languages when the protocol has only one language, so this stage offers participants a single option.',
+  },
+});

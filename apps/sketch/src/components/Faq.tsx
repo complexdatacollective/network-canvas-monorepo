@@ -19,8 +19,8 @@ const ITEMS: { value: string; question: string; answer: ReactNode }[] = [
     answer: (
       <>
         <p>
-          A Network Canvas protocol in schema 8, the format that Architect,
-          Interviewer and Fresco read. It contains a codebook of node types,
+          A Network Canvas protocol in schema 9, the format that Architect 9,
+          Interviewer 9 and Fresco read. It contains a codebook of node types,
           relationships and variables, each variable with an input control
           chosen for its question; the interview’s stages in order, with titles,
           prompts and introductory screens written for participants; and the

@@ -124,6 +124,13 @@ type UseFitTextResult<T> = {
   stepIndex: number;
   /** Whether the text still overflows at the smallest rung. */
   isTruncated: boolean;
+  /**
+   * The `watch` value the reported rung was measured for. `stepIndex` is kept
+   * until the next measurement lands, so right after `watch` changes it still
+   * describes the previous text; a caller that acts on the rung compares this
+   * with the `watch` it passed.
+   */
+  fittedWatch: UseFitTextOptions['watch'];
 };
 
 /**
@@ -140,7 +147,11 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
   enabled = true,
 }: UseFitTextOptions): UseFitTextResult<T> {
   const ref = useRef<T>(null);
-  const [state, setState] = useState({ stepIndex: 0, isTruncated: false });
+  const [state, setState] = useState<{
+    stepIndex: number;
+    isTruncated: boolean;
+    fittedWatch: UseFitTextOptions['watch'];
+  }>({ stepIndex: 0, isTruncated: false, fittedWatch: undefined });
 
   useLayoutEffect(() => {
     const element = ref.current;
@@ -148,9 +159,11 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
 
     if (!enabled || !element || steps.length === 0) {
       setState((previous) =>
-        previous.stepIndex === 0 && !previous.isTruncated
+        previous.stepIndex === 0 &&
+        !previous.isTruncated &&
+        previous.fittedWatch === undefined
           ? previous
-          : { stepIndex: 0, isTruncated: false },
+          : { stepIndex: 0, isTruncated: false, fittedWatch: undefined },
       );
       return undefined;
     }
@@ -164,9 +177,10 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
         if (cancelled) return;
         setState((previous) =>
           previous.stepIndex === stepIndex &&
-          previous.isTruncated === isTruncated
+          previous.isTruncated === isTruncated &&
+          previous.fittedWatch === watch
             ? previous
-            : { stepIndex, isTruncated },
+            : { stepIndex, isTruncated, fittedWatch: watch },
         );
       },
     };
@@ -205,5 +219,10 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     };
   }, [steps, containerRef, watch, enabled]);
 
-  return { ref, stepIndex: state.stepIndex, isTruncated: state.isTruncated };
+  return {
+    ref,
+    stepIndex: state.stepIndex,
+    isTruncated: state.isTruncated,
+    fittedWatch: state.fittedWatch,
+  };
 }

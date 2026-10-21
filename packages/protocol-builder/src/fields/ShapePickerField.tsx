@@ -95,7 +95,8 @@ export default function ShapePickerField({
       onBlur={onBlur}
       onFocus={onFocus}
       className={cx(
-        'flex flex-wrap gap-3 rounded border-2',
+        'flex gap-3 rounded border-2',
+        small ? 'flex-nowrap' : 'flex-wrap',
         !small && 'bg-input text-input-contrast p-4',
         ariaInvalid === true && 'border-destructive',
         disabled && 'opacity-50',
@@ -106,6 +107,7 @@ export default function ShapePickerField({
         <Radio.Root
           key={shape.value}
           value={shape.value}
+          aria-disabled={readOnly || undefined}
           nativeButton
           render={(
             // `Node`'s own `onDragStart`/`onDragEnd` are pointer-gesture props

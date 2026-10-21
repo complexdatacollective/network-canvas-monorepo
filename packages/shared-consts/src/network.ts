@@ -51,17 +51,26 @@ export const EntityAttributesSchema = z.preprocess(
   z.record(z.string(), VariableValueSchema),
 );
 
+/**
+ * How one stored encrypted value was produced: the initialisation vector of
+ * its encryption. The key it was encrypted with is the interview's, derived
+ * from the participant's passphrase and the interview's id; nothing about the
+ * key, and nothing that would check a passphrase, is stored with the network.
+ *
+ * `salt` is only ever present on a value written by the experimental schema 8
+ * feature, which derived a key per value. Such a value cannot be decrypted
+ * any more; it is accepted so the network it belongs to still loads.
+ */
+const SecureAttributeMetaSchema = z.object({
+  iv: z.array(z.number()),
+  salt: z.array(z.number()).optional(),
+});
+
 const BaseNcEntitySchema = z.object({
   [entityPrimaryKeyProperty]: z.string().readonly(),
   [entityAttributesProperty]: EntityAttributesSchema,
   [entitySecureAttributesMeta]: z
-    .record(
-      z.string(),
-      z.object({
-        iv: z.array(z.number()),
-        salt: z.array(z.number()),
-      }),
-    )
+    .record(z.string(), SecureAttributeMetaSchema)
     .optional(),
 });
 
@@ -89,6 +98,29 @@ export const NcEntity = z.union([
 export type NcEntity = z.infer<typeof NcEntity>;
 
 export type NcEgo = z.infer<typeof BaseNcEntitySchema>;
+
+/**
+ * The shortest passphrase an interview accepts when the stage that asks for
+ * it sets no minimum of its own, unless its maximum is shorter (see
+ * `effectivePassphraseMinLength`).
+ */
+export const DEFAULT_PASSPHRASE_MIN_LENGTH = 8;
+
+/**
+ * The shortest passphrase an interview accepts under a stage's length rules.
+ *
+ * A minimum the researcher sets replaces the default, even when it is lower.
+ * Without one the default applies, lowered to the researcher's maximum when
+ * that is shorter: a default above the maximum would leave no passphrase a
+ * participant could choose.
+ */
+export function effectivePassphraseMinLength(
+  rules: { minLength?: number; maxLength?: number } | undefined,
+): number {
+  if (rules?.minLength !== undefined) return rules.minLength;
+  if (rules?.maxLength === undefined) return DEFAULT_PASSPHRASE_MIN_LENGTH;
+  return Math.min(DEFAULT_PASSPHRASE_MIN_LENGTH, rules.maxLength);
+}
 
 export const NcNetworkSchema = z.object({
   nodes: z.array(NcNodeSchema),
