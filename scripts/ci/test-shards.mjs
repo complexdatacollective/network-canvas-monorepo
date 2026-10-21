@@ -150,6 +150,7 @@ export const TEST_SHARDS = [
       { name: '@codaco/protocol-utilities', seconds: 52.7 },
       { name: 'networkcanvas.com', seconds: 33.3 },
       { name: '@codaco/background-creator', seconds: 15.5 },
+      { name: '@codaco/sketch', seconds: 10 },
       { name: '@codaco/network-query', seconds: 2.4 },
       { name: '@codaco/shared-consts', seconds: 2.5 },
     ],

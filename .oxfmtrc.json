@@ -47,6 +47,7 @@
     "apps/studio/api/migrations/**",
     "packages/interface-images/src/generated/**",
     "packages/interview/e2e/fixtures/data/roster-broken.json",
-    "packages/interview/e2e/aria-snapshots/**"
+    "packages/interview/e2e/aria-snapshots/**",
+    "apps/sketch/src/server/design/assets/**"
   ]
 }

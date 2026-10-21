@@ -10,6 +10,7 @@ import {
   loadProtocolRoutes,
 } from '~/components/protocolRoutesLoader';
 import RouteFocus from '~/components/RouteFocus';
+import SketchImport from '~/components/SketchImport/SketchImport';
 
 // The start screen is all a first visit needs, so the protocol editor loads on
 // demand. main.tsx preloads it once the start screen is up, so by the time a
@@ -52,6 +53,7 @@ const Routes = () => {
           <Route path="/protocol/*?">
             <ProtocolRoutes />
           </Route>
+          <Route path="/import-from-sketch" component={SketchImport} />
         </Switch>
       </ProtocolRouteGuard>
     </ActionToolbarProvider>

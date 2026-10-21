@@ -1,0 +1,14 @@
+{
+  "extends": "@codaco/tsconfig/node.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.server.json"
+  },
+  "include": [
+    "src/server/**/*.ts",
+    "src/shared/**/*.ts",
+    "netlify/**/*.ts",
+    "netlify/**/*.mts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
