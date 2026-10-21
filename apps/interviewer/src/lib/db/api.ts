@@ -1,11 +1,14 @@
+import type { SessionFinish } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import * as dexieSettings from './db';
-import { migrateStoredProtocols as dexieMigrateStoredProtocols } from './migrateStoredProtocols';
-import type { StoredProtocolMigrationResult } from './migrateStoredProtocols';
 import * as dexieProtocols from './protocols';
-import { reencryptAllRecords as dexieReencryptAllRecords } from './reencrypt';
+import type { ExportedSessionRecord } from './recordCrypto';
+import {
+  hasPlaintextSessions as dexieHasPlaintextSessions,
+  reencryptAllRecords as dexieReencryptAllRecords,
+} from './reencrypt';
 import type { ReencryptProgress, ReencryptResult } from './reencrypt';
 import * as dexieSessions from './sessions';
 import type {
@@ -36,7 +39,7 @@ export async function getProtocolsByHashes(
 }
 
 export async function saveProtocol(
-  protocol: CurrentProtocol,
+  protocol: StoredProtocol['protocol'],
   hash: string,
   assets: { id: string; name: string; data: Blob | string }[],
 ): Promise<StoredProtocol> {
@@ -45,10 +48,6 @@ export async function saveProtocol(
 
 export async function deleteProtocol(hash: string): Promise<void> {
   return dexieProtocols.deleteProtocol(hash);
-}
-
-export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationResult> {
-  return dexieMigrateStoredProtocols();
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
@@ -84,10 +83,16 @@ export async function getSession(
   return dexieSessions.getSession(id);
 }
 
-export async function getSessionsByIds(
+export async function getSessionHeader(
+  id: string,
+): ReturnType<typeof dexieSessions.getSessionHeader> {
+  return dexieSessions.getSessionHeader(id);
+}
+
+export async function getSessionsForExport(
   ids: readonly string[],
-): Promise<StoredSession[]> {
-  return dexieSessions.getSessionsByIds(ids);
+): Promise<ExportedSessionRecord[]> {
+  return dexieSessions.getSessionsForExport(ids);
 }
 
 export async function createSession(args: {
@@ -111,8 +116,12 @@ export async function whenSessionWritesSettle(): Promise<void> {
   return dexieSessions.whenSessionWritesSettle();
 }
 
-export async function markSessionFinished(id: string): Promise<void> {
-  return dexieSessions.markSessionFinished(id);
+export async function markSessionFinished(
+  id: string,
+  finish: SessionFinish,
+  signal?: AbortSignal,
+): Promise<void> {
+  return dexieSessions.markSessionFinished(id, finish, signal);
 }
 
 export async function markSessionUnfinished(
@@ -142,6 +151,10 @@ export async function reencryptAllRecords(
   onProgress?: ReencryptProgress,
 ): Promise<ReencryptResult> {
   return dexieReencryptAllRecords(onProgress);
+}
+
+export async function hasPlaintextSessions(): Promise<boolean> {
+  return dexieHasPlaintextSessions();
 }
 
 export async function getSettings(): Promise<StoredSettings> {

@@ -175,7 +175,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
 
   it('createProtocol rejects a section that fails write-time validation', async () => {
     const protocol = baseProtocol();
-    (protocol.stages[0] as { label?: string }).label = '';
+    protocol.stages[0]!.label = { en: '' };
     await expect(create(protocol)).rejects.toThrow(
       SectionValidationFailedError,
     );
@@ -195,13 +195,13 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         owner: 'tab-1',
         epoch: lease!.epoch,
         clientSeq: 1n,
-        commands: [{ op: 'set', key: 'label', value: 'Renamed' }],
+        commands: [{ op: 'set', key: 'label', value: { en: 'Renamed' } }],
       }),
     );
     const document = (await run(getDraftDocument(TEST_TEAM_ID, draftId))) as {
-      stages: { id: string; label: string }[];
+      stages: { id: string; label: unknown }[];
     };
-    expect(document.stages[0]!.label).toBe('Renamed');
+    expect(document.stages[0]!.label).toEqual({ en: 'Renamed' });
   });
 
   it('sync commits can share an existing transaction and preserve deduplication', async () => {
@@ -248,9 +248,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         stage: {
           id: 'info1',
           type: 'Information',
-          label: 'About',
-          title: 'About this study',
-          items: [{ id: 'item1', type: 'text', content: 'Welcome.' }],
+          label: { en: 'About' },
+          title: { en: 'About this study' },
+          items: [{ id: 'item1', type: 'text', content: { en: 'Welcome.' } }],
         },
         index: 1,
       }),
@@ -268,6 +268,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       'nameGenerator1',
       'info1',
       'sociogram1',
+      'finish',
     ]);
   });
 
@@ -281,8 +282,8 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           stage: {
             id: 'transactionalInfo',
             type: 'Information',
-            label: 'Transactional',
-            title: 'Transactional',
+            label: { en: 'Transactional' },
+            title: { en: 'Transactional' },
             items: [],
           },
           index: 1,
@@ -312,6 +313,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       'transactionalInfo',
       'nameGenerator1',
       'sociogram1',
+      'finish',
     ]);
   });
 
@@ -332,9 +334,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           stage: {
             id: 'info2',
             type: 'Information',
-            label: 'X',
-            title: 'X',
-            items: [{ id: 'item1', type: 'text', content: 'Y.' }],
+            label: { en: 'X' },
+            title: { en: 'X' },
+            items: [{ id: 'item1', type: 'text', content: { en: 'Y.' } }],
           },
           index: 99,
         }),
@@ -356,9 +358,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
             stage: {
               id: 'info3',
               type: 'Information',
-              label: 'X',
-              title: 'X',
-              items: [{ id: 'item1', type: 'text', content: 'Y.' }],
+              label: { en: 'X' },
+              title: { en: 'X' },
+              items: [{ id: 'item1', type: 'text', content: { en: 'Y.' } }],
             },
             index,
           }),
@@ -378,6 +380,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     };
     expect(document.stages.map((stage) => stage.id)).toEqual([
       'nameGenerator1',
+      'finish',
     ]);
     const row = await store.rows(`SELECT 1 FROM sections WHERE hash = $1`, [
       removedHash,
@@ -387,6 +390,173 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     await expect(
       run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'sociogram1' })),
     ).rejects.toThrow(DraftStructureError);
+  });
+
+  describe('the finish stage the interview ends at', () => {
+    const info = (id: string) => ({
+      id,
+      type: 'Information',
+      label: { en: id },
+      title: { en: id },
+      items: [],
+    });
+    const finish = (id: string) => ({
+      id,
+      type: 'FinishSession',
+      mode: 'confirmation',
+      label: { en: 'Finish' },
+      content: { en: '# Thank you\n\nDone.' },
+      finishedContent: {
+        en: '# Interview Finished\n\nThank you for participating!',
+      },
+      finishLabel: { en: 'Finish' },
+      finishConfirmation: { en: 'Finish this interview?' },
+      finishFailed: { en: 'The interview could not be finished.' },
+      outcome: 'completed',
+    });
+    const stageIds = async (draftId: string) =>
+      (
+        (await run(getDraftDocument(TEST_TEAM_ID, draftId))) as {
+          stages: { id: string }[];
+        }
+      ).stages.map((stage) => stage.id);
+
+    it('puts a stage added with no position, or one past it, in front of it', async () => {
+      const { draftId } = await create(baseProtocol());
+      await run(addStage(TEST_TEAM_ID, { draftId, stage: info('appended') }));
+      await run(
+        addStage(TEST_TEAM_ID, { draftId, stage: info('atTheEnd'), index: 4 }),
+      );
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'appended',
+        'atTheEnd',
+        'finish',
+      ]);
+      expect(await run(validateDraft(TEST_TEAM_ID, draftId))).toEqual({
+        valid: true,
+      });
+    });
+
+    it('adds further finish stages among the endings, never above the first', async () => {
+      const { draftId } = await create(baseProtocol());
+      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('appended') }));
+      await run(
+        addStage(TEST_TEAM_ID, {
+          draftId,
+          stage: finish('atTheTop'),
+          index: 0,
+        }),
+      );
+      await run(
+        addStage(TEST_TEAM_ID, { draftId, stage: finish('between'), index: 4 }),
+      );
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'atTheTop',
+        'finish',
+        'between',
+        'appended',
+      ]);
+      expect(await run(validateDraft(TEST_TEAM_ID, draftId))).toEqual({
+        valid: true,
+      });
+    });
+
+    it('removes one of two finish stages, but not the last', async () => {
+      const { draftId } = await create(baseProtocol());
+      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('second') }));
+      await run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'finish' }));
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'second',
+      ]);
+      await expect(
+        run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'second' })),
+      ).rejects.toThrow(/only finish stage/);
+    });
+
+    it('moves finish stages among themselves, but not above the first', async () => {
+      const { draftId } = await create(baseProtocol());
+      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('second') }));
+      const head = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      await expect(
+        run(
+          moveStage(TEST_TEAM_ID, {
+            draftId,
+            stageId: 'second',
+            toIndex: 1,
+            expectedRevision: head.headSeq,
+          }),
+        ),
+      ).rejects.toThrow(/after a finish stage/);
+      await run(
+        moveStage(TEST_TEAM_ID, {
+          draftId,
+          stageId: 'second',
+          toIndex: 2,
+          expectedRevision: head.headSeq,
+        }),
+      );
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'second',
+        'finish',
+      ]);
+    });
+
+    it('refuses to remove the only finish stage, and keeps the draft as it was', async () => {
+      const { draftId } = await create(baseProtocol());
+      const before = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      await expect(
+        run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'finish' })),
+      ).rejects.toThrow(/only finish stage/);
+      const after = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      expect(after.headManifestHash).toBe(before.headManifestHash);
+    });
+
+    it('refuses a move that puts a stage after it, and allows one that does not', async () => {
+      const { draftId } = await create(baseProtocol());
+      const head = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      for (const [stageId, toIndex] of [
+        ['finish', 1],
+        ['sociogram1', 2],
+      ] as const) {
+        await expect(
+          run(
+            moveStage(TEST_TEAM_ID, {
+              draftId,
+              stageId,
+              toIndex,
+              expectedRevision: head.headSeq,
+            }),
+          ),
+        ).rejects.toThrow(/after a finish stage/);
+      }
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'finish',
+      ]);
+
+      await run(
+        moveStage(TEST_TEAM_ID, {
+          draftId,
+          stageId: 'sociogram1',
+          toIndex: 0,
+          expectedRevision: head.headSeq,
+        }),
+      );
+      expect(await stageIds(draftId)).toEqual([
+        'sociogram1',
+        'nameGenerator1',
+        'finish',
+      ]);
+    });
   });
 
   it('adds and removes codebook entities', async () => {
@@ -517,9 +687,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         stage: {
           id: 'infoFence',
           type: 'Information',
-          label: 'Fence',
-          title: 'Fence',
-          items: [{ id: 'item1', type: 'text', content: 'Z.' }],
+          label: { en: 'Fence' },
+          title: { en: 'Fence' },
+          items: [{ id: 'item1', type: 'text', content: { en: 'Z.' } }],
         },
         index: 0,
       }),
@@ -557,7 +727,10 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       addCodebookEntity(TEST_TEAM_ID, {
         draftId,
         ref: { entity: 'edge', typeId: 'knows' },
-        definition: { name: 'Knows', color: 'edge-color-seq-2' },
+        definition: {
+          name: 'Knows',
+          color: 'edge-color-seq-2',
+        },
       }),
     );
 

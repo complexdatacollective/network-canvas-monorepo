@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { entityAttributeReference } from '../../schemas/8/entity-attribute-reference.ts';
+import { entityAttributeReference } from '../../schemas/9/entity-attribute-reference.ts';
 import { collectEntityAttributeReferencesFromSchema } from '../collectEntityAttributeReferences.ts';
 
 const stageSchema = z.discriminatedUnion('type', [

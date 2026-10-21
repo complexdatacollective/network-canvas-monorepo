@@ -75,13 +75,18 @@ const INFORMATION_WITH_IMAGE_ITEM = (): CurrentProtocol => ({
     {
       id: 'info-1',
       type: 'Information',
-      label: 'About This Study',
-      title: 'Welcome',
+      label: { en: 'About This Study' },
+      title: { en: 'Welcome' },
       items: [
         { id: 'item-image', type: 'asset', content: 'photo-asset' },
-        { id: 'item-text', type: 'text', content: 'Original text body' },
+        {
+          id: 'item-text',
+          type: 'text',
+          content: { en: 'Original text body' },
+        },
       ],
     },
+    ...emptyProtocol().stages,
   ],
 });
 
@@ -102,7 +107,7 @@ function informationItems(stage: unknown): unknown {
 }
 
 // What one committed block holds, by its id. `undefined` for a block that is
-// not there, or whose `content` is not a string — both of which a poll
+// not there, or whose `content` has no English text — both of which a poll
 // predicate reads as "not what this test wrote", so it keeps waiting or lets
 // the assertion below say what did arrive.
 function informationItemContent(
@@ -115,7 +120,10 @@ function informationItemContent(
     if (typeof item !== 'object' || item === null) continue;
     if (Reflect.get(item, 'id') !== id) continue;
     const content: unknown = Reflect.get(item, 'content');
-    return typeof content === 'string' ? content : undefined;
+    if (typeof content === 'string') return content;
+    if (typeof content !== 'object' || content === null) return undefined;
+    const english: unknown = Reflect.get(content, 'en');
+    return typeof english === 'string' ? english : undefined;
   }
   return undefined;
 }
@@ -186,9 +194,13 @@ test('never turns an image item into its own asset id as participant text', asyn
     {
       id: 'item-image',
       type: 'text',
-      content: 'Prose the researcher actually typed',
+      content: { en: 'Prose the researcher actually typed' },
     },
-    { id: 'item-text', type: 'text', content: 'Original text body' },
+    {
+      id: 'item-text',
+      type: 'text',
+      content: { en: 'Original text body' },
+    },
   ]);
 });
 

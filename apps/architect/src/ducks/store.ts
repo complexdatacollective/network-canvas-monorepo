@@ -10,6 +10,7 @@ import {
 import { setActiveProtocolScope } from '~/utils/activeProtocolScope';
 import { reportError } from '~/utils/reportError';
 import { createSessionStorageDriver } from '~/utils/sessionStorageDriver';
+import { SESSION_PREFIX } from '~/utils/storageNames';
 
 import { analyticsListenerMiddleware } from './middleware/analyticsListener';
 import logger from './middleware/logger';
@@ -77,6 +78,9 @@ const store = configureStore({
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(
       rememberEnhancer(rememberDriver, rememberedKeys, {
+        // Not redux-remember's default: Architect 8 at `/v8/` keeps that one,
+        // and a tab moving between the two shares one sessionStorage.
+        prefix: SESSION_PREFIX,
         serialize,
         unserialize,
         errorHandler: handleRememberError,

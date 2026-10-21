@@ -8,34 +8,48 @@ const Table = React.forwardRef<
   React.HTMLAttributes<HTMLTableElement> & {
     surfaceProps?: React.ComponentProps<typeof Surface>;
     bodyScroll?: boolean;
+    /** Classes for the element that scrolls the table, such as its scrollbars' look. */
+    scrollerClassName?: string;
   }
->(({ className, surfaceProps, bodyScroll = false, ...props }, ref) => (
-  <Surface
-    maxWidth="none"
-    spacing="none"
-    shadow="none"
-    {...surfaceProps}
-    className={cx(
-      'mx-auto w-full max-w-full overflow-x-auto rounded border',
-      bodyScroll && 'flex min-h-0 flex-1 flex-col',
-      surfaceProps?.className,
-    )}
-    noContainer
-  >
-    <div
+>(
+  (
+    {
+      className,
+      surfaceProps,
+      bodyScroll = false,
+      scrollerClassName,
+      ...props
+    },
+    ref,
+  ) => (
+    <Surface
+      maxWidth="none"
+      spacing="none"
+      shadow="none"
+      {...surfaceProps}
       className={cx(
-        'w-full max-w-full overflow-x-auto overscroll-x-none',
-        bodyScroll && 'min-h-0 flex-1 overflow-y-auto overscroll-y-none',
+        'mx-auto w-full max-w-full overflow-x-auto rounded border',
+        bodyScroll && 'flex min-h-0 flex-1 flex-col',
+        surfaceProps?.className,
       )}
+      noContainer
     >
-      <table
-        ref={ref}
-        className={cx('w-full caption-bottom border-collapse', className)}
-        {...props}
-      />
-    </div>
-  </Surface>
-));
+      <div
+        className={cx(
+          'w-full max-w-full overflow-x-auto overscroll-x-none',
+          bodyScroll && 'min-h-0 flex-1 overflow-y-auto overscroll-y-none',
+          scrollerClassName,
+        )}
+      >
+        <table
+          ref={ref}
+          className={cx('w-full caption-bottom border-collapse', className)}
+          {...props}
+        />
+      </div>
+    </Surface>
+  ),
+);
 Table.displayName = 'Table';
 
 const TableHeader = React.forwardRef<

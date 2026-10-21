@@ -1,6 +1,7 @@
 import type { LocalizedMessage } from '../../i18n/messageResult';
-import { reencryptAllRecords } from '../db/api';
+import { hasPlaintextSessions, reencryptAllRecords } from '../db/api';
 import { db } from '../db/db';
+import { deleteRetiredDatabases } from '../db/retiredDatabases';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
 import { requestPersistentStorage } from '../storage';
 import * as vault from '../vault/vault';
@@ -39,6 +40,10 @@ async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
 // write, silently and permanently defeating the retry. The security invariant
 // ("secured ⇒ existing data encrypted") is only met once the flag is cleared (a
 // run with zero failed rows).
+//
+// The lock and the database are shared with Interviewer 8 (served at /v8/ on
+// this origin), so the sweep covers the rows of schema 8 protocols too, and
+// writes them in Interviewer 8's format (see `reencryptAllRecords`).
 async function runReencryptionSweep(): Promise<void> {
   try {
     const { failed } = await reencryptAllRecords();
@@ -82,12 +87,25 @@ async function applyInitialEnrol(
 
 // After a normal unlock, finish an initial-enrol sweep that a prior attempt left
 // incomplete (e.g. a mid-sweep quota error), so rows left plaintext eventually
-// get encrypted. Gated on the persisted flag so a device that was never in that
-// state does no work beyond one localStorage read. runReencryptionSweep never
-// throws, so this never breaks the unlock it follows.
+// get encrypted. The persisted flag covers this app's own failures. It cannot
+// cover Interviewer 8: a tab of it left open with no lock (suspended, say) can
+// still commit a plaintext session row after a sweep finished and cleared the
+// flag, so a plaintext session row also starts the sweep. runReencryptionSweep
+// never throws, so this never breaks the unlock it follows.
 async function resumePendingReencryption(): Promise<void> {
-  if (!isReencryptionPending()) return;
+  if (!isReencryptionPending() && !(await hasPlaintextSessionsSafely())) {
+    return;
+  }
   await runReencryptionSweep();
+}
+
+// A failed check must not break the unlock; the next unlock checks again.
+async function hasPlaintextSessionsSafely(): Promise<boolean> {
+  try {
+    return await hasPlaintextSessions();
+  } catch {
+    return false;
+  }
 }
 
 async function applyUnlockAndResume(
@@ -210,8 +228,13 @@ export async function lock(): Promise<void> {
 export async function revoke(): Promise<void> {
   // Drop the encrypted data DB first, then clear the vault record. If we fail
   // mid-revoke, leaving the vault record keeps a recoverable "configured but
-  // locked" state instead of an orphaned DB without a vault.
+  // locked" state instead of an orphaned DB without a vault. Every reset, mode
+  // switch and recovery-by-resetting comes through here. The database is the
+  // one Interviewer 8 at /v8/ uses too, so this clears every protocol and
+  // interview of either schema. The databases an unreleased build left behind
+  // go too: one holds rows under the key about to be discarded.
   await db.delete({ disableAutoOpen: false });
+  await deleteRetiredDatabases();
   await vault.revoke(); // clears the localStorage vault record + best-effort passkey delete
   setSessionDek(null);
 }

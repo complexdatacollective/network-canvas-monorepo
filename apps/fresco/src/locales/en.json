@@ -651,6 +651,10 @@
     "defaultMessage": "Protocol icon",
     "description": "Researcher-facing ProtocolsTable / Columns: Protocol icon"
   },
+  "fresco.ProtocolsTable.Columns.schemaBadge": {
+    "defaultMessage": "Schema {version}",
+    "description": "Short badge beside a protocol in the protocols table, marking a protocol kept at an older schema version when it was imported. Its interviews run in the older version of the interview. {version} is that schema version number (for example 8)."
+  },
   "fresco.ProtocolsTable.Columns.selectAll": {
     "defaultMessage": "Select all",
     "description": "Researcher-facing ProtocolsTable / Columns: Select all"
@@ -2107,6 +2111,42 @@
     "defaultMessage": "Protocol imported successfully",
     "description": "Researcher-facing hooks / useProtocolImport: Protocol imported successfully"
   },
+  "fresco.interview.metadata.pageDescription": {
+    "defaultMessage": "Interview",
+    "description": "Short page description (search-engine and link-preview metadata) for the participant-facing interview pages. A single word naming the activity."
+  },
+  "fresco.interview.metadata.pageTitle": {
+    "defaultMessage": "Network Canvas Fresco - Interview",
+    "description": "Browser tab title for the participant-facing interview pages. Keep \"Network Canvas Fresco\" unchanged in all languages."
+  },
+  "fresco.interview.page.protocolUnreadable": {
+    "defaultMessage": "This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
+    "description": "Participant-facing explanation shown when the protocol an interview uses could not be read, so the interview was not started."
+  },
+  "fresco.interview.page.sessionUnreadable": {
+    "defaultMessage": "The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
+    "description": "Participant-facing explanation shown when the answers saved for an interview could not be read, so the interview was not started."
+  },
+  "fresco.interview.page.unreadableTitle": {
+    "defaultMessage": "This interview could not be opened",
+    "description": "Participant-facing heading shown instead of an interview whose stored protocol or answers could not be read."
+  },
+  "fresco.interview.smallScreenOverlay.heading": {
+    "defaultMessage": "Screen size too small",
+    "description": "Heading of a notice shown to a participant whose screen is too small to complete the interview."
+  },
+  "fresco.interview.smallScreenOverlay.imageAlt": {
+    "defaultMessage": "Illustration: the screen size is too small",
+    "description": "Alternative text for an illustration shown on a participant-facing notice, which tells the participant their screen is too small to complete the interview."
+  },
+  "fresco.interview.smallScreenOverlay.instruction": {
+    "defaultMessage": "To complete this interview, please use a device with a larger screen, or maximize your browser window.",
+    "description": "Participant-facing instruction under the \"Screen size too small\" heading: use a larger screen or make the browser window bigger."
+  },
+  "fresco.interview.smallScreenOverlay.phoneNote": {
+    "defaultMessage": "<strong>Note:</strong> it is not possible to complete this interview using a mobile phone.",
+    "description": "Participant-facing note under the screen-size instruction. The tagged lead-in word (\"Note:\") is shown in bold; the rest says that a mobile phone cannot be used for the interview."
+  },
   "fresco.interviews.ExportCSVInterviewURLs.anErrorOccurredWhileExportingIncompleteInterview": {
     "defaultMessage": "An error occurred while exporting incomplete interview URLs",
     "description": "Researcher-facing interviews / ExportCSVInterviewURLs: An error occurred while exporting incomplete interview URLs"
@@ -2207,6 +2247,30 @@
     "defaultMessage": "Page not found.",
     "description": "Researcher-facing notfound: Page not found."
   },
+  "fresco.onboard.error.message": {
+    "defaultMessage": "There was a problem during onboarding. Please contact the person who recruited you to this study for assistance.",
+    "description": "Message under the \"Something went wrong during onboarding\" heading, telling the participant to ask the person who recruited them for help."
+  },
+  "fresco.onboard.error.title": {
+    "defaultMessage": "Something went wrong during onboarding",
+    "description": "Heading of the page shown to a participant when starting their interview from a study link failed unexpectedly."
+  },
+  "fresco.onboard.invalidLink.message": {
+    "defaultMessage": "The study this link points to is not available. Please contact the person who recruited you to this study for assistance.",
+    "description": "Message under the \"This interview link is no longer valid\" heading, telling the participant to ask the person who recruited them for help."
+  },
+  "fresco.onboard.invalidLink.title": {
+    "defaultMessage": "This interview link is no longer valid",
+    "description": "Heading of the page shown to a participant who opened an interview link for a study that no longer exists."
+  },
+  "fresco.onboard.noAnonymousRecruitment.message": {
+    "defaultMessage": "Anonymous recruitment is disabled for this study. Researchers may optionally enable anonymous recruitment from the dashboard.",
+    "description": "Message under the \"Anonymous recruitment disabled\" heading. Written for the researcher who runs the study: anonymous recruitment is a study setting they can turn on from the Fresco dashboard."
+  },
+  "fresco.onboard.noAnonymousRecruitment.title": {
+    "defaultMessage": "Anonymous recruitment disabled",
+    "description": "Heading of the page shown when someone opens a study link that does not name a participant, but the study only admits named participants."
+  },
   "fresco.page.dashboard": {
     "defaultMessage": "Dashboard",
     "description": "Researcher-facing page: Dashboard"
@@ -2239,14 +2303,6 @@
     "defaultMessage": "Welcome to Fresco! This page provides an overview of your recent activity and key metrics.",
     "description": "Researcher-facing page: Welcome to Fresco! This page provides an overview of your recent activity and key metrics."
   },
-  "fresco.participantPages.anonymousRecruitmentDisabled.message": {
-    "defaultMessage": "Anonymous recruitment is disabled for this study. Researchers may optionally enable anonymous recruitment from the dashboard.",
-    "description": "Shown when an anonymous interview link is opened while the deployment does not allow anonymous recruitment. Seen by participants, and by researchers testing their links."
-  },
-  "fresco.participantPages.anonymousRecruitmentDisabled.title": {
-    "defaultMessage": "Anonymous Recruitment Disabled",
-    "description": "Heading shown when an anonymous interview link is opened while the deployment does not allow anonymous recruitment."
-  },
   "fresco.participantPages.interviewCompleted.message": {
     "defaultMessage": "Your interview has been successfully completed.",
     "description": "Participant-facing confirmation shown once an interview has been finished."
@@ -2254,54 +2310,6 @@
   "fresco.participantPages.interviewCompleted.title": {
     "defaultMessage": "Thank you for participating!",
     "description": "Participant-facing heading shown once an interview has been finished."
-  },
-  "fresco.participantPages.invalidLink.message": {
-    "defaultMessage": "The study this link points to is not available. Please contact the person who recruited you to this study for assistance.",
-    "description": "Participant-facing page shown when an interview link points to a study that no longer exists."
-  },
-  "fresco.participantPages.invalidLink.title": {
-    "defaultMessage": "This interview link is no longer valid",
-    "description": "Participant-facing heading shown when an interview link points to a study that no longer exists."
-  },
-  "fresco.participantPages.metadata.pageDescription": {
-    "defaultMessage": "Interview",
-    "description": "Participant-facing interview pages, page description metadata: Interview"
-  },
-  "fresco.participantPages.metadata.pageTitle": {
-    "defaultMessage": "Network Canvas Fresco - Interview",
-    "description": "Participant-facing interview pages, browser tab title. \"Network Canvas Fresco\" is the product name and is not translated."
-  },
-  "fresco.participantPages.onboardingError.message": {
-    "defaultMessage": "Something went wrong while starting your interview. Please contact the person who recruited you to this study for assistance.",
-    "description": "Participant-facing page shown when an interview link fails to start an interview."
-  },
-  "fresco.participantPages.onboardingError.title": {
-    "defaultMessage": "This interview could not be started",
-    "description": "Participant-facing heading shown when an interview link fails to start an interview."
-  },
-  "fresco.participantPages.smallScreen.message": {
-    "defaultMessage": "To complete this interview, please use a device with a larger screen, or maximize your browser window.",
-    "description": "Participant-facing paragraph on the overlay that covers an interview when the screen is too small to show it."
-  },
-  "fresco.participantPages.smallScreen.mobileNote": {
-    "defaultMessage": "<strong>Note:</strong> it is not possible to complete this interview using a mobile phone.",
-    "description": "Small print on the overlay that covers an interview when the screen is too small. <strong> marks the word \"Note\" in bold."
-  },
-  "fresco.participantPages.smallScreen.title": {
-    "defaultMessage": "Screen Size Too Small",
-    "description": "Heading of the overlay that covers an interview when the participant’s screen is too small to show it."
-  },
-  "fresco.participantPages.unopenableInterview.answersUnreadable": {
-    "defaultMessage": "The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
-    "description": "Participant-facing explanation when the answers stored for an interview cannot be read, so the interview is refused rather than restarted empty."
-  },
-  "fresco.participantPages.unopenableInterview.protocolUnreadable": {
-    "defaultMessage": "This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
-    "description": "Participant-facing explanation when the study design behind an interview cannot be read, so the interview is refused."
-  },
-  "fresco.participantPages.unopenableInterview.title": {
-    "defaultMessage": "This interview could not be opened",
-    "description": "Participant-facing heading when an interview is refused because its stored data cannot be read."
   },
   "fresco.participants.AddParticipantButton.addParticipant": {
     "defaultMessage": "Add Participant",
@@ -2491,6 +2499,34 @@
     "defaultMessage": "The uploaded protocol file did not match the requested file.",
     "description": "Researcher-facing protocolImport: The uploaded protocol file did not match the requested file."
   },
+  "fresco.protocolImport.upgradeChoice.changesInSchemaVersion": {
+    "defaultMessage": "Changes in schema version {version}:",
+    "description": "Heading above the list of changes for one schema version, in the dialog shown when importing a protocol made for an older schema version. {version} is the schema version number."
+  },
+  "fresco.protocolImport.upgradeChoice.changesIntro": {
+    "defaultMessage": "If you upgrade, the following changes will be made to your protocol:",
+    "description": "Paragraph above the list of changes an upgrade makes, in the dialog shown when importing a protocol made for an older schema version."
+  },
+  "fresco.protocolImport.upgradeChoice.keep": {
+    "defaultMessage": "Keep schema {version}",
+    "description": "Button in the dialog shown when importing a protocol made for an older schema version, beside the button that upgrades it. Imports the protocol without upgrading it, keeping its older schema version, so its interviews run as the protocol was designed. {version} is that older schema version number (for example 8)."
+  },
+  "fresco.protocolImport.upgradeChoice.olderSchema": {
+    "defaultMessage": "This protocol uses an older version of the Network Canvas protocol schema (<Link>more information</Link>). You can either import it as it is, or you can upgrade it to the latest version, which will unlock new features and functionality.",
+    "description": "First paragraph of the dialog shown when importing a protocol made for an older schema version. <Link> wraps a link to the documentation page about protocol schemas."
+  },
+  "fresco.protocolImport.upgradeChoice.pleaseNote": {
+    "defaultMessage": "<strong>Please note:</strong> upgrading may change the interview experience for participants. Upgrading changes only the copy Fresco imports, and leaves your original protocol file unchanged.",
+    "description": "Paragraph of the dialog shown when importing a protocol made for an older schema version, warning that upgrading it can change what participants see, and saying that the protocol file the researcher chose is not modified (only the copy stored in Fresco is upgraded). <strong> marks the words \"Please note:\" as bold."
+  },
+  "fresco.protocolImport.upgradeChoice.title": {
+    "defaultMessage": "How do you want to import this protocol?",
+    "description": "Title of the dialog shown when a researcher imports a protocol made for an older schema version. Fresco offers two ways forward: import it as it is, or upgrade it to the current schema first."
+  },
+  "fresco.protocolImport.upgradeChoice.upgrade": {
+    "defaultMessage": "Upgrade to schema {version}",
+    "description": "Button in the dialog shown when importing a protocol made for an older schema version. Upgrades the protocol to the current schema and imports it. {version} is the current schema version number (for example 9)."
+  },
   "fresco.protocolImport.validation.invalidProtocol": {
     "defaultMessage": "The uploaded file does not contain a valid protocol.",
     "description": "Researcher-facing protocolImport.validation: The uploaded file does not contain a valid protocol."
@@ -2526,6 +2562,14 @@
   "fresco.protocols.page.uploadAndManageYourInterviewProtocols": {
     "defaultMessage": "Upload and manage your interview protocols.",
     "description": "Researcher-facing protocols / page: Upload and manage your interview protocols."
+  },
+  "fresco.root.metadata.pageDescription": {
+    "defaultMessage": "Fresco.",
+    "description": "Default page description (search-engine and link-preview metadata) for Fresco pages that set none of their own. Keep \"Fresco\" unchanged in all languages."
+  },
+  "fresco.root.metadata.pageTitle": {
+    "defaultMessage": "Network Canvas Fresco",
+    "description": "Default browser tab title for Fresco pages that set no title of their own. Keep \"Network Canvas Fresco\" unchanged in all languages."
   },
   "fresco.settings.ApiTokensSection.aPITokens": {
     "defaultMessage": "API Tokens",

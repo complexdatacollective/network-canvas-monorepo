@@ -9,6 +9,7 @@ import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBu
 
 import App from './App';
 import { startupLocale } from './i18n/preference';
+import { deleteRetiredDatabases } from './lib/db/retiredDatabases';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
@@ -75,6 +76,10 @@ async function startApp(): Promise<void> {
     'appinstalled',
     () => void requestPersistentStorage(),
   );
+
+  // Data only an unreleased build wrote, which nothing reads. Not awaited:
+  // best-effort, and never in the way of the first paint.
+  void deleteRetiredDatabases();
 
   const container = document.getElementById('root');
   if (!container) {

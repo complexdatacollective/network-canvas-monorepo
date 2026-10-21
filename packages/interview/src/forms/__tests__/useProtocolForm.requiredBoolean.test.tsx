@@ -13,6 +13,7 @@ import {
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
@@ -41,7 +42,8 @@ function makeWrapper() {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: {
           node: {
             [NODE_TYPE]: {
@@ -64,14 +66,14 @@ function makeWrapper() {
                 singletonOptions: {
                   name: 'singletonOptions',
                   type: 'boolean',
-                  options: [{ label: 'Yes', value: true }],
+                  options: [{ label: { en: 'Yes' }, value: true }],
                   validation: { required: true },
                 },
               },
             },
           },
         },
-        stages: [{ id: 'stage1', type: 'FamilyPedigree' }],
+        stages: [{ id: 'stage1', type: 'Information' }],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -79,11 +81,13 @@ function makeWrapper() {
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     );
   };
 }
@@ -108,7 +112,7 @@ describe('useProtocolForm required boolean rendering', () => {
         fields={[
           {
             variable: asEntityAttributeReference('requiredToggle'),
-            prompt: 'Do you live alone?',
+            prompt: { en: 'Do you live alone?' },
           },
         ]}
       />,
@@ -133,7 +137,7 @@ describe('useProtocolForm required boolean rendering', () => {
         fields={[
           {
             variable: asEntityAttributeReference('optionalToggle'),
-            prompt: 'Do you live alone?',
+            prompt: { en: 'Do you live alone?' },
           },
         ]}
       />,
@@ -151,7 +155,7 @@ describe('useProtocolForm required boolean rendering', () => {
           {
             variable: asEntityAttributeReference('singletonOptions'),
             component: 'Toggle',
-            label: 'Are you employed?',
+            label: { en: 'Are you employed?' },
           } as ComposerFormField,
         ]}
       />,
@@ -173,11 +177,11 @@ describe('useProtocolForm required boolean rendering', () => {
           fields: [
             {
               variable: asEntityAttributeReference('requiredToggle'),
-              prompt: 'Do you live alone?',
+              prompt: { en: 'Do you live alone?' },
             },
             {
               variable: asEntityAttributeReference('optionalToggle'),
-              prompt: 'Do you have a car?',
+              prompt: { en: 'Do you have a car?' },
             },
           ],
           subject: { entity: 'node', type: NODE_TYPE },

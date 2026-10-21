@@ -27,7 +27,7 @@ function makeProtocol(
   return {
     name: 'T',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: {
       node: {
@@ -57,6 +57,8 @@ const rosterStage = {
   id: 'stage-ngr',
   label: 'Roster',
   type: 'NameGeneratorRoster',
+  externalDataError: { en: 'External data could not be loaded.' },
+  allAddedNotice: { en: 'There is nothing left to add from this list.' },
   subject: { entity: 'node', type: 'person' },
   dataSource: 'roster',
   prompts: [{ id: 'p1', text: 'Pick people' }],

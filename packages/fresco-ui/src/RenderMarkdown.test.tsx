@@ -1,8 +1,11 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 
+import { escapeMarkdownText } from '@codaco/protocol-validation';
+
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  getMarkdownAttributeValues,
   getMarkdownLabelText,
   RenderMarkdown,
 } from './RenderMarkdown';
@@ -77,6 +80,35 @@ it.each([
   },
 );
 
+// A caption generated from an attribute name or option value is escaped
+// markdown, and is shown to the participant exactly as the name was written.
+it.each([
+  ['an HTML tag', '<img>'],
+  ['an HTML tag with attributes', '<img src="/x.png" alt="x">'],
+  ['a closing tag', 'a </b> c'],
+  ['an HTML comment', '<!-- note -->'],
+  ['an autolink', '<https://example.org>'],
+  ['an email autolink', '<isabel@example.org>'],
+  ['a named character reference', 'Isabel &amp; Irene'],
+  ['a numeric character reference', '&#73;sabel'],
+  ['a lone ampersand', 'Isabel & Irene'],
+  ['a block quote marker', '> 65'],
+  ['a comparison', '18 < age > 65'],
+  ['emphasis and a heading marker', '# *Isabel* _Zelda_'],
+  ['a bullet', '- Isabel'],
+  ['an ordered list marker', '1. Isabel'],
+  ['a link', '[Isabel](https://example.org)'],
+  ['a backslash before a tag', '\\<b>'],
+] as const)(
+  'renders escaped plain text holding %s as written',
+  (_kind, text) => {
+    const markdown = escapeMarkdownText(text);
+    expect(getMarkdownLabelText(markdown)).toBe(text);
+    const { container } = render(<RenderMarkdown>{markdown}</RenderMarkdown>);
+    expect(container.textContent).toBe(text);
+  },
+);
+
 it('retains custom components and wrapper props', () => {
   render(
     <RenderMarkdown
@@ -119,4 +151,18 @@ it('retains section tag and explicit disallowed-unwrapping options', () => {
     </RenderMarkdown>,
   );
   expect(container).toBeEmptyDOMElement();
+});
+
+it('lists the attribute values markdown produces, and not its text', () => {
+  expect(
+    getMarkdownAttributeValues(
+      'See [the *page*](https://a.example "Title") and ![alt text](b.png) here',
+    ),
+  ).toEqual(
+    expect.arrayContaining(['https://a.example', 'Title', 'b.png', 'alt text']),
+  );
+  expect(getMarkdownAttributeValues('See [the *page*](x)')).not.toContain(
+    'the',
+  );
+  expect(getMarkdownAttributeValues('Just **text**')).toEqual([]);
 });

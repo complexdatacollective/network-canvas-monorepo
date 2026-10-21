@@ -1,4 +1,7 @@
 {
+  "addNamePlaceholder": {
+    "en": "Type a name, then press Enter"
+  },
   "background": {
     "concentricCircles": 4,
     "skewedTowardCenter": false
@@ -7,12 +10,25 @@
     "automaticLayout": true
   },
   "id": "id-1",
-  "label": "Build Your Network",
+  "label": {
+    "en": "Build Your Network"
+  },
   "layoutVariable": "id-2",
+  "overtakenEditNotice": {
+    "en": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
+  },
   "quickAdd": "id-3",
   "subject": {
     "entity": "node",
     "type": "id-4"
+  },
+  "tooltips": {
+    "addPerson": {
+      "en": "Add node"
+    },
+    "automaticLayout": {
+      "en": "Automatic layout"
+    }
   },
   "type": "NetworkComposer"
 }

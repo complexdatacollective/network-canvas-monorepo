@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { isValidElement, type ReactNode } from 'react';
+import { type ComponentProps, createElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -20,10 +20,24 @@ import {
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
+
+// Each field's props as it rendered, so a test can read what the field was
+// given where it renders.
+const renderedFieldProps = vi.hoisted((): Record<string, unknown>[] => []);
+vi.mock('../ProtocolFormField', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../ProtocolFormField')>();
+  return {
+    default: (props: ComponentProps<typeof actual.default>) => {
+      renderedFieldProps.push(props);
+      return createElement(actual.default, props);
+    },
+  };
+});
 
 const NODE_TYPE = 'person';
 const NAME_VAR = 'name';
@@ -32,7 +46,7 @@ const ALIAS_VAR = 'alias';
 const DOTTED_VAR = 'favorite.color';
 const DANGEROUS_VARS = ['__proto__', 'constructor', 'prototype'];
 
-// A FamilyPedigree stage has no top-level subject, so getStageSubject — and
+// An Information stage has no top-level subject, so getStageSubject — and
 // therefore the base validation context's stageSubject — is null.
 function makeWrapper() {
   const store = configureStore({
@@ -50,7 +64,8 @@ function makeWrapper() {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: {
           node: {
             [NODE_TYPE]: {
@@ -97,7 +112,7 @@ function makeWrapper() {
             },
           },
         },
-        stages: [{ id: 'stage1', type: 'FamilyPedigree' }],
+        stages: [{ id: 'stage1', type: 'Information' }],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -105,41 +120,53 @@ function makeWrapper() {
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     );
   };
 }
 
 const fields: FormField[] = [
-  { variable: asEntityAttributeReference(NAME_VAR), prompt: 'Name' },
+  { variable: asEntityAttributeReference(NAME_VAR), prompt: { en: 'Name' } },
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function firstFieldStageSubject(node: ReactNode): unknown {
-  const element = Array.isArray(node) ? node[0] : node;
-  if (!isValidElement(element)) return undefined;
-  if (!isRecord(element.props)) return undefined;
-  const validationContext = element.props.validationContext;
-  if (!isRecord(validationContext)) return undefined;
-  return validationContext.stageSubject;
+/**
+ * The props the form's first field renders with. The fields are rendered,
+ * because the validators' captions are resolved where they render (inside
+ * the form's live values), not by the hook itself.
+ */
+function firstFieldProps(node: ReactNode): Record<string, unknown> {
+  renderedFieldProps.length = 0;
+  render(<Form onSubmit={() => ({ success: true })}>{node}</Form>, {
+    wrapper: makeWrapper(),
+  });
+  const props = renderedFieldProps[0];
+  if (props === undefined) throw new Error('No field was rendered');
+  return props;
 }
 
 function firstFieldProp(node: ReactNode, prop: string): unknown {
-  const element = Array.isArray(node) ? node[0] : node;
-  if (!isValidElement(element)) return undefined;
-  if (!isRecord(element.props)) return undefined;
-  return element.props[prop];
+  return firstFieldProps(node)[prop];
 }
 
 function firstFieldValidationContext(node: ReactNode): unknown {
   return firstFieldProp(node, 'validationContext');
+}
+
+function firstFieldStageSubject(node: ReactNode): unknown {
+  const validationContext = firstFieldValidationContext(node);
+  return isRecord(validationContext)
+    ? validationContext.stageSubject
+    : undefined;
 }
 
 describe('useProtocolForm stageSubject', () => {
@@ -167,7 +194,7 @@ describe('useProtocolForm stageSubject', () => {
     const comparisonFields: FormField[] = [
       {
         variable: asEntityAttributeReference(ALIAS_VAR),
-        prompt: 'Alias',
+        prompt: { en: 'Alias' },
       },
     ];
     const { result } = renderHook(
@@ -197,7 +224,7 @@ describe('useProtocolForm stageSubject', () => {
     const dottedFields: FormField[] = [
       {
         variable: asEntityAttributeReference(DOTTED_VAR),
-        prompt: 'Favorite color',
+        prompt: { en: 'Favorite color' },
       },
     ];
 
@@ -245,7 +272,7 @@ describe('useProtocolForm stageSubject', () => {
       const dangerousFields: FormField[] = [
         {
           variable: asEntityAttributeReference(variable),
-          prompt: 'Legacy variable',
+          prompt: { en: 'Legacy variable' },
         },
       ];
 
@@ -295,20 +322,22 @@ describe('useProtocolForm stageSubject', () => {
  */
 describe('useProtocolForm variableLabels', () => {
   it('carries only authored participant-facing text', () => {
+    // A NetworkComposer field whose caption is blank: the codebook variable's
+    // name must NOT stand in for one.
+    const blankCaptionField: ComposerFormField = {
+      variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
+      label: { en: '   ' },
+      component: 'Text',
+    };
     const { result } = renderHook(
       () =>
         useProtocolForm({
           fields: [
             {
               variable: asEntityAttributeReference(NAME_VAR),
-              prompt: 'What is your name?',
+              prompt: { en: 'What is your name?' },
             },
-            // A NetworkComposer field with no authored label: the codebook
-            // variable's name must NOT stand in for one.
-            {
-              variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
-              component: 'Text',
-            } as ComposerFormField,
+            blankCaptionField,
           ],
           subject: { entity: 'node', type: NODE_TYPE },
         }),

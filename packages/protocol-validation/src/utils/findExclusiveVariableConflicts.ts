@@ -1,7 +1,8 @@
 import type {
   ExclusiveSlotDescriptor,
   InterfaceOwnedOptionSetKey,
-} from '../schemas/8/entity-attribute-reference.ts';
+  StageManagedOptionsDescriptor,
+} from '../schemas/9/entity-attribute-reference.ts';
 import {
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,
@@ -208,6 +209,76 @@ export const findInterfaceOwnedOptionBindings = (
       subject,
       variableId: hit.variableId,
       optionSet: hit.ownedOptions,
+      path: hit.path,
+    });
+  }
+  return bindings;
+};
+
+export type StageManagedOptionBinding = {
+  subject: ReferenceSubject;
+  variableId: string;
+  /** See `StageManagedOptionsDescriptor`. */
+  descriptor: StageManagedOptionsDescriptor;
+  /** The stage that binds the variable at this slot. */
+  stageId: string;
+  /**
+   * That stage's label, as the researcher named it, in the protocol's default
+   * language (or, lacking that translation, the first one it has).
+   */
+  stageLabel: string;
+  path: (string | number)[];
+};
+
+/**
+ * Every stage that binds a variable whose OPTION LIST that stage manages (see
+ * `StageManagedOptionsDescriptor`), with the stage's id and label. A variable
+ * several stages bind has one binding per stage, and the protocol schema
+ * refuses each of them: one stage manages a variable's options. Ownership is derived here from the stages, never stored in the
+ * codebook, so removing the stage (or unbinding the variable) releases the
+ * options. Architect's option editors read this to lock the options everywhere
+ * but the owning stage's editor.
+ */
+/** A stage label's text in the protocol's default language. */
+const stageLabelText = (label: unknown, localization: unknown): string => {
+  if (typeof label === 'string') return label;
+  const translations = asRecord(label);
+  if (!translations) return '';
+  const defaultLocale = asRecord(localization)?.defaultLocale;
+  const preferred =
+    typeof defaultLocale === 'string' ? translations[defaultLocale] : undefined;
+  if (typeof preferred === 'string') return preferred;
+  const first = Object.values(translations).find(
+    (text): text is string => typeof text === 'string',
+  );
+  return first ?? '';
+};
+
+export const findStageManagedOptionBindings = (
+  protocol: unknown,
+  hits?: readonly EntityAttributeReferenceHit[],
+): StageManagedOptionBinding[] => {
+  const protocolRecord = asRecord(protocol);
+  if (!protocolRecord) return [];
+  const stages = Array.isArray(protocolRecord.stages)
+    ? protocolRecord.stages
+    : [];
+
+  const bindings: StageManagedOptionBinding[] = [];
+  for (const hit of hits ?? collectEntityAttributeReferences(protocolRecord)) {
+    if (!hit.stageManagedOptions) continue;
+    const subject = toReferenceSubject(hit.subject);
+    if (!subject) continue;
+    if (hit.path[0] !== 'stages') continue;
+    const index = hit.path[1];
+    const stage = typeof index === 'number' ? asRecord(stages[index]) : null;
+    if (!stage || typeof stage.id !== 'string') continue;
+    bindings.push({
+      subject,
+      variableId: hit.variableId,
+      descriptor: hit.stageManagedOptions,
+      stageId: stage.id,
+      stageLabel: stageLabelText(stage.label, protocolRecord.localization),
       path: hit.path,
     });
   }

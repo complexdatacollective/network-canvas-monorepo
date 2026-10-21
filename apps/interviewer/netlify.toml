@@ -1,5 +1,7 @@
 [build]
-command = "pnpm exec turbo run build --filter=@codaco/interviewer"
+# PREVIEW ONLY (this branch is never merged): bundle the Interviewer 8.5.0
+# build committed under preview-v8/, which is not released yet.
+command = "INTERVIEWER_LEGACY_V8_TARBALL=\"$PWD/apps/interviewer/preview-v8/interviewer-v8-dist.tgz\" pnpm exec turbo run build --filter=@codaco/interviewer"
 publish = "apps/interviewer/dist"
 
 [build.environment]

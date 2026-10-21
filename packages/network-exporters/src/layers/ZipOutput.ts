@@ -1,6 +1,8 @@
 import { Effect, Fiber, Layer } from 'effect';
 import { Zip, ZipPassThrough } from 'fflate';
 
+import { normalizeForComparison } from '@codaco/shared-consts';
+
 import { OutputError } from '../errors';
 import type { OutputResult } from '../output';
 import { Output } from '../services/Output';
@@ -101,7 +103,20 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
     }),
   };
 
+  // Extracting an archive on macOS or Windows writes names that differ only in
+  // case, or in Unicode normalization, to one file, so such entries are
+  // duplicates even though the zip format would store both.
+  const claimedNames = new Set<string>();
+
   const appendEntry = async (name: string, data: AsyncIterable<Uint8Array>) => {
+    const claim = normalizeForComparison(name);
+    if (claimedNames.has(claim)) {
+      throw new Error(
+        `Refusing to write "${name}" to the export: a file with that name is already in it, and overwriting it would lose data.`,
+      );
+    }
+    claimedNames.add(claim);
+
     const passThrough = new ZipPassThrough(name);
     zip.add(passThrough);
     try {

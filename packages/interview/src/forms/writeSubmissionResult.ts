@@ -2,6 +2,7 @@ import {
   createMessageError,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
@@ -13,14 +14,21 @@ type WriteResult = {
   error?: { name?: string };
 };
 
+/** Why a write was refused, from its serialised error. */
+function refusalMessage(
+  error: { name?: string } | undefined,
+): MessageDescriptor {
+  return isPassphraseRequiredError(error)
+    ? runtimeMessages.protectedAnswersNotSaved
+    : formMessages.submitFailed;
+}
+
 /** Why a write was refused, in words the participant can act on. */
 export function writeFailureMessage(
   result: WriteResult,
 ): MessageDescriptor | undefined {
   if (result.meta.requestStatus === 'fulfilled') return undefined;
-  return isPassphraseRequiredError(result.error)
-    ? runtimeMessages.protectedAnswersNotSaved
-    : runtimeMessages.submissionFailed;
+  return refusalMessage(result.error);
 }
 
 /**
@@ -35,9 +43,7 @@ export function rejectedWriteMessage(error: unknown): MessageDescriptor {
     typeof error.name === 'string'
       ? error.name
       : undefined;
-  return isPassphraseRequiredError({ name })
-    ? runtimeMessages.protectedAnswersNotSaved
-    : runtimeMessages.submissionFailed;
+  return refusalMessage({ name });
 }
 
 /**

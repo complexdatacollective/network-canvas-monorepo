@@ -17,6 +17,18 @@
 // pagination-order ties cannot masquerade as changes; datetimes in FILE NAMES
 // are masked so archive members pair up across runs.
 //
+// The upgrade under test leaves the schema 8 protocols and interviews a
+// deployment holds as they were, and exports and the interview API read them
+// with schema 8's own code, so every export file is held to being identical:
+// nothing in a CSV or GraphML file is reconciled. The one difference that is
+// reconciled is in the interview API, which now names, for every interview, the finish
+// stage it ended at and the outcome that stage declares (finishStageId,
+// finishOutcome). A schema 8 interview has no finish stages, so both are null
+// for every interview this lane seeded, and a key the baseline lacks that the
+// current reading adds as null is reconciled. A value in either — an outcome
+// on an interview that never recorded one — is invented data, and stays a
+// difference. Reconciled differences are listed under "reconciled".
+//
 // Usage: node diff-exports.mjs <baselineDir> <currentDir> --work <dir> [--out <file>]
 import { spawnSync } from 'node:child_process';
 import {
@@ -143,6 +155,75 @@ function normalizeContent(name, text) {
   return text;
 }
 
+const isRecord = (value) =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// The fields the interview API names for every interview, null for one that
+// recorded no finish stage — every schema 8 interview. Only a null is
+// reconciled: see the header.
+const FINISH_FIELDS = ['finishStageId', 'finishOutcome'];
+
+/**
+ * `item` with every finish field the baseline item lacks and the current one
+ * holds as null removed, and the removals counted in `tally`.
+ */
+function withoutAddedFinishFields(baselineItem, item, tally) {
+  const restored = { ...item };
+  for (const field of FINISH_FIELDS) {
+    if (field in item && !(field in baselineItem) && item[field] === null) {
+      delete restored[field];
+      tally[field] = (tally[field] ?? 0) + 1;
+    }
+  }
+  return restored;
+}
+
+const finishFieldDifferences = (tally, noun) =>
+  FINISH_FIELDS.filter((field) => tally[field]).map(
+    (field) => `${noun(tally[field])} ${field} added as null`,
+  );
+
+/**
+ * An interview API snapshot — the collection, or one interview — with the
+ * finish fields the API added as null taken out, or null when there were
+ * none. Interviews in a collection are paired with the baseline's by id, so
+ * one that exists on only one side is compared as it stands.
+ */
+function reconcileInterviewJson(baselineText, currentText) {
+  let baseline;
+  let current;
+  try {
+    baseline = JSON.parse(baselineText);
+    current = JSON.parse(currentText);
+  } catch {
+    return null;
+  }
+  const tally = {};
+  let data;
+  let noun;
+  if (Array.isArray(baseline?.data) && Array.isArray(current?.data)) {
+    const baselineById = new Map(
+      baseline.data.filter(isRecord).map((item) => [item.id, item]),
+    );
+    data = current.data.map((item) => {
+      const baselineItem = isRecord(item) ? baselineById.get(item.id) : null;
+      return baselineItem
+        ? withoutAddedFinishFields(baselineItem, item, tally)
+        : item;
+    });
+    noun = (count) => `${count} interview(s):`;
+  } else if (isRecord(baseline?.data) && isRecord(current?.data)) {
+    data = withoutAddedFinishFields(baseline.data, current.data, tally);
+    noun = () => 'interview';
+  } else return null;
+  const differences = finishFieldDifferences(tally, noun);
+  if (differences.length === 0) return null;
+  return {
+    text: `${JSON.stringify(normalizeJsonDeep({ ...current, data }), null, 2)}\n`,
+    differences,
+  };
+}
+
 function listFiles(dir) {
   const files = [];
   const walk = (current) => {
@@ -221,16 +302,29 @@ function main() {
     onlyInCurrent: current.names.filter((name) => !baselineSet.has(name)),
     identical: [],
     changed: [],
+    reconciled: [],
   };
 
-  for (const name of baseline.names.filter((n) => currentSet.has(n))) {
+  const shared = baseline.names.filter((n) => currentSet.has(n));
+  const read = (side, name) =>
+    readFileSync(join(side.normalizedDir, name), 'utf8');
+  for (const name of shared) {
+    const reconciled = name.endsWith('.json')
+      ? reconcileInterviewJson(read(baseline, name), read(current, name))
+      : null;
+    let currentPath = join(current.normalizedDir, name);
+    if (reconciled) {
+      currentPath = join(workRoot, 'current', 'reconciled', name);
+      mkdirSync(join(currentPath, '..'), { recursive: true });
+      writeFileSync(currentPath, reconciled.text);
+      summary.reconciled.push({
+        file: name,
+        differences: reconciled.differences,
+      });
+    }
     const result = spawnSync(
       'diff',
-      [
-        '-u',
-        join(baseline.normalizedDir, name),
-        join(current.normalizedDir, name),
-      ],
+      ['-u', join(baseline.normalizedDir, name), currentPath],
       { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     );
     if (result.status === 0) {

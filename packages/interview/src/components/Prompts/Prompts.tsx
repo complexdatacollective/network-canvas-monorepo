@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import Pips from '@codaco/fresco-ui/Pips';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { Prompt as TPrompt } from '@codaco/protocol-validation';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
 import Prompt from './Prompt';
 
@@ -17,11 +17,13 @@ const containerVariants = {
 };
 
 type PromptsProps = {
-  prompts: TPrompt[];
+  prompts: readonly { id: string; text: LocalizedString }[];
   currentPromptId?: string;
   className?: string;
   small?: boolean;
   id?: string;
+  /** Called once an outgoing prompt has finished leaving. */
+  onExitComplete?: () => void;
 };
 
 /**
@@ -34,6 +36,7 @@ const Prompts = ({
   className,
   small,
   id,
+  onExitComplete,
 }: PromptsProps) => {
   const prevPromptRef = useRef<number>(undefined);
 
@@ -73,7 +76,12 @@ const Prompts = ({
         />
       )}
       <motion.div variants={containerVariants}>
-        <AnimatePresence custom={backwards} mode="wait" initial={false}>
+        <AnimatePresence
+          custom={backwards}
+          mode="wait"
+          initial={false}
+          onExitComplete={onExitComplete}
+        >
           {prompts.map(
             ({ id: promptId, text }) =>
               currentIndex >= 0 &&

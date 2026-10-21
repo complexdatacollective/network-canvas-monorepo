@@ -9,8 +9,6 @@ import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 type StoryArgs = {
   initialNodeCount: number;
   promptCount: number;
-  introTitle: string;
-  introText: string;
 };
 
 function buildInterview(args: StoryArgs) {
@@ -27,10 +25,6 @@ function buildInterview(args: StoryArgs) {
     label: 'Dyad Census',
     initialNodes: { count: args.initialNodeCount },
     subject: { entity: 'node', type: nodeType.id },
-    introductionPanel: {
-      title: args.introTitle,
-      text: args.introText,
-    },
   });
 
   for (let i = 0; i < args.promptCount; i++) {
@@ -79,21 +73,10 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'range', min: 1, max: 3 },
       description: 'Number of prompts',
     },
-    introTitle: {
-      control: 'text',
-      description: 'Introduction panel title',
-    },
-    introText: {
-      control: 'text',
-      description: 'Introduction panel text (supports markdown)',
-    },
   },
   args: {
     initialNodeCount: 4,
     promptCount: 1,
-    introTitle: 'Network Relationships',
-    introText:
-      'In this section, you will be asked about relationships between people in your network. For each pair of people, please indicate whether they know each other.',
   },
 };
 

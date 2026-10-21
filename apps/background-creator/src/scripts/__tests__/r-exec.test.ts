@@ -8,11 +8,36 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { BackgroundDocument } from '../../model/types';
 import { fixtureDocument, fixturePoints } from '../fixtures';
 import { generateRScript } from '../r';
-import { buildFixtureCsv, parseCsv, toRecords } from './csvTestHelpers';
+import {
+  buildFixtureCsv,
+  buildNonAsciiCsv,
+  expectNonAsciiOutput,
+  nonAsciiDocument,
+  nonAsciiOpts,
+  parseCsv,
+  toRecords,
+} from './csvTestHelpers';
 
 function rscriptAvailable(): boolean {
   const result = spawnSync('Rscript', ['--version']);
   return !result.error && result.status === 0;
+}
+
+// The first of `candidates` that this machine has AND that R reports as the
+// requested kind of locale. R falls back to the C locale when LC_ALL names one
+// that is not installed, so asking R what it got is the reliable check.
+function findLocale(
+  candidates: string[],
+  property: 'UTF-8' | 'Latin-1',
+): string | undefined {
+  return candidates.find((locale) => {
+    const result = spawnSync(
+      'Rscript',
+      ['-e', `cat(l10n_info()[["${property}"]])`],
+      { encoding: 'utf-8', env: { ...process.env, LC_ALL: locale } },
+    );
+    return result.status === 0 && result.stdout === 'TRUE';
+  });
 }
 
 const rscriptMissing = !rscriptAvailable();
@@ -58,9 +83,9 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
     const inputPath = join(dir, 'bom-in.csv');
     const outputPath = join(dir, 'bom-out.csv');
     writeFileSync(scriptPath, script);
-    // A leading U+FEFF is written as the UTF-8 BOM bytes; without
-    // fileEncoding="UTF-8-BOM" R keeps it on names(data)[1], so the first
-    // coordinate column reads as missing and the script fails.
+    // A leading U+FEFF is written as the UTF-8 BOM bytes. R discards it only in
+    // a UTF-8 locale, so the script strips it from names(data)[1] itself;
+    // otherwise the first header would carry the mark in other locales.
     writeFileSync(inputPath, `﻿${buildFixtureCsv('location', fixturePoints)}`);
 
     const result = spawnSync('Rscript', [scriptPath, inputPath, outputPath], {
@@ -347,3 +372,100 @@ describe.skipIf(rscriptMissing)('generated R script executes', () => {
     expect(records[0]?.zone).toBe(hostileLabel);
   });
 });
+
+// R reads and writes text through the session's locale, so each case runs the
+// script under a different one. The locales a machine lacks are skipped.
+const localeCases: { name: string; locale: string | undefined }[] = [
+  { name: 'the C locale', locale: 'C' },
+  {
+    name: 'a UTF-8 locale',
+    locale: rscriptMissing
+      ? undefined
+      : findLocale(['en_US.UTF-8', 'C.UTF-8', 'en_US.utf8', 'C.utf8'], 'UTF-8'),
+  },
+  {
+    name: 'a Latin-1 locale',
+    locale: rscriptMissing
+      ? undefined
+      : findLocale(
+          [
+            'en_US.ISO8859-1',
+            'en_US.iso88591',
+            'de_DE.ISO8859-1',
+            'de_DE.iso88591',
+            'fr_FR.ISO8859-1',
+            'fr_FR.iso88591',
+          ],
+          'Latin-1',
+        ),
+  },
+];
+
+describe.skipIf(rscriptMissing)(
+  'generated R script keeps non-ASCII text intact',
+  () => {
+    let dir = '';
+
+    beforeAll(() => {
+      dir = mkdtempSync(join(tmpdir(), 'bgc-r-enc-'));
+    });
+
+    afterAll(() => {
+      if (dir) rmSync(dir, { recursive: true, force: true });
+    });
+
+    function runUnderLocale(
+      locale: string | undefined,
+      withBom: boolean,
+      script: string,
+      flags: string[],
+    ) {
+      const inputPath = join(dir, 'in.csv');
+      const outputPath = join(dir, 'out.csv');
+      const scriptPath = join(dir, 'assign_zones.R');
+      writeFileSync(inputPath, buildNonAsciiCsv(withBom));
+      writeFileSync(scriptPath, script);
+      rmSync(outputPath, { force: true });
+
+      const result = spawnSync(
+        'Rscript',
+        [scriptPath, inputPath, outputPath, ...flags],
+        { encoding: 'utf-8', env: { ...process.env, LC_ALL: locale } },
+      );
+      expect(result.stderr).toBe('');
+      expect(result.status).toBe(0);
+      expectNonAsciiOutput(readFileSync(outputPath));
+    }
+
+    for (const { name, locale } of localeCases) {
+      describe.skipIf(locale === undefined)(`in ${name}`, () => {
+        it.each([
+          { label: 'without a byte-order mark', withBom: false },
+          { label: 'with a byte-order mark', withBom: true },
+        ])(
+          'round-trips names, values and zone labels $label',
+          ({ withBom }) => {
+            runUnderLocale(
+              locale,
+              withBom,
+              generateRScript(nonAsciiDocument, nonAsciiOpts),
+              [],
+            );
+          },
+        );
+
+        it('accepts non-ASCII --layout-variable= and --output-variable= values', () => {
+          runUnderLocale(
+            locale,
+            true,
+            generateRScript(nonAsciiDocument, defaultOpts),
+            [
+              `--layout-variable=${nonAsciiOpts.layoutVariable}`,
+              `--output-variable=${nonAsciiOpts.outputVariable}`,
+            ],
+          );
+        });
+      });
+    }
+  },
+);

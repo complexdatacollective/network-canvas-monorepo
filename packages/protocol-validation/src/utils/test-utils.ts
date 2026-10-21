@@ -1,11 +1,20 @@
-import type { NodeDefinition } from '../schemas/8/codebook/definitions.ts';
+import type { NodeDefinition } from '../schemas/9/codebook/definitions.ts';
+
+/** A localized string with one translation, in the base protocol's language. */
+export const localized = (text: string, locale = 'en') => ({ [locale]: text });
+
+/** Canonical `{ value, label }` options with their default labels localized. */
+export const localizedOptions = <Value>(
+  options: readonly { value: Value; label: string }[],
+) => options.map(({ value, label }) => ({ value, label: localized(label) }));
 
 /**
  * Creates a base valid protocol for testing variations
  */
 export const createBaseProtocol = () => ({
   name: 'Test Protocol',
-  schemaVersion: 8 as const,
+  schemaVersion: 9 as const,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
     ego: {
       variables: {
@@ -41,17 +50,17 @@ export const createBaseProtocol = () => ({
             name: 'Category',
             type: 'categorical',
             options: [
-              { label: 'Friend', value: 'friend' },
-              { label: 'Family', value: 'family' },
+              { label: localized('Friend'), value: 'friend' },
+              { label: localized('Family'), value: 'family' },
             ],
           },
           strength: {
             name: 'Relationship_Strength',
             type: 'ordinal',
             options: [
-              { label: 'Weak', value: 1 },
-              { label: 'Medium', value: 2 },
-              { label: 'Strong', value: 3 },
+              { label: localized('Weak'), value: 1 },
+              { label: localized('Medium'), value: 2 },
+              { label: localized('Strong'), value: 3 },
             ],
           },
           layoutPosition: {
@@ -86,9 +95,9 @@ export const createBaseProtocol = () => ({
             type: 'ordinal',
             component: 'RadioGroup',
             options: [
-              { label: 'Not Close', value: 1 },
-              { label: 'Somewhat Close', value: 2 },
-              { label: 'Very Close', value: 3 },
+              { label: localized('Not Close'), value: 1 },
+              { label: localized('Somewhat Close'), value: 2 },
+              { label: localized('Very Close'), value: 3 },
             ],
           },
           duration: {
@@ -106,9 +115,9 @@ export const createBaseProtocol = () => ({
             name: 'Frequency',
             type: 'ordinal',
             options: [
-              { label: 'Rarely', value: 1 },
-              { label: 'Sometimes', value: 2 },
-              { label: 'Often', value: 3 },
+              { label: localized('Rarely'), value: 1 },
+              { label: localized('Sometimes'), value: 2 },
+              { label: localized('Often'), value: 3 },
             ],
           },
         },
@@ -119,31 +128,31 @@ export const createBaseProtocol = () => ({
     {
       id: 'nameGenerator1',
       type: 'NameGenerator',
-      label: 'Generate Names',
+      label: localized('Generate Names'),
       subject: {
         entity: 'node',
         type: 'person',
       },
       form: {
-        title: 'Add person',
+        title: localized('Add person'),
         fields: [
           {
             variable: 'name',
-            prompt: 'Enter name',
+            prompt: localized('Enter name'),
           },
         ],
       },
       prompts: [
         {
           id: 'prompt1',
-          text: 'Who do you know?',
+          text: localized('Who do you know?'),
         },
       ],
     },
     {
       id: 'sociogram1',
       type: 'Sociogram',
-      label: 'Sociogram',
+      label: localized('Sociogram'),
       subject: {
         entity: 'node',
         type: 'person',
@@ -154,7 +163,7 @@ export const createBaseProtocol = () => ({
       prompts: [
         {
           id: 'socPrompt1',
-          text: 'Position nodes',
+          text: localized('Position nodes'),
           layout: {
             layoutVariable: 'layoutPosition',
           },

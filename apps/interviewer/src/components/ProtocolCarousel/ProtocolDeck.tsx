@@ -6,10 +6,11 @@ import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
-import type {
-  ProtocolWithCounts,
-  StoredSession,
-  StoredSessionLite,
+import {
+  isSchema8Protocol,
+  type ProtocolWithCounts,
+  type StoredSession,
+  type StoredSessionLite,
 } from '~/lib/db/types';
 import type { PendingImport } from '~/lib/protocol/useProtocolImport';
 
@@ -19,7 +20,7 @@ import {
   type DeckCarouselSlide,
 } from './DeckCarousel';
 import { buildDeck, type DeckEntry, entryKey } from './deckEntries';
-import { DeckSlotCard } from './DeckSlotCard';
+import { DeckSlotCard, type Schema8CardActions } from './DeckSlotCard';
 import { ImportTriggerCard } from './ImportTriggerCard';
 import { useDeckKeyboard } from './useDeckKeyboard';
 
@@ -97,6 +98,8 @@ type ProtocolDeckProps = {
   onInstallSample?: () => void;
   onDismissSample?: () => void;
   onInstallDevelopment?: () => void;
+  // What a schema 8 protocol's card offers beyond any protocol card's.
+  schema8?: Schema8CardActions;
   // When set, swipe/keyboard navigation is locked and the matching protocol
   // card is isolated above a modal backdrop with the case-ID form.
   newSessionProtocolHash?: string | null;
@@ -145,6 +148,7 @@ export function ProtocolDeck({
   onInstallSample = () => {},
   onDismissSample = () => {},
   onInstallDevelopment = () => {},
+  schema8,
   newSessionProtocolHash,
   onCancelNewSession,
   onSessionCreated,
@@ -249,7 +253,11 @@ export function ProtocolDeck({
           entry,
           onActivate:
             entry.kind === 'protocol'
-              ? () => onStartInterview(entry.protocol.hash)
+              ? // A schema 8 interview runs in the bundled Interviewer 8; a
+                // build without it starts none (the card says why).
+                isSchema8Protocol(entry.protocol) && !schema8?.interviewer
+                ? undefined
+                : () => onStartInterview(entry.protocol.hash)
               : entry.kind === 'sample'
                 ? onInstallSample
                 : entry.kind === 'development'
@@ -265,6 +273,7 @@ export function ProtocolDeck({
                   ? (sessionCounts.get(entry.protocol.hash) ?? 0)
                   : 0
               }
+              schema8={schema8}
               onDeleteProtocol={onDeleteProtocol}
               onDismissSample={onDismissSample}
               onInstallSample={onInstallSample}
@@ -289,6 +298,7 @@ export function ProtocolDeck({
       onDeleteProtocol,
       onCancelNewSession,
       onSessionCreated,
+      schema8,
     ],
   );
 

@@ -1,4 +1,10 @@
-import { HardDrive, ShieldAlert, ShieldCheck } from 'lucide-react';
+import {
+  CloudCheck,
+  CloudOff,
+  HardDrive,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import type React from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -14,6 +20,7 @@ import {
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
+import { type AppOffline, useAppOffline } from '~/lib/pwa/appOffline';
 import { isRunningInstalled } from '~/lib/pwa/isRunningInstalled';
 import {
   estimateStorage,
@@ -23,6 +30,7 @@ import {
 } from '~/lib/storage';
 
 import AppUpdatePill from './AppUpdate/AppUpdatePill';
+import { offlineMessages } from './offlineMessages';
 
 const messages = defineMessages({
   interviewerAPPVERSION: {
@@ -289,6 +297,7 @@ export function StatusRowView({
   mode,
   durability,
   installed,
+  offline = 'checking',
   versionSlot,
 }: {
   protocolCount: number;
@@ -296,6 +305,9 @@ export function StatusRowView({
   mode: AuthMode | undefined;
   durability: Durability | null;
   installed: boolean;
+  // Whether Interviewer works offline on this device; no chip until it is
+  // known.
+  offline?: AppOffline;
   versionSlot?: React.ReactNode;
 }) {
   const intl = useAppIntl();
@@ -412,6 +424,36 @@ export function StatusRowView({
             )}
           </StatusChipPopover>
         ) : null}
+        {offline === 'ready' || offline === 'not-ready' ? (
+          <StatusChipPopover
+            testId="offline-status-trigger"
+            className={`${statusTriggerClassName} ${
+              offline === 'ready' ? 'text-primary' : 'text-warning'
+            }`}
+            chip={
+              <>
+                {offline === 'ready' ? (
+                  <CloudCheck className={statusIconClassName} />
+                ) : (
+                  <CloudOff className={statusIconClassName} />
+                )}
+                <span className={compactLabelClassName}>
+                  {intl.formatMessage(
+                    offline === 'ready'
+                      ? offlineMessages.readyChip
+                      : offlineMessages.notReadyChip,
+                  )}
+                </span>
+              </>
+            }
+          >
+            {intl.formatMessage(
+              offline === 'ready'
+                ? offlineMessages.readyHelp
+                : offlineMessages.notReadyHelp,
+            )}
+          </StatusChipPopover>
+        ) : null}
         {versionSlot ?? (
           <span>
             {intl.formatMessage(messages.interviewerAPPVERSION, {
@@ -441,6 +483,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
   // Static per page load, like InstallBanner: installing mid-session still
   // requires launching the installed app.
   const [installed] = useState(isRunningInstalled);
+  const offline = useAppOffline();
 
   useEffect(() => {
     let active = true;
@@ -495,6 +538,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
       mode={displayMode}
       durability={durability}
       installed={installed}
+      offline={offline}
       versionSlot={<AppUpdatePill />}
     />
   );

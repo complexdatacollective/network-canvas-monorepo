@@ -1,7 +1,8 @@
 {
   "name": "E2E Fixture",
   "description": "Lean fixture for the Interviewer app e2e suite.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
+  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
   "lastModified": "2026-07-12T00:00:00.000Z",
   "codebook": {
     "node": {
@@ -21,16 +22,22 @@
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
-          "layout": { "name": "layout", "type": "layout" }
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          }
         }
       }
     },
     "edge": {
-      "knows": { "name": "Knows", "color": "edge-color-seq-1" }
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1"
+      }
     },
     "ego": {
       "variables": {
@@ -47,51 +54,150 @@
     {
       "id": "stage-info",
       "type": "Information",
-      "label": "Welcome",
-      "title": "Welcome",
+      "label": { "en-US": "Welcome" },
+      "title": { "en-US": "Welcome" },
       "items": [
         {
           "id": "item-1",
           "type": "text",
-          "content": "# Welcome\n\nThanks for taking part."
+          "content": { "en-US": "# Welcome\n\nThanks for taking part." }
         }
       ]
     },
     {
       "id": "stage-ego",
       "type": "EgoForm",
-      "label": "About you",
+      "label": {
+        "en-US": "About you"
+      },
       "introductionPanel": {
-        "title": "Introduction",
-        "text": "Tell us about **you**."
+        "title": {
+          "en-US": "Introduction"
+        },
+        "text": { "en-US": "Tell us about **you**." }
       },
       "form": {
-        "fields": [{ "variable": "ego_name", "prompt": "What is your name?" }]
+        "fields": [
+          {
+            "variable": "ego_name",
+            "prompt": { "en-US": "What is your name?" }
+          }
+        ]
       }
     },
     {
       "id": "stage-ng",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue."
+      },
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "type": "NameGeneratorQuickAdd",
-      "label": "Name people",
+      "label": { "en-US": "Name people" },
       "subject": { "entity": "node", "type": "person" },
       "quickAdd": "name",
       "behaviours": { "minNodes": 1, "maxNodes": 8 },
-      "prompts": [{ "id": "p1", "text": "Who are the people you know?" }]
+      "prompts": [
+        { "id": "p1", "text": { "en-US": "Who are the people you know?" } }
+      ]
     },
     {
       "id": "stage-socio",
       "type": "Sociogram",
-      "label": "Connect people",
+      "label": { "en-US": "Connect people" },
       "subject": { "entity": "node", "type": "person" },
       "background": { "concentricCircles": 4, "skewedTowardCenter": true },
       "prompts": [
         {
           "id": "p1",
-          "text": "Drag to place; link people who know each other.",
+          "text": {
+            "en-US": "Drag to place; link people who know each other."
+          },
           "layout": { "layoutVariable": "layout" },
           "edges": { "create": "knows", "display": ["knows"] }
         }
       ]
+    },
+    {
+      "id": "finish",
+      "finishLabel": { "en-US": "Finish" },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "type": "FinishSession",
+      "mode": "confirmation",
+      "label": { "en-US": "Finish Interview" },
+      "content": {
+        "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "finishedContent": {
+        "en-US": "# Interview Finished\n\nThank you for participating!"
+      },
+      "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "navigation": {
+      "exitInterview": {
+        "en-US": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later."
+      },
+      "back": {
+        "en-US": "Back"
+      },
+      "continue": {
+        "en-US": "Continue"
+      }
+    },
+    "buttons": {
+      "cancel": {
+        "en-US": "Cancel"
+      },
+      "done": {
+        "en-US": "Done"
+      },
+      "delete": {
+        "en-US": "Delete"
+      },
+      "yes": {
+        "en-US": "Yes"
+      },
+      "no": {
+        "en-US": "No"
+      }
+    },
+    "messages": {
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed."
+      },
+      "error": {
+        "en-US": "An error occurred."
+      }
+    },
+    "forms": {
+      "discardChangesTitle": {
+        "en-US": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en-US": "Do you want to discard your changes?"
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      }
+    }
+  }
 }

@@ -58,6 +58,14 @@ Instead of drawing edges, a prompt can use tapping to **toggle an attribute**. T
 
 Edge creation and attribute toggling are the two tap behaviors, and a single prompt uses one or the other — not both. Split the two tasks across separate prompts when you need each.
 
+<AppOnly app="current">
+
+### Words on the canvas
+
+The **Words on the canvas** section of the stage editor holds the tooltips of the pause and resume buttons for the automatic layout simulation. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). These are there only while **Layout Mode** is automatic, and they are removed if you switch to manual.
+
+</AppOnly>
+
 ### Best Practices
 
 <GoodPractice>

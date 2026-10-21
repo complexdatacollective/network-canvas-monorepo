@@ -4,11 +4,8 @@
 // own sources and its own catalogs, and can reach neither of this package's:
 // the FormatJS source transform excludes node_modules, and the catalog
 // compiler only matches `.json` module ids, by which point `dist/locales` is
-// JavaScript. The same integration swaps in FormatJS's no-parser runtime, so
-// any message still carrying an ICU string throws when it is formatted and
-// react-intl falls back to returning that string verbatim — a placeholder
-// message renders as "Enter at most {max} characters." and a plural one as
-// its whole `{count, plural, …}` body.
+// JavaScript. Any message still carrying an ICU string would be parsed at run
+// time in every host, with nothing erroring to say so.
 //
 // So `vite build` — and only `vite build` — has to pre-parse both halves.
 // This reads the plugin list out of the package's real config with the
@@ -136,19 +133,5 @@ describe('what the library build emits for this package’s messages', () => {
     for (const message of Object.values(compiled)) {
       expect(Array.isArray(message)).toBe(true);
     }
-  });
-
-  it('leaves the ICU parser resolvable for whoever consumes this package', async () => {
-    // A library compiles its own messages but must not decide whether the ICU
-    // parser reaches a bundle — that belongs to the application it lands in,
-    // and this one lands in several, including their dev servers and test
-    // runs, where string messages have to keep working. The alias is inert
-    // here today only because react-intl arrives through the external
-    // `@codaco/app-i18n`; without this assertion, dropping back to
-    // `appI18n()` would be invisible until some consumer's arrangement made
-    // it bite.
-    const names = (await libraryBuildPlugins()).map((plugin) => plugin.name);
-    expect(names).toContain('app-i18n-catalogs');
-    expect(names).not.toContain('app-i18n-no-parser');
   });
 });

@@ -1392,23 +1392,6 @@ test('release-sensitive app builds run before merge', () => {
   assert.match(supportJob, /pnpm --filter=@codaco\/studio-web build/);
 });
 
-// The /v8/ sub-path build is only otherwise made from a released tag, after
-// that release is in production; a broken one must fail at PR time instead.
-test('the Architect /v8/ sub-path build runs before merge', () => {
-  const steps = parsedWorkflow.jobs['quality-support'].steps;
-  const step = steps.find(
-    (candidate) => candidate.id === 'architect_subpath_build',
-  );
-  assert.ok(step, 'quality-support builds Architect under /v8/');
-  assert.equal(step.env?.ARCHITECT_BASE_PATH, '/v8/');
-  // build.mjs runs assert-pwa-build.mjs, which holds the sub-path shape.
-  assert.match(step.run, /^pnpm --filter=@codaco\/architect build$/);
-  assert.equal(step['continue-on-error'], true);
-  // Matches the release-time sub-path build: no upload credentials.
-  assert.equal(step.env?.POSTHOG_PERSONAL_API_KEY, undefined);
-  assert.equal(step.env?.POSTHOG_PROJECT_ID, undefined);
-});
-
 // Every check in quality-support is `continue-on-error`, so the job's own
 // conclusion says nothing about them: the final step is what fails the job.
 // A check added without a line there passes silently forever.
@@ -2281,35 +2264,6 @@ test('Architect E2E builds disable both animation systems', () => {
   );
 });
 
-test('Architect native E2E also runs the /v8/ sub-path suite against a /v8/ build', () => {
-  const nativeJob = job('architect-e2e-native');
-  assert.ok(nativeJob, 'architect-e2e-native job exists');
-
-  const rootRun = nativeJob.indexOf(
-    'run: pnpm --filter @codaco/architect run test:e2e:native',
-  );
-  const subpathBuild = nativeJob.indexOf(
-    '- name: Build the /v8/ sub-path app under test',
-  );
-  const subpathRun = nativeJob.indexOf(
-    'run: pnpm --filter @codaco/architect run test:e2e:subpath:native',
-  );
-  // The sub-path build replaces dist/, so it must come after the root specs.
-  assert.ok(
-    rootRun !== -1 && subpathBuild > rootRun,
-    'the /v8/ build follows the root specs',
-  );
-  assert.ok(
-    subpathRun > subpathBuild,
-    'the sub-path specs run against the /v8/ build',
-  );
-  assert.match(
-    nativeJob,
-    /- name: Build the \/v8\/ sub-path app under test\n\s+if: \$\{\{ !cancelled\(\) && matrix\.shard == '2\/2' \}\}\n\s+env:\n\s+ARCHITECT_BASE_PATH: \/v8\/\n/,
-    'the sub-path build sets the base, on one shard, even after a root failure',
-  );
-});
-
 test('release job refuses a first publication on the publish path before changesets/action', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');
@@ -3145,3 +3099,76 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     /github\.event\.action == 'closed'/,
   );
 });
+
+// Architect 9 and Interviewer 9 each serve their 8.x line at /v8/ from their
+// own deploy, extracted at build time from the tarball apps/<app>/legacy-<app>.json
+// pins. A production deploy without it would strand every researcher who kept
+// a schema 8 protocol on 8.x, so both lanes that deploy each app require it in
+// the build (which fails while nothing is pinned) and check the built dist
+// again, outside the turbo cache, before anything goes out.
+for (const { app, label, envName } of [
+  {
+    app: 'architect',
+    label: 'Architect 8',
+    envName: 'ARCHITECT_REQUIRE_LEGACY_V8',
+  },
+  {
+    app: 'interviewer',
+    label: 'Interviewer 8',
+    envName: 'INTERVIEWER_REQUIRE_LEGACY_V8',
+  },
+]) {
+  test(`every ${app} production build requires the bundled ${label}`, () => {
+    const hotfixWorkflow = parse(
+      readFileSync(new URL('hotfix-release.yml', WORKFLOW_DIR), 'utf8'),
+    );
+    const lanes = [
+      {
+        name: `apps-release-${app}`,
+        steps: parsedWorkflow.jobs[`apps-release-${app}`].steps,
+        required: 'true',
+        firstOutward: `Deploy ${app} to production`,
+      },
+      {
+        name: 'hotfix-release',
+        steps: hotfixWorkflow.jobs['hotfix-release'].steps,
+        required: `\${{ inputs.app == '${app}' && hashFiles('apps/${app}/legacy-${app}.json') != '' && 'true' || '' }}`,
+        // The tag is claimed before the deploy; neither may happen first.
+        firstOutward: 'Claim the release tag',
+      },
+    ];
+
+    for (const { name, steps, required, firstOutward } of lanes) {
+      const buildIndex = steps.findIndex((step) =>
+        new RegExp(
+          `turbo run build --filter="?@codaco\\/(?:${app}|\\$APP)"?$`,
+        ).test(step.run?.trim() ?? ''),
+      );
+      assert.notEqual(buildIndex, -1, `${name} builds ${app}`);
+      assert.equal(
+        steps[buildIndex].env?.[envName],
+        required,
+        `${name}'s build requires ${label}`,
+      );
+
+      const checkIndex = steps.findIndex(
+        (step) => step.name === `Check ${label} is bundled`,
+      );
+      const outwardIndex = steps.findIndex(
+        (step) => step.name === firstOutward,
+      );
+      assert.ok(
+        buildIndex < checkIndex && checkIndex < outwardIndex,
+        `${name} checks dist/v8 after building and before "${firstOutward}"`,
+      );
+      assert.match(
+        steps[checkIndex].run,
+        /for file in index\.html sw\.js dist-info\.json; do/,
+      );
+      assert.ok(
+        steps[checkIndex].run.includes(`-f "apps/${app}/dist/v8/$file"`),
+        `${name} checks apps/${app}/dist/v8`,
+      );
+    }
+  });
+}

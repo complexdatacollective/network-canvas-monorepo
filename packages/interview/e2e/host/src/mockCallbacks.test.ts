@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { createInitialNetwork } from '../../../src/contract/network';
-import type { SessionPayload } from '../../../src/contract/types';
+import type { SessionSnapshot } from '../../../src/contract/types';
 import { makeMockAssetRequest, mockFinish, mockSync } from './mockCallbacks';
 
-function makeSession(): SessionPayload {
+function makeSession(): SessionSnapshot {
   return {
     id: 'session-1',
     startTime: new Date().toISOString(),
@@ -30,7 +30,11 @@ describe('mockFinish', () => {
   it('resolves without error', async () => {
     const controller = new AbortController();
     await expect(
-      mockFinish('interview-1', controller.signal),
+      mockFinish(
+        'interview-1',
+        { stageId: 'finish', outcome: 'completed' },
+        controller.signal,
+      ),
     ).resolves.toBeUndefined();
   });
 });

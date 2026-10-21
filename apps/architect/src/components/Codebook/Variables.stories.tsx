@@ -95,11 +95,11 @@ export const LongAttributeName: Story = {
     expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);
 
     const portRight = scrollPort.getBoundingClientRect().right;
-    const deleteButtons = canvas.getAllByRole('button', {
+    const rowButtons = canvas.getAllByRole('button', {
       name: /Delete attribute|In use — cannot be deleted/,
     });
-    expect(deleteButtons).toHaveLength(variables.length);
-    for (const button of deleteButtons) {
+    expect(rowButtons).toHaveLength(variables.length);
+    for (const button of rowButtons) {
       expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(
         portRight + 1,
       );

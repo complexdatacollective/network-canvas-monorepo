@@ -1,3 +1,4 @@
+import { CodebookSchema as LegacyCodebookSchema } from 'fresco-schema-8/protocol-validation';
 import { after, type NextRequest, NextResponse } from 'next/server';
 
 import { CodebookSchema } from '@codaco/protocol-validation';
@@ -9,6 +10,8 @@ import {
 import { prisma } from '~/lib/db';
 import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { parseLegacyStoredInterviewSession } from '~/lib/schema-8/storedInterviewSession';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
 
 const corsHeaders = createCorsHeaders('GET, OPTIONS');
@@ -81,9 +84,15 @@ export async function GET(
 
     // Answer with the interview as the deployment reads it, or not at all:
     // presenting an empty network or codebook for one that does not parse
-    // would misreport what the interview holds.
-    const stored = parseStoredInterviewSession(interview);
-    const codebook = CodebookSchema.safeParse(interview.protocol.codebook);
+    // would misreport what the interview holds. A schema 8 interview is read
+    // with schema 8's schemas, and answered in schema 8's shapes.
+    const legacy = isLegacySchemaVersion(interview.protocol.schemaVersion);
+    const stored = legacy
+      ? parseLegacyStoredInterviewSession(interview)
+      : parseStoredInterviewSession(interview);
+    const codebook = (legacy ? LegacyCodebookSchema : CodebookSchema).safeParse(
+      interview.protocol.codebook,
+    );
     if (!stored.success || !codebook.success) {
       const error = stored.success ? codebook.error : stored.error;
       after(async () => {

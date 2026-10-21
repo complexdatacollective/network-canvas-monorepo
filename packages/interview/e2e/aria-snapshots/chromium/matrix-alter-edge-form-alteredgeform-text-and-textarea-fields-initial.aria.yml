@@ -1,6 +1,10 @@
 - main:
-  - heading "Relationship details" [level=1]
-  - paragraph: Answer the following.
+  - button "Alex"
+  - button "Sam"
+  - text: Where did you meet?
+  - textbox "Where did you meet?"
+  - text: Tell the story.
+  - textbox "Tell the story."
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

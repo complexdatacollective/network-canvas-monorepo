@@ -273,7 +273,7 @@ async function runtimeHasWitness(variables: Variables): Promise<boolean> {
 }
 
 function option(value: string | number) {
-  return { label: `Option ${String(value)}`, value };
+  return { label: { en: `Option ${String(value)}` }, value };
 }
 
 function required(validation: Record<string, unknown>) {

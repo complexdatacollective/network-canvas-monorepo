@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
-import { typeInlineRun } from './rich-text.js';
+import { decodeCharacterReferences, typeInlineRun } from './rich-text.js';
 
 // Verified against real source (not just the task brief's guesses):
 // - `createNew`'s URL/query params match exactly how NewStageScreen.tsx
@@ -32,33 +32,6 @@ import { typeInlineRun } from './rich-text.js';
 type MarkdownBlock =
   | { kind: 'paragraph'; text: string }
   | { kind: 'bullet' | 'ordered'; items: string[] };
-
-const NAMED_CHARACTERS: Record<string, string> = {
-  amp: '&',
-  lt: '<',
-  gt: '>',
-  quot: '"',
-  apos: "'",
-};
-
-// The characters a user types for the character references in canonical
-// markdown. Typed literally, `&lt;` is text the researcher wrote, and the
-// serializer stores it escaped as `&amp;lt;`. An unknown name throws, so a
-// new reference in the canonical file fails here rather than being typed.
-function decodeCharacterReferences(markdown: string): string {
-  return markdown.replace(
-    /&(?:#(\d+)|#x([\da-f]+)|([a-z][a-z\d]*));/gi,
-    (reference, decimal?: string, hex?: string, name?: string) => {
-      if (decimal) return String.fromCodePoint(Number.parseInt(decimal, 10));
-      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
-      const character = name ? NAMED_CHARACTERS[name] : undefined;
-      if (character === undefined) {
-        throw new Error(`No typed character for ${reference}`);
-      }
-      return character;
-    },
-  );
-}
 
 // Split source markdown into typeable blocks: blank-line-separated
 // paragraphs, plus bullet (`* `/`- `) and ordered (`1. `) list runs whose

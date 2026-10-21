@@ -1,11 +1,17 @@
 import {
   createSlice,
   current,
+  type Draft,
   type PayloadAction,
   type UnknownAction,
 } from '@reduxjs/toolkit';
+import { navigate } from 'wouter/use-browser-location';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  type LocalizedString,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
 import {
   getProtocol,
@@ -14,19 +20,37 @@ import {
   getRedoTargetPath,
   getUndoTargetPath,
 } from '~/selectors/protocol';
-import { currentAppPath, navigateApp } from '~/utils/appBase';
 import { resolveTimelineNavTarget } from '~/utils/timelineNavigation';
 
 import { timelineActions } from '../middleware/timeline';
 import { getProtocolOwnedHere } from './app';
 import assetManifest from './protocol/assetManifest';
 import codebook from './protocol/codebook';
+import {
+  addLocales,
+  changeLocale,
+  type LocaleOperationResult,
+  removeLocale,
+  setDefaultLocale,
+  setLocalizedStrings,
+  setTranslation,
+} from './protocol/localeOperations';
 import stages from './protocol/stages';
 
 // Types
 type ActiveProtocolState = CurrentProtocol | null;
 
 const initialState = null as ActiveProtocolState;
+
+// A refused operation leaves the protocol untouched, so it records no history.
+const applyLocaleOperation = (
+  state: Draft<CurrentProtocol> | null,
+  operation: (protocol: CurrentProtocol) => LocaleOperationResult,
+) => {
+  if (!state) return state;
+  const result = operation(current(state));
+  return result.ok ? result.protocol : undefined;
+};
 
 const activeProtocolSlice = createSlice({
   name: 'activeProtocol',
@@ -61,6 +85,60 @@ const activeProtocolSlice = createSlice({
       if (!state) return state;
       return { ...state, lastModified: action.payload };
     },
+    addProtocolLocales: (
+      state,
+      action: PayloadAction<{ locales: readonly string[] }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        addLocales(protocol, action.payload.locales),
+      ),
+    removeProtocolLocale: (state, action: PayloadAction<{ locale: string }>) =>
+      applyLocaleOperation(state, (protocol) =>
+        removeLocale(protocol, action.payload.locale),
+      ),
+    setProtocolDefaultLocale: (
+      state,
+      action: PayloadAction<{ locale: string }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        setDefaultLocale(protocol, action.payload.locale),
+      ),
+    changeProtocolLocale: (
+      state,
+      action: PayloadAction<{ from: string; to: string }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        changeLocale(protocol, action.payload.from, action.payload.to),
+      ),
+    setProtocolTranslation: (
+      state,
+      action: PayloadAction<{
+        path: readonly (string | number)[];
+        locale: string;
+        text: string;
+      }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        setTranslation(
+          protocol,
+          action.payload.path,
+          action.payload.locale,
+          action.payload.text,
+        ),
+      ),
+    // Several texts in one step, so one undo takes back the whole set.
+    setProtocolLocalizedStrings: (
+      state,
+      action: PayloadAction<{
+        updates: readonly Readonly<{
+          path: readonly (string | number)[];
+          value: LocalizedString;
+        }>[];
+      }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        setLocalizedStrings(protocol, action.payload.updates),
+      ),
     clearActiveProtocol: (_state) => {
       // Assets are namespaced per protocol and owned by the library; deleting a
       // protocol (deleteLibraryProtocol) removes its assets. Closing the active
@@ -121,6 +199,14 @@ export const updateLastModified =
   activeProtocolSlice.actions.updateLastModified;
 export const clearActiveProtocol =
   activeProtocolSlice.actions.clearActiveProtocol;
+export const {
+  addProtocolLocales,
+  removeProtocolLocale,
+  setProtocolDefaultLocale,
+  changeProtocolLocale,
+  setProtocolTranslation,
+  setProtocolLocalizedStrings,
+} = activeProtocolSlice.actions;
 
 export const actionCreators = {
   setActiveProtocol: activeProtocolSlice.actions.setActiveProtocol,
@@ -132,11 +218,26 @@ export const actionCreators = {
   clearActiveProtocol: activeProtocolSlice.actions.clearActiveProtocol,
 };
 
-// Export the reducer as default
-export default activeProtocolSlice.reducer;
+/**
+ * The slice's reducer, with the protocol holding the interview's shared words
+ * it shows after every change (see `withInterfaceText`): a protocol that comes
+ * to encrypt an attribute or show a form gains that text, and one that no
+ * longer does loses it.
+ */
+const activeProtocolReducer = (
+  state: ActiveProtocolState | undefined,
+  action: UnknownAction,
+): ActiveProtocolState => {
+  const next = activeProtocolSlice.reducer(state, action);
+  return next === null || next === state ? next : withInterfaceText(next);
+};
+
+export default activeProtocolReducer;
 
 const currentPath = () =>
-  typeof window !== 'undefined' && window.location ? currentAppPath() : '';
+  typeof window !== 'undefined' && window.location
+    ? window.location.pathname
+    : '';
 
 /**
  * What one activation of the history controls actually did, so the caller can
@@ -158,8 +259,8 @@ const NOT_APPLIED: TimelineOperationOutcome = {
 // it is needed to reveal the result — `resolveTimelineNavTarget` owns that
 // decision — so a change recorded on another page that hosts the controls is
 // applied AND brought into view in the same activation, while same-page,
-// experiments, Summary and legacy (path-less) entries apply in place without
-// moving the researcher.
+// Summary and legacy (path-less) entries apply in place without moving the
+// researcher.
 //
 // Undo and redo differ only in which end of the history they read, so they are
 // two specs over one implementation rather than two copies of it: every guard,
@@ -218,7 +319,7 @@ const performTimelineOperation =
     }
 
     const navigatedTo = targetPage || null;
-    if (navigatedTo) navigateApp(navigatedTo);
+    if (navigatedTo) navigate(navigatedTo);
 
     return { applied: true, navigatedTo };
   };

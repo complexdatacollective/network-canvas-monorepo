@@ -947,20 +947,6 @@ jobs:
           pnpm --filter=@codaco/architect build
           pnpm --filter=@codaco/interviewer build
           pnpm --filter=@codaco/studio-web build
-      # Architect 8 ships inside Architect 9's deploy as a /v8/ sub-path build,
-      # made from a released tag only after that release is already in
-      # production. Build it here too, so a change that breaks the sub-path
-      # build (or its worker, manifest and asset assertions in
-      # apps/architect/scripts/assert-pwa-build.mjs) fails before merge rather
-      # than after the tag exists. No PostHog credentials: the release-time
-      # sub-path build uploads no source maps either. It replaces the root
-      # build's dist, which nothing after this step reads.
-      - name: Build Architect under its /v8/ sub-path
-        id: architect_subpath_build
-        continue-on-error: true
-        env:
-          ARCHITECT_BASE_PATH: /v8/
-        run: pnpm --filter=@codaco/architect build
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
       # Builder has no Chromatic project by design, and the build step above
@@ -992,7 +978,6 @@ jobs:
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
-          ARCHITECT_SUBPATH_BUILD_OUTCOME: ${{ steps.architect_subpath_build.outcome }}
           PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
@@ -1008,7 +993,6 @@ jobs:
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
-            "architect-subpath-build=$ARCHITECT_SUBPATH_BUILD_OUTCOME" \
             "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
@@ -2903,19 +2887,6 @@ jobs:
         # as calling `playwright test --shard=1/2` directly), so `--shard`
         # reaches Playwright without needing the `exec playwright` form.
         run: pnpm --filter @codaco/architect run test:e2e:native --shard=${{ matrix.shard }}
-      # Architect 8 as Architect 9 bundles it, served at /v8/: the sub-path
-      # suite (e2e/subpath-specs/) needs its own build, which replaces dist/,
-      # so it runs after the root specs and on one shard only. `!cancelled()`
-      # rather than the default success(), so a root failure does not hide a
-      # sub-path one.
-      - name: Build the /v8/ sub-path app under test
-        if: ${{ !cancelled() && matrix.shard == '2/2' }}
-        env:
-          ARCHITECT_BASE_PATH: /v8/
-        run: pnpm exec turbo run build --filter=@codaco/architect
-      - name: Run the /v8/ sub-path E2E tests
-        if: ${{ !cancelled() && matrix.shard == '2/2' }}
-        run: pnpm --filter @codaco/architect run test:e2e:subpath:native
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -2925,16 +2896,6 @@ jobs:
           # shards' uploads would collide and only one report would survive.
           name: playwright-report-architect-native-${{ strategy.job-index }}
           path: apps/architect/e2e/playwright-report/
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Upload the /v8/ sub-path report
-        # Named outside the `*playwright-report*` pattern the PR report job
-        # merges, whose per-job layout has no place for a second suite.
-        if: ${{ always() && matrix.shard == '2/2' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: architect-subpath-e2e-report
-          path: apps/architect/e2e/playwright-report-subpath/
           if-no-files-found: warn
           retention-days: 14
 
@@ -3817,7 +3778,22 @@ jobs:
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
           VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
           VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+          # Production serves Architect 8 at /v8/ beside this release, from the
+          # tarball apps/architect/legacy-architect.json pins. The build fails
+          # rather than deploy without it (see apps/architect/RELEASING.md).
+          ARCHITECT_REQUIRE_LEGACY_V8: 'true'
         run: pnpm exec turbo run build --filter=@codaco/architect
+      # Checked outside the turbo cache too: whatever dist the build step left,
+      # production must not go out without Architect 8 in it.
+      - name: Check Architect 8 is bundled
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/architect/dist/v8/$file" ]]; then
+              echo "::error::apps/architect/dist/v8/$file is missing; production must serve Architect 8 at /v8/." >&2
+              exit 1
+            fi
+          done
       # After the turbo-cached build so a cache-restored dist still gets THIS
       # deployment's commit (GITHUB_SHA), matching netlify.toml's dev lane.
       - name: Stamp deployed commit
@@ -3935,7 +3911,22 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          # Production serves Interviewer 8 at /v8/ beside this release, from
+          # the tarball apps/interviewer/legacy-interviewer.json pins. The build
+          # fails rather than deploy without it (see apps/interviewer/RELEASING.md).
+          INTERVIEWER_REQUIRE_LEGACY_V8: 'true'
         run: pnpm exec turbo run build --filter=@codaco/interviewer
+      # Checked outside the turbo cache too: whatever dist the build step left,
+      # production must not go out without Interviewer 8 in it.
+      - name: Check Interviewer 8 is bundled
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/interviewer/dist/v8/$file" ]]; then
+              echo "::error::apps/interviewer/dist/v8/$file is missing; production must serve Interviewer 8 at /v8/." >&2
+              exit 1
+            fi
+          done
       - name: Deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
         env:

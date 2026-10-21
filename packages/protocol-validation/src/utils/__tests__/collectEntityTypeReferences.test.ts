@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
 import { collectEntityTypeReferences } from '../collectEntityAttributeReferences.ts';
+import { localized } from '../test-utils.ts';
 
 // Walks the REAL protocol schema, so this covers both the walker and the
 // entityTypeReference tagging of each schema spot. Stage fixtures are minimal:
@@ -13,7 +15,13 @@ const protocol = {
       id: 'nc',
       type: 'NetworkComposer',
       subject: { entity: 'node', type: 'person' },
-      edges: [{ id: 'nc-e1', subject: { entity: 'edge', type: 'friendship' } }],
+      edges: [
+        {
+          id: 'nc-e1',
+          subject: { entity: 'edge', type: 'friendship' },
+          label: localized('Connection'),
+        },
+      ],
     },
     {
       id: 'soc',
@@ -22,7 +30,7 @@ const protocol = {
       prompts: [
         {
           id: 'p1',
-          text: 'Who knows whom?',
+          text: localized('Who knows whom?'),
           layout: { layoutVariable: 'layout-var' },
           edges: { create: 'friendship', display: ['friendship', 'conflict'] },
         },
@@ -33,7 +41,11 @@ const protocol = {
       type: 'DyadCensus',
       subject: { entity: 'node', type: 'person' },
       prompts: [
-        { id: 'p2', text: 'Do they know each other?', createEdge: 'conflict' },
+        {
+          id: 'p2',
+          text: localized('Do they know each other?'),
+          createEdge: 'conflict',
+        },
       ],
     },
     {
@@ -43,9 +55,11 @@ const protocol = {
       presets: [
         {
           id: 'preset-1',
-          label: 'Preset',
+          label: localized('Preset'),
           layoutVariable: 'layout-var',
-          edges: { display: ['friendship'] },
+          edges: {
+            display: [{ type: 'friendship', label: localized('Friendship') }],
+          },
         },
       ],
       filter: {
@@ -73,8 +87,9 @@ const protocol = {
     {
       id: 'ped',
       type: 'FamilyPedigree',
-      nodeConfig: { type: 'family-member' },
-      edgeConfig: { type: 'partnership' },
+      wording: familyPedigreeWordingIn(),
+      subject: { entity: 'node', type: 'family-member' },
+      edgeConfiguration: { type: 'partnership' },
     },
   ],
 };
@@ -117,7 +132,7 @@ describe('collectEntityTypeReferences', () => {
     expect(hit?.entity).toBe('edge');
   });
 
-  it('collects the FamilyPedigree node and edge config types', () => {
+  it('collects the FamilyPedigree person and relationship types', () => {
     expect(pairs).toContain('node:family-member');
     expect(pairs).toContain('edge:partnership');
   });

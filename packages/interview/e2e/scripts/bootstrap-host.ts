@@ -8,6 +8,7 @@ import {
   type CurrentProtocol,
   CurrentProtocolSchema,
   extractProtocol,
+  migrateProtocol,
   missingAssetsError,
 } from '@codaco/protocol-validation';
 
@@ -46,17 +47,15 @@ async function main(): Promise<void> {
   await fs.rm(protocolAssetDir, { recursive: true, force: true });
   await fs.mkdir(protocolAssetDir, { recursive: true });
 
-  // Only the v8 schema models assetManifest; a pre-v8 protocol would fail the
-  // CurrentProtocolSchema.parse below anyway, so skipping its assets is moot.
-  const manifest: Record<string, unknown> =
-    protocolJson.schemaVersion === CURRENT_SCHEMA_VERSION
-      ? (protocolJson.assetManifest ?? {})
-      : {};
+  // Brought to the current schema the way a host does on import, so a fixture
+  // saved by an earlier version of Architect still runs.
+  const protocol = migrateProtocol(protocolJson, CURRENT_SCHEMA_VERSION, {
+    name: slug,
+  });
+  const manifest = protocol.assetManifest ?? {};
   for (const asset of extractedAssets) {
     const entry = manifest[asset.id];
-    if (!entry || typeof entry !== 'object' || !('type' in entry)) continue;
-    if (entry.type === 'apikey') continue;
-    if (!('source' in entry) || typeof entry.source !== 'string') continue;
+    if (!entry || entry.type === 'apikey') continue;
 
     const destPath = path.join(protocolAssetDir, entry.source);
     await fs.mkdir(path.dirname(destPath), { recursive: true });
@@ -67,7 +66,7 @@ async function main(): Promise<void> {
     await fs.writeFile(destPath, content);
   }
 
-  const rewrittenStr = JSON.stringify(protocolJson).replace(
+  const rewrittenStr = JSON.stringify(protocol).replace(
     /asset:\/\/([^"]+)/g,
     `${ASSET_SERVER_URL}/${slug}/$1`,
   );

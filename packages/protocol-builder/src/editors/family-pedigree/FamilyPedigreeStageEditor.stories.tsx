@@ -8,12 +8,10 @@ import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { familyPedigreeStageEditor } from './FamilyPedigreeStageEditor.ts';
 
 const meta = {
-  title: 'Protocol Builder/Editors/Family Pedigree',
+  title: 'Protocol Builder/Stage editors/Family pedigree',
   component: StageEditorStoryHost,
   args: {
     stageId: 'family-pedigree-1',
-    // Through the dispatcher rather than by naming the component, so the story
-    // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
       <StageEditor
         {...editor}
@@ -27,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The stage a participant draws their family in. It runs from what the pedigree is — the language it uses, how far it must reach — through the codebook attributes the interface writes the family into, to the introduction screen and the questions asked while it is built. Attributes can be created here without leaving the stage, which commits to the codebook on its own rather than travelling as a stage field.',
+          'The editor for the stage a participant draws their family on: they select anyone on the canvas and add a parent, sibling, partner or child, describing each new person in a side panel. The researcher chooses the node type people are, writes the instruction shown on the canvas, binds the attributes the interface records about each person and each relationship, chooses the words used for family members, and may add further questions about each person, a completeness requirement, and nomination prompts: questions asked of the whole family once it is drawn.',
       },
     },
   },
@@ -37,29 +35,162 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/**
- * The stage as the fixture protocol holds it. The play tightens a boundary and
- * saves, so the story settles on the document the host was asked to commit.
- */
+/** A configured pedigree, every slot bound. */
 export const Editing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await userEvent.selectOptions(
-      canvas.getByRole('combobox', { name: 'Grandparent requirement' }),
-      'required',
-    );
-    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
+    await expect(
+      await canvas.findByRole('heading', { name: 'Person attributes' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('heading', { name: 'Relationships' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('heading', { name: 'Wording' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('heading', { name: 'Nomination prompts' }),
+    ).toBeInTheDocument();
+  },
+};
 
-    await waitFor(async () => {
-      await expect(
-        canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('Saved “Family Pedigree”.');
+/**
+ * The wording a participant reads for their family. A stage that stores
+ * nothing uses everyday kinship words, which is drawn as the chosen card.
+ */
+export const Wording: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByRole('option', { name: /^Everyday kinship words/ }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(
+      canvas.getByRole('option', { name: /^Egg parent and sperm parent/ }),
+    ).toHaveAttribute('aria-selected', 'false');
+    await expect(
+      canvas.getByRole('option', { name: /^Let the participant choose/ }),
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * Writing a nomination prompt: the question, the boolean attribute that
+ * records who is selected, and an optional limit by sex assigned at birth,
+ * which is open to anyone until the researcher says otherwise.
+ */
+export const AddingANominationPrompt: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('button', {
+        name: 'Create new nomination prompt',
+      }),
+    );
+
+    // The dialog is drawn in a portal, outside the canvas.
+    const dialog = within(await within(document.body).findByRole('dialog'));
+    await expect(
+      await dialog.findByRole('textbox', { name: 'Prompt text' }),
+    ).toBeInTheDocument();
+    await expect(
+      await dialog.findByText('Attribute', { selector: 'label' }),
+    ).toBeInTheDocument();
+    await expect(
+      dialog.getByRole('option', { name: 'Anyone' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(
+      dialog.getByRole('option', {
+        name: 'Anyone except people assigned male at birth',
+      }),
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * The gender identity options and their kinship words, edited together. The
+ * stage shows each option's words read-only beside the button; the dialog it
+ * opens is wide enough for a words choice beside each option's label and
+ * value, and shows the attribute type read-only, because the stage only takes
+ * a categorical one.
+ */
+export const EditingGenderIdentityOptions: Story = {
+  globals: { appLocale: 'en' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const summary = await canvas.findByRole('table', {
+      name: 'Words for each gender identity',
     });
     await expect(
-      canvas.getByText(/"requireGrandparents": "required"/),
+      within(summary).getByRole('row', { name: /^Woman/ }),
+    ).toHaveTextContent('Feminine words (mother, sister)');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Edit options' }));
+
+    // The dialog is drawn in a portal, outside the canvas.
+    const dialog = within(
+      await within(document.body).findByRole('dialog', {
+        name: 'Edit gender identity options',
+      }),
+    );
+    await expect(
+      dialog.getByRole('textbox', { name: 'Attribute type' }),
+    ).toHaveAttribute('readonly');
+    await expect(
+      dialog.getByRole('combobox', { name: 'Option 1 kinship words' }),
+    ).toHaveValue('feminine');
+    await expect(
+      dialog.getByRole('combobox', { name: 'Option 2 kinship words' }),
+    ).toHaveValue('masculine');
+  },
+};
+
+/**
+ * The person type's symbols: one choice at the end of the person attributes.
+ * The fixture's type draws everyone as a circle, so "Set in the codebook" is
+ * chosen and says so; choosing sex assigned at birth writes a circle for
+ * female, a square for male and a diamond for everyone else to the codebook
+ * at once, and the choice then shows it chosen.
+ */
+export const Symbols: Story = {
+  globals: { appLocale: 'en' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const symbols = within(
+      await canvas.findByRole('listbox', { name: 'Symbols' }),
+    );
+    const codebook = symbols.getByRole('option', {
+      name: /^Set in the codebook/,
+    });
+    await expect(codebook).toHaveAttribute('aria-selected', 'true');
+    await expect(codebook).toHaveTextContent('Everyone is drawn as a circle.');
+    await expect(
+      symbols.getByRole('option', { name: /^Gender identity/ }),
     ).toBeInTheDocument();
+
+    const sex = symbols.getByRole('option', { name: /^Sex assigned at birth/ });
+    await userEvent.click(sex);
+
+    // The write goes through the host's lock and back over its channel.
+    await waitFor(() => expect(sex).toHaveAttribute('aria-selected', 'true'), {
+      timeout: 5000,
+    });
+    await waitFor(
+      () =>
+        expect(
+          symbols.getByRole('option', { name: /^Set in the codebook/ }),
+        ).toHaveTextContent('Everyone is drawn as a diamond.'),
+      { timeout: 5000 },
+    );
   },
 };
 

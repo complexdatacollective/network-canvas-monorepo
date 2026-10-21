@@ -171,6 +171,10 @@ export async function completeSetup(
     username = ADMIN_USER,
     password = ADMIN_PASSWORD,
     protocolPath = sampleProtocol,
+    // The sample protocol is schema 7, so Fresco asks how to import it.
+    // Upgraded, as every lane that sets up a deployment took it before Fresco
+    // asked; a caller importing a current protocol passes null.
+    olderSchema = 'upgrade',
     expectDashboard = true,
   },
 ) {
@@ -261,7 +265,7 @@ export async function completeSetup(
   // this is the wizard's plumbing, and every lane that cares about the
   // protocol being there asserts that separately.
   await advance(3, async () => {
-    await uploadProtocol(page, protocolPath);
+    await uploadProtocol(page, protocolPath, { olderSchema });
     await waitForImportToast(page, basename(protocolPath));
     await page
       .getByRole('button', { name: /Continue|Next|Finish/ })
@@ -321,17 +325,56 @@ export async function waitForImportToast(
 }
 
 /**
+ * The dialog Fresco opens when a protocol made for an older schema is
+ * imported, and the button that gives each answer: keep the protocol at
+ * schema 8, to run in the schema 8 interview Fresco bundles, or import an
+ * upgraded copy at the current schema.
+ */
+export const IMPORT_CHOICE_TITLE = 'How do you want to import this protocol?';
+const IMPORT_CHOICE_BUTTONS = {
+  keep: /^Keep schema \d+$/,
+  upgrade: /^Upgrade to schema \d+$/,
+};
+
+const importChoiceDialog = (page) =>
+  page.getByRole('dialog').filter({ hasText: IMPORT_CHOICE_TITLE });
+
+/**
+ * Answers the import dialog with `choice` ('keep' or 'upgrade') if it is open,
+ * and returns whether it was. For a caller that does not know whether the
+ * build it drives asks at all — Fresco 4 imported a schema 8 protocol as it
+ * was, without asking.
+ */
+export async function answerImportChoice(page, choice) {
+  const button = IMPORT_CHOICE_BUTTONS[choice];
+  if (!button)
+    throw new Error(`unknown import choice "${choice}" — keep or upgrade`);
+  const dialog = importChoiceDialog(page);
+  if (!(await dialog.isVisible().catch(() => false))) return false;
+  await dialog.getByRole('button', { name: button }).click();
+  await dialog.waitFor({ state: 'hidden', timeout: 15_000 });
+  return true;
+}
+
+/**
  * Uploads a .netcanvas through the page's own file input.
  *
  * Playwright can operate the real input, so this lane does not need the
  * storage-staging dance AGENT_NOTES describes for the in-app browser — which
  * matters beyond convenience: the damaged-archive fixtures have to reach the
  * import the way a researcher's file does.
+ *
+ * `olderSchema` is the answer for a protocol made for an older schema, which
+ * Fresco imports only once asked how: 'upgrade' or 'keep'. Given one, the
+ * dialog has to appear, and an import that never asks fails here — a file the
+ * caller knows to be older that went in unasked was upgraded, or kept, without
+ * the researcher's say. Left out for a file that is current or unreadable,
+ * where nothing is asked and nothing is waited for.
  */
 export async function uploadProtocol(
   page,
   protocolPath,
-  { timeoutMs = 60_000 } = {},
+  { timeoutMs = 60_000, olderSchema = null } = {},
 ) {
   const input = page.locator('input[type=file]').first();
   const opener = page.getByRole('button', { name: /Import protocol/i }).first();
@@ -356,6 +399,18 @@ export async function uploadProtocol(
     await page.waitForTimeout(500);
   }
   await input.setInputFiles(protocolPath);
+  if (!olderSchema) return;
+  // Asked once the archive's protocol has been read, before anything is
+  // validated or stored.
+  const asked = await importChoiceDialog(page)
+    .waitFor({ state: 'visible', timeout: timeoutMs })
+    .then(() => true)
+    .catch(() => false);
+  if (!asked)
+    throw new Error(
+      `Fresco did not ask how to import ${basename(protocolPath)}, a protocol made for an older schema ("${IMPORT_CHOICE_TITLE}" never appeared within ${timeoutMs}ms)`,
+    );
+  await answerImportChoice(page, olderSchema);
 }
 
 /** Signs in with a password, leaving the browser wherever the app sends it. */

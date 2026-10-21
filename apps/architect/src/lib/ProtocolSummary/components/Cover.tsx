@@ -4,11 +4,17 @@ import { useContext } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { APP_SCHEMA_VERSION } from '~/config';
 import networkCanvasLogo from '~/images/NC-Mark.svg';
 
 import ProtocolCard from './ProtocolCard';
 import SummaryContext from './SummaryContext';
+import {
+  DefaultLanguageBadge,
+  useMultilingualSummary,
+  useSummaryLanguages,
+} from './SummaryText';
 const messages = defineMessages({
   protocolSummaryDocument: {
     id: 'architect.protocolSummary.cover.protocolSummaryDocument',
@@ -25,11 +31,20 @@ const messages = defineMessages({
     defaultMessage: 'Document Created: {now}',
     description: 'Visible text in lib / ProtocolSummary / components / Cover.',
   },
+  languages: {
+    id: 'architect.protocolSummary.cover.languages',
+    defaultMessage: 'Languages',
+    description:
+      'Heading on the cover of the printable protocol summary, above the list of the languages the protocol is written in. Shown only for a protocol with more than one language.',
+  },
 });
 
 const Cover = () => {
   const intl = useAppIntl();
   const { protocol, protocolName } = useContext(SummaryContext);
+  const multilingual = useMultilingualSummary();
+  const languages = useSummaryLanguages();
+  const languageName = useLanguageName();
 
   const lastModifiedFormatted = protocol.lastModified
     ? DateTime.fromISO(protocol.lastModified).toHTTP()
@@ -69,6 +84,28 @@ const Cover = () => {
         lastModified={lastModifiedFormatted}
         schemaVersion={protocol.schemaVersion ?? APP_SCHEMA_VERSION}
       />
+      {multilingual && (
+        <div className="mt-10 flex flex-col items-center gap-2">
+          <Heading
+            level="label"
+            variant="all-caps"
+            margin="none"
+            className="text-xs font-semibold"
+          >
+            {intl.formatMessage(messages.languages)}
+          </Heading>
+          <ul className="m-0 flex list-none flex-wrap justify-center gap-x-5 gap-y-2 p-0">
+            {languages.map((locale) => (
+              <li key={locale} className="flex items-center gap-1">
+                {languageName(locale)}
+                {locale === protocol.localization.defaultLocale && (
+                  <DefaultLanguageBadge />
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <br />
       <br />
       <br />

@@ -7,17 +7,18 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { InstallBanner } from '~/components/InstallBanner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
-import { ResumePill } from '~/components/ResumePill';
+import { pickResumable, ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
-import type { StoredSession } from '~/lib/db/types';
+import { isSchema8Protocol, type StoredSession } from '~/lib/db/types';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
@@ -28,6 +29,7 @@ import {
   protocolsContainerVariants,
 } from './homeAnimations';
 import { useHomeData } from './useHomeData';
+import { useLegacyProtocolActions } from './useLegacyProtocolActions';
 
 const messages = defineMessages({
   deleteThisProtocol: {
@@ -66,6 +68,7 @@ function viewFromLocation(location: string): View {
 
 export function HomeRoute() {
   const { protocols, sessions, settings, reload } = useHomeData();
+  const legacyActions = useLegacyProtocolActions();
   const { pendingImports, startImport } = useProtocolImport({
     onInstalled: reload,
   });
@@ -93,10 +96,28 @@ export function HomeRoute() {
     pendingProtocolHash !== null &&
     protocols.some((p) => p.hash === pendingProtocolHash);
 
-  // Mirrors ResumePill's own render predicate (an in-progress session exists).
-  // When it does, the pill occupies the band just below the header in
-  // portrait, so the protocols column reserves top space to clear it.
-  const hasResumableSession = sessions.some((s) => s.finishedAt === null);
+  // The protocols whose interviews this build can open: every schema 9 one,
+  // and the schema 8 ones when Interviewer 8 is bundled to run them.
+  const legacyInterviewer = legacyActions.schema8.interviewer;
+  const runnableProtocolHashes = useMemo(
+    () =>
+      new Set(
+        protocols
+          .filter(
+            (protocol) =>
+              protocol.schemaVersion === COMPATIBLE_PROTOCOL_SCHEMA_VERSION ||
+              (isSchema8Protocol(protocol) && legacyInterviewer !== null),
+          )
+          .map((protocol) => protocol.hash),
+      ),
+    [protocols, legacyInterviewer],
+  );
+  // Mirrors ResumePill's own render predicate (an in-progress session it can
+  // open exists). When it does, the pill occupies the band just below the
+  // header in portrait, so the protocols column reserves top space to clear
+  // it.
+  const hasResumableSession =
+    pickResumable(sessions, runnableProtocolHashes) !== undefined;
   const showResumePill =
     view === 'protocols' && !newSessionActive && hasResumableSession;
 
@@ -265,7 +286,11 @@ export function HomeRoute() {
         <div className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-[calc(1rem+env(safe-area-inset-top))] landscape:translate-y-0">
           <AnimatePresence>
             {showResumePill ? (
-              <ResumePill key="resume-pill" sessions={sessions} />
+              <ResumePill
+                key="resume-pill"
+                sessions={sessions}
+                runnableProtocolHashes={runnableProtocolHashes}
+              />
             ) : null}
           </AnimatePresence>
         </div>
@@ -306,6 +331,7 @@ export function HomeRoute() {
               onInstallSample={handleInstallSample}
               onDismissSample={handleDismissSample}
               onInstallDevelopment={handleInstallDevelopment}
+              schema8={legacyActions.schema8}
               newSessionProtocolHash={pendingProtocolHash}
               onCancelNewSession={closeNewSession}
               onSessionCreated={handleSessionCreated}

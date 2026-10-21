@@ -4,8 +4,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
+import { normalizeCodebookName } from '@codaco/shared-consts';
 
 import { variableValuesMessages } from '../codebook/codebookMessages.ts';
+import { useStageManagedOptionsLock } from '../codebook/useStageManagedOptionsLock.ts';
 import {
   heldBooleanAnswersReason,
   optionsShapeFor,
@@ -14,13 +16,17 @@ import {
 import {
   buildInterfaceOwnedOptionMap,
   lockedVariableOptions,
+  stageManagedOptionsNote,
   variableRoleKey,
 } from '../codebook/variableRoles.ts';
 import BooleanAnswersField from '../fields/BooleanAnswersField.tsx';
+import { variableNameScope } from '../fields/variableNameRules.ts';
+import type { OptionExportColumns } from '../form/arrayFields/cellRules.ts';
 import type { OptionValue } from '../form/arrayFields/Option.tsx';
-import Options, { optionsValidation } from '../form/arrayFields/Options.tsx';
+import Options, { optionsValidationFor } from '../form/arrayFields/Options.tsx';
 import RevealWhenChosen from '../form/RevealWhenChosen.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import {
   variablesForSubject,
   type CodebookSubject,
@@ -130,6 +136,11 @@ export type AttributeValueFieldsProps = Readonly<{
    * and the row's own create writes them.
    */
   invented?: string;
+  /**
+   * What the attribute being invented is called. An option exports to
+   * `{attribute}_{value}`, so the values are judged against it.
+   */
+  inventedName?: string;
   revealWhenChosenIn?: string;
 }>;
 
@@ -159,6 +170,7 @@ export default function AttributeValueFields({
   rowComponent,
   optionsField = ATTRIBUTE_OPTIONS_FIELD,
   invented,
+  inventedName,
   revealWhenChosenIn,
 }: AttributeValueFieldsProps) {
   const intl = useAppIntl();
@@ -199,6 +211,36 @@ export default function AttributeValueFields({
       picked !== undefined,
   );
 
+  // Where each answer would be exported, so a value that lands on a column the
+  // export already writes is said on its row. The attribute being edited is
+  // left out of its own siblings: its columns are what is being changed.
+  const exportColumns = useMemo((): OptionExportColumns | undefined => {
+    if (subject === undefined) return undefined;
+    const { entity, variables: held } = variableNameScope(
+      subject.entity,
+      variables,
+    );
+    if (invented !== undefined) {
+      const name = normalizeCodebookName(inventedName ?? '');
+      return name === ''
+        ? undefined
+        : { entity, name, type: invented, siblings: held };
+    }
+    return picked === undefined
+      ? undefined
+      : {
+          entity,
+          name: picked.name,
+          type: picked.type,
+          siblings: held.filter(({ id }) => id !== variableId),
+        };
+  }, [invented, inventedName, picked, subject, variableId, variables]);
+  const localization = useProtocolLocalization();
+  const optionsRules = useMemo(
+    () => optionsValidationFor(exportColumns, localization),
+    [exportColumns, localization],
+  );
+
   const locked = useMemo(
     () =>
       subject === undefined || variableId === undefined || variableId === ''
@@ -212,6 +254,15 @@ export default function AttributeValueFields({
           ),
     [protocolContext, subject, variableId, variables],
   );
+
+  // A list a stage manages is shown, not offered, anywhere but in that stage's
+  // own editor. Its own caption, naming the stage: the reason is not that an
+  // interface set the options but that a stage decides what each one means.
+  const stageManagedLock = useStageManagedOptionsLock();
+  const managedBy =
+    subject === undefined || variableId === undefined || variableId === ''
+      ? undefined
+      : stageManagedLock(subject, variableId);
 
   // An attribute being invented: its answers, on the same terms as an
   // attribute that exists.
@@ -232,7 +283,8 @@ export default function AttributeValueFields({
                 variableValuesMessages.addOption,
               )}
               readOnly={readOnly}
-              {...optionsValidation}
+              exportColumns={exportColumns}
+              {...optionsRules}
             />
           </Section>
         </RevealWhenChosen>
@@ -271,6 +323,21 @@ export default function AttributeValueFields({
   // Under the same heading either way: what the section is about is the
   // answers this attribute offers, and whether they are the researcher's to
   // change is a fact about this attribute rather than a different subject.
+  if (managedBy !== undefined && shape === 'choice') {
+    return (
+      <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="locked">
+        <Section
+          title={intl.formatMessage(variableValuesMessages.optionsLegend)}
+          description={intl.formatMessage(variableValuesMessages.optionsHint)}
+        >
+          <LockedOptions
+            options={isOptionList(heldOptions) ? heldOptions : []}
+            caption={stageManagedOptionsNote(managedBy, intl)}
+          />
+        </Section>
+      </RevealWhenChosen>
+    );
+  }
   if (locked !== undefined) {
     return (
       <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="locked">
@@ -307,7 +374,8 @@ export default function AttributeValueFields({
             )}
             initialValue={isOptionList(heldOptions) ? heldOptions : undefined}
             readOnly={readOnly}
-            {...optionsValidation}
+            exportColumns={exportColumns}
+            {...optionsRules}
           />
         </Section>
       </RevealWhenChosen>

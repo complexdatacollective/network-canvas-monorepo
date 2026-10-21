@@ -37,6 +37,16 @@ const BACKWARDS: ComposerParameters = {
   max: '2015-01-01',
 };
 
+/**
+ * The two ends of a scale as the attribute words them. They are participant
+ * copy, so each is held per protocol language — the shared protocol declares
+ * one.
+ */
+const SCALE_ENDS: ComposerParameters = {
+  minLabel: { 'en-US': 'Never' },
+  maxLabel: { 'en-US': 'Every day' },
+};
+
 /** Said above the settings while the field is still following the attribute. */
 const INHERITED_SENTENCE =
   'These come from the “date of birth” attribute, and this field follows them. Change any of them and this field keeps a set of its own.';
@@ -52,10 +62,12 @@ const INHERITED_SENTENCE =
 function TheSettings({
   initialValue,
   inherited,
+  inheritedFrom = 'date of birth',
   shape = 'datePicker',
 }: Readonly<{
   initialValue?: ComposerParameters;
   inherited?: ComposerParameters;
+  inheritedFrom?: string;
   shape?: ParameterShape;
 }>) {
   return (
@@ -66,9 +78,7 @@ function TheSettings({
       hint="These settings belong to this field rather than to the attribute, so the same attribute can be asked for differently on another stage."
       shape={shape}
       {...(initialValue === undefined ? {} : { initialValue })}
-      {...(inherited === undefined
-        ? {}
-        : { inherited, inheritedFrom: 'date of birth' })}
+      {...(inherited === undefined ? {} : { inherited, inheritedFrom })}
     />
   );
 }
@@ -169,6 +179,36 @@ export const InheritedFromTheAttribute: Story = {
       ),
     ).toBeVisible();
     await expect(canvas.queryByText(INHERITED_SENTENCE)).toBeNull();
+  },
+};
+
+/**
+ * A scale following its attribute's two end labels.
+ *
+ * Each label is edited in the language being edited, and the field keeps
+ * following the attribute for as long as every translation of both still says
+ * what the attribute's does.
+ */
+export const AScaleFollowingTheAttribute: Story = {
+  args: {
+    children: (
+      <TheSettings
+        shape="scalar"
+        inherited={SCALE_ENDS}
+        inheritedFrom="contact frequency"
+      />
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByRole('textbox', { name: /^Minimum label/ }),
+    ).toHaveTextContent('Never');
+    await expect(
+      canvas.getByRole('textbox', { name: /^Maximum label/ }),
+    ).toHaveTextContent('Every day');
   },
 };
 

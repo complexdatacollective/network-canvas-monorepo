@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import { getInterviewProgress } from '@codaco/interview';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { generateNetwork } from '@codaco/protocol-utilities';
 import { StageMetadataSchema } from '@codaco/shared-consts';
 import {
@@ -9,6 +10,7 @@ import {
   getProtocolByHash,
   updateSession,
 } from '~/lib/db/api';
+import { isCurrentProtocol } from '~/lib/db/types';
 
 import { loadRosterNodesForStages } from './loadRosterData';
 
@@ -40,8 +42,28 @@ export async function generateSyntheticSessions(
   if (!protocol) {
     throw new Error(`Protocol not found for hash "${protocolHash}".`);
   }
+  // Synthetic interviews are generated for schema 9 protocols only: the
+  // generator reads schema 9 stages, and a schema 8 interview is Interviewer
+  // 8's to write.
+  if (!isCurrentProtocol(protocol)) {
+    throw new Error(
+      `Protocol "${protocolHash}" is not at schema ${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}.`,
+    );
+  }
 
   const externalData = await loadRosterNodesForStages(protocol);
+
+  // A completed synthetic session ends at the finish stage its route reached.
+  const finished = (currentStep: number) => {
+    const finishStage = protocol.protocol.stages[currentStep];
+    const reached =
+      finishStage?.type === 'FinishSession' ? finishStage : undefined;
+    return {
+      finishedAt: new Date().toISOString(),
+      finishStageId: reached?.id ?? null,
+      finishOutcome: reached?.outcome ?? null,
+    };
+  };
 
   const genOptions = {
     codebook: protocol.codebook,
@@ -81,7 +103,7 @@ export async function generateSyntheticSessions(
           stageMetadata === null || stageMetadata === undefined
             ? undefined
             : StageMetadataSchema.parse(stageMetadata),
-        finishedAt: droppedOut ? null : new Date().toISOString(),
+        ...(droppedOut ? { finishedAt: null } : finished(currentStep)),
       });
 
       if (!droppedOut) completedCount++;
@@ -112,7 +134,7 @@ export async function generateSyntheticSessions(
               stageMetadata === null || stageMetadata === undefined
                 ? undefined
                 : StageMetadataSchema.parse(stageMetadata),
-            finishedAt: new Date().toISOString(),
+            ...finished(currentStep),
           });
         }
       }

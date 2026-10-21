@@ -10,9 +10,11 @@ import {
 import {
   asRuleSetValue,
   ruleSetIssues,
+  ruleSetAllowsEncryptedAttributes,
   ruleSetProblem,
   ruleSetTargets,
   ruleSetValidationMessage,
+  type RuleSetVariant,
 } from '../ruleSet.ts';
 import { testCodebook } from './fixtures.ts';
 
@@ -213,6 +215,19 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
         value: 'blue',
       },
     },
+    // A finished rule on an attribute the participant's passphrase protects:
+    // the codebook still has it, and a filter over interview answers cannot
+    // read it.
+    encryptedAttribute: {
+      id: 'a',
+      type: 'node',
+      options: {
+        type: 'person',
+        attribute: 'secret',
+        operator: 'EXACTLY',
+        value: 'blue',
+      },
+    },
     invalidOperator: {
       id: 'a',
       type: 'node',
@@ -374,6 +389,101 @@ describe('every problem a rule can have', () => {
     expect(
       ruleSetValidationMessage({ join: 'AND', rules }, codebook, filterTargets),
     ).toEqual(expect.any(String));
+  });
+});
+
+/**
+ * The protocol schema refuses a rule comparing an encrypted attribute wherever
+ * the rule reads interview answers, which are checked without the
+ * participant's passphrase — and accepts one in a panel over an imported file,
+ * whose rows the researcher wrote and nothing encrypts. Whether one was
+ * answered survives encryption, so a rule asking only that is accepted
+ * everywhere.
+ */
+describe('a rule on an encrypted attribute', () => {
+  const encryptedRule = {
+    id: 'a',
+    type: 'node',
+    options: {
+      type: 'person',
+      attribute: 'secret',
+      operator: 'EXACTLY',
+      value: 'Ada',
+    },
+  };
+
+  const readAs = (variant: RuleSetVariant) =>
+    ruleSetIssues(
+      { rules: [encryptedRule] },
+      codebook,
+      ruleSetTargets(variant),
+      {
+        allowEncryptedAttributes: ruleSetAllowsEncryptedAttributes(variant),
+      },
+    );
+
+  it.each<RuleSetVariant>(['query', 'filter', 'interviewNetworkPanel'])(
+    'is reported where the rule reads interview answers: %s',
+    (variant) => {
+      expect(readAs(variant)).toEqual([
+        {
+          position: 1,
+          summary: 'unusable',
+          message:
+            'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
+        },
+      ]);
+    },
+  );
+
+  it('is accepted in a panel over an imported file', () => {
+    expect(readAs('externalDataPanel')).toEqual([]);
+  });
+
+  it.each<RuleSetVariant>([
+    'query',
+    'filter',
+    'interviewNetworkPanel',
+    'externalDataPanel',
+  ])(
+    'is accepted everywhere when it only asks whether it is answered: %s',
+    (variant) => {
+      expect(
+        ruleSetIssues(
+          {
+            rules: [
+              {
+                id: 'a',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'secret',
+                  operator: 'EXISTS',
+                },
+              },
+            ],
+          },
+          codebook,
+          ruleSetTargets(variant),
+          {
+            allowEncryptedAttributes: ruleSetAllowsEncryptedAttributes(variant),
+          },
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it('is reported by a caller that does not say where the rule sits', () => {
+    expect(
+      describeRule({ rule: encryptedRule, codebook }).problems.map(
+        (problem) => problem.code,
+      ),
+    ).toEqual(['encryptedAttribute']);
+    expect(
+      ruleSetValidationMessage({ rules: [encryptedRule] }, codebook, targets),
+    ).toBe(
+      'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+    );
   });
 });
 

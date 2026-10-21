@@ -4,7 +4,7 @@ Synthetic network generation and interview-payload builder for Network Canvas pr
 
 ## Exports
 
-- `generateNetwork(params)` — pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given protocol. Takes a single `GenerateNetworkParams` object: `codebook` and `stages` are required; `externalData`, `seed`, `simulateDropOut`, `respectSkipLogicAndFiltering`, `inProgressStageIndex`, `config`, and `familyPedigree` are optional. Returns a `GenerateNetworkResult`.
+- `generateNetwork(params)` — pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given protocol. Takes a single `GenerateNetworkParams` object: `codebook` and `stages` are required; `externalData`, `seed`, `simulateDropOut`, `respectSkipLogicAndFiltering`, `inProgressStageIndex`, and `config` are optional. Returns a `GenerateNetworkResult`.
 - `GenerateNetworkParams`, `GenerateNetworkResult` — the parameter and result types.
 - `GenerationConfig` — tuning constants (node counts, edge probabilities, drop-out factor, and the date relative date bounds resolve against). `params.config` takes a `Partial` of it.
 - `SyntheticDataConstraintError`, `ConstraintConflict` — the refusal `generateNetwork` throws, and the shape it carries. See below.
@@ -12,11 +12,46 @@ Synthetic network generation and interview-payload builder for Network Canvas pr
 
 Both share a `ValueGenerator` (`@faker-js/faker` wrapper) for deterministic value synthesis: pass a `seed` for reproducible output.
 
-## Family pedigree generation
+## Localization
 
-FamilyPedigree stages use an isolated demographic generator rather than the generic node-and-edge stage handlers. The bundled `US_FAMILY_PEDIGREE_POPULATION` profile derives completed family sizes from the 2017–2019 National Survey of Family Growth, then uses size-biased draws for a focal person's siblings and parents' sibling groups. It includes source URLs so callers can audit the assumptions or replace the profile for another study population.
+`SyntheticInterview` builds schema-9 protocols, so every protocol it emits carries a `localization` declaration. The default is `en-US` as both the default and the only language. `setLocalization({ defaultLocale, locales })` replaces it, and may be called before or after the stages are added.
 
-Pass `familyPedigree` to customize the population, cap optional branches, disable planted disease lineages, or force an adoption, donor-conception, or surrogacy scenario for testing. Population mode samples these scenarios at the profile's configured rates. Family topology and attributes use a stage-specific deterministic random stream, so changing a pedigree does not move the random stream used by other interview stages.
+Participant-facing text accepts either a plain string or a locale map:
+
+- A plain string is written in `defaultLocale` and escaped as an ICU literal message, so `{` and `'` appear to the participant exactly as typed.
+- A locale map (`{ en: '...', es: '...' }`) passes through as written. Its values must already be ICU literal messages, and a language missing from the map has no translation for that string.
+
+This covers stage labels, prompts, form fields, panels, options, and node and edge types. Every node type, edge type, and variable (ego variables included) gets a `label`, which is the entry's `name` unless you pass one. A variable's label is not translated, so it takes a plain string only. Each attribute a Narrative preset highlights is labelled with the attribute's name, as text in the default language. A Network Composer field is captioned the same way, with its attribute's name, unless you pass a `label`.
+
+`addStage('LanguageChooser')` adds a language chooser stage. It has no subject and adds nothing to the generated network.
+
+```ts
+import { SyntheticInterview } from '@codaco/protocol-utilities';
+
+const synth = new SyntheticInterview();
+synth.setLocalization({ defaultLocale: 'en-US', locales: ['en-US', 'es'] });
+
+const person = synth.addNodeType({
+  name: 'Person',
+  label: { 'en-US': 'Person', 'es': 'Persona' },
+});
+
+synth.addStage('LanguageChooser');
+
+const friends = synth.addStage('NameGenerator', {
+  subject: { entity: 'node', type: person.id },
+  label: { 'en-US': 'Friends', 'es': 'Amigos' },
+});
+friends.addPrompt({
+  text: { 'en-US': 'Name your friends', 'es': 'Nombra a tus amigos' },
+});
+
+const protocol = synth.getProtocol(); // protocol.localization is the declaration above
+```
+
+## Family pedigree stages
+
+`generateNetwork` adds no people or relationships for a FamilyPedigree stage: the participant draws their own family in the interface. `SyntheticInterview.addStage('FamilyPedigree')` builds a valid stage, creating the person and family types and the variables the interface owns; the returned handle exposes their ids so a story can seed people and relationships.
 
 ## Refused protocols
 

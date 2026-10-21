@@ -16,10 +16,10 @@
 // Prints one JSON line: { ok, checks, interviewId, nodeIds, ... }. The workflow
 // binds the check ids to a list of its own, so a run that stops performing one
 // fails rather than reporting a shorter list.
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { messageText } from '../../../../packages/protocol-validation/src/localization/messageSyntax.ts';
 import {
   attempt,
   check,
@@ -33,7 +33,14 @@ import {
   uploadProtocol,
 } from './fresco-driver.mjs';
 import { readInterviewExport } from './interview-export-contract.mjs';
-import { lane, postgresContainer } from './lanes.mjs';
+import {
+  exportAllInterviews,
+  nextStage as nextStageOf,
+  openInterview,
+  psqlFor,
+  settledStep as settledStepOf,
+} from './interview-walk.mjs';
+import { lane } from './lanes.mjs';
 import { relayHost } from './relay-host.mjs';
 
 const RELAY_HOST = relayHost();
@@ -82,20 +89,7 @@ const TRANSCRIPT = {
 /** Markdown emphasis removed, which is what a screen reader is handed. */
 const plain = (markdown) => markdown.replaceAll('**', '').replaceAll('_', '');
 
-const psql = (sql) =>
-  execFileSync('docker', [
-    'exec',
-    postgresContainer(laneName),
-    'psql',
-    '-U',
-    'postgres',
-    '-t',
-    '-A',
-    '-c',
-    sql,
-  ])
-    .toString()
-    .trim();
+const psql = psqlFor(laneName);
 
 const checks = [];
 const result = { ok: false, checks };
@@ -129,9 +123,13 @@ try {
       await page.goto(`${config.baseUrl}/dashboard/protocols`, {
         waitUntil: 'networkidle',
       });
+      // A schema 8 protocol, so Fresco asks how to import it. Upgraded: this
+      // lane conducts the current interview, on a protocol the schema 9
+      // upgrade has to have handled.
       await uploadProtocol(
         page,
         join(fixtures, 'fresco-release-test.netcanvas'),
+        { olderSchema: 'upgrade' },
       );
       // The import streams the media through storage, so it is not instant.
       // Waited for by its effect in the database rather than by a toast: the
@@ -141,7 +139,7 @@ try {
       while (Date.now() < deadline && !id) {
         await page.waitForTimeout(2000);
         id = psql(
-          `select id from "Protocol" where name like 'fresco-release-test%' order by "importedAt" desc limit 1;`,
+          `select id from "Protocol" where name = 'fresco-release-test.netcanvas' order by "importedAt" desc limit 1;`,
         );
       }
       result.protocolId = id;
@@ -170,39 +168,8 @@ try {
   }
 
   // --- the interview ------------------------------------------------------
-  // Every stage marker on the page, because a stage that is leaving stays
-  // mounted while it animates out: for part of a second there are two, and a
-  // reader that assumed one either throws or reads whichever it happened to
-  // find. A settled interview has exactly one.
-  const currentSteps = () =>
-    page.evaluate(() =>
-      [...document.querySelectorAll('[data-stage-step]')].map((element) =>
-        element.getAttribute('data-stage-step'),
-      ),
-    );
-  const settledStep = async (timeoutMs = 30_000) => {
-    const deadline = Date.now() + timeoutMs;
-    for (;;) {
-      const steps = await currentSteps();
-      if (steps.length === 1) return steps[0];
-      if (Date.now() > deadline)
-        throw new Error(
-          `the interview never settled on one stage (saw ${steps.length})`,
-        );
-      await page.waitForTimeout(250);
-    }
-  };
-  const nextStage = async () => {
-    const before = await settledStep();
-    await page.getByTestId('next-button').click();
-    const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline) {
-      await page.waitForTimeout(250);
-      const steps = await currentSteps();
-      if (steps.length === 1 && steps[0] !== before) return;
-    }
-    throw new Error(`the stage did not advance from step ${before}`);
-  };
+  const settledStep = () => settledStepOf(page);
+  const nextStage = () => nextStageOf(page);
 
   checks.push(
     await attempt('interview-opens', async () => {
@@ -211,28 +178,8 @@ try {
       });
       await page.waitForURL(/\/interview\//, { timeout: 60_000 });
       result.interviewId = new URL(page.url()).pathname.split('/').pop();
-      // The first render of this route on a freshly started container can come
-      // back as the app's error screen, and the next attempt serves the
-      // interview — so the open is retried the way a participant would retry
-      // it, on either symptom: an error screen, or a stage that never
-      // appeared. Bounded and counted, so an interview that needed retries is
-      // visible in the detail rather than smoothed away.
-      let attempts = 0;
-      for (; attempts < 4; attempts += 1) {
-        if (attempts > 0) {
-          await page.goto(page.url(), { waitUntil: 'domcontentloaded' });
-          await page.waitForTimeout(2000);
-        }
-        const broken = await page
-          .getByRole('button', { name: 'Copy Debug Information' })
-          .isVisible()
-          .catch(() => false);
-        if (broken) continue;
-        const steps = await currentSteps().catch(() => []);
-        if (steps.length >= 1) break;
-        await page.waitForTimeout(3000);
-      }
-      result.openAttempts = attempts + 1;
+      const attempts = await openInterview(page);
+      result.openAttempts = attempts;
       const settled = await settledStep();
       const heading = await page
         .getByRole('heading', { name: 'Welcome' })
@@ -240,7 +187,7 @@ try {
         .textContent();
       return {
         pass: settled === '0' && Boolean(heading?.includes('Welcome')),
-        detail: `interview ${result.interviewId} opened on step ${settled} after ${attempts + 1} attempt(s)`,
+        detail: `interview ${result.interviewId} opened on step ${settled} after ${attempts} attempt(s)`,
       };
     }),
   );
@@ -269,9 +216,10 @@ try {
     }),
   );
 
-  // A video announces itself with the description the researcher wrote for it,
-  // and falls back to the file's own name only when nobody wrote one — a
-  // description of nothing but spaces being nobody having written one.
+  // A video announces itself with the description the researcher wrote for it.
+  // Without one — a description of nothing but spaces being nobody having
+  // written one — it is named by the interview's own word for a video player,
+  // never by the file's name, which is the researcher's filing label.
   checks.push(
     await attempt('interview-video-descriptions', async () => {
       const labels = await page.evaluate(() =>
@@ -280,18 +228,55 @@ try {
         ),
       );
       const described = 'A short clip of a duck, with sound';
-      const fileName = 'withSound.mp4';
+      const undescribed = 'Video';
       return {
         pass:
           labels.length === 2 &&
           labels[0] === described &&
-          labels[1] === fileName,
-        detail: `video labels: ${JSON.stringify(labels)} (expected the researcher's description, then the file's own name for the blank one)`,
+          labels[1] === undescribed,
+        detail: `video labels: ${JSON.stringify(labels)} (expected the researcher's description, then "${undescribed}" for the blank one)`,
       };
     }),
   );
 
   await nextStage();
+
+  // The fixture is schema 8, and its Ego Form opens with an introduction
+  // panel. Imported into a schema 9 deployment, the Ego Form keeps that
+  // panel: the participant reads its title and text above the form's
+  // questions, on the same screen.
+  checks.push(
+    await attempt('interview-ego-form-keeps-introduction-panel', async () => {
+      const step = await settledStep();
+      const title = await page
+        .getByRole('heading', { name: 'Introduction' })
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const intro = await page
+        .getByText('Tell us about')
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const emphasised = await page
+        .locator('main strong')
+        .allTextContents()
+        .catch(() => []);
+      const formField = await page
+        .locator('[data-field-name="ego_name"]')
+        .isVisible()
+        .catch(() => false);
+      return {
+        pass:
+          step === '1' &&
+          title &&
+          intro &&
+          emphasised.includes('you') &&
+          formField,
+        detail: `step ${step}: panel title "Introduction" shown ${title}, panel text ${intro} (emphasis ${JSON.stringify(emphasised)}), the form's first question ${formField}`,
+      };
+    }),
+  );
 
   checks.push(
     await attempt('interview-ego-form-answered', async () => {
@@ -313,7 +298,9 @@ try {
   checks.push(
     await attempt('interview-nodes-created', async () => {
       await page.getByRole('button', { name: 'Add a person' }).click();
-      const input = page.getByRole('textbox', { name: 'Person name' });
+      const input = page.getByRole('textbox', {
+        name: 'Type a name, then press Enter',
+      });
       for (const name of TRANSCRIPT.people) {
         await input.fill(name);
         await input.press('Enter');
@@ -421,11 +408,42 @@ try {
               `select "finishTime" from "Interview" where id = '${result.interviewId}';`,
             );
           }
+          if (!finishedAt)
+            return {
+              pass: false,
+              detail: 'no finishTime was recorded within 60s of finishing',
+            };
+          // The protocol is migrated from schema 8, which appends the default
+          // finish stage, and that stage's outcome is "completed".
+          const finish = psql(
+            `select "finishOutcome" || '|' || coalesce("finishStageId", '') from "Interview" where id = '${result.interviewId}';`,
+          );
+          const [outcome = '', stageId = ''] = finish.split('|');
+          if (outcome !== 'completed' || stageId === '')
+            return {
+              pass: false,
+              detail: `finishTime recorded (${finishedAt}), but the finish was stored as outcome "${outcome}" at stage "${stageId}" rather than "completed" at the finish stage`,
+            };
+          // Finishing leaves the participant on the interview's completed
+          // state: the finish stage's finished text, which for a protocol
+          // migrated from schema 8 is the text the interview always showed.
+          // The stage the database names has to be the one on screen, too.
+          const shown = await page
+            .getByRole('heading', { name: 'Interview Finished' })
+            .waitFor({ state: 'visible', timeout: 15_000 })
+            .then(() => true)
+            .catch(() => false);
+          const thanked = await page
+            .getByText('Thank you for participating!')
+            .isVisible()
+            .catch(() => false);
+          const back = await page
+            .getByTestId('previous-button')
+            .isVisible()
+            .catch(() => false);
           return {
-            pass: Boolean(finishedAt),
-            detail: finishedAt
-              ? `finishTime recorded: ${finishedAt}`
-              : 'no finishTime was recorded within 60s of finishing',
+            pass: shown && thanked && !back && stageId === 'finish',
+            detail: `finishTime recorded (${finishedAt}), outcome ${outcome} at stage ${stageId}; completed state shown: ${shown && thanked}; a way back into the interview offered: ${back}`,
           };
         }),
       );
@@ -435,26 +453,11 @@ try {
         await attempt('interview-export-carries-the-answers', async () => {
           await signIn(page, { lane: laneName });
           await page.waitForURL(/\/dashboard/, { timeout: 90_000 });
-          await page.goto(`${config.baseUrl}/dashboard/interviews`, {
-            waitUntil: 'networkidle',
-          });
-          // A menu, then the format dialog, then a build that streams for as
-          // long as the archive takes.
-          const download = page.waitForEvent('download', { timeout: 300_000 });
-          await page
-            .getByRole('button', { name: 'Export Interview Data' })
-            .click();
-          await page
-            .getByRole('menuitem', { name: /Export all interviews/ })
-            .click();
-          const dialog = page.getByRole('dialog');
-          await dialog.waitFor({ state: 'visible', timeout: 30_000 });
-          await dialog
-            .getByRole('button', { name: /Start export|Export/ })
-            .first()
-            .click();
-          const archivePath = join(outDir, 'interview-export.zip');
-          await (await download).saveAs(archivePath);
+          const archivePath = await exportAllInterviews(
+            page,
+            config.baseUrl,
+            join(outDir, 'interview-export.zip'),
+          );
           result.exportPath = archivePath;
           const found = await readInterviewExport(archivePath);
           const missing = expectedAnswers().filter(
@@ -490,6 +493,17 @@ writeFileSync(
 report(result);
 
 /**
+ * The text an option label shows in the protocol's default language. A
+ * schema-8 label is that text; from schema 9 a label holds one ICU message per
+ * language.
+ */
+function labelText(label, localization) {
+  if (typeof label === 'string') return label;
+  const message = label?.[localization?.defaultLocale];
+  return typeof message === 'string' ? messageText(message) : undefined;
+}
+
+/**
  * Every answer the walk gave, as it must appear in exported data.
  *
  * The bin answers are included as the VALUES the codebook gives their options,
@@ -498,7 +512,7 @@ report(result);
  * produce an export this check was happy with.
  */
 function expectedAnswers() {
-  const codebook = JSON.parse(
+  const document = JSON.parse(
     readFileSync(
       join(
         repoRoot,
@@ -506,10 +520,11 @@ function expectedAnswers() {
       ),
       'utf8',
     ),
-  ).codebook.node.person.variables;
+  );
+  const codebook = document.codebook.node.person.variables;
   const valueOf = (variable, label) => {
     const option = codebook[variable].options.find(
-      (entry) => entry.label === label,
+      (entry) => labelText(entry.label, document.localization) === label,
     );
     if (!option)
       throw new Error(

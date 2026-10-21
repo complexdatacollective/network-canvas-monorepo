@@ -51,11 +51,12 @@ async function expectEdgeSlide(
 }
 
 /**
- * Click the previous-button and wait for either the intro to reappear (from
- * slide 0) or a valid dirty slide to auto-submit and step back (the "from"
- * endpoint label changes). Unlike the fixture's previousSlide(), this never
- * calls getCurrentItemLabel(), which throws on AlterEdgeForm's two-button
- * header. Pass the current "from" endpoint (or null when returning to intro).
+ * Click the previous-button and wait for either the stage to be left (from
+ * slide 0, the URL step changes) or a valid dirty slide to auto-submit and
+ * step back (the "from" endpoint label changes). Unlike the fixture's
+ * previousSlide(), this never calls getCurrentItemLabel(), which throws on
+ * AlterEdgeForm's two-button header. Pass the current "from" endpoint (or
+ * null when leaving the stage).
  */
 async function goBackEdgeSlide(
   page: Page,
@@ -66,9 +67,6 @@ async function goBackEdgeSlide(
   await page.waitForFunction(
     ({ urlBefore, prev, selector }) => {
       if (window.location.href !== urlBefore) return true;
-      if (document.querySelector('[data-stage-section="intro"]') !== null) {
-        return true;
-      }
       if (prev == null) return false;
       const header = document.querySelector(selector);
       return header?.getAttribute('aria-label') !== prev;
@@ -78,23 +76,12 @@ async function goBackEdgeSlide(
   );
 }
 
-function stepParam(page: Page): string | null {
-  return new URL(page.url()).searchParams.get('step');
-}
-
 export const alterEdgeFormScenarios: InterfaceScenarios = {
   interfaceType: 'AlterEdgeForm',
   scenarios: [
     {
-      id: 'intro-and-transition',
-      covers: [
-        'id',
-        'type',
-        'label',
-        'interviewScript',
-        'introductionPanel.title',
-        'introductionPanel.text',
-      ],
+      id: 'opens-on-first-edge',
+      covers: ['id', 'type', 'label', 'interviewScript'],
       smoke: true,
       visual: true,
       seedNetwork: true,
@@ -113,10 +100,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           subject: { entity: 'edge', type: et.id },
           label: 'Internal: edge form',
           interviewScript: 'Ask about each tie.',
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'This section asks about **each relationship** you noted.',
-          },
         });
         stage.addFormField({
           component: 'TextArea',
@@ -134,33 +117,16 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      run: async ({ page, interview }) => {
-        const slides = new SlidesFormFixture(page);
-
-        // Intro: ready (updateReady(true) on intro), title + markdown rendered.
+      run: async ({ page, interview, stage }) => {
+        // The stage opens directly on the first relationship's questions.
+        await interview.waitForForm();
+        await expectEdgeSlide(page, 'Alex', 'Sam');
         await expect(
-          page.locator('[data-stage-section="intro"][data-stage-ready="true"]'),
-        ).toBeVisible();
-        await expect(
-          page.getByRole('heading', { name: 'Relationship details' }),
-        ).toBeVisible();
-        await expect(
-          page.locator('strong', { hasText: 'each relationship' }),
+          stage.form.field('story').locator('textarea'),
         ).toBeVisible();
         // label and interviewScript are author-facing only: never rendered.
         await expect(page.getByText('Internal: edge form')).toHaveCount(0);
         await expect(page.getByText('Ask about each tie.')).toHaveCount(0);
-        await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
-
-        // One click switches intro→form WITHOUT changing the stage step
-        // (useBeforeNext returns false on the first forward from intro).
-        const stepBefore = stepParam(page);
-        await interview.dismissIntro();
-        await expect(slides.isOnIntro()).resolves.toBe(false);
-        await expect(
-          page.locator('[data-stage-section="form"][data-stage-ready="true"]'),
-        ).toBeVisible();
-        expect(stepParam(page)).toBe(stepBefore);
       },
     },
 
@@ -182,10 +148,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'Text',
@@ -207,7 +169,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         await expectEdgeSlide(page, 'Alex', 'Sam');
         await stage.form.fillText('met-at', 'Work');
@@ -268,10 +230,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
               },
             ],
           },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'Text',
@@ -300,7 +258,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // Only the A–B edge survives the filter: C (excluded) and its edge B–C
         // are trimmed from the view, so Cameron never appears.
@@ -345,12 +303,9 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           type: 'text',
           component: 'Text',
         });
+        synth.addInformationStage({ title: 'Previous stage', items: [] });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'Text',
@@ -370,24 +325,25 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview, protocol }) => {
-        // Intro is shown; the form section never paints (AlterEdgeForm returns
-        // null then moveForward()s), so dismissIntro()'s wait would hang —
-        // advance with next() and observe the following stage.
+        // No edges of the subject type: navigation passes the form stage
+        // (step 1) in both directions, so its form section never paints.
+        await interview.next();
+        await expect(page).toHaveURL(/step=2/);
         await expect(
-          page.locator('[data-stage-section="intro"]'),
+          page.getByRole('heading', { name: 'Complete' }),
         ).toBeVisible();
         await expect(page.locator('[data-stage-section="form"]')).toHaveCount(
           0,
         );
 
-        await interview.next();
-
+        await page.getByTestId('previous-button').click();
+        await expect(page).toHaveURL(/step=0/);
         await expect(
-          page.getByRole('heading', { name: 'Complete' }),
+          page.getByRole('heading', { name: 'Previous stage' }),
         ).toBeVisible();
-        await expect(
-          page.locator('[data-stage-section="form"][data-stage-ready="true"]'),
-        ).toHaveCount(0);
+        await expect(page.locator('[data-stage-section="form"]')).toHaveCount(
+          0,
+        );
 
         const network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes ?? []).toHaveLength(3);
@@ -425,10 +381,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'Text',
@@ -451,7 +403,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         await stage.form.fillText('met-at', 'Work');
         await stage.form.fillText('story', 'A long story about how we met.');
@@ -485,10 +437,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'Number',
@@ -506,7 +454,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         await stage.form.fillNumber('years-known', '42');
         await advanceEdgeSlide(page, slides);
@@ -580,10 +528,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'Boolean',
@@ -616,7 +560,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // Both custom Boolean labels render; the Toggle is a role=switch.
         await expect(page.getByText('Yes, we have')).toBeVisible();
@@ -684,10 +628,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'CheckboxGroup',
@@ -710,7 +650,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // ToggleButtonGroup options render as role=checkbox toggle buttons.
         await expect(
@@ -764,10 +704,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'RadioGroup',
@@ -784,7 +720,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ interview, stage }) => {
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // >6 options auto-enables the multi-column grid layout: the RadioGroup
         // fieldset (the field container wraps the fieldset that carries the
@@ -852,10 +788,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
           label: 'Relationship details',
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'A few more questions about this relationship.',
-          },
         });
         stage.addFormField({
           component: 'VisualAnalogScale',
@@ -890,7 +822,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // Scalar values use the protocol's normalized 0-1 range.
         await expect(page.getByText('Not at all')).toBeVisible();
@@ -998,10 +930,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following.',
-          },
         });
         stage.addFormField({
           component: 'RadioGroup',
@@ -1031,7 +959,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // The plain hint and the validation-rule summary both render up front.
         await expect(page.getByText('Keep it short.')).toBeVisible();
@@ -1167,10 +1095,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following for each relationship.',
-          },
         });
         for (const [variable, prompt] of [
           ['code-name', 'Give this relationship a code name.'],
@@ -1205,7 +1129,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // Slide 0 (Alex–Sam): every constraint satisfied.
         await stage.form.fillText('code-name', 'same');
@@ -1306,10 +1230,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following for each relationship.',
-          },
         });
         stage.addFormField({
           component: 'Text',
@@ -1332,7 +1252,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // Slide 0 (pre-seeded): endpoints + colours + prefill.
         await expectEdgeSlide(page, 'Alex', 'Sam');
@@ -1392,14 +1312,16 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
     {
       id: 'backwards-navigation-and-discard',
       covers: [
-        'backwards navigation (intro/slide)',
+        'backwards navigation (slide/leave stage)',
         'backwards valid-dirty auto-submit',
         'backwards invalid-dirty discard dialog',
         'ready-for-next scroll-to-bottom gating',
       ],
       seedNetwork: true,
+      currentStep: 1,
       build: () => {
         const synth = new SyntheticInterview();
+        synth.addInformationStage({ title: 'Previous stage', items: [] });
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -1419,10 +1341,6 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         }
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
-          introductionPanel: {
-            title: 'Relationship details',
-            text: 'Answer the following for each relationship.',
-          },
         });
         for (let i = 0; i < 20; i++) {
           stage.addFormField({
@@ -1444,15 +1362,18 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
-        // Backwards from slide 0 returns to the intro panel.
+        // Backwards from slide 0 leaves the stage; next returns to it.
         await expectEdgeSlide(page, 'Alex', 'Sam');
         await goBackEdgeSlide(page, null);
+        await expect(page).toHaveURL(/step=0/);
         await expect(
-          page.locator('[data-stage-section="intro"]'),
+          page.getByRole('heading', { name: 'Previous stage' }),
         ).toBeVisible();
-        await interview.dismissIntro();
+        await interview.next();
+        await interview.waitForForm();
+        await expectEdgeSlide(page, 'Alex', 'Sam');
 
         // Before completing the slide, the pulse is off (form incomplete).
         expect(await interview.nextButtonHasPulse()).toBe(false);

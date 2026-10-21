@@ -15,10 +15,12 @@ import {
   TestPromptPreview,
 } from '../../__tests__/rowFixtures.tsx';
 import NodeLayoutSection from '../../canvas-behaviours/NodeLayoutSection.tsx';
-import IntroductionSection from '../../introduction/IntroductionSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
+
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
 
 type Harness = ReturnType<typeof renderStageEditor>;
 
@@ -114,19 +116,13 @@ describe('the section that says what a stage is about', () => {
   it('mounts the stage filter beside it, as its own section', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-edge-form-1',
-      sections: (
-        <>
-          <SubjectSection entity="edge" filter />
-          <IntroductionSection />
-        </>
-      ),
+      sections: <SubjectSection entity="edge" filter />,
     });
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Edge setup',
       'Stage filter',
-      'Task introduction',
     ]);
   });
 
@@ -175,12 +171,7 @@ describe('the section that says what a stage is about', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-edge-form-1',
-      sections: (
-        <>
-          <SubjectSection entity="edge" filter />
-          <IntroductionSection />
-        </>
-      ),
+      sections: <SubjectSection entity="edge" filter />,
     });
 
     // The stage's name and its edge form belong to sections this mount does
@@ -887,7 +878,7 @@ describe('changing a subject the stage is configured for', () => {
         id: 'name-generator-1',
         type: 'NameGenerator' as const,
         fields: {
-          label: 'Name Generator',
+          label: en('Name Generator'),
           subject: { entity: 'node', type: 'person' },
         },
       },
@@ -938,7 +929,7 @@ describe('choosing a type for a stage that has never had one', () => {
   const configuredWithoutASubject = {
     type: 'AlterForm' as const,
     fields: {
-      label: 'Details',
+      label: en('Details'),
       filter: {
         rules: [
           {
@@ -1016,7 +1007,7 @@ describe('choosing a type for a stage that has never had one', () => {
    */
   it('does not ask when the stage really has nothing to lose', async () => {
     const harness = renderStageEditor({
-      stage: { type: 'AlterForm' as const, fields: { label: 'Details' } },
+      stage: { type: 'AlterForm' as const, fields: { label: en('Details') } },
       sections: nodeSubjectAndFilter,
     });
 
@@ -1033,7 +1024,7 @@ describe('choosing a type for a stage that has never had one', () => {
       stage: {
         type: 'NetworkComposer' as const,
         fields: {
-          label: 'Build your network',
+          label: en('Build your network'),
           behaviours: { automaticLayout: true },
           background: { concentricCircles: 4, skewedTowardCenter: false },
         },
@@ -1054,7 +1045,7 @@ describe('choosing a type for a stage that has never had one', () => {
       stage: {
         type: 'NetworkComposer' as const,
         fields: {
-          label: 'Build your network',
+          label: en('Build your network'),
           behaviours: { automaticLayout: false },
           background: { concentricCircles: 4, skewedTowardCenter: false },
         },
@@ -1073,7 +1064,7 @@ describe('choosing a type for a stage that has never had one', () => {
       stage: {
         type: 'NetworkComposer' as const,
         fields: {
-          label: 'Build your network',
+          label: en('Build your network'),
           behaviours: { automaticLayout: true, freeDraw: true },
           background: { concentricCircles: 4, skewedTowardCenter: false },
         },

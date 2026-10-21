@@ -8,7 +8,7 @@
   - button "Category Other, 1 item":
     - heading "Other" [level=4]
     - paragraph: Alice
-  - button "Expand drawer" [disabled]: 0 unplaced
+  - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

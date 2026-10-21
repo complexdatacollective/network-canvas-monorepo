@@ -298,6 +298,7 @@ test('the stage editor splits into two columns on the room the researcher can se
 for (const page of [
   { path: '/protocol/assets', heading: 'Resource Library' },
   { path: '/protocol/codebook', heading: 'Codebook' },
+  { path: '/protocol/localization', heading: 'Languages' },
   { path: '/protocol/summary', heading: 'Protocol Summary' },
 ] as const) {
   test(`${page.heading} content keeps a horizontal inset at phone width`, async ({
@@ -361,8 +362,9 @@ for (const page of [
  * which no `min-w-0` can restrain because a variable name renders `nowrap` and
  * so has no min-content smaller than itself.
  *
- * The other eight were never reported overflowing, and measuring them bore that
- * out — every one sits exactly at 390/390 and 768/768, with the app scroll
+ * The other nine (the Language Chooser joined them with schema 9) were never
+ * reported overflowing, and measuring them bore that out — every one sits
+ * exactly at 390/390 and 768/768, with the app scroll
  * container's width identical from the first frame after the stage-name field
  * appears to thirty frames later. They are asserted anyway, because they are
  * where the next regression in a shared control would surface: they exercise
@@ -371,8 +373,8 @@ for (const page of [
  * "measured clean" from "not measured".
  *
  * This is now the fixture's whole set, in its stage order, and the test below
- * asserts that it still is — a twentieth interface added to all-interfaces
- * fails here until it is named, rather than quietly going uncovered.
+ * asserts that it still is — an interface added to all-interfaces fails here
+ * until it is named, rather than quietly going uncovered.
  */
 const EDITOR_TYPES_UNDER_TEST = [
   'Anonymisation',
@@ -394,6 +396,8 @@ const EDITOR_TYPES_UNDER_TEST = [
   'NarrativePedigree',
   'NetworkComposer',
   'Geospatial',
+  'LanguageChooser',
+  'FinishSession',
 ] as const;
 
 for (const viewport of VIEWPORTS) {
@@ -586,13 +590,16 @@ const MAXIMAL_DESCRIPTION =
 function protocolWithStages(): CurrentProtocol {
   return {
     ...emptyProtocol(),
-    stages: [1, 2, 3].map((index) => ({
-      id: `info-${index}`,
-      label: `Information ${index}`,
-      type: 'Information',
-      title: `Information ${index}`,
-      items: [],
-    })),
+    stages: [
+      ...[1, 2, 3].map((index) => ({
+        id: `info-${index}`,
+        label: { en: `Information ${index}` },
+        type: 'Information' as const,
+        title: { en: `Information ${index}` },
+        items: [],
+      })),
+      ...emptyProtocol().stages,
+    ],
   };
 }
 

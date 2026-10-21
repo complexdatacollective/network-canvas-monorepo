@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
 import type { VariableType } from '@codaco/protocol-validation';
+import { normalizeCodebookName } from '@codaco/shared-consts';
 import {
   getVariableTypeLabel,
   getColorForType,
@@ -33,6 +34,10 @@ import {
   makeGetVariableWithEntity,
 } from '~/selectors/codebook';
 import { cx } from '~/utils/cva';
+import {
+  findExportColumnConflictMessage,
+  toExportColumnCandidate,
+} from '~/utils/exportColumnConflicts';
 import { createValidations } from '~/utils/validations';
 const messages = defineMessages({
   editing: {
@@ -273,19 +278,23 @@ export const VariablePill = ({
   } | null>(null);
 
   const [newName, setNewName] = useState(label);
-  const hasChanges = newName !== label;
+  // What the rename would save: the draft as typed may carry padding or a
+  // decomposed accent, which saving normalizes away.
+  const savedName = normalizeCodebookName(newName);
+  const hasChanges = savedName !== label;
 
   const getValidation = (value: string) => {
-    const required = createValidations(intl).required(
+    const validations = createValidations(intl);
+    const required = validations.required(
       intl.formatMessage(finalMessages.required),
     )(value);
+    const allowed = validations.codebookName()(value);
     const external = validateLabel?.(value);
-    const allowed = createValidations(intl).allowedVariableName()(value);
 
-    return required || external || allowed || null;
+    return required || allowed || external || null;
   };
 
-  const validation = editing ? getValidation(newName) : null;
+  const validation = editing ? getValidation(savedName) : null;
   const isValid = !validation;
 
   useEffect(() => {
@@ -359,8 +368,8 @@ export const VariablePill = ({
     }
 
     closeEditor({
-      announcement: { message: messages.renamed, values: { name: newName } },
-      beforeClose: () => onLabelChange(newName),
+      announcement: { message: messages.renamed, values: { name: savedName } },
+      beforeClose: () => onLabelChange(savedName),
     });
   };
 
@@ -612,13 +621,14 @@ const ConnectedVariablePillComponent = ({
     getVariablesForSubject(state, subject),
   );
 
-  const existingVariableNames = useMemo(
+  const siblings = useMemo(
     () =>
       Object.entries(existingVariables ?? {})
         .filter(([variableId]) => variableId !== uuid)
-        .map(([, existingVariable]) => get(existingVariable, 'name')),
+        .map(([, existingVariable]) => existingVariable),
     [existingVariables, uuid],
   );
+  const options: unknown = get(existingVariables, [uuid, 'options']);
 
   if (!type) {
     return null;
@@ -636,7 +646,15 @@ const ConnectedVariablePillComponent = ({
         void dispatch(action);
       }}
       validateLabel={(nextName) =>
-        createValidations(intl).uniqueByList(existingVariableNames)(nextName)
+        createValidations(intl).uniqueByList(
+          siblings.map((sibling) => sibling.name),
+        )(nextName) ??
+        findExportColumnConflictMessage({
+          entity: entity ?? 'node',
+          intl,
+          siblings,
+          candidate: toExportColumnCandidate({ name: nextName, type, options }),
+        })
       }
     />
   );

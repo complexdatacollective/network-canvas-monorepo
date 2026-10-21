@@ -20,7 +20,7 @@ const asOptions = (
 const BUILT_STAGE = {
   id: 'built-stage',
   type: 'Information',
-  fields: { label: 'Built beside the fixture' },
+  fields: { label: { 'en-US': 'Built beside the fixture' } },
 } as const;
 
 /**
@@ -133,7 +133,9 @@ describe('the stage a harness call opens', () => {
     });
 
     expect(harness.seeded.id).toBe('built-stage');
-    expect(harness.seeded.fields.label).toBe('Built beside the fixture');
+    expect(harness.seeded.fields.label).toEqual({
+      'en-US': 'Built beside the fixture',
+    });
   });
 
   it('opens the stage `create` is opening for the first time', () => {

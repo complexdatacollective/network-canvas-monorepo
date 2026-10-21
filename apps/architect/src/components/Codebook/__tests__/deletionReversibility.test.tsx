@@ -60,7 +60,10 @@ const makeStore = () => {
 
   const personVariables = protocol.codebook.node?.[PERSON]?.variables;
   if (!personVariables) throw new Error('fixture is missing the person type');
-  personVariables[SPARE_VARIABLE] = { name: 'spare_variable', type: 'text' };
+  personVariables[SPARE_VARIABLE] = {
+    name: 'spare_variable',
+    type: 'text',
+  };
 
   const nodeTypes = protocol.codebook.node;
   const personType = nodeTypes?.[PERSON];

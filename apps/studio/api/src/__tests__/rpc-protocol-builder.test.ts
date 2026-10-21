@@ -26,6 +26,7 @@ import {
   ASSETS,
   callerOf,
   EDIT,
+  enUS,
   formFields,
   GRACE,
   setupProtocolBuilderSuite,
@@ -50,6 +51,9 @@ import {
 } from './support/valkey.ts';
 
 const limiterUrl = await reachableRedis(REDIS_DATABASES.protocolBuilder);
+
+// The sample protocol's finish stages, in order.
+const ENDINGS = ['finish', 'finish-declined'];
 
 describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const suite = setupProtocolBuilderSuite();
@@ -145,7 +149,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId,
           document: Redacted.make({
             ...Redacted.value(before.document),
-            label: 'Renamed without the lock',
+            label: enUS('Renamed without the lock'),
           }),
           revision: before.revision,
         }),
@@ -196,7 +200,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     if (held.lock !== 'held') throw new Error('the section was already taken');
     const document = Redacted.make({
       ...Redacted.value(held.document),
-      label: 'Renamed by its holder',
+      label: enUS('Renamed by its holder'),
     });
     const written = await call(
       ADA,
@@ -214,7 +218,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId }),
     );
-    expect(Redacted.value(read.document).label).toBe('Renamed by its holder');
+    expect(Redacted.value(read.document).label).toEqual(
+      enUS('Renamed by its holder'),
+    );
     expect(read.revision.sequence).toBe(written.revision.sequence);
 
     await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
@@ -243,8 +249,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: 'Created by the host',
-          title: 'Created by the host',
+          label: enUS('Created by the host'),
+          title: enUS('Created by the host'),
           items: [],
         }),
         position: 1,
@@ -272,6 +278,272 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     const listed = await call(ADA, host.rpc('ListSections', { protocolId }));
     expect(listed.sectionIds).toContain(created.sectionId);
   });
+
+  it('puts a created stage in front of the finish stage, wherever it was asked to go', async () => {
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    const orderBefore = Redacted.value(before.document).stages;
+    if (!Array.isArray(orderBefore))
+      throw new Error('stageOrder is not a list');
+    // The sample protocol ends with two finish stages: its main ending, and
+    // the one participants who decline consent are sent to.
+    const firstFinish = orderBefore.indexOf('finish');
+    expect(orderBefore.slice(firstFinish)).toEqual(ENDINGS);
+
+    const unplaced = await createStage(ADA, 'Created with no position');
+    const pastTheEnd = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: Redacted.make({
+          type: 'Information',
+          label: enUS('Created past the end'),
+          title: enUS('Created past the end'),
+          items: [],
+        }),
+        position: orderBefore.length + 5,
+      }),
+    );
+
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    expect(Redacted.value(order.document).stages).toEqual([
+      ...orderBefore.slice(0, firstFinish),
+      unplaced.sectionId.slice('stage:'.length),
+      pastTheEnd.sectionId.slice('stage:'.length),
+      ...ENDINGS,
+    ]);
+  });
+
+  it('refuses to delete the last finish stage, naming its place in the stage order', async () => {
+    // A copy of the sample protocol, so its endings can go. Its consent
+    // stage routes participants who decline to the second ending; once it
+    // no longer does, that ending can be deleted, but the last one cannot.
+    const target = egolessProtocolId;
+    const consentStages = ['e922f680-32ee-11eb-8503-3b4fa95b8bc6'];
+    for (const stageId of consentStages) {
+      const sectionId = stageSection(stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId: target, sectionId }),
+      );
+      if (held.lock !== 'held')
+        throw new Error('the section was already taken');
+      const { skipLogic: _skipLogic, ...unrouted } = Redacted.value(
+        held.document,
+      );
+      await call(
+        ADA,
+        host.rpc('Submit', {
+          protocolId: target,
+          requestId: randomUUID(),
+          sectionId,
+          document: Redacted.make(unrouted),
+          revision: held.revision,
+        }),
+      );
+      await call(
+        ADA,
+        host.rpc('ReleaseLock', { protocolId: target, sectionId }),
+      );
+    }
+    await call(
+      ADA,
+      host.rpc('Delete', {
+        protocolId: target,
+        sectionId: stageSection('finish-declined'),
+      }),
+    );
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId: target, sectionId: STAGE_ORDER }),
+    );
+    const orderBefore = Redacted.value(before.document).stages;
+    if (!Array.isArray(orderBefore))
+      throw new Error('stageOrder is not a list');
+    expect(orderBefore.at(-1)).toBe('finish');
+    expect(orderBefore).not.toContain('finish-declined');
+
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Delete', {
+          protocolId: target,
+          sectionId: stageSection('finish'),
+        }),
+      ),
+      'ReferencesRemain',
+    );
+    expect(error.remaining).toEqual([
+      {
+        sectionId: 'stageOrder',
+        path: ['stages', orderBefore.length - 1],
+      },
+    ]);
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId: target, sectionId: STAGE_ORDER }),
+    );
+    expect(Redacted.value(after.document).stages).toEqual(orderBefore);
+    expect(after.revision).toEqual(before.revision);
+  });
+
+  it('creates further finish stages among the endings, and deletes them again', async () => {
+    const finishDocument = (label: string) =>
+      Redacted.make({
+        type: 'FinishSession',
+        mode: 'confirmation',
+        label: enUS(label),
+        content: enUS(`# ${label}\n\nThank you.`),
+        finishedContent: enUS(
+          '# Interview Finished\n\nThank you for participating!',
+        ),
+        finishLabel: enUS('Finish'),
+        finishConfirmation: enUS('Finish this interview?'),
+        finishFailed: enUS('The interview could not be finished.'),
+        outcome: 'ineligible',
+      });
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    const orderBefore = Redacted.value(before.document).stages;
+    if (!Array.isArray(orderBefore))
+      throw new Error('stageOrder is not a list');
+    const firstFinish = orderBefore.indexOf('finish');
+    expect(orderBefore.slice(firstFinish)).toEqual(ENDINGS);
+
+    const appended = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: finishDocument('Appended ending'),
+      }),
+    );
+    // Asked for the top of the timeline, where it would cut every stage off:
+    // it lands at the first finish stage's place instead.
+    const atTheTop = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: finishDocument('Ending asked for at the top'),
+        position: 0,
+      }),
+    );
+    const appendedId = appended.sectionId.slice('stage:'.length);
+    const atTheTopId = atTheTop.sectionId.slice('stage:'.length);
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    expect(Redacted.value(order.document).stages).toEqual([
+      ...orderBefore.slice(0, firstFinish),
+      atTheTopId,
+      ...ENDINGS,
+      appendedId,
+    ]);
+
+    // Either extra ending goes, leaving the stage order as it was.
+    for (const created of [atTheTop, appended]) {
+      await call(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+      );
+    }
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    expect(Redacted.value(after.document).stages).toEqual(orderBefore);
+  });
+
+  // A stage keeps the kind it was created as, so a submit never turns a stage
+  // into a finish stage or a finish stage into something else: a further
+  // ending is created as a finish stage instead.
+  it.each([
+    {
+      direction: 'the finish stage into another kind of stage',
+      stageId: () => 'finish',
+      rewrite: (document: Readonly<Record<string, unknown>>) => ({
+        id: document.id,
+        type: 'Information',
+        label: enUS('No longer the end'),
+        title: enUS('No longer the end'),
+        items: [],
+      }),
+    },
+    {
+      direction: 'another stage into a finish stage',
+      stageId: () => reference.stageId,
+      rewrite: (document: Readonly<Record<string, unknown>>) => ({
+        id: document.id,
+        type: 'FinishSession',
+        mode: 'confirmation',
+        label: enUS('A second end'),
+        content: enUS('# A second end\n\nThank you.'),
+        finishedContent: enUS(
+          '# Interview Finished\n\nThank you for participating!',
+        ),
+        finishLabel: enUS('Finish'),
+        finishConfirmation: enUS('Finish this interview?'),
+        finishFailed: enUS('The interview could not be finished.'),
+        outcome: 'completed',
+      }),
+    },
+  ])(
+    'refuses a submit that changes $direction',
+    async ({ stageId, rewrite }) => {
+      const sectionId = stageSection(stageId());
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held')
+        throw new Error('the section was already taken');
+      try {
+        const error = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId,
+              document: Redacted.make(rewrite(Redacted.value(held.document))),
+              revision: held.revision,
+            }),
+          ),
+          'InvalidShape',
+        );
+        expect(error.issues).toEqual([
+          {
+            path: ['type'],
+            message:
+              'A stage cannot be changed into a finish stage, or a finish stage into another kind of stage.',
+          },
+        ]);
+        const read = await call(
+          ADA,
+          host.rpc('GetSection', { protocolId, sectionId }),
+        );
+        expect(Redacted.value(read.document)).toEqual(
+          Redacted.value(held.document),
+        );
+        expect(read.revision).toEqual(held.revision);
+      } finally {
+        await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+      }
+    },
+  );
 
   it('refuses a refactor whose sections another editor holds, naming them', async () => {
     const sectionId = stageSection(reference.stageId);
@@ -388,6 +660,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ),
       'ReferencesRemain',
     );
+    console.log(JSON.stringify(error.remaining));
     expect(error.remaining).toContainEqual({
       sectionId,
       path: ['prompts', 0, 'variable'],
@@ -557,7 +830,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             sectionId: stage.sectionId,
             document: Redacted.make({
               ...Redacted.value(held.document),
-              label: 'Renamed',
+              label: enUS('Renamed'),
             }),
             revision: held.revision,
             promote: {
@@ -611,8 +884,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: 'Never registered',
-              title: 'Never registered',
+              label: enUS('Never registered'),
+              title: enUS('Never registered'),
               items: [],
             }),
           }),
@@ -655,8 +928,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     if (staged.status !== 'ok') throw new Error('staging failed');
     const document = Redacted.make({
       type: 'Information',
-      label: 'Made once',
-      title: 'Made once',
+      label: enUS('Made once'),
+      title: enUS('Made once'),
       items: [],
     });
     const promote = {
@@ -714,7 +987,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Saved without a promotion',
+        label: enUS('Saved without a promotion'),
       }),
       revision: held.revision,
     };
@@ -730,8 +1003,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       kind: 'stage' as const,
       document: Redacted.make({
         type: 'Information',
-        label: 'Made without a promotion',
-        title: 'Made without a promotion',
+        label: enUS('Made without a promotion'),
+        title: enUS('Made without a promotion'),
         items: [],
       }),
     };
@@ -768,7 +1041,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Saved before the restart',
+        label: enUS('Saved before the restart'),
       }),
       revision: held.revision,
     };
@@ -823,7 +1096,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'codebookEgo',
         document: Redacted.make({
           variables: {
-            ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+            ego_age: {
+              name: 'ego_age',
+              type: 'number',
+              component: 'Number',
+            },
           },
         }),
       }),
@@ -879,7 +1156,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Renamed, and hashed as itself',
+          label: enUS('Renamed, and hashed as itself'),
         }),
         revision: held.revision,
       }),
@@ -1145,7 +1422,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Renamed before the removal',
+        label: enUS('Renamed before the removal'),
       }),
       revision: held.revision,
     });
@@ -1169,8 +1446,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       kind: 'stage',
       document: Redacted.make({
         type: 'Information',
-        label,
-        title: label,
+        label: enUS(label),
+        title: enUS(label),
         items: [],
       }),
     });

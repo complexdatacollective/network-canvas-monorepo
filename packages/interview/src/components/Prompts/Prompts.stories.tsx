@@ -7,6 +7,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Prompt as TPrompt } from '@codaco/protocol-validation';
 
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import Prompts from './Prompts';
 
 const containerClasses = 'w-full mx-auto';
@@ -35,59 +36,70 @@ const MotionDecorator = (Story: React.ComponentType) => {
 const singlePrompt: TPrompt[] = [
   {
     id: 'prompt-1',
-    text: 'Who are the people in your network?',
+    text: { en: 'Who are the people in your network?' },
   },
 ];
 
 const multiplePrompts: TPrompt[] = [
   {
     id: 'prompt-1',
-    text: 'Who are the people in your network?',
+    text: { en: 'Who are the people in your network?' },
   },
   {
     id: 'prompt-2',
-    text: 'Who do you talk to most frequently?',
+    text: { en: 'Who do you talk to most frequently?' },
   },
   {
     id: 'prompt-3',
-    text: 'Who provides you with emotional support?',
+    text: { en: 'Who provides you with emotional support?' },
   },
   {
     id: 'prompt-4',
-    text: 'Who do you go to for advice?',
+    text: { en: 'Who do you go to for advice?' },
   },
 ];
 
 const markdownPrompts: TPrompt[] = [
   {
     id: 'prompt-1',
-    text: 'Name the people who are **important** to you',
+    text: { en: 'Name the people who are **important** to you' },
   },
   {
     id: 'prompt-2',
-    text: 'Who do you *trust* the most?',
+    text: { en: 'Who do you *trust* the most?' },
   },
   {
     id: 'prompt-3',
-    text: 'List people who help with **work** or *personal* matters',
+    text: { en: 'List people who help with **work** or *personal* matters' },
   },
 ];
 
 const longPrompts: TPrompt[] = [
   {
     id: 'prompt-1',
-    text: 'Please think carefully about all the people in your life who you have had any kind of meaningful interaction with in the past year, including family members, friends, colleagues, neighbors, and acquaintances',
+    text: {
+      en: 'Please think carefully about all the people in your life who you have had any kind of meaningful interaction with in the past year, including family members, friends, colleagues, neighbors, and acquaintances',
+    },
   },
   {
     id: 'prompt-2',
-    text: 'Now consider the relationships between these people and identify any who know each other independently of you',
+    text: {
+      en: 'Now consider the relationships between these people and identify any who know each other independently of you',
+    },
   },
 ];
 
 const meta: Meta<typeof Prompts> = {
   title: 'Components/Prompts',
   component: Prompts,
-  decorators: [MotionDecorator],
+  decorators: [
+    MotionDecorator,
+    (Story) => (
+      <TestProtocolLocalization>
+        <Story />
+      </TestProtocolLocalization>
+    ),
+  ],
   parameters: {
     layout: 'padded',
   },

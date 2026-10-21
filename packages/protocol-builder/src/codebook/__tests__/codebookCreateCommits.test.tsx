@@ -11,6 +11,7 @@ import { HostUnauthorized } from '@codaco/protocol-builder-core/contract/session
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { translationText } from '../../localization/localizedText.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import { useEntityTypes } from '../../state/hooks.ts';
@@ -37,6 +38,10 @@ const nodeTypeNames = (host: InMemoryHost): string[] =>
     .sectionIds()
     .filter((id) => parseSectionId(id).kind === 'codebookNode')
     .map((id) => String(host.store.read(id).document.name));
+
+/** The stage's name as the protocol stores it, in its one language. */
+const storedStageLabel = (host: InMemoryHost): string =>
+  translationText(host.store.read(STAGE).document.label, 'en-US');
 
 /**
  * A stage editor as far as this rule is concerned: unsaved local state, a
@@ -101,7 +106,7 @@ describe('a codebook type created from inside a stage editor', () => {
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(FIXTURE),
     });
-    const seededLabel = String(host.store.read(STAGE).document.label);
+    const seededLabel = storedStageLabel(host);
 
     render(
       <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
@@ -133,7 +138,7 @@ describe('a codebook type created from inside a stage editor', () => {
     await waitFor(() => expect(list).toHaveTextContent('Place'));
     expect(nodeTypeNames(host)).toContain('Place');
     // And the stage the researcher was writing has not been saved with it.
-    expect(host.store.read(STAGE).document.label).toBe(seededLabel);
+    expect(storedStageLabel(host)).toBe(seededLabel);
     expect(stageName).toHaveValue('Half-written stage name');
 
     await user.click(
@@ -152,7 +157,7 @@ describe('two codebook types added one after the other', () => {
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(FIXTURE),
     });
-    const seededLabel = String(host.store.read(STAGE).document.label);
+    const seededLabel = storedStageLabel(host);
 
     render(
       <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
@@ -216,7 +221,7 @@ describe('a codebook type whose answer is lost on the way back', () => {
       sections: sectionsFromProtocol(FIXTURE),
     });
     const lost = withTheFirstAnswerLost(host);
-    const seededLabel = String(host.store.read(STAGE).document.label);
+    const seededLabel = storedStageLabel(host);
 
     render(
       <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
@@ -254,7 +259,7 @@ describe('a codebook type whose answer is lost on the way back', () => {
       sections: sectionsFromProtocol(FIXTURE),
     });
     const lost = withTheAnswerSwallowed(host);
-    const seededLabel = String(host.store.read(STAGE).document.label);
+    const seededLabel = storedStageLabel(host);
 
     render(
       <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>

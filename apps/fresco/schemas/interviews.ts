@@ -35,6 +35,9 @@ export type CreateInterviewResult =
       errorType: null;
       error: null;
       createdInterviewId: string;
+      /** The schema version of the protocol the interview runs, which decides
+       * where it is taken (`interviewPath`). */
+      schemaVersion: number;
     }
   | {
       errorType: CreateInterviewErrorType;

@@ -11,10 +11,10 @@ import {
   getLeavePersistence,
   guardState,
   isProtocolPath,
+  promptDiscardDraft,
   promptLeaveEditor,
   useProtocolNavGuard,
 } from '~/hooks/useProtocolNavGuard';
-import { ROUTER_BASE } from '~/utils/appBase';
 
 const NavGuardListener = () => {
   useProtocolNavGuard();
@@ -40,7 +40,20 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
       // sending home.
       const persistence = getLeavePersistence(store.getState());
 
-      if (guardState.bypass || !leaving || persistence === 'no-protocol') {
+      if (guardState.bypass || persistence === 'no-protocol') {
+        nav(to, opts);
+        return;
+      }
+
+      if (!leaving) {
+        // Moving to another page of the protocol unmounts this one, and with
+        // it any editor left open on it, such as the Languages page's
+        // translation editors.
+        const changesPage = to.split(/[?#]/)[0] !== window.location.pathname;
+        if (changesPage && hasDirtyNestedDraft()) {
+          void promptDiscardDraft(openDialog, () => nav(to, opts), false);
+          return;
+        }
         nav(to, opts);
         return;
       }
@@ -66,7 +79,7 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
   );
 
   return (
-    <Router base={ROUTER_BASE} aroundNav={aroundNav}>
+    <Router aroundNav={aroundNav}>
       <NavGuardListener />
       {children}
     </Router>

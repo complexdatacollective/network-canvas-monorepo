@@ -22,7 +22,7 @@ import {
 } from '@codaco/protocol-builder/resources/components/resourceKinds';
 import { assetMetadataMessages } from '~/components/Assets/assetMetadataMessages';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
-import { bundledProtocols } from '~/templates/bundled-protocols';
+import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { cx } from '~/utils/cva';
 import { reportError } from '~/utils/reportError';
@@ -144,19 +144,8 @@ const loadAssetPreviewUrl = async (
     reportError(error);
   }
 
-  const bundledUrl = bundledProtocols?.getAssetUrl(source) ?? null;
-  if (bundledUrl) return { url: bundledUrl, revoke: false };
-
-  // The dev-only Development protocol's media is bundled only in a dev build;
-  // behind this guard a production build drops the import and the media.
-  if (import.meta.env.DEV) {
-    const { getDevelopmentAssetUrl } =
-      await import('~/templates/development-protocol');
-    const developmentUrl = getDevelopmentAssetUrl(source);
-    if (developmentUrl) return { url: developmentUrl, revoke: false };
-  }
-
-  return null;
+  const bundledUrl = await getBundledAssetUrl(source);
+  return bundledUrl ? { url: bundledUrl, revoke: false } : null;
 };
 
 const useAssetPreviewUrl = (

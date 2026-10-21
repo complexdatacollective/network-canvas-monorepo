@@ -4,7 +4,11 @@ import {
   isStageSkipped,
   resolveSkipLogicDestinationIndex,
 } from '@codaco/network-query';
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import {
+  isFinishSessionStage,
+  type Stage,
+  type StructuralCodebook,
+} from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
 import { reservePromptFixedValues } from './generateNetwork/attributes.ts';
@@ -28,11 +32,6 @@ import type {
   GenerationContext,
   NetworkDraft,
 } from './generateNetwork/context.ts';
-import { materializeFamilyPedigree } from './generateNetwork/familyPedigree/materializeFamilyPedigree.ts';
-import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation.ts';
-import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations.ts';
-import { familyPedigreeSeed } from './generateNetwork/familyPedigree/seed.ts';
-import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types.ts';
 import { buildCurrentNetwork } from './generateNetwork/filtering.ts';
 import { markStageInProgress } from './generateNetwork/inProgress.ts';
 import {
@@ -88,8 +87,6 @@ export type GenerateNetworkParams = {
   inProgressStageIndex?: number;
   /** Overrides for generation tuning constants. See {@link GenerationConfig}. */
   config?: Partial<GenerationConfig>;
-  /** Family-specific demographic, scenario, and disease-generation settings. */
-  familyPedigree?: FamilyPedigreeGenerationOptions;
 };
 
 export type GenerateNetworkResult = {
@@ -111,24 +108,9 @@ export function generateNetwork(
     respectSkipLogicAndFiltering = false,
     inProgressStageIndex,
     config,
-    familyPedigree,
   } = params;
 
-  const baseConfig = resolveGenerationConfig(config);
-  const resolvedFamilyPedigree = resolveFamilyPedigreeGenerationOptions(
-    familyPedigree,
-    Math.max(
-      baseConfig.familyPedigreeNodeCount.min,
-      baseConfig.familyPedigreeNodeCount.max,
-    ),
-  );
-  const resolvedConfig = {
-    ...baseConfig,
-    familyPedigreeNodeCount: {
-      min: 7,
-      max: resolvedFamilyPedigree.maxNodes,
-    },
-  };
+  const resolvedConfig = resolveGenerationConfig(config);
 
   const feasibilityStages = reachableStagesForFeasibility(
     codebook,
@@ -169,7 +151,6 @@ export function generateNetwork(
     resolvedConfig,
     externalData,
     respectSkipLogicAndFiltering,
-    resolvedFamilyPedigree,
   );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts);
@@ -228,9 +209,6 @@ export function generateNetwork(
     ctx,
     countPromptFixedValues(stages, resolvedConfig, externalData),
   );
-  // A pedigree's ego flag and its edges' relationship values are fixed by its
-  // stage rather than by a prompt, and are held back here for the same reason.
-  reserveFamilyPedigreeFixedValues(ctx, stages);
   // Roster rows are values the run is handed rather than ones it issues, so the
   // draws that come before their stage are steered off them here too. Each
   // stage's hold is given back once the stage has run.
@@ -245,8 +223,17 @@ export function generateNetwork(
   };
 
   const totalStages = stages.length;
+  // Dropout is drawn against the length of the main route, which ends at the
+  // first finish stage. Endings after it are alternatives a route reaches only
+  // by skipping to one, so adding or reordering them must not change how
+  // likely a participant is to drop out on the way.
+  const firstFinishIndex = stages.findIndex(isFinishSessionStage);
+  const routeLength =
+    firstFinishIndex === -1 ? totalStages : firstFinishIndex + 1;
+  let stagesVisited = 0;
   let currentStep = 0;
   let droppedOut = false;
+  let reachedFinish = false;
 
   for (let i = 0; i < stages.length; i++) {
     const stage = stages[i]!;
@@ -275,13 +262,36 @@ export function generateNetwork(
       }
     }
 
+    // An automatic finish stage ends the interview on arrival, so nobody can
+    // leave it unfinished; a confirming one can be left without pressing
+    // Finish, like any other stage.
+    if (isFinishSessionStage(stage) && stage.mode === 'automatic') {
+      reachedFinish = true;
+      currentStep = i;
+      break;
+    }
+
+    stagesVisited += 1;
+
     if (simulateDropOut) {
-      const dropOutChance = ((i + 1) / totalStages) * ctx.config.dropOutFactor;
+      // Measured by the stages this route has shown rather than by position,
+      // so skipped stages and bypassed endings do not count as progress.
+      const dropOutChance =
+        Math.min(stagesVisited / routeLength, 1) * ctx.config.dropOutFactor;
       if (valueGen.randomFloat(0, 1) < dropOutChance) {
         droppedOut = true;
         currentStep = i;
         break;
       }
+    }
+
+    // A route ends at the first finish stage it reaches, which may be an
+    // earlier one than the last when skip logic sends routes to different
+    // endings. Nothing after it runs.
+    if (isFinishSessionStage(stage)) {
+      reachedFinish = true;
+      currentStep = i;
+      break;
     }
 
     // Content stages run no handler at all: they add no node or edge and write
@@ -326,18 +336,6 @@ export function generateNetwork(
         case 'AlterEdgeForm':
           handleAlterEdgeForm(ctx, draft, stage);
           break;
-        case 'FamilyPedigree':
-          materializeFamilyPedigree(
-            ctx,
-            draft,
-            stage,
-            i,
-            stages,
-            feasibilityStages,
-            familyPedigreeSeed(runSeed, stage.id),
-            resolvedFamilyPedigree,
-          );
-          break;
         case 'Geospatial':
           handleGeospatial(ctx, draft, stage);
           break;
@@ -366,8 +364,11 @@ export function generateNetwork(
     markStageInProgress(ctx, draft, inProgressStage);
   }
 
-  if (!droppedOut) {
-    currentStep = totalStages;
+  // A completed interview rests on the finish stage it ended at (set above),
+  // where a participant's finished interview is recorded. A list without one
+  // (only a fragment of a protocol, as tests pass) rests on its last stage.
+  if (!droppedOut && !reachedFinish) {
+    currentStep = Math.max(totalStages - 1, 0);
   }
 
   return {

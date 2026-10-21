@@ -1,7 +1,7 @@
 'use client';
 
 import { find } from 'es-toolkit/compat';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -13,7 +13,6 @@ import {
 
 import Node from '../../components/ConnectedNode';
 import { writeSubmissionResult } from '../../forms/writeSubmissionResult';
-import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
@@ -26,7 +25,6 @@ import { updateEdge } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
 import { edgeColorMap } from '../../utils/edgeColorMap';
-import IntroPanel from '../SlidesForm/IntroPanel';
 import SlidesForm from '../SlidesForm/SlidesForm';
 
 function EdgeHeader({ item }: { item: NcEdge }) {
@@ -58,13 +56,10 @@ function EdgeHeader({ item }: { item: NcEdge }) {
   );
 }
 
-type Mode = 'intro' | 'form';
-
 const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
   const { stage } = props;
   const items = useStageSelector(getNetworkEdgesForType);
   const dispatch = useAppDispatch();
-  const [mode, setMode] = useState<Mode>('intro');
   const [isFormReady, setIsFormReady] = useState(false);
 
   const handleUpdateItem = useCallback(
@@ -87,70 +82,42 @@ const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
 
   const { moveForward } = props.getNavigationHelpers();
 
-  useBeforeNext((direction, intent) => {
-    if (mode === 'intro' && direction === 'forwards' && intent === 'step') {
-      setMode('form');
-      return false;
-    }
-    return true;
-  });
-
+  // Navigation passes this stage while it has nothing to ask about (see
+  // buildStageAvailabilityMap). A participant can still open it from the
+  // stages menu, and then it shows nothing and next leaves it: SlidesForm lets
+  // an empty list through, and with no form mounted there is nothing to check.
+  const isEmpty = items.length === 0;
   const { updateReady } = useReadyForNextStage();
   useEffect(() => {
-    if (mode === 'intro') updateReady(true);
-  }, [mode, updateReady]);
+    if (isEmpty) updateReady(true);
+  }, [isEmpty, updateReady]);
 
-  const shouldSkipEmpty = mode === 'form' && items.length === 0;
-  useEffect(() => {
-    if (shouldSkipEmpty) moveForward();
-  }, [shouldSkipEmpty, moveForward]);
+  if (isEmpty) return <div className="interface" />;
 
-  if (shouldSkipEmpty) return null;
-
-  // See AlterForm for the per-mode layout-class rationale.
+  // SlidesForm's root `flex-auto` needs a `flex flex-col` parent with real
+  // height to propagate a height down to its ScrollArea; otherwise the scroll
+  // viewport collapses to zero. `data-stage-ready` marks the end of the
+  // entrance fade, so the first field is settled before it is interacted with.
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      {mode === 'intro' ? (
-        <motion.div
-          key="intro"
-          className="interface"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          data-stage-section="intro"
-          data-stage-ready="true"
-        >
-          <IntroPanel
-            title={stage.introductionPanel.title}
-            text={stage.introductionPanel.text}
-          />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="form"
-          className="flex w-full flex-auto flex-col overflow-hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          onAnimationComplete={() => setIsFormReady(true)}
-          data-stage-section="form"
-          data-stage-ready={isFormReady ? 'true' : undefined}
-        >
-          <SlidesForm
-            updateItem={handleUpdateItem}
-            items={items}
-            subject={stage.subject}
-            form={stage.form}
-            onNavigateBack={() => setMode('intro')}
-            moveForward={moveForward}
-            renderHeader={renderHeader}
-            form_kind="alter_edge"
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <motion.div
+      className="flex w-full flex-auto flex-col overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      onAnimationComplete={() => setIsFormReady(true)}
+      data-stage-section="form"
+      data-stage-ready={isFormReady ? 'true' : undefined}
+    >
+      <SlidesForm
+        updateItem={handleUpdateItem}
+        items={items}
+        subject={stage.subject}
+        form={stage.form}
+        moveForward={moveForward}
+        renderHeader={renderHeader}
+        form_kind="alter_edge"
+      />
+    </motion.div>
   );
 };
 

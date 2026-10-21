@@ -6,6 +6,10 @@ import { getInterfaceTypes } from '~/components/Screens/NewStageScreen/interface
 
 const stageTypes = Object.keys(INTERFACE_NAMES) as StageType[];
 
+// A protocol may end with several finish stages, so the New Stage screen
+// offers every stage type, the finish stage included.
+const offeredStageTypes = stageTypes;
+
 /**
  * The map itself lives in `@codaco/protocol-builder`, which owns interface
  * metadata for every host. What stays here is the part only Architect can
@@ -28,7 +32,7 @@ describe('INTERFACE_NAMES in Architect', () => {
       getInterfaceTypes()
         .map((option) => option.type)
         .toSorted(),
-    ).toEqual([...stageTypes].toSorted());
+    ).toEqual([...offeredStageTypes].toSorted());
   });
 
   /**
@@ -39,15 +43,14 @@ describe('INTERFACE_NAMES in Architect', () => {
    * interface is the package's now, and reads the same map.
    */
   it('is one name per interface across every surface that shows one', () => {
-    const optionTitles = new Map(
+    const optionTitles = new Map<StageType, string>(
       getInterfaceTypes().map((option) => [option.type, option.title]),
     );
 
     for (const stageType of stageTypes) {
-      const namesShown = new Set([
-        INTERFACE_NAMES[stageType],
-        optionTitles.get(stageType),
-      ]);
+      const namesShown = new Set([INTERFACE_NAMES[stageType]]);
+      const optionTitle = optionTitles.get(stageType);
+      if (optionTitle !== undefined) namesShown.add(optionTitle);
 
       expect({ stageType, namesShown: [...namesShown] }).toEqual({
         stageType,

@@ -468,3 +468,46 @@ describe('StatusRow', () => {
     );
   });
 });
+
+describe('StatusRowView: offline use', () => {
+  const view = (offline?: 'checking' | 'ready' | 'not-ready') =>
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={null}
+        installed={false}
+        offline={offline}
+      />,
+    );
+
+  it('says when Interviewer is ready offline', () => {
+    view('ready');
+    expect(screen.getByTestId('offline-status-trigger')).toHaveTextContent(
+      'Ready for offline',
+    );
+  });
+
+  it('warns while Interviewer is not ready offline, and says what to do', async () => {
+    const user = userEvent.setup();
+    view('not-ready');
+    const trigger = screen.getByTestId('offline-status-trigger');
+    expect(trigger).toHaveTextContent('Not ready for offline');
+    expect(trigger).toHaveClass('text-warning');
+    await user.hover(trigger);
+    expect(
+      await screen.findByText(/Keep Interviewer open while you are online/),
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing before it is known', () => {
+    for (const state of [undefined, 'checking'] as const) {
+      const { unmount } = view(state);
+      expect(
+        screen.queryByTestId('offline-status-trigger'),
+      ).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+});

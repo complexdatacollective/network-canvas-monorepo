@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const isPrfSupportedMock = vi.fn<() => Promise<boolean>>();
@@ -15,8 +16,15 @@ vi.mock('../../storage', async () => {
   return { ...actual, requestPersistentStorage: requestPersistentStorageMock };
 });
 
+import {
+  FROZEN_ROWS,
+  fingerprintDatabase,
+  seedAsInterviewer8,
+} from '~/testUtils/interviewer8Database';
+
 import { db } from '../../db/db';
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
+import { DB_NAME, RETIRED_DB_NAMES } from '../../db/storageNames';
 import type { StoredSession } from '../../db/types';
 import { clearVault } from '../../vault/vaultStore';
 import * as authApi from '../api';
@@ -217,5 +225,39 @@ describe('auth/api — revoke wipes and re-locks', () => {
     expect(getSessionDek()).toBeNull();
     expect((await authApi.status()).configured).toBe(false);
     deleteSpy.mockRestore();
+  });
+
+  it("deletes the one shared database, Interviewer 8's rows with it", async () => {
+    await authApi.enrolWithPin('12345678');
+    await db.sessions.put(SESSION_ROW);
+    // A row Interviewer 8 at /v8/ wrote into the same database.
+    await seedAsInterviewer8({ sessions: [FROZEN_ROWS.session] });
+    expect(await fingerprintDatabase(DB_NAME)).toBeDefined();
+
+    await authApi.revoke();
+
+    expect(await fingerprintDatabase(DB_NAME)).toBeUndefined();
+    expect(await db.sessions.get(FROZEN_ROWS.session.id)).toBeUndefined();
+    expect((await authApi.status()).configured).toBe(false);
+  });
+
+  it('deletes the databases an unreleased build left behind', async () => {
+    await authApi.enrolWithPin('12345678');
+    for (const name of RETIRED_DB_NAMES) {
+      const retired = new Dexie(name);
+      retired.version(1).stores({ rows: 'id' });
+      await retired.table('rows').put({ id: 'left-behind' });
+      retired.close();
+    }
+    const names = async () =>
+      (await indexedDB.databases()).map((database) => database.name);
+    expect(await names()).toEqual(
+      expect.arrayContaining([...RETIRED_DB_NAMES]),
+    );
+
+    await authApi.revoke();
+
+    const left = await names();
+    for (const name of RETIRED_DB_NAMES) expect(left).not.toContain(name);
   });
 });

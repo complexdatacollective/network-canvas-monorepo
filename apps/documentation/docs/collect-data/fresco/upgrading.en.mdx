@@ -1,6 +1,6 @@
 ---
 title: Upgrading Fresco
-date: 22nd July 2026
+date: 5th October 2026
 navOrder: 10
 wip: false
 ---
@@ -44,6 +44,21 @@ This version information is accessible from several places:
 - **Exported Data**: The version number of your Fresco instance is included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.
 
 The health check endpoint, `/api/health`, does not report the version. If you monitored your instance's version through it, use the **Settings** page instead.
+
+## Upgrading to 5.0.0
+
+Fresco 5.0.0 runs protocol schema 9, which lets protocols be written in more than one language, and lets variables, node and edge types, and options be named in any language. Check the following before you upgrade.
+
+- **Update to the latest 4.x release first if you are on an earlier version.** Fresco releases before 4.0 stored schema 7 protocols. A deployment still running one of them must update to the latest 4.x release before updating to 5.0.0.
+- **Upgrade when no interviews are in progress.** An interview that is open in a participant's browser during the upgrade keeps running the old version, and the answers given in it after the upgrade may not be saved. Answers saved before the upgrade are kept, and the interview continues normally once the participant reloads the page. Choose a time when participants are not taking interviews, or ask anyone still mid-interview to reload the page once the upgrade has finished.
+- **Update Fresco before you upload a schema 9 protocol.** Architect 9.0 and later saves new and upgraded protocols as schema 9, and Fresco 4.x can't open one. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9).
+- **Your protocols are not upgraded.** Fresco never upgrades a protocol to schema 9. The schema 8 protocols you have already uploaded stay schema 8, and their interviews, including any in progress, keep running in the schema 8 interview built into Fresco, as the protocol was designed. A schema 7 protocol you upload is migrated to schema 8 automatically, as earlier releases did, because that is how protocols from the Classic apps move to Fresco. To use schema 9 features, upgrade the protocol in Architect and upload the upgraded copy as a new protocol. See [Migrating a protocol](/en/get-started/protocol-schema-information#migrating-a-protocol).
+- **Schema 9 interviews follow the participant's browser.** An interview of a schema 9 protocol no longer uses the dashboard's language, and its settings menu no longer has a language option. It uses the first of the browser's languages that the protocol is written in, and participants can change language only on a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage. See [Language in interviews](/en/collect-data/fresco/using-fresco#language-in-interviews). Interviews of schema 8 protocols keep the language option in their settings menu.
+- **Export file names can change for schema 9 protocols.** File names now keep a node or edge type's name as you wrote it, including hyphens, dots, spaces and letters from any language. A type called "Close-Friend" now exports to a file ending `_Close-Friend.csv` rather than `_CloseFriend.csv`. If your analysis scripts find export files by name, check them. See [Data Export](/en/analyze-data/data-export).
+- **Every schema 9 protocol ends with a Finish Screen.** The screen that ends an interview is now a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) stage at the end of the protocol. Schema 8 protocols keep their old ending. In a schema 9 protocol, a participant who finishes an interview sees the Finish Screen's finished text in place of the old "finished" page, which no longer exists. The page shows no button, so participants close the window. Reopening the URL of a finished interview shows the same screen again, and any bookmarks or links to `/interview/finished` stop working. The **Progress** column of the interviews table now counts the Finish Screen as a stage, so an interview waiting at its Finish Screen shows less than 100% until it is finished.
+- **Schema 9 interviews record how they ended.** Each interview of a schema 9 protocol records which Finish Screen ended it and its outcome (`completed`, `ineligible` or `terminated`). Interviews of schema 8 protocols, and interviews finished before the upgrade, have no outcome. Exports include it as the `networkCanvasFinishOutcome` column and the `nc:finishOutcome` attribute (see [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)), and the [Interview Data API](/en/analyze-data/fresco-api) returns it as `finishOutcome`.
+- **The "limit interviews" cookie changed.** It now holds the id of the participant's finished interview and can't be read by scripts in the page. A participant whose cookie names a finished interview of the same protocol is sent back to that interview's finished screen. Cookies set by earlier versions are ignored, so a participant who finished an interview before the upgrade may be able to start another one on the same browser. See [Limit interviews](/en/collect-data/fresco/using-fresco#limit-interviews).
+- **Exports can show warnings.** If an export has to rename a column or remove characters that GraphML can't store, Fresco tells you in a notification that stays until you close it. See [Export warnings](/en/analyze-data/data-export#export-warnings).
 
 ## Upgrading to 4.2.0
 

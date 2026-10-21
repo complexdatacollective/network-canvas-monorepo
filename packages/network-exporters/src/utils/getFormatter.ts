@@ -6,12 +6,14 @@ import { edgeListBytes } from '../formatters/csv/edgeList';
 import { egoListBytes } from '../formatters/csv/egoList';
 import { graphmlBytes } from '../formatters/graphml/graphmlReadable';
 import type { ExportFormat, ExportOptions } from '../options';
+import type { ExportWarning } from '../output';
 import type { ExportFileNetwork } from '../session/exportFile';
 
 type FormatterBytes = (
   network: ExportFileNetwork,
   codebook: Codebook,
   options: ExportOptions,
+  reportWarning: (warning: ExportWarning) => void,
 ) => AsyncIterable<Uint8Array>;
 
 export function getFormatter(format: ExportFormat): FormatterBytes {

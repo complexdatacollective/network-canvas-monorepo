@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 
 import type { AuthMode } from '~/lib/auth/api';
+import type { AppOffline } from '~/lib/pwa/appOffline';
 
 import { StatusRowView } from './StatusRow';
 
@@ -18,6 +19,7 @@ type StoryArgs = {
   installed: boolean;
   usage: number;
   version: string;
+  offline: AppOffline;
 };
 
 const meta: Meta<StoryArgs> = {
@@ -30,6 +32,7 @@ const meta: Meta<StoryArgs> = {
     installed: false,
     usage: 4.2 * 1024 * 1024,
     version: '0.0.0',
+    offline: 'ready',
   },
   argTypes: {
     mode: {
@@ -52,6 +55,12 @@ const meta: Meta<StoryArgs> = {
       control: 'text',
       description: 'Fixed story fixture; production reads the package version',
     },
+    offline: {
+      control: 'inline-radio',
+      options: ['checking', 'ready', 'not-ready'],
+      description:
+        'Whether Interviewer, with everything it runs, is saved for offline use',
+    },
   },
   render: ({
     protocolCount,
@@ -61,6 +70,7 @@ const meta: Meta<StoryArgs> = {
     installed,
     usage,
     version,
+    offline,
   }) => (
     <StatusRowView
       protocolCount={protocolCount}
@@ -68,6 +78,7 @@ const meta: Meta<StoryArgs> = {
       mode={mode}
       durability={{ persisted, usage }}
       installed={installed}
+      offline={offline}
       versionSlot={<span>Interviewer {version}</span>}
     />
   ),
@@ -112,4 +123,9 @@ export const ExplanationPopover: Story = {
 // steady state there, presented without warning styling.
 export const InstalledBestEffort: Story = {
   args: { persisted: false, installed: true },
+};
+
+/** Interviewer has not finished downloading for offline use yet. */
+export const NotReadyOffline: Story = {
+  args: { offline: 'not-ready' },
 };

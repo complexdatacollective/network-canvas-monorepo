@@ -2,10 +2,6 @@ import { Toast } from '@base-ui/react/toast';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
-// Strips a protocol id or hand-off key from the URL on evaluation. ./analytics
-// imports it too, which is what keeps it ahead of `posthog.init` in a bundle;
-// listing it first here keeps the same order in development.
-import './utils/urlLaunchRequest';
 import './analytics';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -19,31 +15,29 @@ import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { Toaster } from '@codaco/fresco-ui/Toast';
 
 import BootLoaderHandoff from './components/BootLoaderHandoff';
+import { ArchitectLanguageNaming } from './components/Localization/ArchitectLanguageNaming';
+import { loadProtocolRoutes } from './components/protocolRoutesLoader';
 import AppView from './components/ViewManager/views/App';
 import { restoreActiveProtocolAfterStoreRehydration } from './ducks/restoreActiveProtocol';
 import { store, storeRehydrated } from './ducks/store';
 import { ArchitectI18nRoot } from './i18n/ArchitectI18nRoot';
 import { initializeArchitectDocument } from './i18n/documentMetadata';
 import { loadStartupLocale } from './i18n/imperative';
-import { preloadTimelineImages } from './images/timeline';
-import { bundledProtocols } from './templates/bundled-protocols';
-import { IS_SUBPATH_BUILD } from './utils/appBase';
-import { stageHandoffImport } from './utils/architect9Handoff';
+import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
 import { isCriticalOperationInProgress } from './utils/criticalOperation';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
 } from './utils/fileLaunchQueue';
-import { pruneStaleHandoffs } from './utils/handoffStore';
+import { pruneExpiredHandoffs } from './utils/handoffStore';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import {
-  getAppServiceWorkerContainer,
   isRunningAsInstalledPwa,
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
+import { registerLegacyArchitectWorker } from './utils/registerLegacyArchitectWorker';
 import { reportError } from './utils/reportError';
-import { takeUrlImportRequest } from './utils/urlLaunchRequest';
 
 // The researcher's language is its own chunk. Fetch it now, alongside the
 // service-worker and storage awaits in startApp, rather than after them; the
@@ -54,6 +48,16 @@ import { takeUrlImportRequest } from './utils/urlLaunchRequest';
 const startupLocaleReady = loadStartupLocale()
   .catch(() => undefined)
   .then(() => initializeArchitectDocument());
+
+// A launch straight into the editor (a restored session, a reload there)
+// needs the editor before its first render, so start fetching it now, beside
+// the language and the startup awaits, rather than after them. If restoring
+// sends the tab home instead, the idle preload would have fetched it anyway.
+const startupProtocolRoutesReady = window.location.pathname.startsWith(
+  '/protocol',
+)
+  ? loadProtocolRoutes().catch(() => undefined)
+  : Promise.resolve(undefined);
 
 // Register before the startup update check: skipWaiting moves every existing
 // tab to the new worker, which must retain the precache for each tab's compiled
@@ -66,42 +70,37 @@ initInstallPromptCapture();
 
 // OS-launched .netcanvas files (installed-PWA file handler, Chromium desktop):
 // capture before React mounts so early launches are queued until App consumes
-// them inside the fresco dialog provider. Architect 8 served inside Architect 9
-// declares no file handler and opens nothing itself: Architect 9 does all the
-// opening.
-if (!IS_SUBPATH_BUILD) initFileLaunchCapture();
+// them inside the fresco dialog provider.
+initFileLaunchCapture();
 
-// Architect 8 served inside Architect 9 only; standalone Architect 8 never
-// takes part in a hand-off. A file Architect 9 staged for this app (`?import=`)
-// opens through the same queue, so it gets Open file's flow and holds the
-// startup update check while it is read. Hand-off records are consumed at
-// once; anything older than an hour was abandoned (a closed tab, a failed
-// navigation) and only takes up space.
-if (IS_SUBPATH_BUILD) {
-  const handoffImportKey = takeUrlImportRequest();
-  if (handoffImportKey) stageHandoffImport(handoffImportKey);
+// A file staged for another Architect major that was never taken (the page
+// that should have opened it never loaded) would otherwise stay forever.
+pruneExpiredHandoffs().catch((error: unknown) => {
+  reportError(error, { operation: 'handoff-prune' });
+});
 
-  void pruneStaleHandoffs().catch((error: unknown) => {
-    reportError(error, { operation: 'handoffPrune' });
-  });
-}
-
-// During idle time, fetch stage thumbnails so they are already cached when the
-// timeline or stage editor first renders. When running as an installed PWA, also
-// warm the service-worker cache with the bundled template/Sample assets so those
-// protocols can be installed offline. (A browser tab registers no service worker,
-// so the warm is skipped there, and a sub-path build bundles none to warm.)
+// During idle time, once the start screen is up, fetch what opening a protocol
+// needs: the protocol editor, which is loaded apart from the start screen (see
+// Routes) so the start screen need not wait for it, and the stage thumbnails
+// the timeline and stage editor render. Offline use does not depend on this —
+// the service worker precaches every chunk — and a failed fetch is tried again
+// when the editor is opened. When running as an installed PWA, also warm the
+// service-worker cache with the bundled template/Sample assets so those
+// protocols can be installed offline. (A browser tab registers no service
+// worker, so the warm is skipped there.)
 const warmCaches = () => {
-  preloadTimelineImages();
+  loadProtocolRoutes().catch(() => undefined);
+  import('./images/timeline')
+    .then(({ preloadTimelineImages }) => preloadTimelineImages())
+    .catch(() => undefined);
   if (isRunningAsInstalledPwa()) {
-    void bundledProtocols?.warmAssets();
+    void warmBundledTemplateAssets();
   }
 };
 
 async function startApp(): Promise<void> {
   await applyFreshLoadServiceWorkerUpdate({
     reload: false,
-    serviceWorker: getAppServiceWorkerContainer(),
     shouldSkip: () =>
       isCriticalOperationInProgress() || hasPendingLaunchFiles(),
   });
@@ -109,10 +108,15 @@ async function startApp(): Promise<void> {
   // redux-remember restores only the active library id. Load its canonical
   // protocol body from IndexedDB before mounting any direct /protocol route.
   const rehydrationResult = await storeRehydrated;
-  // Restoration reports a refused protocol through getArchitectIntl, and the
-  // first render reads the same catalog, so both wait for the language.
+  // The first render reads the researcher's catalog, so it waits for the
+  // language.
   await startupLocaleReady;
   await restoreActiveProtocolAfterStoreRehydration(store, rehydrationResult);
+  // A restored session that reopens in the editor would otherwise first show
+  // the editor's loading overlay; keep the boot screen up until it is here.
+  if (window.location.pathname.startsWith('/protocol')) {
+    await startupProtocolRoutesReady;
+  }
 
   // Protocols live in IndexedDB even in a browser tab, so request the durability
   // upgrade there as well as in installed sessions. Do not request at startup:
@@ -144,16 +148,17 @@ async function startApp(): Promise<void> {
               its viewport layer; the `root` (isolation: isolate) wrapper keeps the
               app's own stacking contexts from competing with that layer. */}
             <PortalContainerProvider>
-              {/* Transient, non-blocking notices (currently: a library protocol
-                  brought up to date as it opened). Inside PortalContainerProvider
+              {/* Transient, non-blocking notices. Inside PortalContainerProvider
                   so the viewport lands in the same overlay layer as dialogs, and
                   outside DialogProvider so a toast is never unmounted with the
                   dialog that happened to be open. */}
               <Toast.Provider>
                 <DialogProvider>
-                  <div className="root h-full">
-                    <AppView />
-                  </div>
+                  <ArchitectLanguageNaming>
+                    <div className="root h-full">
+                      <AppView />
+                    </div>
+                  </ArchitectLanguageNaming>
                 </DialogProvider>
                 <LocaleLoadFailureToast
                   onReload={() => window.location.reload()}
@@ -176,6 +181,11 @@ async function startApp(): Promise<void> {
   } else {
     setTimeout(warmCaches, 1000);
   }
+
+  // Architect 8 at /v8/ has its own worker, which this app's never answers
+  // for. Install it in the background, once this app is running and its own
+  // worker is ready, so Architect 8 works offline before it is first opened.
+  void registerLegacyArchitectWorker();
 }
 
 void startApp();

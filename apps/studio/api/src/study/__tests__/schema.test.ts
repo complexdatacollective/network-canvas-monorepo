@@ -6,6 +6,11 @@ import type { SqlError } from 'effect/sql';
 import { describe, expect } from 'vitest';
 
 import {
+  FINISH_OUTCOMES,
+  type FinishOutcome,
+} from '@codaco/protocol-validation';
+
+import {
   ownerAffected,
   ownerRows,
   refusalOf,
@@ -183,14 +188,16 @@ const closeStudy = (studyId: string) =>
     [studyId],
   );
 
-const finalize = (sessionId: string) =>
+const finalize = (sessionId: string, outcome: FinishOutcome = 'completed') =>
   Effect.flatMap(TestDatabase, (harness) =>
     harness.onOwner(
       Effect.gen(function* () {
         yield* harness.owner.sql.unsafe(
           `UPDATE interview_sessions
-           SET status = 'completed', completed_at = now() WHERE id = $1`,
-          [sessionId],
+           SET status = 'completed', completed_at = now(),
+               finish_stage_id = 'finish', finish_outcome = $2
+           WHERE id = $1`,
+          [sessionId, outcome],
         );
         yield* harness.owner.sql.unsafe(
           `INSERT INTO session_snapshots
@@ -1281,8 +1288,51 @@ describe.skipIf(!testDb)('study spine schema', () => {
           ],
           [
             'a completed status with no completion timestamp',
-            { status: 'completed' },
+            {
+              status: 'completed',
+              finish_stage_id: 'finish',
+              finish_outcome: 'completed',
+            },
             'interview_sessions_terminal_state_check',
+          ],
+          [
+            'a finish on a session that has not completed',
+            { finish_stage_id: 'finish', finish_outcome: 'completed' },
+            'interview_sessions_finish_check',
+          ],
+          [
+            'a finish outcome without its stage',
+            { finish_outcome: 'completed' },
+            'interview_sessions_finish_check',
+          ],
+          [
+            'a finish stage without its outcome',
+            {
+              status: 'completed',
+              completed_at: new Date(),
+              finish_stage_id: 'finish',
+            },
+            'interview_sessions_finish_check',
+          ],
+          [
+            'a finish outcome the protocol schema does not declare',
+            {
+              status: 'completed',
+              completed_at: new Date(),
+              finish_stage_id: 'finish',
+              finish_outcome: 'abandoned',
+            },
+            'interview_sessions_finish_check',
+          ],
+          [
+            'an empty finish stage id',
+            {
+              status: 'completed',
+              completed_at: new Date(),
+              finish_stage_id: '',
+              finish_outcome: 'completed',
+            },
+            'interview_sessions_finish_check',
           ],
           [
             'a completion timestamp without the completed status',
@@ -1644,6 +1694,59 @@ describe.skipIf(!testDb)('study spine schema', () => {
               ),
             ).toBe(1);
           }),
+        );
+
+        it.effect.each(FINISH_OUTCOMES.map((outcome) => [outcome] as const))(
+          'records a session that finished with the outcome %s',
+          ([outcome]) =>
+            Effect.gen(function* () {
+              const { studyId, waveId } = yield* newTrio();
+              const sessionId = yield* newSession(studyId, waveId);
+              yield* finalize(sessionId, outcome);
+              expect(
+                yield* ownerRows<Row>(
+                  `SELECT finish_stage_id, finish_outcome
+                   FROM interview_sessions WHERE id = $1`,
+                  [sessionId],
+                ),
+              ).toEqual([
+                { finish_stage_id: 'finish', finish_outcome: outcome },
+              ]);
+            }),
+        );
+
+        it.effect(
+          'refuses to complete a session that records no finish stage',
+          () =>
+            Effect.gen(function* () {
+              const { studyId, waveId } = yield* newTrio();
+              const sessionId = yield* newSession(studyId, waveId);
+              expect(
+                (yield* refusalOf(
+                  ownerAffected(
+                    `UPDATE interview_sessions
+                     SET status = 'completed', completed_at = now()
+                     WHERE id = $1`,
+                    [sessionId],
+                  ),
+                )).message,
+              ).toContain(
+                'a completed interview session must record its finish stage and outcome',
+              );
+              expect(
+                (yield* refusalOf(
+                  ownerInsert(
+                    'interview_sessions',
+                    sessionRow(studyId, waveId, {
+                      status: 'completed',
+                      completed_at: new Date(),
+                    }),
+                  ),
+                )).message,
+              ).toContain(
+                'a completed interview session must record its finish stage and outcome',
+              );
+            }),
         );
 
         it.effect(

@@ -145,4 +145,37 @@ describe('fileLaunchQueue', () => {
     expect(mod.getLaunchFailureCount()).toBe(0);
     expect(mod.takeLaunchFailureCount()).toBe(0);
   });
+
+  it('queues a file read some other way, and holds the fresh-load update meanwhile', async () => {
+    const { mod, settle } = await loadModule();
+    let resolveRead: (file: File | undefined) => void = () => undefined;
+    mod.queueLaunchFileRead(
+      () =>
+        new Promise((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+    expect(mod.hasPendingLaunchFiles()).toBe(true);
+    expect(mod.getLaunchFiles()).toEqual([]);
+
+    resolveRead(new File(['zip-bytes'], 'handed-over.netcanvas'));
+    await settle();
+
+    expect(mod.getLaunchFiles().map((f) => f.name)).toEqual([
+      'handed-over.netcanvas',
+    ]);
+    expect(mod.getLaunchFailureCount()).toBe(0);
+  });
+
+  it('counts a queued read that finds nothing, or fails, as a failure', async () => {
+    const { mod, settle } = await loadModule();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mod.queueLaunchFileRead(() => Promise.resolve(undefined));
+    mod.queueLaunchFileRead(() => Promise.reject(new Error('gone')));
+    await settle();
+
+    expect(mod.getLaunchFiles()).toEqual([]);
+    expect(mod.getLaunchFailureCount()).toBe(2);
+    expect(mod.hasPendingLaunchFiles()).toBe(false);
+  });
 });

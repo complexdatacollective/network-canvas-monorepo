@@ -7,6 +7,7 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import type { VariableNameScope } from './variableNameRules.ts';
 import type { VariablePickerOption } from './VariablePickerField.tsx';
 import type { CreateRowOutcome } from './VariableSpotlight.tsx';
 import VariableSpotlight from './VariableSpotlight.tsx';
@@ -26,8 +27,8 @@ type HostProps = Readonly<{
   options?: readonly VariablePickerOption[];
   /** Whether this caller lets an attribute be invented from the search term. */
   canCreate?: boolean;
-  /** Names the type already holds, whatever kind of answer they record. */
-  namesInUse?: readonly string[];
+  /** The attributes the type already holds, whatever kind of answer they record. */
+  nameScope?: VariableNameScope;
   /**
    * What the codebook answers a create with. `editor` is the escalation: a kind
    * of answer a name cannot finish opens the codebook's own editor and leaves
@@ -44,7 +45,7 @@ type HostProps = Readonly<{
 function SpotlightHost({
   options = ATTRIBUTES,
   canCreate = false,
-  namesInUse,
+  nameScope,
   outcome = 'created',
 }: HostProps) {
   const [open, setOpen] = useState(false);
@@ -89,7 +90,7 @@ function SpotlightHost({
                   setChosen(name);
                   return 'finished' as const;
                 },
-                ...(namesInUse === undefined ? {} : { namesInUse }),
+                ...(nameScope === undefined ? {} : { nameScope }),
               }
             : {})}
         />
@@ -218,12 +219,28 @@ export const InventingOne: Story = {
 };
 
 /**
- * A name the type already holds, or one the export formats cannot carry: the
- * row states the reason and does nothing, rather than spending a round trip to
- * come back with a complaint about a name still on screen.
+ * A name the type already holds, or one that would write a column the export
+ * already writes: the row states the reason and does nothing, rather than
+ * spending a round trip to come back with a complaint about a name still on
+ * screen.
  */
 export const ANameThatCannotBeUsed: Story = {
-  args: { canCreate: true, namesInUse: ['age', 'nominated_early'] },
+  args: {
+    canCreate: true,
+    nameScope: {
+      entity: 'node',
+      variables: [
+        { id: 'age', name: 'age', type: 'number' },
+        { id: 'nominated_early', name: 'nominated_early', type: 'boolean' },
+        {
+          id: 'contactType',
+          name: 'contactType',
+          type: 'categorical',
+          options: [{ value: 'call' }],
+        },
+      ],
+    },
+  },
   play: async ({ canvasElement }) => {
     const dialog = await openIt(canvasElement);
 
@@ -231,6 +248,16 @@ export const ANameThatCannotBeUsed: Story = {
     await expect(
       dialog.getByRole('option', {
         name: 'Cannot create attribute named “nominated_early”: this type already has an attribute called that',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    await userEvent.clear(
+      dialog.getByRole('searchbox', { name: 'Find or create an attribute' }),
+    );
+    await userEvent.keyboard('contactType_call');
+    await expect(
+      dialog.getByRole('option', {
+        name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
       }),
     ).toHaveAttribute('aria-disabled', 'true');
   },

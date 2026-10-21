@@ -24,8 +24,8 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
           name: 'Mood',
           type: 'categorical',
           options: [
-            { label: 'Happy', value: 'happy' },
-            { label: 'Sad', value: 'sad' },
+            { label: { en: 'Happy' }, value: 'happy' },
+            { label: { en: 'Sad' }, value: 'sad' },
           ],
         },
         note: { name: 'Note', type: 'text' },
@@ -43,6 +43,14 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
         // against: an attribute the codebook still describes and no rule can
         // be built on.
         home: { name: 'Home', type: 'layout' },
+        // Encrypted: answered in the interview with ciphertext only the
+        // participant's passphrase opens, so a rule over interview answers
+        // cannot read it.
+        secret: {
+          name: 'Secret',
+          type: 'text',
+          encrypted: true,
+        },
       },
     },
     place: {
@@ -55,11 +63,18 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
     friend: {
       name: 'Friend',
       color: 'edge-color-seq-3',
-      variables: { closeness: { name: 'Closeness', type: 'scalar' } },
+      variables: {
+        closeness: {
+          name: 'Closeness',
+          type: 'scalar',
+        },
+      },
     },
   },
   ego: {
-    variables: { egoName: { name: 'EgoName', type: 'text' } },
+    variables: {
+      egoName: { name: 'EgoName', type: 'text' },
+    },
   },
 });
 
@@ -80,13 +95,17 @@ const stageOrderSection = sectionId({ kind: 'stageOrder' });
  * and `"1"` can be told apart, and one attribute no rule can be built on.
  */
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Rule editing', schemaVersion: 8 },
+  [settingsSection]: {
+    name: 'Rule editing',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  },
   [stageOrderSection]: { stages: ['stage-1'] },
   [stageSection]: {
     id: 'stage-1',
     type: 'Information',
-    label: 'Welcome',
-    title: 'Welcome',
+    label: { en: 'Welcome' },
+    title: { en: 'Welcome' },
     items: [],
   },
   [personSection]: {
@@ -102,11 +121,18 @@ const baseSections: Record<string, SectionDoc> = {
       height: { name: 'Height', type: 'number' },
       // A scalar is recorded as a number on a normalised scale, and is offered
       // the same comparison operators a number is.
-      closeness: { name: 'Closeness', type: 'scalar' },
+      closeness: {
+        name: 'Closeness',
+        type: 'scalar',
+      },
       // A yes/no attribute: the one whose operand control has a value for
       // every state it can be in, so "unanswered" cannot be one of them
       // unless the operand table says so.
-      flag: { name: 'Flag', type: 'boolean', component: 'Boolean' },
+      flag: {
+        name: 'Flag',
+        type: 'boolean',
+        component: 'Boolean',
+      },
       // Text, so an operator a NUMBER accepts can be stored against it.
       note: { name: 'Note', type: 'text' },
       // Answered with a point on the sociogram: an attribute the codebook
@@ -124,8 +150,8 @@ const baseSections: Record<string, SectionDoc> = {
         name: 'Mood',
         type: 'categorical',
         options: [
-          { label: 'Happy', value: 'happy' },
-          { label: 'Sad', value: 'sad' },
+          { label: { en: 'Happy' }, value: 'happy' },
+          { label: { en: 'Sad' }, value: 'sad' },
         ],
       },
       // An option-bearing attribute whose option VALUES are numbers, which is
@@ -135,14 +161,27 @@ const baseSections: Record<string, SectionDoc> = {
         name: 'Strength',
         type: 'ordinal',
         options: [
-          { label: 'Weak', value: 1 },
-          { label: 'Strong', value: 2 },
+          { label: { en: 'Weak' }, value: 1 },
+          { label: { en: 'Strong' }, value: 2 },
         ],
+      },
+      // Encrypted, so only a panel over an imported file may name it.
+      secret: {
+        name: 'Secret',
+        type: 'text',
+        encrypted: true,
       },
     },
   },
-  [friendSection]: { name: 'Friend', color: 'edge-color-seq-3' },
-  [egoSection]: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
+  [friendSection]: {
+    name: 'Friend',
+    color: 'edge-color-seq-3',
+  },
+  [egoSection]: {
+    variables: {
+      egoName: { name: 'EgoName', type: 'text' },
+    },
+  },
 };
 
 export const nodeRule = (id: string): RuleDraft => ({

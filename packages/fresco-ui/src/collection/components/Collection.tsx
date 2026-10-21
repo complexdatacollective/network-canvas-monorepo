@@ -86,6 +86,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   defaultSortType,
   onSortChange,
   sortRules,
+  sortLocale,
   // Filter props
   filterQuery,
   filterExecution,
@@ -138,6 +139,7 @@ function CollectionContent<T extends Record<string, unknown>>({
     defaultSortType,
     onSortChange,
     sortRules,
+    sortLocale,
   });
 
   // Use filter state hook for filtering (only if filterKeys is provided)
@@ -374,6 +376,7 @@ export function Collection<T extends Record<string, unknown>>({
   defaultSortType,
   onSortChange,
   sortRules,
+  sortLocale,
   // Filter props
   filterQuery,
   filterExecution,
@@ -387,6 +390,7 @@ export function Collection<T extends Record<string, unknown>>({
   children,
 }: CollectionProps<T>) {
   const intl = useAppIntl();
+  const resolvedSortLocale = sortLocale ?? intl.locale;
 
   const disabledKeysSet = useMemo(
     () => (disabledKeys ? new Set(disabledKeys) : undefined),
@@ -416,6 +420,9 @@ export function Collection<T extends Record<string, unknown>>({
           defaultSortType,
           sortRules,
         }),
+        // Text is ordered in the language the host says it is in, else the
+        // interface language, rather than whichever the runtime defaults to.
+        sortLocale: resolvedSortLocale,
         disabledKeys: disabledKeysSet,
         selectionMode,
         selectedKeys: selectedKeysSet ?? defaultSelectedKeysSet,
@@ -464,6 +471,7 @@ export function Collection<T extends Record<string, unknown>>({
         defaultSortType={defaultSortType}
         onSortChange={onSortChange}
         sortRules={sortRules}
+        sortLocale={resolvedSortLocale}
         // Filter props
         filterQuery={filterQuery}
         filterExecution={filterExecution}

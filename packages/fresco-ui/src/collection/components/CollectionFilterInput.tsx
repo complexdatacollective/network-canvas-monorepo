@@ -4,6 +4,7 @@ import { Loader2, Search, X } from 'lucide-react';
 import { type ReactNode, useCallback } from 'react';
 import { useShallow } from 'zustand/shallow';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
@@ -18,23 +19,11 @@ const messages = defineMessages({
     defaultMessage: 'Search...',
     description: 'Default placeholder for the collection filter input.',
   },
-  searching: {
-    id: 'frescoUi.collectionFilterInput.searching',
-    defaultMessage: 'Searching...',
-    description:
-      'Status text shown while the collection filter is running a search.',
-  },
-  indexing: {
-    id: 'frescoUi.collectionFilterInput.indexing',
-    defaultMessage: 'Indexing...',
-    description:
-      'Status text shown while the collection filter builds its search index.',
-  },
   resultCount: {
     id: 'frescoUi.collectionFilterInput.resultCount',
     defaultMessage: '{count, plural, one {# result} other {# results}}',
     description:
-      'Match total shown inside the filter input while a filter is active.',
+      'Screen-reader announcement of the match total while a filter is active. The visible total is the bare number.',
   },
   clearSearch: {
     id: 'frescoUi.collectionFilterInput.clearSearch',
@@ -56,7 +45,7 @@ type CollectionFilterInputProps = {
   showClearButton?: boolean;
   /** Custom loading indicator. Default: Loader2 spinner */
   loadingIndicator?: ReactNode;
-  /** Text shown while filtering. Default: "Searching..." */
+  /** Screen-reader text shown while filtering. Default: "Loading…" */
   loadingText?: string;
   /** Text shown while indexing. Default: "Indexing..." */
   indexingText?: string;
@@ -148,31 +137,41 @@ export function CollectionFilterInput({
 
   const isLoading = isFiltering || isIndexing;
   const hasQuery = query.length > 0;
-  const statusText = isIndexing
-    ? (indexingText ?? intl.formatMessage(messages.indexing))
-    : (loadingText ?? intl.formatMessage(messages.searching));
+  const statusText =
+    (isIndexing ? indexingText : loadingText) ??
+    intl.formatMessage(commonMessages.loading);
 
   const defaultLoadingIndicator = (
     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
   );
 
-  const prefixContent =
-    showLoadingIndicator && isLoading ? (
-      <div className="flex items-center gap-1.5">
-        {loadingIndicator ?? defaultLoadingIndicator}
-        <span className="text-sm text-current/70">{statusText}</span>
-      </div>
-    ) : (
-      <Search aria-hidden="true" />
-    );
+  const showingLoading = showLoadingIndicator && isLoading;
+
+  // The status region stays mounted while its text comes and goes, so a
+  // screen reader announces the search starting, wherever focus is.
+  const prefixContent = (
+    <>
+      {showingLoading ? (
+        (loadingIndicator ?? defaultLoadingIndicator)
+      ) : (
+        <Search aria-hidden="true" />
+      )}
+      <span role="status" className="sr-only">
+        {showingLoading ? statusText : ''}
+      </span>
+    </>
+  );
 
   const suffixContent = (
     <div className="flex items-center gap-2">
       {showResultCount && hasActiveFilter && (
-        <span className="text-sm text-current/70">
-          {intl.formatMessage(messages.resultCount, {
-            count: matchCount ?? 0,
-          })}
+        <span aria-live="polite" className="text-sm text-current/70">
+          <span aria-hidden="true">{matchCount ?? 0}</span>
+          <span className="sr-only">
+            {intl.formatMessage(messages.resultCount, {
+              count: matchCount ?? 0,
+            })}
+          </span>
         </span>
       )}
       {showClearButton && hasQuery && (

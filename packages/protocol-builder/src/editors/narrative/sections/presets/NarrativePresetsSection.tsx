@@ -18,6 +18,8 @@ import {
 import BuilderSection from '../../../../sections/BuilderSection.tsx';
 import { useStageSubject } from '../../../../sections/useStageSubject.ts';
 import {
+  collapseNarrativePreset,
+  expandNarrativePreset,
   NarrativePresetFields,
   NarrativePresetPreview,
 } from './NarrativePresetFields.tsx';
@@ -60,7 +62,9 @@ export default function NarrativePresetsSection() {
       editTitle: messages.presetsEditTitle,
       formId: 'narrative-preset-editor',
       name: PRESETS_FIELD,
-      normalize: (row) => withoutAbsentValues(row) as RowValues,
+      expand: expandNarrativePreset,
+      normalize: (row) =>
+        withoutAbsentValues(collapseNarrativePreset(row)) as RowValues,
     }),
     [],
   );

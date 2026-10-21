@@ -1,4 +1,6 @@
 import {
+  CloudCheck,
+  CloudOff,
   FlaskConical,
   Info,
   LineChart,
@@ -36,6 +38,7 @@ import {
   ManageAuthenticator,
   ResetDeviceRow,
 } from '~/components/ManageAuthenticator';
+import { offlineMessages } from '~/components/offlineMessages';
 import SecurityBehaviorControls, {
   type Behavior,
 } from '~/components/SecurityBehaviorControls';
@@ -52,8 +55,13 @@ import {
   listProtocols,
   updateSettings,
 } from '~/lib/db/api';
-import type { ProtocolWithCounts, StoredSettings } from '~/lib/db/types';
+import {
+  isCurrentProtocol,
+  type ProtocolWithCounts,
+  type StoredSettings,
+} from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import { useAppOffline } from '~/lib/pwa/appOffline';
 import {
   estimateStorage,
   formatBytes,
@@ -535,6 +543,7 @@ export function SettingsDialog({
     return () => media.removeEventListener('change', update);
   }, []);
   const [section, setSection] = useState<Section>('about');
+  const offline = useAppOffline();
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [storage, setStorage] = useState<StorageEstimate>({
     usage: null,
@@ -586,12 +595,14 @@ export function SettingsDialog({
       countSyntheticSessions(),
     ]);
     if (seq !== reloadSyntheticSeq.current) return;
-    setProtocols(ps);
+    // Synthetic interviews are generated for schema 9 protocols only.
+    const current = ps.filter(isCurrentProtocol);
+    setProtocols(current);
     setSyntheticCount(n);
     // Default to the first protocol when none is selected yet.
-    setSelectedProtocolHash((current) => {
-      if (current && ps.some((p) => p.hash === current)) return current;
-      return ps[0]?.hash ?? '';
+    setSelectedProtocolHash((selected) => {
+      if (selected && current.some((p) => p.hash === selected)) return selected;
+      return current[0]?.hash ?? '';
     });
   }, []);
 
@@ -904,6 +915,35 @@ export function SettingsDialog({
                         {storagePersisted
                           ? intl.formatMessage(messages.persisted)
                           : intl.formatMessage(messages.bestEffort)}
+                      </span>
+                    }
+                  />
+                ) : null}
+                {offline === 'ready' || offline === 'not-ready' ? (
+                  <SettingsRow
+                    title={intl.formatMessage(offlineMessages.settingTitle)}
+                    desc={intl.formatMessage(
+                      offline === 'ready'
+                        ? offlineMessages.readyHelp
+                        : offlineMessages.notReadyHelp,
+                    )}
+                    control={
+                      <span
+                        data-testid="offline-setting"
+                        className={`inline-flex items-center gap-1.5 text-xs ${
+                          offline === 'ready' ? 'text-text/60' : 'text-warning'
+                        }`}
+                      >
+                        {offline === 'ready' ? (
+                          <CloudCheck className="size-3.5" aria-hidden />
+                        ) : (
+                          <CloudOff className="size-3.5" aria-hidden />
+                        )}
+                        {intl.formatMessage(
+                          offline === 'ready'
+                            ? offlineMessages.ready
+                            : offlineMessages.notReady,
+                        )}
                       </span>
                     }
                   />

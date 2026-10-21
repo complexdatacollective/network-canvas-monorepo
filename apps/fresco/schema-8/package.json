@@ -1,0 +1,88 @@
+{
+  "name": "fresco-schema-8",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The schema 8 interview and the libraries it was released with, bundled with Fresco so schema 8 protocols keep running unchanged.",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    "./interview": {
+      "types": "./src/interview.d.ts",
+      "default": "./src/interview.js"
+    },
+    "./interview/catalog": {
+      "types": "./src/interview-catalog.d.ts",
+      "default": "./src/interview-catalog.js"
+    },
+    "./interview/contract": {
+      "types": "./src/interview-contract.d.ts",
+      "default": "./src/interview-contract.js"
+    },
+    "./interview/protocol-schema-version": {
+      "types": "./src/interview-protocol-schema-version.d.ts",
+      "default": "./src/interview-protocol-schema-version.js"
+    },
+    "./protocol-validation": {
+      "types": "./src/protocol-validation.d.ts",
+      "default": "./src/protocol-validation.js"
+    },
+    "./protocol-utilities": {
+      "types": "./src/protocol-utilities.d.ts",
+      "default": "./src/protocol-utilities.js"
+    },
+    "./shared-consts": {
+      "types": "./src/shared-consts.d.ts",
+      "default": "./src/shared-consts.js"
+    },
+    "./network-exporters/errors": {
+      "types": "./src/network-exporters-errors.d.ts",
+      "default": "./src/network-exporters-errors.js"
+    },
+    "./network-exporters/events": {
+      "types": "./src/network-exporters-events.d.ts",
+      "default": "./src/network-exporters-events.js"
+    },
+    "./network-exporters/input": {
+      "types": "./src/network-exporters-input.d.ts",
+      "default": "./src/network-exporters-input.js"
+    },
+    "./network-exporters/output": {
+      "types": "./src/network-exporters-output.d.ts",
+      "default": "./src/network-exporters-output.js"
+    },
+    "./network-exporters/pipeline": {
+      "types": "./src/network-exporters-pipeline.d.ts",
+      "default": "./src/network-exporters-pipeline.js"
+    },
+    "./network-exporters/services/InterviewRepository": {
+      "types": "./src/network-exporters-services-InterviewRepository.d.ts",
+      "default": "./src/network-exporters-services-InterviewRepository.js"
+    },
+    "./network-exporters/services/Output": {
+      "types": "./src/network-exporters-services-Output.d.ts",
+      "default": "./src/network-exporters-services-Output.js"
+    },
+    "./network-exporters/services/ProtocolRepository": {
+      "types": "./src/network-exporters-services-ProtocolRepository.d.ts",
+      "default": "./src/network-exporters-services-ProtocolRepository.js"
+    },
+    "./styles.css": "./src/styles.css"
+  },
+  "dependencies": {
+    "@codaco/app-i18n": "0.3.0",
+    "@codaco/fresco-ui": "8.0.0",
+    "@codaco/interview": "10.0.0",
+    "@codaco/network-exporters": "4.0.0",
+    "@codaco/network-query": "1.2.6",
+    "@codaco/protocol-utilities": "5.0.0",
+    "@codaco/protocol-validation": "15.0.0",
+    "@codaco/shared-consts": "6.2.0"
+  },
+  "peerDependencies": {
+    "effect": "*",
+    "react": "*",
+    "react-dom": "*"
+  }
+}

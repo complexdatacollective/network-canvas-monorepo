@@ -5,6 +5,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { storyDialogVisible } from '../../testing/storyDialogVisible.ts';
 import { narrativeStageEditor } from './NarrativeStageEditor.ts';
 
 const meta = {
@@ -56,7 +57,32 @@ export const Editing: Story = {
     });
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
-    ).toHaveTextContent('"label": "Narrative (revised)"');
+    ).toHaveTextContent('"label": { "en-US": "Narrative (revised)" }');
+  },
+};
+
+/**
+ * Each attribute a preset highlights carries the label a participant reads for
+ * it, written in every language the protocol is in. A newly ticked attribute's
+ * label starts as the attribute's name.
+ */
+export const HighlightLabels: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const [editPreset] = canvas.getAllByRole('button', { name: 'Edit preset' });
+    if (editPreset === undefined) throw new Error('the stage has no preset');
+    await userEvent.click(editPreset);
+
+    const panel = await within(canvasElement.ownerDocument.body).findByRole(
+      'dialog',
+    );
+    await storyDialogVisible(panel);
+    const preset = within(panel);
+    await expect(
+      preset.getByRole('textbox', { name: 'Label for “flagged”' }),
+    ).toHaveValue('Flagged');
   },
 };
 

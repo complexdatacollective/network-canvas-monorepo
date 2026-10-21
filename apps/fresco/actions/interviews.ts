@@ -1,6 +1,7 @@
 'use server';
 
 import { createId } from '@paralleldrive/cuid2';
+import { createInitialNetwork as createLegacyInitialNetwork } from 'fresco-schema-8/interview/contract';
 import { after } from 'next/server';
 
 import {
@@ -19,6 +20,8 @@ import { prisma } from '~/lib/db';
 import { Prisma } from '~/lib/db/generated/client';
 import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { parseLegacyStoredProtocol } from '~/lib/schema-8/storedProtocol';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
 import { getInterviewIdsMatching } from '~/queries/interviews';
 import type {
@@ -285,6 +288,8 @@ export async function createInterview(
         schemaVersion: true,
         stages: true,
         codebook: true,
+        localization: true,
+        interfaceText: true,
         experiments: true,
       },
     });
@@ -297,11 +302,16 @@ export async function createInterview(
       };
     }
 
-    // A protocol the deploy-time migration left below the runtime's schema
-    // version cannot run an interview — the payload builder refuses it. Refuse
+    // A schema 8 protocol is kept as it was imported and runs in the bundled
+    // schema 8 interview; any other version than that or the runtime's cannot
+    // run an interview at all, and the payload builders refuse it. Refuse
     // here, before anything is persisted, so a recruitment link to such a
     // protocol does not record a started-but-unusable interview per attempt.
-    if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+    const legacy = isLegacySchemaVersion(protocol.schemaVersion);
+    if (
+      !legacy &&
+      protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION
+    ) {
       return {
         errorType: 'incompatible-protocol',
         error: intl.formatMessage(
@@ -313,7 +323,10 @@ export async function createInterview(
 
     // Likewise a protocol whose stored design does not parse: the interview
     // page would refuse to start every interview created for it.
-    if (!parseStoredProtocol(protocol).success) {
+    const readable = legacy
+      ? parseLegacyStoredProtocol(protocol).success
+      : parseStoredProtocol(protocol).success;
+    if (!readable) {
       return {
         errorType: 'incompatible-protocol',
         error: intl.formatMessage(messages.copyProtocolCouldNotBeRead),
@@ -383,7 +396,7 @@ export async function createInterview(
         id: true,
       },
       data: {
-        network: createInitialNetwork(),
+        network: legacy ? createLegacyInitialNetwork() : createInitialNetwork(),
         participant: participantStatement,
         protocol: {
           connect: {
@@ -415,6 +428,7 @@ export async function createInterview(
       error: null,
       createdInterviewId: createdInterview.id,
       errorType: null,
+      schemaVersion: protocol.schemaVersion,
     };
   } catch (error) {
     // A participant following a link to a protocol that no longer exists is an
