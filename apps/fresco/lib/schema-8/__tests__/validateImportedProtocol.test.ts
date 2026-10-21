@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateAndMigrateLegacyProtocol } from '../validateAndMigrateProtocol';
+import { validateImportedLegacyProtocol } from '../validateImportedProtocol';
 
 const codebook = {
   node: {
@@ -34,9 +34,9 @@ const protocolAt = (schemaVersion: number) => ({
   stages,
 });
 
-describe('validateAndMigrateLegacyProtocol', () => {
+describe('validateImportedLegacyProtocol', () => {
   it('keeps a schema 8 protocol at schema 8, unchanged', async () => {
-    const result = await validateAndMigrateLegacyProtocol(protocolAt(8));
+    const result = await validateImportedLegacyProtocol(protocolAt(8));
 
     if (!result.success) throw new Error(`Expected success: ${result.error}`);
     expect(result.protocol.schemaVersion).toBe(8);
@@ -47,7 +47,7 @@ describe('validateAndMigrateLegacyProtocol', () => {
 
   it('brings a schema 7 protocol up to schema 8 and no further', async () => {
     // Import names the protocol after its file, which schema 8 requires.
-    const result = await validateAndMigrateLegacyProtocol(protocolAt(7), {
+    const result = await validateImportedLegacyProtocol(protocolAt(7), {
       name: 'Fixture',
     });
 
@@ -56,7 +56,7 @@ describe('validateAndMigrateLegacyProtocol', () => {
   });
 
   it('asks for the dependencies the schema 8 migration needs', async () => {
-    const result = await validateAndMigrateLegacyProtocol(protocolAt(7));
+    const result = await validateImportedLegacyProtocol(protocolAt(7));
 
     expect(result).toEqual({
       success: false,
@@ -65,8 +65,18 @@ describe('validateAndMigrateLegacyProtocol', () => {
     });
   });
 
+  it('refuses a protocol older than schema 7', async () => {
+    const result = await validateImportedLegacyProtocol(protocolAt(6));
+
+    expect(result).toEqual({
+      success: false,
+      error: 'unsupported-version',
+      version: 6,
+    });
+  });
+
   it('refuses a protocol newer than schema 8', async () => {
-    const result = await validateAndMigrateLegacyProtocol(protocolAt(9));
+    const result = await validateImportedLegacyProtocol(protocolAt(9));
 
     expect(result).toEqual({
       success: false,
@@ -80,7 +90,7 @@ describe('validateAndMigrateLegacyProtocol', () => {
       ...protocolAt(8),
       stages: [{ ...stages[0], type: 'NotAnInterface' }],
     };
-    const result = await validateAndMigrateLegacyProtocol(protocol);
+    const result = await validateImportedLegacyProtocol(protocol);
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe('validation-failed');

@@ -123,13 +123,12 @@ try {
       await page.goto(`${config.baseUrl}/dashboard/protocols`, {
         waitUntil: 'networkidle',
       });
-      // A schema 8 protocol, so Fresco asks how to import it. Upgraded: this
-      // lane conducts the current interview, on a protocol the schema 9
-      // upgrade has to have handled.
+      // A schema 9 copy of the schema 8 source, upgraded when the fixtures
+      // were built (make-fixtures.mjs): this lane conducts the current
+      // interview, and Fresco imports a protocol only as it is.
       await uploadProtocol(
         page,
         join(fixtures, 'fresco-release-test.netcanvas'),
-        { olderSchema: 'upgrade' },
       );
       // The import streams the media through storage, so it is not instant.
       // Waited for by its effect in the database rather than by a toast: the
@@ -241,10 +240,10 @@ try {
 
   await nextStage();
 
-  // The fixture is schema 8, and its Ego Form opens with an introduction
-  // panel. Imported into a schema 9 deployment, the Ego Form keeps that
-  // panel: the participant reads its title and text above the form's
-  // questions, on the same screen.
+  // The fixture's source is schema 8, and its Ego Form opens with an
+  // introduction panel. Upgraded to schema 9, the Ego Form keeps that panel:
+  // the participant reads its title and text above the form's questions, on
+  // the same screen.
   checks.push(
     await attempt('interview-ego-form-keeps-introduction-panel', async () => {
       const step = await settledStep();

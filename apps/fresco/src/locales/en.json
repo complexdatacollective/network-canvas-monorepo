@@ -2499,34 +2499,6 @@
     "defaultMessage": "The uploaded protocol file did not match the requested file.",
     "description": "Researcher-facing protocolImport: The uploaded protocol file did not match the requested file."
   },
-  "fresco.protocolImport.upgradeChoice.changesInSchemaVersion": {
-    "defaultMessage": "Changes in schema version {version}:",
-    "description": "Heading above the list of changes for one schema version, in the dialog shown when importing a protocol made for an older schema version. {version} is the schema version number."
-  },
-  "fresco.protocolImport.upgradeChoice.changesIntro": {
-    "defaultMessage": "If you upgrade, the following changes will be made to your protocol:",
-    "description": "Paragraph above the list of changes an upgrade makes, in the dialog shown when importing a protocol made for an older schema version."
-  },
-  "fresco.protocolImport.upgradeChoice.keep": {
-    "defaultMessage": "Keep schema {version}",
-    "description": "Button in the dialog shown when importing a protocol made for an older schema version, beside the button that upgrades it. Imports the protocol without upgrading it, keeping its older schema version, so its interviews run as the protocol was designed. {version} is that older schema version number (for example 8)."
-  },
-  "fresco.protocolImport.upgradeChoice.olderSchema": {
-    "defaultMessage": "This protocol uses an older version of the Network Canvas protocol schema (<Link>more information</Link>). You can either import it as it is, or you can upgrade it to the latest version, which will unlock new features and functionality.",
-    "description": "First paragraph of the dialog shown when importing a protocol made for an older schema version. <Link> wraps a link to the documentation page about protocol schemas."
-  },
-  "fresco.protocolImport.upgradeChoice.pleaseNote": {
-    "defaultMessage": "<strong>Please note:</strong> upgrading may change the interview experience for participants. Upgrading changes only the copy Fresco imports, and leaves your original protocol file unchanged.",
-    "description": "Paragraph of the dialog shown when importing a protocol made for an older schema version, warning that upgrading it can change what participants see, and saying that the protocol file the researcher chose is not modified (only the copy stored in Fresco is upgraded). <strong> marks the words \"Please note:\" as bold."
-  },
-  "fresco.protocolImport.upgradeChoice.title": {
-    "defaultMessage": "How do you want to import this protocol?",
-    "description": "Title of the dialog shown when a researcher imports a protocol made for an older schema version. Fresco offers two ways forward: import it as it is, or upgrade it to the current schema first."
-  },
-  "fresco.protocolImport.upgradeChoice.upgrade": {
-    "defaultMessage": "Upgrade to schema {version}",
-    "description": "Button in the dialog shown when importing a protocol made for an older schema version. Upgrades the protocol to the current schema and imports it. {version} is the current schema version number (for example 9)."
-  },
   "fresco.protocolImport.validation.invalidProtocol": {
     "defaultMessage": "The uploaded file does not contain a valid protocol.",
     "description": "Researcher-facing protocolImport.validation: The uploaded file does not contain a valid protocol."

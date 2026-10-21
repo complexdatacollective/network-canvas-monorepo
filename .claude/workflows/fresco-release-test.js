@@ -778,7 +778,7 @@ const expectedScriptChecks = {
     'migration-export-after-upgrade',
     'migration-export-carries-the-pedigree',
     'migration-import-keeps-schema-8',
-    'migration-import-upgrades-to-schema-9',
+    'migration-import-upgrades-schema-7-to-8',
   ],
   health: [
     'health-answers-anonymously',
@@ -813,7 +813,6 @@ const expectedScriptChecks = {
     'analytics-no-deployment-identifiers',
     'analytics-pseudonymous-distinct-id',
     'analytics-damaged-file-not-an-error',
-    'analytics-upgrade-failure-reported-twice',
   ],
   twoFactor: [
     'two-factor-forced-after-setup',
@@ -1229,7 +1228,7 @@ ${BROWSER_HOWTO}
 Do, in order, recording one check per numbered item:
 1. Setup wizard: create the administrator account (username ${ADMIN_USER}, password ${ADMIN_PASSWORD}; choose the Password authentication method).
 2. Storage step: the storage provider is already set to "S3 / S3-Compatible" and every field is filled in and locked, because the deployment configures storage through its environment, as the documented production bundled-Garage setup does. Confirm the form shows Endpoint URL http://garage:3900, Public URL http://localhost:9310, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, and a Secret Access Key that is masked rather than shown; then press Continue.
-3. Protocol step: stage the seed protocol with: bash ${HARNESS}/stage-fixture.sh --lane upgrade --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas — then inject it per AGENT_NOTES (fetch the printed URL → File → set input.files → dispatch change). It is a schema 7 protocol: if the released build asks "How do you want to import this protocol?", choose "Keep schema 8" (per AGENT_NOTES), so the deployment holds schema 8 data as one that never upgraded does. Confirm the import succeeded via the presigned PUTs in the network log AND the protocol appearing (dashboard count or psql per AGENT_NOTES) — the dropzone UI may not visibly react.
+3. Protocol step: stage the seed protocol with: bash ${HARNESS}/stage-fixture.sh --lane upgrade --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas — then inject it per AGENT_NOTES (fetch the printed URL → File → set input.files → dispatch change). It is a schema 7 protocol, which the released build upgrades to schema 8 as it imports it, without asking, so the deployment holds schema 8 data. Confirm the import succeeded via the presigned PUTs in the network log AND the protocol appearing (dashboard count or psql per AGENT_NOTES) — the dropzone UI may not visibly react.
 4. Finish the wizard to the dashboard.
 5. In settings, generate ${SYNTHETIC_COUNT} synthetic interviews via the Synthetic Interview Data section (native select + number input per AGENT_NOTES); wait for the completion toast.
 6. Seed the schema 8 interview the upgrade has to carry across. Run exactly this, once (Bash timeout 900000 — it drives its own browser): node ${SCRIPTS}/migration-lane.mjs --lane upgrade --phase seed
@@ -1372,7 +1371,7 @@ Set area="capture" and pass=true only if every item passed or was legitimately s
   );
 
   const integrity = await agent(
-    `Verify data survived a Fresco upgrade at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Pre-upgrade the instance had ${asData('counts', counts)} (protocols are "Sample Protocol" and the migration lane's "fresco-release-test-migration"; interviews are ${SYNTHETIC_COUNT} synthetic ones of the first and one of the second, for participant "migration-resume", which the migration lane has since finished on this build). Since the upgrade the migration lane has also imported two protocols, "release-test-kept-schema-8" and "release-test-upgraded-schema-9", with no interviews: the protocol count is now exactly 2 more than before the upgrade, and every other count is unchanged.
+    `Verify data survived a Fresco upgrade at ${UPGRADE_URL}. Sign in as ${ADMIN_USER} / ${ADMIN_PASSWORD}. Pre-upgrade the instance had ${asData('counts', counts)} (protocols are "Sample Protocol" and the migration lane's "fresco-release-test-migration"; interviews are ${SYNTHETIC_COUNT} synthetic ones of the first and one of the second, for participant "migration-resume", which the migration lane has since finished on this build). Since the upgrade the migration lane has also imported two protocols, "release-test-kept-schema-8" and "release-test-schema-7", with no interviews: the protocol count is now exactly 2 more than before the upgrade, and every other count is unchanged.
 ${BROWSER_HOWTO}
 Record one check per numbered item:
 1. Dashboard summary counts match the pre-upgrade counts, with the 2 protocols imported since.
@@ -1478,7 +1477,7 @@ Record one check per numbered item, in order:
 2. Account step rejects a weak password (try "password") with visible validation feedback (choose the Password authentication method).
 3. Account creation succeeds with username ${ADMIN_USER}, password ${ADMIN_PASSWORD}.
 4. Storage step: the storage provider is already set to "S3 / S3-Compatible" and every field is filled in and locked, because the deployment configures storage through its environment, as the documented production bundled-Garage setup does. Confirm the form shows Endpoint URL http://garage:3900, Public URL http://localhost:9311, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, and a Secret Access Key that is masked rather than shown; then press Continue. This item fails if any field is editable or the secret is readable.
-5. Protocol step: stage the protocol with bash ${HARNESS}/stage-fixture.sh --lane fresh --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas and inject per AGENT_NOTES. It is a schema 7 protocol, so Fresco asks "How do you want to import this protocol?" — choose "Upgrade to schema 9" (per AGENT_NOTES); this item fails if nothing asks. The presigned Garage PUTs (network log) and the imported protocol prove the storage pipeline.
+5. Protocol step: stage the protocol with bash ${HARNESS}/stage-fixture.sh --lane fresh --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas and inject per AGENT_NOTES. It is a schema 7 protocol, which Fresco upgrades to schema 8 as it imports it, without asking: this item fails if anything asks how to import it, or if the protocol is not stored (psql per AGENT_NOTES) at "schemaVersion" 8. The presigned Garage PUTs (network log) and the imported protocol prove the storage pipeline.
 6. Completing the wizard lands on the dashboard.
 7. Sign out; sign-in rejects a wrong password; sign-in succeeds with the right one.
 8. The setup wizard is no longer reachable once configured (navigating to /setup does not offer account creation again).

@@ -7,7 +7,8 @@ import {
   VersionedProtocolSchema,
 } from 'fresco-schema-8/protocol-validation';
 
-import { type ProtocolValidationError } from '~/lib/protocol/validateAndMigrateProtocol';
+import { OLDEST_SUPPORTED_SCHEMA_VERSION } from '~/fresco.config';
+import { type ProtocolValidationError } from '~/lib/protocol/validateImportedProtocol';
 import { LEGACY_SCHEMA_VERSION } from '~/lib/schema-8/version';
 
 export type { LegacyProtocol };
@@ -17,17 +18,21 @@ type LegacyProtocolValidationResult =
   | ProtocolValidationError;
 
 /**
- * Validate a protocol a researcher chose to keep at schema 8 when importing
- * it, with the validation schema 8 was released with. A schema 7 protocol is
- * brought up to schema 8 on the way, as Fresco 4 did when it imported one.
- * The counterpart of `validateAndMigrateProtocol`, which upgrades to the
- * current schema.
+ * Validate a protocol being imported at schema 8 or older, with the validation
+ * schema 8 was released with. It is stored at schema 8 and its interviews run
+ * in the schema 8 interview Fresco bundles. A schema 7 protocol is brought up
+ * to schema 8 on the way, as Fresco 4 did when it imported one; nothing is
+ * ever upgraded to the current schema. The counterpart of
+ * `validateImportedProtocol`, for the current schema.
  */
-export async function validateAndMigrateLegacyProtocol(
+export async function validateImportedLegacyProtocol(
   protocolJson: { schemaVersion: number },
   dependencies: Record<string, unknown> = {},
 ): Promise<LegacyProtocolValidationResult> {
-  if (protocolJson.schemaVersion > LEGACY_SCHEMA_VERSION) {
+  if (
+    protocolJson.schemaVersion < OLDEST_SUPPORTED_SCHEMA_VERSION ||
+    protocolJson.schemaVersion > LEGACY_SCHEMA_VERSION
+  ) {
     return {
       success: false,
       error: 'unsupported-version',
