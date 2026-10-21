@@ -2582,7 +2582,7 @@ describe('instrument attributes', () => {
         design({
           nodeTypes: [people],
           stages: [
-            ng(),
+            ng('ng', { minNodes: 1 }),
             ng('ng2', { prompts: [{ text: 'Who else?', tagAttributeId: '' }] }),
             af('af'),
             af('af2', { attributeIds: ['job'] }),
@@ -2630,7 +2630,7 @@ describe('instrument attributes', () => {
           nodeTypes: [people],
           stages: [
             { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
-            ng(),
+            ng('ng', { minNodes: 1 }),
             af('af', { skipLogic: skipNonDrinkers }),
             af('af2', { attributeIds: ['job'] }),
             af('af3', { attributeIds: ['town'] }),
@@ -2643,6 +2643,63 @@ describe('instrument attributes', () => {
       expect(all).toContain('af_intro');
       expect(all).toContain('af2_intro');
       expect(all).not.toContain('af3_intro');
+    });
+
+    it('introduces a task again after a stage skipped when no one was named', async () => {
+      const colleague = {
+        ...people,
+        id: 'colleague',
+        singular: 'Colleague',
+        plural: 'Colleagues',
+      };
+      const stages = (minNodes: number) => [
+        ng('ng', { minNodes }),
+        ng('ng_c', {
+          nodeTypeId: 'colleague',
+          minNodes,
+          prompts: [{ text: 'Who do you work with?', tagAttributeId: '' }],
+        }),
+        af('af'),
+        af('af_c', { nodeTypeId: 'colleague' }),
+      ];
+      const maybe = await build(
+        design({ nodeTypes: [people, colleague], stages: stages(0) }),
+      );
+      expect(maybe.validation.success).toBe(true);
+      expect(ids(maybe.stages)).toContain('af_c_intro');
+      const sure = await build(
+        design({ nodeTypes: [people, colleague], stages: stages(1) }),
+      );
+      expect(sure.validation.success).toBe(true);
+      expect(ids(sure.stages)).toContain('af_intro');
+      expect(ids(sure.stages)).not.toContain('af_c_intro');
+    });
+
+    it('describes only the composer tools the stage has', async () => {
+      const r = await build(
+        design({
+          nodeTypes: [people],
+          stages: [
+            {
+              kind: 'networkComposer',
+              ...c('nc'),
+              nodeTypeId: 'person',
+              attributeIds: [],
+              groupAttributeId: '',
+              relationships: [],
+            },
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      const text = (
+        stageById(r.stages, 'nc_intro') as Stage & {
+          items: { content: LocalizedText }[];
+        }
+      ).items[0]!.content.en;
+      expect(text).toContain('Add people and move them around.');
+      expect(text).not.toContain('groups');
+      expect(text).not.toContain('draw lines');
     });
 
     it("keeps the design's own instructions screen as the introduction", async () => {

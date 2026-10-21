@@ -90,6 +90,14 @@
       "draft": ""
     },
     {
+      "stageKey": "drinking_together/intro",
+      "kind": "introduction to bins",
+      "purpose": "How often the participant drinks with each drinking companion.",
+      "title": "introduction screen title; draft: \"Sorting the people you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
+    },
+    {
       "stageKey": "drinking_together",
       "kind": "bins",
       "purpose": "How often the participant drinks with each drinking companion.",

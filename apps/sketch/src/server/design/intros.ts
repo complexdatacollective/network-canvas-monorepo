@@ -3,10 +3,13 @@
 // before doing it. Schema 9 dropped the introduction panels that used to do
 // this on the stage itself (only an Ego Form keeps one).
 //
-// A task counts as introduced only once a stage that always shows has
-// introduced it: a conditional stage can be skipped, and the participant
-// would then meet the task first at a later stage. The screen takes the
-// stage's skip logic in compile(), so it never shows without its task.
+// A task counts as introduced only once a stage that surely shows has
+// introduced it: a stage that can be skipped (by its own skip logic, by the
+// compiler's skip when no one of its type or no tie exists, or by the
+// interview when its filter leaves no one) may leave the participant to
+// meet the task first at a later stage. The screen takes the stage's skip
+// logic in compile(), so it never shows without its task (bar a filter that
+// leaves no one, which skip logic cannot express).
 
 import type { NormalizedDesign, NStage } from './analyse.ts';
 
@@ -107,7 +110,17 @@ const draft = (
     case 'networkComposer':
       return {
         title: 'Drawing your network',
-        text: `Next, you and the interviewer will draw your network together. Add ${plural}, move them around and group them, and draw lines between people who are connected.`,
+        // only the tools the stage has: the palette hides the others
+        text: [
+          `Next, you and the interviewer will draw your network together. Add ${plural} and move them around.`,
+          ...(s.attributeIds.length
+            ? [`You can answer a few questions about each ${singular}.`]
+            : []),
+          ...(s.groupAttributeId ? [`You can put ${plural} into groups.`] : []),
+          ...(s.relationships.length
+            ? [`You can draw lines between ${plural} who are connected.`]
+            : []),
+        ].join(' '),
       };
     case 'geospatial':
       return {
@@ -128,15 +141,37 @@ export const taskIntroductions = (
   d: NormalizedDesign,
 ): Map<string, TaskIntroduction> => {
   const introduced = new Set<string>();
+  // node types someone is surely named for, as compile() decides its
+  // no-one-exists skip
+  const guaranteed = new Set<string>();
+  const surelyShown = (s: NStage) => {
+    if (s.skipLogic.mode !== 'always_show' || s.kind === 'relationshipForm')
+      return false;
+    if (
+      !('nodeTypeId' in s) ||
+      s.kind === 'nameGenerator' ||
+      s.kind === 'networkComposer'
+    )
+      return true;
+    return (
+      guaranteed.has(s.nodeTypeId) &&
+      !('filter' in s && s.filter.conditions.length)
+    );
+  };
   const out = new Map<string, TaskIntroduction>();
   d.stages.forEach((s, i) => {
+    if (
+      s.kind === 'nameGenerator' &&
+      s.skipLogic.mode === 'always_show' &&
+      s.minNodes >= 1
+    )
+      guaranteed.add(s.nodeTypeId);
     const fresh = tasksOf(s).filter((t) => !introduced.has(t));
     if (!fresh.length) return;
     const prev = d.stages[i - 1];
     if (prev?.kind !== 'information' || prev.role !== 'instructions')
       out.set(s.id, draft(d, s, fresh));
-    if (s.skipLogic.mode === 'always_show')
-      fresh.forEach((t) => introduced.add(t));
+    if (surelyShown(s)) fresh.forEach((t) => introduced.add(t));
   });
   return out;
 };

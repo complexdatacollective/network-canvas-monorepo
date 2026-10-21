@@ -146,6 +146,14 @@
       "draft": ""
     },
     {
+      "stageKey": "advisors/intro",
+      "kind": "introduction to bins",
+      "purpose": "Purpose of advisors.",
+      "title": "introduction screen title; draft: \"Sorting the classmates you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the classmates you named and a set of boxes. Drag each classmate into the box that describes them best."
+    },
+    {
       "stageKey": "advisors",
       "kind": "bins",
       "purpose": "Purpose of advisors.",
@@ -231,7 +239,7 @@
       "purpose": "Purpose of mentor_canvas.",
       "title": "introduction screen title; draft: \"Drawing your network\"",
       "text": "introduction screen text: what the next screen asks the participant to do, and how",
-      "draft": "Next, you and the interviewer will draw your network together. Add mentors, move them around and group them, and draw lines between people who are connected."
+      "draft": "Next, you and the interviewer will draw your network together. Add mentors and move them around. You can answer a few questions about each mentor. You can put mentors into groups. You can draw lines between mentors who are connected."
     },
     {
       "stageKey": "mentor_canvas",

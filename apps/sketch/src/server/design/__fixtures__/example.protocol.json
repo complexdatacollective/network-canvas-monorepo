@@ -1163,6 +1163,51 @@
       ]
     },
     {
+      "id": "drinking_together_intro",
+      "type": "Information",
+      "label": {
+        "en": "Drinking together (introduction)"
+      },
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "join": "AND",
+          "rules": [
+            {
+              "id": "rule_6",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "attribute": "person_drinks_with",
+                "operator": "EXACTLY",
+                "value": true
+              }
+            },
+            {
+              "id": "rule_7",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "Sorting the people you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
+          }
+        }
+      ]
+    },
+    {
       "id": "drinking_together",
       "type": "OrdinalBin",
       "label": {

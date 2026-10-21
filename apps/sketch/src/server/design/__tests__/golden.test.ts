@@ -44,6 +44,7 @@ describe('the worked example (first-year friendships and drinking)', () => {
         "CategoricalBin",
         "Information",
         "Sociogram",
+        "Information",
         "OrdinalBin",
         "EgoForm",
         "EgoForm",
