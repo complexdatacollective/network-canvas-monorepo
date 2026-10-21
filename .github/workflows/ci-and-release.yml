@@ -4176,6 +4176,13 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
+      # `needs: release` orders the publish before the mirror, but npm keeps
+      # serving the previous package document for a while after a publish: the
+      # 4.3.1 mirror's lockfile install, two seconds after the release job,
+      # found no @codaco/interview 11.0.0 and failed.
+      - name: Wait for npm to serve this release's packages
+        if: steps.guard.outputs.skip != 'true'
+        run: node scripts/release/wait-for-npm-versions.mjs --app apps/fresco
       - name: Mirror source to the Fresco repository
         id: mirror
         if: steps.guard.outputs.skip != 'true'
