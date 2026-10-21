@@ -22,6 +22,7 @@ type ProtocolStage = {
   convexHullVariable?: string;
   prompts?: { highlight?: unknown; edges?: { create?: string } }[];
   presets?: unknown[];
+  behaviours?: { automaticLayout?: boolean };
   edges?: { form?: Fields }[];
 };
 
@@ -81,6 +82,12 @@ const costOf = (s: ProtocolStage, n: number): Omit<StageCost, 'label'> => {
       break;
     case 'Sociogram':
       screens += prompts;
+      // without automatic layout the participant places each person once;
+      // every prompt on the map shares that layout
+      if (s.behaviours?.automaticLayout === false) {
+        itemsPerPerson += 1;
+        answers += shown;
+      }
       for (const p of s.prompts ?? []) {
         if (p.highlight) {
           itemsPerPerson += 1;
@@ -103,17 +110,18 @@ const costOf = (s: ProtocolStage, n: number): Omit<StageCost, 'label'> => {
       answers += prompts * shown;
       break;
     case 'NetworkComposer': {
-      const edgeFields = Math.max(
+      // each relationship tool draws its own ties: one action per tie plus
+      // that tool's form questions
+      const tieAnswers = (s.edges ?? []).reduce(
+        (t, e) => t + ties * (1 + (e.form?.fields?.length ?? 0)),
         0,
-        ...(s.edges ?? []).map((e) => e.form?.fields?.length ?? 0),
       );
       // putting each person in a group is one more answer about them
       const perPerson =
         (s.nodeForm?.fields?.length ?? 0) + (s.convexHullVariable ? 1 : 0);
       screens += 1;
       itemsPerPerson += perPerson;
-      // each drawn tie is one action plus its form's questions
-      answers += n * (1 + perPerson) + ties * (1 + edgeFields);
+      answers += n * (1 + perPerson) + tieAnswers;
       break;
     }
     case 'Narrative':

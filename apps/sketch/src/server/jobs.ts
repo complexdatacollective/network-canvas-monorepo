@@ -368,11 +368,21 @@ export const joinComparison = async (
     return { ...current, comparisonId } satisfies JobRecord;
   });
   if (result.outcome === 'taken') return result.outcome;
-  const seed = isJobRecord(written)
-    ? written
-    : await readJob(stores.jobs, seedJobId);
-  if (seed?.status === 'succeeded')
-    await updateLogEntry(stores.log, seed, { comparisonId });
+  try {
+    const seed = isJobRecord(written)
+      ? written
+      : await readJob(stores.jobs, seedJobId);
+    if (seed?.status === 'succeeded')
+      await updateLogEntry(stores.log, seed, { comparisonId });
+  } catch (error) {
+    // the caller refuses the comparison, so a seed this call claimed is
+    // freed again rather than left owned by a comparison that never started
+    if (result.outcome === 'joined')
+      await leaveComparison(stores, seedJobId, comparisonId).catch(() => {
+        // The seed stays claimed: a later comparison from it is refused.
+      });
+    throw error;
+  }
   return result.outcome;
 };
 

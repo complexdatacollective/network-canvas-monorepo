@@ -109,6 +109,63 @@ type CreateJobDeps = {
   newId?: () => string;
 };
 
+type Seed = {
+  stores: { jobs: JsonStore; log: JsonStore };
+  seedJobId: string;
+  comparisonId: string;
+};
+
+const seedOf = (
+  request: { seedJobId?: string | null; comparisonId?: string | null },
+  deps: CreateJobDeps,
+): Seed | null =>
+  request.seedJobId && request.comparisonId && deps.log
+    ? {
+        stores: { jobs: deps.jobs, log: deps.log },
+        seedJobId: request.seedJobId,
+        comparisonId: request.comparisonId,
+      }
+    : null;
+
+// A seed that cannot join would show a "Prefer this one" that never records,
+// so the comparison does not start without it: the queued job is failed and
+// its reservation handed back. Resolves to that refusal, or to whether this
+// call added the seed.
+const joinSeed = async (
+  seed: Seed,
+  deps: CreateJobDeps,
+  jobId: string,
+  spendDate: string,
+  reservedUsd: number,
+): Promise<Response | boolean> => {
+  let joined: JoinOutcome | null = null;
+  try {
+    joined = await joinComparison(
+      seed.stores,
+      seed.seedJobId,
+      seed.comparisonId,
+    );
+  } catch {
+    // handled with a refusal below
+  }
+  if (joined === 'joined' || joined === 'member') return joined === 'joined';
+  await failQueuedJob(
+    deps.jobs,
+    jobId,
+    'Sketch could not start the comparison. Please try again.',
+    new Date(),
+  )
+    .then((failed) =>
+      failed ? settleSpend(deps.jobs, spendDate, 0, reservedUsd) : undefined,
+    )
+    .catch(() => {
+      // The reservation stays counted for the day: errs on the safe side.
+    });
+  return joined === 'taken'
+    ? apiError('That design is already part of another comparison.', 409)
+    : apiError('Sketch could not start the comparison. Please try again.', 503);
+};
+
 export const handleCreateJob = async (
   req: Request,
   deps: CreateJobDeps,
@@ -167,6 +224,18 @@ export const handleCreateJob = async (
           );
         }
       } else if (existing.status === 'queued') {
+        // the first create may also have stopped before its seed joined
+        const seed = seedOf(request, deps);
+        if (seed) {
+          const joined = await joinSeed(
+            seed,
+            deps,
+            jobId,
+            spendDate,
+            existing.reservedUsd ?? 0,
+          );
+          if (joined instanceof Response) return joined;
+        }
         try {
           await deps.startBackground(jobId);
         } catch {
@@ -211,52 +280,20 @@ export const handleCreateJob = async (
     }
     return json({ jobId } satisfies CreateJobResponse, 202);
   }
-  // A seed that cannot join would show a "Prefer this one" that never
-  // records, so the comparison does not start without it. The seed joins only
-  // once this job exists, so a create refused earlier leaves it free.
-  const seed =
-    request.seedJobId && request.comparisonId && deps.log
-      ? {
-          stores: { jobs: deps.jobs, log: deps.log },
-          seedJobId: request.seedJobId,
-          comparisonId: request.comparisonId,
-        }
-      : null;
+  // The seed joins only once this job exists, so a create refused earlier
+  // leaves it free.
+  const seed = seedOf(request, deps);
   let joinedSeed = false;
   if (seed) {
-    let joined: JoinOutcome | null = null;
-    try {
-      joined = await joinComparison(
-        seed.stores,
-        seed.seedJobId,
-        seed.comparisonId,
-      );
-    } catch {
-      // handled with a refusal below
-    }
-    if (joined !== 'joined' && joined !== 'member') {
-      await failQueuedJob(
-        deps.jobs,
-        jobId,
-        'Sketch could not start the comparison. Please try again.',
-        new Date(),
-      )
-        .then((failed) =>
-          failed
-            ? settleSpend(deps.jobs, budget.spendDate, 0, reservedUsd)
-            : undefined,
-        )
-        .catch(() => {
-          // The reservation stays counted for the day: errs on the safe side.
-        });
-      return joined === 'taken'
-        ? apiError('That design is already part of another comparison.', 409)
-        : apiError(
-            'Sketch could not start the comparison. Please try again.',
-            503,
-          );
-    }
-    joinedSeed = joined === 'joined';
+    const joined = await joinSeed(
+      seed,
+      deps,
+      jobId,
+      budget.spendDate,
+      reservedUsd,
+    );
+    if (joined instanceof Response) return joined;
+    joinedSeed = joined;
   }
   try {
     await deps.startBackground(jobId);

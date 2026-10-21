@@ -1897,4 +1897,127 @@ describe('instrument attributes', () => {
     expect(r.codes).not.toContain('FORM_FIELD_REPEATED');
     expect(r.stages.map((s) => s.id)).toContain('af2');
   });
+
+  it('keeps the roster overlap form when its id needed a suffix', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('age', 'number', 'Age?'),
+            A('close', 'yes_no', ''),
+            A('advice', 'yes_no', ''),
+          ]),
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'alterForm',
+            ...c('roster_overlap'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['age'],
+          },
+          ng('roster', {
+            method: 'roster',
+            prompts: [
+              { text: 'Who are you **close** to?', tagAttributeId: 'close' },
+              {
+                text: 'Who do you ask for **advice**?',
+                tagAttributeId: 'advice',
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(r.validation.success).toBe(true);
+    const form = stageById(r.stages, 'roster_overlap_2') as Stage & {
+      form: { fields: { prompt: string }[] };
+    };
+    expect(form.form.fields).toHaveLength(2);
+    expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
+  });
+
+  it('keeps a form that reaches everyone over an earlier filtered writer', async () => {
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('close', 'yes_no', 'Close?'),
+            A('role', 'single_choice', 'Role?', {
+              options: ['friend', 'family'],
+            }),
+          ]),
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'alterForm',
+            ...c('af0'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['close'],
+          },
+          {
+            kind: 'bins',
+            ...c('b'),
+            nodeTypeId: 'person',
+            filter: {
+              match: 'all',
+              conditions: [
+                {
+                  about: 'nodes',
+                  typeId: 'person',
+                  attributeId: 'close',
+                  operator: 'is',
+                  value: 'yes',
+                },
+              ],
+            },
+            prompts: [
+              { text: 'Role?', attributeId: 'role', allowOther: false },
+            ],
+          },
+          {
+            kind: 'alterForm',
+            ...c('af2'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['role'],
+          },
+        ],
+      }),
+    );
+    expect(r.codes).toContain('WRITTEN_BY_FORM');
+    expect(r.codes).not.toContain('FORM_FIELD_WRITTEN_ELSEWHERE');
+    expect(r.stages.map((s) => s.id)).toContain('af2');
+    expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
+  });
+
+  it('drops a second highlight question on the same attribute', async () => {
+    const map = (id: string, text: string) => ({
+      kind: 'sociogram',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      prompts: [
+        { task: 'highlight', text, relationshipId: '', attributeId: 'close' },
+      ],
+    });
+    const r = await build(
+      design({
+        nodeTypes: [person([A('close', 'yes_no', 'Close?')])],
+        stages: [
+          ng(),
+          map('m1', 'Tap the people you are close to.'),
+          map('m2', 'Tap the people you trust.'),
+        ],
+      }),
+    );
+    expect(r.codes).toContain('DUPLICATE_HIGHLIGHT_WRITER');
+    expect(JSON.stringify(stageById(r.stages, 'm1'))).toContain('close');
+    expect(JSON.stringify(stageById(r.stages, 'm2'))).not.toContain(
+      'you trust',
+    );
+  });
 });

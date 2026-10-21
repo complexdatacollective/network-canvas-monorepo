@@ -851,6 +851,9 @@ export const analyse = (
     }
   };
 
+  // generated roster overlap forms, keyed to their roster: a free id may
+  // carry a suffix, so the id alone does not identify them
+  const overlapForms = new WeakMap<NStage, NStage>();
   for (const s of d.stages) {
     const path = `stages[${s.rawIndex}]`;
     let followUp: NStage | null = null;
@@ -1085,6 +1088,7 @@ export const analyse = (
             filter: { match: 'all', conditions: [] },
             attributeIds: [...new Set(rosterTags)],
           };
+          overlapForms.set(followUp, s);
           add(
             'adjusted',
             'ROSTER_OVERLAP_FORM',
@@ -1762,6 +1766,7 @@ export const analyse = (
   const formAt = new Map<string, number>();
   const unvalidated: (Writer & { key: string })[] = [];
   const binsKeys = new Set<string>();
+  const highlightKeys = new Set<string>();
   // Whether an earlier form asking each attribute reaches everyone: a later
   // form would ask it again and overwrite the answer that intervening skip
   // logic or filters used. After only filtered forms, a later form still asks
@@ -1859,24 +1864,37 @@ export const analyse = (
         });
       });
     if (s.kind === 'sociogram')
-      s.prompts.forEach((p) => {
-        if (p.task === 'highlight')
-          site(
-            `node:${s.nodeTypeId}/${p.attributeId}`,
-            'highlight prompt',
-            () => {
-              // A narrative may reuse this map, so its last prompt stays as
-              // a plain arrangement task rather than removing the stage.
-              if (s.prompts.length > 1)
-                s.prompts = s.prompts.filter((x) => x !== p);
-              else {
-                const plural = nodeType(s.nodeTypeId)?.plural ?? 'People';
-                p.task = 'position';
-                p.attributeId = '';
-                p.text = `Arrange the ${plural.toLowerCase()} on the map in a way that makes sense to you.`;
-              }
-            },
+      [...s.prompts].forEach((p) => {
+        if (p.task !== 'highlight') return;
+        const key = `node:${s.nodeTypeId}/${p.attributeId}`;
+        // A narrative may reuse this map, so its last prompt stays as a
+        // plain arrangement task rather than removing the stage.
+        const dropHighlight = () => {
+          if (s.prompts.length > 1)
+            s.prompts = s.prompts.filter((x) => x !== p);
+          else {
+            const plural = nodeType(s.nodeTypeId)?.plural ?? 'People';
+            p.task = 'position';
+            p.attributeId = '';
+            p.text = `Arrange the ${plural.toLowerCase()} on the map in a way that makes sense to you.`;
+          }
+        };
+        // Highlighting toggles the stored value, so a second highlight
+        // question on the same attribute starts from, and can undo, the
+        // first one's answers.
+        if (highlightKeys.has(key)) {
+          const attr = p.attributeId;
+          dropHighlight();
+          add(
+            'degraded',
+            'DUPLICATE_HIGHLIGHT_WRITER',
+            `stages[${s.rawIndex}]`,
+            `"${attr}" is already highlighted by an earlier question, so this one would change its answers. Prompt removed; give a distinct question its own attribute.`,
           );
+          return;
+        }
+        highlightKeys.add(key);
+        site(key, 'highlight prompt', dropHighlight);
       });
     if (s.kind === 'networkComposer' && s.groupAttributeId)
       site(`node:${s.nodeTypeId}/${s.groupAttributeId}`, 'group', () => {
@@ -1900,15 +1918,18 @@ export const analyse = (
     const formIndex = formAt.get(w.key);
     if (formIndex === undefined) continue;
     const form = d.stages[formIndex]!;
-    // An earlier form keeps the attribute unless it misses some people and
-    // the later writer reaches everyone: then the writer asks it of all.
+    // A form that reaches everyone keeps the attribute over a writer that
+    // misses some people, whichever comes first. Otherwise an earlier form
+    // keeps it unless it misses some people and the later writer reaches
+    // everyone: then the writer asks it of all.
     const writerReachesAll =
       w.stage.skipLogic.mode === 'always_show' &&
       !('filter' in w.stage && w.stage.filter.conditions.length);
+    const formReachesAll = formEveryone.get(w.key) === true;
     const formWins =
-      (formIndex < w.at &&
-        (formEveryone.get(w.key) === true || !writerReachesAll)) ||
-      form.id === `${w.stage.id}_overlap`;
+      (formReachesAll && !writerReachesAll) ||
+      (formIndex < w.at && (formReachesAll || !writerReachesAll)) ||
+      overlapForms.get(form) === w.stage;
     const attr = w.key.split('/')[1];
     if (formWins) {
       w.drop();

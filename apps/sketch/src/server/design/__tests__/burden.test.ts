@@ -60,11 +60,42 @@ describe('estimateBurden', () => {
 
   it('counts putting each person in a group on a composer', () => {
     const burden = estimateBurden(
-      { stages: [{ type: 'NetworkComposer', convexHullVariable: 'group' }] },
+      {
+        stages: [
+          { type: 'NetworkComposer', convexHullVariable: 'group', edges: [{}] },
+        ],
+      },
       12,
     );
     expect(burden.answers).toBe(12 * 2 + 18);
     expect(burden.itemsPerPerson).toBe(1);
+  });
+
+  it('counts each relationship tool on a composer, and none without tools', () => {
+    const answers = (edges: unknown[]) =>
+      estimateBurden({ stages: [{ type: 'NetworkComposer', edges }] }, 12)
+        .answers;
+    expect(answers([])).toBe(12);
+    expect(answers([{ form: { fields: [{}] } }, {}])).toBe(12 + 18 * 2 + 18);
+  });
+
+  it('counts placing each person on a map without automatic layout', () => {
+    const map = (automaticLayout: boolean) =>
+      estimateBurden(
+        {
+          stages: [
+            {
+              type: 'Sociogram',
+              behaviours: { automaticLayout },
+              prompts: [{}, {}],
+            },
+          ],
+        },
+        12,
+      );
+    expect(map(true).answers).toBe(0);
+    expect(map(false).answers).toBe(12);
+    expect(map(false).itemsPerPerson).toBe(1);
   });
 
   it('counts the name on a naming form once', () => {
