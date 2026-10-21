@@ -327,7 +327,9 @@ export const recordPreference = async (
     const before = await readJob(stores.jobs, previousId);
     if (before) await updateLogEntry(stores.log, before, { preference: null });
   }
+  // also writes the comparison, which a seed's tagging may have missed
   await updateLogEntry(stores.log, job, {
+    comparisonId: request.comparisonId,
     preference: { preferred: true, at },
   });
   const record: PreferenceRecord = { ...request, at };
@@ -368,20 +370,17 @@ export const joinComparison = async (
     return { ...current, comparisonId } satisfies JobRecord;
   });
   if (result.outcome === 'taken') return result.outcome;
+  // The job record is what a preference checks, so the claim stands even if
+  // the log entry misses its tag: undoing it here could undo a concurrent
+  // retry's join. Recording a preference writes the tag again.
   try {
     const seed = isJobRecord(written)
       ? written
       : await readJob(stores.jobs, seedJobId);
     if (seed?.status === 'succeeded')
       await updateLogEntry(stores.log, seed, { comparisonId });
-  } catch (error) {
-    // the caller refuses the comparison, so a seed this call claimed is
-    // freed again rather than left owned by a comparison that never started
-    if (result.outcome === 'joined')
-      await leaveComparison(stores, seedJobId, comparisonId).catch(() => {
-        // The seed stays claimed: a later comparison from it is refused.
-      });
-    throw error;
+  } catch {
+    // See above.
   }
   return result.outcome;
 };

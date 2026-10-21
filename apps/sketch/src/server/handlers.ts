@@ -226,6 +226,7 @@ export const handleCreateJob = async (
       } else if (existing.status === 'queued') {
         // the first create may also have stopped before its seed joined
         const seed = seedOf(request, deps);
+        let joinedSeed = false;
         if (seed) {
           const joined = await joinSeed(
             seed,
@@ -235,10 +236,22 @@ export const handleCreateJob = async (
             existing.reservedUsd ?? 0,
           );
           if (joined instanceof Response) return joined;
+          joinedSeed = joined;
         }
         try {
           await deps.startBackground(jobId);
         } catch {
+          // The job stays queued for the client's next retry, which joins
+          // the seed again; a seed this call added is freed meanwhile, so an
+          // abandoned comparison does not keep it.
+          if (seed && joinedSeed)
+            await leaveComparison(
+              seed.stores,
+              seed.seedJobId,
+              seed.comparisonId,
+            ).catch(() => {
+              // The seed stays joined: errs on the side of keeping it.
+            });
           return apiError(
             'Sketch could not start the job. Please try again.',
             503,
