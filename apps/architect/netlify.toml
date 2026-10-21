@@ -10,3 +10,13 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 
 [context.deploy-preview]
 ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- apps/architect/netlify.toml package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes \"turbo@$(node -p \"require('./package.json').devDependencies.turbo\")\" query affected --tasks build --packages @codaco/architect --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"
+
+# Trust Sketch's own deploy previews and branch deploys (see
+# src/config/sketchOrigins.ts) only in Architect's non-production deploys, so
+# a preview-to-preview handoff works without production trusting code from an
+# arbitrary pull request.
+[context.deploy-preview.environment]
+VITE_ALLOW_SKETCH_PREVIEWS = "true"
+
+[context.branch-deploy.environment]
+VITE_ALLOW_SKETCH_PREVIEWS = "true"

@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+/* Sketch keeps its own theme rather than fresco's foundation
+   (@codaco/tailwind-config/fresco.css), whose radius, type and colour scales
+   would restyle every screen. It uses individual fresco-ui components, so the
+   class scanner needs to see their source. */
+@source '../../node_modules/@codaco/fresco-ui/src/Accordion.tsx';
+@source '../../node_modules/@codaco/fresco-ui/src/typography/Heading.tsx';
+@import './sketch-theme.css';

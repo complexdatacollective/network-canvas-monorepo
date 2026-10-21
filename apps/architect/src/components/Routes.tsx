@@ -14,6 +14,7 @@ import Protocol from '~/components/Protocol';
 import ProtocolRouteGuard from '~/components/ProtocolRouteGuard';
 import ReturnToArchitect9 from '~/components/ReturnToArchitect9';
 import RouteFocus from '~/components/RouteFocus';
+import SketchImport from '~/components/SketchImport/SketchImport';
 import { IS_SUBPATH_BUILD } from '~/utils/appBase';
 
 // Every `/protocol` route is wrapped by ProtocolRouteGuard, which sends a tab
@@ -57,6 +58,8 @@ const Routes = () => {
           </Route>
           <Route path="/protocol/stage/:stageId" component={StageEditorPage} />
           <Route path="/protocol/experiments" component={ExperimentsPage} />
+
+          <Route path="/import-from-sketch" component={SketchImport} />
 
           <Route path="/" component={StartScreen} />
         </Switch>

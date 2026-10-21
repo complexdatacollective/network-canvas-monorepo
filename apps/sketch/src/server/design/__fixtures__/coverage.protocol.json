@@ -1,0 +1,1127 @@
+{
+  "name": "Coverage design",
+  "description": "Students, classmates and the places they study.",
+  "schemaVersion": 8,
+  "lastModified": "2026-10-20T00:00:00.000Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "ego_consent": {
+          "name": "consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            {
+              "label": "Yes, I agree to take part",
+              "value": true
+            },
+            {
+              "label": "No, I do not want to take part",
+              "value": false,
+              "negative": true
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "ego_year": {
+          "name": "year",
+          "type": "number",
+          "component": "Number",
+          "validation": {
+            "minValue": 1,
+            "maxValue": 7
+          }
+        },
+        "ego_commutes": {
+          "name": "commutes",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            {
+              "label": "Yes",
+              "value": true
+            },
+            {
+              "label": "No",
+              "value": false,
+              "negative": true
+            }
+          ]
+        },
+        "ego_satisfaction": {
+          "name": "satisfaction",
+          "type": "scalar",
+          "component": "VisualAnalogScale",
+          "parameters": {
+            "minLabel": "Not at all",
+            "maxLabel": "Completely"
+          }
+        },
+        "ego_notes": {
+          "name": "notes",
+          "type": "text",
+          "component": "TextArea"
+        },
+        "ego_birth_date": {
+          "name": "birth_date",
+          "type": "datetime",
+          "component": "DatePicker",
+          "parameters": {
+            "type": "full"
+          }
+        },
+        "ego_year_started": {
+          "name": "year_started",
+          "type": "datetime",
+          "component": "DatePicker",
+          "parameters": {
+            "type": "year"
+          }
+        }
+      }
+    },
+    "node": {
+      "classmate": {
+        "name": "Classmate",
+        "icon": "add-a-person",
+        "color": "node-color-seq-1",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "classmate_name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "classmate_layout": {
+            "name": "layout",
+            "type": "layout"
+          },
+          "classmate_year_of_study": {
+            "name": "year_of_study",
+            "type": "number",
+            "component": "Number",
+            "validation": {
+              "minValue": 1,
+              "maxValue": 7
+            }
+          },
+          "classmate_major": {
+            "name": "major",
+            "type": "text",
+            "component": "Text"
+          },
+          "classmate_commuter": {
+            "name": "commuter",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": "Yes",
+                "value": true
+              },
+              {
+                "label": "No",
+                "value": false,
+                "negative": true
+              }
+            ]
+          },
+          "classmate_studies_together": {
+            "name": "studies_together",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "classmate_advisor_type": {
+            "name": "advisor_type",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Faculty",
+                "value": "faculty"
+              },
+              {
+                "label": "Peer mentor",
+                "value": "peer_mentor"
+              },
+              {
+                "label": "Nobody",
+                "value": "nobody"
+              },
+              {
+                "label": "Another adviser",
+                "value": "another_adviser"
+              },
+              {
+                "label": "Not sure",
+                "value": "not_sure"
+              },
+              {
+                "label": "Prefer not to say",
+                "value": "prefer_not_to_say"
+              }
+            ],
+            "validation": {
+              "maxSelected": 1
+            }
+          },
+          "classmate_home_country": {
+            "name": "home_country",
+            "type": "location"
+          }
+        }
+      },
+      "place": {
+        "name": "Place",
+        "icon": "add-a-place",
+        "color": "node-color-seq-2",
+        "shape": {
+          "default": "square"
+        },
+        "variables": {
+          "place_name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "place_layout": {
+            "name": "layout",
+            "type": "layout"
+          },
+          "place_visit_freq": {
+            "name": "visit_freq",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": "Rarely",
+                "value": 1
+              },
+              {
+                "label": "Monthly",
+                "value": 2
+              },
+              {
+                "label": "Weekly",
+                "value": 3
+              },
+              {
+                "label": "Daily",
+                "value": 4
+              }
+            ]
+          },
+          "place_type": {
+            "name": "place_type",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": "Study",
+                "value": "study"
+              },
+              {
+                "label": "Eat",
+                "value": "eat"
+              },
+              {
+                "label": "Socialise",
+                "value": "socialise"
+              },
+              {
+                "label": "Exercise",
+                "value": "exercise"
+              }
+            ],
+            "validation": {
+              "maxSelected": 1
+            }
+          },
+          "place_type_other": {
+            "name": "place_type_other",
+            "type": "text",
+            "component": "Text"
+          },
+          "place_hours": {
+            "name": "hours",
+            "type": "number",
+            "component": "Number"
+          },
+          "place_favourite": {
+            "name": "favourite",
+            "type": "boolean",
+            "component": "Toggle"
+          }
+        }
+      },
+      "mentor": {
+        "name": "Mentor",
+        "icon": "add-a-person",
+        "color": "node-color-seq-3",
+        "shape": {
+          "default": "diamond"
+        },
+        "variables": {
+          "mentor_name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "mentor_layout": {
+            "name": "layout",
+            "type": "layout"
+          },
+          "mentor_role": {
+            "name": "mentor_role",
+            "type": "text",
+            "component": "Text"
+          },
+          "mentor_circles": {
+            "name": "circles",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Department",
+                "value": "department"
+              },
+              {
+                "label": "Clubs",
+                "value": "clubs"
+              },
+              {
+                "label": "Family",
+                "value": "family"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edge": {
+      "friends": {
+        "name": "Friends",
+        "color": "edge-color-seq-1",
+        "variables": {
+          "friends_strength": {
+            "name": "strength",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": "Acquaintances",
+                "value": 1
+              },
+              {
+                "label": "Friends",
+                "value": 2
+              },
+              {
+                "label": "Close friends",
+                "value": 3
+              }
+            ]
+          },
+          "friends_since": {
+            "name": "since",
+            "type": "datetime",
+            "component": "DatePicker",
+            "parameters": {
+              "type": "month"
+            }
+          }
+        }
+      },
+      "studies_with": {
+        "name": "Study together",
+        "color": "edge-color-seq-2"
+      },
+      "conflict": {
+        "name": "In conflict",
+        "color": "edge-color-seq-3"
+      },
+      "mentors_know": {
+        "name": "Mentors know each other",
+        "color": "edge-color-seq-4",
+        "variables": {
+          "mentors_know_met_through": {
+            "name": "met_through",
+            "type": "text",
+            "component": "Text"
+          }
+        }
+      }
+    }
+  },
+  "assetManifest": {
+    "classmates_roster": {
+      "id": "classmates_roster",
+      "type": "network",
+      "name": "Classmates list (PLACEHOLDER, replace before fielding).csv",
+      "source": "classmates_roster.csv"
+    },
+    "mapbox-testing-token": {
+      "id": "mapbox-testing-token",
+      "type": "apikey",
+      "name": "Mapbox token (testing only: replace before fielding)",
+      "value": "pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbXRqdnd4dnowY2M5MnlzZWNqYjNlZG5rIn0.KH3OS_O2Hk6gAbDjKGPAJg"
+    },
+    "world-countries-geojson": {
+      "id": "world-countries-geojson",
+      "type": "geojson",
+      "name": "World countries (boundaries)",
+      "source": "world-countries.geojson"
+    }
+  },
+  "stages": [
+    {
+      "id": "researcher_notes",
+      "type": "Information",
+      "label": "Researcher notes (delete before fielding)",
+      "title": "Notes for the research team",
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** Students, classmates and the places they study.\n\n**Design rationale.** Exercises every branch of the compiler.\n\n**Placeholder roster.** Stage \"Classmates\" picks classmates from a generated list of 12 example rows (classmates_roster.csv). Replace it in Architect with your real list before fielding, keeping the column headers: name, year_of_study, major, commuter.\n\n**Map token.** The map stage uses the Network Canvas testing Mapbox token, which only works on networkcanvas.com sites and localhost. Replace the \"Mapbox token\" resource with your own token before fielding."
+        }
+      ]
+    },
+    {
+      "id": "consent",
+      "type": "EgoForm",
+      "label": "Consent",
+      "introductionPanel": {
+        "title": "Taking part",
+        "text": "Please read the information about this study before deciding whether to take part."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_consent",
+            "prompt": "Do you agree to take part in this study?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "about",
+      "type": "EgoForm",
+      "label": "About",
+      "introductionPanel": {
+        "title": "About you",
+        "text": "Please answer the following questions about yourself."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_year",
+            "prompt": "Which year of study are you in?"
+          },
+          {
+            "variable": "ego_commutes",
+            "prompt": "Do you commute to campus?"
+          }
+        ]
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_1",
+              "type": "ego",
+              "options": {
+                "attribute": "ego_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      }
+    },
+    {
+      "id": "classmates",
+      "type": "NameGeneratorRoster",
+      "label": "Classmates",
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Select the classmates you **study with**.",
+          "additionalAttributes": [
+            {
+              "variable": "classmate_studies_together",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "behaviours": {
+        "minNodes": 1
+      },
+      "dataSource": "classmates_roster",
+      "cardOptions": {
+        "additionalProperties": [
+          {
+            "label": "year of study",
+            "variable": "classmate_year_of_study"
+          },
+          {
+            "label": "major",
+            "variable": "classmate_major"
+          },
+          {
+            "label": "commuter",
+            "variable": "classmate_commuter"
+          }
+        ]
+      },
+      "sortOptions": {
+        "sortOrder": [
+          {
+            "property": "classmate_name",
+            "direction": "asc"
+          }
+        ],
+        "sortableProperties": [
+          {
+            "label": "Name",
+            "variable": "classmate_name"
+          }
+        ]
+      },
+      "searchOptions": {
+        "fuzziness": 0.5,
+        "matchProperties": ["classmate_name"]
+      }
+    },
+    {
+      "id": "places",
+      "type": "NameGenerator",
+      "label": "Places",
+      "subject": {
+        "entity": "node",
+        "type": "place"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Where do you **spend time on campus**?"
+        }
+      ],
+      "behaviours": {
+        "maxNodes": 10
+      },
+      "form": {
+        "title": "Add a place",
+        "fields": [
+          {
+            "variable": "place_name",
+            "prompt": "What is this place called?"
+          },
+          {
+            "variable": "place_hours",
+            "prompt": "How many hours a week do you spend there?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "more_classmates",
+      "type": "NameGeneratorQuickAdd",
+      "label": "More classmates",
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Who else in your class do you **talk to**?"
+        }
+      ],
+      "quickAdd": "classmate_name",
+      "panels": [
+        {
+          "id": "existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ]
+    },
+    {
+      "id": "friend_strength",
+      "type": "TieStrengthCensus",
+      "label": "Friend strength",
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "How close are these two?",
+          "createEdge": "friends",
+          "edgeVariable": "friends_strength",
+          "negativeLabel": "They aren't friends"
+        }
+      ],
+      "introductionPanel": {
+        "title": "How are they connected?",
+        "text": "You will now see pairs of the classmates you named. Answer the question for each pair."
+      }
+    },
+    {
+      "id": "study_ties",
+      "type": "OneToManyDyadCensus",
+      "label": "Study ties",
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Tap everyone who **studies with** this person.",
+          "createEdge": "studies_with"
+        }
+      ],
+      "behaviours": {
+        "removeAfterConsideration": true
+      }
+    },
+    {
+      "id": "conflicts",
+      "type": "DyadCensus",
+      "label": "Conflicts",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_2",
+              "type": "edge",
+              "options": {
+                "type": "studies_with",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Do these two **have conflict**?",
+          "createEdge": "conflict"
+        }
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "rule_3",
+            "type": "node",
+            "options": {
+              "type": "classmate",
+              "attribute": "classmate_studies_together",
+              "operator": "EXACTLY",
+              "value": true
+            }
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": "How are they connected?",
+        "text": "You will now see pairs of the classmates you named. Answer the question for each pair."
+      }
+    },
+    {
+      "id": "friendship_details",
+      "type": "AlterEdgeForm",
+      "label": "Friendship details",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_4",
+              "type": "edge",
+              "options": {
+                "type": "friends",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "edge",
+        "type": "friends"
+      },
+      "introductionPanel": {
+        "title": "About these relationships",
+        "text": "Please answer a few questions about each \"friends\" relationship."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "friends_since",
+            "prompt": "Since when have they been friends?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "place_bins",
+      "type": "OrdinalBin",
+      "label": "Place bins",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_5",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "place"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "How often?",
+          "variable": "place_visit_freq",
+          "color": "ord-color-seq-1"
+        }
+      ]
+    },
+    {
+      "id": "place_bins_2",
+      "type": "CategoricalBin",
+      "label": "Place bins (2)",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_6",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "place"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "What do you do there?",
+          "variable": "place_type",
+          "otherVariable": "place_type_other",
+          "otherVariablePrompt": "Please describe",
+          "otherOptionLabel": "Other"
+        }
+      ]
+    },
+    {
+      "id": "advisors",
+      "type": "CategoricalBin",
+      "label": "Advisors",
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Who advises each classmate?",
+          "variable": "classmate_advisor_type"
+        }
+      ]
+    },
+    {
+      "id": "home_countries",
+      "type": "Geospatial",
+      "label": "Home countries",
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "mapOptions": {
+        "tokenAssetId": "mapbox-testing-token",
+        "style": "mapbox://styles/mapbox/light-v11",
+        "center": [15, 52],
+        "initialZoom": 3,
+        "dataSourceAssetId": "world-countries-geojson",
+        "color": "ord-color-seq-1",
+        "targetFeatureProperty": "name",
+        "showTransit": false,
+        "allowSearch": true
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Which **country** is each classmate from?",
+          "variable": "classmate_home_country"
+        }
+      ]
+    },
+    {
+      "id": "classmate_form",
+      "type": "AlterForm",
+      "label": "Classmate form",
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "introductionPanel": {
+        "title": "About the classmates you named",
+        "text": "Please answer a few questions about each of the classmates you named."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "classmate_commuter",
+            "prompt": "Commutes?"
+          },
+          {
+            "variable": "classmate_year_of_study",
+            "prompt": "Year of study"
+          }
+        ]
+      },
+      "filter": {
+        "join": "OR",
+        "rules": [
+          {
+            "id": "rule_7",
+            "type": "node",
+            "options": {
+              "type": "classmate",
+              "attribute": "classmate_year_of_study",
+              "operator": "GREATER_THAN_OR_EQUAL",
+              "value": 2
+            }
+          },
+          {
+            "id": "rule_8",
+            "type": "node",
+            "options": {
+              "type": "classmate",
+              "attribute": "classmate_major",
+              "operator": "CONTAINS",
+              "value": "bio \\(x\\)"
+            }
+          },
+          {
+            "id": "rule_9",
+            "type": "node",
+            "options": {
+              "type": "classmate",
+              "attribute": "classmate_advisor_type",
+              "operator": "EXCLUDES",
+              "value": "nobody"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "place_map",
+      "type": "Sociogram",
+      "label": "Place map",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_10",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "place"
+      },
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": true
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Tap your **favourite** places.",
+          "layout": {
+            "layoutVariable": "place_layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "place_favourite"
+          }
+        }
+      ]
+    },
+    {
+      "id": "place_story",
+      "type": "Narrative",
+      "label": "Place story",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_11",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "place"
+      },
+      "presets": [
+        {
+          "id": "view1",
+          "label": "What you do",
+          "layoutVariable": "place_layout",
+          "groupVariable": "place_type",
+          "highlight": ["place_favourite"]
+        }
+      ],
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": true,
+        "allowRepositioning": true,
+        "freeDraw": true
+      }
+    },
+    {
+      "id": "class_map",
+      "type": "Sociogram",
+      "label": "Class map",
+      "subject": {
+        "entity": "node",
+        "type": "classmate"
+      },
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": false
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Arrange your classmates.",
+          "layout": {
+            "layoutVariable": "classmate_layout"
+          },
+          "edges": {
+            "display": ["friends", "studies_with", "conflict"]
+          }
+        }
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "rule_12",
+            "type": "node",
+            "options": {
+              "type": "classmate",
+              "attribute": "classmate_name",
+              "operator": "EXISTS"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "mentor_canvas",
+      "type": "NetworkComposer",
+      "label": "Mentor canvas",
+      "interviewScript": "Ask the participant to add the mentors they have had and talk about each one.",
+      "subject": {
+        "entity": "node",
+        "type": "mentor"
+      },
+      "quickAdd": "mentor_name",
+      "layoutVariable": "mentor_layout",
+      "nodeForm": {
+        "fields": [
+          {
+            "variable": "mentor_role",
+            "component": "Text",
+            "label": "What is their role?"
+          }
+        ]
+      },
+      "convexHullVariable": "mentor_circles",
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": true
+      },
+      "edges": [
+        {
+          "id": "edge1",
+          "subject": {
+            "entity": "edge",
+            "type": "mentors_know"
+          },
+          "form": {
+            "fields": [
+              {
+                "variable": "mentors_know_met_through",
+                "component": "Text",
+                "label": "How did they meet?"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "reflection",
+      "type": "EgoForm",
+      "label": "Reflection",
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "join": "OR",
+          "rules": [
+            {
+              "id": "rule_13",
+              "type": "ego",
+              "options": {
+                "attribute": "ego_commutes",
+                "operator": "EXACTLY",
+                "value": true
+              }
+            },
+            {
+              "id": "rule_14",
+              "type": "ego",
+              "options": {
+                "attribute": "ego_year",
+                "operator": "GREATER_THAN",
+                "value": 1
+              }
+            },
+            {
+              "id": "rule_15",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "attribute": "place_visit_freq",
+                "operator": "INCLUDES",
+                "value": [3, 4]
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      },
+      "introductionPanel": {
+        "title": "About you",
+        "text": "Please answer the following questions about yourself."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_satisfaction",
+            "prompt": "How satisfied are you with university life?"
+          },
+          {
+            "variable": "ego_notes",
+            "prompt": "Anything else you would like to tell us?"
+          },
+          {
+            "variable": "ego_birth_date",
+            "prompt": "What is your date of birth?"
+          },
+          {
+            "variable": "ego_year_started",
+            "prompt": "In which year did you start university?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bye",
+      "type": "Information",
+      "label": "Bye",
+      "title": "Thank you",
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": "Thanks!"
+        }
+      ]
+    }
+  ]
+}

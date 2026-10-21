@@ -58,6 +58,10 @@ vi.mock('~/components/Home/Home', () => ({
   default: () => <div data-testid="home">Home Component</div>,
 }));
 
+vi.mock('~/components/SketchImport/SketchImport', () => ({
+  default: () => <div data-testid="sketch-import">Sketch Import Component</div>,
+}));
+
 vi.mock('~/components/Protocol', () => ({
   default: () => <div data-testid="protocol">Protocol Component</div>,
 }));
@@ -187,6 +191,20 @@ describe('Routes', () => {
     });
 
     expect(screen.getByTestId('home')).toBeInTheDocument();
+  });
+
+  // Not a protocol route: it must render with no protocol open, since its job
+  // is to open one.
+  it('renders the Sketch import page without a protocol open', () => {
+    mockLocation.mockReturnValue('/import-from-sketch');
+
+    render(<Routes />, {
+      wrapper: createWrapper(store),
+    });
+
+    expect(screen.getByTestId('sketch-import')).toBeInTheDocument();
+    expect(screen.queryByTestId('home')).not.toBeInTheDocument();
+    expect(mockBrowserNavigate).not.toHaveBeenCalled();
   });
 
   it('should handle unknown routes', () => {

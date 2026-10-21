@@ -2369,7 +2369,7 @@
   },
   "architect.protocolValidationDialogReporter.returnToStartScreen": {
     "defaultMessage": "Return to Start Screen",
-    "description": "Visible text in components / ProtocolValidationDialogReporter."
+    "description": "Button that leaves the current screen for Architect's start screen."
   },
   "architect.protocolValidationDialogReporter.revertToLastValidState": {
     "defaultMessage": "Revert to Last Valid State",
@@ -2454,6 +2454,18 @@
   "architect.screens.newStageScreen.newStageScreen.selectAnInterfaceType": {
     "defaultMessage": "Select an Interface Type",
     "description": "The title text in components / Screens / NewStageScreen / NewStageScreen."
+  },
+  "architect.sketchImport.errorTitle": {
+    "defaultMessage": "Your protocol couldn't be opened",
+    "description": "Heading shown when a protocol sent from Sketch, a separate study-design website, arrived but could not be opened in Architect."
+  },
+  "architect.sketchImport.timeoutTitle": {
+    "defaultMessage": "Your protocol didn't arrive",
+    "description": "Heading shown when Sketch, a separate study-design website, opened Architect but never sent the protocol."
+  },
+  "architect.sketchImport.tryAgainBody": {
+    "defaultMessage": "Go back to Sketch and try again, or download the protocol there and open the file in Architect.",
+    "description": "Next steps after a protocol from Sketch, a separate study-design website, did not arrive or could not be opened. \"Download\" means saving it as a .netcanvas file. Keep \"Sketch\" untranslated: it is a product name."
   },
   "architect.skipDestination.finish": {
     "defaultMessage": "End interview",

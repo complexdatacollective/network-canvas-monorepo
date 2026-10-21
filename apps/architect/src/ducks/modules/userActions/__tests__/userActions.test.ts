@@ -86,9 +86,14 @@ vi.mock('../../app', () => ({
 }));
 
 // Imported after mocks so the thunks pick up the mocked collaborators.
-const { openBundledTemplate, openLibraryProtocol, openLocalNetcanvas } =
-  await import('../userActions');
+const {
+  openBundledTemplate,
+  openLibraryProtocol,
+  openLocalNetcanvas,
+  openSketchProtocol,
+} = await import('../userActions');
 const { APP_SCHEMA_VERSION } = await import('~/config');
+const { navigate } = await import('wouter/use-browser-location');
 const { takeProtocolUpgrades } = await import('~/utils/protocolUpgradeQueue');
 
 const dispatch = vi.fn((action: unknown) => {
@@ -103,7 +108,8 @@ const dispatch = vi.fn((action: unknown) => {
 const runThunk = (
   thunk:
     | ReturnType<typeof openBundledTemplate>
-    | ReturnType<typeof openLibraryProtocol>,
+    | ReturnType<typeof openLibraryProtocol>
+    | ReturnType<typeof openSketchProtocol>,
 ) => thunk(dispatch, () => ({}) as never, undefined);
 
 const makeProtocol = (): CurrentProtocol =>
@@ -131,6 +137,7 @@ describe('userActions', () => {
     saveProtocolAssets.mockReset().mockResolvedValue(undefined);
     deleteStoredProtocol.mockReset().mockResolvedValue(undefined);
     dispatch.mockClear();
+    vi.mocked(navigate).mockClear();
     // The upgrade queue is module state shared across the suite.
     takeProtocolUpgrades();
   });
@@ -324,6 +331,149 @@ describe('userActions', () => {
 
       expect(setImportInProgress).toHaveBeenCalledWith(true);
       expect(setImportInProgress).toHaveBeenLastCalledWith(false);
+    });
+  });
+
+  describe('openSketchProtocol', () => {
+    it('opens under the Sketch name, with no source, and names undelivered files', async () => {
+      const protocol = {
+        ...makeProtocol(),
+        assetManifest: {
+          roster: { type: 'network', name: 'Roster', source: 'roster.csv' },
+          photo: { type: 'image', name: 'Photo', source: 'photo.png' },
+          key: { type: 'apikey', name: 'Map key', value: 'pk.test' },
+        },
+      } as CurrentProtocol;
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
+      );
+
+      const action = await runThunk(
+        openSketchProtocol({
+          protocol,
+          name: 'From Sketch',
+          assets: [{ id: 'roster', name: 'Roster', data: new Blob(['x']) }],
+        }),
+      );
+
+      expect(action.payload).toEqual({
+        status: 'opened',
+        unresolvedAssetNames: ['Photo'],
+      });
+      expect(putStoredProtocol).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'From Sketch', sourceRef: undefined }),
+      );
+      expect(setImportInProgress).toHaveBeenLastCalledWith(false);
+    });
+
+    it('refuses an older schema that validation would accept, without storing it', async () => {
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
+      );
+
+      const action = await runThunk(
+        openSketchProtocol({
+          protocol: {
+            ...makeProtocol(),
+            schemaVersion: APP_SCHEMA_VERSION - 1,
+          } as unknown as CurrentProtocol,
+          name: 'From Sketch',
+          assets: [],
+        }),
+      );
+
+      expect(action.payload).toMatchObject({ status: 'validation-error' });
+      expect(putStoredProtocol).not.toHaveBeenCalled();
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+      expect(migrateProtocol).not.toHaveBeenCalled();
+    });
+
+    it('asks for an Architect update for a newer schema', async () => {
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
+      );
+
+      const action = await runThunk(
+        openSketchProtocol({
+          protocol: {
+            ...makeProtocol(),
+            schemaVersion: APP_SCHEMA_VERSION + 1,
+          } as unknown as CurrentProtocol,
+          name: 'From Sketch',
+          assets: [],
+        }),
+      );
+
+      expect(action.payload).toEqual({
+        status: 'app-upgrade-required',
+        protocolSchemaVersion: APP_SCHEMA_VERSION + 1,
+      });
+      expect(putStoredProtocol).not.toHaveBeenCalled();
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+    });
+
+    it('replaces the import route in history when it opens the editor', async () => {
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
+      );
+
+      await runThunk(
+        openSketchProtocol({
+          protocol: makeProtocol(),
+          name: 'From Sketch',
+          assets: [],
+        }),
+      );
+
+      expect(navigate).toHaveBeenCalledWith('/protocol', { replace: true });
+    });
+
+    it('leaves other opens pushing a new history entry', async () => {
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
+      );
+
+      await runThunk(openBundledTemplate({ protocol: makeProtocol() }));
+
+      expect(navigate).toHaveBeenCalledWith('/protocol', { replace: false });
+    });
+
+    it("tags a failed import's analytics with the sketch source", async () => {
+      validateProtocol.mockResolvedValue({
+        success: false,
+        error: new ProtocolValidationError([
+          { code: 'custom', message: 'bad', path: ['stages'] },
+        ]),
+      });
+
+      const action = await runThunk(
+        openSketchProtocol({
+          protocol: makeProtocol(),
+          name: 'From Sketch',
+          assets: [],
+        }),
+      );
+
+      expect(action.payload).toMatchObject({ status: 'validation-error' });
+      expect(capture).toHaveBeenCalledWith(
+        'protocol_import_failed',
+        expect.objectContaining({ source: 'sketch', reason: 'validation' }),
+      );
     });
   });
 

@@ -137,6 +137,7 @@
         "VITE_FRESCO_PREVIEW_API_TOKEN",
         "VITE_DISABLE_ANALYTICS",
         "VITE_DISABLE_ANIMATIONS",
+        "VITE_ALLOW_SKETCH_PREVIEWS",
         "POSTHOG_PERSONAL_API_KEY",
         "POSTHOG_PROJECT_ID"
       ],
@@ -228,6 +229,46 @@
     "@codaco/background-creator#test": {
       "dependsOn": ["^topo"],
       "inputs": ["src/**", "vite.config.*", "tsconfig*.json", "package.json"],
+      "outputs": []
+    },
+    "@codaco/sketch#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "public/**",
+        "netlify/**",
+        "scripts/**",
+        "index.html",
+        "netlify.toml",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV", "VITE_ARCHITECT_URL"],
+      "outputs": ["dist/**"]
+    },
+    "@codaco/sketch#typecheck": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "netlify/**",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "@codaco/sketch#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "netlify/**",
+        "vite*.config.*",
+        "tsconfig*.json",
+        "package.json",
+        "$TURBO_ROOT$/packages/protocols/templates/transnational-networks/assets/world-countries.geojson"
+      ],
       "outputs": []
     },
     "networkcanvas.com#build": {

@@ -1,0 +1,13 @@
+name,year_of_study,major,commuter
+Classmate 01,1,Example major 1,true
+Classmate 02,2,Example major 2,false
+Classmate 03,3,Example major 3,true
+Classmate 04,4,Example major 1,false
+Classmate 05,5,Example major 2,true
+Classmate 06,6,Example major 3,false
+Classmate 07,7,Example major 1,true
+Classmate 08,7,Example major 2,false
+Classmate 09,7,Example major 3,true
+Classmate 10,7,Example major 1,false
+Classmate 11,7,Example major 2,true
+Classmate 12,7,Example major 3,false
