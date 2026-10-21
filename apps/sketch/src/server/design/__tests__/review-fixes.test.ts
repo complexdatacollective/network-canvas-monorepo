@@ -2151,4 +2151,126 @@ describe('instrument attributes', () => {
     expect(r.stages.map((s) => s.id)).toContain('friends');
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
   });
+
+  it('drops a repeated highlight when the two map filters can show the same person', async () => {
+    const map = (id: string, condition: Record<string, string>) => ({
+      kind: 'sociogram',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter: {
+        match: 'all',
+        conditions: [{ about: 'nodes', typeId: 'person', ...condition }],
+      },
+      prompts: [
+        {
+          task: 'highlight',
+          text: 'Tap the people you are close to.',
+          relationshipId: '',
+          attributeId: 'close',
+        },
+      ],
+    });
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('close', 'yes_no', 'Close?'),
+            A('age', 'number', 'Age?'),
+            A('group', 'single_choice', 'Group?', {
+              options: ['case', 'control'],
+            }),
+          ]),
+        ],
+        stages: [
+          ng(),
+          {
+            kind: 'alterForm',
+            ...c('af0'),
+            nodeTypeId: 'person',
+            filter: noFilter,
+            attributeIds: ['group', 'age'],
+          },
+          map('cases', {
+            attributeId: 'group',
+            operator: 'includes',
+            value: 'case',
+          }),
+          map('adults', {
+            attributeId: 'age',
+            operator: 'greater_than',
+            value: '18',
+          }),
+        ],
+      }),
+    );
+    expect(r.codes).toContain('DUPLICATE_HIGHLIGHT_WRITER');
+  });
+
+  it('keeps an earlier writer when a stage before the form that asks everyone tests it', async () => {
+    const closeIsYes = {
+      match: 'all',
+      conditions: [
+        {
+          about: 'nodes',
+          typeId: 'person',
+          attributeId: 'close',
+          operator: 'is',
+          value: 'yes',
+        },
+      ],
+    };
+    const af = (
+      id: string,
+      attributeIds: string[],
+      filter: unknown = noFilter,
+    ) => ({
+      kind: 'alterForm',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter,
+      attributeIds,
+    });
+    const r = await build(
+      design({
+        nodeTypes: [
+          person([
+            A('close', 'yes_no', 'Close?'),
+            A('age', 'number', 'Age?'),
+            A('role', 'single_choice', 'Role?', {
+              options: ['friend', 'family'],
+            }),
+          ]),
+        ],
+        stages: [
+          ng(),
+          af('af0', ['close']),
+          {
+            kind: 'bins',
+            ...c('b'),
+            nodeTypeId: 'person',
+            filter: closeIsYes,
+            prompts: [
+              { text: 'Role?', attributeId: 'role', allowOther: false },
+            ],
+          },
+          af('close_roles', ['role'], closeIsYes),
+          af('friends', ['age'], {
+            match: 'all',
+            conditions: [
+              {
+                about: 'nodes',
+                typeId: 'person',
+                attributeId: 'role',
+                operator: 'includes',
+                value: 'friend',
+              },
+            ],
+          }),
+          af('af_all', ['role']),
+        ],
+      }),
+    );
+    expect(JSON.stringify(stageById(r.stages, 'b'))).toContain('Role?');
+    expect(r.stages.map((s) => s.id)).toContain('friends');
+  });
 });

@@ -1767,12 +1767,45 @@ export const analyse = (
   const unvalidated: (Writer & { key: string })[] = [];
   const binsKeys = new Set<string>();
   // the filters of the highlight questions asked so far, by attribute
-  const highlightFilters = new Map<string, string[]>();
+  type MapFilter = { match: string; conditions: FilterCondition[] };
+  type FilterCondition = {
+    attributeId: string;
+    operator: string;
+    value: string;
+  };
+  const highlightFilters = new Map<string, MapFilter[]>();
+  // Two map filters provably show different people only when each requires
+  // a different single value of the same one-value attribute (group is
+  // "case" / group is "control"). Anything else may overlap.
+  const disjoint = (a: MapFilter, b: MapFilter, typeId: string) => {
+    const required = (f: MapFilter) =>
+      f.match === 'all' || f.conditions.length === 1
+        ? f.conditions.filter(
+            (c) => c.operator === 'is' || c.operator === 'includes',
+          )
+        : [];
+    return required(a).some((x) =>
+      required(b).some((y) => {
+        if (x.attributeId !== y.attributeId) return false;
+        const kind = listOf(`node:${typeId}`).find(
+          (t) => t.id === x.attributeId,
+        )?.kind;
+        return (
+          (kind === 'single_choice' ||
+            kind === 'yes_no' ||
+            kind === 'ordered') &&
+          x.value.toLowerCase() !== y.value.toLowerCase()
+        );
+      }),
+    );
+  };
   // Whether an earlier form asking each attribute reaches everyone: a later
   // form would ask it again and overwrite the answer that intervening skip
   // logic or filters used. After only filtered forms, a later form still asks
   // it, since the people the filters left out have no answer yet.
   const formEveryone = new Map<string, boolean>();
+  // where the first form that reaches everyone asks each attribute
+  const formEveryoneAt = new Map<string, number>();
   const askOnce = (
     scope: string,
     ids: string[],
@@ -1793,6 +1826,7 @@ export const analyse = (
         return false;
       }
       formEveryone.set(k, Boolean(earlier) || everyone);
+      if (everyone && !formEveryoneAt.has(k)) formEveryoneAt.set(k, at);
       if (!formAt.has(k)) formAt.set(k, at);
       return true;
     });
@@ -1882,13 +1916,10 @@ export const analyse = (
         };
         // Highlighting toggles the stored value, so a second highlight
         // question on the same attribute starts from, and can undo, the
-        // first one's answers. Maps with different filters may show
-        // different people (cases and controls), so both are kept.
-        const shows = s.filter.conditions.length
-          ? JSON.stringify(s.filter)
-          : '';
+        // first one's answers. Maps whose filters show different people
+        // (cases and controls) keep both.
         const earlier = highlightFilters.get(key) ?? [];
-        if (earlier.some((f) => !f || !shows || f === shows)) {
+        if (earlier.some((f) => !disjoint(f, s.filter, s.nodeTypeId))) {
           const attr = p.attributeId;
           dropHighlight();
           add(
@@ -1899,7 +1930,7 @@ export const analyse = (
           );
           return;
         }
-        highlightFilters.set(key, [...earlier, shows]);
+        highlightFilters.set(key, [...earlier, s.filter]);
         site(key, 'highlight prompt', dropHighlight);
       });
     if (s.kind === 'networkComposer' && s.groupAttributeId)
@@ -1950,10 +1981,13 @@ export const analyse = (
       w.stage.skipLogic.mode === 'always_show' &&
       !('filter' in w.stage && w.stage.filter.conditions.length);
     const formReachesAll = formEveryone.get(w.key) === true;
-    // a stage between them that tests the attribute needs the earlier writer
+    // A stage between the writer and the form that asks everyone, testing
+    // the attribute, needs the earlier writer: an earlier filtered form
+    // leaves some people without an answer.
+    const everyoneAt = formEveryoneAt.get(w.key) ?? formIndex;
     const readBetween =
-      formIndex > w.at &&
-      d.stages.slice(w.at + 1, formIndex).some((s) => testsKey(s, w.key));
+      everyoneAt > w.at &&
+      d.stages.slice(w.at + 1, everyoneAt).some((s) => testsKey(s, w.key));
     const formWins =
       (formReachesAll && !writerReachesAll && !readBetween) ||
       (formIndex < w.at && (formReachesAll || !writerReachesAll)) ||

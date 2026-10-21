@@ -1021,6 +1021,30 @@ describe('generate-background and GET /api/jobs/:id', () => {
     expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-new');
   });
 
+  it('joins the seed a queued job recorded when a resumed retry names only the job', async () => {
+    const { jobs, log, fake, generate } = await setup();
+    await generate();
+    const seed = (await readJob(jobs, 'job-9'))!;
+    await writeJob(jobs, { ...seed, comparisonId: null });
+    const id = 'job-retry-0000000014';
+    const deps = {
+      jobs,
+      log,
+      adapters: fake.adapters,
+      startBackground: async () => {},
+      now: () => NOW,
+      newId: () => id,
+    };
+    const body = { ...validRequest, provider: 'anthropic' };
+    await handleCreateJob(post({ ...body, comparisonId: 'cmp-new' }), deps);
+    // the first create stored its seed but stopped before the seed joined
+    const queued = (await readJob(jobs, id))!;
+    await writeJob(jobs, { ...queued, seedJobId: 'job-9' });
+    const res = await handleCreateJob(post({ ...body, jobId: id }), deps);
+    expect(res.status).toBe(202);
+    expect((await readJob(jobs, 'job-9'))?.comparisonId).toBe('cmp-new');
+  });
+
   it('answers 404 for unknown jobs', async () => {
     expect((await handleGetJob('nope', { jobs: memoryStore() })).status).toBe(
       404,

@@ -281,8 +281,16 @@ export const handleCreateJob = async (
           );
         }
       } else if (existing.status === 'queued') {
-        // the first create may also have stopped before its seed joined
-        const seed = seedOf(request, deps);
+        // The first create may also have stopped before its seed joined. The
+        // job records its comparison and seed, since a resumed comparison
+        // retries by job id alone.
+        const seed = seedOf(
+          {
+            seedJobId: existing.seedJobId ?? request.seedJobId,
+            comparisonId: existing.comparisonId ?? request.comparisonId,
+          },
+          deps,
+        );
         let joinedSeed = false;
         if (seed) {
           const joined = await joinSeed(
