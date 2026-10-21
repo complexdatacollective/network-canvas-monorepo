@@ -96,7 +96,6 @@ const NOT_FORWARDED: Record<string, string> = {
   PORT: 'the server default, 3000, is the port Traefik and the healthcheck use',
   WORKER_HEALTH_PORT:
     'the server default, 3001, is the port the worker healthcheck probes',
-  STUDIO_DEPLOYMENT_MODE: 'managed deployments only; the stack is self-hosted',
   STUDIO_DEV_DEFAULTS: 'development only',
   STUDIO_SEED_ADMIN_PASSWORD: 'read only by the seed command',
   STUDIO_SECRETS_KEY: 'delivered as the STUDIO_SECRETS_KEY_FILE secret',
