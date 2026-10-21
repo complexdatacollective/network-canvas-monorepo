@@ -1766,7 +1766,8 @@ export const analyse = (
   const formAt = new Map<string, number>();
   const unvalidated: (Writer & { key: string })[] = [];
   const binsKeys = new Set<string>();
-  const highlightKeys = new Set<string>();
+  // the filters of the highlight questions asked so far, by attribute
+  const highlightFilters = new Map<string, string[]>();
   // Whether an earlier form asking each attribute reaches everyone: a later
   // form would ask it again and overwrite the answer that intervening skip
   // logic or filters used. After only filtered forms, a later form still asks
@@ -1881,8 +1882,13 @@ export const analyse = (
         };
         // Highlighting toggles the stored value, so a second highlight
         // question on the same attribute starts from, and can undo, the
-        // first one's answers.
-        if (highlightKeys.has(key)) {
+        // first one's answers. Maps with different filters may show
+        // different people (cases and controls), so both are kept.
+        const shows = s.filter.conditions.length
+          ? JSON.stringify(s.filter)
+          : '';
+        const earlier = highlightFilters.get(key) ?? [];
+        if (earlier.some((f) => !f || !shows || f === shows)) {
           const attr = p.attributeId;
           dropHighlight();
           add(
@@ -1893,7 +1899,7 @@ export const analyse = (
           );
           return;
         }
-        highlightKeys.add(key);
+        highlightFilters.set(key, [...earlier, shows]);
         site(key, 'highlight prompt', dropHighlight);
       });
     if (s.kind === 'networkComposer' && s.groupAttributeId)
@@ -1913,6 +1919,24 @@ export const analyse = (
         ),
       );
   });
+  // whether a stage's filter or skip logic tests the attribute behind key
+  const testsKey = (s: NStage, key: string) => {
+    const [scope, attr] = key.split('/');
+    const filter = 'filter' in s ? s.filter : null;
+    const typeId = 'nodeTypeId' in s ? s.nodeTypeId : null;
+    if (
+      filter &&
+      `node:${typeId}` === scope &&
+      filter.conditions.some((c) => c.attributeId === attr)
+    )
+      return true;
+    return s.skipLogic.conditions.some(
+      (c) =>
+        c.attributeId === attr &&
+        ((c.about === 'nodes' && `node:${c.typeId}` === scope) ||
+          (c.about === 'relationships' && `rel:${c.typeId}` === scope)),
+    );
+  };
   const fromForms = new Set<string>();
   for (const w of unvalidated) {
     const formIndex = formAt.get(w.key);
@@ -1926,8 +1950,12 @@ export const analyse = (
       w.stage.skipLogic.mode === 'always_show' &&
       !('filter' in w.stage && w.stage.filter.conditions.length);
     const formReachesAll = formEveryone.get(w.key) === true;
+    // a stage between them that tests the attribute needs the earlier writer
+    const readBetween =
+      formIndex > w.at &&
+      d.stages.slice(w.at + 1, formIndex).some((s) => testsKey(s, w.key));
     const formWins =
-      (formReachesAll && !writerReachesAll) ||
+      (formReachesAll && !writerReachesAll && !readBetween) ||
       (formIndex < w.at && (formReachesAll || !writerReachesAll)) ||
       overlapForms.get(form) === w.stage;
     const attr = w.key.split('/')[1];
