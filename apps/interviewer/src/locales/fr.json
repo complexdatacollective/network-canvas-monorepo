@@ -173,6 +173,7 @@
   "interviewer.manageAuthenticator.weCouldNotChangeYourPassphrase": "Nous n’avons pas pu modifier votre phrase secrète.",
   "interviewer.manageAuthenticator.yourNewPINMustBeExactly8": "Votre nouveau code PIN doit comporter exactement 8 chiffres.",
   "interviewer.manageAuthenticator.yourNewPassphraseMustBeAtLeast": "Votre nouvelle phrase secrète doit comporter au moins 12 caractères et combiner majuscules, minuscules, chiffres et symboles.",
+  "interviewer.manageLock.manageTheLockInInterviewer": "Gérer le verrouillage de l’appareil dans Interviewer",
   "interviewer.newSessionForm.caseID": "Identifiant de cas",
   "interviewer.newSessionForm.caseIDIsRequired": "L’identifiant de cas est obligatoire",
   "interviewer.newSessionForm.startAnyway": "Commencer quand même",

@@ -67,8 +67,6 @@ export type PendingImport = {
   progress?: number;
 };
 
-// Minimum time the pending (installing) card stays visible, even when the
-// import itself finishes faster.
 // Loads the dev-only Development protocol, or null in a production build.
 // The `import.meta.env.DEV` test has to guard the dynamic import itself: an
 // unguarded `import()` is emitted as its own chunk (the protocol and its
@@ -82,6 +80,8 @@ const loadDevelopmentProtocol = import.meta.env.DEV
     }
   : null;
 
+// Minimum time the pending (installing) card stays visible, even when the
+// import itself finishes faster.
 const MIN_PENDING_VISIBLE_MS = 1500;
 
 // Pause between the pending card appearing and the import work starting.

@@ -1,7 +1,9 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
+import { IS_SUBPATH_BUILD } from '../appBase';
 import * as dexieSettings from './db';
+import { readInterviewer9Settings } from './interviewer9Settings';
 import { migrateStoredProtocols as dexieMigrateStoredProtocols } from './migrateStoredProtocols';
 import type { StoredProtocolMigrationResult } from './migrateStoredProtocols';
 import * as dexieProtocols from './protocols';
@@ -144,12 +146,33 @@ export async function reencryptAllRecords(
   return dexieReencryptAllRecords(onProgress);
 }
 
+// Interviewer 8 inside Interviewer 9 (a /v8/ build) runs under Interviewer 9's
+// settings, read from its row of the shared database, and never writes one:
+// every setting is Interviewer 9's to change.
 export async function getSettings(): Promise<StoredSettings> {
+  if (IS_SUBPATH_BUILD) return readInterviewer9Settings();
   return dexieSettings.getSettings();
 }
 
 export async function updateSettings(
   patch: Partial<Omit<StoredSettings, 'id'>>,
 ): Promise<StoredSettings> {
+  if (IS_SUBPATH_BUILD) {
+    throw new Error(
+      'Interviewer 8 inside Interviewer 9 never changes a setting; Interviewer 9 owns them.',
+    );
+  }
   return dexieSettings.updateSettings(patch);
+}
+
+/**
+ * The schema version of the protocol the session `id` uses, read from the
+ * rows' plaintext fields without the lock's key, or null when there is no
+ * such session or protocol. Never opens (and so creates) a database that does
+ * not exist.
+ */
+export async function getSessionProtocolSchemaVersion(
+  id: string,
+): Promise<number | null> {
+  return dexieSessions.getSessionProtocolSchemaVersion(id);
 }

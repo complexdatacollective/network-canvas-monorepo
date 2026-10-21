@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { isEmbedClosed } from '~/lib/interviewer9Embed';
+
 // The pinned entry is tagged so we can tell ours apart from a normal history
 // entry — both on the popstate re-push and when the gated exit unwinds it.
 type SentinelState = { ncBackGuard?: boolean } | null;
@@ -7,6 +9,9 @@ type SentinelState = { ncBackGuard?: boolean } | null;
 function isSentinel(state: unknown): boolean {
   return (state as SentinelState)?.ncBackGuard === true;
 }
+
+/** Whether a history entry's state is the one this guard pins. */
+export const isHistoryBackGuardEntry = isSentinel;
 
 // Pin the history while a sensitive screen (an interview) is mounted so a
 // history-back (browser button, macOS two-finger swipe, iPadOS edge swipe —
@@ -36,7 +41,9 @@ export function useHistoryBackGuard(
     }
     armedRef.current = true;
     const onPopState = () => {
-      if (armedRef.current) {
+      // Interviewer 8 inside Interviewer 9 pops this entry itself as its
+      // interview closes (interviewer9Navigation.ts), whatever closed it.
+      if (armedRef.current && !isEmbedClosed()) {
         window.history.pushState({ ncBackGuard: true }, '', url);
       }
     };

@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
 
+import { IS_SUBPATH_BUILD } from '../lib/appBase';
 import { interviewerCatalogSource } from '../locales/catalogs';
 import { interviewerDefaultLocale, interviewerLocales } from './locales';
 import {
@@ -63,8 +64,12 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
     )
       return;
     setCurrentPreference(next);
-    if (next === PSEUDO_LOCALE) {
-      // Development inspection must not replace a real device preference.
+    // Development inspection must not replace a real device preference.
+    // Interviewer 8 inside Interviewer 9 (a /v8/ build) reads the language
+    // Interviewer 9 keeps under the same key, but never writes it: a language
+    // chosen in an interview there lasts for that page, and Interviewer 9's
+    // own screens stay in the language the researcher chose.
+    if (next === PSEUDO_LOCALE || IS_SUBPATH_BUILD) {
       setSaveState('idle');
       return;
     }

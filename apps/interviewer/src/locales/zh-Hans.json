@@ -173,6 +173,7 @@
   "interviewer.manageAuthenticator.weCouldNotChangeYourPassphrase": "无法更改密码短语。",
   "interviewer.manageAuthenticator.yourNewPINMustBeExactly8": "新 PIN 码必须正好为 8 位数字。",
   "interviewer.manageAuthenticator.yourNewPassphraseMustBeAtLeast": "新密码短语必须至少包含 12 个字符，且需包含大写字母、小写字母、数字和符号。",
+  "interviewer.manageLock.manageTheLockInInterviewer": "在 Interviewer 中管理设备锁",
   "interviewer.newSessionForm.caseID": "案例 ID",
   "interviewer.newSessionForm.caseIDIsRequired": "案例 ID 为必填项",
   "interviewer.newSessionForm.startAnyway": "仍然开始",

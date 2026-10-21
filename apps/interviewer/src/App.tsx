@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Route, Switch, useLocation } from 'wouter';
+import { type ReactNode, useSyncExternalStore } from 'react';
+import { Route, Router, Switch, useLocation, useRoute } from 'wouter';
 
 import { BackgroundLights } from '@codaco/art';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
@@ -7,7 +8,19 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { ErrorBoundary } from './components/AppErrorBoundary';
 import { AppUpdateProvider } from './components/AppUpdate/AppUpdateProvider';
 import { AuthGate } from './components/AuthGate';
+import {
+  ReturnToInterviewer9,
+  ReturnToInterviewer9UnlessRunnable,
+} from './components/ReturnToInterviewer9';
 import { InterviewerI18nProvider } from './i18n/InterviewerI18nProvider';
+import { IS_SUBPATH_BUILD, ROUTER_BASE } from './lib/appBase';
+import {
+  IS_EMBEDDED_IN_INTERVIEWER_9,
+  IS_FRAMED_BY_ANOTHER_ORIGIN,
+  isEmbedClosed,
+  subscribeEmbedClosed,
+} from './lib/interviewer9Embed';
+import { useHistoryBackGuard } from './lib/pwa/useHistoryBackGuard';
 import { AppProviders } from './providers/AppProviders';
 import { HomeRoute } from './routes/Home';
 import { InterviewRoute } from './routes/Interview';
@@ -30,7 +43,29 @@ function pageKeyFor(location: string): string {
   return location === '/' || location === '/data' ? 'home' : location;
 }
 
+// '' at the root (wouter's own default), '/v8' when Interviewer 8 runs inside
+// Interviewer 9's deploy: every route, Link and navigate below is then
+// relative to it.
 export default function App() {
+  return (
+    <Router base={ROUTER_BASE}>
+      <AppRoutes />
+    </Router>
+  );
+}
+
+// Interviewer 8 inside Interviewer 9 pins the history for the life of the
+// framed interview, above the lock screen: AuthGate unmounts the interview
+// route (and with it the route's own guard) when it locks, and Back from the
+// lock screen would otherwise walk the history Interviewer 9 shares with the
+// frame, out of Interviewer 9's interview page and past this lock. The close
+// pops the pinned entry (interviewer9Navigation.ts).
+function EmbeddedInterviewBackGuard({ children }: { children: ReactNode }) {
+  useHistoryBackGuard(true);
+  return <>{children}</>;
+}
+
+function AppRoutes() {
   const [location] = useLocation();
 
   // The interview route paints its own opaque background across the viewport
@@ -39,6 +74,51 @@ export default function App() {
   // interview can run uninterrupted for a long time, and animating a backdrop
   // nobody can see is pure battery drain.
   const showBackgroundLights = !location.startsWith('/interview/');
+  const [, interview] = useRoute('/interview/:sessionId');
+  const embedClosed = useSyncExternalStore(
+    subscribeEmbedClosed,
+    isEmbedClosed,
+    isEmbedClosed,
+  );
+
+  const routes = (
+    <AuthGate>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={pageKeyFor(location)}
+          variants={pageWrapperVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          // Fill #root so the route's full-screen surfaces can size to
+          // the available space with `h-full` rather than the raw
+          // viewport (`h-dvh`). #root can be inset by the
+          // visual-viewport initializer (see globals.css); a
+          // viewport-tall child would overflow that inset and make the
+          // whole page scroll (the iPad-portrait overflow bug).
+          // Safe-area insets are owned per-surface: the Home header and
+          // the interview shell each pad themselves past the top inset.
+          className="h-full"
+        >
+          <Switch location={location}>
+            <Route path="/welcome" component={WelcomeRoute} />
+            <Route path="/interview/:sessionId">
+              {({ sessionId }) => <InterviewRoute sessionId={sessionId} />}
+            </Route>
+            <Route path="/:view?">
+              {(params) => {
+                if (params.view !== undefined && params.view !== 'data') {
+                  return <NotFoundRoute />;
+                }
+                return <HomeRoute />;
+              }}
+            </Route>
+            <Route component={NotFoundRoute} />
+          </Switch>
+        </motion.div>
+      </AnimatePresence>
+    </AuthGate>
+  );
 
   return (
     <ThemedRegion theme="interview" className="isolate h-full">
@@ -71,47 +151,31 @@ export default function App() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <AuthGate>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={pageKeyFor(location)}
-                      variants={pageWrapperVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
-                      // Fill #root so the route's full-screen surfaces can size to
-                      // the available space with `h-full` rather than the raw
-                      // viewport (`h-dvh`). #root can be inset by the
-                      // visual-viewport initializer (see globals.css); a
-                      // viewport-tall child would overflow that inset and make the
-                      // whole page scroll (the iPad-portrait overflow bug).
-                      // Safe-area insets are owned per-surface: the Home header and
-                      // the interview shell each pad themselves past the top inset.
-                      className="h-full"
-                    >
-                      <Switch location={location}>
-                        <Route path="/welcome" component={WelcomeRoute} />
-                        <Route path="/interview/:sessionId">
-                          {({ sessionId }) => (
-                            <InterviewRoute sessionId={sessionId} />
-                          )}
-                        </Route>
-                        <Route path="/:view?">
-                          {(params) => {
-                            if (
-                              params.view !== undefined &&
-                              params.view !== 'data'
-                            ) {
-                              return <NotFoundRoute />;
-                            }
-                            return <HomeRoute />;
-                          }}
-                        </Route>
-                        <Route component={NotFoundRoute} />
-                      </Switch>
-                    </motion.div>
-                  </AnimatePresence>
-                </AuthGate>
+                {/* Interviewer 8 inside Interviewer 9 (a /v8/ build) is the
+                    interview alone, framed by Interviewer 9
+                    (lib/interviewer9Embed.ts). Loaded at the top level, it
+                    returns to Interviewer 9 at once, which hosts the
+                    interview itself; framed by another origin, it renders
+                    nothing and goes nowhere; framed by Interviewer 9, every other address ends the
+                    embedded interview before any lock screen, and so does an
+                    interview this app cannot run. Once ended, nothing renders.
+                    It never shows Home, the data view or onboarding
+                    (vite.config.ts leaves them out of that build). */}
+                {!IS_SUBPATH_BUILD ? (
+                  routes
+                ) : IS_FRAMED_BY_ANOTHER_ORIGIN ? null : !IS_EMBEDDED_IN_INTERVIEWER_9 ? (
+                  <ReturnToInterviewer9 />
+                ) : embedClosed ? null : interview ? (
+                  <ReturnToInterviewer9UnlessRunnable
+                    sessionId={interview.sessionId}
+                  >
+                    <EmbeddedInterviewBackGuard>
+                      {routes}
+                    </EmbeddedInterviewBackGuard>
+                  </ReturnToInterviewer9UnlessRunnable>
+                ) : (
+                  <ReturnToInterviewer9 />
+                )}
               </AppUpdateProvider>
             </AppProviders>
           </ErrorBoundary>

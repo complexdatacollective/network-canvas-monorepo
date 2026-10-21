@@ -173,6 +173,7 @@
   "interviewer.manageAuthenticator.weCouldNotChangeYourPassphrase": "No se pudo cambiar tu frase de contraseña.",
   "interviewer.manageAuthenticator.yourNewPINMustBeExactly8": "Tu nuevo PIN debe tener exactamente 8 dígitos.",
   "interviewer.manageAuthenticator.yourNewPassphraseMustBeAtLeast": "Tu nueva frase de contraseña debe tener al menos 12 caracteres y combinar mayúsculas, minúsculas, números y símbolos.",
+  "interviewer.manageLock.manageTheLockInInterviewer": "Gestionar el bloqueo en Interviewer",
   "interviewer.newSessionForm.caseID": "ID del caso",
   "interviewer.newSessionForm.caseIDIsRequired": "El ID del caso es obligatorio",
   "interviewer.newSessionForm.startAnyway": "Iniciar de todos modos",

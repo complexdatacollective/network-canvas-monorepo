@@ -3,9 +3,10 @@ import { defineConfig } from '@playwright/test';
 import rootConfig from './playwright.config.js';
 
 // The Architect 8 build Architect 9 ships inside its own deploy, served at
-// /v8/ (ARCHITECT_BASE_PATH=/v8/, see scripts/app-base-path.mjs). Everything
-// the root suite sets up — the browser, service workers blocked, reduced
-// motion, timeouts — carries over; only where the app lives changes.
+// /v8/ (ARCHITECT_BASE_PATH=/v8/, see scripts/buildtime/app-base-path.mjs at
+// the repository root). Everything the root suite sets up — the browser,
+// service workers blocked, reduced motion, timeouts — carries over; only where
+// the app lives changes.
 //
 // It needs its own build: `dist/` holds one base at a time, so build with
 // ARCHITECT_BASE_PATH=/v8/ first (`test:e2e:subpath` does both), and rebuild

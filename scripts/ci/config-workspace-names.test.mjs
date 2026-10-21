@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { test } from 'vitest';
 
@@ -57,4 +58,38 @@ test('every repository-anchored turbo input names a path that exists', () => {
     anchored.filter((prefix) => !existsSync(new URL(prefix, REPO_ROOT))),
     [],
   );
+});
+
+// A workspace's root config files (vite.config.ts and the like) are part of
+// its build and, through tsconfig.node.json, of its typecheck program, so a
+// shared buildtime module they import must re-hash both tasks when it
+// changes. Otherwise a change to that module alone replays a cached green.
+test('every buildtime module a root config imports is a build and typecheck input', () => {
+  const tasks = readCommentedJson('turbo.json').tasks;
+  const missing = [];
+  let checked = 0;
+  for (const { directory, manifest } of workspaceManifests()) {
+    const imported = new Set(
+      readdirSync(directory)
+        .filter((file) => /\.config\.[cm]?[jt]s$/u.test(file))
+        .flatMap((file) => [
+          ...readFileSync(join(directory, file), 'utf8').matchAll(
+            /['"](?:\.\.\/)+scripts\/buildtime\/([\w.-]+)['"]/gu,
+          ),
+        ])
+        .map((match) => `$TURBO_ROOT$/scripts/buildtime/${match[1]}`),
+    );
+    for (const taskName of ['build', 'typecheck']) {
+      const inputs = tasks[`${manifest.name}#${taskName}`]?.inputs;
+      if (!inputs) continue;
+      for (const input of imported) {
+        checked += 1;
+        if (!inputs.includes(input)) {
+          missing.push(`${manifest.name}#${taskName}: ${input}`);
+        }
+      }
+    }
+  }
+  assert.ok(checked > 0, 'no root config imports a buildtime module');
+  assert.deepEqual(missing, []);
 });

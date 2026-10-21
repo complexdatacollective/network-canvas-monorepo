@@ -1,3 +1,6 @@
+// First, so that Interviewer 8 framed by Interviewer 9 says it is ready, and
+// listens for the reply, before anything else loads (see the module).
+import './lib/interviewer9Embed';
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import './styles/globals.css';
@@ -9,10 +12,15 @@ import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBu
 
 import App from './App';
 import { startupLocale } from './i18n/preference';
+import { IS_SUBPATH_BUILD } from './lib/appBase';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
 } from './lib/pwa/fileLaunchQueue';
+import {
+  getAppServiceWorkerContainer,
+  isInterviewPagePath,
+} from './lib/pwa/freshLoadScope';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
 import { announceLoadingScreen } from './lib/pwa/loadingScreen';
 import { LoadingScreenHandoff } from './lib/pwa/LoadingScreenHandoff';
@@ -45,15 +53,23 @@ if (import.meta.hot) {
 }
 
 // OS-launched .netcanvas files (installed-PWA file handler) can arrive before
-// React mounts; capture them for Home to import after unlock.
-initFileLaunchCapture();
+// React mounts; capture them for Home to import after unlock. Interviewer 8
+// served inside Interviewer 9 declares no file handler and has no Home:
+// Interviewer 9 owns .netcanvas launches and imports every file itself.
+if (!IS_SUBPATH_BUILD) initFileLaunchCapture();
 
 async function startApp(): Promise<void> {
   await Promise.all([
     applyFreshLoadServiceWorkerUpdate({
       reload: false,
+      // In a sub-path build only this build's own registration is ever acted
+      // on: until /v8/sw.js takes over, Interviewer 9's root worker controls a
+      // /v8/ page, and activating its waiting worker is not this app's call.
+      serviceWorker: getAppServiceWorkerContainer(),
+      // Never while this page has something to run that an update could cut
+      // short: an interview, or a launched file.
       shouldSkip: () =>
-        window.location.pathname.startsWith('/interview/') ||
+        isInterviewPagePath(window.location.pathname) ||
         hasPendingLaunchFiles(),
     }),
     // Load the startup language before the first render, alongside the update

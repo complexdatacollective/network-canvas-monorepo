@@ -26,6 +26,8 @@
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --grep @visual --update-snapshots",
     "test:e2e:native": "playwright test --config e2e/playwright.config.ts --grep-invert @visual",
+    "test:e2e:subpath": "INTERVIEWER_BASE_PATH=/v8/ VITE_DISABLE_ANALYTICS=true pnpm turbo run build --filter=@codaco/interviewer && playwright test --config e2e/playwright.subpath.config.ts",
+    "test:e2e:subpath:native": "playwright test --config e2e/playwright.subpath.config.ts",
     "test:e2e:headed": "pnpm turbo run build --filter=@codaco/interviewer && playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {

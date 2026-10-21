@@ -40,6 +40,35 @@ e2e/
 └── tsconfig.json
 ```
 
+## The /v8/ sub-path suite
+
+Interviewer 9 ships this app inside its own deploy at `/v8/` (see "Sub-path
+dist tarball" in `../RELEASING.md`). `subpath-specs/` covers that build:
+`playwright.subpath.config.ts` serves a dist built with
+`INTERVIEWER_BASE_PATH=/v8/` at `http://localhost:4182/v8/`. The spec seeds
+protocols and sessions straight into the shared `interviewer` IndexedDB
+database, in Interviewer 8's row format, as Interviewer 9 writes them. A stub
+Interviewer 9 answers the origin root and `/interview/<id>`: there it frames
+`/v8/interview/<id>` and performs Interviewer 9's side of the handshake
+(`src/lib/interviewer9Embed.ts`), unwrapping the shared PIN lock's key as
+Interviewer 9 does and posting it to the frame. The suite covers no lock
+screen once the key is handed over, the enter step skipped when Interviewer 9
+says it is satisfied (and asked when it does not), the lock screen after the
+wait when no reply comes, `interviewer8:closed` posted on exit, on leaving the
+completion screen, for an interview it cannot run and for any other address,
+with nothing left in history, the idle lock still working in the frame, a
+top-level `/v8/interview/<id>` replaced with `/interview/<id>`, every other
+top-level address returning to `/` at once, and nothing but the running
+session's row being written.
+
+```sh
+# Build under /v8/ and run the suite (functional only, no baselines)
+pnpm --filter @codaco/interviewer test:e2e:subpath
+```
+
+`dist/` holds one base at a time: rebuild without the variable before running
+the root suite again. The suite's global setup refuses a root build.
+
 ## Why the built app, not the dev server
 
 `playwright.config.ts`'s `webServer` runs `vite preview` on port **4180**

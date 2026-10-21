@@ -41,6 +41,31 @@ function refreshStepUpContextIdentities() {
 vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
   useStepUpAuth: () => stepUpContext,
 }));
+const takeEntryUnlockGraceMock = vi.fn((_sessionId: string) => false);
+const endEntryUnlockGraceMock = vi.fn();
+vi.mock('~/lib/auth/entryUnlockGrace', () => ({
+  takeEntryUnlockGrace: (sessionId: string) =>
+    takeEntryUnlockGraceMock(sessionId),
+  endEntryUnlockGrace: () => endEntryUnlockGraceMock(),
+}));
+
+// Interviewer 8 inside Interviewer 9 (a /v8/ build) returns to Interviewer 9
+// wherever the root app goes Home.
+const subpath = vi.hoisted(() => ({
+  isSubpath: false,
+  returnToInterviewer9: vi.fn(() => {
+    historyGuard.log.push('returned to Interviewer 9');
+  }),
+}));
+vi.mock('~/lib/appBase', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/lib/appBase')>()),
+  get IS_SUBPATH_BUILD() {
+    return subpath.isSubpath;
+  },
+}));
+vi.mock('~/lib/interviewer9Navigation', () => ({
+  returnToInterviewer9: () => subpath.returnToInterviewer9(),
+}));
 
 const getSettingsMock = vi.fn();
 const getSessionMock = vi.fn();
@@ -65,8 +90,14 @@ vi.mock('~/lib/assets/assetResolver', () => ({
 // gated exit just runs its navigation callback. The returned exit function must
 // be a stable reference (the real hook uses useCallback), or consumers that put
 // it in effect deps re-run every render.
+// Each exit is logged, so a case can see that it went through the guard (which
+// pops the pinned entry first) rather than around it.
+const historyGuard = vi.hoisted(() => ({ log: [] as string[] }));
 vi.mock('~/lib/pwa/useHistoryBackGuard', () => {
-  const exit = (goHome: () => void) => goHome();
+  const exit = (goHome: () => void) => {
+    historyGuard.log.push('guard popped');
+    goHome();
+  };
   return { useHistoryBackGuard: () => exit };
 });
 vi.mock('~/lib/installationId', () => ({
@@ -246,10 +277,13 @@ async function invoke(fn: () => unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  subpath.isSubpath = false;
+  historyGuard.log = [];
   getSessionMock.mockResolvedValue(makeSession());
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
   getAuthorizedInterviewIdMock.mockReturnValue(null);
+  takeEntryUnlockGraceMock.mockReturnValue(false);
   useSearchMock.mockReturnValue('');
   useRouteMock.mockReturnValue([true, { sessionId: 's1' }]);
   refreshStepUpContextIdentities();
@@ -414,6 +448,22 @@ describe('InterviewRoute enter gate', () => {
     expect(requireFreshUnlockMock).not.toHaveBeenCalled();
   });
 
+  it('skips the enter gate while a recent unlock stands in for it', async () => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: true,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+    takeEntryUnlockGraceMock.mockReturnValue(true);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(takeEntryUnlockGraceMock).toHaveBeenCalledWith('s1');
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
+  });
+
   it('does not authorize entry when unmounted mid-load', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: false,
@@ -474,6 +524,8 @@ describe('InterviewRoute exit gate', () => {
       expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
     );
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    // Whoever enters next unlocks as usual.
+    expect(endEntryUnlockGraceMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -897,5 +949,170 @@ describe('InterviewRoute analytics wiring', () => {
 
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(lastShellProps().disableAnalytics).toBe(true);
+  });
+});
+
+describe('InterviewRoute in Interviewer 8 inside Interviewer 9', () => {
+  const ungated = {
+    requireUnlockOnEnter: false,
+    requireUnlockOnExit: false,
+    requireUnlockOnExport: false,
+  };
+
+  beforeEach(() => {
+    subpath.isSubpath = true;
+    getSettingsMock.mockResolvedValue(ungated);
+  });
+
+  const expectReturnedToInterviewer9 = async () => {
+    await waitFor(() =>
+      expect(subpath.returnToInterviewer9).toHaveBeenCalledTimes(1),
+    );
+    expect(navigateMock).not.toHaveBeenCalled();
+    // Not through the route's history guard: the close pops the guard entry
+    // itself, within a bounded wait (interviewer9Navigation.ts).
+    expect(historyGuard.log).toEqual(['returned to Interviewer 9']);
+  };
+
+  it('returns to Interviewer 9 from the exit button', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    await invoke(lastShellProps().onExit);
+
+    await expectReturnedToInterviewer9();
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    expect(endEntryUnlockGraceMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns to Interviewer 9 from the completion screen', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    await act(async () => {
+      await lastShellProps().onFinish('s1');
+    });
+
+    await invoke(() => screen.getByTestId('interview-complete-exit').click());
+
+    await expectReturnedToInterviewer9();
+  });
+
+  it('stays in the interview while the exit unlock is declined', async () => {
+    getSettingsMock.mockResolvedValue({
+      ...ungated,
+      requireUnlockOnExit: true,
+    });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    requireFreshUnlockMock.mockResolvedValue({
+      ok: false,
+      reason: 'cancelled',
+    });
+
+    await invoke(lastShellProps().onExit);
+
+    expect(subpath.returnToInterviewer9).not.toHaveBeenCalled();
+    expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
+  });
+
+  it('returns to Interviewer 9 when the enter unlock is declined', async () => {
+    getSettingsMock.mockResolvedValue({
+      ...ungated,
+      requireUnlockOnEnter: true,
+    });
+    requireFreshUnlockMock.mockResolvedValue({
+      ok: false,
+      reason: 'cancelled',
+    });
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await expectReturnedToInterviewer9();
+    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['no such session', () => getSessionMock.mockResolvedValue(undefined)],
+    [
+      'no such protocol',
+      () => getProtocolByHashMock.mockResolvedValue(undefined),
+    ],
+    [
+      'a schema 9 protocol',
+      () =>
+        getProtocolByHashMock.mockResolvedValue({
+          ...makeProtocol(),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1,
+        }),
+    ],
+    [
+      'an older schema’s protocol',
+      () =>
+        getProtocolByHashMock.mockResolvedValue({
+          ...makeProtocol(),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1,
+        }),
+    ],
+  ])(
+    'returns to Interviewer 9 at once for %s, without a screen of its own',
+    async (_, arrange) => {
+      arrange();
+      render(<InterviewRoute sessionId="s1" />);
+
+      await expectReturnedToInterviewer9();
+      expect(setAuthorizedInterviewIdMock).toHaveBeenLastCalledWith(null);
+      expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    },
+  );
+
+  it('returns to Interviewer 9 at once for an interview whose data cannot be read, and reports it', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const cause = new Error('unreadable');
+    getSessionMock.mockRejectedValue(cause);
+    render(<InterviewRoute sessionId="s1" />);
+
+    await expectReturnedToInterviewer9();
+    expect(setAuthorizedInterviewIdMock).toHaveBeenLastCalledWith(null);
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(analyticsContext.captureException).toHaveBeenCalledWith(cause, {
+      feature: 'interview-load',
+    });
+  });
+
+  it('writes nothing but the session: not the last-opened interview', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    await act(async () => {
+      lastShellProps().onStepChange(1, { progress: 50, totalSteps: 3 });
+    });
+
+    expect(updateSessionMock).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ currentStep: 1 }),
+    );
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves recording the last-opened interview to the root build', async () => {
+    subpath.isSubpath = false;
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    await waitFor(() =>
+      expect(updateSettingsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ lastActiveSessionId: 's1' }),
+      ),
+    );
+  });
+
+  it('opens an interview for review, as Interviewer 9’s review link asks', async () => {
+    useSearchMock.mockReturnValue('mode=review');
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    expect(lastShellProps().reviewMode).toBe(true);
   });
 });

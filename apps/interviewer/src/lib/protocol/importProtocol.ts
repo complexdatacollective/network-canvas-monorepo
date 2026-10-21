@@ -14,7 +14,10 @@ import {
   validateProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
-import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
+import {
+  describeProtocolFileErrorMessage,
+  protocolFileErrorMessages,
+} from '@codaco/protocol-validation/messages';
 import { messageFailure, type LocalizedMessage } from '~/i18n/messageResult';
 
 import { saveProtocol } from '../db/api';
@@ -80,6 +83,7 @@ export type ImportProtocolFailure = {
   success: false;
   error:
     | 'extract-failed'
+    | 'newer-version'
     | 'unsupported-version'
     | 'validation-failed'
     | 'save-failed';
@@ -108,6 +112,28 @@ function formatValidationIssues(
     path: issue.path.map(String).join('.'),
     message: issue.message,
   }));
+}
+
+/**
+ * The schema version a protocol document declares, read leniently (schema 1
+ * wrote it as a string), or null when it declares none this code can read.
+ */
+function declaredSchemaVersion(document: unknown): number | null {
+  if (!isRecord(document)) return null;
+  const raw = document.schemaVersion;
+  const version = typeof raw === 'string' ? Number(raw) : raw;
+  return typeof version === 'number' && Number.isInteger(version)
+    ? version
+    : null;
+}
+
+/**
+ * Whether a declared schema version is newer than the one this app runs: such
+ * a protocol was made for a newer Interviewer, and no migration can bring it
+ * back to this one.
+ */
+function isNewerSchemaVersion(version: number | null): boolean {
+  return version !== null && version > APP_SCHEMA_VERSION;
 }
 
 export async function peekProtocolName(
@@ -176,6 +202,14 @@ async function importParsedProtocol(
   onProgress?: OnImportProgress,
   nameOverride?: string,
 ): Promise<ImportProtocolResult> {
+  // A protocol made for a newer Interviewer says so, rather than failing as a
+  // document this version cannot even read the version of.
+  if (isNewerSchemaVersion(declaredSchemaVersion(document))) {
+    return importFailure('newer-version', {
+      descriptor: protocolFileErrorMessages.newerVersion,
+    });
+  }
+
   const version = detectSchemaVersion(document);
 
   let migratedDocument: unknown = document;

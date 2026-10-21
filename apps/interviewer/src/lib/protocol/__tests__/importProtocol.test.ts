@@ -147,3 +147,63 @@ describe('importProtocolFromFile error reporting', () => {
     expect(saveProtocolMock).not.toHaveBeenCalled();
   });
 });
+
+describe('a protocol made for a newer schema', () => {
+  const newerProtocol = (schemaVersion: number | string) => ({
+    schemaVersion,
+    name: 'From the future',
+    description: '',
+    stages: [],
+    codebook: { node: {}, edge: {}, ego: {} },
+    assetManifest: {},
+  });
+
+  beforeEach(() => {
+    saveProtocolMock.mockReset();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it('is refused with the newer-version message, not the generic one', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(newerProtocol(9)),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('newer-version');
+    expect(result.localizedMessage.descriptor.id).toBe(
+      'protocolValidation.file.newerVersion',
+    );
+    expect(result.message).toMatch(/made with a newer version/i);
+    expect(result.message).not.toMatch(IMPLEMENTATION_DETAIL);
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+
+  it('reads a version written as a string the same way', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(newerProtocol('12')),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('newer-version');
+  });
+
+  it('counts only versions above this app’s as newer', async () => {
+    for (const schemaVersion of [8, 7]) {
+      const bytes = await buildArchive({
+        'protocol.json': JSON.stringify(newerProtocol(schemaVersion)),
+      });
+
+      const result = await importProtocolFromFile(asFile(bytes));
+
+      expect(result.success ? 'installed' : result.error).not.toBe(
+        'newer-version',
+      );
+    }
+  });
+});

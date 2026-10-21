@@ -14,12 +14,12 @@ import { fileURLToPath } from 'node:url';
 
 import { loadEnv } from 'vite';
 
+import {
+  appCachePrefix,
+  resolveAppBasePath,
+} from '../../../scripts/buildtime/app-base-path.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
 import { findShippedProtocols } from '../../../scripts/buildtime/find-shipped-protocols.mjs';
-import {
-  architectCachePrefix,
-  resolveArchitectBasePath,
-} from './app-base-path.mjs';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -35,9 +35,12 @@ const fail = (msg) => {
 // `/` for the root build; `/v8/` for Architect 8 inside Architect 9's deploy.
 // Every path and cache name probed below is derived from it, so the same
 // assertions hold a sub-path build to the same worker contract.
-const base = resolveArchitectBasePath(loadEnv('production', appRoot, ''));
+const base = resolveAppBasePath(
+  loadEnv('production', appRoot, ''),
+  'ARCHITECT_BASE_PATH',
+);
 const isSubpath = base !== '/';
-const cachePrefix = architectCachePrefix(base);
+const cachePrefix = appCachePrefix('architect', base);
 const atBase = (absolutePath) => `${base}${absolutePath.slice(1)}`;
 
 if (isSubpath) {
@@ -185,8 +188,15 @@ if (isSubpath) {
   if ('file_handlers' in manifest || 'launch_handler' in manifest) {
     fail(`a ${base} build must not register as a .netcanvas file handler`);
   }
-} else if (manifest.file_handlers?.[0]?.action !== '/') {
-  fail('the root build no longer opens launched .netcanvas files');
+} else {
+  if (manifest.display !== 'standalone') {
+    fail(
+      `the root build must stay installable in its own window; manifest display is ${manifest.display}`,
+    );
+  }
+  if (manifest.file_handlers?.[0]?.action !== '/') {
+    fail('the root build no longer opens launched .netcanvas files');
+  }
 }
 
 // generateSW inlines the precache manifest as an array of { url, revision }

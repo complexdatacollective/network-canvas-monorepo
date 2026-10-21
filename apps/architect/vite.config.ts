@@ -9,6 +9,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 import { appI18n } from '@codaco/app-i18n/vite';
 
+import {
+  appCachePrefix,
+  rebaseSwMatcher,
+  resolveAppBasePath,
+} from '../../scripts/buildtime/app-base-path.mjs';
 import { createPostHogSourceMapsPlugin } from '../../scripts/buildtime/posthog-source-maps-plugin.ts';
 import {
   createPwaCacheReclamationPlugin,
@@ -16,11 +21,6 @@ import {
   matchRetainedPwaAsset,
 } from '../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
 import { version } from './package.json';
-import {
-  architectCachePrefix,
-  rebaseSwMatcher,
-  resolveArchitectBasePath,
-} from './scripts/app-base-path.mjs';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
@@ -106,11 +106,11 @@ const omitFromSubpathBuild = (): Plugin => ({
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
   // `/` everywhere except the Architect 8 build that ships inside Architect 9's
-  // deploy at `/v8/` (see scripts/app-base-path.mjs). Every sub-path difference
+  // deploy at `/v8/` (see scripts/buildtime/app-base-path.mjs). Every sub-path difference
   // below is derived from these two values; a root build is unchanged by them.
-  const appBase = resolveArchitectBasePath(env);
+  const appBase = resolveAppBasePath(env, 'ARCHITECT_BASE_PATH');
   const isSubpath = appBase !== '/';
-  const cachePrefix = architectCachePrefix(appBase);
+  const cachePrefix = appCachePrefix('architect', appBase);
   // "Architect 8": the major is the schema line a sub-path build is kept for.
   const subpathAppName = `Architect ${version.split('.')[0]}`;
   // This ID belongs to the generated bundle, not just its package release. Dev

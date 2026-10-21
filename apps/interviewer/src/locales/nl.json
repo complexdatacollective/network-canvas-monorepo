@@ -173,6 +173,7 @@
   "interviewer.manageAuthenticator.weCouldNotChangeYourPassphrase": "Je wachtzin kon niet worden gewijzigd.",
   "interviewer.manageAuthenticator.yourNewPINMustBeExactly8": "Je nieuwe pincode moet precies 8 cijfers lang zijn.",
   "interviewer.manageAuthenticator.yourNewPassphraseMustBeAtLeast": "Je nieuwe wachtzin moet minimaal 12 tekens lang zijn en een combinatie van hoofdletters, kleine letters, cijfers en symbolen bevatten.",
+  "interviewer.manageLock.manageTheLockInInterviewer": "Apparaatvergrendeling beheren in Interviewer",
   "interviewer.newSessionForm.caseID": "Case-ID",
   "interviewer.newSessionForm.caseIDIsRequired": "Case-ID is verplicht",
   "interviewer.newSessionForm.startAnyway": "Toch starten",

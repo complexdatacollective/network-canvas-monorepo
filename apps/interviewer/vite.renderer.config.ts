@@ -8,6 +8,7 @@ import type { Plugin, UserConfig } from 'vite';
 
 import { appI18n } from '@codaco/app-i18n/vite';
 
+import { resolveAppBasePath } from '../../scripts/buildtime/app-base-path.mjs';
 import { POSTHOG_HOST } from './src/lib/analytics/config';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -55,6 +56,14 @@ const pkg = JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8')) as {
 };
 export const appVersion = pkg.version;
 
+// The URL path this build is served under: `/` for every deploy until now, and
+// `/v8/` for the Interviewer 8 build that ships inside Interviewer 9's deploy
+// (INTERVIEWER_BASE_PATH, declared in turbo.json's build env). It becomes
+// Vite's `base`, so `import.meta.env.BASE_URL` carries it into the app (see
+// src/lib/appBase.ts); vite.config.ts derives the manifest, worker routes and
+// cache names from the same value. A root build is unchanged by it.
+export const appBase = resolveAppBasePath(process.env, 'INTERVIEWER_BASE_PATH');
+
 // Production CSP injected into index.html as a meta tag. Vite HMR needs
 // 'unsafe-eval' / inline scripts in dev, so this is build-only.
 //
@@ -78,7 +87,11 @@ export const CSP_DIRECTIVES = [
   "base-uri 'none'",
   "object-src 'none'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
+  // Interviewer 9 frames the /v8/ build (src/lib/interviewer9Embed.ts) from
+  // its own origin, and nothing else may frame either build. Browsers ignore
+  // frame-ancestors in a <meta> policy, so this records the rule; the deploy
+  // that serves the page enforces it in its headers (RELEASING.md).
+  appBase === '/' ? "frame-ancestors 'none'" : "frame-ancestors 'self'",
 ];
 
 function injectCspMeta(): Plugin {
@@ -112,6 +125,7 @@ export function createRendererConfig({
   rollupInput,
 }: RendererOptions): UserConfig {
   return {
+    base: appBase,
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
     },

@@ -14,6 +14,7 @@ import { useLocation, useRoute } from 'wouter';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
 import { useAuth } from './AuthContext';
+import { noteLockScreenUnlock } from './entryUnlockGrace';
 import {
   clearInterviewRecoveryRestriction,
   isInterviewRoutePath,
@@ -68,6 +69,9 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const previous = kindAtLastAuthorizationCheck.current;
     kindAtLastAuthorizationCheck.current = auth.kind;
+    if (previous === 'locked' && auth.kind === 'unlocked') {
+      noteLockScreenUnlock();
+    }
     if (
       previous === 'locked' &&
       auth.kind === 'unlocked' &&

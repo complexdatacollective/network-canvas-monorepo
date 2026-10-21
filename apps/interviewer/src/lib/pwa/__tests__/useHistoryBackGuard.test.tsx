@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useHistoryBackGuard } from '../useHistoryBackGuard';
 
+const embed = vi.hoisted(() => ({ closed: false }));
+vi.mock('~/lib/interviewer9Embed', () => ({
+  isEmbedClosed: () => embed.closed,
+}));
+
 afterEach(() => {
+  embed.closed = false;
   vi.restoreAllMocks();
   // Reset the current entry's state so a sentinel set in one test doesn't leak.
   window.history.replaceState(null, '');
@@ -30,6 +36,19 @@ describe('useHistoryBackGuard', () => {
     unmount();
     window.dispatchEvent(new PopStateEvent('popstate'));
     expect(pushState).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops re-pinning once an embedded interview has closed, which pops the entry itself', () => {
+    const pushState = vi
+      .spyOn(window.history, 'pushState')
+      .mockImplementation(() => {});
+    renderHook(() => useHistoryBackGuard(true));
+    expect(pushState).toHaveBeenCalledTimes(1);
+
+    embed.closed = true;
+    window.dispatchEvent(new PopStateEvent('popstate'));
+
+    expect(pushState).toHaveBeenCalledTimes(1);
   });
 
   it('reuses an existing sentinel rather than stacking another', () => {
