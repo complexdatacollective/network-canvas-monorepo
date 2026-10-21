@@ -2836,6 +2836,9 @@ jobs:
       # Motion and Base UI animation bookkeeping are both disabled before the
       # application mounts.
       VITE_DISABLE_ANIMATIONS: 'true'
+      # The suite builds without the pinned Architect 8, as the pixel lane
+      # does (its run.sh says why).
+      ARCHITECT_SKIP_LEGACY_V8: 'true'
       # Makes a stray pixel capture throw here rather than silently
       # comparing container-rasterised baselines against this runner's fonts
       # (see the suite's capture helper).
