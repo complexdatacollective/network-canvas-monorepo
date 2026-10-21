@@ -90,11 +90,7 @@ export default function NoTeam() {
     );
   } else if (mode === 'self-hosted' && canCreateTeam === true) {
     creation = (
-      <Button
-        color="primary"
-
-        onClick={() => void createTeam()}
-      >
+      <Button color="primary" onClick={() => void createTeam()}>
         {intl.formatMessage(messages.createTeam)}
       </Button>
     );

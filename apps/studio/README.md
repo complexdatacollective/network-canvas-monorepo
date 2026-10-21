@@ -1290,11 +1290,10 @@ browser is signed in as the owner, and `/setup` answers as a not-found from
 then on — so re-running a deploy can never reopen it. The owner has no team
 yet, so they land on `/no-team`, which offers to create one; on a self-hosted
 instance only the owner can create teams, and everyone else joins one by
-invitation. Only a sha256 of the
-token is stored, so nothing on the server can print it a second time; **if it
-is lost, run the schema step again** against the still-ownerless database and
-it issues a new one. An instance that already has an owner issues nothing and
-prints nothing.
+invitation. Only a sha256 of the token is stored, so nothing on the server can
+print it a second time; **if it is lost, run the schema step again** against
+the still-ownerless database and it issues a new one. An instance that already
+has an owner issues nothing and prints nothing.
 
 The name is stored with the instance and reported by both status surfaces —
 the app's `status` procedure and `/api/v1/status`. Until one is given, both
