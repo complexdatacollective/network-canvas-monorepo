@@ -9,6 +9,7 @@ declare const __PWA_BUILD_ID__: string;
 declare const __ARCHITECT_V8__: { version: string; path: '/v8/' } | null;
 
 interface ImportMetaEnv {
+  readonly VITE_ALLOW_SKETCH_PREVIEWS?: string;
   readonly VITE_DISABLE_ANALYTICS?: string;
   readonly VITE_DISABLE_ANIMATIONS?: string;
   readonly VITE_PROTOCOL_SOURCE_AUTHORING?: string;

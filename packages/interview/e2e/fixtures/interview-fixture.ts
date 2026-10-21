@@ -140,7 +140,8 @@ export class InterviewFixture {
    * height/overflow constraints would otherwise clip it) is temporarily
    * expanded so the document itself grows, the screenshot is taken with
    * fullPage, and the inline styles are restored before the test
-   * proceeds.
+   * proceeds. A scrollable element that still overflows the page once
+   * expanded is left at its normal size.
    */
   async captureFinal(mask?: Locator[]): Promise<void> {
     const step = this.getCurrentStep();
@@ -149,7 +150,27 @@ export class InterviewFixture {
 
       const hasScrollableContent = await this.page.evaluate(() => {
         const modified = new Map<HTMLElement, string>();
-        const scrollers = Array.from(
+        const expand = (scrollers: HTMLElement[]) => {
+          for (const scroller of scrollers) {
+            let el: HTMLElement | null = scroller;
+            while (el) {
+              if (!modified.has(el)) {
+                modified.set(el, el.style.cssText);
+              }
+              el.style.height = 'auto';
+              el.style.maxHeight = 'none';
+              el.style.overflowY = 'visible';
+              el = el.parentElement;
+            }
+          }
+        };
+        const restore = () => {
+          for (const [el, cssText] of modified) {
+            el.style.cssText = cssText;
+          }
+          modified.clear();
+        };
+        const candidates = Array.from(
           document.querySelectorAll<HTMLElement>('*'),
         ).filter((el) => {
           const overflowY = getComputedStyle(el).overflowY;
@@ -158,22 +179,20 @@ export class InterviewFixture {
             el.scrollHeight > el.clientHeight
           );
         });
-        for (const scroller of scrollers) {
-          let el: HTMLElement | null = scroller;
-          while (el) {
-            if (!modified.has(el)) {
-              modified.set(el, el.style.cssText);
-            }
-            el.style.height = 'auto';
-            el.style.maxHeight = 'none';
-            el.style.overflowY = 'visible';
-            el = el.parentElement;
-          }
+        const fitsInPage = (el: HTMLElement) =>
+          el.getBoundingClientRect().bottom <=
+          document.documentElement.getBoundingClientRect().bottom + 1;
+
+        let scrollers = candidates;
+        expand(scrollers);
+        while (scrollers.length > 0 && !scrollers.every(fitsInPage)) {
+          scrollers = scrollers.filter(fitsInPage);
+          restore();
+          expand(scrollers);
         }
+
         window.__restoreExpandedScrollers = () => {
-          for (const [el, cssText] of modified) {
-            el.style.cssText = cssText;
-          }
+          restore();
           delete window.__restoreExpandedScrollers;
         };
         return scrollers.length > 0;

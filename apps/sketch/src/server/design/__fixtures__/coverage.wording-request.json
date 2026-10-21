@@ -1,0 +1,295 @@
+{
+  "summary": "Students, classmates and the places they study.",
+  "stages": [
+    {
+      "stageKey": "consent",
+      "kind": "consent",
+      "purpose": "Consent to take part",
+      "title": "introduction title",
+      "text": "introduction text: what taking part involves",
+      "draft": ""
+    },
+    {
+      "stageKey": "about",
+      "kind": "egoForm",
+      "purpose": "Purpose of about.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    },
+    {
+      "stageKey": "classmates",
+      "kind": "nameGenerator",
+      "purpose": "Purpose of classmates.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "places",
+      "kind": "nameGenerator",
+      "purpose": "Purpose of places.",
+      "title": "form title, e.g. \"Add a friend\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "more_classmates",
+      "kind": "nameGenerator",
+      "purpose": "Purpose of more_classmates.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "friend_strength",
+      "kind": "relationshipCensus",
+      "purpose": "Purpose of friend_strength.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "study_ties",
+      "kind": "relationshipCensus",
+      "purpose": "Purpose of study_ties.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "conflicts",
+      "kind": "relationshipCensus",
+      "purpose": "Purpose of conflicts.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "friendship_details",
+      "kind": "relationshipForm",
+      "purpose": "Purpose of friendship_details.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "place_bins",
+      "kind": "bins",
+      "purpose": "Purpose of place_bins.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "advisors",
+      "kind": "bins",
+      "purpose": "Purpose of advisors.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "home_countries",
+      "kind": "geospatial",
+      "purpose": "Purpose of home_countries.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "classmate_form",
+      "kind": "alterForm",
+      "purpose": "Purpose of classmate_form.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "place_map",
+      "kind": "sociogram",
+      "purpose": "Purpose of place_map.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "place_story",
+      "kind": "narrative",
+      "purpose": "Purpose of place_story.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "class_map",
+      "kind": "sociogram",
+      "purpose": "Purpose of class_map.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "mentor_canvas",
+      "kind": "networkComposer",
+      "purpose": "Purpose of mentor_canvas.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "reflection",
+      "kind": "egoForm",
+      "purpose": "Purpose of reflection.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    },
+    {
+      "stageKey": "bye",
+      "kind": "information",
+      "purpose": "Purpose of bye.",
+      "title": "screen title",
+      "text": "screen body (Markdown)",
+      "draft": "Thanks!"
+    }
+  ],
+  "prompts": [
+    {
+      "promptKey": "classmates/p1",
+      "draft": "Select the classmates you **study with**.",
+      "kind": "nameGenerator",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "places/p1",
+      "draft": "Where do you **spend time on campus**?",
+      "kind": "nameGenerator",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "more_classmates/p1",
+      "draft": "Who else in your class do you **talk to**?",
+      "kind": "nameGenerator",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "friend_strength/p1",
+      "draft": "How close are these two?",
+      "kind": "relationshipCensus",
+      "needsNegativeLabel": true
+    },
+    {
+      "promptKey": "study_ties/p1",
+      "draft": "Tap everyone who **studies with** this person.",
+      "kind": "relationshipCensus",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "conflicts/p1",
+      "draft": "Do these two **have conflict**?",
+      "kind": "relationshipCensus",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "place_bins/p1",
+      "draft": "How often?",
+      "kind": "bins",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "place_bins/p2",
+      "draft": "What do you do there?",
+      "kind": "bins",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "advisors/p1",
+      "draft": "Who advises each classmate?",
+      "kind": "bins",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "home_countries/p1",
+      "draft": "Which **country** is each classmate from?",
+      "kind": "geospatial",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "place_map/p1",
+      "draft": "Tap your **favourite** places.",
+      "kind": "sociogram",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "place_story/view1",
+      "draft": "What you do",
+      "kind": "narrative view label (1-4 words)",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "class_map/p1",
+      "draft": "Arrange your classmates.",
+      "kind": "sociogram",
+      "needsNegativeLabel": false
+    }
+  ],
+  "questions": [
+    {
+      "questionKey": "consent",
+      "draft": "Do you agree to take part in this study?"
+    },
+    {
+      "questionKey": "ego/year",
+      "draft": "Which year of study are you in?"
+    },
+    {
+      "questionKey": "ego/commutes",
+      "draft": "Do you commute to campus?"
+    },
+    {
+      "questionKey": "node:place/name",
+      "draft": "What is this place called?"
+    },
+    {
+      "questionKey": "node:place/hours",
+      "draft": "How many hours a week do you spend there?"
+    },
+    {
+      "questionKey": "rel:friends/since",
+      "draft": "Since when have they been friends?"
+    },
+    {
+      "questionKey": "node:classmate/commuter",
+      "draft": "Commutes?"
+    },
+    {
+      "questionKey": "node:classmate/year_of_study",
+      "draft": "Year of study"
+    },
+    {
+      "questionKey": "node:mentor/mentor_role",
+      "draft": "What is their role?"
+    },
+    {
+      "questionKey": "rel:mentors_know/met_through",
+      "draft": "How did they meet?"
+    },
+    {
+      "questionKey": "ego/satisfaction",
+      "draft": "How satisfied are you with university life?"
+    },
+    {
+      "questionKey": "ego/notes",
+      "draft": "Anything else you would like to tell us?"
+    },
+    {
+      "questionKey": "ego/birth_date",
+      "draft": "What is your date of birth?"
+    },
+    {
+      "questionKey": "ego/year_started",
+      "draft": "In which year did you start university?"
+    }
+  ]
+}

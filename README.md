@@ -26,6 +26,7 @@ The pnpm workspace is organized into four main categories.
 | [`interviewer`](./apps/interviewer)                 | Offline-first Vite/React PWA for managing protocols, conducting interviews, storing local sessions with optional encryption, and exporting data    |
 | [`interviewer-classic`](./apps/interviewer-classic) | Maintenance-mode Interviewer application for desktop (Electron) and native mobile (Capacitor)                                                      |
 | [`networkcanvas.com`](./apps/networkcanvas.com)     | Localized Next.js project website, including product information, research resources, publications, team information, and getting-started guidance |
+| [`sketch`](./apps/sketch)                           | Prototype site (sketch.networkcanvas.dev) that turns research questions into a schema 8 protocol with Claude and opens it in Architect             |
 
 ### Packages
 

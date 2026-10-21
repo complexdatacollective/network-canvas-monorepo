@@ -1,0 +1,141 @@
+/*
+ * Sketch theme: the evolved Network Canvas palette from the approved mockup,
+ * as Tailwind v4 tokens. "night" is the grape page and its dark panels,
+ * "paper" the white cards, "ink" the text on paper.
+ */
+@theme {
+  --font-display: 'Nunito Variable', 'Nunito', system-ui, sans-serif;
+  --font-body:
+    'Inclusive Sans Variable', 'Inclusive Sans', system-ui, sans-serif;
+
+  /* Page and dark panels */
+  --color-night: oklch(0.22 0.07 281);
+  --color-night-dot: oklch(0.34 0.08 281);
+  --color-night-ring: oklch(0.255 0.08 281);
+  --color-night-panel: oklch(0.28 0.085 281);
+  --color-night-raised: oklch(0.3 0.09 281);
+  --color-night-tile: oklch(0.32 0.09 281);
+  --color-night-line: oklch(0.4 0.08 281);
+  --color-night-border: oklch(0.46 0.08 281);
+  --color-night-outline: oklch(0.5 0.09 281);
+  --color-night-text: oklch(0.86 0.025 281);
+  --color-night-muted: oklch(0.8 0.03 281);
+
+  /* Cards */
+  --color-paper: oklch(0.975 0.006 281);
+  --color-paper-sunk: oklch(0.93 0.012 281);
+  --color-paper-track: oklch(0.92 0.012 281);
+  --color-paper-line: oklch(0.88 0.015 281);
+  --color-paper-rule: oklch(0.9 0.012 281);
+  --color-ink: oklch(0.3 0.09 281);
+  --color-ink-strong: oklch(0.26 0.08 281);
+  --color-ink-muted: oklch(0.42 0.05 281);
+
+  /* Network Canvas accents */
+  --color-mustard: oklch(0.81 0.17 86.39);
+  --color-mustard-light: oklch(0.9 0.12 86.39);
+  --color-mustard-wash: oklch(0.96 0.03 86.39);
+  --color-mustard-tag: oklch(0.93 0.06 86.39);
+  --color-mustard-ink: oklch(0.4 0.08 70);
+  --color-sea-green: oklch(0.7 0.2 171.52);
+  --color-sea-green-deep: oklch(0.5 0.14 171.52);
+  --color-sea-green-shade: oklch(0.56 0.16 171.52);
+  --color-neon-coral: oklch(0.53 0.235 11.57);
+  --color-neon-coral-shade: oklch(0.47 0.22 11.57);
+  --color-cerulean: oklch(0.7383 0.13 217.55);
+  --color-slate-blue: oklch(0.55 0.198 281);
+  --color-purple-pizazz: oklch(0.56 0.26 320.46);
+  --color-tangerine: oklch(0.7487 0.161 62.61);
+  --color-tangerine-wash: oklch(0.95 0.045 70);
+  --color-barbie-pink: oklch(0.66 0.2 359);
+  --color-on-light: oklch(0.2 0.07 281);
+  --color-claude: oklch(0.75 0.13 45);
+  --color-chatgpt: oklch(0.75 0.12 171.52);
+  --color-danger: oklch(0.66 0.2 25);
+  --color-danger-wash: oklch(0.95 0.04 25);
+
+  --shadow-card: 0 30px 60px -20px oklch(0.12 0.06 281);
+  --shadow-card-lip:
+    0 2px 0 oklch(0.42 0.08 281), 0 30px 60px -20px oklch(0.12 0.06 281);
+  --shadow-cta: 0 4px 0 oklch(0.5 0.14 171.52);
+  --shadow-seg: 0 2px 6px oklch(0.3 0.09 281 / 0.3);
+
+  --text-hero: clamp(2.5rem, 5.4vw, 4.5rem);
+  --text-hero--line-height: 1.02;
+  --text-title: clamp(2.125rem, 4vw, 3.375rem);
+  --text-title--line-height: 1.05;
+
+  --animate-draw: sketch-draw 1.4s linear infinite;
+  --animate-bob: sketch-bob 4s ease-in-out infinite;
+
+  @keyframes sketch-draw {
+    to {
+      stroke-dashoffset: -24;
+    }
+  }
+  @keyframes sketch-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background-color: var(--color-night);
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--color-night);
+    background-image: radial-gradient(
+      var(--color-night-dot) 1.2px,
+      transparent 1.2px
+    );
+    background-size: 28px 28px;
+    color: white;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p,
+  li {
+    text-wrap: pretty;
+  }
+  a {
+    color: var(--color-mustard);
+  }
+  a:hover {
+    color: var(--color-mustard-light);
+  }
+  :focus-visible,
+  textarea:focus,
+  select:focus {
+    outline: 3px solid var(--color-mustard);
+    outline-offset: 2px;
+  }
+  /* Mustard is under 2:1 on paper and white, so paper cards ring in ink. */
+  .bg-paper :focus-visible,
+  .bg-paper textarea:focus,
+  .bg-paper select:focus {
+    outline-color: var(--color-ink);
+  }
+}
+
+@media (max-width: 40rem) {
+  @layer base {
+    body {
+      background-size: 24px 24px;
+    }
+  }
+}

@@ -28,6 +28,7 @@
     "@codaco/protocol-builder",
     "@codaco/protocol-builder-core",
     "@codaco/protocols",
+    "@codaco/sketch",
     "@codaco/storybook-config",
     "@codaco/tsconfig",
     "@codaco/vitest-config"

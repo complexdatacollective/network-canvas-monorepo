@@ -28,7 +28,7 @@ import { extname } from 'node:path';
 
 import JSZip from 'jszip';
 
-import { TESTING_MAPBOX_TOKEN } from '../../apps/architect/src/templates/testingMapboxToken.ts';
+import { TESTING_MAPBOX_TOKEN } from '../../packages/shared-consts/src/mapbox.ts';
 
 // Mapbox access tokens are `<prefix>.<base64url JSON>.<base64url signature>`
 // with prefix `pk` (public), `sk` (secret) or `tk` (temporary). No word
@@ -197,7 +197,7 @@ const main = async () => {
     problems.push(
       'Mapbox tokens other than the allowed sandbox testing token:\n  ' +
         offenders.join('\n  ') +
-        '\n\nOnly the URL-restricted testing token (TESTING_MAPBOX_TOKEN in apps/architect/src/templates/testingMapboxToken.ts) may be committed. Study tokens are supplied to deployments at runtime, never through a fixture or a source file.',
+        '\n\nOnly the URL-restricted testing token (TESTING_MAPBOX_TOKEN in packages/shared-consts/src/mapbox.ts) may be committed. Study tokens are supplied to deployments at runtime, never through a fixture or a source file.',
     );
   }
   if (carriers.length === 0) {

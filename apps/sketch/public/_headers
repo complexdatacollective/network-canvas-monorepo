@@ -1,0 +1,13 @@
+# Security headers applied to every response. Sketch is not a PWA. No
+# Cross-Origin-Opener-Policy: the Architect handoff needs the opened tab's
+# window.opener to survive a cross-origin open.
+/*
+  Content-Security-Policy: frame-ancestors 'self'
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

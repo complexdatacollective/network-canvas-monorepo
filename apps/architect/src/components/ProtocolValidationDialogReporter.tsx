@@ -6,6 +6,7 @@ import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { returnToStartScreenMessage } from '~/components/returnToStartScreenMessage';
 import {
   collapseProtocolHistory,
   guardState,
@@ -28,12 +29,6 @@ const messages = defineMessages({
       'The latest change made this protocol invalid. Revert to the last valid state to continue editing, or return to the start screen.',
     description:
       'The description text in components / ProtocolValidationDialogReporter.',
-  },
-  returnToStartScreen: {
-    id: 'architect.protocolValidationDialogReporter.returnToStartScreen',
-    defaultMessage: 'Return to Start Screen',
-    description:
-      'Visible text in components / ProtocolValidationDialogReporter.',
   },
   revertToLastValidState: {
     id: 'architect.protocolValidationDialogReporter.revertToLastValidState',
@@ -130,7 +125,7 @@ const ProtocolValidationDialogReporter = () => {
       footer={
         <>
           <Button onClick={returnToStart}>
-            {intl.formatMessage(messages.returnToStartScreen)}
+            {intl.formatMessage(returnToStartScreenMessage)}
           </Button>
           <Button
             autoFocus

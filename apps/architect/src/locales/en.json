@@ -3021,7 +3021,7 @@
   },
   "architect.protocolValidationDialogReporter.returnToStartScreen": {
     "defaultMessage": "Return to Start Screen",
-    "description": "Visible text in components / ProtocolValidationDialogReporter."
+    "description": "Button that leaves the current screen for Architect's start screen."
   },
   "architect.protocolValidationDialogReporter.revertToLastValidState": {
     "defaultMessage": "Revert to Last Valid State",
@@ -3146,6 +3146,18 @@
   "architect.sendToInterviewer.unresolvedAssets": {
     "defaultMessage": "These resources could not be read, so your protocol was not sent: {assetList}. Add the files again in Resources, then send the protocol.",
     "description": "Body of the dialog shown when the protocol could not be sent to Interviewer because some of its resources (images, audio, video or other files added to the protocol) could not be read. assetList is a list of the resource names. Resources is the name of the page where they are managed."
+  },
+  "architect.sketchImport.errorTitle": {
+    "defaultMessage": "Your protocol couldn't be opened",
+    "description": "Heading shown when a protocol sent from Sketch, a separate study-design website, arrived but could not be opened in Architect."
+  },
+  "architect.sketchImport.timeoutTitle": {
+    "defaultMessage": "Your protocol didn't arrive",
+    "description": "Heading shown when Sketch, a separate study-design website, opened Architect but never sent the protocol."
+  },
+  "architect.sketchImport.tryAgainBody": {
+    "defaultMessage": "Go back to Sketch and try again, or download the protocol there and open the file in Architect.",
+    "description": "Next steps after a protocol from Sketch, a separate study-design website, did not arrive or could not be opened. \"Download\" means saving it as a .netcanvas file. Keep \"Sketch\" untranslated: it is a product name."
   },
   "architect.skipDestination.finish": {
     "defaultMessage": "End interview",
