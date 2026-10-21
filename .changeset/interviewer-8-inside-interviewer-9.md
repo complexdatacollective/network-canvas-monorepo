@@ -18,6 +18,7 @@ protocol runs just as it did in Interviewer 8.
   up, change it and reset it in Interviewer as usual.
 - Interviewer is ready for offline use only once everything it needs,
   including the schema 8 interview screen, is saved on the device. The status
-  bar and Settings show one "Ready offline" status for the whole app, so you
-  can check before going into the field. The schema 8 interview screen
-  downloads in the background after Interviewer has started.
+  bar and Settings show one "Ready for offline" status for the whole app, and
+  how much is left to download until then, so you can check before going
+  into the field. The schema 8 interview screen downloads in the background
+  after Interviewer has started.

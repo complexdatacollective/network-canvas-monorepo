@@ -100,6 +100,7 @@ export function createPwaCacheReclamationWorkerSource({
   const currentBuildId = ${JSON.stringify(buildId)};
   const metadataCacheName = appCachePrefix + 'pwa-cache-metadata';
   const activeBuildKey = new URL('__pwa-active-build__', self.registration.scope).href;
+  const activeBuildForeignPrefixesKey = new URL('__pwa-active-build-foreign-prefixes__', self.registration.scope).href;
   const leaseRequestType = ${JSON.stringify(PWA_BUILD_LEASE_REQUEST)};
   const leaseResponseType = ${JSON.stringify(PWA_BUILD_LEASE_RESPONSE)};
   const leaseReadyType = ${JSON.stringify(PWA_BUILD_LEASE_READY)};
@@ -125,8 +126,17 @@ export function createPwaCacheReclamationWorkerSource({
     cacheName === candidateBuildId + '-precache' ||
     cacheName.startsWith(candidateBuildId + '-precache-');
 
+  // Beside the active build, which other apps' caches it leaves alone, so a
+  // page of another build can tell whether the active worker will keep what a
+  // nested app downloads. Recorded with the build that wrote it: a worker of
+  // an older build that does not write this record leaves the build ID
+  // pointing elsewhere, so the stale record is never trusted.
   const writeActiveBuild = async () => {
     const metadata = await caches.open(metadataCacheName);
+    await metadata.put(
+      activeBuildForeignPrefixesKey,
+      new Response(JSON.stringify({ buildId: currentBuildId, foreignCachePrefixes })),
+    );
     await metadata.put(activeBuildKey, new Response(currentBuildId));
   };
 

@@ -1,5 +1,6 @@
 import {
   CloudCheck,
+  CloudDownload,
   CloudOff,
   FlaskConical,
   Info,
@@ -62,6 +63,7 @@ import {
 } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { useAppOffline } from '~/lib/pwa/appOffline';
+import { useOfflineDownload } from '~/lib/pwa/offlineDownload';
 import {
   estimateStorage,
   formatBytes,
@@ -544,6 +546,8 @@ export function SettingsDialog({
   }, []);
   const [section, setSection] = useState<Section>('about');
   const offline = useAppOffline();
+  const download = useOfflineDownload();
+  const downloadingOffline = offline === 'not-ready' && download.downloading;
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [storage, setStorage] = useState<StorageEstimate>({
     usage: null,
@@ -919,7 +923,26 @@ export function SettingsDialog({
                     }
                   />
                 ) : null}
-                {offline === 'ready' || offline === 'not-ready' ? (
+                {downloadingOffline ? (
+                  <SettingsRow
+                    title={intl.formatMessage(offlineMessages.settingTitle)}
+                    desc={intl.formatMessage(offlineMessages.downloadingHelp)}
+                    control={
+                      <span
+                        data-testid="offline-setting"
+                        className="text-info inline-flex items-center gap-1.5 text-xs"
+                      >
+                        <CloudDownload className="size-3.5" aria-hidden />
+                        {intl.formatMessage(offlineMessages.downloading, {
+                          hasProgress: String(download.progress !== null),
+                          percent: intl.formatNumber(download.progress ?? 0, {
+                            style: 'percent',
+                          }),
+                        })}
+                      </span>
+                    }
+                  />
+                ) : offline === 'ready' || offline === 'not-ready' ? (
                   <SettingsRow
                     title={intl.formatMessage(offlineMessages.settingTitle)}
                     desc={intl.formatMessage(
