@@ -3858,8 +3858,9 @@ jobs:
     # which runs no code from the tag, uses the write.
     permissions:
       contents: write
-    uses: ./.github/workflows/architect-subpath-dist.yml
+    uses: ./.github/workflows/app-subpath-dist.yml
     with:
+      app: architect
       tag: ${{ needs.apps-release-architect.outputs.tag }}
       expected_sha: ${{ needs.apps-release-architect.outputs.sha }}
 
@@ -3880,6 +3881,14 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
+    # Read by apps-release-interviewer-subpath-dist below: whether this run
+    # actually released (the guard skips a version already tagged or
+    # overtaken), the tag it created, and the commit it built and deployed,
+    # which that tag must name.
+    outputs:
+      released: ${{ steps.guard.outputs.skip != 'true' }}
+      tag: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+      sha: ${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3961,10 +3970,36 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
+          # The commit built and deployed above. Without it GitHub creates the
+          # tag at main's tip when the release is published, which can be a
+          # later push that still carries this version (a pending changeset
+          # bumps nothing), and the sub-path dist below builds the tag's tree.
+          target_commitish: ${{ github.sha }}
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
           body_path: ${{ runner.temp }}/interviewer-notes.md
           prerelease: false
           make_latest: 'true'
+
+  # Builds the release just tagged under /v8/ and attaches
+  # interviewer-v8-dist.tgz to it, for Interviewer 9 to bundle (see
+  # apps/interviewer/RELEASING.md, "Sub-path dist tarball"). A separate job so
+  # a failure here never turns a release that has already shipped red, and
+  # chained by workflow_call because the release above is created with
+  # GITHUB_TOKEN, which fires no tag or release event. Major 8 only: 9.x is the
+  # root app. A tag that predates sub-path builds (8.4.x) is skipped inside.
+  apps-release-interviewer-subpath-dist:
+    needs: [apps-release-detect, apps-release-interviewer]
+    if: needs.apps-release-detect.outputs.interviewer_released == 'true' && needs.apps-release-interviewer.outputs.released == 'true' && startsWith(needs.apps-release-detect.outputs.interviewer_version, '8.')
+    # A called workflow's jobs get no more than this job grants, and the
+    # workflow's top-level permissions are read-only. Only its publish job,
+    # which runs no code from the tag, uses the write.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/app-subpath-dist.yml
+    with:
+      app: interviewer
+      tag: ${{ needs.apps-release-interviewer.outputs.tag }}
+      expected_sha: ${{ needs.apps-release-interviewer.outputs.sha }}
 
   # Build, deploy to Netlify production, and cut a stable GitHub release for
   # Background Creator when its normal-lane version changes. This remains
@@ -4100,6 +4135,13 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
+      # `needs: release` orders the publish before the mirror, but npm keeps
+      # serving the previous package document for a while after a publish: the
+      # 4.3.1 mirror's lockfile install, two seconds after the release job,
+      # found no @codaco/interview 11.0.0 and failed.
+      - name: Wait for npm to serve this release's packages
+        if: steps.guard.outputs.skip != 'true'
+        run: node scripts/release/wait-for-npm-versions.mjs --app apps/fresco
       - name: Mirror source to the Fresco repository
         id: mirror
         if: steps.guard.outputs.skip != 'true'

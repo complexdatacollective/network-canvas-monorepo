@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// Packs a sub-path Architect build (ARCHITECT_BASE_PATH=/v8/) into the
-// tarball a later major bundles: Architect 9 serves Architect 8 at /v8/ from
-// its own deploy, pinned by URL and sha256 in apps/architect/legacy-architect.json
-// on the schema-9 line. Run by .github/workflows/architect-subpath-dist.yml
-// from that workflow's own revision against a released tag's dist, so it reads
-// everything from its arguments and nothing from the tag's tree.
+// Packs a sub-path build of an app (ARCHITECT_BASE_PATH=/v8/,
+// INTERVIEWER_BASE_PATH=/v8/) into the tarball the app's next major bundles:
+// Architect 9 serves Architect 8, and Interviewer 9 serves Interviewer 8, at
+// /v8/ from its own deploy, pinned by URL and sha256 in
+// apps/<app>/legacy-<app>.json on the newer line. Run by
+// .github/workflows/app-subpath-dist.yml from that workflow's own revision
+// against a released tag's dist, so it reads everything from its arguments and
+// nothing from the tag's tree.
 //
-// The tarball's root is the dist root (index.html, sw.js, assets/, preview/…)
-// plus dist-info.json, so the bundler extracts it straight into dist/v8. It is
+// The tarball's root is the dist root (index.html, sw.js, assets/, …) plus
+// dist-info.json, so the bundler extracts it straight into dist/v8. It is
 // packed deterministically — sorted entries, a fixed mtime and owner, and a
 // gzip header without a name or timestamp — so packing the same dist twice
 // gives the same bytes. The build itself is not reproducible (its precache id
@@ -32,18 +34,35 @@ import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import {
-  architectCachePrefix,
-  resolveArchitectBasePath,
-} from '../../apps/architect/scripts/app-base-path.mjs';
+  appCachePrefix,
+  resolveAppBasePath,
+} from '../buildtime/app-base-path.mjs';
+
+// The apps that ship an older major inside the next one. `htmlEntries` are
+// the HTML documents the build emits, each of which must load its bundles
+// from under the base.
+export const SUBPATH_APPS = {
+  architect: {
+    label: 'Architect',
+    baseVariable: 'ARCHITECT_BASE_PATH',
+    htmlEntries: ['index.html', 'preview/index.html'],
+  },
+  interviewer: {
+    label: 'Interviewer',
+    baseVariable: 'INTERVIEWER_BASE_PATH',
+    htmlEntries: ['index.html'],
+  },
+};
 
 const ROOT_ASSET_REFERENCE = /(?:src|href)="\/assets\//;
 const PRECACHE_PREFIX = /setCacheNameDetails\(\{prefix:"([^"]+)"\}\)/;
 
 /**
- * @param {{ dist: string, tag: string, version: string, commit: string, base: string, out: string }} options
+ * @param {{ app: string, dist: string, tag: string, version: string, commit: string, base: string, out: string }} options
  * @returns {{ base: string, cachePrefix: string, sha256: string, out: string }}
  */
-export function packageArchitectSubpathDist({
+export function packageAppSubpathDist({
+  app,
   dist,
   tag,
   version,
@@ -51,19 +70,28 @@ export function packageArchitectSubpathDist({
   base: rawBase,
   out,
 }) {
-  const base = resolveArchitectBasePath({ ARCHITECT_BASE_PATH: rawBase });
+  const config = Object.hasOwn(SUBPATH_APPS, app)
+    ? SUBPATH_APPS[app]
+    : undefined;
+  if (!config) {
+    throw new Error(
+      `'${app}' has no sub-path dist. Expected one of: ${Object.keys(SUBPATH_APPS).join(', ')}.`,
+    );
+  }
+  const { label, baseVariable, htmlEntries } = config;
+  const base = resolveAppBasePath({ [baseVariable]: rawBase }, baseVariable);
   if (base === '/') {
     throw new Error(
       'The sub-path dist needs a base such as /v8/; a root build is deployed, not bundled.',
     );
   }
-  if (tag !== `@codaco/architect@${version}`) {
-    throw new Error(`${tag} is not the release tag of Architect ${version}.`);
+  if (tag !== `@codaco/${app}@${version}`) {
+    throw new Error(`${tag} is not the release tag of ${label} ${version}.`);
   }
   if (!/^[0-9a-f]{40}$/.test(commit)) {
     throw new Error(`commit must be a full SHA, got '${commit}'.`);
   }
-  const cachePrefix = architectCachePrefix(base);
+  const cachePrefix = appCachePrefix(app, base);
 
   const read = (file) => {
     const path = join(dist, file);
@@ -71,7 +99,7 @@ export function packageArchitectSubpathDist({
     return readFileSync(path, 'utf8');
   };
 
-  for (const file of ['index.html', 'preview/index.html']) {
+  for (const file of htmlEntries) {
     const html = read(file);
     if (!html.includes(`${base}assets/`)) {
       throw new Error(`${file} does not load its assets from ${base}assets/.`);
@@ -115,6 +143,9 @@ export function packageArchitectSubpathDist({
     rmSync(join(dist, file), { force: true });
   }
 
+  // Written here even when the build stamped one (Interviewer's does): this
+  // run knows the released tag and commit, which a build replayed from a
+  // cache or made outside a checkout may not.
   writeFileSync(
     join(dist, 'dist-info.json'),
     `${JSON.stringify({ tag, version, commit, base, cachePrefix }, null, 2)}\n`,
@@ -150,6 +181,7 @@ function listFiles(directory) {
 function main() {
   const { values } = parseArgs({
     options: {
+      app: { type: 'string' },
       dist: { type: 'string' },
       tag: { type: 'string' },
       version: { type: 'string' },
@@ -158,15 +190,16 @@ function main() {
       out: { type: 'string' },
     },
   });
-  const { dist, tag, version, commit, base, out } = values;
-  if (!dist || !tag || !version || !commit || !base || !out) {
+  const { app, dist, tag, version, commit, base, out } = values;
+  if (!app || !dist || !tag || !version || !commit || !base || !out) {
     console.error(
-      'Usage: node scripts/release/package-architect-subpath-dist.mjs --dist <dir> --tag <tag> --version <version> --commit <sha> --base </vN/> --out <file.tgz>',
+      'Usage: node scripts/release/package-app-subpath-dist.mjs --app <architect|interviewer> --dist <dir> --tag <tag> --version <version> --commit <sha> --base </vN/> --out <file.tgz>',
     );
     process.exit(1);
   }
   try {
-    const result = packageArchitectSubpathDist({
+    const result = packageAppSubpathDist({
+      app,
       dist,
       tag,
       version,

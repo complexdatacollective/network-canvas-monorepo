@@ -27,11 +27,13 @@
 //      tags: its version is what is live, and the normal lane pushes it before
 //      it tags (rule 5 is checked only when the workflow supplies it).
 //
-// SCOPE=line is the Architect Maintenance Release lane
-// (.github/workflows/architect-maintenance-release.yml): a patch to an OLDER
-// major line, such as 8.5.1 once 9.x is production. Nothing it releases is
-// deployed — Architect 8 reaches users as a tarball Architect 9 bundles at
-// /v8/ — so rules 3 and 4 are scoped to the version's own major line instead:
+// SCOPE=line is the maintenance lane
+// (.github/workflows/app-maintenance-release.yml, for Architect and
+// Interviewer): a patch to an OLDER major
+// line, such as 8.5.1 once 9.x is production. Nothing it releases is deployed
+// — Architect 8 and Interviewer 8 reach users as a tarball the next major
+// bundles at /v8/ — so rules 3 and 4 are scoped to the version's own major
+// line instead:
 //   3a. The line must already have a release, and the version must be newer
 //       than every release on it.
 //   3b. The version's major must be LOWER than the newest release overall.
@@ -47,7 +49,8 @@
 //
 // Inputs (env): APP (interviewer | architect | fresco), GITHUB_OUTPUT,
 // MIRROR_VERSION (optional: the version the mirrored repository's main
-// carries), SCOPE (optional: `line` for the maintenance lane; Architect only).
+// carries), SCOPE (optional: `line` for a maintenance lane; Architect and
+// Interviewer).
 // Requires tags in the checkout (actions/checkout fetch-tags: true).
 import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -57,9 +60,20 @@ import { appendFileSync, readFileSync } from 'node:fs';
 // are scoped packages; Fresco is the bare `fresco`, because it releases by
 // mirroring into its own repository rather than publishing anywhere under the
 // scope (see apps/fresco/CLAUDE.md).
+//
+// `maintenance` names the lane an app's older major lines release through,
+// for the apps whose older line still reaches users inside the newer app.
 const APPS = {
-  interviewer: { label: 'Interviewer', pkg: '@codaco/interviewer' },
-  architect: { label: 'Architect', pkg: '@codaco/architect' },
+  interviewer: {
+    label: 'Interviewer',
+    pkg: '@codaco/interviewer',
+    maintenance: 'App Maintenance Release workflow (app: interviewer)',
+  },
+  architect: {
+    label: 'Architect',
+    pkg: '@codaco/architect',
+    maintenance: 'App Maintenance Release workflow (app: architect)',
+  },
   fresco: { label: 'Fresco', pkg: 'fresco' },
 };
 
@@ -70,19 +84,19 @@ if (!target) {
     `Unsupported app '${app}'. Expected one of: ${Object.keys(APPS).join(', ')}.`,
   );
 }
-const { label, pkg } = target;
+const { label, pkg, maintenance } = target;
 
-// Only Architect has a maintenance lane: an older Architect line still reaches
-// users inside the newer app, while every other app has exactly one production
-// target and nowhere for an older line to go.
+// Only Architect and Interviewer have a maintenance lane: an older line of
+// either still reaches users inside the newer app, while Fresco has exactly
+// one production target and nowhere for an older line to go.
 const scope = process.env.SCOPE ?? '';
 if (scope !== '' && scope !== 'line') {
   fail(`Unsupported SCOPE '${scope}'. Expected 'line' or nothing.`);
 }
 const lineScope = scope === 'line';
-if (lineScope && app !== 'architect') {
+if (lineScope && !maintenance) {
   fail(
-    `SCOPE=line is the Architect maintenance lane; ${label} has no older line to maintain.`,
+    `SCOPE=line is a maintenance lane; ${label} has no older line to maintain.`,
   );
 }
 
@@ -151,8 +165,8 @@ if (lineScope) {
   fail(
     `${version} is older than the released ${newest}. Deploying it would roll ${label} production back to older code; ` +
       `this lane only ships the newest line.` +
-      (app === 'architect'
-        ? ' An older Architect major line releases through the Architect Maintenance Release workflow instead.'
+      (maintenance
+        ? ` An older ${label} major line releases through the ${maintenance} instead.`
         : ''),
   );
 }

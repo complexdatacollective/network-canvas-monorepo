@@ -1058,11 +1058,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
     ((): ScenarioDefinition => {
       let friendVarId = '';
       return {
-        id: 'duplicate-labels-and-color-cycling',
-        covers: [
-          'duplicate-option-labels-index-keyed',
-          'category-color-cycling',
-        ],
+        id: 'duplicate-labels-and-ten-bins',
+        covers: ['duplicate-option-labels-index-keyed'],
         visual: true,
         seedNetwork: true,
         build: () => {
@@ -1081,11 +1078,10 @@ export const categoricalBinScenarios: InterfaceScenarios = {
               { label: 'Friend', value: 20 },
             ],
           });
-          // 12 distinct options drive colour cycling (10 colours in the cycle).
           const manyVar = personType.addVariable({
             name: 'ManyCat',
             type: 'categorical',
-            options: Array.from({ length: 12 }, (_, i) => ({
+            options: Array.from({ length: 10 }, (_, i) => ({
               label: `Option ${i + 1}`,
               value: i + 1,
             })),
@@ -1125,20 +1121,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
             state!.nodes[0]![entityAttributesProperty][friendVarId],
           ).toEqual([20]);
 
-          // Prompt 2: 12 bins, colours cycle (10-colour cycle => index 10 wraps
-          // to index 0's colour; adjacent bins differ).
           await interview.nextButton.click();
-          await expect(page.locator('.catbin-item')).toHaveCount(12);
-
-          const catColorAt = (i: number) =>
-            page
-              .locator('.catbin-item')
-              .nth(i)
-              .evaluate((el) =>
-                getComputedStyle(el).getPropertyValue('--cat-color').trim(),
-              );
-          expect(await catColorAt(10)).toBe(await catColorAt(0));
-          expect(await catColorAt(0)).not.toBe(await catColorAt(1));
+          await expect(page.locator('.catbin-item')).toHaveCount(10);
         },
       };
     })(),

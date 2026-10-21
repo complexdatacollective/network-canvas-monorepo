@@ -119,7 +119,7 @@ jobs:
           --health-retries 5
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
-      # For architect-subpath-dist below.
+      # For architect-subpath-dist and interviewer-subpath-dist below.
       tag: ${{ steps.version.outputs.tag }}
       version: ${{ steps.version.outputs.version }}
     # No credential at job level: every step below that runs code from the
@@ -478,8 +478,26 @@ jobs:
     # uses the write.
     permissions:
       contents: write
-    uses: ./.github/workflows/architect-subpath-dist.yml
+    uses: ./.github/workflows/app-subpath-dist.yml
     with:
+      app: architect
+      tag: ${{ needs.hotfix-release.outputs.tag }}
+      expected_sha: ${{ needs.hotfix-release.outputs.sha }}
+
+  # The same for an Interviewer 8 hotfix, which Interviewer 9 bundles at /v8/:
+  # interviewer-v8-dist.tgz on the release just created, as
+  # apps-release-interviewer-subpath-dist does for the normal lane (see
+  # apps/interviewer/RELEASING.md, "Sub-path dist tarball").
+  interviewer-subpath-dist:
+    needs: hotfix-release
+    if: inputs.app == 'interviewer' && startsWith(needs.hotfix-release.outputs.version, '8.')
+    # Only the called workflow's publish job, which runs no code from the tag,
+    # uses the write.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/app-subpath-dist.yml
+    with:
+      app: interviewer
       tag: ${{ needs.hotfix-release.outputs.tag }}
       expected_sha: ${{ needs.hotfix-release.outputs.sha }}
 

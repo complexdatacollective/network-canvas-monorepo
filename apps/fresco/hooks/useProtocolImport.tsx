@@ -448,11 +448,6 @@ export const useProtocolImport = () => {
         throw new DatabaseError(result.error, result.errorDetails);
       }
 
-      captureClientEvent('ProtocolInstalled', {
-        protocol: fileName,
-        schemaVersion: validatedProtocol.schemaVersion,
-      });
-
       // Phase: Complete
       updateToastPhase(toastId, 'complete', { displayName: protocolName });
 

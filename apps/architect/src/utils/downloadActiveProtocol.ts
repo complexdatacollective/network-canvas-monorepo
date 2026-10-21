@@ -36,6 +36,10 @@ const utilityMessages = defineMessages({
     description: 'The description text in utils / downloadActiveProtocol.',
   },
 });
+/** Why a protocol could not be bundled, when it was none of the known reasons. */
+export const preparingTheFileFailedMessage =
+  utilityMessages.somethingWentWrongWhilePreparingThe;
+
 const finalMessages = defineMessages({
   unresolvedAssets: {
     id: 'architect.final.utils.downloadActiveProtocol.unresolvedAssets',

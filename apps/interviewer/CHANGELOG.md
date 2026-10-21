@@ -1,5 +1,30 @@
 # @codaco/interviewer
 
+## 8.5.1
+
+### Bug fixes
+
+- The Network Canvas logo on the home and welcome screens now shows the first time you open Interviewer offline after installing it. Before, it could appear as a broken image until you had opened the app online again.
+
+## 8.5.0
+
+### New features
+
+- **Ready for Interviewer 9.** Interviewer 8 can now run inside Interviewer 9, on the same site, so the protocols and interviews you already have keep working after Interviewer 9 ships. Interviewer 9 lists your schema 8 protocols and interviews, and when you start, resume or review one, it runs in Interviewer 8 exactly as before, using the same data. Leaving or finishing the interview takes you back to Interviewer 9, and you unlock only once, in Interviewer 9. Interviewer 8 on its own works exactly as before.
+- **Choosing a language.** First-run setup asks for the app language once, on the welcome screen, before you select "Get started", instead of again in the setup steps. You can still change it in Settings. The automatic option now names the language it uses, for example "Automatic (English)".
+
+### Interview changes
+
+These improvements to the interview are shared with Architect's Preview and Fresco.
+
+- **Dragging on touch screens.** Dragging people out of a scrolling area now goes the way you'd expect. In the Sociogram's bin you can drag a person straight up or diagonally onto the canvas, and swiping sideways scrolls the bin. In the roster and name generator panels, swiping up and down scrolls and dragging sideways moves a person. To drag along the direction an area scrolls, hold the person still for a moment first.
+
+### Bug fixes
+
+- Importing a protocol made with a newer version of Network Canvas now says so, instead of showing a generic error.
+- The update check now offers the newest release, not whichever release GitHub lists first, so a fix for an older version is never offered as an update to a newer one.
+- The released app no longer includes the developer test protocol and its media, among them a 24 MB video.
+
 ## 8.4.0
 
 ### New features

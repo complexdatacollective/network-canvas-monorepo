@@ -1,17 +1,17 @@
-name: Architect Maintenance Release
+name: App Maintenance Release
 
-# Releases a patch to an OLDER Architect major line — 8.5.1 once Architect 9 is
-# production — from a `maintenance/architect-<version>` branch cut from that
-# line's newest tag.
+# Releases a patch to an OLDER major line of an app that ships inside its next
+# major — Interviewer 8.5.1 or Architect 8.5.1 once 9.x is production — from a
+# `maintenance/<app>-<version>` branch cut from that line's newest tag.
 #
-# Neither existing lane can: both deploy to the one production site, so both
-# refuse a version older than the newest release (app-release-guard.sh and
-# resolve-hotfix-release.mjs). An older line is not deployed anywhere of its
-# own. Architect 8 reaches users inside Architect 9's deploy at /v8/, as a
-# tarball Architect 9's build bundles. So this lane only tags, creates a
-# GitHub release, and attaches that tarball (architect-subpath-dist.yml).
-# Users get the fix when the pin on the newer line is bumped and that line
-# next releases; see "Maintenance releases" in apps/architect/RELEASING.md.
+# Neither existing lane can: both deploy to the app's one production site, so
+# both refuse a version older than the newest release (app-release-guard.sh
+# and resolve-hotfix-release.mjs). An older line is not deployed anywhere of
+# its own. Interviewer 8 and Architect 8 reach users inside the 9.x deploy at
+# /v8/, as a tarball the 9.x build bundles. So this lane only tags, creates a
+# GitHub release, and attaches that tarball (app-subpath-dist.yml). Users get
+# the fix when the pin on the newer line is bumped and that line next
+# releases; see "Maintenance releases" in apps/<app>/RELEASING.md.
 #
 # What it never does: deploy (there is no Netlify step and no Netlify
 # credential here), make its release "Latest" (`make_latest: 'false'`, so the
@@ -26,42 +26,53 @@ name: Architect Maintenance Release
 # No merge back to main afterwards, unlike a hotfix: main is on a newer major,
 # and merging would drag this line's package.json and CHANGELOG into it.
 #
-# Dispatched FROM main with the branch as an input, like the Hotfix Release
-# workflow: the job definitions, guards and tooling are main's reviewed code,
-# and only the tree that gets verified and released comes from the branch.
+# Dispatched FROM main with the app and branch as inputs, like the Hotfix
+# Release workflow: the job definitions, guards and tooling are main's
+# reviewed code, and only the tree that gets verified and released comes from
+# the branch.
 #
-# NOTE(human-setup-required): that separation is a convention this file cannot
-# enforce (see the same note in hotfix-release.yml). Create the
-# `architect-maintenance-release` environment with required reviewers and its
+# That separation is a convention this file cannot enforce (see the note in
+# hotfix-release.yml). What closes it is each app's
+# `<app>-maintenance-release` environment, with required reviewers and its
 # deployment branches restricted to main, so a copy of this workflow on
-# another branch cannot reach the job that claims the tag. It holds no
-# secrets: the lane deploys nothing.
+# another branch cannot reach the job that claims the tag:
+# `interviewer-maintenance-release`, and `architect-maintenance-release`, the
+# one Architect's earlier lane used. They hold no secrets: the lane deploys
+# nothing.
 #
-# Procedure (apps/architect/RELEASING.md, "Maintenance releases"):
-#   1. `git switch -c maintenance/architect-8.5.1 '@codaco/architect@8.5.0'`,
-#      cherry-pick the fix, bump apps/architect/package.json and add the
+# Procedure (apps/<app>/RELEASING.md, "Maintenance releases"):
+#   1. `git switch -c maintenance/interviewer-8.5.1 '@codaco/interviewer@8.5.0'`,
+#      cherry-pick the fix, bump apps/interviewer/package.json and add the
 #      CHANGELOG.md section by hand, push the branch.
-#   2. Run this workflow from main with `source_ref` set to that branch.
+#   2. Run this workflow from main with `app` and `source_ref` set.
 #   3. Bump the pin on the newer line to the tarball the run's summary prints.
 
 on:
   workflow_dispatch:
     inputs:
+      app:
+        description: App whose older major line to release
+        required: true
+        type: choice
+        options:
+          - interviewer
+          - architect
       source_ref:
-        description: Maintenance branch to release (e.g. maintenance/architect-8.5.1)
+        description: Maintenance branch to release (e.g. maintenance/interviewer-8.5.1)
         required: true
         type: string
 
 permissions:
   contents: read
 
-# Not the normal lane's `apps-release-@codaco/architect`. That group keeps one
+# Not the normal lane's `apps-release-@codaco/<app>`. That group keeps one
 # pending run, and a maintenance run waiting for environment approval would
 # hold it, so a normal release queued behind it could be dropped. Nothing here
 # touches production, so the lanes do not need to exclude each other; two
-# maintenance runs still must not, or both could pass the line check.
+# maintenance runs of one app still must not, or both could pass the line
+# check.
 concurrency:
-  group: architect-maintenance-release
+  group: ${{ inputs.app }}-maintenance-release
   cancel-in-progress: false
 
 env:
@@ -78,7 +89,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
-    # The verify step tests Architect's whole workspace dependency closure,
+    # The verify step tests the app's whole workspace dependency closure,
     # which reaches @codaco/studio-sync; its conformance suites need this
     # Postgres. Same service as hotfix-release.yml, for the reasons given there.
     services:
@@ -99,7 +110,7 @@ jobs:
       sha: ${{ steps.commit.outputs.sha }}
       version: ${{ steps.version.outputs.version }}
     env:
-      APP: architect
+      APP: ${{ inputs.app }}
       SCOPE: line
       SOURCE_REF: ${{ inputs.source_ref }}
     steps:
@@ -113,8 +124,14 @@ jobs:
             echo "::error::Dispatch this workflow from main and name the branch to release in source_ref. Running it from a branch would take the job definition from that branch too." >&2
             exit 1
           fi
-          if [[ "$SOURCE_REF" != maintenance/architect-* ]]; then
-            echo "::error::source_ref '$SOURCE_REF' is not a maintenance/architect-<version> branch. The newest line releases through apps-release-architect or the Hotfix Release workflow." >&2
+          # The choice input limits a dispatch to these two; checked anyway,
+          # because APP names a directory and a package below.
+          if [[ "$APP" != 'interviewer' && "$APP" != 'architect' ]]; then
+            echo "::error::'$APP' has no maintenance lane." >&2
+            exit 1
+          fi
+          if [[ "$SOURCE_REF" != "maintenance/${APP}-"* ]]; then
+            echo "::error::source_ref '$SOURCE_REF' is not a maintenance/${APP}-<version> branch. The newest line releases through apps-release-${APP} or the Hotfix Release workflow." >&2
             exit 1
           fi
 
@@ -149,7 +166,7 @@ jobs:
         run: |
           sha=$(git rev-parse HEAD)
           if git merge-base --is-ancestor "$sha" origin/main; then
-            echo "::error::source_ref '$SOURCE_REF' ($sha) is a commit of main. main releases through apps-release-architect in ci-and-release.yml." >&2
+            echo "::error::source_ref '$SOURCE_REF' ($sha) is a commit of main. main releases through apps-release-${APP} in ci-and-release.yml." >&2
             exit 1
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
@@ -165,8 +182,8 @@ jobs:
           SHA: ${{ steps.commit.outputs.sha }}
         run: |
           set -euo pipefail
-          version="$(jq -r .version apps/architect/package.json)"
-          tag="@codaco/architect@$version"
+          version="$(jq -r .version "apps/${APP}/package.json")"
+          tag="@codaco/${APP}@$version"
           if ! git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
             exit 0
           fi
@@ -199,20 +216,22 @@ jobs:
 
       # A maintenance branch has no pull request CI and no required `quality`
       # gate behind it, and workspace packages are consumed as source, so the
-      # filter covers Architect's whole dependency closure (`...`).
-      - name: Verify Architect and its workspace dependencies
+      # filter covers the app's whole dependency closure (`...`).
+      - name: Verify the app and its workspace dependencies
         env:
           SKIP_ENV_VALIDATION: 'true'
-        run: pnpm exec turbo run typecheck test --filter="@codaco/architect..."
+        run: pnpm exec turbo run typecheck test --filter="@codaco/${APP}..."
 
       # The sub-path build is the only build this line ships, and the dist
       # workflow makes it from the tag, after the tag exists. Building it here
       # first means a branch that cannot build under /v<major>/ fails before
-      # anything is claimed. Not through turbo, as in the dist workflow.
+      # anything is claimed. Not through turbo, as in the dist workflow. The
+      # base reaches the build through the app's own variable
+      # (INTERVIEWER_BASE_PATH, ARCHITECT_BASE_PATH).
       - name: Verify the sub-path build
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: ARCHITECT_BASE_PATH="/v${VERSION%%.*}/" pnpm --filter @codaco/architect build
+        run: env "${APP^^}_BASE_PATH=/v${VERSION%%.*}/" pnpm --filter "@codaco/${APP}" build
 
   # Claims the tag and creates the release. Holds the write token, sits behind
   # the environment's reviewers, and runs nothing from the branch: it checks
@@ -222,13 +241,13 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: architect-maintenance-release
+    environment: ${{ inputs.app }}-maintenance-release
     permissions:
       contents: write
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     env:
-      APP: architect
+      APP: ${{ inputs.app }}
       SCOPE: line
     steps:
       # The exact commit `verify` checked, not the branch: a push to the
@@ -267,7 +286,7 @@ jobs:
       - name: Give up a claim an earlier attempt left without a release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: '@codaco/architect@${{ needs.verify.outputs.version }}'
+          TAG: '@codaco/${{ inputs.app }}@${{ needs.verify.outputs.version }}'
           SHA: ${{ needs.verify.outputs.sha }}
         run: |
           set -euo pipefail
@@ -302,12 +321,13 @@ jobs:
       # claim: nothing that can fail runs between the claim and the release.
       - name: Release notes
         env:
+          PACKAGE: ${{ steps.version.outputs.package }}
           VERSION: ${{ steps.version.outputs.version }}
           SINCE: ${{ steps.version.outputs.newest }}
         run: >-
           node .maintenance-lane/scripts/release/release-notes.mjs
-          --app apps/architect
-          --pkg @codaco/architect
+          --app "apps/${APP}"
+          --pkg "${PACKAGE}"
           --version "$VERSION"
           --since "$SINCE"
           --out "${RUNNER_TEMP}/maintenance-notes.md"
@@ -325,16 +345,16 @@ jobs:
             -f ref="refs/tags/$TAG" \
             -f sha="$SHA"
 
-      # Never "Latest": that belongs to the newest line, and Architect's
-      # in-app update check must not see this as the newest release (it picks
-      # the highest version on or above the running major regardless).
+      # Never "Latest": that belongs to the newest line, and the app's in-app
+      # update check must not see this as the newest release (it picks the
+      # highest version on the running major regardless).
       - name: Create the release
         id: create
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ needs.verify.outputs.sha }}
-          name: Architect ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.label }} ${{ steps.version.outputs.version }}
           body_path: ${{ runner.temp }}/maintenance-notes.md
           prerelease: false
           make_latest: 'false'
@@ -363,8 +383,9 @@ jobs:
     needs: [verify, release]
     permissions:
       contents: write
-    uses: ./.github/workflows/architect-subpath-dist.yml
+    uses: ./.github/workflows/app-subpath-dist.yml
     with:
+      app: ${{ inputs.app }}
       tag: ${{ needs.release.outputs.tag }}
       expected_sha: ${{ needs.verify.outputs.sha }}
       # Unlike the release lanes, a tarball is this lane's whole product, so a

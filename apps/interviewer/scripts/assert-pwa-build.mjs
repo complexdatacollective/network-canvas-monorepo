@@ -200,6 +200,38 @@ if (stagePreviewAssets.length === 0) {
   fail('no 4:3 stage-preview assets found');
 }
 
+// Fonts are left to the runtime cache. The hashed header mark (Home's and
+// onboarding's) is precached: the installing page is not controlled by the
+// worker, so the runtime cache never sees it before the first offline launch.
+const fontAssets = assetFiles
+  .filter((f) => f.endsWith('.woff2'))
+  .map((f) => `assets/${f}`);
+if (fontAssets.length === 0) {
+  fail('no .woff2 fonts emitted to dist/assets');
+}
+const headerMarks = assetFiles.filter((f) => /^NC-Flat-.+\.png$/.test(f));
+if (headerMarks.length === 0) {
+  fail('no hashed header mark (assets/NC-Flat-*.png) emitted');
+}
+
+const manifestUrls = new Set(
+  [...sw.matchAll(/\{url:"([^"]+)",revision:/g)].map((m) => m[1]),
+);
+const precachedFonts = fontAssets.filter((url) => manifestUrls.has(url));
+if (precachedFonts.length > 0) {
+  fail(
+    `the build precaches runtime-cached fonts: ${precachedFonts.join(', ')}`,
+  );
+}
+const missingMarks = headerMarks
+  .map((f) => `assets/${f}`)
+  .filter((url) => !manifestUrls.has(url));
+if (missingMarks.length > 0) {
+  fail(
+    `the header mark is not precached, so it breaks on the first offline launch: ${missingMarks.join(', ')}`,
+  );
+}
+
 const missingStagePreviewAssets = stagePreviewAssets.filter(
   (f) => !precached.has(`assets/${f}`),
 );
