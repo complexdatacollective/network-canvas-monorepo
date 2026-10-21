@@ -39,7 +39,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'ready-for-next-pulse',
     'bin-expand-collapse',
     'duplicate-option-labels-index-keyed',
-    'category-color-cycling',
     'behaviours.requireCompletePlacement',
     'unplacedNodesNotice',
   ],
