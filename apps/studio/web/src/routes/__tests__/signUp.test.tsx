@@ -268,7 +268,7 @@ describe('/sign-up', () => {
     renderAt('/sign-up?error=EXPIRED_TOKEN');
 
     expect(
-      await screen.findByText(/That sign-in link is no longer valid/),
+      await screen.findByText(/That sign-up link is no longer valid/),
     ).toBeInTheDocument();
   });
 
@@ -331,6 +331,18 @@ describe('/sign-up/team', () => {
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/team/team-new');
     expect(fixtures.created).toEqual(['Lab of Networks']);
+  });
+
+  it('lets a researcher sign out or change language before naming a team', async () => {
+    renderAt('/sign-up/team');
+
+    await screen.findByRole('heading', { level: 1, name: 'Name your team' });
+    expect(
+      screen.getByRole('button', { name: 'Sign out' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: /^Interface language:/ }),
+    ).toBeInTheDocument();
   });
 });
 

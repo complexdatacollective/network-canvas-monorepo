@@ -44,7 +44,7 @@ const messages = defineMessages({
   ownerOnly: {
     id: 'studio.noTeam.ownerOnly',
     defaultMessage:
-      'On this Studio instance, only its owner can create teams, so a team owner has to invite you.',
+      'On this Studio instance, only its owner can create teams, so a team owner or admin has to invite you.',
     description:
       'Shown on /no-team of a self-hosted instance to a researcher who is not allowed to create a team.',
   },

@@ -7,6 +7,8 @@ import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import StudioLocaleSwitcher from '../i18n/StudioLocaleSwitcher.tsx';
+import NoTeamSignOut from '../shell/NoTeamSignOut.tsx';
 import {
   createTeamMessages,
   TeamNameField,
@@ -68,6 +70,8 @@ export default function SignUpTeam() {
         <Paragraph intent="smallText">
           {intl.formatMessage(messages.invited)}
         </Paragraph>
+        <NoTeamSignOut />
+        <StudioLocaleSwitcher />
       </Surface>
     </main>
   );

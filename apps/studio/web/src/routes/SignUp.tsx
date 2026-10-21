@@ -16,6 +16,7 @@ import MaintenanceNotice from '../shell/MaintenanceNotice.tsx';
 import {
   CallbackErrorAlert,
   MagicLinkForm,
+  type MethodWording,
   SentLinkConfirmation,
   SocialSignIn,
 } from './SignInMethods.tsx';
@@ -60,6 +61,39 @@ const messages = defineMessages({
     description:
       'Shown on /sign-up when the deployment offers neither email links nor Google or Microsoft sign-in.',
   },
+  linkInvalid: {
+    id: 'studio.signUp.linkInvalid',
+    defaultMessage:
+      'That sign-up link is no longer valid. Enter your email address to request a new one.',
+    description:
+      'Shown on /sign-up when a sign-up link the visitor followed has expired or was already used.',
+  },
+  didNotComplete: {
+    id: 'studio.signUp.didNotComplete',
+    defaultMessage: 'Creating your account did not complete. Try again.',
+    description:
+      'Shown on /sign-up when creating an account failed for an unspecified reason.',
+  },
+  magicLinkSendFailed: {
+    id: 'studio.signUp.magicLinkSendFailed',
+    defaultMessage:
+      'The sign-up email could not be sent. Wait a moment and try again.',
+    description:
+      'Form error on /sign-up when requesting a sign-up link failed.',
+  },
+  socialFailed: {
+    id: 'studio.signUp.socialFailed',
+    defaultMessage:
+      'Creating your account could not be started. Wait a moment and try again.',
+    description:
+      'Shown on /sign-up when handing off to Google or Microsoft failed.',
+  },
+  emailHint: {
+    id: 'studio.signUp.emailHint',
+    defaultMessage: 'The address your Studio account will use.',
+    description:
+      "Hint under /sign-up's email field when the value is not a valid address.",
+  },
   haveAccount: {
     id: 'studio.signUp.haveAccount',
     defaultMessage: 'Already have an account? Sign in',
@@ -70,6 +104,14 @@ const messages = defineMessages({
 // Both routes into a new session come back here by a full document load, and
 // this route's guard sends a researcher who already has a team on to their
 // landing destination instead.
+const SIGN_UP_WORDING: MethodWording = {
+  linkInvalid: messages.linkInvalid,
+  didNotComplete: messages.didNotComplete,
+  magicLinkSendFailed: messages.magicLinkSendFailed,
+  socialFailed: messages.socialFailed,
+  emailHint: messages.emailHint,
+};
+
 const CALLBACK_URL = '/sign-up/team';
 const ERROR_CALLBACK_URL = '/sign-up';
 
@@ -98,7 +140,7 @@ export default function SignUp() {
         </Heading>
         <MaintenanceNotice className="" />
         {error !== undefined && sentTo === null && (
-          <CallbackErrorAlert error={error} />
+          <CallbackErrorAlert error={error} wording={SIGN_UP_WORDING} />
         )}
         {unavailable && (
           <Paragraph role="alert">
@@ -115,6 +157,7 @@ export default function SignUp() {
                 callbackURL={CALLBACK_URL}
                 errorCallbackURL={ERROR_CALLBACK_URL}
                 onSent={setSentTo}
+                wording={SIGN_UP_WORDING}
               />
             )}
             <SocialSignIn
@@ -122,6 +165,7 @@ export default function SignUp() {
               callbackURL={CALLBACK_URL}
               errorCallbackURL={ERROR_CALLBACK_URL}
               divided={magicLink}
+              wording={SIGN_UP_WORDING}
             />
           </>
         )}

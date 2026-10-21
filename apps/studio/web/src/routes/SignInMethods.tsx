@@ -80,6 +80,22 @@ const messages = defineMessages({
 
 export const signInMethodMessages = messages;
 
+export type MethodWording = {
+  linkInvalid: MessageDescriptor;
+  didNotComplete: MessageDescriptor;
+  magicLinkSendFailed: MessageDescriptor;
+  socialFailed: MessageDescriptor;
+  emailHint: MessageDescriptor;
+};
+
+const SIGN_IN_WORDING: MethodWording = {
+  linkInvalid: messages.linkInvalid,
+  didNotComplete: messages.didNotComplete,
+  magicLinkSendFailed: messages.magicLinkSendFailed,
+  socialFailed: messages.socialFailed,
+  emailHint: messages.emailHint,
+};
+
 const PROVIDERS: Record<
   SocialProvider,
   { label: MessageDescriptor; icon: ReactNode }
@@ -94,20 +110,30 @@ const PROVIDERS: Record<
 const MAGIC_LINK_ERRORS = new Set(['EXPIRED_TOKEN', 'INVALID_TOKEN']);
 
 /** The `?error=` better-auth appends when a magic link or a provider fails. */
-export function CallbackErrorAlert({ error }: { error: string }) {
+export function CallbackErrorAlert({
+  error,
+  wording = SIGN_IN_WORDING,
+}: {
+  error: string;
+  wording?: MethodWording;
+}) {
   const intl = useAppIntl();
   return (
     <Alert variant="destructive">
       {intl.formatMessage(
         MAGIC_LINK_ERRORS.has(error)
-          ? messages.linkInvalid
-          : messages.didNotComplete,
+          ? wording.linkInvalid
+          : wording.didNotComplete,
       )}
     </Alert>
   );
 }
 
-export function EmailField() {
+export function EmailField({
+  hint = messages.emailHint,
+}: {
+  hint?: MessageDescriptor;
+}) {
   const intl = useAppIntl();
   return (
     <Field
@@ -116,7 +142,7 @@ export function EmailField() {
       component={InputField}
       type="email"
       required
-      pattern={studioEmailPattern(intl, intl.formatMessage(messages.emailHint))}
+      pattern={studioEmailPattern(intl, intl.formatMessage(hint))}
       autoComplete="email"
     />
   );
@@ -128,12 +154,14 @@ export function MagicLinkForm({
   callbackURL,
   errorCallbackURL,
   onSent,
+  wording = SIGN_IN_WORDING,
 }: {
   intro: MessageDescriptor;
   submitLabel: MessageDescriptor;
   callbackURL: string;
   errorCallbackURL: string;
   onSent: (email: string) => void;
+  wording?: MethodWording;
 }) {
   const intl = useAppIntl();
   return (
@@ -144,7 +172,7 @@ export function MagicLinkForm({
           const email = typeof values.email === 'string' ? values.email : '';
           const failed = {
             success: false,
-            formErrors: [intl.formatMessage(messages.magicLinkSendFailed)],
+            formErrors: [intl.formatMessage(wording.magicLinkSendFailed)],
           };
           let result;
           try {
@@ -162,7 +190,7 @@ export function MagicLinkForm({
           return { success: true };
         }}
       >
-        <EmailField />
+        <EmailField hint={wording.emailHint} />
         <SubmitButton>{intl.formatMessage(submitLabel)}</SubmitButton>
       </Form>
     </>
@@ -174,11 +202,13 @@ export function SocialSignIn({
   callbackURL,
   errorCallbackURL,
   divided,
+  wording = SIGN_IN_WORDING,
 }: {
   providers: readonly SocialProvider[];
   callbackURL: string;
   errorCallbackURL: string;
   divided: boolean;
+  wording?: MethodWording;
 }) {
   const intl = useAppIntl();
   const [pending, setPending] = useState<SocialProvider | null>(null);
@@ -223,7 +253,7 @@ export function SocialSignIn({
       )}
       {failed && (
         <Alert variant="destructive">
-          {intl.formatMessage(messages.socialFailed)}
+          {intl.formatMessage(wording.socialFailed)}
         </Alert>
       )}
       <div className="flex flex-col items-stretch gap-4">

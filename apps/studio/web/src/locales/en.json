@@ -688,7 +688,7 @@
     "description": "Explains on /no-team how to join a team by invitation; {email} is the address the researcher is signed in with."
   },
   "studio.noTeam.ownerOnly": {
-    "defaultMessage": "On this Studio instance, only its owner can create teams, so a team owner has to invite you.",
+    "defaultMessage": "On this Studio instance, only its owner can create teams, so a team owner or admin has to invite you.",
     "description": "Shown on /no-team of a self-hosted instance to a researcher who is not allowed to create a team."
   },
   "studio.notFound.description": {
@@ -1291,6 +1291,14 @@
     "defaultMessage": "That email or password is not correct.",
     "description": "Form error when the email and password did not match."
   },
+  "studio.signUp.didNotComplete": {
+    "defaultMessage": "Creating your account did not complete. Try again.",
+    "description": "Shown on /sign-up when creating an account failed for an unspecified reason."
+  },
+  "studio.signUp.emailHint": {
+    "defaultMessage": "The address your Studio account will use.",
+    "description": "Hint under /sign-up's email field when the value is not a valid address."
+  },
   "studio.signUp.haveAccount": {
     "defaultMessage": "Already have an account? Sign in",
     "description": "Link from the account creation screen to the sign-in screen."
@@ -1303,9 +1311,17 @@
     "defaultMessage": "Create your Studio account, then name the team your studies will belong to.",
     "description": "Introduction on the account creation screen, describing the two steps of signing up."
   },
+  "studio.signUp.linkInvalid": {
+    "defaultMessage": "That sign-up link is no longer valid. Enter your email address to request a new one.",
+    "description": "Shown on /sign-up when a sign-up link the visitor followed has expired or was already used."
+  },
   "studio.signUp.magicLinkIntro": {
     "defaultMessage": "Enter your email address and we will send you a link that creates your account.",
     "description": "Introduction above the magic-link form on /sign-up."
+  },
+  "studio.signUp.magicLinkSendFailed": {
+    "defaultMessage": "The sign-up email could not be sent. Wait a moment and try again.",
+    "description": "Form error on /sign-up when requesting a sign-up link failed."
   },
   "studio.signUp.sendLink": {
     "defaultMessage": "Send sign-up link",
@@ -1314,6 +1330,10 @@
   "studio.signUp.sentTo": {
     "defaultMessage": "We sent a link to {email}. Open it on this device to create your account. The link expires in 5 minutes.",
     "description": "Confirmation after a sign-up link was sent; {email} is the address it went to."
+  },
+  "studio.signUp.socialFailed": {
+    "defaultMessage": "Creating your account could not be started. Wait a moment and try again.",
+    "description": "Shown on /sign-up when handing off to Google or Microsoft failed."
   },
   "studio.signUp.unavailable": {
     "defaultMessage": "Creating an account is not available right now. Try again later.",
