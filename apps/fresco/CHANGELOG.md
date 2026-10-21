@@ -10,7 +10,7 @@ These improvements to the interview are shared with Interviewer and Architect's 
 
 ### Bug fixes
 
-- The Docker image builds again. The 4.3.0 image build failed while uploading error-reporting source maps, so no 4.3.0 image was published; this release's image includes everything in 4.3.0.
+- Building the Docker image no longer stops while uploading error-reporting source maps.
 
 ## 4.3.0
 
