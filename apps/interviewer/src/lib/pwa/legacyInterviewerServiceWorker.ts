@@ -155,14 +155,19 @@ const defaultReadActiveRootForeignPrefixes = async (
 };
 
 /**
- * Resolves once `worker` has finished activating. The root worker records its
- * build while it activates, after `ready` has already resolved.
+ * Resolves once `worker` has left `state`: `'installing'` once its precache
+ * is downloaded (or it failed), `'activating'` once it is active. The root
+ * worker records its build while it activates, after `ready` has already
+ * resolved.
  */
-const whenActivated = (worker: ServiceWorker | null): Promise<void> =>
-  worker?.state === 'activating'
+const whenPast = (
+  worker: ServiceWorker | null | undefined,
+  state: 'installing' | 'activating',
+): Promise<void> =>
+  worker?.state === state
     ? new Promise((resolve) => {
         worker.addEventListener('statechange', function onStateChange() {
-          if (worker.state === 'activating') return;
+          if (worker.state === state) return;
           worker.removeEventListener('statechange', onStateChange);
           resolve();
         });
@@ -249,7 +254,10 @@ export async function installLegacyInterviewerInBackground(
     // this app's own offline download, or its start-up.
     const root = await container.ready;
     await new Promise<void>((resolve) => whenIdle(resolve));
-    await whenActivated(root.active);
+    // After a deploy, `ready` answers with the worker already active while
+    // this app's new one may still be downloading: let it finish first.
+    await whenPast(root.installing, 'installing');
+    await whenPast(root.active, 'activating');
 
     // A root worker that does not leave Interviewer 8's caches alone may
     // reclaim what is downloaded here.

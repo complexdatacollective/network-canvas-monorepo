@@ -1,10 +1,11 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 import { getBundledLegacyInterviewer } from '../legacyInterviewer';
 import {
   combineAppOffline,
   getOwnAppOffline,
   refreshAppOffline,
+  useAppOffline,
 } from './appOffline';
 import {
   getLegacyInterviewerOffline,
@@ -76,21 +77,31 @@ const defaultDependencies = (): Dependencies => ({
   origin: window.location.origin,
 });
 
-// A worker script never changes under its URL within one build, so each is
-// read once per page load. A failed read is asked again on the next poll.
-const scripts = new Map<string, Promise<WorkerScript | null>>();
+// Every build's worker has the same script URL, so an installing worker's
+// script is read once per worker, and the deployed script, read while no
+// worker installs, once per page load. A failed read is asked again on the
+// next poll.
+const workerScripts = new WeakMap<
+  ServiceWorker,
+  Promise<WorkerScript | null>
+>();
+const deployedScripts = new Map<string, Promise<WorkerScript | null>>();
 
 const readScript = (
+  worker: ServiceWorker | null,
   url: string,
   fetchScript: Dependencies['fetchScript'],
 ): Promise<WorkerScript | null> => {
-  const known = scripts.get(url);
+  const forget = () =>
+    worker ? workerScripts.delete(worker) : deployedScripts.delete(url);
+  const known = worker ? workerScripts.get(worker) : deployedScripts.get(url);
   if (known) return known;
   const read = fetchScript(url).then(parseWorkerScript, () => {
-    scripts.delete(url);
+    forget();
     return null;
   });
-  scripts.set(url, read);
+  if (worker) workerScripts.set(worker, read);
+  else deployedScripts.set(url, read);
   return read;
 };
 
@@ -125,6 +136,7 @@ const readPart = async (
     new URL(registration.scope).pathname === scope;
   const worker = ownRegistration ? registration.installing : null;
   const script = await readScript(
+    worker,
     worker?.scriptURL ?? new URL(`${scope}sw.js`, origin).href,
     fetchScript,
   );
@@ -137,7 +149,8 @@ const readPart = async (
 /**
  * Read the download's state from the browser: whether a worker is installing
  * (or Interviewer 8's is still to be registered), and the share downloaded.
- * Never rejects.
+ * Never rejects: once a download is known to be under way, a failure to read
+ * how far it has got leaves the share unknown.
  */
 export async function readOfflineDownload(
   offline: {
@@ -150,6 +163,7 @@ export async function readOfflineDownload(
 ): Promise<OfflineDownload> {
   const { container } = dependencies;
   if (!container) return IDLE;
+  let downloading = false;
   try {
     const legacy = getBundledLegacyInterviewer();
     const scopes: [string, boolean][] = [['/', offline.ownReady]];
@@ -165,7 +179,7 @@ export async function readOfflineDownload(
         new URL(registration.scope).pathname === scopes[index]?.[0] &&
         registration.installing !== null,
     );
-    const downloading =
+    downloading =
       installing ||
       (legacy !== null &&
         offline.legacyReady === false &&
@@ -187,7 +201,7 @@ export async function readOfflineDownload(
     );
     return { downloading, progress: total > 0 ? done / total : null };
   } catch {
-    return IDLE;
+    return downloading ? { downloading, progress: null } : IDLE;
   }
 }
 
@@ -254,16 +268,24 @@ const subscribe = (listener: () => void): (() => void) => {
 
 const getState = (): OfflineDownload => state;
 
-/** The download's state, followed while anything shows it. */
+/**
+ * The download's state, followed while anything shows it and Interviewer is
+ * not ready, including when it stops being ready later in the page's life.
+ */
 export function useOfflineDownload(): OfflineDownload {
-  return useSyncExternalStore(subscribe, getState, getState);
+  const offline = useAppOffline();
+  const download = useSyncExternalStore(subscribe, getState, getState);
+  useEffect(() => {
+    if (offline === 'not-ready') start();
+  }, [offline]);
+  return download;
 }
 
 /** Forget what was read. For tests. */
 export const resetOfflineDownload = (): void => {
   stop();
   polling = false;
-  scripts.clear();
+  deployedScripts.clear();
   state = IDLE;
   for (const listener of listeners) listener();
 };

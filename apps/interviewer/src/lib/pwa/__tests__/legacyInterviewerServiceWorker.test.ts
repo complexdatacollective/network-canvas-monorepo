@@ -315,6 +315,26 @@ describe('installLegacyInterviewerInBackground', () => {
     await expect(outcome).resolves.toBe('registered');
   });
 
+  it('waits for this app’s new worker to finish downloading before starting', async () => {
+    // After a deploy `ready` answers with the worker already active while
+    // the new build's is still installing.
+    const installing = fakeWorker(`${ORIGIN}/sw.js`);
+    container.ready = Promise.resolve({
+      scope: ROOT.scope,
+      active: fakeWorker(`${ORIGIN}/sw.js`, 'activated'),
+      installing,
+    } as unknown as ServiceWorkerRegistration);
+    readActiveRootForeignPrefixes.mockResolvedValue(['interviewer-v8-']);
+    const outcome = install();
+    await flush();
+    idle?.();
+    await flush();
+    expect(container.register).not.toHaveBeenCalled();
+
+    installing.setState('installed');
+    await expect(outcome).resolves.toBe('registered');
+  });
+
   it('waits for a later load when this build does not know its own id', async () => {
     await expect(installWhenIdle({ buildId: undefined })).resolves.toBe(
       'deferred',
