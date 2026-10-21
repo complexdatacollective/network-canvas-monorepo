@@ -545,6 +545,25 @@
       }
     },
     {
+      "id": "classmates_intro",
+      "type": "Information",
+      "label": {
+        "en": "Classmates (introduction)"
+      },
+      "title": {
+        "en": "Naming classmates"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see a list of classmates. Find everyone the question describes, using the search if it helps, and select them."
+          }
+        }
+      ]
+    },
+    {
       "id": "classmates",
       "type": "NameGeneratorRoster",
       "label": {
@@ -634,6 +653,25 @@
       }
     },
     {
+      "id": "places_intro",
+      "type": "Information",
+      "label": {
+        "en": "Places (introduction)"
+      },
+      "title": {
+        "en": "Naming places"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will be asked a question. Add each place who comes to mind, answer a few short questions about them, and save. Move on when you have added everyone."
+          }
+        }
+      ]
+    },
+    {
       "id": "places",
       "type": "NameGenerator",
       "label": {
@@ -678,6 +716,25 @@
       }
     },
     {
+      "id": "more_classmates_intro",
+      "type": "Information",
+      "label": {
+        "en": "More classmates (introduction)"
+      },
+      "title": {
+        "en": "Naming classmates"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will be asked a question. Type the name of each classmate who comes to mind and press Enter. Move on when you have added everyone."
+          }
+        }
+      ]
+    },
+    {
       "id": "more_classmates",
       "type": "NameGeneratorQuickAdd",
       "label": {
@@ -710,6 +767,25 @@
       }
     },
     {
+      "id": "friend_strength_intro",
+      "type": "Information",
+      "label": {
+        "en": "Friend strength (introduction)"
+      },
+      "title": {
+        "en": "How the classmates you named are connected"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see pairs of the classmates you named. For each pair, choose the answer that describes them best."
+          }
+        }
+      ]
+    },
+    {
       "id": "friend_strength",
       "type": "TieStrengthCensus",
       "label": {
@@ -729,6 +805,25 @@
           "edgeVariable": "friends_strength",
           "negativeLabel": {
             "en": "They aren't friends"
+          }
+        }
+      ]
+    },
+    {
+      "id": "study_ties_intro",
+      "type": "Information",
+      "label": {
+        "en": "Study ties (introduction)"
+      },
+      "title": {
+        "en": "How the classmates you named are connected"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the classmates you named one at a time. For each one, tap everyone else the question describes, then move on."
           }
         }
       ]
@@ -755,6 +850,40 @@
       "behaviours": {
         "removeAfterConsideration": true
       }
+    },
+    {
+      "id": "conflicts_intro",
+      "type": "Information",
+      "label": {
+        "en": "Conflicts (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_2",
+              "type": "edge",
+              "options": {
+                "type": "studies_with",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "How the classmates you named are connected"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see pairs of the classmates you named. Answer the question for each pair."
+          }
+        }
+      ]
     },
     {
       "id": "conflicts",
@@ -806,6 +935,40 @@
       }
     },
     {
+      "id": "friendship_details_intro",
+      "type": "Information",
+      "label": {
+        "en": "Friendship details (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_4",
+              "type": "edge",
+              "options": {
+                "type": "friends",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "About these relationships"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "Next, you will answer a few questions about each \"friends\" relationship you described, one at a time."
+          }
+        }
+      ]
+    },
+    {
       "id": "friendship_details",
       "type": "AlterEdgeForm",
       "label": {
@@ -840,6 +1003,40 @@
           }
         ]
       }
+    },
+    {
+      "id": "place_bins_intro",
+      "type": "Information",
+      "label": {
+        "en": "Place bins (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_5",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "Sorting the places you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the places you named and a set of boxes. Drag each place into the box that describes them best."
+          }
+        }
+      ]
     },
     {
       "id": "place_bins",
@@ -940,6 +1137,25 @@
       ]
     },
     {
+      "id": "home_countries_intro",
+      "type": "Information",
+      "label": {
+        "en": "Home countries (introduction)"
+      },
+      "title": {
+        "en": "On the map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see a map. For each of the classmates you named, tap the place the question asks about."
+          }
+        }
+      ]
+    },
+    {
       "id": "home_countries",
       "type": "Geospatial",
       "label": {
@@ -987,6 +1203,25 @@
       "searchFailed": {
         "en": "Search could not be completed. Try again in a moment."
       }
+    },
+    {
+      "id": "classmate_form_intro",
+      "type": "Information",
+      "label": {
+        "en": "Classmate form (introduction)"
+      },
+      "title": {
+        "en": "About the classmates you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "Next, you will answer a few questions about each of the classmates you named, one at a time."
+          }
+        }
+      ]
     },
     {
       "id": "classmate_form",
@@ -1049,6 +1284,40 @@
           }
         ]
       }
+    },
+    {
+      "id": "place_map_intro",
+      "type": "Information",
+      "label": {
+        "en": "Place map (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_10",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "Your network map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the places you named on a map, with you at the centre.\n\nTap each place the question describes. Tap them again to undo."
+          }
+        }
+      ]
     },
     {
       "id": "place_map",
@@ -1189,6 +1458,25 @@
       }
     },
     {
+      "id": "class_map_intro",
+      "type": "Information",
+      "label": {
+        "en": "Class map (introduction)"
+      },
+      "title": {
+        "en": "Your network map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the classmates you named on a map, with you at the centre.\n\nDrag each of the classmates onto the circles. The closer to the centre you place someone, the closer they are to you."
+          }
+        }
+      ]
+    },
+    {
       "id": "class_map",
       "type": "Sociogram",
       "label": {
@@ -1232,6 +1520,25 @@
           }
         ]
       }
+    },
+    {
+      "id": "mentor_canvas_intro",
+      "type": "Information",
+      "label": {
+        "en": "Mentor canvas (introduction)"
+      },
+      "title": {
+        "en": "Drawing your network"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "Next, you and the interviewer will draw your network together. Add mentors, move them around and group them, and draw lines between people who are connected."
+          }
+        }
+      ]
     },
     {
       "id": "mentor_canvas",

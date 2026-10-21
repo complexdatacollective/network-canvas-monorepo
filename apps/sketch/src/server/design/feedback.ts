@@ -3,6 +3,7 @@ import type { ProtocolValidationIssue } from '@codaco/protocol-validation';
 
 import type { NormalizedDesign } from './analyse.ts';
 import type { StageSource } from './compile.ts';
+import { taskIntroductions } from './intros.ts';
 import type { DesignIssue } from './rules.ts';
 
 const describeStage = (src: StageSource | undefined) =>
@@ -122,6 +123,7 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
       draft: 'Do you agree to take part in this study?',
     });
   }
+  const intros = taskIntroductions(d);
   for (const s of d.stages) {
     const slot = (title: string, text: string, draft = '') =>
       stages.push({
@@ -131,6 +133,16 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
         title,
         text,
         draft,
+      });
+    const intro = intros.get(s.id);
+    if (intro)
+      stages.push({
+        stageKey: `${s.id}/intro`,
+        kind: `introduction to ${s.kind}`,
+        purpose: s.purpose,
+        title: `introduction screen title; draft: "${intro.title}"`,
+        text: 'introduction screen text: what the next screen asks the participant to do, and how',
+        draft: intro.text,
       });
     switch (s.kind) {
       case 'information':

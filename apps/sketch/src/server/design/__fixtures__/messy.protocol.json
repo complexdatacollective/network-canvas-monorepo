@@ -280,6 +280,25 @@
       }
     },
     {
+      "id": "names_intro",
+      "type": "Information",
+      "label": {
+        "en": "Names (introduction)"
+      },
+      "title": {
+        "en": "Naming persons"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will be asked a question. Add each person who comes to mind, answer a few short questions about them, and save. Move on when you have added everyone."
+          }
+        }
+      ]
+    },
+    {
       "id": "names",
       "type": "NameGenerator",
       "label": {
@@ -334,6 +353,25 @@
       }
     },
     {
+      "id": "bins_intro",
+      "type": "Information",
+      "label": {
+        "en": "Bins (introduction)"
+      },
+      "title": {
+        "en": "Sorting the persons you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the persons you named and a set of boxes. Drag each person into the box that describes them best."
+          }
+        }
+      ]
+    },
+    {
       "id": "bins",
       "type": "OrdinalBin",
       "label": {
@@ -351,6 +389,25 @@
           },
           "variable": "person_closeness",
           "color": "ord-color-seq-1"
+        }
+      ]
+    },
+    {
+      "id": "map_intro",
+      "type": "Information",
+      "label": {
+        "en": "Map (introduction)"
+      },
+      "title": {
+        "en": "Your network map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the persons you named on a map, with you at the centre.\n\nTap each person the question describes. Tap them again to undo."
+          }
         }
       ]
     },

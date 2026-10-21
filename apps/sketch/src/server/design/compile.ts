@@ -14,6 +14,7 @@ import { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
 
 import type { GeneratedAsset, ProtocolSummary } from '../../shared/api.ts';
 import type { NormalizedDesign, NStage } from './analyse.ts';
+import { taskIntroductions } from './intros.ts';
 import {
   type NAttribute,
   type DesignIssue,
@@ -44,7 +45,14 @@ export type SketchProtocol = z.input<typeof CurrentProtocolSchema>;
 export type { GeneratedAsset };
 export type StageSource =
   | { designIndex: number; designId: string; kind: string }
-  | { added: 'researcher notes' | 'consent' | 'consent gate' | 'finish' };
+  | {
+      added:
+        | 'researcher notes'
+        | 'consent'
+        | 'consent gate'
+        | 'introduction'
+        | 'finish';
+    };
 export type CompileResult = {
   protocol: SketchProtocol;
   assets: GeneratedAsset[];
@@ -525,7 +533,36 @@ export const compile = (
       : -1
     : null;
   let gatePending = false;
+  const intros = taskIntroductions(d);
   const push = (stage: Json, src: StageSource) => {
+    // an Information screen before the first stage of a new kind of task,
+    // shown exactly when that stage is
+    const introFor = 'designId' in src ? intros.get(src.designId) : undefined;
+    if (introFor && 'designId' in src) {
+      intros.delete(src.designId);
+      const w = W.stage.get(`${src.designId}/intro`);
+      push(
+        {
+          id: sid(`${src.designId}_intro`),
+          type: 'Information',
+          label: localized(
+            graphemes(`${textOf(stage.label)} (introduction)`, 50),
+          ),
+          ...(stage.skipLogic
+            ? { skipLogic: structuredClone(stage.skipLogic) }
+            : {}),
+          title: localized(pick(w?.title, introFor.title)),
+          items: [
+            {
+              id: 'text',
+              type: 'text',
+              content: localized(pick(w?.text, introFor.text)),
+            },
+          ],
+        },
+        { added: 'introduction' },
+      );
+    }
     if (gatePending) {
       const gate = {
         action: 'SKIP',

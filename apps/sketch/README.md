@@ -33,7 +33,10 @@ steps. They are the five rows the generating screen shows
    roster CSVs, the world-countries GeoJSON for geospatial stages). The
    protocol is in English, its one language, so every participant-facing text
    is a localized string with an `en` translation. Only Ego Forms have an
-   introduction panel, as schema 9 requires. The compiler ends the interview
+   introduction panel, as schema 9 requires. Instead, the compiler puts an
+   Information screen explaining the task before the first stage of each
+   new kind of task (`intros.ts`), shown exactly when that stage is, unless
+   the design already has an instructions screen there. It ends the interview
    with a finish stage, and fills in the wording Network Canvas supplies for
    each stage and for the interview itself, as Architect does for a new
    stage.

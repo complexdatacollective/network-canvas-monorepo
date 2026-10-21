@@ -780,6 +780,25 @@
       }
     },
     {
+      "id": "name_friends_intro",
+      "type": "Information",
+      "label": {
+        "en": "Naming friends (introduction)"
+      },
+      "title": {
+        "en": "Naming people"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will be asked a question. Type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
+          }
+        }
+      ]
+    },
+    {
       "id": "name_friends",
       "type": "NameGeneratorQuickAdd",
       "label": {
@@ -842,6 +861,40 @@
       }
     },
     {
+      "id": "friend_details_intro",
+      "type": "Information",
+      "label": {
+        "en": "Friend details (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_2",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "About the people you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "Next, you will answer a few questions about each of the people you named, one at a time."
+          }
+        }
+      ]
+    },
+    {
       "id": "friend_details",
       "type": "AlterForm",
       "label": {
@@ -882,6 +935,40 @@
           }
         ]
       }
+    },
+    {
+      "id": "friend_bins_intro",
+      "type": "Information",
+      "label": {
+        "en": "Closeness, meeting, drinking (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_3",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "Sorting the people you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
+          }
+        }
+      ]
     },
     {
       "id": "friend_bins",
@@ -965,6 +1052,40 @@
             "en": "As far as you know, does each person often **drink heavily** (five or more drinks on one occasion)?"
           },
           "variable": "person_drinks_heavily"
+        }
+      ]
+    },
+    {
+      "id": "friend_map_intro",
+      "type": "Information",
+      "label": {
+        "en": "Friendship map (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_5",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "Your network map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the people you named on a map, with you at the centre.\n\nDrag each of the people onto the circles. The closer to the centre you place someone, the closer they are to you.\n\nTo connect two of the people, tap one and then the other. Do the same again to remove a connection.\n\nTap each person the question describes. Tap them again to undo."
+          }
         }
       ]
     },

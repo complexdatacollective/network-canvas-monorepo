@@ -26,6 +26,14 @@
       "draft": ""
     },
     {
+      "stageKey": "names/intro",
+      "kind": "introduction to nameGenerator",
+      "purpose": "Purpose of names.",
+      "title": "introduction screen title; draft: \"Naming persons\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will be asked a question. Add each person who comes to mind, answer a few short questions about them, and save. Move on when you have added everyone."
+    },
+    {
       "stageKey": "names",
       "kind": "nameGenerator",
       "purpose": "Purpose of names.",
@@ -34,12 +42,28 @@
       "draft": ""
     },
     {
+      "stageKey": "bins/intro",
+      "kind": "introduction to bins",
+      "purpose": "Purpose of bins.",
+      "title": "introduction screen title; draft: \"Sorting the persons you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the persons you named and a set of boxes. Drag each person into the box that describes them best."
+    },
+    {
       "stageKey": "bins",
       "kind": "bins",
       "purpose": "Purpose of bins.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "map/intro",
+      "kind": "introduction to sociogram",
+      "purpose": "Purpose of map.",
+      "title": "introduction screen title; draft: \"Your network map\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the persons you named on a map, with you at the centre.\n\nTap each person the question describes. Tap them again to undo."
     },
     {
       "stageKey": "map",
