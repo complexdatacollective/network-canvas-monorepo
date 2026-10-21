@@ -5,6 +5,7 @@ import {
   getBundledLegacyInterviewer,
   LEGACY_INTERVIEWER_CACHE_PREFIX,
 } from '../legacyInterviewer';
+import { getRegistrationForScope } from './registrationForScope';
 
 // Whether the bundled Interviewer 8 can run on this device without a network.
 //
@@ -93,9 +94,7 @@ const followInstalling = (worker: ServiceWorker) => {
 /**
  * Read the answer again from the browser: has a worker finished installing
  * for exactly Interviewer 8's scope, with nothing newer still installing, and
- * is the pinned build's precache there? (`getRegistration` answers with the
- * closest enclosing registration, which is this app's own `/` worker until
- * Interviewer 8 has one, so the scope is checked.) Never rejects.
+ * is the pinned build's precache there? Never rejects.
  */
 export async function refreshLegacyInterviewerOffline(): Promise<void> {
   checked = true;
@@ -111,15 +110,15 @@ export async function refreshLegacyInterviewerOffline(): Promise<void> {
     return;
   }
   try {
-    const registration = await container.getRegistration(interviewer.path);
-    const ownScope =
-      registration !== undefined &&
-      new URL(registration.scope).pathname === interviewer.path;
-    if (ownScope && registration.installing) {
+    const registration = await getRegistrationForScope(
+      container,
+      interviewer.path,
+    );
+    if (registration?.installing) {
       followInstalling(registration.installing);
     }
     const installed =
-      ownScope &&
+      registration !== undefined &&
       !registration.installing &&
       Boolean(registration.active ?? registration.waiting);
     setState(

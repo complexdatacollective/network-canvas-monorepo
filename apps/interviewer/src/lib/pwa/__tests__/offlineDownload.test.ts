@@ -61,8 +61,7 @@ const dependencies = ({
   cached: Record<string, number>;
 }) => ({
   container: {
-    getRegistration: (scope: string) =>
-      Promise.resolve(registrations[scope] ?? registrations['/']),
+    getRegistrations: () => Promise.resolve(Object.values(registrations)),
   } as unknown as ServiceWorkerContainer,
   cacheStorage: cacheStorage(cached),
   fetchScript: vi.fn((url: string) =>
@@ -127,6 +126,26 @@ describe('readOfflineDownload', () => {
     );
     // 4 of this app's files, and 3 of Interviewer 8's 6.
     expect(result).toEqual({ downloading: true, progress: 0.7 });
+  });
+
+  it('follows Interviewer 8’s first download, which getRegistration passes over', async () => {
+    // Chromium answers getRegistration('/v8/') with this app's own `/`
+    // registration while Interviewer 8's only worker is still installing.
+    bundled.current = { version: '8.5.0-direct-def', path: '/v8/' };
+    const root = registration('/', null);
+    const deps = dependencies({
+      registrations: {
+        '/': root,
+        '/v8/': registration('/v8/', { scriptURL: `${ORIGIN}/v8/sw.js` }),
+      },
+      cached: { [`${V8_BUILD}-precache-v2-${ORIGIN}/v8/`]: 3 },
+    });
+    Object.assign(deps.container, {
+      getRegistration: () => Promise.resolve(root),
+    });
+    await expect(
+      readOfflineDownload({ ownReady: true, legacyReady: false }, deps),
+    ).resolves.toEqual({ downloading: true, progress: 0.7 });
   });
 
   it('counts Interviewer 8’s download as to come before its worker is registered', async () => {
