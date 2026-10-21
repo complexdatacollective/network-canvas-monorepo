@@ -1,6 +1,7 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Redacted } from 'effect';
+import { Settings } from 'lucide-react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -334,6 +335,7 @@ export default function EntityLockup({ className }: { className?: string }) {
       ? [
           {
             label: intl.formatMessage(messages.teamAdministration),
+            icon: <Settings aria-hidden className="size-4" />,
             render: (
               <Link
                 to="/team/$teamId/settings"

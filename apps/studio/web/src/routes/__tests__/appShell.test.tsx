@@ -625,6 +625,31 @@ describe('header team switcher', () => {
     expect(screen.queryByRole('button', { name: 'Create a team' })).toBeNull();
   });
 
+  it('asks for a team name when only spaces were entered', async () => {
+    teamCreation.allowed = true;
+    renderAt('/team/team-a');
+    fireEvent.click(
+      await screen.findByRole('combobox', { name: 'Team Alpha research team' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a team' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: /Team name/ }),
+      { target: { value: '   ' } },
+    );
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Create team' }),
+    );
+
+    expect(
+      await within(dialog).findByText('Enter a name for the team.'),
+    ).toBeInTheDocument();
+    expect(teamCreation.names).toEqual([]);
+  });
+
   it('creates a team from the switcher and opens it', async () => {
     teamCreation.allowed = true;
     const router = renderAt('/team/team-a');
