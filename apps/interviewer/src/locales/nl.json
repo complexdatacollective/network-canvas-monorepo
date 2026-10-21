@@ -199,7 +199,7 @@
   "interviewer.notFound.thePageYouWereLookingForDoes": "De pagina die je zocht, bestaat niet.",
   "interviewer.offline.notReady": "Niet klaar",
   "interviewer.offline.notReadyChip": "Niet klaar voor offline gebruik",
-  "interviewer.offline.notReadyHelp": "Interviewer is nog niet volledig gedownload voor gebruik zonder internetverbinding, dus protocollen kunnen nog niet offline worden gebruikt. Houd Interviewer open terwijl je online bent totdat het klaar is.",
+  "interviewer.offline.notReadyHelp": "Interviewer heeft nog niet alle gegevens gedownload die nodig zijn om volledig offline te werken. Houd Interviewer open terwijl je online bent totdat het klaar is.",
   "interviewer.offline.ready": "Klaar",
   "interviewer.offline.readyChip": "Klaar voor offline gebruik",
   "interviewer.offline.readyHelp": "Interviewer is op dit apparaat opgeslagen, dus alle protocollen kunnen zonder internetverbinding worden gebruikt.",

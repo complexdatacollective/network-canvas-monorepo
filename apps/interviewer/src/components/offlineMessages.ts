@@ -6,7 +6,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 export const offlineMessages = defineMessages({
   readyChip: {
     id: 'interviewer.offline.readyChip',
-    defaultMessage: 'Ready offline',
+    defaultMessage: 'Ready for offline',
     description:
       'Short status at the bottom of the home screen: Interviewer is saved on this device, so it and every protocol on it work without an internet connection.',
   },
@@ -26,7 +26,7 @@ export const offlineMessages = defineMessages({
   notReadyHelp: {
     id: 'interviewer.offline.notReadyHelp',
     defaultMessage:
-      'Interviewer has not finished downloading for use without an internet connection, so protocols cannot be used offline yet. Keep Interviewer open while you are online until it is ready.',
+      'Interviewer has not finished downloading all data required for fully offline operation. Keep Interviewer open while you are online until it is ready.',
     description:
       'Explanation of the warning that Interviewer cannot be used offline yet, with what to do about it. Shown in the home screen status bar, in Settings, and when an interview cannot be opened because the device is offline.',
   },

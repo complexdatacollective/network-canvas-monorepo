@@ -135,7 +135,7 @@ An `introScreen` becomes an Information stage titled "Introduction", the
 heading schema 8 showed above it, inserted just before the pedigree. That
 stage takes the pedigree's skip logic, and skips that jumped to the pedigree
 now jump to it. Where a host migrates the interviews recorded against a
-migrated protocol, as Fresco does, each stage's metadata and the resume
+migrated protocol, each stage's metadata and the resume
 position follow their stage, so an interview in progress resumes where its
 participant left it. Interviewer never migrates protocols or interviews:
 schema 8 ones stay in Interviewer 8. A schema 8 pedigree's stage metadata becomes the new shape,

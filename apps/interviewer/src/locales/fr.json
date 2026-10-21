@@ -199,7 +199,7 @@
   "interviewer.notFound.thePageYouWereLookingForDoes": "La page que vous recherchez n’existe pas.",
   "interviewer.offline.notReady": "Pas encore prêt",
   "interviewer.offline.notReadyChip": "Pas encore utilisable hors ligne",
-  "interviewer.offline.notReadyHelp": "Interviewer n’a pas fini d’être téléchargé pour une utilisation sans connexion Internet : les protocoles ne peuvent donc pas encore être utilisés hors ligne. Gardez Interviewer ouvert pendant que vous êtes en ligne jusqu’à ce qu’il soit prêt.",
+  "interviewer.offline.notReadyHelp": "Interviewer n’a pas fini de télécharger toutes les données nécessaires à un fonctionnement entièrement hors ligne. Gardez Interviewer ouvert pendant que vous êtes en ligne jusqu’à ce qu’il soit prêt.",
   "interviewer.offline.ready": "Prêt",
   "interviewer.offline.readyChip": "Utilisable hors ligne",
   "interviewer.offline.readyHelp": "Interviewer est enregistré sur cet appareil : tous les protocoles peuvent donc être utilisés sans connexion Internet.",

@@ -199,7 +199,7 @@
   "interviewer.notFound.thePageYouWereLookingForDoes": "您要找的頁面不存在。",
   "interviewer.offline.notReady": "尚未就緒",
   "interviewer.offline.notReadyChip": "尚無法離線使用",
-  "interviewer.offline.notReadyHelp": "Interviewer 尚未完成供離線使用的下載，因此所有協定都還無法在沒有網路連線時使用。請在連線期間保持 Interviewer 開啟，直到它準備就緒。",
+  "interviewer.offline.notReadyHelp": "Interviewer 尚未下載完所需的全部資料，因此還無法完全離線使用。請在連線期間保持 Interviewer 開啟，直到它準備就緒。",
   "interviewer.offline.ready": "已就緒",
   "interviewer.offline.readyChip": "可離線使用",
   "interviewer.offline.readyHelp": "Interviewer 已儲存在此裝置上，因此所有協定都無需網路連線即可使用。",

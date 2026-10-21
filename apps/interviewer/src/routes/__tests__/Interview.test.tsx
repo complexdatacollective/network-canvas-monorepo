@@ -743,7 +743,9 @@ describe('InterviewRoute schema 8 interview', () => {
       screen.getByRole('heading', { name: /interview unavailable/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/has not finished downloading for use without/),
+      screen.getByText(
+        /has not finished downloading all data required for fully offline/,
+      ),
     ).toBeInTheDocument();
     expect(lockMock).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();

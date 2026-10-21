@@ -199,7 +199,7 @@
   "interviewer.notFound.thePageYouWereLookingForDoes": "A página que você procurava não existe.",
   "interviewer.offline.notReady": "Não está pronto",
   "interviewer.offline.notReadyChip": "Não está pronto para uso offline",
-  "interviewer.offline.notReadyHelp": "O Interviewer ainda não terminou de ser baixado para uso sem conexão com a internet, então os protocolos ainda não podem ser usados offline. Mantenha o Interviewer aberto enquanto você estiver online, até que ele esteja pronto.",
+  "interviewer.offline.notReadyHelp": "O Interviewer ainda não terminou de baixar todos os dados necessários para funcionar totalmente offline. Mantenha o Interviewer aberto enquanto você estiver online, até que ele esteja pronto.",
   "interviewer.offline.ready": "Pronto",
   "interviewer.offline.readyChip": "Pronto para uso offline",
   "interviewer.offline.readyHelp": "O Interviewer está salvo neste dispositivo, então todos os protocolos podem ser usados sem conexão com a internet.",

@@ -292,7 +292,9 @@ describe('NewSessionForm for a schema 8 protocol', () => {
     render(<Harness protocol={makeSchema8Protocol([])} />);
 
     expect(
-      screen.getByText(/has not finished downloading for use without/i),
+      screen.getByText(
+        /has not finished downloading all data required for fully offline/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText(/Case ID/)).not.toBeInTheDocument();
     expect(createSession).not.toHaveBeenCalled();
