@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
@@ -402,8 +403,22 @@ export const SelectingSiblings: Story = {
  * The trailing command sits in the popup but outside the listbox, so the list
  * holds only options — and is still reachable: one Tab from the open list.
  */
+const focusWhenRun: { element: Element | null } = { element: null };
+
 export const ActionReachableByKeyboard: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      action: {
+        label: 'Create a team',
+        onSelect: fn(() => {
+          focusWhenRun.element = document.activeElement;
+        }),
+      },
+    },
+  },
   play: async ({ args, canvasElement }) => {
+    focusWhenRun.element = null;
     const trigger = within(canvasElement).getByRole('combobox', {
       name: /^Team/,
     });
@@ -429,6 +444,9 @@ export const ActionReachableByKeyboard: Story = {
     await waitFor(() => expect(action).toHaveFocus());
 
     await userEvent.keyboard('{Enter}');
+    // A command usually opens a dialog, which returns focus to whatever held it
+    // when it opened; the row is about to unmount, so that must be the trigger.
+    await expect(focusWhenRun.element).toBe(trigger);
     const command = args.team?.action;
     await expect(
       command && 'label' in command ? command.onSelect : undefined,
@@ -565,7 +583,11 @@ export const SeveralActions: Story = {
     team: {
       ...teamSegment(),
       action: [
-        { label: 'Team administration', onSelect: administer },
+        {
+          label: 'Team administration',
+          icon: <Settings aria-hidden data-testid="row-icon" />,
+          onSelect: administer,
+        },
         { label: 'Create a team', onSelect: createTeam },
       ],
     },
@@ -580,6 +602,9 @@ export const SeveralActions: Story = {
       name: 'Team administration',
     });
     const create = popup.getByRole('button', { name: 'Create a team' });
+    const ownIcon = within(administration).getByTestId('row-icon');
+    await expect(ownIcon.parentElement).not.toHaveClass('border-dashed');
+    await expect(create.querySelector('.border-dashed')).not.toBeNull();
     await expect(
       administration.compareDocumentPosition(create) &
         Node.DOCUMENT_POSITION_FOLLOWING,

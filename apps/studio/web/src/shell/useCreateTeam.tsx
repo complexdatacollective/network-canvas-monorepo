@@ -44,8 +44,8 @@ const messages = defineMessages({
   },
   nameBlank: {
     id: 'studio.createTeam.nameBlank',
-    defaultMessage: 'Enter a name that is not only spaces.',
-    description: 'Shown when the team name contains only whitespace.',
+    defaultMessage: 'Enter a name for the team.',
+    description: 'Shown when the team name is empty or contains only spaces.',
   },
   forbidden: {
     id: 'studio.createTeam.forbidden',
@@ -98,7 +98,7 @@ export function useCreateTeam(): () => Promise<void> {
           label={intl.formatMessage(messages.nameLabel)}
           hint={intl.formatMessage(messages.nameHint)}
           component={InputField}
-          required
+          required={intl.formatMessage(messages.nameBlank)}
           maxLength={120}
         />
       ),

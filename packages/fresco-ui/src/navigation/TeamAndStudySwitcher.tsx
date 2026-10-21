@@ -4,6 +4,7 @@ import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown, Plus } from 'lucide-react';
 import {
   cloneElement,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -18,13 +19,16 @@ import { cx } from '../utils/cva';
 
 export type SwitcherStatus = 'ready' | 'loading';
 
-export type SwitcherAction =
+export type SwitcherAction = {
+  label: string;
+  icon?: ReactNode;
+} & (
   | {
-      label: string;
       render: ReactElement<Record<string, unknown>>;
       onSelect?: undefined;
     }
-  | { label: string; onSelect: () => void; render?: undefined };
+  | { onSelect: () => void; render?: undefined }
+);
 
 export type SwitcherItem = {
   /** Stable id. Identifies the item to `onSelect` and colours its mark. */
@@ -225,6 +229,7 @@ function Segment({
   // are ours: a plain button does not close the popup the way a `Select.Item`
   // does.
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const current = items.find((item) => item.id === currentId);
   const loading = status === 'loading';
@@ -349,6 +354,7 @@ function Segment({
 
   const closeThen = (run: () => void) => () => {
     setOpen(false);
+    triggerRef.current?.focus();
     run();
   };
 
@@ -366,6 +372,7 @@ function Segment({
       }}
     >
       <Select.Trigger
+        ref={triggerRef}
         // Marks what IS a segment: `Select` renders a hidden form control
         // beside its trigger, so counting the frame's children counts those
         // too.
@@ -503,12 +510,17 @@ function Segment({
                 {actions.map((row) => {
                   const body = (
                     <>
-                      {/* A dashed tile where a mark would be, at the mark's
-                          own size — `size-8` is `IdentityMark`'s `md` — so the
-                          row lines up with the entities above it and still
-                          reads as "make a new one". */}
-                      <span className="border-outline flex size-8 shrink-0 items-center justify-center rounded-xs border-2 border-dashed">
-                        <Plus aria-hidden className="size-4" />
+                      {/* A tile where a mark would be, at the mark's own size —
+                          `size-8` is `IdentityMark`'s `md` — so the row lines
+                          up with the entities above it. Dashed, with a "+",
+                          unless the row brings its own icon. */}
+                      <span
+                        className={cx(
+                          'border-outline flex size-8 shrink-0 items-center justify-center rounded-xs border-2',
+                          row.icon === undefined && 'border-dashed',
+                        )}
+                      >
+                        {row.icon ?? <Plus aria-hidden className="size-4" />}
                       </span>
                       <span className="text-sm font-semibold">{row.label}</span>
                     </>
