@@ -12,6 +12,7 @@ import { RateLimited } from '@codaco/studio-contract/schema/errors';
 import { TeamCommandError } from '@codaco/studio-contract/schema/team';
 
 import { authClient } from '../lib/auth.ts';
+import { invalidateMemberships } from '../lib/landing.ts';
 import { rpcCall, rpcKey } from '../runtime/rpc.ts';
 
 const messages = defineMessages({
@@ -82,6 +83,7 @@ export function useCreateTeam(): () => Promise<void> {
     const refreshTeams = () =>
       Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: rpcKey('me') }),
+        invalidateMemberships(queryClient),
         teams.refetch(),
       ]);
 
