@@ -2720,6 +2720,27 @@ describe('instrument attributes', () => {
       expect(ids(r.stages)).not.toContain('ng_intro');
     });
 
+    it('adds its own introduction after instructions that may not show', async () => {
+      const r = await build(
+        design({
+          egoAttributes: [drinks],
+          stages: [
+            { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
+            {
+              kind: 'information',
+              ...c('how_to'),
+              skipLogic: skipNonDrinkers,
+              role: 'instructions',
+              content: 'Type each name.',
+            },
+            ng(),
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(ids(r.stages)).toContain('ng_intro');
+    });
+
     it('explains only the map tasks that are new', async () => {
       const r = await build(
         design({

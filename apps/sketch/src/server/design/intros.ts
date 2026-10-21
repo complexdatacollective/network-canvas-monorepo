@@ -134,8 +134,8 @@ const draft = (
 
 /**
  * The design stages that get an introduction screen, by stage id, with
- * draft wording. A stage right after a design instructions screen keeps
- * that screen as its introduction.
+ * draft wording. A stage right after a design instructions screen that
+ * always shows keeps that screen as its introduction.
  */
 export const taskIntroductions = (
   d: NormalizedDesign,
@@ -168,8 +168,13 @@ export const taskIntroductions = (
       guaranteed.add(s.nodeTypeId);
     const fresh = tasksOf(s).filter((t) => !introduced.has(t));
     if (!fresh.length) return;
+    // the design's instructions screen stands in only when it always shows
     const prev = d.stages[i - 1];
-    if (prev?.kind !== 'information' || prev.role !== 'instructions')
+    if (
+      prev?.kind !== 'information' ||
+      prev.role !== 'instructions' ||
+      prev.skipLogic.mode !== 'always_show'
+    )
       out.set(s.id, draft(d, s, fresh));
     if (surelyShown(s)) fresh.forEach((t) => introduced.add(t));
   });
