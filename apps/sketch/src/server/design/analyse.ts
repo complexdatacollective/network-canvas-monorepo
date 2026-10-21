@@ -1787,15 +1787,32 @@ export const analyse = (
     return required(a).some((x) =>
       required(b).some((y) => {
         if (x.attributeId !== y.attributeId) return false;
-        const kind = listOf(`node:${typeId}`).find(
+        const attr = listOf(`node:${typeId}`).find(
           (t) => t.id === x.attributeId,
-        )?.kind;
-        return (
-          (kind === 'single_choice' ||
-            kind === 'yes_no' ||
-            kind === 'ordered') &&
-          x.value.toLowerCase() !== y.value.toLowerCase()
         );
+        if (
+          attr?.kind !== 'single_choice' &&
+          attr?.kind !== 'yes_no' &&
+          attr?.kind !== 'ordered'
+        )
+          return false;
+        // compare the values the conditions compile to, so "Yes" and "true"
+        // or a label and its slug count as the same answer
+        const value = (c: FilterCondition) => {
+          const r = resolveCondition(
+            'node',
+            typeId,
+            attr,
+            c.attributeId,
+            c.operator as never,
+            c.value,
+            true,
+          );
+          return typeof r === 'string' ? null : JSON.stringify(r.value);
+        };
+        const vx = value(x);
+        const vy = value(y);
+        return vx !== null && vy !== null && vx !== vy;
       }),
     );
   };
@@ -1990,7 +2007,10 @@ export const analyse = (
       d.stages.slice(w.at + 1, everyoneAt).some((s) => testsKey(s, w.key));
     const formWins =
       (formReachesAll && !writerReachesAll && !readBetween) ||
-      (formIndex < w.at && (formReachesAll || !writerReachesAll)) ||
+      // An earlier form keeps it, unless the form that asks everyone comes
+      // after the writer and a stage between them tests it.
+      (formIndex < w.at &&
+        (formReachesAll ? !readBetween : !writerReachesAll)) ||
       overlapForms.get(form) === w.stage;
     const attr = w.key.split('/')[1];
     if (formWins) {
