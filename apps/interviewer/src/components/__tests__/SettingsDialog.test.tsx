@@ -62,6 +62,12 @@ const appOffline = vi.hoisted(() => ({
 vi.mock('~/lib/pwa/appOffline', () => ({
   useAppOffline: () => appOffline.current,
 }));
+const offlineDownload = vi.hoisted(() => ({
+  current: { downloading: false, progress: null as number | null },
+}));
+vi.mock('~/lib/pwa/offlineDownload', () => ({
+  useOfflineDownload: () => offlineDownload.current,
+}));
 
 vi.mock('~/lib/storage', async () => {
   const actual =
@@ -174,6 +180,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.clearAllMocks();
   appOffline.current = 'checking';
+  offlineDownload.current = { downloading: false, progress: null };
 });
 
 describe('SettingsDialog offline use', () => {
@@ -194,6 +201,19 @@ describe('SettingsDialog offline use', () => {
     expect(screen.getByTestId('offline-setting')).toHaveTextContent(
       'Not ready',
     );
+  });
+
+  it('says how far the download has got while it runs', async () => {
+    appOffline.current = 'not-ready';
+    offlineDownload.current = { downloading: true, progress: 0.3 };
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await findAbout();
+    expect(screen.getByTestId('offline-setting')).toHaveTextContent(
+      'Downloading: 30%',
+    );
+    expect(
+      screen.getByText(/^Interviewer is downloading all data required/),
+    ).toBeInTheDocument();
   });
 
   it('has no such row before it is known', async () => {

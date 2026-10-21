@@ -1,6 +1,7 @@
 import {
   type BundledLegacyInterviewer,
   getBundledLegacyInterviewer,
+  LEGACY_INTERVIEWER_CACHE_PREFIX,
 } from '../legacyInterviewer';
 import {
   hasLegacyInterviewerPrecache,
@@ -18,13 +19,18 @@ import {
 // worker is ready (so the two downloads never compete) and the browser is
 // idle.
 //
-// Only once this page's own build is the active root worker. A device coming
-// from a released 8.x root build can still have that build's worker active
-// (when this app's own worker has not installed yet), and its cache reclaimer
-// knows nothing of `/v8/`: it would delete Interviewer 8's precache as an
-// unleased `interviewer-` cache the next time this page reported ready. This
-// build's reclaimer leaves `interviewer-v8-` alone, so until it is active the
-// registration waits for a later load.
+// Only once the active root worker leaves Interviewer 8's caches alone. A
+// device coming from a released 8.x root build can still have that build's
+// worker active (when this app's own worker has not installed yet), and its
+// cache reclaimer knows nothing of `/v8/`: it would delete Interviewer 8's
+// precache as an unleased `interviewer-` cache the next time this page
+// reported ready. This app's reclaimer leaves `interviewer-v8-` alone and
+// records that when it activates, so the registration goes ahead under any
+// build that recorded it, or under this page's own build; under any other it
+// waits for a later load. (A page is always the newest deploy when online,
+// while the root worker stays on the build it activated until the update is
+// installed, so requiring this page's own build would hold Interviewer 8 back
+// after every deploy.)
 //
 // A registration that already has a worker for that script is checked for an
 // update instead: the browser looks for one only on a visit to `/v8/`, and a
@@ -69,6 +75,8 @@ type InstallDependencies = {
   buildId: string | undefined;
   /** The build the active root worker recorded for `scope`, if any. */
   readActiveRootBuild: (scope: string) => Promise<string | undefined>;
+  /** The other apps' cache prefixes the active root worker leaves alone. */
+  readActiveRootForeignPrefixes: (scope: string) => Promise<readonly string[]>;
   /** Whether the pinned build's precache is in cache storage. */
   hasPrecache: (interviewer: BundledLegacyInterviewer) => Promise<boolean>;
   /** Run `callback` once the browser is idle (or the timeout has passed). */
@@ -92,6 +100,8 @@ const defaultWhenIdle = (callback: () => void): void => {
 const ROOT_CACHE_PREFIX = 'interviewer-';
 export const ACTIVE_BUILD_CACHE = `${ROOT_CACHE_PREFIX}pwa-cache-metadata`;
 export const ACTIVE_BUILD_KEY = '__pwa-active-build__';
+export const ACTIVE_BUILD_FOREIGN_PREFIXES_KEY =
+  '__pwa-active-build-foreign-prefixes__';
 
 /** The build the active root worker recorded. `caches.match` never creates. */
 const defaultReadActiveRootBuild = async (
@@ -104,6 +114,61 @@ const defaultReadActiveRootBuild = async (
   return response?.text();
 };
 
+const isForeignPrefixesRecord = (
+  value: unknown,
+): value is { buildId: string; foreignCachePrefixes: string[] } => {
+  if (typeof value !== 'object' || value === null) return false;
+  const buildId: unknown = Reflect.get(value, 'buildId');
+  const prefixes: unknown = Reflect.get(value, 'foreignCachePrefixes');
+  return (
+    typeof buildId === 'string' &&
+    Array.isArray(prefixes) &&
+    prefixes.every((prefix: unknown) => typeof prefix === 'string')
+  );
+};
+
+/**
+ * The prefixes the active root worker recorded, when it was that worker that
+ * recorded them: an older build that does not write the record leaves the
+ * build record pointing at itself, so another build's record is not trusted.
+ */
+const defaultReadActiveRootForeignPrefixes = async (
+  scope: string,
+): Promise<readonly string[]> => {
+  if (typeof caches === 'undefined') return [];
+  const [record, activeBuild] = await Promise.all([
+    caches.match(new URL(ACTIVE_BUILD_FOREIGN_PREFIXES_KEY, scope).href, {
+      cacheName: ACTIVE_BUILD_CACHE,
+    }),
+    defaultReadActiveRootBuild(scope),
+  ]);
+  if (!record || !activeBuild) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await record.text());
+  } catch {
+    return [];
+  }
+  return isForeignPrefixesRecord(parsed) && parsed.buildId === activeBuild
+    ? parsed.foreignCachePrefixes
+    : [];
+};
+
+/**
+ * Resolves once `worker` has finished activating. The root worker records its
+ * build while it activates, after `ready` has already resolved.
+ */
+const whenActivated = (worker: ServiceWorker | null): Promise<void> =>
+  worker?.state === 'activating'
+    ? new Promise((resolve) => {
+        worker.addEventListener('statechange', function onStateChange() {
+          if (worker.state === 'activating') return;
+          worker.removeEventListener('statechange', onStateChange);
+          resolve();
+        });
+      })
+    : Promise.resolve();
+
 const defaultDependencies = (): Omit<InstallDependencies, 'report'> => ({
   interviewer: getBundledLegacyInterviewer(),
   container:
@@ -113,12 +178,20 @@ const defaultDependencies = (): Omit<InstallDependencies, 'report'> => ({
   buildId:
     typeof __PWA_BUILD_ID__ === 'undefined' ? undefined : __PWA_BUILD_ID__,
   readActiveRootBuild: defaultReadActiveRootBuild,
+  readActiveRootForeignPrefixes: defaultReadActiveRootForeignPrefixes,
   hasPrecache: (interviewer) => hasLegacyInterviewerPrecache(interviewer),
   whenIdle: defaultWhenIdle,
   refresh: () => void refreshLegacyInterviewerOffline(),
 });
 
 let started = false;
+let pending = false;
+
+/**
+ * Whether this page load's background install has started and not settled
+ * yet: Interviewer 8's download is still to come, or under way.
+ */
+export const isLegacyInterviewerInstallPending = (): boolean => pending;
 
 /**
  * Refresh the offline answer each time a worker of `registration` changes
@@ -159,6 +232,7 @@ export async function installLegacyInterviewerInBackground(
     origin,
     buildId,
     readActiveRootBuild,
+    readActiveRootForeignPrefixes,
     hasPrecache,
     whenIdle,
     refresh,
@@ -169,14 +243,23 @@ export async function installLegacyInterviewerInBackground(
   if (!interviewer) return 'not-bundled';
   if (!container) return 'unsupported';
 
+  pending = true;
   try {
     // This app's own worker first: Interviewer 8's precache must never delay
     // this app's own offline download, or its start-up.
     const root = await container.ready;
     await new Promise<void>((resolve) => whenIdle(resolve));
+    await whenActivated(root.active);
 
-    // A root worker of another build may reclaim what is downloaded here.
-    if (!buildId || (await readActiveRootBuild(root.scope)) !== buildId) {
+    // A root worker that does not leave Interviewer 8's caches alone may
+    // reclaim what is downloaded here.
+    const keepsLegacyCaches = (
+      await readActiveRootForeignPrefixes(root.scope)
+    ).includes(LEGACY_INTERVIEWER_CACHE_PREFIX);
+    if (
+      !keepsLegacyCaches &&
+      (!buildId || (await readActiveRootBuild(root.scope)) !== buildId)
+    ) {
       refresh();
       return 'deferred';
     }
@@ -223,10 +306,13 @@ export async function installLegacyInterviewerInBackground(
     report(error);
     refresh();
     return 'failed';
+  } finally {
+    pending = false;
   }
 }
 
 /** Forget that this page load already asked. For tests. */
 export const resetLegacyInterviewerInstall = (): void => {
   started = false;
+  pending = false;
 };

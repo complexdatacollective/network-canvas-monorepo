@@ -20,6 +20,8 @@ type StoryArgs = {
   usage: number;
   version: string;
   offline: AppOffline;
+  /** How far the download for offline use has got; null when unknown. */
+  downloadProgress: number | null | undefined;
 };
 
 const meta: Meta<StoryArgs> = {
@@ -33,6 +35,7 @@ const meta: Meta<StoryArgs> = {
     usage: 4.2 * 1024 * 1024,
     version: '0.0.0',
     offline: 'ready',
+    downloadProgress: undefined,
   },
   argTypes: {
     mode: {
@@ -61,6 +64,11 @@ const meta: Meta<StoryArgs> = {
       description:
         'Whether Interviewer, with everything it runs, is saved for offline use',
     },
+    downloadProgress: {
+      control: { type: 'range', min: 0, max: 1, step: 0.01 },
+      description:
+        'While not ready: the share downloaded (undefined when nothing is downloading, null when it cannot be told)',
+    },
   },
   render: ({
     protocolCount,
@@ -71,6 +79,7 @@ const meta: Meta<StoryArgs> = {
     usage,
     version,
     offline,
+    downloadProgress,
   }) => (
     <StatusRowView
       protocolCount={protocolCount}
@@ -79,6 +88,11 @@ const meta: Meta<StoryArgs> = {
       durability={{ persisted, usage }}
       installed={installed}
       offline={offline}
+      download={
+        downloadProgress === undefined
+          ? undefined
+          : { downloading: true, progress: downloadProgress }
+      }
       versionSlot={<span>Interviewer {version}</span>}
     />
   ),
@@ -128,4 +142,24 @@ export const InstalledBestEffort: Story = {
 /** Interviewer has not finished downloading for offline use yet. */
 export const NotReadyOffline: Story = {
   args: { offline: 'not-ready' },
+};
+
+/**
+ * Interviewer is downloading what it needs offline: the chip says how far it
+ * has got, and its explanation shows the progress. Ends with the explanation
+ * open so Chromatic captures it.
+ */
+export const DownloadingOffline: Story = {
+  args: { offline: 'not-ready', downloadProgress: 0.42 },
+  play: async ({ canvas, userEvent }) => {
+    const trigger = canvas.getByTestId('offline-status-trigger');
+    await expect(trigger).toHaveTextContent('Downloading for offline: 42%');
+    await userEvent.click(trigger);
+    const body = within(document.body);
+    await waitFor(() =>
+      expect(
+        body.getByRole('progressbar', { name: 'Download for offline use' }),
+      ).toBeVisible(),
+    );
+  },
 };
