@@ -1,31 +1,12 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 
 // Copy shared by every place that shows a protocol made for an older schema:
-// the deck's schema 8 cards and their menus, and the new-interview form. One
-// definition each, so two places saying the same thing can never be worded
-// differently.
+// the deck's schema 8 cards and the new-interview form. One definition each,
+// so two places saying the same thing can never be worded differently.
 //
 // Versions are arguments rather than literals, so the same copy serves the
 // next schema bump.
 export const legacyProtocolMessages = defineMessages({
-  schemaBadge: {
-    id: 'interviewer.legacyProtocol.schemaBadge',
-    defaultMessage: 'Schema {version}',
-    description:
-      'Short badge on a protocol card on the home screen, marking a protocol made for an older schema version. {version} is that protocol’s schema version number (for example 8).',
-  },
-  protocolInfo: {
-    id: 'interviewer.legacyProtocol.protocolInfo',
-    defaultMessage: 'Info',
-    description:
-      'Menu item on an older protocol’s card on the home screen. Shows details about the protocol (its schema version, when it was imported and how many interviews it has).',
-  },
-  protocolActions: {
-    id: 'interviewer.legacyProtocol.protocolActions',
-    defaultMessage: 'Actions for {name}',
-    description:
-      'Accessible name of the button that opens the menu of actions for an older protocol’s card on the home screen. {name} is the researcher-authored protocol name.',
-  },
   notAvailable: {
     id: 'interviewer.legacyProtocol.notAvailable',
     defaultMessage: 'Not available',

@@ -4,10 +4,10 @@ import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
-import { showLegacyProtocolInfo } from './legacyProtocolDialogs';
+import { showProtocolInfo } from './protocolInfoDialog';
 
-// The details dialog of a stored schema 8 protocol, opened through the app's
-// dialog host.
+// The details dialog of a stored protocol, opened through the app's dialog
+// host.
 
 const protocol: ProtocolWithCounts = {
   id: 'story-legacy',
@@ -34,7 +34,7 @@ function DialogStory() {
     <div className="flex min-h-96 flex-col items-center justify-center gap-4">
       <Button
         color="primary"
-        onClick={() => void showLegacyProtocolInfo(openDialog, protocol)}
+        onClick={() => void showProtocolInfo(openDialog, protocol)}
       >
         Open dialog
       </Button>
@@ -43,7 +43,7 @@ function DialogStory() {
 }
 
 const meta: Meta<typeof DialogStory> = {
-  title: 'Components/LegacyProtocolDialogs',
+  title: 'Components/ProtocolInfoDialog',
   component: DialogStory,
 };
 

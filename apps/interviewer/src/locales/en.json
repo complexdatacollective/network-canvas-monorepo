@@ -263,6 +263,10 @@
     "defaultMessage": "Loading protocol",
     "description": "User-facing message in Interviewer Deck Card."
   },
+  "interviewer.deckCard.olderSchemaVersion": {
+    "defaultMessage": "older version",
+    "description": "Short note after the schema label on a protocol card on the home screen (for example “Schema 8 · older version”), shown when the protocol was made for an older schema version than this version of Interviewer uses. Researcher-facing."
+  },
   "interviewer.deckCard.protocol": {
     "defaultMessage": "Protocol",
     "description": "Fallback protocol label while the real researcher-authored protocol name is unavailable."
@@ -270,6 +274,10 @@
   "interviewer.deckCard.requiresInternet": {
     "defaultMessage": "Requires Internet",
     "description": "Protocol card badge warning that an interview stage needs an internet connection."
+  },
+  "interviewer.deckCard.schemaVersion": {
+    "defaultMessage": "Schema {version}",
+    "description": "Short label above the protocol name on every protocol card on the home screen, giving the schema version the protocol was made for. {version} is that version number (for example 9)."
   },
   "interviewer.deckSlotCard.dismissTheSampleProtocol": {
     "defaultMessage": "Dismiss the sample protocol",
@@ -286,6 +294,14 @@
   "interviewer.deckSlotCard.installSampleProtocol": {
     "defaultMessage": "Install sample protocol",
     "description": "Visible copy in Interviewer Deck Slot Card."
+  },
+  "interviewer.deckSlotCard.protocolActions": {
+    "defaultMessage": "Actions for {name}",
+    "description": "Accessible name of the button that opens the menu of actions for a protocol’s card on the home screen. {name} is the researcher-authored protocol name."
+  },
+  "interviewer.deckSlotCard.protocolInfo": {
+    "defaultMessage": "Info",
+    "description": "Menu item on a protocol’s card on the home screen. Shows details about the protocol (its schema version, when it was imported and how many interviews it has)."
   },
   "interviewer.deckSlotCard.saving": {
     "defaultMessage": "Saving…",
@@ -530,34 +546,6 @@
   "interviewer.legacyProtocol.notAvailableHelp": {
     "defaultMessage": "This version of Interviewer cannot run schema {legacyVersion} protocols, so interviews cannot be started with this protocol here.",
     "description": "Text at the bottom of an older protocol’s card on the home screen, and in place of its new-interview form, when this version of Interviewer does not include the previous version that runs its interviews. {legacyVersion} is the older schema version number, which is also the previous version’s number (for example 8)."
-  },
-  "interviewer.legacyProtocol.protocolActions": {
-    "defaultMessage": "Actions for {name}",
-    "description": "Accessible name of the button that opens the menu of actions for an older protocol’s card on the home screen. {name} is the researcher-authored protocol name."
-  },
-  "interviewer.legacyProtocol.protocolInfo": {
-    "defaultMessage": "Info",
-    "description": "Menu item on an older protocol’s card on the home screen. Shows details about the protocol (its schema version, when it was imported and how many interviews it has)."
-  },
-  "interviewer.legacyProtocol.schemaBadge": {
-    "defaultMessage": "Schema {version}",
-    "description": "Short badge on a protocol card on the home screen, marking a protocol made for an older schema version. {version} is that protocol’s schema version number (for example 8)."
-  },
-  "interviewer.legacyProtocolDialogs.infoImported": {
-    "defaultMessage": "Imported",
-    "description": "Label in the details dialog of an older protocol, before how long ago it was imported."
-  },
-  "interviewer.legacyProtocolDialogs.infoInterviews": {
-    "defaultMessage": "Interviews",
-    "description": "Label in the details dialog of an older protocol, before the number of interviews collected with it."
-  },
-  "interviewer.legacyProtocolDialogs.infoLastChanged": {
-    "defaultMessage": "Last changed",
-    "description": "Label in the details dialog of an older protocol, before how long ago the protocol itself was last changed by its author."
-  },
-  "interviewer.legacyProtocolDialogs.infoSchemaVersion": {
-    "defaultMessage": "Schema version",
-    "description": "Label in the details dialog of an older protocol, before its schema version number."
   },
   "interviewer.lockScreen.authenticateToUnlockAndPickUpWhere": {
     "defaultMessage": "Authenticate to unlock and pick up where you left off.",
@@ -910,6 +898,22 @@
   "interviewer.protocolImport.viewDetails": {
     "defaultMessage": "View details",
     "description": "User-facing message in Interviewer Protocol Import."
+  },
+  "interviewer.protocolInfoDialog.infoImported": {
+    "defaultMessage": "Imported",
+    "description": "Label in a protocol’s details dialog, before how long ago it was imported."
+  },
+  "interviewer.protocolInfoDialog.infoInterviews": {
+    "defaultMessage": "Interviews",
+    "description": "Label in a protocol’s details dialog, before the number of interviews collected with it."
+  },
+  "interviewer.protocolInfoDialog.infoLastChanged": {
+    "defaultMessage": "Last changed",
+    "description": "Label in a protocol’s details dialog, before how long ago the protocol itself was last changed by its author."
+  },
+  "interviewer.protocolInfoDialog.infoSchemaVersion": {
+    "defaultMessage": "Schema version",
+    "description": "Label in a protocol’s details dialog, before its schema version number."
   },
   "interviewer.protocolValidationDetailsDialog.copied": {
     "defaultMessage": "Copied",

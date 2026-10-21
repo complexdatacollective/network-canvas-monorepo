@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { LegacyProtocolInfo } from '../legacyProtocolDialogs';
+import { ProtocolInfo } from '../protocolInfoDialog';
 
-describe('LegacyProtocolInfo', () => {
+describe('ProtocolInfo', () => {
   it('lists the schema and the interviews, and names no other place for them', () => {
     render(
-      <LegacyProtocolInfo
+      <ProtocolInfo
         protocol={{
           id: 'row',
           hash: 'hash',

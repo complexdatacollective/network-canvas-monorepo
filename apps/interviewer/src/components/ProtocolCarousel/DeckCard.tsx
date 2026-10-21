@@ -1,4 +1,10 @@
-import { CalendarPlus, CalendarSync, Globe, Trash2 } from 'lucide-react';
+import {
+  CalendarPlus,
+  CalendarSync,
+  Globe,
+  History,
+  Trash2,
+} from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   isValidElement,
@@ -25,6 +31,7 @@ import { Skeleton } from '@codaco/fresco-ui/Skeleton';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { protocolDataViewPath } from '~/components/DataView/dataViewUrlState';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
@@ -36,6 +43,18 @@ const messages = defineMessages({
     defaultMessage: 'Protocol',
     description:
       'Fallback protocol label while the real researcher-authored protocol name is unavailable.',
+  },
+  schemaVersion: {
+    id: 'interviewer.deckCard.schemaVersion',
+    defaultMessage: 'Schema {version}',
+    description:
+      'Short label above the protocol name on every protocol card on the home screen, giving the schema version the protocol was made for. {version} is that version number (for example 9).',
+  },
+  olderSchemaVersion: {
+    id: 'interviewer.deckCard.olderSchemaVersion',
+    defaultMessage: 'older version',
+    description:
+      'Short note after the schema label on a protocol card on the home screen (for example “Schema 8 · older version”), shown when the protocol was made for an older schema version than this version of Interviewer uses. Researcher-facing.',
   },
   requiresInternet: {
     id: 'interviewer.deckCard.requiresInternet',
@@ -121,6 +140,7 @@ type CardTextBudget = {
 function useCardTextBudget({
   name,
   description,
+  schemaVersion,
   loading,
   hideControls,
   hideMetadata,
@@ -129,6 +149,7 @@ function useCardTextBudget({
 }: {
   name: string | undefined;
   description: string | undefined;
+  schemaVersion: number | undefined;
   loading: boolean;
   hideControls: boolean;
   hideMetadata: boolean;
@@ -137,6 +158,7 @@ function useCardTextBudget({
 }) {
   const columnRef = useRef<HTMLDivElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const schemaRef = useRef<HTMLSpanElement | null>(null);
   const descriptionRef = useRef<HTMLSpanElement | null>(null);
   const descriptionLineHeightRatio = useRef<number | null>(null);
   const [budget, setBudget] = useState<CardTextBudget>({
@@ -184,8 +206,19 @@ function useCardTextBudget({
         footerNaturalHeight;
       const fixedRowCount = others.length + (footerRow ? 1 : 0);
 
+      // The schema line shares the heading row, above the name, so the
+      // name's budget is what is left of the row once the line and the
+      // row's own gap are taken out.
+      const schemaLine = schemaRef.current;
+      const schemaHeight = schemaLine
+        ? schemaLine.offsetHeight +
+          (parseFloat(
+            getComputedStyle(schemaLine.parentElement ?? schemaLine).rowGap,
+          ) || 0)
+        : 0;
+
       let headingLines: CardTextBudget['headingLines'] = null;
-      let headingHeight = 0;
+      let headingHeight = schemaHeight;
       const heading = headingRef.current;
       if (heading) {
         const lineHeight = parseFloat(getComputedStyle(heading).lineHeight);
@@ -196,12 +229,12 @@ function useCardTextBudget({
           );
           // Gaps: the fixed rows plus the heading row itself.
           const headingBudget =
-            contentHeight - fixedHeight - gap * fixedRowCount;
+            contentHeight - fixedHeight - schemaHeight - gap * fixedRowCount;
           headingLines = Math.min(
             naturalLines,
             Math.max(1, Math.floor(headingBudget / lineHeight)),
           );
-          headingHeight = headingLines * lineHeight;
+          headingHeight = schemaHeight + headingLines * lineHeight;
         }
       } else {
         // Loading: the heading row shows skeletons at a fixed size.
@@ -308,6 +341,7 @@ function useCardTextBudget({
   }, [
     name,
     description,
+    schemaVersion,
     loading,
     hideControls,
     hideMetadata,
@@ -318,6 +352,7 @@ function useCardTextBudget({
   return {
     columnRef,
     headingRef,
+    schemaRef,
     descriptionRef,
     ...budget,
   };
@@ -333,11 +368,14 @@ type DeckCardData = Pick<
 
 export type DeckCardProps = {
   requiresInternetConnection?: boolean;
+  // The schema version the protocol was made for, shown on a line above its
+  // name, with a quiet cue when it is older than this app's schema.
+  schemaVersion?: number;
   // Further badges for the controls row, before the requires-internet one
-  // (`DeckCardBadge`): a schema 8 protocol's schema and its availability.
+  // (`DeckCardBadge`): a schema 8 protocol's availability.
   badges?: ReactNode;
   // A menu control (`DeckCardMenu`) in the place of the remove control, for
-  // a card whose actions are more than removing it.
+  // a card whose actions are more than removing it (every protocol's card).
   menu?: ReactNode;
   // Content for the card's footer slot — a start button, install button,
   // import progress, or a case-ID form. Rendered beneath a divider in a
@@ -409,6 +447,7 @@ export function DeckCard(props: DeckCardProps) {
     hideDescription = false,
     hideControls = false,
     requiresInternetConnection = false,
+    schemaVersion,
     badges,
     menu,
     footer,
@@ -429,6 +468,10 @@ export function DeckCard(props: DeckCardProps) {
   const id = useId();
 
   const showMetadata = !hideMetadata;
+  // The schema line belongs with the card's chrome: it leaves with the
+  // controls row while the case-ID form is up, giving the name its room.
+  const showSchema =
+    schemaVersion !== undefined && !hideControls && Boolean(protocol.name);
 
   // The footer group's identity, taken from the consumer's key on the
   // footer element (e.g. "start-interview" → "new-session"). A change
@@ -444,6 +487,7 @@ export function DeckCard(props: DeckCardProps) {
   const budget = useCardTextBudget({
     name: protocol.name,
     description: protocol.description,
+    schemaVersion: showSchema ? schemaVersion : undefined,
     loading,
     hideControls,
     hideMetadata,
@@ -596,8 +640,41 @@ export function DeckCard(props: DeckCardProps) {
                 one row that can't be crushed (#888). */}
             <div
               data-deck-row="heading"
-              className="flex min-h-fit flex-1 items-center justify-start overflow-hidden"
+              className={cx(
+                'flex min-h-fit flex-1 justify-start overflow-hidden',
+                showSchema
+                  ? 'flex-col items-start justify-center gap-[1.5cqi]'
+                  : 'items-center',
+              )}
             >
+              {showSchema && schemaVersion !== undefined && (
+                <motion.span
+                  ref={budget.schemaRef}
+                  layout="position"
+                  transition={REGION_TRANSITION}
+                  data-testid="deck-card-schema"
+                  className="font-monospace flex shrink-0 items-center gap-[1cqi] text-[max(11px,2.6cqi)] font-bold tracking-widest text-current/70 uppercase"
+                >
+                  {schemaVersion < COMPATIBLE_PROTOCOL_SCHEMA_VERSION && (
+                    <History
+                      aria-hidden
+                      className="size-[max(12px,2.8cqi)] shrink-0"
+                    />
+                  )}
+                  {intl.formatMessage(messages.schemaVersion, {
+                    version: schemaVersion,
+                  })}
+                  {schemaVersion < COMPATIBLE_PROTOCOL_SCHEMA_VERSION && (
+                    <span className="flex items-center gap-[1cqi] font-normal tracking-normal normal-case">
+                      <span
+                        aria-hidden
+                        className="mx-[0.6cqi] size-[max(3px,0.6cqi)] shrink-0 rounded-full bg-current"
+                      />
+                      {intl.formatMessage(messages.olderSchemaVersion)}
+                    </span>
+                  )}
+                </motion.span>
+              )}
               {protocol.name ? (
                 <MotionHeading
                   ref={budget.headingRef}

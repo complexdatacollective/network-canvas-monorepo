@@ -251,7 +251,10 @@ test('shows a schema 8 protocol as a protocol card with its schema', async ({
   const before = await openOnInterviewer8Device(page);
 
   await page.getByRole('button', { name: 'Go to card 1' }).click();
-  await expect(page.getByText('Schema 8', { exact: true })).toBeVisible();
+  // Marked as made for an older schema than this app's.
+  await expect(
+    page.getByTestId('deck-card-schema').filter({ hasText: 'Schema 8' }),
+  ).toHaveText(/^Schema 8.*older version$/);
   // This build bundles Interviewer 8, so the card can start an interview.
   await expect(page.getByText('Not available')).toHaveCount(0);
   await expect(

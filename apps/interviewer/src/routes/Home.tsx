@@ -12,13 +12,18 @@ import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { InstallBanner } from '~/components/InstallBanner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
+import { showProtocolInfo } from '~/components/protocolInfoDialog';
 import { pickResumable, ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
-import { isSchema8Protocol, type StoredSession } from '~/lib/db/types';
+import {
+  isSchema8Protocol,
+  type ProtocolWithCounts,
+  type StoredSession,
+} from '~/lib/db/types';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
@@ -174,6 +179,13 @@ export function HomeRoute() {
     setDataRefreshKey((key) => key + 1);
     void reload();
   }, [reload]);
+
+  const handleShowProtocolInfo = useCallback(
+    (protocol: ProtocolWithCounts) => {
+      void showProtocolInfo(dialog.openDialog, protocol);
+    },
+    [dialog.openDialog],
+  );
 
   const handleDeleteProtocol = useCallback(
     async (hash: string) => {
@@ -331,6 +343,7 @@ export function HomeRoute() {
               onInstallSample={handleInstallSample}
               onDismissSample={handleDismissSample}
               onInstallDevelopment={handleInstallDevelopment}
+              onShowProtocolInfo={handleShowProtocolInfo}
               schema8={legacyActions.schema8}
               newSessionProtocolHash={pendingProtocolHash}
               onCancelNewSession={closeNewSession}
