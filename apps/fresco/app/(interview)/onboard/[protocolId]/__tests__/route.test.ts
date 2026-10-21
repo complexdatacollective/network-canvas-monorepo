@@ -154,6 +154,7 @@ describe('Onboard Route Handler', () => {
         createdInterviewId: 'interview-123',
         error: null,
         errorType: null,
+        schemaVersion: 9,
       });
 
       const request = new NextRequest(
