@@ -38,7 +38,10 @@ function clock() {
 }
 
 test('returns once npm starts serving a version it served stale at first', async () => {
-  const { fetchImpl, calls } = scriptedRegistry([['10.0.0'], ['10.0.0', '11.0.0']]);
+  const { fetchImpl, calls } = scriptedRegistry([
+    ['10.0.0'],
+    ['10.0.0', '11.0.0'],
+  ]);
   const { now, sleep, sleeps } = clock();
   await waitForRegistryVersions([INTERVIEW], {
     fetchImpl,
