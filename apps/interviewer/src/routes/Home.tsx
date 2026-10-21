@@ -12,18 +12,13 @@ import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { InstallBanner } from '~/components/InstallBanner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
-import { showProtocolInfo } from '~/components/protocolInfoDialog';
 import { pickResumable, ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
-import {
-  isSchema8Protocol,
-  type ProtocolWithCounts,
-  type StoredSession,
-} from '~/lib/db/types';
+import { isSchema8Protocol, type StoredSession } from '~/lib/db/types';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
@@ -180,18 +175,11 @@ export function HomeRoute() {
     void reload();
   }, [reload]);
 
-  const handleShowProtocolInfo = useCallback(
-    (protocol: ProtocolWithCounts) => {
-      void showProtocolInfo(dialog.openDialog, protocol);
-    },
-    [dialog.openDialog],
-  );
-
   const handleDeleteProtocol = useCallback(
     async (hash: string) => {
       const protocol = protocols.find((p) => p.hash === hash);
       if (!protocol) return;
-      const { description, hasUnexported } = buildDeleteProtocolMessage(
+      const { description } = buildDeleteProtocolMessage(
         protocol.name,
         sessions.filter((s) => s.protocolHash === hash),
       );
@@ -205,7 +193,9 @@ export function HomeRoute() {
           message: description.descriptor,
           values: description.values,
         }),
-        intent: hasUnexported ? 'destructive' : 'default',
+        // Deleting a protocol always deletes data, so the dialog always
+        // carries the danger intent.
+        intent: 'destructive',
         actions: {
           primary: {
             label: createElement(AppMessage, {
@@ -343,7 +333,6 @@ export function HomeRoute() {
               onInstallSample={handleInstallSample}
               onDismissSample={handleDismissSample}
               onInstallDevelopment={handleInstallDevelopment}
-              onShowProtocolInfo={handleShowProtocolInfo}
               schema8={legacyActions.schema8}
               newSessionProtocolHash={pendingProtocolHash}
               onCancelNewSession={closeNewSession}

@@ -361,18 +361,14 @@ export const DeleteActiveProtocol: Story = {
     const dots = await canvas.findAllByLabelText(/Go to card/);
     await expect(dots).toHaveLength(4);
 
-    // The active card is Friendship Ties; Delete is in its actions menu.
+    // The active card is Friendship Ties; its delete button is the first.
     // find* waits for the carousel to mount once the ResizeObserver delivers
     // a section height.
-    await userEvent.click(
-      await canvas.findByLabelText('Actions for Friendship Ties'),
-    );
-    // The menu renders in a portal outside the canvas.
-    await userEvent.click(
-      await within(canvasElement.ownerDocument.body).findByRole('menuitem', {
-        name: 'Delete',
-      }),
-    );
+    const deleteButton = (
+      await canvas.findAllByLabelText('Delete Protocol')
+    )[0];
+    if (!deleteButton) throw new Error('Delete Protocol button not found');
+    await userEvent.click(deleteButton);
 
     await waitFor(
       async () => {

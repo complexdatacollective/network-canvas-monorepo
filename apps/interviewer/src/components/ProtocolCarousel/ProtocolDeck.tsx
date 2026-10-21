@@ -98,9 +98,7 @@ type ProtocolDeckProps = {
   onInstallSample?: () => void;
   onDismissSample?: () => void;
   onInstallDevelopment?: () => void;
-  // The Info item of every protocol card's menu.
-  onShowProtocolInfo?: (protocol: ProtocolWithCounts) => void;
-  // What a schema 8 protocol's card needs beyond any protocol card's.
+  // What a schema 8 protocol's card offers beyond any protocol card's.
   schema8?: Schema8CardActions;
   // When set, swipe/keyboard navigation is locked and the matching protocol
   // card is isolated above a modal backdrop with the case-ID form.
@@ -150,7 +148,6 @@ export function ProtocolDeck({
   onInstallSample = () => {},
   onDismissSample = () => {},
   onInstallDevelopment = () => {},
-  onShowProtocolInfo,
   schema8,
   newSessionProtocolHash,
   onCancelNewSession,
@@ -277,7 +274,6 @@ export function ProtocolDeck({
                   : 0
               }
               schema8={schema8}
-              onShowProtocolInfo={onShowProtocolInfo}
               onDeleteProtocol={onDeleteProtocol}
               onDismissSample={onDismissSample}
               onInstallSample={onInstallSample}
@@ -302,7 +298,6 @@ export function ProtocolDeck({
       onDeleteProtocol,
       onCancelNewSession,
       onSessionCreated,
-      onShowProtocolInfo,
       schema8,
     ],
   );
