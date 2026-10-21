@@ -172,6 +172,52 @@ describe('readOfflineDownload', () => {
     ).resolves.toEqual({ downloading: true, progress: 0 });
   });
 
+  it('keeps downloading when how far it has got cannot be read', async () => {
+    const deps = dependencies({
+      registrations: {
+        '/': registration('/', { scriptURL: `${ORIGIN}/sw.js` }),
+      },
+      cached: {},
+    });
+    deps.cacheStorage.keys = () => Promise.reject(new Error('denied'));
+    await expect(
+      readOfflineDownload({ ownReady: false, legacyReady: null }, deps),
+    ).resolves.toEqual({ downloading: true, progress: null });
+  });
+
+  it('reads the script again for each new worker, as every build shares its URL', async () => {
+    const deps = dependencies({
+      registrations: {
+        '/': registration('/', { scriptURL: `${ORIGIN}/sw.js` }),
+      },
+      cached: { [`${ROOT_BUILD}-precache-v2-${ORIGIN}/`]: 4 },
+    });
+    await expect(
+      readOfflineDownload({ ownReady: false, legacyReady: null }, deps),
+    ).resolves.toEqual({ downloading: true, progress: 1 });
+
+    // A later deploy's worker starts installing in the same tab.
+    const NEXT_BUILD = 'interviewer-9.0.1-turbo-ghi';
+    deps.fetchScript.mockResolvedValue(
+      workerScript(NEXT_BUILD, ['a.js', 'b.js', 'c.js', 'd.js']),
+    );
+    const next = dependencies({
+      registrations: {
+        '/': registration('/', { scriptURL: `${ORIGIN}/sw.js` }),
+      },
+      cached: {
+        [`${ROOT_BUILD}-precache-v2-${ORIGIN}/`]: 4,
+        [`${NEXT_BUILD}-precache-v2-${ORIGIN}/`]: 1,
+      },
+    });
+    await expect(
+      readOfflineDownload(
+        { ownReady: false, legacyReady: null },
+        { ...next, fetchScript: deps.fetchScript },
+      ),
+    ).resolves.toEqual({ downloading: true, progress: 0.25 });
+  });
+
   it('is not downloading where there are no service workers', async () => {
     await expect(
       readOfflineDownload(
