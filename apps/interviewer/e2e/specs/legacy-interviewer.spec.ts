@@ -711,7 +711,7 @@ test('when Interviewer 8 cannot be loaded into the frame, it says so and does no
   ).toBeVisible();
   await expect(
     page.getByText(
-      /^Interviewer has not finished downloading for use without an internet connection/,
+      /^Interviewer has not finished downloading all data required for fully offline/,
     ),
   ).toBeVisible();
   await expect(page.getByTestId('interviewer-8-frame')).toHaveCount(0);

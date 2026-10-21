@@ -485,7 +485,7 @@ describe('StatusRowView: offline use', () => {
   it('says when Interviewer is ready offline', () => {
     view('ready');
     expect(screen.getByTestId('offline-status-trigger')).toHaveTextContent(
-      'Ready offline',
+      'Ready for offline',
     );
   });
 
