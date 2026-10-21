@@ -956,9 +956,8 @@ const noTeamRoute = createRoute({
   // with nothing to do with teams: the header that carries the switcher is
   // behind the same redirect, and a researcher waiting on an invitation would
   // otherwise read this screen in a language they cannot change. And so the
-  // update notice (#1901): setup ends here for the installation's owner, who
-  // has no team until they create one, and the app shell that carries it
-  // elsewhere is behind the same redirect.
+  // update notice (#1901), which the app shell carries elsewhere behind the
+  // same redirect.
   component: screenPlaceholder({
     title: screens.noTeamTitle,
     description: screens.noTeamDescription,

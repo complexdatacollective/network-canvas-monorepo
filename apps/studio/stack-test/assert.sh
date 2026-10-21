@@ -222,6 +222,7 @@ contains 'setup signed the browser in' '"signedIn":true' "$RPC_EXIT"
 rpc me null -b "$COOKIE_JAR"
 equals "the owner's session is accepted by \`me\`" Success "$RPC_VERDICT"
 contains '`me` is the owner' "$OWNER_EMAIL" "$RPC_EXIT"
+contains 'setup made the owner the owner of a first team' '"role":"owner"' "$RPC_EXIT"
 
 RPC_ROUTE=/rpc/protocol-builder
 rpc ListSections '{"protocolId":"00000000-0000-4000-8000-000000000000"}' \

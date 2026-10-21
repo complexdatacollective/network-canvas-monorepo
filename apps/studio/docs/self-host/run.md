@@ -192,8 +192,11 @@ curl https://studio.example.org/readyz
 ## 7. Finish setup in the browser
 
 Open `https://studio.example.org/setup`, paste the token, give the instance a
-name, and create the owner's account. You land signed in as the owner. The
-token is spent, and `/setup` answers as a not-found from then on.
+name, and create the owner's account. Setup also creates the owner's first
+team, named after the instance, and you land signed in as its owner. The token
+is spent, and `/setup` answers as a not-found from then on. Everyone else joins
+by invitation from a team owner or admin, and the instance's owner can create
+further teams from the team switcher.
 
 That is the instance running. The name you gave is reported by the app's
 `status` procedure and by `/api/v1/status`.

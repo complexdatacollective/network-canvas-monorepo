@@ -73,9 +73,9 @@ const MINTS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'an invitee who is not yet a member; minted before the scope opens, and the locked invitation re-read inside it is the proof',
   },
-  [`${SERVER}/src/team/commands.ts › team.create`]: {
+  [`${SERVER}/src/team/commands.ts › team.createOwned`]: {
     count: 1,
-    why: 'a team that does not exist yet, on a server-minted id; the creation rule checked against the installation inside the scope it opens is the proof',
+    why: 'a team that does not exist yet, on a server-minted id; the caller’s precondition inside the scope it opens is the proof — the creation rule for `team.create`, the installation claim for first-run setup',
   },
   [`${SERVER}/src/interview/access.ts`]: {
     count: 1,

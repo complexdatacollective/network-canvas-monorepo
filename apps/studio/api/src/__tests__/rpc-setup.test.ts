@@ -1,8 +1,8 @@
-import { Redacted } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
-import { OwnerScope } from '../db/tenant.ts';
+import { OwnerScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { issueBootstrapToken, readInstallation } from '../setup/bootstrap.ts';
 import { liveAuthService } from './support/auth.ts';
@@ -184,8 +184,28 @@ describe.skipIf(!testDb)('setup.complete', () => {
     const me = await signedIn.call(signedIn.rpc('me', undefined));
     expect(Redacted.value(me.email)).toBe(account.email);
     expect(Redacted.value(me.name)).toBe(account.name);
-    expect(me.teams).toEqual([]);
+    expect(me.teams).toHaveLength(1);
+    const [membership] = me.teams;
+    expect(membership?.role).toBe('owner');
     await signedIn.dispose();
+
+    const firstTeam = await database.run(
+      OwnerScope.open(
+        Effect.gen(function* () {
+          const { sql } = yield* Transaction;
+          const teams = yield* sql<{ name: string }>`
+            select name from teams where id = ${membership?.teamId ?? ''}`;
+          const events = yield* sql<{ event_type: string; actor_id: string }>`
+            select event_type, actor_id from audit_events
+             where team_id = ${membership?.teamId ?? ''}`;
+          return { teams, events };
+        }),
+      ),
+    );
+    expect(firstTeam.teams).toEqual([{ name: INSTANCE_NAME }]);
+    expect(firstTeam.events).toEqual([
+      { event_type: 'team.created', actor_id: me.userId },
+    ]);
 
     const installation = await database.run(
       OwnerScope.open(readInstallation()),
