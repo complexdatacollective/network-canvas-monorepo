@@ -12,6 +12,7 @@ import {
   refreshLegacyInterviewerOffline,
 } from './legacyInterviewerOffline';
 import { isLegacyInterviewerInstallPending } from './legacyInterviewerServiceWorker';
+import { getRegistrationForScope } from './registrationForScope';
 
 // How far Interviewer has got with saving itself for offline use, for the
 // status row and Settings while it is not ready yet.
@@ -130,11 +131,10 @@ const readPart = async (
   ready: boolean,
   { container, cacheStorage, fetchScript, origin }: Dependencies,
 ): Promise<Part | null> => {
-  const registration = await container?.getRegistration(scope);
-  const ownRegistration =
-    registration !== undefined &&
-    new URL(registration.scope).pathname === scope;
-  const worker = ownRegistration ? registration.installing : null;
+  const registration = container
+    ? await getRegistrationForScope(container, scope)
+    : undefined;
+  const worker = registration?.installing ?? null;
   const script = await readScript(
     worker,
     worker?.scriptURL ?? new URL(`${scope}sw.js`, origin).href,
@@ -171,13 +171,10 @@ export async function readOfflineDownload(
       scopes.push([legacy.path, offline.legacyReady]);
     }
     const registrations = await Promise.all(
-      scopes.map(([scope]) => container.getRegistration(scope)),
+      scopes.map(([scope]) => getRegistrationForScope(container, scope)),
     );
     const installing = registrations.some(
-      (registration, index) =>
-        registration !== undefined &&
-        new URL(registration.scope).pathname === scopes[index]?.[0] &&
-        registration.installing !== null,
+      (registration) => registration?.installing,
     );
     downloading =
       installing ||
