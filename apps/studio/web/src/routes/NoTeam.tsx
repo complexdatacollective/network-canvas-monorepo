@@ -99,7 +99,7 @@ export default function NoTeam() {
   return (
     <main
       id="main-content"
-      className="flex h-full items-center justify-center p-4"
+      className="flex min-h-full items-center justify-center p-4"
     >
       <Surface maxWidth="xl" spacing="lg">
         <Heading level="h1" {...routeFocusTargetProps}>
