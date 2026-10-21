@@ -152,7 +152,15 @@ export default defineConfig(({ command, mode }) => {
           // interview is already open. Precache every 4:3 candidate so a
           // freshly installed app can render the menu on its first offline
           // interview, regardless of which width Safari selects from srcset.
-          globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
+          globPatterns: [
+            '**/*.{js,css,html}',
+            '**/*.4x3.*.webp',
+            // Home and onboarding render the header mark. The page that
+            // installs the worker is not controlled by it, so its request never
+            // fills the runtime image cache, and the first offline launch
+            // would show a broken image.
+            '**/NC-Flat-*.png',
+          ],
           // Nothing of this app is left out. The Sample protocol's chunk
           // (bundledSampleProtocol.ts) is lazy but must stay precached so the
           // sample installs offline. The Development protocol's (~33 MB) is

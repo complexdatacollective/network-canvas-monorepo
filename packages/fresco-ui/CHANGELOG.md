@@ -1,5 +1,30 @@
 # @codaco/fresco-ui
 
+## 8.1.0
+
+### Minor Changes
+
+- a83aca1: Drag sources now share touch gestures with the scroll regions around them. `useDragSource` sets `touch-action` from the axes the enclosing `ScrollArea`s can currently scroll, instead of always `pan-y`: movement within 30° of a scrollable axis scrolls, steeper movement drags, and a region with nothing to scroll leaves every direction to the drag. Outside any `ScrollArea` the page is assumed to scroll vertically, as before. Holding a touch still for 150ms (the same moment a node starts showing hold feedback) lets a drag move along the scroll axis too; the source carries `data-drag-armed` while it is held.
+
+  - `ScrollArea` exports `useScrollAxes()` and the `ScrollAxes` type: the axes the enclosing regions can scroll, combined across nested regions.
+  - A `ScrollArea` whose only overflow is on an axis it clips (a horizontal region's vertical overflow) is no longer a tab stop.
+  - A `pointercancel` during a drag now cancels the drag instead of dropping it where the pointer was.
+  - A drag ignores pointers other than the one that started it.
+  - A drag also ends, as cancelled, when the window loses the pointer (an app switch mid-drag) or the source is disabled; before, it could be left live with the source hidden.
+  - `useDragSource` reads `type`, `metadata`, `preview` and `announcedName` when a drag starts, so its handlers and `dragProps` no longer change on every render of a host that rebuilds them.
+
+- ce3fe20: Interviewer's first-run setup asks for the app language once, on the welcome screen, before you select "Get started". The setup steps no longer repeat the language picker, which you can still find in Settings. The picker's automatic option now names the language it uses, for example "Automatic (English)", instead of "Automatic (browser)", which was confusing for an installed app.
+
+  `LocaleSelect` accepts an `automaticLocale` prop: the locale the automatic entry resolves to. The entry then reads "Automatic (Français)", in the same words as `LocaleSwitcher`.
+
+- ccf6508: Adds `@codaco/fresco-ui/testing/withSafeTypingIntoRichText`, a wrapper for a user-event `user` that makes `user.type` reliable against `RichTextEditorField` under jsdom. Without a layout to hit-test, user-event puts a click into an empty editor after its paragraph instead of inside it. ProseMirror moves the caret back only once jsdom reports the selection change, so a first key typed before that report was dropped, and tests failed now and then with their first character missing. The wrapped `type` clicks, waits for that report, checks that the caret is inside a paragraph, and then types.
+
+### Patch Changes
+
+- fb21985: Architect 8 can now run inside Architect 9, at `/v8/` on the same site, so you can keep editing schema 8 protocols after Architect 9 ships. There it is the protocol editor alone: Architect 9 opens schema 8 protocols in it, and closing the editor takes you back to Architect 9.
+
+  The app update check now offers the highest released version, rather than the release GitHub lists first. A fix released for an older major version (for example Architect 8 after Architect 9 is out) is no longer offered as an update to the newer one.
+
 ## 8.0.0
 
 ### Major Changes

@@ -226,7 +226,7 @@ test('clears a hotfix re-cut from the newest release', () => {
   assert.equal(output.newest, '8.1.3');
 });
 
-// An older line is released only by the Architect maintenance lane; the
+// An older line is released only by the maintenance lane; the
 // hotfix refusal has to say where to go instead of only what is wrong.
 test('points an older Architect line at the maintenance lane', () => {
   const { ok, stderr } = resolve({
@@ -236,7 +236,7 @@ test('points an older Architect line at the maintenance lane', () => {
   });
   assert.equal(ok, false);
   assert.match(stderr, /older than the released 9\.0\.0/);
-  assert.match(stderr, /Architect Maintenance Release workflow/);
+  assert.match(stderr, /App Maintenance Release workflow \(app: architect\)/);
 });
 
 // SCOPE=line: the Architect maintenance lane for an older major line. The
@@ -335,15 +335,70 @@ test('line scope refuses a line that has never been released', () => {
   assert.match(stderr, /has no 7\.x release to maintain/);
 });
 
-test('line scope is Architect only', () => {
+// Fresco has one production target and no newer app to ship an older line
+// inside, so it has no maintenance lane.
+test('line scope refuses Fresco', () => {
   const { ok, stderr } = resolve({
+    app: 'fresco',
     scope: 'line',
     version: '8.1.3',
-    tags: ['@codaco/interviewer@8.1.2'],
-    strandedTags: ['@codaco/interviewer@9.0.0'],
+    tags: ['fresco@8.1.2'],
+    strandedTags: ['fresco@9.0.0'],
   });
   assert.equal(ok, false);
-  assert.match(stderr, /Interviewer has no older line to maintain/);
+  assert.match(stderr, /Fresco has no older line to maintain/);
+});
+
+// Interviewer 8 ships inside Interviewer 9 at /v8/ the way Architect 8 does,
+// so its older line has the same maintenance lane and the same rules.
+test('points an older Interviewer line at the maintenance lane', () => {
+  const { ok, stderr } = resolve({
+    version: '8.5.1',
+    tags: ['@codaco/interviewer@8.5.0', '@codaco/interviewer@9.0.0'],
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /older than the released 9\.0\.0/);
+  assert.match(stderr, /App Maintenance Release workflow \(app: interviewer\)/);
+});
+
+test('line scope clears an Interviewer 8.x patch alongside a released 9.0.0', () => {
+  const { ok, output } = resolve({
+    scope: 'line',
+    version: '8.5.1',
+    tags: ['@codaco/interviewer@8.4.0', '@codaco/interviewer@8.5.0'],
+    strandedTags: ['@codaco/interviewer@9.0.0'],
+  });
+  assert.ok(ok);
+  assert.equal(output.version, '8.5.1');
+  assert.equal(output.label, 'Interviewer');
+  assert.equal(output.tag, '@codaco/interviewer@8.5.1');
+  assert.equal(output.newest, '8.5.0');
+  assert.equal(output.newest_tag, '@codaco/interviewer@8.5.0');
+});
+
+test('line scope refuses an Interviewer version on the newest major line', () => {
+  for (const [version, tags] of [
+    ['9.0.1', ['@codaco/interviewer@9.0.0']],
+    ['8.5.1', ['@codaco/interviewer@8.5.0']],
+  ]) {
+    const { ok, stderr } = resolve({ scope: 'line', version, tags });
+    assert.equal(ok, false, version);
+    assert.match(stderr, /is on the newest Interviewer line/);
+  }
+});
+
+test('line scope refuses an Interviewer tree missing the line newest', () => {
+  const { ok, stderr } = resolve({
+    scope: 'line',
+    version: '8.5.2',
+    tags: ['@codaco/interviewer@8.5.0'],
+    strandedTags: ['@codaco/interviewer@8.5.1', '@codaco/interviewer@9.0.0'],
+  });
+  assert.equal(ok, false);
+  assert.match(
+    stderr,
+    /does not contain @codaco\/interviewer@8\.5\.1, the newest 8\.x release/,
+  );
 });
 
 test('fails on an unknown scope', () => {

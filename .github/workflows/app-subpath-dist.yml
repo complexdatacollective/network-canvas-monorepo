@@ -1,33 +1,36 @@
-name: Architect Sub-path Dist
+name: App Sub-path Dist
 
-# Builds a released Architect tag under a sub-path and attaches the result to
-# that tag's GitHub release, for the next major to bundle:
+# Builds a released app tag under a sub-path and attaches the result to that
+# tag's GitHub release, for the app's next major to bundle:
 #
-#   @codaco/architect@8.5.0  ->  architect-v8-dist.tgz  (built with base /v8/)
+#   @codaco/architect@8.5.0    ->  architect-v8-dist.tgz    (base /v8/)
+#   @codaco/interviewer@8.5.0  ->  interviewer-v8-dist.tgz  (base /v8/)
 #
-# Architect 9 serves Architect 8 at /v8/ from its own deploy, so researchers
-# can keep editing schema 8 protocols beside it. It does not build Architect 8
-# itself: apps/architect/legacy-architect.json on the schema-9 line pins this
-# tarball by URL and sha256, and its build verifies and extracts it into
-# dist/v8. See "Sub-path dist tarball" in apps/architect/RELEASING.md.
+# Architect 9 serves Architect 8, and Interviewer 9 serves Interviewer 8, at
+# /v8/ from its own deploy, so researchers keep working with schema 8
+# protocols beside the new version. The newer major does not build the older
+# one itself: apps/<app>/legacy-<app>.json on the newer line pins this tarball
+# by URL and sha256, and its build verifies and extracts it into dist/v8. See
+# "Sub-path dist tarball" in apps/<app>/RELEASING.md.
 #
-# Major-generic: a tag on major N is built with ARCHITECT_BASE_PATH=/vN/ and
-# packed as architect-vN-dist.tgz, so Architect 10 can bundle 9 the same way.
-# Only tags whose tree can build under a sub-path are eligible (the marker is
-# apps/architect/scripts/app-base-path.mjs, which 8.5.0 introduced); called
-# from a release lane, an ineligible tag such as 8.4.1 is skipped with a
-# notice rather than failing a release that has already shipped.
+# App- and major-generic: a tag of `app` on major N is built with
+# <APP>_BASE_PATH=/vN/ and packed as <app>-vN-dist.tgz, so a 10.x line can
+# bundle 9 the same way. Only tags whose tree can build under a sub-path are
+# eligible (the marker is the app's build reading its <APP>_BASE_PATH, which
+# 8.5.0 introduced); called from a release lane, an ineligible tag such as
+# 8.4.1 is skipped with a notice rather than failing a release that has
+# already shipped.
 #
-# Chained from the release lanes with workflow_call — apps-release-architect
-# in ci-and-release.yml, the Hotfix Release workflow and the Architect
-# Maintenance Release workflow — because a tag or release created with
-# GITHUB_TOKEN never fires `on: push: tags` or `on: release`. Dispatch it by
-# hand (from main) to retry a failed run or, with `replace`, to rebuild.
+# Chained with workflow_call from the release lanes — apps-release-<app> in
+# ci-and-release.yml, the Hotfix Release workflow and the maintenance lanes —
+# because a tag or release created with GITHUB_TOKEN never fires
+# `on: push: tags` or `on: release`. Dispatch it by hand (from main) to retry a
+# failed run or, with `replace`, to rebuild.
 #
 # Never replaces an uploaded tarball unless `replace` is set. The build is not
 # bit-for-bit reproducible (its precache id is random outside turbo), and the
-# pin's sha256 is what Architect 9's production build verifies — a silently
-# replaced asset would fail every later Architect 9 build until the pin was
+# pin's sha256 is what the newer major's production build verifies — a
+# silently replaced asset would fail every later build of it until the pin was
 # bumped.
 #
 # Split into three jobs so the one that holds a write token never runs code
@@ -46,8 +49,15 @@ name: Architect Sub-path Dist
 on:
   workflow_dispatch:
     inputs:
+      app:
+        description: App whose release to build under a sub-path
+        required: true
+        type: choice
+        options:
+          - architect
+          - interviewer
       tag:
-        description: Released tag to build under its major's sub-path (e.g. @codaco/architect@8.5.0)
+        description: Released tag to build under its major's sub-path (e.g. @codaco/interviewer@8.5.0)
         required: true
         type: string
       replace:
@@ -57,6 +67,9 @@ on:
         type: boolean
   workflow_call:
     inputs:
+      app:
+        required: true
+        type: string
       tag:
         required: true
         type: string
@@ -106,6 +119,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
+      label: ${{ steps.app.outputs.label }}
+      base_variable: ${{ steps.app.outputs.base_variable }}
       version: ${{ steps.guard.outputs.version }}
       major: ${{ steps.guard.outputs.major }}
       sha: ${{ steps.guard.outputs.sha }}
@@ -127,6 +142,26 @@ jobs:
             exit 1
           fi
 
+      # A workflow_call input is a free string, so the app is checked here
+      # before it names a directory, a package or an environment variable.
+      - name: Validate the app
+        id: app
+        env:
+          APP: ${{ inputs.app }}
+        run: |
+          case "$APP" in
+            architect) label=Architect ;;
+            interviewer) label=Interviewer ;;
+            *)
+              echo "::error::'$APP' has no sub-path dist (expected architect or interviewer)." >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo "label=$label"
+            echo "base_variable=${APP^^}_BASE_PATH"
+          } >>"$GITHUB_OUTPUT"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           ref: ${{ inputs.tooling_ref || github.sha }}
@@ -135,15 +170,16 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # Checks the tag is an Architect release tag that agrees with its own
+      # Checks the tag is a release tag of the app that agrees with its own
       # tree and is the newest stable release on its major line: the pin is
       # only ever moved forward.
       - name: Resolve and guard tag
         id: guard
         env:
+          APP: ${{ inputs.app }}
           TAG: ${{ inputs.tag }}
           FORCE: 'false'
-        run: bash .github/scripts/architect-release-tag-guard.sh
+        run: bash .github/scripts/release-line-tag-guard.sh
 
       - name: Check the tag names the released commit
         if: inputs.expected_sha != ''
@@ -160,19 +196,25 @@ jobs:
       - name: Check the tag can build under a sub-path
         id: eligible
         env:
+          APP: ${{ inputs.app }}
           TAG: ${{ inputs.tag }}
           MAJOR: ${{ steps.guard.outputs.major }}
+          BASE_VARIABLE: ${{ steps.app.outputs.base_variable }}
           SKIP_INELIGIBLE: ${{ inputs.skip_ineligible }}
         run: |
           {
             echo "base=/v${MAJOR}/"
-            echo "asset=architect-v${MAJOR}-dist.tgz"
+            echo "asset=${APP}-v${MAJOR}-dist.tgz"
           } >>"$GITHUB_OUTPUT"
-          if git cat-file -e "${TAG}:apps/architect/scripts/app-base-path.mjs" 2>/dev/null; then
+          # A tree that can build under a sub-path reads the app's base-path
+          # variable in its Vite config or build scripts; no earlier release
+          # names it anywhere there.
+          if git grep -q -F -e "$BASE_VARIABLE" "$TAG" -- \
+            "apps/${APP}/scripts" "apps/${APP}/vite.config.ts" "apps/${APP}/vite.renderer.config.ts"; then
             echo "eligible=true" >>"$GITHUB_OUTPUT"
             exit 0
           fi
-          message="$TAG predates sub-path builds (no apps/architect/scripts/app-base-path.mjs in its tree)"
+          message="$TAG predates sub-path builds (its build never reads ${BASE_VARIABLE})"
           if [[ "$SKIP_INELIGIBLE" == 'true' ]]; then
             echo "::notice::$message; no sub-path dist for it."
             echo "eligible=false" >>"$GITHUB_OUTPUT"
@@ -245,7 +287,8 @@ jobs:
           path: .dist-tooling
           sparse-checkout: |
             scripts/release
-            apps/architect/scripts
+            scripts/buildtime
+            apps/${{ inputs.app }}/scripts
           persist-credentials: false
 
       - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
@@ -261,14 +304,22 @@ jobs:
       # labelled with the sub-path. The package script runs Vite and then the
       # tag's own assert-pwa-build.mjs, which holds the sub-path shape. Packages
       # are consumed as source, so nothing needs building first.
-      - name: Build architect under its sub-path
+      # The base reaches the build through the app's own variable
+      # (ARCHITECT_BASE_PATH, INTERVIEWER_BASE_PATH), whose name was
+      # validated in `resolve`.
+      - name: Build the app under its sub-path
         env:
-          ARCHITECT_BASE_PATH: ${{ needs.resolve.outputs.base }}
-        run: pnpm --filter @codaco/architect build
+          APP: ${{ inputs.app }}
+          BASE: ${{ needs.resolve.outputs.base }}
+          BASE_VARIABLE: ${{ needs.resolve.outputs.base_variable }}
+        run: env "${BASE_VARIABLE}=${BASE}" pnpm --filter "@codaco/${APP}" build
 
-      # COMMIT_REF must be explicit: GITHUB_SHA is the commit the workflow
-      # definition was read from, not the tag being built.
+      # Architect's deploys carry a build-info.json stamp; Interviewer has
+      # none, and its sub-path build stamps dist-info.json itself. COMMIT_REF
+      # must be explicit: GITHUB_SHA is the commit the workflow definition was
+      # read from, not the tag being built.
       - name: Stamp the built commit
+        if: inputs.app == 'architect'
         env:
           COMMIT_REF: ${{ needs.resolve.outputs.sha }}
         run: |
@@ -281,6 +332,7 @@ jobs:
       - name: Pack the sub-path dist
         id: pack
         env:
+          APP: ${{ inputs.app }}
           TAG: ${{ inputs.tag }}
           VERSION: ${{ needs.resolve.outputs.version }}
           COMMIT: ${{ needs.resolve.outputs.sha }}
@@ -288,8 +340,9 @@ jobs:
           ASSET: ${{ needs.resolve.outputs.asset }}
         run: |
           mkdir -p "${RUNNER_TEMP}/subpath-dist"
-          node .dist-tooling/scripts/release/package-architect-subpath-dist.mjs \
-            --dist "${GITHUB_WORKSPACE}/apps/architect/dist" \
+          node .dist-tooling/scripts/release/package-app-subpath-dist.mjs \
+            --app "$APP" \
+            --dist "${GITHUB_WORKSPACE}/apps/${APP}/dist" \
             --tag "$TAG" \
             --version "$VERSION" \
             --commit "$COMMIT" \
@@ -298,7 +351,7 @@ jobs:
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: architect-subpath-dist
+          name: ${{ inputs.app }}-subpath-dist
           path: ${{ runner.temp }}/subpath-dist
           if-no-files-found: error
           retention-days: 3
@@ -314,7 +367,7 @@ jobs:
     # One upload per major line at a time, so two runs for the same tag cannot
     # both find the asset missing and race to attach it.
     concurrency:
-      group: architect-subpath-dist-v${{ needs.resolve.outputs.major }}
+      group: ${{ inputs.app }}-subpath-dist-v${{ needs.resolve.outputs.major }}
       cancel-in-progress: false
     env:
       TAG: ${{ inputs.tag }}
@@ -323,7 +376,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: architect-subpath-dist
+          name: ${{ inputs.app }}-subpath-dist
           path: ${{ runner.temp }}/subpath-dist
 
       # The artifact store sits between the jobs; what is uploaded must be
@@ -375,7 +428,7 @@ jobs:
             echo "asset_id=$(jq -r '.id' <<<"$asset_json")"
           } >>"$GITHUB_OUTPUT"
 
-      # What Architect 9's build will do: fetch the public URL and hash it.
+      # What the newer major's build will do: fetch the public URL and hash it.
       # Also compares GitHub's own digest of the asset when it reports one.
       - name: Verify the uploaded tarball
         env:
@@ -395,10 +448,12 @@ jobs:
             exit 1
           fi
 
-      # The pin, ready to paste into apps/architect/legacy-architect.json on
-      # the line that bundles this one (see apps/architect/RELEASING.md).
+      # The pin, ready to paste into apps/<app>/legacy-<app>.json on the line
+      # that bundles this one (see apps/<app>/RELEASING.md).
       - name: Summary
         env:
+          APP: ${{ inputs.app }}
+          LABEL: ${{ needs.resolve.outputs.label }}
           URL: ${{ steps.upload.outputs.url }}
           VERSION: ${{ needs.resolve.outputs.version }}
           MAJOR: ${{ needs.resolve.outputs.major }}
@@ -413,9 +468,9 @@ jobs:
             --arg cachePrefix "$CACHE_PREFIX" \
             '{($key): {version: $version, url: $url, sha256: $sha256, cachePrefix: $cachePrefix}}')"
           {
-            echo "### Architect ${VERSION} sub-path dist"
+            echo "### ${LABEL} ${VERSION} sub-path dist"
             echo
-            echo "Attached \`${ASSET}\` to \`${TAG}\`. Pin for \`apps/architect/legacy-architect.json\`:"
+            echo "Attached \`${ASSET}\` to \`${TAG}\`. Pin for \`apps/${APP}/legacy-${APP}.json\`:"
             echo
             echo '```json'
             echo "$pin"

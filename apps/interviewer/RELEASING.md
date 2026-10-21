@@ -29,7 +29,9 @@ affected libraries or Architect.
    `apps-release-detect` job sees the version change and
    `apps-release-interviewer` builds, deploys to Netlify **production**, and
    creates the stable GitHub release `@codaco/interviewer@<version>` with the
-   CHANGELOG notes.
+   CHANGELOG notes. For an 8.x version, `apps-release-interviewer-subpath-dist`
+   then attaches the `/v8/` tarball Interviewer 9 bundles (see
+   [Sub-path dist tarball](#sub-path-dist-tarball)).
 
 Netlify's Git integration builds pull-request previews and reports their URLs
 directly on the PR. Production is no longer deployed on every push to `main`—it
@@ -83,7 +85,8 @@ is not ready to go out, release from the previous tag instead:
    with `app: interviewer` and `source_ref` set to the hotfix branch. It runs
    typecheck and tests across the app's whole workspace dependency closure,
    builds with PostHog source maps, deploys to Netlify production, and cuts
-   `@codaco/interviewer@<version>`.
+   `@codaco/interviewer@<version>`. An 8.x hotfix also gets its `/v8/` tarball
+   (see [Sub-path dist tarball](#sub-path-dist-tarball)).
 
    A hotfix and a normal release for the same app hold one lock, so a dispatch
    made while a Version Packages release is deploying waits for it rather than
@@ -100,8 +103,8 @@ is not ready to go out, release from the previous tag instead:
    The lane only ships the newest line: `.github/scripts/resolve-hotfix-release.mjs`
    refuses a version older than the current release, because each app has one
    production site and `netlify deploy --prod` always replaces what is live.
-   A branch that needs an older line published needs a separate channel, not
-   this lane.
+   An older major line (8.x once 9.x is production) releases through the
+   [maintenance lane](#maintenance-releases-older-major-lines) instead.
 
 5. **Merge the hotfix branch into main.** The pull request already exists
    from step 3 — merging the branch itself rather than re-applying its
@@ -153,6 +156,176 @@ tag before re-dispatching:
 ```bash
 git push --delete origin '@codaco/interviewer@<version>'
 ```
+
+## Sub-path dist tarball
+
+Interviewer 9 serves Interviewer 8 at `/v8/` from its own deploy, so schema 8
+protocols and the interviews already collected with them keep working beside
+it. Interviewer 9 does not build Interviewer 8: it bundles a tarball attached
+to an 8.x GitHub release, pinned by URL and sha256 in
+`apps/interviewer/legacy-interviewer.json` on the schema-9 line.
+
+The **App Sub-path Dist** workflow (`.github/workflows/app-subpath-dist.yml`,
+`app: interviewer`; Architect uses the same workflow) makes that tarball. It
+builds a released tag with `INTERVIEWER_BASE_PATH=/v<major>/` and attaches
+`interviewer-v<major>-dist.tgz` (and its `.sha256`) to the tag's release:
+
+```text
+@codaco/interviewer@8.5.0  ->  interviewer-v8-dist.tgz  (base /v8/, caches interviewer-v8-*)
+```
+
+- **When it runs.** `apps-release-interviewer` and the Hotfix Release workflow
+  chain it after every 8.x release, and the maintenance lane after every
+  maintenance release. It is chained by `workflow_call` because a release
+  created with `GITHUB_TOKEN` fires no tag or release event. It runs in its
+  own job, so a failure never turns a release that has already shipped red.
+  Dispatch it by hand from main (with `app: interviewer`) to retry. A chained
+  run also receives the commit the lane built and released, and refuses a tag
+  that points anywhere else: the tarball is built from the tag's tree, so it
+  must be the released one. Only tags whose build reads
+  `INTERVIEWER_BASE_PATH` are eligible (8.5.0 onwards). A release lane skips
+  an older tag with a notice; a dispatch for one fails. A release that has the
+  tarball but not its `.sha256` (a run that stopped between the two uploads)
+  fails the run; dispatch it with `replace` to rebuild.
+- **What a `/v8/` build is.** The same app, built under the base: Vite `base`,
+  wouter's router base, manifest `start_url`, `scope` and `id`, and every
+  service-worker route rebased to `/v8/`; caches named `interviewer-v8-*`; the
+  manifest named "Interviewer 8" with no file handler. It is the interview
+  alone: Interviewer 9 starts, resumes and reviews schema 8 interviews through
+  its own `/interview/<id>` route, which frames `/v8/interview/<id>` (with
+  `?mode=review` for a review) in a full-viewport same-origin iframe and hands
+  over the lock's key by `postMessage`, so the researcher unlocks once, in
+  Interviewer 9 (the contract is written out in
+  `src/lib/interviewer9Embed.ts`). A top-level load of `/v8/interview/<id>`
+  is replaced with `/interview/<id>`, and every other `/v8/` address with `/`.
+  Framed, every way out of the interview posts `interviewer8:closed` to
+  Interviewer 9 instead of navigating. Both apps use the one `interviewer` IndexedDB
+  database: Interviewer 9 owns it (it declares the higher Dexie versions and
+  runs every upgrade) and writes schema 8 rows in Interviewer 8's format, and
+  the `/v8/` build writes nothing but the session row of the interview it is
+  running, reading its lock rules from Interviewer 9's `'device'` settings
+  row. Nothing is handed back. Every other address, an interview it cannot
+  run, and every way out of an interview return to Interviewer 9; Home, the
+  data view, Settings and onboarding are left out of the build. It is never
+  offered for installation and hides the update pill and release notes; the
+  lock is managed in Interviewer 9. `scripts/build.mjs` drops `_headers`
+  and `_redirects` (Interviewer 9 owns the `/v8/` hosting rules: they must let
+  only the same origin frame `/v8/*`, as `Content-Security-Policy:
+frame-ancestors 'self'`, never a wider value, and must not send
+  `X-Frame-Options: DENY` there; the build's own `<meta>` policy says
+  `frame-ancestors 'self'`, but browsers ignore that directive in a meta
+  policy, so the app itself only renders nothing when another origin frames
+  it) and writes
+  `dist-info.json`, and `scripts/assert-pwa-build.mjs` holds the shape. CI's
+  quality-support job builds it on every pull request, and
+  `pnpm --filter @codaco/interviewer test:e2e:subpath` drives it end to end.
+- **Layout.** The archive root is the dist root (`index.html`, `sw.js`,
+  `manifest.webmanifest`, `assets/`) plus `dist-info.json`
+  (`{ tag, version, commit, base, cachePrefix }`), so the bundler extracts it
+  straight into `dist/v8`. It has no `_headers`, `_redirects` or source maps.
+  `scripts/release/package-app-subpath-dist.mjs` checks the shape again before
+  packing (assets under the base, manifest `start_url` and `scope` equal to the
+  base, a precache under the `interviewer-v<major>-` prefix Interviewer 9's
+  worker treats as foreign) and rewrites `dist-info.json` from the released
+  tag and commit.
+- **Deterministic packing, not a reproducible build.** The archive is packed
+  with `tar --sort=name --mtime=@0 --owner=0 --group=0 | gzip -n`, so the same
+  dist always packs to the same bytes. The build itself is not reproducible:
+  its precache id is random outside turbo. So the workflow **never replaces**
+  an attached tarball unless it is dispatched with `replace`. A replaced
+  tarball breaks the pin, and Interviewer 9's production build verifies the
+  pin's sha256, so it would fail until the pin is bumped.
+- **No PostHog.** The build gets no PostHog credentials, so it emits and
+  uploads no source maps. Exceptions from `/v8/` are not symbolicated.
+- **The pin.** The run's summary prints the pin, ready to paste:
+
+  ```json
+  {
+    "v8": {
+      "version": "8.5.0",
+      "url": "https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/%40codaco%2Finterviewer%408.5.0/interviewer-v8-dist.tgz",
+      "sha256": "<64 hex characters>",
+      "cachePrefix": "interviewer-v8-"
+    }
+  }
+  ```
+
+  The URL is the asset's `browser_download_url` as GitHub reports it. The
+  workflow downloads it and checks its sha256 before printing. To ship it,
+  update `legacy-interviewer.json` on the line that bundles it, in a pull
+  request with an `'@codaco/interviewer': patch` changeset. Users get the new
+  Interviewer 8 when that line next releases.
+
+The job that builds runs the tag's code, so it holds a read-only token. Only
+the publish job uploads, with `contents: write`. It runs nothing from the tag:
+it downloads the packed artifact, re-verifies it, and uploads through the REST
+API, never with `softprops/action-gh-release`, which would rewrite an existing
+release's name, body and "Latest" flag.
+
+## Maintenance releases (older major lines)
+
+Once Interviewer 9 is production, an Interviewer 8 fix cannot go through the
+normal or hotfix lane, because both deploy to the one production site and
+refuse a version older than the newest release. The **App Maintenance
+Release** workflow (`.github/workflows/app-maintenance-release.yml`,
+`app: interviewer`) releases an older line instead. It tags the release,
+creates a GitHub release that is never "Latest", and attaches the line's
+sub-path tarball. It deploys nothing.
+
+1. Cut the branch from the line's newest tag, cherry-pick the fix, and bump
+   `apps/interviewer/package.json` and `CHANGELOG.md` by hand. Do not run
+   `changeset version`, for the reason given under hotfix releases:
+
+   ```bash
+   git switch -c maintenance/interviewer-8.5.1 '@codaco/interviewer@8.5.0'
+   git cherry-pick <sha>
+   ```
+
+2. Push the branch, then run the workflow **from main** with `app:
+interviewer` and `source_ref` set to it. The `verify` job runs typecheck and
+   tests across Interviewer's workspace dependency closure, then a
+   `/v<major>/` build, because a maintenance branch gets no pull-request CI.
+   After approval, the `release` job checks the version again, writes the
+   notes since the line's previous release, claims the tag atomically, and
+   creates the release. If the release is not created after the claim, the
+   job deletes the tag again so the run can be repeated. A run that died
+   before that cleanup (a lost runner or a timeout) leaves the tag with no
+   release. Re-running it, or dispatching it again, deletes a tag that sits on
+   the verified commit and has no release, then claims it again. This job
+   holds the write token and runs nothing from the branch.
+   `resolve-hotfix-release.mjs` in its line scope (`SCOPE=line`) requires:
+   - a version newer than every release on its own major line;
+   - a major below the newest release overall;
+   - a tree that contains the line's newest tag.
+
+   A maintenance tag that became the newest overall would leave production
+   behind its own newest tag, and `app-release-guard.sh` would then skip every
+   later release from main.
+
+3. **Bump the pin** on the newer line to the tarball the run's summary prints
+   (see [Sub-path dist tarball](#sub-path-dist-tarball)). Until that line
+   releases, users keep the previous Interviewer 8.
+
+There is **no merge back to main**. Main is on the newer major, and a merge
+would bring this line's `package.json` and CHANGELOG into it. Land the fix on
+main separately if it applies there too.
+
+The in-app update check (fresco-ui's `selectLatestForApp`) picks the highest
+version on the running app's major, so an 8.x maintenance release is never
+offered to Interviewer 9 as an update, even though GitHub lists it first.
+Inside Interviewer 9 the `/v8/` app shows no update pill at all: it changes
+only when Interviewer 9 redeploys with a new pin.
+
+The workflow has its own concurrency group per app. It does not share
+`apps-release-@codaco/interviewer` with the other lanes: that group keeps only
+one pending run, so a maintenance run waiting for approval could make a normal
+release be dropped.
+
+**Setup (load-bearing).** The `interviewer-maintenance-release` environment
+has **required reviewers**, and its **deployment branches** are restricted to
+`main`; keep them so. The reason is the same as for the hotfix lane: a
+workflow file cannot enforce its own protection. The environment holds no
+secrets, because the lane deploys nothing.
 
 ## Bundled Interviewer 8 (`/v8/`)
 

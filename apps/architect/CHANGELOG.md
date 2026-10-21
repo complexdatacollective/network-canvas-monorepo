@@ -1,5 +1,23 @@
 # @codaco/architect
 
+## 8.5.0
+
+### New features
+
+- **Ready for Architect 9.** Architect 8 can now run inside Architect 9, on the same site, so you can keep editing schema 8 protocols after Architect 9 ships. There it is the protocol editor alone: Architect 9 opens your schema 8 protocols in it, and closing the editor takes you back to Architect 9. Architect 8 on its own works exactly as before.
+- **Open protocols sent from Sketch.** A study design you send from Sketch opens in Architect as a new protocol in your library, ready to edit.
+
+### Interview changes (seen in Preview)
+
+These improvements to the interview are shared with Interviewer and Fresco.
+
+- **Dragging on touch screens.** Dragging people out of a scrolling area now goes the way you'd expect. In the Sociogram's bin you can drag a person straight up or diagonally onto the canvas, and swiping sideways scrolls the bin. In the roster and name generator panels, swiping up and down scrolls and dragging sideways moves a person. To drag along the direction an area scrolls, hold the person still for a moment first.
+
+### Bug fixes
+
+- The update check now offers the newest release, not whichever release GitHub lists first, so a fix for an older version is never offered as an update to a newer one.
+- The released app no longer includes the developer test protocol and its media, among them a 24 MB video.
+
 ## 8.4.0
 
 ### New features

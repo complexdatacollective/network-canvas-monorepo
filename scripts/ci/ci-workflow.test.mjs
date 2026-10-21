@@ -138,6 +138,7 @@ test('release, publish, deploy and mirror jobs never run for an integration base
     ['apps-release-architect', 'apps-release-detect'],
     ['apps-release-architect-subpath-dist', 'apps-release-detect'],
     ['apps-release-interviewer', 'apps-release-detect'],
+    ['apps-release-interviewer-subpath-dist', 'apps-release-detect'],
     ['apps-release-background-creator', 'apps-release-detect'],
     ['apps-release-fresco', 'apps-release-detect'],
     ['apps-release-documentation', 'apps-release-detect'],
@@ -1477,121 +1478,8 @@ const readWorkflow = (file) =>
 const runText = (steps) => steps.map((step) => step.run ?? '').join('\n');
 
 // Architect 9 bundles Architect 8 at /v8/ from a tarball attached to the 8.x
-// release (apps/architect/RELEASING.md, "Sub-path dist tarball"). The lane
-// runs after a release has shipped, so it must never be able to fail one,
-// replace a pinned tarball, or move the repository's latest release.
-test('the sub-path dist lane builds a released tag without a write token', () => {
-  const dist = readWorkflow('architect-subpath-dist.yml');
-  assert.deepEqual(Object.keys(dist.on).toSorted(), [
-    'workflow_call',
-    'workflow_dispatch',
-  ]);
-  assert.equal(dist.on.workflow_dispatch.inputs.replace.default, false);
-  assert.equal(dist.on.workflow_call.inputs.replace.default, false);
-  // Declared for callers only: a dispatch for an ineligible tag fails.
-  assert.equal(dist.on.workflow_call.inputs.skip_ineligible.default, true);
-  assert.equal(dist.on.workflow_dispatch.inputs.skip_ineligible, undefined);
-  assert.equal(dist.on.workflow_call.secrets, undefined);
-  assert.deepEqual(dist.permissions, { contents: 'read' });
-  // A chained run names the commit its lane released; the tag must point at
-  // it, or the tarball would ship a later commit's tree under that version.
-  assert.equal(dist.on.workflow_call.inputs.expected_sha.default, '');
-  assert.equal(dist.on.workflow_dispatch.inputs.expected_sha, undefined);
-
-  const { resolve, build, publish } = dist.jobs;
-  const resolveRun = runText(resolve.steps);
-  assert.match(resolveRun, /"\$DISPATCH_REF" != 'refs\/heads\/main'/);
-  assert.equal(
-    resolve.steps[0].env.DISPATCH_REF,
-    '${{ github.ref }}',
-    'the ref reaches the check through the environment',
-  );
-  assert.match(
-    resolveRun,
-    /bash \.github\/scripts\/architect-release-tag-guard\.sh/,
-  );
-  // Major-generic: /vN/ and architect-vN-dist.tgz from the tag's own major.
-  assert.match(resolveRun, /echo "base=\/v\$\{MAJOR\}\/"/);
-  assert.match(resolveRun, /echo "asset=architect-v\$\{MAJOR\}-dist\.tgz"/);
-  assert.match(
-    resolveRun,
-    /git cat-file -e "\$\{TAG\}:apps\/architect\/scripts\/app-base-path\.mjs"/,
-  );
-  // An existing tarball is left alone unless replace is asked for.
-  assert.match(resolveRun, /if \[\[ "\$REPLACE" == 'true' \]\]; then/);
-  assert.match(resolveRun, /echo "skip=true"/);
-  // Skipped only when both assets are there: a run that stopped between the
-  // uploads fails loudly instead of skipping without a checksum or a pin.
-  assert.match(
-    resolveRun,
-    /"\$has_tarball" == 'true' && "\$has_checksum" == 'true'/,
-  );
-  assert.match(resolveRun, /has only part of its sub-path dist/);
-  const commitCheck = resolve.steps.find(
-    ({ name }) => name === 'Check the tag names the released commit',
-  );
-  assert.equal(commitCheck.if, "inputs.expected_sha != ''");
-  assert.equal(commitCheck.env.TAGGED, '${{ steps.guard.outputs.sha }}');
-  assert.equal(commitCheck.env.EXPECTED, '${{ inputs.expected_sha }}');
-  assert.match(
-    commitCheck.run,
-    /if \[\[ "\$TAGGED" != "\$EXPECTED" \]\]; then/,
-  );
-  assert.match(commitCheck.run, /exit 1/);
-  const resolveStepIndex = (name) =>
-    resolve.steps.findIndex((step) => step.name === name);
-  assert.ok(
-    resolveStepIndex('Resolve and guard tag') <
-      resolveStepIndex('Check the tag names the released commit'),
-  );
-
-  // The build runs the tag's code: read-only token, no secret, not turbo
-  // (a cached root-mode dist must never be labelled as the sub-path one).
-  assert.deepEqual(build.permissions, { contents: 'read' });
-  assert.match(build.if, /needs\.resolve\.outputs\.eligible == 'true'/);
-  assert.match(build.if, /needs\.resolve\.outputs\.skip != 'true'/);
-  const buildStep = build.steps.find(
-    ({ name }) => name === 'Build architect under its sub-path',
-  );
-  assert.equal(
-    buildStep.env.ARCHITECT_BASE_PATH,
-    '${{ needs.resolve.outputs.base }}',
-  );
-  assert.equal(buildStep.run, 'pnpm --filter @codaco/architect build');
-  const buildSource = JSON.stringify(build);
-  assert.doesNotMatch(buildSource, /secrets\.|GH_TOKEN|github\.token/);
-  assert.doesNotMatch(buildSource, /POSTHOG/);
-  assert.match(
-    runText(build.steps),
-    /node \.dist-tooling\/scripts\/release\/package-architect-subpath-dist\.mjs/,
-  );
-  assert.match(
-    runText(build.steps),
-    /node \.dist-tooling\/apps\/architect\/scripts\/write-build-info\.mjs/,
-  );
-
-  // Publishing holds the write and runs nothing from the tag.
-  assert.deepEqual(publish.permissions, { contents: 'write' });
-  assert.ok(
-    !publish.steps.some((step) => step.uses?.startsWith('actions/checkout@')),
-    'publish never checks out code',
-  );
-  const publishRun = runText(publish.steps);
-  assert.match(publishRun, /sha256sum -c "\$\{ASSET\}\.sha256"/);
-  assert.match(publishRun, /if \[\[ "\$REPLACE" != 'true' \]\]; then/);
-  assert.match(publishRun, /https:\/\/uploads\.github\.com\/repos\//);
-  assert.match(publishRun, /"sha256:\$\{SHA256\}"/);
-  assert.match(publishRun, /GITHUB_STEP_SUMMARY/);
-  assert.match(publish.concurrency.group, /^architect-subpath-dist-v\$\{\{/);
-
-  // Parsed, so the comments explaining why may name what is absent.
-  const definition = JSON.stringify(dist);
-  assert.doesNotMatch(definition, /netlify/i);
-  // softprops rewrites an existing release's name, body and make_latest.
-  assert.doesNotMatch(definition, /softprops\/action-gh-release/);
-});
-
-test('8.x releases in either lane chain the sub-path dist after the release', () => {
+// release (apps/architect/RELEASING.md, "Sub-path dist tarball").
+test('Architect 8.x releases in either lane chain the sub-path dist after the release', () => {
   const architect = parsedWorkflow.jobs['apps-release-architect'];
   assert.equal(
     architect.outputs.released,
@@ -1622,21 +1510,15 @@ test('8.x releases in either lane chain the sub-path dist after the release', ()
     chained.if,
     /startsWith\(needs\.apps-release-detect\.outputs\.architect_version, '8\.'\)/,
   );
-  assert.equal(chained.uses, './.github/workflows/architect-subpath-dist.yml');
+  assert.equal(chained.uses, './.github/workflows/app-subpath-dist.yml');
   assert.deepEqual(chained.permissions, { contents: 'write' });
-  assert.equal(
-    chained.with.tag,
-    '${{ needs.apps-release-architect.outputs.tag }}',
-  );
-  assert.equal(
-    chained.with.expected_sha,
-    '${{ needs.apps-release-architect.outputs.sha }}',
-  );
+  assert.deepEqual(chained.with, {
+    app: 'architect',
+    tag: '${{ needs.apps-release-architect.outputs.tag }}',
+    expected_sha: '${{ needs.apps-release-architect.outputs.sha }}',
+  });
   // A dist failure must not fail the release job it follows.
-  assert.doesNotMatch(
-    JSON.stringify(architect.steps),
-    /architect-subpath-dist/,
-  );
+  assert.doesNotMatch(JSON.stringify(architect.steps), /subpath-dist/);
 
   const hotfix = readWorkflow('hotfix-release.yml');
   assert.equal(
@@ -1650,64 +1532,281 @@ test('8.x releases in either lane chain the sub-path dist after the release', ()
     hotfixDist.if,
     /startsWith\(needs\.hotfix-release\.outputs\.version, '8\.'\)/,
   );
-  assert.equal(
-    hotfixDist.uses,
-    './.github/workflows/architect-subpath-dist.yml',
-  );
+  assert.equal(hotfixDist.uses, './.github/workflows/app-subpath-dist.yml');
   assert.deepEqual(hotfixDist.permissions, { contents: 'write' });
-  assert.equal(
-    hotfixDist.with.expected_sha,
-    '${{ needs.hotfix-release.outputs.sha }}',
-  );
+  assert.deepEqual(hotfixDist.with, {
+    app: 'architect',
+    tag: '${{ needs.hotfix-release.outputs.tag }}',
+    expected_sha: '${{ needs.hotfix-release.outputs.sha }}',
+  });
 });
 
-// 8.x patches once 9.x is production: tag, release and tarball, never a
-// deploy, never "Latest", and never holding the normal lane's lock.
-test('the Architect maintenance lane releases an older line without deploying it', () => {
+// Architect 9 bundles Architect 8, and Interviewer 9 bundles Interviewer 8, at
+// /v8/ from a tarball attached to the 8.x release ("Sub-path dist tarball" in
+// apps/<app>/RELEASING.md). The lane runs after a release has shipped, so it
+// must never be able to fail one, replace a pinned tarball, or move the
+// repository's latest release.
+test('the app sub-path dist lane builds a released tag without a write token', () => {
+  const dist = readWorkflow('app-subpath-dist.yml');
+  assert.deepEqual(Object.keys(dist.on).toSorted(), [
+    'workflow_call',
+    'workflow_dispatch',
+  ]);
+  assert.deepEqual(dist.on.workflow_dispatch.inputs.app.options, [
+    'architect',
+    'interviewer',
+  ]);
+  assert.equal(dist.on.workflow_call.inputs.app.required, true);
+  assert.equal(dist.on.workflow_dispatch.inputs.replace.default, false);
+  assert.equal(dist.on.workflow_call.inputs.replace.default, false);
+  assert.equal(dist.on.workflow_call.inputs.skip_ineligible.default, true);
+  assert.equal(dist.on.workflow_dispatch.inputs.skip_ineligible, undefined);
+  assert.equal(dist.on.workflow_call.secrets, undefined);
+  assert.deepEqual(dist.permissions, { contents: 'read' });
+  // A chained run names the commit its lane released; the tag must point at
+  // it, or the tarball would ship a later commit's tree under that version.
+  assert.equal(dist.on.workflow_call.inputs.expected_sha.default, '');
+  assert.equal(dist.on.workflow_dispatch.inputs.expected_sha, undefined);
+
+  const { resolve, build, publish } = dist.jobs;
+  const resolveRun = runText(resolve.steps);
+  assert.match(resolveRun, /"\$DISPATCH_REF" != 'refs\/heads\/main'/);
+  // A called workflow's app is a free string: it is checked against the two
+  // apps before it names anything, and reaches the shell only through env.
+  const validate = resolve.steps.find(({ id }) => id === 'app');
+  assert.equal(validate.env.APP, '${{ inputs.app }}');
+  assert.match(validate.run, /architect\) label=Architect ;;/);
+  assert.match(validate.run, /interviewer\) label=Interviewer ;;/);
+  assert.match(validate.run, /\*\)\n\s+echo "::error::/);
+  assert.ok(
+    resolve.steps.indexOf(validate) <
+      resolve.steps.findIndex(({ id }) => id === 'guard'),
+  );
+  assert.doesNotMatch(
+    resolveRun,
+    /\$\{\{\s*inputs\.app\s*\}\}/,
+    'the app never reaches a script by interpolation',
+  );
+  const guard = resolve.steps.find(({ id }) => id === 'guard');
+  assert.equal(guard.run, 'bash .github/scripts/release-line-tag-guard.sh');
+  assert.equal(guard.env.APP, '${{ inputs.app }}');
+  assert.equal(guard.env.FORCE, 'false');
+  // Major-generic: /vN/ and <app>-vN-dist.tgz from the tag's own major.
+  assert.match(resolveRun, /echo "base=\/v\$\{MAJOR\}\/"/);
+  assert.match(resolveRun, /echo "asset=\$\{APP\}-v\$\{MAJOR\}-dist\.tgz"/);
+  // Eligible only when the tag's build reads the app's base-path variable.
+  assert.match(resolveRun, /git grep -q -F -e "\$BASE_VARIABLE" "\$TAG" --/);
+  assert.match(resolveRun, /if \[\[ "\$REPLACE" == 'true' \]\]; then/);
+  assert.match(resolveRun, /echo "skip=true"/);
+  // Skipped only when both assets are there: a run that stopped between the
+  // uploads fails loudly instead of skipping without a checksum or a pin.
+  assert.match(
+    resolveRun,
+    /"\$has_tarball" == 'true' && "\$has_checksum" == 'true'/,
+  );
+  assert.match(resolveRun, /has only part of its sub-path dist/);
+  const commitCheck = resolve.steps.find(
+    ({ name }) => name === 'Check the tag names the released commit',
+  );
+  assert.equal(commitCheck.if, "inputs.expected_sha != ''");
+  assert.equal(commitCheck.env.TAGGED, '${{ steps.guard.outputs.sha }}');
+  assert.equal(commitCheck.env.EXPECTED, '${{ inputs.expected_sha }}');
+  assert.match(
+    commitCheck.run,
+    /if \[\[ "\$TAGGED" != "\$EXPECTED" \]\]; then/,
+  );
+  assert.match(commitCheck.run, /exit 1/);
+  const resolveStepIndex = (name) =>
+    resolve.steps.findIndex((step) => step.name === name);
+  assert.ok(
+    resolveStepIndex('Resolve and guard tag') <
+      resolveStepIndex('Check the tag names the released commit'),
+  );
+
+  assert.deepEqual(build.permissions, { contents: 'read' });
+  assert.match(build.if, /needs\.resolve\.outputs\.eligible == 'true'/);
+  assert.match(build.if, /needs\.resolve\.outputs\.skip != 'true'/);
+  const buildStep = build.steps.find(
+    ({ name }) => name === 'Build the app under its sub-path',
+  );
+  assert.equal(buildStep.env.BASE, '${{ needs.resolve.outputs.base }}');
+  assert.equal(
+    buildStep.env.BASE_VARIABLE,
+    '${{ needs.resolve.outputs.base_variable }}',
+  );
+  // Not through turbo: a cached root-mode dist must never be labelled as the
+  // sub-path one.
+  assert.equal(
+    buildStep.run,
+    'env "${BASE_VARIABLE}=${BASE}" pnpm --filter "@codaco/${APP}" build',
+  );
+  const buildSource = JSON.stringify(build);
+  assert.doesNotMatch(buildSource, /secrets\.|GH_TOKEN|github\.token/);
+  assert.doesNotMatch(buildSource, /POSTHOG/);
+  assert.match(
+    runText(build.steps),
+    /node \.dist-tooling\/scripts\/release\/package-app-subpath-dist\.mjs \\\n\s+--app "\$APP"/,
+  );
+  // The packer imports the shared base-path helper.
+  const tooling = build.steps.find(
+    ({ name }) => name === 'Check out the packing tooling',
+  );
+  assert.match(tooling.with['sparse-checkout'], /^scripts\/buildtime$/m);
+  // Only Architect has a build-info stamp; Interviewer's build writes its
+  // own dist-info.json.
+  const stamp = build.steps.find(
+    ({ name }) => name === 'Stamp the built commit',
+  );
+  assert.equal(stamp.if, "inputs.app == 'architect'");
+  assert.match(
+    stamp.run,
+    /node \.dist-tooling\/apps\/architect\/scripts\/write-build-info\.mjs/,
+  );
+
+  assert.deepEqual(publish.permissions, { contents: 'write' });
+  assert.ok(
+    !publish.steps.some((step) => step.uses?.startsWith('actions/checkout@')),
+    'publish never checks out code',
+  );
+  const publishRun = runText(publish.steps);
+  assert.match(publishRun, /sha256sum -c "\$\{ASSET\}\.sha256"/);
+  assert.match(publishRun, /if \[\[ "\$REPLACE" != 'true' \]\]; then/);
+  assert.match(publishRun, /https:\/\/uploads\.github\.com\/repos\//);
+  assert.match(publishRun, /"sha256:\$\{SHA256\}"/);
+  assert.match(publishRun, /GITHUB_STEP_SUMMARY/);
+  assert.match(publishRun, /apps\/\$\{APP\}\/legacy-\$\{APP\}\.json/);
+  // One upload per app and major line at a time.
+  assert.equal(
+    publish.concurrency.group,
+    '${{ inputs.app }}-subpath-dist-v${{ needs.resolve.outputs.major }}',
+  );
+
+  const definition = JSON.stringify(dist);
+  assert.doesNotMatch(definition, /netlify/i);
+  assert.doesNotMatch(definition, /softprops\/action-gh-release/);
+});
+
+test('Interviewer 8.x releases in either lane chain the sub-path dist after the release', () => {
+  const interviewer = parsedWorkflow.jobs['apps-release-interviewer'];
+  assert.equal(
+    interviewer.outputs.released,
+    "${{ steps.guard.outputs.skip != 'true' }}",
+  );
+  assert.equal(
+    interviewer.outputs.tag,
+    '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}',
+  );
+  // The tag is created at the commit built and deployed, not at whatever
+  // main's tip is when the release is published.
+  assert.equal(interviewer.outputs.sha, '${{ github.sha }}');
+  const interviewerRelease = interviewer.steps.find(({ uses }) =>
+    uses?.startsWith('softprops/action-gh-release@'),
+  );
+  assert.equal(interviewerRelease.with.target_commitish, '${{ github.sha }}');
+
+  const chained = parsedWorkflow.jobs['apps-release-interviewer-subpath-dist'];
+  assert.deepEqual(chained.needs, [
+    'apps-release-detect',
+    'apps-release-interviewer',
+  ]);
+  assert.match(
+    chained.if,
+    /needs\.apps-release-interviewer\.outputs\.released == 'true'/,
+  );
+  assert.match(
+    chained.if,
+    /startsWith\(needs\.apps-release-detect\.outputs\.interviewer_version, '8\.'\)/,
+  );
+  assert.equal(chained.uses, './.github/workflows/app-subpath-dist.yml');
+  assert.deepEqual(chained.permissions, { contents: 'write' });
+  assert.deepEqual(chained.with, {
+    app: 'interviewer',
+    tag: '${{ needs.apps-release-interviewer.outputs.tag }}',
+    expected_sha: '${{ needs.apps-release-interviewer.outputs.sha }}',
+  });
+  // A dist failure must not fail the release job it follows.
+  assert.doesNotMatch(JSON.stringify(interviewer.steps), /subpath-dist/);
+
+  const hotfix = readWorkflow('hotfix-release.yml');
+  const hotfixDist = hotfix.jobs['interviewer-subpath-dist'];
+  assert.equal(hotfixDist.needs, 'hotfix-release');
+  assert.match(hotfixDist.if, /inputs\.app == 'interviewer'/);
+  assert.match(
+    hotfixDist.if,
+    /startsWith\(needs\.hotfix-release\.outputs\.version, '8\.'\)/,
+  );
+  assert.equal(hotfixDist.uses, './.github/workflows/app-subpath-dist.yml');
+  assert.deepEqual(hotfixDist.permissions, { contents: 'write' });
+  assert.deepEqual(hotfixDist.with, {
+    app: 'interviewer',
+    tag: '${{ needs.hotfix-release.outputs.tag }}',
+    expected_sha: '${{ needs.hotfix-release.outputs.sha }}',
+  });
+});
+
+// Older-line patches for Architect and Interviewer once 9.x is production:
+// tag, release and tarball, never a deploy, never "Latest", and never holding
+// the normal lane's lock.
+test('the app maintenance lane releases an older line without deploying it', () => {
   const source = readFileSync(
-    new URL('architect-maintenance-release.yml', WORKFLOW_DIR),
+    new URL('app-maintenance-release.yml', WORKFLOW_DIR),
     'utf8',
   );
   const maintenance = parse(source);
   const definition = JSON.stringify(maintenance);
   assert.deepEqual(Object.keys(maintenance.on), ['workflow_dispatch']);
+  assert.deepEqual(maintenance.on.workflow_dispatch.inputs.app.options, [
+    'interviewer',
+    'architect',
+  ]);
   assert.deepEqual(maintenance.permissions, { contents: 'read' });
-  assert.equal(maintenance.concurrency.group, 'architect-maintenance-release');
-  assert.notEqual(
+  assert.equal(
     maintenance.concurrency.group,
-    'apps-release-@codaco/architect',
+    '${{ inputs.app }}-maintenance-release',
   );
-  // Parsed, so the comments explaining why may name what is absent.
   assert.doesNotMatch(definition, /netlify/i);
   assert.doesNotMatch(definition, /secrets\./);
-  assert.match(source, /NOTE\(human-setup-required\)/);
+  assert.match(source, /`interviewer-maintenance-release`/);
+  assert.match(source, /`architect-maintenance-release`/);
+  assert.notEqual(
+    maintenance.concurrency.group,
+    'apps-release-@codaco/${{ inputs.app }}',
+  );
 
   const { verify, release } = maintenance.jobs;
   const verifyRun = runText(verify.steps);
   assert.match(verifyRun, /"\$DISPATCH_REF" != 'refs\/heads\/main'/);
-  assert.match(verifyRun, /"\$SOURCE_REF" != maintenance\/architect-\*/);
+  assert.match(
+    verifyRun,
+    /if \[\[ "\$APP" != 'interviewer' && "\$APP" != 'architect' \]\]; then/,
+  );
+  assert.match(verifyRun, /"\$SOURCE_REF" != "maintenance\/\$\{APP\}-"\*/);
   assert.match(verifyRun, /git merge-base --is-ancestor "\$sha" origin\/main/);
   assert.deepEqual(verify.permissions, { contents: 'read' });
   assert.equal(verify.env.SCOPE, 'line');
-  assert.equal(verify.env.APP, 'architect');
+  assert.equal(verify.env.APP, '${{ inputs.app }}');
+  assert.doesNotMatch(
+    runText([...verify.steps, ...release.steps]),
+    /\$\{\{\s*inputs\./,
+    'inputs reach the scripts only through env',
+  );
   assert.match(
     verifyRun,
     /node \.maintenance-lane\/\.github\/scripts\/resolve-hotfix-release\.mjs/,
   );
   assert.match(
     verifyRun,
-    /pnpm exec turbo run typecheck test --filter="@codaco\/architect\.\.\."/,
+    /pnpm exec turbo run typecheck test --filter="@codaco\/\$\{APP\}\.\.\."/,
   );
   assert.match(
     verifyRun,
-    /ARCHITECT_BASE_PATH="\/v\$\{VERSION%%\.\*\}\/" pnpm --filter @codaco\/architect build/,
+    /env "\$\{APP\^\^\}_BASE_PATH=\/v\$\{VERSION%%\.\*\}\/" pnpm --filter "@codaco\/\$\{APP\}" build/,
   );
 
-  // The write token and the environment gate sit on a job that runs nothing
-  // from the branch.
-  assert.equal(release.environment, 'architect-maintenance-release');
+  assert.equal(release.environment, '${{ inputs.app }}-maintenance-release');
   assert.deepEqual(release.permissions, { contents: 'write' });
   assert.equal(release.env.SCOPE, 'line');
+  assert.equal(release.env.APP, '${{ inputs.app }}');
   assert.doesNotMatch(runText(release.steps), /pnpm/);
   assert.equal(release.steps[0].with.ref, '${{ needs.verify.outputs.sha }}');
   const releaseRun = runText(release.steps);
@@ -1717,6 +1816,7 @@ test('the Architect maintenance lane releases an older line without deploying it
     /gh api -X POST "repos\/\$GITHUB_REPOSITORY\/git\/refs"/,
   );
   assert.match(releaseRun, /--since "\$SINCE"/);
+  assert.match(releaseRun, /--pkg "\$\{PACKAGE\}"/);
   const create = release.steps.find(
     ({ name }) => name === 'Create the release',
   );
@@ -1724,6 +1824,10 @@ test('the Architect maintenance lane releases an older line without deploying it
   assert.equal(create.with.make_latest, 'false');
   assert.equal(create.with.prerelease, false);
   assert.equal(create.with.target_commitish, '${{ needs.verify.outputs.sha }}');
+  assert.equal(
+    create.with.name,
+    '${{ steps.version.outputs.label }} ${{ steps.version.outputs.version }}',
+  );
   // Nothing that can fail runs between the claim and the release, and a claim
   // left without a release is given up so a re-run is not blocked by its tag.
   const stepIndex = (name) =>
@@ -1762,7 +1866,7 @@ test('the Architect maintenance lane releases an older line without deploying it
   assert.equal(reclaim.env.SHA, '${{ needs.verify.outputs.sha }}');
   assert.equal(
     reclaim.env.TAG,
-    '@codaco/architect@${{ needs.verify.outputs.version }}',
+    '@codaco/${{ inputs.app }}@${{ needs.verify.outputs.version }}',
   );
   assert.match(reclaim.run, /'\.object\.type' <<<"\$ref"\)" != 'commit'/);
   assert.match(reclaim.run, /'\.object\.sha' <<<"\$ref"\)" != "\$SHA"/);
@@ -1799,12 +1903,20 @@ test('the Architect maintenance lane releases an older line without deploying it
   assert.match(setAside.run, /git tag -d "\$tag"/);
   assert.doesNotMatch(setAside.run, /-X DELETE/);
 
+  // The set-aside reads the app's own package and tag, never Architect's.
+  assert.match(setAside.run, /"apps\/\$\{APP\}\/package\.json"/);
+  assert.match(setAside.run, /tag="@codaco\/\$\{APP\}@\$version"/);
+  assert.doesNotMatch(setAside.run, /architect/);
+
   const dist = maintenance.jobs['subpath-dist'];
   assert.deepEqual(dist.needs, ['verify', 'release']);
-  assert.equal(dist.uses, './.github/workflows/architect-subpath-dist.yml');
-  assert.equal(dist.with.tag, '${{ needs.release.outputs.tag }}');
-  assert.equal(dist.with.expected_sha, '${{ needs.verify.outputs.sha }}');
-  assert.equal(dist.with.skip_ineligible, false);
+  assert.equal(dist.uses, './.github/workflows/app-subpath-dist.yml');
+  assert.deepEqual(dist.with, {
+    app: '${{ inputs.app }}',
+    tag: '${{ needs.release.outputs.tag }}',
+    expected_sha: '${{ needs.verify.outputs.sha }}',
+    skip_ineligible: false,
+  });
 });
 
 test('Fresco mirrors under the same release guard as the Netlify lanes', () => {
