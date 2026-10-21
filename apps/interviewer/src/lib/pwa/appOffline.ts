@@ -39,6 +39,9 @@ const subscribe = (listener: () => void): (() => void) => {
 
 const getOwnState = (): WorkerOffline => ownState;
 
+/** This app's own part of the answer, without Interviewer 8's. */
+export const getOwnAppOffline = (): AppOffline => ownState;
+
 const followed = new WeakSet<ServiceWorker>();
 
 /** Check again each time `worker` changes state, until it settles. */
