@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -47,24 +48,52 @@ const baseProps = {
 };
 
 describe('DeckSlotCard', () => {
-  it('renders an active protocol card with a start button and delete control', () => {
+  it('renders an active protocol card with its schema, a start button and a menu of Info and Delete', async () => {
     const activate = vi.fn();
     const onDeleteProtocol = vi.fn();
+    const onShowProtocolInfo = vi.fn();
+    const protocol = makeProtocol('Friendship Ties');
     render(
       <DeckSlotCard
         {...baseProps}
-        entry={{ kind: 'protocol', protocol: makeProtocol('Friendship Ties') }}
+        entry={{ kind: 'protocol', protocol }}
         activate={activate}
         onDeleteProtocol={onDeleteProtocol}
+        onShowProtocolInfo={onShowProtocolInfo}
       />,
     );
 
     expect(screen.getByText('Friendship Ties')).toBeInTheDocument();
+    // The current schema carries no "older" cue.
+    expect(screen.getByTestId('deck-card-schema')).toHaveTextContent(
+      /^Schema 9$/,
+    );
     fireEvent.click(
       screen.getByRole('button', { name: 'Start new interview' }),
     );
     expect(activate).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Protocol' }));
+    // Every protocol card has the same menu; none has a bare delete button.
+    expect(
+      screen.queryByRole('button', { name: 'Delete Protocol' }),
+    ).not.toBeInTheDocument();
+
+    const openMenu = async () => {
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Actions for Friendship Ties' }),
+      );
+      return screen.findByRole('menu');
+    };
+    const menu = await openMenu();
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Info', 'Delete']);
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Info' }));
+    expect(onShowProtocolInfo).toHaveBeenCalledWith(protocol);
+    await userEvent.click(
+      within(await openMenu()).getByRole('menuitem', { name: 'Delete' }),
+    );
     expect(onDeleteProtocol).toHaveBeenCalledWith('hash-Friendship Ties');
   });
 
@@ -129,7 +158,7 @@ describe('DeckSlotCard', () => {
     expect(screen.queryByText(/\d+ interviews?/)).not.toBeInTheDocument();
   });
 
-  it('clears description, metadata, and delete control while the new-session form is open', () => {
+  it('clears schema, description, metadata, and menu while the new-session form is open', () => {
     render(
       <DeckSlotCard
         {...baseProps}
@@ -141,8 +170,9 @@ describe('DeckSlotCard', () => {
     expect(screen.getByTestId('new-session-form')).toBeInTheDocument();
     expect(screen.queryByText('A description.')).not.toBeInTheDocument();
     expect(screen.queryByTestId('deck-card-metadata')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('deck-card-schema')).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Delete Protocol' }),
+      screen.queryByRole('button', { name: 'Actions for Friendship Ties' }),
     ).not.toBeInTheDocument();
   });
 });

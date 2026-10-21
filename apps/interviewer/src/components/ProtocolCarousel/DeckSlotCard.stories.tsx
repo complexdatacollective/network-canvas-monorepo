@@ -93,7 +93,6 @@ type StoryArgs = {
 
 const schema8Actions = (bundled: boolean): Schema8CardActions => ({
   interviewer: bundled ? { version: '8.5.0', path: '/v8/' } : null,
-  onShowInfo: () => {},
 });
 
 function entryForKind(
@@ -210,6 +209,7 @@ const meta: Meta<StoryArgs> = {
         onDismissSample={() => {}}
         onInstallSample={() => {}}
         onInstallDevelopment={() => {}}
+        onShowProtocolInfo={() => {}}
         schema8={schema8Actions(legacyBundled)}
       />
     </ResizableFrame>
@@ -249,9 +249,9 @@ export const PendingImport: Story = {
 };
 
 /**
- * A schema 8 protocol: a protocol card like any other, with its schema badge
- * and a menu (Info, Delete) in place of Delete. Start
- * opens the normal new-interview form; the interview runs in Interviewer 8.
+ * A schema 8 protocol: a protocol card like any other, with its schema line
+ * marked as an older version. Start opens the normal new-interview form; the
+ * interview runs in Interviewer 8.
  */
 export const SchemaEightProtocol: Story = {
   args: { kind: 'schema8' },

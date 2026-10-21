@@ -65,6 +65,18 @@ const messages = defineMessages({
     description:
       'Pending protocol card while validated protocol content is saved on this device.',
   },
+  protocolInfo: {
+    id: 'interviewer.deckSlotCard.protocolInfo',
+    defaultMessage: 'Info',
+    description:
+      'Menu item on a protocol’s card on the home screen. Shows details about the protocol (its schema version, when it was imported and how many interviews it has).',
+  },
+  protocolActions: {
+    id: 'interviewer.deckSlotCard.protocolActions',
+    defaultMessage: 'Actions for {name}',
+    description:
+      'Accessible name of the button that opens the menu of actions for a protocol’s card on the home screen. {name} is the researcher-authored protocol name.',
+  },
 });
 
 // Status line shown on the loading card for each import phase.
@@ -73,12 +85,11 @@ const PHASE_LABEL: Record<ImportPhase, MessageDescriptor> = {
   saving: messages.saving,
 };
 
-// What a schema 8 card offers beyond any protocol card's, and the bundled
-// Interviewer 8 its interviews run in. `interviewer` is null when this build
-// bundles none: the card then starts no interview, and says why.
+// The bundled Interviewer 8 a schema 8 card's interviews run in. `interviewer`
+// is null when this build bundles none: the card then starts no interview,
+// and says why.
 export type Schema8CardActions = {
   interviewer: BundledLegacyInterviewer | null;
-  onShowInfo: (protocol: ProtocolWithCounts) => void;
 };
 
 type DeckSlotCardProps = {
@@ -92,6 +103,9 @@ type DeckSlotCardProps = {
   onDismissSample: () => void;
   onInstallSample: () => void;
   onInstallDevelopment: () => void;
+  // The Info item of a protocol card's menu. Without it the menu offers
+  // only Delete.
+  onShowProtocolInfo?: (protocol: ProtocolWithCounts) => void;
   schema8?: Schema8CardActions;
   // When set, the case-ID form replaces the protocol card's footer.
   newSession?: {
@@ -110,24 +124,41 @@ function slotCardProps(
     onDismissSample,
     onInstallSample,
     onInstallDevelopment,
+    onShowProtocolInfo,
     schema8,
     newSession,
   }: DeckSlotCardProps,
   intl: IntlShape,
 ): DeckCardProps {
   if (entry.kind === 'protocol') {
-    const schema8Props = isSchema8Protocol(entry.protocol)
-      ? schema8CardProps(
-          entry.protocol,
-          { isActive, onDeleteProtocol, schema8 },
-          intl,
-        )
+    const { protocol } = entry;
+    const schema8Props = isSchema8Protocol(protocol)
+      ? schema8CardProps({ isActive, schema8 }, intl)
       : null;
+    const menuItems = [
+      ...(onShowProtocolInfo
+        ? [
+            {
+              key: 'info',
+              label: intl.formatMessage(messages.protocolInfo),
+              icon: <Info />,
+              onSelect: () => onShowProtocolInfo(protocol),
+            },
+          ]
+        : []),
+      {
+        key: 'delete',
+        label: intl.formatMessage(commonMessages.delete),
+        icon: <Trash2 />,
+        onSelect: () => onDeleteProtocol(protocol.hash),
+      },
+    ];
     return {
       protocol: entry.protocol,
       isActive,
       sessionCount,
       requiresInternetConnection: protocolRequiresInternet(entry.protocol),
+      schemaVersion: protocol.schemaVersion,
       onActivate: activate,
       // While the case-ID form is open it takes over the card: the
       // controls row, description, and metadata animate out (their exits
@@ -136,7 +167,6 @@ function slotCardProps(
       hideDescription: newSession !== undefined,
       hideMetadata: newSession !== undefined,
       hideControls: newSession !== undefined,
-      onDelete: () => onDeleteProtocol(entry.protocol.hash),
       footer: newSession ? (
         <DeckCardFooter key="new-session">
           <NewSessionForm
@@ -155,7 +185,14 @@ function slotCardProps(
         </DeckCardFooter>
       ) : undefined,
       badges: schema8Props?.badges,
-      menu: schema8Props?.menu,
+      menu: (
+        <DeckCardMenu
+          label={intl.formatMessage(messages.protocolActions, {
+            name: protocol.name,
+          })}
+          items={menuItems}
+        />
+      ),
     };
   }
   if (entry.kind === 'sample') {
@@ -239,66 +276,24 @@ function slotCardProps(
 
 const iconClassName = 'size-4';
 
-// A schema 8 protocol's card is a protocol card like any other, with its
-// schema shown, a menu in place of the remove control (Info, and the same
-// Delete), and — when this build has no Interviewer 8 to run its
-// interviews — a note instead of the start button.
+// What a schema 8 protocol's card adds to any protocol card's: when this
+// build has no Interviewer 8 to run its interviews, a badge and a note
+// instead of the start button.
 function schema8CardProps(
-  protocol: ProtocolWithCounts,
-  {
-    isActive,
-    onDeleteProtocol,
-    schema8,
-  }: Pick<DeckSlotCardProps, 'isActive' | 'onDeleteProtocol' | 'schema8'>,
+  { isActive, schema8 }: Pick<DeckSlotCardProps, 'isActive' | 'schema8'>,
   intl: IntlShape,
-): Pick<DeckCardProps, 'badges' | 'menu'> & {
+): Pick<DeckCardProps, 'badges'> & {
   unavailableFooter: DeckCardProps['footer'];
 } {
   const interviewer = schema8?.interviewer ?? null;
-  const menuItems = [
-    ...(schema8
-      ? [
-          {
-            key: 'info',
-            label: intl.formatMessage(legacyProtocolMessages.protocolInfo),
-            icon: <Info />,
-            onSelect: () => schema8.onShowInfo(protocol),
-          },
-        ]
-      : []),
-    {
-      key: 'delete',
-      label: intl.formatMessage(commonMessages.delete),
-      icon: <Trash2 />,
-      onSelect: () => onDeleteProtocol(protocol.hash),
-    },
-  ];
-
   return {
-    badges: (
-      <>
-        <DeckCardBadge tone="info">
-          {intl.formatMessage(legacyProtocolMessages.schemaBadge, {
-            version: protocol.schemaVersion,
-          })}
-        </DeckCardBadge>
-        {!interviewer && (
-          <DeckCardBadge
-            tone="warning"
-            icon={<CircleAlert className={iconClassName} />}
-          >
-            {intl.formatMessage(legacyProtocolMessages.notAvailable)}
-          </DeckCardBadge>
-        )}
-      </>
-    ),
-    menu: (
-      <DeckCardMenu
-        label={intl.formatMessage(legacyProtocolMessages.protocolActions, {
-          name: protocol.name,
-        })}
-        items={menuItems}
-      />
+    badges: interviewer ? undefined : (
+      <DeckCardBadge
+        tone="warning"
+        icon={<CircleAlert className={iconClassName} />}
+      >
+        {intl.formatMessage(legacyProtocolMessages.notAvailable)}
+      </DeckCardBadge>
     ),
     unavailableFooter:
       isActive && !interviewer ? (

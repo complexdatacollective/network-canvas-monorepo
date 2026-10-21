@@ -34,7 +34,6 @@ const makeActions = (
   overrides: Partial<Schema8CardActions> = {},
 ): Schema8CardActions => ({
   interviewer: { version: '8.5.0', path: '/v8/' },
-  onShowInfo: vi.fn(),
   ...overrides,
 });
 
@@ -43,10 +42,12 @@ const renderCard = (
   {
     activate = noop,
     onDeleteProtocol = noop,
+    onShowProtocolInfo = noop,
     newSession,
   }: {
     activate?: () => void;
     onDeleteProtocol?: (hash: string) => void;
+    onShowProtocolInfo?: (protocol: ProtocolWithCounts) => void;
     newSession?: { onCancel: () => void; onCreated: () => void };
   } = {},
 ) =>
@@ -60,6 +61,7 @@ const renderCard = (
       onDismissSample={noop}
       onInstallSample={noop}
       onInstallDevelopment={noop}
+      onShowProtocolInfo={onShowProtocolInfo}
       schema8={schema8}
       newSession={newSession}
     />,
@@ -73,12 +75,14 @@ const openMenu = async () => {
 };
 
 describe('DeckSlotCard for a schema 8 protocol', () => {
-  it('is a protocol card with its schema shown, starting interviews like any other', async () => {
+  it('is a protocol card with its schema shown as older, starting interviews like any other', async () => {
     const activate = vi.fn();
     renderCard(makeActions(), { activate });
 
     expect(screen.getByText('Wave One')).toBeInTheDocument();
-    expect(screen.getByText('Schema 8')).toBeInTheDocument();
+    expect(screen.getByTestId('deck-card-schema')).toHaveTextContent(
+      /^Schema 8.*older version$/,
+    );
     // Its stages need no internet.
     expect(screen.queryByText('Requires Internet')).not.toBeInTheDocument();
     await userEvent.click(
@@ -103,9 +107,9 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
   });
 
   it('offers Info and the normal Delete, and no upgrade or anything that leaves the app', async () => {
-    const schema8 = makeActions();
     const onDeleteProtocol = vi.fn();
-    renderCard(schema8, { onDeleteProtocol });
+    const onShowProtocolInfo = vi.fn();
+    renderCard(makeActions(), { onDeleteProtocol, onShowProtocolInfo });
 
     const menu = await openMenu();
     expect(
@@ -115,7 +119,7 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
     ).toEqual(['Info', 'Delete']);
 
     await userEvent.click(within(menu).getByRole('menuitem', { name: 'Info' }));
-    expect(schema8.onShowInfo).toHaveBeenCalledWith(protocol);
+    expect(onShowProtocolInfo).toHaveBeenCalledWith(protocol);
 
     await userEvent.click(
       within(await openMenu()).getByRole('menuitem', { name: 'Delete' }),
@@ -125,7 +129,9 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
   });
 
   it('starts no interview, and says why, when Interviewer 8 is not bundled', async () => {
-    renderCard(makeActions({ interviewer: null }));
+    renderCard(makeActions({ interviewer: null }), {
+      onShowProtocolInfo: vi.fn(),
+    });
 
     expect(screen.getByText('Not available')).toBeInTheDocument();
     expect(

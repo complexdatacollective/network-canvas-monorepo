@@ -16,9 +16,9 @@ export type DeckCardMenuItem = {
   onSelect: () => void;
 };
 
-// The actions of a card that offers more than removing it (a schema 8
-// protocol's card: see its details, delete it).
-// Sized and styled like the card's remove control, in the same place.
+// The actions of a card that offers more than removing it (every protocol's
+// card: see its details, delete it). Sized and styled like the card's remove
+// control, in the same place.
 export function DeckCardMenu({
   label,
   items,

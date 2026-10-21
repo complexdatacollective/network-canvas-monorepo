@@ -8,43 +8,39 @@ import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
-// The details dialog of a stored schema 8 protocol.
+// The details dialog of a stored protocol, whatever its schema.
 
 const messages = defineMessages({
   infoSchemaVersion: {
-    id: 'interviewer.legacyProtocolDialogs.infoSchemaVersion',
+    id: 'interviewer.protocolInfoDialog.infoSchemaVersion',
     defaultMessage: 'Schema version',
     description:
-      'Label in the details dialog of an older protocol, before its schema version number.',
+      'Label in a protocol’s details dialog, before its schema version number.',
   },
   infoImported: {
-    id: 'interviewer.legacyProtocolDialogs.infoImported',
+    id: 'interviewer.protocolInfoDialog.infoImported',
     defaultMessage: 'Imported',
     description:
-      'Label in the details dialog of an older protocol, before how long ago it was imported.',
+      'Label in a protocol’s details dialog, before how long ago it was imported.',
   },
   infoLastChanged: {
-    id: 'interviewer.legacyProtocolDialogs.infoLastChanged',
+    id: 'interviewer.protocolInfoDialog.infoLastChanged',
     defaultMessage: 'Last changed',
     description:
-      'Label in the details dialog of an older protocol, before how long ago the protocol itself was last changed by its author.',
+      'Label in a protocol’s details dialog, before how long ago the protocol itself was last changed by its author.',
   },
   infoInterviews: {
-    id: 'interviewer.legacyProtocolDialogs.infoInterviews',
+    id: 'interviewer.protocolInfoDialog.infoInterviews',
     defaultMessage: 'Interviews',
     description:
-      'Label in the details dialog of an older protocol, before the number of interviews collected with it.',
+      'Label in a protocol’s details dialog, before the number of interviews collected with it.',
   },
 });
 
 type OpenDialog = DialogContextType['openDialog'];
 
-/** A schema 8 protocol's details. */
-export function LegacyProtocolInfo({
-  protocol,
-}: {
-  protocol: ProtocolWithCounts;
-}) {
+/** A stored protocol's details. */
+export function ProtocolInfo({ protocol }: { protocol: ProtocolWithCounts }) {
   const intl = useAppIntl();
   const rows = [
     {
@@ -85,7 +81,7 @@ export function LegacyProtocolInfo({
   );
 }
 
-export async function showLegacyProtocolInfo(
+export async function showProtocolInfo(
   openDialog: OpenDialog,
   protocol: ProtocolWithCounts,
 ) {
@@ -93,7 +89,7 @@ export async function showLegacyProtocolInfo(
     type: 'acknowledge',
     intent: 'info',
     title: protocol.name,
-    children: <LegacyProtocolInfo protocol={protocol} />,
+    children: <ProtocolInfo protocol={protocol} />,
     actions: {
       primary: {
         label: createElement(AppMessage, { message: commonMessages.close }),
