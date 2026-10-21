@@ -2,30 +2,22 @@
 
 ## 8.5.0
 
-### Minor Changes
+### New features
 
-- e71df0c: Interviewer 8 can now run inside Interviewer 9, at `/v8/` on the same site, so the protocols and interviews you already have keep working after Interviewer 9 ships. There it runs the interview alone, on the same data: Interviewer 9 lists your schema 8 protocols and interviews, and when you start, resume or review one it runs in Interviewer 8, exactly as before. Leaving or finishing the interview takes you back to Interviewer 9. It uses the same lock as Interviewer 9, so you unlock once, in Interviewer 9 (set the lock up or change it there too).
+- **Ready for Interviewer 9.** Interviewer 8 can now run inside Interviewer 9, on the same site, so the protocols and interviews you already have keep working after Interviewer 9 ships. Interviewer 9 lists your schema 8 protocols and interviews, and when you start, resume or review one, it runs in Interviewer 8 exactly as before, using the same data. Leaving or finishing the interview takes you back to Interviewer 9, and you unlock only once, in Interviewer 9. Interviewer 8 on its own works exactly as before.
+- **Choosing a language.** First-run setup asks for the app language once, on the welcome screen, before you select "Get started", instead of again in the setup steps. You can still change it in Settings. The automatic option now names the language it uses, for example "Automatic (English)".
 
-  Importing a protocol made with a newer version of Network Canvas now says so, instead of showing a generic error.
+### Interview changes
 
-### Patch Changes
+These improvements to the interview are shared with Architect's Preview and Fresco.
 
-- 1b93601: The interview's usability analytics events are now declared as Effect Schemas in a catalogue exported from `@codaco/interview/analytics-events`: each event name with the exact type of every property it carries (stage and interface codes, indices, counts, durations, booleans and session pseudonyms), the properties every event carries, and the properties of each exception the interview reports. A host can decode what it receives against the same definitions.
+- **Dragging on touch screens.** Dragging people out of a scrolling area now goes the way you'd expect. In the Sociogram's bin you can drag a person straight up or diagonally onto the canvas, and swiping sideways scrolls the bin. In the roster and name generator panels, swiping up and down scrolls and dragging sideways moves a person. To drag along the direction an area scrolls, hold the person still for a moment first.
 
-  Breaking changes: the function `useTrack()` returns is now typed by the catalogue, so it accepts only catalogued event names with their declared properties, and a host-specific event no longer compiles. `effect` 4 is now a peer dependency of `@codaco/interview`.
+### Bug fixes
 
-  Stage and force-simulation durations are now never negative, and never above 366 days, when the device clock changes while they are measured. The events are otherwise unchanged.
-
-- ce3fe20: Interviewer's first-run setup asks for the app language once, on the welcome screen, before you select "Get started". The setup steps no longer repeat the language picker, which you can still find in Settings. The picker's automatic option now names the language it uses, for example "Automatic (English)", instead of "Automatic (browser)", which was confusing for an installed app.
-
-  `LocaleSelect` accepts an `automaticLocale` prop: the locale the automatic entry resolves to. The entry then reads "Automatic (Français)", in the same words as `LocaleSwitcher`.
-
-- 2491a7b: Architect and Interviewer no longer ship the developer test protocol and its media, including a 24 MB video. It was only ever offered in development builds, but its files were still part of every released site.
-- a83aca1: On touch screens, dragging people out of a scrolling area now works in the direction you'd expect. In the Sociogram's bin you can drag a person straight up or diagonally onto the canvas, and swiping sideways across the bin scrolls it. In the roster and name generator panels, swiping up and down scrolls and dragging sideways moves a person. To drag along the direction an area scrolls, hold the person still for a moment first.
-- Updated dependencies ([fb21985](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fb21985bf4b876750c905cbcf2d22957da2a05b7), [a83aca1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a83aca112122d7004fa7e7408c2a02856eccb856), [1b93601](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1b9360155c75dd46b300cbed5d31214341dc79cf), [ce3fe20](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ce3fe2054c7cb2a8e806c14c9a92948a5c9b4cd3), [ccf6508](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ccf6508697d7f178137e1f2b9d38b3a5d16da9b2), [de25fc5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/de25fc5e04ecd8667621dcea9e6131c1fbda5c60))
-  - @codaco/fresco-ui@8.1.0
-  - @codaco/interview@11.0.0
-  - @codaco/shared-consts@6.3.0
+- Importing a protocol made with a newer version of Network Canvas now says so, instead of showing a generic error.
+- The update check now offers the newest release, not whichever release GitHub lists first, so a fix for an older version is never offered as an update to a newer one.
+- The released app no longer includes the developer test protocol and its media, among them a 24 MB video.
 
 ## 8.4.0
 
