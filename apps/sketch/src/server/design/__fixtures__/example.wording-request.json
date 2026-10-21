@@ -1,0 +1,215 @@
+{
+  "summary": "First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).",
+  "stages": [
+    {
+      "stageKey": "consent",
+      "kind": "consent",
+      "purpose": "Consent to take part",
+      "title": "introduction title",
+      "text": "introduction text: what taking part involves",
+      "draft": "This study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time."
+    },
+    {
+      "stageKey": "welcome",
+      "kind": "information",
+      "purpose": "Welcome the participant and explain the study.",
+      "title": "screen title",
+      "text": "screen body (Markdown)",
+      "draft": "Thank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
+    },
+    {
+      "stageKey": "about_you",
+      "kind": "egoForm",
+      "purpose": "Basic demographics.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    },
+    {
+      "stageKey": "name_friends",
+      "kind": "nameGenerator",
+      "purpose": "Elicit friends and the people the participant spends time with at university.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "friend_details",
+      "kind": "alterForm",
+      "purpose": "When and where each tie formed.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    },
+    {
+      "stageKey": "friend_bins",
+      "kind": "bins",
+      "purpose": "Closeness, how they met, and perceived heavy drinking for everyone named.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "friend_map",
+      "kind": "sociogram",
+      "purpose": "Arrange the network, record who knows whom, and mark drinking companions.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "drinking_together",
+      "kind": "bins",
+      "purpose": "How often the participant drinks with each drinking companion.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "your_drinking",
+      "kind": "egoForm",
+      "purpose": "AUDIT-C item 1.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    },
+    {
+      "stageKey": "drinking_amount",
+      "kind": "egoForm",
+      "purpose": "AUDIT-C items 2 and 3, not asked of non-drinkers.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    },
+    {
+      "stageKey": "wellbeing",
+      "kind": "egoForm",
+      "purpose": "WHO-5 wellbeing index.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    },
+    {
+      "stageKey": "review",
+      "kind": "narrative",
+      "purpose": "Discuss the map: heavy drinking, drinking companions and where friendships formed.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "thanks",
+      "kind": "information",
+      "purpose": "Thank the participant and list support resources.",
+      "title": "screen title",
+      "text": "screen body (Markdown)",
+      "draft": "Thank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
+    }
+  ],
+  "prompts": [
+    {
+      "promptKey": "name_friends/p1",
+      "draft": "Since **starting university this semester**, who have you **become friends with**?",
+      "kind": "nameGenerator",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "name_friends/p2",
+      "draft": "Who do you **spend most of your free time with** at university?",
+      "kind": "nameGenerator",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "name_friends/p3",
+      "draft": "Who would you **turn to for support** if something was worrying you?",
+      "kind": "nameGenerator",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "friend_bins/p1",
+      "draft": "Drag each person into the box that best describes **how close you feel** to them.",
+      "kind": "bins",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "friend_bins/p2",
+      "draft": "How did you **first meet** each person?",
+      "kind": "bins",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "friend_bins/p3",
+      "draft": "As far as you know, does each person often **drink heavily** (five or more drinks on one occasion)?",
+      "kind": "bins",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "friend_map/p1",
+      "draft": "Place the people you are **closest to** nearest the centre.",
+      "kind": "sociogram",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "friend_map/p2",
+      "draft": "Draw a line between any two people who **know each other**.",
+      "kind": "sociogram",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "friend_map/p3",
+      "draft": "Tap everyone you **usually drink alcohol with**.",
+      "kind": "sociogram",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "drinking_together/p1",
+      "draft": "How often do you **drink alcohol together** with each person?",
+      "kind": "bins",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "review/view1",
+      "draft": "Who drinks heavily",
+      "kind": "narrative view label (1-4 words)",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "review/view2",
+      "draft": "Who you drink with",
+      "kind": "narrative view label (1-4 words)",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "review/view3",
+      "draft": "How you met",
+      "kind": "narrative view label (1-4 words)",
+      "needsNegativeLabel": false
+    }
+  ],
+  "questions": [
+    {
+      "questionKey": "consent",
+      "draft": "Do you agree to take part in this study?"
+    },
+    {
+      "questionKey": "ego/age",
+      "draft": "How old are you?"
+    },
+    {
+      "questionKey": "ego/gender",
+      "draft": "How do you describe your gender?"
+    },
+    {
+      "questionKey": "ego/lives_in_halls",
+      "draft": "Do you live in university accommodation (halls)?"
+    },
+    {
+      "questionKey": "node:person/is_first_year",
+      "draft": "Is this person also a first-year student?"
+    },
+    {
+      "questionKey": "node:person/first_met",
+      "draft": "When did you first meet this person?"
+    }
+  ]
+}

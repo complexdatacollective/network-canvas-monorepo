@@ -1,0 +1,1041 @@
+{
+  "name": "First-Year Friendships and Drinking",
+  "description": "Maps the friendships first-year students form in their first semester and links friends' drinking to the participant's own drinking (AUDIT-C) and wellbeing (WHO-5).",
+  "schemaVersion": 8,
+  "lastModified": "2026-10-20T00:00:00.000Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "ego_consent": {
+          "name": "consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            {
+              "label": "Yes, I agree to take part",
+              "value": true
+            },
+            {
+              "label": "No, I do not want to take part",
+              "value": false,
+              "negative": true
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "ego_age": {
+          "name": "age",
+          "type": "number",
+          "component": "Number",
+          "validation": {
+            "required": true,
+            "minValue": 16,
+            "maxValue": 99
+          }
+        },
+        "ego_gender": {
+          "name": "gender",
+          "type": "categorical",
+          "component": "ToggleButtonGroup",
+          "options": [
+            {
+              "label": "Woman",
+              "value": "woman"
+            },
+            {
+              "label": "Man",
+              "value": "man"
+            },
+            {
+              "label": "Non-binary",
+              "value": "non_binary"
+            },
+            {
+              "label": "Another gender",
+              "value": "another_gender"
+            },
+            {
+              "label": "Prefer not to say",
+              "value": "prefer_not_to_say"
+            }
+          ],
+          "validation": {
+            "maxSelected": 1
+          }
+        },
+        "ego_lives_in_halls": {
+          "name": "lives_in_halls",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            {
+              "label": "Yes",
+              "value": true
+            },
+            {
+              "label": "No",
+              "value": false,
+              "negative": true
+            }
+          ]
+        },
+        "ego_audit_frequency": {
+          "name": "audit_frequency",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            {
+              "label": "Never",
+              "value": 0
+            },
+            {
+              "label": "Monthly or less",
+              "value": 1
+            },
+            {
+              "label": "2 to 4 times a month",
+              "value": 2
+            },
+            {
+              "label": "2 to 3 times a week",
+              "value": 3
+            },
+            {
+              "label": "4 or more times a week",
+              "value": 4
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "ego_audit_typical": {
+          "name": "audit_typical",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            {
+              "label": "1 or 2",
+              "value": 0
+            },
+            {
+              "label": "3 or 4",
+              "value": 1
+            },
+            {
+              "label": "5 or 6",
+              "value": 2
+            },
+            {
+              "label": "7 to 9",
+              "value": 3
+            },
+            {
+              "label": "10 or more",
+              "value": 4
+            }
+          ]
+        },
+        "ego_audit_heavy": {
+          "name": "audit_heavy",
+          "type": "ordinal",
+          "component": "LikertScale",
+          "options": [
+            {
+              "label": "Never",
+              "value": 0
+            },
+            {
+              "label": "Less than monthly",
+              "value": 1
+            },
+            {
+              "label": "Monthly",
+              "value": 2
+            },
+            {
+              "label": "Weekly",
+              "value": 3
+            },
+            {
+              "label": "Daily or almost daily",
+              "value": 4
+            }
+          ]
+        },
+        "ego_who5_cheerful": {
+          "name": "who5_cheerful",
+          "type": "ordinal",
+          "component": "RadioGroup",
+          "options": [
+            {
+              "label": "At no time",
+              "value": 0
+            },
+            {
+              "label": "Some of the time",
+              "value": 1
+            },
+            {
+              "label": "Less than half of the time",
+              "value": 2
+            },
+            {
+              "label": "More than half of the time",
+              "value": 3
+            },
+            {
+              "label": "Most of the time",
+              "value": 4
+            },
+            {
+              "label": "All of the time",
+              "value": 5
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "ego_who5_calm": {
+          "name": "who5_calm",
+          "type": "ordinal",
+          "component": "RadioGroup",
+          "options": [
+            {
+              "label": "At no time",
+              "value": 0
+            },
+            {
+              "label": "Some of the time",
+              "value": 1
+            },
+            {
+              "label": "Less than half of the time",
+              "value": 2
+            },
+            {
+              "label": "More than half of the time",
+              "value": 3
+            },
+            {
+              "label": "Most of the time",
+              "value": 4
+            },
+            {
+              "label": "All of the time",
+              "value": 5
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "ego_who5_active": {
+          "name": "who5_active",
+          "type": "ordinal",
+          "component": "RadioGroup",
+          "options": [
+            {
+              "label": "At no time",
+              "value": 0
+            },
+            {
+              "label": "Some of the time",
+              "value": 1
+            },
+            {
+              "label": "Less than half of the time",
+              "value": 2
+            },
+            {
+              "label": "More than half of the time",
+              "value": 3
+            },
+            {
+              "label": "Most of the time",
+              "value": 4
+            },
+            {
+              "label": "All of the time",
+              "value": 5
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "ego_who5_rested": {
+          "name": "who5_rested",
+          "type": "ordinal",
+          "component": "RadioGroup",
+          "options": [
+            {
+              "label": "At no time",
+              "value": 0
+            },
+            {
+              "label": "Some of the time",
+              "value": 1
+            },
+            {
+              "label": "Less than half of the time",
+              "value": 2
+            },
+            {
+              "label": "More than half of the time",
+              "value": 3
+            },
+            {
+              "label": "Most of the time",
+              "value": 4
+            },
+            {
+              "label": "All of the time",
+              "value": 5
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "ego_who5_interest": {
+          "name": "who5_interest",
+          "type": "ordinal",
+          "component": "RadioGroup",
+          "options": [
+            {
+              "label": "At no time",
+              "value": 0
+            },
+            {
+              "label": "Some of the time",
+              "value": 1
+            },
+            {
+              "label": "Less than half of the time",
+              "value": 2
+            },
+            {
+              "label": "More than half of the time",
+              "value": 3
+            },
+            {
+              "label": "Most of the time",
+              "value": 4
+            },
+            {
+              "label": "All of the time",
+              "value": 5
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "icon": "add-a-person",
+        "color": "node-color-seq-1",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "person_name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "person_layout": {
+            "name": "layout",
+            "type": "layout"
+          },
+          "person_new_friend": {
+            "name": "new_friend",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "person_support": {
+            "name": "support",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "person_is_first_year": {
+            "name": "is_first_year",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": "Yes",
+                "value": true
+              },
+              {
+                "label": "No, or I'm not sure",
+                "value": false,
+                "negative": true
+              }
+            ]
+          },
+          "person_first_met": {
+            "name": "first_met",
+            "type": "datetime",
+            "component": "DatePicker",
+            "parameters": {
+              "type": "month"
+            }
+          },
+          "person_closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": "Not very close",
+                "value": 1
+              },
+              {
+                "label": "Somewhat close",
+                "value": 2
+              },
+              {
+                "label": "Close",
+                "value": 3
+              },
+              {
+                "label": "Very close",
+                "value": 4
+              }
+            ]
+          },
+          "person_how_met": {
+            "name": "how_met",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": "Same accommodation",
+                "value": "same_accommodation"
+              },
+              {
+                "label": "Same course",
+                "value": "same_course"
+              },
+              {
+                "label": "Club or society",
+                "value": "club_or_society"
+              },
+              {
+                "label": "Through other friends",
+                "value": "through_other_friends"
+              },
+              {
+                "label": "Knew before university",
+                "value": "knew_before_university"
+              }
+            ],
+            "validation": {
+              "maxSelected": 1
+            }
+          },
+          "person_how_met_other": {
+            "name": "how_met_other",
+            "type": "text",
+            "component": "Text"
+          },
+          "person_drinks_heavily": {
+            "name": "drinks_heavily",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              },
+              {
+                "label": "I don't know",
+                "value": "i_dont_know"
+              }
+            ],
+            "validation": {
+              "maxSelected": 1
+            }
+          },
+          "person_drinks_with": {
+            "name": "drinks_with",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "person_drink_together_freq": {
+            "name": "drink_together_freq",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": "Less than monthly",
+                "value": 1
+              },
+              {
+                "label": "Monthly",
+                "value": 2
+              },
+              {
+                "label": "Weekly",
+                "value": 3
+              },
+              {
+                "label": "Several times a week",
+                "value": 4
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Know each other",
+        "color": "edge-color-seq-1"
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "researcher_notes",
+      "type": "Information",
+      "label": "Researcher notes (delete before fielding)",
+      "title": "Notes for the research team",
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).\n\n**Design rationale.** One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects \"know each other\" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.\n\n**Validated instruments.** Check the wording and scoring of audit_frequency, audit_typical, audit_heavy, who5_cheerful, who5_calm, who5_active, who5_rested, who5_interest against the published instrument; Sketch reproduces them from memory."
+        }
+      ]
+    },
+    {
+      "id": "welcome",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "Welcome to the study",
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": "Thank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
+        }
+      ]
+    },
+    {
+      "id": "consent",
+      "type": "EgoForm",
+      "label": "Consent",
+      "introductionPanel": {
+        "title": "Taking part",
+        "text": "This study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_consent",
+            "prompt": "Do you agree to take part in this study?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "about_you",
+      "type": "EgoForm",
+      "label": "About you",
+      "introductionPanel": {
+        "title": "A little about you",
+        "text": "First, a few questions about yourself."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_age",
+            "prompt": "What is your age in years?"
+          },
+          {
+            "variable": "ego_gender",
+            "prompt": "How do you describe your gender?"
+          },
+          {
+            "variable": "ego_lives_in_halls",
+            "prompt": "Do you live in university accommodation (halls)?"
+          }
+        ]
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_1",
+              "type": "ego",
+              "options": {
+                "attribute": "ego_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      }
+    },
+    {
+      "id": "name_friends",
+      "type": "NameGeneratorQuickAdd",
+      "label": "Naming friends",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Since **starting university this semester**, who have you **become friends with**?",
+          "additionalAttributes": [
+            {
+              "variable": "person_new_friend",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "p2",
+          "text": "Who do you **spend most of your free time with** at university?"
+        },
+        {
+          "id": "p3",
+          "text": "Who would you **turn to for support** if something was worrying you?",
+          "additionalAttributes": [
+            {
+              "variable": "person_support",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "behaviours": {
+        "maxNodes": 20
+      },
+      "quickAdd": "person_name",
+      "panels": [
+        {
+          "id": "existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ]
+    },
+    {
+      "id": "friend_details",
+      "type": "AlterForm",
+      "label": "Friend details",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_2",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "introductionPanel": {
+        "title": "About the people you named",
+        "text": "Next, two quick questions about each person."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "person_is_first_year",
+            "prompt": "Is this person also a first-year student?"
+          },
+          {
+            "variable": "person_first_met",
+            "prompt": "When did you first meet this person?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "friend_bins",
+      "type": "OrdinalBin",
+      "label": "Closeness, meeting, drinking",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_3",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Drag each person into the box that best describes **how close you feel** to them.",
+          "variable": "person_closeness",
+          "color": "ord-color-seq-1"
+        }
+      ]
+    },
+    {
+      "id": "friend_bins_2",
+      "type": "CategoricalBin",
+      "label": "Closeness, meeting, drinking (2)",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_4",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "How did you **first meet** each person?",
+          "variable": "person_how_met",
+          "otherVariable": "person_how_met_other",
+          "otherVariablePrompt": "Please describe",
+          "otherOptionLabel": "Other"
+        },
+        {
+          "id": "p2",
+          "text": "As far as you know, does each person often **drink heavily** (five or more drinks on one occasion)?",
+          "variable": "person_drinks_heavily"
+        }
+      ]
+    },
+    {
+      "id": "friend_map",
+      "type": "Sociogram",
+      "label": "Friendship map",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_5",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": false
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Place the people you are **closest to** nearest the centre.",
+          "layout": {
+            "layoutVariable": "person_layout"
+          }
+        },
+        {
+          "id": "p2",
+          "text": "Draw a line between any two people who **know each other**.",
+          "layout": {
+            "layoutVariable": "person_layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "p3",
+          "text": "Tap everyone you **usually drink alcohol with**.",
+          "layout": {
+            "layoutVariable": "person_layout"
+          },
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "person_drinks_with"
+          }
+        }
+      ]
+    },
+    {
+      "id": "drinking_together",
+      "type": "OrdinalBin",
+      "label": "Drinking together",
+      "skipLogic": {
+        "action": "SHOW",
+        "filter": {
+          "join": "AND",
+          "rules": [
+            {
+              "id": "rule_6",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "attribute": "person_drinks_with",
+                "operator": "EXACTLY",
+                "value": true
+              }
+            },
+            {
+              "id": "rule_7",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "How often do you **drink alcohol together** with each person?",
+          "variable": "person_drink_together_freq",
+          "color": "ord-color-seq-2"
+        }
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "rule_8",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "person_drinks_with",
+              "operator": "EXACTLY",
+              "value": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "your_drinking",
+      "type": "EgoForm",
+      "label": "Your drinking",
+      "introductionPanel": {
+        "title": "Your drinking",
+        "text": "These questions are about your own drinking."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_audit_frequency",
+            "prompt": "How often do you have a drink containing alcohol?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "drinking_amount",
+      "type": "EgoForm",
+      "label": "Drinking amount",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_9",
+              "type": "ego",
+              "options": {
+                "attribute": "ego_audit_frequency",
+                "operator": "EXACTLY",
+                "value": 0
+              }
+            }
+          ]
+        }
+      },
+      "introductionPanel": {
+        "title": "Your drinking",
+        "text": "A little more about how much you drink."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_audit_typical",
+            "prompt": "How many drinks containing alcohol do you have on a typical day when you are drinking?"
+          },
+          {
+            "variable": "ego_audit_heavy",
+            "prompt": "How often do you have six or more drinks on one occasion?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "wellbeing",
+      "type": "EgoForm",
+      "label": "Wellbeing (WHO-5)",
+      "introductionPanel": {
+        "title": "How you have been feeling",
+        "text": "Please think about the last two weeks."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_who5_cheerful",
+            "prompt": "Over the last two weeks: I have felt cheerful and in good spirits."
+          },
+          {
+            "variable": "ego_who5_calm",
+            "prompt": "Over the last two weeks: I have felt calm and relaxed."
+          },
+          {
+            "variable": "ego_who5_active",
+            "prompt": "Over the last two weeks: I have felt active and vigorous."
+          },
+          {
+            "variable": "ego_who5_rested",
+            "prompt": "Over the last two weeks: I woke up feeling fresh and rested."
+          },
+          {
+            "variable": "ego_who5_interest",
+            "prompt": "Over the last two weeks: My daily life has been filled with things that interest me."
+          }
+        ]
+      }
+    },
+    {
+      "id": "review",
+      "type": "Narrative",
+      "label": "Talking about your map",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_10",
+              "type": "node",
+              "options": {
+                "type": "person",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "presets": [
+        {
+          "id": "view1",
+          "label": "Who drinks heavily",
+          "layoutVariable": "person_layout",
+          "groupVariable": "person_drinks_heavily",
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "view2",
+          "label": "Who you drink with",
+          "layoutVariable": "person_layout",
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": ["person_drinks_with"]
+        },
+        {
+          "id": "view3",
+          "label": "How you met",
+          "layoutVariable": "person_layout",
+          "groupVariable": "person_how_met"
+        }
+      ],
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": false,
+        "allowRepositioning": true,
+        "freeDraw": true
+      }
+    },
+    {
+      "id": "thanks",
+      "type": "Information",
+      "label": "Thank you",
+      "title": "Thank you",
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": "Thank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
+        }
+      ]
+    }
+  ]
+}

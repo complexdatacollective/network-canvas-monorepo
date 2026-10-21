@@ -313,6 +313,14 @@
       },
       "ignoreBinaries": ["Rscript"]
     },
+    "apps/sketch": {
+      "entry": ["index.html!", "netlify/functions/*.mts!"],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}", "netlify/**/*.{ts,mts}"],
+      "paths": {
+        "~/*": ["./src/*"]
+      }
+    },
     "workers/development-protocol": {},
     "workers/posthog-proxy": {}
   }
