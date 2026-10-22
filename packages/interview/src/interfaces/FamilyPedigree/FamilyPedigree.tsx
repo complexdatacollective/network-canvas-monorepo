@@ -1,6 +1,6 @@
 'use client';
 
-import { MousePointer2, Unlink, Waypoints } from 'lucide-react';
+import { MousePointer2, Redo2, Undo2, Unlink, Waypoints } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   useCallback,
@@ -26,6 +26,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
 import {
   SegmentedToolbar,
+  ToolbarGroup,
   ToolbarIconButton,
   ToolbarSeparator,
   ToolbarToggleGroup,
@@ -76,6 +77,7 @@ import {
   addNodesAndEdges,
   deleteEdge,
   deleteNode,
+  restoreNetwork,
   updateEdge,
   updateNode,
   updateStageMetadata,
@@ -87,6 +89,12 @@ import { readOwnProperty, writeOwnProperty } from '../../utils/ownProperty';
 import { getDecryptionScope } from '../Anonymisation/decryptionScope';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useReportUnreadable } from '../Anonymisation/useReportUnreadable';
+import { interfaceMessages } from '../messages';
+import {
+  createUndoStore,
+  type UndoCommand,
+  useUndoStore,
+} from '../NetworkComposer/useUndoStore';
 import { pedigreeFraming } from '../pedigree-common/framing';
 import {
   participantsFamily,
@@ -132,6 +140,11 @@ import PersonForm, {
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
 import { decryptDetails, useDecryptedNames } from './encryptedNames';
+import {
+  changeBetween,
+  type FamilyHistoryPoint,
+  restoreSide,
+} from './familyHistory';
 import {
   distinctNames,
   generateLabels,
@@ -344,6 +357,66 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       dispatch(updateStageMetadata({ currentStep: step, metadata }));
     }
   };
+
+  // Undo and redo. Each change the participant makes to the family is one
+  // step, however many people and relationships it writes: adding someone
+  // (with any parents or stand-ins the addition draws), saving their
+  // details, removing them (with anyone removed with them), connecting or
+  // disconnecting two people, answering from the list of what is still
+  // needed, or selecting someone for a prompt. Undoing a step puts back only
+  // what that change wrote (`familyHistory`). The history is the prompt's:
+  // moving on to another prompt or stage saves everyone's labels, and starts
+  // it afresh.
+  const [history, setHistory] = useState(() => ({
+    promptId: prompt.id,
+    store: createUndoStore(),
+  }));
+  if (history.promptId !== prompt.id) {
+    setHistory({ promptId: prompt.id, store: createUndoStore() });
+  }
+  const undoStore = history.store;
+  const canUndo = useUndoStore(
+    undoStore,
+    (state) => state.past.length > 0 || state.recording > 0,
+  );
+  const canRedo = useUndoStore(undoStore, (state) => state.future.length > 0);
+  const historyPoint = (): FamilyHistoryPoint => {
+    const session = getActiveSession(store.getState());
+    return {
+      nodes: session.network.nodes,
+      edges: session.network.edges,
+      stageMetadata: session.stageMetadata,
+    };
+  };
+  // Makes a change to the family as one step of its history, resolving to
+  // what the change resolves to. A change that writes nothing (one the
+  // session refuses outright) is no step.
+  const recordChange = <T,>(change: () => Promise<T>) =>
+    new Promise<T>((resolve, reject) => {
+      undoStore
+        .getState()
+        .record(async (): Promise<UndoCommand | null> => {
+          const before = historyPoint();
+          const outcome = await change();
+          resolve(outcome);
+          const step = changeBetween(before, historyPoint());
+          if (!step) return null;
+          return {
+            label: 'Change the family',
+            undo: () => {
+              dispatch(
+                restoreNetwork(restoreSide(historyPoint(), step, 'before')),
+              );
+            },
+            redo: () => {
+              dispatch(
+                restoreNetwork(restoreSide(historyPoint(), step, 'after')),
+              );
+            },
+          };
+        })
+        .catch(reject);
+    });
 
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
@@ -1435,15 +1508,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const recorded = person.relativesNotRecorded.filter(
       (value) => value !== group.none && value !== group.unknown,
     );
-    await dispatch(
-      updateNode({
-        nodeId: person.id,
-        attributePatch: {
-          set: { [attribute]: [...recorded, group.none] },
-          unset: [],
-        },
-        currentStep,
-      }),
+    await recordChange(() =>
+      dispatch(
+        updateNode({
+          nodeId: person.id,
+          attributePatch: {
+            set: { [attribute]: [...recorded, group.none] },
+            unset: [],
+          },
+          currentStep,
+        }),
+      ),
     );
     setAnnouncement(
       intl.formatMessage(
@@ -1655,15 +1730,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       const person = family.byId.get(personId);
       if (!person) return;
       if (!canSelect(person)) return;
-      void dispatch(
-        updateNode({
-          nodeId: personId,
-          attributePatch: {
-            set: { [nomination.attribute]: !isNominated(person) },
-            unset: [],
-          },
-          currentStep,
-        }),
+      const { attribute } = nomination;
+      const nominated = isNominated(person);
+      void recordChange(() =>
+        dispatch(
+          updateNode({
+            nodeId: personId,
+            attributePatch: { set: { [attribute]: !nominated }, unset: [] },
+            currentStep,
+          }),
+        ),
       );
       return;
     }
@@ -1990,7 +2066,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // giving way). A write the session refuses (a protected answer whose key
   // went, say) keeps it open with their answers and says why, so they can
   // save again.
-  const handleSubmit = async (
+  const submitPanel = async (
     result: PersonFormResult,
   ): Promise<FormSubmissionResult> => {
     if (!panel) return { success: true };
@@ -2257,6 +2333,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return { success: true };
   };
 
+  // Whatever the panel saves is one step of the family's history.
+  const handleSubmit = (result: PersonFormResult) =>
+    recordChange(() => submitPanel(result));
+
   // Ending connecting or disconnecting, however it ends, takes back what it
   // last said.
   const chooseTool = (next: Tool) => {
@@ -2387,6 +2467,51 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setAnnouncement('');
   };
 
+  // Undo and redo wait while a person's details are open (their answers are
+  // not the family's yet), and while nothing in the family can be changed.
+  const historyLocked = !!panel?.open || detailsLocked || wordingForced;
+  // A pair half chosen to connect or disconnect is let go: the family it was
+  // chosen in is not the one shown any more.
+  const travel = async (direction: 'undo' | 'redo') => {
+    if (historyLocked) return;
+    endConnecting();
+    setConnectNotice(null);
+    await undoStore.getState()[direction]();
+    setAnnouncement(
+      intl.formatMessage(
+        direction === 'undo'
+          ? messages.undoneAnnouncement
+          : messages.redoneAnnouncement,
+      ),
+    );
+  };
+  // Ctrl+Z (⌘Z) undoes, and Ctrl+Shift+Z (⌘⇧Z) or Ctrl+Y redoes, anywhere on
+  // the stage but in a text field, which keeps its own undo.
+  const handleHistoryKeyDown = (event: React.KeyboardEvent) => {
+    if (event.defaultPrevented || event.altKey) return;
+    if (!(event.metaKey || event.ctrlKey)) return;
+    const key = event.key.toLowerCase();
+    const direction =
+      key === 'z'
+        ? event.shiftKey
+          ? 'redo'
+          : 'undo'
+        : key === 'y'
+          ? 'redo'
+          : null;
+    if (!direction) return;
+    const { target } = event;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    ) {
+      return;
+    }
+    event.preventDefault();
+    if (direction === 'undo' ? canUndo : canRedo) void travel(direction);
+  };
+
   const handleConnect = async (connection: Connection) => {
     endConnecting();
     const link = planConnection(
@@ -2411,9 +2536,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       );
       return;
     }
-    await addLink(link);
-    reportRefusedStandIn(await keepStandInRule());
-    await withdrawContradictedAnswers();
+    await recordChange(async () => {
+      await addLink(link);
+      reportRefusedStandIn(await keepStandInRule());
+      await withdrawContradictedAnswers();
+    });
     setJustConnected(connection);
   };
 
@@ -2426,16 +2553,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
       onConfirm: () => {
-        for (const linkId of linksBetween(firstId, secondId)) {
-          dispatch(deleteEdge(linkId));
-        }
         removed = true;
       },
     });
     endConnecting();
     if (removed) {
       // A genetic parent disconnected leaves a stand-in in their place.
-      reportRefusedStandIn(await keepStandInRule());
+      await recordChange(async () => {
+        for (const linkId of linksBetween(firstId, secondId)) {
+          dispatch(deleteEdge(linkId));
+        }
+        reportRefusedStandIn(await keepStandInRule());
+      });
       setAnnouncement(
         intl.formatMessage(messages.disconnectedAnnouncement, args),
       );
@@ -2484,8 +2613,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       },
       onConfirm: () => {
         if (survivorId) setLastFocusedId(survivorId);
-        for (const linkId of linkIds) dispatch(deleteEdge(linkId));
-        for (const id of removedIds) dispatch(deleteNode(id));
         removed = true;
         if (focusedId !== null && removedIds.includes(focusedId)) {
           setFocusedId(null);
@@ -2500,10 +2627,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         );
       },
     });
-    // Removing a parent who tells half siblings apart leaves an unnamed
-    // stand-in in their place, so the half-sibling answer is never lost
-    // (ruling 22).
-    if (removed) reportRefusedStandIn(await keepStandInRule());
+    if (!removed) return;
+    await recordChange(async () => {
+      for (const linkId of linkIds) dispatch(deleteEdge(linkId));
+      for (const id of removedIds) dispatch(deleteNode(id));
+      // Removing a parent who tells half siblings apart leaves an unnamed
+      // stand-in in their place, so the half-sibling answer is never lost
+      // (ruling 22).
+      reportRefusedStandIn(await keepStandInRule());
+    });
   };
 
   // Escape in the add menu returns focus to its person; Escape on the person
@@ -2588,6 +2720,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         className="relative flex h-full w-full flex-col"
         onPointerDown={handleStagePointerDown}
         onPointerMove={handleStagePointerMove}
+        onKeyDown={handleHistoryKeyDown}
       >
         <div
           ref={promptRef}
@@ -2752,10 +2885,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   )}
               </p>
             )}
-            {/* Rises into place when the stage first loads. */}
+            {/* The family's tools and the view's controls, side by side, rise
+              into place when the stage first loads. */}
             <motion.div
-              // No wider than the stage, so a toolbar that does not fit scrolls.
-              className="max-w-full min-w-0"
+              // No wider than the stage: the view's controls go below the
+              // tools when the two do not fit side by side, and tools that do
+              // not fit on their own scroll.
+              className="flex max-w-full min-w-0 flex-wrap items-center justify-center gap-3"
               initial={reduceMotion ? false : { y: '150%', opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               // A heavy spring, damped just short of settling straight, so it
@@ -2844,7 +2980,43 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   />
                 )}
                 {(!nomination || participantFraming) && <ToolbarSeparator />}
-                {zoomButtons}
+                <ToolbarGroup
+                  aria-label={intl.formatMessage(
+                    interfaceMessages.historyTools,
+                  )}
+                  disabled={historyLocked}
+                >
+                  <ToolbarIconButton
+                    aria-label={intl.formatMessage(interfaceMessages.undo)}
+                    tooltip={
+                      <ToolTip
+                        name={intl.formatMessage(interfaceMessages.undo)}
+                        description={intl.formatMessage(
+                          messages.undoDescription,
+                        )}
+                      />
+                    }
+                    icon={<Undo2 />}
+                    disabled={!canUndo}
+                    onClick={() => void travel('undo')}
+                    data-testid="pedigree-undo"
+                  />
+                  <ToolbarIconButton
+                    aria-label={intl.formatMessage(interfaceMessages.redo)}
+                    tooltip={
+                      <ToolTip
+                        name={intl.formatMessage(interfaceMessages.redo)}
+                        description={intl.formatMessage(
+                          messages.redoDescription,
+                        )}
+                      />
+                    }
+                    icon={<Redo2 />}
+                    disabled={!canRedo}
+                    onClick={() => void travel('redo')}
+                    data-testid="pedigree-redo"
+                  />
+                </ToolbarGroup>
                 {progress && completeness && !nomination && (
                   <ToolbarSeparator />
                 )}
@@ -2864,6 +3036,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     }
                   />
                 )}
+              </SegmentedToolbar>
+              <SegmentedToolbar
+                aria-label={intl.formatMessage(messages.viewToolsLabel)}
+                size="lg"
+                className="pointer-events-auto"
+              >
+                {zoomButtons}
               </SegmentedToolbar>
             </motion.div>
           </div>

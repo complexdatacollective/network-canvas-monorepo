@@ -139,6 +139,7 @@ const actionTypes = {
   restoreNode: 'NETWORK/RESTORE_NODE' as const,
   updateNode: 'NETWORK/UPDATE_NODE' as const,
   restoreNodeAttributes: 'NETWORK/RESTORE_NODE_ATTRIBUTES' as const,
+  restoreNetwork: 'NETWORK/RESTORE_NETWORK' as const,
   toggleNodeAttributes: 'NETWORK/TOGGLE_NODE_ATTRIBUTES' as const,
   addNodeToPrompt: 'NETWORK/ADD_NODE_TO_PROMPT' as const,
   removeNodeFromPrompt: 'NETWORK/REMOVE_NODE_FROM_PROMPT' as const,
@@ -462,6 +463,17 @@ export const restoreNodeAttributes = createAction<{
   nodeId: NcNode[EntityPrimaryKey];
   snapshot: NodeAttributeSnapshot;
 }>(actionTypes.restoreNodeAttributes);
+
+/**
+ * Undo/redo support: puts back the network's nodes and edges, and the stages'
+ * metadata, as captured. Like restoreNode it neither validates nor encrypts:
+ * every entity is stored state, its encrypted values together with their IVs.
+ */
+export const restoreNetwork = createAction<{
+  nodes: readonly NcNode[];
+  edges: readonly NcEdge[];
+  stageMetadata: StageMetadata | undefined;
+}>(actionTypes.restoreNetwork);
 
 export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
 /**
@@ -948,6 +960,19 @@ const sessionReducer = createReducer(initialState, (builder) => {
             [entitySecureAttributesMeta]: patched.secureAttributes,
           };
         }),
+      },
+    });
+  });
+
+  builder.addCase(restoreNetwork, (state, action) => {
+    const { nodes, edges, stageMetadata } = action.payload;
+    return withLastUpdated({
+      ...state,
+      stageMetadata,
+      network: {
+        ...state.network,
+        nodes: [...nodes],
+        edges: [...edges],
       },
     });
   });

@@ -71,6 +71,14 @@
     "defaultMessage": "Select a family member to edit their details or add their relatives.",
     "description": "Tooltip text, under the heading “Add and edit” (or the stage’s own name for it), of the family tree toolbar tool that is chosen by default: with it, selecting a family member opens their details, and buttons beside them add a parent, sibling, partner or child. Read by participants."
   },
+  "interview.familyPedigree.redoDescription": {
+    "defaultMessage": "Bring back the change you undid.",
+    "description": "Tooltip text, under the heading “Redo”, of the family tree toolbar button that makes again a change to the family tree that Undo reversed. Read by participants."
+  },
+  "interview.familyPedigree.redoneAnnouncement": {
+    "defaultMessage": "Change redone.",
+    "description": "Screen reader announcement after the participant redoes a change to the family tree they had undone."
+  },
   "interview.familyPedigree.removedAnnouncement": {
     "defaultMessage": "{name} removed from your family.",
     "description": "Screen reader announcement after a family member is removed. {name} is their name or, when it is not known, how they are related to the participant."
@@ -114,6 +122,18 @@
   "interview.familyPedigree.trackerProgressLabel": {
     "defaultMessage": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",
     "description": "Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1."
+  },
+  "interview.familyPedigree.undoDescription": {
+    "defaultMessage": "Undo your last change to your family tree.",
+    "description": "Tooltip text, under the heading “Undo”, of the family tree toolbar button that reverses the most recent change: adding, editing or removing a family member, connecting or disconnecting two people, or selecting someone for a question. Read by participants."
+  },
+  "interview.familyPedigree.undoneAnnouncement": {
+    "defaultMessage": "Change undone.",
+    "description": "Screen reader announcement after the participant undoes their most recent change to the family tree."
+  },
+  "interview.familyPedigree.viewToolsLabel": {
+    "defaultMessage": "View controls",
+    "description": "Accessible name of the small toolbar beside the family tree tools that zooms the family tree out and in, and fits the whole family on the screen."
   },
   "interview.familyPedigree.zoomInDescription": {
     "defaultMessage": "Make your family tree bigger, to see part of it more closely.",
@@ -309,7 +329,7 @@
   },
   "interview.interfaces.redo": {
     "defaultMessage": "Redo",
-    "description": "Toolbar action that reapplies an edit that was undone in the network composer."
+    "description": "Toolbar action that makes again a change that was undone, in the network composer and the family pedigree."
   },
   "interview.interfaces.resizePanel": {
     "defaultMessage": "Resize panel",
@@ -361,7 +381,7 @@
   },
   "interview.interfaces.undo": {
     "defaultMessage": "Undo",
-    "description": "Toolbar action that reverses the most recent edit in the network composer."
+    "description": "Toolbar action that reverses the most recent change, in the network composer and the family pedigree."
   },
   "interview.interfaces.zoomIn": {
     "defaultMessage": "Zoom in",

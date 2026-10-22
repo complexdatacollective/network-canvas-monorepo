@@ -13,6 +13,10 @@
       - button "Link tool - matrix check" [pressed]
       - button "Unlink tool - matrix check"
     - separator
+    - group "History tools":
+      - button "Undo"
+      - button "Redo" [disabled]
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"

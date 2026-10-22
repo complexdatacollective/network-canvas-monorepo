@@ -17,6 +17,7 @@ import session, {
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNetwork,
   restoreNode,
 } from '../../modules/session';
 import ui from '../../modules/ui';
@@ -130,6 +131,39 @@ describe('analyticsListener — global entity events', () => {
       node_id: 'node-1',
       node_type_index: 1,
     });
+  });
+
+  it('reports what restoreNetwork brings back as added, and what it takes away as removed', () => {
+    const tracker = makeTracker();
+    const person = (id: string) => ({
+      [entityPrimaryKeyProperty]: id,
+      type: 'person',
+      [entityAttributesProperty]: {},
+    });
+    const knows = (id: string, from: string, to: string) => ({
+      [entityPrimaryKeyProperty]: id,
+      type: 'knows',
+      from,
+      to,
+      [entityAttributesProperty]: {},
+    });
+    const store = buildStore(tracker, {
+      nodes: [person('kept'), person('gone')],
+      edges: [knows('gone-edge', 'kept', 'gone')],
+    });
+    store.dispatch(
+      restoreNetwork({
+        nodes: [person('kept'), person('back')],
+        edges: [knows('back-edge', 'kept', 'back')],
+        stageMetadata: undefined,
+      }),
+    );
+    expect(tracker.track.mock.calls).toEqual([
+      ['node_added', { node_id: 'back', node_type_index: 1 }],
+      ['node_removed', { node_id: 'gone' }],
+      ['edge_created', { edge_id: 'back-edge', edge_type_index: 0 }],
+      ['edge_removed', { edge_id: 'gone-edge' }],
+    ]);
   });
 
   it('emits node_removed on deleteNode', () => {
