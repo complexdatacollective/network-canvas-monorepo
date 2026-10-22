@@ -185,6 +185,43 @@ describe('each parent tie is drawn in its own style', () => {
     });
   }
 
+  // Bennett et al. (2008), Fig. 2.3b, "Adoption: in": the sibship line is
+  // the whole sibship's, solid, and only the adopted child's line up to it
+  // is dashed.
+  it('draws one solid bar to every child, with only an adopted child’s line up dashed', () => {
+    const { connectors } = draw(
+      ['ego', 'brother', 'adopted', 'linda', 'robert'],
+      [
+        ['linda', 'biological', 'ego', { carrier: true }],
+        ['robert', 'biological', 'ego'],
+        ['linda', 'biological', 'brother', { carrier: true }],
+        ['robert', 'biological', 'brother'],
+        ['linda', 'adoptive', 'adopted'],
+        ['robert', 'adoptive', 'adopted'],
+        ['linda', 'partner', 'robert'],
+      ],
+    );
+    const children = ['ego', 'brother', 'adopted'];
+    const lines = [
+      ...new Set(children.flatMap((id) => descentsInto(connectors, id))),
+    ];
+    const barred = lines.filter((line) => line.siblingBar);
+    expect(barred).toHaveLength(1);
+    const [shared] = barred;
+    expect(shared!.edgeType).toBe('biological');
+    const xs = children.map((id) => uplineOf(connectors, id).segment.x2);
+    expect(
+      Math.min(shared!.siblingBar!.x1, shared!.siblingBar!.x2),
+    ).toBeCloseTo(Math.min(...xs));
+    expect(
+      Math.max(shared!.siblingBar!.x1, shared!.siblingBar!.x2),
+    ).toBeCloseTo(Math.max(...xs));
+    const adopted = uplineOf(connectors, 'adopted').connector;
+    expect(adopted.edgeType).toBe('adoptive');
+    expect(adopted.siblingBar).toBeUndefined();
+    expect(adopted.parentLink).toEqual([]);
+  });
+
   it('draws the social ties of a couple raising a donor-conceived child and their own child', () => {
     // Marcus is ego's biological parent; Julian, his partner, raises ego.
     // Leo is a child they both raise.

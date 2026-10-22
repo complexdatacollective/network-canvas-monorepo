@@ -842,6 +842,43 @@ export function routePedigree(
     );
     return drawn.length > 0 ? { runs: drawn } : {};
   };
+  // A sibship's lines, in one part per style of tie. The bar and the line of
+  // descent are the whole sibship's, drawn in one style: solid when any child
+  // holds a birth tie to the owners (a gamete or the pregnancy), otherwise
+  // that of the first child's tie. Only each child's own line up shows their
+  // own tie (Bennett et al., 2008, Fig. 2.3b: an adopted child's line up is
+  // dashed, the bar they share with their siblings is not). Returns the part
+  // that carries the bar.
+  const pushSibship = (
+    sibship: Omit<ParentChildConnector, 'type' | 'edgeType' | 'uplines'>,
+    uplines: Upline[],
+    styleOf: (k: number) => PedigreeEdgeType,
+    runs: SibshipRunPlan[] = [],
+  ) => {
+    const byStyle = groupBy(
+      uplines.map((_, k) => k),
+      styleOf,
+    );
+    const styles = [...byStyle.keys()];
+    const shared = styles.find(isBirthTie) ?? styles[0]!;
+    let sharedPart: ParentChildConnector | undefined;
+    for (const [style, ks] of byStyle) {
+      const isShared = style === shared;
+      const part: ParentChildConnector = {
+        type: 'parent-child',
+        edgeType: style,
+        uplines: ks.map((k) => uplines[k]!),
+        ...(isShared ? sibship : { parentLink: [] }),
+        ...(!isShared && sibship.parentIds
+          ? { parentIds: sibship.parentIds }
+          : {}),
+        ...drawnRuns(runs, ks),
+      };
+      parentChildLines.push(part);
+      if (isShared) sharedPart = part;
+    }
+    return sharedPart!;
+  };
 
   // A point on a partnership line routed above the parents' row (`layer`)
   // that a line of descent can drop from, near `target` but clear of
@@ -927,8 +964,7 @@ export function routePedigree(
   let nextFamilyKey = maxcol + 1;
   for (let i = 1; i < maxlev; i++) {
     // Children are grouped by their sibship (see `lineOwnersOf`), never by
-    // the owner of their line of descent alone, and, since such a sibship's
-    // bar is drawn in one style, by the kind of that line too.
+    // the owner of their line of descent alone.
     const sibships = new Map<string, number[]>();
     const routedSibships = new Map<
       string,
@@ -938,11 +974,10 @@ export function routePedigree(
       if ((layout.fam[i]?.[j] ?? 0) !== 0 || layout.groupMember[i]?.[j]) {
         continue;
       }
-      const { descent, sibship: named } = owners[layout.nid[i]![j]!] ?? {
+      const { descent, sibship } = owners[layout.nid[i]![j]!] ?? {
         lines: [],
       };
-      if (!descent || named === undefined) continue;
-      const sibship = `${named}:${descent.kind}`;
+      if (!descent || sibship === undefined) continue;
       const [a, b] = descent.parents;
       const couple =
         a !== undefined && b !== undefined
@@ -1114,22 +1149,23 @@ export function routePedigree(
           ...new Set(fork.joinOf),
         ]);
         const sibshipOwner = descentOwnerOf(layout.nid[i]![whoIdx[0]!]!)!;
-        parentChildLines.push({
-          type: 'parent-child',
-          edgeType: sibshipOwner.kind,
+        pushSibship(
+          {
+            ...(siblingBar.x2 - siblingBar.x1 > 1e-9 ? { siblingBar } : {}),
+            parentLink: [],
+            ...(id
+              ? {
+                  parentIds: sibshipOwner.parents.map(
+                    (index) => id[index] ?? '',
+                  ),
+                }
+              : {}),
+          },
           uplines,
-          ...(siblingBar.x2 - siblingBar.x1 > 1e-9 ? { siblingBar } : {}),
-          parentLink: [],
-          ...drawnRuns(
-            fork.runs,
-            whoIdx.map((_, k) => k),
-          ),
-          ...(id
-            ? {
-                parentIds: sibshipOwner.parents.map((index) => id[index] ?? ''),
-              }
-            : {}),
-        });
+          (k) =>
+            descentOwnerOf(layout.nid[i]![whoIdx[k]!]!)?.kind ?? 'biological',
+          fork.runs,
+        );
         continue;
       }
 
@@ -1275,34 +1311,12 @@ export function routePedigree(
         };
         const parentLink = carriersOf(descent, linkOf(descent, i));
 
-        // Each child's own tie sets the style of the line to them. The
-        // parent link and the bar between it and the children of the first
-        // style (solid, when any child holds a birth tie to the owners: a
-        // gamete or the pregnancy) are drawn in that style; each other style
-        // continues the bar out to its own children.
-        const byStyle = groupBy(
-          columns.map((_, k) => k),
-          (k) => descentKindOf(columns[k]!),
-        );
-        const [primaryStyle, primaryKs] =
-          [...byStyle].find(([style]) => isBirthTie(style)) ?? [...byStyle][0]!;
-        // Where each child's line meets the bar: their own line up, or the
-        // stem of their run.
-        const targetOf = (k: number) => fork.joinOf[k]!;
-        const primaryTargets = primaryKs.map(targetOf);
-        const primaryMin = Math.min(x1, ...primaryTargets);
-        const primaryMax = Math.max(x1, ...primaryTargets);
-        const pushSibshipPart = (
-          edgeType: PedigreeEdgeType,
-          ks: number[],
-          barFrom: number,
-          barTo: number,
-          link: DescentPiece[],
-        ) => {
-          const part: ParentChildConnector = {
-            type: 'parent-child',
-            edgeType,
-            uplines: ks.map((k) => uplines[k]!),
+        // The bar runs from where the line of descent meets it to each
+        // child's line: their own line up, or the stem of their run.
+        const reach = [x1, ...fork.joinOf];
+        const [barFrom, barTo] = [Math.min(...reach), Math.max(...reach)];
+        const sharedPart = pushSibship(
+          {
             ...(barTo - barFrom > 1e-9
               ? {
                   siblingBar: {
@@ -1314,49 +1328,18 @@ export function routePedigree(
                   } satisfies LineSegment,
                 }
               : {}),
-            parentLink: link,
-            ...(id
-              ? {
-                  parentIds: parentIdsForFamily,
-                }
-              : {}),
-            ...drawnRuns(fork.runs, ks),
-          };
-          parentChildLines.push(part);
-          return part;
-        };
-        const primaryPart = pushSibshipPart(
-          primaryStyle,
-          primaryKs,
-          primaryMin,
-          primaryMax,
-          parentLink,
+            parentLink,
+            ...(id ? { parentIds: parentIdsForFamily } : {}),
+          },
+          uplines,
+          (k) => descentKindOf(columns[k]!),
+          fork.runs,
         );
-        descentLinks.push({ level: i, line: primaryPart, ...descent });
+        descentLinks.push({ level: i, line: sharedPart, ...descent });
         if (groupLine && coupleLeftId !== coupleRightId) {
           const pairKey = `${Math.min(coupleLeftId, coupleRightId)},${Math.max(coupleLeftId, coupleRightId)}`;
           if (!coupleDescents.has(pairKey)) {
-            coupleDescents.set(pairKey, primaryPart);
-          }
-        }
-        for (const [style, ks] of byStyle) {
-          if (style === primaryStyle) continue;
-          const toLeft = ks.filter((k) => targetOf(k) < primaryMin);
-          const toRight = ks.filter((k) => targetOf(k) > primaryMax);
-          const within = ks.filter(
-            (k) => !toLeft.includes(k) && !toRight.includes(k),
-          );
-          if (toLeft.length > 0) {
-            const reach = Math.min(...toLeft.map(targetOf));
-            pushSibshipPart(style, toLeft, reach, primaryMin, []);
-          }
-          if (toRight.length > 0) {
-            const reach = Math.max(...toRight.map(targetOf));
-            pushSibshipPart(style, toRight, primaryMax, reach, []);
-          }
-          if (within.length > 0) {
-            const at = targetOf(within[0]!);
-            pushSibshipPart(style, within, at, at, []);
+            coupleDescents.set(pairKey, sharedPart);
           }
         }
       }
