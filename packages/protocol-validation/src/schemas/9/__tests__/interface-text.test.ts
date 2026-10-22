@@ -196,6 +196,87 @@ describe('the interface text a protocol holds', () => {
     ).toBe(true);
   });
 
+  it('holds Save and Don’t know while the protocol has a Family Pedigree', () => {
+    const buttonsOf = (stages: readonly unknown[]) =>
+      Object.keys(interfaceTextFor(protocolWith({ stages })).buttons ?? {});
+
+    expect(buttonsOf([{ type: 'FamilyPedigree' }])).toEqual(
+      expect.arrayContaining(['save', 'dontKnow']),
+    );
+    expect(buttonsOf([{ type: 'EgoForm' }])).not.toContain('save');
+    expect(buttonsOf([{ type: 'EgoForm' }])).not.toContain('dontKnow');
+    expect(
+      interfaceTextFor(protocolWith({ stages: [{ type: 'FamilyPedigree' }] }))
+        .buttons?.dontKnow,
+    ).toEqual({ en: 'Don’t know', fr: 'Je ne sais pas' });
+  });
+
+  it('holds the layout toggle while a Sociogram or Narrative lays people out automatically', () => {
+    const holdsToggle = (stage: Readonly<Record<string, unknown>>) => {
+      const buttons = interfaceTextFor(
+        protocolWith({ stages: [stage] }),
+      ).buttons;
+      expect(buttons?.resumeLayout !== undefined).toBe(
+        buttons?.pauseLayout !== undefined,
+      );
+      return buttons?.pauseLayout !== undefined;
+    };
+
+    const on = { automaticLayout: true };
+    expect(holdsToggle({ type: 'Sociogram', behaviours: on })).toBe(true);
+    expect(holdsToggle({ type: 'Narrative', behaviours: on })).toBe(true);
+    expect(
+      holdsToggle({
+        type: 'Sociogram',
+        behaviours: { automaticLayout: false },
+      }),
+    ).toBe(false);
+    expect(holdsToggle({ type: 'Narrative', behaviours: {} })).toBe(false);
+    // A Network Composer words its own layout control.
+    expect(holdsToggle({ type: 'NetworkComposer', behaviours: on })).toBe(
+      false,
+    );
+  });
+
+  it('holds the external data error while a stage loads people from a file', () => {
+    const holdsError = (stage: Readonly<Record<string, unknown>>) =>
+      interfaceTextFor(protocolWith({ stages: [stage] })).messages
+        ?.externalDataError !== undefined;
+
+    expect(holdsError({ type: 'NameGeneratorRoster' })).toBe(true);
+    for (const type of ['NameGenerator', 'NameGeneratorQuickAdd']) {
+      expect(
+        holdsError({ type, panels: [{ id: 'p', dataSource: 'friends' }] }),
+      ).toBe(true);
+      expect(
+        holdsError({ type, panels: [{ id: 'p', dataSource: 'existing' }] }),
+      ).toBe(false);
+    }
+    expect(holdsError({ type: 'Sociogram' })).toBe(false);
+  });
+
+  it('holds the search text while a roster or a map has a search', () => {
+    const searchOf = (stage: Readonly<Record<string, unknown>>) =>
+      interfaceTextFor(protocolWith({ stages: [stage] })).search;
+
+    expect(
+      searchOf({ type: 'NameGeneratorRoster', searchOptions: {} }),
+    ).toEqual({
+      searchLabel: { en: 'Search', fr: 'Rechercher' },
+      searchNoMatch: {
+        en: 'Nothing matched your search term.',
+        fr: 'Aucun résultat ne correspond à votre recherche.',
+      },
+    });
+    expect(
+      searchOf({ type: 'Geospatial', mapOptions: { allowSearch: true } }),
+    ).toBeDefined();
+    expect(searchOf({ type: 'NameGeneratorRoster' })).toBeUndefined();
+    expect(
+      searchOf({ type: 'Geospatial', mapOptions: { allowSearch: false } }),
+    ).toBeUndefined();
+  });
+
   it('holds the error message whatever the protocol shows', () => {
     for (const stages of [
       [],

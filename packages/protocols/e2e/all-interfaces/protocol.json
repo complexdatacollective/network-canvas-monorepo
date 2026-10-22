@@ -452,17 +452,8 @@
       "maxNodesNotice": {
         "en-US": "You have completed this task. Click the next arrow to continue."
       },
-      "externalDataError": {
-        "en-US": "External data could not be loaded."
-      },
       "allAddedNotice": {
         "en-US": "There is nothing left to add from this list."
-      },
-      "searchLabel": {
-        "en-US": "Search"
-      },
-      "searchNoMatch": {
-        "en-US": "Nothing matched your search term."
       },
       "type": "NameGeneratorRoster",
       "label": {
@@ -521,14 +512,6 @@
     },
     {
       "id": "sociogram-1",
-      "tooltips": {
-        "pauseLayout": {
-          "en-US": "Pause automatic layout"
-        },
-        "resumeLayout": {
-          "en-US": "Resume automatic layout"
-        }
-      },
       "type": "Sociogram",
       "label": {
         "en-US": "Sociogram"
@@ -868,9 +851,6 @@
         "disconnectWouldCutOff": {
           "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}"
         },
-        "dontKnow": {
-          "en-US": "Don’t know"
-        },
         "panelTitle": {
           "en-US": "{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}"
         },
@@ -933,9 +913,6 @@
         },
         "you": {
           "en-US": "You"
-        },
-        "save": {
-          "en-US": "Save"
         },
         "connectTool": {
           "en-US": "Connect"
@@ -1032,9 +1009,6 @@
         },
         "zygosityIdentical": {
           "en-US": "Yes, identical"
-        },
-        "zygosityUnknown": {
-          "en-US": "I don’t know"
         },
         "disconnectStandIn": {
           "en-US": "{childIsYou, select, true {“{standIn}” stands in for a parent of yours who has not been added yet, so this connection cannot be removed. Add that parent to you instead, and they will take this place.} other {“{standIn}” stands in for a parent of “{child}” who has not been added yet, so this connection cannot be removed. Add that parent to “{child}” instead, and they will take this place.}}"
@@ -1332,6 +1306,18 @@
       },
       "no": {
         "en-US": "No"
+      },
+      "save": {
+        "en-US": "Save"
+      },
+      "dontKnow": {
+        "en-US": "Don’t know"
+      },
+      "pauseLayout": {
+        "en-US": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en-US": "Resume automatic layout"
       }
     },
     "messages": {
@@ -1343,6 +1329,17 @@
       },
       "error": {
         "en-US": "An error occurred."
+      },
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
       }
     },
     "passphrase": {

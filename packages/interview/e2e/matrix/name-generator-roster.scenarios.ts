@@ -356,8 +356,12 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           label: 'Broken roster',
           subject: { entity: 'node', type: personType.id },
           dataSource: 'rosterBroken',
-          wording: { externalDataError: EXTERNAL_DATA_ERROR },
         });
+        synth.setInterfaceText(
+          'messages',
+          'externalDataError',
+          EXTERNAL_DATA_ERROR,
+        );
         stage.addPrompt({ text: 'Please add anyone you recognise.' });
 
         return synth;
@@ -587,9 +591,9 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
               fuzziness: 0.4,
               matchProperties: ['name', 'location'],
             },
-            wording: { searchLabel: SEARCH_LABEL },
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
+        synth.setInterfaceText('search', 'searchLabel', SEARCH_LABEL);
 
         // Stage B: no searchOptions → no searchbox rendered at all.
         synth
@@ -663,9 +667,9 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
             subject: { entity: 'node', type: personType.id },
             dataSource: 'jsonRoster',
             searchOptions: { fuzziness: 0.2, matchProperties: ['location'] },
-            wording: { searchNoMatch: SEARCH_NO_MATCH },
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
+        synth.setInterfaceText('search', 'searchNoMatch', SEARCH_NO_MATCH);
 
         return synth;
       },

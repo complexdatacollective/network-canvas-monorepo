@@ -56,6 +56,30 @@ export const interfaceMessages = defineMessages({
     description:
       'Short heading above an external-list loading error. This heading intentionally has no final period.',
   },
+  externalDataError: {
+    id: 'interview.interfaces.externalDataError',
+    defaultMessage: 'External data could not be loaded.',
+    description:
+      'Shown under the error heading when a list of people from a file the study provides could not be loaded.',
+  },
+  dontKnow: {
+    id: 'interview.interfaces.dontKnow',
+    defaultMessage: 'Don’t know',
+    description:
+      'Answer option a participant picks when they do not know the answer to a question about a family member, such as whether twins are identical.',
+  },
+  pauseLayout: {
+    id: 'interview.interfaces.pauseLayout',
+    defaultMessage: 'Pause automatic layout',
+    description:
+      'Tooltip and accessible name of the toggle that stops the people on a network diagram from moving into place by themselves.',
+  },
+  resumeLayout: {
+    id: 'interview.interfaces.resumeLayout',
+    defaultMessage: 'Resume automatic layout',
+    description:
+      'Tooltip and accessible name of the toggle that lets the people on a network diagram move into place by themselves again.',
+  },
   availableRosterNodes: {
     id: 'interview.interfaces.availableRosterNodes',
     defaultMessage: 'Available Roster Nodes',

@@ -49,32 +49,6 @@ const OUTSIDE_AREAS_LABEL = {
   'zh-Hant': '不在可選取的區域內',
 } as const satisfies SuppliedWording;
 
-/** The search box's placeholder, and its accessible name. */
-const SEARCH_LABEL = {
-  'en': 'Search',
-  'de': 'Suchen',
-  'es': 'Buscar',
-  'fr': 'Rechercher',
-  'it': 'Cerca',
-  'nl': 'Zoeken',
-  'pt-BR': 'Buscar',
-  'zh-Hans': '搜索',
-  'zh-Hant': '搜尋',
-} as const satisfies SuppliedWording;
-
-/** The notice when a search matches nothing. */
-const SEARCH_NO_MATCH = {
-  'en': 'Nothing matched your search term.',
-  'de': 'Keine Treffer für Ihren Suchbegriff.',
-  'es': 'No hay resultados que coincidan con tu búsqueda.',
-  'fr': 'Aucun résultat ne correspond à votre recherche.',
-  'it': 'Nessun risultato per il termine cercato.',
-  'nl': 'Niets gevonden voor je zoekterm.',
-  'pt-BR': 'Nenhum resultado corresponde ao termo buscado.',
-  'zh-Hans': '没有与您的搜索词匹配的结果。',
-  'zh-Hant': '找不到符合搜尋字詞的結果。',
-} as const satisfies SuppliedWording;
-
 /** The notice when a search could not run, which says nothing about the place. */
 const SEARCH_FAILED = {
   'en': 'Search could not be completed. Try again in a moment.',
@@ -93,7 +67,5 @@ export const GEOSPATIAL_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   { path: ['offlineNotice'], message: OFFLINE_NOTICE },
   { path: ['mapUnavailable'], message: MAP_UNAVAILABLE },
   { path: ['outsideAreasLabel'], message: OUTSIDE_AREAS_LABEL },
-  { path: ['searchLabel'], message: SEARCH_LABEL, when: hasMapSearch },
-  { path: ['searchNoMatch'], message: SEARCH_NO_MATCH, when: hasMapSearch },
   { path: ['searchFailed'], message: SEARCH_FAILED, when: hasMapSearch },
 ];

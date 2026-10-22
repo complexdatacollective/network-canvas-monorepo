@@ -2190,7 +2190,7 @@ describe('identical twins and sex at birth', () => {
       expect(identical()).not.toBeChecked();
       expect(zygosity()).toHaveAccessibleDescription(sexReason);
       expect(
-        within(zygosity()).getByRole('radio', { name: 'I don’t know' }),
+        within(zygosity()).getByRole('radio', { name: 'Don’t know' }),
       ).toBeChecked();
       await save(user);
 
@@ -3396,7 +3396,7 @@ describe('an answer the form worked out, or one no longer available', () => {
       expect(identical).not.toBeChecked();
       // As the family records them after the change.
       expect(
-        within(zygosity()).getByRole('radio', { name: 'I don’t know' }),
+        within(zygosity()).getByRole('radio', { name: 'Don’t know' }),
       ).toBeChecked();
       await save(user);
 

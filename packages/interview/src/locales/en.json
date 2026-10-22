@@ -227,6 +227,10 @@
     "defaultMessage": "Discard changes?",
     "description": "Title of the warning shown when a participant tries to leave a form containing invalid unsaved answers."
   },
+  "interview.interfaces.dontKnow": {
+    "defaultMessage": "Don’t know",
+    "description": "Answer option a participant picks when they do not know the answer to a question about a family member, such as whether twins are identical."
+  },
   "interview.interfaces.dragToReposition": {
     "defaultMessage": "Drag to reposition",
     "description": "Accessible name of the handle that moves the floating narrative preset toolbar."
@@ -246,6 +250,10 @@
   "interview.interfaces.errorHeading": {
     "defaultMessage": "Something went wrong",
     "description": "Short heading above an external-list loading error. This heading intentionally has no final period."
+  },
+  "interview.interfaces.externalDataError": {
+    "defaultMessage": "External data could not be loaded.",
+    "description": "Shown under the error heading when a list of people from a file the study provides could not be loaded."
   },
   "interview.interfaces.finishingInterview": {
     "defaultMessage": "Finishing the interview…",
@@ -307,6 +315,10 @@
     "defaultMessage": "Passphrase accepted! Click \"Next\" to continue.",
     "description": "Success message after the participant enters, on the anonymisation screen, the passphrase they chose earlier in the interview. Next refers to the interview navigation arrow."
   },
+  "interview.interfaces.pauseLayout": {
+    "defaultMessage": "Pause automatic layout",
+    "description": "Tooltip and accessible name of the toggle that stops the people on a network diagram from moving into place by themselves."
+  },
   "interview.interfaces.presetNavigation": {
     "defaultMessage": "Preset navigation",
     "description": "Accessible name of the toolbar group that switches between researcher-configured narrative views."
@@ -338,6 +350,10 @@
   "interview.interfaces.resizePanels": {
     "defaultMessage": "Resize panel and node list areas",
     "description": "Accessible name of the divider between the source panel and the list of added people; dragging or keyboard controls resize the two areas."
+  },
+  "interview.interfaces.resumeLayout": {
+    "defaultMessage": "Resume automatic layout",
+    "description": "Tooltip and accessible name of the toggle that lets the people on a network diagram move into place by themselves again."
   },
   "interview.interfaces.returnedToDrawer": {
     "defaultMessage": "Returned to the drawer.",

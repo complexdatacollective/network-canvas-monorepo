@@ -614,7 +614,6 @@ const OWN_WORDS = {
   ),
   zygosityFraternal: 'Fraternal zygosity - matrix check',
   zygosityIdentical: 'Identical zygosity - matrix check',
-  zygosityUnknown: 'Unknown zygosity - matrix check',
   you: 'Me myself - matrix check',
   save: 'Keep these details - matrix check',
   connectTool: 'Link tool - matrix check',
@@ -2648,16 +2647,18 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
     'you',
     'relativeTerm',
     'panelTitle',
-    'save',
     'genderIdentityLabel',
     'sexAssignedAtBirthLabel',
-    'dontKnow',
   ] as const;
   const { synth, fp, person, relate, parents } = scaffold({
     framing: 'gendered',
     completeness: { scope: 'firstDegree', enforcement: 'recommended' },
     wording: ownWords(...words),
   });
+  // The Save button and the don't know answer are the interview's shared
+  // words, worded once for the whole protocol.
+  synth.setInterfaceText('buttons', 'save', OWN_WORDS.save);
+  synth.setInterfaceText('buttons', 'dontKnow', OWN_WORDS.dontKnow);
   person('ego', {
     name: 'Ari',
     gender: 'nonBinary',
@@ -2673,7 +2674,11 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
 
   return {
     id: 'wording-people-and-panel',
-    covers: coversWords(...words),
+    covers: [
+      ...coversWords(...words),
+      'interfaceText.buttons.save',
+      'interfaceText.buttons.dontKnow',
+    ],
     seedNetwork: true,
     build: () => synth,
     run: async (ctx) => {
@@ -3426,7 +3431,6 @@ function wordingEditPerson(): ScenarioDefinition {
     'twinZygosityLabel',
     'zygosityFraternal',
     'zygosityIdentical',
-    'zygosityUnknown',
     'unavailableIdenticalTwin',
     'unavailableCarried',
     'unavailableSameSexAsCoParent',
@@ -3434,6 +3438,9 @@ function wordingEditPerson(): ScenarioDefinition {
     'unavailableCarrierRecorded',
   ] as const;
   const { synth, person, relate } = scaffold({ wording: ownWords(...words) });
+  // A twin pair whose zygosity is not known takes the shared don't know
+  // answer.
+  synth.setInterfaceText('buttons', 'dontKnow', OWN_WORDS.dontKnow);
   person('ego', {
     name: 'Ari',
     gender: 'nonBinary',
@@ -3528,7 +3535,7 @@ function wordingEditPerson(): ScenarioDefinition {
       for (const word of [
         'zygosityIdentical',
         'zygosityFraternal',
-        'zygosityUnknown',
+        'dontKnow',
       ] as const) {
         await expect(
           withBea.getByRole('radio', { name: plainWord(word), exact: true }),

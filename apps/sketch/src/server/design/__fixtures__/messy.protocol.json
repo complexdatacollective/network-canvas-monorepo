@@ -442,15 +442,7 @@
             "variable": "person_helper"
           }
         }
-      ],
-      "tooltips": {
-        "pauseLayout": {
-          "en": "Pause automatic layout"
-        },
-        "resumeLayout": {
-          "en": "Resume automatic layout"
-        }
-      }
+      ]
     },
     {
       "id": "mood_form",
@@ -538,6 +530,12 @@
       },
       "no": {
         "en": "No"
+      },
+      "pauseLayout": {
+        "en": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en": "Resume automatic layout"
       }
     },
     "messages": {

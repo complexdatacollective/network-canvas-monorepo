@@ -491,7 +491,6 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'roster',
         type: 'NameGeneratorRoster',
-        externalDataError: localized('External data could not be loaded.'),
         allAddedNotice: localized(
           'There is nothing left to add from this list.',
         ),

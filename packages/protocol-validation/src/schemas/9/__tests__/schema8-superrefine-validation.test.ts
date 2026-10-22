@@ -2638,8 +2638,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
           ),
           outsideAreasLabel: localized('Outside Selectable Areas'),
-          searchLabel: localized('Search'),
-          searchNoMatch: localized('Nothing matched your search term.'),
           searchFailed: localized(
             'Search could not be completed. Try again in a moment.',
           ),

@@ -3105,7 +3105,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               {panel?.mode.kind === 'add' ? (
                 <span ref={setStepNavigation} className="contents" />
               ) : (
-                <SubmitButton form={formId}>{text(wording.save)}</SubmitButton>
+                <SubmitButton form={formId}>
+                  <AppMessage message={commonMessages.save} />
+                </SubmitButton>
               )}
             </>
           }

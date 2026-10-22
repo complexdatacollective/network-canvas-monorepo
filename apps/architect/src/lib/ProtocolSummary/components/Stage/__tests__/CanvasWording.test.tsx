@@ -80,22 +80,22 @@ describe('Protocol Summary canvas wording', () => {
     ).toBeInTheDocument();
   });
 
-  it('prints the layout tooltips of a stage whose automatic layout is on', () => {
+  it('prints the drawing tooltips of a stage whose drawing is on', () => {
     const configuration = {
-      behaviours: { automaticLayout: true },
-      tooltips: { pauseLayout: { en: 'Freeze the layout' } },
+      behaviours: { freeDraw: true },
+      tooltips: { enableDrawing: { en: 'Start drawing' } },
     };
-    const { unmount } = renderWording('Sociogram', configuration);
+    const { unmount } = renderWording('Narrative', configuration);
     expect(
-      within(rowFor('Pause layout tooltip')).getByText('Freeze the layout'),
+      within(rowFor('Enable drawing tooltip')).getByText('Start drawing'),
     ).toBeInTheDocument();
     unmount();
 
-    renderWording('Sociogram', {
+    renderWording('Narrative', {
       ...configuration,
-      behaviours: { automaticLayout: false },
+      behaviours: { freeDraw: false },
     });
-    expect(screen.queryByText('Freeze the layout')).not.toBeInTheDocument();
+    expect(screen.queryByText('Start drawing')).not.toBeInTheDocument();
   });
 
   it('prints the at-risk notation only when the pedigree shows at-risk statuses', () => {

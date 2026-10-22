@@ -1238,17 +1238,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the words shown for the participant when they appear as a family member.',
   },
-  wordingSave: {
-    id: 'protocolBuilder.pedigree.wording.save',
-    defaultMessage: 'Save button',
-    description: 'Label of the button that saves a family member’s details.',
-  },
-  wordingDontKnow: {
-    id: 'protocolBuilder.pedigree.wording.dontKnow',
-    defaultMessage: 'Don’t know option',
-    description:
-      'Label of the option a participant picks when they do not know an answer.',
-  },
   wordingConnectQuestion: {
     id: 'protocolBuilder.pedigree.wording.connectQuestion',
     defaultMessage: 'Connect question',
@@ -1577,12 +1566,6 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.wording.zygosityFraternal',
     defaultMessage: 'Fraternal option',
     description: 'Label of the option that two twins are fraternal.',
-  },
-  wordingZygosityUnknown: {
-    id: 'protocolBuilder.pedigree.wording.zygosityUnknown',
-    defaultMessage: 'Not known if identical option',
-    description:
-      'Label of the option that the participant does not know whether two twins are identical.',
   },
   wordingUnavailableAncestor: {
     id: 'protocolBuilder.pedigree.wording.unavailableAncestor',

@@ -2,8 +2,9 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import BooleanField, {
@@ -54,6 +55,7 @@ import {
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { readOwnProperty, writeOwnProperty } from '../../../utils/ownProperty';
+import { interfaceMessages } from '../../messages';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
 import { formatOwnedLabel, parentTermFrom } from '../kinship';
 import {
@@ -654,7 +656,9 @@ export default function PersonForm({
           stepped={mode.kind === 'add'}
           navigation={stepNavigation}
           finish={
-            <SubmitButton form={formId}>{text(wording.save)}</SubmitButton>
+            <SubmitButton form={formId}>
+              <AppMessage message={commonMessages.save} />
+            </SubmitButton>
           }
         >
           <section data-question-step className="flex flex-col">
@@ -762,8 +766,6 @@ function RelativesQuestions({
   askAbout: AskAbout;
   displayName: (personId: string) => string;
 }) {
-  const words = usePedigreeWords();
-  const { wording, text } = words;
   const intl = useAppIntl();
   const resolveMessage = useResolveLocalizedMessage();
   const values = {
@@ -773,7 +775,7 @@ function RelativesQuestions({
   const options = [
     { value: 'yes', label: intl.formatMessage(booleanFieldMessages.yes) },
     { value: 'no', label: intl.formatMessage(booleanFieldMessages.no) },
-    { value: 'unknown', label: text(wording.dontKnow) },
+    { value: 'unknown', label: intl.formatMessage(interfaceMessages.dontKnow) },
   ];
   const initial = (relatives: RelativesGroup) => {
     const group = RELATIVES_NOT_RECORDED[relatives];
@@ -1130,6 +1132,7 @@ function TwinZygosityField({
   sexAttribute: string;
 }) {
   const { wording, text } = usePedigreeWords();
+  const intl = useAppIntl();
   // The person's sex at birth as answered in this form.
   const answeredSex = asString(
     useFormValue([sexAttribute], 'opaque')[sexAttribute],
@@ -1220,7 +1223,10 @@ function TwinZygosityField({
       label={text(wording.twinZygosityLabel, args)}
       options={ZYGOSITIES.map((value) => ({
         value,
-        label: text(zygosityWording(wording, value)),
+        label:
+          value === 'unknown'
+            ? intl.formatMessage(interfaceMessages.dontKnow)
+            : text(zygosityWording(wording, value)),
         disabled: value === 'identical' && identicalUnavailable,
         description: value === 'identical' ? identicalHint : undefined,
       }))}
@@ -1231,20 +1237,17 @@ function TwinZygosityField({
   );
 }
 
-/** The words of the option for each zygosity two twins may have. */
+/**
+ * The stage's words of the option for each zygosity two twins may have; the
+ * twins' zygosity is unknown in the protocol's own Don't know.
+ */
 const zygosityWording = (
   wording: FamilyPedigreeWording,
-  zygosity: TwinZygosity,
-): LocalizedString => {
-  switch (zygosity) {
-    case 'identical':
-      return wording.zygosityIdentical;
-    case 'fraternal':
-      return wording.zygosityFraternal;
-    case 'unknown':
-      return wording.zygosityUnknown;
-  }
-};
+  zygosity: Exclude<TwinZygosity, 'unknown'>,
+): LocalizedString =>
+  zygosity === 'identical'
+    ? wording.zygosityIdentical
+    : wording.zygosityFraternal;
 
 function ExistingRelationshipFields({
   person,

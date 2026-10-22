@@ -64,20 +64,6 @@ const DRAWING_TOOLTIPS: readonly WordingSetting[] = [
   },
 ];
 
-/** The layout tools' words, asked while automatic layout is on. */
-const LAYOUT_TOOLTIPS: readonly WordingSetting[] = [
-  {
-    path: 'tooltips.pauseLayout',
-    label: messages.pauseLayoutTooltipLabel,
-    hint: messages.layoutTooltipHint,
-  },
-  {
-    path: 'tooltips.resumeLayout',
-    label: messages.resumeLayoutTooltipLabel,
-    hint: messages.layoutTooltipHint,
-  },
-];
-
 /**
  * The words a participant reads on the narrative canvas. Each heading is asked
  * while a preset makes the panel it names appear, and each tool's words while
@@ -101,7 +87,7 @@ export default function NarrativeWordingSection() {
       description={intl.formatMessage(messages.wordingDescription)}
     >
       {supplied !== undefined &&
-        [...HEADINGS, ...DRAWING_TOOLTIPS, ...LAYOUT_TOOLTIPS]
+        [...HEADINGS, ...DRAWING_TOOLTIPS]
           .filter((setting) =>
             suppliedStageSettingApplies(stage, setting.path.split('.')),
           )

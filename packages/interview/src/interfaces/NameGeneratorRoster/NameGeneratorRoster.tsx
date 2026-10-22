@@ -76,13 +76,15 @@ import DropOverlay from './DropOverlay';
 import { convertNamesToUUIDs, type NameGeneratorRosterProps } from './helpers';
 import useItems, { type UseItemElement } from './useItems';
 
-const ErrorMessage = ({ text }: { text: string }) => (
+const ErrorMessage = () => (
   <div className="flex flex-1 flex-col items-center justify-center gap-2">
     <Icon name="warning" />
     <Heading level="h2" className="sr-only">
       <AppMessage message={interfaceMessages.errorHeading} />
     </Heading>
-    <Paragraph>{text}</Paragraph>
+    <Paragraph>
+      <AppMessage message={interfaceMessages.externalDataError} />
+    </Paragraph>
   </div>
 );
 
@@ -115,18 +117,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     ) : (
       <DynamicTextParts parts={panelTitleParts} />
     );
-  const { text: externalDataError } = useLocalizedString(
-    stage.externalDataError,
-  );
   const { text: allAddedNotice } = useLocalizedString(stage.allAddedNotice);
-  const resolveString = useResolveLocalizedString();
-  // The search wording is set only while the roster has a search.
-  const searchLabel = stage.searchLabel
-    ? resolveString(stage.searchLabel).text
-    : undefined;
-  const searchNoMatch = stage.searchNoMatch
-    ? resolveString(stage.searchNoMatch).text
-    : undefined;
+  // The protocol's interface text words the search (`search.searchLabel`).
+  const searchLabel = intl.formatMessage(commonMessages.search);
 
   const { isLastPrompt } = usePrompts();
 
@@ -386,8 +379,8 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     if (items.length === 0 || filteredItems.length === 0) {
       return <>{allAddedNotice}</>;
     }
-    return <>{searchNoMatch}</>;
-  }, [items.length, filteredItems.length, allAddedNotice, searchNoMatch]);
+    return <AppMessage message={runtimeMessages.noSearchMatch} />;
+  }, [items.length, filteredItems.length, allAddedNotice]);
 
   // --- DnD setup for source panel ---
   const sourceCollectionId = `source-nodes-${useId()}`;
@@ -474,7 +467,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
               <Loading message={intl.formatMessage(commonMessages.loading)} />
             </div>
           ) : itemsStatus.state === 'error' ? (
-            <ErrorMessage text={externalDataError} />
+            <ErrorMessage />
           ) : (
             <div className="relative flex min-h-0 flex-1 flex-col [&_.card]:cursor-grab">
               <Collection
