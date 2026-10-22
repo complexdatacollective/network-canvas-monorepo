@@ -750,10 +750,6 @@
           "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}",
           "es": "{count, plural, one {Si quitas esta conexión, {names} quedaría fuera de tu árbol familiar. Primero conecta a esa persona con otra persona de tu familia.} other {Si quitas esta conexión, {names} quedarían fuera de tu árbol familiar. Primero conecta a esas personas con otra persona de tu familia.}}"
         },
-        "dontKnow": {
-          "en-US": "Don’t know",
-          "es": "No lo sé"
-        },
         "panelTitle": {
           "en-US": "{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}",
           "es": "{relation, select, edit {{isYou, select, true {Sobre ti} other {Sobre {name}}}} parent {{isYou, select, true {Añadir tu progenitor} other {Añadir un progenitor de {name}}}} sibling {{isYou, select, true {Añadir tu hermano/a} other {Añadir un hermano/a de {name}}}} partner {{isYou, select, true {Añadir tu pareja} other {Añadir una pareja de {name}}}} other {{isYou, select, true {Añadir tu hijo/a} other {Añadir un hijo/a de {name}}}}}"
@@ -837,10 +833,6 @@
         "you": {
           "en-US": "You",
           "es": "Tú"
-        },
-        "save": {
-          "en-US": "Save",
-          "es": "Guardar"
         },
         "connectTool": {
           "en-US": "Connect",
@@ -969,10 +961,6 @@
         "zygosityIdentical": {
           "en-US": "Yes, identical",
           "es": "Sí, idénticos"
-        },
-        "zygosityUnknown": {
-          "en-US": "I don’t know",
-          "es": "No lo sé"
         },
         "disconnectStandIn": {
           "en-US": "{childIsYou, select, true {“{standIn}” stands in for a parent of yours who has not been added yet, so this connection cannot be removed. Add that parent to you instead, and they will take this place.} other {“{standIn}” stands in for a parent of “{child}” who has not been added yet, so this connection cannot be removed. Add that parent to “{child}” instead, and they will take this place.}}",
@@ -1167,6 +1155,14 @@
       "no": {
         "en-US": "No",
         "es": "No"
+      },
+      "save": {
+        "en-US": "Save",
+        "es": "Guardar"
+      },
+      "dontKnow": {
+        "en-US": "Don’t know",
+        "es": "No lo sé"
       }
     },
     "messages": {

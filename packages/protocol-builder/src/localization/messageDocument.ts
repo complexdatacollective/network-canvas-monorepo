@@ -178,7 +178,15 @@ const restoreMarkers = (
   return { ...content, content: restored };
 };
 
-const EDGE_SPACE = /^(\s*)([\s\S]*?)(\s*)$/;
+// The spaces at each end of a text, and what lies between them; text that is
+// all spaces is all `before`. Sliced rather than matched, so a long run of
+// spaces costs one pass.
+const edgeSpace = (text: string): [string, string, string] => {
+  const start = text.length - text.trimStart().length;
+  const end = text.trimEnd().length;
+  if (end <= start) return [text, '', ''];
+  return [text.slice(0, start), text.slice(start, end), text.slice(end)];
+};
 
 /**
  * A version's line from its markdown. Markdown drops the spaces at the ends
@@ -198,8 +206,7 @@ const versionLine = (
   if (markdown.includes('\n')) {
     throw new MessageDocumentProblem('linesInVersion');
   }
-  const [, before = '', middle = '', after = ''] =
-    EDGE_SPACE.exec(markdown) ?? [];
+  const [before, middle, after] = edgeSpace(markdown);
   const parsed = restoreMarkers(
     markdownToRichTextContent(LINE_LEAD + middle, true, true),
     pieces,
@@ -392,8 +399,7 @@ const messageNodesOf = (
   } else if (isVersion) {
     // A version keeps the spaces at its ends: they sit in a sentence.
     const line = marked.content?.[0]?.content ?? [];
-    const [, before = '', , after = ''] =
-      EDGE_SPACE.exec(plainTextOf(marked)) ?? [];
+    const [before, , after] = edgeSpace(plainTextOf(marked));
     const written = richTextContentToMarkdown(lineDocument(line), true, true);
     text = before + written.trim() + after;
   } else {

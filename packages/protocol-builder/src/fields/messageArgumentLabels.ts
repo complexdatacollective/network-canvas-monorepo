@@ -18,9 +18,9 @@ import {
  * (see `localizedMessage`), so one table names them for every editor of a
  * message: the stage editor's field and Architect's translation table.
  *
- * Every argument a schema 9 setting declares is named here: each case of
- * each select argument (and `other`), and each text or plural argument as a
- * placeholder. `messageArgumentLabels.test.tsx` walks the schema and fails
+ * Every argument a schema 9 setting declares is named here: each select
+ * argument, which a text chooses its version by, and each of its cases (and
+ * `other`), and each text or plural argument as a placeholder. `messageArgumentLabels.test.tsx` walks the schema and fails
  * for an argument that is not.
  */
 const messages = defineMessages({
@@ -351,6 +351,126 @@ const messages = defineMessages({
     description:
       'Heading over the version of a message used for a relative none of the other versions name.',
   },
+  switchIsYou: {
+    id: 'protocolBuilder.localizedMessage.switchIsYou',
+    defaultMessage: 'Participant or someone else',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the family member the text is about is the participant themself or someone else in their family. The participant never sees this name.',
+  },
+  switchFirstIsYou: {
+    id: 'protocolBuilder.localizedMessage.switchFirstIsYou',
+    defaultMessage: 'First of the two people: participant or someone else',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the first of the two people the text is about is the participant themself or someone else. The participant never sees this name.',
+  },
+  switchParentIsYou: {
+    id: 'protocolBuilder.localizedMessage.switchParentIsYou',
+    defaultMessage: 'Parent: participant or someone else',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the parent the text is about is the participant themself or someone else. The participant never sees this name.',
+  },
+  switchChildIsYou: {
+    id: 'protocolBuilder.localizedMessage.switchChildIsYou',
+    defaultMessage: 'Child: participant or someone else',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the child the text is about is the participant themself or someone else. The participant never sees this name.',
+  },
+  switchPersonIsYou: {
+    id: 'protocolBuilder.localizedMessage.switchPersonIsYou',
+    defaultMessage: 'Person: participant or someone else',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person the text is about is the participant themself or someone else. The participant never sees this name.',
+  },
+  switchPartnerIsYou: {
+    id: 'protocolBuilder.localizedMessage.switchPartnerIsYou',
+    defaultMessage: 'Partner: participant or someone else',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the partner the text is about is the participant themself or someone else. The participant never sees this name.',
+  },
+  switchAnchorIsYou: {
+    id: 'protocolBuilder.localizedMessage.switchAnchorIsYou',
+    defaultMessage: 'Person they are added to: participant or someone else',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person a new family member is being added to is the participant themself or someone else. The participant never sees this name.',
+  },
+  switchOtherIsYou: {
+    id: 'protocolBuilder.localizedMessage.switchOtherIsYou',
+    defaultMessage: 'Other parent: participant or someone else',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the child’s other parent is the participant themself or someone else. The participant never sees this name.',
+  },
+  switchSingle: {
+    id: 'protocolBuilder.localizedMessage.switchSingle',
+    defaultMessage: 'One person or several',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the text is asking about one person or about several people. The participant never sees this name.',
+  },
+  switchCurrent: {
+    id: 'protocolBuilder.localizedMessage.switchCurrent',
+    defaultMessage: 'Current or ended partnership',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the partnership the text is about is current or has ended. The participant never sees this name.',
+  },
+  switchNamed: {
+    id: 'protocolBuilder.localizedMessage.switchNamed',
+    defaultMessage: 'Named or unnamed',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person the text is about has a name or not. The participant never sees this name.',
+  },
+  switchHasOthers: {
+    id: 'protocolBuilder.localizedMessage.switchHasOthers',
+    defaultMessage: 'Whether others would be removed',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether removing someone would also remove other people. The participant never sees this name.',
+  },
+  switchHasLabel: {
+    id: 'protocolBuilder.localizedMessage.switchHasLabel',
+    defaultMessage: 'How the message refers to the other question',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether a validation message about an answer names the other question it is compared with, by that question’s label, or refers to the previous answer instead. The participant never sees this name.',
+  },
+  switchFraming: {
+    id: 'protocolBuilder.localizedMessage.switchFraming',
+    defaultMessage: 'Words used for parents',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the stage describes parents as egg and sperm parents or as mothers and fathers. The participant never sees this name.',
+  },
+  switchParent: {
+    id: 'protocolBuilder.localizedMessage.switchParent',
+    defaultMessage: 'Egg or sperm parent',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the parent the text is about is the egg parent or the sperm parent. The participant never sees this name.',
+  },
+  switchShared: {
+    id: 'protocolBuilder.localizedMessage.switchShared',
+    defaultMessage: 'Parents the siblings share',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: which parents two siblings share: only the egg parent, only the sperm parent, or both. The participant never sees this name.',
+  },
+  switchHasSurrogate: {
+    id: 'protocolBuilder.localizedMessage.switchHasSurrogate',
+    defaultMessage: 'Surrogate recorded or not',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether a surrogate is recorded as having carried the people the text is about. The participant never sees this name.',
+  },
+  switchWho: {
+    id: 'protocolBuilder.localizedMessage.switchWho',
+    defaultMessage: 'Who is the participant',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: which of the people the text is about, if any, is the participant themself. The participant never sees this name.',
+  },
+  switchRelation: {
+    id: 'protocolBuilder.localizedMessage.switchRelation',
+    defaultMessage: 'Relation of the person being added or edited',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: the relation of the family member the text is about, such as a parent, a sibling or a partner, or whether the person is being edited. The participant never sees this name.',
+  },
+  switchTerm: {
+    id: 'protocolBuilder.localizedMessage.switchTerm',
+    defaultMessage: 'Kind of relative',
+    description:
+      'Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: the kind of relative a word names, such as mother or brother-in-law. The participant never sees this name.',
+  },
   placeholderCount: {
     id: 'protocolBuilder.localizedMessage.placeholderCount',
     defaultMessage: 'Number',
@@ -509,7 +629,18 @@ const messages = defineMessages({
   },
 });
 
+/**
+ * The headings over a text's version for the participant and for anyone else
+ * in their family, which piped text's "Participant or someone else" value uses too.
+ */
+export const participantVersionMessages = {
+  aboutParticipant: messages.aboutParticipant,
+  aboutSomeoneElse: messages.aboutSomeoneElse,
+};
+
 export type MessageArgumentLabels = Readonly<{
+  /** Each select argument, which a text chooses its version by. */
+  switchLabels: Readonly<Record<string, string>>;
   /** Each case of each select argument, and `other`. */
   caseLabels: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** Each placeholder: a text argument, and a plural argument's number. */
@@ -559,6 +690,29 @@ export function messageArgumentLabels(intl: IntlShape): MessageArgumentLabels {
   const text = (message: MessageDescriptor) => intl.formatMessage(message);
   const words = relativeTermWords(intl.locale);
   return {
+    switchLabels: {
+      isYou: text(messages.switchIsYou),
+      firstIsYou: text(messages.switchFirstIsYou),
+      parentIsYou: text(messages.switchParentIsYou),
+      childIsYou: text(messages.switchChildIsYou),
+      personIsYou: text(messages.switchPersonIsYou),
+      partnerIsYou: text(messages.switchPartnerIsYou),
+      anchorIsYou: text(messages.switchAnchorIsYou),
+      otherIsYou: text(messages.switchOtherIsYou),
+      single: text(messages.switchSingle),
+      current: text(messages.switchCurrent),
+      named: text(messages.switchNamed),
+      hasOthers: text(messages.switchHasOthers),
+      hasLabel: text(messages.switchHasLabel),
+      framing: text(messages.switchFraming),
+      parent: text(messages.switchParent),
+      shared: text(messages.switchShared),
+      hasSurrogate: text(messages.switchHasSurrogate),
+      who: text(messages.switchWho),
+      relation: text(messages.switchRelation),
+      term: text(messages.switchTerm),
+      sex: text(messages.placeholderSex),
+    },
     caseLabels: {
       isYou: {
         true: text(messages.aboutParticipant),

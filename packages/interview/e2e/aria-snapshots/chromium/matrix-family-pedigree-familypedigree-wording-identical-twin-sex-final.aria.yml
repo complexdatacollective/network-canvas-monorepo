@@ -71,8 +71,8 @@
       - text: Yes, identical Ben and you differ in sex at birth, so not Yes, identical - matrix check
       - radio "No, fraternal (non-identical)" [checked]
       - text: No, fraternal (non-identical)
-      - radio "I don’t know"
-      - text: I don’t know
+      - radio "Don’t know"
+      - text: Don’t know
     - button "Delete"
     - button "Cancel"
     - button "Save"

@@ -85,8 +85,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         arguments: PEDIGREE_WORDING_ARGUMENTS.relativeTerm,
       },
       { key: 'you', label: messages.wordingYou },
-      { key: 'save', label: messages.wordingSave },
-      { key: 'dontKnow', label: messages.wordingDontKnow },
     ],
   },
   {
@@ -333,7 +331,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       },
       { key: 'zygosityIdentical', label: messages.wordingZygosityIdentical },
       { key: 'zygosityFraternal', label: messages.wordingZygosityFraternal },
-      { key: 'zygosityUnknown', label: messages.wordingZygosityUnknown },
       {
         key: 'unavailableIdenticalTwin',
         label: messages.wordingUnavailableIdenticalTwin,

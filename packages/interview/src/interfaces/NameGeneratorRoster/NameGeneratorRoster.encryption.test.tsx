@@ -104,7 +104,6 @@ afterEach(() => {
 const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
   id: 'roster-stage',
   type: 'NameGeneratorRoster',
-  externalDataError: { en: 'External data could not be loaded.' },
   allAddedNotice: { en: 'There is nothing left to add from this list.' },
   panelTitle: { en: 'Available to add' },
   label: { en: 'Roster' },

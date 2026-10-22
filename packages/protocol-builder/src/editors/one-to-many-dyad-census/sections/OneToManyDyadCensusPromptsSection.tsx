@@ -36,9 +36,9 @@ const messages = defineMessages({
   guidance: {
     id: 'protocolBuilder.censusPrompts.oneToManyGuidance',
     defaultMessage:
-      'The participant sees one person alongside everyone else and selects whoever the question applies to, so write it as a question about that one person and the group — “which of these people does this person know?” rather than a question about a single pair.',
+      'The participant sees one node alongside the other nodes and selects each of the others that the question applies to, so write the question about that one node and the other nodes as a group rather than about a single pair. To show that node’s label in the question, insert “Node label” with the syringe button in the toolbar.',
     description:
-      'Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question about one person and the group.',
+      'Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The quoted name is an entry in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match that entry’s own translation.',
   },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.oneToManyPlaceholder',

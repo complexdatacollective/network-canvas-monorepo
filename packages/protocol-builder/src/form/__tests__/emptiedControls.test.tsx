@@ -64,19 +64,19 @@ describe('a control the researcher emptied', () => {
   it('takes the container it emptied with it', async () => {
     const { probe, draft } = createStageDraftProbe();
     const harness = renderStageEditor({
-      stageId: 'sociogram-1',
+      stageId: 'network-composer-1',
       sections: (
         <>
           <BuilderSection title="Tooltips">
             {probe}
             <Field
-              name="tooltips.pauseLayout"
-              label="Pause layout tooltip"
+              name="tooltips.addPerson"
+              label="Add person tooltip"
               component={LocalizedInputField}
             />
             <Field
-              name="tooltips.resumeLayout"
-              label="Resume layout tooltip"
+              name="tooltips.automaticLayout"
+              label="Automatic layout tooltip"
               component={LocalizedInputField}
             />
           </BuilderSection>
@@ -84,15 +84,15 @@ describe('a control the researcher emptied', () => {
       ),
     });
 
-    const pause = await harness.findByRole('textbox', {
-      name: 'Pause layout tooltip',
+    const addPerson = await harness.findByRole('textbox', {
+      name: 'Add person tooltip',
     });
     // The fixture's stage holds both, so the object is there to be taken.
     expect(Object.hasOwn(draft(), 'tooltips')).toBe(true);
 
-    await harness.user.clear(pause);
+    await harness.user.clear(addPerson);
     await harness.user.clear(
-      await harness.findByRole('textbox', { name: 'Resume layout tooltip' }),
+      await harness.findByRole('textbox', { name: 'Automatic layout tooltip' }),
     );
 
     // Read off the draft rather than out of a save: a save writes Network

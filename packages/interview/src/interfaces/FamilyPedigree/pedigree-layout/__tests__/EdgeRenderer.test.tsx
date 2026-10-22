@@ -511,61 +511,6 @@ function uprightStrokeAt(
   });
 }
 
-describe('PedigreeEdgeSvg — a run of the sibship hanging from its own stem', () => {
-  // Child 1 and child 2 share a donor the third child does not: they hang
-  // from a sub-bar at y=130, on a stem down from the sibling bar at x=40.
-  const connector = makeParentChildConnector({
-    uplines: [
-      ofChild(seg(20, 150, 20, 130), 'child1'),
-      ofChild(seg(60, 150, 60, 130), 'child2'),
-      ofChild(seg(180, 150, 180, 100), 'child3'),
-    ],
-    siblingBar: seg(40, 100, 180, 100),
-    parentLink: [seg(100, 60, 100, 100)],
-    parentIds: ['parent1'],
-    runs: [{ stem: seg(40, 100, 40, 130), bar: seg(20, 130, 60, 130) }],
-  });
-  const draw = (lit?: string) =>
-    render(
-      <PedigreeEdgeSvg
-        connectorData={makeConnectorData([connector])}
-        color="black"
-        width={300}
-        height={300}
-        {...(lit
-          ? {
-              highlightedNodeIds: new Set([lit, 'parent1']),
-              highlightedEdgeKeys: new Set([edgeKey('parent1', lit)]),
-            }
-          : {})}
-      />,
-    ).container;
-
-  test('draws the stem and the sub-bar', () => {
-    const container = draw();
-    expect(uprightStrokeAt(container, 40, 115)).toBeDefined();
-    expect(barStrokeAt(container, 50, 130)).toBeDefined();
-    expect(barStrokeAt(container, 30, 130)).toBeDefined();
-  });
-
-  test('lights the way down the stem to a contributing child of the run, and dims the rest', () => {
-    const container = draw('child1');
-    expect(isLineDimmed(uprightStrokeAt(container, 40, 115)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 70, 100)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 30, 130)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 50, 130)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 140, 100)!)).toBe(true);
-  });
-
-  test('dims the stem and its sub-bar when only a child outside the run contributes', () => {
-    const container = draw('child3');
-    expect(isLineDimmed(uprightStrokeAt(container, 40, 115)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 30, 130)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 70, 100)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 140, 100)!)).toBe(false);
-  });
-});
-
 describe('PedigreeEdgeSvg — couple bar per-segment dimming', () => {
   test('the contributing-parent half is bright; the other half is dimmed', () => {
     // Only the left parent contributes to the couple's child.
@@ -1174,134 +1119,17 @@ describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
 });
 
 describe('auxiliary lines that cross another line', () => {
-  test('hop over each crossing with a half circle, and are drawn whole elsewhere', () => {
-    const hopped = auxiliaryPath({
-      points: [
-        { x: 0, y: 0 },
-        { x: 100, y: 0 },
-        { x: 100, y: 100 },
-      ],
-      hops: [
-        { x: 50, y: 0 },
-        { x: 100, y: 60 },
-      ],
-    });
-    // Level piece: up to the hop, over it, on to the corner.
-    expect(hopped).toMatch(/^M0,0 L42,0 A8,8 0 0 1 58,0 L100,0 /);
-    // Upright piece: down to the hop, round it, on to the end.
-    expect(hopped).toMatch(/L100,52 A8,8 0 0 1 100,68 L100,100$/);
-
-    const { container } = render(
-      <PedigreeEdgeSvg
-        connectorData={{
-          connectors: {
-            groupLines: [],
-            parentChildLines: [],
-            auxiliaryLines: [
-              {
-                type: 'auxiliary',
-                edgeType: 'social',
-                points: [
-                  { x: 0, y: 0 },
-                  { x: 100, y: 0 },
-                ],
-                hops: [{ x: 50, y: 0 }],
-              },
-              {
-                type: 'auxiliary',
-                edgeType: 'donor',
-                points: [
-                  { x: 0, y: 20 },
-                  { x: 100, y: 20 },
-                ],
-              },
-            ],
-            twinIndicators: [],
-            duplicateArcs: [],
-          },
-        }}
-        color="var(--edge-1)"
-        width={200}
-        height={200}
-      />,
-    );
-    const path = container.querySelector('path');
-    expect(path?.getAttribute('d')).toContain('A8,8');
-    expect(path?.getAttribute('stroke-dasharray')).toBe('8 8');
+  test('are drawn straight across it, through every corner of their course', () => {
+    // Bennett et al. draw a crossing plain (Josh, 22 Oct 2026: no hops).
     expect(
-      Array.from(container.querySelectorAll('path')).map((el) =>
-        el.getAttribute('d'),
-      ),
-    ).toContain('M0,20 L100,20');
-  });
-});
-
-describe('PedigreeEdgeSvg — a donor’s line carries the lineage on down the line of descent it joins', () => {
-  // Child 1 and child 2 share a donor the third child does not: they hang
-  // from a sub-bar at y=130 on a stem at x=40, which the donor's line meets
-  // at y=115. A second donor's line meets child 3's own line up at y=120.
-  // Parent 1 transmits to no one.
-  const connector = makeParentChildConnector({
-    uplines: [
-      ofChild(seg(20, 150, 20, 130), 'child1'),
-      ofChild(seg(60, 150, 60, 130), 'child2'),
-      ofChild(seg(180, 150, 180, 100), 'child3'),
-    ],
-    siblingBar: seg(40, 100, 180, 100),
-    parentLink: [seg(100, 60, 100, 100)],
-    parentIds: ['parent1'],
-    runs: [{ stem: seg(40, 100, 40, 130), bar: seg(20, 130, 60, 130) }],
-  });
-  const donorLine = (
-    donor: string,
-    end: { x: number; y: number },
-  ): AuxiliaryConnector => ({
-    type: 'auxiliary',
-    edgeType: 'donor',
-    points: [{ x: end.x - 30, y: 0 }, { x: end.x - 30, y: end.y }, end],
-    endpointIds: [donor, undefined],
-  });
-  const draw = (edges: string[]) =>
-    render(
-      <PedigreeEdgeSvg
-        connectorData={{
-          connectors: {
-            groupLines: [],
-            parentChildLines: [connector],
-            auxiliaryLines: [
-              donorLine('donor', { x: 40, y: 115 }),
-              donorLine('donor2', { x: 180, y: 120 }),
-            ],
-            twinIndicators: [],
-            duplicateArcs: [],
-          },
-        }}
-        color="black"
-        width={300}
-        height={300}
-        highlightedNodeIds={new Set(edges.flatMap((edge) => edge.split('->')))}
-        highlightedEdgeKeys={new Set(edges)}
-      />,
-    ).container;
-
-  test('lights the stem below the donor’s line, the sub-bar and the line up to the child the donor gave the lineage to', () => {
-    const container = draw([edgeKey('donor', 'child1')]);
-    expect(isLineDimmed(uprightStrokeAt(container, 40, 125)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 30, 130)!)).toBe(false);
-    expect(isLineDimmed(uprightStrokeAt(container, 20, 140)!)).toBe(false);
-    // Above where the donor's line meets it, the stem carries only the
-    // parents' line of descent, which transmits nothing.
-    expect(isLineDimmed(uprightStrokeAt(container, 40, 105)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 50, 130)!)).toBe(true);
-    expect(isLineDimmed(uprightStrokeAt(container, 60, 140)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 70, 100)!)).toBe(true);
-  });
-
-  test('lights a lone child’s line up below where a donor’s line meets it', () => {
-    const container = draw([edgeKey('donor2', 'child3')]);
-    expect(isLineDimmed(uprightStrokeAt(container, 180, 135)!)).toBe(false);
-    expect(isLineDimmed(uprightStrokeAt(container, 180, 110)!)).toBe(true);
-    expect(isLineDimmed(uprightStrokeAt(container, 40, 125)!)).toBe(true);
+      auxiliaryPath({
+        points: [
+          { x: 0, y: 0 },
+          { x: 100, y: 0 },
+          { x: 100, y: 100 },
+        ],
+      }),
+    ).toBe('M0,0 L100,0 L100,100');
   });
 });
 
@@ -1453,88 +1281,6 @@ describe('PedigreeEdgeSvg — two co-parents’ lines that join', () => {
   });
 });
 
-describe('PedigreeEdgeSvg — a run inside another run', () => {
-  // A donor gave to children 1-3, who hang from a sub-bar at y=120 on a
-  // stem at x=60; a surrogate carried children 1 and 2, who hang from a
-  // sub-bar at y=140 on a stem at x=30 down from the first sub-bar. The
-  // donor's line meets the outer stem at y=110. Child 4 hangs from the
-  // sibling bar.
-  const connector = makeParentChildConnector({
-    uplines: [
-      ofChild(seg(20, 160, 20, 140), 'child1'),
-      ofChild(seg(40, 160, 40, 140), 'child2'),
-      ofChild(seg(100, 160, 100, 120), 'child3'),
-      ofChild(seg(180, 160, 180, 100), 'child4'),
-    ],
-    siblingBar: seg(60, 100, 180, 100),
-    parentLink: [seg(120, 60, 120, 100)],
-    parentIds: ['parent1'],
-    runs: [
-      { stem: seg(60, 100, 60, 120), bar: seg(20, 120, 100, 120) },
-      { stem: seg(30, 120, 30, 140), bar: seg(20, 140, 40, 140) },
-    ],
-  });
-  const draw = (edges: string[]) =>
-    render(
-      <PedigreeEdgeSvg
-        connectorData={{
-          connectors: {
-            groupLines: [],
-            parentChildLines: [connector],
-            auxiliaryLines: [
-              {
-                type: 'auxiliary',
-                edgeType: 'donor',
-                points: [
-                  { x: 0, y: 0 },
-                  { x: 0, y: 110 },
-                  { x: 60, y: 110 },
-                ],
-                endpointIds: ['donor', undefined],
-              },
-            ],
-            twinIndicators: [],
-            duplicateArcs: [],
-          },
-        }}
-        color="black"
-        width={300}
-        height={300}
-        highlightedNodeIds={new Set(edges.flatMap((edge) => edge.split('->')))}
-        highlightedEdgeKeys={new Set(edges)}
-      />,
-    ).container;
-
-  test('lights the way from the sibling bar down both stems to a contributing child of the inner run', () => {
-    const container = draw([edgeKey('parent1', 'child1')]);
-    expect(isLineDimmed(barStrokeAt(container, 90, 100)!)).toBe(false);
-    expect(isLineDimmed(uprightStrokeAt(container, 60, 115)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 45, 120)!)).toBe(false);
-    expect(isLineDimmed(uprightStrokeAt(container, 30, 130)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 25, 140)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 35, 140)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 80, 120)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 150, 100)!)).toBe(true);
-  });
-
-  test('carries a donor’s lineage from the outer stem down the inner one', () => {
-    const container = draw([edgeKey('donor', 'child2')]);
-    expect(isLineDimmed(uprightStrokeAt(container, 60, 105)!)).toBe(true);
-    expect(isLineDimmed(uprightStrokeAt(container, 60, 115)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 45, 120)!)).toBe(false);
-    expect(isLineDimmed(uprightStrokeAt(container, 30, 130)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 35, 140)!)).toBe(false);
-    expect(isLineDimmed(uprightStrokeAt(container, 40, 150)!)).toBe(false);
-    expect(isLineDimmed(uprightStrokeAt(container, 20, 150)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 90, 100)!)).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// One rule for every piece: a piece is lit if and only if a lit tie's course
-// passes through it, whatever the line's style or the piece's kind.
-// ---------------------------------------------------------------------------
-
 describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course passes through it', () => {
   const dashedStroke = (el: SVGElement | undefined) =>
     el?.getAttribute('stroke-dasharray');
@@ -1567,28 +1313,27 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
     },
   });
 
-  // Children 1 and 2, conceived with a donor, are raised by two adoptive
-  // parents: the line of descent is dashed. They hang from a sub-bar at
-  // y=130 on a stem at x=40, which the donor's line meets at y=115.
+  // Three children, conceived with a donor, are raised by two adoptive
+  // parents: the line of descent is dashed. The donor's line joins the
+  // sibling bar where the line of descent meets it, at (100,100).
   const adoptiveRun = makeParentChildConnector({
     edgeType: 'adoptive',
     uplines: [
-      ofChild(seg(20, 150, 20, 130), 'child1'),
-      ofChild(seg(60, 150, 60, 130), 'child2'),
+      ofChild(seg(20, 150, 20, 100), 'child1'),
+      ofChild(seg(60, 150, 60, 100), 'child2'),
       ofChild(seg(180, 150, 180, 100), 'child3'),
     ],
-    siblingBar: seg(40, 100, 180, 100),
+    siblingBar: seg(20, 100, 180, 100),
     parentLink: [seg(100, 60, 100, 100)],
     parentIds: ['gran', 'grandad'],
-    runs: [{ stem: seg(40, 100, 40, 130), bar: seg(20, 130, 60, 130) }],
   });
   const donorToStem: AuxiliaryConnector = {
     type: 'auxiliary',
     edgeType: 'donor',
     points: [
       { x: 10, y: 0 },
-      { x: 10, y: 115 },
-      { x: 40, y: 115 },
+      { x: 10, y: 60 },
+      { x: 100, y: 100 },
     ],
     endpointIds: ['donor', undefined],
   };
@@ -1598,30 +1343,26 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
       withLines([adoptiveRun], { auxiliaryLines: [donorToStem] }),
       [edgeKey('donor', 'child1')],
     );
-    expect(isLineDimmed(uprightStrokeAt(container, 40, 125)!)).toBe(false);
-    expect(isLineDimmed(barStrokeAt(container, 30, 130)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 80, 100)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 40, 100)!)).toBe(false);
     expect(isLineDimmed(uprightStrokeAt(container, 20, 140)!)).toBe(false);
-    expect(isLineDimmed(uprightStrokeAt(container, 40, 105)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 50, 130)!)).toBe(true);
+    expect(isLineDimmed(uprightStrokeAt(container, 100, 80)!)).toBe(true);
     expect(isLineDimmed(uprightStrokeAt(container, 60, 140)!)).toBe(true);
-    expect(isLineDimmed(barStrokeAt(container, 70, 100)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 140, 100)!)).toBe(true);
     // Lit or dim, the line keeps its dashes.
-    expect(dashedStroke(uprightStrokeAt(container, 40, 125))).toBe('8 8');
-    expect(dashedStroke(uprightStrokeAt(container, 40, 105))).toBe('8 8');
+    expect(dashedStroke(barStrokeAt(container, 40, 100))).toBe('8 8');
+    expect(dashedStroke(uprightStrokeAt(container, 100, 80))).toBe('8 8');
   });
 
   test('a dashed line keeps one dash rhythm along its whole course, however it is shaded', () => {
     // How far the course has run from the parents' drop (100,60) when it
-    // reaches each point a stroke may start at: down the drop, along the
-    // sibling bar either way, down the run's stem, and along its sub-bar.
+    // reaches each point a stroke may start at: down the drop, and along
+    // the sibling bar either way to the children's lines up.
     const reached: Record<string, number> = {
       '100,60': 0,
       '100,100': 40,
-      '40,100': 100,
-      '40,115': 115,
-      '40,130': 130,
-      '20,130': 150,
-      '60,130': 150,
+      '60,100': 80,
+      '20,100': 120,
       '180,100': 120,
     };
     const rhythmFaults = (container: HTMLElement) =>
@@ -1645,8 +1386,8 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
                 `the stroke from ${start} restarts the dashes (offset ${offset}, course ${expected})`,
               ];
         });
-    // Partly lit: the donor's tie lights the stem below the donor's line,
-    // the sub-bar to child 1 and child 1's line up.
+    // Partly lit: the donor's tie lights the bar from where the donor's line
+    // meets it to child 1, and child 1's line up.
     expect(
       rhythmFaults(
         draw(withLines([adoptiveRun], { auxiliaryLines: [donorToStem] }), [
@@ -2082,6 +1823,96 @@ describe('PedigreeEdgeSvg — joints', () => {
         }
         unmount();
       }
+    });
+  }
+});
+
+// A dimmed line that meets a lit one must not be painted over it, or the lit
+// course shows a gap where they meet (Joshua, 22 Oct 2026): a sibling's line
+// up crossing a lit sibling bar, the rest of the bar beyond the corner where
+// the lit course turns, a dimmed line of descent leaving a lit partnership
+// line, a dimmed donor's line or twin mark ending on a lit line.
+describe('PedigreeEdgeSvg — lit lines are drawn over dimmed ones', () => {
+  //   left ──┬── right          donor
+  //          │                    ╲
+  //   ┌──────┴──┬──────┐           ╲
+  //   a         b      c ─────(twins b, c)
+  const data: ConnectorRenderData = {
+    connectors: {
+      groupLines: [makeCoupleBar({ descentXPositions: [100, 160] })],
+      parentChildLines: [
+        makeParentChildConnector({
+          parentLink: [seg(100, 50, 100, 100)],
+          siblingBar: seg(0, 100, 200, 100),
+          uplines: [
+            ofChild(seg(0, 150, 0, 100), 'a'),
+            ofChild(seg(100, 150, 100, 100), 'b'),
+            ofChild(seg(200, 150, 200, 100), 'c'),
+          ],
+          parentIds: ['leftParent', 'rightParent'],
+        }),
+        // A second, adoptive sibship from the same couple.
+        makeParentChildConnector({
+          edgeType: 'adoptive',
+          parentLink: [seg(160, 50, 160, 80)],
+          uplines: [ofChild(seg(160, 80, 160, 150), 'd')],
+          parentIds: ['leftParent', 'rightParent'],
+        }),
+      ],
+      auxiliaryLines: [
+        {
+          type: 'auxiliary',
+          edgeType: 'donor',
+          points: [
+            { x: 300, y: 0 },
+            { x: 200, y: 125 },
+          ],
+          endpointIds: ['donor', undefined],
+          ownerIds: ['donor'],
+        },
+      ],
+      twinIndicators: [
+        {
+          type: 'twin',
+          code: 1,
+          segment: seg(100, 125, 200, 125),
+          twinIds: ['b', 'c'],
+        },
+      ],
+      duplicateArcs: [],
+    },
+  };
+
+  for (const focal of ['a', 'b', 'c', 'd']) {
+    test(`every dimmed piece is drawn before every lit one, focused on ${focal}`, () => {
+      const lit = new Set([
+        edgeKey('leftParent', focal),
+        edgeKey('rightParent', focal),
+      ]);
+      const { container } = render(
+        <PedigreeEdgeSvg
+          connectorData={data}
+          color="black"
+          width={300}
+          height={200}
+          highlightedNodeIds={new Set(['leftParent', 'rightParent', focal])}
+          highlightedEdgeKeys={lit}
+        />,
+      );
+      const drawn = Array.from(
+        container.querySelectorAll('line, polyline, path, text'),
+      );
+      const dimmed = (element: Element) =>
+        element.closest('[data-edge-dimmed]') !== null;
+      expect(drawn.some(dimmed)).toBe(true);
+      expect(drawn.some((element) => !dimmed(element))).toBe(true);
+      const firstLit = drawn.findIndex((element) => !dimmed(element));
+      expect(
+        drawn
+          .slice(firstLit)
+          .filter(dimmed)
+          .map((el) => el.outerHTML),
+      ).toEqual([]);
     });
   }
 });

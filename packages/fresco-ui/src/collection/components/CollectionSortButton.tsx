@@ -8,6 +8,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button, type ButtonProps } from '../../Button';
+import { cx } from '../../utils/cva';
 import { useCollectionStore, useOptionalSortManager } from '../contexts';
 import type {
   SortDirection,
@@ -114,11 +115,14 @@ export function CollectionSortButton({
       variant={variant}
       size={size}
       onClick={handleClick}
-      // `aria-pressed` is correct here — this IS a toggle — and it brings the
-      // selected colours with it. The `bg-accent`/`text-accent-contrast` pair
-      // that used to sit in `className` never rendered: the `aria-pressed:`
-      // variant outranks a bare utility, and was `!important` besides.
-      className={className}
+      // `aria-pressed` is correct here — this IS a toggle. The active sort
+      // takes the accent fill rather than the generic selected colours: the
+      // interview theme's `--selected` is white, which reads as no change
+      // beside the inactive buttons' light fill.
+      className={cx(
+        'aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-accent-contrast',
+        className,
+      )}
       aria-pressed={isActive}
       aria-label={intl.formatMessage(messages.accessibleName, {
         state:

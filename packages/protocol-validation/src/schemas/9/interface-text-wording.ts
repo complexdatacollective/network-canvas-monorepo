@@ -159,6 +159,62 @@ export const BUTTONS_INTERFACE_TEXT = {
       'zh-Hant': '否',
     },
   },
+  save: {
+    ids: ['common.save'],
+    message: {
+      'en': 'Save',
+      'de': 'Speichern',
+      'es': 'Guardar',
+      'fr': 'Enregistrer',
+      'it': 'Salva',
+      'nl': 'Opslaan',
+      'pt-BR': 'Salvar',
+      'zh-Hans': '保存',
+      'zh-Hant': '儲存',
+    },
+  },
+  dontKnow: {
+    ids: ['interview.interfaces.dontKnow'],
+    message: {
+      'en': 'Don’t know',
+      'de': 'Weiß ich nicht',
+      'es': 'No lo sé',
+      'fr': 'Je ne sais pas',
+      'it': 'Non lo so',
+      'nl': 'Weet ik niet',
+      'pt-BR': 'Não sei',
+      'zh-Hans': '不知道',
+      'zh-Hant': '不知道',
+    },
+  },
+  pauseLayout: {
+    ids: ['interview.interfaces.pauseLayout'],
+    message: {
+      'en': 'Pause automatic layout',
+      'de': 'Automatisches Layout pausieren',
+      'es': 'Pausar la disposición automática',
+      'fr': 'Suspendre la disposition automatique',
+      'it': 'Sospendi la disposizione automatica',
+      'nl': 'Automatische lay-out pauzeren',
+      'pt-BR': 'Pausar a disposição automática',
+      'zh-Hans': '暂停自动布局',
+      'zh-Hant': '暫停自動版面配置',
+    },
+  },
+  resumeLayout: {
+    ids: ['interview.interfaces.resumeLayout'],
+    message: {
+      'en': 'Resume automatic layout',
+      'de': 'Automatisches Layout fortsetzen',
+      'es': 'Reanudar la disposición automática',
+      'fr': 'Reprendre la disposition automatique',
+      'it': 'Riprendi la disposizione automatica',
+      'nl': 'Automatische lay-out hervatten',
+      'pt-BR': 'Retomar a disposição automática',
+      'zh-Hans': '恢复自动布局',
+      'zh-Hant': '繼續自動版面配置',
+    },
+  },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
 export const MESSAGES_INTERFACE_TEXT = {
@@ -208,6 +264,51 @@ export const MESSAGES_INTERFACE_TEXT = {
       'pt-BR': 'Ocorreu um erro.',
       'zh-Hans': '发生错误。',
       'zh-Hant': '發生錯誤。',
+    },
+  },
+  externalDataError: {
+    ids: ['interview.interfaces.externalDataError'],
+    message: {
+      'en': 'External data could not be loaded.',
+      'de': 'Externe Daten konnten nicht geladen werden.',
+      'es': 'No se pudieron cargar los datos externos.',
+      'fr': 'Les données externes n’ont pas pu être chargées.',
+      'it': 'Non è stato possibile caricare i dati esterni.',
+      'nl': 'Externe gegevens konden niet worden geladen.',
+      'pt-BR': 'Não foi possível carregar os dados externos.',
+      'zh-Hans': '无法加载外部数据。',
+      'zh-Hant': '無法載入外部資料。',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+export const SEARCH_INTERFACE_TEXT = {
+  searchLabel: {
+    ids: ['common.search'],
+    message: {
+      'en': 'Search',
+      'de': 'Suchen',
+      'es': 'Buscar',
+      'fr': 'Rechercher',
+      'it': 'Cerca',
+      'nl': 'Zoeken',
+      'pt-BR': 'Buscar',
+      'zh-Hans': '搜索',
+      'zh-Hant': '搜尋',
+    },
+  },
+  searchNoMatch: {
+    ids: ['interview.runtime.noSearchMatch'],
+    message: {
+      'en': 'Nothing matched your search term.',
+      'de': 'Keine Treffer für Ihren Suchbegriff.',
+      'es': 'No hay resultados que coincidan con tu búsqueda.',
+      'fr': 'Aucun résultat ne correspond à votre recherche.',
+      'it': 'Nessun risultato per il termine cercato.',
+      'nl': 'Niets gevonden voor je zoekterm.',
+      'pt-BR': 'Nenhum resultado corresponde ao termo buscado.',
+      'zh-Hans': '没有与您的搜索词匹配的结果。',
+      'zh-Hant': '找不到符合搜尋字詞的結果。',
     },
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;

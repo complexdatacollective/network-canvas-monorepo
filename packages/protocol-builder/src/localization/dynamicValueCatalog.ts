@@ -7,6 +7,7 @@ import {
   type DynamicValueSiteContext,
   dynamicValueLabelPathFor,
   dynamicValueNamesIn,
+  dynamicValueParticipantPathFor,
   dynamicValuePathFor,
   dynamicValueStatus,
   dynamicValueUnshowableReason,
@@ -17,6 +18,7 @@ import {
   type MessageNode,
   MISSING_CASE,
   messageStructure,
+  PARTICIPANT_CASE,
 } from '@codaco/protocol-validation';
 
 /**
@@ -28,10 +30,10 @@ import {
 export type DynamicValueChoice = Readonly<{
   path: string;
   /**
-   * What it is: a value the interview knows, an attribute, or the label the
-   * interview shows on a node.
+   * What it is: a value the interview knows, an attribute, the label the
+   * interview shows on a node, or whether that node is the participant.
    */
-  kind: 'intrinsic' | 'attribute' | 'label';
+  kind: 'intrinsic' | 'attribute' | 'label' | 'participant';
   /** The role whose value it is, or undefined for an interview value. */
   role: DynamicValueRole | undefined;
   /** The attribute's name, or the interview value's key; empty for a label. */
@@ -149,6 +151,29 @@ export const dynamicValueChoices = (
       },
     ];
   };
+  // Whether the node is the participant only chooses wording: a version for
+  // the participant, and the other for everyone else.
+  const participantOf = (role: DynamicValueRole): DynamicValueChoice[] => {
+    if (role !== 'node') return [];
+    const path = dynamicValueParticipantPathFor(role);
+    if (dynamicValueStatus({ path }, context).status !== 'available') {
+      return [];
+    }
+    return [
+      {
+        path,
+        kind: 'participant',
+        role,
+        variableId: '',
+        variableName: undefined,
+        variableType: 'boolean',
+        optional: false,
+        numeric: false,
+        options: [{ value: true, label: undefined }],
+        unshowable: 'switch',
+      },
+    ];
+  };
   const attributesOf = (role: DynamicValueRole): DynamicValueChoice[] =>
     isAttributeDynamicValueRole(role)
       ? Object.entries(context.variablesFor(role) ?? {}).flatMap(
@@ -190,7 +215,11 @@ export const dynamicValueChoices = (
   const attributes = [
     ...roles.filter((role) => role !== 'ego'),
     ...roles.filter((role) => role === 'ego'),
-  ].flatMap((role) => [...labelOf(role), ...attributesOf(role)]);
+  ].flatMap((role) => [
+    ...labelOf(role),
+    ...participantOf(role),
+    ...attributesOf(role),
+  ]);
   return [...attributes, ...intrinsics];
 };
 
@@ -240,6 +269,7 @@ const nameFor = (
   if (choice.kind === 'label') {
     return unique(prefix === '' ? 'nodeLabel' : `${prefix}Label`, taken);
   }
+  if (choice.kind === 'participant') return unique('isParticipant', taken);
   const own =
     identifierFrom(choice.variableName ?? '') ||
     identifierFrom(choice.variableId) ||
@@ -306,6 +336,20 @@ export const bindingFor = (
       }
     }
   }
+  // Whether the node is the participant has its one case, for the
+  // participant, under the name the schema gives it.
+  const participantCases = { [PARTICIPANT_CASE]: true };
+  if (choice.kind === 'participant') {
+    const bound = Object.entries(bindings).find(
+      ([, binding]) => binding.path === choice.path,
+    );
+    if (bound !== undefined) {
+      return {
+        name: bound[0],
+        binding: { path: choice.path, cases: participantCases },
+      };
+    }
+  }
   for (const [name, binding] of Object.entries(bindings)) {
     if (binding.path !== choice.path) continue;
     const recorded = Object.values(binding.cases ?? {});
@@ -328,9 +372,11 @@ export const bindingFor = (
   return {
     name,
     binding:
-      choice.options.length === 0
-        ? { path: choice.path }
-        : { path: choice.path, cases: casesFor(choice.options, labelText) },
+      choice.kind === 'participant'
+        ? { path: choice.path, cases: participantCases }
+        : choice.options.length === 0
+          ? { path: choice.path }
+          : { path: choice.path, cases: casesFor(choice.options, labelText) },
   };
 };
 

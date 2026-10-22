@@ -2,6 +2,7 @@
   - heading "After your family" [level=1]
   - paragraph: Your family tree is saved.
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

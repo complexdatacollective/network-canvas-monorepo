@@ -4,14 +4,13 @@ import { Toggle } from '@base-ui/react';
 import { Search, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { LocalizedString } from '@codaco/protocol-validation';
 
-import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { interfaceMessages } from '../messages';
 
 const STUB_SUGGESTIONS = [
@@ -22,15 +21,11 @@ const STUB_SUGGESTIONS = [
 
 type Props = {
   className?: string;
-  searchLabel: LocalizedString;
 };
 
-export default function GeospatialStubSearch({
-  className,
-  searchLabel,
-}: Props) {
+export default function GeospatialStubSearch({ className }: Props) {
   const intl = useAppIntl();
-  const { text: searchLabelText } = useLocalizedString(searchLabel);
+  const searchLabelText = intl.formatMessage(commonMessages.search);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const buttonRef = useRef<HTMLButtonElement>(null);

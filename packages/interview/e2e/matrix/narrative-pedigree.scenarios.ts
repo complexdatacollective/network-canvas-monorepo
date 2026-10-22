@@ -471,6 +471,32 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       },
     },
     {
+      // Captures the focused state: the person's line highlighted, everyone
+      // else dimmed, and Clear focus in the toolbar beside the condition.
+      id: 'focal-highlight-shown',
+      covers: ['focalHighlighting'],
+      visual: true,
+      currentStep: 1,
+      seedNetwork: true,
+      build: buildAdScenario,
+      run: async ({ page }) => {
+        await chooseCondition(page, "Huntington's Disease");
+
+        const egoFocal = member(page, 'You');
+        await egoFocal.click();
+        await expect(egoFocal).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('[data-node-id="aunt"]')).toHaveAttribute(
+          'data-dimmed',
+          'true',
+        );
+        await expect(
+          page
+            .getByRole('toolbar', { name: 'Family tree controls' })
+            .getByRole('button', { name: 'Clear focus' }),
+        ).toBeVisible();
+      },
+    },
+    {
       id: 'at-risk-statuses-hidden',
       covers: [
         'showAtRiskStatuses=false',

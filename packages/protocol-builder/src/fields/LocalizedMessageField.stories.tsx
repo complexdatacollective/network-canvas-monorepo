@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
@@ -41,7 +41,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Participant-facing text that reads differently depending on what it is about: a version for each case (about the participant, about someone else) and, where it shows a number, one for each plural form of the editing language, labelled with examples of the numbers it is for. Placeholders such as a person’s name show as chips, inserted from the toolbar; their names, and the names of the cases, come from `useMessageArgumentLabels`. Versions that all read the same are saved as one phrase.\n\n```tsx\n<Field\n  name="completeness.itemText.parents.listItem"\n  component={LocalizedMessageField}\n  label="Missing parents"\n  arguments={PARENTS_ARGUMENTS}\n/>\n```',
+          'Participant-facing text that reads differently depending on what it is about, edited as piped text is: one line, its placeholders (such as a person’s name) as pills, and a piece of text with a version for each case (about the participant, about someone else) or wording that fits a number only where the text has one, folded to a pill until it is opened. The insert menu (the syringe button, or typing `{`) offers what the setting declares; the names come from `useMessageArgumentLabels`.\n\n```tsx\n<Field\n  name="completeness.itemText.parents.listItem"\n  component={LocalizedMessageField}\n  label="Missing parents"\n  arguments={PARENTS_ARGUMENTS}\n/>\n```',
       },
     },
   },
@@ -56,20 +56,30 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A message with a select and a plural: four versions in English. */
+/**
+ * A message with a select and a plural: one line holding a pill, whose
+ * versions open in place, the participant's own fitting its words to the
+ * number.
+ */
 export const SelectAndPlural: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    const group = await canvas.findByRole('group', { name: 'Missing parents' });
-    const versions = within(group).getAllByRole('textbox');
-    await expect(versions).toHaveLength(4);
-    await expect(versions[0]).toHaveTextContent(
-      'Add your other biological parent',
+    const line = await canvas.findByRole('textbox', {
+      name: 'Missing parents',
+    });
+    await userEvent.click(
+      within(line).getByRole('button', { name: 'Participant or someone else' }),
     );
+    const aboutYou = await canvas.findByRole('textbox', {
+      name: 'About the participant',
+    });
     await expect(
-      within(group).getAllByRole('button', { name: 'Insert “Name”' }),
-    ).toHaveLength(4);
+      within(aboutYou).getByRole('button', { name: 'Parents missing' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('textbox', { name: 'About someone else' }),
+    ).toHaveTextContent('Add another biological parent for “Name”');
   },
 };

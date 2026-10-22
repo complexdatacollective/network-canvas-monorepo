@@ -29,7 +29,6 @@
     "./editors/narrative-pedigree/narrativePedigreeMessages": "./src/editors/narrative-pedigree/sections/narrativePedigreeMessages.ts",
     "./editors/network-composer/composerMessages": "./src/editors/network-composer/sections/composerMessages.ts",
     "./editors/narrative/narrativeWordingMessages": "./src/editors/narrative/sections/wording/narrativeWordingMessages.ts",
-    "./editors/sociogram/sociogramWordingMessages": "./src/editors/sociogram/sections/wording/sociogramWordingMessages.ts",
     "./fields/AssetPickerField": "./src/fields/AssetPickerField.tsx",
     "./fields/DynamicTextField": "./src/fields/DynamicTextField.tsx",
     "./fields/LocalizedMessageField": "./src/fields/LocalizedMessageField.tsx",

@@ -1054,7 +1054,6 @@ describe('a unique group whose members a roster populates unevenly', () => {
   const roster = {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
-    externalDataError: { en: 'External data could not be loaded.' },
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     maxNodesNotice: {
       en: 'You have completed this task. Click the next arrow to continue.',
@@ -1246,7 +1245,6 @@ describe('values a prompt fixes', () => {
     const stage = {
       ...fixingGenerator(2, 'stage-roster'),
       type: 'NameGeneratorRoster',
-      externalDataError: { en: 'External data could not be loaded.' },
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
     } as unknown as Stage;
 
@@ -1264,7 +1262,6 @@ describe('values a prompt fixes', () => {
     const stage = {
       ...fixingGenerator(2, 'stage-roster'),
       type: 'NameGeneratorRoster',
-      externalDataError: { en: 'External data could not be loaded.' },
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
     } as unknown as Stage;
 
@@ -1280,7 +1277,6 @@ describe('values a prompt fixes', () => {
     const stage = {
       ...fixingGenerator(8, 'stage-roster'),
       type: 'NameGeneratorRoster',
-      externalDataError: { en: 'External data could not be loaded.' },
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
     } as unknown as Stage;
 
@@ -1366,7 +1362,6 @@ describe('a value a prompt fixes and a roster row carries', () => {
   const rosterStage = {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
-    externalDataError: { en: 'External data could not be loaded.' },
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -2962,7 +2957,6 @@ describe('roster rows the rules turn away, at the seam the counts feed', () => {
   const roster = {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
-    externalDataError: { en: 'External data could not be loaded.' },
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     maxNodesNotice: {
       en: 'You have completed this task. Click the next arrow to continue.',

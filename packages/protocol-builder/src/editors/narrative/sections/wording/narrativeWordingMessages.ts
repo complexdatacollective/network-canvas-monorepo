@@ -10,7 +10,7 @@ export const narrativeWordingMessages = defineMessages({
   wordingDescription: {
     id: 'protocolBuilder.narrative.wordingDescription',
     defaultMessage:
-      'The headings of the highlight, link and group panels, and the labels of the drawing and layout tools. These start with wording Network Canvas supplies, which you can change.',
+      'The headings of the highlight, link and group panels, and the labels of the drawing tools. These start with wording Network Canvas supplies, which you can change.',
     description: 'Description of the words section of a narrative canvas.',
   },
   attributesHeadingLabel: {
@@ -84,23 +84,5 @@ export const narrativeWordingMessages = defineMessages({
     defaultMessage: 'Shown only when drawing is turned on.',
     description:
       'Hint under the drawing tooltip settings, saying when they are used.',
-  },
-  pauseLayoutTooltipLabel: {
-    id: 'protocolBuilder.narrative.pauseLayoutTooltipLabel',
-    defaultMessage: 'Pause layout tooltip',
-    description:
-      'Label of the setting holding the tooltip of the tool that pauses the automatic layout.',
-  },
-  resumeLayoutTooltipLabel: {
-    id: 'protocolBuilder.narrative.resumeLayoutTooltipLabel',
-    defaultMessage: 'Resume layout tooltip',
-    description:
-      'Label of the setting holding the tooltip of the tool that resumes the automatic layout.',
-  },
-  layoutTooltipHint: {
-    id: 'protocolBuilder.narrative.layoutTooltipHint',
-    defaultMessage: 'Shown only when automatic layout is turned on.',
-    description:
-      'Hint under the layout tooltip settings, saying when they are used.',
   },
 });

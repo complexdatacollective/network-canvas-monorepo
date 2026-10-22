@@ -30,7 +30,7 @@ export const nameGeneratorWordingMessages = defineMessages({
     id: 'protocolBuilder.nameGeneratorWording.title',
     defaultMessage: 'Messages',
     description:
-      'Heading of the section holding the words a name generator shows a participant about its limits, its side panels, its search and its quick-add field. A name generator is a stage that asks the participant to name people.',
+      'Heading of the section holding the words a name generator shows a participant about its limits, a roster’s list and its quick-add field. A name generator is a stage that asks the participant to name people.',
   },
   description: {
     id: 'protocolBuilder.nameGeneratorWording.description',
@@ -65,19 +65,6 @@ export const nameGeneratorWordingMessages = defineMessages({
     description:
       'Guidance under the field holding the message shown when the stage’s maximum number of people has been named.',
   },
-  externalErrorLabel: {
-    id: 'protocolBuilder.nameGeneratorWording.externalErrorLabel',
-    defaultMessage: 'Data could not be loaded',
-    description:
-      'Label of the field holding the message shown when a list of people from a data file could not be loaded.',
-  },
-  externalErrorHint: {
-    id: 'protocolBuilder.nameGeneratorWording.externalErrorHint',
-    defaultMessage:
-      'Shown in place of a list of people from a data file when that file could not be loaded.',
-    description:
-      'Guidance under the field holding the message shown in place of a list of people from a data file that could not be loaded.',
-  },
   quickAddHintLabel: {
     id: 'protocolBuilder.nameGeneratorWording.quickAddHintLabel',
     defaultMessage: 'Quick-add hint',
@@ -104,46 +91,17 @@ export const nameGeneratorWordingMessages = defineMessages({
     description:
       'Guidance under the field holding the message shown when there is nothing left to add from a roster.',
   },
-  searchLabelLabel: {
-    id: 'protocolBuilder.nameGeneratorWording.searchLabelLabel',
-    defaultMessage: 'Search label',
-    description:
-      'Label of the field holding the search box’s placeholder, which a screen reader also reads out.',
-  },
-  searchLabelHint: {
-    id: 'protocolBuilder.nameGeneratorWording.searchLabelHint',
-    defaultMessage: 'The placeholder shown in the search box.',
-    description:
-      'Guidance under the field holding the search box’s placeholder.',
-  },
-  searchNoMatchLabel: {
-    id: 'protocolBuilder.nameGeneratorWording.searchNoMatchLabel',
-    defaultMessage: 'No search results',
-    description:
-      'Label of the field holding the message shown when a search matches nothing.',
-  },
-  searchNoMatchHint: {
-    id: 'protocolBuilder.nameGeneratorWording.searchNoMatchHint',
-    defaultMessage: 'Shown when a search matches nothing.',
-    description: 'Guidance under the field holding the no-match message.',
-  },
 });
 
 /** Where a stage holds each setting, which the form names by path. */
 const MIN_NODES = 'behaviours.minNodes';
 const MAX_NODES = 'behaviours.maxNodes';
-const SEARCH_OPTIONS = 'searchOptions';
-
-const isExternalPanel = (panel: unknown): boolean =>
-  typeof panel === 'object' &&
-  panel !== null &&
-  Reflect.get(panel, 'dataSource') !== undefined &&
-  Reflect.get(panel, 'dataSource') !== 'existing';
 
 /**
- * The words a name generator shows about its limits, its side panels, its
- * quick-add field, and a roster's list and search. Each appears only where its
- * part of the stage is on, and each starts as Network Canvas's wording.
+ * The words a name generator shows about its limits, its quick-add field and
+ * a roster's list. Each appears only where its part of the stage is on, and
+ * each starts as Network Canvas's wording. The words a roster's search and a
+ * list from a data file show are the protocol's interface text.
  */
 export const nameGeneratorWording =
   (stageType: NameGeneratorType): StageSection =>
@@ -157,22 +115,14 @@ function NameGeneratorWordingSection({
   const supplied = useSuppliedStageWording(stageType);
   const minNodes = useStageValue(MIN_NODES);
   const maxNodes = useStageValue(MAX_NODES);
-  const panels = useStageValue('panels');
-  const searchOptions = useStageValue(SEARCH_OPTIONS);
 
   const minValidation = useMemo<CustomFieldValidation>(
     () => localizedMessageValidation(NODE_COUNT_ARGUMENTS, intl),
     [intl],
   );
 
-  // A roster always reads its people from a data file; a name generator
-  // reads them only from a side panel that has one.
-  const readsExternalData =
-    stageType === 'NameGeneratorRoster' ||
-    (Array.isArray(panels) && panels.some(isExternalPanel));
   const hasMinimum = typeof minNodes === 'number' && minNodes > 0;
   const hasMaximum = typeof maxNodes === 'number';
-  const hasSearch = searchOptions !== undefined;
 
   return (
     <BuilderSection
@@ -220,25 +170,6 @@ function NameGeneratorWordingSection({
               required={REQUIRED}
             />
           )}
-          {readsExternalData && (
-            <Field<typeof LocalizedInputField>
-              name="externalDataError"
-              component={LocalizedInputField}
-              wraps
-              label={intl.formatMessage(
-                nameGeneratorWordingMessages.externalErrorLabel,
-              )}
-              hint={intl.formatMessage(
-                nameGeneratorWordingMessages.externalErrorHint,
-              )}
-              initialValue={startingWording(
-                committedFields,
-                'externalDataError',
-                supplied,
-              )}
-              required={REQUIRED}
-            />
-          )}
           {stageType === 'NameGeneratorQuickAdd' && (
             <Field<typeof LocalizedInputField>
               name="quickAddHint"
@@ -276,43 +207,6 @@ function NameGeneratorWordingSection({
               )}
               required={REQUIRED}
             />
-          )}
-          {hasSearch && (
-            <>
-              <Field<typeof LocalizedInputField>
-                name="searchLabel"
-                component={LocalizedInputField}
-                label={intl.formatMessage(
-                  nameGeneratorWordingMessages.searchLabelLabel,
-                )}
-                hint={intl.formatMessage(
-                  nameGeneratorWordingMessages.searchLabelHint,
-                )}
-                initialValue={startingWording(
-                  committedFields,
-                  'searchLabel',
-                  supplied,
-                )}
-                required={REQUIRED}
-              />
-              <Field<typeof LocalizedInputField>
-                name="searchNoMatch"
-                component={LocalizedInputField}
-                wraps
-                label={intl.formatMessage(
-                  nameGeneratorWordingMessages.searchNoMatchLabel,
-                )}
-                hint={intl.formatMessage(
-                  nameGeneratorWordingMessages.searchNoMatchHint,
-                )}
-                initialValue={startingWording(
-                  committedFields,
-                  'searchNoMatch',
-                  supplied,
-                )}
-                required={REQUIRED}
-              />
-            </>
           )}
         </>
       )}

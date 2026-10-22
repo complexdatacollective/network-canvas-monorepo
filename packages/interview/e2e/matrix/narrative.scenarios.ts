@@ -573,11 +573,9 @@ const automaticLayoutPauseResume: ScenarioDefinition = {
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', type: person.id },
       behaviours: { automaticLayout: true },
-      wording: {
-        'tooltips.pauseLayout': PAUSE_LAYOUT,
-        'tooltips.resumeLayout': RESUME_LAYOUT,
-      },
     });
+    synth.setInterfaceText('buttons', 'pauseLayout', PAUSE_LAYOUT);
+    synth.setInterfaceText('buttons', 'resumeLayout', RESUME_LAYOUT);
     stage.addPreset({ layoutVariable: layoutVar.id });
     const coords = [
       { x: 0.2, y: 0.2 },

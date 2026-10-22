@@ -167,7 +167,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(3, 'form', 'fields', 0, 'prompt'), 'markdown'),
   messageSite(stage(3, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
   site(stage(3, 'maxNodesNotice'), 'plain'),
-  site(stage(3, 'externalDataError'), 'plain'),
   site(stage(3, 'panels', 0, 'title'), 'plain'),
   site(stage(3, 'panels', 1, 'title'), 'plain'),
   site(stage(3, 'prompts', 0, 'text'), 'markdown'),
@@ -178,17 +177,12 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(5, 'panelTitle'), 'plain'),
   messageSite(stage(5, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
   site(stage(5, 'maxNodesNotice'), 'plain'),
-  site(stage(5, 'externalDataError'), 'plain'),
   site(stage(5, 'allAddedNotice'), 'plain'),
-  site(stage(5, 'searchLabel'), 'plain'),
-  site(stage(5, 'searchNoMatch'), 'plain'),
   site(stage(5, 'cardOptions', 'additionalProperties', 0, 'label'), 'plain'),
   site(stage(5, 'sortOptions', 'sortableProperties', 0, 'label'), 'plain'),
   site(stage(5, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(6, 'prompts', 0, 'text'), 'markdown'),
-  site(stage(6, 'tooltips', 'pauseLayout'), 'plain'),
-  site(stage(6, 'tooltips', 'resumeLayout'), 'plain'),
 
   // The composer's own scale end labels are separate sites from the codebook
   // scalar's, and override them.
@@ -234,8 +228,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(14, 'tooltips', 'freezeAnnotations'), 'plain'),
   site(stage(14, 'tooltips', 'unfreezeAnnotations'), 'plain'),
   site(stage(14, 'tooltips', 'resetAnnotations'), 'plain'),
-  site(stage(14, 'tooltips', 'pauseLayout'), 'plain'),
-  site(stage(14, 'tooltips', 'resumeLayout'), 'plain'),
 
   site(stage(15, 'explanationText'), 'markdown'),
 
@@ -245,8 +237,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(17, 'offlineNotice'), 'plain'),
   site(stage(17, 'mapUnavailable'), 'plain'),
   site(stage(17, 'outsideAreasLabel'), 'plain'),
-  site(stage(17, 'searchLabel'), 'plain'),
-  site(stage(17, 'searchNoMatch'), 'plain'),
   site(stage(17, 'searchFailed'), 'plain'),
 
   site(stage(18, 'prompt'), 'markdown'),

@@ -14,6 +14,10 @@
       - button "Connect" [pressed]
       - button "Disconnect"
     - separator
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"

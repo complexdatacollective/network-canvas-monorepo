@@ -412,6 +412,7 @@ export class SyntheticInterview {
   private ordinalPromptCounter = 0;
   private experiments: Experiments | undefined;
   private localization: LocalizationInput = DEFAULT_LOCALIZATION;
+  private interfaceText = new Map<string, Map<string, TextInput>>();
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
@@ -1896,6 +1897,16 @@ export class SyntheticInterview {
       // at runtime, but TypeScript can't verify this statically.
       stages: stages as Stage[],
       assets: this.assets as unknown[],
+      ...(this.interfaceText.size > 0 && {
+        interfaceText: Object.fromEntries(
+          [...this.interfaceText].map(([group, entries]) => [
+            group,
+            Object.fromEntries(
+              [...entries].map(([key, text]) => [key, this.localized(text)]),
+            ),
+          ]),
+        ),
+      }),
     });
   }
 
@@ -3195,6 +3206,18 @@ export class SyntheticInterview {
    */
   setLocalization(localization: LocalizationInput): void {
     this.localization = localization;
+  }
+
+  /**
+   * Word one of the interview's shared texts (an `interfaceText` entry, such
+   * as `buttons.save` or `messages.externalDataError`) the researcher's way.
+   * The protocol holds it only while something in it shows that text; every
+   * entry not set here takes the text Network Canvas supplies.
+   */
+  setInterfaceText(group: string, key: string, text: TextInput): void {
+    const entries = this.interfaceText.get(group) ?? new Map();
+    entries.set(key, text);
+    this.interfaceText.set(group, entries);
   }
 
   /**

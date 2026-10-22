@@ -5,7 +5,7 @@
  * measured on the drawing as PersonNode draws the symbols. No check exempts
  * a kind of line, a kind of person or a family: a crossing is never a fault
  * here (how many crossings there are is a cost, which the tests pin for each
- * family), but a crossing not drawn as a hop is.
+ * family), and every crossing is drawn plain (Josh, 22 Oct 2026: no hops).
  *
  * The model the checks read the drawing by:
  * - A tie joins a parent to a child, and has a kind. Biological, donor and
@@ -16,8 +16,9 @@
  * - An owner is whoever a line comes from: one person, a recorded couple, or
  *   two co-parents with no recorded partnership (their line of descent).
  * - Each child has at most one line of descent, from its owners; every other
- *   tie is drawn by a line from its owner, which ends on a child, a sibling
- *   bar, or the top of a run's stem or a child's line up.
+ *   tie is drawn by a line from its owner, which ends at the centre of a
+ *   child (under their symbol), or, for every child of a sibship, where
+ *   their line of descent meets their sibling bar.
  */
 import type {
   AuxiliaryConnector,
@@ -28,7 +29,7 @@ import type {
   PedigreeSymbolShape,
   Point,
 } from '../types';
-import { canRunOnInside, outlineTop, outsideOutline } from './lineEnds';
+import { outsideOutline } from './lineEnds';
 
 /** Constraint 6: how far apart two junctions on one line or one symbol
  * edge are, at least, and how far a junction keeps from the ends and
@@ -165,12 +166,6 @@ function samples(s: LineSegment): { p: Point; length: number }[] {
  * (negative inside): see `outsideOutline`. */
 const outsideSymbol = outsideOutline;
 
-/** The topmost point of a person's symbol, where lines converging on them
- * from above meet. */
-function topOfSymbol(drawing: Drawing, id: string): Point {
-  return outlineTop(drawing.centre(id), drawing.size, drawing.shapeOf(id));
-}
-
 /** Where a course first meets the child's symbol: the visible end. */
 function visibleEnd(points: Point[], drawing: Drawing, childId: string) {
   const c = drawing.centre(childId);
@@ -248,7 +243,7 @@ function descentsOf(drawing: Drawing): Descent[] {
 
 type Piece = {
   segment: LineSegment;
-  role: 'parentLink' | 'bar' | 'stem' | 'subBar' | 'upline';
+  role: 'parentLink' | 'bar' | 'upline';
   part: ParentChildConnector;
   child?: string;
 };
@@ -263,10 +258,6 @@ function piecesOf(connectors: PedigreeConnectors): Piece[] {
     ...(part.siblingBar
       ? [{ segment: part.siblingBar, role: 'bar' as const, part }]
       : []),
-    ...(part.runs ?? []).flatMap((run) => [
-      { segment: run.stem, role: 'stem' as const, part },
-      ...(run.bar ? [{ segment: run.bar, role: 'subBar' as const, part }] : []),
-    ]),
     ...part.uplines.map((segment) => ({
       segment,
       role: 'upline' as const,
@@ -279,10 +270,9 @@ function piecesOf(connectors: PedigreeConnectors): Piece[] {
 /**
  * The children a line reaches: the child it ends on, or, where it ends on a
  * line of descent, everyone that line leads down to from that point, as a
- * reader follows it: along a bar either way, and down a stem or a line up.
- * A line ending where a stem or a line up leaves a bar continues down that
- * piece only (Bennett 1c: a donor's line ending where their child's line
- * leaves the sibling bar reaches that child).
+ * reader follows it: along a bar either way, and down a line up. A line
+ * ending where a line up leaves a bar continues down that piece only, but
+ * one ending where the line of descent meets the bar enters the bar.
  */
 export function childrenReachedBy(
   connectors: PedigreeConnectors,
@@ -294,7 +284,13 @@ export function childrenReachedBy(
   const start = line.points.at(-1)!;
   const reached = new Set<string>();
   const entered = new Map<number, number>();
+  const atFoot = pieces.some(
+    (piece) =>
+      piece.role === 'parentLink' &&
+      near(lowerEnd(piece.segment), start, ON_LINE),
+  );
   const downward = pieces.flatMap((piece, k) =>
+    !atFoot &&
     !isLevel(piece.segment) &&
     piece.role !== 'parentLink' &&
     near(upperEnd(piece.segment), start, ON_LINE)
@@ -327,7 +323,7 @@ export function childrenReachedBy(
         ? [
             { x: other.segment.x1, y: other.segment.y1 },
             { x: other.segment.x2, y: other.segment.y2 },
-            // A stem or line up ending part way along a bar.
+            // A line up ending part way along a bar.
             ...(isLevel(segment) ||
             distanceToSegment(low, other.segment) >= ON_LINE
               ? []
@@ -335,7 +331,7 @@ export function childrenReachedBy(
           ]
         : [upperEnd(other.segment)];
       for (const entry of entries) {
-        // Down a stem or a line up, never back up it: a bar whose end is
+        // Down a line up, never back up it: a bar whose end is
         // where the reader came in is behind them.
         if (!isLevel(segment) && entry.y <= at.y + ON_LINE) continue;
         if (distanceToSegment(entry, reach) < ON_LINE) {
@@ -413,7 +409,7 @@ function isOwnersDrop(descents: Descent[], line: OwnLine, children: string[]) {
 /**
  * Constraint 1, Reach. Every tie is drawn by exactly one path. Each line
  * reaches exactly the children its owner holds that kind of tie to, reading
- * down the line: along a bar either way, and down a stem or a line up.
+ * down the line: along a bar either way, and down a line up.
  */
 function faultsOfReach(drawing: Drawing, family: Family): string[] {
   const faults: string[] = [];
@@ -635,7 +631,6 @@ function faultsOfPairDescent(
   }
   const below = descent.parts.flatMap((part) => [
     ...(part.siblingBar ? [part.siblingBar] : []),
-    ...(part.runs ?? []).map((run) => run.stem),
     ...part.uplines,
   ]);
   for (const piece of pieces) {
@@ -793,14 +788,15 @@ function sharedLength(
 }
 
 /**
- * Constraint 4, Target, with the donor and carrier line rule (Josh, 12 Oct
+ * Constraint 4, Target, with the donor and carrier line rule (Josh, 22 Oct
  * 2026). Constraint 3 decides whether a line may join the child's line of
- * descent. If it may, the line ends where the line of descent first leads
- * only to the children it is drawn for: the sibling bar (for all of a
- * sibship), the top of a run's stem (for a run), the top of a child's line
- * up (for one child of a sibship), or the top of the child (for an only
- * child, the lines converging on one point). Otherwise it ends at the top of
- * each child. (Whether it is straight: see `faultsOfStraightness`.)
+ * descent. A line that may join it, drawn for every child of a sibship,
+ * ends where the line of descent meets their sibling bar, so the lines that
+ * gave rise to the sibship converge on one point (on the bar, for a sibship
+ * drawn with no line down to it; at the top of the line up two twins share,
+ * where they have no bar). Any other line ends at the centre of each child,
+ * under their symbol, aimed centre to centre. (Whether it is straight: see
+ * `faultsOfStraightness`.)
  */
 function faultsOfTarget(drawing: Drawing, _family: Family): string[] {
   const { connectors } = drawing;
@@ -811,7 +807,14 @@ function faultsOfTarget(drawing: Drawing, _family: Family): string[] {
     const name = `${line.owners.join(' and ')}'s ${line.kind} line`;
     const reached = [...childrenReachedBy(connectors, line.line)];
     if (reached.length === 0) continue;
-    if (line.child === undefined && isOwnersDrop(descents, line, reached)) {
+    if (line.child !== undefined) {
+      const centre = drawing.centre(line.child);
+      if (!near(line.end, centre, 1)) {
+        faults.push(`${name} does not end at the centre of ${line.child}`);
+      }
+      continue;
+    }
+    if (isOwnersDrop(descents, line, reached)) {
       // The co-parents' own lines to their sibling bar.
       if (
         !pieces.some(
@@ -825,66 +828,69 @@ function faultsOfTarget(drawing: Drawing, _family: Family): string[] {
       continue;
     }
     if (!mayJoin(drawing, descents, line, reached)) {
-      if (line.child === undefined) {
-        faults.push(`${name} ends on a line of descent, not on each child`);
-      }
+      faults.push(`${name} ends on a line of descent, not on each child`);
       continue;
     }
     const siblings = siblingsOf(drawing, descents, reached[0]!);
-    const all =
-      siblings.length > 1 && siblings.every((id) => reached.includes(id));
-    if (siblings.length === 1) {
-      if (!near(line.end, topOfSymbol(drawing, reached[0]!), 1)) {
-        faults.push(`${name} does not end at the top of ${reached[0]}`);
-      }
-    } else if (all) {
-      const bars = pieces.filter(
-        (piece) =>
-          (piece.role === 'bar' ||
-            // Twins hang from one point, and have no bar.
-            piece.role === 'upline') &&
-          piece.part.uplines
-            .map((upline) => upline.childId)
-            .some((id) => reached.includes(id ?? '')),
+    if (siblings.length < 2 || !siblings.every((id) => reached.includes(id))) {
+      faults.push(
+        `${name} ends on a line of descent for only some of its children`,
       );
-      if (
-        !bars.some((piece) =>
-          piece.role === 'bar'
-            ? distanceToSegment(line.end, piece.segment) < ON_LINE
-            : near(line.end, upperEnd(piece.segment)),
-        )
-      ) {
-        faults.push(`${name} does not end on the sibling bar`);
-      }
-    } else if (reached.length === 1) {
-      const upline = pieces.find(
-        (piece) => piece.role === 'upline' && piece.child === reached[0],
-      );
-      if (!upline || !near(line.end, upperEnd(upline.segment), 1)) {
+      continue;
+    }
+    // Where the line of descent meets the bar: the lowest end of its line
+    // down from the owners.
+    const descent = descentOfChild(descents, reached[0]!);
+    const link = (descent?.parts ?? []).flatMap((part) => part.parentLink);
+    const foot = link.map(lowerEnd).toSorted((p, q) => q.y - p.y)[0];
+    // A line from straight above that point joins the line of descent's
+    // last drop at its top, and comes down along it.
+    const last = link.find((segment) => near(lowerEnd(segment), foot!, 1e-3));
+    const dropTop =
+      last && link.length > 1 && Math.abs(last.x1 - last.x2) < 1e-3
+        ? { x: last.x1, y: Math.min(last.y1, last.y2) }
+        : undefined;
+    const fromAbove =
+      dropTop !== undefined &&
+      near(line.end, dropTop, 1) &&
+      line.line.points.every((point) => Math.abs(point.x - dropTop.x) < 1);
+    if (foot) {
+      if (!near(line.end, foot, 1) && !fromAbove) {
         faults.push(
-          `${name} does not end at the top of ${reached[0]}'s line up`,
+          `${name} does not end where the line of descent meets the sibling bar`,
         );
       }
-    } else {
-      const stem = pieces.find(
-        (piece) =>
-          piece.role === 'stem' && near(line.end, upperEnd(piece.segment), 1),
-      );
-      if (!stem) {
-        faults.push(`${name} does not end at the top of its run's stem`);
-      }
+      continue;
+    }
+    const bars = pieces.filter(
+      (piece) =>
+        (piece.role === 'bar' ||
+          // Twins hang from one point, and have no bar.
+          piece.role === 'upline') &&
+        piece.part.uplines
+          .map((upline) => upline.childId)
+          .some((id) => reached.includes(id ?? '')),
+    );
+    if (
+      !bars.some((piece) =>
+        piece.role === 'bar'
+          ? distanceToSegment(line.end, piece.segment) < ON_LINE
+          : near(line.end, upperEnd(piece.segment)),
+      )
+    ) {
+      faults.push(`${name} does not end on the sibling bar`);
     }
   }
   return faults;
 }
 
 /**
- * Straightness, below crossings in the one cost (Josh, 12 Oct 2026): a
- * line is drawn straight unless a bent course crosses fewer lines, or the
- * straight course breaks a hard constraint (passes through or close past
- * someone, runs along or close beside another line, crosses a line of its
- * own owner or another line into the same child, or continues a line it
- * meets). Lines that must leave their start a set way are not held to it:
+ * Straightness, above crossings (Josh, 22 Oct 2026, reversing his 12 Oct
+ * ruling): a line is drawn straight, from its owner's centre to its child's
+ * centre or to where it joins a line of descent, unless the straight course
+ * breaks a hard constraint (passes through or close past someone, runs
+ * along or close beside another line, crosses a line of its own owner or
+ * another line into the same child, or continues a line it meets). Lines that must leave their start a set way are not held to it:
  * one of a pair's lines (straight down from its owner), a couple's line
  * leaving their own line of descent (level), and a line from the child's
  * own row (below the row).
@@ -926,13 +932,14 @@ function faultsOfStraightness(drawing: Drawing, family: Family): string[] {
     const name = `${line.owners.join(' and ')}'s ${line.kind} line`;
     const reached = [...childrenReachedBy(connectors, line.line)];
     const start = line.line.points[0]!;
-    const end =
-      line.child === undefined
-        ? line.end
-        : visibleEnd(line.line.points, drawing, line.child);
-    if (line.child !== undefined && end.y > drawing.centre(line.child).y) {
+    if (
+      line.child !== undefined &&
+      visibleEnd(line.line.points, drawing, line.child).y >
+        drawing.centre(line.child).y
+    ) {
       continue;
     }
+    const end = line.end;
     if (
       line.owners.length > 1 &&
       pieces.some(
@@ -957,19 +964,6 @@ function faultsOfStraightness(drawing: Drawing, family: Family): string[] {
       y2: end.y,
     };
     const joins = new Set([...line.owners, ...reached]);
-    // Into a child too flat to run on under their symbol.
-    if (
-      line.child !== undefined &&
-      !canRunOnInside(
-        start,
-        end,
-        drawing.centre(line.child),
-        size,
-        drawing.shapeOf(line.child),
-      )
-    ) {
-      continue;
-    }
     // Through anyone it does not leave (a couple's line leaves their
     // partnership line, not either symbol), or close past someone it does
     // not join.
@@ -977,6 +971,7 @@ function faultsOfStraightness(drawing: Drawing, family: Family): string[] {
       const outside = (p: Point) =>
         outsideSymbol(p, drawing.centre(id), size, drawing.shapeOf(id));
       if (joins.has(id) && outside(start) < 0.5) return false;
+      if (id === line.child) return false;
       const limit = joins.has(id) ? -1 : clearance;
       return samples(straight).some(({ p }) => outside(p) < limit);
     });
@@ -1045,122 +1040,7 @@ function faultsOfStraightness(drawing: Drawing, family: Family): string[] {
       },
     );
     if (continues) continue;
-    const everything = [...fixed, ...others.flatMap((other) => other.segments)];
-    if (
-      crossingsOf([straight], everything) <=
-      crossingsOf(line.segments, everything)
-    ) {
-      faults.push(
-        `${name} bends, though a straight line would cross no more lines and break no rule`,
-      );
-    }
-  }
-  return faults;
-}
-
-/**
- * Constraint 5, Runs. A helper's children sit side by side where seating
- * allows. Runs are either nested or apart. When two helpers' children
- * overlap without nesting, the helper with more children (then the first
- * recorded) keeps the run. Each helper reaches their children with one line
- * per part.
- */
-function faultsOfRuns(drawing: Drawing, family: Family): string[] {
-  const faults: string[] = [];
-  const descents = descentsOf(drawing);
-  const lines = ownLinesOf(drawing.connectors);
-  const reachedBy = lines.map((line) => [
-    ...childrenReachedBy(drawing.connectors, line.line),
-  ]);
-  for (const descent of descents) {
-    const siblings = siblingsOf(drawing, descents, descent.children[0]!);
-    if (siblings.length < 2) continue;
-    // The helpers whose lines join this line of descent, with their
-    // children here, in the order their ties were recorded.
-    const helpers = new Map<string, Set<string>>();
-    const recorded = new Map<string, number>();
-    family.ties.forEach((tie, k) => {
-      if (!siblings.includes(tie.child)) return;
-      if (tie.kind !== 'donor' && tie.kind !== 'surrogate') return;
-      const key = `${tie.parent}:${tie.kind}`;
-      helpers.set(key, (helpers.get(key) ?? new Set()).add(tie.child));
-      if (!recorded.has(key)) recorded.set(key, k);
-    });
-    const placeOf = (id: string) => siblings.indexOf(id);
-    // Side by side: one stretch of the sibship each.
-    for (const [helper, children] of helpers) {
-      const places = [...children].map(placeOf).toSorted((a, b) => a - b);
-      if (places.at(-1)! - places[0]! + 1 > places.length) {
-        faults.push(`${helper}'s children do not sit side by side`);
-      }
-    }
-    // The runs kept: larger first, then first recorded; a stretch crossing
-    // a kept run is cut where that run ends.
-    const stretches = [...helpers]
-      .map(([helper, children]) => ({
-        helpers: [helper],
-        places: [...children].map(placeOf).toSorted((a, b) => a - b),
-        order: recorded.get(helper)!,
-      }))
-      .toSorted(
-        (a, b) => b.places.length - a.places.length || a.order - b.order,
-      );
-    const kept: number[][] = [];
-    const parts = new Map<string, number[][]>();
-    for (const stretch of stretches) {
-      let pieces = [stretch.places];
-      for (const run of kept) {
-        pieces = pieces.flatMap((places) => {
-          const inside = places.filter((k) => run.includes(k));
-          if (
-            inside.length === 0 ||
-            inside.length === places.length ||
-            inside.length === run.length
-          ) {
-            return [places];
-          }
-          return [inside, places.filter((k) => !run.includes(k))];
-        });
-      }
-      for (const places of pieces) kept.push(places);
-      parts.set(stretch.helpers[0]!, pieces);
-    }
-    // One line per part, for the helpers whose lines join.
-    for (const [helper, helperParts] of parts) {
-      const [parent, kind] = helper.split(':') as [string, string];
-      const theirs = lines.flatMap((line, k) =>
-        line.owners.includes(parent) && line.kind === kind ? [k] : [],
-      );
-      if (
-        !theirs.some((k) =>
-          mayJoin(drawing, descents, lines[k]!, reachedBy[k]!),
-        )
-      ) {
-        continue;
-      }
-      for (const part of helperParts) {
-        const ids = part.map((k) => siblings[k]!);
-        const by = new Set(
-          ids.map((id) => theirs.find((k) => reachedBy[k]!.includes(id))),
-        );
-        if (by.size > 1) {
-          faults.push(
-            `${helper} reaches ${ids.join(' and ')}, one part, apart`,
-          );
-        }
-        const line = [...by][0];
-        if (
-          line !== undefined &&
-          reachedBy[line]!.some(
-            (id) => siblings.includes(id) && !ids.includes(id),
-          )
-        ) {
-          faults.push(
-            `${helper}'s line to ${ids.join(' and ')} reaches past them`,
-          );
-        }
-      }
-    }
+    faults.push(`${name} bends, though a straight line would break no rule`);
   }
   return faults;
 }
@@ -1171,10 +1051,9 @@ function faultsOfRuns(drawing: Drawing, family: Family): string[] {
  * never continues it in a straight line (Josh, 12 Oct 2026). Two junctions
  * on one line are at least 0.2 of a symbol apart (or are one junction).
  * Each junction is at least that far from the ends and corners of the line
- * it meets. Every line into a child converges on one point at the top of
- * the child, as in Bennett (Round 5), or, from a parent on the child's own
- * row, at its bottom; the ends of donors' and carriers' lines that meet the
- * line of descent may meet at one point.
+ * it meets. Every line into a child runs on to the child's centre, under
+ * their symbol (Josh, 22 Oct 2026); the lines drawn for a whole sibship
+ * meet at one point, where its line of descent meets the bar.
  */
 function faultsOfJunctions(drawing: Drawing, _family: Family): string[] {
   const { connectors, size } = drawing;
@@ -1205,10 +1084,7 @@ function faultsOfJunctions(drawing: Drawing, _family: Family): string[] {
         !near(end, upperEnd(piece.segment), 1) &&
         !near(end, lowerEnd(piece.segment), 1),
     );
-    const reached = [...childrenReachedBy(connectors, line.line)];
-    const childTop =
-      reached.length === 1 && near(end, topOfSymbol(drawing, reached[0]!), 1);
-    if (onLevel || atTop || childTop) {
+    if (onLevel || atTop) {
       if (from.y >= end.y - 0.5) {
         faults.push(`${name} does not meet the line of descent from above`);
       }
@@ -1249,11 +1125,9 @@ function faultsOfJunctions(drawing: Drawing, _family: Family): string[] {
       }
     }
   }
-  // The junctions on each bar: where the lines from the parents, the
-  // stems, the lines up and the lines from owners meet it.
-  for (const bar of pieces.filter(
-    (piece) => piece.role === 'bar' || piece.role === 'subBar',
-  )) {
+  // The junctions on each bar: where the lines from the parents, the lines
+  // up and the lines from owners meet it.
+  for (const bar of pieces.filter((piece) => piece.role === 'bar')) {
     const on = (p: Point) => distanceToSegment(p, bar.segment) < ON_LINE;
     const junctions: { at: Point; what: string; ownEnd: boolean }[] = [
       ...pieces
@@ -1296,21 +1170,6 @@ function faultsOfJunctions(drawing: Drawing, _family: Family): string[] {
           }
         }
       }
-    }
-  }
-  // Every line into a child ends at the top of the child (or, coming up
-  // from below their row, at its bottom).
-  for (const line of lines) {
-    if (line.child === undefined) continue;
-    const name = `${line.owners.join(' and ')}'s ${line.kind} line`;
-    const end = visibleEnd(line.line.points, drawing, line.child);
-    const top = topOfSymbol(drawing, line.child);
-    const centre = drawing.centre(line.child);
-    const bottom = { x: top.x, y: 2 * centre.y - top.y };
-    if (!near(end, top, 2) && !near(end, bottom, 2)) {
-      faults.push(
-        `${name} ends at (${end.x.toFixed(0)}, ${end.y.toFixed(0)}), not at the top of ${line.child}`,
-      );
     }
   }
   // A line meets another at an angle: its last piece that shows does not
@@ -1475,7 +1334,8 @@ function arrivalFrom(points: Point[], end: Point, size: number): number {
  * Constraint 7, Order. The lines converging on a child keep their owners'
  * left-to-right order in the direction each arrives from (Round 5: order
  * stays readable from each line's angle). The line of descent counts as
- * being at its owners' position, arriving down the child's line up.
+ * being where the child's line up leaves the bar, straight above them
+ * (Josh, 22 Oct 2026: lines aim centre to centre).
  */
 function faultsOfOrder(drawing: Drawing, _family: Family): string[] {
   const faults: string[] = [];
@@ -1506,9 +1366,7 @@ function faultsOfOrder(drawing: Drawing, _family: Family): string[] {
       const top = upperEnd(upline);
       ends.push({
         name: 'the line of descent',
-        ownerX:
-          descent.parents.reduce((sum, id) => sum + drawing.centre(id).x, 0) /
-          descent.parents.length,
+        ownerX: top.x,
         below: false,
         from: Math.atan2(top.x - centre.x, Math.abs(centre.y - top.y)),
       });
@@ -1534,8 +1392,8 @@ function faultsOfOrder(drawing: Drawing, _family: Family): string[] {
  * runs along another line, or through a symbol or bracket, or close past a
  * symbol it does not join. (Lines drawn as one, which constraint 3 governs,
  * the lines that meet at one point on a line of descent, which the donor
- * rule allows, or converge on one child, and lines where they cross, drawn
- * as a hop, or join, are not two lines running close here.)
+ * rule allows, or converge on one child, and lines where they cross or
+ * join, are not two lines running close here.)
  */
 function faultsOfClearance(drawing: Drawing, family: Family): string[] {
   const { connectors, size } = drawing;
@@ -1575,7 +1433,6 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
     const name = `${line.owners.join(' and ')}'s ${line.kind} line`;
     const reached = [...childrenReachedBy(connectors, line.line)];
     const joins = new Set([...line.owners, ...reached]);
-    const hops = line.line.hops ?? [];
     const visible =
       line.child === undefined
         ? line.end
@@ -1611,12 +1468,10 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
           inBracket = true;
         }
         // Beside a line of descent, where it shows, away from the line's
-        // ends (where it leaves its owner and where it meets its target)
-        // and hops.
+        // ends (where it leaves its owner and where it meets its target).
         const nearEnd =
           near(p, visible, 0.3 * size) ||
-          near(p, line.line.points[0]!, 0.3 * size) ||
-          hops.some((h) => near(p, h, 0.3 * size));
+          near(p, line.line.points[0]!, 0.3 * size);
         beside = nearEnd || underSymbol(p) ? 0 : beside;
         if (!nearEnd && !underSymbol(p)) {
           const apart = Math.min(
@@ -1630,7 +1485,22 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
                     line.owners.every((id) =>
                       piece.part.parentIds?.includes(id),
                     )
-                  ),
+                  ) &&
+                  // Lines into one child converge on its centre, its own
+                  // line up among them; a line for a whole sibship meets
+                  // the bar and the line of descent where they meet.
+                  !(
+                    line.child !== undefined &&
+                    'child' in piece &&
+                    piece.child === line.child
+                  ) &&
+                  !(
+                    line.child === undefined &&
+                    distanceToSegment(line.end, piece.segment) < 0.5
+                  ) &&
+                  // A straight line crossing a piece at a shallow angle is
+                  // near it only about the crossing, which counts as one.
+                  crossingOf(s, piece.segment) === undefined,
               )
               .map((piece) => distanceToSegment(p, piece.segment)),
           );
@@ -1648,7 +1518,7 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
       );
     }
     if (
-      sharedLength(line.segments, partnershipSegments, hops, underSymbol) > 1 ||
+      sharedLength(line.segments, partnershipSegments, [], underSymbol) > 1 ||
       sharedLength(
         line.segments,
         pieces
@@ -1661,7 +1531,7 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
               ),
           )
           .map((piece) => piece.segment),
-        [line.end, ...hops],
+        [line.end],
         underSymbol,
       ) > 1
     ) {
@@ -1669,7 +1539,7 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
     }
   }
   // Where a line is last seen: where it meets the line of descent it joins,
-  // or the top of the child it runs on into.
+  // or the outline of the child it runs on into.
   const meetingOf = (line: OwnLine) =>
     line.child === undefined
       ? line.end
@@ -1707,8 +1577,8 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
       ) {
         continue;
       }
-      // Where they cross, drawn as a hop, or where one joins the other to
-      // be drawn as one line, they are not running close.
+      // Where they cross, or where one joins the other to be drawn as one
+      // line, they are not running close.
       const joinOf = (line: OwnLine) =>
         line.line.joinsAt === undefined
           ? []
@@ -1723,20 +1593,23 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
           b.segments.some((t) => distanceToSegment(p, t) < 0.5),
         ),
       ];
-      const hops = [
-        ...(a.line.hops ?? []),
-        ...(b.line.hops ?? []),
-        ...joinOf(a),
-        ...joinOf(b),
-        ...partings,
-      ];
-      // The longest stretch close beside, and the current one; a hop, or
-      // where they meet, breaks a stretch.
+      const crossings = a.segments.flatMap((s) =>
+        b.segments.flatMap((t) => crossingOf(s, t) ?? []),
+      );
+      const meetings = [...crossings, ...joinOf(a), ...joinOf(b), ...partings];
+      // The longest stretch close beside, and the current one; where they
+      // cross or meet breaks a stretch.
       let closeRun = 0;
       let close = 0;
-      for (const s of a.segments) {
+      // Two lines of one owner leaving one point part there, as a V.
+      const fromOnePoint =
+        sameOwners && near(a.line.points[0]!, b.line.points[0]!, 0.5);
+      for (const [k, s] of a.segments.entries()) {
+        const against =
+          fromOnePoint && k === 0 ? b.segments.slice(1) : b.segments;
+        if (against.length === 0) continue;
         for (const { p, length } of samples(s)) {
-          if (hops.some((h) => near(p, h, 0.3 * size)) || leaving(p)) {
+          if (meetings.some((h) => near(p, h, 0.3 * size)) || leaving(p)) {
             close = 0;
             continue;
           }
@@ -1753,7 +1626,7 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
             continue;
           }
           const apart = Math.min(
-            ...b.segments.map((t) => distanceToSegment(p, t)),
+            ...against.map((t) => distanceToSegment(p, t)),
           );
           // On one course: constraint 3's.
           if (apart < 0.5) continue;
@@ -1772,10 +1645,10 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
 }
 
 /**
- * Constraint 9, Crossings. Every crossing is drawn as a hop. No hop falls
- * at a junction, at a corner or inside a symbol. A line never crosses a
- * line of its own owner, or another line into the same child. No crossing
- * is exempted by kind or by family.
+ * Constraint 9, Crossings. A crossing is drawn plain (Josh, 22 Oct 2026: no
+ * hops), and never falls at a junction or a corner, where it would read as
+ * one. A line never crosses a line of its own owner, or another line into
+ * the same child. No crossing is exempted by kind or by family.
  */
 function faultsOfCrossings(drawing: Drawing, family: Family): string[] {
   const { connectors, size } = drawing;
@@ -1787,11 +1660,10 @@ function faultsOfCrossings(drawing: Drawing, family: Family): string[] {
       (id) =>
         outsideSymbol(p, drawing.centre(id), size, drawing.shapeOf(id)) < 0,
     );
-  const fixed: { segment: LineSegment; what: string; corners: Point[] }[] = [
+  const fixed: { segment: LineSegment; what: string }[] = [
     ...pieces.map((piece) => ({
       segment: piece.segment,
       what: `the line of descent from ${(piece.part.parentIds ?? []).join(' and ')}`,
-      corners: [],
     })),
     ...connectors.groupLines.flatMap((line) =>
       [
@@ -1801,37 +1673,36 @@ function faultsOfCrossings(drawing: Drawing, family: Family): string[] {
       ].map((segment) => ({
         segment,
         what: `the partnership line of ${(line.partnerIds ?? []).join(' and ')}`,
-        corners: [],
       })),
     ),
     ...connectors.twinIndicators.flatMap((twin) =>
-      twin.segment
-        ? [{ segment: twin.segment, what: 'a twin mark', corners: [] }]
-        : [],
+      twin.segment ? [{ segment: twin.segment, what: 'a twin mark' }] : [],
     ),
   ];
   const ends = (s: LineSegment) => [
     { x: s.x1, y: s.y1 },
     { x: s.x2, y: s.y2 },
   ];
-  // Every vertex of a line of descent or a partnership line: a crossing
-  // there falls at a corner or junction.
-  const vertices = fixed.flatMap((item) => ends(item.segment));
-  const isHop = (line: OwnLine, at: Point) =>
-    (line.line.hops ?? []).some((hop) => near(hop, at, 1));
+  // Every vertex of a line of descent or a partnership line, and every
+  // corner of a line: a crossing there falls at a corner or junction.
+  const vertices = [
+    ...fixed.flatMap((item) => ends(item.segment)),
+    ...lines.flatMap((line) => line.line.points),
+  ];
+  const atCorner = (at: Point) =>
+    vertices.some((corner) => near(corner, at, 0.1 * size));
   lines.forEach((line, i) => {
     const name = `${line.owners.join(' and ')}'s ${line.kind} line`;
-    const ownVertices = line.line.points;
     for (const s of line.segments) {
       for (const item of fixed) {
         const at = crossingOf(s, item.segment);
         if (!at || inSymbol(at)) continue;
-        if (!isHop(line, at)) {
-          faults.push(`${name} crosses ${item.what} without a hop`);
+        if (atCorner(at)) {
+          faults.push(`${name} crosses ${item.what} at a corner or junction`);
         }
       }
       lines.forEach((other, j) => {
-        if (j === i) return;
+        if (j <= i) return;
         for (const t of other.segments) {
           const at = crossingOf(s, t);
           if (!at || inSymbol(at)) continue;
@@ -1839,72 +1710,95 @@ function faultsOfCrossings(drawing: Drawing, family: Family): string[] {
             line.owners.some((id) => other.owners.includes(id)) ||
             (line.child !== undefined && line.child === other.child)
           ) {
-            if (j > i) {
-              faults.push(
-                `${name} crosses ${other.owners.join(' and ')}'s ${other.kind} line, ${line.child !== undefined && line.child === other.child ? 'into the same child' : 'of its own owner'}`,
-              );
-            }
+            faults.push(
+              `${name} crosses ${other.owners.join(' and ')}'s ${other.kind} line, ${line.child !== undefined && line.child === other.child ? 'into the same child' : 'of its own owner'}`,
+            );
             continue;
           }
-          if (j > i && !isHop(line, at) && !isHop(other, at)) {
+          if (atCorner(at)) {
             faults.push(
-              `${name} crosses ${other.owners.join(' and ')}'s ${other.kind} line without a hop`,
+              `${name} crosses ${other.owners.join(' and ')}'s ${other.kind} line at a corner or junction`,
             );
           }
         }
       });
     }
-    const crossings = line.segments.flatMap((s) => [
-      ...fixed.flatMap((item) => crossingOf(s, item.segment) ?? []),
-      ...lines
-        .filter((other) => other !== line)
-        .flatMap((other) =>
-          other.segments.flatMap((t) => crossingOf(s, t) ?? []),
-        ),
-    ]);
-    for (const hop of line.line.hops ?? []) {
-      if (!crossings.some((at) => near(at, hop, 1))) {
-        faults.push(`${name} hops where nothing crosses`);
-      }
-      if (inSymbol(hop)) faults.push(`${name} hops inside a symbol`);
-      const corners = [
-        ...vertices,
-        ...ownVertices,
-        ...lines
-          .filter((other) => other !== line)
-          .flatMap((other) => other.line.points),
-      ];
-      if (corners.some((corner) => near(corner, hop, 0.1 * size))) {
-        faults.push(`${name} hops at a corner or a junction`);
-      }
-    }
   });
-  // Lines of descent and partnership lines are never drawn with hops, so
-  // they never cross one another.
+  // Lines of descent and partnership lines never cross one another.
   for (let i = 0; i < fixed.length; i++) {
     for (let j = i + 1; j < fixed.length; j++) {
       const [a, b] = [fixed[i]!, fixed[j]!];
       if (a.what === b.what) continue;
       const at = crossingOf(a.segment, b.segment);
       if (at && !inSymbol(at)) {
-        faults.push(
-          `${a.what} crosses ${b.what}, which cannot be drawn as a hop`,
-        );
+        faults.push(`${a.what} crosses ${b.what}`);
       }
     }
   }
   return faults;
 }
 
-/** How many hops a drawing makes. */
-/** How many hops are drawn: a hop on a piece two lines of one course share
- * is drawn once. */
-export const hopCount = (connectors: PedigreeConnectors) =>
-  new Set(
-    connectors.auxiliaryLines.flatMap((line) =>
-      (line.hops ?? []).map((p) => `${p.x.toFixed(4)},${p.y.toFixed(4)}`),
+/** How many times the auxiliary lines cross another line where it shows
+ * (not under a symbol): each pair of lines counted once, and two lines of
+ * one course crossed at one point once, as the router counts them. */
+export function crossingCount(drawing: Drawing, people: string[]): number {
+  const { connectors, size } = drawing;
+  const hidden = (p: Point) =>
+    people.some(
+      (id) =>
+        outsideSymbol(p, drawing.centre(id), size, drawing.shapeOf(id)) < 0,
+    );
+  const fixed = [
+    ...connectors.groupLines.flatMap((line) => [
+      line.segment,
+      ...(line.endpointSegments ?? []),
+      ...(line.doubleSegment ? [line.doubleSegment] : []),
+    ]),
+    ...connectors.parentChildLines.flatMap((line) => [
+      ...line.parentLink,
+      ...(line.siblingBar ? [line.siblingBar] : []),
+      ...line.uplines,
+    ]),
+    ...connectors.twinIndicators.flatMap((twin) =>
+      twin.segment ? [twin.segment] : [],
     ),
-  ).size;
+  ];
+  // A piece of line crossing two lines at one point counts once, and so
+  // does a course two lines share, drawn once, whatever order the lines are
+  // listed in.
+  const counted: { at: Point; dx: number; dy: number }[] = [];
+  connectors.auxiliaryLines.forEach((line, index) => {
+    const crossed = [
+      ...fixed,
+      ...connectors.auxiliaryLines
+        .slice(0, index)
+        .flatMap((other) => segmentsOf(other.points)),
+    ];
+    for (const segment of segmentsOf(line.points)) {
+      const length = Math.hypot(
+        segment.x2 - segment.x1,
+        segment.y2 - segment.y1,
+      );
+      if (length === 0) continue;
+      const dx = (segment.x2 - segment.x1) / length;
+      const dy = (segment.y2 - segment.y1) / length;
+      const points = crossed
+        .flatMap((other) => crossingOf(segment, other) ?? [])
+        .filter((at) => !hidden(at));
+      for (const at of points.filter(
+        (point, k) => points.findIndex((p) => near(p, point, 1e-3)) === k,
+      )) {
+        const shared = counted.some(
+          (other) =>
+            near(other.at, at, 1e-3) &&
+            Math.abs(other.dx * dy - other.dy * dx) < 1e-6,
+        );
+        if (!shared) counted.push({ at, dx, dy });
+      }
+    }
+  });
+  return counted.length;
+}
 
 /** Whether two people share genes: one descends from the other, or both
  * from someone recorded. */
@@ -2122,32 +2016,6 @@ function faultsOfKinds(drawing: Drawing, family: Family): string[] {
   return faults;
 }
 
-/** Sub-bars that run on past the lines hanging from them: each end of a
- * run's sub-bar is where a child's line up, or the stem of a run inside it,
- * comes down from it. */
-function faultsOfRunBars(drawing: Drawing): string[] {
-  return drawing.connectors.parentChildLines.flatMap((line) => {
-    const runs = line.runs ?? [];
-    const hanging = [
-      ...line.uplines.map(upperEnd),
-      ...runs.map((run) => upperEnd(run.stem)),
-    ];
-    return runs.flatMap((run) =>
-      run.bar
-        ? [
-            { x: run.bar.x1, y: run.bar.y1 },
-            { x: run.bar.x2, y: run.bar.y2 },
-          ]
-            .filter((end) => !hanging.some((top) => near(top, end)))
-            .map(
-              (end) =>
-                `a sub-bar of ${(line.parentIds ?? []).join('+')}'s children runs on to ${end.x.toFixed(1)},${end.y.toFixed(1)} with nothing hanging from it`,
-            )
-        : [],
-    );
-  });
-}
-
 /** Every hard constraint, over a whole drawing. */
 export function strictLineFaults(drawing: Drawing, family: Family): string[] {
   return [
@@ -2156,13 +2024,11 @@ export function strictLineFaults(drawing: Drawing, family: Family): string[] {
     ...faultsOfJoining(drawing, family),
     ...faultsOfTarget(drawing, family),
     ...faultsOfStraightness(drawing, family),
-    ...faultsOfRuns(drawing, family),
     ...faultsOfJunctions(drawing, family),
     ...faultsOfOrder(drawing, family),
     ...faultsOfClearance(drawing, family),
     ...faultsOfCrossings(drawing, family),
     ...faultsOfPlacement(drawing, family),
     ...faultsOfKinds(drawing, family),
-    ...faultsOfRunBars(drawing),
   ].filter((fault, k, all) => all.indexOf(fault) === k);
 }

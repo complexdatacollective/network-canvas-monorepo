@@ -432,8 +432,12 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           label: 'Import contacts',
           subject: { entity: 'node', type: person.id },
           quickAdd: nameVar.id,
-          wording: { externalDataError: EXTERNAL_DATA_ERROR },
         });
+        synth.setInterfaceText(
+          'messages',
+          'externalDataError',
+          EXTERNAL_DATA_ERROR,
+        );
         stage.addPrompt({ text: 'Add people from previous rounds' });
         stage.addPanel({
           title: 'Previous interview',

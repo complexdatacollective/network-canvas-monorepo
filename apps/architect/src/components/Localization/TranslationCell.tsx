@@ -556,7 +556,9 @@ const useEditedCell = ({
       return;
     }
     if (event.key === 'Escape') {
-      if (!draft.changed) return;
+      // In one version's line, Escape first folds the versions back into
+      // their pill; only Escape in the text around them puts the cell back.
+      if (!draft.changed || editable.matches('[data-version]')) return;
       event.preventDefault();
       event.stopPropagation();
       holdFocus();
@@ -730,9 +732,9 @@ const RichTextCell = ({
 };
 
 /**
- * A localized message: its versions, read-only until the cell has focus,
- * then edited in the cell as the stage editor edits them, one line per
- * version.
+ * A localized message: shown with its placeholders and versions as pills
+ * until the cell has focus, then edited in the cell with the stage editor's
+ * own editor, as piped text is.
  */
 const MessageCell = ({
   row,
@@ -752,10 +754,10 @@ const MessageCell = ({
   const { text: message, error } = draft;
   const { editing, revision, cellProps } = useEditedCell({
     draft,
-    // Each version is one line, so Enter always moves on.
+    // The text is one line, so Enter always moves on.
     singleLine: true,
     onMove,
-    isAtEdge: () => false,
+    isAtEdge: isEditableCaretAt,
   });
   const empty = isBlankTranslation(row, message);
   const fallbackShown = empty && error === undefined;
@@ -777,7 +779,7 @@ const MessageCell = ({
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
     >
       {editing ? (
-        <div className={CELL_TEXT_CLASSES}>
+        <>
           {fallbackShown && (
             <div className="sr-only">
               <Fallback
@@ -800,9 +802,11 @@ const MessageCell = ({
             locale={locale}
             ariaLabelledBy={labelledBy}
             ariaDescribedBy={describedBy}
+            ariaInvalid={error !== undefined}
             autoFocus
+            className={CELL_EDITOR_CLASSES}
           />
-        </div>
+        </>
       ) : (
         <>
           <div className="grid">
@@ -818,7 +822,7 @@ const MessageCell = ({
             ) : (
               <div
                 id={contentId}
-                className={cx(CELL_TEXT_CLASSES, 'col-start-1 row-start-1')}
+                className={cx(PLAIN_TEXT_CLASSES, 'col-start-1 row-start-1')}
               >
                 <LocalizedMessageVersionsSummary
                   message={message}

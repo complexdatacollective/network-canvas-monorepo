@@ -4,9 +4,9 @@
   - region "Your family":
     - button "Mother term - matrix check"
     - button "Father term - matrix check"
-    - button "You"
-    - button "Sister term - matrix check ex of Tom - matrix check"
     - button "Tom"
+    - button "Sister term - matrix check ex of Tom - matrix check"
+    - button "You"
     - button "Sister term - matrix check partnered with Sam - matrix check"
     - button "Sam"
   - toolbar "Family tree tools":
@@ -15,6 +15,10 @@
       - button "Connect"
       - button "Disconnect"
     - separator
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"

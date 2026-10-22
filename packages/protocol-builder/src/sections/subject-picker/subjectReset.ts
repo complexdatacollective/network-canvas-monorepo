@@ -11,7 +11,7 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
  * the stage's identity and name, the notes for the interviewer, and a
  * roster's panel title, which is prose about the task
  * rather than about the type. The words a stage shows participants
- * (`minNodesNotice`, `searchLabel`, a Family Pedigree's `wording` and the
+ * (`minNodesNotice`, `searchFailed`, a Family Pedigree's `wording` and the
  * rest) are prose the same way, and Network Canvas seeds them on every new
  * stage: a seeded message is not configuration, so choosing a type must not
  * ask to discard it.
@@ -24,13 +24,10 @@ export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'panelTitle',
   'subject',
   'allAddedNotice',
-  'externalDataError',
   'maxNodesNotice',
   'minNodesNotice',
   'quickAddHint',
   'searchFailed',
-  'searchLabel',
-  'searchNoMatch',
   'offlineNotice',
   'mapUnavailable',
   'outsideAreasLabel',

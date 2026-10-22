@@ -24,6 +24,8 @@ The list contains exactly the languages your protocol is written in, in alphabet
 
 The language the interview is currently shown in is already selected. When the participant picks another one, the change happens straight away: your protocol's text switches to that language, including the interview's buttons and messages that your protocol holds (see [Interview text](/en/design-protocols/translating-your-protocol#interview-text)), and so does every later screen of the interview. The participant can change their mind as often as they like before moving on. A text with no translation in the language they pick appears in another of your protocol's languages (see [The default language and which translation participants see](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see)).
 
+![A Language Chooser stage in preview, with español selected. The heading is shown in Spanish, "Elige un idioma", and each language is listed by its own name.](/assets/img/architect/localization/preview-language.png)
+
 The participant can always move on to the next screen, even if they don't pick a language. If they leave the selected language as it is, the interview keeps choosing its language from the language settings of their device or browser, as it did before this screen. Once they pick a language, the interview keeps it until the browser tab is closed, including if the page is reloaded. The choice isn't saved with the interview, so an interview resumed in a new tab or on another device starts again from that device's or browser's language settings.
 
 The interview's own built-in words are available in a fixed set of languages. If the participant picks a language that Network Canvas doesn't have, your protocol's text is shown in that language, and the built-in words are shown in a language from the participant's device or browser settings if Network Canvas has one, or otherwise in English.
@@ -39,6 +41,8 @@ The stage editor has these sections:
   - open [the translation table](/en/design-protocols/translating-your-protocol#the-translation-table) with **Open translation table**. A **Missing translations** badge marks each language that some texts aren't translated into yet. The table opens over the **Languages** tab, so if this stage has changes you haven't saved, Architect asks whether to discard them first.
 - **Participant wording** holds the **Heading** shown above the list of languages. It starts with "Choose a language" in each of your protocol's languages that Network Canvas has wording for. Change it as you would any other text, and translate it into any language it is missing from, as for the rest of your protocol (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)). When you add a language that Network Canvas has wording for, the heading's starting wording is added in that language too, unless you have changed the heading in your protocol's default language.
 - [Skip logic](/en/design-protocols/key-concepts/skip-logic) and interviewer guidance work as they do on other stages.
+
+![The Language Chooser stage editor. The Participant wording section holds the Heading, "Choose a language", in American English, the default language.](/assets/img/architect/localization/language-chooser-editor.png)
 
 ## Data
 

@@ -6,15 +6,14 @@ import { inOrder } from './utils';
  * line of descent: donors, surrogates, birth parents of an adopted child, and
  * any other parent the child's family does not name.
  *
- * Such a line ends at the top of the child, where every line into the child
- * converges on one point (Round 5, after Bennett et al. 2022), or at a point
- * on the child's line of descent: on their sibling bar, at the top of a
- * run's stem or a child's line up, or at the top of an only child. Every
- * target is reached by the same shapes of course: straight, or routed
- * through the gaps between rows. A line is drawn straight unless a bent
- * course crosses fewer lines, or the straight course breaks a hard
- * constraint. The lines are routed one after another and then each again
- * against all the others.
+ * Such a line runs from the centre of its owner's symbol to the centre of the
+ * child's, so a line at an angle aims at the middle of both symbols, and the
+ * symbols hide its ends (Josh, 22 Oct 2026); or, for a line drawn for every
+ * child of a sibship, to a point on their sibling bar. A line is drawn
+ * straight, and bends only where a straight course breaks a hard
+ * constraint, such as passing through a symbol (Josh, 22 Oct 2026: a
+ * straight line ranks above one crossing fewer lines). The lines are routed
+ * one after another and then each again against all the others.
  *
  * A parent on the child's own row (a relative of the child's generation who
  * raises them, such as a sibling or cousin, while the child stays in their
@@ -102,13 +101,11 @@ export type RoutingScene = {
   /** The x of everyone on each row, for finding a way down between them. */
   rowXs: number[][];
   /** By the row above each gap: the height of the highest sibling bar in
-   * the gap below it, where a sibship's runs raised it above the middle. */
+   * the gap below it. */
   barTops?: Map<number, number>;
   /** How far a square's corners and a diamond's tips are rounded, as a
    * fraction of the box. */
   cornerRadius?: number;
-  /** Half the width a line is drawn, as a fraction of the box. */
-  halfStroke?: number;
   /** The work the search of the lines may do (see `RoutingWork`). */
   work?: RoutingWork;
   /** Whether the drawing only screens a seating for a closer search (see
@@ -125,7 +122,7 @@ const WAYS_DOWN = 12;
 
 export type RouteEnd =
   | {
-      /** The top of a child, where every line into them converges. */
+      /** The centre of a child's symbol. */
       kind: 'child';
       person: number;
       x: number;
@@ -133,17 +130,16 @@ export type RouteEnd =
       shape?: PedigreeSymbolShape;
     }
   | {
-      /** A point on the children's line of descent, which the line meets
-       * from above: on a sibling bar, at the top of a run's stem or a
-       * child's line up, or at the top of an only child. */
+      /** A point on the children's sibling bar, which the line meets from
+       * above. */
       kind: 'join';
       /** The places it may end, best first. */
       points: Point[];
-      /** The one child it reaches, if it reaches one: on their top, or at
-       * the top of their line up. */
-      reaches?: number;
       /** The children's row. */
       layer: number;
+      /** It ends at the top of the line of descent's last drop, straight
+       * above, and so goes on down it, as a co-parent's line does. */
+      continues?: boolean;
     };
 
 /** How far apart two junctions on one line are, at least, and how far a
@@ -154,6 +150,11 @@ export const JUNCTION_CLEARANCE = 0.2;
  * another line, or pass a symbol it does not join, as a fraction of a
  * symbol. */
 export const LINE_CLEARANCE = 0.25;
+/** How far from where another line meets a symbol a line may leave it, as
+ * a fraction of the symbol: lines leaving a symbol part at its edge at a
+ * clear angle, and need not keep a line's clearance (Josh, 22 Oct 2026:
+ * a partner's line leaving about 22 degrees below the partnership line). */
+const LEAVING_CLEARANCE = LINE_CLEARANCE / 2;
 
 const ON = 0.004; // about a pixel
 
@@ -227,50 +228,6 @@ const gapMiddles = (stops: number[]) => {
  * symbol says otherwise. */
 const CORNER_RADIUS = 0.25;
 
-/** How far above the top of its box a diamond's rounded tip stands, as a
- * fraction of the box: a square of 0.85 the box, its corners rounded at
- * `cornerRadius` of the box before it is scaled, turned 45°. */
-const diamondTipAbove = (cornerRadius: number) =>
-  (0.85 * Math.SQRT2) / 2 - 0.5 - 0.85 * cornerRadius * (Math.SQRT2 - 1);
-
-/**
- * How far below the top of its box a symbol's edge lies at `offset` from the
- * middle (both as fractions of the box). A circle's edge curves away; a
- * square's is flat but for its rounded corners; a diamond (a square turned
- * and scaled to 0.85) has its tip a tenth of the box above the box's top.
- * Unknown, the deepest of the three. Symbols are symmetric, so the same
- * depth measures up from the bottom.
- */
-function edgeDepth(
-  shape: PedigreeSymbolShape | undefined,
-  offset: number,
-  cornerRadius = CORNER_RADIUS,
-) {
-  const o = Math.min(Math.abs(offset), 0.5);
-  const circle = 0.5 - Math.sqrt(Math.max(0, 0.25 - o * o));
-  const diamond = Math.max(0, o - 0.1);
-  const intoCorner = o - (0.5 - cornerRadius);
-  const square =
-    intoCorner <= 0
-      ? 0
-      : cornerRadius -
-        Math.sqrt(Math.max(0, cornerRadius ** 2 - intoCorner ** 2));
-  if (shape === 'circle') return circle;
-  if (shape === 'square') return square;
-  if (shape === 'diamond') return diamond;
-  return Math.max(circle, diamond, square);
-}
-
-/** The top of a symbol as it is drawn: a diamond's rounded tip stands a
- * little above the box's top (see `diamondTipAbove`). */
-export const symbolTop = (
-  layer: number,
-  boxHeight: number,
-  shape: PedigreeSymbolShape | undefined,
-  cornerRadius = CORNER_RADIUS,
-) =>
-  layer - (shape === 'diamond' ? diamondTipAbove(cornerRadius) * boxHeight : 0);
-
 /** How far a point lies outside a box of half-size `half` whose corners are
  * rounded at `radius`, from its middle, in the first quadrant. */
 function outsideRoundedBox(
@@ -320,41 +277,6 @@ function outsideSymbol(
     );
   }
   return outsideRoundedBox(dx, dy, 0.5, shape === 'square' ? radius : 0);
-}
-
-/** Whether a point lies inside a symbol's outline by at least `by` (a
- * fraction of the box). */
-const insideBy = (p: Point, symbol: Symbol, by: number) =>
-  outsideSymbol(p, symbol, symbol.shape) <= -by - 1e-6;
-
-/**
- * Where a line coming into a symbol at `meet` (on its outline), from
- * `before`, runs on to under it, in its own direction: the first of a few
- * points along that way that lies inside the outline by at least
- * `halfStroke` (a fraction of the box), so neither a turn nor the line's end
- * shows. Undefined when the line comes in too flat to run on inside, as a
- * line flatter than a diamond's sides does at its tip.
- */
-export function runOnInside(
-  before: Point,
-  meet: Point,
-  symbol: Symbol,
-  halfStroke: number,
-): Point | undefined {
-  const width = symbol.right - symbol.left;
-  const height = symbol.bottom - symbol.top;
-  const ux = (meet.x - before.x) / width;
-  const uy = (meet.y - before.y) / height;
-  const length = Math.hypot(ux, uy);
-  if (length < 1e-9) return undefined;
-  for (const along of [0.2, 0.3, 0.4, 0.5]) {
-    const p = {
-      x: meet.x + ((along * ux) / length) * width,
-      y: meet.y + ((along * uy) / length) * height,
-    };
-    if (insideBy(p, symbol, halfStroke)) return p;
-  }
-  return undefined;
 }
 
 /**
@@ -797,13 +719,13 @@ export function crossing(a: LineSegment, b: LineSegment): Point | undefined {
 
 /**
  * What a course costs, compared step by step: breaking a hard constraint
- * costs more than any number of crossings a course can make, a crossing
- * more than bending, and bending at all more than how a course bends or how
- * long it is. So a line is drawn straight unless a bent course crosses
- * fewer lines, or the straight course breaks a hard constraint (Josh, 12 Oct
- * 2026: straightness ranks below crossings, for every kind of line).
+ * costs more than bending, bending at all more than any number of crossings
+ * a course can make, and a crossing more than how a course bends or how
+ * long it is. So a line is drawn straight unless the straight course breaks
+ * a hard constraint (Josh, 22 Oct 2026: a straight line ranks above one
+ * crossing fewer lines, reversing his 12 Oct ruling).
  */
-const HARD = 1_000_000;
+export const HARD = 1_000_000;
 const COST = {
   // Hard constraints: no line passes through or close by a symbol or a
   // bracket (constraint 8), runs along or close beside another line, or
@@ -826,11 +748,7 @@ const COST = {
   /** Every crossing counts the same, whatever it crosses. */
   crossing: 1000,
   /** A course with any corner that shows. */
-  bent: 100,
-  /** A line into a child too flat to run on under their symbol from where
-   * the lines into them converge, so its end shows there (every line ends
-   * exactly on what it meets, Josh, 12 Oct 2026). */
-  runsOff: 100,
+  bent: 100_000,
   /** A line a few degrees off upright reads as drawn by mistake. */
   nearlyUpright: 3,
   bend: 1,
@@ -861,16 +779,11 @@ type EndContext = {
   people?: number[];
 };
 
-/** Where a line into a child ends: the top of their symbol, where every
- * line into them converges (a diamond's tip stands above its box). */
-const childTop = (
+/** Where a line into a child ends: the centre of their symbol. */
+const childCentre = (
   end: Extract<RouteEnd, { kind: 'child' }>,
   boxHeight: number,
-  cornerRadius?: number,
-): Point => ({
-  x: end.x,
-  y: symbolTop(end.layer, boxHeight, end.shape, cornerRadius),
-});
+): Point => ({ x: end.x, y: end.layer + boxHeight / 2 });
 
 type Box = { left: number; right: number; top: number; bottom: number };
 
@@ -1060,7 +973,7 @@ function courseCoster(
 ) {
   const { boxWidth: boxw, boxHeight: boxh } = scene;
   const near = boxw * JUNCTION_CLEARANCE;
-  const endPerson = end.kind === 'child' ? end.person : end.reaches;
+  const endPerson = end.kind === 'child' ? end.person : undefined;
   const ends = scene.symbols.filter(
     (symbol) => symbol.person === from || symbol.person === endPerson,
   );
@@ -1124,9 +1037,7 @@ function courseCoster(
     }));
   // Where the course leaves its owner and meets its target.
   const targets: Point[] =
-    end.kind === 'join'
-      ? end.points
-      : [childTop(end, boxh, scene.cornerRadius)];
+    end.kind === 'join' ? end.points : [childCentre(end, boxh)];
   const courseEnds: Point[] = [...(start ? [start] : []), ...targets];
   const isTarget = (p: Point) =>
     targets.some((q) => shorterThanOn(q.x - p.x, q.y - p.y));
@@ -1197,6 +1108,9 @@ function courseCoster(
     }
     let brackets = 0;
     for (const bracket of linesOnly ? [] : scene.brackets.filter(isNear)) {
+      // A line into an adopted child crosses their bracket on its way to
+      // their centre (Josh, 22 Oct 2026).
+      if (bracket.person === endPerson && enteringChild) continue;
       if (lengthInside(segment, bracket) > ON) brackets++;
     }
     const part = { cost, symbols, brackets };
@@ -1229,6 +1143,14 @@ function courseCoster(
     const adds: number[] = [];
     const at = crossing(segment, line.segment);
     if (at && !insideAny(symbols, at)) adds.push(COST.crossOwn);
+    // Two straight pieces leaving the owner's centre part there, as a V,
+    // however narrow (Josh, 22 Oct 2026: lines aim centre to centre).
+    const leavesStart = (piece: LineSegment) =>
+      start !== undefined &&
+      shorterThanOn(piece.x1 - start.x, piece.y1 - start.y);
+    if (leavesStart(segment) && leavesStart(line.segment)) {
+      return { adds, stretches: [] };
+    }
     // Lines of one owner leave the owner together and may run on as one
     // course; once they part they keep clear of each other, like any two
     // lines.
@@ -1262,20 +1184,22 @@ function courseCoster(
     let stretches: Interval[] = [];
     if (sharedRun(segment, line.segment, ends) > ON) adds.push(COST.runAlong);
     const at = crossing(segment, line.segment);
-    // Lines meeting at one point (on a line of descent, or at the top of
-    // the child they all reach, where they converge) run close only
-    // there; a line keeps clear of every line of descent, the one it
-    // joins included, but near its own ends, where it leaves its owner and
-    // meets its target.
+    // Lines meeting at one point (where a line of descent meets its
+    // sibling bar, or at the centre of the child they all reach, where they
+    // converge) run close only there, and a line meets the bar and the line
+    // of descent it joins at any angle (Josh, 22 Oct 2026: straight lines);
+    // a line keeps clear of every other line of descent but near its own
+    // ends, where it leaves its owner and meets its target.
     const meetsIt =
       (end.kind === 'child' && line.endsOn === end.person) ||
       (end.kind === 'join' &&
-        line.kind === 'other' &&
-        end.points.some(
-          (p) =>
-            shorterThanOn(line.segment.x2 - p.x, line.segment.y2 - p.y) ||
-            shorterThanOn(line.segment.x1 - p.x, line.segment.y1 - p.y),
-        ));
+        (joined.includes(line.segment) ||
+          (line.kind === 'other' &&
+            end.points.some(
+              (p) =>
+                shorterThanOn(line.segment.x2 - p.x, line.segment.y2 - p.y) ||
+                shorterThanOn(line.segment.x1 - p.x, line.segment.y1 - p.y),
+            ))));
     if (!meetsIt) {
       stretches = closeStretches(segment, line.segment, boxw, boxh, ends, [
         ...(at ? [at] : []),
@@ -1444,6 +1368,8 @@ function courseCoster(
   // ends, or pass through that point.
   const meetingEnd = (p: Point) =>
     scene.lines.filter((line) => distanceToSegment(p, line.segment) < ON);
+  const meetsChildAt = (points: Point[]) =>
+    end.kind === 'child' ? points.findIndex(isTarget) : -1;
   const endsCost = (points: Point[], segments: LineSegment[]): number => {
     let cost = 0;
     // A line meets a line of descent from above (constraint 6).
@@ -1459,7 +1385,7 @@ function courseCoster(
     // line (Josh, 12 Oct 2026): its last piece is not in line with a piece
     // of line that ends where it ends and runs on beyond it.
     const meetAt = points.findIndex(isTarget);
-    if (meetAt > 0) {
+    if (meetAt > 0 && !(end.kind === 'join' && end.continues)) {
       const at = points[meetAt]!;
       const before = points[meetAt - 1]!;
       const ux = at.x - before.x;
@@ -1493,21 +1419,6 @@ function courseCoster(
         if (across < 0.05 && ux * vx + uy * vy > 0) cost += COST.continues;
       }
     }
-    // A line into a child runs on under their symbol, in its own direction.
-    if (!linesOnly && end.kind === 'child' && meetAt > 0) {
-      const child = ends.find((symbol) => symbol.person === end.person);
-      if (
-        child &&
-        !runOnInside(
-          points[meetAt - 1]!,
-          points[meetAt]!,
-          child,
-          scene.halfStroke ?? 0,
-        )
-      ) {
-        cost += COST.runsOff;
-      }
-    }
     // Lines meeting at one point keep their owners' order across the page
     // in the directions they arrive from (constraint 7).
     if (meetAt > 0 && endContext.ownerX !== undefined) {
@@ -1533,12 +1444,39 @@ function courseCoster(
         }
       }
     }
+    // Lines into one child converge on its centre, each from a direction
+    // of its own: two arriving all but in line run together, however near
+    // the child they meet.
+    if (meetsChildAt(points) > 0) {
+      const meet = meetsChildAt(points);
+      const at = points[meet]!;
+      const before = points[meet - 1]!;
+      const ux = before.x - at.x;
+      const uy = before.y - at.y;
+      const length = Math.hypot(ux, uy);
+      for (const line of scene.lines) {
+        if (isOwn(line) || line.endsOn !== endPerson || length < ON) continue;
+        const { x1, y1, x2, y2 } = line.segment;
+        const far = shorterThanOn(x1 - at.x, y1 - at.y)
+          ? { x: x2, y: y2 }
+          : shorterThanOn(x2 - at.x, y2 - at.y)
+            ? { x: x1, y: y1 }
+            : undefined;
+        if (!far) continue;
+        const vx = far.x - at.x;
+        const vy = far.y - at.y;
+        const theirs = Math.hypot(vx, vy);
+        if (theirs < ON) continue;
+        const across = Math.abs(ux * vy - uy * vx) / (length * theirs);
+        if (across < 0.05 && ux * vx + uy * vy > 0) cost += COST.runAlong;
+      }
+    }
     if (endContext.parent) {
       const { symbol, crossings } = endContext.parent;
       const exit = segments
         .map((segment) => edgeCrossing(segment, symbol))
         .find((at) => at !== undefined);
-      cost += crowding(exit, crossings, LINE_CLEARANCE);
+      cost += crowding(exit, crossings, LEAVING_CLEARANCE);
     }
     return cost;
   };
@@ -2083,12 +2021,11 @@ function courseCandidates(
         }))
       : [
           {
-            // At the top of the child, where every line into them
-            // converges, and on to their centre, under their symbol.
+            // The child's centre, which their symbol hides.
             x: end.x,
-            entry: childTop(end, boxh, scene.cornerRadius),
-            meet: childTop(end, boxh, scene.cornerRadius),
-            tail: [{ x: end.x, y: end.layer + boxh / 2 }],
+            entry: childCentre(end, boxh),
+            meet: childCentre(end, boxh),
+            tail: [] as Point[],
           },
         ];
 
@@ -2115,7 +2052,6 @@ function courseCandidates(
   const childLayer = end.layer;
   const rowsBetween = childLayer - from.layer;
 
-  const parentSymbol = parentSymbolOf(from, scene);
   const costOf = courseCoster(
     leavesSymbolOf(from),
     end,
@@ -2230,23 +2166,9 @@ function courseCandidates(
         ? [start.x]
         : [start.x, start.x + 0.2 * boxw, start.x - 0.2 * boxw];
     const firstLanes = (lanes: number[]) => (fromStem ? [start.y] : lanes);
-    // A straight line down to the child may leave the parent at a point on
-    // their bottom edge rather than from their centre, out of the way of the
-    // lines already leaving them.
+    // A line leaves its parent from their centre, so one at an angle aims
+    // from the middle of their symbol (Josh, 22 Oct 2026).
     const exits: Point[][] = fromStem ? [] : [[start]];
-    if (!fromStem && parentSymbol && rowsBetween >= 1) {
-      for (const offset of [0, 0.2, -0.2, 0.32, -0.32]) {
-        const depth = edgeDepth(
-          parentSymbol.shape,
-          offset,
-          parentSymbol.cornerRadius,
-        );
-        exits.push([
-          start,
-          { x: from.x + offset * boxw, y: from.layer + boxh * (1 - depth) },
-        ]);
-      }
-    }
     if (rowsBetween === 0 && end.kind === 'child') {
       // Down from the parent, along the gap below the row, up into the
       // child.
@@ -2293,13 +2215,16 @@ function courseCandidates(
           ? gapLanes(lastGap, UPPER_LANES)
           : gapLanes(lastGap, [...UPPER_LANES, ...LOWER_LANES]);
       // The way a course comes into its target from a lane: straight down
-      // from above it, or from a point to either side of that, at an angle.
-      const approaches = (target: (typeof targets)[number], y: number) =>
-        APPROACHES.map((slope) => [
+      // from above it, or from a point to either side of that, at an angle;
+      // or straight from where it reaches the lane, aimed at the target.
+      const approaches = (target: (typeof targets)[number], y: number) => [
+        ...APPROACHES.map((slope) => [
           { x: target.entry.x + slope * Math.abs(target.entry.y - y), y },
           target.entry,
           ...target.tail,
-        ]);
+        ]),
+        [target.entry, ...target.tail],
+      ];
       // Past a symbol in the way, through a point just clear of it, level
       // or down to a lane, across, and into the target.
       for (const target of targets) {

@@ -129,6 +129,28 @@ describe('the copy this package invented and Architect never showed', () => {
  * sweep catches the next rename.
  */
 const SENTENCES_THAT_NAME_A_CONTROL = [
+  // The census guidance no longer says what Architect said: it called the
+  // nodes "people" and, for a Tie-Strength Census, asked for a yes or no
+  // answer the scale does not give. It now sends the researcher to the piped
+  // text menu, so it has to name that menu's entries as the menu does.
+  {
+    sentence: 'protocolBuilder.censusPrompts.dyadGuidance',
+    names: [
+      'protocolBuilder.dynamicText.firstNodeLabel',
+      'protocolBuilder.dynamicText.secondNodeLabel',
+    ],
+  },
+  {
+    sentence: 'protocolBuilder.censusPrompts.oneToManyGuidance',
+    names: ['protocolBuilder.dynamicText.nodeLabel'],
+  },
+  {
+    sentence: 'protocolBuilder.censusPrompts.tieStrengthPromptTextHint',
+    names: [
+      'protocolBuilder.dynamicText.firstNodeLabel',
+      'protocolBuilder.dynamicText.secondNodeLabel',
+    ],
+  },
   {
     sentence: 'protocolBuilder.alterLimits.noEndAnswered',
     names: [

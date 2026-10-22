@@ -15,6 +15,7 @@ import { computeConnectors } from '../connectors';
 import { EDGE_WIDTH, type LayoutDimensions } from '../layoutDimensions';
 import { drawPedigree } from '../pedigreeAdapter';
 import type {
+  AuxiliaryConnector,
   LineSegment,
   ParentConnection,
   ParentGroupConnector,
@@ -31,7 +32,7 @@ import { lineEndFaults } from './lineEnds';
 import {
   type Drawing,
   familyOf,
-  hopCount,
+  crossingCount,
   strictLineFaults,
 } from './lineFaults';
 
@@ -83,19 +84,6 @@ const onSegment = (p: Point, s: LineSegment) =>
   p.x >= Math.min(s.x1, s.x2) - 0.5 &&
   p.x <= Math.max(s.x1, s.x2) + 0.5;
 
-const distanceTo = (p: Point, s: LineSegment) => {
-  const [dx, dy] = [s.x2 - s.x1, s.y2 - s.y1];
-  const length2 = dx * dx + dy * dy;
-  const t =
-    length2 === 0
-      ? 0
-      : Math.max(
-          0,
-          Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / length2),
-        );
-  return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy));
-};
-
 /** Every recorded tie the drawing does not account for. */
 function unaccounted(
   links: PedigreeLink[],
@@ -112,9 +100,24 @@ function unaccounted(
   const same = (a: (string | undefined)[] = [], b: string[]) =>
     a.length === b.length && b.every((id) => a.includes(id));
 
+  // A line into a child ends at their centre (Josh, 22 Oct 2026: lines
+  // aim centre to centre).
+  const endsOn = (l: (typeof aux)[number], c: string) => {
+    const end = l.points.at(-1);
+    return (
+      end !== undefined &&
+      close(end.x, centre(c).x) &&
+      close(end.y, centre(c).y)
+    );
+  };
   const coveredTie = (p: string, c: string) => {
     // A line of its own.
-    if (aux.some((l) => l.endpointIds?.[0] === p && l.endpointIds[1] === c)) {
+    if (
+      aux.some(
+        (l) =>
+          l.endpointIds?.[0] === p && l.endpointIds[1] === c && endsOn(l, c),
+      )
+    ) {
       return true;
     }
     // A couple's line, from midway along their partnership line.
@@ -122,6 +125,7 @@ function unaccounted(
       aux.some((l) => {
         const [q, child] = l.endpointIds ?? [];
         if (child !== c || q === undefined || q === p) return false;
+        if (!endsOn(l, c)) return false;
         if (!connectors.groupLines.some((g) => same(g.partnerIds, [p, q]))) {
           return false;
         }
@@ -141,6 +145,7 @@ function unaccounted(
       aux.some((l) => {
         const [q, child] = l.endpointIds ?? [];
         if (child !== c || q === undefined || q === p) return false;
+        if (!endsOn(l, c)) return false;
         const partnership = connectors.groupLines.find((g) =>
           same(g.partnerIds, [p, q]),
         );
@@ -204,8 +209,9 @@ function unaccounted(
         return true;
       }
     }
-    // A line to the child's sibship: onto its bar, or onto the point the
-    // twins of a sibship of twins hang from.
+    // A line to the child's whole sibship: onto its bar (where the line of
+    // descent meets it), or onto the point the twins of a sibship of twins
+    // hang from.
     const childTop = sibship
       .flatMap((pc) => pc.uplines.filter((upline) => upline.childId === c))
       .map((upline) => ({ x: upline.x2, y: upline.y2 }))[0];
@@ -223,33 +229,6 @@ function unaccounted(
           }) satisfies LineSegment,
       ),
     ]);
-    // Or, for a donor or surrogate of some of the sibship (the donor and
-    // carrier line rule, 12 Oct 2026), where the line of descent first leads
-    // only to their children: the top of the stem of a run the child is in,
-    // or, for an only child, the top of the child, on their own line up.
-    const ownUpline = sibship.flatMap((pc) =>
-      pc.uplines.filter((upline) => upline.childId === c),
-    )[0]!;
-    // The stems of the runs the child is in: the one they hang from, the
-    // one that run hangs from in turn (a run inside another), and so on up.
-    const runs = sibship.flatMap((pc) => pc.runs ?? []);
-    const stems: LineSegment[] = [];
-    for (let top: Point | undefined = childTop; top;) {
-      const at: Point = top;
-      const run = runs.find((candidate) =>
-        candidate.bar
-          ? onSegment(at, candidate.bar)
-          : close(at.x, candidate.stem.x2) && close(at.y, candidate.stem.y2),
-      );
-      top = run ? { x: run.stem.x1, y: run.stem.y1 } : undefined;
-      if (run) stems.push(run.stem);
-    }
-    const strictlyWithin = (point: Point, s: LineSegment) =>
-      distanceTo(point, s) < 0.5 &&
-      Math.min(
-        Math.hypot(point.x - s.x1, point.y - s.y1),
-        Math.hypot(point.x - s.x2, point.y - s.y2),
-      ) > 0.5;
     // (A couple's line joins a line of descent for both of them: the
     // carrier's, when someone else carried the couple's children.)
     return aux.some((l) => {
@@ -259,11 +238,7 @@ function unaccounted(
       }
       const end = l.points.at(-1)!;
       return (
-        (close(end.y, childTop.y) && bars.some((bar) => onSegment(end, bar))) ||
-        stems.some((stem) => close(end.x, stem.x1) && close(end.y, stem.y1)) ||
-        (sibship.flatMap((pc) => pc.uplines.map((upline) => upline.childId))
-          .length === 1 &&
-          strictlyWithin(end, ownUpline))
+        close(end.y, childTop.y) && bars.some((bar) => onSegment(end, bar))
       );
     });
   };
@@ -353,9 +328,9 @@ describe('the drawing accounts for every recorded tie', () => {
         'biological tie bob→sib is not drawn',
       ]);
     }
-    // A donor to some of a sibship is accounted for by their line onto the
-    // stem of those children's run: taken away, or moved onto another
-    // child's line up, it accounts for neither child.
+    // A donor to some of a sibship is accounted for by a line to each of
+    // those children, ending at their centre: taken away, or moved onto
+    // another child's line up, it accounts for neither child.
     {
       const { people, links } =
         families['a donor to two of three half-siblings']!;
@@ -449,41 +424,92 @@ describe('the lines pass the strict line checks', () => {
 });
 
 /**
- * Every crossing is drawn as a hop, and how many there are is a cost, not
- * a fault: each family's count is pinned at the fewest found, so a change
- * that adds one shows here. Families not listed cross nothing.
+ * How many crossings a drawing makes is a cost, not a fault: each family's
+ * count is pinned at the fewest found, so a change that adds one shows
+ * here. Families not listed cross nothing.
  */
-const HOPS: Record<string, number> = {
-  // Lauren's line hops the line down to Jack.
+const CROSSINGS: Record<string, number> = {
+  // Lauren's line crosses the line down to Jack.
   'step parents and adoptive parents who separated': 1,
-  // Hannah's lines run as one course to below the sibling bar, where her
-  // line to Ruby parts and hops the participant's line up.
+  // Young's line of descent crosses the sibling bar of the parents it comes
+  // from and Jo and Sam's partnership line, and Jo's social line to Cal
+  // crosses Ben's line up.
+  'a woman who carries her parents’ child and raises a friend’s': 3,
+  // Paul's line to Ruby crosses the sibling bar.
+  'a donor to two of three half-siblings': 1,
+  // Each donor and carrier line goes to its own child (Josh, 22 Oct 2026):
+  // Paul's line to Ruby crosses the carrier's to the participant and the
+  // participant's line up, and the carrier's to Ruby crosses the bar.
+  'a sperm donor and a surrogate for two of three half-siblings': 3,
+  'a surrogate for one of a donor’s two children, the other recorded first': 2,
+  'a surrogate for two of a donor’s three children': 4,
+  // Hannah's line to Ruby crosses the participant's line up.
   'an egg donor, a sperm donor and a surrogate for two of three children Hannah raises': 1,
-  // Paul's lines run as one course from him and part as a fork; his line
-  // to the participant hops Hannah's line of descent.
-  'a surrogate for one of a donor’s two children, the other recorded first': 1,
-  // The birth parents' line to the participant hops their sibling's line
-  // up: the two parents' lines run as one there, drawn once, with one hop.
+  // The birth parents' joined line to the participant crosses their
+  // sibling's adoptive line up.
   'two siblings adopted together, with the same birth parents': 1,
-  // The stepfather's lines run as one course to below the sibling bar,
-  // where his line to the participant parts and hops their sibling's line
+  // The stepfather's line to the participant crosses their sibling's line
   // up.
   'a stepfather who raises all his partner’s children': 1,
-  // Young's line of descent hops the sibling bar of the parents it comes
-  // from and Jo and Sam's partnership line, and Jo's social line to Cal
-  // hops Ben's line up.
-  'a woman who carries her parents’ child and raises a friend’s': 3,
 };
 
 describe('the lines cross no more often than the fewest crossings found', () => {
   for (const [name, { people, links }] of Object.entries(families)) {
     for (const shape of ['circle', 'square'] as const) {
-      it(`hops: ${name} (${shape}s)`, () => {
-        const { connectors } = draw(people, links, shape);
-        expect(hopCount(connectors)).toBe(HOPS[name] ?? 0);
+      it(`crossings: ${name} (${shape}s)`, () => {
+        const { drawing } = draw(people, links, shape);
+        expect(crossingCount(drawing, people)).toBe(CROSSINGS[name] ?? 0);
+        // Whatever order the lines are listed in.
+        const reversed = {
+          ...drawing,
+          connectors: {
+            ...drawing.connectors,
+            auxiliaryLines: drawing.connectors.auxiliaryLines.toReversed(),
+          },
+        };
+        expect(crossingCount(reversed, people)).toBe(CROSSINGS[name] ?? 0);
       });
     }
   }
+
+  it('counts a run two co-parents share once where it crosses a bar', () => {
+    const shared = (x: number): AuxiliaryConnector => ({
+      type: 'auxiliary',
+      edgeType: 'donor',
+      points: [
+        { x, y: 0 },
+        { x: 100, y: 100 },
+        { x: 100, y: 300 },
+      ],
+    });
+    const drawing = {
+      size: 40,
+      centre: () => ({ x: -1000, y: -1000 }),
+      shapeOf: () => 'circle' as const,
+      connectors: {
+        groupLines: [],
+        parentChildLines: [
+          {
+            type: 'parent-child' as const,
+            edgeType: 'biological' as const,
+            uplines: [],
+            parentLink: [],
+            siblingBar: {
+              type: 'line' as const,
+              x1: 0,
+              y1: 200,
+              x2: 200,
+              y2: 200,
+            },
+          },
+        ],
+        auxiliaryLines: [shared(0), shared(200)],
+        twinIndicators: [],
+        duplicateArcs: [],
+      },
+    };
+    expect(crossingCount(drawing, [])).toBe(1);
+  });
 });
 
 describe('the drawing draws no partnership that was not recorded', () => {

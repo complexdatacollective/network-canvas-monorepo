@@ -144,29 +144,19 @@ export function formerPartnerBreak(conn: ParentGroupConnector): {
 }
 
 /**
- * A former partnership line: broken by two slashes. With a focal highlight,
- * `shading` draws each part either side of the break in its pieces, and
- * says whether the slashes (and the break they mark) are dimmed.
+ * A former partnership line's two parts, either side of its break, and the
+ * slashes that mark the break.
  */
-function renderInactiveGroupLine(
+function inactiveGroupLineParts(
   conn: ParentGroupConnector,
   idx: number,
   color: string,
-  shading?: {
-    part: (segment: LineSegment, key: string) => JSX.Element;
-    slashesDimmed: boolean;
-  },
-) {
+): { parts: [LineSegment, string][]; slashes: JSX.Element } {
   const { x1, y1, x2, y2 } = conn.segment;
   const midY = (y1 + y2) / 2;
   const { centre: safeCenter } = formerPartnerBreak(conn);
-  // Square-ended at the break, so the gap the slashes stand in is exact.
-  const part = (segment: LineSegment, key: string) =>
-    shading
-      ? shading.part(segment, key)
-      : renderLine(segment, color, key, { strokeLinecap: 'butt' });
   const slashes = (
-    <>
+    <g key={`group-bar-slashes-${idx}`}>
       <line
         x1={safeCenter - SLASH_GAP / 2 - SLASH_WIDTH}
         y1={midY + SLASH_HEIGHT / 2}
@@ -185,36 +175,37 @@ function renderInactiveGroupLine(
         strokeWidth={EDGE_WIDTH}
         strokeLinecap="round"
       />
-    </>
+    </g>
   );
+  return {
+    parts: [
+      [
+        { type: 'line', x1, y1, x2: safeCenter - BREAK_HALF_WIDTH, y2: midY },
+        `group-bar-left-${idx}`,
+      ],
+      [
+        { type: 'line', x1: safeCenter + BREAK_HALF_WIDTH, y1: midY, x2, y2 },
+        `group-bar-right-${idx}`,
+      ],
+    ],
+    slashes,
+  };
+}
 
+/** A former partnership line: broken by two slashes. */
+function renderInactiveGroupLine(
+  conn: ParentGroupConnector,
+  idx: number,
+  color: string,
+) {
+  const { parts, slashes } = inactiveGroupLineParts(conn, idx, color);
   return (
     <g key={`group-bar-inactive-${idx}`}>
-      {part(
-        {
-          type: 'line',
-          x1,
-          y1,
-          x2: safeCenter - BREAK_HALF_WIDTH,
-          y2: midY,
-        },
-        `group-bar-left-${idx}`,
+      {/* Square-ended at the break, so the gap the slashes stand in is exact. */}
+      {parts.map(([segment, key]) =>
+        renderLine(segment, color, key, { strokeLinecap: 'butt' }),
       )}
-      {part(
-        {
-          type: 'line',
-          x1: safeCenter + BREAK_HALF_WIDTH,
-          y1: midY,
-          x2,
-          y2,
-        },
-        `group-bar-right-${idx}`,
-      )}
-      {shading ? (
-        <g {...(shading.slashesDimmed ? DIMMED : {})}>{slashes}</g>
-      ) : (
-        slashes
-      )}
+      {slashes}
     </g>
   );
 }
@@ -234,53 +225,25 @@ function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
   }
 }
 
-/** The radius of the hop an auxiliary line makes over a line it crosses. */
-const HOP_RADIUS = EDGE_WIDTH * 1.6;
-
 /**
- * An auxiliary line's course as an SVG path, hopping over each line it
- * crosses with a half circle (bulging up from a level piece, and to one side
- * of an upright one) so the crossing does not read as a junction.
+ * An auxiliary line's course as an SVG path. A line crossing another is
+ * drawn straight across it, as Bennett et al. draw a crossing (Josh, 22 Oct
+ * 2026: no hops).
  */
 export function auxiliaryPath(
-  conn: Pick<AuxiliaryConnector, 'points' | 'hops'>,
+  conn: Pick<AuxiliaryConnector, 'points'>,
 ): string {
-  const { points, hops = [] } = conn;
-  const [first] = points;
+  const [first, ...rest] = conn.points;
   if (!first) return '';
-  let d = `M${first.x},${first.y}`;
-  for (let k = 1; k < points.length; k++) {
-    const a = points[k - 1]!;
-    const b = points[k]!;
-    const length = Math.hypot(b.x - a.x, b.y - a.y);
-    if (length === 0) continue;
-    const ux = (b.x - a.x) / length;
-    const uy = (b.y - a.y) / length;
-    // The hops on this piece, in order along it, each with room of its own.
-    const along = hops
-      .filter((hop) => Math.abs((hop.x - a.x) * uy - (hop.y - a.y) * ux) < 0.5)
-      .map((hop) => (hop.x - a.x) * ux + (hop.y - a.y) * uy)
-      .filter((at) => at > HOP_RADIUS && at < length - HOP_RADIUS)
-      .toSorted((p, q) => p - q);
-    const sweep = ux > 1e-9 || (Math.abs(ux) <= 1e-9 && uy > 0) ? 1 : 0;
-    let reached = 0;
-    for (const at of along) {
-      if (at - HOP_RADIUS < reached) continue;
-      const before = at - HOP_RADIUS;
-      const after = at + HOP_RADIUS;
-      d += ` L${a.x + ux * before},${a.y + uy * before}`;
-      d += ` A${HOP_RADIUS},${HOP_RADIUS} 0 0 ${sweep} ${a.x + ux * after},${a.y + uy * after}`;
-      reached = after;
-    }
-    d += ` L${b.x},${b.y}`;
-  }
-  return d;
+  return [`M${first.x},${first.y}`, ...rest.map((p) => `L${p.x},${p.y}`)].join(
+    ' ',
+  );
 }
 
 function renderAuxiliary(stroke: AuxiliaryStroke, idx: number, color: string) {
   const style = getAuxiliaryStyle(stroke.edgeType);
   // One stroke for each run of pieces, so a dashed line's pattern flows round
-  // its corners and hops; where a run starts partway along its line, the
+  // its corners; where a run starts partway along its line, the
   // pattern carries on from there.
   return (
     <path
@@ -303,12 +266,12 @@ function renderAuxiliary(stroke: AuxiliaryStroke, idx: number, color: string) {
   );
 }
 
-/** A run of an auxiliary line's pieces drawn as one stroke: its course and
- * hops, how far along its line it starts, and whether it is lit. */
-type AuxiliaryStroke = Pick<
-  AuxiliaryConnector,
-  'points' | 'hops' | 'edgeType'
-> & { dashOffset: number; lit: boolean };
+/** A run of an auxiliary line's pieces drawn as one stroke: its course,
+ * how far along its line it starts, and whether it is lit. */
+type AuxiliaryStroke = Pick<AuxiliaryConnector, 'points' | 'edgeType'> & {
+  dashOffset: number;
+  lit: boolean;
+};
 
 /**
  * The auxiliary lines as strokes, every piece drawn once. Each line is cut
@@ -386,7 +349,6 @@ function auxiliaryStrokes(
       if (run) {
         strokes.push({
           points: run.points,
-          ...(aux.hops ? { hops: aux.hops } : {}),
           edgeType: aux.edgeType,
           dashOffset: run.dashOffset,
           lit,
@@ -410,8 +372,9 @@ function auxiliaryStrokes(
 
 /**
  * Splits a horizontal bar into sub-segments at the given x-coordinates and
- * renders each one independently dimmed by `isDimmed`. Sub-segments are wrapped
- * so the existing `data-edge-dimmed` / `dimColor` conventions carry through.
+ * places each one, independently dimmed by `isDimmed`, in its layer.
+ * Sub-segments are wrapped so the existing `data-edge-dimmed` / `dimColor`
+ * conventions carry through.
  *
  * `splitXs` need not be sorted or deduped; the bar's own endpoints are always
  * included. A bar with no interior splits renders as a single line, identical
@@ -423,18 +386,23 @@ function renderSplitBar(
   isDimmed: (segStart: number, segEnd: number) => boolean,
   color: string,
   keyPrefix: string,
+  layers: Layers,
   roundCaps = true,
-): JSX.Element[] {
-  return splitBar(bar, splitXs, isDimmed).map(({ segment, dimmed }, i) => (
-    <g key={`${keyPrefix}-${i}`} {...(dimmed ? DIMMED : {})}>
-      {renderLine(
-        segment,
-        dimmed ? dimColor(color) : color,
-        `${keyPrefix}-line-${i}`,
-        { strokeLinecap: roundCaps ? 'round' : 'butt' },
-      )}
-    </g>
-  ));
+) {
+  splitBar(bar, splitXs, isDimmed).forEach(({ segment, dimmed }, i) => {
+    place(
+      layers,
+      !dimmed,
+      <g key={`${keyPrefix}-${i}`} {...(dimmed ? DIMMED : {})}>
+        {renderLine(
+          segment,
+          dimmed ? dimColor(color) : color,
+          `${keyPrefix}-line-${i}`,
+          { strokeLinecap: roundCaps ? 'round' : 'butt' },
+        )}
+      </g>,
+    );
+  });
 }
 
 /** A horizontal bar cut at the given x-coordinates, each piece dimmed or not. */
@@ -473,8 +441,8 @@ function splitBar(
 //
 // Every line that draws a tie between a parent and a child is made of
 // pieces: a partnership line and the leads to it, a line of descent (each
-// parent's drop, co-parents' level line, the sibling bar, a run's stem and
-// sub-bar, each child's line up), and the line of a parent drawn on a line
+// parent's drop, co-parents' level line, the sibling bar, each child's
+// line up), and the line of a parent drawn on a line
 // of their own (a donor, a surrogate, a social or adoptive parent, a parent
 // the family does not name), including the stretch two co-parents' lines
 // share once they join. Each tie follows one course through those pieces:
@@ -489,6 +457,21 @@ function splitBar(
 // lights a tie between two highlighted people. Twin marks and duplicate arcs
 // draw no tie: they light by the people they mark.
 // ---------------------------------------------------------------------------
+
+/**
+ * The drawing in two layers: every dimmed piece is drawn before every lit
+ * one. A dimmed line that meets or crosses a lit one (a sibling's line up on
+ * a lit sibling bar, the rest of a bar beyond the corner where the lit
+ * course turns, a dimmed line of descent leaving a lit partnership line, a
+ * dimmed auxiliary line or twin mark ending on a lit line) would otherwise
+ * paint over it where they meet and leave a gap in the lit course. Without a
+ * focal highlight everything is lit, so the drawing order is unchanged.
+ */
+type Layers = { dim: JSX.Element[]; lit: JSX.Element[] };
+
+function place(layers: Layers, lit: boolean, element: JSX.Element) {
+  (lit ? layers.lit : layers.dim).push(element);
+}
 
 /** A piece of a line, lit or not. */
 type Shaded = { segment: LineSegment; lit: boolean };
@@ -535,10 +518,6 @@ function descentSegments(conn: ParentChildConnector): LineSegment[] {
   return [
     ...conn.parentLink,
     ...(conn.siblingBar ? [conn.siblingBar] : []),
-    ...(conn.runs ?? []).flatMap((run) => [
-      run.stem,
-      ...(run.bar ? [run.bar] : []),
-    ]),
     ...conn.uplines,
   ];
 }
@@ -828,9 +807,15 @@ function renderPartnershipLine(
   idx: number,
   color: string,
   lit: LitCourses['partnership'][number] | undefined,
-): JSX.Element {
+  layers: Layers,
+) {
   if (!lit) {
-    return <g key={`gl-dim-${idx}`}>{renderGroupLine(gl, idx, color)}</g>;
+    place(
+      layers,
+      true,
+      <g key={`gl-dim-${idx}`}>{renderGroupLine(gl, idx, color)}</g>,
+    );
+    return;
   }
   const litOver = (from: number, to: number) =>
     lit.stretches.some(
@@ -841,15 +826,17 @@ function renderPartnershipLine(
   const shade = (isLit: boolean) => (isLit ? color : dimColor(color));
 
   // A lead is lit when a lit tie of the partner it joins comes down it.
-  const leads = gl.endpointSegments?.map((segment, k) => {
+  gl.endpointSegments?.forEach((segment, k) => {
     const isLit =
       segment.partnerId !== undefined && lit.leads.has(segment.partnerId);
-    return (
+    place(
+      layers,
+      isLit,
       <g key={`gl-endpoint-${idx}-${k}`} {...(isLit ? {} : DIMMED)}>
         {renderLine(segment, shade(isLit), `gl-endpoint-line-${idx}-${k}`, {
           strokeLinecap: 'round',
         })}
-      </g>
+      </g>,
     );
   });
 
@@ -859,38 +846,34 @@ function renderPartnershipLine(
       centre - BREAK_HALF_WIDTH,
       centre + BREAK_HALF_WIDTH,
     );
-    return (
-      <g key={`gl-dim-${idx}`}>
-        {leads}
-        {renderInactiveGroupLine(gl, idx, shade(breakLit), {
-          part: (part, key) => (
-            <g key={key}>
-              {renderSplitBar(part, splitXs, dimmedOver, color, key, false)}
-            </g>
-          ),
-          slashesDimmed: !breakLit,
-        })}
-      </g>
+    const { parts, slashes } = inactiveGroupLineParts(gl, idx, shade(breakLit));
+    // Square-ended at the break, so the gap the slashes stand in is exact.
+    for (const [part, key] of parts) {
+      renderSplitBar(part, splitXs, dimmedOver, color, key, layers, false);
+    }
+    place(
+      layers,
+      breakLit,
+      <g key={`gl-slashes-${idx}`} {...(breakLit ? {} : DIMMED)}>
+        {slashes}
+      </g>,
     );
+    return;
   }
 
-  return (
-    <g key={`gl-dim-${idx}`}>
-      {leads}
-      {renderSplitBar(gl.segment, splitXs, dimmedOver, color, `gl-${idx}`)}
-      {/* A consanguineous couple's line is two parallel lines; both are
-          cut and lit alike. */}
-      {gl.double && gl.doubleSegment
-        ? renderSplitBar(
-            gl.doubleSegment,
-            splitXs,
-            dimmedOver,
-            color,
-            `gl-double-${idx}`,
-          )
-        : null}
-    </g>
-  );
+  renderSplitBar(gl.segment, splitXs, dimmedOver, color, `gl-${idx}`, layers);
+  // A consanguineous couple's line is two parallel lines; both are cut and
+  // lit alike.
+  if (gl.double && gl.doubleSegment) {
+    renderSplitBar(
+      gl.doubleSegment,
+      splitXs,
+      dimmedOver,
+      color,
+      `gl-double-${idx}`,
+      layers,
+    );
+  }
 }
 
 /**
@@ -906,39 +889,38 @@ function renderParentChild(
   idx: number,
   color: string,
   pieces: Shaded[],
+  layers: Layers,
 ) {
   const dashed = conn.edgeType === 'social' || conn.edgeType === 'adoptive';
   const strokes = descentStrokes(pieces);
-  return (
-    <g key={`pc-${idx}`}>
-      {[true, false].map((lit) => {
-        const shaded = strokes.filter((stroke) => stroke.lit === lit);
-        if (shaded.length === 0) return null;
-        const shade = lit ? 'bright' : 'dim';
-        return (
-          <g key={`pc-${idx}-${shade}`} {...(lit ? {} : DIMMED)}>
-            {shaded.map(({ points, reached }, i) => (
-              <polyline
-                key={`pc-${idx}-${shade}-${i}`}
-                points={points.map((p) => `${p.x},${p.y}`).join(' ')}
-                fill="none"
-                stroke={lit ? color : dimColor(color)}
-                strokeWidth={EDGE_WIDTH}
-                {...(dashed
-                  ? {
-                      strokeDasharray: DASHED_PATTERN,
-                      strokeDashoffset: reached,
-                    }
-                  : {})}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
-          </g>
-        );
-      })}
-    </g>
-  );
+  for (const lit of [true, false]) {
+    const shaded = strokes.filter((stroke) => stroke.lit === lit);
+    if (shaded.length === 0) continue;
+    const shade = lit ? 'bright' : 'dim';
+    place(
+      layers,
+      lit,
+      <g key={`pc-${idx}-${shade}`} {...(lit ? {} : DIMMED)}>
+        {shaded.map(({ points, reached }, i) => (
+          <polyline
+            key={`pc-${idx}-${shade}-${i}`}
+            points={points.map((p) => `${p.x},${p.y}`).join(' ')}
+            fill="none"
+            stroke={lit ? color : dimColor(color)}
+            strokeWidth={EDGE_WIDTH}
+            {...(dashed
+              ? {
+                  strokeDasharray: DASHED_PATTERN,
+                  strokeDashoffset: reached,
+                }
+              : {})}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+      </g>,
+    );
+  }
 }
 
 /** One stroke of a line of descent: its points, away from the owners, and
@@ -1102,7 +1084,7 @@ export function PedigreeEdgeSvg({
     if (!connectorData) return [];
 
     const { connectors } = connectorData;
-    const elements: JSX.Element[] = [];
+    const layers: Layers = { dim: [], lit: [] };
 
     // Twin marks and duplicate arcs mark people rather than draw ties, so
     // they light by the people they mark (below); every line that draws a
@@ -1118,20 +1100,17 @@ export function PedigreeEdgeSvg({
           );
 
     connectors.groupLines.forEach((gl, i) => {
-      elements.push(
-        renderPartnershipLine(gl, i, color, courses?.partnership[i]),
-      );
+      renderPartnershipLine(gl, i, color, courses?.partnership[i], layers);
     });
 
     connectors.parentChildLines.forEach((conn, i) => {
-      elements.push(
-        renderParentChild(
-          conn,
-          i,
-          color,
-          courses?.descent[i] ??
-            descentSegments(conn).map((segment) => ({ segment, lit: true })),
-        ),
+      renderParentChild(
+        conn,
+        i,
+        color,
+        courses?.descent[i] ??
+          descentSegments(conn).map((segment) => ({ segment, lit: true })),
+        layers,
       );
     });
 
@@ -1141,7 +1120,9 @@ export function PedigreeEdgeSvg({
       connectors.auxiliaryLines,
       courses?.auxiliary ?? connectors.auxiliaryLines.map(() => true),
     ).forEach((stroke, k) => {
-      elements.push(
+      place(
+        layers,
+        stroke.lit,
         <g key={`aux-dim-${k}`} {...(stroke.lit ? {} : DIMMED)}>
           {renderAuxiliary(stroke, k, stroke.lit ? color : dimColor(color))}
         </g>,
@@ -1155,7 +1136,9 @@ export function PedigreeEdgeSvg({
       const dimmed = isDimmedByIds(highlightedNodeIds, ti.twinIds);
       const twinColor = dimmed ? dimColor(color) : color;
       if (ti.segment) {
-        elements.push(
+        place(
+          layers,
+          !dimmed,
           <g
             key={`twin-dim-${i}`}
             {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
@@ -1167,7 +1150,9 @@ export function PedigreeEdgeSvg({
         );
       }
       if (ti.label) {
-        elements.push(
+        place(
+          layers,
+          !dimmed,
           <text
             key={`twin-label-${i}`}
             x={ti.label.x}
@@ -1194,7 +1179,9 @@ export function PedigreeEdgeSvg({
         highlightedNodeIds,
         da.personId !== undefined ? [da.personId] : undefined,
       );
-      elements.push(
+      place(
+        layers,
+        !dimmed,
         <polyline
           key={`dup-arc-${i}`}
           points={points}
@@ -1207,7 +1194,8 @@ export function PedigreeEdgeSvg({
       );
     }
 
-    return elements;
+    // Every dimmed piece under every lit one (see `Layers`).
+    return [...layers.dim, ...layers.lit];
   }, [connectorData, color, highlightedNodeIds, highlightedEdgeKeys]);
 
   return (
