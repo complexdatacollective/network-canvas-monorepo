@@ -4,7 +4,7 @@ state="$STUB_STATE"
 [ "${1:-}" = compose ] && shift
 echo "$*" >> "$state/calls.log"
 env_image() { sed -n "s/^STUDIO_${1:-API}_IMAGE=//p" "${STUB_RESOLVED_ENV:-.env}"; }
-schema_of() { [ "$1" = "$STUB_NEW_API" ] && echo new || echo old; }
+schema_of() { [ "$1" = "$STUB_NEW_API" ] && [ -z "${STUB_CODE_ONLY:-}" ] && echo new || echo old; }
 should_fail() {
   local key="$1" count=0 entry
   [ -f "$state/count-$key" ] && count="$(cat "$state/count-$key")"
@@ -28,7 +28,14 @@ case "$1" in
       should_fail migrate && { echo 'migrate refused' >&2; exit 1; }
       image_schema="$(schema_of "$(env_image)")"
       [ "$(cat "$state/db")" = new ] && [ "$image_schema" = old ] && { echo 'migrate refused: newer history' >&2; exit 1; }
+      if [ "$(cat "$state/db")" = "$image_schema" ]; then
+        echo 'Schema current.'
+      else
+        echo 'Applying 1.1.0 (3 statement(s)).'
+        echo 'Applied 1.1.0.'
+      fi
       echo "$image_schema" > "$state/db"
+      [ -n "${STUB_PINNED_UPGRADE:-}" ] && echo 'Upgraded 2 pinned protocol version(s) to schema 8: 1 wave(s) and 0 in-flight interview session(s) moved onto the migrated versions.'
       should_fail migrate-commit && { echo 'migrate died after COMMIT' >&2; exit 1; }
       exit 0
     fi
@@ -49,7 +56,19 @@ case "$1" in
     should_fail pull && exit 1
     ;;
   ps)
+    format="$4"
     shift 4
+    if [[ "$format" == *'|'* ]]; then
+      for service in "$@"; do
+        health=healthy
+        [ "$service" = web ] && health=''
+        should_fail "unhealthy-$service" && health=unhealthy
+        status=running
+        [ -f "$state/stopped-$service" ] && status=exited
+        echo "$service|$status|$health|$(cat "$state/image-$service")|False"
+      done
+      exit 0
+    fi
     for service in "$@"; do
       code=130
       should_fail "killed-$service" && code=137
@@ -62,7 +81,11 @@ case "$1" in
     shift 2
     for service in "$@"; do
       rm -f "$state/stopped-$service"
-      case "$service" in api*) env_image > "$state/image-$service" ;; esac
+      case "$service" in
+        api*) env_image > "$state/image-$service" ;;
+        worker) echo "${STUB_WORKER_IMAGE:-$(env_image)}" > "$state/image-$service" ;;
+        web) env_image WEB > "$state/image-$service" ;;
+      esac
       case " $* " in *' web '*) ;; *) [ -n "${STUB_STUCK_FOREVER:-}" ] || rm -f "$state/stuck-$service" ;; esac
     done
     ;;

@@ -19,12 +19,13 @@
 #   STUDIO_UPGRADE_POLL_INTERVAL         seconds between readiness checks (default 1)
 #
 # Exit codes, each also printed as the last line, `[studio-upgrade] result=<name> exit=<code>`:
-#   0  upgraded        the new images serve, every API replica reports ready,
-#                      maintenance mode is off
+#   0  upgraded        the new images serve; web, the worker and every API
+#                      replica run them and report ready; maintenance mode is off
 #   2  not-started     bad arguments, settings or stack directory; nothing was changed
 #   3  rolled-back     failed or was interrupted before migrate changed the
-#                      database (or migrate refused); the previous images are
-#                      back in .env and serve, maintenance mode is off
+#                      database (or migrate refused, or found nothing to change);
+#                      the previous images are back in .env and serve,
+#                      maintenance mode is off
 #   4  rollback-failed failed before migrate, and the rollback did not bring the
 #                      previous images back ready; needs a human
 #   5  fix-forward     migrate changed the database, then a later step failed or
@@ -208,6 +209,46 @@ stop_drained() {
   return 1
 }
 
+services_check() { # api-image web-image timeout images|ready
+  local deadline=$((SECONDS + $3)) states service want lines bad
+  while :; do
+    bad=()
+    states="$(compose ps -a --format '{{.Service}}|{{.State}}|{{.Health}}|{{.Image}}|{{.Label "com.docker.compose.oneoff"}}' web "${APIS[@]}" worker)" || states=''
+    for service in web "${APIS[@]}" worker; do
+      want="$1"
+      [ "$service" = web ] && want="$2"
+      lines="$(awk -F'|' -v s="$service" '$1 == s && $5 != "True"' <<< "$states")"
+      if [ -z "$lines" ] || awk -F'|' -v want="$want" -v mode="$4" '
+        $4 != want || (mode == "ready" && ($2 != "running" || ($3 != "" && $3 != "healthy"))) { found = 1 }
+        END { exit !found }
+      ' <<< "$lines"; then
+        bad+=("$service: ${lines:-no container} (want $want)")
+      fi
+    done
+    [ "${#bad[@]}" -eq 0 ] && return 0
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      log "  not $4 on the images it should run: $(printf '%s; ' "${bad[@]}")" >&2
+      return 1
+    fi
+    sleep "$POLL_INTERVAL"
+  done
+}
+
+run_migrate() {
+  local out code
+  out="$(mktemp)" || return 1
+  compose run --rm migrate 2>&1 | tee "$out"
+  code=$?
+  if [ "$code" -eq 0 ] && grep -qx 'Schema current\.' < <(tr -d '\r' < "$out") \
+    && ! grep -q '^Upgraded [0-9]* pinned' "$out"; then
+    log 'migrate changed nothing (Schema current.), so the previous images can still be put back'
+  elif [ "$code" -eq 0 ]; then
+    MIGRATED=1
+  fi
+  rm -f "$out"
+  return "$code"
+}
+
 roll_back() {
   trap '' INT TERM HUP
   log "failed step=$STEP before migrate changed the database; rolling back to the previous images"
@@ -221,11 +262,12 @@ roll_back() {
   log "restored $OLD_WEB_LINE"
   if compose up -d web "${APIS[@]}" worker \
     && compose run --rm --no-deps api maintenance off \
-    && replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK" "$MAINTENANCE_OFF" "$READY"; then
+    && replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK" "$MAINTENANCE_OFF" "$READY" \
+    && services_check "$(env_value "$OLD_API_LINE")" "$(env_value "$OLD_WEB_LINE")" "$SCHEMA_TIMEOUT" ready; then
     log 'rolled back: the previous images serve and maintenance mode is off'
     finish 3
   fi
-  log "rollback failed: the previous images are in .env but not every API replica reports ready, its schema ok with maintenance mode off (${PENDING[*]:-see above}); maintenance mode may still be on" >&2
+  log "rollback failed: the previous images are in .env but web, the worker or an API replica is not running ready on them, or not every API replica reports its schema ok with maintenance mode off (${PENDING[*]:-see above}); maintenance mode may still be on" >&2
   finish 4
 }
 
@@ -250,10 +292,14 @@ log "api replicas: ${APIS[*]}"
 log 'this script takes no backup'
 
 MIGRATED=''
+after_migrate() { # reason
+  [ -n "$MIGRATED" ] && fix_forward "$1"
+  log "$1" >&2
+  roll_back
+}
 interrupted() {
   log "interrupted at step=$STEP" >&2
-  [ -n "$MIGRATED" ] && fix_forward 'interrupted'
-  roll_back
+  after_migrate 'interrupted'
 }
 trap interrupted INT TERM HUP
 
@@ -267,18 +313,20 @@ step maintenance-wait replicas_report "$MAINTENANCE_TIMEOUT" "$MAINTENANCE_ON" |
 step stop stop_drained || roll_back
 step pull compose pull || roll_back
 step up compose up -d web "${APIS[@]}" worker || roll_back
-step migrate compose run --rm migrate || roll_back
-MIGRATED=1
+step images services_check "$NEW_API" "$NEW_WEB" 0 images || roll_back
+step migrate run_migrate || roll_back
 
 if ! step schema-wait replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK"; then
   log "not ready: ${PENDING[*]:-}; recreating them once, as the guide's step 6 says"
   if ! compose up -d "${PENDING[@]}" || ! replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK"; then
-    fix_forward "not every API replica reported its schema ok (${PENDING[*]:-})"
+    after_migrate "not every API replica reported its schema ok (${PENDING[*]:-})"
   fi
 fi
+step services-wait services_check "$NEW_API" "$NEW_WEB" "$SCHEMA_TIMEOUT" ready \
+  || after_migrate 'web, the worker or an API replica is not running ready on the new images'
 step maintenance-off compose run --rm --no-deps api maintenance off \
-  || fix_forward 'maintenance off failed, and may have landed'
+  || after_migrate 'maintenance off failed, and may have landed'
 step reopen-wait replicas_report "$MAINTENANCE_TIMEOUT" "$MAINTENANCE_OFF" "$READY" \
-  || fix_forward "not every API replica reported ready with maintenance mode off (${PENDING[*]:-})"
-log 'upgraded: the new images serve, every API replica reports ready, and maintenance mode is off'
+  || after_migrate "not every API replica reported ready with maintenance mode off (${PENDING[*]:-})"
+log 'upgraded: the new images serve, web, the worker and every API replica run ready, and maintenance mode is off'
 finish 0

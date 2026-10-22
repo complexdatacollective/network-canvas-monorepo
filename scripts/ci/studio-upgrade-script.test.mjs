@@ -50,6 +50,13 @@ const ENV_FILE = [
   '',
 ].join('\n');
 
+function runningImages(state, api, web) {
+  for (const service of ['api', 'api-b', 'worker']) {
+    writeFileSync(join(state, `image-${service}`), `${api}\n`);
+  }
+  writeFileSync(join(state, 'image-web'), `${web}\n`);
+}
+
 function stack({ stuck = [] } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'studio-upgrade-script-'));
   dirs.push(root);
@@ -62,9 +69,7 @@ function stack({ stuck = [] } = {}) {
   writeFileSync(join(state, 'db'), 'old\n');
   writeFileSync(join(state, 'maintenance'), 'off\n');
   writeFileSync(join(state, 'calls.log'), '');
-  for (const api of ['api', 'api-b']) {
-    writeFileSync(join(state, `image-${api}`), `${OLD_API}\n`);
-  }
+  runningImages(state, OLD_API, OLD_WEB);
   for (const api of stuck) writeFileSync(join(state, `stuck-${api}`), '');
   return { dir, state };
 }
@@ -100,7 +105,12 @@ function upgrade(s, { args, env = {}, cwd, timeout = 60_000 } = {}) {
     env: readFileSync(join(s.dir, '.env'), 'utf8'),
     maintenance: read('maintenance'),
     db: read('db'),
-    images: { 'api': read('image-api'), 'api-b': read('image-api-b') },
+    images: {
+      'api': read('image-api'),
+      'api-b': read('image-api-b'),
+      'worker': read('image-worker'),
+      'web': read('image-web'),
+    },
   };
 }
 
@@ -110,7 +120,15 @@ const envWith = (api, web) =>
 
 const PS =
   'ps -a --format {{.Service}} {{.State}} {{.ExitCode}} {{.Label "com.docker.compose.oneoff"}} api api-b worker';
+const SERVICES =
+  'ps -a --format {{.Service}}|{{.State}}|{{.Health}}|{{.Image}}|{{.Label "com.docker.compose.oneoff"}} web api api-b worker';
 const MAINTENANCE_ON = 'run --rm --no-deps api maintenance on';
+const imagesOf = (api, web) => ({
+  'api': api,
+  'api-b': api,
+  'worker': api,
+  'web': web,
+});
 
 const SEQUENCE = [
   'config --services',
@@ -121,7 +139,9 @@ const SEQUENCE = [
   PS,
   'pull',
   'up -d web api api-b worker',
+  SERVICES,
   'run --rm migrate',
+  SERVICES,
   'run --rm --no-deps api maintenance off',
 ];
 
@@ -138,10 +158,11 @@ function assertRolledBack(r, failedStep) {
   assert.equal(r.env, ENV_FILE, '.env names the previous images again');
   assert.equal(r.db, 'old', 'the database is unchanged');
   assert.equal(r.maintenance, 'off', 'the instance is open again');
-  assert.deepEqual(r.images, { 'api': OLD_API, 'api-b': OLD_API });
-  assert.deepEqual(r.calls.slice(-2), [
+  assert.deepEqual(r.images, imagesOf(OLD_API, OLD_WEB));
+  assert.deepEqual(r.calls.slice(-3), [
     'up -d web api api-b worker',
     'run --rm --no-deps api maintenance off',
+    SERVICES,
   ]);
 }
 
@@ -155,13 +176,58 @@ test('runs the guide’s sequence against every API replica and ends open on the
   assert.equal(statSync(join(s.dir, '.env')).mode & 0o777, 0o600);
   assert.equal(r.db, 'new');
   assert.equal(r.maintenance, 'off');
-  assert.deepEqual(r.images, { 'api': NEW_API, 'api-b': NEW_API });
+  assert.deepEqual(r.images, imagesOf(NEW_API, NEW_WEB));
   assert.match(r.output, /this script takes no backup/);
 });
 
 test('does not count a one-off container’s exit as a replica killed while stopping', () => {
   const r = upgrade(stack(), { env: { STUB_ONEOFF: '1' } });
   assert.equal(r.status, 0, r.output);
+});
+
+for (const service of ['web', 'worker']) {
+  test(`does not open the instance while ${service} is not running ready on the new image`, () => {
+    const r = upgrade(stack(), { env: { STUB_FAIL: `unhealthy-${service}` } });
+    assert.equal(r.status, 5, r.output);
+    assert.match(r.output, /failed step=services-wait after migrate/);
+    assert.equal(r.maintenance, 'on');
+    assert.ok(!r.calls.includes('run --rm --no-deps api maintenance off'));
+  });
+}
+
+test('rolls back before migrate when a service does not run the new image', () => {
+  const r = upgrade(stack(), { env: { STUB_WORKER_IMAGE: OLD_API } });
+  assertRolledBack(r, 'images');
+  assert.match(r.output, /worker: worker\|running\|healthy\|/);
+  assert.ok(!r.calls.includes('run --rm migrate'));
+});
+
+test('upgrades to a release with no migration', () => {
+  const r = upgrade(stack(), { env: { STUB_CODE_ONLY: '1' } });
+  assert.equal(r.status, 0, r.output);
+  assert.match(r.output, /migrate changed nothing/);
+  assert.deepEqual(r.images, imagesOf(NEW_API, NEW_WEB));
+});
+
+test('rolls back after a migrate that changed nothing', () => {
+  const r = upgrade(stack(), {
+    env: { STUB_CODE_ONLY: '1', STUB_FAIL: 'maintenance-off:1' },
+  });
+  assertRolledBack(r, 'maintenance-off');
+});
+
+test('fixes forward after a migrate that upgraded pinned protocol versions', () => {
+  const r = upgrade(stack(), {
+    env: {
+      STUB_CODE_ONLY: '1',
+      STUB_PINNED_UPGRADE: '1',
+      STUB_FAIL: 'maintenance-off:1',
+    },
+  });
+  assert.equal(r.status, 5, r.output);
+  assert.match(r.output, /failed step=maintenance-off after migrate/);
+  assert.equal(r.env, envWith(NEW_API, NEW_WEB));
+  assert.equal(r.maintenance, 'on');
 });
 
 test('uses the stack directory it is run from when no --dir is given', () => {
@@ -197,9 +263,7 @@ test('rolls back when maintenance mode never lands on every replica', () => {
 test('rolls back when migrate refuses a database a newer release migrated', () => {
   const s = stack();
   writeFileSync(join(s.state, 'db'), 'new\n');
-  for (const api of ['api', 'api-b']) {
-    writeFileSync(join(s.state, `image-${api}`), `${NEW_API}\n`);
-  }
+  runningImages(s.state, NEW_API, NEW_WEB);
   writeFileSync(join(s.dir, '.env'), envWith(NEW_API, NEW_WEB));
   const r = upgrade(s, { args: ['--dir', s.dir, OLD_API, OLD_WEB] });
   assert.equal(r.status, 3, r.output);
@@ -207,7 +271,7 @@ test('rolls back when migrate refuses a database a newer release migrated', () =
   assert.equal(r.env, envWith(NEW_API, NEW_WEB));
   assert.equal(r.db, 'new');
   assert.equal(r.maintenance, 'off');
-  assert.deepEqual(r.images, { 'api': NEW_API, 'api-b': NEW_API });
+  assert.deepEqual(r.images, imagesOf(NEW_API, NEW_WEB));
 });
 
 test('reports a failed rollback when the previous images cannot be started', () => {
@@ -256,9 +320,9 @@ test('recreates a replica that has not seen the migration, as the guide’s step
   const r = upgrade(stack({ stuck: ['api-b'] }));
   assert.equal(r.status, 0, r.output);
   assert.deepEqual(r.calls, [
-    ...SEQUENCE.slice(0, -1),
+    ...SEQUENCE.slice(0, -2),
     'up -d api-b',
-    SEQUENCE.at(-1),
+    ...SEQUENCE.slice(-2),
   ]);
 });
 
