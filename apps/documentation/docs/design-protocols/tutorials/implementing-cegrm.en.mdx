@@ -195,6 +195,16 @@ applies to, and populate `has_condition` and `had_testing`. Each person's
 details ask only for living status and birth year. The Narrative Pedigree later
 in the interview reads `has_condition`.
 
+Both detail questions name the relative they concern by means of
+[piped text](/en/design-protocols/piped-text). The inserted label is the one the
+family tree shows: the name the participant typed or, for an unnamed relative,
+the stage's kinship word, so that the participant reads "What year was Mother
+born?". When the form concerns the participant, the question reads "What year
+were you born?" instead, because the template gives the question a separate
+version for each answer to `is_ego`. Retain this structure when rewording the
+questions, so that the participant is never asked about themselves in the third
+person.
+
 These answers record the participant's
 report; they do not establish diagnosis, genotype, or verified clinical status.
 If verified data are available from another source, preserve the provenance of
@@ -237,6 +247,11 @@ and this stage's filter selects people other than the participant who have
 applied to people from the pedigree and makes the analytic distinction
 explicit: use `non_kin` to separate the two groups and `tie_type` to classify
 contacts outside the pedigree.
+
+A contact placed in the "Something else" bin is followed by a free-text question, "How
+would you describe how you know …?", which ends with that contact's label
+through [piped text](/en/design-protocols/piped-text), so that the question
+identifies the contact being described.
 
 Review this boundary for your study. "Family" is not exhausted by biological
 kinship, and the Family Pedigree can contain social and adoptive relationships.

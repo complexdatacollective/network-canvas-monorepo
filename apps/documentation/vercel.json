@@ -26,6 +26,11 @@
       "permanent": true
     },
     {
+      "source": "/en/design-protocols/dynamic-values",
+      "destination": "/en/design-protocols/piped-text",
+      "permanent": true
+    },
+    {
       "source": "/en/get-started/release-announcements",
       "destination": "/en/get-started/protocol-schema-information",
       "permanent": true

@@ -424,6 +424,32 @@ Add just two fields to this form. Here are the details you need, following the s
 - Variable called `visit_or_study`, prompt of "Did you visit this university, or study there?", input control of Radio Button Group with options "Visited" and "Studied", Required validation
 - Variable called `overall_review`, prompt of "Overall, how would you describe your experience at this university?", input control of Likert Scale with options "Excellent", "Above Average", "Average", "Below Average", "Poor"
 
+<AppOnly app="current">
+
+### Naming the university in the question
+
+Both questions refer to "this university". The participant sees one form for each university they selected, so the question can instead name the university that the form concerns. Architect does this by inserting the node's label into the question text, a technique known as piped text.
+
+Open the `visit_or_study` field again. Replace the question text with "Did you visit ", then click the syringe button in the toolbar of **Question text**, or type `{`. A menu lists the values that this question can show. Choose **Node label**, the first entry under **Contextual Attributes**, and complete the question with " or study there?". The value appears in the question as a **Node label** pill, and the interactive preview shows the question with the same pill. The `overall_review` question can name the university in the same way.
+
+![The Question text editor reading "Did you visit [Node label] or study there?", beside the interactive preview of the field.](/assets/img/piped-text/value-in-question.png)
+
+During the interview, the pill is replaced by the text shown on each university node, which for this roster is the university's name: "Did you visit Universidad Francisco Marroquín or study there?". The downloadable sample protocol keeps the generic wording, so your protocol differs from it at this point.
+
+<KeyConcept title="Key Concept: Piped text">
+
+Piped text inserts information already recorded in the interview into the
+wording a participant reads: a node's label, an attribute of the node or edge a
+question concerns, an attribute of the participant, or today's date. A node's
+label is never missing, so it can be inserted on its own. Any attribute can be
+missing when the question is shown, so Architect asks for two versions of the
+surrounding text, one for when the value is known and one for when it is not.
+For the full account, see [Piped Text](/en/design-protocols/piped-text).
+
+</KeyConcept>
+
+</AppOnly>
+
 When finished, save and return to the overview screen of your protocol.
 
 ## Creating sociograms
@@ -530,6 +556,14 @@ Next, we define a prompt. For this stage, we enter the prompt, "To the best of y
 We previously created two edge types on the sociogram which appear available for our use on this prompt. We will select the "know" edge type since we are asking the participant whether any two classmates know one another.
 
 <Screenshot axis="architect" name="dyad-prompt"></Screenshot>
+
+<AppOnly app="current">
+
+As on the Per-Alter Form, piped text can make this question name the two classmates it concerns. Write "To the best of your knowledge, do ", then open the syringe menu and choose **First node: label**. Type " and ", choose **Second node: label**, and finish with " spend time together outside of class?". For each pair, the participant then reads a question such as "To the best of your knowledge, do Corbett and Rebecka spend time together outside of class?", using the names shown on the two nodes.
+
+![The Dyad Census prompt text reading "To the best of your knowledge, do [First node: label] and [Second node: label] spend time together outside of class?"](/assets/img/piped-text/pair-prompt.png)
+
+</AppOnly>
 
 ## Sociogram: toggling an attribute
 
