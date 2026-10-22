@@ -9,7 +9,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useInsideAreaMain } from './AreaMain.tsx';
 
-const CENTRED = 'flex h-full items-center justify-center p-4';
+const CENTRED = 'flex min-h-full items-center justify-center p-4';
 
 /**
  * The landmark this screen contributes, which depends on where the router put

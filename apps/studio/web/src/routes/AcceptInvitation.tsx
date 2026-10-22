@@ -216,7 +216,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
     // it owns its own.
     <main
       id="main-content"
-      className="flex h-full items-center justify-center p-4"
+      className="flex min-h-full items-center justify-center p-4"
     >
       <Surface className="max-w-xl" spacing="lg">
         {Option.isNone(invitationId) ? (

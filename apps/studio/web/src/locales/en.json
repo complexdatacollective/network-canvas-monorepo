@@ -663,6 +663,34 @@
     "defaultMessage": "Templates",
     "description": "Navigation label for the protocol template library, in the header and everything bar."
   },
+  "studio.noTeam.createIntro": {
+    "defaultMessage": "Create a team of your own. You will be its owner, and can invite others once it exists.",
+    "description": "Shown on /no-team to a researcher who is allowed to create a team, above the button that does it."
+  },
+  "studio.noTeam.createTeam": {
+    "defaultMessage": "Create a team",
+    "description": "Button or link on /no-team that starts creating a new team."
+  },
+  "studio.noTeam.heading": {
+    "defaultMessage": "No team yet",
+    "description": "Heading of the screen at /no-team."
+  },
+  "studio.noTeam.intro": {
+    "defaultMessage": "You do not belong to any team yet. Studies in Studio belong to a team, so you need one before you can start.",
+    "description": "Introduction on the screen shown to a signed-in researcher who belongs to no team."
+  },
+  "studio.noTeam.invitation": {
+    "defaultMessage": "To join an existing team, ask one of its owners or admins to invite the email address you signed in with. The invitation email has a link that adds you to the team.",
+    "description": "Explains on /no-team how to join a team by invitation, while the signed-in address is not yet known."
+  },
+  "studio.noTeam.invitationWithEmail": {
+    "defaultMessage": "To join an existing team, ask one of its owners or admins to invite {email}. The invitation email has a link that adds you to the team.",
+    "description": "Explains on /no-team how to join a team by invitation; {email} is the address the researcher is signed in with."
+  },
+  "studio.noTeam.ownerOnly": {
+    "defaultMessage": "On this Studio instance, only its owner can create teams, so a team owner or admin has to invite you.",
+    "description": "Shown on /no-team of a self-hosted instance to a researcher who is not allowed to create a team."
+  },
   "studio.notFound.description": {
     "defaultMessage": "This page is not available on this instance.",
     "description": "Explanation on the not-found screen. One instance may be a managed one and another self-hosted, and each serves pages the other does not, so the sentence says \"on this instance\" rather than claiming the page does not exist at all."
@@ -855,14 +883,6 @@
     "defaultMessage": "Legal",
     "description": "Name of the Legal screen at /legal/$document, used as its heading."
   },
-  "studio.screens.noTeamDescription": {
-    "defaultMessage": "What a signed-in researcher who belongs to no team sees: how to create one, or what to expect while waiting for an invitation.",
-    "description": "What the No team yet screen at /no-team will do, shown on it while it is not yet built."
-  },
-  "studio.screens.noTeamTitle": {
-    "defaultMessage": "No team yet",
-    "description": "Name of the No team yet screen at /no-team, used as its heading."
-  },
   "studio.screens.pricingDescription": {
     "defaultMessage": "What each Studio plan includes and what it costs, so a research group can decide before they sign up.",
     "description": "What the Pricing screen at /pricing will do, shown on it while it is not yet built."
@@ -903,10 +923,6 @@
     "defaultMessage": "Account ready",
     "description": "Name of the Account ready screen at /sign-up/complete, used as its heading."
   },
-  "studio.screens.signUpDescription": {
-    "defaultMessage": "Where a researcher creates their Studio account, and the first step of the funnel that ends with a team and a first study.",
-    "description": "What the Create an account screen at /sign-up will do, shown on it while it is not yet built."
-  },
   "studio.screens.signUpPlanDescription": {
     "defaultMessage": "Which plan the new team starts on, and what that settles about seats and limits.",
     "description": "What the Choose a plan screen at /sign-up/plan will do, shown on it while it is not yet built."
@@ -914,18 +930,6 @@
   "studio.screens.signUpPlanTitle": {
     "defaultMessage": "Choose a plan",
     "description": "Name of the Choose a plan screen at /sign-up/plan, used as its heading."
-  },
-  "studio.screens.signUpTeamDescription": {
-    "defaultMessage": "Names the team the new account will own — the boundary every study, member and invoice belongs to.",
-    "description": "What the Name your team screen at /sign-up/team will do, shown on it while it is not yet built."
-  },
-  "studio.screens.signUpTeamTitle": {
-    "defaultMessage": "Name your team",
-    "description": "Name of the Name your team screen at /sign-up/team, used as its heading."
-  },
-  "studio.screens.signUpTitle": {
-    "defaultMessage": "Create an account",
-    "description": "Name of the Create an account screen at /sign-up, used as its heading."
   },
   "studio.screens.studyExportDescription": {
     "defaultMessage": "Collected data out of Studio: the interchange formats analysis needs, and the archives a repository will take.",
@@ -1153,7 +1157,7 @@
   },
   "studio.shell.noTeamSignOut": {
     "defaultMessage": "Sign out",
-    "description": "Button on the no-team screen that ends the session — the only way off that screen."
+    "description": "Button on the no-team screen that ends the session."
   },
   "studio.shell.protocolOutlineNavClose": {
     "defaultMessage": "Close protocol outline",
@@ -1206,6 +1210,10 @@
   "studio.signIn.continueWithMicrosoft": {
     "defaultMessage": "Continue with Microsoft",
     "description": "Button starting sign-in through Microsoft."
+  },
+  "studio.signIn.createAccount": {
+    "defaultMessage": "New to Studio? Create an account",
+    "description": "Link from the sign-in screen to the account creation screen, shown on the managed service only."
   },
   "studio.signIn.didNotComplete": {
     "defaultMessage": "Sign-in did not complete. Try again.",
@@ -1282,6 +1290,66 @@
   "studio.signIn.wrongCredentials": {
     "defaultMessage": "That email or password is not correct.",
     "description": "Form error when the email and password did not match."
+  },
+  "studio.signUp.didNotComplete": {
+    "defaultMessage": "Creating your account did not complete. Try again.",
+    "description": "Shown on /sign-up when creating an account failed for an unspecified reason."
+  },
+  "studio.signUp.emailHint": {
+    "defaultMessage": "The address your Studio account will use.",
+    "description": "Hint under /sign-up's email field when the value is not a valid address."
+  },
+  "studio.signUp.haveAccount": {
+    "defaultMessage": "Already have an account? Sign in",
+    "description": "Link from the account creation screen to the sign-in screen."
+  },
+  "studio.signUp.heading": {
+    "defaultMessage": "Create an account",
+    "description": "Heading of the account creation screen at /sign-up."
+  },
+  "studio.signUp.intro": {
+    "defaultMessage": "Create your Studio account, then name the team your studies will belong to.",
+    "description": "Introduction on the account creation screen, describing the two steps of signing up."
+  },
+  "studio.signUp.linkInvalid": {
+    "defaultMessage": "That sign-up link is no longer valid. Enter your email address to request a new one.",
+    "description": "Shown on /sign-up when a sign-up link the visitor followed has expired or was already used."
+  },
+  "studio.signUp.magicLinkIntro": {
+    "defaultMessage": "Enter your email address and we will send you a link that creates your account.",
+    "description": "Introduction above the magic-link form on /sign-up."
+  },
+  "studio.signUp.magicLinkSendFailed": {
+    "defaultMessage": "The sign-up email could not be sent. Wait a moment and try again.",
+    "description": "Form error on /sign-up when requesting a sign-up link failed."
+  },
+  "studio.signUp.sendLink": {
+    "defaultMessage": "Send sign-up link",
+    "description": "Submit button of the magic-link form on /sign-up."
+  },
+  "studio.signUp.sentTo": {
+    "defaultMessage": "We sent a link to {email}. Open it on this device to create your account. The link expires in 5 minutes.",
+    "description": "Confirmation after a sign-up link was sent; {email} is the address it went to."
+  },
+  "studio.signUp.socialFailed": {
+    "defaultMessage": "Creating your account could not be started. Wait a moment and try again.",
+    "description": "Shown on /sign-up when handing off to Google or Microsoft failed."
+  },
+  "studio.signUp.unavailable": {
+    "defaultMessage": "Creating an account is not available right now. Try again later.",
+    "description": "Shown on /sign-up when the deployment offers neither email links nor Google or Microsoft sign-in."
+  },
+  "studio.signUpTeam.heading": {
+    "defaultMessage": "Name your team",
+    "description": "Heading of the team creation step of sign-up, at /sign-up/team."
+  },
+  "studio.signUpTeam.intro": {
+    "defaultMessage": "Studies in Studio belong to a team. Name yours to start building studies.",
+    "description": "Introduction on the team creation step of sign-up, explaining why a team is needed."
+  },
+  "studio.signUpTeam.invited": {
+    "defaultMessage": "Joining a colleague’s team instead? Open the link in the invitation email they sent you.",
+    "description": "Shown on the team creation step of sign-up for researchers who were invited to an existing team."
   },
   "studio.siteLayout.copyright": {
     "defaultMessage": "© {year} Complex Data Collective",

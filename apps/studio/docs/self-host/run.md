@@ -195,6 +195,12 @@ Open `https://studio.example.org/setup`, paste the token, give the instance a
 name, and create the owner's account. You land signed in as the owner. The
 token is spent, and `/setup` answers as a not-found from then on.
 
+The owner starts with no team, so the first screen offers to create one. Name
+it and you land on its study list. On a self-hosted instance only the owner can
+create teams; everyone else joins a team when one of its owners or admins
+invites them, which needs mail (the next step). Until then, someone who signs
+in without a team is told who has to invite them.
+
 That is the instance running. The name you gave is reported by the app's
 `status` procedure and by `/api/v1/status`.
 

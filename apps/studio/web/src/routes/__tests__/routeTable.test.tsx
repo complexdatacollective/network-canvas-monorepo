@@ -149,8 +149,18 @@ const DESTINATIONS: Destination[] = [
 
   // Focused
   { path: '/sign-in', url: '/sign-in', heading: 'Sign in', signedOut: true },
-  { path: '/sign-up', url: '/sign-up', heading: 'Create an account' },
-  { path: '/sign-up/team', url: '/sign-up/team', heading: 'Name your team' },
+  {
+    path: '/sign-up',
+    url: '/sign-up',
+    heading: 'Create an account',
+    signedOut: true,
+  },
+  {
+    path: '/sign-up/team',
+    url: '/sign-up/team',
+    heading: 'Name your team',
+    teamless: true,
+  },
   { path: '/sign-up/plan', url: '/sign-up/plan', heading: 'Choose a plan' },
   { path: '/sign-up/checkout', url: '/sign-up/checkout', heading: 'Checkout' },
   {
