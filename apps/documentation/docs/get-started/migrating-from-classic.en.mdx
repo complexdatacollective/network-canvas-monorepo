@@ -7,7 +7,7 @@ If you built your study with **Architect Classic** and **Interviewer Classic** â
 
 <KeyConcept title="The short version">
 
-Your existing protocols carry over. Interviewer and Fresco import schema 7 protocols and migrate them to schema 8 automatically, so you can run a protocol from the Classic apps without changing it first. To use the newest features, open it in Architect and upgrade it to the latest schema version (currently schema 9). Migration is **one-way**, so keep a copy of your schema 7 `.netcanvas` file for as long as you still need the Classic apps. Data you have already collected or exported is unaffected.
+Your existing protocols carry over. Interviewer and Fresco import schema 7 protocols and migrate them to schema 8 automatically, so you can run a protocol from the Classic apps without changing it first. Architect can edit it as schema 8, or, if you want the newest features, upgrade it to the latest schema version (currently schema 9). Migration is **one-way**, so keep a copy of your schema 7 `.netcanvas` file for as long as you still need the Classic apps. Data you have already collected or exported is unaffected.
 
 </KeyConcept>
 
@@ -19,7 +19,13 @@ Switching partway through collection is possible, but worth planning deliberatel
 
 ## Moving your protocol
 
-Open or import your schema 7 `.netcanvas` file in [Architect](https://architect.networkcanvas.com) and choose **Upgrade to schema 9**. Architect lists the changes the upgrade makes, then saves an upgraded copy to its browser library and opens it. The migration is one-way: any `.netcanvas` file you download from Architect after upgrading uses the latest schema, which the Classic apps cannot open. Keep your original schema 7 file somewhere safe for as long as you still need Architect Classic or Interviewer Classic. [Protocol Schema Information](/en/get-started/protocol-schema-information) covers the mechanics of migration and includes a compatibility table showing which apps support which schema versions.
+Open or import your schema 7 `.netcanvas` file in [Architect](https://architect.networkcanvas.com). Architect asks how you want to open it, and offers two choices.
+
+To keep the protocol as close as possible to the one you designed, choose **Keep editing as schema 8**. Architect migrates it to schema 8 and opens it in the previous version of Architect, which is built in. You can still upgrade it to schema 9 later.
+
+To use schema 9 features, choose **Upgrade to schema 9**. Architect lists the changes the upgrade makes, then saves an upgraded copy to its browser library and opens it.
+
+Either way, the migration is one-way: any `.netcanvas` file you download from Architect afterwards uses schema 8 or schema 9, which the Classic apps cannot open. Keep your original schema 7 file somewhere safe for as long as you still need Architect Classic or Interviewer Classic. [Protocol Schema Information](/en/get-started/protocol-schema-information) covers the mechanics of migration and includes a compatibility table showing which apps support which schema versions.
 
 If you only want to _run_ an existing protocol, you do not need Architect at all. Importing a schema 7 protocol into Interviewer or Fresco migrates it to schema 8 automatically, and it runs as schema 8. This step is automatic because it is how protocols move over from the Classic apps, and earlier releases of Interviewer and Fresco did the same. Interviewer and Fresco never migrate a protocol to schema 9: only Architect does that, and only when you choose to.
 
