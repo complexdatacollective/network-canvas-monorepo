@@ -1218,6 +1218,8 @@ function TwinZygosityField({
       id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth,
     identicalWith,
   );
+  // "Fraternal" recorded where identical was impossible was assumed rather
+  // than answered, so it is asked afresh once identical is possible.
   const assumedFraternal =
     recorded?.zygosity === 'fraternal' &&
     identicalUnavailable(
@@ -1225,7 +1227,11 @@ function TwinZygosityField({
       person.id,
       twinId,
       (id) => recordedFamily.byId.get(id)?.sexAssignedAtBirth,
-      [],
+      twinsOf(recordedFamily, person.id).flatMap((each) =>
+        each.zygosity === 'identical' && each.twinId !== twinId
+          ? [each.twinId]
+          : [],
+      ),
     );
   // The answer recorded, followed until the participant answers
   // (`useDerivedAnswer`); none while the question is not asked.

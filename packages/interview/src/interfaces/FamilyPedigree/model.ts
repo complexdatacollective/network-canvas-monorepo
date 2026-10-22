@@ -1324,11 +1324,14 @@ function zygosityThrough(ab: TwinZygosity, bc: TwinZygosity): TwinZygosity {
 
 /**
  * Whether one of two siblings was adopted by a parent they share and the
- * other was not: someone adopted by a family was born to someone else, so is
- * never the twin of a child born to it. Two siblings adopted together may be
- * twins.
+ * other was born to them: someone adopted by a family was born to someone
+ * else, so is never the twin of a child born to it. Two siblings adopted
+ * together may be twins, and so may two whom a step-parent adopted only one
+ * of, since a step-parent's tie says nothing about the other's birth.
  */
 export function adoptedApart(family: Family, a: string, b: string): boolean {
+  const bornTo = (kind: FamilyLinkKind) =>
+    kind === 'biological' || kind === 'donor' || kind === 'surrogate';
   const kindsFrom = (personId: string) =>
     new Map(
       parentLinksOf(family, personId).map((link) => [link.source, link.kind]),
@@ -1338,7 +1341,8 @@ export function adoptedApart(family: Family, a: string, b: string): boolean {
     const kindOfA = ofA.get(parentId);
     return (
       kindOfA !== undefined &&
-      (kindOfA === 'adoptive') !== (kind === 'adoptive')
+      ((kindOfA === 'adoptive' && bornTo(kind)) ||
+        (kind === 'adoptive' && bornTo(kindOfA)))
     );
   });
 }

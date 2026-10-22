@@ -2400,6 +2400,45 @@ describe('identical twins and sex at birth', () => {
       await answerWith('sam', 'No, fraternal (non-identical)');
       await waitFor(() => expect(zygosityWith('kim')).not.toBeNull());
     });
+
+    it('asks afresh, unanswered, whether a twin recorded fraternal because of another identical twin is identical, once that twin is not', async () => {
+      // Recorded as the form leaves it: the participant identical to Sam,
+      // so fraternal to Kim, whose sex at birth differs from Sam's.
+      const { user } = renderPersonForm('ego', {
+        nodes: [
+          person('ego', { isEgo: true }),
+          person('sam', { name: 'Sam', sex: ['female'] }),
+          person('kim', { name: 'Kim', sex: ['male'] }),
+          person('shannon', { name: 'Shannon', sex: ['female'] }),
+          person('rick', { name: 'Rick', sex: ['male'] }),
+        ],
+        edges: [
+          ...['ego', 'sam', 'kim'].flatMap((childId) => [
+            link('shannon', childId, 'biological', { carrier: true }),
+            link('rick', childId, 'biological'),
+          ]),
+          link('ego', 'sam', 'identicalTwin'),
+          link('ego', 'kim', 'fraternalTwin'),
+          link('sam', 'kim', 'fraternalTwin'),
+        ],
+      });
+      const zygosityWith = (twin: string) =>
+        screen.queryByRole('radiogroup', {
+          name: new RegExp(`^Are you and “${twin}” identical twins\\?`),
+        });
+      expect(zygosityWith('kim')).toBeNull();
+
+      await user.click(
+        within(zygosityWith('sam')!).getByRole('radio', {
+          name: 'No, fraternal (non-identical)',
+        }),
+      );
+
+      await waitFor(() => expect(zygosityWith('kim')).not.toBeNull());
+      for (const option of within(zygosityWith('kim')!).getAllByRole('radio')) {
+        expect(option).not.toBeChecked();
+      }
+    });
   });
 });
 

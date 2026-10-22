@@ -643,6 +643,36 @@ describe('who could be someone’s twin', () => {
     expect(twinCandidatesOf(f, 'ego')).toEqual(['sib']);
   });
 
+  test('a child born to the parents who adopted the person could not', () => {
+    const adopted = family(
+      [
+        person('ego', { isEgo: true }),
+        person('lucy', { name: 'Lucy' }),
+        person('mum', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'adoptive'),
+        link('dad', 'ego', 'adoptive'),
+        link('mum', 'lucy', 'biological'),
+        link('dad', 'lucy', 'biological'),
+      ],
+    );
+    expect(twinCandidatesOf(adopted, 'ego')).toEqual([]);
+    expect(twinCandidatesOf(adopted, 'lucy')).toEqual([]);
+  });
+
+  test('a sibling whom a step-parent adopted, and the person not, still could', () => {
+    // Ego and Sam share their biological parents; their stepfather adopted
+    // Sam and is a step-parent to Ego.
+    const f = siblings(
+      [link('step', 'ego', 'social'), link('step', 'sam', 'adoptive')],
+      [person('step', { name: 'Stepdad', sex: ['male'] })],
+    );
+    expect(twinCandidatesOf(f, 'ego')).toEqual(['sam']);
+    expect(twinCandidatesOf(f, 'sam')).toEqual(['ego']);
+  });
+
   test('a sibling whose twins are not all the person’s siblings could not', () => {
     // Kim is Sam's twin through their father, but not the participant's
     // sibling, so the participant cannot join their set.
