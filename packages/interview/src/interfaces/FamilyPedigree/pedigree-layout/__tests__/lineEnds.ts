@@ -1,10 +1,11 @@
 /**
  * Where the drawn lines end, measured against what they meet as it is drawn:
- * every line ends exactly on what it meets. A line ending on a person lands
- * on the outline PersonNode paints (fresco-ui's Node at size `sm`: a circle
- * filling its box; a square whose corners are rounded at 24px; a diamond, a
- * square of the same corners scaled to 0.85 and turned 45°), and shows no
- * corner there; a line ending on a line lands on its centreline.
+ * every line ends exactly on what it meets. A line ending on a person runs
+ * on to their centre, under the outline PersonNode paints (fresco-ui's Node
+ * at size `sm`: a circle filling its box; a square whose corners are rounded
+ * at 24px; a diamond, a square of the same corners scaled to 0.85 and turned
+ * 45°), and shows no corner on it; a line ending on a line lands on its
+ * centreline.
  */
 import { EDGE_WIDTH, SYMBOL_CORNER_RADIUS_PX } from '../layoutDimensions';
 import type {
@@ -51,20 +52,6 @@ export function outsideOutline(
   return roundedBox(u, v, (0.85 * size) / 2, 0.85 * SYMBOL_CORNER_RADIUS_PX);
 }
 
-/** The top of the outline PersonNode paints. */
-export function outlineTop(
-  centre: Point,
-  size: number,
-  shape: PedigreeSymbolShape,
-): Point {
-  const above =
-    shape === 'diamond'
-      ? (0.85 * size) / Math.SQRT2 -
-        0.85 * SYMBOL_CORNER_RADIUS_PX * (Math.SQRT2 - 1)
-      : size / 2;
-  return { x: centre.x, y: centre.y - above };
-}
-
 function distanceToSegment(p: Point, s: LineSegment): number {
   const dx = s.x2 - s.x1;
   const dy = s.y2 - s.y1;
@@ -99,35 +86,6 @@ function turnsAt(points: Point[], k: number): boolean {
   return Math.abs(u.x * v.y - u.y * v.x) / lengths > 0.01;
 }
 
-/** Whether a line coming into a person's outline at `meet`, from `before`,
- * can run on under the symbol in its own direction, far enough inside to
- * hide its turn or end: not when it comes in flatter than a diamond's sides
- * at its tip. */
-export function canRunOnInside(
-  before: Point,
-  meet: Point,
-  centre: Point,
-  size: number,
-  shape: PedigreeSymbolShape,
-): boolean {
-  const ux = meet.x - before.x;
-  const uy = meet.y - before.y;
-  const length = Math.hypot(ux, uy);
-  if (length < 1e-9) return false;
-  return [0.2, 0.3, 0.4, 0.5].some(
-    (along) =>
-      outsideOutline(
-        {
-          x: meet.x + (along * size * ux) / length,
-          y: meet.y + (along * size * uy) / length,
-        },
-        centre,
-        size,
-        shape,
-      ) <= -HALF_STROKE,
-  );
-}
-
 const px = (value: number) => `${value.toFixed(1)}px`;
 
 /**
@@ -142,10 +100,6 @@ export function lineEndFaults(drawing: Drawing): string[] {
     ...line.parentLink,
     ...line.uplines,
     ...(line.siblingBar ? [line.siblingBar] : []),
-    ...(line.runs ?? []).flatMap((run) => [
-      run.stem,
-      ...(run.bar ? [run.bar] : []),
-    ]),
   ]);
   const partnershipPieces = connectors.groupLines.flatMap((line) => [
     line.segment,
@@ -177,60 +131,16 @@ export function lineEndFaults(drawing: Drawing): string[] {
       }
       continue;
     }
-    // Into a child: it comes into their outline where the lines into them
-    // converge, the top of its outline (or, for a line from someone on the
-    // same row, which comes up into the child, its bottom), and shows no
-    // corner there. It runs on under their symbol far enough to hide its
-    // end, or, too flat to run on from there, ends there.
+    // Into a child: it runs on to their centre, under their symbol, so its
+    // end never shows (Josh, 22 Oct 2026: lines aim centre to centre), and
+    // shows no turn on their outline.
     const c = centre(child);
-    const top = outlineTop(c, size, shapeOf(child));
-    const targetFrom = (p: Point) =>
-      p.y > c.y ? { x: top.x, y: 2 * c.y - top.y } : top;
-    const before = points.at(-2)!;
-    const endTarget = targetFrom(before);
-    const endsThere =
-      Math.hypot(end.x - endTarget.x, end.y - endTarget.y) <= TOLERANCE;
-    if (endsThere) {
-      if (canRunOnInside(before, endTarget, c, size, shapeOf(child))) {
-        faults.push(
-          `${name} ends on ${child}'s outline, though it could run on out of sight`,
-        );
-      }
-      continue;
-    }
-    if (outside(end, child) > -HALF_STROKE) {
-      faults.push(`${name} ends where its end shows, on ${child}`);
+    const fromCentre = Math.hypot(end.x - c.x, end.y - c.y);
+    if (fromCentre > TOLERANCE) {
+      faults.push(`${name} ends ${px(fromCentre)} from ${child}'s centre`);
     }
     const last = points.findLastIndex((p) => outside(p, child) >= 0);
-    if (last < 0 || last === points.length - 1) continue;
-    const [from, to] = [points[last]!, points[last + 1]!];
-    let [lo, hi] = [0, 1];
-    for (let step = 0; step < 40; step++) {
-      const mid = (lo + hi) / 2;
-      const p = {
-        x: from.x + mid * (to.x - from.x),
-        y: from.y + mid * (to.y - from.y),
-      };
-      if (outside(p, child) >= 0) lo = mid;
-      else hi = mid;
-    }
-    const entry = {
-      x: from.x + lo * (to.x - from.x),
-      y: from.y + lo * (to.y - from.y),
-    };
-    const target = targetFrom(entry);
-    // The lines into a child converge on its outline, not short of it.
-    const meeting = points[last]!;
-    const short = Math.hypot(meeting.x - target.x, meeting.y - target.y);
-    if (short > TOLERANCE && short < 0.15 * size) {
-      faults.push(`${name} converges ${px(short)} short of ${child}'s outline`);
-    }
-    const fromTarget = Math.hypot(entry.x - target.x, entry.y - target.y);
-    if (fromTarget > TOLERANCE) {
-      faults.push(
-        `${name} comes into ${child}'s outline ${px(fromTarget)} from where the lines into them converge`,
-      );
-    }
+    if (last < 0) continue;
     for (let k = last; k < points.length - 1; k++) {
       if (!turnsAt(points, k)) continue;
       const depth = outside(points[k]!, child);

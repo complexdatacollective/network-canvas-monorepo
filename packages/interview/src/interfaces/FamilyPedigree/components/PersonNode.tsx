@@ -133,7 +133,7 @@ export default function PersonNode({
             key={side}
             aria-hidden
             className={cx(
-              'pointer-events-none absolute -inset-y-2 w-3 border-solid border-current',
+              'border-text pointer-events-none absolute -inset-y-2 w-3 border-solid',
               side === 'left' ? '-left-4' : '-right-4',
             )}
             style={{

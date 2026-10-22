@@ -4,9 +4,9 @@
   - region "Your family":
     - button "Mother term - matrix check"
     - button "Father term - matrix check"
-    - button "You"
-    - button "Sister term - matrix check ex of Tom - matrix check"
     - button "Tom"
+    - button "Sister term - matrix check ex of Tom - matrix check"
+    - button "You"
     - button "Sister term - matrix check partnered with Sam - matrix check"
     - button "Sam"
   - toolbar "Family tree tools":
