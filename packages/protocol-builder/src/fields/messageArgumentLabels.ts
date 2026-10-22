@@ -509,6 +509,15 @@ const messages = defineMessages({
   },
 });
 
+/**
+ * The headings over a text's version for the participant and for anyone else
+ * in their family, which piped text's "Participant or someone else" value uses too.
+ */
+export const participantVersionMessages = {
+  aboutParticipant: messages.aboutParticipant,
+  aboutSomeoneElse: messages.aboutSomeoneElse,
+};
+
 export type MessageArgumentLabels = Readonly<{
   /** Each case of each select argument, and `other`. */
   caseLabels: Readonly<Record<string, Readonly<Record<string, string>>>>;
