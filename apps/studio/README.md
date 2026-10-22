@@ -1142,15 +1142,22 @@ Each release publishes:
   `https://github.com/complexdatacollective/network-canvas-monorepo/.github/workflows/ci-and-release.yml@refs/heads/main`
   and issuer `https://token.actions.githubusercontent.com`. The job verifies
   both before it tags anything.
-- A CycloneDX 1.6 SBOM per image, attested to the image with cosign
-  (`--type cyclonedx`) and attached to the release as `studio-api.cdx.json`
-  and `studio-web.cdx.json`. Each merges a scan of the image for both
-  platforms (OS packages, the Node runtime, and the `node_modules` the api
-  image ships) with pnpm's lockfile view of the package built into it, which
-  is the only record of the libraries bundled into the web client. For
-  `studio-web` that view includes its devDependencies, because the client's
-  runtime libraries are declared there, so it also lists build and test tools
-  the image does not contain.
+- A CycloneDX 1.6 SBOM per image, attached to the release as
+  `studio-api.cdx.json` and `studio-web.cdx.json`. Each merges a scan of the
+  image for both platforms (OS packages, the Node runtime, and the
+  `node_modules` the api image ships) with pnpm's lockfile view of the package
+  built into it, which is the only record of the libraries bundled into the
+  web client. For `studio-web` that view includes its devDependencies, because
+  the client's runtime libraries are declared there; a build of the same tree
+  decides which of them the bundle carries, and the SBOM gives those scope
+  `required` and every other npm component, the build and test tools, scope
+  `excluded`.
+- A cosign attestation on each image, of type
+  `https://networkcanvas.com/studio/sbom-reference/v1`, naming its SBOM's
+  release asset URL and sha256 digest. The SBOMs are megabytes, and the public
+  transparency log refuses attestations over 100 KB, so the image carries this
+  reference rather than the SBOM. The job verifies that each image's
+  attestation names the digest of the file it uploads.
 - The git tag `studio@<version>` on the commit the images were built from, and
   a GitHub release of that name, not marked latest, whose notes pin both
   digests and carry each Studio package's changelog since the previous

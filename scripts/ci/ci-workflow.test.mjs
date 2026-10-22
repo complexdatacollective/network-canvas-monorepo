@@ -2062,9 +2062,30 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     step('Sign the images and attest their SBOMs'),
     /cosign sign --yes --recursive "\$API_REF" "\$WEB_REF"/,
   );
-  assert.match(
+  assert.equal(
+    studio.env.SBOM_REFERENCE_TYPE,
+    'https://networkcanvas.com/studio/sbom-reference/v1',
+  );
+  for (const image of ['api', 'web']) {
+    assert.match(
+      step('Sign the images and attest their SBOMs'),
+      new RegExp(
+        `cosign attest --yes --type "\\$SBOM_REFERENCE_TYPE" --predicate "\\$RUNNER_TEMP/studio-${image}\\.sbom-reference\\.json" "\\$${image.toUpperCase()}_REF"`,
+      ),
+    );
+  }
+  assert.doesNotMatch(
     step('Sign the images and attest their SBOMs'),
-    /cosign attest --yes --type cyclonedx --predicate "\$RUNNER_TEMP\/studio-api\.cdx\.json" "\$API_REF"/,
+    /--predicate "[^"]*\.cdx\.json"/,
+    'no SBOM goes to the public transparency log whole',
+  );
+  assert.match(
+    step('Generate the SBOMs'),
+    /studio-release\.mjs bundle --out "\$sboms\/web-bundle\.json"/,
+  );
+  assert.match(
+    step('Generate the SBOMs'),
+    /--runtime "\$sboms\/web-bundle\.json" --out "\$RUNNER_TEMP\/studio-web\.cdx\.json"/,
   );
   const verify = step('Verify the signatures and attestations');
   assert.match(
@@ -2073,8 +2094,9 @@ test('Studio releases publish signed, attested images under the app-lane guard',
   );
   assert.match(
     verify,
-    /cosign verify-attestation --type cyclonedx --certificate-identity "\$CERT_IDENTITY" --certificate-oidc-issuer "\$CERT_ISSUER" "\$ref"/,
+    /cosign verify-attestation --type "\$SBOM_REFERENCE_TYPE" --certificate-identity "\$CERT_IDENTITY" --certificate-oidc-issuer "\$CERT_ISSUER" "\$ref"/,
   );
+  assert.match(verify, /sha256sum "\$sbom"/);
   const release = step('Create the studio@${{ env.VERSION }} release');
   assert.match(release, /gh release create "studio@\$VERSION"/);
   assert.match(release, /--target "\$GITHUB_SHA"/);

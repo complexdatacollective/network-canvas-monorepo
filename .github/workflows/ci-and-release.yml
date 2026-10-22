@@ -4238,6 +4238,7 @@ jobs:
       VERSION: ${{ needs.apps-release-detect.outputs.studio_version }}
       CERT_IDENTITY: https://github.com/${{ github.workflow_ref }}
       CERT_ISSUER: https://token.actions.githubusercontent.com
+      SBOM_REFERENCE_TYPE: https://networkcanvas.com/studio/sbom-reference/v1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -4261,8 +4262,9 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-      # Only for the lockfile half of each SBOM, which reads package metadata
-      # (licences among it) from the store.
+      # For the lockfile half of each SBOM, which reads package metadata
+      # (licences among it) from the store, and the web client's bundle
+      # inventory.
       - if: steps.guard.outputs.skip != 'true'
         run: pnpm install --frozen-lockfile --ignore-scripts
       - if: steps.guard.outputs.skip != 'true'
@@ -4355,7 +4357,9 @@ jobs:
       # node_modules studio-api ships) and pnpm's lockfile view of the package
       # built into it. The lockfile half is what lists the libraries bundled
       # into the web client, which no image scan can see. studio-web declares
-      # them all as devDependencies, so its half is not `--prod`.
+      # them all as devDependencies, so its half is not `--prod`, and pnpm's
+      # scopes say nothing about what ships: the web document takes them from
+      # the packages a build of the same tree bundles instead.
       - name: Generate the SBOMs
         if: steps.guard.outputs.skip != 'true'
         env:
@@ -4378,27 +4382,36 @@ jobs:
             --filter @codaco/studio-api --prod > "$sboms/api-lockfile.json"
           pnpm sbom --sbom-format cyclonedx --sbom-spec-version 1.6 --sbom-type application \
             --filter @codaco/studio-web > "$sboms/web-lockfile.json"
+          node scripts/release/studio-release.mjs bundle --out "$sboms/web-bundle.json"
           node scripts/release/studio-release.mjs sbom --image api --version "$VERSION" --digest "$API_DIGEST" \
             --inputs "$sboms/api-amd64.json,$sboms/api-arm64.json,$sboms/api-lockfile.json" \
             --out "$RUNNER_TEMP/studio-api.cdx.json"
           node scripts/release/studio-release.mjs sbom --image web --version "$VERSION" --digest "$WEB_DIGEST" \
             --inputs "$sboms/web-amd64.json,$sboms/web-arm64.json,$sboms/web-lockfile.json" \
-            --out "$RUNNER_TEMP/studio-web.cdx.json"
+            --runtime "$sboms/web-bundle.json" --out "$RUNNER_TEMP/studio-web.cdx.json"
       - if: steps.guard.outputs.skip != 'true'
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           cosign-release: v3.1.3
       # `--recursive` signs each platform's manifest as well as the index, so a
-      # deployment that pins one platform's digest verifies too.
+      # deployment that pins one platform's digest verifies too. The public
+      # transparency log refuses attestations over 100 KB, and each SBOM is
+      # megabytes, so each image attests the release asset's URL and digest
+      # instead of the SBOM itself.
       - name: Sign the images and attest their SBOMs
         if: steps.guard.outputs.skip != 'true'
         env:
           API_REF: ${{ steps.refs.outputs.api }}
           WEB_REF: ${{ steps.refs.outputs.web }}
         run: |
+          for image in api web; do
+            node scripts/release/studio-release.mjs sbom-reference --version "$VERSION" \
+              --repository "$GITHUB_REPOSITORY" --sbom "$RUNNER_TEMP/studio-$image.cdx.json" \
+              --out "$RUNNER_TEMP/studio-$image.sbom-reference.json"
+          done
           cosign sign --yes --recursive "$API_REF" "$WEB_REF"
-          cosign attest --yes --type cyclonedx --predicate "$RUNNER_TEMP/studio-api.cdx.json" "$API_REF"
-          cosign attest --yes --type cyclonedx --predicate "$RUNNER_TEMP/studio-web.cdx.json" "$WEB_REF"
+          cosign attest --yes --type "$SBOM_REFERENCE_TYPE" --predicate "$RUNNER_TEMP/studio-api.sbom-reference.json" "$API_REF"
+          cosign attest --yes --type "$SBOM_REFERENCE_TYPE" --predicate "$RUNNER_TEMP/studio-web.sbom-reference.json" "$WEB_REF"
       # Verified the way a deployment verifies, against this workflow's
       # identity on main, before anything names the digests.
       - name: Verify the signatures and attestations
@@ -4407,9 +4420,17 @@ jobs:
           API_REF: ${{ steps.refs.outputs.api }}
           WEB_REF: ${{ steps.refs.outputs.web }}
         run: |
-          for ref in "$API_REF" "$WEB_REF"; do
+          for image in api web; do
+            ref_var="${image^^}_REF"
+            ref="${!ref_var}"
+            sbom="$RUNNER_TEMP/studio-$image.cdx.json"
             cosign verify --certificate-identity "$CERT_IDENTITY" --certificate-oidc-issuer "$CERT_ISSUER" "$ref" > /dev/null
-            cosign verify-attestation --type cyclonedx --certificate-identity "$CERT_IDENTITY" --certificate-oidc-issuer "$CERT_ISSUER" "$ref" > /dev/null
+            attested=$(cosign verify-attestation --type "$SBOM_REFERENCE_TYPE" --certificate-identity "$CERT_IDENTITY" --certificate-oidc-issuer "$CERT_ISSUER" "$ref" \
+              | jq -r '.payload | @base64d | fromjson | .predicate.sbom.digest.sha256')
+            if ! grep -qx "$(sha256sum "$sbom" | cut -d' ' -f1)" <<< "$attested"; then
+              echo "::error::no attestation on $ref names the digest of $sbom"
+              exit 1
+            fi
             echo "$ref: signature and SBOM attestation verified for $CERT_IDENTITY"
           done
       # A self-hoster pulls with no registry credentials, and so does a

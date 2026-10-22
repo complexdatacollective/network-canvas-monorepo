@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   mkdirSync,
   mkdtempSync,
@@ -18,6 +19,7 @@ import { test } from 'vitest';
 import { ReleaseManifest } from '../../apps/studio/api/src/update/manifest.ts';
 import { GATED_PRODUCT_DIRS } from './changeset-app-utils.mjs';
 import {
+  bundledPackages,
   MIGRATIONS_DIR,
   mergeSboms,
   movedWithoutApi,
@@ -25,6 +27,8 @@ import {
   planRelease,
   RELEASE_BODY_LIMIT,
   releaseManifest,
+  SBOM_REFERENCE_TYPE,
+  sbomReference,
   studioReleaseNotes,
 } from './studio-release.mjs';
 
@@ -89,7 +93,7 @@ test('a release PR that moves a Studio package without studio-api is refused', (
   assert.deepEqual(
     movedWithoutApi({
       current: versions('1.0.0', '1.1.0', '0.3.0'),
-      atNewest: versions('1.0.0', '1.0.0'),
+      baseline: versions('1.0.0', '1.0.0'),
     }),
     [
       { name: '@codaco/studio-contract', from: '0.2.0', to: '0.3.0' },
@@ -99,12 +103,8 @@ test('a release PR that moves a Studio package without studio-api is refused', (
   assert.deepEqual(
     movedWithoutApi({
       current: versions('1.0.1', '1.1.0'),
-      atNewest: versions('1.0.0', '1.0.0'),
+      baseline: versions('1.0.0', '1.0.0'),
     }),
-    [],
-  );
-  assert.deepEqual(
-    movedWithoutApi({ current: versions('1.0.0', '1.1.0'), atNewest: null }),
     [],
   );
 });
@@ -404,6 +404,183 @@ test('one SBOM per image keeps each component once and every edge pointing at it
   );
 });
 
+test('each bundled module is attributed to the package that owns it', () => {
+  const manifests = {
+    '/repo/apps/studio/web': { name: '@codaco/studio-web', version: '0.4.0' },
+    '/repo/packages/fresco-ui': { name: '@codaco/fresco-ui', version: '8.1.0' },
+    '/repo/packages/fresco-ui/src/dist': { type: 'module' },
+    '/repo/node_modules/.pnpm/react@19.3.0/node_modules/react': {
+      name: 'react',
+      version: '19.3.0',
+    },
+  };
+  assert.deepEqual(
+    bundledPackages(
+      [
+        '/repo/apps/studio/web/src/main.tsx',
+        '/repo/packages/fresco-ui/src/dist/Button.js?used',
+        '/repo/node_modules/.pnpm/react@19.3.0/node_modules/react/cjs/react.production.js',
+        '/repo/node_modules/.pnpm/react@19.3.0/node_modules/react/index.js',
+        '\0commonjsHelpers.js',
+        'vite/modulepreload-polyfill.js',
+        '/elsewhere/orphan.js',
+      ],
+      (dir) => manifests[dir] ?? null,
+    ),
+    [
+      'pkg:npm/%40codaco/fresco-ui@8.1.0',
+      'pkg:npm/%40codaco/studio-web@0.4.0',
+      'pkg:npm/react@19.3.0',
+    ],
+  );
+});
+
+test('the web SBOM marks what its bundle carries as runtime, and the rest of its lockfile view as build-only', () => {
+  const scan = bom({
+    tool: { type: 'application', name: 'syft', version: '1.54.1' },
+    described: { 'bom-ref': 'scan', 'type': 'container', 'name': 'x' },
+    components: [
+      {
+        'bom-ref': 'pkg:apk/alpine/nginx@1.29.0?package-id=1',
+        'purl': 'pkg:apk/alpine/nginx@1.29.0',
+        'name': 'nginx',
+      },
+      {
+        'bom-ref': 'pkg:npm/in-image@1.0.0?package-id=2',
+        'purl': 'pkg:npm/in-image@1.0.0',
+        'name': 'in-image',
+      },
+    ],
+  });
+  const lockfile = bom({
+    tool: { type: 'application', name: 'pnpm', version: '11.20.0' },
+    described: {
+      'bom-ref': 'pkg:npm/%40codaco/studio-web@0.4.0',
+      'purl': 'pkg:npm/%40codaco/studio-web@0.4.0',
+      'type': 'application',
+      'name': 'studio-web',
+    },
+    components: [
+      {
+        'bom-ref': 'pkg:npm/%40codaco/fresco-ui@8.1.0',
+        'purl': 'pkg:npm/%40codaco/fresco-ui@8.1.0',
+        'name': 'fresco-ui',
+        'scope': 'excluded',
+      },
+      {
+        'bom-ref': 'pkg:npm/vite@8.3.1',
+        'purl': 'pkg:npm/vite@8.3.1',
+        'name': 'vite',
+      },
+    ],
+  });
+
+  const merged = mergeSboms({
+    image: 'web',
+    version: '0.4.0',
+    digest: WEB_DIGEST,
+    boms: [scan, lockfile],
+    timestamp: '2026-10-22T12:00:00.000Z',
+    runtime: [
+      'pkg:npm/%40codaco/fresco-ui@8.1.0',
+      'pkg:npm/%40codaco/studio-web@0.4.0',
+      'pkg:npm/%40scope/unlisted@2.0.0',
+    ],
+  });
+
+  const scopes = Object.fromEntries(
+    merged.components.map((component) => [
+      component['bom-ref'],
+      component.scope,
+    ]),
+  );
+  assert.deepEqual(scopes, {
+    'pkg:apk/alpine/nginx@1.29.0?package-id=1': undefined,
+    'pkg:npm/in-image@1.0.0?package-id=2': 'required',
+    'pkg:npm/%40codaco/studio-web@0.4.0': 'required',
+    'pkg:npm/%40codaco/fresco-ui@8.1.0': 'required',
+    'pkg:npm/vite@8.3.1': 'excluded',
+    'pkg:npm/%40scope/unlisted@2.0.0': 'required',
+  });
+  assert.deepEqual(
+    merged.components.find(
+      ({ purl }) => purl === 'pkg:npm/%40scope/unlisted@2.0.0',
+    ),
+    {
+      'bom-ref': 'pkg:npm/%40scope/unlisted@2.0.0',
+      'type': 'library',
+      'name': '@scope/unlisted',
+      'version': '2.0.0',
+      'purl': 'pkg:npm/%40scope/unlisted@2.0.0',
+      'scope': 'required',
+    },
+  );
+  assert.ok(
+    merged.dependencies
+      .find(({ ref }) => ref === merged.metadata.component['bom-ref'])
+      .dependsOn.includes('pkg:npm/%40scope/unlisted@2.0.0'),
+  );
+});
+
+test('each image attests a reference to its SBOM, small enough for the public transparency log', () => {
+  const sbom = JSON.stringify({
+    components: Array(50_000).fill({ name: 'x' }),
+  });
+  const reference = sbomReference({
+    repository: 'complexdatacollective/network-canvas-monorepo',
+    version: '1.2.0',
+    name: 'studio-api.cdx.json',
+    bytes: Buffer.from(sbom),
+  });
+  assert.deepEqual(reference, {
+    sbom: {
+      name: 'studio-api.cdx.json',
+      uri: 'https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/studio@1.2.0/studio-api.cdx.json',
+      mediaType: 'application/vnd.cyclonedx+json',
+      digest: {
+        sha256: createHash('sha256').update(sbom).digest('hex'),
+      },
+    },
+  });
+  assert.ok(sbom.length > 100_000);
+  assert.ok(JSON.stringify(reference).length < 1_000);
+  assert.match(SBOM_REFERENCE_TYPE, /^https:\/\//);
+});
+
+test('the bundle command lists the packages the studio-web build bundles', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'studio-release-bundle-'));
+  try {
+    const out = join(dir, 'bundle.json');
+    const result = spawnSync(
+      process.execPath,
+      [SCRIPT, 'bundle', '--out', out],
+      {
+        encoding: 'utf8',
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const purls = JSON.parse(readFileSync(out, 'utf8'));
+    const names = new Set(purls.map((purl) => purl.replace(/@[^@]+$/, '')));
+    for (const shipped of [
+      'pkg:npm/%40codaco/studio-web',
+      'pkg:npm/%40codaco/fresco-ui',
+      'pkg:npm/react',
+      'pkg:npm/effect',
+    ]) {
+      assert.ok(names.has(shipped), `${shipped} is bundled`);
+    }
+    for (const tool of [
+      'pkg:npm/vite',
+      'pkg:npm/vitest',
+      'pkg:npm/typescript',
+    ]) {
+      assert.ok(!names.has(tool), `${tool} is not bundled`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 /**
  * A repository holding the four Studio manifests, committed once at `base`
  * versions and again at `head` versions, with `tags` on the first commit.
@@ -488,7 +665,32 @@ test('check fails a tree whose Studio packages moved past the newest release wit
     assert.equal(refused.status, 1);
     assert.match(
       refused.stderr,
-      /::error::@codaco\/studio-web moves from 1\.0\.0 to 1\.1\.0, but @codaco\/studio-api stays at its released version/,
+      /::error::@codaco\/studio-web moves from 1\.0\.0 to 1\.1\.0, but @codaco\/studio-api stays at 1\.0\.0/,
+    );
+    const passed = run(moving, 'check');
+    assert.equal(passed.status, 0, passed.stderr);
+  } finally {
+    for (const repo of [stuck, moving]) {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }
+});
+
+test('before the first release, check compares the release PR with its base', () => {
+  const stuck = studioRepo({
+    base: versions('0.3.0', '0.3.0'),
+    head: versions('0.3.0', '0.4.0'),
+  });
+  const moving = studioRepo({
+    base: versions('0.3.0', '0.3.0'),
+    head: versions('0.4.0', '0.4.0'),
+  });
+  try {
+    const refused = run(stuck, 'check');
+    assert.equal(refused.status, 1);
+    assert.match(
+      refused.stderr,
+      /::error::@codaco\/studio-web moves from 0\.3\.0 to 0\.4\.0, but @codaco\/studio-api stays at 0\.3\.0/,
     );
     const passed = run(moving, 'check');
     assert.equal(passed.status, 0, passed.stderr);

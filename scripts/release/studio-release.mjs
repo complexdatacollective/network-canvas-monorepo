@@ -5,11 +5,12 @@
 // @codaco/studio-api's version, the one an instance reports and the update
 // check compares, and tagged `studio@<x.y.z>`.
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
+import { basename, dirname, isAbsolute, join } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   IMAGES,
@@ -27,6 +28,7 @@ const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const API_PACKAGE = '@codaco/studio-api';
 export const STUDIO_PACKAGES = GATED_PRODUCT_RELEASE_LANES.studio;
 export const MIGRATIONS_DIR = 'apps/studio/api/migrations';
+const WEB_DIR = 'apps/studio/web';
 
 const STABLE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const MIGRATION = /^\d{4}_[a-z0-9_]+$/;
@@ -65,12 +67,11 @@ export function planRelease({ apiVersion, previousApiVersion, tags }) {
   return { released: true, reason: `${tag} is not tagged yet` };
 }
 
-export function movedWithoutApi({ current, atNewest }) {
-  if (atNewest === null) return [];
-  if (current[API_PACKAGE] !== atNewest[API_PACKAGE]) return [];
+export function movedWithoutApi({ current, baseline }) {
+  if (current[API_PACKAGE] !== baseline[API_PACKAGE]) return [];
   return STUDIO_PACKAGES.filter(
-    (name) => name !== API_PACKAGE && current[name] !== atNewest[name],
-  ).map((name) => ({ name, from: atNewest[name], to: current[name] }));
+    (name) => name !== API_PACKAGE && current[name] !== baseline[name],
+  ).map((name) => ({ name, from: baseline[name], to: current[name] }));
 }
 
 export function newestMigration(root = REPO_ROOT) {
@@ -89,6 +90,23 @@ export function newestMigration(root = REPO_ROOT) {
 
 export function releaseUrl(repository, version) {
   return `https://github.com/${repository}/releases/tag/${tagFor(version)}`;
+}
+
+export const SBOM_REFERENCE_TYPE =
+  'https://networkcanvas.com/studio/sbom-reference/v1';
+
+// What each image's attestation carries instead of its SBOM, which is far
+// larger than the public transparency log accepts: where the release
+// publishes the SBOM and its digest.
+export function sbomReference({ repository, version, name, bytes }) {
+  return {
+    sbom: {
+      name,
+      uri: `https://github.com/${repository}/releases/download/${tagFor(version)}/${name}`,
+      mediaType: 'application/vnd.cyclonedx+json',
+      digest: { sha256: createHash('sha256').update(bytes).digest('hex') },
+    },
+  };
 }
 
 // The first four keys are the update check's release manifest
@@ -173,9 +191,47 @@ export function studioReleaseNotes({
   return body.length <= RELEASE_BODY_LIMIT ? body : `${linked.join('\n')}\n`;
 }
 
+export const npmPurl = (name, version) =>
+  `pkg:npm/${name.replace(/^@/, '%40')}@${version}`;
+
+// The npm package each bundled module belongs to: the nearest package.json
+// above it that names one.
+export function bundledPackages(moduleIds, manifestAt) {
+  const owners = new Map();
+  const ownerOf = (dir) => {
+    if (owners.has(dir)) return owners.get(dir);
+    const manifest = manifestAt(dir);
+    const parent = dirname(dir);
+    const owner =
+      manifest?.name && manifest.version
+        ? npmPurl(manifest.name, manifest.version)
+        : parent === dir
+          ? null
+          : ownerOf(parent);
+    owners.set(dir, owner);
+    return owner;
+  };
+  const purls = new Set();
+  for (const id of moduleIds) {
+    if (!isAbsolute(id)) continue;
+    const owner = ownerOf(dirname(id.split('?')[0]));
+    if (owner !== null) purls.add(owner);
+  }
+  return [...purls].toSorted((a, b) => a.localeCompare(b));
+}
+
 const componentKey = (component) => component.purl ?? component['bom-ref'];
 
-export function mergeSboms({ image, version, digest, boms, timestamp }) {
+const isNpm = (component) => component.purl?.startsWith('pkg:npm/') === true;
+
+export function mergeSboms({
+  image,
+  version,
+  digest,
+  boms,
+  timestamp,
+  runtime,
+}) {
   const root = {
     'bom-ref': `${IMAGES[image]}@${digest}`,
     'type': 'container',
@@ -188,6 +244,8 @@ export function mergeSboms({ image, version, digest, boms, timestamp }) {
   const tools = new Map();
   const rootDependsOn = new Set();
   const edges = new Map();
+
+  const inImage = new Set();
 
   const keep = (component) => {
     const key = componentKey(component);
@@ -214,7 +272,37 @@ export function mergeSboms({ image, version, digest, boms, timestamp }) {
     } else if (described) {
       rootDependsOn.add(keep(described));
     }
-    for (const component of bom.components ?? []) keep(component);
+    for (const component of bom.components ?? []) {
+      keep(component);
+      if (described?.type === 'container') inImage.add(componentKey(component));
+    }
+  }
+
+  if (runtime) {
+    for (const purl of runtime) {
+      if (components.has(purl)) continue;
+      const [, name, packageVersion] = /^pkg:npm\/(.+)@([^@]+)$/.exec(purl);
+      components.set(purl, {
+        'bom-ref': purl,
+        'type': 'library',
+        'name': decodeURIComponent(name),
+        'version': packageVersion,
+        purl,
+      });
+      refs.set(purl, purl);
+      rootDependsOn.add(purl);
+    }
+    const ships = new Set(runtime);
+    for (const [key, component] of components) {
+      if (!isNpm(component)) continue;
+      components.set(key, {
+        ...component,
+        scope:
+          ships.has(component.purl) || inImage.has(key)
+            ? 'required'
+            : 'excluded',
+      });
+    }
   }
 
   for (const bom of boms) {
@@ -309,11 +397,16 @@ function required(args, ...names) {
   return args;
 }
 
+function readManifest(dir) {
+  const path = join(dir, 'package.json');
+  return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+}
+
 const writeJson = (path, value) =>
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 
 const COMMANDS = {
-  plan(root) {
+  'plan'(root) {
     const current = versionsAt(root, null);
     const plan = planRelease({
       apiVersion: current[API_PACKAGE],
@@ -329,10 +422,13 @@ const COMMANDS = {
     );
   },
 
-  check(root) {
+  // Before the first release the baseline is the parent commit: a pull
+  // request's merge commit, whose first parent is the base branch.
+  'check'(root) {
+    const current = versionsAt(root, null);
     const moved = movedWithoutApi({
-      current: versionsAt(root, null),
-      atNewest: atNewestRelease(root),
+      current,
+      baseline: atNewestRelease(root) ?? versionsAt(root, 'HEAD^'),
     });
     if (moved.length === 0) {
       console.log(
@@ -342,13 +438,13 @@ const COMMANDS = {
     }
     for (const { name, from, to } of moved) {
       console.error(
-        `::error::${name} moves from ${from} to ${to}, but ${API_PACKAGE} stays at its released version, so no Studio release would publish it. Add a ${API_PACKAGE} entry to one of this release's changesets.`,
+        `::error::${name} moves from ${from} to ${to}, but ${API_PACKAGE} stays at ${current[API_PACKAGE]}, so no Studio release would publish it. Add a ${API_PACKAGE} entry to one of this release's changesets.`,
       );
     }
     process.exitCode = 1;
   },
 
-  notes(root, args) {
+  'notes'(root, args) {
     required(args, 'version', 'repository', 'api-digest', 'web-digest', 'out');
     writeFileSync(
       args.out,
@@ -364,7 +460,7 @@ const COMMANDS = {
     );
   },
 
-  manifest(root, args) {
+  'manifest'(root, args) {
     required(
       args,
       'version',
@@ -388,7 +484,53 @@ const COMMANDS = {
     );
   },
 
-  sbom(_root, args) {
+  async 'bundle'(root, args) {
+    required(args, 'out');
+    const web = join(root, WEB_DIR);
+    const { build } = await import(
+      pathToFileURL(createRequire(join(web, 'package.json')).resolve('vite'))
+        .href
+    );
+    const moduleIds = new Set();
+    await build({
+      root: web,
+      configFile: join(web, 'vite.config.ts'),
+      logLevel: 'error',
+      build: { write: false, emptyOutDir: false },
+      plugins: [
+        {
+          name: 'studio-bundle-inventory',
+          generateBundle(_options, bundle) {
+            for (const output of Object.values(bundle)) {
+              if (output.type !== 'chunk') continue;
+              for (const id of output.moduleIds) moduleIds.add(id);
+            }
+          },
+        },
+      ],
+    });
+    const purls = bundledPackages(moduleIds, readManifest);
+    const own = npmPurl('@codaco/studio-web', readManifest(web).version);
+    if (!purls.includes(own)) {
+      throw new Error(`the studio-web build bundled none of ${WEB_DIR}`);
+    }
+    writeJson(args.out, purls);
+  },
+
+  'sbom-reference'(_root, args) {
+    required(args, 'version', 'repository', 'sbom', 'out');
+    writeJson(
+      args.out,
+      sbomReference({
+        repository: args.repository,
+        version: args.version,
+        name: basename(args.sbom),
+        bytes: readFileSync(args.sbom),
+      }),
+    );
+  },
+
+  'sbom'(_root, args) {
     required(args, 'image', 'version', 'digest', 'inputs', 'out');
     if (!(args.image in IMAGES)) throw new Error(`unknown image ${args.image}`);
     writeFileSync(
@@ -402,6 +544,9 @@ const COMMANDS = {
             .split(',')
             .map((path) => JSON.parse(readFileSync(path, 'utf8'))),
           timestamp: new Date().toISOString(),
+          runtime: args.runtime
+            ? JSON.parse(readFileSync(args.runtime, 'utf8'))
+            : undefined,
         }),
       ),
     );
@@ -422,7 +567,7 @@ if (import.meta.main) {
     process.exit(2);
   }
   try {
-    COMMANDS[command](root, parseArgs(rest));
+    await COMMANDS[command](root, parseArgs(rest));
   } catch (error) {
     console.error(`studio-release.mjs ${command}: ${error.message}`);
     process.exit(1);
