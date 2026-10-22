@@ -391,6 +391,10 @@
     "defaultMessage": "Choose the attribute whose values become the bins.",
     "description": "Refusal shown when a researcher saves a bin prompt without saying which attribute it sorts people by. A bin is one answer the participant drags a network member into."
   },
+  "protocolBuilder.censusPrompts.binLimitExceededTitle": {
+    "defaultMessage": "Too many bins",
+    "description": "Heading of the error shown when the attribute a bin prompt uses offers more values than the interview screen can draw as bins, so the prompt cannot be saved until some are removed."
+  },
   "protocolBuilder.censusPrompts.binLimitTitle": {
     "defaultMessage": "More bins than fit on one screen",
     "description": "Heading of the warning shown when the attribute a bin prompt uses offers more values than the interview screen can draw as bins."
@@ -451,9 +455,13 @@
     "defaultMessage": "Categorical response",
     "description": "Heading of the group that picks the attribute whose values are the bins the participant drags people into."
   },
-  "protocolBuilder.censusPrompts.categoricalBinLimitDescription": {
-    "defaultMessage": "This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question.",
-    "description": "Body of the warning shown when a Categorical Bin prompt would draw more bins than its interview screen is designed for. The follow-up bin is the extra one this prompt can add for answers none of the attribute’s values cover."
+  "protocolBuilder.censusPrompts.categoricalBinMaxBinsDescription": {
+    "defaultMessage": "This interface can show at most {limit, number} bins in total. If the follow-up other option is turned on, its bin counts towards that total. Remove values or group them, and ask for the detail in a later question.",
+    "description": "Body of the error shown when a Categorical Bin prompt would draw more bins than its interview screen can show. {limit} is the largest number of bins allowed. The follow-up other option is the switchable section of this prompt that adds one more bin for answers none of the attribute’s values cover; use the same name for it as that section’s heading."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinMaxBinsRefusal": {
+    "defaultMessage": "This prompt would show {count, number} bins, but at most {limit, number} fit, including the follow-up other bin if it is turned on. Remove values before saving.",
+    "description": "Refusal shown when a researcher saves a Categorical Bin prompt that would draw more bins than its interview screen can show. {count} is how many bins the prompt would draw, including the follow-up other bin when it is turned on; {limit} is the largest number allowed, and also includes that bin."
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherAttributeCreateLabel": {
     "defaultMessage": "Create a new text attribute",
