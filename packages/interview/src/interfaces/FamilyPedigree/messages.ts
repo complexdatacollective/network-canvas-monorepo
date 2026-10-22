@@ -57,6 +57,36 @@ export const messages = defineMessages({
     description:
       'Tooltip text, under the heading “Zoom out”, of the family tree toolbar button that decreases magnification. Read by participants.',
   },
+  undoDescription: {
+    id: 'interview.familyPedigree.undoDescription',
+    defaultMessage: 'Undo your last change to your family tree.',
+    description:
+      'Tooltip text, under the heading “Undo”, of the family tree toolbar button that reverses the most recent change: adding, editing or removing a family member, connecting or disconnecting two people, or selecting someone for a question. Read by participants.',
+  },
+  redoDescription: {
+    id: 'interview.familyPedigree.redoDescription',
+    defaultMessage: 'Bring back the change you undid.',
+    description:
+      'Tooltip text, under the heading “Redo”, of the family tree toolbar button that makes again a change to the family tree that Undo reversed. Read by participants.',
+  },
+  undoneAnnouncement: {
+    id: 'interview.familyPedigree.undoneAnnouncement',
+    defaultMessage: 'Change undone.',
+    description:
+      'Screen reader announcement after the participant undoes their most recent change to the family tree.',
+  },
+  redoneAnnouncement: {
+    id: 'interview.familyPedigree.redoneAnnouncement',
+    defaultMessage: 'Change redone.',
+    description:
+      'Screen reader announcement after the participant redoes a change to the family tree they had undone.',
+  },
+  viewToolsLabel: {
+    id: 'interview.familyPedigree.viewToolsLabel',
+    defaultMessage: 'View controls',
+    description:
+      'Accessible name of the small toolbar beside the family tree tools that zooms the family tree out and in, and fits the whole family on the screen.',
+  },
   pointerToolDescription: {
     id: 'interview.familyPedigree.pointerToolDescription',
     defaultMessage:

@@ -144,13 +144,13 @@ export const interfaceMessages = defineMessages({
     id: 'interview.interfaces.undo',
     defaultMessage: 'Undo',
     description:
-      'Toolbar action that reverses the most recent edit in the network composer.',
+      'Toolbar action that reverses the most recent change, in the network composer and the family pedigree.',
   },
   redo: {
     id: 'interview.interfaces.redo',
     defaultMessage: 'Redo',
     description:
-      'Toolbar action that reapplies an edit that was undone in the network composer.',
+      'Toolbar action that makes again a change that was undone, in the network composer and the family pedigree.',
   },
   layoutAndDrawing: {
     id: 'interview.interfaces.layoutAndDrawing',

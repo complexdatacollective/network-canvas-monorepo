@@ -5,6 +5,11 @@
     - button "Mother"
     - button "Father"
     - button "You"
+    - toolbar "Add your relatives":
+      - button "Parent"
+      - button "Sibling"
+      - button "Partner"
+      - button "Child"
     - button "Sister"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
@@ -14,11 +19,16 @@
     - separator
     - button "Wording"
     - separator
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
   - text: Family members are now described with words like mother, father, sister and brother.
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"
