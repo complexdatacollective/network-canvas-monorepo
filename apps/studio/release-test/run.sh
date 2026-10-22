@@ -16,8 +16,8 @@
 #                      sidecar, against seeded rows
 #   C  from a release  the previous PUBLISHED studio-api/studio-web → the
 #                      candidate. Runs whenever previous-release.mjs finds a
-#                      `@codaco/studio-api@<x.y.z>` tag, pulling that
-#                      release's images from GHCR, and the lane fails if it
+#                      `studio@<x.y.z>` tag, pulling that release's images
+#                      from GHCR, and the lane fails if it
 #                      then did not run and pass. Until a tag exists the
 #                      summary says `previousRelease: none` — there is no
 #                      migration-era release to upgrade from, and GHCR is not
@@ -254,20 +254,20 @@ pull_previous_release() { # version
   if [ -n "${GITHUB_TOKEN:-}" ]; then
     printf '%s' "$GITHUB_TOKEN" \
       | docker login ghcr.io -u "${GITHUB_ACTOR:-x-access-token}" --password-stdin > /dev/null \
-      || die "could not log in to ghcr.io to pull the release @codaco/studio-api@$1"
+      || die "could not log in to ghcr.io to pull the release studio@$1"
     logged_in=true
   elif [ -n "${CI:-}" ]; then
-    die "run C needs GITHUB_TOKEN (with packages: read) to pull @codaco/studio-api@$1's images from ghcr.io"
+    die "run C needs GITHUB_TOKEN (with packages: read) to pull studio@$1's images from ghcr.io"
   fi
   local image status=0
   for image in "ghcr.io/complexdatacollective/studio-api:$1" "ghcr.io/complexdatacollective/studio-web:$1"; do
     docker pull -q "$image" > /dev/null || {
       status=$?
-      echo "[release-test] could not pull $image, the image of the tag @codaco/studio-api@$1" >&2
+      echo "[release-test] could not pull $image, the image of the tag studio@$1" >&2
     }
   done
   if $logged_in; then docker logout ghcr.io > /dev/null 2>&1 || true; fi
-  [ "$status" -eq 0 ] || die "the release @codaco/studio-api@$1 is tagged but its images cannot be pulled"
+  [ "$status" -eq 0 ] || die "the release studio@$1 is tagged but its images cannot be pulled"
 }
 
 # The guide's rollback (upgrade.md): the digests that were replaced back in
@@ -517,8 +517,8 @@ for run in "${selected[@]}"; do
       # The previous release's own seed, from its own commit.
       previous_tree="$WORK_DIR/previous-tree"
       git -C "$REPO_ROOT" worktree remove --force "$previous_tree" > /dev/null 2>&1 || true
-      git -C "$REPO_ROOT" worktree add --detach "$previous_tree" "@codaco/studio-api@$previous_newest" \
-        || die "could not check out the tag @codaco/studio-api@$previous_newest to seed the previous release from"
+      git -C "$REPO_ROOT" worktree add --detach "$previous_tree" "studio@$previous_newest" \
+        || die "could not check out the tag studio@$previous_newest to seed the previous release from"
       pull_previous_release "$previous_newest"
       (cd "$previous_tree" && pnpm install --frozen-lockfile --prefer-offline > "$WORK_DIR/previous-install.log" 2>&1) \
         || die "could not install the previous release's checkout (see $WORK_DIR/previous-install.log)"
