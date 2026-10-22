@@ -707,6 +707,54 @@ Repositioning on the Narrative Interface enables a participant to drag their alt
 
 <AppOnly app="current">Click **Finished Editing**</AppOnly><AppOnly app="classic">Click "Save and Return"</AppOnly> and are now able to view the configured Narrative stage on our timeline.
 
+## Offering the protocol in more than one language
+
+<AppOnly app="current">
+
+The sample protocol is written in American English. In this section you will make it available in Spanish, translate the Welcome stage, and add a stage at which participants choose their language. The same steps apply to any language. [Translating Your Protocol](/en/design-protocols/translating-your-protocol) describes each tool in full, and discusses the methodological considerations that should guide the translation of a protocol for a real study.
+
+### Adding a language
+
+Open the **Languages** page from the navigation bar at the top of the editor. It lists American English as the protocol's only language, marked **Default**. Click **Add languages**, type "Spanish" in the **Languages** list, choose **Spanish (es)**, and click **Add languages** to confirm.
+
+Spanish now appears beside American English, with a **Missing translations** badge and a count of the texts already translated into it. The count is not zero, because Network Canvas supplies Spanish wording for the words it provides itself, such as the Back and Continue buttons and the text of the Finish Screen. The text you have written must still be translated. Until it is translated, participants who use Spanish see the American English text instead.
+
+![The Languages page after Spanish has been added. Spanish has a Missing translations badge.](/assets/img/architect/localization/languages-page.png)
+
+### Translating the Welcome stage
+
+Return to the stage list, where a note now reports that some wording is not yet translated into Spanish, and open the **Welcome** stage. Because the protocol has two languages, each text field in the stage editor has a language menu. Choose **Spanish** from the menu beside **Page heading**. Every field in the editor switches to Spanish together. The heading field is empty, and a note beneath it explains that participants using Spanish will see the American English text.
+
+![The Welcome stage's Page heading with Spanish chosen for editing, before it has been translated.](/assets/img/architect/localization/editor-missing-translation.png)
+
+Enter "Bienvenida" as the stage name and "Te damos la bienvenida al protocolo de ejemplo" as the page heading, then click **Finished Editing**.
+
+Translating stage by stage suits short protocols. For a longer protocol, or when the translation is done by someone other than the protocol's author, the translation table is more efficient. Return to the **Languages** page and click **Open translation table**. The table lists every text in the protocol beside its translation into each language, and the texts you have just translated appear in the Spanish column. Untranslated texts show, in lighter type, the American English text that participants will see instead.
+
+![The translation table, with the Welcome stage's name and heading translated into Spanish.](/assets/img/architect/localization/translation-table.png)
+
+A protocol with missing translations can still be saved, previewed and fielded, but every text should be translated, and the translation reviewed, before data collection begins.
+
+### Letting participants choose their language
+
+By default, an interview opens in the language that best matches the participant's browser or device settings. The stage list notes this, with the message **Participants can't choose a language**. To let participants choose for themselves, select **Add stage here** above the first stage, and choose the **Language Chooser** interface from the **Utilities** section.
+
+The Language Chooser's heading, "Choose a language", is wording that Network Canvas supplies, and it is already translated into Spanish. Its editor also lists the protocol's languages, which can be managed there as on the **Languages** page. Click **Finished Editing**, and the Language Chooser becomes the first stage of the protocol.
+
+### Checking the translation
+
+With the Language Chooser stage open, click **Preview**. The preview opens in a new tab, with a **Preview language** menu above it. Choose **español** from the menu, or choose **español** on the stage itself, and the heading changes to "Elige un idioma". Move on to the Welcome stage to see the heading you translated.
+
+![The Language Chooser stage in preview, shown in Spanish.](/assets/img/architect/localization/preview-language.png)
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Protocols built in Architect Classic are written in a single language. To offer a protocol in more than one language, upgrade it in Architect, which supports schema 9 localization. See [Translating Your Protocol](/en/design-protocols/translating-your-protocol).
+
+</AppOnly>
+
 ## Finishing Off Your Protocol
 
 <AppOnly app="current">
