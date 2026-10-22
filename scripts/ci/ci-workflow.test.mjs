@@ -2044,8 +2044,8 @@ test('Studio releases publish signed, attested images under the app-lane guard',
     'Verify the signatures and attestations',
     'Confirm both images pull without credentials',
     'Write the release notes and studio-release.json',
-    'Point latest at this release',
     'Create the studio@${{ env.VERSION }} release',
+    'Point latest at this release',
   ].map((name) => {
     const index = names.indexOf(name);
     assert.notEqual(index, -1, `${name} exists`);
@@ -2054,7 +2054,7 @@ test('Studio releases publish signed, attested images under the app-lane guard',
   assert.deepEqual(
     order,
     order.toSorted((a, b) => a - b),
-    'nothing is tagged or moved before the images verify and pull anonymously',
+    'nothing is tagged before the images verify and pull anonymously, and latest moves only once the release is published',
   );
 
   const step = (name) => studio.steps.find((each) => each.name === name).run;

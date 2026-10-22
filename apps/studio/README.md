@@ -1136,7 +1136,7 @@ Each release publishes:
 
 - `ghcr.io/complexdatacollective/studio-api` and `studio-web`, public, for
   `linux/amd64` and `linux/arm64`, tagged with the version and the commit sha.
-  `latest` moves to them once everything below has passed.
+  `latest` moves to them once the release below is published.
 - A keyless cosign signature on each image (index and platform manifests),
   under the workflow identity
   `https://github.com/complexdatacollective/network-canvas-monorepo/.github/workflows/ci-and-release.yml@refs/heads/main`

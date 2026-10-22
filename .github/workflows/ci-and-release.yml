@@ -4468,16 +4468,6 @@ jobs:
             --commit "$GITHUB_SHA" --repository "$REPOSITORY" \
             --api-digest "$API_DIGEST" --web-digest "$WEB_DIGEST" \
             --out "$RUNNER_TEMP/studio-release.json"
-      # Moved only once everything above has passed, so `latest` never names
-      # an image no release describes.
-      - name: Point latest at this release
-        if: steps.guard.outputs.skip != 'true'
-        env:
-          API_REF: ${{ steps.refs.outputs.api }}
-          WEB_REF: ${{ steps.refs.outputs.web }}
-        run: |
-          docker buildx imagetools create -t ghcr.io/complexdatacollective/studio-api:latest "$API_REF"
-          docker buildx imagetools create -t ghcr.io/complexdatacollective/studio-web:latest "$WEB_REF"
       # `gh release create` with assets creates a draft, uploads, and only
       # then publishes, which is what creates the tag: a failed upload leaves
       # no tag, so the next push to main releases this version again rather
@@ -4497,6 +4487,16 @@ jobs:
             "$RUNNER_TEMP/studio-release.json" \
             "$RUNNER_TEMP/studio-api.cdx.json" \
             "$RUNNER_TEMP/studio-web.cdx.json"
+      # Moved only once the release is published, so `latest` never names an
+      # image no release describes.
+      - name: Point latest at this release
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+        run: |
+          docker buildx imagetools create -t ghcr.io/complexdatacollective/studio-api:latest "$API_REF"
+          docker buildx imagetools create -t ghcr.io/complexdatacollective/studio-web:latest "$WEB_REF"
 
   # Documentation follows the same generated-release-PR gate as the PWA apps,
   # but uses normal semver and produces only a Netlify deployment + git tag.
