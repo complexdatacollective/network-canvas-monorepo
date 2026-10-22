@@ -186,6 +186,24 @@ describe('completing first-run setup', () => {
     );
   });
 
+  it('lands in the new team even when an empty team list was cached', async () => {
+    installSetupHarness(() =>
+      Effect.sync(() => {
+        setupRequired = false;
+        memberships.teams = [{ id: 'team-first', name: OWNER.instanceName }];
+        return { instanceName: OWNER.instanceName, signedIn: true };
+      }),
+    );
+    const { queryClient, router } = renderSetup();
+    queryClient.setQueryData(['memberships', 'teams'], []);
+
+    await fillAndSubmit();
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-first'),
+    );
+  });
+
   it('records no session when the response carried no cookie', async () => {
     installSetupHarness(() =>
       Effect.sync(() => {

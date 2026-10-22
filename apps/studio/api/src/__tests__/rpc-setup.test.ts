@@ -333,7 +333,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     const response = await completeOverHttp({
       token,
       instanceName: INSTANCE_NAME,
-      owner: account,
+      owner: { ...account, name: 'Someone Else Entirely' },
     });
 
     expect(response.status).toBe(200);
@@ -348,6 +348,20 @@ describe.skipIf(!testDb)('setup.complete', () => {
       (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
     ).toBe(me.userId);
     await signedIn.dispose();
+
+    const labels = await database.run(
+      OwnerScope.open(
+        Effect.gen(function* () {
+          const { sql } = yield* Transaction;
+          return yield* sql<{ actor_label: string; subject_label: string }>`
+            select actor_label, subject_label from audit_events
+             where team_id = ${me.teams[0]?.teamId ?? ''}`;
+        }),
+      ),
+    );
+    expect(labels).toEqual([
+      { actor_label: account.name, subject_label: account.name },
+    ]);
   });
 
   it('refuses an address whose password the caller cannot produce', async () => {

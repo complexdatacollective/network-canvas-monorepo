@@ -109,7 +109,7 @@ export const completeSetup: (
 
   const session = yield* establishOwnerSession(input.owner);
 
-  const label = ownerLabel(input.owner.name, input.owner.email);
+  const label = ownerLabel(session.name, session.email);
   yield* createOwnedTeam({
     name: input.instanceName.trim(),
     ownerUserId: session.userId,
