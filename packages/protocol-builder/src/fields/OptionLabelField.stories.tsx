@@ -109,6 +109,30 @@ export const BoldAndItalicOnly: Story = {
 };
 
 /**
+ * A label is a few words, so the box is the compact editor: the text row is as
+ * tall as the toolbar above it, not the tall area a prompt is given.
+ */
+export const CompactBox: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const box = await canvas.findByRole('textbox', { name: LABEL });
+    const editable = box.parentElement;
+    if (!editable) throw new Error('the editor did not render');
+    const toolbar = canvas.getByRole('toolbar');
+
+    await expect(
+      Math.abs(
+        editable.getBoundingClientRect().height -
+          toolbar.getBoundingClientRect().height,
+      ),
+    ).toBeLessThanOrEqual(1);
+    await expect(editable.getBoundingClientRect().height).toBeLessThan(120);
+  },
+};
+
+/**
  * Punctuation is punctuation. An asterisk typed into a label is a character
  * the participant reads, and the box shows it as one — the emphasis a
  * markdown renderer would otherwise make of it is what the escaping on the way

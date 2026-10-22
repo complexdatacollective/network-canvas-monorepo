@@ -27,8 +27,11 @@ first: `pnpm --filter @codaco/interviewer exec playwright install chromium webki
 ```text
 e2e/
 ├── fixtures/
-│   └── test.ts            Base test/expect, extended by later fixtures
+│   ├── test.ts            Base test/expect, extended by later fixtures
+│   ├── legacy-interviewer.ts  A build that bundles Interviewer 8 (stub at /v8/)
+│   └── legacy-protocol.ts A schema 8 protocol, its rows and file
 ├── helpers/
+│   ├── legacy-database.ts Seeds the DB as an 8.x device has it, and dumps it
 │   ├── protocol-paths.ts  Path + name of the lean e2e protocol fixture
 │   └── visual.ts          makeCapture(page) + snapshot mask helpers
 ├── scripts/
@@ -40,35 +43,6 @@ e2e/
 └── tsconfig.json
 ```
 
-## The /v8/ sub-path suite
-
-Interviewer 9 ships this app inside its own deploy at `/v8/` (see "Sub-path
-dist tarball" in `../RELEASING.md`). `subpath-specs/` covers that build:
-`playwright.subpath.config.ts` serves a dist built with
-`INTERVIEWER_BASE_PATH=/v8/` at `http://localhost:4182/v8/`. The spec seeds
-protocols and sessions straight into the shared `interviewer` IndexedDB
-database, in Interviewer 8's row format, as Interviewer 9 writes them. A stub
-Interviewer 9 answers the origin root and `/interview/<id>`: there it frames
-`/v8/interview/<id>` and performs Interviewer 9's side of the handshake
-(`src/lib/interviewer9Embed.ts`), unwrapping the shared PIN lock's key as
-Interviewer 9 does and posting it to the frame. The suite covers no lock
-screen once the key is handed over, the enter step skipped when Interviewer 9
-says it is satisfied (and asked when it does not), the lock screen after the
-wait when no reply comes, `interviewer8:closed` posted on exit, on leaving the
-completion screen, for an interview it cannot run and for any other address,
-with nothing left in history, the idle lock still working in the frame, a
-top-level `/v8/interview/<id>` replaced with `/interview/<id>`, every other
-top-level address returning to `/` at once, and nothing but the running
-session's row being written.
-
-```sh
-# Build under /v8/ and run the suite (functional only, no baselines)
-pnpm --filter @codaco/interviewer test:e2e:subpath
-```
-
-`dist/` holds one base at a time: rebuild without the variable before running
-the root suite again. The suite's global setup refuses a root build.
-
 ## Why the built app, not the dev server
 
 `playwright.config.ts`'s `webServer` runs `vite preview` on port **4180**
@@ -77,8 +51,37 @@ build first with `turbo run build` (the app's `build` also runs the PWA
 integrity check). The dev server isn't usable here: it has no
 service worker, and Vite's dev-time `optimizeDeps` re-bundle can wipe app
 state mid-test. Each test gets a fresh browser context (Playwright default),
-so IndexedDB (`interviewer`) and `localStorage` are isolated per test with no
-manual teardown.
+so IndexedDB (the one `interviewer` database) and `localStorage` are isolated
+per test with no manual teardown.
+Specs name the database through `DB_NAME` from `src/lib/db/storageNames.ts`.
+
+## Interviewer 8 beside Interviewer 9
+
+Both majors use the one `interviewer` database. Interviewer 8 (served at
+`/v8/`) declares Dexie version 3 (IndexedDB version 30); this app upgrades it
+in place to a version above that and writes schema 8 rows in Interviewer 8's
+format. `helpers/legacy-database.ts` seeds it as an 8.x device has it, for
+real, in Dexie's own layout from Interviewer 8's frozen schema history, on a
+blank same-origin page before the app first loads, and dumps it through the
+raw IndexedDB API so a spec can compare rows byte for byte (Blobs included).
+
+The suite's own build leaves out the Interviewer 8 that
+`apps/interviewer/legacy-interviewer.json` pins (`run.sh` and CI build with
+`INTERVIEWER_SKIP_LEGACY_V8=true`, so its background download cannot race the
+offline-readiness status), so the specs that
+host a schema 8 interview from `/v8/` (`legacy-interviewer.spec.ts`) use the
+`fixtures/legacy-interviewer.ts` test instead: once per worker it builds the app
+with `__INTERVIEWER_V8__` set (`scripts/buildtime/preview-with-legacy-app.mjs`),
+serves it on port 4191 upwards, and puts a stub page at `dist/v8/index.html`,
+which the app's real preview middleware serves for every `/v8/` path as it
+would a bundled Interviewer 8. The stub plays Interviewer 8's side of the
+embed handshake: framed, it posts `interviewer8:ready`, records the reply and
+decrypts its session's row with the key it was handed, and pins the history
+with an entry of its own, as Interviewer 8 does; its buttons pop that entry
+and post `interviewer8:closed`. Those specs assert the frame a schema 8 interview is
+started, resumed or reviewed in (`/v8/interview/<id>`, with the same query),
+that the researcher unlocks once, in Interviewer 9, what follows a close or a
+lost frame, and the rows written, or left untouched, in the shared database.
 
 ## Visual capture is CI-gated
 

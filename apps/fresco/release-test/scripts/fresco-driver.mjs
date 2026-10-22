@@ -152,6 +152,8 @@ export async function newPage(context) {
   return page;
 }
 
+// The documentation's sample protocol, which is schema 7: Fresco upgrades it
+// to schema 8 as it imports it, without asking, and stores it at schema 8.
 const sampleProtocol = join(
   repoRoot,
   'packages/protocols/documentation/protocols/Sample Protocol v4.netcanvas',

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 
 import { INTERFACE_NAMES } from '../interfaces/interfaceNames.ts';
+import { resolveTranslation } from '../localization/localizedText.ts';
 import { AllInterfacesStoryHost } from './AllInterfacesStoryHost.tsx';
 import { fixtureStageIds, loadFixtureStage } from './protocolFixture.ts';
 
@@ -30,7 +31,7 @@ type Story = StoryObj<typeof meta>;
  * Both halves are needed. That an editor appeared says the dispatcher found
  * one; that its stage name holds this stage's own label says it found the
  * right one, over the stage that was asked for rather than over a blank
- * document. Nineteen mounts of the Information editor would satisfy the first
+ * document. Twenty mounts of the Information editor would satisfy the first
  * on its own.
  */
 export const EveryInterface: Story = {
@@ -38,11 +39,16 @@ export const EveryInterface: Story = {
     const canvas = within(canvasElement);
     const stages = fixtureStageIds().map((stageId) => {
       const { type, fields } = loadFixtureStage(stageId);
-      const { label } = fields;
-      // A section document holds `unknown`s. Thrown rather than compared as
-      // it is: a stage with no name would be compared against `undefined`,
-      // which an editor that rendered nothing at all would satisfy.
-      if (typeof label !== 'string') {
+      // The box shows the editing language, which opens on the fixture's
+      // default. Thrown rather than compared as empty: a stage with no name
+      // would be compared against nothing, which an editor that rendered
+      // nothing at all would satisfy.
+      const { text: label } = resolveTranslation(
+        fields.label,
+        undefined,
+        undefined,
+      );
+      if (label === '') {
         throw new TypeError(`The fixture stage "${stageId}" has no name.`);
       }
       return { stageId, name: INTERFACE_NAMES[type], label };

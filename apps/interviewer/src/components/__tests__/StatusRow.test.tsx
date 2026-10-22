@@ -468,3 +468,80 @@ describe('StatusRow', () => {
     );
   });
 });
+
+describe('StatusRowView: offline use', () => {
+  const view = (
+    offline?: 'checking' | 'ready' | 'not-ready',
+    download?: { downloading: boolean; progress: number | null },
+  ) =>
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={null}
+        installed={false}
+        offline={offline}
+        download={download}
+      />,
+    );
+
+  it('says when Interviewer is ready offline', () => {
+    view('ready');
+    expect(screen.getByTestId('offline-status-trigger')).toHaveTextContent(
+      'Ready for offline',
+    );
+  });
+
+  it('warns while Interviewer is not ready offline, and says what to do', async () => {
+    const user = userEvent.setup();
+    view('not-ready');
+    const trigger = screen.getByTestId('offline-status-trigger');
+    expect(trigger).toHaveTextContent('Not ready for offline');
+    expect(trigger).toHaveClass('text-warning');
+    await user.hover(trigger);
+    expect(
+      await screen.findByText(/Keep Interviewer open while you are online/),
+    ).toBeInTheDocument();
+  });
+
+  it('says how far the download has got while it runs', async () => {
+    const user = userEvent.setup();
+    view('not-ready', { downloading: true, progress: 0.42 });
+    const trigger = screen.getByTestId('offline-status-trigger');
+    expect(trigger).toHaveTextContent('Downloading for offline: 42%');
+    await user.hover(trigger);
+    expect(
+      await screen.findByRole('progressbar', {
+        name: 'Download for offline use',
+      }),
+    ).toHaveAttribute('aria-valuenow', '42');
+    expect(
+      screen.getByText(/^Interviewer is downloading all data required/),
+    ).toBeInTheDocument();
+  });
+
+  it('says it is downloading when it cannot tell how far it has got', () => {
+    view('not-ready', { downloading: true, progress: null });
+    expect(screen.getByTestId('offline-status-trigger')).toHaveTextContent(
+      /^Downloading for offline$/,
+    );
+  });
+
+  it('warns once nothing is downloading any more', () => {
+    view('not-ready', { downloading: false, progress: null });
+    expect(screen.getByTestId('offline-status-trigger')).toHaveTextContent(
+      'Not ready for offline',
+    );
+  });
+
+  it('says nothing before it is known', () => {
+    for (const state of [undefined, 'checking'] as const) {
+      const { unmount } = view(state);
+      expect(
+        screen.queryByTestId('offline-status-trigger'),
+      ).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+});

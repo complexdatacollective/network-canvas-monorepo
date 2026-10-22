@@ -1,5 +1,5 @@
 import { composeStories } from '@storybook/react-vite';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { useState, type ReactNode } from 'react';
@@ -20,6 +20,7 @@ import { dyadCensusStageEditor } from '../editors/dyad-census/DyadCensusStageEdi
 import * as egoFormStories from '../editors/ego-form/EgoFormStageEditor.stories.tsx';
 import * as familyPedigreeEditorStories from '../editors/family-pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as informationStories from '../editors/information/InformationStageEditor.stories.tsx';
+import * as languageChooserStories from '../editors/language-chooser/LanguageChooserStageEditor.stories.tsx';
 import * as nameGeneratorStories from '../editors/name-generator/NameGeneratorStageEditor.stories.tsx';
 import { nameGeneratorStageEditor } from '../editors/name-generator/NameGeneratorStageEditor.ts';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
@@ -91,21 +92,24 @@ const headingLadder = (root: ParentNode = document): string[] =>
  * surface that quietly stopped writing headings would otherwise pass this.
  * `incomplete` nodes are asserted empty and excluded from that count: they are
  * headings axe could not judge either way, so counting them toward the total
- * would let an inconclusive verdict through as a pass.
+ * would let an inconclusive verdict through as a pass. A heading that mounts
+ * while axe is running is one it cannot place, so the run is repeated until
+ * the page holds still long enough for a verdict.
  */
 async function expectHeadingOrder(judgedAtLeast: number): Promise<void> {
-  const results = await axe.run(document.body, {
-    runOnly: { type: 'rule', values: ['heading-order'] },
+  const results = await waitFor(async () => {
+    const run = await axe.run(document.body, {
+      runOnly: { type: 'rule', values: ['heading-order'] },
+    });
+    expect(
+      run.incomplete.flatMap((result) => result.nodes.map((node) => node.html)),
+    ).toEqual([]);
+    return run;
   });
 
   expect(
     results.violations.flatMap((violation) =>
       violation.nodes.map((node) => node.html),
-    ),
-  ).toEqual([]);
-  expect(
-    results.incomplete.flatMap((result) =>
-      result.nodes.map((node) => node.html),
     ),
   ).toEqual([]);
   expect(
@@ -461,6 +465,10 @@ describe('every story of a surface that writes its own heading', () => {
       composeStories(familyPedigreeEditorStories),
     ),
     ...from('InformationStageEditor', composeStories(informationStories)),
+    ...from(
+      'LanguageChooserStageEditor',
+      composeStories(languageChooserStories),
+    ),
     ...from('NameGeneratorStageEditor', composeStories(nameGeneratorStories)),
   ];
 

@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type { ComponentType } from '@codaco/protocol-validation';
 
 import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
+import { enterPassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 const FIELD_PRESETS: { component: ComponentType; prompt: string }[] = [
@@ -49,10 +50,6 @@ function buildInterview(args: StoryArgs) {
     label: 'Alter Form',
     initialNodes: { count: args.initialNodeCount },
     subject: { entity: 'node', type: nodeType.id },
-    introductionPanel: {
-      title: 'About Each Person',
-      text: 'Please provide details about each person.',
-    },
   });
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
@@ -159,10 +156,6 @@ function buildValidatedInterview() {
     label: 'Alter Form (Validated)',
     initialNodes: { count: 2 },
     subject: { entity: 'node', type: nodeType.id },
-    introductionPanel: {
-      title: 'About Each Person',
-      text: 'These fields have validation rules. Try advancing without filling them in to see errors.',
-    },
   });
 
   stage.addFormField({
@@ -220,15 +213,40 @@ export const WithValidation: Story = {
     docs: {
       description: {
         story:
-          'Demonstrates form fields with validation rules including required fields, min/max values, length constraints, and selection limits. Try advancing without completing the form to see validation errors.',
+          'Demonstrates form fields with validation rules including required fields, min/max values, length constraints, and selection limits. Try advancing without completing the form to see validation errors. Going back from the first person with answers that cannot be saved asks before discarding them, as every other person does.',
       },
     },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const notes = await canvas.findByRole(
+      'textbox',
+      { name: /Notes \(required/ },
+      { timeout: 10_000 },
+    );
+    await userEvent.clear(notes);
+    await userEvent.type(notes, 'ab');
+    await userEvent.click(canvas.getByTestId('previous-button'));
+
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(
+      await body.findByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeInTheDocument();
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }));
+
+    await expect(
+      await canvas.findByRole('textbox', { name: /Notes \(required/ }),
+    ).toHaveValue('ab');
   },
 };
 
 const PASSPHRASE = 'correct horse battery staple';
 
-function buildProtectedInterview() {
+/**
+ * A person, Alice, whose nickname is protected. With `withBob`, a second
+ * person whose nickname is protected too follows her.
+ */
+function buildProtectedInterview({ withBob = false } = {}) {
   const interview = new SyntheticInterview();
   const person = interview.addNodeType({ name: 'Person' });
   const name = person.addVariable({ name: 'name', type: 'text' });
@@ -247,10 +265,6 @@ function buildProtectedInterview() {
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Protected)',
     subject: { entity: 'node', type: person.id },
-    introductionPanel: {
-      title: 'About Each Person',
-      text: 'Please provide details about each person.',
-    },
   });
   stage.addFormField({
     variable: nickname.id,
@@ -267,6 +281,13 @@ function buildProtectedInterview() {
     [nickname.id]: 'Ali',
     [age.id]: 34,
   });
+  if (withBob) {
+    interview.addManualNode(stage.id, person.id, 'bob', {
+      [name.id]: 'Bob',
+      [nickname.id]: 'Bobby',
+      [age.id]: 41,
+    });
+  }
 
   interview.addInformationStage({
     title: 'Complete',
@@ -286,19 +307,19 @@ const renderProtectedInterview = () => (
 
 const openLockedSlide = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
-  await userEvent.click(
-    await canvas.findByTestId('next-button', {}, { timeout: 10_000 }),
-  );
-
   await expect(
+    // The notice also describes the form from a hidden element, which is
+    // not the text a participant reads.
     await canvas.findByText(
       /Some answers here are protected by your passphrase/,
+      { ignore: 'script, style, [hidden]' },
+      { timeout: 10_000 },
     ),
   ).toBeInTheDocument();
   await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument();
   await expect(canvas.queryByRole('spinbutton')).not.toBeInTheDocument();
   await expect(
-    await canvas.findByRole('button', { name: 'Enter your Passphrase' }),
+    await canvas.findByRole('button', { name: 'Passphrase' }),
   ).toBeInTheDocument();
 };
 
@@ -327,20 +348,7 @@ export const ProtectedAnswersUnlocked: Story = {
   },
   play: async ({ canvasElement }) => {
     await openLockedSlide(canvasElement);
-
-    await userEvent.click(
-      within(canvasElement).getByRole('button', {
-        name: 'Enter your Passphrase',
-      }),
-    );
-    // The label also carries a visual required marker.
-    await userEvent.type(
-      await screen.findByLabelText(/^Passphrase/, { selector: 'input' }),
-      PASSPHRASE,
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Submit passphrase' }),
-    );
+    await enterPassphraseInPrompter(PASSPHRASE);
 
     const canvas = within(canvasElement);
     await expect(
@@ -351,5 +359,147 @@ export const ProtectedAnswersUnlocked: Story = {
     await expect(
       canvas.getByRole('spinbutton', { name: /How old are they/ }),
     ).toHaveValue(34);
+  },
+};
+
+// Alice's nickname was encrypted for someone else, as when an answer is
+// copied between people, so no passphrase can read it here. Bob's was not:
+// the passphrase is checked by decrypting an answer the interview holds, so
+// it is his that shows the passphrase is the right one.
+const buildUnavailableInterview = () => ({
+  ...buildProtectedInterview({ withBob: true }),
+  encryptedFor: { alice: 'someone-else' },
+});
+
+export const ProtectedAnswerUnavailable: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildUnavailableInterview}
+      passphrase={PASSPHRASE}
+      currentStep={0}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `The person's nickname is protected, but was encrypted for someone else, so the passphrase ("${PASSPHRASE}") cannot read it. Once the passphrase is entered, the question is shown as unavailable and its stored answer is kept as it is unless the participant chooses to enter a new one.`,
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await openLockedSlide(canvasElement);
+    await enterPassphraseInPrompter(PASSPHRASE);
+
+    const canvas = within(canvasElement);
+    const nickname = await canvas.findByRole('textbox', {
+      name: /What nickname do you use for this person/,
+    });
+    await expect(nickname).toHaveValue('Answer unavailable');
+    await expect(nickname).toHaveAttribute('readonly');
+    await expect(nickname).toHaveAccessibleDescription(/cannot be shown here/);
+    await expect(
+      canvas.getByRole('spinbutton', { name: /How old are they/ }),
+    ).toHaveValue(34);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Enter a new answer' }),
+    );
+    const replacement = canvas.getByRole('textbox', {
+      name: /What nickname do you use for this person/,
+    });
+    await expect(replacement).toHaveValue('');
+    await expect(replacement).toHaveFocus();
+    // The same sentence covers the read-only and the replacing state; here it
+    // describes the field that now takes the new answer.
+    await expect(replacement).toHaveAccessibleDescription(
+      /leave the field empty to keep the earlier answer/,
+    );
+  },
+};
+
+function buildComparedWithProtectedInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({
+    name: 'name',
+    type: 'text',
+    encrypted: true,
+  });
+  const nickname = person.addVariable({
+    name: 'nickname',
+    type: 'text',
+    component: 'Text',
+    validation: { differentFrom: name.id },
+  });
+
+  // A stage before the form gives Back somewhere to go.
+  interview.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
+
+  const stage = interview.addStage('AlterForm', {
+    label: 'Alter Form (Compared with protected)',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.addFormField({
+    variable: nickname.id,
+    component: 'Text',
+    prompt: 'What nickname do you use for this person?',
+  });
+  interview.addManualNode(stage.id, person.id, 'alice', {
+    [name.id]: 'Alice',
+  });
+
+  interview.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return { interview, encryptedVariableIds: [name.id] };
+}
+
+export const DiscardingAnswerComparedWithProtected: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildComparedWithProtectedInterview}
+      passphrase={PASSPHRASE}
+      currentStep={1}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `The nickname must differ from the person's name, which is protected with a passphrase ("${PASSPHRASE}") that has not been entered, so the nickname cannot be checked or saved. Going back asks before discarding it, and says the passphrase is needed rather than that the answer is invalid.`,
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nickname = await canvas.findByRole(
+      'textbox',
+      { name: /What nickname do you use for this person/ },
+      { timeout: 10_000 },
+    );
+    await userEvent.type(nickname, 'Al');
+    await userEvent.click(canvas.getByTestId('previous-button'));
+
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = await body.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    await expect(dialog).toHaveTextContent(
+      'Your answers have not been saved. Enter your passphrase, then try again.',
+    );
+    await expect(dialog).not.toHaveTextContent(
+      /Do you want to discard your changes\?/,
+    );
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }));
+
+    await expect(
+      await canvas.findByRole('textbox', {
+        name: /What nickname do you use for this person/,
+      }),
+    ).toHaveValue('Al');
   },
 };

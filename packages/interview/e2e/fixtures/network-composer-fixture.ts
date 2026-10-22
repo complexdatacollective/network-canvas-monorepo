@@ -79,13 +79,18 @@ export class NetworkComposerFixture {
     return this.page.getByRole('button', { name, exact: true });
   }
 
+  /** The name field the Add-node popover opens, named by its placeholder. */
+  get addNodeInput(): Locator {
+    return this.page.getByTestId('add-node-input').getByRole('textbox');
+  }
+
   /**
    * Add a node by name via the Add-node popover. Opens the popover only when
    * the name field isn't already visible — the popover stays open after Enter
    * so repeated calls add several nodes in a row (AddNodeInput.tsx).
    */
-  async addNode(entityLabel: string, name: string): Promise<void> {
-    const input = this.page.getByLabel(`${entityLabel} name`);
+  async addNode(name: string): Promise<void> {
+    const input = this.addNodeInput;
     if (!(await input.isVisible())) {
       await this.addNodeToolButton.click();
       await input.waitFor({ state: 'visible' });

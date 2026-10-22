@@ -74,7 +74,7 @@ export function ResumePillView({
   session,
   onResume,
 }: {
-  session: StoredSessionLite;
+  session: Pick<StoredSessionLite, 'protocolName' | 'caseId'>;
   onResume: () => void;
 }) {
   const intl = useAppIntl();
@@ -132,24 +132,49 @@ export function ResumePillView({
 
 type ResumePillProps = {
   sessions: StoredSessionLite[];
+  /** The protocols whose interviews this build can open: see `pickResumable`. */
+  runnableProtocolHashes: ReadonlySet<string>;
 };
 
-export function ResumePill({ sessions }: ResumePillProps) {
+/**
+ * The most recently updated unfinished interview whose protocol is in
+ * `runnableProtocolHashes`, or undefined. Every schema resumes through
+ * `/interview/<id>`, which opens a schema 8 interview in the bundled
+ * Interviewer 8; a build without it leaves those out, so the pill never leads
+ * to an interview that cannot be opened.
+ */
+export function pickResumable(
+  sessions: readonly StoredSessionLite[],
+  runnableProtocolHashes: ReadonlySet<string>,
+): StoredSessionLite | undefined {
+  return sessions
+    .filter(
+      (session) =>
+        session.finishedAt === null &&
+        runnableProtocolHashes.has(session.protocolHash),
+    )
+    .toSorted(
+      (a, b) =>
+        new Date(b.lastUpdatedAt).getTime() -
+        new Date(a.lastUpdatedAt).getTime(),
+    )[0];
+}
+
+export function ResumePill({
+  sessions,
+  runnableProtocolHashes,
+}: ResumePillProps) {
   const [, navigate] = useLocation();
 
-  const inProgress = useMemo(() => {
-    return sessions
-      .filter((s) => s.finishedAt === null)
-      .toSorted(
-        (a, b) =>
-          new Date(b.lastUpdatedAt).getTime() -
-          new Date(a.lastUpdatedAt).getTime(),
-      )[0];
-  }, [sessions]);
+  const inProgress = useMemo(
+    () => pickResumable(sessions, runnableProtocolHashes),
+    [sessions, runnableProtocolHashes],
+  );
 
   if (!inProgress) return null;
 
-  const handleResume = async (sessionId: string) => {
+  const handleResume = async () => {
+    const sessionId = inProgress.id;
     try {
       await updateSettings({ lastActiveSessionId: sessionId });
     } catch {
@@ -159,9 +184,6 @@ export function ResumePill({ sessions }: ResumePillProps) {
   };
 
   return (
-    <ResumePillView
-      session={inProgress}
-      onResume={() => void handleResume(inProgress.id)}
-    />
+    <ResumePillView session={inProgress} onResume={() => void handleResume()} />
   );
 }

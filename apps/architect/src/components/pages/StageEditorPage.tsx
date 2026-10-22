@@ -22,6 +22,7 @@ import StageEditor from '@codaco/protocol-builder/StageEditor';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
+import { architectStageEditors } from '~/components/StageEditor/architectStageEditors';
 import {
   readStageDraft,
   useStageDraft,
@@ -32,6 +33,7 @@ import StageEditorChrome, {
 } from '~/components/StageEditor/StageEditorChrome';
 import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
 import { getActiveProtocolId, getProtocolOwnedHere } from '~/ducks/modules/app';
+import { creationIndex } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
 import {
   getLeavePersistence,
@@ -40,7 +42,13 @@ import {
 } from '~/hooks/useProtocolNavGuard';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
-import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
+import {
+  getLocalization,
+  getProtocol,
+  getStage,
+  getStageIndex,
+} from '~/selectors/protocol';
+import { localizedText } from '~/utils/localizedText';
 const messages = defineMessages({
   stageNotFound: {
     id: 'architect.stageEditor.stageEditor.stageNotFound',
@@ -182,6 +190,14 @@ const StageEditorPage = () => {
   // relabels the other tab; it keeps the client.
   const client = useArchitectClient(reduxStore, otherTabName);
 
+  // Where a new stage will go, as the save will put it (`creationIndex`): a
+  // stage that is not a finish stage asked for past the first one goes before
+  // it, so what it can skip to and read from is decided from there.
+  const createPosition =
+    protocol === null || requestedType === null || !isStageType(requestedType)
+      ? (insertAtIndex ?? 0)
+      : creationIndex(protocol.stages, { type: requestedType }, insertAtIndex);
+
   const target = useMemo<StageEditTarget | undefined>(() => {
     if (stageId !== null) {
       return { sectionId: sectionId({ kind: 'stage', stageId }) };
@@ -189,11 +205,8 @@ const StageEditorPage = () => {
     if (requestedType === null || !isStageType(requestedType)) return undefined;
     // No fields: the package seeds a new stage from the interface's own
     // template, which is the same template Architect used to seed it.
-    return {
-      stageType: requestedType,
-      position: insertAtIndex ?? protocol?.stages.length ?? 0,
-    };
-  }, [insertAtIndex, protocol?.stages.length, requestedType, stageId]);
+    return { stageType: requestedType, position: createPosition };
+  }, [createPosition, requestedType, stageId]);
 
   const handleCancel = useCallback(async (): Promise<boolean> => {
     if (!readStageDraft().dirty) {
@@ -274,10 +287,11 @@ const StageEditorPage = () => {
     };
   }, []);
 
-  const draftName = useStageDraft((beacon) => beacon.stage?.label);
+  const localization = useSelector(getLocalization);
+  const draftLabel = useStageDraft((beacon) => beacon.stage?.label);
   const stageName =
-    (typeof draftName === 'string' && draftName !== '' ? draftName : null) ??
-    stage?.label ??
+    localizedText(draftLabel, localization) ||
+    localizedText(stage?.label, localization) ||
     intl.formatMessage(messages.newStage);
 
   const renderChrome = useCallback(
@@ -410,6 +424,7 @@ const StageEditorPage = () => {
                     actions={renderChrome}
                     header={renderHeader}
                     onSaved={handleSaved}
+                    registry={architectStageEditors}
                   />
                 </EnclosingHeadingLevel>
               </ProtocolBuilder>

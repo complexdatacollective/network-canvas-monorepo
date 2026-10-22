@@ -1,0 +1,19 @@
+- main:
+  - region "Your family":
+    - button "Focus on Rose" [disabled]
+    - button "Focus on David" [disabled]
+    - button "Focus on You" [disabled]
+  - toolbar "Family tree controls":
+    - button "Pick one - matrix check"
+    - separator
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+    - separator
+    - button "Keep a picture - matrix check"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -1,8 +1,12 @@
 {
   "name": "A messy study of support",
   "description": "A messy study of support.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "lastModified": "2026-10-20T00:00:00.000Z",
+  "localization": {
+    "defaultLocale": "en",
+    "locales": ["en"]
+  },
   "codebook": {
     "ego": {
       "variables": {
@@ -12,11 +16,15 @@
           "component": "Boolean",
           "options": [
             {
-              "label": "Yes, I agree to take part",
+              "label": {
+                "en": "Yes, I agree to take part"
+              },
               "value": true
             },
             {
-              "label": "No, I do not want to take part",
+              "label": {
+                "en": "No, I do not want to take part"
+              },
               "value": false,
               "negative": true
             }
@@ -45,11 +53,15 @@
           "component": "Boolean",
           "options": [
             {
-              "label": "Yes",
+              "label": {
+                "en": "Yes"
+              },
               "value": true
             },
             {
-              "label": "No",
+              "label": {
+                "en": "No"
+              },
               "value": false,
               "negative": true
             }
@@ -66,15 +78,21 @@
           "component": "LikertScale",
           "options": [
             {
-              "label": "a",
+              "label": {
+                "en": "a"
+              },
               "value": 1
             },
             {
-              "label": "b",
+              "label": {
+                "en": "b"
+              },
               "value": 2
             },
             {
-              "label": "c",
+              "label": {
+                "en": "c"
+              },
               "value": 3
             }
           ]
@@ -114,11 +132,15 @@
             "component": "RadioGroup",
             "options": [
               {
-                "label": "Not",
+                "label": {
+                  "en": "Not"
+                },
                 "value": 1
               },
               {
-                "label": "Very",
+                "label": {
+                  "en": "Very"
+                },
                 "value": 2
               }
             ]
@@ -147,42 +169,62 @@
     {
       "id": "researcher_notes",
       "type": "Information",
-      "label": "Researcher notes (delete before fielding)",
-      "title": "Notes for the research team",
+      "label": {
+        "en": "Researcher notes (delete before fielding)"
+      },
+      "title": {
+        "en": "Notes for the research team"
+      },
       "items": [
         {
           "id": "text",
           "type": "text",
-          "content": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** A messy study of support.\n\n**Changes Sketch made.**\n- Two node types / relationships use id \"person\"; the second became \"person_2\". Give each its own id.\n- Consent attribute \"participant_consent\" was replaced by the built-in consent question (includeConsent); the interview ends if the participant declines.\n- Two different attributes use id \"age\"; the second became \"age_2\" and every reference to \"age\" points at the first. Give each attribute its own id.\n- ordered attribute \"mood\" needs at least 2 options; it was turned into free text.\n- optionScores of \"scale\" must be one distinct whole number per option (3); they were dropped and options scored 1..n.\n- Stage \"early\" uses \"person\" nodes before any earlier nameGenerator creates them. The stage was removed.\n- Skip condition tests \"smokes\" on egoAttributes, which no EARLIER stage collects.\n- mode skip_if has no usable conditions; the stage is always shown.\n- Form attribute \"undefined_attr\" is not an attribute of egoAttributes. Matching attributes there: age (number), age_2 (text), smokes (yes_no), mood (text), scale (ordered).\n- Form attribute \"closeness\" is not an attribute of egoAttributes. Matching attributes there: age (number), age_2 (text), smokes (yes_no), mood (text), scale (ordered).\n- Prompt without text removed.\n- a yes_no value must be \"yes\" or \"no\" (got \"maybe\"). Condition removed.\n- Bin attribute \"close\" on node type \"person\" is yes_no, but this needs ordered or single_choice. Matching attributes there: person_closeness (ordered).\n- narrative \"story\" needs an EARLIER sociogram of node type \"person\" (it reuses that map's positions). Add one, or remove the narrative. The stage was removed.\n- relationship \"knows\" is not declared. Declared: person_2.\n- Highlight \"person_closeness\" is ordered; highlights must be yes_no. Prompt removed.\n- relationship \"person\" is not declared. Declared: person_2.\n- relationshipForm \"edge_form\" has no valid relationship. The stage was removed.\n- mode show_only_if has no usable conditions; the stage is always shown."
+          "content": {
+            "en": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** A messy study of support.\n\n**Changes Sketch made.**\n- Two node types / relationships use id \"person\"; the second became \"person_2\". Give each its own id.\n- Consent attribute \"participant_consent\" was replaced by the built-in consent question (includeConsent); the interview ends if the participant declines.\n- Two different attributes use id \"age\"; the second became \"age_2\" and every reference to \"age\" points at the first. Give each attribute its own id.\n- ordered attribute \"mood\" needs at least 2 options; it was turned into free text.\n- optionScores of \"scale\" must be one distinct whole number per option (3); they were dropped and options scored 1..n.\n- Stage \"early\" uses \"person\" nodes before any earlier nameGenerator creates them. The stage was removed.\n- Skip condition tests \"smokes\" on egoAttributes, which no EARLIER stage collects.\n- mode skip_if has no usable conditions; the stage is always shown.\n- Form attribute \"undefined_attr\" is not an attribute of egoAttributes. Matching attributes there: age (number), age_2 (text), smokes (yes_no), mood (text), scale (ordered).\n- Form attribute \"closeness\" is not an attribute of egoAttributes. Matching attributes there: age (number), age_2 (text), smokes (yes_no), mood (text), scale (ordered).\n- Prompt without text removed.\n- a yes_no value must be \"yes\" or \"no\" (got \"maybe\"). Condition removed.\n- Bin attribute \"close\" on node type \"person\" is yes_no, but this needs ordered or single_choice. Matching attributes there: person_closeness (ordered).\n- narrative \"story\" needs an EARLIER sociogram of node type \"person\" (it reuses that map's positions). Add one, or remove the narrative. The stage was removed.\n- relationship \"knows\" is not declared. Declared: person_2.\n- Highlight \"person_closeness\" is ordered; highlights must be yes_no. Prompt removed.\n- relationship \"person\" is not declared. Declared: person_2.\n- relationshipForm \"edge_form\" has no valid relationship. The stage was removed.\n- mode show_only_if has no usable conditions; the stage is always shown."
+          }
         }
       ]
     },
     {
       "id": "welcome",
       "type": "Information",
-      "label": "Welcome",
-      "title": "Welcome",
+      "label": {
+        "en": "Welcome"
+      },
+      "title": {
+        "en": "Welcome"
+      },
       "items": [
         {
           "id": "text",
           "type": "text",
-          "content": "Hi"
+          "content": {
+            "en": "Hi"
+          }
         }
       ]
     },
     {
       "id": "consent",
       "type": "EgoForm",
-      "label": "Consent",
+      "label": {
+        "en": "Consent"
+      },
       "introductionPanel": {
-        "title": "Taking part",
-        "text": "Do you consent?"
+        "title": {
+          "en": "Taking part"
+        },
+        "text": {
+          "en": "Do you consent?"
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_consent",
-            "prompt": "Do you agree to take part in this study?"
+            "prompt": {
+              "en": "Do you agree to take part in this study?"
+            }
           }
         ]
       }
@@ -190,20 +232,30 @@
     {
       "id": "about",
       "type": "EgoForm",
-      "label": "About",
+      "label": {
+        "en": "About"
+      },
       "introductionPanel": {
-        "title": "About you",
-        "text": "Please answer the following questions about yourself."
+        "title": {
+          "en": "About you"
+        },
+        "text": {
+          "en": "Please answer the following questions about yourself."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_age",
-            "prompt": "Age?"
+            "prompt": {
+              "en": "Age?"
+            }
           },
           {
             "variable": "ego_smokes",
-            "prompt": "Do you smoke?"
+            "prompt": {
+              "en": "Do you smoke?"
+            }
           }
         ]
       },
@@ -228,9 +280,30 @@
       }
     },
     {
+      "id": "names_intro",
+      "type": "Information",
+      "label": {
+        "en": "Names (introduction)"
+      },
+      "title": {
+        "en": "Naming persons"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will be asked a question. For each person who comes to mind, tap the add button, answer a few short questions about them, and save. Move on when you have added everyone."
+          }
+        }
+      ]
+    },
+    {
       "id": "names",
       "type": "NameGenerator",
-      "label": "Names",
+      "label": {
+        "en": "Names"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -238,7 +311,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Who?",
+          "text": {
+            "en": "Who?"
+          },
           "additionalAttributes": [
             {
               "variable": "person_close",
@@ -252,23 +327,56 @@
         "maxNodes": 5
       },
       "form": {
-        "title": "Add a person",
+        "title": {
+          "en": "Add a person"
+        },
         "fields": [
           {
             "variable": "person_name",
-            "prompt": "What is the name of this person?"
+            "prompt": {
+              "en": "What is the name of this person?"
+            }
           },
           {
             "variable": "person_first_name",
-            "prompt": "Name?"
+            "prompt": {
+              "en": "Name?"
+            }
           }
         ]
+      },
+      "minNodesNotice": {
+        "en": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
+      },
+      "maxNodesNotice": {
+        "en": "You have completed this task. Click the next arrow to continue."
       }
+    },
+    {
+      "id": "bins_intro",
+      "type": "Information",
+      "label": {
+        "en": "Bins (introduction)"
+      },
+      "title": {
+        "en": "Sorting the persons you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the persons you named and a set of boxes. Drag each person into the box that describes them best."
+          }
+        }
+      ]
     },
     {
       "id": "bins",
       "type": "OrdinalBin",
-      "label": "Bins",
+      "label": {
+        "en": "Bins"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -276,16 +384,39 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Closeness",
+          "text": {
+            "en": "Closeness"
+          },
           "variable": "person_closeness",
           "color": "ord-color-seq-1"
         }
       ]
     },
     {
+      "id": "map_intro",
+      "type": "Information",
+      "label": {
+        "en": "Map (introduction)"
+      },
+      "title": {
+        "en": "Your network map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the persons you named on a map, with you at the centre.\n\nTap each person the question describes. Tap them again to undo."
+          }
+        }
+      ]
+    },
+    {
       "id": "map",
       "type": "Sociogram",
-      "label": "Map",
+      "label": {
+        "en": "Map"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -300,7 +431,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Mark helpers",
+          "text": {
+            "en": "Mark helpers"
+          },
           "layout": {
             "layoutVariable": "person_layout"
           },
@@ -309,28 +442,136 @@
             "variable": "person_helper"
           }
         }
-      ]
+      ],
+      "tooltips": {
+        "pauseLayout": {
+          "en": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en": "Resume automatic layout"
+        }
+      }
     },
     {
       "id": "mood_form",
       "type": "EgoForm",
-      "label": "Mood form",
+      "label": {
+        "en": "Mood form"
+      },
       "introductionPanel": {
-        "title": "About you",
-        "text": "Please answer the following questions about yourself."
+        "title": {
+          "en": "About you"
+        },
+        "text": {
+          "en": "Please answer the following questions about yourself."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_mood",
-            "prompt": "Mood?"
+            "prompt": {
+              "en": "Mood?"
+            }
           },
           {
             "variable": "ego_scale",
-            "prompt": "Scale?"
+            "prompt": {
+              "en": "Scale?"
+            }
           }
         ]
       }
+    },
+    {
+      "id": "finish",
+      "type": "FinishSession",
+      "mode": "confirmation",
+      "label": {
+        "en": "Finish Interview"
+      },
+      "content": {
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "finishedContent": {
+        "en": "# Interview Finished\n\nThank you for participating!"
+      },
+      "finishLabel": {
+        "en": "Finish"
+      },
+      "finishConfirmation": {
+        "en": "Are you sure you want to finish the interview?"
+      },
+      "finishFailed": {
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "navigation": {
+      "exitInterview": {
+        "en": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en": "Your answers so far will be saved and you can continue later."
+      },
+      "back": {
+        "en": "Back"
+      },
+      "continue": {
+        "en": "Continue"
+      }
+    },
+    "buttons": {
+      "cancel": {
+        "en": "Cancel"
+      },
+      "done": {
+        "en": "Done"
+      },
+      "delete": {
+        "en": "Delete"
+      },
+      "yes": {
+        "en": "Yes"
+      },
+      "no": {
+        "en": "No"
+      }
+    },
+    "messages": {
+      "stageError": {
+        "en": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en": "This item could not be displayed."
+      },
+      "error": {
+        "en": "An error occurred."
+      }
+    },
+    "forms": {
+      "discardChangesTitle": {
+        "en": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en": "Do you want to discard your changes?"
+      }
+    },
+    "validation": {
+      "required": {
+        "en": "You must answer this question before continuing."
+      },
+      "minValue": {
+        "en": "Enter a value greater than or equal to {min}."
+      },
+      "maxValue": {
+        "en": "Enter a value less than or equal to {max}."
+      },
+      "unique": {
+        "en": "Must be unique."
+      }
+    }
+  }
 }

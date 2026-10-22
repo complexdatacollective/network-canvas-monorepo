@@ -56,7 +56,7 @@ export const Editing: Story = {
     });
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
-    ).toHaveTextContent('"label": "Sociogram (revised)"');
+    ).toHaveTextContent('"label": { "en-US": "Sociogram (revised)" }');
   },
 };
 

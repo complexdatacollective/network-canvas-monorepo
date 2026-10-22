@@ -1,0 +1,938 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
+
+import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
+import {
+  escapeMessageText,
+  messageText,
+} from '../../../localization/messageSyntax.ts';
+import { MigrationResultInvalidError } from '../../../migration/errors.ts';
+import {
+  detectSchemaVersion,
+  migrateProtocol,
+} from '../../../migration/migrate-protocol.ts';
+import {
+  collectLocalizedStrings,
+  collectLocalizedStringSites,
+} from '../../../utils/collectLocalizedStrings.ts';
+import { extractProtocol } from '../../../utils/extractProtocol.ts';
+import validateProtocol from '../../../validation/validate-protocol.ts';
+import ProtocolSchemaV8 from '../../8/schema.ts';
+import { interfaceTextFor } from '../interface-text.ts';
+import { getLocalizedStringDescriptor } from '../localized-string.ts';
+import migrationV8toV9 from '../migration.ts';
+import ProtocolSchemaV9 from '../schema.ts';
+import { completeProtocol } from './complete-localized-protocol.ts';
+import {
+  asSchema8Protocol,
+  codebookTypes,
+  codebookVariables,
+} from './schema-8-protocol.ts';
+
+type Path = readonly (string | number)[];
+
+const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getAt = (root: unknown, at: Path): unknown =>
+  at.reduce<unknown>(
+    (node, key) =>
+      typeof node === 'object' && node !== null
+        ? Reflect.get(node, key)
+        : undefined,
+    root,
+  );
+
+const setAt = (root: unknown, at: Path, value: unknown): void => {
+  const parent = getAt(root, at.slice(0, -1));
+  const key = at.at(-1);
+  if (typeof parent !== 'object' || parent === null || key === undefined) {
+    throw new Error(`No value at ${JSON.stringify(at)}`);
+  }
+  Reflect.set(parent, key, value);
+};
+
+const stagePath = (document: unknown, id: string): (string | number)[] => {
+  const stages = getAt(document, ['stages']);
+  const index = Array.isArray(stages)
+    ? stages.findIndex((stage) => isRecord(stage) && stage.id === id)
+    : -1;
+  if (index === -1) throw new Error(`No stage "${id}"`);
+  return ['stages', index];
+};
+
+const schema8Protocol = (rewrite?: (text: string) => string) =>
+  asSchema8Protocol(completeProtocol(), rewrite);
+
+const migrateStep = (document: unknown) =>
+  migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {});
+
+/**
+ * Schema 8 held no label for a Narrative highlight or legend edge, so the
+ * migrated label is the name of what it labels: the highlighted attribute's
+ * name, and the edge type's name.
+ */
+// Schema 8 held an Anonymisation stage's heading as a title of its own, which
+// the migration writes as the first line of the text.
+const explanationBehind = (source: unknown): string | undefined =>
+  isRecord(source) &&
+  typeof source.title === 'string' &&
+  typeof source.body === 'string'
+    ? `# ${source.title}\n\n${source.body}`
+    : undefined;
+
+const nameBehindLabel = (document: unknown, at: Path): unknown => {
+  const owner = getAt(document, at.slice(0, -1));
+  if (at.at(-3) === 'edges' && isRecord(owner) && isRecord(owner.subject)) {
+    const type = owner.subject.type;
+    return typeof type === 'string'
+      ? getAt(document, ['codebook', 'edge', type, 'name'])
+      : undefined;
+  }
+  if (typeof owner !== 'string') {
+    return getAt(document, [...at.slice(0, -1), 'name']);
+  }
+  if (at.at(-3) === 'display') {
+    return getAt(document, ['codebook', 'edge', owner, 'name']);
+  }
+  const subject = getAt(document, [...at.slice(0, 2), 'subject', 'type']);
+  if (typeof subject !== 'string') return undefined;
+  return getAt(document, [
+    'codebook',
+    'node',
+    subject,
+    'variables',
+    owner,
+    'name',
+  ]);
+};
+
+const isEnglishOnly = (value: unknown) =>
+  isRecord(value) &&
+  Object.keys(value).length === 1 &&
+  typeof value.en === 'string';
+
+const literalLabel = (schema: z.ZodObject): string | undefined => {
+  for (const field of ['type', 'component']) {
+    const fieldSchema: unknown = schema.shape[field];
+    if (fieldSchema instanceof z.ZodLiteral) {
+      return `${field}=${[...fieldSchema.values].join('|')}`;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Every `localizedString` declaration reachable from `root`, with a readable
+ * path to it. The traversal is independent of the walker the migration uses:
+ * it follows every schema a definition holds, including both sides of a pipe
+ * and any intersection, so a declaration the walker cannot reach is still
+ * counted.
+ */
+const localizedDeclarations = (root: z.ZodType): Map<z.ZodType, string> => {
+  const declarations = new Map<z.ZodType, string>();
+  const visited = new Set<z.ZodType>();
+  const visit = (schema: unknown, where: string): void => {
+    if (!(schema instanceof z.ZodType) || visited.has(schema)) return;
+    visited.add(schema);
+    if (getLocalizedStringDescriptor(schema)) {
+      declarations.set(schema, where);
+      return;
+    }
+    if (schema instanceof z.ZodObject) {
+      const label = literalLabel(schema);
+      const prefix = label === undefined ? where : `${where}[${label}]`;
+      for (const [key, child] of Object.entries(schema.shape)) {
+        visit(child, `${prefix}.${key}`);
+      }
+      visit(schema.def.catchall, `${prefix}.*`);
+      return;
+    }
+    if (schema instanceof z.ZodLazy) {
+      visit(schema.def.getter(), where);
+      return;
+    }
+    if (schema instanceof z.ZodArray) {
+      visit(schema.element, `${where}[]`);
+      return;
+    }
+    if (schema instanceof z.ZodRecord) {
+      visit(schema.valueType, `${where}{}`);
+      return;
+    }
+    for (const value of Object.values(schema.def)) {
+      for (const child of Array.isArray(value) ? value : [value]) {
+        visit(child, where);
+      }
+    }
+  };
+  visit(root, 'protocol');
+  return declarations;
+};
+
+describe('v8 to v9 localization migration', () => {
+  it('declares English as the only language', () => {
+    expect(migrateStep(schema8Protocol())).toMatchObject({
+      schemaVersion: 9,
+      localization: ENGLISH_ONLY,
+    });
+  });
+
+  it('wraps a value for every localized string the schema declares', () => {
+    const declarations = localizedDeclarations(ProtocolSchemaV9);
+    expect(declarations.size).toBeGreaterThan(0);
+
+    const wrapped = new Set(
+      collectLocalizedStringSites(
+        ProtocolSchemaV9,
+        migrateStep(schema8Protocol()),
+      )
+        .filter(({ value }) => isEnglishOnly(value))
+        .map(({ schema }) => schema),
+    );
+    // Schema 8 has no Language Chooser, so a schema 8 document has none of
+    // its text to wrap.
+    const missed = [...declarations]
+      .filter(([declaration]) => !wrapped.has(declaration))
+      .map(([, where]) => where)
+      .filter((where) => !where.includes('[type=LanguageChooser]'));
+    expect(missed).toEqual([]);
+  });
+
+  it('produces the complete fixture with its copy in English', () => {
+    const expected: unknown = structuredClone(completeProtocol());
+    for (const {
+      path: at,
+      value,
+      arguments: declared,
+    } of collectLocalizedStrings(expected)) {
+      if (declared === undefined) {
+        setAt(expected, at, { en: escapeMessageText(value.en ?? '') });
+      }
+    }
+    setAt(
+      expected,
+      [...stagePath(expected, 'narrative'), 'presets', 0, 'highlight', 0],
+      { variable: 'flag', label: { en: 'Flag' } },
+    );
+    setAt(
+      expected,
+      [...stagePath(expected, 'narrative'), 'presets', 0, 'edges', 'display'],
+      [{ type: 'knows', label: { en: 'Knows' } }],
+    );
+    if (!isRecord(expected) || !Array.isArray(expected.stages)) {
+      throw new Error('Fixture has no stages');
+    }
+    expected.stages = expected.stages.filter(
+      (stage) => isRecord(stage) && stage.type !== 'LanguageChooser',
+    );
+    expected.localization = ENGLISH_ONLY;
+
+    // Besides the protocol's own text, the migration adds the interface text
+    // it uses, in English like the rest.
+    const { interfaceText, ...migrated } = migrateStep(schema8Protocol()) as {
+      interfaceText?: unknown;
+    };
+    expect(migrated).toEqual(expected);
+    expect(interfaceText).toEqual(
+      interfaceTextFor(expected as Parameters<typeof interfaceTextFor>[0]),
+    );
+  });
+
+  it('migrates to a protocol schema 9 accepts', () => {
+    expect(() => migrateProtocol(schema8Protocol(), 9)).not.toThrow();
+  });
+
+  it('does not change the document it is given', () => {
+    const document = schema8Protocol();
+    const before = structuredClone(document);
+    migrateStep(document);
+    expect(document).toEqual(before);
+  });
+
+  it('round-trips text that MessageFormat treats as syntax', () => {
+    const special = (text: string) =>
+      `${text}: {braces} it's 'quoted' '{both}' don't }{`;
+    const document = schema8Protocol(special);
+    const migrated = migrateProtocol(document, 9);
+
+    // The interface text is the migration's own, not the document's, and
+    // text with placeholders is new in schema 9 (see `asSchema8Protocol`).
+    const hits = collectLocalizedStrings(migrated).filter(
+      ({ path: at, arguments: declared }) =>
+        at[0] !== 'interfaceText' && declared === undefined,
+    );
+    expect(hits.length).toBeGreaterThan(0);
+    for (const { path: at, value } of hits) {
+      // The finish stage is added by the migration, with supplied text.
+      if (getAt(migrated, [...at.slice(0, 2), 'type']) === 'FinishSession') {
+        continue;
+      }
+      const source = getAt(document, at);
+      const expectedText =
+        typeof source === 'string'
+          ? source
+          : (explanationBehind(source) ?? nameBehindLabel(document, at));
+      expect(Object.keys(value)).toEqual(['en']);
+      expect(messageText(value.en ?? '')).toBe(expectedText);
+    }
+  });
+
+  it("keeps braces and the fork's {{fieldName}} literal where text may now show values", () => {
+    const document = schema8Protocol(
+      (text) => `${text} {{fieldName}} {name} {name, select, other {x}}`,
+    );
+    const migrated = migrateProtocol(document, 9);
+    const sites = collectLocalizedStrings(migrated).filter(
+      ({ dynamicValues }) => dynamicValues !== undefined,
+    );
+    expect(sites.length).toBeGreaterThan(0);
+    for (const { value } of sites) {
+      for (const message of Object.values(value)) {
+        expect(dynamicValueNamesIn(message)).toEqual([]);
+      }
+    }
+    expect(
+      (migrated.stages as Record<string, unknown>[]).some(
+        (stage) => stage.dynamicValues !== undefined,
+      ),
+    ).toBe(false);
+  });
+
+  it('drops the reserved marker from text that may now show values, and keeps the rest of it', () => {
+    const marked = (text: string) => `${text}\uE000`;
+    const document = schema8Protocol(marked);
+    const plain = migrateProtocol(schema8Protocol(), 9);
+    const migrated = migrateProtocol(document, 9);
+    const sites = collectLocalizedStrings(migrated);
+    const dynamicSites = sites.filter(
+      ({ dynamicValues }) => dynamicValues !== undefined,
+    );
+    expect(dynamicSites.length).toBeGreaterThan(0);
+    // No text is lost, optional text included: every site plain text has
+    // is still there, and text that may show values reads as before.
+    expect(sites.map(({ path: at }) => at.join('.'))).toEqual(
+      collectLocalizedStrings(plain).map(({ path: at }) => at.join('.')),
+    );
+    for (const { path: at, value } of dynamicSites) {
+      expect(value).toEqual(getAt(plain, at));
+    }
+    // Text that cannot show values may keep the character.
+    expect(
+      sites.some(
+        ({ dynamicValues, value }) =>
+          dynamicValues === undefined &&
+          Object.values(value).some((message) => message.includes('\uE000')),
+      ),
+    ).toBe(true);
+  });
+
+  describe('codebook labels', () => {
+    it('gives no type or attribute a label', () => {
+      const migrated = migrateProtocol(schema8Protocol(), 9);
+      for (const definition of [
+        ...codebookTypes(migrated),
+        ...codebookVariables(migrated),
+      ]) {
+        expect(definition).not.toHaveProperty('label');
+      }
+    });
+  });
+
+  describe('Narrative highlights', () => {
+    const presetPath = (document: unknown) => [
+      ...stagePath(document, 'narrative'),
+      'presets',
+      0,
+    ];
+
+    it('labels each highlight with its attribute name, in English', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      setAt(document, [...preset, 'highlight'], ['flag', 'nickname']);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        "Friend's {nickname}",
+      );
+
+      const migrated = migrateProtocol(document, 9);
+      expect(getAt(migrated, [...preset, 'highlight'])).toEqual([
+        { variable: 'flag', label: { en: 'Flag' } },
+        {
+          variable: 'nickname',
+          label: { en: escapeMessageText("Friend's {nickname}") },
+        },
+      ]);
+    });
+
+    it('uses the attribute id when the attribute has no name or is missing', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      setAt(document, [...preset, 'highlight'], ['flag', 'removed']);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'flag', 'name'],
+        '',
+      );
+
+      expect(getAt(migrateStep(document), [...preset, 'highlight'])).toEqual([
+        { variable: 'flag', label: { en: 'flag' } },
+        { variable: 'removed', label: { en: 'removed' } },
+      ]);
+    });
+
+    it('labels each edge type the legend shows with its name, in English', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      setAt(document, [...preset, 'edges', 'display'], ['knows', 'family']);
+      setAt(document, ['codebook', 'edge', 'knows', 'name'], 'Knows {who}');
+
+      expect(
+        getAt(migrateProtocol(document, 9), [...preset, 'edges', 'display']),
+      ).toEqual([
+        { type: 'knows', label: { en: escapeMessageText('Knows {who}') } },
+        { type: 'family', label: { en: 'Family' } },
+      ]);
+    });
+
+    it('uses the edge type id when the edge type has no name or is missing', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      setAt(document, [...preset, 'edges', 'display'], ['knows', 'removed']);
+      setAt(document, ['codebook', 'edge', 'knows', 'name'], '');
+
+      expect(
+        getAt(migrateStep(document), [...preset, 'edges', 'display']),
+      ).toEqual([
+        { type: 'knows', label: { en: 'knows' } },
+        { type: 'removed', label: { en: 'removed' } },
+      ]);
+    });
+
+    it('leaves a preset with no highlight without one', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      const presetDocument = getAt(document, preset);
+      if (!isRecord(presetDocument)) throw new Error('Fixture has no preset');
+      delete presetDocument.highlight;
+
+      const migrated = migrateProtocol(document, 9);
+      expect(getAt(migrated, preset)).not.toHaveProperty('highlight');
+    });
+  });
+
+  describe('Network Composer captions', () => {
+    const composerPath = (document: unknown) => stagePath(document, 'composer');
+    const nodeFieldPath = (document: unknown, index: number) => [
+      ...composerPath(document),
+      'nodeForm',
+      'fields',
+      index,
+    ];
+    const edgeFieldPath = (document: unknown) => [
+      ...composerPath(document),
+      'edges',
+      0,
+      'form',
+      'fields',
+      0,
+    ];
+    const removeCaption = (document: unknown, at: Path) => {
+      const field = getAt(document, at);
+      if (!isRecord(field)) throw new Error('Fixture has no composer field');
+      delete field.label;
+    };
+
+    it('captions a node field that has none with its attribute name, in English', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 1);
+      removeCaption(document, field);
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        en: 'Nickname',
+      });
+    });
+
+    it('labels each edge type with its name, in English', () => {
+      const document = schema8Protocol();
+      setAt(document, ['codebook', 'edge', 'knows', 'name'], 'Knows {who}');
+
+      expect(
+        getAt(migrateProtocol(document, 9), [
+          ...composerPath(document),
+          'edges',
+          0,
+          'label',
+        ]),
+      ).toEqual({ en: escapeMessageText('Knows {who}') });
+    });
+
+    it('captions an edge field with the attribute name its edge type gives', () => {
+      const document = schema8Protocol();
+      const field = edgeFieldPath(document);
+      removeCaption(document, field);
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        en: 'Note',
+      });
+    });
+
+    it('replaces an empty caption rather than leaving the field without one', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 0);
+      setAt(document, [...field, 'label'], '');
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        en: 'Closeness',
+      });
+    });
+
+    it('keeps a caption the field already has', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 1);
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        en: 'Nickname?',
+      });
+    });
+
+    it('uses the attribute id when the attribute has no name or is missing', () => {
+      const document = schema8Protocol();
+      const named = nodeFieldPath(document, 1);
+      const missing = nodeFieldPath(document, 0);
+      removeCaption(document, named);
+      removeCaption(document, missing);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        '',
+      );
+      setAt(document, [...missing, 'variable'], 'removed');
+
+      const migrated = migrateStep(document);
+      expect(getAt(migrated, [...named, 'label'])).toEqual({ en: 'nickname' });
+      expect(getAt(migrated, [...missing, 'label'])).toEqual({
+        en: 'removed',
+      });
+    });
+
+    it('escapes the attribute name so markdown shows it as written', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 1);
+      removeCaption(document, field);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        '*first_name* {nick}',
+      );
+
+      const label = getAt(migrateStep(document), [...field, 'label']);
+      expect(label).toEqual({
+        en: escapeMessageText('\\*first\\_name\\* {nick}'),
+      });
+    });
+  });
+
+  describe('blank form field prompts', () => {
+    const fieldPath = (document: unknown, id: string, form: Path) => [
+      ...stagePath(document, id),
+      ...form,
+      'fields',
+      0,
+    ];
+    const egoField = (document: unknown) =>
+      fieldPath(document, 'egoForm', ['form']);
+    const alterField = (document: unknown) =>
+      fieldPath(document, 'alterForm', ['form']);
+    const promptOf = (document: unknown, at: Path) =>
+      getAt(migrateProtocol(document, 9), [...at, 'prompt']);
+
+    it.each([
+      ['an empty prompt', ''],
+      ['a prompt of spaces', '   '],
+      ['a prompt of tabs and line breaks', '\t\n '],
+      ['a prompt of non-breaking spaces', '\u00a0\u00a0'],
+      ['a prompt of zero-width spaces', '\u200b\u200b'],
+    ])('asks with the attribute name for %s', (_name, blank) => {
+      const document = schema8Protocol();
+      const field = alterField(document);
+      setAt(document, [...field, 'prompt'], blank);
+
+      expect(promptOf(document, field)).toEqual({ en: 'Nickname' });
+    });
+
+    it('does so in an ego form, using the ego attribute', () => {
+      const document = schema8Protocol();
+      const field = egoField(document);
+      setAt(document, [...field, 'prompt'], ' ');
+
+      expect(promptOf(document, field)).toEqual({ en: 'EgoName' });
+    });
+
+    it('does so in a name generator form', () => {
+      const document = schema8Protocol();
+      const field = fieldPath(document, 'nameGenerator', ['form']);
+      setAt(document, [...field, 'prompt'], ' ');
+
+      expect(promptOf(document, field)).toEqual({ en: 'Name' });
+    });
+
+    it('does so in an edge form, using the attribute of the edge type', () => {
+      const document = schema8Protocol();
+      const field = fieldPath(document, 'alterEdgeForm', ['form']);
+      setAt(document, [...field, 'prompt'], ' ');
+
+      expect(promptOf(document, field)).toEqual({ en: 'Note' });
+    });
+
+    it('keeps a prompt with text in it, spaces around the text included', () => {
+      const document = schema8Protocol();
+      const field = alterField(document);
+      setAt(document, [...field, 'prompt'], '  Nickname?  ');
+
+      expect(promptOf(document, field)).toEqual({ en: '  Nickname?  ' });
+    });
+
+    it('uses the attribute id when the attribute has no name or is missing', () => {
+      const document = schema8Protocol();
+      const named = alterField(document);
+      const missing = egoField(document);
+      setAt(document, [...named, 'prompt'], ' ');
+      setAt(document, [...missing, 'prompt'], ' ');
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        '  ',
+      );
+      setAt(document, [...missing, 'variable'], 'removed');
+
+      const migrated = migrateStep(document);
+      expect(getAt(migrated, [...named, 'prompt'])).toEqual({
+        en: 'nickname',
+      });
+      expect(getAt(migrated, [...missing, 'prompt'])).toEqual({
+        en: 'removed',
+      });
+    });
+
+    it('escapes the attribute name so markdown shows it as written', () => {
+      const document = schema8Protocol();
+      const field = alterField(document);
+      setAt(document, [...field, 'prompt'], ' ');
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        '*first_name* {nick}',
+      );
+
+      expect(getAt(migrateStep(document), [...field, 'prompt'])).toEqual({
+        en: escapeMessageText('\\*first\\_name\\* {nick}'),
+      });
+    });
+
+    it('migrates to a protocol schema 9 accepts', () => {
+      const document = schema8Protocol();
+      for (const id of ['egoForm', 'alterForm', 'nameGenerator']) {
+        const field = fieldPath(document, id, ['form']);
+        setAt(document, [...field, 'prompt'], ' ');
+      }
+
+      expect(
+        ProtocolSchemaV9.safeParse(migrateProtocol(document, 9)).success,
+      ).toBe(true);
+    });
+
+    it('tells the researcher in the migration notes', () => {
+      expect(migrationV8toV9.notes).toContain('contained only spaces');
+    });
+
+    it('captions a Network Composer field whose caption is only spaces', () => {
+      const document = schema8Protocol();
+      const field = [
+        ...stagePath(document, 'composer'),
+        'nodeForm',
+        'fields',
+        1,
+      ];
+      setAt(document, [...field, 'label'], '   ');
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        en: 'Nickname',
+      });
+    });
+  });
+
+  describe('empty text', () => {
+    // Every text a participant sees must say something, so an empty hint,
+    // which showed nothing, is left out rather than kept as data.
+    it('leaves out an empty hint', () => {
+      const document = schema8Protocol();
+      const field = [...stagePath(document, 'egoForm'), 'form', 'fields', 0];
+      setAt(document, [...field, 'hint'], '');
+
+      const migrated = migrateProtocol(document, 9);
+      expect(getAt(migrated, field)).not.toHaveProperty('hint');
+    });
+
+    // A participant chooses between options by their labels, so an empty one
+    // is wrapped like any other required text and validation reports it.
+    it('wraps an empty option label, so validation reports it', () => {
+      const document = schema8Protocol();
+      const option = [
+        'codebook',
+        'node',
+        'person',
+        'variables',
+        'category',
+        'options',
+        0,
+        'label',
+      ];
+      setAt(document, option, '');
+
+      expect(getAt(migrateStep(document), option)).toEqual({ en: '' });
+      expect(() => migrateProtocol(document, 9)).toThrow(
+        MigrationResultInvalidError,
+      );
+    });
+
+    it('leaves out an optional field that may not be empty', () => {
+      const document = schema8Protocol();
+      const prompt = [...stagePath(document, 'categoricalBin'), 'prompts', 0];
+      setAt(document, [...prompt, 'otherVariable'], undefined);
+      setAt(document, [...prompt, 'otherOptionLabel'], undefined);
+      setAt(document, [...prompt, 'otherVariablePrompt'], '');
+
+      const migrated = migrateProtocol(document, 9);
+      expect(getAt(migrated, prompt)).not.toHaveProperty('otherVariablePrompt');
+    });
+
+    it('wraps a required field that may not be empty, so validation reports it', () => {
+      const document = schema8Protocol();
+      const label = [...stagePath(document, 'information'), 'label'];
+      setAt(document, label, '');
+
+      expect(getAt(migrateStep(document), label)).toEqual({ en: '' });
+      expect(() => migrateProtocol(document, 9)).toThrow(
+        MigrationResultInvalidError,
+      );
+    });
+  });
+
+  describe('values other than strings', () => {
+    it('drops a scale end label of another type from a Network Composer field', () => {
+      const document = schema8Protocol();
+      const parameters = [
+        ...stagePath(document, 'composer'),
+        'nodeForm',
+        'fields',
+        0,
+        'parameters',
+      ];
+      setAt(document, parameters, { minLabel: 5, maxLabel: null, step: 5 });
+
+      expect(getAt(migrateProtocol(document, 9), parameters)).toEqual({
+        step: 5,
+      });
+    });
+
+    it('leaves end labels on any other composer control as they were', () => {
+      const document = schema8Protocol();
+      const parameters = [
+        ...stagePath(document, 'composer'),
+        'nodeForm',
+        'fields',
+        1,
+        'parameters',
+      ];
+      setAt(document, parameters, { minLabel: 'Low', maxLabel: 3 });
+
+      expect(getAt(migrateProtocol(document, 9), parameters)).toEqual({
+        minLabel: 'Low',
+        maxLabel: 3,
+      });
+    });
+
+    it('leaves a value schema 8 already rejected for validation to report', () => {
+      const document = schema8Protocol();
+      const text = [...stagePath(document, 'ordinalBin'), 'prompts', 0, 'text'];
+      setAt(document, text, 5);
+
+      expect(getAt(migrateStep(document), text)).toBe(5);
+      expect(() => migrateProtocol(document, 9)).toThrow(
+        MigrationResultInvalidError,
+      );
+    });
+  });
+
+  /**
+   * Fresco's deploy normalization numbers a row stored at schema 9 as schema
+   * 8 and runs this step over it again, so a document whose copy is already
+   * localized must come through with its languages and text unchanged.
+   */
+  describe('a document already in schema 9 form', () => {
+    const FRENCH_AND_GERMAN = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+
+    const inFrenchAndGerman = () => {
+      const document: unknown = {
+        ...completeProtocol(),
+        schemaVersion: 8,
+        localization: FRENCH_AND_GERMAN,
+      };
+      for (const { path: at, value } of collectLocalizedStrings(document)) {
+        setAt(document, at, {
+          fr: `${value.en ?? ''} (fr)`,
+          de: `${value.en ?? ''} (de)`,
+        });
+      }
+      return document;
+    };
+
+    it('keeps the languages it declares', () => {
+      expect(migrateStep(inFrenchAndGerman())).toMatchObject({
+        localization: FRENCH_AND_GERMAN,
+      });
+    });
+
+    it('keeps its text in every language, scale end labels included', () => {
+      const document = inFrenchAndGerman();
+      const text = collectLocalizedStrings(document);
+      expect(text.map(({ path: at }) => at.at(-1))).toContain('minLabel');
+
+      expect(
+        collectLocalizedStrings(migrateStep(document)).filter(
+          ({ path: at }) => at[0] !== 'interfaceText',
+        ),
+      ).toEqual(text);
+    });
+
+    it('migrates to a protocol schema 9 accepts', () => {
+      expect(() => migrateProtocol(inFrenchAndGerman(), 9)).not.toThrow();
+    });
+
+    it('records text it still holds as a string in its default language', () => {
+      const document = inFrenchAndGerman();
+      const title = [...stagePath(document, 'information'), 'title'];
+      setAt(document, title, 'Bienvenue');
+
+      expect(getAt(migrateStep(document), title)).toEqual({
+        fr: 'Bienvenue',
+      });
+    });
+  });
+});
+
+/**
+ * Every committed protocol at schema 8 or older, brought to schema 8 the way
+ * an import does and then migrated to schema 9. The schema 8 documents are
+ * what hosts hold today, so each must come out valid, with every localized
+ * string in English and nothing else about its structure
+ * changed.
+ */
+describe('committed schema 8 protocols', () => {
+  const repoRoot = path.resolve(import.meta.dirname, '../../../../../..');
+  const corpusRoots = [
+    'packages/protocols',
+    'apps/networkcanvas.com/public/protocols',
+  ];
+  const corpusFiles = corpusRoots
+    .flatMap((root) =>
+      readdirSync(path.join(repoRoot, root), { recursive: true })
+        .filter((entry): entry is string => typeof entry === 'string')
+        .filter((entry) => entry.endsWith('.netcanvas'))
+        .map((entry) => path.join(root, entry)),
+    )
+    .toSorted();
+
+  const stageOutline = (document: unknown) => {
+    const stages = getAt(document, ['stages']);
+    return Array.isArray(stages)
+      ? stages.map((stage) =>
+          isRecord(stage) ? { id: stage.id, type: stage.type } : undefined,
+        )
+      : [];
+  };
+
+  const stageOutlineWithIntroductions = (document: unknown) => {
+    const stages = getAt(document, ['stages']);
+    if (!Array.isArray(stages)) return [];
+    return stages.flatMap((stage) => {
+      if (!isRecord(stage)) return [undefined];
+      const outline = { id: stage.id, type: stage.type };
+      if (!isRecord(stage.introductionPanel) || stage.type === 'EgoForm') {
+        return [outline];
+      }
+      return [
+        { id: `${String(stage.id)}-introduction`, type: 'Information' },
+        outline,
+      ];
+    });
+  };
+
+  // Stages move when an introduction is inserted before them, so a migrated
+  // site is compared with the schema 8 stage of the same id.
+  const schema8PathOf = (
+    migrated: unknown,
+    schema8: unknown,
+    at: readonly (string | number)[],
+  ): (string | number)[] => {
+    if (at[0] !== 'stages' || typeof at[1] !== 'number') return [...at];
+    const id = getAt(migrated, ['stages', at[1], 'id']);
+    const stages = getAt(schema8, ['stages']);
+    const index = Array.isArray(stages)
+      ? stages.findIndex((stage) => isRecord(stage) && stage.id === id)
+      : -1;
+    return index === -1 ? ['missing'] : ['stages', index, ...at.slice(2)];
+  };
+
+  it('discovered the committed protocols', () => {
+    expect(corpusFiles.length).toBeGreaterThan(0);
+  });
+
+  it.for(corpusFiles)(
+    '%s migrates from schema 8 to a valid schema 9 protocol',
+    { timeout: 60_000 },
+    async (file, { skip }) => {
+      const { protocol } = await extractProtocol(
+        readFileSync(path.join(repoRoot, file)),
+      );
+      if (detectSchemaVersion(protocol) > 8) skip('already schema 9 or later');
+
+      const schema8 = migrateProtocol(protocol, 8, {
+        name: path.basename(file, '.netcanvas'),
+      });
+      const migrated = migrateProtocol(schema8, 9);
+
+      const result = await validateProtocol(migrated);
+      expect(
+        result.success,
+        JSON.stringify(result.error?.issues, null, 2),
+      ).toBe(true);
+      expect(migrated.localization).toEqual(ENGLISH_ONLY);
+      // Every stage is kept, in order, each introduction panel but an Ego
+      // Form's becomes the Information stage just before its stage, and the
+      // finish stage follows them.
+      expect(stageOutline(migrated)).toEqual([
+        ...stageOutlineWithIntroductions(schema8),
+        { id: 'finish', type: 'FinishSession' },
+      ]);
+      expect(Object.keys(migrated.codebook.node ?? {})).toEqual(
+        Object.keys(getAt(schema8, ['codebook', 'node']) ?? {}),
+      );
+
+      for (const { path: at, value } of collectLocalizedStrings(migrated)) {
+        expect(Object.keys(value)).toEqual(['en']);
+        const source = getAt(schema8, schema8PathOf(migrated, schema8, at));
+        if (typeof source === 'string') {
+          expect(messageText(value.en ?? '')).toBe(source);
+        }
+      }
+    },
+  );
+});

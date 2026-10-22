@@ -26,8 +26,8 @@ test('creates a valid NameGenerator stage from scratch', async ({
 
   // The shared form section (`sections/form-fields/FormFieldsSection.tsx`,
   // "Form fields") renders the form's own title only when the interface asks
-  // for one: `nameGeneratorFormFields` passes `hasTitle`, which the three form
-  // stages do not. It is an ordinary field at `form.title`, so the
+  // for one: `nameGeneratorFormFields` passes `hasTitle`, as the ego form does
+  // and the alter and alter edge forms do not. It is an ordinary field at `form.title`, so the
   // `data-field-name` seam reaches it directly.
   await editor.field('form.title').getByRole('textbox').fill('Add a person');
 

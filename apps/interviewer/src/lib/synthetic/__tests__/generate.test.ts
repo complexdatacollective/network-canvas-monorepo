@@ -96,8 +96,9 @@ beforeEach(() => {
   mockGetProtocolByHash.mockResolvedValue({
     hash: HASH,
     name: 'Test Protocol',
+    schemaVersion: 9,
     codebook: {},
-    protocol: { stages: [] },
+    protocol: { schemaVersion: 9, stages: [] },
   } as unknown as StoredProtocol);
 
   let next = 0;
@@ -113,6 +114,27 @@ beforeEach(() => {
 });
 
 describe('generateSyntheticSessions', () => {
+  it('writes nothing for a schema 8 protocol, whose interviews Interviewer 8 writes', async () => {
+    mockGetProtocolByHash.mockResolvedValue({
+      hash: HASH,
+      name: 'Schema 8 Protocol',
+      schemaVersion: 8,
+      codebook: {},
+      protocol: { schemaVersion: 8, stages: [] },
+    } as unknown as StoredProtocol);
+    mockGenerateNetwork.mockImplementation(generationResult);
+
+    await expect(
+      generateSyntheticSessions({
+        protocolHash: HASH,
+        count: 2,
+        simulateDropOut: false,
+        respectSkipLogicAndFiltering: false,
+      }),
+    ).rejects.toThrow('is not at schema 9');
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
   it('persists the whole batch when every draw succeeds', async () => {
     mockGenerateNetwork.mockImplementation(generationResult);
 

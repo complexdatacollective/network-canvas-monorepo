@@ -10,15 +10,15 @@
 
     <!--
       Initial boot loader. This must render on the first paint, BEFORE the app
-      bundle (React, Tailwind, the fresco-ui Spinner) has downloaded, so it can
-      only rely on self-contained inline HTML + CSS — no external classes or
-      components are available yet.
+      bundle (React, the fresco-ui Spinner) has downloaded, so it is plain
+      inline HTML + CSS — no components are available yet.
 
       The spinner is a hand-inlined equivalent of @codaco/fresco-ui/Spinner: four
       two-tone half-circle petals arranged around a centre, with the same rotate +
-      scale "breathing" and per-petal light<->dark colour split. The colour values
-      and geometry mirror packages/fresco-ui/src/Spinner.tsx (sea-serpent, mustard,
-      neon-coral, sea-green).
+      scale "breathing" and per-petal light<->dark colour split. The geometry
+      mirrors packages/fresco-ui/src/Spinner.tsx. The petal colours read the brand
+      colour variables (sea-serpent, mustard, neon-coral, sea-green), which the
+      render-blocking tailwind.css link above defines before first paint.
 
       Background is hardcoded to #edf2f8 — the platinum app background
       (--color-background) and the PWA manifest background_color — because the
@@ -107,16 +107,16 @@
 
       /* Petal 1 — sea-serpent (blue). */
       .boot-petal--1 {
-        --spinner-color-light: oklch(73.83% 0.13 217.55);
-        --spinner-color-dark: oklch(68.83% 0.13 217.55);
+        --spinner-color-light: oklch(var(--sea-serpent));
+        --spinner-color-dark: oklch(var(--sea-serpent--dark));
         top: calc(var(--circle-size) * -1);
         left: 0;
       }
 
       /* Petal 2 — mustard (yellow). */
       .boot-petal--2 {
-        --spinner-color-light: oklch(81% 0.17 86.39);
-        --spinner-color-dark: oklch(76% 0.17 86.39);
+        --spinner-color-light: oklch(var(--mustard));
+        --spinner-color-dark: oklch(var(--mustard--dark));
         top: 0;
         left: calc(var(--circle-size) * 2);
         transform: rotate(90deg);
@@ -124,8 +124,8 @@
 
       /* Petal 3 — neon-coral (red). */
       .boot-petal--3 {
-        --spinner-color-light: oklch(57.33% 0.2584 11.57);
-        --spinner-color-dark: oklch(52.33% 0.2584 11.57);
+        --spinner-color-light: oklch(var(--neon-coral));
+        --spinner-color-dark: oklch(var(--neon-coral--dark));
         top: var(--circle-size);
         left: calc(var(--circle-size) * -1);
         transform: rotate(-90deg);
@@ -133,8 +133,8 @@
 
       /* Petal 4 — sea-green (teal). */
       .boot-petal--4 {
-        --spinner-color-light: oklch(70% 0.2 171.52);
-        --spinner-color-dark: oklch(65% 0.2 171.52);
+        --spinner-color-light: oklch(var(--sea-green));
+        --spinner-color-dark: oklch(var(--sea-green--dark));
         top: calc(var(--circle-size) * 2);
         left: var(--circle-size);
         transform: rotate(-180deg);

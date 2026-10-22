@@ -151,9 +151,9 @@ const ActionsHeader = () => {
 
 /**
  * The actions cell is the one renderer that has to close over a value the
- * parent owns (`handleDelete`), so it is built by a module-scope factory the
- * parent's `columns` memo calls: the component type then changes only when
- * that callback does, instead of on every render.
+ * parent owns (`handleDelete`), so it is built by a module-scope
+ * factory the parent's `columns` memo calls: the component type then changes
+ * only when those callbacks do, instead of on every render.
  */
 const createActionsCell =
   (onDelete: (id: string) => void) =>

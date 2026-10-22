@@ -1,8 +1,8 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import type { RowPreviewProps } from '../../form/rowDialog.tsx';
 import ResourcePreview from '../../resources/components/ResourcePreview.tsx';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -31,7 +31,9 @@ const asString = (value: unknown): string | undefined =>
  * How one block reads in the list when its dialog is closed.
  *
  * The block itself, as far as the editor can show it: prose is rendered as the
- * participant will read it, and media is played from the resource gateway
+ * participant will read it — in the editing language, or in the one a
+ * participant reading that language would be shown instead — and media is
+ * played from the resource gateway
  * rather than from any host URL. A block naming a resource the protocol no
  * longer has says so, because that is the whole reason a researcher would be
  * looking at this list.
@@ -40,11 +42,12 @@ export default function ContentBlockPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
   const kind = contentBlockKind(protocolContext, item);
-  const content = asString(item.content) ?? '';
 
   if (kind === 'text') {
-    return <RenderMarkdown render={<div />}>{content}</RenderMarkdown>;
+    return <DynamicTextPreview value={item.content} />;
   }
+
+  const content = asString(item.content) ?? '';
 
   if (kind === undefined) {
     return (

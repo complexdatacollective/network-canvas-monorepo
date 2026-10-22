@@ -1,4 +1,9 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import type {
+  CurrentProtocol,
+  FinishOutcome,
+  Protocol,
+} from '@codaco/protocol-validation';
 import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
 export type StoredAssetType =
@@ -18,30 +23,61 @@ export type StoredAsset = {
   data: Blob | string;
 };
 
-export type StoredProtocol = {
+/**
+ * A protocol document at schema 8. Stored and run unchanged: its interviews
+ * run in the Interviewer 8 bundled at `/v8/`, which reads the same rows.
+ */
+export type Schema8Protocol = Protocol<8>;
+
+type StoredProtocolFields = {
   id: string;
   hash: string;
   name: string;
-  schemaVersion: number;
   lastModified?: string;
   importedAt: string;
   description?: string;
+};
+
+/** A protocol this app's interview engine runs. */
+export type StoredCurrentProtocol = StoredProtocolFields & {
+  schemaVersion: CurrentProtocol['schemaVersion'];
   codebook: CurrentProtocol['codebook'];
   protocol: CurrentProtocol;
 };
 
 /**
- * A durable record that a schema migration re-keyed a stored protocol from
- * `previousHash` to `hash`. Written in the same transaction as the re-keying;
- * never deleted. The launch sweep follows these records to heal any session a
- * legacy writer (a tab still running the pre-update bundle) pointed back at a
- * superseded hash after the migration ran.
+ * A schema 8 protocol, in exactly the row Interviewer 8 writes (see
+ * `protocols.ts`). Interviewer 8 at `/v8/` runs its interviews.
  */
-export type StoredProtocolMigrationRecord = {
-  previousHash: string;
-  hash: string;
-  migratedAt: string;
+export type StoredSchema8Protocol = StoredProtocolFields & {
+  schemaVersion: Schema8Protocol['schemaVersion'];
+  codebook: Schema8Protocol['codebook'];
+  protocol: Schema8Protocol;
 };
+
+/**
+ * Every protocol lives in one table, whatever its schema, told apart by
+ * `schemaVersion`.
+ */
+export type StoredProtocol = StoredCurrentProtocol | StoredSchema8Protocol;
+
+const SCHEMA_8: Schema8Protocol['schemaVersion'] = 8;
+
+/** Whether `protocol` runs in this app's own interview engine. */
+export const isCurrentProtocol = <T extends { schemaVersion: number }>(
+  protocol: T,
+): protocol is Extract<
+  T,
+  { schemaVersion: CurrentProtocol['schemaVersion'] }
+> => protocol.schemaVersion === COMPATIBLE_PROTOCOL_SCHEMA_VERSION;
+
+/** Whether `protocol` is a schema 8 protocol, run by Interviewer 8. */
+export const isSchema8Protocol = <T extends { schemaVersion: number }>(
+  protocol: T,
+): protocol is Extract<
+  T,
+  { schemaVersion: Schema8Protocol['schemaVersion'] }
+> => protocol.schemaVersion === SCHEMA_8;
 
 export type StoredSession = {
   id: string;
@@ -51,12 +87,21 @@ export type StoredSession = {
   startedAt: string;
   lastUpdatedAt: string;
   finishedAt: string | null;
+  // The finish stage the participant finished at, and that stage's outcome.
+  // Written only by `markSessionFinished` and cleared by
+  // `markSessionUnfinished`, always together with `finishedAt`. Optional so a
+  // session finished before finish stages were recorded reads as unknown
+  // (`undefined` or `null`); such sessions are never backfilled. Both are
+  // encrypted with the network: the outcome follows from the participant's
+  // answers.
+  finishStageId?: string | null;
+  finishOutcome?: FinishOutcome | null;
   exportedAt: string | null;
   currentStep: number;
   // Participant-facing progress (0–100) reported by @codaco/interview via
   // onStepChange. Optional so pre-existing rows (undefined) read as 0 until the
-  // session is next advanced. The interview engine owns this value (it accounts
-  // for the appended finish stage); the host must not re-derive it.
+  // session is next advanced. The interview engine owns this value; the host
+  // must not re-derive it.
   progress?: number;
   // A one-visit override set when marking an interview unfinished cannot find
   // an authored stage that is currently available. Navigation clears it.

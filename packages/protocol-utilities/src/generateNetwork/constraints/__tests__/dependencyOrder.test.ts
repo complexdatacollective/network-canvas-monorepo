@@ -44,7 +44,10 @@ describe('resolveGenerationOrder', () => {
             greaterThanVariable: asEntityAttributeReference('earlier'),
           },
         },
-        earlier: { name: 'Earlier', type: 'number' },
+        earlier: {
+          name: 'Earlier',
+          type: 'number',
+        },
       },
       TODAY,
     );

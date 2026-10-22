@@ -1,19 +1,26 @@
-import { Download } from 'lucide-react';
+import { CircleAlert, Download } from 'lucide-react';
 
 import type { MessageDescriptor, IntlShape } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import type { StoredSession } from '~/lib/db/types';
+import { isSchema8Protocol, type StoredSession } from '~/lib/db/types';
+import {
+  type BundledLegacyInterviewer,
+  LEGACY_INTERVIEWER_MAJOR,
+} from '~/lib/legacyInterviewer';
 import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
 
+import { legacyProtocolMessages } from '../legacyProtocolMessages';
 import { NewSessionForm } from '../NewSessionForm';
 import {
   DeckCard,
+  DeckCardBadge,
   DeckCardFooter,
   DeckCardFooterButton,
+  DeckCardFooterNote,
   type DeckCardProps,
   DeckCardProgressFooter,
 } from './DeckCard';
@@ -60,6 +67,13 @@ const PHASE_LABEL: Record<ImportPhase, MessageDescriptor> = {
   saving: messages.saving,
 };
 
+// The bundled Interviewer 8 a schema 8 card's interviews run in. `interviewer`
+// is null when this build bundles none: the card then starts no interview,
+// and says why.
+export type Schema8CardActions = {
+  interviewer: BundledLegacyInterviewer | null;
+};
+
 type DeckSlotCardProps = {
   entry: Exclude<DeckEntry, { kind: 'import' }>;
   isActive: boolean;
@@ -71,6 +85,7 @@ type DeckSlotCardProps = {
   onDismissSample: () => void;
   onInstallSample: () => void;
   onInstallDevelopment: () => void;
+  schema8?: Schema8CardActions;
   // When set, the case-ID form replaces the protocol card's footer.
   newSession?: {
     onCancel: () => void;
@@ -88,16 +103,22 @@ function slotCardProps(
     onDismissSample,
     onInstallSample,
     onInstallDevelopment,
+    schema8,
     newSession,
   }: DeckSlotCardProps,
   intl: IntlShape,
 ): DeckCardProps {
   if (entry.kind === 'protocol') {
+    const { protocol } = entry;
+    const schema8Props = isSchema8Protocol(protocol)
+      ? schema8CardProps({ isActive, schema8 }, intl)
+      : null;
     return {
       protocol: entry.protocol,
       isActive,
       sessionCount,
       requiresInternetConnection: protocolRequiresInternet(entry.protocol),
+      schemaVersion: protocol.schemaVersion,
       onActivate: activate,
       // While the case-ID form is open it takes over the card: the
       // controls row, description, and metadata animate out (their exits
@@ -106,7 +127,7 @@ function slotCardProps(
       hideDescription: newSession !== undefined,
       hideMetadata: newSession !== undefined,
       hideControls: newSession !== undefined,
-      onDelete: () => onDeleteProtocol(entry.protocol.hash),
+      onDelete: () => onDeleteProtocol(protocol.hash),
       footer: newSession ? (
         <DeckCardFooter key="new-session">
           <NewSessionForm
@@ -115,6 +136,8 @@ function slotCardProps(
             onCreated={newSession.onCreated}
           />
         </DeckCardFooter>
+      ) : schema8Props?.unavailableFooter ? (
+        schema8Props.unavailableFooter
       ) : isActive ? (
         <DeckCardFooter key="start-interview">
           <DeckCardFooterButton onClick={activate}>
@@ -122,6 +145,7 @@ function slotCardProps(
           </DeckCardFooterButton>
         </DeckCardFooter>
       ) : undefined,
+      badges: schema8Props?.badges,
     };
   }
   if (entry.kind === 'sample') {
@@ -200,6 +224,40 @@ function slotCardProps(
         />
       </DeckCardFooter>
     ),
+  };
+}
+
+const iconClassName = 'size-4';
+
+// What a schema 8 protocol's card adds to any protocol card's: when this
+// build has no Interviewer 8 to run its interviews, a badge and a note
+// instead of the start button.
+function schema8CardProps(
+  { isActive, schema8 }: Pick<DeckSlotCardProps, 'isActive' | 'schema8'>,
+  intl: IntlShape,
+): Pick<DeckCardProps, 'badges'> & {
+  unavailableFooter: DeckCardProps['footer'];
+} {
+  const interviewer = schema8?.interviewer ?? null;
+  return {
+    badges: interviewer ? undefined : (
+      <DeckCardBadge
+        tone="warning"
+        icon={<CircleAlert className={iconClassName} />}
+      >
+        {intl.formatMessage(legacyProtocolMessages.notAvailable)}
+      </DeckCardBadge>
+    ),
+    unavailableFooter:
+      isActive && !interviewer ? (
+        <DeckCardFooter key="schema-8-unavailable">
+          <DeckCardFooterNote>
+            {intl.formatMessage(legacyProtocolMessages.notAvailableHelp, {
+              legacyVersion: LEGACY_INTERVIEWER_MAJOR,
+            })}
+          </DeckCardFooterNote>
+        </DeckCardFooter>
+      ) : undefined,
   };
 }
 

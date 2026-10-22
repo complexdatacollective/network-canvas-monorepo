@@ -48,7 +48,7 @@ const mockProtocol = {
     {
       id: 'stage-1',
       type: 'NameGenerator',
-      label: 'Name Generator',
+      label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
         type: 'person',
@@ -56,14 +56,11 @@ const mockProtocol = {
       prompts: [
         {
           id: 'prompt-1',
-          text: 'Name the people in your network',
+          text: { en: 'Name the people in your network' },
         },
       ],
     },
   ],
-  experiments: {
-    encryptedVariables: false,
-  },
   assets: [],
 };
 
@@ -81,8 +78,7 @@ const mockSession = {
 };
 
 const mockUiState = {
-  passphrase: null as string | null,
-  passphraseInvalid: false,
+  encryptionKeyId: null,
   showPassphrasePrompter: false,
 };
 

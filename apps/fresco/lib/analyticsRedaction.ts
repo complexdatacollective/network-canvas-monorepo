@@ -33,7 +33,6 @@ const REDACTED = '[redacted]';
  * to be wrong in: a missing label is a nuisance, a leaked identifier is not.
  */
 const NAMED_PARTICIPANT_SEGMENTS = new Set([
-  'finished',
   'error',
   'invalid-link',
   'no-anonymous-recruitment',

@@ -245,4 +245,22 @@ describe('createCollectionSorter', () => {
       expect(result.map((i) => i.age)).toEqual([20, 30, 25, 35]);
     });
   });
+
+  describe('locale', () => {
+    const names = [{ name: 'z' }, { name: 'ö' }, { name: 'a' }];
+    const rules: SortRule[] = [
+      { property: 'name', direction: 'asc', type: 'string' },
+    ];
+    const order = (locale: string) =>
+      createCollectionSorter<{ name: string }>(
+        rules,
+        [],
+        locale,
+      )(names).map((i) => i.name);
+
+    it('puts ö after z in Swedish and between a and z in German', () => {
+      expect(order('sv')).toEqual(['a', 'z', 'ö']);
+      expect(order('de')).toEqual(['a', 'ö', 'z']);
+    });
+  });
 });

@@ -16,6 +16,7 @@ import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
+import { NEW_PROTOCOL_FINISH_STAGE_ID } from '../protocol/sectionize.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -287,7 +288,9 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       }),
     );
     const stageOrder = draft.sections.stageOrder;
-    expect(stageOrder && Redacted.value(stageOrder)).toEqual({ stages: [] });
+    expect(stageOrder && Redacted.value(stageOrder)).toEqual({
+      stages: [NEW_PROTOCOL_FINISH_STAGE_ID],
+    });
     expect(draft.sections[`stage:${stageId}`]).toBeUndefined();
 
     const grantedStageId = StageId.make(randomUUID());
@@ -306,9 +309,10 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
         draftId: granted.draftId,
       }),
     );
+    // A new screen goes in front of the finish stage the protocol started with.
     const editedOrder = edited.sections.stageOrder;
     expect(editedOrder && Redacted.value(editedOrder)).toEqual({
-      stages: [grantedStageId],
+      stages: [grantedStageId, NEW_PROTOCOL_FINISH_STAGE_ID],
     });
   });
 

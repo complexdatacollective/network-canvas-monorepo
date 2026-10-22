@@ -9,6 +9,7 @@ import AssetManifest from '~/lib/ProtocolSummary/components/AssetManifest';
 import Codebook from '~/lib/ProtocolSummary/components/Codebook';
 import Contents from '~/lib/ProtocolSummary/components/Contents';
 import Cover from '~/lib/ProtocolSummary/components/Cover';
+import InterfaceText from '~/lib/ProtocolSummary/components/InterfaceText';
 import Stages from '~/lib/ProtocolSummary/components/Stages';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
 import { getCodebookIndex } from '~/lib/ProtocolSummary/helpers';
@@ -85,6 +86,7 @@ const SummaryPage = () => {
           <Stages />
           <Codebook />
           <AssetManifest />
+          <InterfaceText />
         </div>
       </div>
     </SummaryContext.Provider>

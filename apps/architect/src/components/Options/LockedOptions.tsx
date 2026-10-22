@@ -1,7 +1,11 @@
 import { Lock } from 'lucide-react';
+import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import type { LocalizedString } from '@codaco/protocol-validation';
+import { getLocalization } from '~/selectors/protocol';
+import { localizedText } from '~/utils/localizedText';
 const messages = defineMessages({
   label: {
     id: 'architect.options.lockedOptions.label',
@@ -34,11 +38,15 @@ type LockedOptionsProps = {
    * splits string/number from boolean) and an interface-owned canonical set,
    * which is readonly.
    */
-  options: readonly { label: string; value: string | number | boolean }[];
+  options: readonly {
+    label: LocalizedString;
+    value: string | number | boolean;
+  }[];
 };
 
 const LockedOptions = ({ options }: LockedOptionsProps) => {
   const intl = useAppIntl();
+  const localization = useSelector(getLocalization);
   return (
     <div className="bg-surface-2 text-text relative rounded p-4">
       <Lock aria-hidden className="absolute top-4 right-4 h-4 w-4" />
@@ -59,7 +67,9 @@ const LockedOptions = ({ options }: LockedOptionsProps) => {
         <tbody>
           {options.map((option) => (
             <tr key={String(option.value)}>
-              <td className="py-1">{option.label}</td>
+              <td className="py-1">
+                {localizedText(option.label, localization)}
+              </td>
               <td className="font-monospace py-1">{String(option.value)}</td>
             </tr>
           ))}

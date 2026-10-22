@@ -25,6 +25,7 @@ import {
 } from '~/utils/protocolLockMessages';
 import { validateAsset } from '~/utils/protocols/assetTools';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
+import { RosterCharacterError } from '~/utils/protocols/rosterCharacterError';
 
 // Types
 export type AssetType =
@@ -90,10 +91,74 @@ export type ImportAssetErrorInfo =
 export const GENERIC_IMPORT_FAILURE_MESSAGE =
   'Check that it is a supported file type, and try again.';
 
+// Names the first place the character was found, because that is where the
+// researcher has to go and delete it.
+const rosterCharacterText = ({
+  problem,
+  total,
+}: RosterCharacterError): LocalizedText => {
+  const others = total - 1;
+  switch (problem.kind) {
+    case 'columnName':
+      return {
+        message: errorMessages.charactersInColumnName,
+        values: {
+          column: problem.column,
+          character: problem.character,
+          others,
+        },
+      };
+    case 'cell':
+      return {
+        message: errorMessages.charactersInCell,
+        values: {
+          row: problem.row,
+          column: problem.column,
+          character: problem.character,
+          others,
+        },
+      };
+    case 'attributeName':
+      return {
+        message: errorMessages.charactersInAttributeName,
+        values: { node: problem.node, character: problem.character, others },
+      };
+    case 'attributeValue':
+      return {
+        message: errorMessages.charactersInAttributeValue,
+        values: {
+          node: problem.node,
+          attribute: problem.attribute,
+          character: problem.character,
+          others,
+        },
+      };
+    case 'line':
+      return {
+        message: errorMessages.charactersInLine,
+        values: { line: problem.line, character: problem.character, others },
+      };
+  }
+};
+
 const getImportAssetErrorInfo = (
   error: unknown,
   filename: string,
 ): ImportAssetErrorInfo => {
+  if (error instanceof RosterCharacterError) {
+    const localizedMessage = rosterCharacterText(error);
+    return {
+      filename,
+      code: error.code,
+      message: getArchitectIntl().formatMessage(
+        localizedMessage.message,
+        localizedMessage.values,
+      ),
+      localizedMessage,
+      detail: error.message,
+    };
+  }
+
   const codedError: (Error & { code?: unknown }) | null =
     error instanceof Error ? error : null;
   const rawCode = codedError?.code;
@@ -103,13 +168,15 @@ const getImportAssetErrorInfo = (
       ? errorMessages.empty
       : code === 'VARIABLE_NAME'
         ? errorMessages.names
-        : code === 'COLUMN_MISMATCHED'
-          ? errorMessages.columns
-          : code === 'UNSUPPORTED_TYPE'
-            ? errorMessages.unsupported
-            : code === 'REPLACEMENT_TYPE_MISMATCH'
-              ? errorMessages.replacementType
-              : errorMessages.generic;
+        : code === 'DUPLICATE_COLUMN'
+          ? errorMessages.duplicateColumns
+          : code === 'COLUMN_MISMATCHED'
+            ? errorMessages.columns
+            : code === 'UNSUPPORTED_TYPE'
+              ? errorMessages.unsupported
+              : code === 'REPLACEMENT_TYPE_MISMATCH'
+                ? errorMessages.replacementType
+                : errorMessages.generic;
   return {
     filename,
     code,
@@ -425,8 +492,16 @@ const errorMessages = defineMessages({
   names: {
     id: 'architect.resourceImport.names',
     defaultMessage:
-      'Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.',
-    description: 'Researcher-facing Architect control or feedback.',
+      'Some column headers in this file can’t be used as attribute names. A header can’t be empty, can’t start or end with a space, and can’t contain tabs, line breaks or other control characters. Fix the headers, then import the file again.',
+    description:
+      'Error shown when a network file (CSV or JSON) is added as a resource and one of its attribute names, taken from the column headers, is not allowed. Any script, spaces and punctuation are allowed inside a name.',
+  },
+  duplicateColumns: {
+    id: 'architect.resourceImport.duplicateColumns',
+    defaultMessage:
+      'Two column headers in this file are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other. Rename or remove one of them, then import the file again.',
+    description:
+      'Error shown when a network file (CSV or JSON) is added as a resource and two of its column headers look identical but are stored differently: the same accented letter is typed as a single character in one header and as a plain letter followed by a separate accent mark in the other. Network Canvas would treat them as one attribute and lose one column’s values. Headers that differ only in capital letters are not affected.',
   },
   columns: {
     id: 'architect.resourceImport.columns',
@@ -443,6 +518,41 @@ const errorMessages = defineMessages({
     id: 'architect.resourceImport.generic',
     defaultMessage: 'Check that it is a supported file type, and try again.',
     description: 'Researcher-facing Architect control or feedback.',
+  },
+  charactersInColumnName: {
+    id: 'architect.resourceImport.charactersInColumnName',
+    defaultMessage:
+      'The header of column {column} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}',
+    description:
+      'Error shown when the header of a column in a CSV network file added as a resource contains a character Network Canvas can’t store. column is the column’s position, counting from 1 at the left. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said.',
+  },
+  charactersInCell: {
+    id: 'architect.resourceImport.charactersInCell',
+    defaultMessage:
+      'Row {row} of the “{column}” column contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}',
+    description:
+      'Error shown when a cell of a CSV network file added as a resource contains a character Network Canvas can’t store. row is the row number a spreadsheet shows, where the header is row 1; column is the researcher’s own column header. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said.',
+  },
+  charactersInAttributeName: {
+    id: 'architect.resourceImport.charactersInAttributeName',
+    defaultMessage:
+      'An attribute name in node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}',
+    description:
+      'Error shown when an attribute name in a JSON network file added as a resource contains a character Network Canvas can’t store. node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said.',
+  },
+  charactersInAttributeValue: {
+    id: 'architect.resourceImport.charactersInAttributeValue',
+    defaultMessage:
+      'The “{attribute}” attribute of node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}',
+    description:
+      'Error shown when an attribute value in a JSON network file added as a resource contains a character Network Canvas can’t store. attribute is the attribute’s name as the file writes it; node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said.',
+  },
+  charactersInLine: {
+    id: 'architect.resourceImport.charactersInLine',
+    defaultMessage:
+      'Line {line} of this file contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}',
+    description:
+      'Error shown when a network file (CSV or JSON) added as a resource contains a character Network Canvas can’t store, somewhere that can only be pointed to by its line. line is the line number a text editor shows, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said.',
   },
   replacementType: {
     id: 'architect.resourceImport.replacementType',

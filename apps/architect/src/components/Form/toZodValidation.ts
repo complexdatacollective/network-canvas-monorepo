@@ -14,30 +14,11 @@ import type {
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import { getValidations } from '~/utils/validations';
 const messages = defineMessages({
-  hint: {
-    id: 'architect.fieldValidation.nameHint',
-    defaultMessage: 'Use only letters, numbers and the symbols ._-:',
-    description:
-      'Hint for researcher-authored technical names that must be valid XML names.',
-  },
   required: {
     id: 'architect.fieldValidation.required',
     defaultMessage: 'This field is required.',
     description:
       'Required field error in the researcher-facing protocol editor.',
-  },
-  name: {
-    id: 'architect.fieldValidation.name',
-    defaultMessage: 'attribute name',
-    description:
-      'Default subject name used by the technical-name validation error.',
-  },
-  invalidName: {
-    id: 'architect.fieldValidation.invalidName',
-    defaultMessage:
-      'Not a valid {name}. Only letters, numbers and the symbols ._-: are supported',
-    description:
-      'Error for a technical name containing unsupported characters. Name identifies the field.',
   },
 });
 
@@ -102,12 +83,6 @@ function readRule(option: unknown): Rule {
   return { value: option };
 }
 
-/**
- * The NMTOKEN character class shared by `allowedVariableName`/`allowedNMToken`.
- * Kept as a source string because fresco-ui's `pattern` validator builds its
- * own `RegExp` from one.
- */
-const NMTOKEN_PATTERN = '^[a-zA-Z0-9._\\-:]+$';
 const defaultIntl = createAppIntl({ locale: 'en' });
 
 /**
@@ -177,33 +152,6 @@ const requiredLike =
     };
   };
 
-/**
- * `allowedVariableName`/`allowedNMToken` is a regular-expression constraint
- * with a caller-named subject — fresco-ui's `pattern` carries both the
- * expression and the exact error message.
- */
-const allowedVariableName: NativeMapper = (
-  { value },
-  claimed,
-  _config,
-  intl,
-) => {
-  if ('pattern' in claimed) return null;
-  // Architect's factory defaults the subject name and ignores its second
-  // (message) argument entirely, so a non-string parameter — such as the
-  // `allowedNMToken: true` call sites — falls back to the default instead of
-  // interpolating `true` into the message.
-  const name =
-    typeof value === 'string' ? value : intl.formatMessage(messages.name);
-  return {
-    pattern: {
-      regex: NMTOKEN_PATTERN,
-      errorMessage: intl.formatMessage(messages.invalidName, { name }),
-      hint: intl.formatMessage(messages.hint),
-    },
-  };
-};
-
 const REQUIRED_RULE_NAMES = ['required', 'requiredAcceptsZero'];
 
 const nativeMappers: Record<string, NativeMapper> = {
@@ -253,9 +201,6 @@ const nativeMappers: Record<string, NativeMapper> = {
     if ('minValue' in claimed) return null;
     return { minValue: 0 };
   },
-
-  allowedVariableName,
-  allowedNMToken: allowedVariableName,
 };
 
 /**

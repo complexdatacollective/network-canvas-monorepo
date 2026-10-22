@@ -7,6 +7,9 @@ import { fixtureStageIds } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 const destinations = () =>
   within(screen.getByRole('combobox', { name: /When this stage is skipped/ }))
     .getAllByRole('option')
@@ -29,8 +32,8 @@ describe('the creation signal a new stage carries', () => {
         type: 'Information',
         position: 0,
         fields: {
-          label: 'New page',
-          title: 'New page',
+          label: en('New page'),
+          title: en('New page'),
           items: [],
           skipLogic: { action: 'SKIP', filter: { rules: [] } },
         },
@@ -40,8 +43,9 @@ describe('the creation signal a new stage carries', () => {
 
     await screen.findByRole('combobox', { name: /When this stage is skipped/ });
     // Every fixture stage is later than one inserted at position 0, and each
-    // is numbered as it will be once this stage exists.
-    expect(destinations()).toHaveLength(fixtureStageIds().length + 2);
+    // is numbered as it will be once this stage exists. The fixture's finish
+    // stage is offered as ending the interview rather than as a stage.
+    expect(destinations()).toHaveLength(fixtureStageIds().length + 1);
     expect(destinations()[1]).toMatch(/^Stage 2 — /);
   });
 
@@ -51,8 +55,8 @@ describe('the creation signal a new stage carries', () => {
         type: 'Information',
         position: fixtureStageIds().length,
         fields: {
-          label: 'New page',
-          title: 'New page',
+          label: en('New page'),
+          title: en('New page'),
           items: [],
           skipLogic: { action: 'SKIP', filter: { rules: [] } },
         },
@@ -72,7 +76,7 @@ describe('the creation signal a new stage carries', () => {
       create: {
         type: 'Information',
         position: 0,
-        fields: { title: 'New page', items: [] },
+        fields: { title: en('New page'), items: [] },
       },
       sections: <></>,
     });

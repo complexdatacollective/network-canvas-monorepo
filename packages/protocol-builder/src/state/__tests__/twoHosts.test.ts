@@ -124,7 +124,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(before.document),
-        label: 'Renamed without the lock',
+        label: { 'en-US': 'Renamed without the lock' },
       }),
       revision: before.revision,
     });
@@ -135,7 +135,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    expect(Redacted.value(after.document).label).toBe(
+    expect(Redacted.value(after.document).label).toEqual(
       Redacted.value(before.document).label,
     );
   });
@@ -202,7 +202,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Written before anyone watched',
+        label: { 'en-US': 'Written before anyone watched' },
       }),
       revision: held.revision,
     });
@@ -231,7 +231,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       revision?.type === 'revision' &&
         revision.document !== undefined &&
         Redacted.value(revision.document).label,
-    ).toBe('Written before anyone watched');
+    ).toEqual({ 'en-US': 'Written before anyone watched' });
   });
 
   it('removes a stage and its place in the stage order in one revision', async () => {
@@ -397,8 +397,8 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       kind: 'stage',
       document: Redacted.make({
         type: 'Information',
-        label: 'Information',
-        title: 'Welcome',
+        label: { 'en-US': 'Information' },
+        title: { 'en-US': 'Welcome' },
         items: [{ id: 'item-1', type: 'asset', content: resourceId }],
       }),
       promote: { editId: EDIT, resourceIds: [resourceId] },

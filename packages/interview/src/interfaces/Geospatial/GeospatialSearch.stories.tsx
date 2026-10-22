@@ -32,6 +32,14 @@ const meta: Meta<typeof GeospatialSearch> = {
   parameters: {
     layout: 'centered',
   },
+  args: {
+    // The stage's own search wording, which a map holds in its protocol.
+    searchLabel: { en: 'Search' },
+    searchNoMatch: { en: 'Nothing matched your search term.' },
+    searchFailed: {
+      en: 'Search could not be completed. Try again in a moment.',
+    },
+  },
   argTypes: {
     accessToken: { table: { disable: true } },
     map: { table: { disable: true } },

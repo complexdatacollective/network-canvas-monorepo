@@ -134,7 +134,7 @@ export function variableReferences(
 
 /**
  * Every reference to one codebook entity type the current schema declares:
- * stage subjects, edge creation settings, filter rules, the pedigree configs,
+ * stage subjects, edge creation settings, filter rules, the pedigree's relationship type,
  * and the attributes the type owns, which stop existing with it.
  */
 export function entityTypeReferences(

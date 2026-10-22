@@ -24,9 +24,9 @@ function makeNode(
 }
 
 const OPTIONS: VariableOption[] = [
-  { value: 'red', label: 'Red' },
-  { value: 'blue', label: 'Blue' },
-  { value: 'green', label: 'Green' },
+  { value: 'red', label: { en: 'Red' } },
+  { value: 'blue', label: { en: 'Blue' } },
+  { value: 'green', label: { en: 'Green' } },
 ];
 
 describe('groupNodesByVariable', () => {
@@ -86,8 +86,8 @@ describe('groupNodesByVariable', () => {
 
   it('handles numeric scalar values', () => {
     const numericOptions: VariableOption[] = [
-      { value: 1, label: 'One' },
-      { value: 2, label: 'Two' },
+      { value: 1, label: { en: 'One' } },
+      { value: 2, label: { en: 'Two' } },
     ];
     const nodes = [
       makeNode('node-1', { color: 1 }),
@@ -154,9 +154,9 @@ describe('groupNodesByVariable', () => {
 
   it('handles array of numeric values (from CheckboxGroup forms)', () => {
     const numericOptions: VariableOption[] = [
-      { value: 1, label: 'One' },
-      { value: 2, label: 'Two' },
-      { value: 3, label: 'Three' },
+      { value: 1, label: { en: 'One' } },
+      { value: 2, label: { en: 'Two' } },
+      { value: 3, label: { en: 'Three' } },
     ];
     const nodes = [
       makeNode('node-a', { color: [1] }),

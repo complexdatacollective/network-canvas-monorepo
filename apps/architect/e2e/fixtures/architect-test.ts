@@ -3,11 +3,14 @@ import { test as base, expect, type Page } from '@playwright/test';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { installMapboxMocks } from './mapbox-mocks.js';
-import { seedProtocol, type SeedOptions } from './seed.js';
+import { seedProtocol, type SeedAsset } from './seed.js';
 
 type ArchitectFixtures = {
   architectPage: Page;
-  seed: (protocol: CurrentProtocol, opts?: SeedOptions) => Promise<string>;
+  seed: (
+    protocol: CurrentProtocol,
+    opts?: { id?: string; name?: string; assets?: SeedAsset[] },
+  ) => Promise<string>;
 };
 
 // `architectPage` is the same `page` fixture under another name: service
@@ -61,9 +64,7 @@ export const test = base.extend<ArchitectFixtures>({
 export { expect };
 
 export async function gotoProtocol(page: Page): Promise<void> {
-  // Relative, so it resolves under the config's baseURL: /protocol at the
-  // root, /v8/protocol in the sub-path suite.
-  await page.goto('protocol');
+  await page.goto('/protocol');
   // Wait out the inline #boot-loader fade (main.tsx adds boot-loader--hidden
   // ~400ms after React mounts) before the spec starts interacting.
   await page

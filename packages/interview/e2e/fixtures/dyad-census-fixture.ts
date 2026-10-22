@@ -25,19 +25,11 @@ export class DyadCensusFixture {
     this.page = page;
   }
 
-  /** The introduction panel's h1 heading. Required on every DyadCensus stage. */
-  get introHeading(): Locator {
-    return this.page.getByRole('heading', { level: 1 });
-  }
-
   /**
-   * Dismiss the introduction panel. Unlike `InterviewFixture.dismissIntro()`
-   * (which waits for a `[data-stage-section="form"]` marker used by
-   * AlterForm/AlterEdgeForm), DyadCensus renders a BooleanField directly, so we
-   * wait for the first radio to become visible instead.
+   * Wait for the first pair's Yes/No choice. DyadCensus opens directly on its
+   * first pair and renders a BooleanField, so wait for the first radio.
    */
-  async dismissIntro(): Promise<void> {
-    await this.page.getByTestId('next-button').click();
+  async waitForFirstPair(): Promise<void> {
     await expect(this.page.getByRole('radio').first()).toBeVisible();
   }
 

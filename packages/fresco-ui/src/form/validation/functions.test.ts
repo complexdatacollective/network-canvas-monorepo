@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
 import { createCatalogSource } from '@codaco/app-i18n/locales';
-import { createAppIntl, createMessageError } from '@codaco/app-i18n/messages';
+import {
+  createAppIntl,
+  createMessageError,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
 import type { StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -146,7 +150,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too long. Enter at most 5 characters.',
+          'Enter at most 5 characters.',
         );
       }
     });
@@ -179,17 +183,16 @@ describe('Validation Functions', () => {
     {
       locale: 'en',
       maxHint: 'Enter at most 1 character.',
-      maxError: 'Too long. Enter at most 1 character.',
+      maxError: 'Enter at most 1 character.',
       minHint: 'Enter at least 1 character.',
-      minError: 'Too short. Enter at least 2 characters.',
+      minError: 'Enter at least 2 characters.',
     },
     {
       locale: 'es',
       maxHint: 'Introduce como máximo 1 carácter.',
-      maxError:
-        'El texto es demasiado largo. Introduce como máximo 1 carácter.',
+      maxError: 'Introduce como máximo 1 carácter.',
       minHint: 'Introduce al menos 1 carácter.',
-      minError: 'El texto es demasiado corto. Introduce al menos 2 caracteres.',
+      minError: 'Introduce al menos 2 caracteres.',
     },
   ])(
     'describes inclusive length limits and count grammar in $locale',
@@ -227,7 +230,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too short. Enter at least 5 characters.',
+          'Enter at least 5 characters.',
         );
       }
     });
@@ -317,7 +320,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too small. Value must be at least 10.',
+          'Enter a value greater than or equal to 10.',
         );
       }
     });
@@ -351,7 +354,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too large. Value must be at most 10.',
+          'Enter a value less than or equal to 10.',
         );
       }
     });
@@ -387,7 +390,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too small. Value must be at least 10.',
+          'Enter a value greater than or equal to 10.',
         );
       }
     });
@@ -579,7 +582,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too large. Value must be at most 10.',
+          'Enter a value less than or equal to 10.',
         );
       }
     });
@@ -659,7 +662,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too few selected. Select at least 3 values.',
+          'Select at least 3 values.',
         );
       }
     });
@@ -714,7 +717,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too many items selected. Select a maximum of 2 values.',
+          'Select a maximum of 2 values.',
         );
       }
     });
@@ -740,7 +743,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too many items selected. Select a maximum of 1 value.',
+          'Select a maximum of 1 value.',
         );
       }
     });
@@ -785,9 +788,7 @@ describe('Validation Functions', () => {
       const result = validator.safeParse('John');
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toBe(
-          'This value is used elsewhere. It must be unique.',
-        );
+        expect(result.error.issues[0]?.message).toBe('Must be unique.');
       }
     });
 
@@ -1579,7 +1580,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too large. Value must be at most 0.',
+          'Enter a value less than or equal to 0.',
         );
       }
     });
@@ -1657,7 +1658,10 @@ describe('Validation Functions', () => {
           codebook: {
             ego: {
               variables: {
-                testAttribute: { name: 'Test Attribute', type: 'text' },
+                testAttribute: {
+                  name: 'Test Attribute',
+                  type: 'text',
+                },
               },
             },
           },
@@ -2081,7 +2085,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues.map((issue) => issue.message)).toEqual([
-          'This value is used elsewhere. It must be unique.',
+          'Must be unique.',
         ]);
       }
     });
@@ -2100,14 +2104,14 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues.map((issue) => issue.message)).toEqual([
-          'An error occurred while validating.',
+          'Something went wrong.',
         ]);
       }
     });
 
-    it('shows the reason a rejection gives as a message error', async () => {
+    it('fails with the reason it rejects with, when that is a message error', async () => {
       const reason = createMessageError({
-        id: 'test.resolveNetwork.reason',
+        id: 'test.validation.networkLocked',
         defaultMessage: 'Enter your passphrase, then try again.',
       });
       const validate = makeValidationFunction({
@@ -2123,8 +2127,14 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues.map((issue) => issue.message)).toEqual([
-          'Enter your passphrase, then try again.',
+          reason,
         ]);
+        expect(
+          formatMessageError(
+            result.error.issues[0]?.message ?? '',
+            createAppIntl({ locale: 'en' }),
+          ),
+        ).toBe('Enter your passphrase, then try again.');
       }
     });
   });

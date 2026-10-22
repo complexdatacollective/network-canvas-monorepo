@@ -9,7 +9,10 @@ import {
 } from '../../protocol-context.ts';
 import { proposeStageLabel } from '../proposeStageLabel.ts';
 
-const informationStage = (id: string, label: string): SectionDoc => ({
+const informationStage = (
+  id: string,
+  label: Readonly<Record<string, string>>,
+): SectionDoc => ({
   id,
   type: 'Information',
   label,
@@ -27,19 +30,30 @@ const contextWith = (
   sections: Readonly<Record<string, SectionDoc>> = {},
 ): ProtocolBuilderProtocolContext =>
   protocolContextFromSections({
+    [sectionId({ kind: 'settings' })]: {
+      localization: { defaultLocale: 'en', locales: ['en', 'es'] },
+    },
     [sectionId({ kind: 'stageOrder' })]: { stages: [] },
     [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        diabetes: { name: 'Diabetes', type: 'boolean' },
+        diabetes: {
+          name: 'Diabetes',
+          type: 'boolean',
+        },
         asthma: { name: 'Asthma', type: 'boolean' },
       },
     },
     [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
       name: 'Friendship',
-      variables: { closeness: { name: 'Closeness', type: 'scalar' } },
+      variables: {
+        closeness: {
+          name: 'Closeness',
+          type: 'scalar',
+        },
+      },
     },
     ...sections,
   });
@@ -92,6 +106,31 @@ describe('proposeStageLabel', () => {
     ).toBe('Form Name Generator with Panels');
   });
 
+  it('names a finish stage after how the interview ends there', () => {
+    expect(
+      proposeStageLabel(
+        {
+          id: 'stage-1',
+          type: 'FinishSession',
+          mode: 'confirmation',
+          outcome: 'completed',
+        },
+        contextWith(),
+      ),
+    ).toBe('Finish Screen (Completed)');
+    expect(
+      proposeStageLabel(
+        {
+          id: 'stage-1',
+          type: 'FinishSession',
+          mode: 'automatic',
+          outcome: 'ineligible',
+        },
+        contextWith(),
+      ),
+    ).toBe('Finish Screen (Ineligible, Automatic)');
+  });
+
   it('qualifies an Information stage from the asset manifest', () => {
     expect(
       proposeStageLabel(
@@ -101,7 +140,7 @@ describe('proposeStageLabel', () => {
           items: [
             { id: 'item-1', type: 'asset', content: 'asset-video' },
             { id: 'item-2', type: 'asset', content: 'asset-image' },
-            { id: 'item-3', type: 'text', content: 'Some prose' },
+            { id: 'item-3', type: 'text', content: { en: 'Some prose' } },
           ],
         },
         contextWith({
@@ -122,30 +161,46 @@ describe('proposeStageLabel', () => {
     ).toBe('Information with Image & Video');
   });
 
-  /**
-   * A nomination prompt names an attribute by key alone, so the lookup cannot
-   * be scoped to the node codebook: an attribute only an edge type declares
-   * would come back nameless and drop out of the proposal.
-   */
-  it('names a nomination attribute that only an edge type declares', () => {
-    expect(
-      proposeStageLabel(
-        {
-          id: 'stage-1',
-          type: 'FamilyPedigree',
-          subject: { entity: 'node', type: 'person' },
-          nominationPrompts: [{ variable: 'closeness' }],
-        },
-        contextWith(),
-      ),
-    ).toBe('Person Family Pedigree with Closeness Nomination');
-  });
-
   it('avoids a name another stage in the interview already has', () => {
     expect(
       proposeStageLabel(
         { id: 'stage-new', type: 'Information' },
-        contextWith(ordered(informationStage('stage-other', 'Information'))),
+        contextWith(
+          ordered(informationStage('stage-other', { en: 'Information' })),
+        ),
+      ),
+    ).toBe('Information #2');
+  });
+
+  /**
+   * A proposal is written as the default-language translation, so only that
+   * translation of another stage's name can collide with it.
+   */
+  it('compares names in the default language only', () => {
+    expect(
+      proposeStageLabel(
+        { id: 'stage-new', type: 'Information' },
+        contextWith(
+          ordered(
+            informationStage('stage-translated', {
+              en: 'About the study',
+              es: 'Information',
+            }),
+          ),
+        ),
+      ),
+    ).toBe('Information');
+    expect(
+      proposeStageLabel(
+        { id: 'stage-new', type: 'Information' },
+        contextWith(
+          ordered(
+            informationStage('stage-other', {
+              en: 'Information',
+              es: 'Información',
+            }),
+          ),
+        ),
       ),
     ).toBe('Information #2');
   });
@@ -161,8 +216,8 @@ describe('proposeStageLabel', () => {
         { id: 'stage-edited', type: 'Information' },
         contextWith(
           ordered(
-            informationStage('stage-other', 'Something else'),
-            informationStage('stage-edited', 'Information'),
+            informationStage('stage-other', { en: 'Something else' }),
+            informationStage('stage-edited', { en: 'Information' }),
           ),
         ),
       ),

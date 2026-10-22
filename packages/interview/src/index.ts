@@ -8,13 +8,16 @@ export { default as useOnline } from './hooks/useOnline';
 // Public types
 export type {
   AssetRequestHandler,
+  CompletedAction,
   FinishHandler,
   InterviewAnalyticsMetadata,
   InterviewerFlags,
   InterviewPayload,
   ProtocolPayload,
   ResolvedAsset,
+  SessionFinish,
   SessionPayload,
+  SessionSnapshot,
   StepChangeHandler,
   StepChangeMeta,
   SyncHandler,
@@ -27,6 +30,7 @@ export {
   default as ProtocolField,
   type ProtocolFieldDefinition,
 } from './forms/ProtocolField';
+export { ProtocolLocalizationProvider } from './localization/ProtocolLocalizationProvider';
 
 export { createDebouncedSyncHandler } from './contract/debouncedSync';
 export { createInitialNetwork } from './contract/network';

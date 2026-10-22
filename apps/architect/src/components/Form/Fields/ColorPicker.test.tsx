@@ -81,7 +81,7 @@ describe('ColorPicker', () => {
 
     expect(screen.getAllByRole('radio')).toHaveLength(3);
     // Named for the hue the theme resolves that position to, never the
-    // internal token: `--node-3` is `oklch(var(--purple-pizazz))`.
+    // internal token: `--node-3` is derived from `--purple-pizazz`.
     expect(
       screen.getByRole('radio', { name: 'Purple Pizazz' }),
     ).toBeInTheDocument();

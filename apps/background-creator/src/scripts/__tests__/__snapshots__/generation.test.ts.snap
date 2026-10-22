@@ -398,6 +398,17 @@ if (length(positional) > 2) {
 
 input_path <- positional[1]
 output_path <- positional[2]
+# R treats script literals and command-line arguments as text in the locale's
+# native encoding, which is not always UTF-8. Declaring a valid UTF-8 name as
+# UTF-8 lets it match the column names read below in any locale.
+as_utf8 <- function(text) {
+  if (validUTF8(text)) {
+    Encoding(text) <- "UTF-8"
+  }
+  text
+}
+layout_variable <- as_utf8(layout_variable)
+output_variable <- as_utf8(output_variable)
 x_column <- paste0(layout_variable, "_x")
 y_column <- paste0(layout_variable, "_y")
 
@@ -406,10 +417,10 @@ y_column <- paste0(layout_variable, "_y")
 # not reformatted, doubles keep full precision, and the literal string "NA" is
 # preserved (na.strings = character(0) disables NA parsing on input). Only the
 # two coordinate columns are converted, by parse_coordinate's as.numeric.
-# fileEncoding = "UTF-8-BOM" strips a leading byte-order mark (as Python's
-# utf-8-sig does): a Network Canvas export re-saved by Excel can carry one, and
-# R otherwise keeps it on names(data)[1], so the first coordinate column reads
-# as missing.
+# encoding = "UTF-8" declares the file's text as UTF-8 without converting it, so
+# every locale reads it intact. fileEncoding would re-encode it to the locale's
+# encoding, which fails or truncates the data at the first character that
+# encoding lacks.
 # fill = FALSE (read.csv defaults it TRUE) makes a row with fewer fields than
 # the header a hard error rather than NA-padding the missing cells: a truncated
 # export would otherwise be written back with a blank coordinate/zone, silently
@@ -419,9 +430,15 @@ data <- read.csv(
   colClasses = "character",
   na.strings = character(0),
   check.names = FALSE,
-  fileEncoding = "UTF-8-BOM",
+  encoding = "UTF-8",
   fill = FALSE
 )
+# A file re-saved by Excel can start with a UTF-8 byte-order mark. R discards it
+# only in a UTF-8 locale; elsewhere it stays on the first column name.
+byte_order_mark <- intToUtf8(0xFEFF)
+if (startsWith(names(data)[1], byte_order_mark)) {
+  names(data)[1] <- substring(names(data)[1], 2)
+}
 # read.csv raises an error for most ragged files, but when every data row has
 # EXACTLY one extra field it silently takes the first column as row names
 # instead — shifting every value one column left. Explicit (non-automatic) row
@@ -471,6 +488,15 @@ labels <- vapply(
   character(1)
 )
 data[[output_variable]] <- labels
+# write.csv converts text to the locale's encoding and writes <U+00E9> for any
+# character that encoding lacks. The text is already UTF-8, so declare it native
+# and R writes its bytes unchanged.
+as_native <- function(text) {
+  Encoding(text) <- "unknown"
+  text
+}
+data[] <- lapply(data, as_native)
+names(data) <- as_native(names(data))
 write.csv(data, output_path, row.names = FALSE, na = "")
 "
 `;

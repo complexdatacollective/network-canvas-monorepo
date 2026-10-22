@@ -1,9 +1,9 @@
-// The bundled copy of a media file a template or the Sample protocol
-// references, by its `source` filename. The dev-only Development protocol's
-// media is deliberately absent: an eager `?url` glob emits every file it
-// matches, so listing it here would ship that media (a 24 MB video among it)
-// in every production build. development-protocol.ts, which only a dev build
-// loads, resolves it instead.
+// Previews in AssetCard fall back to the bundled copy of an asset when the
+// library has no Blob for it. Only the Sample protocol's and the templates'
+// media are globbed here: an eager `?url` glob emits every matched file into
+// the build, so listing the Development protocol's assets here would ship them
+// (a ~24 MB video among them) in production even though that protocol is only
+// offered in development.
 const bundledAssetModules = import.meta.glob<string>(
   [
     '../../../../packages/protocols/sample/assets/*',
@@ -26,7 +26,19 @@ for (const [path, url] of Object.entries(bundledAssetModules)) {
   }
 }
 
-export const getBundledAssetUrl = (source?: string | null): string | null => {
+export const getBundledAssetUrl = async (
+  source?: string | null,
+): Promise<string | null> => {
   if (!source) return null;
-  return bundledAssetUrlsBySource.get(source) ?? null;
+  const url = bundledAssetUrlsBySource.get(source);
+  if (url) return url;
+  // The Development protocol's assets are resolved through its own module,
+  // which is only reachable in development: production replaces
+  // `import.meta.env.DEV` with `false`, so this import and the module's asset
+  // glob are dropped from the build.
+  if (import.meta.env.DEV) {
+    const { getDevelopmentAssetUrl } = await import('./development-protocol');
+    return getDevelopmentAssetUrl(source);
+  }
+  return null;
 };

@@ -192,6 +192,59 @@ export const MarkdownLabels: Story = {
   render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
 };
 
+/**
+ * Protocol copy arrives as `PresentationalText`: every rendering of an option
+ * label — the scale labels, the drag popover and the live announcement —
+ * carries the text's own `lang` and `dir`, so Arabic labels lay out
+ * right-to-left inside a left-to-right page. `aria-valuetext` gets the bare
+ * text.
+ */
+export const LocalizedLabels: Story = {
+  args: {
+    options: [
+      { label: { text: '**لا أوافق بشدة**', lang: 'ar', dir: 'rtl' }, value: 1 },
+      { label: { text: 'لا أوافق', lang: 'ar', dir: 'rtl' }, value: 2 },
+      { label: { text: 'محايد', lang: 'ar', dir: 'rtl' }, value: 3 },
+      { label: { text: 'أوافق', lang: 'ar', dir: 'rtl' }, value: 4 },
+      { label: { text: '**أوافق بشدة**', lang: 'ar', dir: 'rtl' }, value: 5 },
+    ],
+    value: 3,
+  },
+  render: (args) => <ControlledLikert {...args} initialValue={args.value} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = canvas.getByRole('slider');
+
+    await expect(slider).toHaveAttribute('aria-valuetext', 'محايد');
+    for (const rendering of canvas.getAllByText('محايد')) {
+      await expect(rendering.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    }
+    const strongest = canvas.getAllByText('أوافق بشدة')[0];
+    await expect(strongest?.tagName).toBe('STRONG');
+    await expect(strongest?.closest('[lang]')).toHaveAttribute('dir', 'rtl');
+
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 1,
+      });
+      const popover = await screen.findByTestId('scale-value-popover');
+      await expect(popover.querySelector('[lang]')).toHaveAttribute(
+        'dir',
+        'rtl',
+      );
+
+      await fireEvent.pointerUp(slider, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+      });
+    });
+  },
+};
+
 const labelSets: Record<string, { label: string; value: string | number }[]> = {
   'Agreement (5)': agreementOptions,
   'Long labels (5)': longLabelOptions,

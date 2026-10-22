@@ -31,3 +31,44 @@
   Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Interviewer 8, served at /v8/ from this deploy (dist/v8; see
+# scripts/buildtime/legacy-app.ts), with its own service worker. Its
+# tarball's own _headers is dropped because Netlify reads only this one, so its
+# contract is repeated here: stable entry points and icons never stored, hashed
+# assets immutable (every stable path above, rebased under /v8/).
+#
+# This app hosts Interviewer 8's interview in a same-origin iframe
+# (src/components/Interviewer8Frame.tsx), so every /v8/ response may be framed
+# by this origin, and only by it. Interviewer 8's own CSP is a <meta> tag,
+# where frame-ancestors is ignored, so it is said here, as a header. No other
+# rule may send a Content-Security-Policy or X-Frame-Options for these paths:
+# Netlify can send both rules' values, and a browser enforces every policy it
+# is sent (scripts/buildtime/legacy-app-assertions.ts checks).
+/v8/*
+  Content-Security-Policy: frame-ancestors 'self'
+  X-Frame-Options: SAMEORIGIN
+/v8/
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/index.html
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/sw.js
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/manifest.webmanifest
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/favicon.ico
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/apple-touch-icon-180x180.png
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/pwa-64x64.png
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/pwa-192x192.png
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/pwa-512x512.png
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/maskable-icon-512x512.png
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/interviewer-icon.png
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/assets/*
+  Cache-Control: public, max-age=31536000, immutable

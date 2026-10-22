@@ -1,0 +1,147 @@
+'use client';
+
+import { Pencil } from 'lucide-react';
+import { useState } from 'react';
+
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+
+import { DynamicMarkdown } from '../dynamicValues/DynamicText';
+import { runtimeMessages } from '../i18n/runtimeMessages';
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
+import ProtocolField, {
+  type ProtocolFieldDefinition,
+  shownLabel,
+} from './ProtocolField';
+
+type ProtocolFormFieldProps = {
+  field: ProtocolFieldDefinition;
+  /** Whether this question's stored answer can never be shown. */
+  unavailable: boolean;
+  initialValue?: FieldValue;
+  autoFocus?: boolean;
+  validationContext?: ValidationContext;
+};
+
+/**
+ * A new answer left empty keeps the stored one, which already answered the
+ * question, so the replacement is not itself required.
+ */
+function asReplacement(
+  field: ProtocolFieldDefinition,
+): ProtocolFieldDefinition {
+  if (!field.validation) return field;
+  return {
+    ...field,
+    validation: Object.fromEntries(
+      Object.entries(field.validation).filter(([rule]) => rule !== 'required'),
+    ),
+  };
+}
+
+/**
+ * A question whose stored answer can never be shown, kept as it is stored,
+ * with a new answer offered in its place.
+ */
+function UnavailableAnswer({
+  field,
+  onReplace,
+}: {
+  field: ProtocolFieldDefinition;
+  onReplace: () => void;
+}) {
+  const intl = useAppIntl();
+  const resolve = useResolveLocalizedString();
+
+  return (
+    <UnconnectedField
+      name={field.variable}
+      label={shownLabel(resolve(field.label))}
+      hint={<AppMessage message={runtimeMessages.answerUnavailableKept} />}
+      component={InputField}
+      value={intl.formatMessage(runtimeMessages.answerUnavailable)}
+      readOnly
+      suffixComponent={
+        <IconButton
+          type="button"
+          size="sm"
+          variant="text"
+          icon={<Pencil aria-hidden />}
+          aria-label={intl.formatMessage(
+            runtimeMessages.replaceUnavailableAnswer,
+          )}
+          onClick={onReplace}
+        />
+      }
+    />
+  );
+}
+
+/**
+ * One question of a protocol form. While its stored answer can never be shown,
+ * the question is shown read-only as "Answer unavailable" and that answer is
+ * kept as it is stored; the participant may choose to enter a new one, which
+ * replaces it once given.
+ *
+ * Replacing renders the same field the question renders once its new answer
+ * is readable, so a form that saves as the participant types keeps the field,
+ * and their focus in it, when the saved answer arrives.
+ */
+export default function ProtocolFormField({
+  field,
+  unavailable,
+  initialValue,
+  autoFocus,
+  validationContext,
+}: ProtocolFormFieldProps) {
+  const [replacing, setReplacing] = useState(false);
+  const resolve = useResolveLocalizedString();
+  const authoredHint =
+    field.hint === undefined ? undefined : resolve(field.hint);
+
+  if (unavailable && !replacing) {
+    return (
+      <UnavailableAnswer field={field} onReplace={() => setReplacing(true)} />
+    );
+  }
+
+  if (unavailable) {
+    return (
+      <ProtocolField
+        field={asReplacement(field)}
+        hint={
+          <>
+            {authoredHint?.parts !== undefined ? (
+              <DynamicMarkdown render={<span />} parts={authoredHint.parts} />
+            ) : (
+              authoredHint !== undefined && (
+                <RenderMarkdown render={<span />}>
+                  {authoredHint.text}
+                </RenderMarkdown>
+              )
+            )}
+            <p>
+              <AppMessage message={runtimeMessages.answerUnavailableKept} />
+            </p>
+          </>
+        }
+        autoFocus
+        validationContext={validationContext}
+      />
+    );
+  }
+
+  return (
+    <ProtocolField
+      field={field}
+      initialValue={initialValue}
+      autoFocus={autoFocus}
+      validationContext={validationContext}
+    />
+  );
+}

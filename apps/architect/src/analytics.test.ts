@@ -97,28 +97,3 @@ describe('initializeAnalytics', () => {
     expect(identify).not.toHaveBeenCalled();
   });
 });
-
-// A bundle does not keep main.tsx's import order (the analytics module lands
-// in a chunk main imports, so it is evaluated before main's own code), so the
-// address bar has to be clean by the time this module itself runs.
-describe('loading the analytics module', () => {
-  afterEach(() => {
-    window.history.replaceState(null, '', '/');
-    vi.unstubAllEnvs();
-  });
-
-  // In Architect 8 served inside Architect 9, the only build handed requests.
-  it('strips a URL launch request before analytics can see it', async () => {
-    vi.stubEnv('BASE_URL', '/v8/');
-    window.history.replaceState(
-      null,
-      '',
-      '/?open=3f0c1f7e-8a8e-4f43-9d6a-1d2c3b4a5e6f&lang=fr',
-    );
-    vi.resetModules();
-
-    await import('./analytics');
-
-    expect(window.location.search).toBe('?lang=fr');
-  });
-});

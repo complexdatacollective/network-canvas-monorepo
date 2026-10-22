@@ -12,20 +12,20 @@ type SpinnerColor = { light: string; dark: string };
 
 const spinnerColors: readonly SpinnerColor[] = [
   {
-    light: 'oklch(73.83% 0.13 217.55)', // sea-serpent
-    dark: 'oklch(68.83% 0.13 217.55)', // sea-serpent-dark
+    light: 'var(--color-sea-serpent)',
+    dark: 'var(--color-sea-serpent-dark)',
   },
   {
-    light: 'oklch(81% 0.17 86.39)', // mustard
-    dark: 'oklch(76% 0.17 86.39)', // mustard-dark
+    light: 'var(--color-mustard)',
+    dark: 'var(--color-mustard-dark)',
   },
   {
-    light: 'oklch(57.33% 0.2584 11.57)', // neon-coral
-    dark: 'oklch(52.33% 0.2584 11.57)', // neon-coral-dark
+    light: 'var(--color-neon-coral)',
+    dark: 'var(--color-neon-coral-dark)',
   },
   {
-    light: 'oklch(70% 0.2 171.52)', // sea-green
-    dark: 'oklch(65% 0.2 171.52)', // sea-green-dark
+    light: 'var(--color-sea-green)',
+    dark: 'var(--color-sea-green-dark)',
   },
 ];
 
@@ -148,14 +148,36 @@ export default function Spinner({
   // Track if animation is currently running (for hover mode)
   const isAnimatingRef = useRef(false);
 
+  const darkHalfRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const lightHalfRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const resolvedColorsRef = useRef<SpinnerColor[] | null>(null);
+
+  const resolveColors = () => {
+    resolvedColorsRef.current ??= circlePositions.map((_, i) => {
+      const colors = spinnerColors[i] ?? fallbackColor;
+      const darkHalf = darkHalfRefs.current[i];
+      const lightHalf = lightHalfRefs.current[i];
+      return {
+        dark: darkHalf
+          ? getComputedStyle(darkHalf).backgroundColor
+          : colors.dark,
+        light: lightHalf
+          ? getComputedStyle(lightHalf).backgroundColor
+          : colors.light,
+      };
+    });
+    return resolvedColorsRef.current;
+  };
+
   // Run one animation cycle
   const runCycle = async () => {
     isAnimatingRef.current = true;
     const containerPromise = containerControls.start(containerAnimation);
 
     // Animate half-circles: merge then split
+    const resolvedColors = resolveColors();
     halfCircleControls.forEach((ctrl, i) => {
-      const colors = spinnerColors[i] ?? fallbackColor;
+      const colors = resolvedColors[i] ?? fallbackColor;
       void ctrl.start({
         x: ['50%', '0%', '50%'],
         backgroundColor: [colors.dark, colors.light, colors.dark],
@@ -242,11 +264,17 @@ export default function Spinner({
             }}
           >
             <motion.div
+              ref={(element) => {
+                darkHalfRefs.current[index] = element;
+              }}
               className={cx(halfCircleBase)}
               initial={{ x: '50%', backgroundColor: colors.dark }}
               animate={halfCircleControls[index]}
             />
             <div
+              ref={(element) => {
+                lightHalfRefs.current[index] = element;
+              }}
               className={cx(
                 halfCircleBase,
                 'rotate-180',

@@ -8,6 +8,7 @@ import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import Section from '@codaco/fresco-ui/Section';
 
 import { EntitySubjectPickerField } from '../../../fields/EntityTypePickerField.tsx';
+import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import {
   RowDialog,
   RowList,
@@ -22,6 +23,11 @@ import {
   type RowValues,
 } from '../../../form/rowDialog.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import {
+  asLocalizedString,
+  localizedFromText,
+} from '../../../localization/localizedText.ts';
+import { useProtocolLocalization } from '../../../localization/ProtocolLocalization.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { canvasMessages } from '../../../sections/canvas/canvasMessages.ts';
 import { asNestedText } from '../../../sections/canvas/rowValues.ts';
@@ -33,6 +39,7 @@ import { useSetStageValue } from './useSetStageValue.ts';
 
 const EDGES_FIELD = 'edges';
 const SUBJECT_FIELD = 'subject';
+const LABEL_FIELD = 'label';
 
 /** The connection type one entry stands for, however tolerantly it arrived. */
 const typeOf = (entry: RowValues): string | undefined =>
@@ -90,6 +97,8 @@ export default function ComposerConnectionsSection() {
   const intl = useAppIntl();
   const held = useStageValue(EDGES_FIELD);
   const entries = useMemo(() => rowsOf(held), [held]);
+  const protocolContext = useProtocolContext();
+  const localization = useProtocolLocalization();
   /**
    * How many questions the last re-point took away, for the notice below, and
    * WHICH re-point took them.
@@ -133,9 +142,34 @@ export default function ComposerConnectionsSection() {
   const rowList = useMemo<RowListConfig>(
     () => ({
       ...CONNECTION_ROWS,
-      beforeSave: (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
-        const type = typeOf(row);
-        if (type === undefined) return { row };
+      beforeSave: (
+        submitted: RowValues,
+        context: RowSaveContext,
+      ): RowSaveOutcome => {
+        const type = typeOf(submitted);
+        if (type === undefined) return { row: submitted };
+        // A label left empty is written from the type's name: participants
+        // pick the connection by these words, and the researcher may never
+        // word them separately. So is one the researcher left as it was while
+        // pointing the entry at another type, because those words named the
+        // old type.
+        const typeName = protocolContext.codebook.edge?.[type]?.name;
+        const repointedLabel =
+          typeOf(context.openedOn) !== type &&
+          JSON.stringify(submitted[LABEL_FIELD]) ===
+            JSON.stringify(context.openedOn[LABEL_FIELD]);
+        const keepsLabel =
+          !repointedLabel &&
+          asLocalizedString(submitted[LABEL_FIELD]) !== undefined;
+        const { [LABEL_FIELD]: _label, ...unlabelled } = submitted;
+        const row = keepsLabel
+          ? submitted
+          : localization === undefined || typeName === undefined
+            ? unlabelled
+            : {
+                ...unlabelled,
+                [LABEL_FIELD]: localizedFromText(localization, typeName),
+              };
         const taken = entries.some(
           (sibling, index) =>
             index !== context.editIndex && typeOf(sibling) === type,
@@ -161,7 +195,7 @@ export default function ComposerConnectionsSection() {
         return { row: repointed };
       },
     }),
-    [entries, intl],
+    [entries, intl, localization, protocolContext],
   );
 
   return (
@@ -220,9 +254,10 @@ export default function ComposerConnectionsSection() {
 }
 
 /**
- * One kind of connection the participant may draw.
+ * One kind of connection the participant may draw, and the words participants
+ * choose it by.
  *
- * The type alone: what the connection RECORDS is asked below the list, because
+ * What the connection RECORDS is asked below the list, because
  * each form is a list of its own and a list inside a row dialog would be a
  * dialog inside a dialog.
  *
@@ -237,14 +272,22 @@ function ComposerConnectionFields() {
   const intl = useAppIntl();
 
   return (
-    <Field<typeof EntitySubjectPickerField>
-      name={SUBJECT_FIELD}
-      component={EntitySubjectPickerField}
-      entityType="edge"
-      label={intl.formatMessage(messages.connectionTypeLabel)}
-      hint={intl.formatMessage(messages.connectionTypeHint)}
-      required={intl.formatMessage(messages.connectionTypeRequired)}
-    />
+    <>
+      <Field<typeof EntitySubjectPickerField>
+        name={SUBJECT_FIELD}
+        component={EntitySubjectPickerField}
+        entityType="edge"
+        label={intl.formatMessage(messages.connectionTypeLabel)}
+        hint={intl.formatMessage(messages.connectionTypeHint)}
+        required={intl.formatMessage(messages.connectionTypeRequired)}
+      />
+      <Field<typeof LocalizedInputField>
+        name={LABEL_FIELD}
+        component={LocalizedInputField}
+        label={intl.formatMessage(messages.connectionLabelLabel)}
+        hint={intl.formatMessage(messages.connectionLabelHint)}
+      />
+    </>
   );
 }
 

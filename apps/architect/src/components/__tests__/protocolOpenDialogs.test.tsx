@@ -1,64 +1,165 @@
-import { describe, expect, it, vi } from 'vitest';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import type { ProtocolOpenResult } from '~/ducks/modules/userActions/userActions';
+import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 
 import { showProtocolOpenResultDialog } from '../protocolOpenDialogs';
 
-type OpenDialog = DialogContextType['openDialog'];
+vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
 
-/** An `openDialog` whose dialog stays open until `dismiss` is called. */
-const heldDialog = () => {
-  let dismiss: () => void = () => {};
-  const openDialog = vi.fn(
-    () =>
-      new Promise<true>((resolve) => {
-        dismiss = () => resolve(true);
-      }),
-  );
-  return {
-    openDialog: openDialog as unknown as OpenDialog,
-    shown: openDialog,
-    dismiss: () => dismiss(),
-  };
+const bundled = vi.hoisted(() => ({
+  current: null as { version: string; path: '/v8/' } | null,
+}));
+
+vi.mock('~/utils/legacyArchitect', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/legacyArchitect')>()),
+  getBundledLegacyArchitect: () => bundled.current,
+}));
+
+const result: ProtocolOpenResult = {
+  status: 'migration-required',
+  protocolSchemaVersion: 7,
+  targetSchemaVersion: 9,
+  migrationNotes: [],
 };
 
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+const approve = vi.fn(async () => {});
+const keep = vi.fn(async () => {});
 
-describe('showProtocolOpenResultDialog', () => {
-  it.each([
-    {
-      name: 'an error',
-      result: { status: 'error' as const, title: 'Not found', message: 'Gone' },
-    },
-    {
-      name: 'a validation failure',
-      result: { status: 'validation-error' as const, message: 'Invalid' },
-    },
-    {
-      name: 'a protocol newer than this app',
-      result: {
-        status: 'app-upgrade-required' as const,
-        protocolSchemaVersion: 9,
-      },
-    },
-  ])(
-    'resolves only once the dialog for $name is dismissed',
-    async ({ result }) => {
-      const { openDialog, shown, dismiss } = heldDialog();
-      let settled = false;
-      const done = showProtocolOpenResultDialog({ result, openDialog }).then(
-        () => {
-          settled = true;
-        },
-      );
-
-      await flush();
-      expect(shown).toHaveBeenCalledTimes(1);
-      expect(settled).toBe(false);
-
-      dismiss();
-      await done;
-      expect(settled).toBe(true);
-    },
+const openWith = async (offerKeep: boolean) => {
+  function Launcher() {
+    const { openDialog } = useDialog();
+    return (
+      <button
+        onClick={() => {
+          void showProtocolOpenResultDialog({
+            result,
+            openDialog,
+            onApproveMigration: approve,
+            onKeepLegacy: offerKeep ? keep : undefined,
+          });
+        }}
+      >
+        Open protocol
+      </button>
+    );
+  }
+  render(
+    <ArchitectI18nProvider>
+      <DialogProvider>
+        <Launcher />
+      </DialogProvider>
+    </ArchitectI18nProvider>,
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Open protocol' }));
+  return await screen.findByRole('dialog');
+};
+
+beforeEach(() => {
+  localStorage.clear();
+  vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
+  bundled.current = null;
+  approve.mockClear();
+  keep.mockClear();
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+describe('the migration-required dialog', () => {
+  it('offers to keep editing in Architect 8 when it is bundled, leading with the upgrade', async () => {
+    bundled.current = { version: '8.5.0', path: '/v8/' };
+    const dialog = await openWith(true);
+
+    expect(
+      within(dialog).getByRole('heading', {
+        name: 'How do you want to open this protocol?',
+      }),
+    ).toBeVisible();
+    expect(dialog).toHaveTextContent(
+      'You can either open and edit it as normal, or you can upgrade it to the latest version',
+    );
+    expect(dialog).toHaveTextContent(
+      'Please note: upgrading may change the interview experience for participants',
+    );
+    expect(dialog).toHaveTextContent(
+      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
+    );
+    const upgrade = within(dialog).getByRole('button', {
+      name: 'Upgrade to schema 9',
+    });
+    await waitFor(() => expect(upgrade).toHaveFocus());
+
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Keep editing as schema 8' }),
+    );
+
+    await waitFor(() => expect(keep).toHaveBeenCalledOnce());
+    expect(approve).not.toHaveBeenCalled();
+  });
+
+  it('upgrades on the primary action', async () => {
+    bundled.current = { version: '8.5.0', path: '/v8/' };
+    const dialog = await openWith(true);
+
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Upgrade to schema 9' }),
+    );
+
+    await waitFor(() => expect(approve).toHaveBeenCalledOnce());
+    expect(keep).not.toHaveBeenCalled();
+  });
+
+  it('offers only the upgrade when Architect 8 is not bundled', async () => {
+    const dialog = await openWith(true);
+
+    expect(
+      within(dialog).getByRole('heading', { name: 'Upgrade to continue' }),
+    ).toBeVisible();
+    expect(
+      within(dialog).queryByRole('button', {
+        name: 'Keep editing as schema 8',
+      }),
+    ).not.toBeInTheDocument();
+    expect(dialog).not.toHaveTextContent('Architect 8');
+    expect(dialog).toHaveTextContent(
+      'You can upgrade it to the latest version',
+    );
+    expect(dialog).not.toHaveTextContent('open and edit it as normal');
+  });
+
+  it('offers only the upgrade when the caller has nothing to keep', async () => {
+    bundled.current = { version: '8.5.0', path: '/v8/' };
+    const dialog = await openWith(false);
+
+    expect(
+      within(dialog).queryByRole('button', {
+        name: 'Keep editing as schema 8',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does nothing when cancelled', async () => {
+    bundled.current = { version: '8.5.0', path: '/v8/' };
+    const dialog = await openWith(true);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(approve).not.toHaveBeenCalled();
+    expect(keep).not.toHaveBeenCalled();
+  });
 });

@@ -1,4 +1,6 @@
 import type {
+  FinishMode,
+  FinishOutcome,
   Item,
   Panel,
   StageSubject,
@@ -14,7 +16,6 @@ type EntityNameResolver = (
 
 type QualifierResolvers = {
   resolveAssetType: (assetId: string) => string | null;
-  resolveVariableName: (variableId: string) => string | null;
 };
 
 /**
@@ -28,7 +29,8 @@ type QualifierStageFields = {
   type?: StageType;
   panels?: PanelQualifierInput[];
   items?: Item[];
-  nominationPrompts?: { variable: string }[];
+  mode?: FinishMode;
+  outcome?: FinishOutcome;
 };
 
 /**
@@ -135,21 +137,32 @@ function resolveInformationQualifier(
   return buildListQualifier(mediaLabels, { summaryNoun: 'Media' });
 }
 
-function resolveNominationQualifier(
-  prompts: { variable: string }[] | undefined,
-  resolveVariableName: (variableId: string) => string | null,
+const FINISH_OUTCOME_LABELS: Record<FinishOutcome, string> = {
+  completed: 'Completed',
+  ineligible: 'Ineligible',
+  terminated: 'Ended Early',
+};
+
+/**
+ * A finish stage is told apart by how the interview ended there, and then by
+ * whether it ends without asking: a protocol may end in several, and the
+ * outcome is what distinguishes them. Confirmation, the usual mode, goes
+ * unsaid.
+ */
+function resolveFinishQualifier(
+  outcome: FinishOutcome | undefined,
+  mode: FinishMode | undefined,
 ): Qualifier | null {
-  if (!prompts) {
+  const outcomeLabel = outcome ? FINISH_OUTCOME_LABELS[outcome] : undefined;
+  const parts = [
+    outcomeLabel,
+    mode === 'automatic' ? 'Automatic' : undefined,
+  ].filter((part): part is string => Boolean(part));
+  if (parts.length === 0) {
     return null;
   }
-  const names = prompts
-    .map((prompt) => resolveVariableName(prompt.variable))
-    .filter((name): name is string => Boolean(name));
-  return buildListQualifier(names, {
-    singularNoun: 'Nomination',
-    pluralNoun: 'Nominations',
-    summaryNoun: 'Nominations',
-  });
+  const full = `(${parts.join(', ')})`;
+  return { full, summary: outcomeLabel ? `(${outcomeLabel})` : full };
 }
 
 export function resolveStageQualifier(
@@ -165,11 +178,8 @@ export function resolveStageQualifier(
         stage.items,
         resolvers.resolveAssetType,
       );
-    case 'FamilyPedigree':
-      return resolveNominationQualifier(
-        stage.nominationPrompts,
-        resolvers.resolveVariableName,
-      );
+    case 'FinishSession':
+      return resolveFinishQualifier(stage.outcome, stage.mode);
     default:
       return null;
   }

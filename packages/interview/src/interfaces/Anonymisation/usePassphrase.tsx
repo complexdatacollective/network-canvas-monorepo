@@ -3,82 +3,73 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 
-import { getShouldEncryptNames } from '../../store/modules/protocol';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
-  getPassphrase,
-  getPassphraseInvalid,
-  setPassphrase as setPassphraseAction,
-  setPassphraseInvalid as setPassphraseInvalidAction,
   setShowPassphrasePrompter,
   showPassphrasePrompter,
 } from '../../store/modules/ui';
 import type { RootState } from '../../store/store';
-import { passphraseUnlocksNetwork } from './verifyPassphrase';
+import { hasCheckableValue, unlockEncryption } from './unlockEncryption';
+import { useDecryptionScope } from './useDecryptionScope';
 
 export const usePassphrase = () => {
   const dispatch = useDispatch();
+  const store = useStore<RootState>();
 
-  const isEnabled = useSelector(getShouldEncryptNames);
-
-  const passphrase = useSelector(getPassphrase);
-  const passphraseInvalid = useSelector(getPassphraseInvalid);
+  const unlocked = useDecryptionScope() !== undefined;
+  const passphraseChosen = useSelector(hasCheckableValue);
   const showPrompter = useSelector(showPassphrasePrompter);
 
   const requirePassphrase = useCallback(() => {
-    if (passphrase) {
+    if (unlocked) {
       if (showPrompter) {
         dispatch(setShowPassphrasePrompter(false));
       }
-
-      return passphrase;
+      return;
     }
 
     if (!showPrompter) {
       dispatch(setShowPassphrasePrompter(true));
     }
-    return undefined;
-  }, [passphrase, dispatch, showPrompter]);
-
-  const store = useStore<RootState>();
+  }, [unlocked, dispatch, showPrompter]);
 
   /**
-   * Puts `candidate` in force only if it unlocks the data this interview
-   * already holds, so a mistyped passphrase is turned away at entry instead of
-   * being used to encrypt new answers that could then never be read alongside
-   * the old ones. Resolves to whether it was accepted.
+   * Derives the key from `candidate` and puts it in force: the passphrase is
+   * checked against the answers the interview has already encrypted, and
+   * becomes the interview's when there are none. Resolves to how the attempt
+   * ended.
    */
-  const submitPassphrase = useCallback(
+  const unlock = useCallback(
     async (candidate: string) => {
-      const state = store.getState();
-      const accepted = await passphraseUnlocksNetwork(
-        state.session.network.nodes,
-        state.protocol.codebook,
-        candidate,
-        getShouldEncryptNames(state),
-      );
-      if (!accepted) return false;
-
-      dispatch(setShowPassphrasePrompter(false));
-      dispatch(setPassphraseAction(candidate));
-      return true;
+      const outcome = await unlockEncryption(store, candidate);
+      if (outcome !== 'incorrect') {
+        dispatch(setShowPassphrasePrompter(false));
+      }
+      return outcome;
     },
     [store, dispatch],
   );
 
-  const setPassphraseInvalid = useCallback(
-    (state: boolean) => {
-      dispatch(setPassphraseInvalidAction(state));
-    },
-    [dispatch],
+  /** As `unlock`, resolving to whether the passphrase was accepted. */
+  const submitPassphrase = useCallback(
+    async (candidate: string) => (await unlock(candidate)) !== 'incorrect',
+    [unlock],
   );
 
   return {
-    isEnabled,
-    passphrase,
-    passphraseInvalid,
+    /** Whether the interview's encryption key is in force. */
+    unlocked,
+    /**
+     * Whether the interview already holds answers encrypted with its
+     * passphrase, so that one entered now is checked against them rather
+     * than becoming the interview's.
+     */
+    passphraseChosen,
+    /** What to show in place of protected answers while they are locked. */
+    lockedNotice: runtimeMessages.protectedAnswersLocked,
+    unlock,
     submitPassphrase,
     requirePassphrase,
     showPassphrasePrompter: showPrompter,
-    setPassphraseInvalid,
   };
 };

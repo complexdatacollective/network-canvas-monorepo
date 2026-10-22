@@ -22,12 +22,17 @@ import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
+import { localizedText } from '~/utils/localizedText';
 
 import NewStageScreen from '../Screens/NewStageScreen';
 import {
   getStageDeletedAnnouncement,
   getStageMovedAnnouncement,
 } from './announcements';
+import {
+  getFinishStageDeleteBlockedReason,
+  getFinishStageReorderWarning,
+} from './finishStageGuards';
 import InsertButton from './InsertButton';
 import { timelineRowGrid } from './rowLayout';
 import {
@@ -116,6 +121,20 @@ const timelineInsertVariants: Variants = {
   },
 };
 
+/**
+ * The guards hand back their wording as stored message errors, so it can be
+ * checked without a React tree. Decode it here, in the active locale, before it
+ * reaches the dialog: passed through as it is, the dialog shows the encoded
+ * descriptor instead of the sentence.
+ */
+const warningDialogText = (warning: {
+  title: string;
+  description: string;
+}) => ({
+  title: createElement(AppErrorMessage, { error: warning.title }),
+  description: createElement(AppErrorMessage, { error: warning.description }),
+});
+
 const Timeline = () => {
   const intl = useAppIntl();
   const intlRef = useRef(intl);
@@ -138,6 +157,11 @@ const Timeline = () => {
   const animate = !shouldReduceMotion && isFirstMount;
   const { announce } = useAccessibilityAnnouncements();
   const readOnly = useProtocolReadOnly();
+
+  const deleteBlockedReason = (stageId: string) => {
+    const reason = getFinishStageDeleteBlockedReason(stages, stageId);
+    return reason ? intl.formatMessage(reason) : undefined;
+  };
 
   // Local order the Reorder list renders from. motion's onReorder fires per
   // row-crossing during a drag; we track the visual order here and only commit a
@@ -224,6 +248,10 @@ const Timeline = () => {
         (candidate) => candidate.id === stageId,
       );
       const stage = stages[stageIndex];
+      // The row disables this stage's delete control and says why in its
+      // tooltip; the store refuses the delete as well.
+      if (getFinishStageDeleteBlockedReason(stages, stageId)) return;
+
       const skipDestinationWarning = getSkipDestinationDeleteWarning(
         stages,
         stageId,
@@ -232,7 +260,7 @@ const Timeline = () => {
         void openDialog({
           type: 'acknowledge',
           intent: 'warning',
-          ...skipDestinationWarning,
+          ...warningDialogText(skipDestinationWarning),
           actions: {
             primary: {
               label: createElement(AppMessage, { message: messages.oK }),
@@ -252,7 +280,7 @@ const Timeline = () => {
           const names = {
             list: dependents.map(
               (dependent) =>
-                dependent.label || {
+                localizedText(dependent.label, protocol?.localization) || {
                   messageError: createMessageError(finalMessages.untitledStage),
                 },
             ),
@@ -333,12 +361,18 @@ const Timeline = () => {
   // Visual-only during the drag: no dispatch, so the timeline isn't fragmented
   // into one undo entry per crossing. A drag that was already under way when
   // another tab took the protocol can still call this until its row stops it.
+  //
+  // An order that would take a finish stage above another kind of stage, or
+  // another kind below one, is never shown: the row stops moving there, so a
+  // finish stage can be dragged among the others but no higher than the
+  // first of them.
   const handleReorder = useCallback(
     (newOrder: typeof stages) => {
       if (readOnly) return;
+      if (getFinishStageReorderWarning(stages, newOrder)) return;
       setOrderedStages(newOrder);
     },
-    [readOnly],
+    [readOnly, stages],
   );
 
   // Returns whether the move was committed. The keyboard path passes that
@@ -365,13 +399,16 @@ const Timeline = () => {
         stages,
         proposedStages,
       );
+      const reorderWarning =
+        getFinishStageReorderWarning(stages, proposedStages) ??
+        (reorderGuard.allowed ? null : reorderGuard.warning);
 
-      if (!reorderGuard.allowed) {
-        setOrderedStages(reorderGuard.restoredStages);
+      if (reorderWarning) {
+        setOrderedStages(stages);
         void openDialog({
           type: 'acknowledge',
           intent: 'warning',
-          ...reorderGuard.warning,
+          ...warningDialogText(reorderWarning),
           actions: {
             primary: {
               label: createElement(AppMessage, { message: messages.oK }),
@@ -509,6 +546,7 @@ const Timeline = () => {
               />
               <TimelineStageRow
                 stage={stage}
+                deleteBlockedReason={deleteBlockedReason(stage.id)}
                 index={index}
                 stageCount={orderedStages.length}
                 onOpen={handleEditStage}
@@ -538,6 +576,9 @@ const Timeline = () => {
             'focusable relative z-1 mt-3 p-4',
             readOnly ? 'cursor-not-allowed' : 'group cursor-pointer',
           )}
+          // Asked for at the very end: a new finish stage goes there, after the
+          // other endings, and any other stage before the first of them
+          // (`creationIndex`).
           onClick={() => handleInsertStage(stages.length)}
           initial={animate ? 'hidden' : false}
           animate="visible"

@@ -52,6 +52,7 @@
     "dotenv": "catalog:",
     "effect": "catalog:",
     "es-toolkit": "catalog:",
+    "fresco-schema-8": "file:./schema-8",
     "immer": "^11.1.18",
     "jszip": "catalog:",
     "lucide-react": "catalog:",

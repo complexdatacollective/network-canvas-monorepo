@@ -152,7 +152,7 @@ export const informationScenarios: InterfaceScenarios = {
       },
     },
     {
-      id: 'media-asset-description-and-name-fallback',
+      id: 'media-asset-description-and-kind-fallback',
       covers: ['items[].type=asset(audio)', 'items[].description'],
       build: () => {
         const synth = new SyntheticInterview();
@@ -206,13 +206,15 @@ export const informationScenarios: InterfaceScenarios = {
           'aria-label',
           'Intro narration',
         );
-        // description fallback: the asset NAME labels the second player
-        await expect(audios.nth(1)).toHaveAttribute('aria-label', 'clip');
+        // description fallback: an undescribed player is named for its kind,
+        // never after the asset's name ("clip"), which is only the
+        // researcher's filing label
+        await expect(audios.nth(1)).toHaveAttribute('aria-label', 'Audio');
         await expect(audios.nth(0)).toHaveAttribute('controls', '');
         // a video with no description takes the same fallback
         await expect(page.locator('main video')).toHaveAttribute(
           'aria-label',
-          'welcome',
+          'Video',
         );
       },
     },
@@ -258,8 +260,8 @@ export const informationScenarios: InterfaceScenarios = {
         await expect(video).toHaveAttribute('controls', '');
         await expect(video).not.toHaveAttribute('autoplay');
         // the researcher's description names the player, as it does for an
-        // image's alt text and an audio player; the asset name is only the
-        // fallback (covered by media-asset-description-and-name-fallback)
+        // image's alt text and an audio player; without one the player is
+        // named for its kind (covered by media-asset-description-and-kind-fallback)
         await expect(video).toHaveAttribute(
           'aria-label',
           'A welcome from the research team',
@@ -419,6 +421,79 @@ export const informationScenarios: InterfaceScenarios = {
         await expect(interview.nextButton).toBeEnabled();
         const network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes).toEqual([]);
+      },
+    },
+
+    {
+      id: 'dynamic-values-carried-from-earlier-stage',
+      covers: ['dynamicValues'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const nameVar = synth.addEgoVariable({
+          type: 'text',
+          component: 'Text',
+          name: 'name',
+        });
+        synth
+          .addStage('EgoForm', {
+            introductionPanel: { title: 'About you' },
+          })
+          .addFormField({
+            variable: nameVar.id,
+            component: 'Text',
+            prompt: 'What is your name?',
+          });
+        const info = synth.addInformationStage({
+          label: 'Welcome',
+          title: {
+            'en-US':
+              '{name, select, missing {Welcome} other {Welcome, {name}}}',
+          },
+          items: [
+            {
+              id: 'item-1',
+              type: 'text',
+              content: {
+                'en-US':
+                  'Thanks for **joining**{name, select, missing {.} other {, {name}.}}',
+              },
+            },
+          ],
+        });
+        info.stageEntry.dynamicValues = {
+          name: { path: `ego.${nameVar.id}` },
+        };
+        return synth;
+      },
+      run: async ({ page, interview }) => {
+        // A name that would become markdown, HTML or a link if it were ever
+        // parsed rather than shown as text.
+        const hostile =
+          '**bold** [link](https://example.com) <img src=x onerror=window.__pwned=1>';
+        await page
+          .getByRole('textbox', { name: 'What is your name?' })
+          .fill(hostile);
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+
+        await expect(
+          page.getByRole('heading', {
+            level: 1,
+            name: `Welcome, Dynamic value: ${hostile}`,
+          }),
+        ).toBeVisible();
+        // Only the researcher's own emphasis renders; the value stays text.
+        await expect(page.locator('main strong')).toHaveCount(1);
+        await expect(page.locator('main strong')).toHaveText('joining');
+        await expect(page.locator('main a')).toHaveCount(0);
+        await expect(page.locator('main img')).toHaveCount(0);
+        await expect(
+          page.locator('main [data-dynamic-value]', { hasText: hostile }),
+        ).toHaveCount(2);
+        const pwned = await page.evaluate(
+          () => (window as { __pwned?: number }).__pwned,
+        );
+        expect(pwned).toBeUndefined();
       },
     },
   ],

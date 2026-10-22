@@ -2,13 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { InheritancePattern } from '@codaco/protocol-validation';
 
+import { edgeKey } from '../../FamilyPedigree/pedigree-layout/components/EdgeRenderer';
 import type { GeneticGraph } from '../genetics/geneticGraph';
 import type { Status } from '../genetics/status';
-import {
-  computeContributors,
-  type DiseaseContributors,
-  edgeKey,
-} from '../highlight';
+import { computeContributors, type DiseaseContributors } from '../highlight';
 
 type Sex = 'female' | 'male' | 'unknown';
 

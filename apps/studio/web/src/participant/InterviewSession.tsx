@@ -171,7 +171,7 @@ function InterviewSessionView() {
     <>
       <StageCrashReporter log={log} renderedStage={renderedStage} />
       <Shell
-        requestedLocale={navigator.languages}
+        requestedLocales={navigator.languages}
         payload={payload}
         currentStep={currentStep}
         onStepChange={onStepChange}

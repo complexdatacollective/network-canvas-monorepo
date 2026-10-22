@@ -2,11 +2,14 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   asEntityAttributeReference,
+  type LocalizedString,
   NodeShapes,
   type NodeDefinition,
   type NodeShape,
   type VariableType,
 } from '@codaco/protocol-validation';
+
+import { asLocalizedString } from '../localization/localizedText.ts';
 
 type ShapeMapping = NonNullable<NodeDefinition['shape']['dynamic']>;
 type DiscreteShapeMapping = Extract<ShapeMapping, { type: 'discrete' }>;
@@ -28,8 +31,8 @@ export type ShapeMappingDraft = Partial<
 > & { type?: ShapeMappingType };
 
 /** One answer a discrete mapping can give a shape to. */
-export type ShapeMappingOption = Readonly<{
-  label: string;
+type ShapeMappingOption = Readonly<{
+  label: LocalizedString;
   value: DiscreteShapeMapEntry['value'];
 }>;
 
@@ -151,13 +154,11 @@ const readOptions = (
   value: unknown,
 ): readonly ShapeMappingOption[] | undefined => {
   if (!Array.isArray(value)) return undefined;
-  const options = value.flatMap((entry) =>
-    isRecord(entry) &&
-    typeof entry.label === 'string' &&
-    isOptionValue(entry.value)
-      ? [{ label: entry.label, value: entry.value }]
-      : [],
-  );
+  const options = value.flatMap((entry) => {
+    if (!isRecord(entry) || !isOptionValue(entry.value)) return [];
+    const label = asLocalizedString(entry.label);
+    return label === undefined ? [] : [{ label, value: entry.value }];
+  });
   return options.length === 0 ? undefined : options;
 };
 

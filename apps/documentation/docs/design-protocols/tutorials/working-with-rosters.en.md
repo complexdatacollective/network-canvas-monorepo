@@ -70,12 +70,55 @@ The comma-separated values format is more of a loose set of conventions than a s
 - The remaining columns represent additional variables. For example, there could be a column for "club_member", "age", "profile page", etc... These variables can be useful when initially displaying a roster in an interview. They are also 'passed through' so that any data export from Network Canvas that includes these roster items as nodes will also include these columns as variables.
 - Since CSVs use commas to separate columns, this means that if you want to have a column with a comma, such as an additional column for city and country (e.g., "Toronto, Canada") then the CSV needs to wrap `Toronto, Canada` inside of quotations so that it knows that it is a literal comma and not a column separator.
 - Fortunately, if you edit a table of data in a spreadsheet program such as Microsoft Office or OpenOffice Calc, when you export that spreadsheet as a CSV it takes care of the issues with quotes and commas for you. We therefore do not recommend creating CSVs in programs like TextEdit or Notepad since they do not manage these small formatting issues.
-- Even if the CSV is valid, it might be confusing for Network Canvas if there are certain characters in the column names. These are variable names and so they should follow the conventions of Network Canvas broadly:
-- Start variable names with letters.
-- Only use simple latin letters (A-Z, a-z) alongside numbers and underscore for variable names. So for example, `género` (gender in Spanish) would not parse correctly whereas `genero` would. You can use non-latin characters in the rest of the data, so you do not need to reformat the name "Verónica" as long as it is data and not a variable name.
-- Network Canvas is not always strict about upper case and lower case. You should avoid having two column names with equivalent letters in different cases, such as `Name` and `name` as the program may not always detect the difference.
+- Blank lines are ignored, so an empty line between rows or at the end of the file does no harm.
+- Even if the CSV is valid, some characters can't be used in it. The column headings become variable names, so they follow nearly the same rules as any other variable name. See [Column headings](#column-headings) and [Values](#values) below.
 
 Note: We expect the first column to be the name of the roster item with a column called `name`. However, these items do not need to be people. Recall that ontological flexibility is one of the design principles of Network Canvas. Thus, you could augment a study with a roster of words representing emotions, concepts, books, places, etc...
+
+#### Column headings
+
+Column headings can be written in any language and can include spaces and punctuation, so `género` (gender in Spanish), `club member` and `年龄` all work. As with any variable name, a heading:
+
+- can't start or end with a space
+- can't contain tabs, line breaks, or other invisible control characters
+
+See [What a name can contain](/en/design-protocols/key-concepts/variables#what-a-name-can-contain) for the full rules. When you type a variable name, Architect removes any spaces from its start and end for you. It can't do this for a heading in your file, because the interview reads each heading from the file as it is, and a heading with a space at either end would never match a variable. So Architect refuses that heading instead. In practice:
+
+- **Spaces around a heading.** Network Canvas ignores spaces before and after a heading that isn't in quotation marks, so these headings work. A heading in quotation marks keeps its spaces, so one written as `" age"` in the file is refused.
+- **Accented letters.** Some programs, especially on macOS, store an accented letter such as `é` as two characters: a plain `e` followed by an accent. Architect accepts a heading saved either way, and the column still matches a variable with the same name. It refuses a file with two headings that are the same name written these two ways, because only one of the two columns could fill that variable.
+- **Empty headings.** A column with an empty heading is named after its position, such as `field3` for the third column. Give every column a heading, and delete any empty columns at the end of the sheet.
+
+Avoid two headings that differ only in capitalization, such as `Name` and `name`: Architect treats variable names that differ only in capitalization as the same name, so the two columns are easy to confuse.
+
+Architect Classic is stricter. If you use it, start each heading with a letter, and use only the letters A–Z and a–z, numbers, and underscores. For example, `género` won't work in Architect Classic, but `genero` will.
+
+#### Values
+
+The values in your roster can be any text, in any language, so you do not need to reformat a name like "Verónica" or "王芳". A cell can contain commas, quotation marks, tabs and line breaks, as long as the cell is wrapped in quotation marks (spreadsheet programs do this for you when they save a CSV file).
+
+A cell can't contain other invisible control characters. They can't be stored in exported GraphML files, so Architect refuses a roster that contains them. See [If Architect refuses your roster](#if-architect-refuses-your-roster).
+
+#### If Architect refuses your roster
+
+Architect checks a roster when you add it to your protocol, and explains what it found if it can't use the file. The most common problems are:
+
+- **A column heading can't be used as a variable name.** Look for a heading in quotation marks that starts or ends with a space, or one that spans two lines because a new line was typed inside the heading cell. Fix the heading in your spreadsheet and save the CSV file again.
+- **The file contains a character that can't be used.** This is an invisible control character, in a cell or in a heading. These characters can't be seen, and usually arrive in text pasted from other software, such as a PDF, a word processor, or a database export.
+- **Some rows have a different number of columns.** Make each row match the header row. This usually means a value containing a comma was not wrapped in quotation marks, or the header row has an extra comma at the end.
+
+When a file contains a character that can't be used, the message says where Architect found it first, and how many other places have the same problem. Because the character is invisible, the message names it by its Unicode code point, such as U+0007:
+
+> Row 5 of the “notes” column contains a character that can’t be used (U+0007). Delete it from the file, then import the file again. The same problem appears in 2 other places in the file.
+
+Rows are numbered the way a spreadsheet numbers them, with the header row as row 1, so you can go straight to the row in your spreadsheet. A character in a heading is reported by the column's number, counting from 1 on the left. In a JSON roster, the message names the node by its position in the file's list of nodes, counting from 1, and the attribute that holds the character. If the character stops the file from being read at all, the message gives the line of the file instead.
+
+To remove invisible control characters, open the file in a spreadsheet program and use its `CLEAN` function, which Microsoft Excel, Google Sheets and LibreOffice Calc all provide:
+
+1. In an empty column, enter `=CLEAN(C2)`, replacing `C2` with the cell Architect named.
+2. Copy the result, and use **Paste Special** to paste it over the original cell as values only.
+3. Delete the extra column, and save the file as CSV again.
+
+`CLEAN` also removes any tabs and line breaks from the cell. If Architect still refuses the file, delete the cell's contents and type them again by hand.
 
 ## Adding the roster to a Network Canvas Interview
 

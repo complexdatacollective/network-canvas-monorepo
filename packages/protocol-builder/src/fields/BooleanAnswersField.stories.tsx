@@ -81,8 +81,8 @@ export const AnswersTheAttributeHolds: Story = {
     children: (
       <Answers
         initialValue={[
-          { label: 'Related', value: true },
-          { label: 'Not related', value: false },
+          { label: { 'en-US': 'Related' }, value: true },
+          { label: { 'en-US': 'Not related' }, value: false },
         ]}
       />
     ),
@@ -107,8 +107,8 @@ export const ReadOnly: Story = {
       <Answers
         readOnly
         initialValue={[
-          { label: 'Related', value: true },
-          { label: 'Not related', value: false },
+          { label: { 'en-US': 'Related' }, value: true },
+          { label: { 'en-US': 'Not related' }, value: false },
         ]}
       />
     ),
@@ -130,7 +130,7 @@ export const ReadOnly: Story = {
  */
 export const OneAnswerLeftBlank: Story = {
   args: {
-    children: <Answers initialValue={[{ label: '', value: true }]} />,
+    children: <Answers initialValue={[{ value: true }]} />,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

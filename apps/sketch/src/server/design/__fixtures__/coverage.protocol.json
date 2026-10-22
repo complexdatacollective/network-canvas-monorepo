@@ -1,8 +1,12 @@
 {
   "name": "Coverage design",
   "description": "Students, classmates and the places they study.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "lastModified": "2026-10-20T00:00:00.000Z",
+  "localization": {
+    "defaultLocale": "en",
+    "locales": ["en"]
+  },
   "codebook": {
     "ego": {
       "variables": {
@@ -12,11 +16,15 @@
           "component": "Boolean",
           "options": [
             {
-              "label": "Yes, I agree to take part",
+              "label": {
+                "en": "Yes, I agree to take part"
+              },
               "value": true
             },
             {
-              "label": "No, I do not want to take part",
+              "label": {
+                "en": "No, I do not want to take part"
+              },
               "value": false,
               "negative": true
             }
@@ -40,11 +48,15 @@
           "component": "Boolean",
           "options": [
             {
-              "label": "Yes",
+              "label": {
+                "en": "Yes"
+              },
               "value": true
             },
             {
-              "label": "No",
+              "label": {
+                "en": "No"
+              },
               "value": false,
               "negative": true
             }
@@ -55,8 +67,12 @@
           "type": "scalar",
           "component": "VisualAnalogScale",
           "parameters": {
-            "minLabel": "Not at all",
-            "maxLabel": "Completely"
+            "minLabel": {
+              "en": "Not at all"
+            },
+            "maxLabel": {
+              "en": "Completely"
+            }
           }
         },
         "ego_notes": {
@@ -124,11 +140,15 @@
             "component": "Boolean",
             "options": [
               {
-                "label": "Yes",
+                "label": {
+                  "en": "Yes"
+                },
                 "value": true
               },
               {
-                "label": "No",
+                "label": {
+                  "en": "No"
+                },
                 "value": false,
                 "negative": true
               }
@@ -145,27 +165,39 @@
             "component": "CheckboxGroup",
             "options": [
               {
-                "label": "Faculty",
+                "label": {
+                  "en": "Faculty"
+                },
                 "value": "faculty"
               },
               {
-                "label": "Peer mentor",
+                "label": {
+                  "en": "Peer mentor"
+                },
                 "value": "peer_mentor"
               },
               {
-                "label": "Nobody",
+                "label": {
+                  "en": "Nobody"
+                },
                 "value": "nobody"
               },
               {
-                "label": "Another adviser",
+                "label": {
+                  "en": "Another adviser"
+                },
                 "value": "another_adviser"
               },
               {
-                "label": "Not sure",
+                "label": {
+                  "en": "Not sure"
+                },
                 "value": "not_sure"
               },
               {
-                "label": "Prefer not to say",
+                "label": {
+                  "en": "Prefer not to say"
+                },
                 "value": "prefer_not_to_say"
               }
             ],
@@ -206,19 +238,27 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": "Rarely",
+                "label": {
+                  "en": "Rarely"
+                },
                 "value": 1
               },
               {
-                "label": "Monthly",
+                "label": {
+                  "en": "Monthly"
+                },
                 "value": 2
               },
               {
-                "label": "Weekly",
+                "label": {
+                  "en": "Weekly"
+                },
                 "value": 3
               },
               {
-                "label": "Daily",
+                "label": {
+                  "en": "Daily"
+                },
                 "value": 4
               }
             ]
@@ -229,19 +269,27 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "Study",
+                "label": {
+                  "en": "Study"
+                },
                 "value": "study"
               },
               {
-                "label": "Eat",
+                "label": {
+                  "en": "Eat"
+                },
                 "value": "eat"
               },
               {
-                "label": "Socialise",
+                "label": {
+                  "en": "Socialise"
+                },
                 "value": "socialise"
               },
               {
-                "label": "Exercise",
+                "label": {
+                  "en": "Exercise"
+                },
                 "value": "exercise"
               }
             ],
@@ -298,15 +346,21 @@
             "component": "CheckboxGroup",
             "options": [
               {
-                "label": "Department",
+                "label": {
+                  "en": "Department"
+                },
                 "value": "department"
               },
               {
-                "label": "Clubs",
+                "label": {
+                  "en": "Clubs"
+                },
                 "value": "clubs"
               },
               {
-                "label": "Family",
+                "label": {
+                  "en": "Family"
+                },
                 "value": "family"
               }
             ]
@@ -325,15 +379,21 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": "Acquaintances",
+                "label": {
+                  "en": "Acquaintances"
+                },
                 "value": 1
               },
               {
-                "label": "Friends",
+                "label": {
+                  "en": "Friends"
+                },
                 "value": 2
               },
               {
-                "label": "Close friends",
+                "label": {
+                  "en": "Close friends"
+                },
                 "value": 3
               }
             ]
@@ -393,29 +453,43 @@
     {
       "id": "researcher_notes",
       "type": "Information",
-      "label": "Researcher notes (delete before fielding)",
-      "title": "Notes for the research team",
+      "label": {
+        "en": "Researcher notes (delete before fielding)"
+      },
+      "title": {
+        "en": "Notes for the research team"
+      },
       "items": [
         {
           "id": "text",
           "type": "text",
-          "content": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** Students, classmates and the places they study.\n\n**Design rationale.** Exercises every branch of the compiler.\n\n**Placeholder roster.** Stage \"Classmates\" picks classmates from a generated list of 12 example rows (classmates_roster.csv). Replace it in Architect with your real list before fielding, keeping the column headers: name, year_of_study, major, commuter.\n\n**Map token.** The map stage uses the Network Canvas testing Mapbox token, which only works on networkcanvas.com sites and localhost. Replace the \"Mapbox token\" resource with your own token before fielding."
+          "content": {
+            "en": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** Students, classmates and the places they study.\n\n**Design rationale.** Exercises every branch of the compiler.\n\n**Placeholder roster.** Stage \"Classmates\" picks classmates from a generated list of 12 example rows (classmates_roster.csv). Replace it in Architect with your real list before fielding, keeping the column headers: name, year_of_study, major, commuter.\n\n**Map token.** The map stage uses the Network Canvas testing Mapbox token, which only works on networkcanvas.com sites and localhost. Replace the \"Mapbox token\" resource with your own token before fielding."
+          }
         }
       ]
     },
     {
       "id": "consent",
       "type": "EgoForm",
-      "label": "Consent",
+      "label": {
+        "en": "Consent"
+      },
       "introductionPanel": {
-        "title": "Taking part",
-        "text": "Please read the information about this study before deciding whether to take part."
+        "title": {
+          "en": "Taking part"
+        },
+        "text": {
+          "en": "Please read the information about this study before deciding whether to take part."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_consent",
-            "prompt": "Do you agree to take part in this study?"
+            "prompt": {
+              "en": "Do you agree to take part in this study?"
+            }
           }
         ]
       }
@@ -423,20 +497,30 @@
     {
       "id": "about",
       "type": "EgoForm",
-      "label": "About",
+      "label": {
+        "en": "About"
+      },
       "introductionPanel": {
-        "title": "About you",
-        "text": "Please answer the following questions about yourself."
+        "title": {
+          "en": "About you"
+        },
+        "text": {
+          "en": "Please answer the following questions about yourself."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_year",
-            "prompt": "Which year of study are you in?"
+            "prompt": {
+              "en": "Which year of study are you in?"
+            }
           },
           {
             "variable": "ego_commutes",
-            "prompt": "Do you commute to campus?"
+            "prompt": {
+              "en": "Do you commute to campus?"
+            }
           }
         ]
       },
@@ -461,9 +545,30 @@
       }
     },
     {
+      "id": "classmates_intro",
+      "type": "Information",
+      "label": {
+        "en": "Classmates (introduction)"
+      },
+      "title": {
+        "en": "Naming classmates"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see a list of classmates. Find everyone the question describes, using the search if it helps, and drag each one into the panel of people you have added."
+          }
+        }
+      ]
+    },
+    {
       "id": "classmates",
       "type": "NameGeneratorRoster",
-      "label": "Classmates",
+      "label": {
+        "en": "Classmates"
+      },
       "subject": {
         "entity": "node",
         "type": "classmate"
@@ -471,7 +576,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Select the classmates you **study with**.",
+          "text": {
+            "en": "Select the classmates you **study with**."
+          },
           "additionalAttributes": [
             {
               "variable": "classmate_studies_together",
@@ -487,15 +594,21 @@
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": "year of study",
+            "label": {
+              "en": "year of study"
+            },
             "variable": "classmate_year_of_study"
           },
           {
-            "label": "major",
+            "label": {
+              "en": "major"
+            },
             "variable": "classmate_major"
           },
           {
-            "label": "commuter",
+            "label": {
+              "en": "commuter"
+            },
             "variable": "classmate_commuter"
           }
         ]
@@ -509,7 +622,9 @@
         ],
         "sortableProperties": [
           {
-            "label": "Name",
+            "label": {
+              "en": "Name"
+            },
             "variable": "classmate_name"
           }
         ]
@@ -517,12 +632,51 @@
       "searchOptions": {
         "fuzziness": 0.5,
         "matchProperties": ["classmate_name"]
+      },
+      "panelTitle": {
+        "en": "Available to add"
+      },
+      "minNodesNotice": {
+        "en": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
+      },
+      "externalDataError": {
+        "en": "External data could not be loaded."
+      },
+      "allAddedNotice": {
+        "en": "There is nothing left to add from this list."
+      },
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
       }
+    },
+    {
+      "id": "places_intro",
+      "type": "Information",
+      "label": {
+        "en": "Places (introduction)"
+      },
+      "title": {
+        "en": "Naming places"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will be asked a question. For each place who comes to mind, tap the add button, answer a few short questions about them, and save. Move on when you have added everyone."
+          }
+        }
+      ]
     },
     {
       "id": "places",
       "type": "NameGenerator",
-      "label": "Places",
+      "label": {
+        "en": "Places"
+      },
       "subject": {
         "entity": "node",
         "type": "place"
@@ -530,30 +684,62 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Where do you **spend time on campus**?"
+          "text": {
+            "en": "Where do you **spend time on campus**?"
+          }
         }
       ],
       "behaviours": {
         "maxNodes": 10
       },
       "form": {
-        "title": "Add a place",
+        "title": {
+          "en": "Add a place"
+        },
         "fields": [
           {
             "variable": "place_name",
-            "prompt": "What is this place called?"
+            "prompt": {
+              "en": "What is this place called?"
+            }
           },
           {
             "variable": "place_hours",
-            "prompt": "How many hours a week do you spend there?"
+            "prompt": {
+              "en": "How many hours a week do you spend there?"
+            }
           }
         ]
+      },
+      "maxNodesNotice": {
+        "en": "You have completed this task. Click the next arrow to continue."
       }
+    },
+    {
+      "id": "more_classmates_intro",
+      "type": "Information",
+      "label": {
+        "en": "More classmates (introduction)"
+      },
+      "title": {
+        "en": "Naming classmates"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will be asked a question. Tap the add button, then type the name of each classmate who comes to mind and press Enter. Move on when you have added everyone."
+          }
+        }
+      ]
     },
     {
       "id": "more_classmates",
       "type": "NameGeneratorQuickAdd",
-      "label": "More classmates",
+      "label": {
+        "en": "More classmates"
+      },
       "subject": {
         "entity": "node",
         "type": "classmate"
@@ -561,22 +747,50 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Who else in your class do you **talk to**?"
+          "text": {
+            "en": "Who else in your class do you **talk to**?"
+          }
         }
       ],
       "quickAdd": "classmate_name",
       "panels": [
         {
           "id": "existing",
-          "title": "Already mentioned",
+          "title": {
+            "en": "Already mentioned"
+          },
           "dataSource": "existing"
+        }
+      ],
+      "quickAddHint": {
+        "en": "Press Enter when you are finished."
+      }
+    },
+    {
+      "id": "friend_strength_intro",
+      "type": "Information",
+      "label": {
+        "en": "Friend strength (introduction)"
+      },
+      "title": {
+        "en": "How the classmates you named are connected"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see pairs of the classmates you named. For each pair, choose the answer that describes them best."
+          }
         }
       ]
     },
     {
       "id": "friend_strength",
       "type": "TieStrengthCensus",
-      "label": "Friend strength",
+      "label": {
+        "en": "Friend strength"
+      },
       "subject": {
         "entity": "node",
         "type": "classmate"
@@ -584,21 +798,42 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "How close are these two?",
+          "text": {
+            "en": "How close are these two?"
+          },
           "createEdge": "friends",
           "edgeVariable": "friends_strength",
-          "negativeLabel": "They aren't friends"
+          "negativeLabel": {
+            "en": "They aren't friends"
+          }
         }
-      ],
-      "introductionPanel": {
-        "title": "How are they connected?",
-        "text": "You will now see pairs of the classmates you named. Answer the question for each pair."
-      }
+      ]
+    },
+    {
+      "id": "study_ties_intro",
+      "type": "Information",
+      "label": {
+        "en": "Study ties (introduction)"
+      },
+      "title": {
+        "en": "How the classmates you named are connected"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the classmates you named one at a time. For each one, tap everyone else the question describes, then move on."
+          }
+        }
+      ]
     },
     {
       "id": "study_ties",
       "type": "OneToManyDyadCensus",
-      "label": "Study ties",
+      "label": {
+        "en": "Study ties"
+      },
       "subject": {
         "entity": "node",
         "type": "classmate"
@@ -606,7 +841,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Tap everyone who **studies with** this person.",
+          "text": {
+            "en": "Tap everyone who **studies with** this person."
+          },
           "createEdge": "studies_with"
         }
       ],
@@ -615,9 +852,45 @@
       }
     },
     {
+      "id": "conflicts_intro",
+      "type": "Information",
+      "label": {
+        "en": "Conflicts (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_2",
+              "type": "edge",
+              "options": {
+                "type": "studies_with",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "How the classmates you named are connected"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see pairs of the classmates you named. Answer the question for each pair."
+          }
+        }
+      ]
+    },
+    {
       "id": "conflicts",
       "type": "DyadCensus",
-      "label": "Conflicts",
+      "label": {
+        "en": "Conflicts"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -640,7 +913,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Do these two **have conflict**?",
+          "text": {
+            "en": "Do these two **have conflict**?"
+          },
           "createEdge": "conflict"
         }
       ],
@@ -657,16 +932,48 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": "How are they connected?",
-        "text": "You will now see pairs of the classmates you named. Answer the question for each pair."
       }
+    },
+    {
+      "id": "friendship_details_intro",
+      "type": "Information",
+      "label": {
+        "en": "Friendship details (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_4",
+              "type": "edge",
+              "options": {
+                "type": "friends",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "About these relationships"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "Next, you will answer a few questions about each \"friends\" relationship you described, one at a time."
+          }
+        }
+      ]
     },
     {
       "id": "friendship_details",
       "type": "AlterEdgeForm",
-      "label": "Friendship details",
+      "label": {
+        "en": "Friendship details"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -686,23 +993,57 @@
         "entity": "edge",
         "type": "friends"
       },
-      "introductionPanel": {
-        "title": "About these relationships",
-        "text": "Please answer a few questions about each \"friends\" relationship."
-      },
       "form": {
         "fields": [
           {
             "variable": "friends_since",
-            "prompt": "Since when have they been friends?"
+            "prompt": {
+              "en": "Since when have they been friends?"
+            }
           }
         ]
       }
     },
     {
+      "id": "place_bins_intro",
+      "type": "Information",
+      "label": {
+        "en": "Place bins (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_5",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "Sorting the places you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the places you named and a set of boxes. Drag each place into the box that describes them best."
+          }
+        }
+      ]
+    },
+    {
       "id": "place_bins",
       "type": "OrdinalBin",
-      "label": "Place bins",
+      "label": {
+        "en": "Place bins"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -725,7 +1066,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "How often?",
+          "text": {
+            "en": "How often?"
+          },
           "variable": "place_visit_freq",
           "color": "ord-color-seq-1"
         }
@@ -734,7 +1077,9 @@
     {
       "id": "place_bins_2",
       "type": "CategoricalBin",
-      "label": "Place bins (2)",
+      "label": {
+        "en": "Place bins (2)"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -757,18 +1102,45 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "What do you do there?",
+          "text": {
+            "en": "What do you do there?"
+          },
           "variable": "place_type",
           "otherVariable": "place_type_other",
-          "otherVariablePrompt": "Please describe",
-          "otherOptionLabel": "Other"
+          "otherVariablePrompt": {
+            "en": "Please describe"
+          },
+          "otherOptionLabel": {
+            "en": "Other"
+          }
+        }
+      ]
+    },
+    {
+      "id": "advisors_intro",
+      "type": "Information",
+      "label": {
+        "en": "Advisors (introduction)"
+      },
+      "title": {
+        "en": "Sorting the classmates you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the classmates you named and a set of boxes. Drag each classmate into the box that describes them best."
+          }
         }
       ]
     },
     {
       "id": "advisors",
       "type": "CategoricalBin",
-      "label": "Advisors",
+      "label": {
+        "en": "Advisors"
+      },
       "subject": {
         "entity": "node",
         "type": "classmate"
@@ -776,15 +1148,38 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Who advises each classmate?",
+          "text": {
+            "en": "Who advises each classmate?"
+          },
           "variable": "classmate_advisor_type"
+        }
+      ]
+    },
+    {
+      "id": "home_countries_intro",
+      "type": "Information",
+      "label": {
+        "en": "Home countries (introduction)"
+      },
+      "title": {
+        "en": "On the map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see a map. For each of the classmates you named, tap the place the question asks about."
+          }
         }
       ]
     },
     {
       "id": "home_countries",
       "type": "Geospatial",
-      "label": "Home countries",
+      "label": {
+        "en": "Home countries"
+      },
       "subject": {
         "entity": "node",
         "type": "classmate"
@@ -803,32 +1198,73 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Which **country** is each classmate from?",
+          "text": {
+            "en": "Which **country** is each classmate from?"
+          },
           "variable": "classmate_home_country"
+        }
+      ],
+      "offlineNotice": {
+        "en": "You are offline — the map will not load until you reconnect."
+      },
+      "mapUnavailable": {
+        "en": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
+      },
+      "outsideAreasLabel": {
+        "en": "Outside Selectable Areas"
+      },
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
+      },
+      "searchFailed": {
+        "en": "Search could not be completed. Try again in a moment."
+      }
+    },
+    {
+      "id": "classmate_form_intro",
+      "type": "Information",
+      "label": {
+        "en": "Classmate form (introduction)"
+      },
+      "title": {
+        "en": "About the classmates you named"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "Next, you will answer a few questions about each of the classmates you named, one at a time."
+          }
         }
       ]
     },
     {
       "id": "classmate_form",
       "type": "AlterForm",
-      "label": "Classmate form",
+      "label": {
+        "en": "Classmate form"
+      },
       "subject": {
         "entity": "node",
         "type": "classmate"
-      },
-      "introductionPanel": {
-        "title": "About the classmates you named",
-        "text": "Please answer a few questions about each of the classmates you named."
       },
       "form": {
         "fields": [
           {
             "variable": "classmate_commuter",
-            "prompt": "Commutes?"
+            "prompt": {
+              "en": "Commutes?"
+            }
           },
           {
             "variable": "classmate_year_of_study",
-            "prompt": "Year of study"
+            "prompt": {
+              "en": "Year of study"
+            }
           }
         ]
       },
@@ -869,9 +1305,45 @@
       }
     },
     {
+      "id": "place_map_intro",
+      "type": "Information",
+      "label": {
+        "en": "Place map (introduction)"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule_10",
+              "type": "node",
+              "options": {
+                "type": "place",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      },
+      "title": {
+        "en": "Your network map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the places you named on a map, with you at the centre.\n\nTap each place the question describes. Tap them again to undo."
+          }
+        }
+      ]
+    },
+    {
       "id": "place_map",
       "type": "Sociogram",
-      "label": "Place map",
+      "label": {
+        "en": "Place map"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -901,7 +1373,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Tap your **favourite** places.",
+          "text": {
+            "en": "Tap your **favourite** places."
+          },
           "layout": {
             "layoutVariable": "place_layout"
           },
@@ -910,12 +1384,22 @@
             "variable": "place_favourite"
           }
         }
-      ]
+      ],
+      "tooltips": {
+        "pauseLayout": {
+          "en": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en": "Resume automatic layout"
+        }
+      }
     },
     {
       "id": "place_story",
       "type": "Narrative",
-      "label": "Place story",
+      "label": {
+        "en": "Place story"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -938,10 +1422,19 @@
       "presets": [
         {
           "id": "view1",
-          "label": "What you do",
+          "label": {
+            "en": "What you do"
+          },
           "layoutVariable": "place_layout",
           "groupVariable": "place_type",
-          "highlight": ["place_favourite"]
+          "highlight": [
+            {
+              "variable": "place_favourite",
+              "label": {
+                "en": "favourite"
+              }
+            }
+          ]
         }
       ],
       "background": {
@@ -952,12 +1445,62 @@
         "automaticLayout": true,
         "allowRepositioning": true,
         "freeDraw": true
+      },
+      "attributesHeading": {
+        "en": "Attributes"
+      },
+      "groupsHeading": {
+        "en": "Groups"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en": "Reset annotations"
+        },
+        "pauseLayout": {
+          "en": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en": "Resume automatic layout"
+        }
       }
+    },
+    {
+      "id": "class_map_intro",
+      "type": "Information",
+      "label": {
+        "en": "Class map (introduction)"
+      },
+      "title": {
+        "en": "Your network map"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "On the next screen you will see the classmates you named on a map, with you at the centre.\n\nDrag each of the classmates onto the circles. The closer to the centre you place someone, the closer they are to you."
+          }
+        }
+      ]
     },
     {
       "id": "class_map",
       "type": "Sociogram",
-      "label": "Class map",
+      "label": {
+        "en": "Class map"
+      },
       "subject": {
         "entity": "node",
         "type": "classmate"
@@ -972,7 +1515,9 @@
       "prompts": [
         {
           "id": "p1",
-          "text": "Arrange your classmates.",
+          "text": {
+            "en": "Arrange your classmates."
+          },
           "layout": {
             "layoutVariable": "classmate_layout"
           },
@@ -996,9 +1541,30 @@
       }
     },
     {
+      "id": "mentor_canvas_intro",
+      "type": "Information",
+      "label": {
+        "en": "Mentor canvas (introduction)"
+      },
+      "title": {
+        "en": "Drawing your network"
+      },
+      "items": [
+        {
+          "id": "text",
+          "type": "text",
+          "content": {
+            "en": "Next, you and the interviewer will draw your network together. Add mentors and move them around. You can answer a few questions about each mentor. You can put mentors into groups. You can draw lines between mentors who are connected."
+          }
+        }
+      ]
+    },
+    {
       "id": "mentor_canvas",
       "type": "NetworkComposer",
-      "label": "Mentor canvas",
+      "label": {
+        "en": "Mentor canvas"
+      },
       "interviewScript": "Ask the participant to add the mentors they have had and talk about each one.",
       "subject": {
         "entity": "node",
@@ -1011,7 +1577,9 @@
           {
             "variable": "mentor_role",
             "component": "Text",
-            "label": "What is their role?"
+            "label": {
+              "en": "What is their role?"
+            }
           }
         ]
       },
@@ -1030,22 +1598,49 @@
             "entity": "edge",
             "type": "mentors_know"
           },
+          "label": {
+            "en": "Mentors know each other"
+          },
           "form": {
             "fields": [
               {
                 "variable": "mentors_know_met_through",
                 "component": "Text",
-                "label": "How did they meet?"
+                "label": {
+                  "en": "How did they meet?"
+                }
               }
             ]
           }
         }
-      ]
+      ],
+      "addNamePlaceholder": {
+        "en": "Type a name, then press Enter"
+      },
+      "overtakenEditNotice": {
+        "en": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
+      },
+      "groupsHeading": {
+        "en": "Groups"
+      },
+      "tooltips": {
+        "addPerson": {
+          "en": "Add node"
+        },
+        "automaticLayout": {
+          "en": "Automatic layout"
+        },
+        "drawConnection": {
+          "en": "Draw edge"
+        }
+      }
     },
     {
       "id": "reflection",
       "type": "EgoForm",
-      "label": "Reflection",
+      "label": {
+        "en": "Reflection"
+      },
       "skipLogic": {
         "action": "SHOW",
         "filter": {
@@ -1086,26 +1681,38 @@
         }
       },
       "introductionPanel": {
-        "title": "About you",
-        "text": "Please answer the following questions about yourself."
+        "title": {
+          "en": "About you"
+        },
+        "text": {
+          "en": "Please answer the following questions about yourself."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_satisfaction",
-            "prompt": "How satisfied are you with university life?"
+            "prompt": {
+              "en": "How satisfied are you with university life?"
+            }
           },
           {
             "variable": "ego_notes",
-            "prompt": "Anything else you would like to tell us?"
+            "prompt": {
+              "en": "Anything else you would like to tell us?"
+            }
           },
           {
             "variable": "ego_birth_date",
-            "prompt": "What is your date of birth?"
+            "prompt": {
+              "en": "What is your date of birth?"
+            }
           },
           {
             "variable": "ego_year_started",
-            "prompt": "In which year did you start university?"
+            "prompt": {
+              "en": "In which year did you start university?"
+            }
           }
         ]
       }
@@ -1113,15 +1720,114 @@
     {
       "id": "bye",
       "type": "Information",
-      "label": "Bye",
-      "title": "Thank you",
+      "label": {
+        "en": "Bye"
+      },
+      "title": {
+        "en": "Thank you"
+      },
       "items": [
         {
           "id": "text",
           "type": "text",
-          "content": "Thanks!"
+          "content": {
+            "en": "Thanks!"
+          }
         }
       ]
+    },
+    {
+      "id": "finish",
+      "type": "FinishSession",
+      "mode": "confirmation",
+      "label": {
+        "en": "Finish Interview"
+      },
+      "content": {
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "finishedContent": {
+        "en": "# Interview Finished\n\nThank you for participating!"
+      },
+      "finishLabel": {
+        "en": "Finish"
+      },
+      "finishConfirmation": {
+        "en": "Are you sure you want to finish the interview?"
+      },
+      "finishFailed": {
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "navigation": {
+      "exitInterview": {
+        "en": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en": "Your answers so far will be saved and you can continue later."
+      },
+      "back": {
+        "en": "Back"
+      },
+      "continue": {
+        "en": "Continue"
+      }
+    },
+    "buttons": {
+      "cancel": {
+        "en": "Cancel"
+      },
+      "done": {
+        "en": "Done"
+      },
+      "delete": {
+        "en": "Delete"
+      },
+      "yes": {
+        "en": "Yes"
+      },
+      "no": {
+        "en": "No"
+      }
+    },
+    "messages": {
+      "stageError": {
+        "en": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en": "This item could not be displayed."
+      },
+      "error": {
+        "en": "An error occurred."
+      }
+    },
+    "forms": {
+      "discardChangesTitle": {
+        "en": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en": "Do you want to discard your changes?"
+      }
+    },
+    "validation": {
+      "required": {
+        "en": "You must answer this question before continuing."
+      },
+      "minValue": {
+        "en": "Enter a value greater than or equal to {min}."
+      },
+      "maxValue": {
+        "en": "Enter a value less than or equal to {max}."
+      },
+      "maxSelected": {
+        "en": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
+      },
+      "unique": {
+        "en": "Must be unique."
+      }
+    }
+  }
 }

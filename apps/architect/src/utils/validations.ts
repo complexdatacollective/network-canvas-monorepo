@@ -16,13 +16,12 @@ import {
   defineMessages,
   type IntlShape,
 } from '@codaco/app-i18n/messages';
-import { normalizeForComparison } from '@codaco/shared-consts';
+import {
+  CodebookNameSchema,
+  normalizeCodebookName,
+  normalizeForComparison,
+} from '@codaco/shared-consts';
 const messages = defineMessages({
-  attributeName: {
-    id: 'architect.validation.attributeName',
-    defaultMessage: 'attribute name',
-    description: 'Default subject in the invalid identifier guidance.',
-  },
   unknownRule: {
     id: 'architect.validation.unknownRule',
     defaultMessage:
@@ -118,12 +117,12 @@ const messages = defineMessages({
     description:
       'Validation error shown in an Architect field. User-authored custom errors override this default.',
   },
-  notAValidNameOnly: {
-    id: 'architect.validation.notAValidNameOnly',
+  nameHasControlCharacters: {
+    id: 'architect.validation.nameHasControlCharacters',
     defaultMessage:
-      'Not a valid {name}. Only letters, numbers and the symbols ._-: are supported',
+      'This can’t contain tabs, line breaks or other control characters',
     description:
-      'Validation error shown in an Architect field. User-authored custom errors override this default.',
+      'Validation error shown below a field where a researcher types the name of a node type, edge type, attribute or option value. Any script, spaces and punctuation are allowed in these names; only invisible control characters (such as a tab or a line break) are refused.',
   },
   notAValidRegularExpression: {
     id: 'architect.validation.notAValidRegularExpression',
@@ -188,6 +187,15 @@ const isRoughlyEqual = (left: unknown, right: unknown) => {
 
   return isEqual(left, right);
 };
+
+/**
+ * The key under which two names — or two option values — are the same name.
+ * It reads a value the way it is saved (`normalizeCodebookName`), as text (the
+ * option values `1` and `"1"` both export to the column `variable_1`), and
+ * case-insensitively, like the rest of the editors' duplicate checks.
+ */
+export const nameComparisonKey = (value: unknown) =>
+  normalizeForComparison(normalizeCodebookName(String(value)));
 
 export function createValidations(intl: IntlShape = defaultIntl) {
   const required =
@@ -301,7 +309,10 @@ export function createValidations(intl: IntlShape = defaultIntl) {
           )
         : undefined;
 
-  const uniqueArrayAttribute =
+  // Rows of an array editor are compared on the attribute their field name
+  // ends in. `matches` decides when two values count as the same.
+  const uniqueInArray =
+    (matches: (left: unknown, right: unknown) => boolean) =>
     (_: unknown, message: ValidationMessage): Validator =>
     (value, allValues, __, name) => {
       if (!value) {
@@ -320,7 +331,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
         (count: number, option: Record<string, unknown>) => {
           const optionValue = option[attribute];
 
-          if (isRoughlyEqual(optionValue, value)) {
+          if (matches(optionValue, value)) {
             return count + 1;
           }
           return count;
@@ -337,22 +348,33 @@ export function createValidations(intl: IntlShape = defaultIntl) {
       return undefined;
     };
 
+  const uniqueArrayAttribute = uniqueInArray(isRoughlyEqual);
+
+  // For option values, which are names: see `nameComparisonKey`.
+  const uniqueArrayName = uniqueInArray((left, right) => {
+    const key = nameComparisonKey(right);
+    return !isNil(left) && key !== '' && key === nameComparisonKey(left);
+  });
+
+  // The names already taken, compared as a name is saved: see
+  // `nameComparisonKey`.
   const uniqueByList =
-    (list: unknown[], message?: ValidationMessage): Validator =>
+    (list: string[], message?: ValidationMessage): Validator =>
     (value) => {
       if (!value) {
         return undefined;
       }
 
-      const existsAlready = list.some((existingValue: unknown) =>
-        isRoughlyEqual(existingValue, value),
+      const key = nameComparisonKey(value);
+      const existsAlready = list.some(
+        (existingValue) => nameComparisonKey(existingValue) === key,
       );
 
       if (existsAlready) {
         return messageWithDefault(
           message,
           intl.formatMessage(messages.valueIsAlreadyInUse, {
-            value: String(value),
+            value: normalizeCodebookName(String(value)),
           }),
         );
       }
@@ -454,16 +476,20 @@ export function createValidations(intl: IntlShape = defaultIntl) {
           )
         : undefined;
 
-  // Variables and option values must respect NMTOKEN rules so that
-  // they are compatable with XML export formats
-  const allowedVariableName =
-    (name = intl.formatMessage(messages.attributeName)): Validator =>
-    (value) => {
-      if (!/^[a-zA-Z0-9._\-:]+$/.test(value as string)) {
-        return intl.formatMessage(messages.notAValidNameOnly, { name: name });
-      }
+  // The name of a node type, edge type or attribute, or an option value. Any
+  // script, spaces and punctuation are allowed; the name is saved normalized
+  // (`normalizeCodebookName`), so it is judged in that form. A name with
+  // nothing in it is `required`'s business, not this rule's.
+  const codebookName = (): Validator => (value) => {
+    if (typeof value !== 'string') {
       return undefined;
-    };
+    }
+    const name = normalizeCodebookName(value);
+    if (name === '' || CodebookNameSchema.safeParse(name).success) {
+      return undefined;
+    }
+    return intl.formatMessage(messages.nameHasControlCharacters);
+  };
 
   const validRegExp =
     (_: unknown, message: ValidationMessage): Validator =>
@@ -489,8 +515,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
     greaterThan,
     greaterThanOrEqualTo,
     ISODate,
-    allowedVariableName,
-    allowedNMToken: allowedVariableName,
+    codebookName,
     maxLength,
     maxSelected,
     maxValue,
@@ -503,6 +528,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
     requiredAcceptsNull,
     requiredAcceptsZero,
     uniqueArrayAttribute,
+    uniqueArrayName,
     uniqueByList,
     validRegExp,
   };

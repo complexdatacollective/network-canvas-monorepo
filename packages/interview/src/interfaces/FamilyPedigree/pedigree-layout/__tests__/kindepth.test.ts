@@ -264,4 +264,80 @@ describe('kindepth', () => {
       }
     });
   });
+
+  describe('a parent shared by two parent groups', () => {
+    const bio = (parentIndex: number): ParentConnection => ({
+      parentIndex,
+      edgeType: 'biological',
+    });
+
+    it('aligns the second group after the shared parent moves for the first', () => {
+      // grandmother → hannah; hannah + shared → you; shared + amy + jo → zoe.
+      // Moving shared down to hannah's row leaves zoe's group unaligned until
+      // amy and jo follow.
+      const parents: ParentConnection[][] = [
+        [],
+        [bio(0)],
+        [],
+        [bio(1), bio(2)],
+        [bio(2), bio(5), bio(6)],
+        [],
+        [],
+      ];
+      expect(kindepth(parents, true)).toEqual([0, 1, 1, 2, 2, 1, 1]);
+    });
+
+    it('aligns parents passed as also aligned without letting them set depth', () => {
+      // As above, but shared is only a donor: it joins each group's row and
+      // sets neither child's depth.
+      const donor = (parentIndex: number): ParentConnection => ({
+        parentIndex,
+        edgeType: 'donor',
+      });
+      const parents: ParentConnection[][] = [
+        [],
+        [bio(0)],
+        [],
+        [bio(1)],
+        [bio(5), bio(6)],
+        [],
+        [],
+      ];
+      const alsoAligned: ParentConnection[][] = [
+        [],
+        [],
+        [],
+        [donor(2)],
+        [donor(2)],
+        [],
+        [],
+      ];
+      expect(kindepth(parents, true, alsoAligned)).toEqual([
+        0, 1, 1, 2, 2, 1, 1,
+      ]);
+    });
+
+    it('aligns a group that shares a parent pair with another group (confirm-r1-67)', () => {
+      // grace → you. you, nadia and ethan's stand-in father are ethan's
+      // parents; you and nadia adopt lily. Both groups hold you and nadia,
+      // and the stand-in, a partner of no one, must still join their row.
+      const social = (parentIndex: number): ParentConnection => ({
+        parentIndex,
+        edgeType: 'social',
+      });
+      const adoptive = (parentIndex: number): ParentConnection => ({
+        parentIndex,
+        edgeType: 'adoptive',
+      });
+      const parents: ParentConnection[][] = [
+        [],
+        [bio(0)],
+        [],
+        [],
+        [social(1), bio(2), bio(3)],
+        [adoptive(1), adoptive(2)],
+      ];
+      expect(kindepth(parents, true)).toEqual([0, 1, 1, 1, 2, 2]);
+    });
+  });
 });

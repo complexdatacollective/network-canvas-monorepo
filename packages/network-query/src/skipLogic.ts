@@ -6,15 +6,17 @@ import type { NcNetwork } from '@codaco/shared-consts';
 
 import getQuery from './query.ts';
 
-type StageReference = { id: string };
+type StageReference = { id: string; type?: string };
 
 /**
  * Resolve a skip destination against protocol stages.
  *
- * The stage list must exclude Interviewer's synthetic finish stage. A finish
- * destination therefore resolves to the one-past-the-end index, while a stage
- * destination resolves only when its target exists strictly after the owning
- * stage. Invalid direct callers fall back to the legacy local-stage skip.
+ * A finish destination resolves to the first finish stage after the owning
+ * stage, which is where the interview ends; a stage list without one (a
+ * protocol that has not been validated) falls back to the one-past-the-end
+ * index. A stage destination resolves only when its target exists strictly
+ * after the owning stage. Invalid direct callers fall back to the legacy
+ * local-stage skip.
  */
 export const resolveSkipLogicDestinationIndex = (
   destination: SkipLogicDestination,
@@ -30,7 +32,11 @@ export const resolveSkipLogicDestinationIndex = (
   }
 
   if (destination.type === 'finish') {
-    return stages.length;
+    const finishIndex = stages.findIndex(
+      (stage, index) =>
+        index > owningStageIndex && stage.type === 'FinishSession',
+    );
+    return finishIndex === -1 ? stages.length : finishIndex;
   }
 
   const destinationIndex = stages.findIndex(

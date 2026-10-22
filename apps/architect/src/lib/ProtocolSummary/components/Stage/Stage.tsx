@@ -1,36 +1,63 @@
 import { isEmpty } from 'es-toolkit/compat';
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
+import {
+  type DynamicValues,
+  type FamilyPedigreeNominationPrompt,
+  type FinishMode,
+  type FinishOutcome,
+  type FramingSetting,
+  type Item,
+  type LocalizedString,
+  type Panel,
+  stageDynamicValueContext,
+} from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
+import {
+  DefaultLanguageText,
+  SummaryDynamicValuesContext,
+  SummaryText,
+  useMultilingualSummary,
+} from '../SummaryText';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
+import CanvasWording from './CanvasWording';
+import ComposerEdges from './ComposerEdges';
 import DataSource from './DataSource';
+import FamilyPedigree, {
+  type FamilyPedigreeCompleteness,
+  type FamilyPedigreeEdgeConfiguration,
+  type FamilyPedigreeNodeConfiguration,
+} from './FamilyPedigree';
 import FamilyTreeVariables from './FamilyTreeVariables';
 import Filter from './Filter';
+import FinishScreen from './FinishScreen';
 import Form from './Form';
 import InterviewScript from './InterviewScript';
 import IntroductionPanel from './IntroductionPanel';
 import Items from './Items';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
-import NominationPrompts from './NominationPrompts';
+import NarrativePedigree from './NarrativePedigree';
 import PageHeading from './PageHeading';
 import Panels from './Panels';
 import Presets from './Presets';
 import Prompts, { type PromptType } from './Prompts';
 import QuickAdd from './QuickAdd';
+import RosterPanel from './RosterPanel';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
+import StageWording from './StageWording';
 const messages = defineMessages({
   networkFiltering: {
     id: 'architect.protocolSummary.stage.stage.networkFiltering',
@@ -47,7 +74,7 @@ const messages = defineMessages({
 });
 
 type FormFieldType = {
-  prompt: string;
+  prompt: LocalizedString;
   variable: string;
   [key: string]: unknown;
 };
@@ -67,16 +94,26 @@ const variablesOnStage =
       memo.push([variable.id, variable.name]);
       return memo;
     }, []);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 type StageProps = {
   configuration: Record<string, unknown>;
   id: string;
-  label: string;
+  label: LocalizedString;
   stageNumber: number;
   type: string;
 };
-const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
+const StageContent = ({
+  configuration,
+  id,
+  label,
+  stageNumber,
+  type,
+}: StageProps) => {
   const intl = useAppIntl();
   const { index } = useContext(SummaryContext);
+  const multilingual = useMultilingualSummary();
   const stageVariables = variablesOnStage(index)(id).toSorted((a, b) =>
     a[1].localeCompare(b[1], intl.locale),
   );
@@ -108,23 +145,18 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
   const introductionPanel = configuration.introductionPanel as
     | {
-        title: string;
-        text: string;
+        title: LocalizedString;
+        text?: LocalizedString;
       }
     | undefined;
   const dataSource = configuration.dataSource as string | undefined;
+  const panelTitle = configuration.panelTitle as LocalizedString | undefined;
   const quickAdd = configuration.quickAdd as string | undefined;
-  const panels = configuration.panels as
-    | {
-        id: string;
-        title: string;
-        dataSource: string;
-      }[]
-    | undefined;
+  const panels = configuration.panels as Panel[] | undefined;
   const prompts = configuration.prompts as PromptType[] | undefined;
   const form = configuration.form as
     | {
-        title?: string;
+        title?: LocalizedString;
         fields?: FormFieldType[];
       }
     | undefined;
@@ -133,25 +165,33 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
   const presets = configuration.presets as
     | {
-        label: string;
+        id: string;
+        label: LocalizedString;
         layoutVariable?: string;
         groupVariable?: string;
         edges?: {
-          display?: string[];
+          display?: { type: string; label: LocalizedString }[];
         };
-        highlight?: string[];
+        highlight?: { variable: string; label: LocalizedString }[];
       }[]
     | undefined;
-  const title = configuration.title as string | undefined;
-  const items = configuration.items as
-    | {
-        id?: string;
-        type?: string;
-        content?: string;
-        size?: string;
-      }[]
-    | undefined;
+  const title = configuration.title as LocalizedString | undefined;
+  const items = configuration.items as Item[] | undefined;
   const interviewScript = configuration.interviewScript as string | undefined;
+  // FinishSession
+  const content = configuration.content as LocalizedString | undefined;
+  const finishedContent = configuration.finishedContent as
+    | LocalizedString
+    | undefined;
+  const finishMode = configuration.mode as FinishMode | undefined;
+  const outcome = configuration.outcome as FinishOutcome | undefined;
+  const finishing = {
+    finishLabel: configuration.finishLabel as LocalizedString | undefined,
+    finishConfirmation: configuration.finishConfirmation as
+      | LocalizedString
+      | undefined,
+    finishFailed: configuration.finishFailed as LocalizedString | undefined,
+  };
   // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
   const edgeType = configuration.edgeType as
     | {
@@ -172,37 +212,64 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
   const scaffoldingStep = configuration.scaffoldingStep as
     | {
-        text: string;
+        text: LocalizedString;
         showQuickStartModal: boolean;
       }
     | undefined;
   const nameGenerationStep = configuration.nameGenerationStep as
     | {
-        text: string;
+        text: LocalizedString;
         form: {
           fields?: Array<{
             variable: string;
-            prompt: string;
+            prompt: LocalizedString;
           }>;
         };
       }
     | undefined;
-  // FamilyPedigree: the attribute nomination steps asked after the family is
-  // built. (`diseaseNominationStep` was the legacy FamilyTreeCensus key; no
-  // current schema stage carries it, so it is not read here.)
-  const nominationPrompts = configuration.nominationPrompts as
-    | Array<{
-        id: string;
-        text: string;
-        variable: string;
-      }>
+  // FamilyPedigree
+  const pedigreePrompt =
+    type === 'FamilyPedigree'
+      ? ((configuration.prompt as LocalizedString | undefined) ?? null)
+      : null;
+  const nodeConfiguration = configuration.nodeConfiguration as
+    | FamilyPedigreeNodeConfiguration
     | undefined;
+  const edgeConfiguration = configuration.edgeConfiguration as
+    | FamilyPedigreeEdgeConfiguration
+    | undefined;
+  const completeness = configuration.completeness as
+    | FamilyPedigreeCompleteness
+    | undefined;
+  const framing = configuration.framing as FramingSetting | undefined;
+  // The words the participant sees, which the summary prints beside the rest.
+  const pedigreeWording =
+    type === 'FamilyPedigree'
+      ? ((configuration.wording as
+          | Record<string, LocalizedString | undefined>
+          | undefined) ?? null)
+      : null;
+  const nominationPrompts = configuration.nominationPrompts as
+    | FamilyPedigreeNominationPrompt[]
+    | undefined;
+  // NarrativePedigree
+  const narrativePedigree =
+    type === 'NarrativePedigree'
+      ? {
+          sourceStageId: String(configuration.sourceStageId ?? ''),
+          showAtRiskStatuses: configuration.showAtRiskStatuses === true,
+          diseases: (configuration.diseases ?? []) as {
+            id: string;
+            label: LocalizedString;
+            color: string;
+            attribute: string;
+            inheritancePattern: string;
+          }[],
+        }
+      : null;
   // Anonymisation
   const explanationText = configuration.explanationText as
-    | {
-        title: string;
-        body: string;
-      }
+    | LocalizedString
     | undefined;
   const validation = configuration.validation as
     | {
@@ -234,12 +301,28 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
             className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
             data-number={intl.formatNumber(stageNumber)}
           >
-            <Heading level="h1">{label}</Heading>
+            <Heading level="h1">
+              <DefaultLanguageText value={label} />
+            </Heading>
           </div>
-          {(subject || edgeType || !isEmpty(stageVariables)) && (
+          {(multilingual ||
+            subject ||
+            edgeType ||
+            !isEmpty(stageVariables)) && (
             <MiniTable
               rotated
+              wide={multilingual}
               rows={[
+                // The heading names the stage in the default language; every
+                // translation of its name is listed here.
+                ...(multilingual
+                  ? [
+                      [
+                        intl.formatMessage(summaryMessages.name),
+                        <SummaryText key="name" value={label} />,
+                      ],
+                    ]
+                  : []),
                 ...(subject
                   ? [
                       [
@@ -320,12 +403,23 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       <IntroductionPanel introductionPanel={introductionPanel ?? null} />
       <MapOptions mapOptions={mapOptions ?? null} />
       <DataSource dataSource={dataSource ?? null} />
+      <RosterPanel panelTitle={panelTitle ?? null} />
       <QuickAdd quickAdd={quickAdd ?? null} />
       <Panels panels={panels ?? null} />
       <Prompts prompts={prompts ?? null} />
       <Form form={form ?? null} />
       <Behaviours behaviours={behaviours ?? null} />
+      <StageWording type={type} configuration={configuration} />
       <Presets presets={presets ?? null} />
+      {type === 'NetworkComposer' && (
+        <ComposerEdges
+          edges={
+            (configuration.edges as
+              | { subject: { type: string }; label: LocalizedString }[]
+              | undefined) ?? null
+          }
+        />
+      )}
       <PageHeading heading={title ?? null} />
       <Items items={items ?? null} />
       <FamilyTreeVariables
@@ -335,15 +429,64 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         nodeSexVariable={nodeSexVariable}
         nodeIsEgoVariable={nodeIsEgoVariable}
       />
+      <FamilyPedigree
+        personType={subject?.type ?? null}
+        prompt={pedigreePrompt}
+        nodeConfiguration={nodeConfiguration ?? null}
+        edgeConfiguration={edgeConfiguration ?? null}
+        completeness={completeness ?? null}
+        framing={framing ?? null}
+        wording={pedigreeWording}
+        nominationPrompts={nominationPrompts ?? null}
+      />
+      {narrativePedigree && <NarrativePedigree {...narrativePedigree} />}
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
-      <NominationPrompts nominationPrompts={nominationPrompts ?? null} />
-      <Anonymisation
-        explanationText={explanationText ?? null}
-        validation={validation ?? null}
-      />
+      {type === 'Anonymisation' && (
+        <Anonymisation
+          explanationText={explanationText ?? null}
+          validation={validation ?? null}
+        />
+      )}
+      {type === 'FinishSession' && (
+        <FinishScreen
+          mode={finishMode ?? 'confirmation'}
+          content={content ?? null}
+          finishedContent={finishedContent ?? null}
+          outcome={outcome ?? null}
+          finishing={finishing}
+        />
+      )}
+      <CanvasWording type={type} configuration={configuration} />
       <InterviewScript interviewScript={interviewScript ?? null} />
     </div>
   );
 };
+/**
+ * A stage, and what its text that shows values can show: every value its
+ * prompts or its form's fields could, so each binding reads as the value it
+ * stands for wherever the summary prints it.
+ */
+const Stage = (props: StageProps) => {
+  const { protocol } = useContext(SummaryContext);
+  const { configuration, type } = props;
+  const site = useMemo(
+    () => ({
+      context: stageDynamicValueContext({
+        codebook: protocol.codebook,
+        stage: { ...configuration, type },
+      }),
+      bindings: (isRecord(configuration.dynamicValues)
+        ? configuration.dynamicValues
+        : {}) as DynamicValues,
+    }),
+    [configuration, type, protocol.codebook],
+  );
+  return (
+    <SummaryDynamicValuesContext value={site}>
+      <StageContent {...props} />
+    </SummaryDynamicValuesContext>
+  );
+};
+
 export default Stage;

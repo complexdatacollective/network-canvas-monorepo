@@ -21,14 +21,22 @@ test.describe('Targeted consent skip', () => {
     interview.interviewId = await protocol.createInterview(protocolId);
     await interview.goto(0);
 
+    // Schema 8's consent panel text migrates to an Information stage before
+    // the form, and its title to the form's heading.
     await expect(
       page.getByRole('heading', { name: 'Consent', level: 1 }),
     ).toBeVisible();
-    await interview.nextButton.click();
+    await expect(
+      page.getByText('Please confirm whether you agree to take part.'),
+    ).toBeVisible();
+    await interview.next();
+    await expect(
+      page.getByRole('heading', { name: 'Consent', level: 1 }),
+    ).toBeVisible();
     await stage.form.selectRadio('agrees', 'No');
     await interview.next();
 
-    await expect(page).toHaveURL(/step=3/);
+    await expect(page).toHaveURL(/step=4/);
     await expect(
       page.getByRole('heading', { name: 'Finish Interview' }),
     ).toBeVisible();

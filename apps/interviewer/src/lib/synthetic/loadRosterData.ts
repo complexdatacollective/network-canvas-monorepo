@@ -4,7 +4,7 @@ import {
 } from '@codaco/interview/contract';
 import type { NcNode } from '@codaco/shared-consts';
 import { getProtocolAssets } from '~/lib/db/api';
-import type { StoredAsset, StoredProtocol } from '~/lib/db/types';
+import type { StoredAsset, StoredCurrentProtocol } from '~/lib/db/types';
 
 /**
  * Host adapter for the shared roster-collection pipeline: reads this protocol's
@@ -14,7 +14,7 @@ import type { StoredAsset, StoredProtocol } from '~/lib/db/types';
  * resolve so a protocol with no roster stages never triggers an asset read.
  */
 export async function loadRosterNodesForStages(
-  protocol: StoredProtocol,
+  protocol: StoredCurrentProtocol,
 ): Promise<Record<string, NcNode[]>> {
   let assetsByIdPromise: Promise<Map<string, StoredAsset>> | undefined;
   const getAssetsById = () => {

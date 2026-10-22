@@ -27,6 +27,12 @@ const config = resolveGenerationConfig({ today: TODAY });
 const nameGenerator = {
   id: 'stage-1',
   type: 'NameGenerator',
+  minNodesNotice: {
+    en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+  },
+  maxNodesNotice: {
+    en: 'You have completed this task. Click the next arrow to continue.',
+  },
   label: 'Name generator',
   subject: { entity: 'node', type: 'person' },
   prompts: [{ id: 'prompt-1', text: 'Name people' }],
@@ -35,7 +41,7 @@ const nameGenerator = {
 
 const reference = asEntityAttributeReference;
 const option = (value: string | number) => ({
-  label: `Option ${String(value)}`,
+  label: { 'en-US': `Option ${String(value)}` },
   value,
 });
 
@@ -386,7 +392,7 @@ describe('validation contradiction delegation conformance', () => {
   });
 
   it('uses record-level Boolean domains until every stage occurrence is resolved', () => {
-    const trueOnly = [{ label: 'Yes', value: true }];
+    const trueOnly = [{ label: { 'en-US': 'Yes' }, value: true }];
     const choiceRendered: Variables = {
       a: {
         name: 'Choice A',

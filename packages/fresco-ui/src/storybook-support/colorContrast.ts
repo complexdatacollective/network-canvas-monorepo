@@ -15,11 +15,13 @@
 
 type Rgb = { r: number; g: number; b: number };
 
+type ContrastColorSpace = 'srgb' | 'display-p3';
+
 const WHITE = 'rgb(255, 255, 255)';
 const BLACK = 'rgb(0, 0, 0)';
 
 let probe: HTMLElement | undefined;
-let context: CanvasRenderingContext2D | undefined;
+const contexts = new Map<ContrastColorSpace, CanvasRenderingContext2D>();
 
 /**
  * The colour the browser resolves a declaration to, or `undefined` when the
@@ -42,29 +44,53 @@ const resolveDeclaredColor = (color: string): string | undefined => {
   return getComputedStyle(probe).backgroundColor;
 };
 
-const canvasContext = (): CanvasRenderingContext2D => {
-  context ??=
-    document.createElement('canvas').getContext('2d', {
-      willReadFrequently: true,
-    }) ?? undefined;
+const canvasContext = (
+  colorSpace: ContrastColorSpace,
+): CanvasRenderingContext2D => {
+  const existing = contexts.get(colorSpace);
+  if (existing) return existing;
 
+  const context = document.createElement('canvas').getContext('2d', {
+    willReadFrequently: true,
+    colorSpace,
+  });
   if (!context) throw new Error('No 2D canvas context to read colours with.');
+  if (context.getContextAttributes().colorSpace !== colorSpace) {
+    throw new Error(`This browser cannot paint a canvas in ${colorSpace}.`);
+  }
+
+  contexts.set(colorSpace, context);
   return context;
 };
 
+export function canvasSupportsColorSpace(
+  colorSpace: ContrastColorSpace,
+): boolean {
+  return (
+    document
+      .createElement('canvas')
+      .getContext('2d', { colorSpace })
+      ?.getContextAttributes().colorSpace === colorSpace
+  );
+}
+
 /** One pixel of `color` painted over `backdrop`, in sRGB. */
-const paintOver = (color: string, backdrop: string): Rgb => {
+const paintOver = (
+  color: string,
+  backdrop: string,
+  colorSpace: ContrastColorSpace = 'srgb',
+): Rgb => {
   const declared = resolveDeclaredColor(color);
   if (declared === undefined) throw new Error(`\`${color}\` is not a colour.`);
 
-  const ctx = canvasContext();
+  const ctx = canvasContext(colorSpace);
   ctx.clearRect(0, 0, 1, 1);
   ctx.fillStyle = backdrop;
   ctx.fillRect(0, 0, 1, 1);
   ctx.fillStyle = declared;
   ctx.fillRect(0, 0, 1, 1);
 
-  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1, { colorSpace }).data;
   if (r === undefined || g === undefined || b === undefined) {
     throw new Error(`The browser painted nothing for \`${color}\`.`);
   }
@@ -98,8 +124,21 @@ const toLinear = (channel: number): number => {
   return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 };
 
-const relativeLuminance = ({ r, g, b }: Rgb): number =>
-  0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+const LUMINANCE_COEFFICIENTS: Record<
+  ContrastColorSpace,
+  readonly [number, number, number]
+> = {
+  'srgb': [0.2126729, 0.7151522, 0.072175],
+  'display-p3': [0.2289746, 0.6917385, 0.0792869],
+};
+
+const relativeLuminance = (
+  { r, g, b }: Rgb,
+  colorSpace: ContrastColorSpace,
+): number => {
+  const [kr, kg, kb] = LUMINANCE_COEFFICIENTS[colorSpace];
+  return kr * toLinear(r) + kg * toLinear(g) + kb * toLinear(b);
+};
 
 /**
  * The WCAG contrast ratio between a colour and the opaque colour behind it.
@@ -107,13 +146,23 @@ const relativeLuminance = ({ r, g, b }: Rgb): number =>
  * `color` is painted onto `backdrop` first, so a colour carrying an alpha
  * channel is measured as it is seen rather than as it is written.
  */
-export function contrastRatio(color: string, backdrop: string): number {
+export function contrastRatio(
+  color: string,
+  backdrop: string,
+  colorSpace: ContrastColorSpace = 'srgb',
+): number {
   if (opacityOf(backdrop) !== 1) {
     throw new Error(`The backdrop \`${backdrop}\` is not opaque.`);
   }
 
-  const front = relativeLuminance(paintOver(color, backdrop));
-  const back = relativeLuminance(paintOver(backdrop, backdrop));
+  const front = relativeLuminance(
+    paintOver(color, backdrop, colorSpace),
+    colorSpace,
+  );
+  const back = relativeLuminance(
+    paintOver(backdrop, backdrop, colorSpace),
+    colorSpace,
+  );
 
   return (Math.max(front, back) + 0.05) / (Math.min(front, back) + 0.05);
 }

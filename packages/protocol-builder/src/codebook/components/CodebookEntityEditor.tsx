@@ -33,8 +33,9 @@ import {
   NodeColorSequence,
 } from '@codaco/protocol-validation';
 import {
+  CodebookNameSchema,
+  normalizeCodebookName,
   normalizeForComparison,
-  VariableNameSchema,
 } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -59,7 +60,7 @@ import {
 import type { CodebookWriteOutcome } from '../writes.ts';
 import NodeShapeMappingFields from './NodeShapeMappingFields.tsx';
 
-const messages = defineMessages({
+export const codebookEntityMessages = defineMessages({
   nameRequired: {
     id: 'protocolBuilder.codebookEntity.nameRequired',
     defaultMessage: 'Enter a type name.',
@@ -69,9 +70,9 @@ const messages = defineMessages({
   nameInvalid: {
     id: 'protocolBuilder.codebookEntity.nameInvalid',
     defaultMessage:
-      '{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}',
+      '{entity, select, node {A node type name cannot contain line breaks, tabs or other control characters.} edge {An edge type name cannot contain line breaks, tabs or other control characters.} other {An ego definition name cannot contain line breaks, tabs or other control characters.}}',
     description:
-      'Refusal shown under the name field when the name holds characters the export formats cannot carry. entity is node, edge or ego. The listed symbols are literal characters and must not be translated.',
+      'Refusal shown under the name field when the name holds a character that cannot be stored in a name, such as a line break or a tab. entity is node, edge or ego. Names may otherwise be written in any language or script, with spaces and punctuation.',
   },
   nameTaken: {
     id: 'protocolBuilder.codebookEntity.nameTaken',
@@ -122,7 +123,7 @@ const messages = defineMessages({
     defaultMessage:
       '{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be "Person", "Place", or "Organization".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be "Friends" or "Colleagues".} other {This name identifies the ego definition in the codebook and exported data.}}',
     description:
-      'Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names and may be translated, but the field accepts only the letters A–Z and a–z, digits and the symbols . _ - : — so each example must contain no spaces and no accented or non-Latin letters. Where no example in your language fits, keep the English name and add a translation in parentheses after the closing quote.',
+      'Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names: translate them into natural type names in your language. Spaces, accented letters and any script are allowed in a type name.',
   },
   namePlaceholder: {
     id: 'protocolBuilder.codebookEntity.namePlaceholder',
@@ -265,7 +266,7 @@ const colorOptions = (
     ...palette,
     {
       value: current,
-      label: intl.formatMessage(messages.colorOutsidePalette, {
+      label: intl.formatMessage(codebookEntityMessages.colorOutsidePalette, {
         color: current,
       }),
     },
@@ -350,11 +351,11 @@ const validateFields = (
 ): EntityFieldErrors => {
   if (subject.entity === 'ego') return {};
   const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
-  const name = stringValue(draft.name);
-  if (name.trim() === '') {
-    errors.name = createMessageError(messages.nameRequired);
-  } else if (!VariableNameSchema.safeParse(name).success) {
-    errors.name = createMessageError(messages.nameInvalid, {
+  const name = normalizeCodebookName(stringValue(draft.name));
+  if (name === '') {
+    errors.name = createMessageError(codebookEntityMessages.nameRequired);
+  } else if (!CodebookNameSchema.safeParse(name).success) {
+    errors.name = createMessageError(codebookEntityMessages.nameInvalid, {
       entity: subject.entity,
     });
   } else if (
@@ -363,14 +364,17 @@ const validateFields = (
         normalizeForComparison(existingName) === normalizeForComparison(name),
     )
   ) {
-    errors.name = createMessageError(messages.nameTaken, { name });
+    errors.name = createMessageError(codebookEntityMessages.nameTaken, {
+      name,
+    });
   }
   if (stringValue(draft.color) === '') {
-    errors.color = createMessageError(messages.colorRequired);
+    errors.color = createMessageError(codebookEntityMessages.colorRequired);
   }
   if (subject.entity === 'node') {
     const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
-    if (shape === '') errors.shape = createMessageError(messages.shapeRequired);
+    if (shape === '')
+      errors.shape = createMessageError(codebookEntityMessages.shapeRequired);
     const mapping = isRecord(draft.shape) ? draft.shape.dynamic : undefined;
     const mappingIssue =
       mapping === undefined
@@ -381,9 +385,10 @@ const validateFields = (
           );
     if (mappingIssue !== undefined) errors['shape.dynamic'] = mappingIssue;
     const icon = stringValue(draft.icon);
-    if (icon === '') errors.icon = createMessageError(messages.iconRequired);
+    if (icon === '')
+      errors.icon = createMessageError(codebookEntityMessages.iconRequired);
     else if (!isInterviewerIconName(icon)) {
-      errors.icon = createMessageError(messages.iconUnsupported);
+      errors.icon = createMessageError(codebookEntityMessages.iconUnsupported);
     }
   }
   return errors;
@@ -411,7 +416,7 @@ export function CodebookEntityFields({
     return (
       <Alert variant="info" appearance="soft" density="compact">
         <AlertDescription>
-          {intl.formatMessage(messages.egoHasNoProperties)}
+          {intl.formatMessage(codebookEntityMessages.egoHasNoProperties)}
         </AlertDescription>
       </Alert>
     );
@@ -436,21 +441,26 @@ export function CodebookEntityFields({
   return (
     <>
       <Section
-        title={intl.formatMessage(messages.identitySectionTitle)}
-        description={intl.formatMessage(messages.identitySectionDescription)}
+        title={intl.formatMessage(codebookEntityMessages.identitySectionTitle)}
+        description={intl.formatMessage(
+          codebookEntityMessages.identitySectionDescription,
+        )}
       >
         <UnconnectedField
           name="name"
-          label={intl.formatMessage(messages.nameLabel, {
+          label={intl.formatMessage(codebookEntityMessages.nameLabel, {
             entity: subject.entity,
           })}
-          hint={intl.formatMessage(messages.nameHint, {
+          hint={intl.formatMessage(codebookEntityMessages.nameHint, {
             entity: subject.entity,
           })}
           component={InputField}
-          placeholder={intl.formatMessage(messages.namePlaceholder, {
-            entity: subject.entity,
-          })}
+          placeholder={intl.formatMessage(
+            codebookEntityMessages.namePlaceholder,
+            {
+              entity: subject.entity,
+            },
+          )}
           value={stringValue(draft.name)}
           onChange={(value) =>
             onChange(replaceDraftProperty(draft, 'name', value ?? ''))
@@ -462,13 +472,15 @@ export function CodebookEntityFields({
         />
       </Section>
 
-      <Section title={intl.formatMessage(messages.colorSectionTitle)}>
+      <Section
+        title={intl.formatMessage(codebookEntityMessages.colorSectionTitle)}
+      >
         <UnconnectedField
           name="color"
-          label={intl.formatMessage(messages.colorLabel, {
+          label={intl.formatMessage(codebookEntityMessages.colorLabel, {
             entity: subject.entity,
           })}
-          hint={intl.formatMessage(messages.colorHint, {
+          hint={intl.formatMessage(codebookEntityMessages.colorHint, {
             entity: subject.entity,
           })}
           component={ColorPickerField}
@@ -487,15 +499,17 @@ export function CodebookEntityFields({
       {subject.entity === 'node' && (
         <>
           <Section
-            title={intl.formatMessage(messages.appearanceSectionTitle)}
+            title={intl.formatMessage(
+              codebookEntityMessages.appearanceSectionTitle,
+            )}
             description={intl.formatMessage(
-              messages.appearanceSectionDescription,
+              codebookEntityMessages.appearanceSectionDescription,
             )}
           >
             <UnconnectedField
               name="shape"
-              label={intl.formatMessage(messages.shapeLabel)}
-              hint={intl.formatMessage(messages.shapeHint)}
+              label={intl.formatMessage(codebookEntityMessages.shapeLabel)}
+              hint={intl.formatMessage(codebookEntityMessages.shapeHint)}
               component={ShapePickerField}
               nodeColor={currentColor}
               value={
@@ -531,11 +545,13 @@ export function CodebookEntityFields({
             />
           </Section>
 
-          <Section title={intl.formatMessage(messages.iconSectionTitle)}>
+          <Section
+            title={intl.formatMessage(codebookEntityMessages.iconSectionTitle)}
+          >
             <UnconnectedField
               name="icon"
-              label={intl.formatMessage(messages.iconLabel)}
-              hint={intl.formatMessage(messages.iconHint)}
+              label={intl.formatMessage(codebookEntityMessages.iconLabel)}
+              hint={intl.formatMessage(codebookEntityMessages.iconHint)}
               component={IconPicker}
               value={stringValue(draft.icon)}
               onChange={(value) =>
@@ -752,7 +768,9 @@ export default function CodebookEntityEditor({
           tabIndex={-1}
           className="mb-6"
         >
-          <AlertTitle>{intl.formatMessage(messages.failureTitle)}</AlertTitle>
+          <AlertTitle>
+            {intl.formatMessage(codebookEntityMessages.failureTitle)}
+          </AlertTitle>
           <AlertDescription>
             {/* Decoded here, not where it was raised: a refusal stands
                 until the next save, so it follows a change of language
@@ -793,7 +811,9 @@ export default function CodebookEntityEditor({
           disabled={interactionDisabled || !dirty}
         >
           {intl.formatMessage(
-            busy ? codebookEditingMessages.saving : messages.submit,
+            busy
+              ? codebookEditingMessages.saving
+              : codebookEntityMessages.submit,
           )}
         </Button>
       )}

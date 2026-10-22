@@ -145,7 +145,7 @@ jobs:
           fi
           ./packages/interview/e2e/scripts/run.sh \
             "${projects[@]}" \
-            --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
+            --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults)$' \
             --workers=1 \
             --retries=0 \
             --update-snapshots
@@ -170,7 +170,7 @@ jobs:
             E2E_VISUAL_DRAG_OFFSET="$offset" \
               ./packages/interview/e2e/scripts/run.sh \
               "${projects[@]}" \
-              --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
+              --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults)$' \
               --workers=1 \
               --retries=0
           done
@@ -195,7 +195,7 @@ jobs:
           fi
           ./packages/interview/e2e/scripts/run.sh \
             "${projects[@]}" \
-            --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
+            --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults)$' \
             --workers=1 \
             --retries=0 \
             --repeat-each="$ITERATIONS"

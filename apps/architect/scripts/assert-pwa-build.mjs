@@ -2,67 +2,75 @@
 // Post-build assertion: a production PWA build must emit the SW + manifest +
 // icons, every emitted JS chunk, and every responsive stage-preview image must
 // be precached. A missing critical asset breaks either the offline boot or the
-// first offline rendering of screen thumbnails. Architect precaches all JS (no
-// `globIgnores`), so any excluded chunk is a real regression. (Sibling of
+// first offline rendering of screen thumbnails. Architect precaches all of its
+// own JS (its `globIgnores` leaves out only the bundled Architect 8 under v8/),
+// so any excluded chunk is a real regression. Nothing of the dev-only
+// Development protocol may be in the build at all. (Sibling of
 // apps/interviewer/scripts/assert-pwa-build.mjs, which instead checks named
-// critical chunks because it intentionally keeps some chunks out of the
-// initial load.)
-import { existsSync, readFileSync } from 'node:fs';
+// critical chunks.)
+import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadEnv } from 'vite';
 
-import {
-  appCachePrefix,
-  resolveAppBasePath,
-} from '../../../scripts/buildtime/app-base-path.mjs';
+import { assertNoDevelopmentProtocol } from '../../../scripts/buildtime/assert-no-development-protocol.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
-import { findShippedProtocols } from '../../../scripts/buildtime/find-shipped-protocols.mjs';
+import {
+  assertLegacyAppOutput,
+  assertLegacyRedirects,
+  assertLegacyRouteExclusions,
+  findLegacyPrecacheEntries,
+  routeMatcherAt,
+} from '../../../scripts/buildtime/legacy-app-assertions.ts';
+import {
+  legacyApp,
+  loadLegacyAppV8,
+} from '../../../scripts/buildtime/legacy-app.ts';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
 const dist = path.join(appRoot, 'dist');
+const legacyArchitect = legacyApp('architect');
 
 const fail = (msg) => {
   console.error(`PWA build assertion failed: ${msg}`);
   process.exit(1);
 };
 
-// `/` for the root build; `/v8/` for Architect 8 inside Architect 9's deploy.
-// Every path and cache name probed below is derived from it, so the same
-// assertions hold a sub-path build to the same worker contract.
-const base = resolveAppBasePath(
-  loadEnv('production', appRoot, ''),
-  'ARCHITECT_BASE_PATH',
-);
-const isSubpath = base !== '/';
-const cachePrefix = appCachePrefix('architect', base);
-const atBase = (absolutePath) => `${base}${absolutePath.slice(1)}`;
+// Architect 8 is served at /v8/ from this deploy (dist/v8, see
+// scripts/buildtime/legacy-app.ts), so its stable entry points and hashed
+// assets are held to the same contract as this app's, whether or not this
+// build bundles it.
+try {
+  assertPwaCacheHeaders({
+    additionalStablePaths: [
+      '/preview/',
+      '/preview/index.html',
+      '/architect-icon.png',
+    ],
+    nestedBases: ['/v8/'],
+    text: readFileSync(path.join(dist, '_headers'), 'utf8'),
+  });
+  assertLegacyRedirects(
+    legacyArchitect,
+    readFileSync(path.join(dist, '_redirects'), 'utf8'),
+  );
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
 
-if (isSubpath) {
-  // The hosting deploy owns these rules (build.mjs removes the copies).
-  for (const file of ['_headers', '_redirects']) {
-    if (existsSync(path.join(dist, file))) {
-      fail(`a ${base} build must not ship dist/${file}`);
-    }
-  }
-} else {
-  try {
-    assertPwaCacheHeaders({
-      additionalStablePaths: [
-        '/preview/',
-        '/preview/index.html',
-        '/architect-icon.png',
-      ],
-      text: readFileSync(path.join(dist, '_headers'), 'utf8'),
-    });
-  } catch (error) {
-    fail(error instanceof Error ? error.message : String(error));
-  }
+// The Development protocol is offered only in `vite dev` (Home.tsx), so none
+// of it — its JSON or its media, a ~24 MB video among them — belongs in a
+// production build. An eager asset glob emits its files even when no code path
+// reaches them, so this is checked against the output, not the source.
+try {
+  assertNoDevelopmentProtocol(dist);
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 let sw;
@@ -75,7 +83,7 @@ try {
 const packageJson = JSON.parse(
   readFileSync(path.join(appRoot, 'package.json'), 'utf8'),
 );
-const expectedPrecachePrefixStart = `${cachePrefix}${packageJson.version}-`;
+const expectedPrecachePrefixStart = `architect-${packageJson.version}-`;
 const precachePrefix = sw.match(
   /setCacheNameDetails\(\{prefix:"([^"]+)"\}\)/,
 )?.[1];
@@ -128,11 +136,18 @@ if (
 ) {
   fail('cache reclaimer does not recheck worker ownership and pending updates');
 }
+const legacyPrecacheEntries = findLegacyPrecacheEntries(sw);
+if (legacyPrecacheEntries.length > 0) {
+  fail(
+    `Architect 8 is in this app's precache: ${legacyPrecacheEntries.join(', ')}`,
+  );
+}
 // The root build shares its origin with Architect 8 at /v8/, whose
 // 'architect-v8-' caches also start with 'architect-'. Its reclaimer must leave
-// those caches and /v8/ windows alone; a sub-path build hosts no nested app.
-const expectedForeignCachePrefixes = isSubpath ? [] : ['architect-v8-'];
-const expectedForeignScopePaths = isSubpath ? [] : ['/v8/'];
+// those caches and /v8/ windows alone; the /v8/ build itself hosts no nested app.
+const hostsArchitect8 = !precachePrefix.startsWith('architect-v8-');
+const expectedForeignCachePrefixes = hostsArchitect8 ? ['architect-v8-'] : [];
+const expectedForeignScopePaths = hostsArchitect8 ? ['/v8/'] : [];
 if (
   !reclamationWorker.includes(
     `const foreignCachePrefixes = ${JSON.stringify(expectedForeignCachePrefixes)};`,
@@ -156,46 +171,6 @@ for (const f of [
     readFileSync(path.join(dist, f));
   } catch {
     fail(`missing dist/${f}`);
-  }
-}
-
-let manifest;
-try {
-  manifest = JSON.parse(
-    readFileSync(path.join(dist, 'manifest.webmanifest'), 'utf8'),
-  );
-} catch {
-  fail('dist/manifest.webmanifest is not valid JSON');
-}
-if (manifest.start_url !== base || manifest.scope !== base) {
-  fail(
-    `manifest start_url and scope must be ${base}; found ${manifest.start_url} and ${manifest.scope}`,
-  );
-}
-if (isSubpath) {
-  // The editor inside Architect 9, on Architect 9's origin: it must be told
-  // apart from Architect 9, must not be offered for installation, and must
-  // not compete with it for .netcanvas launches.
-  const expectedName = `Architect ${packageJson.version.split('.')[0]}`;
-  if (manifest.name !== expectedName || manifest.short_name !== expectedName) {
-    fail(`a ${base} build's manifest must be named ${expectedName}`);
-  }
-  if (manifest.display !== 'browser') {
-    fail(
-      `a ${base} build's manifest must use display "browser", so it is not installable`,
-    );
-  }
-  if ('file_handlers' in manifest || 'launch_handler' in manifest) {
-    fail(`a ${base} build must not register as a .netcanvas file handler`);
-  }
-} else {
-  if (manifest.display !== 'standalone') {
-    fail(
-      `the root build must stay installable in its own window; manifest display is ${manifest.display}`,
-    );
-  }
-  if (manifest.file_handlers?.[0]?.action !== '/') {
-    fail('the root build no longer opens launched .netcanvas files');
   }
 }
 
@@ -233,71 +208,6 @@ if (missingStagePreviewAssets.length > 0) {
   );
 }
 
-// Architect 9 installs a sub-path build's worker in the background, so its
-// first visit may be offline: every font and the hashed header icon must be
-// precached there. The root build leaves both to its runtime caches.
-const offlineFirstVisitAssets = assetFiles
-  .filter((f) => f.endsWith('.woff2') || /^architect-icon-.+\.png$/.test(f))
-  .map((f) => `assets/${f}`);
-if (!offlineFirstVisitAssets.some((url) => url.endsWith('.woff2'))) {
-  fail('no .woff2 fonts emitted to dist/assets');
-}
-if (!offlineFirstVisitAssets.some((url) => url.endsWith('.png'))) {
-  fail('no hashed header icon (assets/architect-icon-*.png) emitted');
-}
-const manifestUrls = new Set(
-  [...sw.matchAll(/\{url:"([^"]+)",revision:/g)].map((m) => m[1]),
-);
-if (isSubpath) {
-  const missing = offlineFirstVisitAssets.filter(
-    (url) => !manifestUrls.has(url),
-  );
-  if (missing.length > 0) {
-    fail(
-      `a ${base} build must precache its fonts and header icon; missing: ${missing.join(', ')}`,
-    );
-  }
-} else {
-  const added = offlineFirstVisitAssets.filter((url) => manifestUrls.has(url));
-  if (added.length > 0) {
-    fail(`the root build precaches runtime-cached assets: ${added.join(', ')}`);
-  }
-}
-
-// The dev-only Development protocol is opened only from a dev build (its
-// imports are guarded by `import.meta.env.DEV`), so no production build may
-// carry it or its media (a 24 MB video among it). A sub-path build is the
-// editor alone (vite.config.ts replaces src/templates/bundled-protocols.ts
-// there): none of the research templates or the Sample protocol, nor any of
-// their media, may reach it either.
-{
-  const protocolsRoot = path.resolve(appRoot, '../../packages/protocols');
-  const protocolDirs = ['development'];
-  if (isSubpath) {
-    protocolDirs.push(
-      'sample',
-      ...(
-        await readdir(path.join(protocolsRoot, 'templates'), {
-          withFileTypes: true,
-        })
-      )
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => `templates/${entry.name}`),
-    );
-  }
-  let shipped = [];
-  try {
-    shipped = await findShippedProtocols({ dist, protocolsRoot, protocolDirs });
-  } catch (error) {
-    fail(error instanceof Error ? error.message : String(error));
-  }
-  if (shipped.length > 0) {
-    fail(
-      `a ${base} build must not ship ${isSubpath ? 'bundled protocols or their media' : 'the Development protocol or its media'}: ${shipped.join(', ')}`,
-    );
-  }
-}
-
 // Source maps are emitted only to be uploaded to PostHog, and the upload
 // deletes them (see vite.config.ts). One surviving here would publish the
 // app's full source with the deploy.
@@ -306,6 +216,25 @@ const strayMaps = (await readdir(dist, { recursive: true })).filter((f) =>
 );
 if (strayMaps.length > 0) {
   fail(`source map(s) left in dist: ${strayMaps.join(', ')}`);
+}
+
+// dist/v8 holds exactly the pinned Architect 8 (or nothing), under the cache
+// prefix the reclaimer was checked above to leave alone. The recursive
+// source-map check above covers it too.
+const legacyArchitectV8 = loadLegacyAppV8(
+  legacyArchitect,
+  appRoot,
+  loadEnv('production', appRoot, ''),
+);
+try {
+  assertLegacyAppOutput({
+    app: legacyArchitect,
+    dist,
+    resolution: legacyArchitectV8,
+    foreignCachePrefixes: expectedForeignCachePrefixes,
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
@@ -344,37 +273,12 @@ const entry = (html.match(/assets\/[^"']+\.js/) || [])[0];
 if (!entry) fail('no entry chunk referenced in dist/index.html');
 if (!precached.has(entry)) fail(`entry chunk excluded from precache: ${entry}`);
 
-// Both HTML entries must load their bundles from under the base: a root
-// `/assets/` reference in a sub-path build would load the hosting app's files.
-for (const entryHtml of ['index.html', 'preview/index.html']) {
-  const source = readFileSync(path.join(dist, entryHtml), 'utf8');
-  const assetRefs = [
-    ...source.matchAll(/(?:src|href)="([^"]*\/assets\/[^"]+)"/g),
-  ].map((match) => match[1]);
-  if (assetRefs.length === 0) {
-    fail(`dist/${entryHtml} references no bundled assets`);
-  }
-  const offBase = assetRefs.filter(
-    (ref) => !ref.startsWith(atBase('/assets/')),
-  );
-  if (offBase.length > 0) {
-    fail(
-      `dist/${entryHtml} loads assets from outside ${base}: ${offBase.join(', ')}`,
-    );
-  }
-}
-
 if (!/url:"preview\/index\.html"/.test(sw)) {
   fail('preview/index.html missing from precache manifest');
 }
 
-const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-const previewPath = atBase('/preview/');
-const previewRouteIndex = sw.indexOf(`pathname.startsWith("${previewPath}")`);
-const freshShellMatcher = new RegExp(
-  `![$\\w]+\\.pathname\\.startsWith\\("${escapeRegExp(previewPath)}"\\)`,
-  'g',
-);
+const previewRouteIndex = sw.indexOf('pathname.startsWith("/preview/")');
+const freshShellMatcher = /![$\w]+\.pathname\.startsWith\("\/preview\/"\)/g;
 freshShellMatcher.lastIndex = Math.max(previewRouteIndex, 0);
 const freshShellRoute = freshShellMatcher.exec(sw);
 if (previewRouteIndex === -1 || freshShellRoute?.index === undefined) {
@@ -382,10 +286,10 @@ if (previewRouteIndex === -1 || freshShellRoute?.index === undefined) {
 }
 
 const assetHandoffRouteIndex = sw.indexOf(
-  `pathname.startsWith("${atBase('/assets/')}")`,
+  'pathname.startsWith("/assets/")',
   freshShellRoute.index,
 );
-const imageRouteIndex = sw.indexOf(`cacheName:"${cachePrefix}images"`);
+const imageRouteIndex = sw.indexOf('cacheName:"architect-images"');
 if (imageRouteIndex === -1 || imageRouteIndex < freshShellRoute.index) {
   fail('missing architect image-cache route after navigation routes');
 }
@@ -394,7 +298,7 @@ if (assetHandoffRouteIndex === -1 || assetHandoffRouteIndex > imageRouteIndex) {
 }
 
 const imageRouteEnd = sw.indexOf(
-  `cacheName:"${cachePrefix}fonts"`,
+  'cacheName:"architect-fonts"',
   imageRouteIndex,
 );
 const imageRouteSource = sw.slice(
@@ -412,9 +316,22 @@ for (const stableIconPath of [
   '/maskable-icon-512x512.png',
   '/architect-icon.png',
 ]) {
-  if (!imageRouteSource.includes(`"${atBase(stableIconPath)}"`)) {
+  if (!imageRouteSource.includes(`"${stableIconPath}"`)) {
     fail(`architect image-cache route includes stable icon ${stableIconPath}`);
   }
+}
+try {
+  assertLegacyRouteExclusions({
+    app: legacyArchitect,
+    freshShell: routeMatcherAt(sw, freshShellRoute.index),
+    image: routeMatcherAt(sw, imageRouteIndex),
+    font: routeMatcherAt(sw, imageRouteEnd),
+    // Architect's image route has always matched every origin; only its font
+    // route is held to same-origin requests.
+    sameOriginRoutes: ['font'],
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 const previewRoute = sw.slice(previewRouteIndex, freshShellRoute.index);
@@ -465,7 +382,7 @@ if (
   fail('navigation fallback searches retained precaches globally');
 }
 if (
-  !assetHandoffRouteSource.includes(`"${atBase('/assets/')}"`) ||
+  !/\/assets\//.test(assetHandoffRouteSource) ||
   !/js\|css/.test(assetHandoffRouteSource) ||
   !/4x3/.test(assetHandoffRouteSource) ||
   !/webp/.test(assetHandoffRouteSource) ||
@@ -482,32 +399,7 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
   fail('exact-hash asset handoff must not search retained HTML shells');
 }
 
-const bundledAssetsRouteIndex = sw.indexOf(
-  `cacheName:"${cachePrefix}bundled-assets"`,
-);
-if (
-  bundledAssetsRouteIndex === -1 ||
-  !sw
-    .slice(imageRouteEnd, bundledAssetsRouteIndex)
-    .includes(`pathname.startsWith("${atBase('/assets/')}")`)
-) {
-  fail(`bundled-asset cache route does not cover ${atBase('/assets/')}`);
-}
-// The worker of a sub-path build only ever controls pages under its base, so
-// a root path left in its route source is a matcher that can never fire.
-if (isSubpath) {
-  const routeSource = sw.slice(previewRouteIndex);
-  const rootPaths = [...routeSource.matchAll(/"(\/(?!\/)[^"]*)"/g)]
-    .map((match) => match[1])
-    .filter((literal) => !literal.startsWith(base));
-  if (rootPaths.length > 0) {
-    fail(
-      `worker routes still match root paths outside ${base}: ${[...new Set(rootPaths)].join(', ')}`,
-    );
-  }
-}
-
-// No globIgnores means every emitted chunk should be precached; an excluded one
+// globIgnores covers only v8/, so every chunk in dist/assets should be precached; an excluded one
 // exceeded the size limit and would 404 offline.
 const excluded = jsAssets.filter((u) => !precached.has(u));
 if (excluded.length > 0) {
@@ -517,5 +409,5 @@ if (excluded.length > 0) {
 }
 
 console.log(
-  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached${isSubpath ? `, plus ${offlineFirstVisitAssets.length} font and header-icon files` : ''}`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyArchitectV8.bundled ? `Architect ${legacyArchitectV8.pin.version} bundled at /v8/ outside the precache` : `no Architect 8 bundled (${legacyArchitectV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
 );

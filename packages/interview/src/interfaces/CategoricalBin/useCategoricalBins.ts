@@ -2,20 +2,22 @@
 
 import { isNil } from 'es-toolkit';
 import { get } from 'es-toolkit/compat';
-import { useSelector } from 'react-redux';
 
 import type { Stage } from '@codaco/protocol-validation';
-import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { usePrompts } from '../../components/Prompts/usePrompts';
+import { markdownSource } from '../../dynamicValues/resolveDynamicText';
 import useSortedNodeList, {
-  getSortedNodeList,
+  useNodeSorter,
 } from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import {
-  getAllVariableUUIDsByEntity,
-  makeGetCodebookVariableById,
-} from '../../selectors/protocol';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { makeGetCodebookVariableById } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 
 const matchVariableValue = (
@@ -68,7 +70,7 @@ export function useCategoricalBins() {
     binSortOrder,
   } = prompt;
 
-  const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
+  const resolve = useResolveLocalizedString();
   const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
   const variableDefinition = getVariableDefinition(activePromptVariable);
 
@@ -77,20 +79,9 @@ export function useCategoricalBins() {
       ? variableDefinition.options!
       : [];
 
-  // Calculate uncategorised nodes by filtering stageNodes to those that
-  // don't have a value for either the active prompt variable or the other variable
-  const uncategorisedNodes = stageNodes.filter((node) =>
-    isUncategorised(
-      node[entityAttributesProperty],
-      activePromptVariable,
-      prompt.otherVariable,
-    ),
-  );
-
-  const sortedUncategorisedNodes = useSortedNodeList(
-    uncategorisedNodes,
-    bucketSortOrder,
-  );
+  // Within-bin node order is governed by binSortOrder (mirroring OrdinalBin);
+  // bucketSortOrder is reserved for the drawer (uncategorised nodes).
+  const sortBinNodes = useNodeSorter(stageNodes, binSortOrder);
 
   type Bin = {
     label: string;
@@ -105,17 +96,9 @@ export function useCategoricalBins() {
       return matchVariableValue(node, activePromptVariable, option.value);
     });
 
-    // Within-bin node order is governed by binSortOrder (mirroring OrdinalBin);
-    // bucketSortOrder is reserved for the drawer (uncategorised nodes).
-    const sortedNodes = getSortedNodeList(
-      nodes,
-      binSortOrder,
-      codebookVariables,
-    );
-
     return {
-      label: option.label,
-      nodes: sortedNodes,
+      label: resolve(option.label).text,
+      nodes: sortBinNodes(nodes),
       value: option.value,
       isOther: false,
     };
@@ -129,19 +112,36 @@ export function useCategoricalBins() {
       (node) => !isNil(get(node, [entityAttributesProperty, otherVariable])),
     );
 
-    const sortedOtherNodes = getSortedNodeList(
-      otherNodes,
-      binSortOrder,
-      codebookVariables,
-    );
-
     bins.push({
-      label: otherOptionLabel,
-      nodes: sortedOtherNodes,
+      label: markdownSource(resolve(otherOptionLabel)),
+      nodes: sortBinNodes(otherNodes),
       value: null,
       isOther: true,
     });
   }
+
+  // A node waits in the drawer when it has no value for the prompt's variable
+  // or its other variable, or when its value matches none of the bins (an
+  // option since removed from the codebook, say), so that it can still be
+  // placed rather than being hidden from both.
+  const binnedNodes = new Set(
+    bins.flatMap((bin) =>
+      bin.nodes.map((node) => node[entityPrimaryKeyProperty]),
+    ),
+  );
+  const uncategorisedNodes = stageNodes.filter(
+    (node) =>
+      isUncategorised(
+        node[entityAttributesProperty],
+        activePromptVariable,
+        prompt.otherVariable,
+      ) || !binnedNodes.has(node[entityPrimaryKeyProperty]),
+  );
+
+  const sortedUncategorisedNodes = useSortedNodeList(
+    uncategorisedNodes,
+    bucketSortOrder,
+  );
 
   return {
     bins,

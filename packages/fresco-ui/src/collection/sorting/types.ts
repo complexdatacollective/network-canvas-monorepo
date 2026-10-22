@@ -116,6 +116,12 @@ export type SortProps = {
   }) => void;
   /** Advanced: Sort rules for multi-field sorting */
   sortRules?: SortRule[];
+  /**
+   * The language text is put in alphabetical order in (a BCP 47 tag). Left out,
+   * `Collection` uses the interface language; a host whose content is in another
+   * language passes that language here.
+   */
+  sortLocale?: string;
 };
 
 /**
