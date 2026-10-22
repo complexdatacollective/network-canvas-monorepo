@@ -2,14 +2,14 @@
 title: Protocol Schema Information
 wip: false
 navOrder: 3
-date: 20th October 2026
+date: 22nd October 2026
 ---
 
 ## Summary
 
 This article will explain the concept of "protocol schemas", including what they are, why we need them, and how to work with schema version requirements within our apps.
 
-Although every effort is made to maintain compatibility with new schema versions, any features implemented that require a schema update will be unavailable to you until you migrate your protocol. We _strongly_ encourage you to update your protocol files wherever possible, so that you are able to use the newest Network Canvas features. Only Architect migrates a protocol to schema 9, and only when you choose to. Fresco and Interviewer run each protocol on the schema it was made for, apart from schema 7 protocols, which they migrate to schema 8 automatically (see [Migrating a protocol](#migrating-a-protocol)).
+Current releases of Architect, Fresco, and Interviewer are backwards compatible. All three open protocols made for earlier schema versions without upgrading them, and Architect can also edit them. Features introduced by a newer schema version become available to a protocol only once it has been upgraded to that version, so upgrading is worthwhile when you want one of those features, but it is never required. Only Architect migrates a protocol to schema 9, and only when you choose to. Fresco and Interviewer run each protocol on the schema it was made for, apart from schema 7 protocols, which they migrate to schema 8 automatically (see [Migrating a protocol](#migrating-a-protocol)).
 
 The current, latest protocol schema version is **9**. Schema 9 is supported by current releases of **Architect**, **Fresco**, and **Interviewer**. It is **not** supported by **Architect Classic** or **Interviewer Classic**, which support schema 7 and earlier, or by releases of Fresco and Interviewer made before schema 9 was introduced. See [Schema version 9](#schema-version-9) and [Schema version 8](#schema-version-8) below for details.
 
@@ -35,25 +35,33 @@ Our priority when implementing schema versioning has been to not burden the end 
 
 ## What it means for you
 
-When you update Interviewer or Architect, you may encounter messages when using protocols that were authored in prior versions of the apps.
-
-### Within Interviewer
-
-In Interviewer, you may see a blue light bulb icon, or a red robot icon, on your protocol card. Where a new schema is backward-compatible with a prior version you will see a blue light bulb, and Interviewer will continue to support installing and running protocols of that version without any issues. This means that if you are happy with your protocol file **you do not need to take any action**. Your protocol will continue to function as before, albeit without access to new functionality implemented with the new schema version (see the [schema versions table](/en/get-started/protocol-schema-information#compatibility-table) below for details on this).
-
-If you wish to update the protocol file to the new schema version, follow the instructions provided below under [migrating a protocol](#migrating-a-protocol).
-
-If your protocol is no longer compatible with the version of Interviewer that you have installed, you will see a red robot icon, and will no longer be able to start an interview. Please see the section below on [handling obsolete protocols](#handling-obsolete-protocols) for further assistance.
+Updating Architect, Fresco, or Interviewer does not stop your existing protocols from working. Each app tells you when a protocol was made for an earlier schema version, and what it does with that protocol is described below.
 
 ### Within Architect
 
 When you open a schema 7 or schema 8 protocol in Architect, it asks how you want to open it. You can upgrade it to schema 9, or keep editing it as schema 8 in the previous version of Architect, which is built in. See [migrating a protocol](#migrating-a-protocol) below for what each choice does.
 
+Schema 8 protocols you keep editing appear in your protocol library alongside your schema 9 protocols, marked with a **Schema 8** badge. Their menu offers **Open in Architect 8**, to continue editing without upgrading, and **Upgrade to schema 9**. Architect saves the previous version on your device in the background, so it works offline as well.
+
 If you would like to keep editing a schema 7 protocol as schema 7, keep it in **Architect Classic**. For older schema versions, see the [GitHub releases page](https://github.com/complexdatacollective/Architect/releases) for an archive of past Architect Classic versions, and consult the [compatibility table](#compatibility-table) for information about which version you need.
 
-## Handling obsolete protocols
+### Within Fresco and Interviewer
 
-Although we aim to always make schema changes that are backward-compatible, this can be unavoidable if we need to substantially revise a feature. If a new schema version is implemented that is not backward-compatible, the user interface in Interviewer will mark the protocol as "obsolete" and will no longer allow new interview sessions to be started. Although this is obviously undesirable, **all existing session data will continue to be exportable from a protocol in this state**. Review the section below to understand your options in this scenario.
+Fresco and Interviewer import schema 8 protocols as they are, and run their interviews in the schema 8 interview built into each app, so participants see exactly what the protocol was designed to show. You do not need to take any action. Interviewer shows **Schema 8 · older version** on the protocol card, and Fresco shows a **Schema 8** badge beside the protocol's name in the protocols table. You collect, review, and export their interviews in the same way as for a schema 9 protocol. In Interviewer, the **Ready for offline** status covers every protocol on the device, whatever its schema version.
+
+A schema 7 protocol is migrated to schema 8 automatically when you import it, and then runs as schema 8.
+
+### Within Interviewer Classic
+
+In Interviewer Classic, you may see a blue light bulb icon, or a red robot icon, on your protocol card. Where a new schema is backward-compatible with a prior version you will see a blue light bulb, and Interviewer will continue to support installing and running protocols of that version without any issues. This means that if you are happy with your protocol file **you do not need to take any action**. Your protocol will continue to function as before, albeit without access to new functionality implemented with the new schema version (see the [schema versions table](/en/get-started/protocol-schema-information#compatibility-table) below for details on this).
+
+If you wish to update the protocol file to the new schema version, follow the instructions provided below under [migrating a protocol](#migrating-a-protocol).
+
+If your protocol is no longer compatible with the version of Interviewer Classic that you have installed, you will see a red robot icon, and will no longer be able to start an interview. Please see the section below on [handling obsolete protocols in Interviewer Classic](#handling-obsolete-protocols-in-interviewer-classic) for further assistance.
+
+## Handling obsolete protocols in Interviewer Classic
+
+Although we aim to always make schema changes that are backward-compatible, this can be unavoidable if we need to substantially revise a feature. If a new schema version is implemented that is not backward-compatible, the user interface in Interviewer Classic will mark the protocol as "obsolete" and will no longer allow new interview sessions to be started. Although this is obviously undesirable, **all existing session data will continue to be exportable from a protocol in this state**. Review the section below to understand your options in this scenario.
 
 Although obsolete protocols will still be able to be migrated to the latest schema version by Architect, in some cases manual intervention or updating may be required. For example, if we add required properties to the protocol that cannot be derived from existing properties, you may need to create these yourself. Please contact us if you have encountered an issue, or have specific concerns about this.
 
@@ -61,8 +69,8 @@ Although obsolete protocols will still be able to be migrated to the latest sche
 
 If your protocol is marked as obsolete, and you wish to continue collecting data using it, you have two options:
 
-1. Migrate the protocol to a later version, which is compatible with your version of Interviewer. See [migrating a protocol](#migrating-a-protocol) below for this.
-2. Downgrade an older version of Interviewer, by uninstalling your current version, and downloading the version you require from our [GitHub releases page](https://github.com/complexdatacollective/Interviewer/releases). As per the warning at the start of this article, downgrading is not possible on iOS or Android platforms. If you have mistakenly upgraded your Interviewer version on these platforms causing your protocol to become obsolete, your only choice is to migrate your protocol to the latest schema version and to redeploy it.
+1. Migrate the protocol to a later version, which is compatible with your version of Interviewer Classic. See [migrating a protocol](#migrating-a-protocol) below for this.
+2. Install an older version of Interviewer Classic, by uninstalling your current version, and downloading the version you require from our [GitHub releases page](https://github.com/complexdatacollective/Interviewer/releases). As per the warning at the start of this article, downgrading is not possible on iOS or Android platforms. If you have mistakenly upgraded your Interviewer version on these platforms causing your protocol to become obsolete, your only choice is to migrate your protocol to the latest schema version and to redeploy it.
 
 ## Migrating a protocol
 
@@ -93,7 +101,7 @@ A schema 7 protocol is the one exception. Fresco and Interviewer migrate it to s
 
 Schema version 9 is the current, latest protocol schema version. It lets you write a protocol in more than one language, so that participants can take the interview in their own language. It also lets you name variables in any language, and use spaces and punctuation in their names, and makes encrypted attributes a standard feature.
 
-- **Architect** 9.0 and later supports schema 9, and offers to upgrade schema 7 and schema 8 protocols to it when you open them.
+- **Architect** 9.0 and later supports schema 9. When you open a schema 7 or schema 8 protocol, it offers to upgrade it to schema 9 or to keep editing it as schema 8.
 - **Fresco** 5.0 and later and **Interviewer** 9.0 and later support schema 9. They also keep running schema 8 protocols as schema 8, and never upgrade a protocol to schema 9.
 - Earlier releases of **Fresco** (4.x) and **Interviewer** (8.x) support schemas 7 and 8 only, and can't open a schema 9 protocol.
 - **Architect Classic** and **Interviewer Classic** support schema 7 and earlier.
