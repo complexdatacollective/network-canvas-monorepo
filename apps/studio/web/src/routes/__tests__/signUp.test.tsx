@@ -50,6 +50,7 @@ const fixtures = {
   teams: [] as { id: string; name: string }[],
   canCreateTeam: true,
   created: [] as string[],
+  loseCreateResponse: false,
 };
 
 const DEFERRED_FUNNEL_STEPS = [
@@ -102,6 +103,7 @@ beforeEach(() => {
   fixtures.teams = [];
   fixtures.canCreateTeam = true;
   fixtures.created = [];
+  fixtures.loseCreateResponse = false;
 
   installRpcHarness({
     'status': () => Effect.sync(status),
@@ -119,14 +121,16 @@ beforeEach(() => {
         canCreateTeam: fixtures.canCreateTeam,
       })),
     'team.create': ({ name }) =>
-      Effect.sync(() => {
+      Effect.suspend(() => {
         fixtures.created.push(Redacted.value(name));
         fixtures.teams = [NEW_TEAM];
-        return {
-          teamId: TeamId.make(NEW_TEAM.id),
-          teamName: name,
-          memberId: MemberId.make('member-new'),
-        };
+        return fixtures.loseCreateResponse
+          ? Effect.die(new Error('the response was lost'))
+          : Effect.succeed({
+              teamId: TeamId.make(NEW_TEAM.id),
+              teamName: name,
+              memberId: MemberId.make('member-new'),
+            });
       }),
     'studies.list': () => Effect.succeed([]),
   });
@@ -330,6 +334,22 @@ describe('/sign-up/team', () => {
       await screen.findByRole('heading', { level: 1, name: 'Studies' }),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/team/team-new');
+    expect(fixtures.created).toEqual(['Lab of Networks']);
+  });
+
+  it('opens the team when the creation committed but its response was lost', async () => {
+    fixtures.loseCreateResponse = true;
+    const router = renderAt('/sign-up/team');
+
+    await screen.findByRole('heading', { level: 1, name: 'Name your team' });
+    fireEvent.change(screen.getByRole('textbox', { name: /Team name/ }), {
+      target: { value: 'Lab of Networks' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create team' }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-new'),
+    );
     expect(fixtures.created).toEqual(['Lab of Networks']);
   });
 

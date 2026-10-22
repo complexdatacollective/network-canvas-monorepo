@@ -14,7 +14,11 @@ import { RateLimited } from '@codaco/studio-contract/schema/errors';
 import { TeamCommandError } from '@codaco/studio-contract/schema/team';
 
 import { authClient } from '../lib/auth.ts';
-import { invalidateMemberships } from '../lib/landing.ts';
+import {
+  invalidateMemberships,
+  resolveLandingDestination,
+  resolveTeamlessSession,
+} from '../lib/landing.ts';
 import { rpcCall, rpcKey } from '../runtime/rpc.ts';
 
 const messages = defineMessages({
@@ -121,6 +125,9 @@ export function useTeamCreation(): {
         result: { success: false, formErrors: [message] },
       });
       if (name === '') return refused(intl.formatMessage(messages.nameBlank));
+      const wasTeamless = await resolveTeamlessSession(queryClient).catch(
+        () => false,
+      );
       try {
         const created = await rpcCall('team.create', {
           name: Redacted.make(name),
@@ -134,10 +141,21 @@ export function useTeamCreation(): {
           return refused(intl.formatMessage(messages.rateLimited));
         }
         await refreshTeams();
+        if (wasTeamless) {
+          const destination = await resolveLandingDestination(
+            queryClient,
+          ).catch(() => undefined);
+          if (destination !== undefined && destination.to !== '/no-team') {
+            return {
+              result: { success: true },
+              teamId: destination.params.teamId,
+            };
+          }
+        }
         return refused(intl.formatMessage(messages.unconfirmed));
       }
     },
-    [intl, refreshTeams],
+    [intl, queryClient, refreshTeams],
   );
 
   const openTeam = useCallback(
