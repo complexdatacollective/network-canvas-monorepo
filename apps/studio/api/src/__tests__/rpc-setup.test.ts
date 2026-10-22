@@ -221,6 +221,35 @@ describe.skipIf(!testDb)('setup.complete', () => {
     expect(reported.name).toBe(INSTANCE_NAME);
   });
 
+  it('gives the instance and its first team the same trimmed name', async () => {
+    const response = await completeOverHttp({
+      token,
+      instanceName: `  ${INSTANCE_NAME}  `,
+      owner: owner(),
+    });
+    expect(await exitFrameOf(response)).toEqual({
+      instanceName: INSTANCE_NAME,
+      signedIn: true,
+    });
+
+    const installation = await database.run(
+      OwnerScope.open(readInstallation()),
+    );
+    expect(installation?.name).toBe(INSTANCE_NAME);
+    const teams = await database.run(
+      OwnerScope.open(
+        Effect.gen(function* () {
+          const { sql } = yield* Transaction;
+          return yield* sql<{ name: string }>`
+            select t.name from teams t
+              join team_members m on m.team_id = t.id
+             where m.user_id = ${installation?.ownerUserId ?? ''}`;
+        }),
+      ),
+    );
+    expect(teams).toEqual([{ name: INSTANCE_NAME }]);
+  });
+
   it('refuses a call that cannot show it came from our own origin', async () => {
     const forged = await composed.request('/rpc', {
       method: 'POST',
