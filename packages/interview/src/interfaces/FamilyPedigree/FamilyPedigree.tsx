@@ -179,13 +179,7 @@ import {
   sharedRecordWrites,
   stepsSharingFamily,
 } from './sharedRecord';
-import type { Point } from './spatialNavigation';
-import {
-  type Box,
-  usePanZoom,
-  type View,
-  viewKeepingInArea,
-} from './usePanZoom';
+import { usePanZoom, type View } from './usePanZoom';
 
 /**
  * What selecting a person does: open their details (with their add menu on
@@ -212,28 +206,6 @@ type PanelState = {
    * one. */
   then?: 'sibling' | 'child';
 } | null;
-
-/**
- * The least zoom at which every name drawn in the given symbols is at least
- * as large on screen as `text-xs`, the size below which a name stops being
- * legible.
- */
-const legibleScale = (symbols: Iterable<HTMLElement>) => {
-  const rootSize =
-    Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
-    16;
-  let smallest = Number.POSITIVE_INFINITY;
-  for (const symbol of symbols) {
-    for (const text of symbol.querySelectorAll('span')) {
-      if (!text.textContent?.trim()) continue;
-      smallest = Math.min(
-        smallest,
-        Number.parseFloat(getComputedStyle(text).fontSize),
-      );
-    }
-  }
-  return Number.isFinite(smallest) ? (rootSize * 0.75) / smallest : 0;
-};
 
 /** The buttons of the add menu shown around a person's symbol, if any. */
 const menuItemsOf = (symbol: HTMLElement) => [
@@ -732,27 +704,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   }, []);
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
-  // The whole family, clear of the prompt above and the toolbar below, with
-  // room around it for anyone's add menu. The room is left on every prompt,
-  // including those where no menu is shown, so the same family is framed
-  // the same way whichever prompt it is shown on. It is shown only as far
-  // out as names stay legible: when the whole family would be drawn
-  // smaller, the participant is shown in the middle at the least legible
-  // zoom instead, and the rest is reached by panning or zooming out.
+  // The whole family in the middle of the canvas, clear of the prompt above
+  // and the toolbar below, with room around it for anyone's add menu. The
+  // room is left on every prompt, including those where no menu is shown, so
+  // the same family is framed the same way whichever prompt it is shown on.
+  // It is zoomed in no further than its natural size, and out no further
+  // than the zoom buttons go: a family too large even for that is still
+  // centred, and the rest of it is reached by panning. This is the
+  // view the stage opens on, and the view it goes back to whenever the
+  // participant asks for it, moves to another prompt, or finishes adding or
+  // editing someone; where they had dragged or zoomed it to is not kept.
+  // Until they move it again, it keeps the family framed as the layout
+  // changes (`framedView`).
+  const framedView = useRef<View | null>(null);
   const showWholeFamily = useCallback(
     ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
-      const ego = family.egoId ? nodeRefs.current.get(family.egoId) : undefined;
-      panZoom.fitToView(layout, clearInsets(), {
-        animated,
-        reach: addMenuReach(menuReachRef.current),
-        least: ego
-          ? { scale: legibleScale(nodeRefs.current.values()), around: ego }
-          : undefined,
-      });
+      framedView.current =
+        panZoom.fitToView(layout, clearInsets(), {
+          animated,
+          reach: addMenuReach(menuReachRef.current),
+        }) ?? null;
     },
-    [panZoom, clearInsets, family.egoId],
+    [panZoom, clearInsets],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
@@ -1055,8 +1030,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   });
 
   // The stage opens as Show the whole family frames it, once the
-  // participant's symbol is laid out. Moving between prompts
-  // leaves the view where the participant put it.
+  // participant's symbol is laid out, and goes back to it on every prompt.
   const fitted = useRef(false);
   useEffect(() => {
     if (fitted.current) return;
@@ -1065,23 +1039,60 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     fitted.current = true;
     showWholeFamily({ animated: false });
   });
+  const framedPromptId = useRef(prompt.id);
+  useEffect(() => {
+    if (framedPromptId.current === prompt.id) return;
+    framedPromptId.current = prompt.id;
+    showWholeFamily();
+  }, [prompt.id, showWholeFamily]);
 
-  // Adding someone can move everyone else in the layout. The person in
-  // question (the one selected, focused, or else the participant) stays where
-  // they are on screen, and the family moves around them.
-  const heldPosition = useRef<{ id: string; x: number; y: number } | null>(
-    null,
-  );
+  // Adding someone can move everyone else in the layout. While the family
+  // is framed as Show the whole family frames it, it is framed afresh.
+  // Otherwise the person in question (the one selected, focused, or else the
+  // participant) stays where they are on screen, and the family moves around
+  // them.
+  const heldPosition = useRef<{
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   useLayoutEffect(() => {
     const id = selectedId ?? focusedId ?? family.egoId;
     const element = id ? nodeRefs.current.get(id) : undefined;
-    if (!id || !element) {
+    const layout = contentRef.current?.firstElementChild;
+    if (!id || !element || !(layout instanceof HTMLElement)) {
       heldPosition.current = null;
       return;
     }
     const previous = heldPosition.current;
-    if (previous?.id === id) panZoom.holdInPlace(element, previous);
-    heldPosition.current = { id, ...panZoom.contentPositionOf(element) };
+    const now = {
+      id,
+      ...panZoom.contentPositionOf(element),
+      width: layout.offsetWidth,
+      height: layout.offsetHeight,
+    };
+    heldPosition.current = now;
+    if (previous?.id !== id) return;
+    const framed = framedView.current;
+    const headed = panZoom.headed();
+    const stillFramed =
+      framed !== null &&
+      Math.abs(headed.x - framed.x) < 0.5 &&
+      Math.abs(headed.y - framed.y) < 0.5 &&
+      Math.abs(headed.scale - framed.scale) < 0.001;
+    if (!stillFramed) {
+      framedView.current = null;
+      panZoom.holdInPlace(element, previous);
+      return;
+    }
+    const moved =
+      Math.abs(previous.x - now.x) >= 0.5 ||
+      Math.abs(previous.y - now.y) >= 0.5 ||
+      previous.width !== now.width ||
+      previous.height !== now.height;
+    if (moved) showWholeFamily();
   });
 
   // The person selected moves to the middle of the part of the screen the
@@ -1127,112 +1138,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return () => cancelAnimationFrame(frame);
   }, [selectedId, panelAnchorId, panZoom, clearInsets]);
 
-  // Closing the panel puts the view back as it was when the panel opened:
-  // the same zoom, with the person it was opened from where they were on
-  // screen. (While it is open, the panel holds pointer input away from the
-  // canvas, so nothing else has moved it.) An addition grows the family
-  // around that person; if the one added would be out of sight, the view
-  // moves just far enough to show them.
-  const viewBeforePanel = useRef<{
-    view: View;
-    anchorId: string;
-    anchorAt: Point;
-    subjectId: string;
-  } | null>(null);
-  // The one just added, placed in view as the panel closed, and the person
-  // the panel was opened from, to whom focus (and the add menu) returns:
-  // bringing that person's menu into view keeps the one added in view too.
-  const placedOnClose = useRef<{
-    anchorId: string;
-    subjectId: string;
-  } | null>(null);
-  const rememberView = (anchorId: string, subjectId: string) => {
-    if (panel?.open) return;
-    placedOnClose.current = null;
-    const anchor = nodeRefs.current.get(anchorId);
-    viewBeforePanel.current = anchor
-      ? {
-          view: panZoom.view(),
-          anchorId,
-          anchorAt: panZoom.contentPositionOf(anchor),
-          subjectId,
-        }
-      : null;
-  };
+  // Closing the panel, once someone is added or edited (or the panel is
+  // cancelled), shows the whole family again.
+  const panelWasOpen = useRef(false);
   useEffect(() => {
-    if (selectedId) return;
-    const before = viewBeforePanel.current;
-    viewBeforePanel.current = null;
-    const viewport = viewportRef.current;
-    if (!before || !viewport) return;
-    const { scale } = before.view;
-    let { x, y } = before.view;
-    const anchor = nodeRefs.current.get(before.anchorId);
-    if (anchor) {
-      const now = panZoom.contentPositionOf(anchor);
-      x += (before.anchorAt.x - now.x) * scale;
-      y += (before.anchorAt.y - now.y) * scale;
-    }
-    const subject = nodeRefs.current.get(before.subjectId);
-    if (!subject || subject === anchor) {
-      panZoom.goTo({ x, y, scale });
+    if (selectedId) {
+      panelWasOpen.current = true;
       return;
     }
-    // Everyone clear of the prompt and the toolbar stays clear of them, as
-    // the one added comes into the clear area too, with room for their add
-    // menu, the family zooming out if it has to.
-    const insets = clearInsets();
-    const area = {
-      left: insets.left,
-      top: insets.top,
-      right: viewport.clientWidth - insets.right,
-      bottom: viewport.clientHeight - insets.bottom,
-    };
-    const boxOf = (element: HTMLElement) => {
-      const centre = panZoom.contentPositionOf(element);
-      const halfWidth = element.offsetWidth / 2;
-      const halfHeight = element.offsetHeight / 2;
-      return {
-        left: centre.x - halfWidth,
-        top: centre.y - halfHeight,
-        right: centre.x + halfWidth,
-        bottom: centre.y + halfHeight,
-      };
-    };
-    // (To within a pixel, as someone placed at the edge of the area sits.)
-    const isClear = (box: Box) =>
-      x + box.left * scale >= area.left - 1 &&
-      x + box.right * scale <= area.right + 1 &&
-      y + box.top * scale >= area.top - 1 &&
-      y + box.bottom * scale <= area.bottom + 1;
-    const keep = [...nodeRefs.current.values()]
-      .filter((element) => element !== subject)
-      .map(boxOf)
-      .filter(isClear);
-    const reach = addMenuReach(menuReachRef.current);
-    const around = Math.max(reach.content, reach.screen / scale);
-    const added = boxOf(subject);
-    placedOnClose.current = {
-      anchorId: before.anchorId,
-      subjectId: before.subjectId,
-    };
-    panZoom.goTo(
-      viewKeepingInArea({
-        view: { x, y, scale },
-        required: {
-          left: added.left - around,
-          top: added.top - around,
-          right: added.right + around,
-          bottom: added.bottom + around,
-        },
-        keep,
-        area,
-        pivot: anchor
-          ? panZoom.contentPositionOf(anchor)
-          : panZoom.contentPositionOf(subject),
-      }),
-    );
-  }, [selectedId, panZoom, clearInsets]);
+    if (!panelWasOpen.current) return;
+    panelWasOpen.current = false;
+    showWholeFamily();
+  }, [selectedId, showWholeFamily]);
 
   // An add menu opened from the keyboard, or by a tap, is brought into the
   // clear part of the canvas with its person. (One shown by the mouse
@@ -1241,27 +1158,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const menuFromFocus = menuPersonId !== null && menuPersonId === focusedId;
   const revealedMenuId = useRef<string | null>(null);
   // Brings someone, and their add menu when it shows, into the clear part of
-  // the canvas, without taking the one just added out of it again.
+  // the canvas.
   const reveal = useCallback(
-    (personId: string, element: HTMLElement) => {
-      const placed = placedOnClose.current;
-      const keep =
-        placed?.anchorId === personId
-          ? nodeRefs.current.get(placed.subjectId)
-          : undefined;
-      if (placed?.anchorId !== personId) placedOnClose.current = null;
-      const reach = addMenuReach(menuReachRef.current);
-      const scale = panZoom.scale.get();
-      panZoom.bringIntoView(
-        [element, ...menuItemsOf(element)],
-        clearInsets(),
-        keep
-          ? {
-              elements: [keep],
-              around: Math.max(reach.content * scale, reach.screen),
-            }
-          : undefined,
-      );
+    (element: HTMLElement) => {
+      panZoom.bringIntoView([element, ...menuItemsOf(element)], clearInsets());
     },
     [panZoom, clearInsets],
   );
@@ -1271,7 +1171,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     revealedMenuId.current = id;
     const element = id ? nodeRefs.current.get(id) : undefined;
     if (!id || !element) return;
-    reveal(id, element);
+    reveal(element);
   }, [menuFromFocus, menuPersonId, reveal]);
 
   // Anything that could write what the study encrypts waits for the
@@ -1297,7 +1197,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // may need, fixed so the people drawn while the form is filled in are
     // the ones added.
     const ids = Array.from({ length: 8 }, () => uuid());
-    rememberView(anchor.id, ids[0] ?? anchor.id);
     setPanel({
       open: true,
       key: uuid(),
@@ -1617,7 +1516,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       writeOwnProperty(attributes, variable, value);
     }
     const person = { ...recorded, attributes };
-    rememberView(personId, personId);
     setPanel({
       open: true,
       key: uuid(),
@@ -1679,7 +1577,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       // The canvas does not scroll; keyboard focus pans to the person, clear
       // of the prompt and the toolbar.
       const element = nodeRefs.current.get(personId);
-      if (element) reveal(personId, element);
+      if (element) reveal(element);
     }
   };
 
