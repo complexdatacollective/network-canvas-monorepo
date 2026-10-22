@@ -15,6 +15,7 @@ import { Transaction } from '../db/tenant.ts';
 // JavaScript `Date`.
 
 const {
+  teams,
   team_members: teamMembers,
   team_invitations: teamInvitations,
   user,
@@ -391,6 +392,22 @@ export const lockMembershipSet: (
       existing: existing === undefined ? null : lockedMember(existing),
     };
   }, sqlErrorsOnly);
+
+export const createTeam: (input: {
+  id: string;
+  name: string;
+}) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'team.store.createTeam',
+)(function* (input: { id: string; name: string }) {
+  const { tx } = yield* Transaction;
+  const inserted = yield* tx
+    .insert(teams)
+    .values({ id: input.id, name: input.name, slug: input.id })
+    .returning({ id: teams.id });
+  if (inserted.length !== 1) {
+    return yield* Effect.die(new Error('team insert wrote no row'));
+  }
+}, sqlErrorsOnly);
 
 export const createMember: (input: {
   id: string;

@@ -25,6 +25,7 @@ export type RateLimitRule = { max: number; windowMs: number };
 
 const SECOND = 1_000;
 const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
 
 /**
  * The limits themselves: one entry per scope, its count, its window, and why
@@ -50,6 +51,9 @@ export const RATE_LIMITS = {
   // a sign-in in between, and stops a token being brute-forced through one
   // link.
   invitation_accept: { max: 10, windowMs: 10 * MINUTE },
+  // A researcher creates a team rarely; five an hour covers a mistake and a
+  // second lab while stopping one account from filling an open instance.
+  team_create: { max: 5, windowMs: 1 * HOUR },
   // A lab runs several interviews from one address, so this is deliberately
   // loose; the per-link limit below is what protects a participant's link.
   participant_redeem_address: { max: 20, windowMs: 10 * MINUTE },

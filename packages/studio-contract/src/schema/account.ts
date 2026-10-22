@@ -24,6 +24,7 @@ export const Me = Schema.Struct({
   */
   locale: Schema.NullOr(Schema.String),
   teams: Schema.Array(TeamMembershipSummary),
+  canCreateTeam: Schema.Boolean,
 });
 export type Me = (typeof Me)['Type'];
 

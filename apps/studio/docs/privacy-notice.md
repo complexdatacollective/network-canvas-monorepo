@@ -64,6 +64,7 @@ server logs a warning and the event is not sent.
 | -------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `researcher_signed_up`     | A researcher creates an account              | none beyond the common ones                                                               |
 | `researcher_signed_in`     | A researcher signs in                        | none beyond the common ones                                                               |
+| `team_created`             | A researcher creates a team                  | none beyond the common ones                                                               |
 | `team_invitation_sent`     | A team invites someone                       | `invitation_id`, `role` (`owner`, `admin` or `member`)                                    |
 | `team_invitation_accepted` | An invitation is accepted                    | `invitation_id`, `role`                                                                   |
 | `team_member_role_changed` | A member's role changes                      | `member_id`, `previous_roles`, `new_roles`                                                |

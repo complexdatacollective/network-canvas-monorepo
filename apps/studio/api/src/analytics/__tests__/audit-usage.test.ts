@@ -92,6 +92,7 @@ describe('the usage decision for each audit event type', () => {
       'protocol.created',
       'protocol.draft.committed',
       'study.created',
+      'team.created',
       'team.invitation.accepted',
       'team.invitation.created',
       'team.member.role_changed',

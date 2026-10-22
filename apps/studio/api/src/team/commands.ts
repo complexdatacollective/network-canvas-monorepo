@@ -9,6 +9,7 @@ import type { NotFound } from '@codaco/studio-contract/schema/errors';
 import { TeamInvitationId } from '@codaco/studio-contract/schema/ids';
 import { Email } from '@codaco/studio-contract/schema/primitives';
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
+import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 
 import { audited, auditable, changed, unchanged } from '../audit/audited.ts';
 import type { AuditableFailure, AuditEvents } from '../audit/audited.ts';
@@ -23,12 +24,14 @@ import type { Database } from '../db/client.ts';
 import { isLockUnavailable } from '../db/errors.ts';
 import {
   type TeamAccess,
+  TenantScope,
   UntenantedScope,
   unsafeMakeTeamAccess,
 } from '../db/tenant.ts';
 import type { RequestId } from '../http/middleware/request-id.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import type { Analytics } from '../platform/analytics.ts';
+import { type Installation, readInstallation } from '../setup/bootstrap.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
 import { isTeamAdministrator, tryParseRoles } from './roles.ts';
 import * as store from './store.ts';
@@ -646,4 +649,98 @@ export const acceptTeamInvitation: (input: {
       }),
     ),
   );
+});
+
+export const mayCreateTeam = (
+  deploymentMode: DeploymentMode,
+  installation: Installation | null,
+  userId: string,
+): boolean =>
+  deploymentMode === 'managed' || installation?.ownerUserId === userId;
+
+export type CreatedTeam = {
+  teamId: string;
+  teamName: Redacted.Redacted;
+  memberId: string;
+};
+
+export const ownerLabel = (
+  name: Redacted.Redacted,
+  email: Redacted.Redacted,
+): Redacted.Redacted =>
+  Redacted.make(
+    (Redacted.value(name).trim() || Redacted.value(email)).slice(0, 320),
+  );
+
+export const createOwnedTeam = Effect.fn('team.createOwned')(function* <
+  E,
+  R,
+>(input: {
+  name: string;
+  ownerUserId: string;
+  ownerLabel: Redacted.Redacted;
+  before: Effect.Effect<void, E, R>;
+}) {
+  const teamId = randomUUID();
+  const access = unsafeMakeTeamAccess(teamId, 'owner');
+  return yield* TenantScope.open(
+    access,
+    Effect.gen(function* () {
+      yield* input.before;
+      yield* store.createTeam({ id: teamId, name: input.name });
+      return yield* audited(
+        'team.create.audited',
+        access,
+        Effect.gen(function* () {
+          const memberId = randomUUID();
+          yield* store.createMember({
+            id: memberId,
+            teamId,
+            userId: input.ownerUserId,
+            role: 'owner',
+          });
+          return changed(
+            { teamId, teamName: Redacted.make(input.name), memberId },
+            [
+              {
+                ...TEAM_EVENT,
+                eventType: 'team.created',
+                subjectType: 'team_member',
+                subjectId: memberId,
+                subjectLabel: input.ownerLabel,
+                details: { role: 'owner' },
+              },
+            ],
+          );
+        }),
+      );
+    }),
+  );
+});
+
+export const createTeam: (input: {
+  name: string;
+  deploymentMode: DeploymentMode;
+}) => Effect.Effect<
+  CreatedTeam,
+  TeamCommandError | NotFound | SqlError.SqlError,
+  Database | Principal | AuditActor | RequestId | AuditSignal | Analytics | Jobs
+> = Effect.fn('team.create')(function* (input: {
+  name: string;
+  deploymentMode: DeploymentMode;
+}) {
+  const principal = yield* Principal;
+  return yield* createOwnedTeam({
+    name: input.name.trim(),
+    ownerUserId: principal.userId,
+    ownerLabel: ownerLabel(principal.name, principal.email),
+    before: Effect.gen(function* () {
+      const installation = yield* readInstallation();
+      if (
+        !mayCreateTeam(input.deploymentMode, installation, principal.userId)
+      ) {
+        return yield* new TeamCommandError({ code: 'FORBIDDEN' });
+      }
+    }),
+  });
 });

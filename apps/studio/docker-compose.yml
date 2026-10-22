@@ -89,6 +89,7 @@ name: studio
 x-studio-env: &studio-env
   NODE_ENV: production
   PUBLIC_URL: https://${STUDIO_HOSTNAME}
+  STUDIO_DEPLOYMENT_MODE: ${STUDIO_DEPLOYMENT_MODE:-}
   # These three name the swappable backing services, and each defaults to the
   # stack's own. Setting one in `.env` is the whole swap — nothing in this file
   # changes, though the service it replaces can then be deleted.
