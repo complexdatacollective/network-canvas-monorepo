@@ -2086,6 +2086,96 @@ describe('PedigreeEdgeSvg — joints', () => {
   }
 });
 
+// A dimmed line that meets a lit one must not be painted over it, or the lit
+// course shows a gap where they meet (Joshua, 22 Oct 2026): a sibling's line
+// up crossing a lit sibling bar, the rest of the bar beyond the corner where
+// the lit course turns, a dimmed line of descent leaving a lit partnership
+// line, a dimmed donor's line or twin mark ending on a lit line.
+describe('PedigreeEdgeSvg — lit lines are drawn over dimmed ones', () => {
+  //   left ──┬── right          donor
+  //          │                    ╲
+  //   ┌──────┴──┬──────┐           ╲
+  //   a         b      c ─────(twins b, c)
+  const data: ConnectorRenderData = {
+    connectors: {
+      groupLines: [makeCoupleBar({ descentXPositions: [100, 160] })],
+      parentChildLines: [
+        makeParentChildConnector({
+          parentLink: [seg(100, 50, 100, 100)],
+          siblingBar: seg(0, 100, 200, 100),
+          uplines: [
+            ofChild(seg(0, 150, 0, 100), 'a'),
+            ofChild(seg(100, 150, 100, 100), 'b'),
+            ofChild(seg(200, 150, 200, 100), 'c'),
+          ],
+          parentIds: ['leftParent', 'rightParent'],
+        }),
+        // A second, adoptive sibship from the same couple.
+        makeParentChildConnector({
+          edgeType: 'adoptive',
+          parentLink: [seg(160, 50, 160, 80)],
+          uplines: [ofChild(seg(160, 80, 160, 150), 'd')],
+          parentIds: ['leftParent', 'rightParent'],
+        }),
+      ],
+      auxiliaryLines: [
+        {
+          type: 'auxiliary',
+          edgeType: 'donor',
+          points: [
+            { x: 300, y: 0 },
+            { x: 200, y: 125 },
+          ],
+          endpointIds: ['donor', undefined],
+          ownerIds: ['donor'],
+        },
+      ],
+      twinIndicators: [
+        {
+          type: 'twin',
+          code: 1,
+          segment: seg(100, 125, 200, 125),
+          twinIds: ['b', 'c'],
+        },
+      ],
+      duplicateArcs: [],
+    },
+  };
+
+  for (const focal of ['a', 'b', 'c', 'd']) {
+    test(`every dimmed piece is drawn before every lit one, focused on ${focal}`, () => {
+      const lit = new Set([
+        edgeKey('leftParent', focal),
+        edgeKey('rightParent', focal),
+      ]);
+      const { container } = render(
+        <PedigreeEdgeSvg
+          connectorData={data}
+          color="black"
+          width={300}
+          height={200}
+          highlightedNodeIds={new Set(['leftParent', 'rightParent', focal])}
+          highlightedEdgeKeys={lit}
+        />,
+      );
+      const drawn = Array.from(
+        container.querySelectorAll('line, polyline, path, text'),
+      );
+      const dimmed = (element: Element) =>
+        element.closest('[data-edge-dimmed]') !== null;
+      expect(drawn.some(dimmed)).toBe(true);
+      expect(drawn.some((element) => !dimmed(element))).toBe(true);
+      const firstLit = drawn.findIndex((element) => !dimmed(element));
+      expect(
+        drawn
+          .slice(firstLit)
+          .filter(dimmed)
+          .map((el) => el.outerHTML),
+      ).toEqual([]);
+    });
+  }
+});
+
 describe('The leads of a partnership line routed between rows', () => {
   // A father partnered with his adult daughter: she sits a row below him,
   // with her mother and brother on his row, so her lead to their line
