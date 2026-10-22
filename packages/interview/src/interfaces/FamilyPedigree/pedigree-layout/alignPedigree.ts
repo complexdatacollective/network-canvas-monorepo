@@ -61,7 +61,7 @@ type Search = 'quick' | 'thorough';
  * 2026): of the cheapest seatings the search finds, the one whose drawing
  * costs least, compared after the seating's own hard constraints (lines of
  * descent that would cross, helpers away from the owners), and before its
- * passing, length and recorded order. Every seating is screened with a
+ * passing, length, people spanned and recorded order. Every seating is screened with a
  * quick search of its lines (each line offered fewer courses: see
  * `RoutingScene`), and the few screened best are drawn again with a
  * thorough search (`SEATINGS_SEARCHED`), which decides. Without
@@ -89,9 +89,13 @@ export function alignPedigree(
     /** Counts every step the layout takes: the seatings' (see
      * `sugiyamaLayouts`) and every drawing's lines' (see `RoutingWork`). */
     counted?: { spent: number };
+    /** The share of the budget (`LINE_SEARCH_WORK`, and the work held back
+     * from it) this layout may spend: a family laid out more than one way
+     * shares one budget between its layouts. */
+    share?: number;
   } = {},
 ): PedigreeLayout {
-  const { drawingCost, counted = { spent: 0 } } = options;
+  const { drawingCost, counted = { spent: 0 }, share = 1 } = options;
   if (!drawingCost) return sugiyamaLayouts(ped, 1, counted)[0]!.layout;
   const candidates = sugiyamaLayouts(ped, SEATINGS_DRAWN, counted);
   // The search for the cheapest drawing does all but the work held back
@@ -99,7 +103,7 @@ export function alignPedigree(
   // `CONSTRAINT_WORK`).
   const work: RoutingWork = {
     spent: 0,
-    limit: LINE_SEARCH_WORK - CONSTRAINT_WORK,
+    limit: share * (LINE_SEARCH_WORK - CONSTRAINT_WORK),
   };
   const workLeft = () => work.spent < work.limit;
   type Drawn = {
@@ -111,7 +115,7 @@ export function alignPedigree(
   };
   const drawnOf = (
     layout: PedigreeLayout,
-    [hard, , passing, length, order]: number[],
+    [hard, , passing, length, spanned, order]: number[],
     search: Search,
     rank: number,
   ): Drawn => {
@@ -125,7 +129,11 @@ export function alignPedigree(
     };
     const lines = drawingCost(layout, search, own);
     work.spent += own.spent;
-    return { layout, key: [hard!, lines, passing!, length!, order!], rank };
+    return {
+      layout,
+      key: [hard!, lines, passing!, length!, spanned!, order!],
+      rank,
+    };
   };
   // An abandoned drawing (see `RoutingWork`) is left out.
   const keep = (into: Drawn[], entry: Drawn) => {
@@ -182,7 +190,10 @@ export function alignPedigree(
     // What the search left of the budget, and never less than the work
     // held back: a drawing's first routing is done in full, so the search
     // may have passed its share.
-    work.limit = Math.max(LINE_SEARCH_WORK, work.spent + CONSTRAINT_WORK);
+    work.limit = Math.max(
+      share * LINE_SEARCH_WORK,
+      work.spent + share * CONSTRAINT_WORK,
+    );
     let shifts = 0;
     const others = function* (): Generator<Drawn> {
       for (const [rank, { layout, cost }] of candidates.entries()) {

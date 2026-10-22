@@ -32,7 +32,7 @@ import {
   type Family,
   familyOf,
   faultsOfOrigin,
-  hopCount,
+  crossingCount,
   strictLineFaults,
 } from './lineFaults';
 
@@ -516,13 +516,20 @@ describe('a donor’s line meets the line of descent of the children they gave t
   };
 
   // Families not listed cross nothing.
-  const FEWEST_HOPS: Record<string, number> = {
-    // Hannah's lines run as one course to below the sibling bar, where her
-    // line to Ruby parts and hops the participant's line up.
+  // Each donor and carrier line goes to its own child, unless it is for the
+  // whole sibship (Josh, 22 Oct 2026), so lines for part of a sibship
+  // cross its bar and the lines up of the children between.
+  const FEWEST_CROSSINGS: Record<string, number> = {
     'an egg donor, a sperm donor and a surrogate for two of three children': 1,
-    // Paul's lines run as one course from him and part as a fork; his line
-    // to the participant hops Hannah's line of descent.
-    'a surrogate for one of a donor’s two children, the other recorded first': 1,
+    'a surrogate for one of a donor’s two children': 1,
+    'a surrogate for one of a donor’s two children, recorded apart': 1,
+    'a surrogate for one of a donor’s two children, the other recorded first': 2,
+    'a surrogate for two of a donor’s three children': 4,
+    'a donor to two of three half-siblings': 1,
+    'a donor to two siblings added apart': 1,
+    'a couple with a surrogate for two of three children': 1,
+    'three donors to three runs of a sibship': 4,
+    'a sperm donor and a surrogate for two of three half-siblings': 4,
   };
 
   for (const size of SYMBOL_SIZES) {
@@ -535,15 +542,18 @@ describe('a donor’s line meets the line of descent of the children they gave t
       }
     }
 
-    // Every crossing is drawn as a hop, and how many there are is a cost,
-    // not a fault: each family's count is pinned at the fewest found.
+    // How many crossings a drawing makes is a cost, not a fault: each
+    // family's count is pinned at the fewest found.
     for (const [name, family] of Object.entries(families)) {
       for (const [shapes, everyone] of SHAPE_SETS) {
         it(`crosses no more often than the fewest crossings found: ${name} (${shapes}, ${size}px symbols)`, () => {
           const { nodes, edges } = family();
           expect(
-            hopCount(drawAsInterface(nodes, edges, size, everyone).connectors),
-          ).toBe(FEWEST_HOPS[name] ?? 0);
+            crossingCount(
+              drawAsInterface(nodes, edges, size, everyone),
+              recordOf(nodes, edges).people,
+            ),
+          ).toBe(FEWEST_CROSSINGS[name] ?? 0);
         });
       }
     }
@@ -565,14 +575,10 @@ describe('a donor’s line meets the line of descent of the children they gave t
 
     // Paul's seat is decided by what all the lines cross once routed, and
     // neither the seat nor the lines depend on which child was recorded
-    // first: both orders draw the same family, with four hops. Paul sits
-    // beside Hannah, above the participant and Ruby; Luis's lines to them
-    // run as one course across Theo's line of descent and Paul's line to
-    // Theo, and part, his line to the participant hopping Ruby's line up;
-    // Paul's line to Theo hops Hannah's line of descent. (Three, as drawn
-    // before the rebuild, needs the two lines of descent to cross, which no
-    // seating may do.)
-    it(`draws a donor who raises another child alike whichever child was recorded first, with the fewest hops found (${size}px symbols)`, () => {
+    // first: both orders draw the same family, with the fewest crossings
+    // found. Each of Paul's and Luis's lines goes straight to its own child
+    // (Josh, 22 Oct 2026), across the lines of descent and lines up between.
+    it(`draws a donor who raises another child alike whichever child was recorded first, with the fewest crossings found (${size}px symbols)`, () => {
       const drawings = [
         ['ego', 'ruby', 'theo'],
         ['theo', 'ego', 'ruby'],
@@ -580,8 +586,11 @@ describe('a donor’s line meets the line of descent of the children they gave t
         const { nodes, edges } = donorWhoRaisesAnother(order);
         return drawAsInterface(nodes, edges, size);
       });
+      const { nodes, edges } = donorWhoRaisesAnother(['ego', 'ruby', 'theo']);
       for (const drawing of drawings) {
-        expect(hopCount(drawing.connectors)).toBeLessThanOrEqual(4);
+        expect(
+          crossingCount(drawing, recordOf(nodes, edges).people),
+        ).toBeLessThanOrEqual(6);
       }
       const [first, second] = drawings.map(({ centre, connectors }) => ({
         seats: ['hannah', 'luis', 'paul', 'ego', 'ruby', 'theo'].map(centre),
@@ -595,10 +604,11 @@ describe('a donor’s line meets the line of descent of the children they gave t
     });
 
     // Full siblings stay one sibship (Josh, 12 Oct 2026): the participant,
-    // whom a surrogate carried, stays in their mother's sibship, so the
-    // donor of the participant and Ruby reaches their run by one line, and
-    // the surrogate reaches the participant's line up by one of her own.
-    it(`keeps a surrogate's child in their mother's sibship, and gives the donor one line to the run of his children, whichever was recorded first (${size}px symbols)`, () => {
+    // whom a surrogate carried, stays in their mother's sibship. The donor
+    // of the participant and Ruby, who is not the donor of the whole
+    // sibship, reaches each by a line of his own, and so does the surrogate
+    // (Josh, 22 Oct 2026).
+    it(`keeps a surrogate's child in their mother's sibship, and gives the donor a line to each of his children, whichever was recorded first (${size}px symbols)`, () => {
       for (const order of [
         ['ego', 'ruby', 'theo'],
         ['ego', 'theo', 'ruby'],
@@ -613,7 +623,7 @@ describe('a donor’s line meets the line of descent of the children they gave t
               [...childrenReachedBy(drawing.connectors, line)].toSorted(),
             )
             .toSorted((a, b) => a.join().localeCompare(b.join()));
-        expect(reached('paul'), order.join()).toEqual([['ego', 'ruby']]);
+        expect(reached('paul'), order.join()).toEqual([['ego'], ['ruby']]);
         expect(reached('carrier'), order.join()).toEqual([['ego']]);
         expect(
           drawing.connectors.parentChildLines.find((line) =>
@@ -625,10 +635,9 @@ describe('a donor’s line meets the line of descent of the children they gave t
 
     // Hannah's three children are one sibship under her, as no one person
     // carried them all. The donor of the participant and Ruby and the
-    // surrogate of Ruby and Theo overlap without nesting, so the donor,
-    // recorded first, keeps his run, and the surrogate reaches each of her
-    // children by a line of her own (Round 3).
-    it(`keeps a sibship under the mother when a surrogate carried some of it, and gives an overlapping donor and surrogate a run and lines (${size}px symbols)`, () => {
+    // surrogate of Ruby and Theo each reach their children by lines of their
+    // own, one to each child (Josh, 22 Oct 2026).
+    it(`keeps a sibship under the mother when a surrogate carried some of it, and gives an overlapping donor and surrogate a line to each child (${size}px symbols)`, () => {
       const nodes = [
         person('ego', { name: 'Maya', sex: ['male'], isEgo: true }),
         mother(),
@@ -654,21 +663,23 @@ describe('a donor’s line meets the line of descent of the children they gave t
             [...childrenReachedBy(drawing.connectors, line)].toSorted(),
           )
           .toSorted((a, b) => a.join().localeCompare(b.join()));
-      expect(reached('paul')).toEqual([['ego', 'ruby']]);
+      expect(reached('paul')).toEqual([['ego'], ['ruby']]);
       expect(reached('carrier')).toEqual([['ruby'], ['theo']]);
       expect(reached('hannah')).toEqual([]);
     });
 
-    it(`reaches the two half-siblings who share a donor by one line, and the third by their own line up (${size}px symbols)`, () => {
+    it(`reaches each of the two half-siblings who share a donor by a line of its own, and the third by their own line up (${size}px symbols)`, () => {
       const { nodes, edges } = halfSiblings();
       const drawing = drawAsInterface(nodes, edges, size);
       const reached = (parent: string) =>
         drawing.connectors.auxiliaryLines
           .filter((line) => line.endpointIds?.[0] === parent)
           .map((line) => [...childrenReachedBy(drawing.connectors, line)]);
-      expect(reached('paul').map((ids) => ids.toSorted())).toEqual([
-        ['ego', 'ruby'],
-      ]);
+      expect(
+        reached('paul')
+          .map((ids) => ids.toSorted())
+          .toSorted((a, b) => a.join().localeCompare(b.join())),
+      ).toEqual([['ego'], ['ruby']]);
       expect(reached('theoDonor')).toEqual([['theo']]);
     });
 
@@ -1021,14 +1032,7 @@ describe('a participant with birth parents, separated adoptive parents and their
     drawing.connectors.auxiliaryLines.filter(
       (line) => line.endpointIds?.[0] === parent,
     );
-  // A line into a child as far as it shows: it runs on from the top of the
-  // child to their centre under their symbol, where every such line does.
-  const segmentsOfLine = (line: AuxiliaryConnector) =>
-    segmentsOf(
-      line.endpointIds?.[1] === undefined
-        ? line.points
-        : line.points.slice(0, -1),
-    );
+  const segmentsOfLine = (line: AuxiliaryConnector) => segmentsOf(line.points);
   const sharesPiece = (a: LineSegment[], b: LineSegment[]) =>
     a.some((s) =>
       b.some(
@@ -1112,21 +1116,21 @@ describe('a participant with birth parents, separated adoptive parents and their
         }
       });
 
-      it(`brings the lines into the participant's top in their parents' left-to-right order (${label})`, () => {
+      it(`brings the lines into the participant's centre in their parents' left-to-right order (${label})`, () => {
         const { nodes, edges } = sixParents();
         const drawing = drawAsInterface(nodes, edges, size, everyone);
         const ego = drawing.centre('ego');
-        const top = { x: ego.x, y: ego.y - size / 2 };
-        // Every line converges on the top of the participant (Round 5,
-        // ruling 4); the order shows in the direction each comes from: as
-        // an angle off straight down, negative from the left.
+        // Every line converges on the centre of the participant (Josh, 22
+        // Oct 2026: lines aim centre to centre); the order shows in the
+        // direction each comes from: as an angle off straight down,
+        // negative from the left.
         const from = (line: AuxiliaryConnector) => {
           const at = line.points.findIndex(
-            (p) => Math.hypot(p.x - top.x, p.y - top.y) < 1,
+            (p) => Math.hypot(p.x - ego.x, p.y - ego.y) < 1,
           );
           expect(at).toBeGreaterThan(0);
           const before = line.points[at - 1]!;
-          return Math.atan2(before.x - top.x, top.y - before.y);
+          return Math.atan2(before.x - ego.x, ego.y - before.y);
         };
         const birth = from(linesFrom(drawing, 'shannon')[0]!);
         const denise = from(linesFrom(drawing, 'denise')[0]!);
@@ -1136,80 +1140,36 @@ describe('a participant with birth parents, separated adoptive parents and their
         expect(lauren).toBeGreaterThan(0);
       });
 
-      it(`crosses only once, where Lauren's line hops the line down to Jack (${label})`, () => {
+      it(`crosses only once, where Lauren's line crosses the line down to Jack (${label})`, () => {
         const { nodes, edges } = sixParents();
         const drawing = drawAsInterface(nodes, edges, size, everyone);
-        const hops = drawing.connectors.auxiliaryLines.flatMap((line) =>
-          (line.hops ?? []).map((hop) => ({
-            id: line.endpointIds?.[0],
-            hop,
-          })),
-        );
-        expect(hops.map(({ id }) => id)).toEqual(['lauren']);
+        expect(crossingCount(drawing, recordOf(nodes, edges).people)).toBe(1);
         const toJack = drawing.connectors.parentChildLines
           .filter((line) =>
             line.uplines.some((upline) => upline.childId === 'jack'),
           )
-          .flatMap((line) => [...line.parentLink, ...line.uplines]);
-        expect(
-          toJack.some(
-            (piece) =>
-              Math.abs(piece.x1 - piece.x2) < 0.5 &&
-              Math.abs(piece.x1 - hops[0]!.hop.x) < 0.75 &&
-              hops[0]!.hop.y >= Math.min(piece.y1, piece.y2) &&
-              hops[0]!.hop.y <= Math.max(piece.y1, piece.y2),
-          ),
-        ).toBe(true);
-      });
-
-      it(`draws every crossing as a hop, whatever the line's kind (${label})`, () => {
-        const { nodes, edges } = sixParents();
-        const drawing = drawAsInterface(nodes, edges, size, everyone);
-        const record = recordOf(nodes, edges);
-        const withLines = (
-          change: (line: AuxiliaryConnector) => AuxiliaryConnector,
-        ) => ({
-          ...drawing,
-          connectors: {
-            ...drawing.connectors,
-            auxiliaryLines: drawing.connectors.auxiliaryLines.map(change),
-          },
-        });
-        const [lauren] = linesFrom(drawing, 'lauren');
-        const [denise] = linesFrom(drawing, 'denise');
-        // Lauren's crossing drawn without its hop is a fault, as a social
-        // line or as any other kind.
-        for (const edgeType of ['social', 'adoptive', 'donor'] as const) {
-          expect(
-            strictLineFaults(
-              withLines((line) =>
-                line === lauren ? { ...line, edgeType, hops: [] } : line,
-              ),
-              record,
-            ).some((fault) => fault.includes('without a hop')),
-            edgeType,
-          ).toBe(true);
-        }
-        // A hop where nothing crosses is a fault too.
-        const middle = segmentsOf(denise!.points)[1]!;
-        expect(
-          strictLineFaults(
-            withLines((line) =>
-              line === denise
-                ? {
-                    ...line,
-                    hops: [
-                      {
-                        x: (middle.x1 + middle.x2) / 2,
-                        y: (middle.y1 + middle.y2) / 2,
-                      },
-                    ],
-                  }
-                : line,
-            ),
-            record,
-          ),
-        ).toContain("denise's social line hops where nothing crosses");
+          .flatMap((line) => [...line.parentLink, ...line.uplines])
+          .filter((piece) => Math.abs(piece.x1 - piece.x2) < 0.5);
+        const crossesJacksLine = segmentsOfLine(
+          linesFrom(drawing, 'lauren')[0]!,
+        ).some((segment) =>
+          toJack.some((piece) => {
+            const [left, right] = [
+              Math.min(segment.x1, segment.x2),
+              Math.max(segment.x1, segment.x2),
+            ];
+            if (piece.x1 <= left || piece.x1 >= right) return false;
+            const y =
+              segment.y1 +
+              ((segment.y2 - segment.y1) * (piece.x1 - segment.x1)) /
+                (segment.x2 - segment.x1);
+            return (
+              y > Math.min(piece.y1, piece.y2) &&
+              y < Math.max(piece.y1, piece.y2)
+            );
+          }),
+        );
+        expect(crossesJacksLine).toBe(true);
       });
 
       it(`passes the strict line checks (${label})`, () => {

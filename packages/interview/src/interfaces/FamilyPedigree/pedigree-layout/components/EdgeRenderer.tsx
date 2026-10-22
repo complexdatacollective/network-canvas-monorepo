@@ -225,53 +225,25 @@ function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
   }
 }
 
-/** The radius of the hop an auxiliary line makes over a line it crosses. */
-const HOP_RADIUS = EDGE_WIDTH * 1.6;
-
 /**
- * An auxiliary line's course as an SVG path, hopping over each line it
- * crosses with a half circle (bulging up from a level piece, and to one side
- * of an upright one) so the crossing does not read as a junction.
+ * An auxiliary line's course as an SVG path. A line crossing another is
+ * drawn straight across it, as Bennett et al. draw a crossing (Josh, 22 Oct
+ * 2026: no hops).
  */
 export function auxiliaryPath(
-  conn: Pick<AuxiliaryConnector, 'points' | 'hops'>,
+  conn: Pick<AuxiliaryConnector, 'points'>,
 ): string {
-  const { points, hops = [] } = conn;
-  const [first] = points;
+  const [first, ...rest] = conn.points;
   if (!first) return '';
-  let d = `M${first.x},${first.y}`;
-  for (let k = 1; k < points.length; k++) {
-    const a = points[k - 1]!;
-    const b = points[k]!;
-    const length = Math.hypot(b.x - a.x, b.y - a.y);
-    if (length === 0) continue;
-    const ux = (b.x - a.x) / length;
-    const uy = (b.y - a.y) / length;
-    // The hops on this piece, in order along it, each with room of its own.
-    const along = hops
-      .filter((hop) => Math.abs((hop.x - a.x) * uy - (hop.y - a.y) * ux) < 0.5)
-      .map((hop) => (hop.x - a.x) * ux + (hop.y - a.y) * uy)
-      .filter((at) => at > HOP_RADIUS && at < length - HOP_RADIUS)
-      .toSorted((p, q) => p - q);
-    const sweep = ux > 1e-9 || (Math.abs(ux) <= 1e-9 && uy > 0) ? 1 : 0;
-    let reached = 0;
-    for (const at of along) {
-      if (at - HOP_RADIUS < reached) continue;
-      const before = at - HOP_RADIUS;
-      const after = at + HOP_RADIUS;
-      d += ` L${a.x + ux * before},${a.y + uy * before}`;
-      d += ` A${HOP_RADIUS},${HOP_RADIUS} 0 0 ${sweep} ${a.x + ux * after},${a.y + uy * after}`;
-      reached = after;
-    }
-    d += ` L${b.x},${b.y}`;
-  }
-  return d;
+  return [`M${first.x},${first.y}`, ...rest.map((p) => `L${p.x},${p.y}`)].join(
+    ' ',
+  );
 }
 
 function renderAuxiliary(stroke: AuxiliaryStroke, idx: number, color: string) {
   const style = getAuxiliaryStyle(stroke.edgeType);
   // One stroke for each run of pieces, so a dashed line's pattern flows round
-  // its corners and hops; where a run starts partway along its line, the
+  // its corners; where a run starts partway along its line, the
   // pattern carries on from there.
   return (
     <path
@@ -294,12 +266,12 @@ function renderAuxiliary(stroke: AuxiliaryStroke, idx: number, color: string) {
   );
 }
 
-/** A run of an auxiliary line's pieces drawn as one stroke: its course and
- * hops, how far along its line it starts, and whether it is lit. */
-type AuxiliaryStroke = Pick<
-  AuxiliaryConnector,
-  'points' | 'hops' | 'edgeType'
-> & { dashOffset: number; lit: boolean };
+/** A run of an auxiliary line's pieces drawn as one stroke: its course,
+ * how far along its line it starts, and whether it is lit. */
+type AuxiliaryStroke = Pick<AuxiliaryConnector, 'points' | 'edgeType'> & {
+  dashOffset: number;
+  lit: boolean;
+};
 
 /**
  * The auxiliary lines as strokes, every piece drawn once. Each line is cut
@@ -377,7 +349,6 @@ function auxiliaryStrokes(
       if (run) {
         strokes.push({
           points: run.points,
-          ...(aux.hops ? { hops: aux.hops } : {}),
           edgeType: aux.edgeType,
           dashOffset: run.dashOffset,
           lit,
@@ -470,8 +441,8 @@ function splitBar(
 //
 // Every line that draws a tie between a parent and a child is made of
 // pieces: a partnership line and the leads to it, a line of descent (each
-// parent's drop, co-parents' level line, the sibling bar, a run's stem and
-// sub-bar, each child's line up), and the line of a parent drawn on a line
+// parent's drop, co-parents' level line, the sibling bar, each child's
+// line up), and the line of a parent drawn on a line
 // of their own (a donor, a surrogate, a social or adoptive parent, a parent
 // the family does not name), including the stretch two co-parents' lines
 // share once they join. Each tie follows one course through those pieces:
@@ -547,10 +518,6 @@ function descentSegments(conn: ParentChildConnector): LineSegment[] {
   return [
     ...conn.parentLink,
     ...(conn.siblingBar ? [conn.siblingBar] : []),
-    ...(conn.runs ?? []).flatMap((run) => [
-      run.stem,
-      ...(run.bar ? [run.bar] : []),
-    ]),
     ...conn.uplines,
   ];
 }

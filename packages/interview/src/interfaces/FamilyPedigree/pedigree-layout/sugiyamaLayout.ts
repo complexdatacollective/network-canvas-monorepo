@@ -1261,21 +1261,23 @@ function positionMap(layerOrdering: number[][]): Map<number, number> {
  * 2. Passing people: the people a line from an owner passes on its way to
  *    the line of descent of its children.
  * 3. Length: how far each line's owner sits from that line of descent.
- * 4. Recorded order: how far each block is turned from the order the
+ * 4. Spanned: the people a sibling bar passes over who are not of the
+ *    sibship, so a sibship sits together (Josh, 22 Oct 2026).
+ * 5. Recorded order: how far each block is turned from the order the
  *    records seat it in.
  *
  * Each pair of rows is read as the drawing will draw it: each family's line
  * of descent comes down from its owners to the middle of its children, who
- * hang from a bar; a line that joins a line of descent ends on its bar
- * (for all the children) or above the run of children it is drawn for, and
- * any other line ends on each child, crossing their sibling bar unless the
- * child is at its end.
+ * hang from a bar; a line that joins a line of descent for all the children
+ * ends on its bar, and any other line ends on each child, crossing their
+ * sibling bar unless the child is at its end.
  */
 type SeatingCost = [
   hard: number,
   crossings: number,
   passing: number,
   length: number,
+  spanned: number,
   order: number,
 ];
 
@@ -1288,9 +1290,14 @@ function lessCost(x: readonly number[], y: readonly number[]): boolean {
 }
 
 /** What one pair of rows costs a seating (see `seatingCost`): its counts
- * of hard constraints broken, crossings and people passed, and each line's
- * length in the order the lines are read. */
-type RowPairCost = { counts: [number, number, number]; spans: number[] };
+ * of hard constraints broken, crossings and people passed, each line's
+ * length in the order the lines are read, and the people its sibling bars
+ * pass over. */
+type RowPairCost = {
+  counts: [number, number, number];
+  spans: number[];
+  spanned: number;
+};
 
 /** What the seating search has already weighed, per graph: each pair of
  * rows, and each row's turns from its recorded order. A move reseats one
@@ -1329,6 +1336,7 @@ function rowPairCost(
   type Edge = { from: number; to: number; drop: boolean; owner: string };
   const edges: Edge[] = [];
   const bars: [number, number][] = [];
+  let spanned = 0;
   const descentPoint = new Map<FamilyUnit, number>();
   for (const unit of graph.familyUnits) {
     const owners = unit.parentGroup.members.filter(onUpper);
@@ -1340,7 +1348,9 @@ function rowPairCost(
     const middle = children.reduce((sum, c) => sum + c, 0) / children.length;
     edges.push({ from: d, to: middle, drop: true, owner: `${d}` });
     if (children.length > 1) {
-      bars.push([Math.min(...children), Math.max(...children)]);
+      const [from, to] = [Math.min(...children), Math.max(...children)];
+      bars.push([from, to]);
+      spanned += to - from + 1 - children.length;
     }
   }
 
@@ -1392,23 +1402,12 @@ function rowPairCost(
           owner: key,
         });
       } else {
-        // One line to each run of the children side by side.
-        let run: number[] = [];
-        const close = () => {
-          if (run.length === 0) return;
-          edges.push({
-            from: o,
-            to: run.reduce((sum, c) => sum + c, 0) / run.length,
-            drop: false,
-            owner: key,
-          });
-          run = [];
-        };
-        for (const c of siblings) {
-          if (at.includes(c)) run.push(c);
-          else close();
+        for (const c of at) {
+          edges.push({ from: o, to: c, drop: false, owner: key });
+          cost[1] += bars.filter(
+            ([a, b]) => c > a + 1e-9 && c < b - 1e-9,
+          ).length;
         }
-        close();
       }
     } else {
       for (const c of at) {
@@ -1476,7 +1475,7 @@ function rowPairCost(
       if (between.some((node) => !parentsOfChild.has(node))) cost[0]++;
     }
   }
-  return { counts: cost, spans };
+  return { counts: cost, spans, spanned };
 }
 
 function seatingCost(
@@ -1487,7 +1486,7 @@ function seatingCost(
     SEATING_STEPS.seated *
     layerOrdering.reduce((total, row) => total + row.length, 1);
   const weighed = weighedRowsOf(graph);
-  const cost: SeatingCost = [0, 0, 0, 0, 0];
+  const cost: SeatingCost = [0, 0, 0, 0, 0, 0];
 
   for (let k = 0; k + 1 < layerOrdering.length; k++) {
     const [upper, lower] = [layerOrdering[k]!, layerOrdering[k + 1]!];
@@ -1501,6 +1500,7 @@ function seatingCost(
     cost[1] += pair.counts[1];
     cost[2] += pair.counts[2];
     for (const span of pair.spans) cost[3] += span;
+    cost[4] += pair.spanned;
   }
 
   // How far each block is turned from its recorded order.
@@ -1524,7 +1524,7 @@ function seatingCost(
       }
       weighed.turns.set(key, turns);
     }
-    cost[4] += turns;
+    cost[5] += turns;
   }
   return cost;
 }
@@ -2352,6 +2352,65 @@ function encodePedigreeLayout(
         }
       }
       if (!moved) break;
+    }
+  }
+
+  // A parent seated straight above a child they draw a line of their own to
+  // would draw it down that child's line of descent, so they sit half a seat
+  // aside, where the row has room, and the line comes in at an angle (Josh,
+  // 22 Oct 2026). A line for every child of a sibship ends on their bar, and
+  // is not drawn into the child.
+  const sibshipOf = (child: number) => {
+    const key = graph.owners[child]?.sibship;
+    return key === undefined
+      ? [child]
+      : graph.owners.flatMap((lines, other) =>
+          lines.sibship === key ? [other] : [],
+        );
+  };
+  const drawsALineInto = (parent: number, child: number) => {
+    const lines = graph.owners[child];
+    if (!lines?.descent) return false;
+    const own = (other: number) =>
+      graph.owners[other]!.lines.some(
+        (line) => line.parents.length === 1 && line.parents[0] === parent,
+      );
+    if (!own(child)) return false;
+    const sibship = sibshipOf(child);
+    return sibship.length === 1 || !sibship.every(own);
+  };
+  for (let layer = 0; layer + 1 < maxLayer; layer++) {
+    const row = pos[layer]!;
+    for (let col = 0; col < row.length; col++) {
+      const node = nid[layer]![col]!;
+      const x = row[col]!;
+      const below = getChildrenOf(node, graph).find((child) => {
+        const at = nodeLocation.get(child);
+        return (
+          at?.layer === layer + 1 &&
+          Math.abs(pos[layer + 1]![at.col]! - x) < 1e-9 &&
+          drawsALineInto(node, child)
+        );
+      });
+      if (below === undefined) continue;
+      // Aside towards the side they sit on of the child's line of descent,
+      // so the lines into the child arrive in their owners' order.
+      const descent = (graph.owners[below]!.descent?.parents ?? []).flatMap(
+        (parent) => {
+          const at = nodeLocation.get(parent);
+          return at ? [pos[at.layer]![at.col]!] : [];
+        },
+      );
+      const descentX =
+        descent.reduce((sum, at) => sum + at, 0) / Math.max(1, descent.length);
+      const sides = descent.length > 0 && descentX < x ? [1, -1] : [-1, 1];
+      for (const side of sides) {
+        const neighbour = row[col + side];
+        if (neighbour === undefined || Math.abs(neighbour - x) >= 1.5) {
+          row[col] = x + side / 2;
+          break;
+        }
+      }
     }
   }
 
