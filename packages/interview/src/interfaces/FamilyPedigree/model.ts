@@ -1123,19 +1123,39 @@ export function planAddRelative({
   }
   // The sibling's carrier is one of the parents they are planned to have
   // who could have carried the pregnancy; any other answer, which a later
-  // one has made impossible, records nobody, as does any answer for an
-  // adopted sibling, whom someone else carried.
+  // one has made impossible, records nobody. Someone else carried an adopted
+  // sibling, so none of the parents who adopted them did: an adopted twin
+  // was carried by whoever carried the twins they join when that is a donor
+  // they share, and otherwise by nobody recorded.
+  const twinned = (plan.twins ?? []).length > 0;
+  const adopted =
+    request.relation === 'sibling' && request.parentKind === 'adoptive';
+  const carrierChosen =
+    request.relation !== 'sibling'
+      ? null
+      : adopted
+        ? twinned
+          ? (carrierOf(family, anchorId) ?? twinCarrierOf(family, anchorId))
+          : null
+        : request.carrier;
   const carrier =
-    request.relation === 'sibling' &&
-    request.parentKind !== 'adoptive' &&
-    request.carrier !== null
-      ? possibleCarriers(family, plan, newPersonId, sexAttribute).find(
-          (id) => id === request.carrier,
-        )
-      : undefined;
+    carrierChosen === null || carrierChosen === undefined
+      ? undefined
+      : possibleCarriers(family, plan, newPersonId, sexAttribute).find(
+          (id) =>
+            id === carrierChosen &&
+            !(
+              adopted &&
+              plan.links.some(
+                (link) =>
+                  link.source === id &&
+                  link.target === newPersonId &&
+                  link.kind === 'adoptive',
+              )
+            ),
+        );
   // A twin's carrier carried the anchor too, a parent planned for both of
   // them included.
-  const twinned = (plan.twins ?? []).length > 0;
   const answered = plan.links.map((link) =>
     carrier !== undefined &&
     link.source === carrier &&
@@ -1144,18 +1164,18 @@ export function planAddRelative({
       : link,
   );
   // A twin's carrier, a surrogate they share included, carried the twins
-  // they join too.
+  // they join too. An adopted twin with no carrier recorded leaves what is
+  // recorded for those twins as it is.
+  const twinsCarrier =
+    carrier ??
+    plan.links.find(
+      (link) => link.target === newPersonId && link.kind === 'surrogate',
+    )?.source;
   const carrierUpdates =
-    request.relation === 'sibling' && (plan.twins ?? []).length > 0
-      ? twinCarrierUpdates(
-          family,
-          twinSetOf(family, anchorId),
-          carrier ??
-            plan.links.find(
-              (link) =>
-                link.target === newPersonId && link.kind === 'surrogate',
-            )?.source,
-        )
+    request.relation === 'sibling' &&
+    twinned &&
+    !(adopted && twinsCarrier === undefined)
+      ? twinCarrierUpdates(family, twinSetOf(family, anchorId), twinsCarrier)
       : [];
   return {
     ...plan,

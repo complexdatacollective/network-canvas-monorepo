@@ -293,6 +293,65 @@ describe('who may have carried a sibling', () => {
       ]);
     }
   });
+
+  test('a twin adopted with someone a donor they share carried was carried by that donor too', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('amy', { sex: ['female'] }),
+        person('rob', { sex: ['male'] }),
+        person('don', { sex: ['female'] }),
+      ],
+      [
+        link('amy', 'ego', 'adoptive', { carrier: false }),
+        link('rob', 'ego', 'adoptive'),
+        link('don', 'ego', 'donor', { carrier: true }),
+      ],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['amy', 'rob', 'don'],
+      parentKind: 'adoptive',
+      twin: 'fraternal',
+      carrier: null,
+    });
+    expect(
+      result.links
+        .filter((planned) => planned.target === 'added')
+        .map((planned) => [planned.source, planned.isGestationalCarrier]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['amy', false],
+        ['rob', false],
+        ['don', true],
+      ]),
+    );
+    // What is recorded for the person they are a twin of stays as it is.
+    expect(result.carrierUpdates ?? []).toEqual([]);
+  });
+
+  test('a twin adopted with someone nobody recorded carried leaves their records as they are', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('amy', { sex: ['female'] }),
+        person('rob', { sex: ['male'] }),
+      ],
+      [
+        link('amy', 'ego', 'adoptive', { carrier: false }),
+        link('rob', 'ego', 'adoptive'),
+      ],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['amy', 'rob'],
+      parentKind: 'adoptive',
+      twin: 'fraternal',
+      carrier: null,
+    });
+    expect(result.twins).toHaveLength(1);
+    expect(result.carrierUpdates ?? []).toEqual([]);
+  });
 });
 
 // Decided gap (9 Oct 2026): carrying is recorded as not done only when the
