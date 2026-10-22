@@ -12,6 +12,8 @@ command is a command of the images you are deploying.
 [The upgrade script](#the-upgrade-script) runs the same sequence for you and
 puts the previous images back when an upgrade fails before it has changed the
 database. It takes no backup: take yours before you run it.
+[Automatic updates](./auto-update.md) runs that script from cron for each new
+release.
 
 ## Before you pull new images
 
