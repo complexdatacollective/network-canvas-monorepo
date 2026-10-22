@@ -466,6 +466,7 @@ export default function PersonForm({
       unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
       precedingVariables: builtInVariables,
       labelNode,
+      isParticipant: isEgo,
     });
 
   const handleSubmit: FormSubmitHandler = (values) => {

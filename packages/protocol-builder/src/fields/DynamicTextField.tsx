@@ -59,6 +59,7 @@ import {
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
 import { LocalizedStringField } from './LocalizedStringField.tsx';
+import { participantVersionMessages } from './messageArgumentLabels.ts';
 
 const messages = defineMessages({
   insertMenu: {
@@ -127,6 +128,18 @@ const messages = defineMessages({
     defaultMessage: 'Second node: label',
     description:
       'Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the second node’s attributes such as “Second node: nickname”: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes.',
+  },
+  isParticipant: {
+    id: 'protocolBuilder.dynamicText.isParticipant',
+    defaultMessage: 'Participant or someone else',
+    description:
+      'Name of a value in the insert-a-value menu of a question on the Family Pedigree stage, and of the piece of text it inserts: whether the family member the question is asked about is the participant themselves or someone else in their family. It only chooses between two versions of the text and is never shown itself.',
+  },
+  byParticipant: {
+    id: 'protocolBuilder.dynamicText.byParticipant',
+    defaultMessage: 'Different wording for the participant and everyone else',
+    description:
+      'Second line of the “Participant or someone else” entry in the insert-a-value menu. Choosing it inserts a piece of text with two versions: one shown when the question is asked about the participant themselves (such as “Are you still living?”), one for everyone else in their family (such as “Is this person still living?”).',
   },
   byAnswer: {
     id: 'protocolBuilder.dynamicText.byAnswer',
@@ -253,6 +266,9 @@ const namingFor = (intl: IntlShape): Naming => ({
       }
       return intl.formatMessage(messages.nodeLabel);
     }
+    if (choice.kind === 'participant') {
+      return intl.formatMessage(messages.isParticipant);
+    }
     const attribute = choice.variableName ?? choice.variableId;
     // The two nodes of a pair have the same attributes, so their values say
     // which node they belong to; any other value is named by its attribute.
@@ -370,6 +386,13 @@ const messageLabelsFor = ({
     }
     if (key === MISSING_CASE)
       return intl.formatMessage(messages.versionMissing);
+    if (choiceByName.get(node.argument)?.kind === 'participant') {
+      return intl.formatMessage(
+        key === 'other'
+          ? participantVersionMessages.aboutSomeoneElse
+          : participantVersionMessages.aboutParticipant,
+      );
+    }
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
     );
@@ -533,6 +556,35 @@ export function DynamicMessageEditor({
               ? messages.switchHasNoLabels
               : messages.needsAnswerLabels,
           );
+    // Whether the node is the participant is never shown, only worded for,
+    // so it is offered once, as its two versions.
+    if (choice.kind === 'participant') {
+      items.push({
+        id: `answers:${choice.path}`,
+        label: valueLabel,
+        group,
+        description: intl.formatMessage(messages.byParticipant),
+        content: inlineContent(
+          [
+            {
+              kind: 'switch',
+              argument: bindingName,
+              type: 'select',
+              versions: [
+                ...Object.keys(usable.cases ?? {}).map((key) => ({
+                  key,
+                  nodes: [],
+                })),
+                { key: 'other', nodes: [] },
+              ],
+            },
+          ],
+          format,
+          labels,
+        ),
+      });
+      continue;
+    }
     items.push({
       id: `value:${choice.path}`,
       label: valueLabel,

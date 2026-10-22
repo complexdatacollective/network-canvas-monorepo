@@ -154,6 +154,10 @@ function ProtocolFormFields({
  *                    `withFormValues` scopes, and validation messages naming
  *                    a field then show the node's label as the interface
  *                    shows it, in place of the codebook's label rules.
+ * @param isParticipant - Whether the node the form describes is the
+ *                    participant, where the interface draws the participant
+ *                    among its nodes (Family Pedigree's person form), so the
+ *                    fields' text can choose its wording by it.
  */
 export default function useProtocolForm({
   fields,
@@ -167,6 +171,7 @@ export default function useProtocolForm({
   precedingVariables = NO_VARIABLES,
   newEntityAttributes,
   labelNode,
+  isParticipant,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -179,6 +184,7 @@ export default function useProtocolForm({
   precedingVariables?: readonly string[];
   newEntityAttributes?: Readonly<Record<string, unknown>>;
   labelNode?: LabelNode;
+  isParticipant?: boolean;
 }) {
   const stageValidationContext = useStageSelector(getValidationContext);
   const baseValidationContext =
@@ -345,6 +351,7 @@ export default function useProtocolForm({
         variables={formVariables}
         {...(newEntityAttributes !== undefined && { newEntityAttributes })}
         {...(labelNode !== undefined && { labelNode })}
+        {...(isParticipant !== undefined && { isParticipant })}
         coerce={coerceValues}
       >
         {children}

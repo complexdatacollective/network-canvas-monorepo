@@ -1822,6 +1822,62 @@ function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
   };
 }
 
+/**
+ * A question asked about each person in the family can be worded for the
+ * participant: "Are you still living?" when it is about them, and "Is this
+ * person still living?" for everyone else.
+ */
+function dynamicValuesWordedForParticipant(): ScenarioDefinition {
+  const { synth, fp, person, relate, parents } = scaffold({
+    askGenderIdentity: false,
+  });
+  fp.stageEntry.dynamicValues = {
+    isParticipant: {
+      path: 'node.$isParticipant',
+      cases: { participant: true },
+    },
+  };
+  fp.addFormField({
+    component: 'Boolean',
+    prompt: {
+      'en-US':
+        '{isParticipant, select, participant {Are you still living?} other {Is this person still living?}}',
+    },
+  });
+  person('ego', { sex: 'female', isEgo: true });
+  person('mum', { sex: 'female' });
+  person('dad', { sex: 'male' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
+
+  return {
+    id: 'dynamic-values-worded-for-participant',
+    covers: ['dynamicValues'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      const living = (name: RegExp) =>
+        panel(page).getByRole('radiogroup', { name });
+      const cancel = async () => {
+        await panel(page)
+          .getByRole('button', { name: 'Cancel', exact: true })
+          .click();
+        await expect(panel(page)).toHaveCount(0);
+      };
+
+      await member(page, 'You').click();
+      await expect(living(/^Are you still living\?/)).toBeVisible();
+      await expect(living(/^Is this person still living\?/)).toHaveCount(0);
+      await cancel();
+
+      await member(page, 'Mother').click();
+      await expect(living(/^Is this person still living\?/)).toBeVisible();
+      await expect(living(/^Are you still living\?/)).toHaveCount(0);
+      await cancel();
+    },
+  };
+}
+
 const HEART = 'Who in your family has had heart disease?';
 const OVARIAN = 'Who in your family has had ovarian cancer?';
 const PROSTATE = 'Who in your family has had prostate cancer?';
@@ -4292,6 +4348,7 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     extendedScope('thirdDegree'),
     formFieldsMissingDetails(),
     dynamicValuesNameRelativesAsDrawn(),
+    dynamicValuesWordedForParticipant(),
     nominationPrompts(),
     sexChangeWithdrawsNomination(),
     connectAndDisconnect(),

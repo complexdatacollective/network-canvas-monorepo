@@ -102,10 +102,18 @@ export const isAttributeDynamicValueRole = (
 
 // Codebook ids are letters, digits and `._:-`, so no attribute is named this.
 const LABEL_PATH_SEGMENT = '$label';
+const PARTICIPANT_PATH_SEGMENT = '$isParticipant';
+
+/**
+ * The case key a binding of whether a node is the participant chooses for the
+ * participant (`dynamicValueParticipantPathFor`); everyone else reads `other`.
+ */
+export const PARTICIPANT_CASE = 'participant';
 
 export type ParsedDynamicValuePath =
   | Readonly<{ kind: 'intrinsic'; name: IntrinsicDynamicValue }>
   | Readonly<{ kind: 'label'; role: LabelledDynamicValueRole }>
+  | Readonly<{ kind: 'participant'; role: 'node' }>
   | Readonly<{
       kind: 'attribute';
       role: AttributeDynamicValueRole;
@@ -129,6 +137,11 @@ export const parseDynamicValuePath = (
     ) {
       return { kind: 'label', role };
     }
+  }
+  if (
+    path === `${DYNAMIC_VALUE_ROLE_PREFIXES.node}${PARTICIPANT_PATH_SEGMENT}`
+  ) {
+    return { kind: 'participant', role: 'node' };
   }
   for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
     if (!isAttributeDynamicValueRole(role)) continue;
@@ -155,6 +168,16 @@ export const dynamicValuePathFor = (
 export const dynamicValueLabelPathFor = (
   role: LabelledDynamicValueRole,
 ): string => `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${LABEL_PATH_SEGMENT}`;
+
+/**
+ * The `path` naming whether the node a form describes is the participant
+ * (`true`) or someone else (`false`), which text can choose its wording by
+ * but never shows. Only a Family Pedigree's person form knows it: the
+ * participant is one of the family it draws (see
+ * `dynamicValueParticipantRolesAt`). It is never missing.
+ */
+export const dynamicValueParticipantPathFor = (role: 'node'): string =>
+  `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${PARTICIPANT_PATH_SEGMENT}`;
 
 const DynamicValuePathSchema = z
   .string()
@@ -305,6 +328,25 @@ export const dynamicValueRolesAt = (
 };
 
 /**
+ * The roles at a site whose node may be the participant, so text there can
+ * choose its wording by whether it is: the node a Family Pedigree's person
+ * form describes, which is the participant when the panel is about them.
+ */
+export const dynamicValueParticipantRolesAt = (
+  stage: DynamicValueStage,
+  site: DynamicValueSite,
+  form: DynamicValueForm | undefined,
+): ReadonlySet<DynamicValueRole> =>
+  new Set<DynamicValueRole>(
+    stage.type === 'FamilyPedigree' &&
+      site === 'formField' &&
+      form?.entity === 'node' &&
+      form.isStageSubject
+      ? ['node']
+      : [],
+  );
+
+/**
  * The roles a site can show that may have no entity on screen while its text
  * shows: a bin stage in select mode has no node to place once every node has
  * been placed. Even a node's label can then be missing, so text showing it
@@ -408,6 +450,11 @@ export type DynamicValueSiteContext = Readonly<{
    */
   absentRoles?: ReadonlySet<DynamicValueRole>;
   /**
+   * The roles among `roles` whose node may be the participant
+   * (`dynamicValueParticipantRolesAt`); absent, none is.
+   */
+  participantRoles?: ReadonlySet<DynamicValueRole>;
+  /**
    * The variables of each role's entity, or undefined where the role names
    * no codebook entity (a node role on a stage with no node subject).
    */
@@ -464,6 +511,25 @@ export const dynamicValueStatus = (
         cases: [],
         numeric: false,
         optional: context.absentRoles?.has(parsed.role) ?? false,
+      },
+    };
+  }
+  if (parsed.kind === 'participant') {
+    if (!(context.participantRoles?.has(parsed.role) ?? false)) {
+      return {
+        status: 'unavailable',
+        reason:
+          'whether a node is the participant is known only in the questions of a Family Pedigree stage’s person form',
+      };
+    }
+    return {
+      status: 'available',
+      argument: {
+        cases: Object.keys(binding.cases ?? {}),
+        numeric: false,
+        optional: false,
+        unshowable:
+          'whether the node is the participant only chooses wording, and is never shown itself. Give the text a version for the participant and one for everyone else.',
       },
     };
   }

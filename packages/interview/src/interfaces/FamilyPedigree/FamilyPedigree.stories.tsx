@@ -201,9 +201,19 @@ export function buildInterview({
   });
   if (withFormFields) {
     stage.addFormField({ component: 'Number', prompt: 'Age' });
+    // The question is worded for the participant when it is about them.
+    stage.stageEntry.dynamicValues = {
+      isParticipant: {
+        path: 'node.$isParticipant',
+        cases: { participant: true },
+      },
+    };
     stage.addFormField({
       component: 'Boolean',
-      prompt: 'Is this person still living?',
+      prompt: {
+        'en-US':
+          '{isParticipant, select, participant {Are you still living?} other {Is this person still living?}}',
+      },
       validation: { required: true },
     });
   }
