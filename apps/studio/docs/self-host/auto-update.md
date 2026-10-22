@@ -10,11 +10,20 @@ published. Run it from cron, hourly. Each run:
    its `studio-release.json`, which names both images by digest.
 4. Stops if `.env` already runs those two images.
 5. Checks with cosign that both images were signed by the Studio release
-   workflow on `main`. If either is not, it changes nothing.
-6. Records a GitHub deployment for the release's commit, marks it in progress,
-   and runs [`upgrade.sh`](./upgrade.md#the-upgrade-script) with the two
-   images.
-7. Marks the deployment with how `upgrade.sh` ended.
+   workflow on `main`, building the commit the manifest names. If either is
+   not, it changes nothing.
+6. Downloads `docker-compose.yml` and `upgrade.sh` from that commit. Because
+   the signatures tie the images to the commit, the two files are the ones
+   the release was built and tested with.
+7. Checks the new `docker-compose.yml` against `.env` (and
+   `docker-compose.override.yml`, if there is one) with `docker compose config`.
+   If Compose rejects it, or it uses a variable `.env` does not set, it names
+   the problem and changes nothing.
+8. Records a GitHub deployment for the release's commit, marks it in progress,
+   and runs that release's [`upgrade.sh`](./upgrade.md#the-upgrade-script)
+   with the two images and `--compose`, which installs the new
+   `docker-compose.yml` as part of the upgrade.
+9. Marks the deployment with how `upgrade.sh` ended.
 
 | `upgrade.sh` result   | Deployment status | Later runs |
 | --------------------- | ----------------- | ---------- |
@@ -36,16 +45,21 @@ Like `upgrade.sh`, it takes no backup, and it is written for the stack
 The host needs `curl`, `jq`, `flock` (part of util-linux) and
 [cosign](https://docs.sigstore.dev/cosign/system_config/installation/), and
 outbound HTTPS to `api.github.com`, `github.com`,
-`release-assets.githubusercontent.com` and `ghcr.io`, plus the Sigstore hosts
+`raw.githubusercontent.com`, `release-assets.githubusercontent.com` and
+`ghcr.io`, plus the Sigstore hosts
 cosign checks signatures against (`tuf-repo-cdn.sigstore.dev`).
 
-Put both scripts beside `docker-compose.yml` and `.env`:
+Put `auto-update.sh` beside `docker-compose.yml` and `.env`. It fetches
+everything else it runs from each release:
 
 ```bash
-curl -O https://raw.githubusercontent.com/complexdatacollective/network-canvas-monorepo/main/apps/studio/scripts/upgrade.sh
 curl -O https://raw.githubusercontent.com/complexdatacollective/network-canvas-monorepo/main/apps/studio/scripts/auto-update.sh
-chmod +x upgrade.sh auto-update.sh
+chmod +x auto-update.sh
 ```
+
+Each upgrade replaces `docker-compose.yml` with the release's copy, keeping
+the old one as `docker-compose.yml.previous`. Keep any local changes in
+`docker-compose.override.yml`, which it leaves alone.
 
 Create a fine-grained personal access token with access to the
 `complexdatacollective/network-canvas-monorepo` repository and the
@@ -86,5 +100,7 @@ rm .auto-update-halted
 The next hourly run tries the newest release again.
 
 A run that fails before `upgrade.sh` starts — the release list cannot be read,
-an image is not signed, the deployment cannot be recorded — changes nothing
-and does not halt; the next run tries again.
+an image is not signed, the release's `docker-compose.yml` needs a variable
+`.env` lacks, the deployment cannot be recorded — changes nothing and does not
+halt; the next run tries again. Add the variable to `.env` and the next run
+deploys the release.

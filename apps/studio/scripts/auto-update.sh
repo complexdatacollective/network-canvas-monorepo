@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Deploys the newest Network Canvas Studio release to this stack when it differs
 # from what .env runs, and records the deploy as a GitHub deployment. Meant to
-# run hourly from cron, beside upgrade.sh, docker-compose.yml and .env.
+# run hourly from cron, from the directory holding docker-compose.yml and .env.
+# Each deploy runs the release's own upgrade.sh with the release's own
+# docker-compose.yml, both fetched from the commit its images were built from.
 #
 #   auto-update.sh [--dir <stack-dir>]
 #
@@ -9,10 +11,11 @@
 #   GITHUB_TOKEN                     a token that may create deployments on the
 #                                    repository (required)
 #   STUDIO_AUTO_UPDATE_ENVIRONMENT   the GitHub deployment environment (default staging)
+#   COMPOSE                          the Compose command (default: docker compose)
 #
 # A run that ends in anything but an upgrade writes .auto-update-halted, and
 # every later run stops there until someone has looked at the instance and
-# removed that file. Needs curl, jq, cosign and flock.
+# removed that file. Needs curl, jq, cosign, flock and Compose.
 set -uo pipefail
 
 REPO=complexdatacollective/network-canvas-monorepo
@@ -20,7 +23,7 @@ API="https://api.github.com/repos/$REPO"
 IDENTITY="https://github.com/$REPO/.github/workflows/ci-and-release.yml@refs/heads/main"
 ISSUER=https://token.actions.githubusercontent.com
 ENVIRONMENT="${STUDIO_AUTO_UPDATE_ENVIRONMENT:-staging}"
-UPGRADE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/upgrade.sh"
+RAW="https://raw.githubusercontent.com/$REPO"
 
 log() { echo "[studio-auto-update] $*"; }
 fail() {
@@ -89,6 +92,7 @@ VERSION="$(jq -r .version <<< "$MANIFEST")"
 COMMIT="$(jq -r .commit <<< "$MANIFEST")"
 NEW_API="$(jq -r .images.api <<< "$MANIFEST")"
 NEW_WEB="$(jq -r .images.web <<< "$MANIFEST")"
+[[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "the manifest of Studio $VERSION names no commit"
 
 if [ "$(sed -n 's/^STUDIO_API_IMAGE=//p' .env)" = "$NEW_API" ] \
   && [ "$(sed -n 's/^STUDIO_WEB_IMAGE=//p' .env)" = "$NEW_WEB" ]; then
@@ -97,9 +101,25 @@ if [ "$(sed -n 's/^STUDIO_API_IMAGE=//p' .env)" = "$NEW_API" ] \
 fi
 
 for image in "$NEW_API" "$NEW_WEB"; do
-  cosign verify --certificate-identity "$IDENTITY" --certificate-oidc-issuer "$ISSUER" "$image" > /dev/null \
-    || fail "$image is not signed by the Studio release workflow; nothing was changed"
+  cosign verify --certificate-identity "$IDENTITY" --certificate-oidc-issuer "$ISSUER" \
+    --certificate-github-workflow-sha "$COMMIT" "$image" > /dev/null \
+    || fail "$image is not signed by the Studio release workflow at $COMMIT; nothing was changed"
 done
+
+WORK="$(mktemp -d)" || fail 'could not make a temporary directory'
+trap 'rm -rf "$WORK"' EXIT
+for file in apps/studio/docker-compose.yml apps/studio/scripts/upgrade.sh; do
+  curl -fsSL --connect-timeout 10 --max-time 120 -o "$WORK/${file##*/}" "$RAW/$COMMIT/$file" \
+    || fail "could not download $file at $COMMIT; nothing was changed"
+done
+
+read -r -a COMPOSE_CMD <<< "${COMPOSE:-docker compose}"
+FILES=(-f "$WORK/docker-compose.yml")
+[ -f docker-compose.override.yml ] && FILES+=(-f docker-compose.override.yml)
+CHECK="$("${COMPOSE_CMD[@]}" "${FILES[@]}" --project-directory . config -q 2>&1 < /dev/null)" \
+  || fail "Compose rejects the docker-compose.yml of Studio $VERSION with this .env; nothing was changed: $CHECK"
+MISSING="$(sed -nE 's/.*The \\?"([A-Za-z0-9_]+)\\?" variable is not set.*/\1/p' <<< "$CHECK" | sort -u | tr '\n' ' ')"
+[ -z "$MISSING" ] || fail "Studio $VERSION needs ${MISSING% } in .env; nothing was changed"
 
 DEPLOYMENT="$(github POST /deployments "$(jq -nc --arg ref "$COMMIT" --arg env "$ENVIRONMENT" --arg v "$VERSION" \
   '{ref: $ref, environment: $env, auto_merge: false, required_contexts: [], description: ("Studio " + $v)}')" \
@@ -113,7 +133,7 @@ status() { # state description
 
 log "deploying Studio $VERSION (deployment $DEPLOYMENT)"
 status in_progress "Upgrading to Studio $VERSION"
-"$UPGRADE" --dir . "$NEW_API" "$NEW_WEB"
+bash "$WORK/upgrade.sh" --dir . --compose "$WORK/docker-compose.yml" "$NEW_API" "$NEW_WEB"
 CODE=$?
 
 case "$CODE" in

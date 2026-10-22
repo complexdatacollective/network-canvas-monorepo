@@ -16,8 +16,9 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, test } from 'vitest';
 
-// apps/studio/scripts/auto-update.sh with curl, cosign and upgrade.sh stubbed:
-// curl answers the GitHub API from fixtures and records every request.
+// apps/studio/scripts/auto-update.sh with curl, cosign and Compose stubbed:
+// curl answers the GitHub API and raw.githubusercontent.com from fixtures and
+// records every request; the upgrade.sh it serves is a stub that logs its call.
 
 const SCRIPT = fileURLToPath(
   new URL('../../apps/studio/scripts/auto-update.sh', import.meta.url),
@@ -70,11 +71,12 @@ const MANIFEST = {
 
 const CURL = `#!/usr/bin/env bash
 echo "$*" >> "$STUB_STATE/argv.log"
-method=GET body= url=
+method=GET body= url= out=
 while [ $# -gt 0 ]; do
   case "$1" in
     -X) method="$2"; shift 2 ;;
     -d) body="$2"; shift 2 ;;
+    -o) out="$2"; shift 2 ;;
     -H) shift 2 ;;
     -*) shift ;;
     *) url="$1"; shift ;;
@@ -86,6 +88,8 @@ case "$method $url" in
     page="$STUB_STATE/releases-\${url##*page=}.json"
     if [ -f "$page" ]; then cat "$page"; else echo '[]'; fi ;;
   "GET $STUB_MANIFEST_URL") cat "$STUB_STATE/manifest.json" ;;
+  "GET $STUB_RAW/apps/studio/docker-compose.yml") cp "$STUB_STATE/raw-compose.yml" "$out" ;;
+  "GET $STUB_RAW/apps/studio/scripts/upgrade.sh") cp "$STUB_STATE/raw-upgrade.sh" "$out" ;;
   "POST $STUB_API/deployments")
     [ -n "\${STUB_DEPLOYMENT_FAILS:-}" ] && exit 22
     echo '{"id":42}' ;;
@@ -102,8 +106,17 @@ exit 0
 
 const UPGRADE = `#!/usr/bin/env bash
 echo "$*" >> "$STUB_STATE/upgrade.log"
+cp "\${@: -3:1}" "$STUB_STATE/upgrade-compose.yml"
 exit "\${STUB_UPGRADE_EXIT:-0}"
 `;
+
+const COMPOSE = `#!/usr/bin/env bash
+echo "$*" >> "$STUB_STATE/compose.log"
+[ -n "\${STUB_COMPOSE_STDERR:-}" ] && echo "$STUB_COMPOSE_STDERR" >&2
+exit "\${STUB_COMPOSE_EXIT:-0}"
+`;
+
+const RELEASE_COMPOSE = 'services:\n  api:\n';
 
 const dirs = [];
 afterEach(() => {
@@ -142,11 +155,19 @@ function setup({
     ),
   );
   writeFileSync(join(s.state, 'manifest.json'), JSON.stringify(MANIFEST));
-  for (const log of ['requests.log', 'argv.log', 'cosign.log', 'upgrade.log'])
+  for (const log of [
+    'requests.log',
+    'argv.log',
+    'cosign.log',
+    'upgrade.log',
+    'compose.log',
+  ])
     writeFileSync(join(s.state, log), '');
   copyFileSync(SCRIPT, join(s.scripts, 'auto-update.sh'));
   chmodSync(join(s.scripts, 'auto-update.sh'), 0o755);
-  stub(s.scripts, 'upgrade.sh', UPGRADE);
+  writeFileSync(join(s.state, 'raw-upgrade.sh'), UPGRADE);
+  writeFileSync(join(s.state, 'raw-compose.yml'), RELEASE_COMPOSE);
+  stub(s.bin, 'compose', COMPOSE);
   stub(s.bin, 'curl', CURL);
   stub(s.bin, 'cosign', COSIGN);
   return s;
@@ -160,6 +181,8 @@ function environment(s, env) {
     STUB_STATE: s.state,
     STUB_API: API,
     STUB_MANIFEST_URL: MANIFEST_URL,
+    STUB_RAW: `https://raw.githubusercontent.com/complexdatacollective/network-canvas-monorepo/${COMMIT}`,
+    COMPOSE: join(s.bin, 'compose'),
     ...env,
   };
 }
@@ -207,7 +230,21 @@ test('verifies, records a deployment and upgrades to the newest published Studio
   const s = setup();
   const r = run(s);
   assert.equal(r.status, 0, r.output);
-  assert.deepEqual(r.upgrade, [`--dir . ${NEW_API} ${NEW_WEB}`]);
+  assert.equal(r.upgrade.length, 1);
+  assert.match(
+    r.upgrade[0],
+    new RegExp(
+      `^--dir \\. --compose /\\S+/docker-compose\\.yml ${NEW_API} ${NEW_WEB}$`,
+    ),
+  );
+  assert.equal(
+    readFileSync(join(s.state, 'upgrade-compose.yml'), 'utf8'),
+    RELEASE_COMPOSE,
+  );
+  assert.match(
+    lines(s, 'compose.log').join('\n'),
+    /^-f \S+\/docker-compose\.yml --project-directory \. config -q$/,
+  );
   assert.deepEqual(
     r.cosign.map((line) => line.split(' ').at(-1)),
     [NEW_API, NEW_WEB],
@@ -215,7 +252,7 @@ test('verifies, records a deployment and upgrades to the newest published Studio
   for (const line of r.cosign) {
     assert.match(
       line,
-      /--certificate-identity https:\/\/github\.com\/complexdatacollective\/network-canvas-monorepo\/\.github\/workflows\/ci-and-release\.yml@refs\/heads\/main --certificate-oidc-issuer https:\/\/token\.actions\.githubusercontent\.com /,
+      /--certificate-identity https:\/\/github\.com\/complexdatacollective\/network-canvas-monorepo\/\.github\/workflows\/ci-and-release\.yml@refs\/heads\/main --certificate-oidc-issuer https:\/\/token\.actions\.githubusercontent\.com --certificate-github-workflow-sha e{40} /,
     );
   }
   const created = r.requests.find((line) =>
@@ -349,4 +386,34 @@ test('fails, rather than skipping, when flock itself fails', () => {
   assert.equal(r.status, 1, r.output);
   assert.match(r.output, /could not take the lock/);
   assert.deepEqual(r.requests, []);
+});
+
+test('changes nothing when the release’s compose file needs a variable .env lacks', () => {
+  const r = run(setup(), {
+    env: {
+      STUB_COMPOSE_STDERR:
+        'time="2026-10-22T12:00:00Z" level=warning msg="The \\"STUDIO_NEW_SETTING\\" variable is not set. Defaulting to a blank string."',
+    },
+  });
+  assert.equal(r.status, 1, r.output);
+  assert.match(r.output, /Studio 0\.4\.0 needs STUDIO_NEW_SETTING in \.env/);
+  assert.deepEqual(r.upgrade, []);
+  assert.equal(
+    r.requests.some((line) => line.startsWith('POST')),
+    false,
+  );
+  assert.equal(r.halted, null);
+});
+
+test('changes nothing when Compose rejects the release’s compose file', () => {
+  const r = run(setup(), {
+    env: { STUB_COMPOSE_EXIT: '1', STUB_COMPOSE_STDERR: 'invalid' },
+  });
+  assert.equal(r.status, 1, r.output);
+  assert.match(
+    r.output,
+    /Compose rejects the docker-compose\.yml of Studio 0\.4\.0/,
+  );
+  assert.deepEqual(r.upgrade, []);
+  assert.equal(r.halted, null);
 });
