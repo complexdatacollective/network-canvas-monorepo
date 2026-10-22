@@ -14,9 +14,9 @@ import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { useMessageArgumentLabels } from '../messageArgumentLabels.ts';
 
 /**
- * A researcher is shown every argument a localized message can use: a heading
- * over each version a select argument chooses between, and a name for each
- * text or plural argument. An argument with no label leaves its version's
+ * A researcher is shown every argument a localized message can use: a name
+ * for each select argument and a heading over each version it chooses
+ * between, and a name for each text or plural argument. An argument with no label leaves its version's
  * editor unnamed and shows the researcher a raw identifier, so this walks
  * every setting the current schema declares and fails for one a label is
  * missing for, in every language.
@@ -134,30 +134,40 @@ describe('the labels of a localized message’s arguments', () => {
   });
 
   it.each(messageLanguages)(
-    'names every select case and placeholder in %s',
+    'names every select argument, its cases and every placeholder in %s',
     async (locale) => {
-      const { caseLabels, placeholderLabels } = await labelsIn(locale);
+      const { switchLabels, caseLabels, placeholderLabels } =
+        await labelsIn(locale);
       const unlabelled = declared.flatMap(({ name, argument, setting }) => {
         if (argument.kind !== 'select') {
           return isBlank(placeholderLabels[name])
             ? [`${setting}: placeholder “${name}”`]
             : [];
         }
-        return [...new Set([...argument.cases, 'other'])]
-          .filter((option) => isBlank(caseLabels[name]?.[option]))
-          .map((option) => `${setting}: “${name}” case “${option}”`);
+        return [
+          ...(isBlank(switchLabels[name])
+            ? [`${setting}: switch “${name}”`]
+            : []),
+          ...[...new Set([...argument.cases, 'other'])]
+            .filter((option) => isBlank(caseLabels[name]?.[option]))
+            .map((option) => `${setting}: “${name}” case “${option}”`),
+        ];
       });
       expect([...new Set(unlabelled)]).toEqual([]);
     },
   );
 
   it('never shows an identifier where a name belongs', async () => {
-    const { caseLabels, placeholderLabels } = await labelsIn('en');
+    const { switchLabels, caseLabels, placeholderLabels } =
+      await labelsIn('en');
     const identifiers = declared.flatMap(({ name, argument }) =>
       argument.kind === 'select'
-        ? [...argument.cases].filter(
-            (option) => caseLabels[name]?.[option] === option,
-          )
+        ? [
+            ...(switchLabels[name] === name ? [name] : []),
+            ...[...argument.cases].filter(
+              (option) => caseLabels[name]?.[option] === option,
+            ),
+          ]
         : placeholderLabels[name] === name
           ? [name]
           : [],

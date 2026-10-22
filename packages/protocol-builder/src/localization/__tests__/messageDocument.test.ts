@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   messageStructure,
   printMessageStructure,
+  suppliedStageText,
 } from '@codaco/protocol-validation';
 
 import {
@@ -183,6 +184,56 @@ describe('a message through the editor and back', () => {
     "{n, plural, one {'#' means # ''} other {'{'#'}'}}",
   ])('keeps the plain message %s', (message) => {
     expect(ast(roundTrip(message, PLAIN))).toEqual(ast(message));
+  });
+});
+
+describe('the wording Network Canvas supplies, through the editor and back', () => {
+  // Every language the supplied wording is written in.
+  const LOCALES = [
+    'en',
+    'de',
+    'es',
+    'fr',
+    'it',
+    'nl',
+    'pt-BR',
+    'zh-Hans',
+    'zh-Hant',
+  ];
+  // The stages whose supplied wording holds placeholders and versions,
+  // which the stage editor edits one line at a time.
+  const texts = [
+    'FamilyPedigree',
+    'NarrativePedigree',
+    'NameGenerator',
+    'NameGeneratorQuickAdd',
+    'NameGeneratorRoster',
+  ].flatMap((stageType) =>
+    suppliedStageText(stageType, {
+      defaultLocale: 'en',
+      locales: LOCALES,
+    }).flatMap(({ path, value }) =>
+      Object.entries(value)
+        .filter(([, message]) => message.includes('{'))
+        .map(([locale, message]) => ({
+          name: `${stageType} ${path.join('.')} (${locale})`,
+          message,
+        })),
+    ),
+  );
+
+  it('finds the texts with versions', () => {
+    expect(texts.length).toBeGreaterThan(400);
+  });
+
+  it('keeps every one as it is written', () => {
+    const changed = texts
+      .filter(({ message }) => {
+        const kept = ast(roundTrip(message, PLAIN));
+        return JSON.stringify(kept) !== JSON.stringify(ast(message));
+      })
+      .map(({ name }) => name);
+    expect(changed).toEqual([]);
   });
 });
 

@@ -1137,7 +1137,7 @@ describe('the completeness requirement', () => {
     await switchOn(harness);
     await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
     expect(
-      await screen.findByRole('group', { name: 'Missing parents' }),
+      await screen.findByRole('textbox', { name: 'Missing parents' }),
     ).toBeVisible();
 
     const request = await harness.submit();
