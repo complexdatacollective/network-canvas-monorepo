@@ -465,6 +465,9 @@ const OWN_WORDS = {
     '{single, select, true {{isYou, select, true {Did this parent carry you - matrix check} other {Did this parent carry {name} - matrix check}}} other {Did this parent carry {count} of them - matrix check}}',
   ),
   carrierLabel: 'Carrier of the pregnancy - matrix check',
+  carrierReplaced: message(
+    '{who, select, carrierIsYou {{answer} ends your carrying {child} - matrix check} childIsYou {{answer} ends {carrier} carrying you - matrix check} other {{answer} ends {carrier} carrying {child} - matrix check}}',
+  ),
   carrierUnknown: 'Another or unknown carrier - matrix check',
   changeWouldCutOff: message(
     '{count, plural, one {Change would strand # person: {names} - matrix check} other {Change would strand # people: {names} - matrix check}}',
@@ -500,6 +503,12 @@ const OWN_WORDS = {
   framingChoiceDescription: 'Pick the words for relatives - matrix check',
   framingChoiceTitle: 'Words for your family - matrix check',
   genderIdentityLabel: 'Gender identity wording - matrix check',
+  geneticParentReplaced: message(
+    '{who, select, replacedIsYou {{answer} replaces you as genetic parent of {child} - matrix check} childIsYou {{answer} replaces {replaced} as your genetic parent - matrix check} other {{answer} replaces {replaced} as genetic parent of {child} - matrix check}}',
+  ),
+  identicalTwinSharesParents: message(
+    '{who, select, personIsYou {{answer} gives you and {twin} one set of parents - matrix check} twinIsYou {{answer} gives {name} and you one set of parents - matrix check} other {{answer} gives {name} and {twin} one set of parents - matrix check}}',
+  ),
   generatedLabelOf: message(
     '{relation, select, partner {{isYou, select, true {{term} partnered with you - matrix check} other {{term} partnered with {name} - matrix check}}} formerPartner {{isYou, select, true {{term} ex of you - matrix check} other {{term} ex of {name} - matrix check}}} parent {{isYou, select, true {{term} parenting you - matrix check} other {{term} parenting {name} - matrix check}}} sibling {{isYou, select, true {{term} sibling to you - matrix check} other {{term} sibling to {name} - matrix check}}} owner {{owner} owns {term} - matrix check} other {{isYou, select, true {{term} child of you - matrix check} other {{term} child of {name} - matrix check}}}}',
   ),
@@ -518,7 +527,7 @@ const OWN_WORDS = {
   parentKindCarrier: message('{parentKind} who carried - matrix check'),
   parentKindLabel: 'Kind of new parent - matrix check',
   parentLinkKindLabel: message(
-    '{parentIsYou, select, true {You are their kind - matrix check} other {{personIsYou, select, true {{parent} is your kind - matrix check} other {{parent} is their kind - matrix check}}}}',
+    '{parentIsYou, select, true {You are kind to {person} - matrix check} other {{personIsYou, select, true {{parent} is your kind - matrix check} other {{parent} is kind to {person} - matrix check}}}}',
   ),
   parentPartnerLabel: 'Partner of a parent - matrix check',
   placeholderParentsNote: message(
@@ -2253,12 +2262,12 @@ function relationshipKindsDrawn(): ScenarioDefinition {
       await member(page, 'You').click();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /^Ana is your…/ })
+          .getByRole('radiogroup', { name: /relationship of “Ana” to you/ })
           .getByRole('radio', { name: 'Step or social parent', exact: true }),
       ).toBeChecked();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /^Luis is your…/ })
+          .getByRole('radiogroup', { name: /relationship of “Luis” to you/ })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();
       await panel(page)
@@ -2593,6 +2602,8 @@ function wordingConnectReasons(): ScenarioDefinition {
     'connectParent',
     'unavailableAncestor',
     'parentKindCarrier',
+    'carrierReplaced',
+    'geneticParentReplaced',
     'unavailableCarrierRecorded',
     'unavailableGeneticParentsFull',
     'you',
@@ -2603,11 +2614,19 @@ function wordingConnectReasons(): ScenarioDefinition {
   person('dad', { name: 'Tom', gender: 'man', sex: 'male' });
   person('gran', { name: 'Joan', gender: 'woman', sex: 'female' });
   person('pat', { name: 'Pat', gender: 'woman', sex: 'female' });
+  person('kim', { name: 'Kim', gender: 'woman', sex: 'female' });
+  person('sue', { name: 'Sue', gender: 'woman', sex: 'female' });
+  person('zoe', { name: 'Zoe', gender: 'woman', sex: 'female' });
   relate('mum', 'dad', 'partner');
   relate('mum', 'ego', 'biological', { carrier: true });
   relate('dad', 'ego', 'biological');
   relate('gran', 'mum', 'biological', { carrier: true });
   relate('mum', 'pat', 'partner');
+  // Zoe, Ella's half-sister, was conceived with Kim's egg and carried by
+  // Sue, a surrogate: neither gives way to a new parent.
+  relate('dad', 'zoe', 'biological');
+  relate('kim', 'zoe', 'donor');
+  relate('sue', 'zoe', 'surrogate', { carrier: true });
 
   return {
     id: 'wording-connect-reasons',
@@ -2638,35 +2657,77 @@ function wordingConnectReasons(): ScenarioDefinition {
       await page.keyboard.press('Escape');
       await expect(menu).toHaveCount(0);
 
-      // Pat could be a parent of Ella, but Rachel and Tom are recorded as her
-      // genetic parents, and Rachel as having carried her. Each choice that
-      // needs otherwise is unavailable, with its own reason beneath it.
+      const choice = (name: string) =>
+        menu.getByRole('menuitem', { name, exact: true });
+      const escaped = (text: string) =>
+        text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      // Pat could be a parent of Ella, though Rachel and Tom are recorded as
+      // her genetic parents, and Rachel as having carried her. The newest
+      // answer wins: every choice is offered, and one that takes Rachel's
+      // place says so beneath it.
       await page.getByTestId('pedigree-tool-connect').click();
       await member(page, 'Pat').click();
       await member(page, 'You').click();
       await menu
         .getByRole('menuitem', { name: 'Pat parents you - matrix check' })
         .click();
-      const choice = (name: string) =>
-        menu.getByRole('menuitem', { name, exact: true });
-      const geneticParents = '(Rachel and Tom|Tom and Rachel)';
-      const escaped = (text: string) =>
-        text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-      // A carrying choice that is not genetic, and a surrogate (who always
-      // carries), are unavailable because Rachel carried Ella.
+      const endsCarrying = (name: string) =>
+        `${name} ends Rachel carrying you - matrix check`;
+      const replacesRachel = (name: string) =>
+        `${name} replaces Rachel as your genetic parent - matrix check`;
       for (const name of [
         'Adoptive parent who carried - matrix check',
         'Step or social parent who carried - matrix check',
         'Surrogate',
       ]) {
-        const reason = `Rachel carried you on record, so not ${name} - matrix check`;
+        await expect(choice(name)).toBeEnabled();
+        await expect(choice(name)).toHaveAccessibleDescription(
+          endsCarrying(name),
+        );
+      }
+      for (const name of ['Biological parent', 'Egg or sperm donor']) {
+        await expect(choice(name)).toBeEnabled();
+        await expect(choice(name)).toHaveAccessibleDescription(
+          replacesRachel(name),
+        );
+      }
+      for (const name of [
+        'Biological parent who carried - matrix check',
+        'Egg or sperm donor who carried - matrix check',
+      ]) {
+        await expect(choice(name)).toBeEnabled();
+        await expect(choice(name)).toHaveAccessibleDescription(
+          new RegExp(
+            `${escaped(replacesRachel(name))}.*${escaped(endsCarrying(name))}`,
+          ),
+        );
+      }
+      for (const name of ['Adoptive parent', 'Step or social parent']) {
+        await expect(choice(name)).toBeEnabled();
+      }
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0);
+
+      // Zoe's surrogate, Sue, and her egg donor, Kim, give way to nobody, so
+      // each choice that needs them to is unavailable, with its own reason
+      // beneath it.
+      await page.getByTestId('pedigree-tool-connect').click();
+      await member(page, 'Pat').click();
+      await member(page, 'Zoe').click();
+      await menu
+        .getByRole('menuitem', { name: 'Pat parents Zoe - matrix check' })
+        .click();
+      for (const name of [
+        'Adoptive parent who carried - matrix check',
+        'Step or social parent who carried - matrix check',
+        'Surrogate',
+      ]) {
+        const reason = `Sue carried Zoe on record, so not ${name} - matrix check`;
         await expect(choice(name)).toBeDisabled();
         await expect(choice(name)).toHaveAccessibleDescription(reason);
         await expect(menu.getByText(reason, { exact: true })).toBeVisible();
       }
-      // The genetic kinds, carrying or not, are unavailable because Ella has
-      // two genetic parents already.
       for (const name of [
         'Biological parent',
         'Biological parent who carried - matrix check',
@@ -2674,22 +2735,19 @@ function wordingConnectReasons(): ScenarioDefinition {
         'Egg or sperm donor who carried - matrix check',
       ]) {
         const reason = new RegExp(
-          `^You have ${geneticParents} as genetic parents, so not ${escaped(name)} - matrix check$`,
+          `^Zoe has (Tom and Kim|Kim and Tom) as genetic parents, so not ${escaped(name)} - matrix check$`,
         );
         await expect(choice(name)).toBeDisabled();
         await expect(choice(name)).toHaveAccessibleDescription(reason);
         await expect(menu.getByText(reason)).toBeVisible();
       }
-      // The kinds that neither carry nor are genetic are offered.
       for (const name of ['Adoptive parent', 'Step or social parent']) {
         await expect(choice(name)).toBeEnabled();
       }
       await expectAbsent(
         page,
         'Adoptive parent (carried the pregnancy)',
-        '“Surrogate” is unavailable because “Rachel” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Rachel” is connected to you.',
-        '“Biological parent” is unavailable because you already have two genetic parents recorded, “Rachel” and “Tom”. To choose it, first change how one of them is connected to you.',
-        '“Biological parent” is unavailable because you already have two genetic parents recorded, “Tom” and “Rachel”. To choose it, first change how one of them is connected to you.',
+        '“Surrogate” is unavailable because “Sue” is recorded as having carried “Zoe”, and only one person carries a pregnancy. To choose it, first change how “Sue” is connected to “Zoe”.',
       );
     },
   };
@@ -3201,9 +3259,9 @@ function wordingAddParent(): ScenarioDefinition {
     'parentPartnerLabel',
     'alsoParentOfLabel',
     'parentCarriedLabel',
-    'carriedSiblingsPregnancyLabel',
     'unavailableGeneticParentsFull',
-    'unavailableCarrierRecorded',
+    'geneticParentReplaced',
+    'carrierReplaced',
     'unavailableCannotCarry',
   ] as const;
   const { synth, person, relate } = scaffold({ wording: ownWords(...words) });
@@ -3250,18 +3308,31 @@ function wordingAddParent(): ScenarioDefinition {
       ).toBeVisible();
 
       // Julie and Rob are recorded as Ari's genetic parents, and Julie as
-      // having carried them, so the choices that need otherwise say why.
+      // having carried them. The newest answer wins: a female genetic parent
+      // takes Julie's place, and a surrogate takes her place as the one who
+      // carried them, and each says so once chosen.
+      const kindAnswer = (name: string) =>
+        kind.getByRole('radio', { name, exact: true });
+      await kindAnswer('Biological parent').click();
+      await expect(
+        form.getByText(
+          'Biological parent replaces Julie as your genetic parent - matrix check',
+        ),
+      ).toBeVisible();
+      await kindAnswer('Surrogate').click();
+      await expect(
+        form.getByText('Surrogate ends Julie carrying you - matrix check'),
+      ).toBeVisible();
+      await expect(form.getByText(/replaces Julie/)).toHaveCount(0);
+
+      // Nobody gives way to an intersex genetic parent, so the genetic
+      // choices say why they are unavailable.
+      await kindAnswer('Adoptive parent').click();
+      await describe(page, { sex: 'Intersex' });
       await expect(
         form
           .getByText(
             /You have (Julie and Rob|Rob and Julie) as genetic parents, so (not|none of) .+ - matrix check/,
-          )
-          .first(),
-      ).toBeVisible();
-      await expect(
-        form
-          .getByText(
-            /Julie carried you on record, so (not|none of) .+ - matrix check/,
           )
           .first(),
       ).toBeVisible();
@@ -3276,31 +3347,85 @@ function wordingAddParent(): ScenarioDefinition {
           .first(),
       ).toBeVisible();
 
-      // One who could have is asked once their kind is chosen, but Julie is
-      // recorded as having, so the question is unavailable.
+      // One who could have is asked once their kind is chosen, and saying
+      // they did takes Julie's place.
       await describe(page, { sex: 'Female' });
-      await kind
-        .getByRole('radio', { name: 'Adoptive parent', exact: true })
-        .click();
-      const unavailable = form.getByRole('radiogroup', {
+      const carried = form.getByRole('radiogroup', {
         name: /^Did the new parent carry them - matrix check/,
       });
-      await expect(unavailable).toBeVisible();
+      await expect(carried).toBeVisible();
+      await carried.getByRole('radio', { name: 'Yes', exact: true }).click();
       await expect(
-        unavailable.getByRole('radio', { name: 'Yes', exact: true }),
-      ).toBeDisabled();
+        form.getByText('Yes ends Julie carrying you - matrix check'),
+      ).toBeVisible();
+      await carried.getByRole('radio', { name: 'No', exact: true }).click();
+      await expect(form.getByText(/ends Julie carrying/)).toHaveCount(0);
 
-      // A step or social parent of Ari and both siblings may have carried the
-      // siblings, who have nobody recorded as having carried them.
+      // Choosing siblings the new parent is also a parent of keeps one
+      // question, whose answer is recorded for Ari and for each of them.
       await kind
         .getByRole('radio', { name: 'Step or social parent', exact: true })
         .click();
-      // No sibling is chosen for the participant: until they say the new
-      // parent is also a parent of them, there is nobody to ask about.
-      await expect(unavailable).toBeVisible();
       await form.getByRole('checkbox', { name: 'Bea', exact: true }).check();
       await form.getByRole('checkbox', { name: 'Bo', exact: true }).check();
-      await expect(unavailable).toHaveCount(0);
+      await expect(carried).toBeVisible();
+      await expect(
+        form.getByRole('radiogroup', { name: /^Did this parent carry/ }),
+      ).toHaveCount(0);
+      await expectAbsent(
+        page,
+        'What kind of parent are they?',
+        'Are they the partner of another parent?',
+        'Are they also the parent of…',
+      );
+    },
+  };
+}
+
+/**
+ * A parent added to a participant a surrogate carried: nobody else can be
+ * recorded as having carried them, so the new parent is asked only about the
+ * siblings chosen who have nobody recorded as carrying them, in the stage's
+ * own words.
+ */
+function wordingAddParentSiblingsCarried(): ScenarioDefinition {
+  const words = ['carriedSiblingsPregnancyLabel'] as const;
+  const { synth, person, relate } = scaffold({ wording: ownWords(...words) });
+  person('ego', {
+    name: 'Ari',
+    gender: 'nonBinary',
+    sex: 'intersex',
+    isEgo: true,
+  });
+  person('mum', { name: 'Julie', gender: 'woman', sex: 'female' });
+  person('dad', { name: 'Rob', gender: 'man', sex: 'male' });
+  person('sue', { name: 'Sue', gender: 'woman', sex: 'female' });
+  person('bea', { name: 'Bea', gender: 'woman', sex: 'female' });
+  person('bo', { name: 'Bo', gender: 'man', sex: 'male' });
+  relate('mum', 'dad', 'partner');
+  relate('mum', 'ego', 'biological');
+  relate('dad', 'ego', 'biological');
+  relate('sue', 'ego', 'surrogate', { carrier: true });
+  for (const sibling of ['bea', 'bo']) {
+    relate('mum', sibling, 'biological');
+    relate('dad', sibling, 'biological');
+  }
+
+  return {
+    id: 'wording-add-parent-siblings-carried',
+    covers: coversWords(...words),
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      await addRelativeOf(page, 'You', 'parent');
+      await describe(page, { sex: 'Female' });
+      const form = panel(page);
+      await form
+        .getByRole('radiogroup', { name: /^What kind of parent are they\?/ })
+        .getByRole('radio', { name: 'Step or social parent', exact: true })
+        .click();
+      await form.getByRole('checkbox', { name: 'Bea', exact: true }).check();
+      await form.getByRole('checkbox', { name: 'Bo', exact: true }).check();
       await expect(
         form.getByRole('radiogroup', {
           name: /^Did this parent carry 2 of them - matrix check/,
@@ -3312,12 +3437,6 @@ function wordingAddParent(): ScenarioDefinition {
           name: /^Did this parent carry Bea - matrix check/,
         }),
       ).toBeVisible();
-      await expectAbsent(
-        page,
-        'What kind of parent are they?',
-        'Are they the partner of another parent?',
-        'Are they also the parent of…',
-      );
     },
   };
 }
@@ -3354,7 +3473,8 @@ function wordingAddChild(): ScenarioDefinition {
   person('ego', { name: 'Ari', gender: 'woman', sex: 'female', isEgo: true });
   person('mum', { name: 'Julie', gender: 'woman', sex: 'female' });
   person('pam', { name: 'Pam', gender: 'woman', sex: 'female' });
-  relate('mum', 'ego', 'biological', { carrier: true });
+  // Julie is Ari's egg donor, so gives way to no other genetic parent.
+  relate('mum', 'ego', 'donor', { carrier: true });
   relate('ego', 'pam', 'partner');
 
   return {
@@ -3370,8 +3490,8 @@ function wordingAddChild(): ScenarioDefinition {
         await expect(panel(page)).toHaveCount(0);
       };
 
-      // Julie is Ari's one genetic parent so far; another of her sex cannot
-      // be a second.
+      // Julie, Ari's egg donor, is her one genetic parent so far; another of
+      // her sex cannot be a second, nor take a donor's place.
       await addRelativeOf(page, 'You', 'parent');
       await describe(page, { sex: 'Female' });
       await expect(
@@ -3518,7 +3638,9 @@ function wordingEditPerson(): ScenarioDefinition {
   });
   person('mum', { name: 'Julie', gender: 'woman', sex: 'female' });
   person('dad', { name: 'Rob', gender: 'man', sex: 'male' });
-  person('pam', { name: 'Pam', gender: 'woman', sex: 'female' });
+  // Pam is intersex, so cannot take the place of Julie or Rob as a genetic
+  // parent: Ari's genetic parents are full for her.
+  person('pam', { name: 'Pam', gender: 'woman', sex: 'intersex' });
   person('lee', { name: 'Lee', gender: 'man', sex: 'male' });
   person('bea', { name: 'Bea', gender: 'woman', sex: 'female' });
   person('cal', { name: 'Cal', gender: 'man', sex: 'male' });
@@ -3889,6 +4011,63 @@ function wordingIdenticalTwinSex(): ScenarioDefinition {
         page,
         '“Yes, identical” is unavailable because identical twins have the same sex at birth, and “Ben” and you are recorded with different ones. To choose it, first change the sex at birth of one of you.',
       );
+    },
+  };
+}
+
+/**
+ * Twins whose biological parents differ, Rob being a parent of the
+ * participant only: answering "identical" while editing the participant
+ * says, in the stage's own words, that it gives both twins one set of
+ * parents, and saving records Rob as Bea's biological parent too.
+ */
+function wordingIdenticalTwinParents(): ScenarioDefinition {
+  const words = ['identicalTwinSharesParents'] as const;
+  const scaffolded = scaffold({ wording: ownWords(...words) });
+  const { synth, fp, person, relate } = scaffolded;
+  seedDescribedParents(scaffolded, { gender: 'woman', sex: 'female' });
+  person('bea', { name: 'Bea', gender: 'woman', sex: 'female' });
+  relate('mum', 'bea', 'biological', { carrier: true });
+  synth.addManualEdge(fp.edgeType, 'ego-bea-twin', 'ego', 'bea', {
+    [fp.kind]: ['fraternalTwin'],
+  });
+
+  return {
+    id: 'wording-identical-twin-parents',
+    covers: coversWords(...words),
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      const form = panel(page);
+      await member(page, 'You').click();
+      const identical = form
+        .getByRole('radiogroup', {
+          name: /^Are you and “Bea” identical twins\?/,
+        })
+        .getByRole('radio', { name: 'Yes, identical', exact: true });
+      await expect(identical).toBeEnabled();
+      await expect(
+        form.getByText(/gives you and Bea one set of parents - matrix check/),
+      ).toHaveCount(0);
+      await identical.click();
+      await expect(
+        form
+          .getByText(
+            'Yes, identical gives you and Bea one set of parents - matrix check',
+          )
+          .first(),
+      ).toBeVisible();
+      await form.getByRole('button', { name: 'Save', exact: true }).click();
+      await expect(form).toHaveCount(0);
+
+      await member(page, 'Bea').click();
+      await expect(
+        form
+          .getByRole('radiogroup', {
+            name: 'How would you define the relationship of “Rob” to “Bea”?',
+          })
+          .getByRole('radio', { name: 'Biological parent', exact: true }),
+      ).toBeChecked();
     },
   };
 }
@@ -4445,10 +4624,12 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     wordingGeneratedLabelsChildren(),
     wordingFramingChoice(),
     wordingAddParent(),
+    wordingAddParentSiblingsCarried(),
     wordingAddChild(),
     wordingEditPerson(),
     wordingAddSibling(),
     wordingIdenticalTwinSex(),
+    wordingIdenticalTwinParents(),
     wordingAddSiblingTwinSex(),
     wordingAddSiblingTwinCarrier(),
     wordingSiblingBiologicalParent(),

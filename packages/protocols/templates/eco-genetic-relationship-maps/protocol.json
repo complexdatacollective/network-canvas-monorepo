@@ -668,7 +668,16 @@
           "en-US": "What kind of parent are they?"
         },
         "parentLinkKindLabel": {
-          "en-US": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}"
+          "en-US": "{parentIsYou, select, true {How would you define your relationship to “{person}”?} other {{personIsYou, select, true {How would you define the relationship of “{parent}” to you?} other {How would you define the relationship of “{parent}” to “{person}”?}}}}"
+        },
+        "carrierReplaced": {
+          "en-US": "{who, select, carrierIsYou {Choosing “{answer}” means you will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.} childIsYou {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried you, as only one person carries a pregnancy.} other {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.}}"
+        },
+        "geneticParentReplaced": {
+          "en-US": "{who, select, replacedIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define your relationship to “{child}” instead.} childIsYou {Choosing “{answer}” means “{replaced}” will no longer be recorded as your biological parent. You will be asked how you would define the relationship of “{replaced}” to you instead.} other {Choosing “{answer}” means “{replaced}” will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define the relationship of “{replaced}” to “{child}” instead.}}"
+        },
+        "identicalTwinSharesParents": {
+          "en-US": "{who, select, personIsYou {Choosing “{answer}” records the same biological parents and donors for you and “{twin}”.} twinIsYou {Choosing “{answer}” records the same biological parents and donors for “{name}” and you.} other {Choosing “{answer}” records the same biological parents and donors for “{name}” and “{twin}”.}}"
         },
         "parentPartnerLabel": {
           "en-US": "Are they the partner of another parent?"

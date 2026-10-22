@@ -1119,10 +1119,22 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinSex)],
     ),
     rule(
+      'wording.identicalTwinSharesParents',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingIdenticalTwinSharesParents)],
+    ),
+    rule(
       'wording.unavailableSameSexGeneticParent',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
       [2, words(familyPedigreeMessages.wordingUnavailableSameSexGeneticParent)],
+    ),
+    rule(
+      'wording.geneticParentReplaced',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingGeneticParentReplaced)],
     ),
     rule(
       'wording.unavailableGeneticParentsFull',
@@ -1142,6 +1154,10 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       PEDIGREE_WORDING_ADDING,
       [2, words(familyPedigreeMessages.wordingUnavailableCarrierRecorded)],
     ),
+    rule('wording.carrierReplaced', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingCarrierReplaced),
+    ]),
     rule(
       'wording.unavailableCannotCarry',
       PEDIGREE_WORDING,

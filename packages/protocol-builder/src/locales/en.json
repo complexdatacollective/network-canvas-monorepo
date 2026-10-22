@@ -5579,6 +5579,10 @@
     "defaultMessage": "Carrier question",
     "description": "Label of the question asking who carried the pregnancy."
   },
+  "protocolBuilder.pedigree.wording.carrierReplaced": {
+    "defaultMessage": "Note on a new answer about carrying: earlier carrier no longer recorded",
+    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that choosing an answer which records someone as having carried a child’s pregnancy means the person recorded before will no longer be recorded as having carried it, since only one person carries a pregnancy."
+  },
   "protocolBuilder.pedigree.wording.carrierUnknown": {
     "defaultMessage": "Other or unknown carrier option",
     "description": "Label of the option for someone else, or for not knowing who carried the pregnancy."
@@ -5694,6 +5698,14 @@
   "protocolBuilder.pedigree.wording.generatedLabelOf": {
     "defaultMessage": "Label for a relative",
     "description": "Label of a family member, named by how they relate to the participant."
+  },
+  "protocolBuilder.pedigree.wording.geneticParentReplaced": {
+    "defaultMessage": "Note on a new genetic parent: biological parent recorded is replaced",
+    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that choosing a genetic kind of parent (biological parent or donor) means the biological parent recorded with the same sex at birth will no longer be recorded as one, and that they will be asked how they would define that parent’s relationship to the child instead."
+  },
+  "protocolBuilder.pedigree.wording.identicalTwinSharesParents": {
+    "defaultMessage": "Note on identical twins: same biological parents recorded for both",
+    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that recording two twins as identical will record the same biological parents and donors for both of them."
   },
   "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": {
     "defaultMessage": "Other parent is biological question",

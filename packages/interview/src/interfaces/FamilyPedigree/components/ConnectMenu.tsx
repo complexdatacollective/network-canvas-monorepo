@@ -29,13 +29,17 @@ import {
   type ParentChoiceBlock,
   parentChoiceOptions,
   parentConnectionBlock,
+  REPLACED_PARENT_KINDS,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
 import { type PedigreeWords, usePedigreeWords } from '../pedigreeWords';
 import {
   carrierRecordedReason,
+  carrierReplacedReason,
   geneticParentReason,
+  geneticParentReplacedReason,
   joinReasons,
+  type Reason,
 } from './unavailableReasons';
 
 export type ConnectPair = { firstId: string; secondId: string };
@@ -69,6 +73,11 @@ type ConnectMenuProps = {
 };
 
 type ParentAndChild = { parentId: string; childId: string };
+
+/** A genetic kind of parent chosen in the second step, and the biological
+ * parent it takes the place of, whose relationship to the child the third
+ * step asks. */
+type ReplacingChoice = { option: ParentChoice; replacedId: string };
 
 /**
  * A menu item's label, with the reason it is unavailable shown beneath it
@@ -189,7 +198,11 @@ export function describeConnection(
  * or one as the other's parent — and then what kind of parent, as a second
  * step in the same menu rather than a submenu, which a touch screen cannot
  * hover to open. Choices that would contradict the family already recorded
- * are unavailable.
+ * are unavailable, except where the newest answer wins: a choice that
+ * replaces who carried the child, or a genetic kind that takes the place of
+ * a biological parent, says so under it, and for the latter a third step
+ * asks how the participant would define that parent's relationship to the
+ * child instead.
  */
 export default function ConnectMenu({
   pair,
@@ -217,13 +230,18 @@ export default function ConnectMenu({
   const [choice, setChoice] = useState<{
     pair: ConnectPair;
     parent: ParentAndChild;
+    replacing?: ReplacingChoice;
   } | null>(null);
-  const parentChoice = choice && choice.pair === pair ? choice.parent : null;
+  const current = choice && choice.pair === pair ? choice : null;
+  const parentChoice = current ? current.parent : null;
+  const replacing = current?.replacing;
 
   // Moving between the steps replaces every item, so focus moves to the
   // first item of the new step.
   const firstItemRef = useRef<HTMLDivElement>(null);
-  const stepKey = parentChoice ? parentChoice.parentId : 'relationship';
+  const stepKey = parentChoice
+    ? `${parentChoice.parentId}${replacing ? '-replacing' : ''}`
+    : 'relationship';
   const previousStep = useRef(stepKey);
   useEffect(() => {
     if (previousStep.current !== stepKey) firstItemRef.current?.focus();
@@ -233,6 +251,46 @@ export default function ConnectMenu({
   const content = (() => {
     if (!pair) return null;
     const { isYou, parentLabel, parentChoiceLabel } = connection;
+
+    if (parentChoice && replacing) {
+      const { replacedId } = replacing;
+      return (
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            {text(wording.parentLinkKindLabel, {
+              parentIsYou: isYou(replacedId) ? 'true' : 'false',
+              personIsYou: isYou(parentChoice.childId) ? 'true' : 'false',
+              parent: displayName(replacedId),
+              person: displayName(parentChoice.childId),
+            })}
+          </DropdownMenuLabel>
+          {REPLACED_PARENT_KINDS.map((kind, index) => (
+            <DropdownMenuItem
+              key={kind}
+              ref={index === 0 ? firstItemRef : undefined}
+              data-testid={`pedigree-connect-replaced-${kind}`}
+              onClick={() =>
+                onConnect({
+                  kind: 'parent',
+                  ...parentChoice,
+                  ...replacing.option,
+                  replaced: { parentId: replacedId, kind },
+                })
+              }
+            >
+              <RenderMarkdown>{parentKindLabels[kind]}</RenderMarkdown>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            closeOnClick={false}
+            onClick={() => setChoice({ pair, parent: parentChoice })}
+          >
+            {intl.formatMessage(commonMessages.back)}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      );
+    }
 
     if (parentChoice) {
       const label = parentLabel(parentChoice);
@@ -248,23 +306,53 @@ export default function ConnectMenu({
         sexLabels,
         formatList: contentFormat.formatList,
       };
+      // What a choice that is available replaces is said under it in the
+      // same way: whoever was recorded as carrying the child, and the
+      // biological parent a genetic kind takes the place of.
       const reasonFor = (
-        unavailable: ParentChoiceBlock,
         option: ParentChoice,
         kindLabel: string,
+        {
+          unavailable,
+          replacesCarrier,
+          replacesParent,
+        }: {
+          unavailable?: ParentChoiceBlock;
+          replacesCarrier?: { carrierId: string; childId: string };
+          replacesParent?: string;
+        },
       ) => {
-        const answers = [
-          { value: choiceId(option), label: getMarkdownLabelText(kindLabel) },
-        ];
-        return joinReasons(reasonContext, [
-          unavailable.rule === 'carrierRecorded'
-            ? carrierRecordedReason(
-                unavailable.childId,
-                unavailable.carrierId,
-                answers,
-              )
-            : geneticParentReason(unavailable, answers),
-        ]);
+        const answer = {
+          value: choiceId(option),
+          label: getMarkdownLabelText(kindLabel),
+        };
+        const answers = [answer];
+        const reasons: (Reason | undefined)[] = unavailable
+          ? [
+              unavailable.rule === 'carrierRecorded'
+                ? carrierRecordedReason(
+                    unavailable.childId,
+                    unavailable.carrierId,
+                    answers,
+                  )
+                : geneticParentReason(unavailable, answers),
+            ]
+          : [
+              replacesParent === undefined
+                ? undefined
+                : geneticParentReplacedReason(
+                    parentChoice.childId,
+                    replacesParent,
+                    answer,
+                  ),
+              replacesCarrier &&
+                carrierReplacedReason(
+                  replacesCarrier.childId,
+                  replacesCarrier.carrierId,
+                  answer,
+                ),
+            ];
+        return joinReasons(reasonContext, reasons);
       };
       return (
         <DropdownMenuGroup>
@@ -273,22 +361,30 @@ export default function ConnectMenu({
             family,
             parentChoice.parentId,
             parentChoice.childId,
-          ).map(({ choice: option, unavailable }, index) => {
+          ).map((each, index) => {
+            const { choice: option, unavailable, replacesParent } = each;
             const kindLabel = parentChoiceLabel(option);
             const id = choiceId(option);
-            const reason = unavailable
-              ? reasonFor(unavailable, option, kindLabel)
-              : undefined;
+            const reason = reasonFor(option, kindLabel, each);
             const reasonId = `${reasonIdPrefix}-kind-${id}`;
             return (
               <DropdownMenuItem
                 key={id}
                 ref={index === 0 ? firstItemRef : undefined}
                 disabled={unavailable !== undefined}
-                aria-describedby={unavailable ? reasonId : undefined}
+                aria-describedby={reason === undefined ? undefined : reasonId}
                 data-testid={`pedigree-connect-kind-${id}`}
+                // A genetic kind that takes a biological parent's place
+                // asks next how that parent is related to the child.
+                closeOnClick={replacesParent === undefined}
                 onClick={() =>
-                  onConnect({ kind: 'parent', ...parentChoice, ...option })
+                  replacesParent === undefined
+                    ? onConnect({ kind: 'parent', ...parentChoice, ...option })
+                    : setChoice({
+                        pair,
+                        parent: parentChoice,
+                        replacing: { option, replacedId: replacesParent },
+                      })
                 }
               >
                 <ItemText

@@ -66,10 +66,38 @@ describe('connecting a parent who carried the pregnancy', () => {
     ]);
   });
 
-  test('with a carrier recorded, every choice that carries is unavailable, naming them', () => {
+  test('with a carrier recorded, every choice that carries replaces them, naming them', () => {
+    // The newest answer wins: answering that Amy carried the pregnancy
+    // replaces the record that Mum did.
     const f = family(
       [person('ego', { isEgo: true }), person('mum'), person('amy')],
       [link('mum', 'ego', 'biological', { carrier: true })],
+    );
+    const replacesCarrier = { carrierId: 'mum', childId: 'ego' };
+    expect(
+      parentChoiceOptions(f, 'amy', 'ego').map((option) => [
+        label(option.choice),
+        option.unavailable,
+        option.replacesCarrier,
+      ]),
+    ).toEqual([
+      ['biological', undefined, undefined],
+      ['biological+carried', undefined, replacesCarrier],
+      ['adoptive', undefined, undefined],
+      ['adoptive+carried', undefined, replacesCarrier],
+      ['social', undefined, undefined],
+      ['social+carried', undefined, replacesCarrier],
+      ['donor', undefined, undefined],
+      ['donor+carried', undefined, replacesCarrier],
+      ['surrogate', undefined, replacesCarrier],
+    ]);
+  });
+
+  test('with a surrogate recorded, every choice that carries is unavailable, naming them', () => {
+    // A surrogate carried the child by definition, so is never replaced.
+    const f = family(
+      [person('ego', { isEgo: true }), person('sue'), person('amy')],
+      [link('sue', 'ego', 'surrogate', { carrier: true })],
     );
     expect(availableParentChoices(f, 'amy', 'ego').map(label)).toEqual([
       'biological',
@@ -78,41 +106,15 @@ describe('connecting a parent who carried the pregnancy', () => {
       'donor',
     ]);
     expect(
-      parentChoiceOptions(f, 'amy', 'ego').map((option) => [
-        label(option.choice),
-        option.unavailable,
-      ]),
-    ).toEqual([
-      ['biological', undefined],
-      [
-        'biological+carried',
-        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
-      ],
-      ['adoptive', undefined],
-      [
-        'adoptive+carried',
-        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
-      ],
-      ['social', undefined],
-      [
-        'social+carried',
-        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
-      ],
-      ['donor', undefined],
-      [
-        'donor+carried',
-        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
-      ],
-      [
-        'surrogate',
-        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
-      ],
-    ]);
+      parentChoiceOptions(f, 'amy', 'ego').find(
+        (option) => option.choice.parentKind === 'surrogate',
+      )?.unavailable,
+    ).toEqual({ rule: 'carrierRecorded', carrierId: 'sue', childId: 'ego' });
   });
 
-  test('with a twin’s carrier recorded, every choice that carries is unavailable, naming them and the twin, but not for that carrier', () => {
+  test('with a twin’s carrier recorded, every choice that carries replaces them, naming them and the twin, but not for that carrier', () => {
     // Twins come from one pregnancy: Mum carried Sam, so carried the
-    // participant too, and nobody else can have.
+    // participant too, and answering that Amy did replaces that record.
     const f = family(
       [
         person('ego', { isEgo: true }),
@@ -125,20 +127,18 @@ describe('connecting a parent who carried the pregnancy', () => {
         link('ego', 'sam', 'unknownZygosityTwin'),
       ],
     );
-    expect(availableParentChoices(f, 'amy', 'ego').map(label)).toEqual([
-      'biological',
-      'adoptive',
-      'social',
-      'donor',
-    ]);
     expect(
       parentChoiceOptions(f, 'amy', 'ego').find(
         (option) => option.choice.parentKind === 'surrogate',
-      )?.unavailable,
-    ).toEqual({ rule: 'carrierRecorded', carrierId: 'mum', childId: 'sam' });
-    expect(availableParentChoices(f, 'mum', 'ego').map(label)).toContain(
-      'biological+carried',
+      )?.replacesCarrier,
+    ).toEqual({ carrierId: 'mum', childId: 'sam' });
+    const mum = parentChoiceOptions(f, 'mum', 'ego').find(
+      (option) =>
+        option.choice.parentKind === 'biological' &&
+        option.choice.carriedPregnancy,
     );
+    expect(mum?.replacesCarrier).toBeUndefined();
+    expect(mum?.unavailable).toBeUndefined();
   });
 
   test('an adoptive parent or a donor who carried is recorded as having carried', () => {
@@ -503,5 +503,126 @@ describe('connecting a parent without saying they carried the pregnancy', () => 
         config.sexAssignedAtBirthAttribute,
       ).isGestationalCarrier,
     ).toBe(true);
+  });
+});
+
+// Josh, 22 Oct 2026: the newest answer wins. A new parent answered as having
+// carried the pregnancy replaces whoever was recorded as having, and a new
+// genetic parent takes the place of the biological parent recorded with the
+// same sex at birth, as the kind of parent the participant says instead.
+describe('a new parent replacing what is recorded', () => {
+  const parentRequest = (
+    request: Partial<Extract<AddRelativeRequest, { relation: 'parent' }>>,
+  ): AddRelativeRequest => ({
+    relation: 'parent',
+    parentKind: 'biological',
+    carriedPregnancy: undefined,
+    partnerId: null,
+    partnershipCurrent: true,
+    alsoParentOf: [],
+    ...request,
+  });
+
+  test('a new parent who carried the anchor and their twins replaces whoever was recorded, leaving them unanswered', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam'),
+        person('rachel', { sex: ['female'] }),
+      ],
+      [
+        link('rachel', 'ego', 'biological', { carrier: true }),
+        link('rachel', 'sam', 'biological', { carrier: true }),
+        link('ego', 'sam', 'unknownZygosityTwin'),
+      ],
+    );
+    const added = plan(
+      f,
+      'ego',
+      parentRequest({
+        parentKind: 'social',
+        carriedPregnancy: true,
+        alsoParentOf: ['sam'],
+      }),
+    );
+    expect(
+      added.links
+        .filter((each) => each.source === 'added')
+        .map((each) => [each.target, each.isGestationalCarrier]),
+    ).toEqual([
+      ['ego', true],
+      ['sam', true],
+    ]);
+    // Nothing is assumed about Rachel: her record is removed, not "No".
+    expect(added.carrierUpdates).toEqual([
+      {
+        linkId: 'rachel-ego-biological',
+        kind: 'biological',
+        isGestationalCarrier: undefined,
+      },
+      {
+        linkId: 'rachel-sam-biological',
+        kind: 'biological',
+        isGestationalCarrier: undefined,
+      },
+    ]);
+  });
+
+  test('a surrogate who carried the anchor is never replaced', () => {
+    const f = family(
+      [person('ego', { isEgo: true }), person('sue', { sex: ['female'] })],
+      [link('sue', 'ego', 'surrogate', { carrier: true })],
+    );
+    const added = plan(
+      f,
+      'ego',
+      parentRequest({ parentKind: 'social', carriedPregnancy: true }),
+    );
+    expect(added.carrierUpdates).toBeUndefined();
+  });
+
+  test('a new genetic parent records the biological parent they replace as the kind chosen', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('jo'),
+        person('rachel', { sex: ['female'] }),
+        person('tom', { sex: ['male'] }),
+      ],
+      [
+        link('rachel', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+        link('rachel', 'jo', 'biological', { carrier: true }),
+        link('tom', 'jo', 'biological'),
+      ],
+    );
+    const added = plan(
+      f,
+      'ego',
+      parentRequest({
+        alsoParentOf: ['jo'],
+        replaces: { parentId: 'tom', kind: 'adoptive' },
+      }),
+    );
+    expect(
+      added.links
+        .filter((each) => each.source === 'added')
+        .map((each) => [each.target, each.kind]),
+    ).toEqual([
+      ['ego', 'biological'],
+      ['jo', 'biological'],
+    ]);
+    expect(added.carrierUpdates).toEqual([
+      {
+        linkId: 'tom-ego-biological',
+        kind: 'adoptive',
+        isGestationalCarrier: undefined,
+      },
+      {
+        linkId: 'tom-jo-biological',
+        kind: 'adoptive',
+        isGestationalCarrier: undefined,
+      },
+    ]);
   });
 });
