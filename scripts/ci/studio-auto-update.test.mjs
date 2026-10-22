@@ -69,6 +69,7 @@ const MANIFEST = {
 };
 
 const CURL = `#!/usr/bin/env bash
+echo "$*" >> "$STUB_STATE/argv.log"
 method=GET body= url=
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -81,7 +82,9 @@ while [ $# -gt 0 ]; do
 done
 printf '%s %s %s\\n' "$method" "$url" "$body" >> "$STUB_STATE/requests.log"
 case "$method $url" in
-  "GET $STUB_API/releases?per_page=100") cat "$STUB_STATE/releases.json" ;;
+  "GET $STUB_API/releases?per_page=100&page="*)
+    page="$STUB_STATE/releases-\${url##*page=}.json"
+    if [ -f "$page" ]; then cat "$page"; else echo '[]'; fi ;;
   "GET $STUB_MANIFEST_URL") cat "$STUB_STATE/manifest.json" ;;
   "POST $STUB_API/deployments")
     [ -n "\${STUB_DEPLOYMENT_FAILS:-}" ] && exit 22
@@ -113,7 +116,12 @@ function stub(dir, name, body) {
   chmodSync(join(dir, name), 0o755);
 }
 
-function setup({ api = OLD_API, web = OLD_WEB, releases = RELEASES } = {}) {
+function setup({
+  api = OLD_API,
+  web = OLD_WEB,
+  releases = RELEASES,
+  pages = [releases],
+} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'studio-auto-update-'));
   dirs.push(root);
   const s = {
@@ -127,9 +135,14 @@ function setup({ api = OLD_API, web = OLD_WEB, releases = RELEASES } = {}) {
     join(s.stack, '.env'),
     `STUDIO_HOSTNAME=studio.example.org\nSTUDIO_API_IMAGE=${api}\nSTUDIO_WEB_IMAGE=${web}\n`,
   );
-  writeFileSync(join(s.state, 'releases.json'), JSON.stringify(releases));
+  pages.forEach((page, index) =>
+    writeFileSync(
+      join(s.state, `releases-${index + 1}.json`),
+      JSON.stringify(page),
+    ),
+  );
   writeFileSync(join(s.state, 'manifest.json'), JSON.stringify(MANIFEST));
-  for (const log of ['requests.log', 'cosign.log', 'upgrade.log'])
+  for (const log of ['requests.log', 'argv.log', 'cosign.log', 'upgrade.log'])
     writeFileSync(join(s.state, log), '');
   copyFileSync(SCRIPT, join(s.scripts, 'auto-update.sh'));
   chmodSync(join(s.scripts, 'auto-update.sh'), 0o755);
@@ -168,6 +181,7 @@ function run(s, { env = {} } = {}) {
     status: result.status,
     output: `${result.stdout}${result.stderr}`,
     requests: lines(s, 'requests.log'),
+    argv: lines(s, 'argv.log'),
     cosign: lines(s, 'cosign.log'),
     upgrade: lines(s, 'upgrade.log'),
     halted: existsSync(halted) ? readFileSync(halted, 'utf8') : null,
@@ -182,7 +196,7 @@ test('does nothing but read the release when .env already runs it', () => {
   assert.equal(r.status, 0, r.output);
   assert.match(r.output, /up to date with 0\.4\.0/);
   assert.deepEqual(r.requests, [
-    `GET ${API}/releases?per_page=100 `,
+    `GET ${API}/releases?per_page=100&page=1 `,
     `GET ${MANIFEST_URL} `,
   ]);
   assert.deepEqual(r.cosign, []);
@@ -301,4 +315,38 @@ test('ignores drafts, prereleases and other packages’ releases', () => {
   );
   assert.equal(r.status, 0, r.output);
   assert.equal(r.requests[1], `GET ${MANIFEST_URL} `);
+});
+
+test('pages through other releases to find the newest Studio one', () => {
+  const others = Array.from({ length: 100 }, (_, i) => ({
+    tag_name: `@codaco/fresco-ui@2.0.${i}`,
+    draft: false,
+    prerelease: false,
+    assets: [],
+  }));
+  const r = run(
+    setup({ api: NEW_API, web: NEW_WEB, pages: [others, RELEASES] }),
+  );
+  assert.equal(r.status, 0, r.output);
+  assert.match(r.output, /up to date with 0\.4\.0/);
+  assert.equal(r.requests[1], `GET ${API}/releases?per_page=100&page=2 `);
+});
+
+test('keeps the token out of curl’s arguments and bounds every request', () => {
+  const r = run(setup());
+  assert.equal(r.status, 0, r.output);
+  assert.ok(r.argv.length > 0);
+  for (const argv of r.argv) {
+    assert.doesNotMatch(argv, /token/);
+    assert.match(argv, /--max-time 120/);
+  }
+});
+
+test('fails, rather than skipping, when flock itself fails', () => {
+  const s = setup();
+  stub(s.bin, 'flock', '#!/usr/bin/env bash\nexit 1\n');
+  const r = run(s);
+  assert.equal(r.status, 1, r.output);
+  assert.match(r.output, /could not take the lock/);
+  assert.deepEqual(r.requests, []);
 });
