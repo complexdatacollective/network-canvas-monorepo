@@ -103,6 +103,15 @@ exercised by the `studio-egress (telemetry-on)` job against a sink.
    flag. The instance must answer `/readyz` with 200, run the "from" images
    and history, have maintenance off, and export the same rows as in step 1
    (`diff-restored.json`).
+5. Run B only, on the instance the rollback restored:
+   [`scripts/upgrade.sh`](../scripts/upgrade.sh) three times. First to the
+   "to" api image with a web image that cannot be pulled, which must exit 3
+   having failed at `pull`; then to the "to" images, which must exit 0 with
+   the migration applied; then back to the "from" images, whose `migrate`
+   refuses the newer history, which must exit 3 having failed at `migrate`.
+   After each, `/readyz` must answer 200 with maintenance off, the history
+   must be the one expected, and `.env` must name, and `api`, `worker` and
+   `web` run, the images the exit code says (`upgrade-script-*.log`).
 
 Everything a run produces lands in `$RUNNER_TEMP/studio-release-test` (or
 `$TMPDIR/studio-release-test` locally; set `STUDIO_RELEASE_TEST_WORK` to move

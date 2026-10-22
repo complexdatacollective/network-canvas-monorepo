@@ -294,12 +294,14 @@ jobs:
           # of "upgrade-path" files inside the package missed the keyring
           # check, the fingerprint sync and the schema applier in turn. On top
           # of that, the lane's own inputs that no package graph sees: the
-          # lane itself and the maintenance page its observer reads, served by
-          # studio-web. Every Studio release PR selects it too.
+          # lane itself, the upgrade script it runs, and the maintenance page
+          # its observer reads, served by studio-web. Every Studio release PR
+          # selects it too.
           studio_upgrade=false
           if [[ "$studio" == "true" || "$HEAD_REF" == "changeset-release/studio" ]] \
             || ! git diff --quiet "$gate_base" "$CURR" -- \
               apps/studio/release-test \
+              apps/studio/scripts \
               apps/studio/web/public/maintenance.html; then
             studio_upgrade=true
             echo "Studio upgrade inputs changed in ${gate_base:-(no base)}..$CURR."
@@ -1377,8 +1379,9 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio_upgrade == 'true'
     runs-on: ubuntu-latest
-    # Two image builds (the candidate pair, then the migration-bearing api)
-    # and two upgrade cycles of about a minute each. The cache below keeps the
+    # Two image builds (the candidate pair, then the migration-bearing api),
+    # two upgrade cycles of about a minute each, and run B's three runs of
+    # scripts/upgrade.sh, under a minute together. The cache below keeps the
     # builds warm after the first run.
     timeout-minutes: 40
     permissions:
