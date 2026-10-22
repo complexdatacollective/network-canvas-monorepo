@@ -456,7 +456,7 @@ export function carrierGivingWay(
  * carried them. `carrierId` is recorded as having carried each twin they are
  * a parent of who could have.
  */
-export function carrierReplacementUpdates(
+function carrierReplacementUpdates(
   family: Family,
   personId: string,
   carrierId: string,
@@ -2621,7 +2621,7 @@ export function geneticParentGivingWay(
  * `childIds` the participant chose in place of being their biological
  * parent, so that a new genetic parent can be planned beside the rest.
  */
-export function familyWithReplacedParent(
+function familyWithReplacedParent(
   family: Family,
   childIds: readonly string[],
   replaced: ReplacedParent | undefined,
@@ -2992,6 +2992,6 @@ export function connectionUpdates(
 }
 
 /** Updates to the same link folded into one, the later winning. */
-export const mergedUpdates = (updates: readonly CarrierUpdate[]) => [
+const mergedUpdates = (updates: readonly CarrierUpdate[]) => [
   ...new Map(updates.map((update) => [update.linkId, update])).values(),
 ];
