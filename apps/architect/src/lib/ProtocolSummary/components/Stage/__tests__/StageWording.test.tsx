@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -37,14 +37,15 @@ const MINIMUM_NOTICE = {
 
 describe('Protocol Summary name generator wording', () => {
   it.each(['NameGenerator', 'NameGeneratorRoster'])(
-    'prints a %s minimum notice as its versions, one for each number it reads differently for',
+    'prints a %s minimum notice folded to the pill of the number it fits',
     (type) => {
       renderWording(type, { minNodesNotice: MINIMUM_NOTICE });
 
       const row = rowFor('Minimum not reached');
       expect(row).not.toHaveTextContent('{count, plural');
-      expect(row).toHaveTextContent('more person');
-      expect(row).toHaveTextContent('more people');
+      expect(
+        within(row).getByText('Number').closest('[data-token]'),
+      ).toHaveAttribute('data-token', 'count');
     },
   );
 

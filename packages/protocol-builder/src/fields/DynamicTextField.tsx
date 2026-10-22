@@ -293,7 +293,7 @@ const namingFor = (intl: IntlShape): Naming => ({
 });
 
 /** The inline content of a one-line message, as the editor holds it. */
-const inlineContent = (
+export const inlineContent = (
   nodes: readonly MessageNode[],
   format: MessageDocumentFormat,
   labels: MessageDocumentLabels,
@@ -315,15 +315,45 @@ const presenceSwitch = (
   ],
 });
 
-const pluralCategories = (locale: LocaleTag): string[] => {
+/** The plural categories a number switch has versions for, `other` last. */
+export const pluralCategories = (locale: LocaleTag): string[] => {
   const categories = [...pluralValueExamples(locale).keys()].filter(
     (category) => category !== 'other',
   );
   return [...categories, 'other'];
 };
 
-const isBlankMessage = (nodes: readonly MessageNode[]): boolean =>
+export const isBlankMessage = (nodes: readonly MessageNode[]): boolean =>
   nodes.every((node) => node.kind === 'text' && node.text.trim() === '');
+
+/**
+ * What a switch on a number is called, and each of its versions: examples
+ * of the numbers it is for, in `locale`. Shared with the editor of interface
+ * wording (`LocalizedMessageVersions`), whose numbers switch the same way.
+ */
+export const numberSwitchLabels = (intl: IntlShape, locale: LocaleTag) => ({
+  switchLabel: (value: string) =>
+    intl.formatMessage(messages.versionsByNumber, { value }),
+  versionLabel: (key: string) => {
+    const exact = /^=(\d+)$/.exec(key);
+    const counts = exact
+      ? [Number(exact[1])]
+      : ([...pluralValueExamples(locale)].find(
+          ([category]) => category === key,
+        )?.[1] ?? []);
+    const shown = counts
+      .slice(0, EXAMPLE_COUNT)
+      .map((count) => intl.formatNumber(count));
+    return intl.formatMessage(messages.versionNumbers, {
+      numbers: intl.formatList(
+        counts.length > EXAMPLE_COUNT ? [...shown, '…'] : shown,
+        { type: 'unit', style: 'short' },
+      ),
+    });
+  },
+  /** The insert menu's second line for wording that fits a number. */
+  menuDescription: () => intl.formatMessage(messages.byNumber),
+});
 
 type MessageLabelInputs = Readonly<{
   intl: IntlShape;
@@ -356,7 +386,7 @@ const messageLabelsFor = ({
     const value =
       choice === undefined ? node.argument : naming.valueLabel(choice);
     if (node.type === 'plural') {
-      return intl.formatMessage(messages.versionsByNumber, { value });
+      return numberSwitchLabels(intl, locale).switchLabel(value);
     }
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
@@ -368,21 +398,7 @@ const messageLabelsFor = ({
   },
   versionLabel: (node, key) => {
     if (node.type === 'plural') {
-      const exact = /^=(\d+)$/.exec(key);
-      const counts = exact
-        ? [Number(exact[1])]
-        : ([...pluralValueExamples(locale)].find(
-            ([category]) => category === key,
-          )?.[1] ?? []);
-      const shown = counts
-        .slice(0, EXAMPLE_COUNT)
-        .map((count) => intl.formatNumber(count));
-      return intl.formatMessage(messages.versionNumbers, {
-        numbers: intl.formatList(
-          counts.length > EXAMPLE_COUNT ? [...shown, '…'] : shown,
-          { type: 'unit', style: 'short' },
-        ),
-      });
+      return numberSwitchLabels(intl, locale).versionLabel(key);
     }
     if (key === MISSING_CASE)
       return intl.formatMessage(messages.versionMissing);
@@ -830,18 +846,13 @@ export function DynamicMessageEditor({
   ]);
 
   if (parsed === undefined && message !== '') {
-    // The frame's classes still place the note where the editor would be.
     return (
-      <div className={className}>
-        <div id={id} data-name={name} className="flex flex-col gap-2">
-          <Alert variant="warning" density="compact">
-            {intl.formatMessage(messages.unreadable)}
-          </Alert>
-          <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
-            {message}
-          </pre>
-        </div>
-      </div>
+      <UnreadableMessage
+        id={id}
+        name={name}
+        message={message}
+        className={className}
+      />
     );
   }
 
@@ -899,11 +910,35 @@ export function DynamicMessageEditor({
 }
 
 /**
- * One translation of text with values, read-only, for a place that shows
- * text rather than editing it (a cell of the translation table): its words,
- * each value as the pill the editor shows, and each set of versions as a
- * list of what it says when.
+ * In place of an editor, text it cannot hold, kept as it is stored. The
+ * frame's classes still place the note where the editor would be.
  */
+export function UnreadableMessage({
+  id,
+  name,
+  message,
+  className,
+}: Readonly<{
+  id: string;
+  name: string;
+  message: string;
+  className?: string;
+}>) {
+  const intl = useAppIntl();
+  return (
+    <div className={className}>
+      <div id={id} data-name={name} className="flex flex-col gap-2">
+        <Alert variant="warning" density="compact">
+          {intl.formatMessage(messages.unreadable)}
+        </Alert>
+        <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
+          {message}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 /** The first of the private-use characters that hold a value's place. */
 const VALUE_MARK = 0xf0000;
 
@@ -975,68 +1010,41 @@ const LABEL_MARKDOWN: BlockMarkdown = {
   allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
 };
 
-export function DynamicMessageSummary({
-  message,
+/**
+ * A message's words, read-only, each value as the pill an editor shows and
+ * each set of versions folded to the pill of the value it is on, as the
+ * editor shows it folded: what it says in each case is written, and read, in
+ * the editor.
+ */
+export function MessageNodesSummary({
+  nodes,
   markdown,
-  locale,
-  site,
+  multiline,
   blockMarkdown = SECTION_MARKDOWN,
+  valueLabel,
+  switchSummary,
 }: Readonly<{
-  message: string;
+  nodes: readonly MessageNode[];
   /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
+  /** Whether the words run over several lines, as a field on one line never does. */
+  multiline: boolean;
   /**
    * How markdown with line breaks (an Information screen's text) draws its
    * paragraphs, headings and rules; text on one line keeps only inline
    * formatting and lists, as a label does.
    */
   blockMarkdown?: BlockMarkdown;
-  locale: LocaleTag;
-  site: Pick<DynamicMessageSite, 'context' | 'bindings'>;
+  /** What a value's pill says, by the name the message gives it. */
+  valueLabel: (argument: string) => string;
+  /** What a set of versions' pill says. */
+  switchSummary: (node: MessageSwitch) => string;
 }>) {
-  const intl = useAppIntl();
-  const { localization } = useEditingLanguage();
-  const { context, bindings } = site;
-  const structure = messageStructure(message);
-  if (!('nodes' in structure)) return <>{message}</>;
-  // A field written on one line never holds a line break.
-  const elements = message.includes('\n') ? blockMarkdown : LABEL_MARKDOWN;
+  const elements = multiline ? blockMarkdown : LABEL_MARKDOWN;
   const allowedElements = [...elements.allowedElements, 'span'];
 
-  const labelText = (label: unknown): string =>
-    label === undefined
-      ? ''
-      : resolveTranslation(label, localization, locale).text;
-  const naming = namingFor(intl);
-  const choices = dynamicValueChoices(context);
-  const choiceByName = new Map<string, DynamicValueChoice>();
-  for (const [bindingName, binding] of Object.entries(bindings)) {
-    const choice = choices.find((each) => each.path === binding.path);
-    if (choice !== undefined) choiceByName.set(bindingName, choice);
-  }
-  const labels = messageLabelsFor({
-    intl,
-    naming,
-    choiceByName,
-    bindings,
-    offered: {},
-    locale,
-    labelText,
-  });
-  const valueLabel = (argument: string) => {
-    const choice = choiceByName.get(argument);
-    return choice === undefined ? argument : naming.valueLabel(choice);
-  };
-
-  // Outside the editor a set of versions is the pill of the value it is on,
-  // as the editor shows it folded: what it says in each case is written, and
-  // read, in the editor.
   const renderSwitch = (node: MessageSwitch, key: number): ReactNode => (
-    <TokenPill
-      key={key}
-      token={node.argument}
-      label={labels.switchSummary(node)}
-    />
+    <TokenPill key={key} token={node.argument} label={switchSummary(node)} />
   );
 
   // The words of one level of the message, each value and each set of
@@ -1044,12 +1052,12 @@ export function DynamicMessageSummary({
   // formatting that spans a value or a set of versions
   // (`**Hi {name, select, …} today**`) is read as written.
   function render(
-    nodes: readonly MessageNode[],
+    levelNodes: readonly MessageNode[],
     plural: string | undefined,
   ): ReactNode {
     const held: (string | MessageSwitch)[] = [];
     let source = '';
-    for (const node of nodes) {
+    for (const node of levelNodes) {
       if (node.kind === 'text') {
         source += node.text;
       } else if (node.kind === 'count' && plural === undefined) {
@@ -1102,7 +1110,71 @@ export function DynamicMessageSummary({
     );
   }
 
-  return <>{render(structure.nodes, undefined)}</>;
+  return <>{render(nodes, undefined)}</>;
+}
+
+/**
+ * One translation of text with values, read-only, for a place that shows
+ * text rather than editing it (a cell of the translation table): its words,
+ * with each value and each set of versions as a pill (see
+ * `MessageNodesSummary`).
+ */
+export function DynamicMessageSummary({
+  message,
+  markdown,
+  locale,
+  site,
+  blockMarkdown,
+}: Readonly<{
+  message: string;
+  /** Whether the words are markdown, drawn here with their formatting. */
+  markdown: boolean;
+  /** How markdown with line breaks is drawn (see `MessageNodesSummary`). */
+  blockMarkdown?: BlockMarkdown;
+  locale: LocaleTag;
+  site: Pick<DynamicMessageSite, 'context' | 'bindings'>;
+}>) {
+  const intl = useAppIntl();
+  const { localization } = useEditingLanguage();
+  const { context, bindings } = site;
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) return <>{message}</>;
+
+  const labelText = (label: unknown): string =>
+    label === undefined
+      ? ''
+      : resolveTranslation(label, localization, locale).text;
+  const naming = namingFor(intl);
+  const choices = dynamicValueChoices(context);
+  const choiceByName = new Map<string, DynamicValueChoice>();
+  for (const [bindingName, binding] of Object.entries(bindings)) {
+    const choice = choices.find((each) => each.path === binding.path);
+    if (choice !== undefined) choiceByName.set(bindingName, choice);
+  }
+  const labels = messageLabelsFor({
+    intl,
+    naming,
+    choiceByName,
+    bindings,
+    offered: {},
+    locale,
+    labelText,
+  });
+  const valueLabel = (argument: string) => {
+    const choice = choiceByName.get(argument);
+    return choice === undefined ? argument : naming.valueLabel(choice);
+  };
+
+  return (
+    <MessageNodesSummary
+      nodes={structure.nodes}
+      markdown={markdown}
+      multiline={message.includes('\n')}
+      blockMarkdown={blockMarkdown}
+      valueLabel={valueLabel}
+      switchSummary={labels.switchSummary}
+    />
+  );
 }
 
 /**

@@ -2687,6 +2687,10 @@
     "defaultMessage": "This text shows values the interview fills in, so it can’t be edited in this field. It is kept as it is.",
     "description": "Shown in place of a text field when the stored text includes values filled in during the interview, such as the participant’s name, and this field cannot show them. The stored text is shown below it unchanged."
   },
+  "protocolBuilder.localizedMessage.byCase": {
+    "defaultMessage": "Different wording for each case",
+    "description": "Second line of an entry in the insert-a-value menu of a text a participant reads. The entry names something the text can change with, such as “Participant or someone else” or “Relation”; choosing it inserts a piece of text with one version for each of its cases, such as one about the participant and one about someone else."
+  },
   "protocolBuilder.localizedMessage.caseAboutParticipant": {
     "defaultMessage": "When it is about the participant",
     "description": "Heading over the version of a message used when it is about the participant themself."
@@ -2887,6 +2891,10 @@
     "defaultMessage": "When the twin is the participant",
     "description": "Heading over the version of a message used when the twin it is about is the participant themself."
   },
+  "protocolBuilder.localizedMessage.insertMenu": {
+    "defaultMessage": "Inject piped text from this stage",
+    "description": "Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text a participant reads whose wording Network Canvas supplies, such as a label on the Family Pedigree. “Piped text” is survey-software vocabulary for text filled in while the interview runs: the menu offers what this text can show or change with, such as a family member’s name, the number of parents still to add, or whether the text is about the participant."
+  },
   "protocolBuilder.localizedMessage.placeholderAnchor": {
     "defaultMessage": "Name of the person they are added to",
     "description": "Name of the placeholder, inserted into a message, that shows the name of the person a new family member is added to."
@@ -3003,13 +3011,97 @@
     "defaultMessage": "When “{placeholder}” is {numbers}",
     "description": "Label of the box holding the version of a text shown for some numbers. placeholder is the name of the number the text can show, such as “Parents missing”; numbers lists examples of the numbers that version is for, in the language being edited, such as “1” or “0, 2, 3, …”."
   },
+  "protocolBuilder.localizedMessage.switchAnchorIsYou": {
+    "defaultMessage": "Person they are added to: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person a new family member is being added to is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchChildIsYou": {
+    "defaultMessage": "Child: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the child the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchCurrent": {
+    "defaultMessage": "Current or ended partnership",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the partnership the text is about is current or has ended. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchFirstIsYou": {
+    "defaultMessage": "First of the two people: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the first of the two people the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchFraming": {
+    "defaultMessage": "Words used for parents",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the stage describes parents as egg and sperm parents or as mothers and fathers. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchHasLabel": {
+    "defaultMessage": "How the message refers to the other question",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether a validation message about an answer names the other question it is compared with, by that question’s label, or refers to the previous answer instead. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchHasOthers": {
+    "defaultMessage": "Whether others would be removed",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether removing someone would also remove other people. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchHasSurrogate": {
+    "defaultMessage": "Surrogate recorded or not",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether a surrogate is recorded as having carried the people the text is about. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchIsYou": {
+    "defaultMessage": "Participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the family member the text is about is the participant themself or someone else in their family. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchNamed": {
+    "defaultMessage": "Named or unnamed",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person the text is about has a name or not. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchOtherIsYou": {
+    "defaultMessage": "Other parent: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the child’s other parent is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchParent": {
+    "defaultMessage": "Egg or sperm parent",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the parent the text is about is the egg parent or the sperm parent. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchParentIsYou": {
+    "defaultMessage": "Parent: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the parent the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchPartnerIsYou": {
+    "defaultMessage": "Partner: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the partner the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchPersonIsYou": {
+    "defaultMessage": "Person: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchRelation": {
+    "defaultMessage": "Relation of the person being added or edited",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: the relation of the family member the text is about, such as a parent, a sibling or a partner, or whether the person is being edited. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchShared": {
+    "defaultMessage": "Parents the siblings share",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: which parents two siblings share: only the egg parent, only the sperm parent, or both. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchSingle": {
+    "defaultMessage": "One person or several",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the text is asking about one person or about several people. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchTerm": {
+    "defaultMessage": "Kind of relative",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: the kind of relative a word names, such as mother or brother-in-law. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchWho": {
+    "defaultMessage": "Who is the participant",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: which of the people the text is about, if any, is the participant themself. The participant never sees this name."
+  },
   "protocolBuilder.localizedMessage.unreadable": {
     "defaultMessage": "This text uses something it cannot show. Write it again here.",
     "description": "Refusal shown under a text written in several versions when a translation imported from elsewhere uses a placeholder or a choice this text does not offer."
   },
   "protocolBuilder.localizedMessage.versionsBlank": {
-    "defaultMessage": "Write every version of this text, or leave them all empty.",
-    "description": "Refusal shown under a text written in several versions (for the participant, for someone else, and so on) when some versions have words and others are empty, in any of the protocol’s languages."
+    "defaultMessage": "Write something in every version of this text.",
+    "description": "Refusal shown under a text with a piece written in several versions (one about the participant, one about someone else, and so on) when one of those versions is empty, in any of the protocol’s languages."
+  },
+  "protocolBuilder.localizedMessage.versionsByCase": {
+    "defaultMessage": "Wording that changes with {value}",
+    "description": "Accessible name of a piece of text with one version for each case of something it changes with. value is that thing’s name, such as “Participant or someone else” or “Relation”."
   },
   "protocolBuilder.localizedTextNames.diseasePosition": {
     "defaultMessage": "Disease {position, number}",

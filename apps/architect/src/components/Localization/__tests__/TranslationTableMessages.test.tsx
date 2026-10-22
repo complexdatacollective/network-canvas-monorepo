@@ -60,8 +60,7 @@ const listItem = (store: ReturnType<typeof renderTable>['store']): unknown => {
 const save = (user: ReturnType<typeof renderTable>['user']) =>
   user.click(screen.getByRole('button', { name: 'Save' }));
 
-const VERSIONS_BLANK =
-  'Write every version of this text, or leave them all empty.';
+const VERSIONS_BLANK = 'Write something in every version of this text.';
 
 /** Leaves the cell for the stage name's English cell. */
 const leaveCell = async (
@@ -72,7 +71,7 @@ const leaveCell = async (
     screen.getByRole('textbox', { name: /Stage name English$/ }),
   );
   await waitFor(() =>
-    expect(screen.queryByRole('group', { name: cellName(language) })).toBe(
+    expect(screen.queryByRole('textbox', { name: cellName(language) })).toBe(
       null,
     ),
   );
@@ -85,60 +84,85 @@ const cellName = (language: string) =>
 const messageCell = (language: string) =>
   screen.getByRole('button', { name: cellName(language) });
 
-/** The versions focus opens in that cell, once the first has focus. */
-const versions = async (language: string) => {
-  const group = await screen.findByRole('group', { name: cellName(language) });
-  const textboxes = within(group).getAllByRole('textbox');
-  await waitFor(() => expect(textboxes[0]).toHaveFocus());
-  return textboxes;
+/** The text focus opens in that cell, once it has focus. */
+const editedText = async (language: string) => {
+  const text = await screen.findByRole('textbox', { name: cellName(language) });
+  await waitFor(() => expect(text).toHaveFocus());
+  return text;
+};
+
+/** Opens the folded versions in `text` and returns their lines. */
+const openVersions = async (
+  user: ReturnType<typeof renderTable>['user'],
+  text: HTMLElement,
+) => {
+  await user.click(
+    within(text).getByRole('button', { name: 'Participant or someone else' }),
+  );
+  return {
+    aboutYou: await screen.findByRole('textbox', {
+      name: 'About the participant',
+    }),
+    aboutSomeoneElse: screen.getByRole('textbox', {
+      name: 'About someone else',
+    }),
+  };
 };
 
 describe('TranslationTable: texts with versions', () => {
-  it('shows each version, with its placeholders, until the cell has focus', () => {
+  it('shows the text, its versions folded to a pill, until the cell has focus', () => {
     renderTable();
 
     expect(messageCell('English')).toHaveAccessibleDescription(
-      /Your brothers and sisters.*Brothers and sisters of Name/,
+      /Participant or someone else/,
     );
-    // The placeholder is drawn as the pill the editor draws, not as text in
-    // brackets.
     const pill = messageCell('English')
       .closest('td')
-      ?.querySelector('[data-token="name"]');
-    expect(pill).toHaveTextContent('Name');
-    expect(messageCell('English').closest('td')).not.toHaveTextContent(
-      '[Name]',
-    );
+      ?.querySelector('[data-token="isYou"]');
+    expect(pill).toHaveTextContent('Participant or someone else');
     expect(screen.queryByRole('textbox', { name: cellName('English') })).toBe(
       null,
     );
   });
 
-  it('is edited a version at a time, and saved as one text when the table is saved', async () => {
+  it('is edited as piped text is, and saved when the table is saved', async () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('French'));
-    const [aboutYou, aboutSomeoneElse] = await versions('French');
-    expect(aboutYou).toHaveAccessibleName(/About the participant/);
-    await user.type(aboutYou!, 'Vos frères et sœurs');
-    await user.type(aboutSomeoneElse!, 'Frères et sœurs de ');
-    // The English names the person in the version about someone else, so
-    // that version's toolbar says the name is still needed.
+    const text = await editedText('French');
+    // A translation can word the text its own way: here one phrase that
+    // names everyone, the participant included.
+    await user.type(text, 'Frères et sœurs de ');
     await user.click(
-      screen.getByRole('button', {
-        name: 'Insert “Name” (required in this text)',
-      }),
+      screen.getByRole('button', { name: 'Inject piped text from this stage' }),
+    );
+    const [name] = await screen.findAllByRole('option', { name: /^Name/ });
+    if (name === undefined) throw new Error('Name not offered');
+    await user.click(name);
+    await waitFor(() =>
+      expect(text.querySelector('[data-token="name"]')).not.toBeNull(),
     );
     await leaveCell(user, 'French');
     expect(listItem(store)).toEqual({ en: SIBLINGS });
-    expect(messageCell('French')).toHaveAccessibleDescription(
-      /Vos frères et sœurs.*Frères et sœurs de Name/,
-    );
 
     await save(user);
     expect(listItem(store)).toEqual({
       en: SIBLINGS,
-      fr: '{isYou, select, true {Vos frères et sœurs} other {Frères et sœurs de {name}}}',
+      fr: 'Frères et sœurs de {name}',
+    });
+  });
+
+  it('edits a version inside the text', async () => {
+    const { store, user } = renderTable();
+
+    await user.click(messageCell('English'));
+    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await user.type(aboutYou, 'All ');
+    await leaveCell(user, 'English');
+    await save(user);
+
+    expect(listItem(store)).toEqual({
+      en: '{isYou, select, true {All Your brothers and sisters} other {Brothers and sisters of {name}}}',
     });
   });
 
@@ -147,19 +171,19 @@ describe('TranslationTable: texts with versions', () => {
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
-    await versions('English');
+    await editedText('English');
     await leaveCell(user, 'English');
     await save(user);
 
     expect(getProtocol(store.getState())).toBe(before);
   });
 
-  it('moves to the next row on Enter', async () => {
+  it('moves to the next row on Enter, also from inside a version', async () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('English'));
-    const [aboutYou] = await versions('English');
-    await user.type(aboutYou!, ' (all)');
+    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await user.type(aboutYou, 'All ');
     await user.keyboard('{Enter}');
 
     // The interview's own words follow every text a stage holds.
@@ -172,32 +196,48 @@ describe('TranslationTable: texts with versions', () => {
     );
     await save(user);
     expect(listItem(store)).toEqual({
-      en: '{isYou, select, true {Your brothers and sisters (all)} other {Brothers and sisters of {name}}}',
+      en: '{isYou, select, true {All Your brothers and sisters} other {Brothers and sisters of {name}}}',
     });
   });
 
-  it('puts back the saved versions on Escape', async () => {
+  it('puts back the saved text on Escape, once a version is folded away', async () => {
     const { store, user } = renderTable();
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
-    const [aboutYou] = await versions('English');
-    await user.type(aboutYou!, 'All ');
+    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await user.type(aboutYou, 'All ');
+    // The first Escape folds the versions back into their pill and keeps
+    // the change; the next leaves the cell as it was saved.
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'About the participant' }),
+      ).toBeNull(),
+    );
+    const folded = await editedText('English');
+    const { aboutYou: reopened } = await openVersions(user, folded);
+    expect(reopened).toHaveTextContent(/^All Your brothers and sisters$/);
+    await user.keyboard('{Escape}');
     await user.keyboard('{Escape}');
 
-    const [restored] = await versions('English');
-    expect(restored).toHaveTextContent(/^Your brothers and sisters$/);
+    const restored = await editedText('English');
+    expect(
+      within(restored).getByRole('button', {
+        name: 'Participant or someone else',
+      }),
+    ).toBeInTheDocument();
     await save(user);
     expect(getProtocol(store.getState())).toBe(before);
   });
 
-  it('says why some versions written and others empty cannot be saved, and refuses to save them', async () => {
+  it('says why a version left empty cannot be saved, and refuses to save it', async () => {
     const { store, user } = renderTable();
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
-    const [aboutYou] = await versions('English');
-    await user.click(aboutYou!);
+    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await user.click(aboutYou);
     await user.keyboard('{Control>}a{/Control}{Backspace}');
     await leaveCell(user, 'English');
 
@@ -209,8 +249,8 @@ describe('TranslationTable: texts with versions', () => {
 
     await save(user);
     expect(getProtocol(store.getState())).toBe(before);
-    // Save takes the researcher back into the versions to finish them.
-    await versions('English');
+    // Save takes the researcher back into the text to finish it.
+    await editedText('English');
   });
 
   it('says which placeholder a version leaves out, and refuses to save it', async () => {
@@ -218,9 +258,7 @@ describe('TranslationTable: texts with versions', () => {
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('French'));
-    const [aboutYou, aboutSomeoneElse] = await versions('French');
-    await user.type(aboutYou!, 'Vos frères et sœurs');
-    await user.type(aboutSomeoneElse!, 'Ses frères et sœurs');
+    await user.type(await editedText('French'), 'Ses frères et sœurs');
     await leaveCell(user, 'French');
 
     const missing = 'Include “Name” in this version: About someone else.';
@@ -236,10 +274,8 @@ describe('TranslationTable: texts with versions', () => {
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
-    for (const version of await versions('English')) {
-      await user.click(version);
-      await user.keyboard('{Control>}a{/Control}{Backspace}');
-    }
+    await user.click(await editedText('English'));
+    await user.keyboard('{Control>}a{/Control}{Backspace}');
     await leaveCell(user, 'English');
     expect(
       await screen.findByText(
