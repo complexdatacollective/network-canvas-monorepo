@@ -1737,14 +1737,17 @@ describe('a person with three partners', () => {
         line.edgeType,
       ]),
     );
-    // Two adopters with no partnership: the child descends from the first
-    // recorded, by a dashed line, and the other draws a line of their own.
-    const descent = conn.parentChildLines.find((line) =>
-      line.uplines.some((upline) => upline.childId === 'kidC'),
-    );
-    expect(descent?.parentIds).toStrictEqual(['parent']);
-    expect(descent?.edgeType).toBe('adoptive');
-    expect(lines.get('parent→kidC')).toBeUndefined();
+    // Two adopters with no partnership adopted the child together, as two
+    // biological parents with none conceived one: they are the child's
+    // co-parents. Seated apart (the parent sits between a and b), each
+    // draws a dashed line of their own, as co-parents who cannot sit
+    // together do.
+    expect(
+      conn.parentChildLines.some((line) =>
+        line.uplines.some((upline) => upline.childId === 'kidC'),
+      ),
+    ).toBe(false);
+    expect(lines.get('parent→kidC')).toBe('adoptive');
     expect(lines.get('c→kidC')).toBe('adoptive');
   });
 });
