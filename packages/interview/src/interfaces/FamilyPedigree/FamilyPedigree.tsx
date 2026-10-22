@@ -781,9 +781,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // and the toolbar below, with room around it for anyone's add menu. The
   // room is left on every prompt, including those where no menu is shown, so
   // the same family is framed the same way whichever prompt it is shown on.
-  // It is zoomed in no further than its natural size, and out no further
-  // than the zoom buttons go: a family too large even for that is still
-  // centred, and the rest of it is reached by panning. This is the
+  // It is zoomed in as far as it fits, up to half as large again as its
+  // natural size, and out no further than the zoom buttons go: a family too
+  // large even for that is still centred, and the rest of it is reached by
+  // panning. This is the
   // view the stage opens on, and the view it goes back to whenever the
   // participant asks for it, moves to another prompt, or finishes adding or
   // editing someone; where they had dragged or zoomed it to is not kept.

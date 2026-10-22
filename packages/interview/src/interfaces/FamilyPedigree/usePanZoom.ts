@@ -13,6 +13,11 @@ import { type RefObject, useCallback, useMemo, useRef, useState } from 'react';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.5;
+// The most a fit (Show the whole family, and every reset of the view) zooms
+// in, below what the participant can zoom in to themselves: a small family is
+// shown at half as large again as its natural size, large enough to read at a
+// glance without looking blown up.
+const FIT_MAX_SCALE = 1.5;
 // How much of the family stays on screen, at least, however far it is
 // dragged away.
 const KEEP_VISIBLE = 120;
@@ -261,9 +266,10 @@ export type PanZoom = {
   zoomBy: (exponent: number, focus?: ZoomFocus) => void;
   /** Puts the middle of an element of the content in the middle of the
    * viewport, inside the given insets, at the zoom that fits it there, with
-   * room for controls that reach out around it: no more than its natural
-   * size, and no less than the least zoom. An element too large to fit even
-   * then is still centred, and runs past the edges. The view it heads for. */
+   * room for controls that reach out around it: as large as fits, up to half
+   * as large again as its natural size, and no less than the least zoom. An
+   * element too large to fit even then is still centred, and runs past the
+   * edges. The view it heads for. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,
@@ -623,7 +629,7 @@ export function usePanZoom({
           (availableHeight - 2 * around.screen) / height,
         ),
         MIN_SCALE,
-        1,
+        FIT_MAX_SCALE,
       );
       return moveTo(
         insets.left + availableWidth / 2 - centre.x * nextScale,

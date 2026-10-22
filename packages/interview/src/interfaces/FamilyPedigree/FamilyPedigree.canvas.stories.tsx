@@ -1404,6 +1404,23 @@ export const MovingBetweenPromptsShowsTheWholeFamily: Story = {
 };
 
 /**
+ * A small family is shown as large as the canvas allows, larger than its
+ * natural size, but no more than half as large again.
+ */
+export const ASmallFamilyFillsTheCanvas: Story = {
+  render: () => <CanvasStory family={threePeople} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    const symbol = personSymbol(canvasElement, 'ego');
+    const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
+    await expect(scale, 'zoomed in past natural size').toBeGreaterThan(1.01);
+    await expect(scale, 'no more than half as large again').toBeLessThan(1.501);
+  },
+};
+
+/**
  * Closing the panel, after editing someone or adding a relative, shows the
  * whole family again, wherever the participant had dragged or zoomed it.
  */
