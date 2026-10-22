@@ -817,8 +817,11 @@ describe('planAddRelative', () => {
       ]);
     });
 
-    // Ruling 19: any kind of parent may have carried the pregnancy.
-    test('the parent chosen is recorded for a sibling who is not a biological child', () => {
+    // Ruling 19 lets any kind of parent have carried the pregnancy, but
+    // someone else carried an adopted sibling (decided 22 Oct 2026): the
+    // parents who adopted them are recorded as not having carried them,
+    // whatever the answer.
+    test('nobody who adopted a sibling is recorded as having carried them', () => {
       const result = plan(parentsOfEgo(), 'ego', {
         relation: 'sibling',
         sharedParentIds: ['mum', 'dad'],
@@ -827,9 +830,12 @@ describe('planAddRelative', () => {
       });
       expect(
         result.links
-          .filter((planned) => planned.isGestationalCarrier)
-          .map((planned) => planned.source),
-      ).toEqual(['mum']);
+          .filter((planned) => planned.target === 'added')
+          .map((planned) => [planned.source, planned.isGestationalCarrier]),
+      ).toEqual([
+        ['mum', false],
+        ['dad', false],
+      ]);
     });
 
     test('an unnamed parent added for both can have carried it', () => {
@@ -909,8 +915,18 @@ describe('planAddRelative', () => {
       carrier: null,
     });
     expect(result.links).toEqual([
-      { source: 'mum', target: 'added', kind: 'adoptive' },
-      { source: 'dad', target: 'added', kind: 'adoptive' },
+      {
+        source: 'mum',
+        target: 'added',
+        kind: 'adoptive',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'dad',
+        target: 'added',
+        kind: 'adoptive',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -949,7 +965,12 @@ describe('planAddRelative', () => {
           kind: 'biological',
           isGestationalCarrier: false,
         },
-        { source: 'new-1', target: 'added', kind: 'adoptive' },
+        {
+          source: 'new-1',
+          target: 'added',
+          kind: 'adoptive',
+          isGestationalCarrier: false,
+        },
         {
           source: 'new-2',
           target: 'added',
@@ -976,7 +997,12 @@ describe('planAddRelative', () => {
     });
     expect(result.people.map((planned) => planned.id)).toEqual(['added']);
     expect(result.links).toEqual([
-      { source: 'mum', target: 'added', kind: 'adoptive' },
+      {
+        source: 'mum',
+        target: 'added',
+        kind: 'adoptive',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 

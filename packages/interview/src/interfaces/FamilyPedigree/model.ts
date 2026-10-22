@@ -726,7 +726,9 @@ export type AddRelativeRequest =
        * parents the sibling is planned to have (`possibleCarriers`), by id,
        * which for an unnamed parent the addition gives them is the id the
        * plan creates for that parent. Null when not known (someone else may
-       * have).
+       * have). An adopted sibling was carried by someone else, so none of
+       * the parents who adopted them is recorded as having carried them,
+       * whatever the answer.
        */
       carrier: string | null;
     };
@@ -1064,7 +1066,16 @@ export function planAddRelative({
             kind = anchorKind === 'adoptive' ? 'adoptive' : 'social';
           }
         }
-        links.push({ source: parentId, target: newPersonId, kind });
+        // Someone else carried an adopted sibling: none of the parents who
+        // adopted them did.
+        links.push({
+          source: parentId,
+          target: newPersonId,
+          kind,
+          ...(request.parentKind === 'adoptive'
+            ? { isGestationalCarrier: false }
+            : {}),
+        });
       }
       break;
     }
@@ -1112,9 +1123,12 @@ export function planAddRelative({
   }
   // The sibling's carrier is one of the parents they are planned to have
   // who could have carried the pregnancy; any other answer, which a later
-  // one has made impossible, records nobody.
+  // one has made impossible, records nobody, as does any answer for an
+  // adopted sibling, whom someone else carried.
   const carrier =
-    request.relation === 'sibling' && request.carrier !== null
+    request.relation === 'sibling' &&
+    request.parentKind !== 'adoptive' &&
+    request.carrier !== null
       ? possibleCarriers(family, plan, newPersonId, sexAttribute).find(
           (id) => id === request.carrier,
         )

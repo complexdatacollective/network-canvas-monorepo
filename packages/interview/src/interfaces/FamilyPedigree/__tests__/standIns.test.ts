@@ -791,7 +791,12 @@ describe('an adopted person with one adoptive parent', () => {
     });
     expect(result.people.map((planned) => planned.id)).toEqual(['added']);
     expect(result.links).toEqual([
-      { source: 'amy', target: 'added', kind: 'adoptive' },
+      {
+        source: 'amy',
+        target: 'added',
+        kind: 'adoptive',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 });

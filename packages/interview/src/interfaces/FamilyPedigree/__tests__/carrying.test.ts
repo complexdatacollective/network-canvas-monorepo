@@ -9,7 +9,6 @@ import {
   parentChoiceOptions,
   planAddRelative,
   planConnection,
-  possibleCarriers,
   readFamily,
 } from '../model';
 import { config, link, person } from './fixtures';
@@ -268,7 +267,7 @@ describe('adding a child someone carried', () => {
 });
 
 describe('who may have carried a sibling', () => {
-  test('the adoptive parents a sibling is planned to have may have', () => {
+  test('none of the parents who adopted a sibling carried them, whatever the answer', () => {
     const f = family(
       [
         person('ego', { isEgo: true }),
@@ -277,15 +276,22 @@ describe('who may have carried a sibling', () => {
       ],
       [link('amy', 'ego', 'adoptive'), link('rob', 'ego', 'adoptive')],
     );
-    const planned = plan(f, 'ego', {
-      relation: 'sibling',
-      sharedParentIds: ['amy', 'rob'],
-      parentKind: 'adoptive',
-      carrier: null,
-    });
-    expect(
-      possibleCarriers(f, planned, 'added', config.sexAssignedAtBirthAttribute),
-    ).toEqual(['amy']);
+    for (const carrier of [null, 'amy']) {
+      const result = plan(f, 'ego', {
+        relation: 'sibling',
+        sharedParentIds: ['amy', 'rob'],
+        parentKind: 'adoptive',
+        carrier,
+      });
+      expect(
+        result.links
+          .filter((planned) => planned.target === 'added')
+          .map((planned) => [planned.source, planned.isGestationalCarrier]),
+      ).toEqual([
+        ['amy', false],
+        ['rob', false],
+      ]);
+    }
   });
 });
 
