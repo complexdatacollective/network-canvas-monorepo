@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { InterviewPayload } from '../../contract/types';
@@ -21,22 +22,31 @@ function makeInterview() {
         edges: [],
         ego: { _uid: 'ego-1', [entityAttributesProperty]: {} },
       },
+      localeOptions: [getLocaleMetadata('en')],
     },
     protocol: {
       id: 'protocol-1',
       hash: 'hash',
       importedAt: '2026-01-01T00:00:00.000Z',
       name: 'Protocol',
-      schemaVersion: 8,
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
       assets: [],
       codebook: {
-        ego: { variables: { agrees: { name: 'Agrees', type: 'boolean' } } },
+        ego: {
+          variables: {
+            agrees: { name: 'Agrees', type: 'boolean' },
+          },
+        },
       },
       stages: [],
     },
   };
   const onSync = vi.fn(() => Promise.resolve());
-  return { interview: createStore(payload, { onSync }), onSync };
+  return {
+    interview: createStore(payload, { onSync }),
+    onSync,
+  };
 }
 
 // Whether `promise` has settled once everything already queued has run.
@@ -119,5 +129,16 @@ describe('store flushSync', () => {
     expect(await hasSettled(interview.flushSync({ unloading: true }))).toBe(
       true,
     );
+  });
+
+  it('says the session was not stored when the host refuses to sync it', async () => {
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    const { interview, onSync } = makeInterview();
+    onSync.mockRejectedValue(new Error('offline'));
+    interview.dispatch(updateEgo.pending('w1', patch));
+    interview.dispatch(updateEgo.fulfilled(patch, 'w1', patch));
+
+    await expect(interview.flushSync()).resolves.toBe(false);
+    vi.restoreAllMocks();
   });
 });

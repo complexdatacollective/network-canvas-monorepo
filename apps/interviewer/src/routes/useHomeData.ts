@@ -7,9 +7,10 @@ import type {
   StoredSettings,
 } from '~/lib/db/types';
 
-// Loads the data the Home route renders (protocols, sessions, settings) and
-// exposes `reload` so mutations elsewhere (imports, deletes, settings
-// changes) can refresh all three together.
+// Loads the data the Home route renders (protocols of every schema, sessions
+// and settings, all from the one database) and exposes `reload` so mutations
+// elsewhere (imports, deletes, settings changes) can refresh them
+// together.
 export function useHomeData() {
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([]);
   const [sessions, setSessions] = useState<StoredSessionLite[]>([]);
@@ -30,8 +31,8 @@ export function useHomeData() {
     }
   }, []);
 
-  // The three lists live in IndexedDB, so the only way to know them is to ask
-  // and wait: the state written here is that answer arriving, which is what an
+  // The lists live in IndexedDB, so the only way to know them is to ask and
+  // wait: the state written here is that answer arriving, which is what an
   // effect is for.
   useEffect(() => {
     void reload();

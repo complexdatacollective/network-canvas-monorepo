@@ -5,6 +5,12 @@ import { RadioGroup, type RadioGroupProps } from '@base-ui/react/radio-group';
 import { motion } from 'motion/react';
 import { type ReactNode, useId } from 'react';
 
+import {
+  isPresentationalText,
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
@@ -57,7 +63,8 @@ const radioIndicatorVariants = cva({
 
 type RadioItemProps = {
   value: string | number;
-  label: ReactNode;
+  /** Strings and `PresentationalText` render as Markdown; other nodes as-is. */
+  label: ReactNode | PresentationalText;
   disabled?: boolean;
   readOnly?: boolean;
   size?: VariantProps<typeof radioIndicatorVariants>['size'];
@@ -66,6 +73,12 @@ type RadioItemProps = {
   className?: string;
   /** Extra classes for the label text span (e.g. `@md:sr-only` to hide it). */
   labelClassName?: string;
+  /**
+   * Said about this option alone, such as why it is unavailable: the
+   * option's accessible description. It is not shown, so a reason that
+   * applies to several options can be shown once for the group (its hint).
+   */
+  description?: string;
 };
 
 export function RadioItem({
@@ -77,9 +90,11 @@ export function RadioItem({
   id,
   className,
   labelClassName,
+  description,
 }: RadioItemProps) {
   const generatedId = useId();
   const optionId = id ?? generatedId;
+  const descriptionId = `${optionId}-description`;
   const optionValue = String(value);
   const indicatorState = disabled
     ? 'disabled'
@@ -87,7 +102,7 @@ export function RadioItem({
       ? 'readOnly'
       : 'normal';
 
-  return (
+  const item = (
     <label
       htmlFor={optionId}
       className={cx(groupOptionVariants({ size, disabled }), className)}
@@ -110,6 +125,7 @@ export function RadioItem({
               {...renderProps}
               id={optionId}
               type="button"
+              aria-describedby={description ? descriptionId : undefined}
               data-value={optionValue}
               className={radioIndicatorVariants({
                 size,
@@ -146,21 +162,37 @@ export function RadioItem({
           disabled && 'opacity-50',
           labelClassName,
         )}
+        {...presentationalTextProps(label)}
       >
-        {typeof label === 'string' ? (
-          <RenderMarkdown>{label}</RenderMarkdown>
+        {isPresentationalText(label) ? (
+          <RenderMarkdown>{presentationalTextValue(label)}</RenderMarkdown>
         ) : (
           label
         )}
       </span>
     </label>
   );
+  // Outside the label, which names the option, so the description is not
+  // read as part of its name.
+  return description ? (
+    <>
+      {item}
+      <span id={descriptionId} className="sr-only">
+        {description}
+      </span>
+    </>
+  ) : (
+    item
+  );
 }
 
 type RadioOption = {
   value: string | number;
-  label: ReactNode;
+  label: ReactNode | PresentationalText;
   disabled?: boolean;
+  /** Said about this option alone, such as why it is unavailable (see
+   * `RadioItem`). */
+  description?: string;
 };
 
 type RadioGroupFieldProps = CreateFormFieldProps<
@@ -252,7 +284,7 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
         aria-required={rest['aria-required']}
         aria-readonly={readOnly || undefined}
       >
-        {options.map((option) => (
+        {options.map((option, index) => (
           <RadioItem
             key={String(option.value)}
             value={option.value}
@@ -263,7 +295,11 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
             disabled={Boolean(disabled) || Boolean(option.disabled)}
             readOnly={readOnly}
             size={size}
-            id={`${optionIdPrefix}-${String(option.value)}`}
+            // Positional, not the option's value: an option value is whatever
+            // the researcher typed, and an element id may not contain
+            // whitespace.
+            id={`${optionIdPrefix}-${index}`}
+            description={option.description}
           />
         ))}
       </RadioGroup>

@@ -33,6 +33,7 @@ import session, {
 } from '../../../../store/modules/session';
 import ui from '../../../../store/modules/ui';
 import type { StageProps } from '../../../../types';
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import NodeForm from '../NodeForm';
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
@@ -53,12 +54,15 @@ beforeAll(() => {
 const NODE_TYPE = 'person';
 const VARIABLE = 'answer';
 const FIELD_LABEL = 'Your answer';
-const UNIQUE_ERROR = 'This value is used elsewhere. It must be unique.';
+const UNIQUE_ERROR = 'Must be unique.';
 
 const form: TForm = {
-  title: 'Add a person',
+  title: { en: 'Add a person' },
   fields: [
-    { variable: asEntityAttributeReference(VARIABLE), prompt: FIELD_LABEL },
+    {
+      variable: asEntityAttributeReference(VARIABLE),
+      prompt: { en: FIELD_LABEL },
+    },
   ],
 };
 
@@ -67,10 +71,10 @@ type NameGeneratorStage = StageProps<'NameGenerator'>['stage'];
 const stage: NameGeneratorStage = {
   id: 'name-generator-stage',
   type: 'NameGenerator',
-  label: 'Add people',
+  label: { en: 'Add people' },
   subject: { entity: 'node', type: NODE_TYPE },
   form,
-  prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
+  prompts: [{ id: 'prompt-1', text: { en: 'Who do you know?' } }],
 };
 
 function buildProtocol(variable: Variable): ProtocolPayload {
@@ -93,7 +97,8 @@ function buildProtocol(variable: Variable): ProtocolPayload {
     importedAt: '2024-01-01T00:00:00.000Z',
     assets: [],
     name: 'Test protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook,
     stages: [stage],
   };
@@ -156,15 +161,17 @@ function renderNodeForm(
 
   render(
     <Provider store={store}>
-      <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-        <NodeForm
-          selectedNode={null}
-          form={form}
-          disabled={false}
-          onClose={onClose}
-          addNode={addNodeOverride ?? addNode}
-        />
-      </CurrentStepProvider>
+      <TestProtocolLocalization>
+        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+          <NodeForm
+            selectedNode={null}
+            form={form}
+            disabled={false}
+            onClose={onClose}
+            addNode={addNodeOverride ?? addNode}
+          />
+        </CurrentStepProvider>
+      </TestProtocolLocalization>
     </Provider>,
   );
 
@@ -184,7 +191,7 @@ const openForm = async () => {
 };
 
 const finish = () =>
-  userEvent.click(screen.getByRole('button', { name: 'Finished' }));
+  userEvent.click(screen.getByRole('button', { name: 'Done' }));
 
 const waitForDialogToClose = () =>
   waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -283,8 +290,8 @@ const cases: Record<string, UniqueCase> = {
       type: 'ordinal',
       component: 'RadioGroup',
       options: [
-        { label: 'Low', value: 1 },
-        { label: 'High', value: 2 },
+        { label: { en: 'Low' }, value: 1 },
+        { label: { en: 'High' }, value: 2 },
       ],
       validation: { unique: true },
     },
@@ -297,9 +304,9 @@ const cases: Record<string, UniqueCase> = {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: 'Family', value: 'family' },
-        { label: 'Work', value: 'work' },
-        { label: 'School', value: 'school' },
+        { label: { en: 'Family' }, value: 'family' },
+        { label: { en: 'Work' }, value: 'work' },
+        { label: { en: 'School' }, value: 'school' },
       ],
       validation: { unique: true },
     },
@@ -339,7 +346,7 @@ describe('NodeForm while a person is being saved', () => {
     await finish();
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByRole('button', { name: 'Finished' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled();
     expect(
       screen.queryByRole('button', { name: 'Close' }),
     ).not.toBeInTheDocument();

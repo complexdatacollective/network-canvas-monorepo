@@ -116,8 +116,14 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-2',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'firstName', type: 'text' },
-        'var-456': { name: 'lastName', type: 'text' },
+        'var-123': {
+          name: 'firstName',
+          type: 'text',
+        },
+        'var-456': {
+          name: 'lastName',
+          type: 'text',
+        },
         'var-789': { name: 'age', type: 'number' },
       },
     };
@@ -147,8 +153,14 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-2',
       shape: { default: 'circle' },
       variables: {
-        'var-aaa': { name: 'description', type: 'text' },
-        'var-bbb': { name: 'full_name', type: 'text' },
+        'var-aaa': {
+          name: 'description',
+          type: 'text',
+        },
+        'var-bbb': {
+          name: 'full_name',
+          type: 'text',
+        },
       },
     };
 

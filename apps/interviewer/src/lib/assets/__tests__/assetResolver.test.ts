@@ -34,7 +34,7 @@ function storedProtocolWithManifest(
     id: HASH,
     hash: HASH,
     name: 'Test',
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: new Date().toISOString(),
     codebook: {},
     protocol: {

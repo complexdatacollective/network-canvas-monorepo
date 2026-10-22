@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createDebouncedSyncHandler } from '../debouncedSync';
-import type { SessionPayload } from '../types';
+import type { SessionSnapshot } from '../types';
 
 const session = (lastUpdated: string) =>
   ({
@@ -11,7 +11,7 @@ const session = (lastUpdated: string) =>
     exportTime: null,
     lastUpdated,
     network: { ego: { _uid: 'ego-1' }, nodes: [], edges: [] },
-  }) as unknown as SessionPayload;
+  }) as unknown as SessionSnapshot;
 
 const change = { immediate: false, unloading: false };
 const now = { immediate: true, unloading: false };

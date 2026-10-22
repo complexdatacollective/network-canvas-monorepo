@@ -26,17 +26,6 @@ test('creates a valid AlterForm stage from scratch', async ({
   // what this stage works with before writing its form." So this runs first.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('About Each Person');
-  // See ego-form.spec.ts: "Introduction text" is the label
-  // `IntroductionSection` gives the field, not the field's own name.
-  await editor.fillRichText(
-    'Introduction text',
-    'Tell us a bit about each person you know.',
-  );
-
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',

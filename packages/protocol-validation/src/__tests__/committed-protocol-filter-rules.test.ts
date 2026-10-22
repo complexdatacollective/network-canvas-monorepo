@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { migrateProtocol } from '../migration/migrate-protocol.ts';
-import { filterRuleSchema } from '../schemas/8/filters/filter.ts';
+import { filterRuleSchema } from '../schemas/9/filters/filter.ts';
 import { CURRENT_SCHEMA_VERSION } from '../schemas/index.ts';
 import { extractProtocol } from '../utils/extractProtocol.ts';
 

@@ -53,11 +53,7 @@ export const WithBreakpoints: Story = {
     defaultBasis: 33,
     min: 10,
     max: 90,
-    breakpoints: [
-      { value: 25, label: '25%' },
-      { value: 50, label: '50%' },
-      { value: 75, label: '75%' },
-    ],
+    breakpoints: [{ value: 25 }, { value: 50 }, { value: 75 }],
     className: 'h-full',
     children: [
       <Panel key="a" label="Locked to 25%, 50%, 75%" color="#8b5cf6" />,
@@ -139,11 +135,7 @@ export const KeyboardAccessible: Story = {
     defaultBasis: 50,
     min: 10,
     max: 90,
-    breakpoints: [
-      { value: 25, label: '25%' },
-      { value: 50, label: '50%' },
-      { value: 75, label: '75%' },
-    ],
+    breakpoints: [{ value: 25 }, { value: 50 }, { value: 75 }],
     className: 'h-full',
     children: [
       <div
@@ -174,11 +166,7 @@ export const NameGeneratorMockup: Story = {
     defaultBasis: 30,
     min: 15,
     max: 60,
-    breakpoints: [
-      { value: 25, label: '25% panels' },
-      { value: 33, label: 'One-third panels' },
-      { value: 50, label: 'Equal split' },
-    ],
+    breakpoints: [{ value: 25 }, { value: 33 }, { value: 50 }],
     className: 'h-full',
     children: [
       <div

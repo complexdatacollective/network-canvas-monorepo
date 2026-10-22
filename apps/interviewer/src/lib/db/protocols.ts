@@ -1,13 +1,18 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-
 import { db } from './db';
 import {
+  assertPlaintextStillAllowed,
   decryptAsset,
   decryptProtocol,
   encryptAsset,
   encryptProtocol,
+  preparingPlaintext,
 } from './recordCrypto';
-import type { ProtocolWithCounts, StoredAsset, StoredProtocol } from './types';
+import type {
+  ProtocolWithCounts,
+  StoredAsset,
+  StoredAssetType,
+  StoredProtocol,
+} from './types';
 
 export async function listProtocols(): Promise<ProtocolWithCounts[]> {
   const rows = await db.protocols
@@ -46,8 +51,53 @@ export async function getProtocolsByHashes(
   return out;
 }
 
+const STORED_ASSET_TYPES: readonly string[] = [
+  'image',
+  'video',
+  'audio',
+  'network',
+  'geojson',
+  'apikey',
+] satisfies StoredAssetType[];
+
+const isStoredAssetType = (value: unknown): value is StoredAssetType =>
+  typeof value === 'string' && STORED_ASSET_TYPES.includes(value);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// A schema 8 document is validated on this branch only for its shape (see
+// `importProtocol`), so its name and manifest are read as what they may be.
+
+/** The name a protocol is stored under, which every row must have. */
+function protocolName(protocol: StoredProtocol['protocol']): string {
+  const { name } = protocol;
+  if (typeof name !== 'string' || name.length === 0) {
+    throw new Error('A protocol must have a name to be stored');
+  }
+  return name;
+}
+
+/** The type the asset manifest gives `assetId`, as Interviewer 8 reads it. */
+function manifestAssetType(
+  protocol: StoredProtocol['protocol'],
+  assetId: string,
+): StoredAssetType | undefined {
+  const manifest: unknown = protocol.assetManifest;
+  if (!isRecord(manifest)) return undefined;
+  const entry = manifest[assetId];
+  if (!isRecord(entry)) return undefined;
+  return isStoredAssetType(entry.type) ? entry.type : undefined;
+}
+
+/**
+ * Store a validated protocol and its assets, replacing any with the same
+ * hash. Every schema gets the same row, which is exactly the row Interviewer
+ * 8's `saveProtocol` writes: a schema 8 protocol saved here is read and run by
+ * Interviewer 8 at `/v8/` as if it had imported it itself.
+ */
 export async function saveProtocol(
-  protocol: CurrentProtocol,
+  protocol: StoredProtocol['protocol'],
   hash: string,
   assets: { id: string; name: string; data: Blob | string }[],
 ): Promise<StoredProtocol> {
@@ -65,21 +115,33 @@ export async function saveProtocol(
     existing && nowIso <= existing.importedAt
       ? new Date(Date.parse(existing.importedAt) + 1).toISOString()
       : nowIso;
-  const stored: StoredProtocol = {
+  const fields = {
     id,
     hash,
-    name: protocol.name,
-    schemaVersion: protocol.schemaVersion,
+    name: protocolName(protocol),
     lastModified: protocol.lastModified,
     importedAt,
     description: protocol.description,
-    codebook: protocol.codebook,
-    protocol,
   };
+  // Spelt out per schema only so the row's document type follows its
+  // `schemaVersion`; the two rows have the same fields.
+  const stored: StoredProtocol =
+    protocol.schemaVersion === 8
+      ? {
+          ...fields,
+          schemaVersion: protocol.schemaVersion,
+          codebook: protocol.codebook,
+          protocol,
+        }
+      : {
+          ...fields,
+          schemaVersion: protocol.schemaVersion,
+          codebook: protocol.codebook,
+          protocol,
+        };
 
   const assetRecords: StoredAsset[] = assets.map((asset) => {
-    const manifestEntry = protocol.assetManifest?.[asset.id];
-    const type = manifestEntry?.type ?? 'image';
+    const type = manifestAssetType(protocol, asset.id) ?? 'image';
     return {
       id: `${hash}::${asset.id}`,
       protocolHash: hash,
@@ -92,28 +154,39 @@ export async function saveProtocol(
 
   // Encrypt BEFORE opening the transaction (transaction-liveness rule): the
   // crypto.subtle awaits would let Dexie auto-commit an open tx mid-await.
+  const plaintext = preparingPlaintext();
   const protocolRow = await encryptProtocol(stored);
   const assetRows = await Promise.all(
     assetRecords.map((record) => encryptAsset(record)),
   );
 
-  await db.transaction('rw', db.protocols, db.assets, async () => {
-    await db.protocols.put(protocolRow);
-    await db.assets.where('protocolHash').equals(hash).delete();
-    if (assetRows.length > 0) {
-      await db.assets.bulkPut(assetRows);
-    }
-  });
+  await db.transaction(
+    'rw',
+    [db.protocols, db.assets, db.settings],
+    async () => {
+      await assertPlaintextStillAllowed(plaintext);
+      await db.protocols.put(protocolRow);
+      await db.assets.where('protocolHash').equals(hash).delete();
+      if (assetRows.length > 0) {
+        await db.assets.bulkPut(assetRows);
+      }
+    },
+  );
 
   return stored;
 }
 
+/** Delete a protocol of any schema, with its interviews and assets. */
 export async function deleteProtocol(hash: string): Promise<void> {
-  await db.transaction('rw', db.protocols, db.sessions, db.assets, async () => {
-    await db.assets.where('protocolHash').equals(hash).delete();
-    await db.sessions.where('protocolHash').equals(hash).delete();
-    await db.protocols.where('hash').equals(hash).delete();
-  });
+  await db.transaction(
+    'rw',
+    [db.protocols, db.sessions, db.assets],
+    async () => {
+      await db.assets.where('protocolHash').equals(hash).delete();
+      await db.sessions.where('protocolHash').equals(hash).delete();
+      await db.protocols.where('hash').equals(hash).delete();
+    },
+  );
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
@@ -140,21 +213,65 @@ export async function listAssetIds(): Promise<string[]> {
 // Re-encrypt a single protocol row under the currently-held DEK, preserving
 // every field value exactly (decrypt → encrypt round-trip; no timestamp is
 // stamped). A plaintext row written while unconfigured gains `_enc`; a row
-// already encrypted under this DEK round-trips unchanged. Unlike sessions,
-// protocol/asset rows are only written by user-initiated import, so no per-id
-// serializer is needed.
+// already encrypted under this DEK round-trips unchanged.
+//
+// An import in another tab can replace the protocol and its assets while a
+// row is being re-wrapped, so the row is replaced only if the protocol's
+// `importedAt`, which every save stamps, is unchanged since it was read;
+// otherwise it is read and re-wrapped again. A protocol's assets are saved in
+// the same transaction as the protocol, so its `importedAt` is their revision
+// too.
+const REENCRYPT_ATTEMPTS = 5;
+
+async function protocolRevision(hash: string): Promise<string | undefined> {
+  const row = await db.protocols.where('hash').equals(hash).first();
+  return row?.importedAt;
+}
+
 export async function reencryptProtocol(id: string): Promise<void> {
-  const existingRow = await db.protocols.get(id);
-  if (!existingRow) return;
-  const existing = await decryptProtocol(existingRow);
-  const row = await encryptProtocol(existing);
-  await db.protocols.put(row);
+  for (let attempt = 0; attempt < REENCRYPT_ATTEMPTS; attempt += 1) {
+    const existingRow = await db.protocols.get(id);
+    if (!existingRow) return;
+    const existing = await decryptProtocol(existingRow);
+    const row = await encryptProtocol(existing);
+    const replaced = await db.transaction('rw', db.protocols, async () => {
+      const latest = await db.protocols.get(id);
+      if (!latest) return true;
+      if (latest.importedAt !== existingRow.importedAt) return false;
+      await db.protocols.put(row);
+      return true;
+    });
+    if (replaced) return;
+  }
+  throw new Error(
+    `Protocol ${id} kept changing while it was being re-encrypted`,
+  );
 }
 
 export async function reencryptAsset(id: string): Promise<void> {
-  const existingRow = await db.assets.get(id);
-  if (!existingRow) return;
-  const existing = await decryptAsset(existingRow);
-  const row = await encryptAsset(existing);
-  await db.assets.put(row);
+  for (let attempt = 0; attempt < REENCRYPT_ATTEMPTS; attempt += 1) {
+    const existingRow = await db.assets.get(id);
+    if (!existingRow) return;
+    const revision = await protocolRevision(existingRow.protocolHash);
+    // Read again under this revision: a save between the two reads would
+    // otherwise pair new bytes' revision with the old bytes.
+    const currentRow = await db.assets.get(id);
+    if (!currentRow) return;
+    const existing = await decryptAsset(currentRow);
+    const row = await encryptAsset(existing);
+    const replaced = await db.transaction(
+      'rw',
+      [db.protocols, db.assets],
+      async () => {
+        if (!(await db.assets.get(id))) return true;
+        if ((await protocolRevision(currentRow.protocolHash)) !== revision) {
+          return false;
+        }
+        await db.assets.put(row);
+        return true;
+      },
+    );
+    if (replaced) return;
+  }
+  throw new Error(`Asset ${id} kept changing while it was being re-encrypted`);
 }

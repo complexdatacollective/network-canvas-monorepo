@@ -16,7 +16,8 @@ function makeProtocol(name: string): ProtocolWithCounts {
   const protocol: CurrentProtocol = {
     name,
     description: 'A description.',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };
@@ -24,7 +25,7 @@ function makeProtocol(name: string): ProtocolWithCounts {
     id: `test-${name}`,
     hash: `hash-${name}`,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: '2026-05-20T10:00:00.000Z',
     description: 'A description.',
     codebook: {},
@@ -46,7 +47,7 @@ const baseProps = {
 };
 
 describe('DeckSlotCard', () => {
-  it('renders an active protocol card with a start button and delete control', () => {
+  it('renders an active protocol card with its schema, a start button and a delete button', () => {
     const activate = vi.fn();
     const onDeleteProtocol = vi.fn();
     render(
@@ -59,6 +60,10 @@ describe('DeckSlotCard', () => {
     );
 
     expect(screen.getByText('Friendship Ties')).toBeInTheDocument();
+    // The current schema carries no "older" cue.
+    expect(screen.getByTestId('deck-card-schema')).toHaveTextContent(
+      /^Schema 9$/,
+    );
     fireEvent.click(
       screen.getByRole('button', { name: 'Start new interview' }),
     );
@@ -128,7 +133,7 @@ describe('DeckSlotCard', () => {
     expect(screen.queryByText(/\d+ interviews?/)).not.toBeInTheDocument();
   });
 
-  it('clears description, metadata, and delete control while the new-session form is open', () => {
+  it('clears schema, description, metadata, and delete button while the new-session form is open', () => {
     render(
       <DeckSlotCard
         {...baseProps}
@@ -140,6 +145,7 @@ describe('DeckSlotCard', () => {
     expect(screen.getByTestId('new-session-form')).toBeInTheDocument();
     expect(screen.queryByText('A description.')).not.toBeInTheDocument();
     expect(screen.queryByTestId('deck-card-metadata')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('deck-card-schema')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Delete Protocol' }),
     ).not.toBeInTheDocument();

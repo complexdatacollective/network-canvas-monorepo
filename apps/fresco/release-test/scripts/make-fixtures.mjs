@@ -7,6 +7,13 @@
 // ones because a repository is the wrong place to keep a deliberately corrupt
 // archive and an entry that inflates to more than a gigabyte.
 //
+// Fresco never upgrades a protocol to schema 9: it stores a schema 9 protocol
+// as it is, a schema 8 one at schema 8, and a schema 7 one upgraded only as far
+// as schema 8. A fixture that has to reach a pending deployment at schema 9 but
+// whose source is older is therefore upgraded HERE, with the pending
+// `migrateProtocol` — the same upgrade Architect applies when it opens an
+// older protocol — so what a lane imports is already the current schema.
+//
 // Usage: node make-fixtures.mjs [--out <dir>]
 // Prints one JSON line naming every file it wrote.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -14,6 +21,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDeflateRaw, crc32 } from 'node:zlib';
+
+import { migrateProtocol } from '../../../../packages/protocol-validation/src/index.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..', '..');
@@ -59,25 +68,100 @@ const archiveOf = (document, { withMedia }) => {
 
 const written = {};
 
-// The healthy protocol the interview lane conducts.
+// The healthy protocol the interview lane conducts, upgraded from its schema 8
+// source to schema 9: that lane conducts the current interview.
+const current = migrateProtocol(protocol);
 written.healthy = await write(
   'fresco-release-test.netcanvas',
-  archiveOf(protocol, { withMedia: true }),
+  archiveOf(current, { withMedia: true }),
 );
+
+// A schema 7 protocol imported once the deployment is upgraded, which the
+// pending image has to upgrade to schema 8 and no further (migration-lane.mjs
+// --phase resume): the sample protocol, still schema 7, with its media. Its
+// first stage is relabelled, because the seed imported the sample itself on
+// the released image, which upgraded it to schema 8 the same way, and Fresco
+// refuses a protocol whose stages and codebook it already holds.
+{
+  const sample = await JSZip.loadAsync(
+    readFileSync(
+      join(
+        repoRoot,
+        'packages/protocols/documentation/protocols/Sample Protocol v4.netcanvas',
+      ),
+    ),
+  );
+  const document = JSON.parse(
+    await sample.file('protocol.json').async('string'),
+  );
+  document.stages[0].label = 'Welcome (imported at schema 7)';
+  sample.file('protocol.json', JSON.stringify(document, null, 2));
+  written.importSchema7 = await write(
+    'release-test-schema-7.netcanvas',
+    sample,
+  );
+}
+
+// The schema 9 protocol the schema 9 walk conducts (schema9-interview-lane.mjs),
+// and the schema 8 protocol the upgrade lane seeds on the released image for
+// the upgrade to carry across unchanged (migration-lane.mjs). Neither has
+// media.
+for (const [key, directory, file] of [
+  ['schema9', 'fresco-release-test-v9', 'fresco-release-test-v9.netcanvas'],
+  [
+    'migration',
+    'fresco-release-test-migration',
+    'fresco-release-test-migration.netcanvas',
+  ],
+]) {
+  const document = JSON.parse(
+    readFileSync(
+      join(repoRoot, 'packages/protocols/e2e', directory, 'protocol.json'),
+      'utf8',
+    ),
+  );
+  written[key] = await write(file, archiveOf(document, { withMedia: false }));
+}
+
+// The schema 8 protocol imported again once the deployment is upgraded, which
+// the pending image has to store as it is, at schema 8 (migration-lane.mjs
+// --phase resume). The copy relabels its first stage, because Fresco refuses a
+// protocol whose stages and codebook it already holds, and it would otherwise
+// hash the same as the one the seed imported on the released image. Fresco
+// names a protocol after its file.
+{
+  const document = JSON.parse(
+    readFileSync(
+      join(
+        repoRoot,
+        'packages/protocols/e2e/fresco-release-test-migration/protocol.json',
+      ),
+      'utf8',
+    ),
+  );
+  document.stages[0].label = 'Welcome (kept at schema 8)';
+  written.importKept = await write(
+    'release-test-kept-schema-8.netcanvas',
+    archiveOf(document, { withMedia: false }),
+  );
+}
 
 // A protocol whose manifest names a file the archive does not contain. Fresco
 // refuses it — a resource that never loads would surface to a participant
 // mid-interview — and the refusal names the resource the way the researcher
 // named it rather than by its internal filename, which is why the manifest
-// entry's display name here is deliberately not the file's own.
+// entry's display name here is deliberately not the file's own. It stays at
+// its source's schema 8, so it reaches the media through schema 8's own
+// validation, which an import of a schema 8 protocol runs first.
 written.missingAsset = await write(
   'missing-asset.netcanvas',
   archiveOf(
-    // Distinct from the healthy protocol in its STAGES, because the duplicate
+    // Distinct from the schema 8 source in its STAGES, because the duplicate
     // check runs before the media is read and hashes the codebook and stages
-    // — a copy that differed only by name would be refused as a duplicate and
-    // the missing resource never reached. The extra stage is inert; what the
-    // refusal is about is still the missing file.
+    // — a copy that differed only by name from one a deployment held would be
+    // refused as a duplicate and the missing resource never reached. The
+    // extra stage is inert; what the refusal is about is still the missing
+    // file.
     {
       ...protocol,
       name: `${protocol.name} (missing resource)`,
@@ -114,14 +198,16 @@ written.missingAsset = await write(
   written.damagedArchive = path;
 }
 
-// A discriminating pair, both derived from the protocol that is known to
-// import. A comparison value may now be a fraction, because a scalar attribute
-// records a normalised 0-1 reading and an integer-only value could express no
-// comparison across it — but the operators that COUNT SELECTED OPTIONS still
-// take a whole number, and now say so. Testing only the refusal would prove
-// nothing: a file refused for some other reason looks identical.
+// A discriminating pair, both derived from the schema 9 protocol that is known
+// to import. A comparison value may now be a fraction, because a scalar
+// attribute records a normalised 0-1 reading and an integer-only value could
+// express no comparison across it — but the operators that COUNT SELECTED
+// OPTIONS still take a whole number, and now say so. Testing only the refusal
+// would prove nothing: a file refused for some other reason looks identical.
+// Both are schema 9, so the pending validation is what judges them, and the
+// refused one is refused as an invalid protocol.
 const filtered = (rule) => {
-  const document = structuredClone(protocol);
+  const document = structuredClone(current);
   document.stages.find((entry) => entry.id === 'stage-socio').filter = {
     rules: [{ id: 'rule-filter', type: 'node', options: rule }],
   };

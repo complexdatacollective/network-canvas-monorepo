@@ -7,9 +7,7 @@ import { BackgroundLights } from '@codaco/art';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 
-import { ManageLockInInterviewerButton } from './ManageLockInInterviewer';
 import { RecoverByResettingDialog } from './UnlockForms/RecoverByResettingDialog';
 
 const messages = defineMessages({
@@ -81,15 +79,9 @@ export function VaultRecoveryScreen() {
             <Button onClick={() => window.location.reload()}>
               {intl.formatMessage(messages.reload)}
             </Button>
-            {/* Interviewer 8 inside Interviewer 9 never resets the lock it
-                shares with Interviewer 9, which owns recovery. */}
-            {IS_SUBPATH_BUILD ? (
-              <ManageLockInInterviewerButton />
-            ) : (
-              <Button color="destructive" onClick={() => setResetOpen(true)}>
-                {intl.formatMessage(messages.resetAllAppData)}
-              </Button>
-            )}
+            <Button color="destructive" onClick={() => setResetOpen(true)}>
+              {intl.formatMessage(messages.resetAllAppData)}
+            </Button>
           </div>
         }
       >

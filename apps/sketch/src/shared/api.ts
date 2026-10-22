@@ -74,7 +74,7 @@ export type ProtocolSummary = {
 };
 
 export type JobResult = {
-  // A schema 8 protocol that passed @codaco/protocol-validation.
+  // A schema 9 protocol that passed @codaco/protocol-validation.
   protocol: Record<string, unknown>;
   assets: GeneratedAsset[];
   summary: ProtocolSummary;

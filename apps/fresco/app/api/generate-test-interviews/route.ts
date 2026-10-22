@@ -1,17 +1,25 @@
 import { createId } from '@paralleldrive/cuid2';
+import { generateNetwork as generateLegacyNetwork } from 'fresco-schema-8/protocol-utilities';
 import { after } from 'next/server';
+import { type z } from 'zod';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import {
   generateNetwork,
   type GenerateNetworkParams,
 } from '@codaco/protocol-utilities';
+import {
+  type FinishOutcomeSchema,
+  isFinishSessionStage,
+} from '@codaco/protocol-validation';
 import { syntheticGenerationMessages } from '~/i18n/syntheticGenerationMessages';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { prisma } from '~/lib/db';
 import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
+import { parseLegacyStoredProtocol } from '~/lib/schema-8/storedProtocol';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { getSyntheticGenerationFailure } from '~/lib/syntheticGenerationFailure';
 import { generateSyntheticInterviewsSchema } from '~/schemas/synthetic-interviews';
 
@@ -82,10 +90,9 @@ export async function POST(request: Request) {
 
   // Generating from an empty stand-in would fill the deployment with
   // interviews that hold nothing, so refuse before creating any.
-  const storedProtocol = parseStoredProtocol(protocol);
-  if (!storedProtocol.success) {
+  const unreadable = (error: unknown) => {
     after(async () => {
-      await captureException(storedProtocol.error, {
+      await captureException(error, {
         context: 'synthetic.protocol.unreadable',
       });
       await flushPostHog();
@@ -102,6 +109,56 @@ export async function POST(request: Request) {
         status: 500,
       },
     );
+  };
+
+  // A schema 8 protocol is generated for by the generator released with
+  // schema 8, so its interviews hold what the schema 8 interview would write.
+  // It has no finish stages, so a completed one records no finish stage.
+  let generate: (dropOut: boolean) => {
+    network: object;
+    stageMetadata: Record<string, unknown> | null;
+    currentStep: number;
+    droppedOut: boolean;
+  };
+  let finishAt: (currentStep: number) => {
+    finishStageId: string | null;
+    finishOutcome: z.infer<typeof FinishOutcomeSchema> | null;
+  };
+
+  if (isLegacySchemaVersion(protocol.schemaVersion)) {
+    const storedProtocol = parseLegacyStoredProtocol(protocol);
+    if (!storedProtocol.success) return unreadable(storedProtocol.error);
+    const { codebook, stages } = storedProtocol.data;
+
+    generate = (dropOut) =>
+      generateLegacyNetwork({
+        codebook,
+        stages,
+        simulateDropOut: dropOut,
+        respectSkipLogicAndFiltering,
+      });
+    finishAt = () => ({ finishStageId: null, finishOutcome: null });
+  } else {
+    const storedProtocol = parseStoredProtocol(protocol);
+    if (!storedProtocol.success) return unreadable(storedProtocol.error);
+    const { codebook, stages } = storedProtocol.data;
+
+    generate = (dropOut) =>
+      generateNetwork({
+        codebook,
+        stages,
+        simulateDropOut: dropOut,
+        respectSkipLogicAndFiltering,
+      } satisfies GenerateNetworkParams);
+    // A completed synthetic interview ends at the finish stage its route
+    // reached, and is recorded with that stage's outcome as a participant's
+    // finish is.
+    finishAt = (currentStep) => {
+      const finishStage = stages[currentStep];
+      return isFinishSessionStage(finishStage)
+        ? { finishStageId: finishStage.id, finishOutcome: finishStage.outcome }
+        : { finishStageId: null, finishOutcome: null };
+    };
   }
 
   const stream = new ReadableStream({
@@ -112,19 +169,12 @@ export async function POST(request: Request) {
       };
 
       try {
-        const genParams = {
-          codebook: storedProtocol.data.codebook,
-          stages: storedProtocol.data.stages,
-          simulateDropOut,
-          respectSkipLogicAndFiltering,
-        } satisfies GenerateNetworkParams;
-
         let completedCount = 0;
         const incompleteInterviewIds: string[] = [];
 
         for (let i = 0; i < count; i++) {
           const { network, stageMetadata, currentStep, droppedOut } =
-            generateNetwork(genParams);
+            generate(simulateDropOut);
 
           const isCompleted = !droppedOut;
           if (isCompleted) {
@@ -149,6 +199,7 @@ export async function POST(request: Request) {
               currentStep,
               startTime,
               finishTime,
+              ...(isCompleted ? finishAt(currentStep) : {}),
               isSynthetic: true,
               stageMetadata: stageMetadata as object | undefined,
               participant: {
@@ -187,10 +238,7 @@ export async function POST(request: Request) {
             });
 
             for (const interview of incompleteInterviews) {
-              const { network, stageMetadata, currentStep } = generateNetwork({
-                ...genParams,
-                simulateDropOut: false,
-              });
+              const { network, stageMetadata, currentStep } = generate(false);
 
               await prisma.interview.update({
                 where: { id: interview.id },
@@ -203,6 +251,7 @@ export async function POST(request: Request) {
                       Math.floor(Math.random() * 1800000) +
                       300000,
                   ),
+                  ...finishAt(currentStep),
                 },
               });
             }

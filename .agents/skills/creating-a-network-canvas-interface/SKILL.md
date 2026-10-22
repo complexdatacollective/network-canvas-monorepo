@@ -63,7 +63,7 @@ The stage-type string (e.g. `'TimelineSorter'`) is the single contract. It is wi
 
 | Mistake                                                    | Do instead                                                                                                                      |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Assuming "schema 8, additive, no migration" without asking | Confirm the target schema version with the user before any layer.                                                               |
+| Assuming "schema 9, additive, no migration" without asking | Confirm the target schema version with the user before any layer.                                                               |
 | Wiring schema + runtime, forgetting Architect and/or docs  | Treat all four surfaces as one deliverable; use the Definition of done.                                                         |
 | Skipping the documentation page because "code works"       | The `apps/documentation` page is a required surface, not a follow-up.                                                           |
 | Baking study-specific participant copy into the component  | If a researcher would want to change the wording, make it a config field; hardcode only essential/boilerplate chrome.           |

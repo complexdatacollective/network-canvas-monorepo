@@ -23,18 +23,6 @@ test('creates a valid DyadCensus stage from scratch', async ({
   // `requiresSubject` default.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // The shared `introduction()` section AlterForm/EgoForm already exercise —
-  // same `introductionPanel.title` data-field-name seam and "Introduction
-  // text" RichText label.
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('Do They Know Each Other?');
-  await editor.fillRichText(
-    'Introduction text',
-    'We would like to ask you about the people you know.',
-  );
-
   // The shared prompts section's row dialog, filled with what a Dyad Census
   // prompt is made of (DyadCensusPromptsSection.tsx): the family's
   // `PromptTextField` (`label: 'Prompt text'`), and an `EdgeTypeSection` —

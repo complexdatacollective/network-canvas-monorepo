@@ -25,7 +25,7 @@ import {
   variablesForSubject,
 } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
-import { useSubjectVariableNames } from '../../../sections/canvas/codebookChoices.ts';
+import { useSubjectVariableScope } from '../../../sections/canvas/codebookChoices.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 
@@ -147,9 +147,9 @@ export default function QuickAddSection() {
   const committed = useStageValue(QUICK_ADD);
   const fillsIn = typeof committed === 'string' ? committed : undefined;
   const draftPrompts = useStageValue(PROMPTS);
-  // What the create row checks a typed name against: every attribute name this
-  // type holds, not just the text ones the picker offers.
-  const namesInUse = useSubjectVariableNames(subject);
+  // What the create row checks a typed name against: every attribute this type
+  // holds, not just the text ones the picker offers.
+  const nameScope = useSubjectVariableScope(subject);
 
   const roleMap = useMemo(
     () => buildVariableRoleMap(protocolContext, identity.id),
@@ -239,7 +239,8 @@ export default function QuickAddSection() {
         options={options}
         emptyMessage={intl.formatMessage(messages.noTextAttribute)}
         onCreateOption={createQuickAddAttribute}
-        namesInUse={namesInUse}
+        nameScope={nameScope}
+        newVariableType="text"
         required={CHOOSE_AN_ATTRIBUTE}
       />
       <CodebookVariableValidationSection

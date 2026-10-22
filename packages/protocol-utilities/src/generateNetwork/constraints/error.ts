@@ -24,9 +24,7 @@ export type ConstraintReasonCode =
   | 'numberDateComparison'
   | 'fixedCompletion'
   | 'drawExhausted'
-  | 'incompatibleDateControls'
-  | 'inheritancePatterns'
-  | 'pedigreeFixedValue';
+  | 'incompatibleDateControls';
 
 export type ConstraintConflict = {
   entity: 'ego' | 'node' | 'edge';

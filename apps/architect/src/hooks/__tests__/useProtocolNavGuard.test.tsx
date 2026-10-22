@@ -1,5 +1,5 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   AnyDialog,
@@ -25,15 +25,6 @@ import {
   guardState,
   promptLeaveEditor,
 } from '../useProtocolNavGuard';
-
-const appBase = vi.hoisted(() => ({ isSubpath: false }));
-
-vi.mock('~/utils/appBase', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('~/utils/appBase')>()),
-  get IS_SUBPATH_BUILD() {
-    return appBase.isSubpath;
-  },
-}));
 
 // Intercepts the fresco dialog request so the test can read the config shown to
 // the user and auto-confirm it. Records every dispatched action; the download
@@ -263,134 +254,101 @@ describe('promptLeaveEditor', () => {
     });
   });
 
-  // Architect 8 served inside Architect 9 has no start screen of its own: a
-  // leave returns to Architect 9's, and the copy must say where it goes.
-  describe('in Architect 8 served inside Architect 9', () => {
-    beforeEach(() => {
-      appBase.isSubpath = true;
-    });
+  describe('when leaving takes the researcher to Architect 8', () => {
+    const toArchitect8 = 'architect-8' as const;
 
-    afterEach(() => {
-      appBase.isSubpath = false;
-    });
-
-    it('names Architect 9 in the discard dialog', async () => {
-      const { dispatch, dispatched, openDialog, getCaptured } =
-        setup('discard-and-leave');
+    it('names Architect 8 as the destination, not the start screen', async () => {
+      const { dispatch, openDialog, getCaptured } = setup('leave');
       const performLeave = vi.fn();
 
       await promptLeaveEditor(
         dispatch,
         openDialog,
         performLeave,
-        true,
+        false,
         'saved',
+        toArchitect8,
       );
 
       const captured = getCaptured();
-      if (captured?.type !== 'choice') {
+      if (captured?.type !== 'choice')
         throw new Error('Expected choice dialog');
-      }
-      const description = renderQueuedMessage(captured.description);
-      expect(description).toMatch(/If you open Architect 9 now/);
-      expect(description).toMatch(/last saved version/i);
-      expect(description).not.toMatch(/start screen/i);
-      expect({
-        ...captured.actions.primary,
-        label: renderQueuedMessage(captured.actions.primary.label),
-      }).toEqual({
-        label: 'Discard Changes and Open Architect 9',
-        value: 'discard-and-leave',
-      });
-      expect(dispatched).toContainEqual(clearActiveProtocol());
+      expect(renderQueuedMessage(captured.title)).toBe(
+        'Leave for Architect 8?',
+      );
+      expect(renderQueuedMessage(captured.description)).toMatch(
+        /saved automatically on this device/,
+      );
+      expect(renderQueuedMessage(captured.description)).toMatch(
+        /Architect 8 will open in this tab/,
+      );
+      expect(renderQueuedMessage(captured.actions.primary.label)).toBe(
+        'Open in Architect 8',
+      );
+      expect(renderQueuedMessage(captured.actions.secondary?.label)).toBe(
+        'Download and open in Architect 8',
+      );
       expect(performLeave).toHaveBeenCalledTimes(1);
     });
 
+    it('says which work is discarded on the way to Architect 8', async () => {
+      const { dispatch, openDialog, getCaptured } = setup('discard-and-leave');
+
+      await promptLeaveEditor(
+        dispatch,
+        openDialog,
+        vi.fn(),
+        true,
+        'saved',
+        toArchitect8,
+      );
+
+      const captured = getCaptured();
+      if (captured?.type !== 'choice')
+        throw new Error('Expected choice dialog');
+      expect(renderQueuedMessage(captured.title)).toBe(
+        'Discard unsaved changes?',
+      );
+      expect(renderQueuedMessage(captured.description)).toMatch(
+        /If you leave for Architect 8 now/,
+      );
+      expect(renderQueuedMessage(captured.actions.primary.label)).toBe(
+        'Discard Changes and Leave',
+      );
+    });
+
     it.each([
+      'saved',
       'open-elsewhere',
       'reclaim-blocked',
       'storage-unavailable',
-    ] as const)(
-      'describes a %s tab without mentioning the start screen',
-      async (persistence) => {
-        const { dispatch, openDialog, getCaptured } =
-          setup('discard-and-leave');
-
+    ] as const)('never mentions the start screen (%s)', async (persistence) => {
+      for (const dirty of [false, true]) {
+        guardState.prompting = false;
+        const { dispatch, openDialog, getCaptured } = setup(null);
         await promptLeaveEditor(
           dispatch,
           openDialog,
           vi.fn(),
-          true,
+          dirty,
           persistence,
+          toArchitect8,
         );
-
         const captured = getCaptured();
         if (captured?.type !== 'choice') {
           throw new Error('Expected choice dialog');
         }
-        const description = renderQueuedMessage(captured.description);
-        expect(description).toMatch(/Architect 9/);
-        expect(description).not.toMatch(/start screen/i);
-      },
-    );
-
-    it('offers a download first when the protocol exists only in this tab', async () => {
-      const { dispatch, dispatched, openDialog, getCaptured } =
-        setup('download-and-leave');
-      const performLeave = vi.fn();
-
-      await promptLeaveEditor(
-        dispatch,
-        openDialog,
-        performLeave,
-        false,
-        'storage-unavailable',
-      );
-
-      const captured = getCaptured();
-      if (captured?.type !== 'choice') {
-        throw new Error('Expected choice dialog');
+        const copy = [
+          captured.title,
+          captured.description,
+          captured.actions.primary.label,
+          captured.actions.secondary?.label,
+        ]
+          .map((part) => renderQueuedMessage(part))
+          .join(' ');
+        expect(copy).not.toMatch(/start screen|return/i);
+        expect(copy).toMatch(/Architect 8/);
       }
-      expect(captured.intent).toBe('warning');
-      expect(renderQueuedMessage(captured.title)).toBe('Open Architect 9?');
-      expect(renderQueuedMessage(captured.description)).toMatch(
-        /could not be saved on this device.*Architect 9 opens/,
-      );
-      expect({
-        ...captured.actions.primary,
-        label: renderQueuedMessage(captured.actions.primary.label),
-      }).toEqual({
-        label: 'Download now and open Architect 9',
-        value: 'download-and-leave',
-      });
-      expect({
-        ...captured.actions.secondary,
-        label: renderQueuedMessage(captured.actions.secondary?.label),
-      }).toEqual({
-        label: 'Open Architect 9 without downloading',
-        value: 'leave',
-      });
-      expect(
-        dispatched.filter((action) => typeof action === 'function'),
-      ).toHaveLength(1);
-      expect(performLeave).toHaveBeenCalledTimes(1);
-    });
-
-    it('leaves a saved pristine editor without asking', async () => {
-      const { dispatch, dispatched, openDialog, getCapturedDialogs } = setup();
-      const performLeave = vi.fn();
-
-      await promptLeaveEditor(
-        dispatch,
-        openDialog,
-        performLeave,
-        false,
-        'saved',
-      );
-
-      expect(getCapturedDialogs()).toHaveLength(0);
-      expect(dispatched).toContainEqual(clearActiveProtocol());
-      expect(performLeave).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -425,7 +383,8 @@ describe('getLeavePersistence', () => {
 
   const protocol: CurrentProtocol = {
     name: 'Test Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: {},
   };

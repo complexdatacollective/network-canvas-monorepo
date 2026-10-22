@@ -356,8 +356,8 @@ const seedCategoricalAttribute = (
           // this subject's attributes rather than complain about this one.
           component: 'CheckboxGroup',
           options: [
-            { label: 'At home', value: 'home' },
-            { label: 'At work', value: 'work' },
+            { label: { 'en-US': 'At home' }, value: 'home' },
+            { label: { 'en-US': 'At work' }, value: 'work' },
           ],
         },
       },
@@ -401,9 +401,9 @@ export const authorsValuesFromField = async (
     expect(
       asRecord(codebookVariables(harness, subject)[categoricalId]).options,
     ).toEqual([
-      { label: 'At home', value: 'home' },
-      { label: 'At work', value: 'work' },
-      { label: 'Somewhere else', value: 'elsewhere' },
+      { label: { 'en-US': 'At home' }, value: 'home' },
+      { label: { 'en-US': 'At work' }, value: 'work' },
+      { label: { 'en-US': 'Somewhere else' }, value: 'elsewhere' },
     ]),
   );
 };

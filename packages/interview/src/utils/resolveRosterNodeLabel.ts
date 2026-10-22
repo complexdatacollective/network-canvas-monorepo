@@ -1,17 +1,14 @@
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
-import { resolveInterviewIntl } from '../i18n/resolveIntl';
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { getNodeLabelAttribute } from './getNodeLabelAttribute';
 
 type ResolveRosterNodeLabelArgs = {
   codebookVariables: NodeDefinition['variables'];
   node: NcNode;
-  subjectLabel: string;
   sequentialNumber: number;
-  intl?: IntlShape;
+  /** The title of a card with nothing of its own to show, by its number. */
+  placeholder: (sequentialNumber: number) => string;
 };
 
 // Only string/number values produce a meaningful title; everything else
@@ -33,9 +30,8 @@ const coerceToLabel = (value: unknown): string | null => {
 export const resolveRosterNodeLabel = ({
   codebookVariables,
   node,
-  subjectLabel,
   sequentialNumber,
-  intl,
+  placeholder,
 }: ResolveRosterNodeLabelArgs): string => {
   const attributes = node[entityAttributesProperty];
 
@@ -54,8 +50,5 @@ export const resolveRosterNodeLabel = ({
     }
   }
 
-  return resolveInterviewIntl(intl).formatMessage(messages.unnamedRosterItem, {
-    subject: subjectLabel,
-    number: sequentialNumber,
-  });
+  return placeholder(sequentialNumber);
 };

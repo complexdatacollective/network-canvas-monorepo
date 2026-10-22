@@ -131,7 +131,7 @@ describe('solvableComponents', () => {
         name: 'Flag',
         type: 'boolean',
         component: 'Boolean',
-        options: [{ label: 'Yes', value: true }],
+        options: [{ label: { 'en-US': 'Yes' }, value: true }],
         validation: { differentFrom: ref('other') },
       },
       other: { name: 'Other', type: 'boolean' },
@@ -139,8 +139,8 @@ describe('solvableComponents', () => {
         name: 'Band',
         type: 'ordinal',
         options: [
-          { label: 'Low', value: 1 },
-          { label: 'High', value: 2 },
+          { label: { 'en-US': 'Low' }, value: 1 },
+          { label: { 'en-US': 'High' }, value: 2 },
         ],
         validation: { differentFrom: ref('twin') },
       },
@@ -148,8 +148,8 @@ describe('solvableComponents', () => {
         name: 'Twin',
         type: 'ordinal',
         options: [
-          { label: 'Low', value: 1 },
-          { label: 'High', value: 2 },
+          { label: { 'en-US': 'Low' }, value: 1 },
+          { label: { 'en-US': 'High' }, value: 2 },
         ],
       },
       s: {
@@ -214,7 +214,11 @@ describe('solvableComponents', () => {
         type: 'number',
         validation: { ...bounds, differentFrom: ref('twin') },
       },
-      twin: { name: 'Twin', type: 'number', validation: bounds },
+      twin: {
+        name: 'Twin',
+        type: 'number',
+        validation: bounds,
+      },
     });
 
     const [component] = componentsOf(entity);
@@ -237,7 +241,11 @@ describe('solvableComponents', () => {
         type: 'number',
         validation: { ...bounds, differentFrom: ref('twin') },
       },
-      twin: { name: 'Twin', type: 'number', validation: bounds },
+      twin: {
+        name: 'Twin',
+        type: 'number',
+        validation: bounds,
+      },
     });
 
     const [component] = componentsOf(entity);
@@ -280,9 +288,9 @@ describe('solvableComponents', () => {
 
   it('enumerates categorical subsets within the selection bounds', () => {
     const options = [
-      { label: 'X', value: 'x' },
-      { label: 'Y', value: 'y' },
-      { label: 'Z', value: 'z' },
+      { label: { 'en-US': 'X' }, value: 'x' },
+      { label: { 'en-US': 'Y' }, value: 'y' },
+      { label: { 'en-US': 'Z' }, value: 'z' },
     ];
     const entity = build({
       tags: {
@@ -315,11 +323,19 @@ describe('solvableComponents', () => {
 
   it('leaves a component intractable when a domain cannot be enumerated', () => {
     const unboundedNumber = build({
-      a: { name: 'A', type: 'number', validation: { differentFrom: ref('b') } },
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { differentFrom: ref('b') },
+      },
       b: { name: 'B', type: 'number' },
     });
     const text = build({
-      a: { name: 'A', type: 'text', validation: { differentFrom: ref('b') } },
+      a: {
+        name: 'A',
+        type: 'text',
+        validation: { differentFrom: ref('b') },
+      },
       b: { name: 'B', type: 'text' },
     });
 
@@ -375,7 +391,7 @@ describe('solvableComponents', () => {
     // a solved value must come from the same sizes, or adding a rule would
     // change what the data looks like.
     const options = Array.from({ length: 4 }, (_v, i) => ({
-      label: `O${i}`,
+      label: { 'en-US': `O${i}` },
       value: i,
     }));
     const entity = build({
@@ -385,7 +401,11 @@ describe('solvableComponents', () => {
         options,
         validation: { differentFrom: ref('twin') },
       },
-      twin: { name: 'Twin', type: 'categorical', options },
+      twin: {
+        name: 'Twin',
+        type: 'categorical',
+        options,
+      },
     });
 
     const [component] = componentsOf(entity);
@@ -399,7 +419,7 @@ describe('solvableComponents', () => {
 
   it('widens a unique categorical domain to every selection size', () => {
     const options = Array.from({ length: 4 }, (_v, i) => ({
-      label: `O${i}`,
+      label: { 'en-US': `O${i}` },
       value: i,
     }));
     const entity = build({
@@ -409,7 +429,11 @@ describe('solvableComponents', () => {
         options,
         validation: { unique: true, differentFrom: ref('twin') },
       },
-      twin: { name: 'Twin', type: 'categorical', options },
+      twin: {
+        name: 'Twin',
+        type: 'categorical',
+        options,
+      },
     });
 
     const [component] = componentsOf(entity);
@@ -422,7 +446,7 @@ describe('solvableComponents', () => {
     // sits above the default ceiling of two, so the domain holds exactly the
     // size-three subsets.
     const options = Array.from({ length: 4 }, (_v, i) => ({
-      label: `O${i}`,
+      label: { 'en-US': `O${i}` },
       value: i,
     }));
     const entity = build({
@@ -432,7 +456,11 @@ describe('solvableComponents', () => {
         options,
         validation: { minSelected: 3, differentFrom: ref('twin') },
       },
-      twin: { name: 'Twin', type: 'categorical', options },
+      twin: {
+        name: 'Twin',
+        type: 'categorical',
+        options,
+      },
     });
 
     const [component] = componentsOf(entity);
@@ -449,9 +477,9 @@ describe('solvableComponents', () => {
     // deduplicates every selection, so the domain must never hold a multiset
     // like ['x','x'] that no participant control can produce.
     const options = [
-      { label: 'First X', value: 'x' },
-      { label: 'Second X', value: 'x' },
-      { label: 'Y', value: 'y' },
+      { label: { 'en-US': 'First X' }, value: 'x' },
+      { label: { 'en-US': 'Second X' }, value: 'x' },
+      { label: { 'en-US': 'Y' }, value: 'y' },
     ];
     const entity = build({
       tags: {
@@ -460,7 +488,11 @@ describe('solvableComponents', () => {
         options,
         validation: { differentFrom: ref('twin') },
       },
-      twin: { name: 'Twin', type: 'categorical', options },
+      twin: {
+        name: 'Twin',
+        type: 'categorical',
+        options,
+      },
     });
 
     const [component] = componentsOf(entity);
@@ -477,7 +509,7 @@ describe('solvableComponents', () => {
     // generated entity. Work is proportional to elements, not subsets, so
     // the budget must count them.
     const options = Array.from({ length: 20 }, (_v, i) => ({
-      label: `O${i}`,
+      label: { 'en-US': `O${i}` },
       value: i,
     }));
     const entity = build({
@@ -495,8 +527,8 @@ describe('solvableComponents', () => {
         name: 'Narrow',
         type: 'categorical',
         options: [
-          { label: 'A', value: 'a' },
-          { label: 'B', value: 'b' },
+          { label: { 'en-US': 'A' }, value: 'a' },
+          { label: { 'en-US': 'B' }, value: 'b' },
         ],
         validation: { minSelected: 2, maxSelected: 2 },
       },
@@ -510,7 +542,7 @@ describe('solvableComponents', () => {
 
   it('declines a categorical whose combination space overflows the budget', () => {
     const options = Array.from({ length: 24 }, (_v, i) => ({
-      label: `O${i}`,
+      label: { 'en-US': `O${i}` },
       value: i,
     }));
     const entity = build({
@@ -540,7 +572,7 @@ describe('solvableComponents', () => {
     // unique variable could pass the count and then run out of solved values,
     // or be refused values the solver could in fact reach.
     const options = Array.from({ length: 4 }, (_v, i) => ({
-      label: `O${i}`,
+      label: { 'en-US': `O${i}` },
       value: i,
     }));
     const window = {
@@ -569,7 +601,11 @@ describe('solvableComponents', () => {
         component: 'VisualAnalogScale',
         validation: { lessThanVariable: ref('s2') },
       },
-      s2: { name: 'S2', type: 'scalar', component: 'VisualAnalogScale' },
+      s2: {
+        name: 'S2',
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+      },
       // Numbers whose ranges hold no whole value, which the draw takes on the
       // decimal grid instead. Both shapes of that grid are here: one holding
       // grid points, and one so narrow it holds none and is drawn as its two
@@ -623,8 +659,8 @@ describe('solvableComponents', () => {
         name: 'Repeated',
         type: 'ordinal',
         options: [
-          { label: 'One', value: 1 },
-          { label: 'Uno', value: 1 },
+          { label: { 'en-US': 'One' }, value: 1 },
+          { label: { 'en-US': 'Uno' }, value: 1 },
         ],
         validation: { differentFrom: ref('band') },
       },
@@ -635,7 +671,11 @@ describe('solvableComponents', () => {
         options,
         validation: { unique: true, differentFrom: ref('twin') },
       },
-      twin: { name: 'Twin', type: 'categorical', options },
+      twin: {
+        name: 'Twin',
+        type: 'categorical',
+        options,
+      },
     });
 
     const { propagated, components } = analysed(entity);
@@ -704,18 +744,18 @@ describe('solvableComponents', () => {
         name: 'A',
         type: 'ordinal',
         options: [
-          { label: 'One', value: 1 },
-          { label: 'Two', value: 2 },
-          { label: 'Three', value: 3 },
+          { label: { 'en-US': 'One' }, value: 1 },
+          { label: { 'en-US': 'Two' }, value: 2 },
+          { label: { 'en-US': 'Three' }, value: 3 },
         ],
       },
       b: {
         name: 'B',
         type: 'ordinal',
         options: [
-          { label: 'Two', value: 2 },
-          { label: 'Three', value: 3 },
-          { label: 'Four', value: 4 },
+          { label: { 'en-US': 'Two' }, value: 2 },
+          { label: { 'en-US': 'Three' }, value: 3 },
+          { label: { 'en-US': 'Four' }, value: 4 },
         ],
         validation: { sameAs: ref('a') },
       },
@@ -723,8 +763,8 @@ describe('solvableComponents', () => {
         name: 'C',
         type: 'ordinal',
         options: [
-          { label: 'Two', value: 2 },
-          { label: 'Three', value: 3 },
+          { label: { 'en-US': 'Two' }, value: 2 },
+          { label: { 'en-US': 'Three' }, value: 3 },
         ],
         validation: { differentFrom: ref('a') },
       },
@@ -1051,7 +1091,11 @@ describe('solveComponent', () => {
     // strict chain has to step three of them apart.
     const bounds = { minValue: 0.1, maxValue: 0.2 };
     const entity = build({
-      lo: { name: 'Lo', type: 'number', validation: bounds },
+      lo: {
+        name: 'Lo',
+        type: 'number',
+        validation: bounds,
+      },
       mid: {
         name: 'Mid',
         type: 'number',
@@ -1119,7 +1163,11 @@ describe('fractional number components in generation', () => {
   function cornerVariables(): Variables {
     const pair = { minValue: 0.1, maxValue: 0.11 };
     return {
-      b: { name: 'B', type: 'number', validation: pair },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: pair,
+      },
       d: {
         name: 'D',
         type: 'number',

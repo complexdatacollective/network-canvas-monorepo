@@ -2,11 +2,11 @@ import { act, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
@@ -27,9 +27,11 @@ type ApplyOwnCommands = (commands: readonly Command[]) => OwnCommandsResult;
 
 const NOTHING_APPLIED: OwnCommandsResult = { draft: {}, refused: false };
 
+const en = (text: string) => ({ 'en-US': text });
+
 const initialFields: SectionDoc = {
-  label: 'Welcome',
-  title: 'Welcome to the study',
+  label: en('Welcome'),
+  title: en('Welcome to the study'),
   items: [],
 };
 
@@ -75,7 +77,11 @@ function renderEditor(readOnly = false) {
     sections: (
       <BuilderSection title="Page content">
         <Probe />
-        <Field name="title" label="Page heading" component={InputField} />
+        <Field
+          name="title"
+          label="Page heading"
+          component={LocalizedInputField}
+        />
         <ItemsProbe />
         <DirtyFlag />
       </BuilderSection>
@@ -112,10 +118,10 @@ describe('the form’s own structural writes', () => {
     await screen.findByRole('textbox', { name: 'Page heading' });
 
     const answered = apply([
-      { op: 'set', key: 'title', value: 'Written anyway' },
+      { op: 'set', key: 'title', value: en('Written anyway') },
     ]);
 
-    expect(answered.draft.title).toBe('Welcome to the study');
+    expect(answered.draft.title).toEqual(en('Welcome to the study'));
     // Answered with the document it already held, which is indistinguishable
     // from a write that changed nothing — so the refusal is said out loud, for
     // the row dialog whose draft depends on hearing it.
@@ -127,7 +133,7 @@ describe('the form’s own structural writes', () => {
     const { apply } = renderEditor(true);
     await screen.findByRole('textbox', { name: 'Page heading' });
 
-    apply([{ op: 'set', key: 'title', value: 'Written anyway' }]);
+    apply([{ op: 'set', key: 'title', value: en('Written anyway') }]);
 
     // Answering `refused` and saying nothing is the one that reads as the
     // editor being broken.
@@ -151,7 +157,7 @@ describe('the form’s own structural writes', () => {
       {
         op: 'set',
         key: 'items',
-        value: [{ id: 'a', type: 'text', content: 'Who?' }],
+        value: [{ id: 'a', type: 'text', content: en('Who?') }],
       },
     ]);
 
@@ -163,8 +169,8 @@ describe('the form’s own structural writes', () => {
     // And both halves reach the protocol together on the next save.
     const written = await harness.submit();
     expect(written?.stageDocument).toMatchObject({
-      title: 'Half-written heading',
-      items: [{ id: 'a', type: 'text', content: 'Who?' }],
+      title: en('Half-written heading'),
+      items: [{ id: 'a', type: 'text', content: en('Who?') }],
     });
   });
 
@@ -181,7 +187,7 @@ describe('the form’s own structural writes', () => {
       {
         op: 'set',
         key: 'items',
-        value: [{ id: 'a', type: 'text', content: 'Who?' }],
+        value: [{ id: 'a', type: 'text', content: en('Who?') }],
       },
     ]);
 
@@ -203,7 +209,7 @@ describe('the form’s own structural writes', () => {
       {
         op: 'set',
         key: 'items',
-        value: [{ id: 'a', type: 'text', content: 'Who?' }],
+        value: [{ id: 'a', type: 'text', content: en('Who?') }],
       },
     ]);
 
@@ -213,7 +219,7 @@ describe('the form’s own structural writes', () => {
     // stage was saved and reopened.
     await waitFor(() =>
       expect(probedItems()).toEqual([
-        { id: 'a', type: 'text', content: 'Who?' },
+        { id: 'a', type: 'text', content: en('Who?') },
       ]),
     );
   });
@@ -231,7 +237,7 @@ describe('the form’s own structural writes', () => {
     // so there is nothing for the stage to refuse — and what comes back is the
     // edit in the controls, not the document the stage was opened with.
     const read = apply([]);
-    expect(read.draft.title).toBe('Typed but not saved');
+    expect(read.draft.title).toEqual(en('Typed but not saved'));
     expect(read.refused).toBe(false);
   });
 
@@ -242,7 +248,7 @@ describe('the form’s own structural writes', () => {
     // A row dialog opened over a stage the researcher may only read still has
     // to be able to show them what is in the row.
     const read = apply([]);
-    expect(read.draft.title).toBe('Welcome to the study');
+    expect(read.draft.title).toEqual(en('Welcome to the study'));
     expect(read.refused).toBe(false);
     expect(screen.queryByText(/your change was not made/)).toBeNull();
   });

@@ -1260,6 +1260,38 @@ describe('processProtocolSortRule', () => {
     expect(twice).toEqual(once);
   });
 
+  describe('looks the property up as a variable key, not as a path', () => {
+    const codebookVariables: EntityDefinition['variables'] = {
+      'name': { type: 'text', name: 'name' },
+      'a.b': { type: 'number', name: 'a.b' },
+    };
+
+    it('finds a variable whose key contains a dot', () => {
+      const result = processProtocolSortRule(codebookVariables)({
+        property: 'a.b',
+        direction: 'asc',
+      });
+
+      expect(result).toEqual({
+        property: [entityAttributesProperty, 'a.b'],
+        direction: 'asc',
+        type: 'number',
+      });
+    });
+
+    it.each(['name.type', 'constructor', 'toString', '__proto__'])(
+      'does not find a variable for %s',
+      (property) => {
+        const result = processProtocolSortRule(codebookVariables)({
+          property,
+          direction: 'asc',
+        });
+
+        expect(result).toEqual({ property, direction: 'asc', type: 'string' });
+      },
+    );
+  });
+
   describe('manages property path', () => {
     it('adds entityAttributes property to the property path', () => {
       const rule = {
@@ -1299,11 +1331,11 @@ describe('processProtocolSortRule', () => {
         name: 'category',
         options: [
           {
-            label: 'One',
+            label: { en: 'One' },
             value: 'one',
           },
           {
-            label: 'Two',
+            label: { en: 'Two' },
             value: 'two',
           },
         ],
@@ -1313,11 +1345,11 @@ describe('processProtocolSortRule', () => {
         type: 'ordinal',
         options: [
           {
-            label: 'One',
+            label: { en: 'One' },
             value: 'one',
           },
           {
-            label: 'Two',
+            label: { en: 'Two' },
             value: 'two',
           },
         ],
@@ -1618,23 +1650,23 @@ describe('processProtocolSortRule', () => {
         type: 'ordinal',
         options: [
           {
-            label: 'Every day',
+            label: { en: 'Every day' },
             value: 4,
           },
           {
-            label: 'Every other day',
+            label: { en: 'Every other day' },
             value: 3,
           },
           {
-            label: 'Every week',
+            label: { en: 'Every week' },
             value: 2,
           },
           {
-            label: 'Sometimes',
+            label: { en: 'Sometimes' },
             value: 1,
           },
           {
-            label: 'Never',
+            label: { en: 'Never' },
             value: -1,
           },
         ],
@@ -1657,5 +1689,19 @@ describe('processProtocolSortRule', () => {
       'Benjamin',
       'Charlie',
     ]);
+  });
+});
+
+describe('alphabetical order follows the locale it is given', () => {
+  const items = [{ name: 'z' }, { name: 'ö' }, { name: 'a' }];
+  const rules = [
+    { property: 'name', direction: 'asc' as const, type: 'string' as const },
+  ];
+  const order = (locale: string) =>
+    createSorter<{ name: string }>(rules, locale)(items).map((i) => i.name);
+
+  it('puts ö after z in Swedish and between a and z in German', () => {
+    expect(order('sv')).toEqual(['a', 'z', 'ö']);
+    expect(order('de')).toEqual(['a', 'ö', 'z']);
   });
 });

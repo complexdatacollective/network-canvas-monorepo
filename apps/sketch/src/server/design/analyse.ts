@@ -137,7 +137,9 @@ export const analyse = (
     );
   });
 
-  // display names unique across node types and relationships (exact compare in schema 8)
+  // display names unique across node types and relationships (exact compare).
+  // Schema 9 writes a type's name into exports, so it must be one unpadded
+  // line in NFC.
   const names = new Set<string>();
   const uniqueName = (
     name: string,
@@ -145,7 +147,11 @@ export const analyse = (
     suffix: string,
     path: string,
   ) => {
-    let x = name || fallback;
+    let x =
+      name
+        .normalize('NFC')
+        .replace(/[\p{Cc}\s]+/gu, ' ')
+        .trim() || fallback;
     if (names.has(x)) {
       const base = `${x} ${suffix}`;
       x = base;

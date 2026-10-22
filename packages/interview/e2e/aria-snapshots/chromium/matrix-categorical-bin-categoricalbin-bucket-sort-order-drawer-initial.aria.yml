@@ -5,7 +5,7 @@
     - heading "Family" [level=4]
   - button "Category Work, 0 items":
     - heading "Work" [level=4]
-  - button "Collapse drawer" [expanded]: 3 unplaced
+  - button "3 unplaced Collapse drawer" [expanded]
   - button "Alice"
   - button "Bob"
   - button "Carol"

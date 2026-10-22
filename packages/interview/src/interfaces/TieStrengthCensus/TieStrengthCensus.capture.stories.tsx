@@ -30,10 +30,6 @@ const build = () => {
     label: 'Rate Relationships',
     initialNodes: { count: 4 },
     subject: { entity: 'node', type: nt.id },
-    introductionPanel: {
-      title: 'Rate Your Relationships',
-      text: 'In this stage, you will be shown pairs of people from your network. For each pair, please indicate the strength of their relationship.',
-    },
   });
   stage.addPrompt({
     text: 'How strong is the friendship between these two people?',
@@ -50,18 +46,12 @@ const meta: Meta = {
   tags: ['capture'],
   parameters: {
     layout: 'fullscreen',
-    // advance: dismiss the stage's introduction panel so the pair UI is
-    // pictured (showNavigation keeps the Next button available; the runner
-    // removes the navigation before screenshotting).
-    capture: {
-      interface: 'TieStrengthCensus',
-      advance: 1,
-    } satisfies CaptureParameters,
+    capture: { interface: 'TieStrengthCensus' } satisfies CaptureParameters,
   },
 };
 
 export default meta;
 
 export const Capture: StoryObj = {
-  render: () => <CaptureStory build={build} showNavigation />,
+  render: () => <CaptureStory build={build} />,
 };

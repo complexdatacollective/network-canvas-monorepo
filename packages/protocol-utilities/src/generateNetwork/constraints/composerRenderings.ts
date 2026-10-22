@@ -144,8 +144,7 @@ const fieldKey = (
  * The schema's writer tags identify shared FormFieldSchema surfaces without a
  * second stage-type list: their reference ends in `variable` and is validated.
  * Network Composer fields are excluded because their override was collected
- * separately. FamilyPedigree has no stage subject, so its node form recovers
- * the type from nodeConfig.
+ * separately.
  */
 function ordinaryFormFields(
   codebook: StructuralCodebook,
@@ -167,11 +166,7 @@ function ordinaryFormFields(
     const stage = stages[stageIndex];
     if (stage === undefined || stage.type === 'NetworkComposer') continue;
 
-    const subject =
-      hit.subject ??
-      (stage.type === 'FamilyPedigree'
-        ? { entity: 'node' as const, type: stage.nodeConfig.type }
-        : undefined);
+    const { subject } = hit;
     if (subject === undefined || subject.entity === 'ego') continue;
 
     const key = fieldKey({ ...subject, variable: hit.variableId });

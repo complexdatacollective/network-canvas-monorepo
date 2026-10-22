@@ -51,5 +51,4 @@ const network: NcNetwork = NcNetworkSchema.parse(storedValue);
 
 Code that already has an `NcNetwork` must not write nullish values. Code that
 accepts stored or external data must parse it before exposing the public output
-types. `StageMetadataSchema` applies the same sparse normalization to Family
-Pedigree edge attribute snapshots.
+types.

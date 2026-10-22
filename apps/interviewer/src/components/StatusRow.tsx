@@ -1,4 +1,11 @@
-import { HardDrive, ShieldAlert, ShieldCheck } from 'lucide-react';
+import {
+  CloudCheck,
+  CloudDownload,
+  CloudOff,
+  HardDrive,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import type React from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -11,10 +18,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
+import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
+import { type AppOffline, useAppOffline } from '~/lib/pwa/appOffline';
 import { isRunningInstalled } from '~/lib/pwa/isRunningInstalled';
+import {
+  type OfflineDownload,
+  useOfflineDownload,
+} from '~/lib/pwa/offlineDownload';
 import {
   estimateStorage,
   formatBytes,
@@ -23,6 +36,7 @@ import {
 } from '~/lib/storage';
 
 import AppUpdatePill from './AppUpdate/AppUpdatePill';
+import { offlineMessages } from './offlineMessages';
 
 const messages = defineMessages({
   interviewerAPPVERSION: {
@@ -289,6 +303,8 @@ export function StatusRowView({
   mode,
   durability,
   installed,
+  offline = 'checking',
+  download,
   versionSlot,
 }: {
   protocolCount: number;
@@ -296,9 +312,16 @@ export function StatusRowView({
   mode: AuthMode | undefined;
   durability: Durability | null;
   installed: boolean;
+  // Whether Interviewer works offline on this device; no chip until it is
+  // known.
+  offline?: AppOffline;
+  // How far the download for offline use has got, while it is not ready.
+  download?: OfflineDownload;
   versionSlot?: React.ReactNode;
 }) {
   const intl = useAppIntl();
+  const downloading = offline === 'not-ready' && download?.downloading === true;
+  const progress = downloading ? (download?.progress ?? null) : null;
   return (
     <motion.div
       variants={variants}
@@ -412,6 +435,68 @@ export function StatusRowView({
             )}
           </StatusChipPopover>
         ) : null}
+        {downloading ? (
+          <StatusChipPopover
+            testId="offline-status-trigger"
+            className={`${statusTriggerClassName} text-info`}
+            chip={
+              <>
+                <CloudDownload className={statusIconClassName} />
+                <span className={compactLabelClassName}>
+                  {intl.formatMessage(offlineMessages.downloadingChip, {
+                    hasProgress: String(progress !== null),
+                    percent: intl.formatNumber(progress ?? 0, {
+                      style: 'percent',
+                    }),
+                  })}
+                </span>
+              </>
+            }
+          >
+            <span className="flex flex-col gap-3">
+              {intl.formatMessage(offlineMessages.downloadingHelp)}
+              <ProgressBar
+                orientation="horizontal"
+                tone="info"
+                nudge={false}
+                indeterminate={progress === null}
+                percentProgress={(progress ?? 0) * 100}
+                label={intl.formatMessage(
+                  offlineMessages.downloadProgressLabel,
+                )}
+              />
+            </span>
+          </StatusChipPopover>
+        ) : offline === 'ready' || offline === 'not-ready' ? (
+          <StatusChipPopover
+            testId="offline-status-trigger"
+            className={`${statusTriggerClassName} ${
+              offline === 'ready' ? 'text-primary' : 'text-warning'
+            }`}
+            chip={
+              <>
+                {offline === 'ready' ? (
+                  <CloudCheck className={statusIconClassName} />
+                ) : (
+                  <CloudOff className={statusIconClassName} />
+                )}
+                <span className={compactLabelClassName}>
+                  {intl.formatMessage(
+                    offline === 'ready'
+                      ? offlineMessages.readyChip
+                      : offlineMessages.notReadyChip,
+                  )}
+                </span>
+              </>
+            }
+          >
+            {intl.formatMessage(
+              offline === 'ready'
+                ? offlineMessages.readyHelp
+                : offlineMessages.notReadyHelp,
+            )}
+          </StatusChipPopover>
+        ) : null}
         {versionSlot ?? (
           <span>
             {intl.formatMessage(messages.interviewerAPPVERSION, {
@@ -441,6 +526,8 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
   // Static per page load, like InstallBanner: installing mid-session still
   // requires launching the installed app.
   const [installed] = useState(isRunningInstalled);
+  const offline = useAppOffline();
+  const download = useOfflineDownload();
 
   useEffect(() => {
     let active = true;
@@ -495,6 +582,8 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
       mode={displayMode}
       durability={durability}
       installed={installed}
+      offline={offline}
+      download={download}
       versionSlot={<AppUpdatePill />}
     />
   );

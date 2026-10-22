@@ -1,6 +1,7 @@
 import { alterLimits } from '../../sections/alter-limits/alterLimits.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { nameGeneratorPrompts } from '../../sections/name-generator-prompts/nameGeneratorPrompts.tsx';
+import { nameGeneratorWording } from '../../sections/name-generator-wording/nameGeneratorWording.tsx';
 import { nodePanels } from '../../sections/panels/nodePanels.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
@@ -29,6 +30,7 @@ export const nameGeneratorQuickAddStageEditor = defineStageEditor(
     nameGeneratorPrompts(),
     nodePanels(),
     alterLimits(),
+    nameGeneratorWording('NameGeneratorQuickAdd'),
     skipLogic(),
     interviewerGuidance(),
   ],

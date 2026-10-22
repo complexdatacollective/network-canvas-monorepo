@@ -163,7 +163,7 @@ export default function Setup() {
     // (§11.2), and a focused screen has no area layout to own that landmark.
     <main
       id="main-content"
-      className="flex h-full items-center justify-center p-4"
+      className="flex min-h-full items-center justify-center p-4"
     >
       <Surface maxWidth="xl" spacing="lg">
         <Heading level="h1" {...routeFocusTargetProps}>
@@ -277,7 +277,7 @@ export function SetupClosed() {
   return (
     <main
       id="main-content"
-      className="flex h-full items-center justify-center p-4"
+      className="flex min-h-full items-center justify-center p-4"
     >
       <Surface maxWidth="xl" spacing="lg">
         <Heading level="h1" {...routeFocusTargetProps}>

@@ -5,7 +5,7 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
 import type { DeckEntry } from './deckEntries';
-import { DeckSlotCard } from './DeckSlotCard';
+import { DeckSlotCard, type Schema8CardActions } from './DeckSlotCard';
 
 // DeckSlotCard is the single entry point every carousel slot renders
 // through, regardless of the entry's kind (protocol / sample / pending
@@ -22,6 +22,7 @@ type ProtocolOverrides = {
   description?: string;
   hash?: string;
   importedAt?: string;
+  geospatial?: boolean;
 };
 
 function makeProtocol({
@@ -29,20 +30,25 @@ function makeProtocol({
   description = 'A study exploring the structure of personal support networks among recent migrants.',
   hash = 'story-protocol-hash',
   importedAt = '2026-05-20T10:00:00.000Z',
+  geospatial = false,
 }: ProtocolOverrides = {}): ProtocolWithCounts {
   const protocol: CurrentProtocol = {
     name,
     description,
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
-    stages: [],
+    // Only its type matters here: a Geospatial stage needs the internet.
+    stages: geospatial
+      ? [{ id: 'map', type: 'Geospatial' } as CurrentProtocol['stages'][number]]
+      : [],
   };
 
   return {
     id: 'story-protocol',
     hash,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt,
     description,
     codebook: {},
@@ -72,20 +78,58 @@ function ResizableFrame({
 }
 
 type StoryArgs = {
-  kind: 'protocol' | 'sample' | 'development' | 'pending';
+  kind: 'protocol' | 'schema8' | 'sample' | 'development' | 'pending';
   isActive: boolean;
   sessionCount: number;
   size: number;
   progress: number;
+  // kind="schema8" only: a schema 8 protocol, whose interviews run in the
+  // bundled Interviewer 8.
+  legacyBundled: boolean;
+  // kind="protocol" or "schema8": the protocol has a stage that needs the
+  // internet.
+  geospatial: boolean;
 };
+
+const schema8Actions = (bundled: boolean): Schema8CardActions => ({
+  interviewer: bundled ? { version: '8.5.0', path: '/v8/' } : null,
+});
 
 function entryForKind(
   kind: StoryArgs['kind'],
   progress: number,
+  sessionCount: number,
+  geospatial: boolean,
 ): Exclude<DeckEntry, { kind: 'import' }> {
   switch (kind) {
     case 'protocol':
-      return { kind: 'protocol', protocol: makeProtocol() };
+      return { kind: 'protocol', protocol: makeProtocol({ geospatial }) };
+    case 'schema8': {
+      const { id, hash, name, description, importedAt } = makeProtocol({
+        name: 'Wave One Support Networks',
+      });
+      return {
+        kind: 'protocol',
+        protocol: {
+          id,
+          hash,
+          name,
+          description,
+          importedAt,
+          schemaVersion: 8,
+          codebook: {},
+          protocol: {
+            name,
+            schemaVersion: 8,
+            codebook: {},
+            stages: geospatial
+              ? [{ id: 'map', type: 'Geospatial', label: 'Map' }]
+              : [],
+          },
+          sessionCount,
+        },
+      };
+    }
     case 'sample':
       return { kind: 'sample' };
     case 'development':
@@ -122,11 +166,13 @@ const meta: Meta<StoryArgs> = {
     sessionCount: 3,
     size: 480,
     progress: 0.5,
+    legacyBundled: true,
+    geospatial: false,
   },
   argTypes: {
     kind: {
       control: 'inline-radio',
-      options: ['protocol', 'sample', 'development', 'pending'],
+      options: ['protocol', 'schema8', 'sample', 'development', 'pending'],
       description: 'Which DeckEntry kind fills this slot',
     },
     isActive: {
@@ -139,11 +185,23 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'range', min: 0, max: 1, step: 0.05 },
       description: 'Pending-import progress fraction (kind="pending" only)',
     },
+    legacyBundled: {
+      control: 'boolean',
+      description: 'Whether this build bundles Interviewer 8 (kind="schema8")',
+    },
   },
-  render: ({ kind, isActive, sessionCount, size, progress }) => (
+  render: ({
+    kind,
+    isActive,
+    sessionCount,
+    size,
+    progress,
+    legacyBundled,
+    geospatial,
+  }) => (
     <ResizableFrame size={size}>
       <DeckSlotCard
-        entry={entryForKind(kind, progress)}
+        entry={entryForKind(kind, progress, sessionCount, geospatial)}
         isActive={isActive}
         activate={() => {}}
         sessionCount={sessionCount}
@@ -151,6 +209,7 @@ const meta: Meta<StoryArgs> = {
         onDismissSample={() => {}}
         onInstallSample={() => {}}
         onInstallDevelopment={() => {}}
+        schema8={schema8Actions(legacyBundled)}
       />
     </ResizableFrame>
   ),
@@ -165,6 +224,11 @@ type Story = StoryObj<StoryArgs>;
  * pending-import progress footer.
  */
 export const Default: Story = {};
+
+/** A protocol with a stage that always needs the internet. */
+export const RequiresInternet: Story = {
+  args: { geospatial: true },
+};
 
 export const SampleTeaser: Story = {
   args: { kind: 'sample' },
@@ -181,4 +245,23 @@ export const DevelopmentTeaser: Story = {
 
 export const PendingImport: Story = {
   args: { kind: 'pending', progress: 0.65 },
+};
+
+/**
+ * A schema 8 protocol: a protocol card like any other, with its schema line
+ * marked as an older version. Start opens the normal new-interview form; the
+ * interview runs in Interviewer 8.
+ */
+export const SchemaEightProtocol: Story = {
+  args: { kind: 'schema8' },
+};
+
+/** A schema 8 protocol with a stage that always needs the internet. */
+export const SchemaEightRequiresInternet: Story = {
+  args: { kind: 'schema8', geospatial: true },
+};
+
+/** This build has no Interviewer 8: no interview can be started. */
+export const SchemaEightUnavailable: Story = {
+  args: { kind: 'schema8', legacyBundled: false },
 };

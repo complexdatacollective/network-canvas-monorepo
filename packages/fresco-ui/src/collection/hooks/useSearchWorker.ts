@@ -17,7 +17,7 @@ import type { Key, KeyExtractor } from '../types';
 type SearchEngine = {
   init: (
     items: (Record<string, unknown> & { _key: Key })[],
-    keys: string[],
+    keys: FilterProperty[],
     options?: FuseOptions,
   ) => void;
   search: (query: string, minQueryLength?: number) => WorkerSearchResult;
@@ -66,12 +66,10 @@ export function useSearchWorker<T extends Record<string, unknown>>({
   const [isReady, setIsReady] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
 
-  // Convert FilterProperty[] to string[] for fuse.js
-  const fuseKeys = filterKeys.map((key) =>
-    Array.isArray(key) ? key.join('.') : key,
-  );
-  const fuseKeysRef = useRef(fuseKeys);
-  fuseKeysRef.current = fuseKeys;
+  // Path arrays go to Fuse as arrays: joining them with '.' would split a
+  // segment that itself contains a dot (a variable named `a.b`) into two.
+  const filterKeysRef = useRef(filterKeys);
+  filterKeysRef.current = filterKeys;
 
   const fuseOptionsRef = useRef(fuseOptions);
   fuseOptionsRef.current = fuseOptions;
@@ -129,7 +127,7 @@ export function useSearchWorker<T extends Record<string, unknown>>({
 
         await apiRef.current.init(
           serializedItems,
-          fuseKeysRef.current,
+          filterKeysRef.current,
           fuseOptionsRef.current,
         );
         if (!cancelled && !isUnmountedRef.current) {

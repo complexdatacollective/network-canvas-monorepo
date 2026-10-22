@@ -6,8 +6,8 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  * Declared apart from the shared form-fields section's own copy because the
  * questions differ: that section asks what a field COLLECTS and writes the
  * control onto the codebook attribute, while a composer field carries its own
- * control and its own settings, and captions itself with an optional label
- * rather than a required question. A translator reading these needs the
+ * control and its own settings, and its caption starts out as the attribute's
+ * name rather than empty. A translator reading these needs the
  * composer's account of a form field in front of them, not the shared one.
  */
 export const composerFormFieldMessages = defineMessages({
@@ -65,9 +65,15 @@ export const composerFormFieldMessages = defineMessages({
   questionHint: {
     id: 'protocolBuilder.networkCanvas.formFieldQuestionHint',
     defaultMessage:
-      'What the participant is asked. Leave it empty to use the attribute’s own name.',
+      'What the participant is asked. It starts as the attribute’s name; change it to the words the participant should read.',
     description:
-      'Guidance under the question box of a network composer form field. The attribute’s name is the researcher-facing name the codebook records it under.',
+      'Guidance under the question box of a network composer form field. The box is filled in with the attribute’s name when the attribute is chosen; the attribute’s name is the researcher-facing name the codebook records it under, and it is never translated, so the question is what the participant reads.',
+  },
+  questionRequired: {
+    id: 'protocolBuilder.networkCanvas.formFieldQuestionRequired',
+    defaultMessage: 'Write what the participant is asked for this field.',
+    description:
+      'Refusal shown when a network composer form field is saved with an empty question box.',
   },
   questionPlaceholder: {
     id: 'protocolBuilder.networkCanvas.formFieldQuestionPlaceholder',
@@ -152,7 +158,7 @@ export const composerFormFieldMessages = defineMessages({
     defaultMessage:
       '{attributeId} — this attribute is no longer in the codebook',
     description:
-      'How a network composer form field reads in the list when the attribute it records into has been deleted from the codebook and the field has no question of its own to be named by. attributeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted.',
+      'How a network composer form field reads in the list when the attribute it records into has been deleted from the codebook: in place of its question when it has none, and as a warning badge under the question when it has one. attributeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted.',
   },
   recordsAttribute: {
     id: 'protocolBuilder.networkCanvas.formFieldRecordsAttribute',

@@ -29,7 +29,7 @@ function TypeInfo() {
 /**
  * What kind of stage is open, read from the open EDIT. Asked of every
  * interface the fixture holds, because a hook that had settled on one would
- * agree on that stage and disagree on the other eighteen.
+ * agree on that stage and disagree on the other nineteen.
  */
 describe('what kind of stage is open', () => {
   it.each(fixtureStageIds())('answers for %s', (stageId) => {

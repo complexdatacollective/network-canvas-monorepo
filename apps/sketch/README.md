@@ -1,7 +1,7 @@
 # Sketch
 
 Sketch is a one-page site where a researcher describes a network study in plain
-language and gets back a working Network Canvas protocol (schema 8). The
+language and gets back a working Network Canvas protocol (schema 9). The
 protocol opens straight in Architect for editing, or downloads as a
 `.netcanvas` file.
 
@@ -28,9 +28,18 @@ steps. They are the five rows the generating screen shows
    with problems gets **one** retry, with the problems spelled out as feedback.
 3. **Wording.** A cheap model polishes titles, prompts and screen text. A
    wording failure is not fatal: the design's draft wording is kept.
-4. **Compile.** `compile.ts` turns the design plus wording into a schema 8
+4. **Compile.** `compile.ts` turns the design plus wording into a schema 9
    protocol: codebook, stages, skip logic, filters and assets (placeholder
-   roster CSVs, the world-countries GeoJSON for geospatial stages).
+   roster CSVs, the world-countries GeoJSON for geospatial stages). The
+   protocol is in English, its one language, so every participant-facing text
+   is a localized string with an `en` translation. Only Ego Forms have an
+   introduction panel, as schema 9 requires. Instead, the compiler puts an
+   Information screen explaining the task before the first stage of each
+   new kind of task (`intros.ts`), shown exactly when that stage is, unless
+   the design already has an instructions screen there. It ends the interview
+   with a finish stage, and fills in the wording Network Canvas supplies for
+   each stage and for the interview itself, as Architect does for a new
+   stage.
 5. **Validate.** `@codaco/protocol-validation` validates the protocol. Only a
    protocol that validates is returned.
 

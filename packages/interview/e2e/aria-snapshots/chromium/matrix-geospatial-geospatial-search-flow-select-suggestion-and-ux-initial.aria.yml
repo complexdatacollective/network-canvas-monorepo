@@ -1,7 +1,7 @@
 - main:
   - button "Search location"
-  - button "Zoom In"
-  - button "Zoom Out"
+  - button "Zoom in"
+  - button "Zoom out"
   - button "Recenter Map"
   - status:
     - heading "Search for or select this person’s neighbourhood." [level=4]

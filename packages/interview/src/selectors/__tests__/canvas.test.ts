@@ -26,7 +26,8 @@ describe('Sociogram placement selectors', () => {
       importedAt: '2026-08-12T00:00:00.000Z',
       assets: [],
       name: 'Test protocol',
-      schemaVersion: 8,
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
         node: {
           person: {
@@ -34,7 +35,10 @@ describe('Sociogram placement selectors', () => {
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
-              layout: { name: 'Layout', type: 'layout' },
+              layout: {
+                name: 'Layout',
+                type: 'layout',
+              },
             },
           },
         },
@@ -45,13 +49,13 @@ describe('Sociogram placement selectors', () => {
         {
           id: 'sociogram',
           type: 'Sociogram',
-          label: 'Sociogram',
+          label: { en: 'Sociogram' },
           background: { concentricCircles: 4 },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
               id: 'prompt',
-              text: 'Arrange people',
+              text: { en: 'Arrange people' },
               layout: { layoutVariable },
             },
           ],

@@ -34,6 +34,9 @@ export default defineConfig({
   // stub it here so modules reading APP_VERSION can be imported under test.
   define: {
     __APP_VERSION__: JSON.stringify('0.0.0-test'),
+    // No Interviewer 8 is bundled under test; a test that needs one mocks
+    // `getBundledLegacyInterviewer`.
+    __INTERVIEWER_V8__: 'null',
   },
   test: {
     exclude: ['**/node_modules/**', '**/dist/**', '**/storybook-static/**'],
@@ -138,13 +141,16 @@ export default defineConfig({
             '@codaco/fresco-ui > zustand/shallow',
             '@codaco/fresco-ui > zustand/vanilla',
             '@codaco/interview > @reduxjs/toolkit',
+            '@codaco/interview > @use-gesture/react',
             '@codaco/interview > concaveman',
             '@codaco/interview > csvtojson',
             '@codaco/interview > html-to-image',
+            '@codaco/interview > intl-messageformat',
             '@codaco/interview > mapbox-gl/esm',
             '@codaco/interview > ohash',
             '@codaco/interview > react-redux',
             '@codaco/interview > redux-logger',
+            '@codaco/protocol-validation > csvtojson',
             'chromatic/isChromatic',
             'jszip',
             // Reached through @codaco/interview: OnlineStatusProvider imports

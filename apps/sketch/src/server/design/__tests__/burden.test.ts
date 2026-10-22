@@ -118,14 +118,22 @@ describe('estimateBurden', () => {
   it('lists the heaviest stages for the review, marking unfiltered ones', () => {
     const protocol = {
       stages: [
-        { type: 'NameGeneratorQuickAdd', label: 'Names', prompts: [{}] },
+        {
+          type: 'NameGeneratorQuickAdd',
+          label: { en: 'Names' },
+          prompts: [{}],
+        },
         {
           type: 'AlterForm',
-          label: 'About them',
+          label: { en: 'About them' },
           filter: {},
           form: { fields: [{}] },
         },
-        { type: 'DyadCensus', label: 'Who knows whom', prompts: [{}] },
+        {
+          type: 'DyadCensus',
+          label: { en: 'Who knows whom' },
+          prompts: [{}],
+        },
       ],
     };
     const costs = stageCosts(protocol, 12);

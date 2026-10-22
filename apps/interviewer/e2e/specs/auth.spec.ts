@@ -127,7 +127,7 @@ test.describe('vault lifecycle', () => {
     await page.getByTestId('settings-button').click();
     await page.getByTestId('exit-button').click();
     const exitDialog = page.getByRole('dialog', {
-      name: 'Exit this interview?',
+      name: 'Exit interview',
     });
     await expect(exitDialog).toBeVisible();
     await exitDialog.getByRole('button', { name: 'Exit interview' }).click();

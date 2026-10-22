@@ -1,0 +1,42 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your child":
+    - heading "Add your child" [level=2]
+    - button "Close"
+    - text: The other parent is - matrix check Required
+    - radiogroup "The other parent is - matrix check":
+      - radio "Pam" [checked]
+      - text: Pam
+      - radio "Not in the tree yet - matrix check"
+      - text: Not in the tree yet - matrix check
+      - radio "Nobody else - matrix check"
+      - text: Nobody else - matrix check
+    - text: Kind of child - matrix check Required
+    - radiogroup "Kind of child - matrix check":
+      - radio "Biological kind - matrix check"
+      - text: Biological kind - matrix check
+      - radio "Adopted kind - matrix check"
+      - text: Adopted kind - matrix check
+      - radio "Social kind - matrix check" [checked]
+      - text: Social kind - matrix check
+      - radio "Donor kind - matrix check"
+      - text: Donor kind - matrix check
+      - radio "Surrogacy kind - matrix check"
+      - text: Surrogacy kind - matrix check
+    - text: Is Pam a genetic parent of the child - matrix check Required
+    - radiogroup "Is Pam a genetic parent of the child - matrix check":
+      - radio "Yes"
+      - radio "No"
+    - text: Carrier of the pregnancy - matrix check Required
+    - radiogroup "Carrier of the pregnancy - matrix check":
+      - radio "You"
+      - text: You
+      - radio "Pam"
+      - text: Pam
+      - radio "Another or unknown carrier - matrix check"
+      - text: Another or unknown carrier - matrix check
+    - button "Cancel"
+    - button "Back"
+    - button "Save"

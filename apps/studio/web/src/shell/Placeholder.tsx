@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -31,16 +29,6 @@ export type PlaceholderProps = {
   description: MessageDescriptor;
   /** The issue that builds it, so the reader can go and look. */
   issue: `#${number}`;
-  /**
-   * Something the researcher can actually do here, for the rare route that
-   * owes them one before its screen exists — `/no-team`'s sign-out and its
-   * language choice, the two things a session the whole app redirects there
-   * (§6.4) can otherwise reach nowhere else.
-   *
-   * The exception proves the rule below rather than weakening it: these are
-   * working controls the shell owns, not a preview of the unbuilt screen's.
-   */
-  action?: ReactNode;
 };
 
 /**
@@ -65,7 +53,6 @@ export default function Placeholder({
   title,
   description,
   issue,
-  action,
 }: PlaceholderProps) {
   const intl = useAppIntl();
 
@@ -78,7 +65,6 @@ export default function Placeholder({
       <Paragraph intent="smallText" className="text-text/60">
         {intl.formatMessage(messages.unbuilt, { issue })}
       </Paragraph>
-      {action}
     </div>
   );
 }

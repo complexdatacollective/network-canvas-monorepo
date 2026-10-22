@@ -14,6 +14,4 @@
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"
-  - region "Interview notifications":
-    - dialog:
-      - paragraph: Please select a response before continuing.
+  - region "Interview notifications"

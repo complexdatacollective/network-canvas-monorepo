@@ -21,8 +21,8 @@ import session, {
   restoreNode,
 } from '../../store/modules/session';
 import ui, {
-  setPassphrase,
-  setPassphraseInvalid,
+  encryptionUnlocked,
+  passphraseRejected,
 } from '../../store/modules/ui';
 import { AnalyticsContext } from '../AnalyticsContext';
 import {
@@ -182,8 +182,8 @@ describe('the analytics event catalogue', () => {
         currentStep: 1,
       }),
     );
-    store.dispatch(setPassphrase('a passphrase'));
-    store.dispatch(setPassphraseInvalid(true));
+    store.dispatch(encryptionUnlocked('a-scope'));
+    store.dispatch(passphraseRejected());
 
     const captured = client.capture.mock.calls.map(([name, properties]) =>
       decodeWire(String(name), properties),

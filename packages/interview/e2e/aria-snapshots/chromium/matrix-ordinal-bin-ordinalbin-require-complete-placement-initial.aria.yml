@@ -1,0 +1,16 @@
+- main:
+  - status:
+    - heading "Rate closeness" [level=2]
+  - heading "Not close" [level=4]
+  - listbox "Container for the value 'Not close'"
+  - heading "Close" [level=4]
+  - listbox "Container for the value 'Close'"
+  - button "2 unplaced Collapse drawer" [expanded]
+  - button "Ivy"
+  - button "Jon"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

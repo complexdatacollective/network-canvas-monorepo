@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
-import { sanitizeCellValue } from '../csvShared';
+import { csvHeaderCell, sanitizeCellValue } from '../csvShared';
+
+describe('csvHeaderCell', () => {
+  it.each(['=total', '+1', '-score', '@handle'])(
+    'guards the header %s like an answer',
+    (header) => {
+      expect(csvHeaderCell(header)).toBe(`'${header}`);
+    },
+  );
+
+  it('writes any other header as named', () => {
+    expect(csvHeaderCell('close friend')).toBe('close friend');
+    expect(csvHeaderCell('友人')).toBe('友人');
+  });
+
+  it('quotes a header that CSV needs quoted', () => {
+    expect(csvHeaderCell('=a,b')).toBe(`"'=a,b"`);
+    expect(csvHeaderCell('say "hi"')).toBe('"say ""hi"""');
+    expect(csvHeaderCell('\rline')).toBe(`"'\rline"`);
+  });
+});
 
 describe('sanitizeCellValue', () => {
   describe('formula injection neutralization', () => {

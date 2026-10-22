@@ -12,6 +12,8 @@ import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/lo
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
+import type { ProtocolLocalization } from '../../localization/localizedText.ts';
+import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import {
   attributeField,
@@ -47,6 +49,18 @@ import type { CodebookWriteOutcome } from '../writes.ts';
  * renders its English `defaultMessage` and the existing English assertions
  * stand. This is the one test that mounts one.
  */
+const LOCALIZATION: ProtocolLocalization = {
+  defaultLocale: 'en',
+  locales: ['en'],
+};
+
+/** The protocol's languages, which the editors' localized fields edit in. */
+const inProtocol = (children: ReactNode) => (
+  <ProtocolLocalizationProvider localization={LOCALIZATION}>
+    {children}
+  </ProtocolLocalizationProvider>
+);
+
 const context: ProtocolBuilderProtocolContext = {
   codebook: {
     node: {
@@ -56,7 +70,11 @@ const context: ProtocolBuilderProtocolContext = {
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          age: { name: 'Age', type: 'number', component: 'Number' },
+          age: {
+            name: 'Age',
+            type: 'number',
+            component: 'Number',
+          },
         },
       },
     },
@@ -65,19 +83,26 @@ const context: ProtocolBuilderProtocolContext = {
         name: 'Knows',
         color: 'edge-color-seq-1',
         variables: {
-          closeness: { name: 'Closeness', type: 'number' },
+          closeness: {
+            name: 'Closeness',
+            type: 'number',
+          },
         },
       },
     },
     ego: {
       variables: {
-        consent: { name: 'Consent', type: 'boolean' },
+        consent: {
+          name: 'Consent',
+          type: 'boolean',
+        },
       },
     },
   },
   assets: {},
   orderedStages: [],
   issues: [],
+  localization: LOCALIZATION,
 };
 
 /**
@@ -117,7 +142,7 @@ const esIntl: IntlShape = createAppIntl({ locale: 'es', messages: SPANISH });
 const renderInSpanish = (children: ReactNode) =>
   render(
     <AppI18nProvider locale="es" locales={ecosystemLocales} messages={SPANISH}>
-      {children}
+      {inProtocol(children)}
     </AppI18nProvider>,
   );
 
@@ -245,11 +270,15 @@ const PERSON_DOCUMENT: SectionDoc = {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: 'Asian', value: 'asian' },
-        { label: 'White', value: 'white' },
+        { label: { en: 'Asian' }, value: 'asian' },
+        { label: { en: 'White' }, value: 'white' },
       ],
     },
-    age: { name: 'Age', type: 'number', component: 'Number' },
+    age: {
+      name: 'Age',
+      type: 'number',
+      component: 'Number',
+    },
   },
 };
 
@@ -374,7 +403,7 @@ describe('the codebook editors swept for English', () => {
     );
     const { rerender } = render(
       <AppI18nProvider locale="en" locales={ecosystemLocales}>
-        {editor}
+        {inProtocol(editor)}
       </AppI18nProvider>,
     );
 
@@ -388,7 +417,7 @@ describe('the codebook editors swept for English', () => {
         locales={ecosystemLocales}
         messages={SPANISH}
       >
-        {editor}
+        {inProtocol(editor)}
       </AppI18nProvider>,
     );
 
@@ -406,8 +435,8 @@ describe('the codebook editors swept for English', () => {
       name: 'preferencia',
       type: 'categorical',
       options: [
-        { label: 'Mucho', value: 'mucho' },
-        { label: 'Poco', value: 'poco' },
+        { label: { en: 'Mucho' }, value: 'mucho' },
+        { label: { en: 'Poco' }, value: 'poco' },
       ],
     };
     renderInSpanish(
@@ -470,8 +499,8 @@ describe('the codebook editors swept for English', () => {
         type: 'boolean',
         component: 'Boolean',
         options: [
-          { label: 'Sí, acepto', value: true },
-          { label: '', value: false },
+          { label: { en: 'Sí, acepto' }, value: true },
+          { value: false },
         ],
       },
       anchor: 'Valores booleanos',
@@ -505,14 +534,16 @@ describe('the codebook editors swept for English', () => {
     },
     {
       surface: 'the words at each end of a scale',
-      // Written with spaces rather than left empty: the control carries
-      // `required`, so the browser refuses an empty one before the editor is
-      // asked — and a label of nothing but spaces is exactly the case the
-      // browser calls answered and a participant cannot read.
+      // Written with spaces rather than left empty: a label of nothing but
+      // spaces is one a participant cannot read, and the editor has to refuse
+      // it however it arrived.
       draft: {
         name: 'cercanía',
         type: 'scalar',
-        parameters: { minLabel: '   ', maxLabel: 'Muy cerca' },
+        parameters: {
+          minLabel: { en: '   ' },
+          maxLabel: { en: 'Muy cerca' },
+        },
       },
       anchor: 'Ajustes del control',
       refusal: 'Escribe qué significa el extremo bajo de la escala.',
@@ -570,10 +601,7 @@ describe('the codebook editors swept for English', () => {
         name: 'consent',
         type: 'boolean',
         component: 'Boolean',
-        options: [
-          { label: 'I agree', value: true },
-          { label: '', value: false },
-        ],
+        options: [{ label: { en: 'I agree' }, value: true }, { value: false }],
       },
       english:
         'Write what this answer says, or clear both to offer Yes and No.',
@@ -585,7 +613,10 @@ describe('the codebook editors swept for English', () => {
       draft: {
         name: 'closeness',
         type: 'scalar',
-        parameters: { minLabel: '   ', maxLabel: 'Very close' },
+        parameters: {
+          minLabel: { en: '   ' },
+          maxLabel: { en: 'Very close' },
+        },
       },
       english: 'Write what the low end of the scale means.',
       spanish: 'Escribe qué significa el extremo bajo de la escala.',
@@ -621,7 +652,7 @@ describe('the codebook editors swept for English', () => {
       );
       const { rerender } = render(
         <AppI18nProvider locale="en" locales={ecosystemLocales}>
-          {editor}
+          {inProtocol(editor)}
         </AppI18nProvider>,
       );
 
@@ -636,7 +667,7 @@ describe('the codebook editors swept for English', () => {
           locales={ecosystemLocales}
           messages={SPANISH}
         >
-          {editor}
+          {inProtocol(editor)}
         </AppI18nProvider>,
       );
 
@@ -656,7 +687,11 @@ describe('the codebook editors swept for English', () => {
    */
   it('re-reads the attribute editor’s held refusal when the language changes', async () => {
     const user = userEvent.setup();
-    const localVariable = { name: 'comment', type: 'text', component: 'Text' };
+    const localVariable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+    };
     const remoteVariable = {
       name: 'comment',
       type: 'number',
@@ -679,7 +714,7 @@ describe('the codebook editors swept for English', () => {
     );
     const { rerender } = render(
       <AppI18nProvider locale="en" locales={ecosystemLocales}>
-        {editorFor(localVariable)}
+        {inProtocol(editorFor(localVariable))}
       </AppI18nProvider>,
     );
 
@@ -688,7 +723,7 @@ describe('the codebook editors swept for English', () => {
     await user.type(name, 'localComment');
     rerender(
       <AppI18nProvider locale="en" locales={ecosystemLocales}>
-        {editorFor(remoteVariable)}
+        {inProtocol(editorFor(remoteVariable))}
       </AppI18nProvider>,
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
@@ -704,7 +739,7 @@ describe('the codebook editors swept for English', () => {
         locales={ecosystemLocales}
         messages={SPANISH}
       >
-        {editorFor(remoteVariable)}
+        {inProtocol(editorFor(remoteVariable))}
       </AppI18nProvider>,
     );
 
@@ -724,7 +759,11 @@ describe('the codebook editors swept for English', () => {
         component: 'Number',
         validation: { minValue: 0 },
       },
-      height: { name: 'Height', type: 'number', component: 'Number' },
+      height: {
+        name: 'Height',
+        type: 'number',
+        component: 'Number',
+      },
     };
     const document: SectionDoc = { ...PERSON_DOCUMENT, variables };
     renderInSpanish(<HeldRules variables={variables} seed={{ minValue: 0 }} />);

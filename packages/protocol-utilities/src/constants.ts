@@ -3,9 +3,10 @@ import type {
   EdgeColorReference,
   NodeColorReference,
   OrdinalColorReference,
-  VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
+
+import type { VariableOptionInput } from './types.ts';
 
 export const COMPONENT_TO_VARIABLE_TYPE: Record<ComponentType, VariableType> = {
   Text: 'text',
@@ -22,7 +23,7 @@ export const COMPONENT_TO_VARIABLE_TYPE: Record<ComponentType, VariableType> = {
   RelativeDatePicker: 'datetime',
 };
 
-export const DEFAULT_ORDINAL_OPTIONS: VariableOption[] = [
+export const DEFAULT_ORDINAL_OPTIONS: VariableOptionInput[] = [
   { label: 'Strongly disagree', value: 1 },
   { label: 'Disagree', value: 2 },
   { label: 'Neutral', value: 3 },
@@ -30,7 +31,7 @@ export const DEFAULT_ORDINAL_OPTIONS: VariableOption[] = [
   { label: 'Strongly agree', value: 5 },
 ];
 
-export const DEFAULT_CATEGORICAL_OPTIONS: VariableOption[] = [
+export const DEFAULT_CATEGORICAL_OPTIONS: VariableOptionInput[] = [
   { label: 'Family', value: 'family' },
   { label: 'Work', value: 'work' },
   { label: 'School', value: 'school' },

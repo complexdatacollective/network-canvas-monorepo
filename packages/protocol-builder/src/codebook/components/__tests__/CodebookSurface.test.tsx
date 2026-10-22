@@ -14,7 +14,11 @@ const context: ProtocolBuilderProtocolContext = {
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          age: { name: 'Age', type: 'number', component: 'Number' },
+          age: {
+            name: 'Age',
+            type: 'number',
+            component: 'Number',
+          },
         },
       },
     },
@@ -23,7 +27,10 @@ const context: ProtocolBuilderProtocolContext = {
         name: 'Knows',
         color: 'edge-color-seq-1',
         variables: {
-          closeness: { name: 'Closeness', type: 'number' },
+          closeness: {
+            name: 'Closeness',
+            type: 'number',
+          },
         },
       },
     },

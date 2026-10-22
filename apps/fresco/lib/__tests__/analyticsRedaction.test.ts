@@ -43,9 +43,7 @@ describe('redactParticipantLinks', () => {
   });
 
   it('keeps the named pages under a participant route', () => {
-    expect(redactParticipantLinks('/interview/finished')).toBe(
-      '/interview/finished',
-    );
+    expect(redactParticipantLinks('/onboard/error')).toBe('/onboard/error');
     expect(redactParticipantLinks('/onboard/invalid-link')).toBe(
       '/onboard/invalid-link',
     );
@@ -153,7 +151,6 @@ describe('redactProperties', () => {
 describe('isParticipantPath', () => {
   it('recognises the routes a participant sees', () => {
     expect(isParticipantPath(`/interview/${INTERVIEW_ID}`)).toBe(true);
-    expect(isParticipantPath('/interview/finished')).toBe(true);
     expect(isParticipantPath(`/onboard/${INTERVIEW_ID}`)).toBe(true);
     expect(isParticipantPath('/onboard')).toBe(true);
   });

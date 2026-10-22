@@ -18,7 +18,7 @@ test('creates a valid OneToManyDyadCensus stage from scratch', async ({
   await editor.setStageName('Who Knows This Person?');
 
   // Same subject picker as DyadCensus. Unlike DyadCensus/TieStrengthCensus,
-  // OneToManyDyadCensus's editor has NO introduction section; what it adds is
+  // what OneToManyDyadCensus's editor adds is
   // the "Node availability" section (`behaviours.removeAfterConsideration`),
   // placed AFTER the prompts and already pre-populated by the interface's own
   // template (`INTERFACE_TEMPLATES.OneToManyDyadCensus`), so nothing to author

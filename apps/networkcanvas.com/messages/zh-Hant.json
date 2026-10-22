@@ -233,8 +233,10 @@
       "DyadCensus": "二元組普查",
       "EgoForm": "自我表單",
       "FamilyPedigree": "家族譜系",
+      "FinishSession": "完成畫面",
       "Geospatial": "地理空間介面",
       "Information": "資訊",
+      "LanguageChooser": "語言選擇",
       "NameGenerator": "名字產生器（使用表單）",
       "NameGeneratorQuickAdd": "名字產生器（快速新增）",
       "NameGeneratorRoster": "名冊資料名字產生器",
@@ -275,8 +277,6 @@
       },
       "loading": "正在準備預覽…",
       "finishConfirmation": "這只是預覽，不會儲存任何內容。完成後會結束這次的協定執行，您之後可以重新開始。",
-      "finishedHeading": "預覽已結束",
-      "finishedDescription": "訪談的結束方式與參與者實際進行時相同。未儲存任何內容。",
       "restart": "重新開始預覽",
       "backToProtocol": "返回協定",
       "errorHeading": "無法預覽此協定",
@@ -336,7 +336,7 @@
       "bestFor": "最適合",
       "downloadVersion": "下載 {version} 版",
       "platformAccessibleName": "{app}（{platform}）",
-      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援架構 7 協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用架構 8，並包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始的架構 7 檔案。",
+      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援架構 7 協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用架構 9，並包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始的架構 7 檔案。",
       "schemaVersionLink": "瞭解架構版本"
     },
     "platforms": {

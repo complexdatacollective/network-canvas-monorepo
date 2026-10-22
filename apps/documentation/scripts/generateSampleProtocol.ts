@@ -5,11 +5,11 @@ import { dirname, join } from 'node:path';
 import JSZip from 'jszip';
 
 /**
- * Bundles the schema-8 `@codaco/sample-protocol` package (the same protocol
+ * Bundles the schema-9 `@codaco/sample-protocol` package (the same protocol
  * Architect ships as its built-in template) into a downloadable
  * `.netcanvas` file in `public/protocols/`.
  *
- * Run at build time (prebuild) so the download offered in the schema-8 tutorials
+ * Run at build time (prebuild) so the download offered in the schema-9 tutorials
  * always matches the protocol bundled in Architect — no hand-maintained copy
  * to drift. The output file is gitignored.
  */

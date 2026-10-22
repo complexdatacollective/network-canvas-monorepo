@@ -2,5 +2,16 @@
   "networkExporters.stage.fetching": "Fetching interview data...",
   "networkExporters.stage.formatting": "Formatting sessions...",
   "networkExporters.stage.generating": "Generating files...",
-  "networkExporters.stage.outputting": "Writing output..."
+  "networkExporters.stage.outputting": "Writing output...",
+  "networkExporters.warning.columnRenamed.description": "Some columns would have had the same name as another column in the same file. So that no answers are lost, each was written under a numbered name instead. The renamed columns are:",
+  "networkExporters.warning.columnRenamed.fromVariableItem": "In the {format, select, csv {CSV} other {GraphML}} files of {protocolName}, the {entity, select, ego {ego} other {{entityTypeName}}} column “{column}”, from the variable {variable}, was written as “{renamedTo}”.",
+  "networkExporters.warning.columnRenamed.item": "In the {format, select, csv {CSV} other {GraphML}} files of {protocolName}, the {entity, select, ego {ego} other {{entityTypeName}}} column “{column}” was written as “{renamedTo}”.",
+  "networkExporters.warning.columnRenamed.title": "Some columns were given new names",
+  "networkExporters.warning.protocolText.description": "Some of the protocol’s own text contained characters that GraphML cannot store, so they were removed in the GraphML files. These characters are usually invisible, so each one is named by its Unicode code point, such as U+0007. The affected text is:",
+  "networkExporters.warning.protocolText.item": "{text, select, protocolName {The protocol name “{name}”, with {characters} removed} nodeTypeName {The node type name “{name}” in {protocolName}, with {characters} removed} edgeTypeName {The edge type name “{name}” in {protocolName}, with {characters} removed} other {The column name “{name}” in {protocolName}, with {characters} removed}}",
+  "networkExporters.warning.protocolText.title": "Some characters were removed from protocol text in the GraphML files",
+  "networkExporters.warning.xmlCharacters.caseId": "Case ID",
+  "networkExporters.warning.xmlCharacters.description": "Some answers contained characters that GraphML cannot store, so they were removed from the GraphML files only. The CSV files keep every answer unchanged. The affected interviews and variables are:",
+  "networkExporters.warning.xmlCharacters.interview": "Interview {caseId}: {variables}",
+  "networkExporters.warning.xmlCharacters.title": "Some characters were removed from the GraphML files"
 }

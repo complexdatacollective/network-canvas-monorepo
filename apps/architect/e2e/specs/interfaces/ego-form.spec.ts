@@ -127,7 +127,8 @@ test('previews a form field, and keeps the trial answer out of the protocol', as
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('EgoForm');
   const fields = stage.type === 'EgoForm' ? stage.form.fields : [];
-  expect(fields[0]).toMatchObject({ prompt: question });
+  // Saved under `emptyProtocol()`'s only language, `en`.
+  expect(fields[0]).toMatchObject({ prompt: { en: question } });
   // Nothing of the trial answer anywhere in the stage, not merely absent from
   // the key the preview happens to use.
   expect(JSON.stringify(stage)).not.toContain('Robin');

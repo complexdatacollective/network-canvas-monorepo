@@ -9,8 +9,7 @@ import {
 } from '@codaco/shared-consts';
 
 // A controllable pause inside `encryptSession`, so a test can deterministically
-// interleave an external write (the launch-time protocol migration repointing
-// `protocolHash`, possibly from another tab) into the gap between
+// interleave an external write (possibly from another tab) into the gap between
 // `updateSession`'s read and its commit. Everything else passes through to the
 // real implementation.
 let encryptPause: {
@@ -84,26 +83,46 @@ describe('updateSession against concurrent writers', () => {
     setSessionDek(null);
   });
 
-  it('commits the freshest protocolHash when a migration repointed it mid-write', async () => {
+  it('applies a write to the stored session', async () => {
     const created = await createSession({
-      protocolHash: 'old-hash',
+      protocolHash: 'hash',
       protocolName: 'Study',
       caseId: 'case-1',
       initialNetwork: network,
     });
 
-    const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, { currentStep: 3 });
-    await pause.reached;
-    // The sweep (another tab) repoints the session while the update is
-    // suspended between its read and its commit.
-    await db.sessions.update(created.id, { protocolHash: 'new-hash' });
-    pause.release();
-    await pending;
+    await updateSession(created.id, { currentStep: 3, progress: 40 });
 
     const row = await db.sessions.get(created.id);
-    expect(row?.protocolHash).toBe('new-hash');
+    expect(row?.protocolHash).toBe('hash');
     expect(row?.currentStep).toBe(3);
+    expect(row?.progress).toBe(40);
+  });
+
+  // The runtime's sync treats a refused write as unsaved and keeps the
+  // answers to offer again, so a failure has to reach it.
+  it('rejects when the write cannot be stored', async () => {
+    const created = await createSession({
+      protocolHash: 'hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    const before = await db.sessions.get(created.id);
+    const cause = new Error('IndexedDB write failed');
+    const put = vi.spyOn(db.sessions, 'put').mockRejectedValueOnce(cause);
+    try {
+      await expect(
+        updateSession(created.id, {
+          network,
+          stageMetadata: undefined,
+          currentStep: 3,
+        }),
+      ).rejects.toBe(cause);
+    } finally {
+      put.mockRestore();
+    }
+    expect(await db.sessions.get(created.id)).toEqual(before);
   });
 
   it('does not resurrect a session deleted mid-write', async () => {

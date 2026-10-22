@@ -97,8 +97,9 @@ type ComposerActions = {
 };
 
 // Node undo and redo put stored state back verbatim instead of replaying a
-// write: an encrypted value can only be read with the IV and salt it was
-// stored with, so a value and its secure-attribute metadata travel together.
+// write: an encrypted value can only be read with the IV it was stored with,
+// and only on the node it was encrypted for, so a value travels with its
+// secure-attribute metadata and a node comes back under its own id.
 function snapshotAttributes(
   node: NcNode | undefined,
   keys: readonly string[],

@@ -1,11 +1,13 @@
 import { alterLimits } from '../../sections/alter-limits/alterLimits.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { nameGeneratorPrompts } from '../../sections/name-generator-prompts/nameGeneratorPrompts.tsx';
+import { nameGeneratorWording } from '../../sections/name-generator-wording/nameGeneratorWording.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { cardDisplay } from './sections/cardDisplay.tsx';
 import { rosterDataSource } from './sections/rosterDataSource.tsx';
+import { rosterPanel } from './sections/rosterPanel.tsx';
 import { searchOptions } from './sections/searchOptions.tsx';
 import { sortOptions } from './sections/sortOptions.tsx';
 
@@ -15,11 +17,13 @@ import { sortOptions } from './sections/sortOptions.tsx';
  * Nobody is typed in here: the people already exist in a data file, and the
  * participant picks them. So the data file comes second, right after the type
  * it creates, because everything after it names one of its columns — and the
- * three sections describing the list itself come after the questions, because
- * they are how the stage LOOKS rather than what it asks.
+ * sections describing the list itself come after the questions, because
+ * they are how the stage LOOKS rather than what it asks, the panel's title
+ * first.
  *
- * No side panels, and no heading qualified by them: the roster IS the panel,
- * and the schema gives `panels` to the other two name generators only.
+ * No side panels: the roster IS the panel, and the schema gives `panels` to
+ * the other two name generators only. So its one title is the stage's own
+ * `panelTitle`, rather than a title inside a `panels` entry.
  */
 export const nameGeneratorRosterStageEditor = defineStageEditor(
   'NameGeneratorRoster',
@@ -27,10 +31,12 @@ export const nameGeneratorRosterStageEditor = defineStageEditor(
     subjectPicker({ entity: 'node' }),
     rosterDataSource(),
     nameGeneratorPrompts(),
+    rosterPanel(),
     cardDisplay(),
     sortOptions(),
     searchOptions(),
     alterLimits(),
+    nameGeneratorWording('NameGeneratorRoster'),
     skipLogic(),
     interviewerGuidance(),
   ],

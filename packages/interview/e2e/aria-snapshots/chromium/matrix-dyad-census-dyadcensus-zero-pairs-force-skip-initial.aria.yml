@@ -1,9 +1,8 @@
 - main:
-  - heading "Intro" [level=1]
-  - paragraph: Intro copy
+  - heading "Before the stage" [level=1]
   - navigation:
     - button "Settings"
-    - button "Previous Step"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

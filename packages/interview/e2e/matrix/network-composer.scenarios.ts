@@ -9,6 +9,15 @@ import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-backgro
 import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
 
+// A researcher's own wording for the tools and the notice, each distinct from
+// the text Network Canvas supplies.
+const NAME_PLACEHOLDER = 'Who is it? - matrix check';
+const OVERTAKEN_EDIT_NOTICE = 'Your edit was overtaken - matrix check';
+const GROUPS_HEADING = 'Circles - matrix check';
+const ADD_PERSON_TOOLTIP = 'Add somebody - matrix check';
+const AUTOMATIC_LAYOUT_TOOLTIP = 'Tidy up - matrix check';
+const DRAW_CONNECTION_TOOLTIP = 'Link people - matrix check';
+
 const BACKGROUND_IMAGE_FIXTURE = path.resolve(
   import.meta.dirname,
   '../../../../apps/documentation/public/assets/responsive-svg-background.svg',
@@ -113,8 +122,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const composer = new NetworkComposerFixture(page);
 
         // Two nodes, added back-to-back (the popover stays open).
-        await composer.addNode('Person', 'Alice');
-        await composer.addNode('Person', 'Bob');
+        await composer.addNode('Alice');
+        await composer.addNode('Bob');
 
         // No behaviours.automaticLayout → MANUAL.
         await expect(composer.root).toHaveAttribute(
@@ -185,7 +194,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       },
       run: async ({ page, protocol, interview }) => {
         const composer = new NetworkComposerFixture(page);
-        await composer.addNode('Person', 'Carol');
+        await composer.addNode('Carol');
         await composer.selectTool();
         await composer.dragNodeTo('Carol', { x: 0.6, y: 0.6 });
 
@@ -280,6 +289,128 @@ export const networkComposerScenarios: InterfaceScenarios = {
     },
 
     {
+      id: 'wording-palette-and-overtaken-edit-notice',
+      covers: [
+        'addNamePlaceholder',
+        'overtakenEditNotice',
+        'groupsHeading',
+        'tooltips.addPerson',
+        'tooltips.automaticLayout',
+        'tooltips.drawConnection',
+      ],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview(197);
+        const person = synth.addNodeType({ name: 'Person' });
+        const quickAdd = person.addVariable({ type: 'text', name: 'name' });
+        const layoutVar = person.addVariable({
+          type: 'layout',
+          name: 'composerLayout',
+        });
+        const age = person.addVariable({ type: 'number', name: 'Age' });
+        const community = person.addVariable({
+          type: 'categorical',
+          name: 'Community',
+          options: [
+            { value: 'school', label: 'School' },
+            { value: 'work', label: 'Work' },
+          ],
+        });
+        const friendship = synth.addEdgeType({ name: 'Friendship' });
+        const stage = synth.addStage('NetworkComposer', {
+          subject: { entity: 'node', type: person.id },
+          quickAdd: quickAdd.id,
+          layoutVariable: layoutVar.id,
+          convexHullVariable: community.id,
+          nodeForm: {
+            fields: [{ variable: age.id, component: 'Number', label: 'Age' }],
+          },
+          // The researcher's own words, each distinct from the text Network
+          // Canvas supplies, so an assertion on one proves the stage's own
+          // setting is what the participant sees.
+          wording: {
+            'addNamePlaceholder': NAME_PLACEHOLDER,
+            'overtakenEditNotice': OVERTAKEN_EDIT_NOTICE,
+            'groupsHeading': GROUPS_HEADING,
+            'tooltips.addPerson': ADD_PERSON_TOOLTIP,
+            'tooltips.automaticLayout': AUTOMATIC_LAYOUT_TOOLTIP,
+            'tooltips.drawConnection': DRAW_CONNECTION_TOOLTIP,
+          },
+        });
+        stage.addEdgeType({ type: friendship.id });
+        // A saved age gives an undo something to change.
+        synth.addManualNode(stage.id, person.id, 'nc-dev', {
+          [quickAdd.id]: 'Dev',
+          [layoutVar.id]: { x: 0.5, y: 0.4 },
+          [age.id]: 25,
+        });
+        synth.addInformationStage({ title: 'Complete' });
+        nodeFormRefs.age = age.id;
+        return synth;
+      },
+      run: async ({ page, protocol, interview }) => {
+        const composer = new NetworkComposerFixture(page);
+        const ageValue = async () => {
+          const s = await protocol.getNetworkState(interview.interviewId);
+          return s?.nodes[0]?.[entityAttributesProperty][nodeFormRefs.age];
+        };
+
+        // Each tool carries the stage's own name, and none of the names
+        // Network Canvas supplies.
+        for (const [own, supplied] of [
+          [ADD_PERSON_TOOLTIP, 'Add node'],
+          [DRAW_CONNECTION_TOOLTIP, 'Draw edge'],
+          [GROUPS_HEADING, 'Groups'],
+          [AUTOMATIC_LAYOUT_TOOLTIP, 'Automatic layout'],
+        ] as const) {
+          await expect(
+            page.getByRole('button', { name: own, exact: true }),
+          ).toBeVisible();
+          await expect(
+            page.getByRole('button', { name: supplied, exact: true }),
+          ).toHaveCount(0);
+        }
+
+        // The name field the add-person tool opens shows the stage's hint.
+        await page
+          .getByRole('button', { name: ADD_PERSON_TOOLTIP, exact: true })
+          .click();
+        const nameField = composer.addNodeInput;
+        await expect(nameField).toHaveAttribute(
+          'placeholder',
+          NAME_PLACEHOLDER,
+        );
+        await page.keyboard.press('Escape');
+        await expect(nameField).toBeHidden();
+
+        // An undo pressed before an edit is saved overtakes it; leaving then
+        // asks before discarding it, in the stage's own words.
+        await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+        await composer.getNode('Dev').click();
+        const age = composer.getField(nodeFormRefs.age).getByRole('spinbutton');
+        await age.fill('30');
+        await page.clock.fastForward('00:02');
+        await expect.poll(ageValue).toBe(30);
+
+        // Paused, the autosave cannot save the edit before the undo.
+        await page.clock.pauseAt(new Date('2026-01-01T00:10:00Z'));
+        await age.fill('31');
+        await composer.undo();
+        await page.clock.resume();
+        await expect.poll(ageValue).toBe(25);
+
+        await composer.tapBackground();
+        const dialog = page.getByRole('dialog', { name: 'Discard changes?' });
+        await expect(dialog.getByText(OVERTAKEN_EDIT_NOTICE)).toBeVisible();
+        await expect(
+          dialog.getByText(/Undo or redo changed an answer/),
+        ).toHaveCount(0);
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        await expect(dialog).toBeHidden();
+      },
+    },
+
+    {
       id: 'nodeform-absent-edges-absent-convexhull-unset',
       covers: ['nodeForm.absent', 'edges[].absent', 'convexHullVariable.unset'],
       build: () => {
@@ -304,9 +435,9 @@ export const networkComposerScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.nodes
             .length ?? 0;
 
-        await composer.addNode('Person', 'Eve');
-        await composer.addNode('Person', 'Frank');
-        await composer.addNode('Person', 'Gina');
+        await composer.addNode('Eve');
+        await composer.addNode('Frank');
+        await composer.addNode('Gina');
         await composer.selectTool();
 
         // No edge or groups tools when the stage declares neither.
@@ -317,13 +448,14 @@ export const networkComposerScenarios: InterfaceScenarios = {
           page.getByRole('button', { name: 'Groups', exact: true }),
         ).toHaveCount(0);
 
-        // Selecting a node with no node form shows the empty state + Delete.
+        // Selecting a node with no node form shows the Delete control and no
+        // attribute form (the inspector panel only exists around a form).
         await composer.getNode('Eve').click();
-        await expect(page.getByText('No attributes to edit')).toBeVisible();
         await expect(composer.drawerDeleteButton).toBeVisible();
+        await expect(composer.inspectorPanel).toHaveCount(0);
         await composer.drawerDeleteButton.click();
         await expect.poll(nodeCount).toBe(2);
-        await expect(page.getByText('No attributes to edit')).not.toBeVisible();
+        await expect(composer.drawerDeleteButton).not.toBeVisible();
 
         // With no hull variable, dragging the background never draws a lasso.
         await composer.lassoSelect([
@@ -386,7 +518,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           return s?.nodes[0]?.[entityAttributesProperty][hullTapRefs.community];
         };
 
-        await composer.addNode('Person', 'Hank');
+        await composer.addNode('Hank');
         await composer.selectTool();
         await composer.pickGroup('School');
 
@@ -454,9 +586,9 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const composer = new NetworkComposerFixture(page);
 
         // Grid places Ida/Jack at x≈0.12/0.22 and Kim at x≈0.32 (all y≈0.12).
-        await composer.addNode('Person', 'Ida');
-        await composer.addNode('Person', 'Jack');
-        await composer.addNode('Person', 'Kim');
+        await composer.addNode('Ida');
+        await composer.addNode('Jack');
+        await composer.addNode('Kim');
         await composer.selectTool();
 
         // Split the lasso gesture so the polygon can be observed mid-drag. The
@@ -534,18 +666,25 @@ export const networkComposerScenarios: InterfaceScenarios = {
         }
 
         await page.setViewportSize({ width: 768, height: 1024 });
-        const toolbarBox = await page
-          .getByRole('toolbar', { name: 'Network composer tools' })
-          .boundingBox();
-        const membershipGroupBox = await membershipGroup.boundingBox();
-        if (toolbarBox === null || membershipGroupBox === null) {
-          throw new Error(
-            'Toolbar or group membership selector is not visible',
-          );
-        }
-        expect(membershipGroupBox.x).toBeGreaterThanOrEqual(
-          toolbarBox.x + toolbarBox.width,
-        );
+        // The group sits beside the toolbar, not over it, once the layout has
+        // settled at the narrower width: poll rather than measure the frame
+        // straight after the resize.
+        await expect
+          .poll(async () => {
+            const toolbarBox = await page
+              .getByRole('toolbar', { name: 'Network composer tools' })
+              .boundingBox();
+            const membershipGroupBox = await membershipGroup.boundingBox();
+            if (toolbarBox === null || membershipGroupBox === null) {
+              throw new Error(
+                'Toolbar or group membership selector is not visible',
+              );
+            }
+            return (
+              membershipGroupBox.x - (toolbarBox.x + toolbarBox.width) >= 0
+            );
+          })
+          .toBe(true);
         await page.setViewportSize(matrixViewport);
 
         await composer.getSelectionBarButton('Work').click();
@@ -625,7 +764,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         // The decorative background does not intercept pointer events: the
         // add-node popover still opens on top of it.
         await composer.addNodeToolButton.click();
-        await expect(page.getByLabel('Person name')).toBeVisible();
+        await expect(composer.addNodeInput).toBeVisible();
       },
     },
 
@@ -685,7 +824,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         // The image does not intercept pointer events: the add-node popover
         // still opens on top of it.
         await composer.addNodeToolButton.click();
-        await expect(page.getByLabel('Person name')).toBeVisible();
+        await expect(composer.addNodeInput).toBeVisible();
       },
     },
 
@@ -814,8 +953,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.edges
             .length ?? 0;
 
-        await composer.addNode('Person', 'Leo');
-        await composer.addNode('Person', 'Mia');
+        await composer.addNode('Leo');
+        await composer.addNode('Mia');
         await composer.selectEdgeType('Friendship');
 
         // Arm on Leo, cancel, re-arm, complete to Mia.
@@ -895,8 +1034,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.edges
             .length ?? 0;
 
-        await composer.addNode('Person', 'Nia');
-        await composer.addNode('Person', 'Omar');
+        await composer.addNode('Nia');
+        await composer.addNode('Omar');
 
         await composer.selectEdgeType('Friendship');
         await composer.tapNode('Nia');
@@ -1103,7 +1242,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
                 label: 'Last contact',
                 parameters: { before: 30, after: 0 },
               },
-              // No label → falls back to the codebook variable's own name.
+              // No label → the builder captions it with the variable's name.
               { variable: occupation.id, component: 'TextArea' },
             ],
           },
@@ -1134,7 +1273,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         await composer.getNode('Pat').click();
         await expect(composer.inspectorPanel).toBeVisible();
 
-        // Label handling: custom label, codebook-name fallback, and hint.
+        // Label handling: custom label, the variable-name caption, and hint.
         await expect(composer.getField(matrixRefs.fullName)).toContainText(
           'How old?',
         );
@@ -1411,7 +1550,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const baseline = await countNodes();
 
         // 1) Add a node.
-        await composer.addNode('Person', 'Sam');
+        await composer.addNode('Sam');
         await expect.poll(countNodes).toBe(baseline + 1);
 
         // 2) Draw an edge Quinn→Rita.
@@ -1495,9 +1634,9 @@ export const networkComposerScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.edges
             .length ?? 0;
 
-        await composer.addNode('Person', 'Sam');
-        await composer.addNode('Person', 'Tia');
-        await composer.addNode('Person', 'Uma');
+        await composer.addNode('Sam');
+        await composer.addNode('Tia');
+        await composer.addNode('Uma');
 
         // Draw Sam–Tia.
         await composer.selectEdgeType('Friendship');

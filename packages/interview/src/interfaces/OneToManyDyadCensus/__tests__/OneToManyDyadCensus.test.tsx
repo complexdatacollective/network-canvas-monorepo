@@ -20,6 +20,7 @@ import type {
   RegisterBeforeNext,
   StageProps,
 } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import OneToManyDyadCensus from '../OneToManyDyadCensus';
 
 const NODE_TYPE = 'person';
@@ -29,18 +30,18 @@ const NAME_VAR = 'name';
 const stage = {
   id: 'otm1',
   type: 'OneToManyDyadCensus',
-  label: 'One to Many',
+  label: { en: 'One to Many' },
   subject: { entity: 'node', type: NODE_TYPE },
   behaviours: { removeAfterConsideration: false },
   prompts: [
     {
       id: 'p1',
-      text: 'Prompt one',
+      text: { en: 'Prompt one' },
       createEdge: EDGE_TYPE,
     },
     {
       id: 'p2',
-      text: 'Prompt two',
+      text: { en: 'Prompt two' },
       createEdge: EDGE_TYPE,
     },
   ],
@@ -92,7 +93,8 @@ function renderInterface(edges: NcEdge[] = []) {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [stage],
       } as never,
@@ -118,13 +120,15 @@ function renderInterface(edges: NcEdge[] = []) {
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          <StageMetadataContext.Provider value={registerBeforeNext}>
-            {children}
-          </StageMetadataContext.Provider>
-        </CurrentStepProvider>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <StageMetadataContext.Provider value={registerBeforeNext}>
+              {children}
+            </StageMetadataContext.Provider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     );
   }
 

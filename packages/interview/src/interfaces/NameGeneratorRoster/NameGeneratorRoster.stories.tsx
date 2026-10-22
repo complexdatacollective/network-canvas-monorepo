@@ -18,39 +18,21 @@ type StoryArgs = {
   maxNodes: number;
 };
 
-/**
- * With `protectNames`, the roster's names are encrypted answers, so the
- * participant creates a passphrase on the stage before.
- */
-function buildInterview(args: StoryArgs, protectNames = false) {
+function buildInterview(args: StoryArgs) {
   const si = new SyntheticInterview();
 
   const nodeType = si.addNodeType({ name: 'Person' });
-  const nameVar = nodeType.addVariable({
-    name: 'name',
-    type: 'text',
-    encrypted: protectNames,
-  });
+  const nameVar = nodeType.addVariable({ name: 'name', type: 'text' });
   const ageVar = nodeType.addVariable({ name: 'age', type: 'number' });
   const locationVar = nodeType.addVariable({
     name: 'location',
     type: 'text',
   });
 
-  if (protectNames) {
-    si.setExperiments({ encryptedVariables: true });
-    si.addStage('Anonymisation', {
-      explanationText: {
-        title: 'Protect your answers',
-        body: 'Create a passphrase to protect the names you choose.',
-      },
-    });
-  } else {
-    si.addInformationStage({
-      title: 'Welcome',
-      text: 'Before the main stage.',
-    });
-  }
+  si.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
 
   const behaviours: { minNodes?: number; maxNodes?: number } = {};
   if (args.minNodes > 0) behaviours.minNodes = args.minNodes;
@@ -105,24 +87,15 @@ function buildInterview(args: StoryArgs, protectNames = false) {
   return si;
 }
 
-const NameGeneratorRosterStoryWrapper = ({
-  protectNames = false,
-  ...args
-}: StoryArgs & { protectNames?: boolean }) => {
+const NameGeneratorRosterStoryWrapper = (args: StoryArgs) => {
   const configKey = JSON.stringify(args);
 
-  const interview = useMemo(
-    () => buildInterview(args, protectNames),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [configKey, protectNames],
-  );
-  // A protected roster starts on the stage where the passphrase is created.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const interview = useMemo(() => buildInterview(args), [configKey]);
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(
-        interview.getInterviewPayload({ currentStep: protectNames ? 0 : 1 }),
-      ),
-    [interview, protectNames],
+      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
+    [interview],
   );
 
   return (
@@ -255,7 +228,7 @@ function buildUuidMismatchInterview() {
       },
     },
     // A value-less node: no usable attribute values, so it must fall through to
-    // the "Unnamed Person N" placeholder rather than showing its _uid hash.
+    // the "Person N" placeholder rather than showing its _uid hash.
     { attributes: {} },
   ];
 
@@ -298,7 +271,7 @@ const UuidMismatchStoryWrapper = () => {
  * Before the fix, the cards fell back to the content-hash `_uid` and showed an
  * opaque random ID. After the fix, each card shows the first available value
  * ("Alice Smith", "Bob Jones"), and the value-less node shows the
- * "Unnamed Person 3" placeholder.
+ * "Person 3" placeholder.
  */
 export const PreviewExportUuidMismatch: Story = {
   render: () => <UuidMismatchStoryWrapper />,
@@ -461,83 +434,5 @@ export const FilterInteraction: Story = {
       },
       { timeout: 10000 },
     );
-  },
-};
-
-const PASSPHRASE = 'correct horse battery staple';
-
-/**
- * Interaction test: a card leaves the roster the moment it is dropped, not
- * once the person is stored. Protecting an encrypted name takes a moment, and
- * a card left in the roster meanwhile could be dropped again.
- */
-export const ProtectedNames: Story = {
-  render: (args) => <NameGeneratorRosterStoryWrapper {...args} protectNames />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    const passphrase = await canvas.findByLabelText(
-      /^Passphrase/,
-      { selector: 'input' },
-      { timeout: 10_000 },
-    );
-    await userEvent.type(passphrase, PASSPHRASE);
-    await userEvent.type(
-      canvas.getByLabelText(/^Confirm Passphrase/, { selector: 'input' }),
-      PASSPHRASE,
-    );
-    await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
-    await canvas.findByText(/Passphrase set successfully/);
-    await userEvent.click(canvas.getByTestId('next-button'));
-
-    const sourceListbox = await waitForSourceListbox(canvasElement);
-    const [label] = readSourceLabels(sourceListbox);
-    if (!label) throw new Error('The roster lists someone');
-
-    const announced = () =>
-      Array.from(
-        document.querySelectorAll('[role="status"][aria-live="polite"]'),
-      )
-        .map((region) => region.textContent)
-        .join(' | ');
-
-    // The people added are listed a moment after the roster; a card grabbed
-    // before then has nowhere to go.
-    await canvas.findByRole('listbox', { name: 'Added Nodes' });
-
-    within(sourceListbox).getAllByRole('option')[0]!.focus();
-    await userEvent.keyboard('{Control>}d{/Control}');
-    await userEvent.keyboard('{ArrowRight}');
-    await waitFor(() => expect(announced()).toContain('Added Nodes'));
-    await userEvent.keyboard('{Enter}');
-
-    await waitFor(() =>
-      expect(
-        readSourceLabels(
-          canvas.getByRole('listbox', { name: 'Available Roster Nodes' }),
-        ),
-      ).not.toContain(label),
-    );
-
-    await waitFor(
-      async () => {
-        const addedList = canvas.getByRole('listbox', { name: 'Added Nodes' });
-        await expect(within(addedList).getAllByRole('option')).toHaveLength(1);
-      },
-      { timeout: 5000 },
-    );
-    await expect(
-      readSourceLabels(
-        canvas.getByRole('listbox', { name: 'Available Roster Nodes' }),
-      ),
-    ).not.toContain(label);
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'The names on this roster are protected with a passphrase, so adding someone takes a moment. The card leaves the roster as soon as it is dropped, so it cannot be dropped a second time while it is being added; if the add is refused, it comes back with the reason.',
-      },
-    },
   },
 };

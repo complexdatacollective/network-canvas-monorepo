@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { AppIntlOverlay } from '@codaco/app-i18n/react';
+
 let online = true;
 vi.mock('../../hooks/useOnline', () => ({
   default: () => online,
@@ -24,26 +26,50 @@ function renderWithToastProvider(ui: ReactNode) {
 }
 
 describe('StageErrorBoundary', () => {
-  it('shows a generic message when a stage crashes while online', () => {
+  it('shows the same description when a stage crashes while online', () => {
     online = true;
     renderWithToastProvider(
       <StageErrorBoundary>
         <Boom />
       </StageErrorBoundary>,
     );
-    expect(screen.getByText('A problem occurred!')).toBeTruthy();
-    expect(screen.queryByTestId('offline-error-message')).toBeNull();
+    expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
+    expect(screen.getByText(/check your connection/i)).toBeTruthy();
   });
 
-  it('shows an offline-aware message when a stage crashes while offline', () => {
+  it('shows the same description when a stage crashes while offline', () => {
     online = false;
     renderWithToastProvider(
       <StageErrorBoundary>
         <Boom />
       </StageErrorBoundary>,
     );
-    expect(screen.getByTestId('offline-error-message')).toBeTruthy();
+    expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
+    expect(screen.getByText(/check your connection/i)).toBeTruthy();
     expect(screen.queryByText('A problem occurred!')).toBeNull();
+  });
+
+  // A protocol may word the message itself, as markdown, so the researcher
+  // can format it and link to where participants can get help.
+  it('renders the protocol’s wording of the message as markdown', () => {
+    online = true;
+    renderWithToastProvider(
+      <AppIntlOverlay
+        override={(message) =>
+          message.id === 'interview.runtime.taskErrorDescription'
+            ? 'Something went wrong. **Please** [contact us](https://example.com/help).'
+            : undefined
+        }
+      >
+        <StageErrorBoundary>
+          <Boom />
+        </StageErrorBoundary>
+      </AppIntlOverlay>,
+    );
+    const link = screen.getByRole('link', { name: 'contact us' });
+    expect(link.getAttribute('href')).toBe('https://example.com/help');
+    expect(screen.getByText('Please').tagName).toBe('STRONG');
+    expect(screen.queryByText(/\*\*/)).toBeNull();
   });
 
   it('renders children when there is no error', () => {
@@ -71,7 +97,7 @@ describe('StageErrorBoundary', () => {
       </StageErrorBoundary>,
     );
 
-    expect(screen.getByText('A problem occurred!')).toBeTruthy();
+    expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
 
     const copyButton = screen.getByRole('button', {
       name: /copy debug info/i,

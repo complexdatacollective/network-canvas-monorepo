@@ -200,7 +200,7 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
             <DropdownMenuRadioGroup
               value={isSorted || undefined}
               onValueChange={(value) => column.toggleSorting(value !== 'asc')}
-              className="flex flex-col gap-1"
+              className="flex flex-col"
             >
               <DropdownMenuRadioItem
                 value="asc"

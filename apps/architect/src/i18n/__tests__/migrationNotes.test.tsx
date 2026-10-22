@@ -100,7 +100,9 @@ it('translates the open migration notes while retaining schema identifiers and a
   fireEvent.click(screen.getByRole('button', { name: 'Open migration' }));
   const reopened = await screen.findByRole('dialog');
   fireEvent.click(
-    within(reopened).getByRole('button', { name: 'Crear copia actualizada' }),
+    within(reopened).getByRole('button', {
+      name: 'Actualizar al esquema 5',
+    }),
   );
   await waitFor(() => expect(approve).toHaveBeenCalledExactlyOnceWith());
   expect(result).toEqual(original);

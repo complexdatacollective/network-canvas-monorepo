@@ -4,10 +4,13 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { composerWords } from './composerWords';
+
 vi.mock('../../../hooks/useAssetUrl', () => ({
   useAssetUrl: vi.fn(),
 }));
 
+import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -21,6 +24,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NetworkComposer from '../NetworkComposer';
 
 // jsdom does not implement ResizeObserver; provide a no-op stub.
@@ -72,11 +76,18 @@ const defaultBackground: TestBackground = {
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  label: 'Network Composer',
+  ...composerWords(),
+  label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
-  layoutVariable: LAYOUT_VAR,
-  quickAdd: QUICK_ADD_VAR,
-  edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
+  layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+  quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
+  edges: [
+    {
+      id: 'edge-config',
+      subject: { entity: 'edge' as const, type: EDGE_TYPE },
+      label: { en: 'Knows' },
+    },
+  ],
   background: defaultBackground,
 };
 
@@ -87,8 +98,14 @@ const codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
-        [QUICK_ADD_VAR]: { name: 'name', type: 'text' as const },
-        [LAYOUT_VAR]: { name: 'position', type: 'layout' as const },
+        [QUICK_ADD_VAR]: {
+          name: 'name',
+          type: 'text' as const,
+        },
+        [LAYOUT_VAR]: {
+          name: 'position',
+          type: 'layout' as const,
+        },
       },
     },
   },
@@ -135,7 +152,8 @@ function renderInterface(stageOverride: typeof stage = stage) {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [stageOverride],
       } as never,
@@ -161,7 +179,7 @@ function renderInterface(stageOverride: typeof stage = stage) {
         >
           <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
             <StageMetadataContext.Provider value={registerBeforeNext}>
-              {children}
+              <TestProtocolLocalization>{children}</TestProtocolLocalization>
             </StageMetadataContext.Provider>
           </CurrentStepProvider>
         </ContractProvider>
@@ -180,12 +198,12 @@ describe('NetworkComposer canvas', () => {
     expect(screen.getByTestId('network-composer')).toBeTruthy();
   });
 
-  it('renders both placed nodes by their label (codebook type name)', async () => {
+  it('renders both placed nodes as unnamed', async () => {
     renderInterface();
-    // ConnectedNode falls back to codebook.node[type].name when no label
-    // attribute is set, so both nodes render as "Person".
+    // Neither node has a name, and participants never see a codebook type's
+    // name, so both render as "Unnamed".
     await waitFor(() => {
-      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      const nodes = screen.getAllByRole('button', { name: 'Unnamed' });
       expect(nodes).toHaveLength(2);
     });
   });
@@ -196,7 +214,7 @@ describe('NetworkComposer canvas', () => {
     // Activation and dragging are declared to Node, which derives the tab
     // stop itself: focusable exactly when focusing does something.
     await waitFor(() => {
-      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      const nodes = screen.getAllByRole('button', { name: 'Unnamed' });
       expect(nodes).toHaveLength(2);
       for (const node of nodes) {
         expect(node.tabIndex).toBe(0);
@@ -208,7 +226,7 @@ describe('NetworkComposer canvas', () => {
     renderInterface();
 
     await waitFor(() => {
-      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      const nodes = screen.getAllByRole('button', { name: 'Unnamed' });
       for (const node of nodes) {
         expect(node).toHaveAttribute('aria-pressed', 'false');
       }
@@ -218,7 +236,7 @@ describe('NetworkComposer canvas', () => {
   it('keeps focus on a node selected from the keyboard', async () => {
     renderInterface();
 
-    const nodes = await screen.findAllByRole('button', { name: 'Person' });
+    const nodes = await screen.findAllByRole('button', { name: 'Unnamed' });
     const node = nodes[0]!;
     node.focus();
     expect(node).toHaveFocus();
@@ -234,7 +252,7 @@ describe('NetworkComposer canvas', () => {
   it('does not apply stale pointer modifiers to a keyboard selection', async () => {
     renderInterface();
 
-    const nodes = await screen.findAllByRole('button', { name: 'Person' });
+    const nodes = await screen.findAllByRole('button', { name: 'Unnamed' });
     const [first, second] = [nodes[0]!, nodes[1]!];
 
     // A shift-modified pointer tap arrives as a click still carrying the

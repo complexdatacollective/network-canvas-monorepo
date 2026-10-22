@@ -5,6 +5,21 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import EndSessionRecording from '~/app/(interview)/_components/EndSessionRecording';
 import { getServerIntl } from '~/i18n/server';
 
+const messages = defineMessages({
+  pageTitle: {
+    id: 'fresco.interview.metadata.pageTitle',
+    defaultMessage: 'Network Canvas Fresco - Interview',
+    description:
+      'Browser tab title for the participant-facing interview pages. Keep "Network Canvas Fresco" unchanged in all languages.',
+  },
+  pageDescription: {
+    id: 'fresco.interview.metadata.pageDescription',
+    defaultMessage: 'Interview',
+    description:
+      'Short page description (search-engine and link-preview metadata) for the participant-facing interview pages. A single word naming the activity.',
+  },
+});
+
 export async function generateMetadata(): Promise<Metadata> {
   const intl = await getServerIntl();
   return {
@@ -13,10 +28,11 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// The participant routes read the request's language from the root provider,
-// as the interview's own messages do: an interview that opens in French must
-// not refuse to open, or thank the participant, in English. Language and
-// direction are inherited from <html>.
+// The region sets no `lang` or `dir` of its own: it inherits the document's,
+// which the root layout sets from the language Fresco negotiated for this
+// request, and which is the language of everything rendered here outside the
+// interview. The interview itself (`Shell`) sets its own `lang`/`dir` from the
+// language it resolves, so each part of the page declares what it shows.
 function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ThemedRegion
@@ -30,19 +46,3 @@ function RootLayout({ children }: { children: React.ReactNode }) {
 }
 
 export default RootLayout;
-
-const messages = defineMessages({
-  pageDescription: {
-    id: 'fresco.participantPages.metadata.pageDescription',
-    defaultMessage: 'Interview',
-    description:
-      'Participant-facing interview pages, page description metadata: Interview',
-  },
-
-  pageTitle: {
-    id: 'fresco.participantPages.metadata.pageTitle',
-    defaultMessage: 'Network Canvas Fresco - Interview',
-    description:
-      'Participant-facing interview pages, browser tab title. "Network Canvas Fresco" is the product name and is not translated.',
-  },
-});

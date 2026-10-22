@@ -2,7 +2,7 @@ import { get } from 'es-toolkit/compat';
 import Fuse from 'fuse.js';
 import { Search, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { connect, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -13,8 +13,7 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import type { RootState } from '~/ducks/modules/root';
-import { getExperiments, getTimelineLocus } from '~/selectors/protocol';
+import { getTimelineLocus } from '~/selectors/protocol';
 
 import InterfaceList from './InterfaceList';
 import {
@@ -109,16 +108,12 @@ type NewStageScreenProps = {
   insertAtIndex?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  experiments?: {
-    encryptedVariables?: boolean;
-  };
 };
 
 const NewStageScreen = ({
   insertAtIndex,
   open,
   onOpenChange,
-  experiments = {},
 }: NewStageScreenProps) => {
   const intl = useAppIntl();
   const interfaces = useMemo(() => getInterfaceTypes(intl), [intl]);
@@ -132,21 +127,13 @@ const NewStageScreen = ({
 
   const _locus = useSelector(getTimelineLocus);
 
-  const filteredInterfaces = useMemo(() => {
-    let matchingInterfaces = search(query, interfaces, fuse).filter(
-      ({ tags: interfaceTags }) =>
-        // eslint-disable-next-line implicit-arrow-linebreak
+  const filteredInterfaces = useMemo(
+    () =>
+      search(query, interfaces, fuse).filter(({ tags: interfaceTags }) =>
         interfaceHasAllSelectedTags(selectedTags, interfaceTags),
-    );
-
-    if (!experiments.encryptedVariables) {
-      matchingInterfaces = matchingInterfaces.filter(
-        ({ type }) => type !== 'Anonymisation',
-      );
-    }
-
-    return matchingInterfaces;
-  }, [query, selectedTags, experiments, interfaces, fuse]);
+      ),
+    [query, selectedTags, interfaces, fuse],
+  );
 
   const filteredInterfaceTags = useMemo(
     () =>
@@ -380,8 +367,4 @@ const NewStageScreen = ({
   );
 };
 
-const mapStateToProps = (state: RootState) => ({
-  experiments: getExperiments(state),
-});
-
-export default connect(mapStateToProps)(NewStageScreen);
+export default NewStageScreen;

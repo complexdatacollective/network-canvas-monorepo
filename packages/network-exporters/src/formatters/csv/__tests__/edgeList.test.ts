@@ -8,6 +8,7 @@ import {
   ncSourceUUID,
   ncTargetUUID,
   ncUUIDProperty,
+  protocolName,
 } from '@codaco/shared-consts';
 
 import type { SessionWithResequencedIDs } from '../../../input';
@@ -17,6 +18,7 @@ import { mockCodebook, mockExportOptions } from './mockObjects';
 describe('edgeListRows', () => {
   it('yields header followed by one row per edge', () => {
     const network = {
+      sessionVariables: { [protocolName]: 'Protocol' },
       nodes: [],
       edges: [
         {
@@ -38,6 +40,7 @@ describe('edgeListRows', () => {
         network as unknown as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
+        () => undefined,
       ),
     );
 
@@ -52,12 +55,17 @@ describe('edgeListRows', () => {
   });
 
   it('yields only the header for an empty edge set', () => {
-    const network = { nodes: [], edges: [] };
+    const network = {
+      sessionVariables: { [protocolName]: 'Protocol' },
+      nodes: [],
+      edges: [],
+    };
     const rows = Array.from(
       edgeListRows(
         network as unknown as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
+        () => undefined,
       ),
     );
     expect(rows).toHaveLength(1);
@@ -65,6 +73,7 @@ describe('edgeListRows', () => {
 
   it('includes declared columns that are unanswered by every edge', () => {
     const network = {
+      sessionVariables: { [protocolName]: 'Protocol' },
       nodes: [],
       edges: [
         {
@@ -86,6 +95,7 @@ describe('edgeListRows', () => {
         network as unknown as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
+        () => undefined,
       ),
     );
 

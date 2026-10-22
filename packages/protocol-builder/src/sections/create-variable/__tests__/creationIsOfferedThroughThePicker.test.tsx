@@ -85,7 +85,7 @@ const INVENT_PHRASE = /^Create a new\b.*\battribute\b/;
  *
  * Written out because these are what the sweep has to be able to see: a slot
  * whose title was reworded out of the phrase would leave that slot unguarded,
- * and nothing else would say so. Nineteen titles for the fourteen picker
+ * and nothing else would say so. Eighteen titles for the fourteen picker
  * mounts the eight converted sections hold, because three of the labels are
  * shared by two mounts each.
  */
@@ -100,15 +100,16 @@ const SLOT_INVENT_LABEL_IDS = [
   'protocolBuilder.networkCanvas.presetCreateLayoutLabel',
   'protocolBuilder.networkCanvas.promptCreateHighlightLabel',
   'protocolBuilder.networkCanvas.promptCreateLayoutLabel',
-  'protocolBuilder.pedigree.edgeGameteRoleCreateLabel',
-  'protocolBuilder.pedigree.edgeGestationalCarrierCreateLabel',
-  'protocolBuilder.pedigree.edgeIsActiveCreateLabel',
-  'protocolBuilder.pedigree.edgeRelationshipTypeCreateLabel',
-  'protocolBuilder.pedigree.nodeBiologicalSexCreateLabel',
-  'protocolBuilder.pedigree.nodeEgoCreateLabel',
-  'protocolBuilder.pedigree.nodeLabelCreateLabel',
-  'protocolBuilder.pedigree.nodeRelationshipCreateLabel',
-  'protocolBuilder.pedigree.nominationCreateLabel',
+  'protocolBuilder.pedigree.currentPartnerCreateLabel',
+  'protocolBuilder.pedigree.egoCreateLabel',
+  'protocolBuilder.pedigree.genderIdentityCreateLabel',
+  'protocolBuilder.pedigree.gestationalCarrierCreateLabel',
+  'protocolBuilder.pedigree.kindCreateLabel',
+  'protocolBuilder.pedigree.nameCreateLabel',
+  'protocolBuilder.pedigree.nominationVariableCreateLabel',
+  'protocolBuilder.pedigree.relationshipToParticipantCreateLabel',
+  'protocolBuilder.pedigree.relativesNotRecordedCreateLabel',
+  'protocolBuilder.pedigree.sexAssignedAtBirthCreateLabel',
 ] as const;
 
 /**
@@ -215,7 +216,7 @@ const expectNoInventControl = (where: string): void => {
  * sweep from passing by seeing nothing. A row dialog that stopped opening, or
  * a section that stopped mounting its picker, would otherwise leave the
  * criterion checked against an empty page — which is how a guard over
- * nineteen editors comes to guard nothing.
+ * twenty editors comes to guard nothing.
  *
  * These are the pickers a researcher reaches without turning anything on. The
  * optional sections the fixture leaves switched off hold four more — the two
@@ -231,9 +232,11 @@ const PICKERS_REACHED: Readonly<Record<string, number>> = {
   'categorical-bin-1': 1,
   'dyad-census-1': 0,
   'ego-form-1': 1,
-  'family-pedigree-1': 9,
+  'family-pedigree-1': 8,
+  'finish': 0,
   'geospatial-1': 1,
   'information-1': 0,
+  'language-chooser-1': 0,
   'name-generator-1': 1,
   'name-generator-quick-add-1': 1,
   'name-generator-roster-1': 0,
@@ -390,6 +393,12 @@ describe('no create control sits beside an attribute picker', () => {
    * the codebook for the KIND of answer as well as the name, which only that
    * editor has a control for. Both hand what they open to the picker, and the
    * sweep above is what holds them to it.
+   *
+   * The last assertion names the only modules that mount the editor at all.
+   * `sections/StageManagedOptionsEditor.tsx` is the second: it opens the editor
+   * in update mode for an attribute whose options a stage manages, and offers
+   * no way to create one, so it is neither the picker's escalation path nor
+   * something an interface editor can do on its own.
    */
   it('lets no interface editor reach the codebook’s attribute editor directly', () => {
     const namedIn = (area: string, specifier: RegExp): string[] =>
@@ -409,7 +418,10 @@ describe('no create control sits beside an attribute picker', () => {
 
     expect(
       namedIn('', /from '[^']*codebook\/components\/VariableEditor\.tsx'/u),
-    ).toEqual(['sections/create-variable/useCreateVariableEditor.tsx']);
+    ).toEqual([
+      'sections/StageManagedOptionsEditor.tsx',
+      'sections/create-variable/useCreateVariableEditor.tsx',
+    ]);
   });
 });
 

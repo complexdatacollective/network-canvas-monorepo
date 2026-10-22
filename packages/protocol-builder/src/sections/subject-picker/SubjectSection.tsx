@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { type ReactNode, useCallback } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -216,6 +216,13 @@ export type SubjectSectionProps = Readonly<{
    * to be able to say so about it independently of whether a type is chosen.
    */
   filter?: boolean;
+  /**
+   * Why the subject may not be changed at all, while something outside this
+   * stage depends on it. See `EntityTypePickerFieldProps`.
+   */
+  blockChangeReason?: string;
+  /** Shown above the picker: what depends on the subject, when anything does. */
+  notice?: ReactNode;
 }>;
 
 /**
@@ -283,6 +290,8 @@ function useSubjectChangeQuestion(
 export default function SubjectSection({
   entity,
   filter = false,
+  blockChangeReason,
+  notice,
 }: SubjectSectionProps) {
   const intl = useAppIntl();
   const words = WORDS[entity];
@@ -296,11 +305,13 @@ export default function SubjectSection({
         title={intl.formatMessage(words.title)}
         description={intl.formatMessage(words.description)}
       >
+        {notice}
         <Field<typeof EntitySubjectPickerField>
           name="subject"
           component={EntitySubjectPickerField}
           entityType={entity}
           confirmChange={confirmChange}
+          {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
           label={intl.formatMessage(words.fieldLabel)}
           hint={words.fieldHint && intl.formatMessage(words.fieldHint)}
           required={REQUIRED}

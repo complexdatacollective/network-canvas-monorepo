@@ -2,12 +2,18 @@
   "id": "id-1",
   "items": [
     {
-      "content": "Thanks for taking part.",
+      "content": {
+        "en": "Thanks for taking part."
+      },
       "id": "id-2",
       "type": "text"
     }
   ],
-  "label": "About This Study",
-  "title": "Welcome",
+  "label": {
+    "en": "About This Study"
+  },
+  "title": {
+    "en": "Welcome"
+  },
   "type": "Information"
 }

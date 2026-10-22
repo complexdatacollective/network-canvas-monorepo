@@ -52,7 +52,18 @@ const trackLaunchRead = (
     });
 };
 
-export const initFileLaunchCapture = (): void => {
+type LaunchCaptureOptions = {
+  /**
+   * Decide what happens to launched .netcanvas files before they are queued:
+   * resolve with the files this app should still open itself. Architect 8
+   * served inside Architect 9 hands them on to Architect 9 instead.
+   */
+  routeFiles?: (files: File[]) => Promise<File[]>;
+};
+
+export const initFileLaunchCapture = (
+  options: LaunchCaptureOptions = {},
+): void => {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
   const queue = window.launchQueue;
@@ -81,31 +92,13 @@ export const initFileLaunchCapture = (): void => {
         reportLaunchReadFailure(failures.length);
       }
 
-      return files.filter((file) =>
+      const netcanvas = files.filter((file) =>
         file.name.toLowerCase().endsWith('.netcanvas'),
       );
+      if (netcanvas.length === 0) return [];
+      return options.routeFiles ? options.routeFiles(netcanvas) : netcanvas;
     }, 'fileLaunchHandle');
   });
-};
-
-/**
- * Queue a file that arrives some other way than the OS launch queue — the
- * `?import=` hand-off from Architect 9 — so it opens exactly as a launched
- * file does. `read` resolves null when there is nothing to open, which is
- * reported with the launch read-failure dialog, as an unreadable launch is.
- */
-export const enqueueLaunchRead = (read: () => Promise<File | null>): void => {
-  trackLaunchRead(async () => {
-    let file: File | null = null;
-    try {
-      file = await read();
-    } catch (error) {
-      reportError(error, { operation: 'fileLaunchHandoffRead' });
-    }
-    if (file) return [file];
-    reportLaunchReadFailure(1);
-    return [];
-  }, 'fileLaunchHandoffRead');
 };
 
 export const subscribeLaunchFiles = (listener: () => void): (() => void) => {

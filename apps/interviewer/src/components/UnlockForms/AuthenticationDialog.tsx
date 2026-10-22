@@ -22,8 +22,6 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { ManageLockInInterviewerButton } from '~/components/ManageLockInInterviewer';
-import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import type { AuthResult } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
 import { hasPasskeyWindowLimitation } from '~/lib/pwa/passkeyWindowLimitation';
@@ -305,10 +303,8 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
     invalidatePendingAuthenticationAndReset();
     setRecoveryOpen(false);
   };
-  // Destructive recovery never runs in Interviewer 8 inside Interviewer 9.
-  const destructiveRecoveryHere = allowDestructiveRecovery && !IS_SUBPATH_BUILD;
   const openResetDialog = () => {
-    if (!destructiveRecoveryHere) return;
+    if (!allowDestructiveRecovery) return;
     invalidatePendingAuthenticationAndReset();
     setResetOpen(true);
   };
@@ -326,30 +322,15 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
       {intl.formatMessage(commonMessages.cancel)}
     </Button>
   ) : null;
-  // Interviewer 8 inside Interviewer 9 (a /v8/ build) never resets the lock
-  // it shares with Interviewer 9. Where a reset would be offered it offers the
-  // way to Interviewer 9 instead, which owns recovery — and, like the reset,
-  // never during an interview, which only its own exit step may leave.
-  const resetButton = ({ disabled }: { disabled?: boolean }) =>
-    IS_SUBPATH_BUILD ? (
-      <ManageLockInInterviewerButton />
-    ) : (
-      <Button
-        type="button"
-        color="destructive"
-        disabled={disabled}
-        onClick={openResetDialog}
-      >
-        {intl.formatMessage(messages.recoverByResetting)}
-      </Button>
-    );
   const recoveryButton = allowRecovery ? (
     auth.mode === 'biometric' ? (
       <Button type="button" color="secondary" onClick={openRecoveryDialog}>
         {intl.formatMessage(messages.recoverWithPassphrase)}
       </Button>
     ) : allowDestructiveRecovery ? (
-      resetButton({})
+      <Button type="button" color="destructive" onClick={openResetDialog}>
+        {intl.formatMessage(messages.recoverByResetting)}
+      </Button>
     ) : null
   ) : null;
   const dialogProps = {
@@ -518,9 +499,16 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
               dismissible={!isSubmitting}
               footer={
                 <>
-                  {allowDestructiveRecovery
-                    ? resetButton({ disabled: isSubmitting })
-                    : null}
+                  {allowDestructiveRecovery ? (
+                    <Button
+                      type="button"
+                      color="destructive"
+                      disabled={isSubmitting}
+                      onClick={openResetDialog}
+                    >
+                      {intl.formatMessage(messages.recoverByResetting)}
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     disabled={isSubmitting}
@@ -584,7 +572,7 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
         </WhileSubmitting>
       </FormStoreProvider>
       <RecoverByResettingDialog
-        open={allowRecovery && destructiveRecoveryHere && resetOpen}
+        open={allowRecovery && allowDestructiveRecovery && resetOpen}
         onCancel={closeResetDialog}
         onReset={finishReset}
       />

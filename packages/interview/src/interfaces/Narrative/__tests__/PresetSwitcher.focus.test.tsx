@@ -6,22 +6,33 @@ vi.mock('../../../hooks/useStageSelector', () => ({
     categoricalOptions: undefined,
     groupValues: [],
     edges: [],
-    highlightLabels: [],
   }),
 }));
 
+import { asEntityAttributeReference } from '@codaco/protocol-validation';
+
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PresetSwitcher from '../PresetSwitcher';
 
-const PRESETS = [
-  { label: 'First' },
-  { label: 'Second' },
-  { label: 'Third' },
-] as unknown as React.ComponentProps<typeof PresetSwitcher>['presets'];
+const HEADINGS = {
+  attributes: 'Attributes',
+  links: 'Links',
+  groups: undefined,
+};
+
+const layoutVariable = asEntityAttributeReference('layout');
+
+const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
+  { id: 'first', label: { en: 'First' }, layoutVariable },
+  { id: 'second', label: { en: 'Second' }, layoutVariable },
+  { id: 'third', label: { en: 'Third' }, layoutVariable },
+];
 
 function renderSwitcher(activePreset: number) {
   return render(
     <PresetSwitcher
       presets={PRESETS}
+      headings={HEADINGS}
       activePreset={activePreset}
       highlightIndex={0}
       showHighlighting={false}
@@ -34,6 +45,7 @@ function renderSwitcher(activePreset: number) {
       onToggleHighlighting={vi.fn()}
       dragConstraints={{ current: null }}
     />,
+    { wrapper: TestProtocolLocalization },
   );
 }
 
@@ -83,6 +95,7 @@ describe('PresetSwitcher keeps keyboard focus at the ends of the list', () => {
     rerender(
       <PresetSwitcher
         presets={PRESETS}
+        headings={HEADINGS}
         activePreset={PRESETS.length - 1}
         highlightIndex={0}
         showHighlighting={false}

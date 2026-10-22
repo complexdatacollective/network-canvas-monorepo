@@ -2,34 +2,24 @@ import { randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig, mergeConfig, normalizePath, type Plugin } from 'vite';
+import { defineConfig, loadEnv, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { createLegacyAppPreviewPlugin } from '../../scripts/buildtime/legacy-app-preview-plugin.ts';
 import {
-  appCachePrefix,
-  rebaseSwMatcher,
-} from '../../scripts/buildtime/app-base-path.mjs';
+  legacyApp,
+  legacyAppDefine,
+  loadLegacyAppV8,
+} from '../../scripts/buildtime/legacy-app.ts';
 import { createPostHogSourceMapsPlugin } from '../../scripts/buildtime/posthog-source-maps-plugin.ts';
 import {
   createPwaCacheReclamationPlugin,
   getPwaCacheReclamationScriptFileName,
   matchRetainedPwaAsset,
 } from '../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
-import {
-  appBase,
-  appVersion,
-  createRendererConfig,
-} from './vite.renderer.config';
+import { appVersion, createRendererConfig } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
-// `/` everywhere except the Interviewer 8 build that ships inside Interviewer
-// 9's deploy at `/v8/` (see vite.renderer.config.ts). Every sub-path
-// difference below is derived from these values; a root build is unchanged by
-// them, down to the bytes of its worker's route matchers.
-const isSubpath = appBase !== '/';
-const cachePrefix = appCachePrefix('interviewer', appBase);
-// "Interviewer 8": the major is the schema line a sub-path build is kept for.
-const subpathAppName = `Interviewer ${appVersion.split('.')[0]}`;
 // This ID belongs to the generated bundle, not just its package release. Dev
 // deploys can publish several different bundles at the same package version;
 // sharing a precache between them would let the newer worker prune files that
@@ -39,7 +29,7 @@ const subpathAppName = `Interviewer ${appVersion.split('.')[0]}`;
 const pwaBuildId = process.env.TURBO_HASH
   ? `turbo-${process.env.TURBO_HASH}`
   : `direct-${randomUUID()}`;
-const pwaCacheId = `${cachePrefix}${appVersion}-${pwaBuildId}`;
+const pwaCacheId = `interviewer-${appVersion}-${pwaBuildId}`;
 const pwaCacheReclamationScript =
   getPwaCacheReclamationScriptFileName(pwaCacheId);
 // The app background (theme-base scheme-dark --background, oklch(0.28 0.09 281)
@@ -47,36 +37,6 @@ const pwaCacheReclamationScript =
 // meta, which must match) and the splash background.
 const themeColor = '#232053';
 const backgroundColor = '#232053';
-
-// Interviewer 8 ships inside Interviewer 9's deploy as the interview alone:
-// Interviewer 9 lists, starts, resumes and reviews its schema 8 interviews, so
-// App.tsx renders none of Interviewer 8's own screens there and returns to
-// Interviewer 9 instead (components/ReturnToInterviewer9.tsx). A sub-path build
-// replaces those screens' modules before any of their imports are resolved, so
-// Home (the protocol deck, the new-interview form), the data view, Settings,
-// onboarding and everything only they import stay out of it. The replacement
-// has to happen at load time: a module that merely goes unrendered is still
-// bundled with everything it imports. scripts/assert-pwa-build.mjs fails a
-// sub-path build that ships any of them.
-const subpathReplacements = new Map([
-  [
-    normalizePath(resolve(here, 'src/routes/Home.tsx')),
-    'export function HomeRoute() { return null; }',
-  ],
-  [
-    normalizePath(resolve(here, 'src/routes/Welcome.tsx')),
-    'export function WelcomeRoute() { return null; }',
-  ],
-  [
-    normalizePath(resolve(here, 'src/routes/NotFound.tsx')),
-    'export function NotFoundRoute() { return null; }',
-  ],
-]);
-const omitFromSubpathBuild = (): Plugin => ({
-  name: 'interviewer-omit-from-subpath-build',
-  enforce: 'pre',
-  load: (id) => subpathReplacements.get(id),
-});
 
 // The @codaco/interview engine chunk is well past workbox's 2 MB default.
 // Raise the precache ceiling so no critical JS is silently dropped from
@@ -98,26 +58,38 @@ const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
 const posthogCliBinaryPath = process.env.POSTHOG_CLI_BINARY_PATH;
 const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
-export default defineConfig(() =>
-  mergeConfig(createRendererConfig({ outDir: 'dist', port: 5180 }), {
+// Interviewer 8, served at /v8/ from this deploy when legacy-interviewer.json
+// pins a build of it (see scripts/buildtime/legacy-app.ts).
+const legacyInterviewer = legacyApp('interviewer');
+
+export default defineConfig(({ command, mode }) => {
+  // Whether this build bundles Interviewer 8 at /v8/: the same decision
+  // scripts/build.mjs acts on after Vite, so the app offers Interviewer 8
+  // exactly when dist/v8 will hold it (see `src/lib/legacyInterviewer.ts`).
+  // The dev server serves no /v8/, so it never does.
+  const legacyInterviewerV8 =
+    command === 'build'
+      ? legacyAppDefine(
+          loadLegacyAppV8(legacyInterviewer, here, loadEnv(mode, here, '')),
+        )
+      : null;
+  return mergeConfig(createRendererConfig({ outDir: 'dist', port: 5180 }), {
     define: {
       __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
+      __INTERVIEWER_V8__: JSON.stringify(legacyInterviewerV8),
     },
     plugins: [
-      ...(isSubpath ? [omitFromSubpathBuild()] : []),
-      // Interviewer 8 is served at /v8/ beside the root app (from Interviewer
-      // 9's deploy) with its own worker and 'interviewer-v8-' caches, which
-      // 'interviewer-' would otherwise match. The /v8/ build itself hosts no
-      // nested app, so it passes nothing extra.
+      // `vite preview` serves /v8/ from dist/v8 as Netlify would (e2e).
+      createLegacyAppPreviewPlugin(legacyInterviewer),
+      // Interviewer 8 is served at /v8/ beside this app with its own worker
+      // and 'interviewer-v8-' caches, which 'interviewer-' would otherwise
+      // match: this worker must neither reclaim them nor ask /v8/ windows for
+      // leases.
       createPwaCacheReclamationPlugin({
-        appCachePrefix: cachePrefix,
+        appCachePrefix: 'interviewer-',
         buildId: pwaCacheId,
-        ...(isSubpath
-          ? {}
-          : {
-              foreignCachePrefixes: ['interviewer-v8-'],
-              foreignScopePaths: ['/v8/'],
-            }),
+        foreignCachePrefixes: [legacyInterviewer.cachePrefix],
+        foreignScopePaths: ['/v8/'],
       }),
       VitePWA({
         registerType: 'prompt',
@@ -126,26 +98,15 @@ export default defineConfig(() =>
         devOptions: { enabled: false },
         pwaAssets: { config: true },
         manifest: {
-          // A sub-path build is never offered for installation (Interviewer 9
-          // is the app to install, and opens this one inside its own window),
-          // but its manifest still names it for wherever the OS lists it.
-          name: isSubpath ? subpathAppName : 'Network Canvas Interviewer',
-          short_name: isSubpath ? subpathAppName : 'Interviewer',
+          name: 'Network Canvas Interviewer',
+          short_name: 'Interviewer',
           description:
             'Conduct Network Canvas interviews — offline and installable.',
           theme_color: themeColor,
           background_color: backgroundColor,
-          // Display 'browser' is what keeps a sub-path build from being
-          // offered for installation: a browser offers to install only an app
-          // that asks for its own window. Hiding InstallBanner alone would
-          // leave the browser's own install offer in a tab at the base.
-          display: isSubpath ? 'browser' : 'standalone',
-          start_url: appBase,
-          scope: appBase,
-          // The id is otherwise derived from start_url; stated for a sub-path
-          // build so it can never be mistaken for the root app. The root
-          // manifest stays exactly as it was.
-          ...(isSubpath ? { id: appBase } : {}),
+          display: 'standalone',
+          start_url: '/',
+          scope: '/',
           // Listed explicitly so the maskable entry can point at its own
           // artwork: pwa-assets generates the full-bleed `any` icons from
           // public/interviewer-icon.png, while the maskable icon is committed
@@ -167,20 +128,14 @@ export default defineConfig(() =>
           // files arrive via window.launchQueue — see
           // src/lib/pwa/fileLaunchQueue.ts. focus-existing keeps a single
           // window: an already-open app receives the file instead of a new
-          // window spawning. Only the root app claims .netcanvas files: in a
-          // sub-path build Interviewer 9 owns file launches and decides which
-          // app imports each protocol.
-          ...(isSubpath
-            ? {}
-            : {
-                launch_handler: { client_mode: 'focus-existing' as const },
-                file_handlers: [
-                  {
-                    action: '/',
-                    accept: { 'application/octet-stream': ['.netcanvas'] },
-                  },
-                ],
-              }),
+          // window spawning.
+          launch_handler: { client_mode: 'focus-existing' },
+          file_handlers: [
+            {
+              action: '/',
+              accept: { 'application/octet-stream': ['.netcanvas'] },
+            },
+          ],
         },
         workbox: {
           // App and worker maps are uploaded before Workbox runs. The service
@@ -197,25 +152,28 @@ export default defineConfig(() =>
           // interview is already open. Precache every 4:3 candidate so a
           // freshly installed app can render the menu on its first offline
           // interview, regardless of which width Safari selects from srcset.
-          // The Sample protocol's chunk (bundledSampleProtocol.ts) is lazy,
-          // but must stay precached so the sample installs offline. The
-          // dev-only Development protocol never reaches a production build
-          // (its import is DEV-gated in useProtocolImport.ts); both properties
-          // are checked by assert-pwa-build.mjs.
           globPatterns: [
             '**/*.{js,css,html}',
             '**/*.4x3.*.webp',
-            // Interviewer 9 installs a sub-path build's worker in the
-            // background, so its first visit may already be offline and never
-            // fills the runtime font cache. Precache the fonts every screen
-            // renders.
-            ...(isSubpath ? ['**/*.woff2'] : []),
             // Home and onboarding render the header mark. The page that
             // installs the worker is not controlled by it, so its request never
             // fills the runtime image cache, and the first offline launch
-            // would show a broken image. A sub-path build does not ship it.
-            ...(isSubpath ? [] : ['**/NC-Flat-*.png']),
+            // would show a broken image.
+            '**/NC-Flat-*.png',
           ],
+          // Nothing of this app is left out. The Sample protocol's chunk
+          // (bundledSampleProtocol.ts) is lazy but must stay precached so the
+          // sample installs offline. The Development protocol's (~33 MB) is
+          // not in a production build at all — its import is DEV-gated in
+          // useProtocolImport.ts — so it needs no exclusion here; were it
+          // back, it would exceed MAX_PRECACHE_BYTES and generateSW would fail
+          // the build. assert-pwa-build.mjs checks both.
+          //
+          // Interviewer 8 (dist/v8) has its own worker and precache. It is
+          // written after this worker is generated, so its entry only repeats
+          // the build order. Interviewer 8 is made available offline by
+          // registering its own worker in the background instead.
+          globIgnores: ['v8/**'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,
@@ -237,22 +195,17 @@ export default defineConfig(() =>
               // active worker's precached shell so its HTML and hashed chunks
               // stay from the same deploy, including after a controlled reload
               // or deep link under /interview/.
-              urlPattern: rebaseSwMatcher(
-                ({ request, sameOrigin, url }) =>
-                  sameOrigin &&
-                  request.mode === 'navigate' &&
-                  url.pathname.startsWith('/interview/'),
-                appBase,
-              ),
+              urlPattern: ({ request, sameOrigin, url }) =>
+                sameOrigin &&
+                request.mode === 'navigate' &&
+                url.pathname.startsWith('/interview/'),
               handler: 'CacheOnly',
               options: {
                 // This shared runtime cache intentionally remains empty.
                 // CacheOnly throws on its miss, which invokes
                 // PrecacheFallbackPlugin.handlerDidError and returns the
                 // active worker's own precached shell without a network read.
-                // Runtime cache names carry the build's prefix: two workers on
-                // one origin sharing a name would prune each other's entries.
-                cacheName: `${cachePrefix}interview-navigation`,
+                cacheName: 'interviewer-interview-navigation',
                 precacheFallback: { fallbackURL: 'index.html' },
               },
             },
@@ -265,13 +218,18 @@ export default defineConfig(() =>
               // HTML whose matching hashed chunks it has not precached. The
               // /interview/ route above is intentionally excluded because it
               // cannot activate an update without interrupting an interview.
-              urlPattern: rebaseSwMatcher(
-                ({ request, sameOrigin, url }) =>
-                  sameOrigin &&
-                  request.mode === 'navigate' &&
-                  !url.pathname.startsWith('/interview/'),
-                appBase,
-              ),
+              // Interviewer 8 at /v8/ has its own worker and shell: answering
+              // its navigations here would serve this app's shell at /v8/
+              // when offline. (Literals: Workbox serialises this function
+              // into the worker, so it cannot read a module constant. The
+              // /interview/ route above and the /assets/ route below match
+              // only their own top-level paths, so never /v8/.)
+              urlPattern: ({ request, sameOrigin, url }) =>
+                sameOrigin &&
+                request.mode === 'navigate' &&
+                !url.pathname.startsWith('/interview/') &&
+                url.pathname !== '/v8' &&
+                !url.pathname.startsWith('/v8/'),
               handler: 'NetworkOnly',
               options: {
                 plugins: [
@@ -314,36 +272,35 @@ export default defineConfig(() =>
               // responsive stage preview, the new worker can read that exact
               // content-hashed URL from the retained precache. Stable HTML and
               // image URLs such as index.html and PWA icons stay excluded.
-              urlPattern: rebaseSwMatcher(
-                ({ sameOrigin, url }) =>
-                  sameOrigin &&
-                  url.pathname.startsWith('/assets/') &&
-                  (/\.(?:js|css)$/i.test(url.pathname) ||
-                    /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
-                appBase,
-              ),
+              urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                url.pathname.startsWith('/assets/') &&
+                (/\.(?:js|css)$/i.test(url.pathname) ||
+                  /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
               handler: matchRetainedPwaAsset,
             },
             {
               // Stable PWA icons are replaced in place and must reach the
               // network so their no-store response headers can take effect.
-              // Other images keep the existing bounded offline cache.
-              urlPattern: rebaseSwMatcher(
-                ({ url }) =>
-                  /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname) &&
-                  ![
-                    '/apple-touch-icon-180x180.png',
-                    '/pwa-64x64.png',
-                    '/pwa-192x192.png',
-                    '/pwa-512x512.png',
-                    '/maskable-icon-512x512.png',
-                    '/interviewer-icon.png',
-                  ].includes(url.pathname),
-                appBase,
-              ),
+              // Other images of this app keep the existing bounded offline
+              // cache. Interviewer 8's are left to its own worker, and other
+              // origins' (Mapbox's sprites among them, which must never be
+              // cached) to the network.
+              urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                !url.pathname.startsWith('/v8/') &&
+                /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname) &&
+                ![
+                  '/apple-touch-icon-180x180.png',
+                  '/pwa-64x64.png',
+                  '/pwa-192x192.png',
+                  '/pwa-512x512.png',
+                  '/maskable-icon-512x512.png',
+                  '/interviewer-icon.png',
+                ].includes(url.pathname),
               handler: 'CacheFirst',
               options: {
-                cacheName: `${cachePrefix}images`,
+                cacheName: 'interviewer-images',
                 expiration: {
                   maxEntries: 400,
                   maxAgeSeconds: 60 * 60 * 24 * 30,
@@ -352,10 +309,18 @@ export default defineConfig(() =>
               },
             },
             {
-              urlPattern: /\.(?:woff2?|ttf|otf|eot)$/i,
+              // Self-hosted fonts. A function rather than a RegExp so it can
+              // leave Interviewer 8's fonts to its own worker; `sameOrigin`
+              // keeps what the RegExp matched, since Workbox matches a RegExp
+              // route cross-origin only from the start of the URL, which a
+              // path pattern never is.
+              urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                !url.pathname.startsWith('/v8/') &&
+                /\.(?:woff2?|ttf|otf|eot)$/i.test(url.pathname),
               handler: 'CacheFirst',
               options: {
-                cacheName: `${cachePrefix}fonts`,
+                cacheName: 'interviewer-fonts',
                 expiration: {
                   maxEntries: 30,
                   maxAgeSeconds: 60 * 60 * 24 * 365,
@@ -426,5 +391,5 @@ export default defineConfig(() =>
         },
       },
     },
-  }),
-);
+  });
+});
