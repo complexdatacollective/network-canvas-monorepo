@@ -15,7 +15,14 @@ parents more simply.
   for a whole sibship joins the sibling bar where the line of descent meets
   it.
 - Children carried by a surrogate hang from her, as before, unless hanging
-  them from their genetic parents gives fewer crossing lines.
+  them from their genetic parents gives fewer crossing lines. A child she
+  carried with no biological parent recorded shares a sibling bar with the
+  others she carried, so twins hang from one bar.
+- People are seated so that lines can run straight: a seating whose lines
+  would have to bend round someone's symbol is passed over for one where
+  they need not, even at the cost of a crossing.
+- A line may leave a symbol closer to where another line meets it, as long
+  as the two part at a clear angle.
 - A parent no longer sits straight above a child they draw a line of their
   own to, where that line would run down over the line of descent.
 - Lines into an adopted child cross the adoption bracket to the child's

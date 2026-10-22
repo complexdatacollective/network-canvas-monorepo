@@ -115,10 +115,14 @@ export function alignPedigree(
   };
   const drawnOf = (
     layout: PedigreeLayout,
-    [hard, , passing, length, spanned, order]: number[],
+    // A seating's cost (see `sugiyamaLayouts`) or a drawn one's key: each
+    // ends with the seating's passing, length, people spanned and order.
+    cost: number[],
     search: Search,
     rank: number,
   ): Drawn => {
+    const [hard] = cost;
+    const [passing, length, spanned, order] = cost.slice(-4);
     const left = work.limit - work.spent;
     const own: RoutingWork = {
       spent: 0,

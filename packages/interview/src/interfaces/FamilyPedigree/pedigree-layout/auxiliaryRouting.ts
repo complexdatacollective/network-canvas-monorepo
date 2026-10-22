@@ -146,7 +146,12 @@ export const JUNCTION_CLEARANCE = 0.2;
 /** How close a line may run beside another line, leave a symbol beside
  * another line, or pass a symbol it does not join, as a fraction of a
  * symbol. */
-const LINE_CLEARANCE = 0.25;
+export const LINE_CLEARANCE = 0.25;
+/** How far from where another line meets a symbol a line may leave it, as
+ * a fraction of the symbol: lines leaving a symbol part at its edge at a
+ * clear angle, and need not keep a line's clearance (Josh, 22 Oct 2026:
+ * a partner's line leaving about 22 degrees below the partnership line). */
+const LEAVING_CLEARANCE = LINE_CLEARANCE / 2;
 
 const ON = 0.004; // about a pixel
 
@@ -1468,7 +1473,7 @@ function courseCoster(
       const exit = segments
         .map((segment) => edgeCrossing(segment, symbol))
         .find((at) => at !== undefined);
-      cost += crowding(exit, crossings, LINE_CLEARANCE);
+      cost += crowding(exit, crossings, LEAVING_CLEARANCE);
     }
     return cost;
   };

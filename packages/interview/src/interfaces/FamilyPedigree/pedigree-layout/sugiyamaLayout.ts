@@ -1,4 +1,6 @@
+import { LINE_CLEARANCE } from './auxiliaryRouting';
 import { kindepth } from './kindepth';
+import { FAMILY_PEDIGREE_GAPS } from './layoutDimensions';
 import {
   type ChildLines,
   isBirthTie,
@@ -76,6 +78,12 @@ type PedigreeGraph = {
  * (`SEATING_SEARCH_WORK`, `SIBSHIP_ORDERS`); this counts what they did, so
  * a drawing's work counts every step it takes.
  */
+/** How near the centre of a symbol a line passing it may come, in seats:
+ * half the symbol, and the line's clearance (see `LINE_CLEARANCE`). A
+ * row is taken to be as tall as a seat is wide. */
+const KEEP_CLEAR =
+  (0.5 + LINE_CLEARANCE) / (1 + FAMILY_PEDIGREE_GAPS.columnGapRatio);
+
 const SEATING_STEPS = {
   graph: 80,
   seated: 2,
@@ -1256,14 +1264,17 @@ function positionMap(layerOrdering: number[][]): Map<number, number> {
  * 0. Hard constraints broken: two lines of descent that cross (no hop can
  *    draw that), and a helper who does not sit beside the owners of their
  *    child's line of descent (constraint 10).
- * 1. Crossings. Every crossing counts the same: a line across a line of
+ * 1. Bends: the symbols a line from an owner straight to a child would
+ *    pass too near, each of which it must bend round. A straight line
+ *    is worth more than a crossing fewer (Josh, 22 Oct 2026).
+ * 2. Crossings. Every crossing counts the same: a line across a line of
  *    descent, a sibling bar or another owner's line.
- * 2. Passing people: the people a line from an owner passes on its way to
+ * 3. Passing people: the people a line from an owner passes on its way to
  *    the line of descent of its children.
- * 3. Length: how far each line's owner sits from that line of descent.
- * 4. Spanned: the people a sibling bar passes over who are not of the
+ * 4. Length: how far each line's owner sits from that line of descent.
+ * 5. Spanned: the people a sibling bar passes over who are not of the
  *    sibship, so a sibship sits together (Josh, 22 Oct 2026).
- * 5. Recorded order: how far each block is turned from the order the
+ * 6. Recorded order: how far each block is turned from the order the
  *    records seat it in.
  *
  * Each pair of rows is read as the drawing will draw it: each family's line
@@ -1274,6 +1285,7 @@ function positionMap(layerOrdering: number[][]): Map<number, number> {
  */
 type SeatingCost = [
   hard: number,
+  bends: number,
   crossings: number,
   passing: number,
   length: number,
@@ -1290,11 +1302,11 @@ function lessCost(x: readonly number[], y: readonly number[]): boolean {
 }
 
 /** What one pair of rows costs a seating (see `seatingCost`): its counts
- * of hard constraints broken, crossings and people passed, each line's
- * length in the order the lines are read, and the people its sibling bars
- * pass over. */
+ * of hard constraints broken, bends, crossings and people passed, each
+ * line's length in the order the lines are read, and the people its
+ * sibling bars pass over. */
 type RowPairCost = {
-  counts: [number, number, number];
+  counts: [number, number, number, number];
   spans: number[];
   spanned: number;
 };
@@ -1329,7 +1341,7 @@ function rowPairCost(
   const onRow = new Map<number, number>();
   for (const node of upper) onRow.set(node, 0);
   for (const node of lower) onRow.set(node, 1);
-  const cost: [number, number, number] = [0, 0, 0];
+  const cost: [number, number, number, number] = [0, 0, 0, 0];
   const spans: number[] = [];
   const onUpper = (node: number) => onRow.get(node) === 0;
   const onLower = (node: number) => onRow.get(node) === 1;
@@ -1383,6 +1395,47 @@ function rowPairCost(
       lines.set(key, line);
     }
   }
+  // Where each person on the lower row sits, roughly, on the upper row's
+  // seats: each sibship centred under its line of descent, a seat apart,
+  // and no two people nearer than a seat.
+  const lowerX = new Map<number, number>();
+  for (const [unit, d] of descentPoint) {
+    const children = unit.children
+      .filter(onLower)
+      .toSorted((a, b) => pos.get(a)! - pos.get(b)!);
+    children.forEach((child, k) =>
+      lowerX.set(child, d - (children.length - 1) / 2 + k),
+    );
+  }
+  const first = lower.findIndex((node) => lowerX.has(node));
+  lower.forEach((node, k) => {
+    if (first < 0) lowerX.set(node, k);
+    else if (k < first)
+      lowerX.set(node, lowerX.get(lower[first]!)! - first + k);
+    else if (k > first) {
+      const after = lowerX.get(lower[k - 1]!)! + 1;
+      lowerX.set(node, Math.max(lowerX.get(node) ?? after, after));
+    }
+  });
+  // The symbols a line from its owners (`from`, on the upper row) straight
+  // to a child (`to`) passes too near: it bends round each. A line of one
+  // owner leaves the centre of their symbol; a line of partners leaves the
+  // middle of the line between them, and passes them too.
+  const bendsOf = (from: number, to: number, line: Line) => {
+    const [x, y] = [lowerX.get(to)! - from, 1];
+    const near = (px: number, py: number) => {
+      const t = Math.max(
+        0,
+        Math.min(1, ((px - from) * x + py * y) / (x * x + y * y)),
+      );
+      return Math.hypot(from + t * x - px, t * y - py) < KEEP_CLEAR;
+    };
+    const own = line.parents.length === 1 ? line.parents[0] : undefined;
+    return (
+      upper.filter((node) => node !== own && near(pos.get(node)!, 0)).length +
+      lower.filter((node) => node !== to && near(lowerX.get(node)!, 1)).length
+    );
+  };
   for (const [key, line] of lines) {
     const o =
       line.parents.reduce((sum, parent) => sum + pos.get(parent)!, 0) /
@@ -1402,22 +1455,26 @@ function rowPairCost(
           owner: key,
         });
       } else {
-        for (const c of at) {
+        for (const child of line.children) {
+          const c = pos.get(child)!;
           edges.push({ from: o, to: c, drop: false, owner: key });
-          cost[1] += bars.filter(
+          cost[2] += bars.filter(
             ([a, b]) => c > a + 1e-9 && c < b - 1e-9,
           ).length;
+          cost[1] += bendsOf(o, child, line);
         }
       }
     } else {
-      for (const c of at) {
+      for (const child of line.children) {
+        const c = pos.get(child)!;
         edges.push({ from: o, to: c, drop: false, owner: key });
-        cost[1] += bars.filter(([a, b]) => c > a + 1e-9 && c < b - 1e-9).length;
+        cost[2] += bars.filter(([a, b]) => c > a + 1e-9 && c < b - 1e-9).length;
+        cost[1] += bendsOf(o, child, line);
       }
     }
     if (d !== undefined) {
       const [lo, hi] = [Math.min(o, d), Math.max(o, d)];
-      cost[2] += upper.filter(
+      cost[3] += upper.filter(
         (node) =>
           !line.parents.includes(node) &&
           pos.get(node)! > lo + 1e-9 &&
@@ -1433,7 +1490,7 @@ function rowPairCost(
       if (a.owner === b.owner) continue;
       if ((a.from - b.from) * (a.to - b.to) < -1e-9) {
         if (a.drop && b.drop) cost[0]++;
-        else cost[1]++;
+        else cost[2]++;
       }
     }
   }
@@ -1486,7 +1543,7 @@ function seatingCost(
     SEATING_STEPS.seated *
     layerOrdering.reduce((total, row) => total + row.length, 1);
   const weighed = weighedRowsOf(graph);
-  const cost: SeatingCost = [0, 0, 0, 0, 0, 0];
+  const cost: SeatingCost = [0, 0, 0, 0, 0, 0, 0];
 
   for (let k = 0; k + 1 < layerOrdering.length; k++) {
     const [upper, lower] = [layerOrdering[k]!, layerOrdering[k + 1]!];
@@ -1499,8 +1556,9 @@ function seatingCost(
     cost[0] += pair.counts[0];
     cost[1] += pair.counts[1];
     cost[2] += pair.counts[2];
-    for (const span of pair.spans) cost[3] += span;
-    cost[4] += pair.spanned;
+    cost[3] += pair.counts[3];
+    for (const span of pair.spans) cost[4] += span;
+    cost[5] += pair.spanned;
   }
 
   // How far each block is turned from its recorded order.
@@ -1524,7 +1582,7 @@ function seatingCost(
       }
       weighed.turns.set(key, turns);
     }
-    cost[5] += turns;
+    cost[6] += turns;
   }
   return cost;
 }
@@ -1534,7 +1592,7 @@ function countCrossings(
   layerOrdering: number[][],
   graph: PedigreeGraph,
 ): number {
-  const [hard, crossings] = seatingCost(layerOrdering, graph);
+  const [hard, , crossings] = seatingCost(layerOrdering, graph);
   return hard + crossings;
 }
 

@@ -774,21 +774,14 @@ describe('auxiliary and direct parent lines', () => {
         ['phil', 'biological', 'ben'],
       ],
     },
-    // Becky carried both, but Ego's biological parent is Marcus and Leo has
-    // none recorded, so they are two sibships (Josh, 12 Oct 2026), each
-    // under Becky with its own line of descent, and every line into each
-    // converges on their top. Marcus's line ends on Ego and Marcus and
-    // Julian's line on Leo, while Julian's own line ends on Ego: whichever
-    // side Leo sits, the couple's line, starting between the two partners,
-    // must cross one partner's line to Ego.
-    // The couple's line bends round Marcus's symbol, Marcus's line bends
-    // clear of that bend, and Julian's clear of Marcus's: the search, which
-    // moves one or two lines at a time within its budget, does not find the
-    // drawing with both partners' lines straight.
+    // Becky carried both, and Leo, with no biological parent recorded, joins
+    // Ego's sibship under her (Josh, 22 Oct 2026). Marcus's line ends on
+    // Ego and Marcus and Julian's line on Leo, while Julian's own line ends
+    // on Ego: whichever side Leo sits, the couple's line, starting between
+    // the two partners, must cross one partner's line to Ego.
     'an egg donor and a surrogate of twins': {
       unavoidable: [
-        "julian's social line bends, though a straight line would break no rule",
-        "marcus and julian's social line crosses marcus's biological line, of its own owner",
+        "marcus and julian's social line crosses julian's social line, of its own owner",
       ],
       people: ['ego', 'leo', 'marcus', 'julian', 'eggdonor', 'becky'],
       links: [

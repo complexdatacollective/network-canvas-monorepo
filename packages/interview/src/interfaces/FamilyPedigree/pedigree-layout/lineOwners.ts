@@ -218,7 +218,7 @@ export function lineOwnersOf(
     return own;
   };
 
-  return parents.map((conns, child) => {
+  const childLines = parents.map((conns, child) => {
     const ofKind = (kinds: PedigreeEdgeType[]) =>
       conns.filter((p) => kinds.includes(recordedKind(p)));
     const raisers = [...ofKind(['adoptive']), ...ofKind(['social'])];
@@ -289,6 +289,34 @@ export function lineOwnersOf(
           : ownerKey(descent),
       lines,
     };
+  });
+
+  // A child with no biological parent recorded, hanging from the person who
+  // carried them, joins the sibship that person carries for someone, when
+  // there is exactly one: twins a surrogate carried share one bar, though
+  // only one twin's father is recorded (Josh, 22 Oct 2026).
+  return childLines.map((lines, child) => {
+    const { descent } = lines;
+    if (
+      !descent ||
+      cases[child] !== 'birth' ||
+      biologicalOwner[child]!.length > 0
+    ) {
+      return lines;
+    }
+    const carried = new Set(
+      childLines.flatMap((other, k) =>
+        k !== child &&
+        other.descent &&
+        other.sibship !== undefined &&
+        other.sibship !== lines.sibship &&
+        ownerKey(other.descent) === ownerKey(descent)
+          ? [other.sibship]
+          : [],
+      ),
+    );
+    if (carried.size !== 1) return lines;
+    return { ...lines, sibship: [...carried][0]! };
   });
 }
 
