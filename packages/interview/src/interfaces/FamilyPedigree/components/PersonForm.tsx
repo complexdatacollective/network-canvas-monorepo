@@ -1526,12 +1526,21 @@ function ParentLinkFields({
       : undefined;
   // Not known shows neither answer chosen, except that while someone else
   // carried them, "No" is the answer worked out (`useDerivedAnswer`): it
-  // goes again once nobody else did, unless the participant chose it.
+  // goes again once nobody else did, unless the participant chose it. "No"
+  // recorded for a parent who adopted the person rests on the adoption (an
+  // adopted sibling is recorded as carried by someone else), so once another
+  // kind of parent is chosen it is asked afresh.
+  const recordedForKind =
+    link.kind === 'adoptive' &&
+    kind !== 'adoptive' &&
+    recordedCarrying === false
+      ? undefined
+      : recordedCarrying;
   const carriedAnswer = useDerivedAnswer({
     name: linkField(link, 'carrier'),
     nameMode: 'opaque',
     derived:
-      recordedCarrying ?? (anotherCarrier === undefined ? undefined : false),
+      recordedForKind ?? (anotherCarrier === undefined ? undefined : false),
     isAvailable: (value) => value !== true || carriedYesReason === undefined,
   });
 

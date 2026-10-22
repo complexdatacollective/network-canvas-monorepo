@@ -1182,6 +1182,44 @@ describe('a parent of any kind who carried the pregnancy', () => {
   });
 });
 
+// An adopted sibling's adoptive parents are recorded as not having carried
+// them; that "No" rests on the adoption, so it goes once the parent is
+// recorded as another kind (Joshua, 22 Oct 2026).
+describe('carrying recorded for an adoptive parent', () => {
+  it('asks again whether a parent carried the pregnancy once they are no longer an adoptive parent', async () => {
+    const { onSubmit, user } = renderPersonForm('sib', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sib', { sex: ['female'] }),
+        person('amy', { sex: ['female'] }),
+      ],
+      edges: [link('amy', 'sib', 'adoptive', { carrier: false })],
+    });
+    const carried = () =>
+      screen.getByRole('radiogroup', {
+        name: /^Did amy carry the pregnancy\?/,
+      });
+    expect(within(carried()).getByRole('radio', { name: 'No' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Biological parent' }));
+    await waitFor(() => {
+      for (const option of within(carried()).getAllByRole('radio')) {
+        expect(option).not.toBeChecked();
+      }
+    });
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].linkUpdates).toEqual([
+      {
+        linkId: 'amy-sib-adoptive',
+        kind: 'biological',
+        isGestationalCarrier: undefined,
+        isCurrentPartner: true,
+      },
+    ]);
+  });
+});
+
 // Ruling 21: an answer that would record a second carrier is unavailable,
 // with a reason naming who carried them.
 describe('a second carrier', () => {
