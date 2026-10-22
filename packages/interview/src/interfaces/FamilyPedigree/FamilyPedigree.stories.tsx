@@ -582,8 +582,10 @@ const positionsOf = (canvasElement: HTMLElement) =>
   );
 
 /**
- * Opening someone's details moves them beside the panel; closing it puts the
- * view back as it was.
+ * Opening someone's details moves them beside the panel; closing it with the
+ * mouse shows the whole family again, as the stage opened. (Closed from the
+ * keyboard, focus returns to the person with their add menu, which is
+ * brought into view.)
  */
 export const PanelCloseRestoresView: Story = {
   render: (args) => (
@@ -611,7 +613,9 @@ export const PanelCloseRestoresView: Story = {
       { timeout: 3000 },
     );
 
-    await userEvent.keyboard('{Escape}');
+    await userEvent.click(
+      within(panel() as HTMLElement).getByRole('button', { name: 'Cancel' }),
+    );
     await waitFor(
       () => {
         for (const [id, now] of positionsOf(canvasElement)) {

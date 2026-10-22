@@ -150,51 +150,6 @@ const fourGenerations: Family = {
   ],
 };
 
-/**
- * Showing the whole family leaves room for the add menu: the top row's
- * Parent buttons clear of the prompt, and the bottom row's Child buttons
- * clear of the toolbar, where they can be clicked.
- */
-export const TheWholeFamilyLeavesRoomForTheAddMenu: Story = {
-  render: () => <CanvasStory family={fourGenerations} />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByRole('button', { name: /^You/ });
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Show the whole family' }),
-    );
-    await settled(canvasElement);
-
-    await userEvent.hover(personSymbol(canvasElement, 'ego'));
-    const child = await canvas.findByTestId('pedigree-menu-child');
-    await expect(
-      overlaps(boxOf(child), toolbarBox(canvasElement)),
-      'Child clear of the toolbar',
-    ).toBe(false);
-    await expect(
-      inside(boxOf(child), canvasBox(canvasElement)),
-      'Child on the canvas',
-    ).toBe(true);
-
-    const heading = canvas.getByRole('heading', { name: /^Add the members/ });
-    for (const topRow of ['greatGran', 'greatGrandad']) {
-      await userEvent.hover(personSymbol(canvasElement, topRow));
-      await waitFor(() =>
-        expect(
-          personSymbol(canvasElement, topRow).parentElement?.querySelector(
-            '[data-testid="pedigree-menu-parent"]',
-          ),
-        ).not.toBeNull(),
-      );
-      const parent = canvas.getByTestId('pedigree-menu-parent');
-      await expect(
-        overlaps(boxOf(parent), boxOf(heading)),
-        `${topRow}'s Parent clear of the prompt`,
-      ).toBe(false);
-    }
-  },
-};
-
 /** Adds a parent to someone through their add menu, as a woman. */
 async function addMother(canvasElement: HTMLElement, childId: string) {
   const canvas = within(canvasElement);
@@ -1400,6 +1355,23 @@ export const MovingBetweenPromptsShowsTheWholeFamily: Story = {
     await waitFor(() => expect(canvas.queryByText(HEART_PROMPT)).toBeNull());
     await settled(canvasElement);
     await expectSameView(viewOf(canvasElement), whole, 'after Back');
+  },
+};
+
+/**
+ * A small family is shown as large as the canvas allows, larger than its
+ * natural size, but no more than half as large again.
+ */
+export const ASmallFamilyFillsTheCanvas: Story = {
+  render: () => <CanvasStory family={threePeople} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    const symbol = personSymbol(canvasElement, 'ego');
+    const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
+    await expect(scale, 'zoomed in past natural size').toBeGreaterThan(1.01);
+    await expect(scale, 'no more than half as large again').toBeLessThan(1.501);
   },
 };
 

@@ -209,14 +209,48 @@ const member = (page: Page, name: string | RegExp): Locator =>
 const panel = (page: Page): Locator =>
   page.getByTestId('pedigree-person-panel');
 
-/** Opens the add menu around a person with the mouse and picks a relation. */
+/**
+ * How far a button sits under something drawn over the canvas (the toolbar):
+ * the distance from its top to the top of whatever covers its centre, or 0
+ * when nothing does.
+ */
+const coveredBy = (button: Locator): Promise<number> =>
+  button.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const over = document.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2,
+    );
+    if (!over || element.contains(over)) return 0;
+    return box.bottom - over.getBoundingClientRect().top;
+  });
+
+/**
+ * Opens the add menu around a person with the mouse and picks a relation.
+ * The whole family fills the canvas, so a button can sit under the toolbar;
+ * the participant drags the family up to reach it, and so does this.
+ */
 async function addRelativeOf(
   page: Page,
   name: string,
   relation: 'parent' | 'sibling' | 'partner' | 'child',
 ) {
+  const button = page.getByTestId(`pedigree-menu-${relation}`);
   await member(page, name).hover();
-  await page.getByTestId(`pedigree-menu-${relation}`).click();
+  await expect(button).toBeVisible();
+  const covered = await coveredBy(button);
+  if (covered > 0) {
+    const canvas = await page.getByTestId('pedigree-canvas').boundingBox();
+    if (!canvas) throw new Error('The canvas is not shown');
+    const x = canvas.x + 8;
+    const y = canvas.y + canvas.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y - covered - 24, { steps: 8 });
+    await page.mouse.up();
+    await member(page, name).hover();
+  }
+  await button.click();
   await expect(panel(page)).toBeVisible();
 }
 

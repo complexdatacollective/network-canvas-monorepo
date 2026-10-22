@@ -13,6 +13,11 @@ import { type RefObject, useCallback, useMemo, useRef, useState } from 'react';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.5;
+// The most a fit (Show the whole family, and every reset of the view) zooms
+// in, below what the participant can zoom in to themselves: a small family is
+// shown at half as large again as its natural size, large enough to read at a
+// glance without looking blown up.
+const FIT_MAX_SCALE = 1.5;
 // How much of the family stays on screen, at least, however far it is
 // dragged away.
 const KEEP_VISIBLE = 120;
@@ -62,13 +67,6 @@ const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 // How far in from the viewport's edges something is brought into view, when
 // nothing covers them.
 const MARGIN: Insets = { top: 24, right: 24, bottom: 24, left: 24 };
-
-/**
- * How far around something a ring of controls reaches, on every side: so
- * many content units, scaled with the zoom, but never less than so many
- * pixels on screen (for controls that keep a minimum size when zoomed out).
- */
-export type Reach = { content: number; screen: number };
 
 /**
  * Keeps someone in the family on screen, whatever offset is asked for: the
@@ -260,14 +258,15 @@ export type PanZoom = {
    * in focus, about the first of them, bringing them all into view. */
   zoomBy: (exponent: number, focus?: ZoomFocus) => void;
   /** Puts the middle of an element of the content in the middle of the
-   * viewport, inside the given insets, at the zoom that fits it there, with
-   * room for controls that reach out around it: no more than its natural
-   * size, and no less than the least zoom. An element too large to fit even
-   * then is still centred, and runs past the edges. The view it heads for. */
+   * viewport, inside the given insets, at the zoom that fits it there: as
+   * large as fits, up to half
+   * as large again as its natural size, and no less than the least zoom. An
+   * element too large to fit even then is still centred, and runs past the
+   * edges. The view it heads for. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,
-    options?: { animated?: boolean; reach?: Reach },
+    options?: { animated?: boolean },
   ) => View | undefined;
   /** Keeps an element where it is on screen across a change of layout,
    * given where it was in the content before the change. */
@@ -602,7 +601,7 @@ export function usePanZoom({
   );
 
   const fitToView = useCallback<PanZoom['fitToView']>(
-    (element, insets, { animated = true, reach } = {}) => {
+    (element, insets, { animated = true } = {}) => {
       const viewport = viewportRef.current;
       if (!viewport) return undefined;
       const width = element.offsetWidth;
@@ -612,18 +611,10 @@ export function usePanZoom({
       const availableWidth = viewport.clientWidth - insets.left - insets.right;
       const availableHeight =
         viewport.clientHeight - insets.top - insets.bottom;
-      // The reach on either side scales with the zoom, and is never less
-      // than its least size on screen.
-      const around = reach ?? { content: 0, screen: 0 };
       const nextScale = clamp(
-        Math.min(
-          availableWidth / (width + 2 * around.content),
-          (availableWidth - 2 * around.screen) / width,
-          availableHeight / (height + 2 * around.content),
-          (availableHeight - 2 * around.screen) / height,
-        ),
+        Math.min(availableWidth / width, availableHeight / height),
         MIN_SCALE,
-        1,
+        FIT_MAX_SCALE,
       );
       return moveTo(
         insets.left + availableWidth / 2 - centre.x * nextScale,

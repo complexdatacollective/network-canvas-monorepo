@@ -121,10 +121,7 @@ import {
   RELATIVES_NOT_RECORDED,
   relativesToAskAbout,
 } from './completeness';
-import AddRelativeMenu, {
-  AddMenuReachProbe,
-  addMenuReach,
-} from './components/AddRelativeMenu';
+import AddRelativeMenu from './components/AddRelativeMenu';
 import CompletenessTracker from './components/CompletenessTracker';
 import ConnectMenu, {
   type ConnectPair,
@@ -758,7 +755,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   );
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
-  const menuReachRef = useRef<HTMLSpanElement>(null);
   // How far in from each edge of the canvas the prompt and the toolbar leave
   // it clear.
   const clearInsets = useCallback(() => {
@@ -778,27 +774,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family in the middle of the canvas, clear of the prompt above
-  // and the toolbar below, with room around it for anyone's add menu. The
-  // room is left on every prompt, including those where no menu is shown, so
-  // the same family is framed the same way whichever prompt it is shown on.
-  // It is zoomed in no further than its natural size, and out no further
-  // than the zoom buttons go: a family too large even for that is still
-  // centred, and the rest of it is reached by panning. This is the
-  // view the stage opens on, and the view it goes back to whenever the
-  // participant asks for it, moves to another prompt, or finishes adding or
-  // editing someone; where they had dragged or zoomed it to is not kept.
-  // Until they move it again, it keeps the family framed as the layout
-  // changes (`framedView`).
+  // and the toolbar below, as large as it fits, up to half as large again as
+  // its natural size, and out no further than the zoom buttons go: a family
+  // too large even for that is still centred, and the rest of it is reached
+  // by panning. This is the view the stage opens on, and the view it goes
+  // back to whenever the participant asks for it, moves to another prompt,
+  // or finishes adding or editing someone; where they had dragged or zoomed
+  // it to is not kept. Until they move it again, it keeps the family framed
+  // as the layout changes (`framedView`).
   const framedView = useRef<View | null>(null);
   const showWholeFamily = useCallback(
     ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
       framedView.current =
-        panZoom.fitToView(layout, clearInsets(), {
-          animated,
-          reach: addMenuReach(menuReachRef.current),
-        }) ?? null;
+        panZoom.fitToView(layout, clearInsets(), { animated }) ?? null;
     },
     [panZoom, clearInsets],
   );
@@ -2729,7 +2719,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           <Prompts prompts={prompts} currentPromptId={prompt.id} />
         </div>
         {measurementContainer}
-        <AddMenuReachProbe ref={menuReachRef} />
         <div className="relative flex min-h-0 w-full flex-1 flex-col">
           {/* Drag to pan, wheel or pinch to zoom. */}
           <PedigreeViewport
