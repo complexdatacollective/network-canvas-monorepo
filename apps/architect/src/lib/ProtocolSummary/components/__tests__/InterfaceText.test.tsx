@@ -93,13 +93,14 @@ describe('Protocol Summary interview text', () => {
     expect(within(row).getByText('contact us')).toBeVisible();
   });
 
-  it('prints a message with arguments as its versions, not the syntax it is stored in', () => {
+  it('prints a message with arguments folded to its pill, not the syntax it is stored in', () => {
     renderWith(withText, <InterfaceText />);
 
     const row = rowFor('Too long message');
     expect(row).not.toHaveTextContent('{max, plural');
-    expect(row).toHaveTextContent('Enter at most');
-    expect(within(row).getAllByText(/character/).length).toBeGreaterThan(1);
+    expect(
+      within(row).getByText('Maximum').closest('[data-token]'),
+    ).toHaveAttribute('data-token', 'max');
   });
 
   it('prints nothing for a protocol that holds no interview text', () => {
