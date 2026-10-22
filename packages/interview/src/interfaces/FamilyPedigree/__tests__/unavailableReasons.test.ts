@@ -4,7 +4,7 @@ import {
   carrierRecordedReason,
   joinReasons,
   type ReasonContext,
-  sexRuledOutReason,
+  sexConflictReason,
 } from '../components/unavailableReasons';
 import { readFamily } from '../model';
 import { config, link, person } from './fixtures';
@@ -40,19 +40,35 @@ const context: ReasonContext = {
     new Intl.ListFormat('en', { type: 'conjunction' }).format(items),
 };
 
+const surrogateCarried = (childId: string) =>
+  sexConflictReason(context, 'ego', {
+    sex: 'male',
+    childId,
+    rule: 'surrogate',
+  });
 const carried = (childId: string) =>
-  sexRuledOutReason(context, 'ego', { sex: 'male', childId, rule: 'carried' });
+  sexConflictReason(context, 'ego', {
+    sex: 'male',
+    childId,
+    rule: 'carried',
+    linkId: `ego-${childId}-biological`,
+  });
 
 describe('joinReasons', () => {
   test('says a reason about several children once, naming them together', () => {
-    expect(joinReasons(context, [carried('ava'), carried('ben')])).toBe(
+    expect(
+      joinReasons(context, [surrogateCarried('ava'), surrogateCarried('ben')]),
+    ).toBe(
       '“Male” is unavailable because you are recorded as having carried Ava and Ben, and nobody recorded as “Male” at birth can carry a pregnancy. To choose it, first change how you are connected to Ava and Ben.',
+    );
+    expect(joinReasons(context, [carried('ava'), carried('ben')])).toBe(
+      'You are recorded as having carried Ava and Ben, and nobody recorded as “Male” at birth can carry a pregnancy. If you save, you will no longer be recorded as having carried Ava and Ben.',
     );
   });
 
   test('says a conflict about the participant once, not again for their siblings', () => {
     const sameSexAs = (childId: string) =>
-      sexRuledOutReason(context, 'new', {
+      sexConflictReason(context, 'new', {
         rule: 'sameSexGeneticParent',
         sex: 'female',
         childId,
@@ -65,7 +81,7 @@ describe('joinReasons', () => {
         sameSexAs('ben'),
       ]),
     ).toBe(
-      '“Female” is unavailable because this person and “Mum” are both your genetic parents, and “Mum” is recorded as “Female” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “Mum”, or how one of them is connected to you.',
+      'This person and “Mum” are both your genetic parents, and “Mum” is also recorded as “Female” at birth. Nobody has two genetic parents of the same sex at birth, so if you save, the sex at birth of “Mum” will be cleared for you to answer again.',
     );
   });
 

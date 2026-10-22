@@ -9,7 +9,7 @@ import {
   geneticParentsPossible,
   planConnection,
   readFamily,
-  sexesRuledOut,
+  sexConflicts,
 } from '../model';
 import { config, link, person } from './fixtures';
 
@@ -182,7 +182,9 @@ describe('connecting two people', () => {
     );
     // Ego's only genetic parent could have been either; nothing is ruled out.
     const sexes = (fam: typeof f, id: string) =>
-      sexesRuledOut(fam, id).map((reason) => reason.sex);
+      (['female', 'male'] as const).filter(
+        (sex) => sexConflicts(fam, id, sex).length > 0,
+      );
     expect(sexes(f, 'mother')).toEqual([]);
     expect(sexes(f, 'carrier')).toEqual(['male']);
     // The mother is named, so is not a stand-in, whose sex at birth would

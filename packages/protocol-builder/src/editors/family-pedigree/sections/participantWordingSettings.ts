@@ -372,9 +372,14 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableCarried,
       },
       {
-        key: 'unavailableSameSexAsCoParent',
-        label: messages.wordingUnavailableSameSexAsCoParent,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableSameSexAsCoParent,
+        key: 'sexChangeEndsCarrying',
+        label: messages.wordingSexChangeEndsCarrying,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.sexChangeEndsCarrying,
+      },
+      {
+        key: 'sexChangeClearsCoParentSex',
+        label: messages.wordingSexChangeClearsCoParentSex,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.sexChangeClearsCoParentSex,
       },
     ],
   },

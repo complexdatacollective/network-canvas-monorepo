@@ -2241,58 +2241,112 @@ export function geneticParentsPossible(
 }
 
 /**
- * A sex at birth that would contradict how a person is recorded as a parent,
- * and why: they are a genetic parent of `childId`, whose other genetic
- * parent `coParentId` is recorded with that sex and so provided the same
- * kind of gamete, or they carried `childId`'s pregnancy, which nobody
- * recorded as male at birth did.
+ * What recording a person with a sex at birth would contradict in how they
+ * are recorded as a parent of `childId`:
+ *
+ * - `sameSexGeneticParent`: they are a genetic parent of `childId` beside
+ *   `coParentId`, who is recorded with the same binary sex and so provided
+ *   the same kind of gamete.
+ * - `carried`: they are recorded as having carried `childId`'s pregnancy, on
+ *   the link `linkId`, which nobody recorded as male at birth did.
+ * - `surrogate`: they are `childId`'s surrogate, who always carried the
+ *   pregnancy, so cannot be recorded as male at birth.
+ *
+ * The first two give way to the answer when it is saved (Josh, 22 Oct 2026):
+ * a sex at birth is never refused for what is recorded about someone else, or
+ * about whether they carried, since a mistake in one of two answers that
+ * depend on each other could otherwise only be corrected by changing a
+ * relationship first (`sexAnswerGivesWay`). Only a surrogate's sex at birth
+ * is refused, since being one is the relationship itself.
  */
-export type SexRuledOut = {
+export type SexConflict = {
   sex: PedigreeSexAssignedAtBirth;
   childId: string;
 } & (
   | { rule: 'sameSexGeneticParent'; coParentId: string }
-  | { rule: 'carried' }
+  | { rule: 'carried'; linkId: string }
+  | { rule: 'surrogate' }
 );
 
 /**
- * The sexes at birth that would contradict how a person is recorded as a
- * parent, each with the record that rules it out (`SexRuledOut`). A sex may
- * be ruled out for several reasons, each listed.
+ * What recording a person with this sex at birth would contradict in how
+ * they are recorded as a parent, each with the record it contradicts
+ * (`SexConflict`). A stand-in's sex at birth follows the other genetic
+ * parent's, so never contradicts theirs.
  */
-export function sexesRuledOut(family: Family, personId: string): SexRuledOut[] {
-  const asParent = family.links.filter(
-    (link) => link.kind !== 'partner' && link.source === personId,
-  );
-  const reasons: SexRuledOut[] = [];
-  for (const sex of PEDIGREE_SEX_ASSIGNED_AT_BIRTH) {
-    for (const link of asParent) {
-      if (isGeneticKind(link.kind)) {
-        // A stand-in's sex follows the other genetic parent's, so never
-        // rules theirs out.
-        const block = geneticParentBlock(
-          family,
-          link.target,
-          firmGeneticParentsOf(family, link.target).filter(
-            (id) => id !== personId,
-          ),
+export function sexConflicts(
+  family: Family,
+  personId: string,
+  sex: PedigreeSexAssignedAtBirth,
+): SexConflict[] {
+  const conflicts: SexConflict[] = [];
+  for (const link of family.links) {
+    if (link.kind === 'partner' || link.source !== personId) continue;
+    if (isGeneticKind(link.kind)) {
+      const block = geneticParentBlock(
+        family,
+        link.target,
+        firmGeneticParentsOf(family, link.target).filter(
+          (id) => id !== personId,
+        ),
+        sex,
+      );
+      if (block?.rule === 'sameSexGeneticParent') {
+        conflicts.push({
           sex,
-        );
-        if (block?.rule === 'sameSexGeneticParent') {
-          reasons.push({
-            sex,
-            childId: link.target,
-            rule: 'sameSexGeneticParent',
-            coParentId: block.coParentId,
-          });
-        }
-      }
-      if (link.isGestationalCarrier && !couldCarryPregnancy(sex)) {
-        reasons.push({ sex, childId: link.target, rule: 'carried' });
+          childId: link.target,
+          rule: 'sameSexGeneticParent',
+          coParentId: block.coParentId,
+        });
       }
     }
+    if (link.isGestationalCarrier && !couldCarryPregnancy(sex)) {
+      conflicts.push(
+        link.kind === 'surrogate'
+          ? { sex, childId: link.target, rule: 'surrogate' }
+          : { sex, childId: link.target, rule: 'carried', linkId: link.id },
+      );
+    }
   }
-  return reasons;
+  return conflicts;
+}
+
+/** The sexes at birth a person cannot be recorded with: male, for anyone
+ * recorded as a surrogate (`SexConflict`). */
+export const sexesRefused = (family: Family, personId: string) =>
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH.filter((sex) =>
+    sexConflicts(family, personId, sex).some(
+      (conflict) => conflict.rule === 'surrogate',
+    ),
+  );
+
+/**
+ * What saving a person with this sex at birth changes in what is recorded
+ * about others, so that the answer stands (`SexConflict`): the answers
+ * recording them as having carried a pregnancy are removed, and every
+ * genetic parent beside them with the same binary sex has their sex at birth
+ * cleared, each to be answered again. Nothing is assumed in their place, so
+ * nothing is left standing on an answer that is later changed back (Josh,
+ * 22 Oct 2026).
+ */
+export function sexAnswerGivesWay(
+  family: Family,
+  personId: string,
+  sex: PedigreeSexAssignedAtBirth,
+): { uncarriedLinkIds: string[]; clearedSexIds: string[] } {
+  const conflicts = sexConflicts(family, personId, sex);
+  return {
+    uncarriedLinkIds: conflicts.flatMap((conflict) =>
+      conflict.rule === 'carried' ? [conflict.linkId] : [],
+    ),
+    clearedSexIds: [
+      ...new Set(
+        conflicts.flatMap((conflict) =>
+          conflict.rule === 'sameSexGeneticParent' ? [conflict.coParentId] : [],
+        ),
+      ),
+    ],
+  };
 }
 
 /**
