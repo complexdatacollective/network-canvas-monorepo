@@ -44,6 +44,7 @@ const VALID_ME = {
   name: Redacted.make('Ada Lovelace'),
   locale: null,
   teams: [{ teamId: TeamId.make('team-1'), role: 'owner' }],
+  canCreateTeam: false,
 };
 
 const VALID_STATUS = {
@@ -68,6 +69,7 @@ const ENCODED_ME = {
   name: 'Ada Lovelace',
   locale: null,
   teams: [{ teamId: 'team-1', role: 'owner' }],
+  canCreateTeam: false,
 };
 
 const ENCODED_STATUS = {

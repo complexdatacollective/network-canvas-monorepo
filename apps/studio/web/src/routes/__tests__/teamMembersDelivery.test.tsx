@@ -113,6 +113,7 @@ const ME: Me = {
   name: Redacted.make('Owner Researcher'),
   locale: null,
   teams: [{ teamId: TeamId.make(TEAM.id), role: 'owner' }],
+  canCreateTeam: false,
 };
 
 const STATUS: InstanceStatus = {

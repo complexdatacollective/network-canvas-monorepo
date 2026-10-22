@@ -1,4 +1,4 @@
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
@@ -8,6 +8,7 @@ import {
   AcceptTeamInvitationResult,
   CancelTeamInvitationResult,
   CreateTeamInvitationResult,
+  CreateTeamResult,
   TeamCommandError,
   UpdateTeamMemberRoleResult,
 } from '@codaco/studio-contract/schema/team';
@@ -16,6 +17,7 @@ import { enforceRateLimit } from '../../rate-limit/enforce.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
+  createTeam,
   createTeamInvitation,
   type TeamCommandError as TeamCommandFailure,
   updateTeamMemberRole,
@@ -39,6 +41,9 @@ const refusals = <A, R>(
     ),
   );
 
+const decodeCreatedTeam = Schema.decodeUnknownSync(
+  Schema.toType(CreateTeamResult),
+);
 const decodeUpdatedMember = Schema.decodeUnknownSync(
   Schema.toType(UpdateTeamMemberRoleResult),
 );
@@ -54,6 +59,22 @@ const decodeAcceptedInvitation = Schema.decodeUnknownSync(
 
 export const TeamHandlers = (deps: RpcDeps) =>
   TeamRpcs.toLayer({
+    'team.create': (payload) =>
+      Effect.gen(function* () {
+        const principal = yield* Principal;
+        yield* enforceRateLimit('team_create', principal.userId);
+        yield* requireDatabase(deps);
+        return decodeCreatedTeam(
+          yield* refusals(
+            withRequestId(
+              createTeam({
+                name: Redacted.value(payload.name),
+                deploymentMode: deps.deployment.mode,
+              }),
+            ),
+          ),
+        );
+      }),
     'team.acceptInvitation': (payload) =>
       Effect.gen(function* () {
         // Per invitation token and before the lookup, so a guessed token costs

@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import { MemberId, TeamId, TeamInvitationId } from './ids.ts';
-import { Email } from './primitives.ts';
+import { Email, NonBlankString } from './primitives.ts';
 import { problemFields } from './problem.ts';
 
 export const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
@@ -11,6 +11,16 @@ export type TeamRole = (typeof TeamRole)['Type'];
 const TeamName = Schema.RedactedFromValue(
   Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(320)),
 );
+
+export const CreateTeamInput = Schema.Struct({
+  name: Schema.RedactedFromValue(NonBlankString(120, 'Team name')),
+});
+
+export const CreateTeamResult = Schema.Struct({
+  teamId: TeamId,
+  teamName: TeamName,
+  memberId: MemberId,
+});
 
 export const TeamScoped = Schema.Struct({
   teamId: TeamId,

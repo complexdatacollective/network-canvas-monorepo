@@ -347,6 +347,7 @@ seconds, minutes or hours:
 | `sign_in_address`            | `10/10m`  | Credential stuffing from one host, without locking out a shared address      |
 | `sign_in_email`              | `5/10m`   | One account, against attempts spread across many addresses                   |
 | `invitation_accept`          | `10/10m`  | A team invitation token, against being brute-forced through its link         |
+| `team_create`                | `5/1h`    | Team creation, against one account filling an open instance with teams       |
 | `participant_redeem_address` | `20/10m`  | Participation links, loosely: a lab runs several interviews from one host    |
 | `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                      |
 | `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                         |

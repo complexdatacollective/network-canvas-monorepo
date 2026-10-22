@@ -52,6 +52,7 @@ import { Analytics } from '../../platform/analytics.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
+  createTeam,
   createTeamInvitation,
   TeamCommandError,
   updateTeamMemberRole,
@@ -1923,6 +1924,96 @@ describe.skipIf(!testDb)('audited team commands', () => {
           );
           assert.lengthOf(invitations, 0);
           assert.lengthOf(yield* auditRows(teamId), 1);
+        }),
+      { timeout: 30_000 },
+    );
+
+    const ownInstallation = Effect.fnUntraced(function* (ownerUserId: string) {
+      const harness = yield* TestDatabase;
+      yield* harness.onOwner(
+        harness.owner.sql`insert into installation (id, name, owner_user_id)
+                          values (1, 'Test instance', ${ownerUserId})
+                          on conflict (id) do update
+                            set owner_user_id = excluded.owner_user_id,
+                                bootstrap_token_hash = null`,
+      );
+    });
+
+    const teamsCreatedBy = Effect.fnUntraced(function* (userId: string) {
+      const harness = yield* TestDatabase;
+      return yield* harness.onOwner(
+        harness.owner.sql<{
+          team_id: string;
+          name: string;
+          role: string;
+        }>`select t.id as team_id, t.name, m.role
+             from teams t join team_members m on m.team_id = t.id
+            where m.user_id = ${userId}`,
+      );
+    });
+
+    suite.effect(
+      'creates a team with its creator as owner and records it, on a managed deployment',
+      () =>
+        Effect.gen(function* () {
+          const creator = identity(randomUUID(), 'creator', 'owner');
+          yield* seedUser(creator);
+
+          const created = yield* asActor(
+            creator,
+            createTeam({
+              name: '  Lab of Networks  ',
+              deploymentMode: 'managed',
+            }),
+          );
+
+          assert.strictEqual(
+            Redacted.value(created.teamName),
+            'Lab of Networks',
+          );
+          assert.deepStrictEqual(yield* teamsCreatedBy(creator.userId), [
+            { team_id: created.teamId, name: 'Lab of Networks', role: 'owner' },
+          ]);
+          const events = yield* auditRows(created.teamId);
+          assert.lengthOf(events, 1);
+          assert.strictEqual(events[0]?.event_type, 'team.created');
+          assert.strictEqual(events[0]?.outcome, 'succeeded');
+          assert.strictEqual(events[0]?.actor_id, creator.userId);
+          assert.strictEqual(events[0]?.team_label, 'Lab of Networks');
+          assert.strictEqual(events[0]?.subject_id, created.memberId);
+          assert.deepStrictEqual(events[0]?.details, { role: 'owner' });
+        }),
+      { timeout: 30_000 },
+    );
+
+    suite.effect(
+      'lets only the instance owner create a team on a self-hosted deployment',
+      () =>
+        Effect.gen(function* () {
+          const instanceOwner = identity(randomUUID(), 'instance', 'owner');
+          const researcher = identity(randomUUID(), 'researcher', 'owner');
+          yield* seedUser(instanceOwner);
+          yield* seedUser(researcher);
+          yield* ownInstallation(instanceOwner.userId);
+
+          yield* expectForbidden(
+            asActor(
+              researcher,
+              createTeam({
+                name: 'Unsanctioned',
+                deploymentMode: 'self-hosted',
+              }),
+            ),
+          );
+          assert.lengthOf(yield* teamsCreatedBy(researcher.userId), 0);
+
+          const created = yield* asActor(
+            instanceOwner,
+            createTeam({ name: 'Sanctioned', deploymentMode: 'self-hosted' }),
+          );
+          assert.deepStrictEqual(yield* teamsCreatedBy(instanceOwner.userId), [
+            { team_id: created.teamId, name: 'Sanctioned', role: 'owner' },
+          ]);
         }),
       { timeout: 30_000 },
     );

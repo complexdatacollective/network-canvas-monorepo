@@ -270,6 +270,10 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'finding which team an invitation names, read-only, before the audited transaction on that team opens',
     },
+  [`${SERVER}/src/team/commands.ts › team.create › TenantScope.open`]: {
+    count: 1,
+    why: 'creating a team: the team row is written before the audited transaction on it can lock it, and in the same transaction, so a refused or failed creation leaves nothing',
+  },
   [`${SERVER}/src/rpc/handlers/account.ts › UntenantedScope.open`]: {
     count: 1,
     why: 'a user’s own locale preference: personal, no tenant, deliberately unaudited (localization design §5.2)',

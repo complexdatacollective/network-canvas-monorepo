@@ -192,6 +192,7 @@ beforeEach(() => {
         name: Redacted.make('Researcher'),
         locale: null,
         teams: [{ teamId: TeamId.make(TEAM.id), role: 'owner' }],
+        canCreateTeam: false,
       }),
     'studies.list': () => Effect.succeed([]),
   });

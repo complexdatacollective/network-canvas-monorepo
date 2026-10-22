@@ -126,6 +126,7 @@ describe('principal resolution', () => {
         { teamId: 'team-a', role: 'owner' },
         { teamId: 'team-b', role: 'admin,member' },
       ],
+      canCreateTeam: true,
     });
   });
 

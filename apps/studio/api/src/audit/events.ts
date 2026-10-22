@@ -107,6 +107,15 @@ const TeamMemberRoleChangedV1EventSchema = Schema.Struct({
   }),
 });
 
+const TeamCreatedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessSucceededV1EventSchema.fields,
+  eventType: Schema.Literal('team.created'),
+  subjectType: Schema.Literal('team_member'),
+  subjectId: Identifier,
+  subjectLabel: Label,
+  details: Schema.Struct({ role: TeamRole }),
+});
+
 const TeamInvitationCreatedV1EventSchema = Schema.Struct({
   ...CommonTeamAccessSucceededV1EventSchema.fields,
   eventType: Schema.Literal('team.invitation.created'),
@@ -427,6 +436,7 @@ export const AuditEventInputSchema = Schema.Union([
   TeamMemberRoleChangeDeniedV1EventSchema,
   TeamMemberRoleChangeFailedV1EventSchema,
   DeniedAttemptsRateLimitedV1EventSchema,
+  TeamCreatedV1EventSchema,
   TeamInvitationCreatedV1EventSchema,
   TeamInvitationCreationDeniedV1EventSchema,
   TeamInvitationCancelledV1EventSchema,
@@ -550,6 +560,21 @@ export const AUDIT_EVENT_REGISTRY = {
       resourceId: null,
       resourceLabel: null,
       details: { procedure: 'audit.list', reason: 'insufficient_permission' },
+    },
+  },
+  'team.created@1': {
+    inputSchema: TeamCreatedV1EventSchema,
+    title: 'Team created',
+    detailFields: ['role'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      eventType: 'team.created',
+      subjectType: 'team_member',
+      subjectId: 'fixture-member',
+      subjectLabel: 'Fixture member',
+      details: { role: 'owner' },
     },
   },
   'team.member.role_changed@1': {

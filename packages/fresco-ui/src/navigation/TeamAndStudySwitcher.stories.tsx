@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
@@ -402,8 +403,22 @@ export const SelectingSiblings: Story = {
  * The trailing command sits in the popup but outside the listbox, so the list
  * holds only options — and is still reachable: one Tab from the open list.
  */
+const focusWhenRun: { element: Element | null } = { element: null };
+
 export const ActionReachableByKeyboard: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      action: {
+        label: 'Create a team',
+        onSelect: fn(() => {
+          focusWhenRun.element = document.activeElement;
+        }),
+      },
+    },
+  },
   play: async ({ args, canvasElement }) => {
+    focusWhenRun.element = null;
     const trigger = within(canvasElement).getByRole('combobox', {
       name: /^Team/,
     });
@@ -429,7 +444,13 @@ export const ActionReachableByKeyboard: Story = {
     await waitFor(() => expect(action).toHaveFocus());
 
     await userEvent.keyboard('{Enter}');
-    await expect(args.team?.action?.onSelect).toHaveBeenCalledTimes(1);
+    // A command usually opens a dialog, which returns focus to whatever held it
+    // when it opened; the row is about to unmount, so that must be the trigger.
+    await expect(focusWhenRun.element).toBe(trigger);
+    const command = args.team?.action;
+    await expect(
+      command && 'label' in command ? command.onSelect : undefined,
+    ).toHaveBeenCalledTimes(1);
     await expect(args.team?.onSelect).not.toHaveBeenCalled();
   },
 };
@@ -550,6 +571,48 @@ export const SingleItemWithAction: Story = {
     await expect(
       within(canvasElement).getByRole('combobox', { name: /^Team/ }),
     ).toBeInTheDocument();
+  },
+};
+
+const administer = fn();
+const createTeam = fn();
+
+/** Several rows under the list, in the order given, each its own control. */
+export const SeveralActions: Story = {
+  args: {
+    team: {
+      ...teamSegment(),
+      action: [
+        {
+          label: 'Team administration',
+          icon: <Settings aria-hidden data-testid="row-icon" />,
+          onSelect: administer,
+        },
+        { label: 'Create a team', onSelect: createTeam },
+      ],
+    },
+    study: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('combobox', { name: /^Team/ }),
+    );
+    const popup = within(document.body);
+    const administration = await popup.findByRole('button', {
+      name: 'Team administration',
+    });
+    const create = popup.getByRole('button', { name: 'Create a team' });
+    const ownIcon = within(administration).getByTestId('row-icon');
+    await expect(ownIcon.parentElement).not.toHaveClass('border-dashed');
+    await expect(create.querySelector('.border-dashed')).not.toBeNull();
+    await expect(
+      administration.compareDocumentPosition(create) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await userEvent.click(create);
+    await expect(createTeam).toHaveBeenCalledTimes(1);
+    await expect(administer).not.toHaveBeenCalled();
   },
 };
 

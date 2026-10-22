@@ -318,6 +318,11 @@ export const ResearcherSignedInEventSchema = Schema.Struct({
   ...ResearcherFields,
 });
 
+export const TeamCreatedEventSchema = Schema.Struct({
+  event: Schema.Literal('team_created'),
+  ...TeamResearcherFields,
+});
+
 export const TeamInvitationSentEventSchema = Schema.Struct({
   event: Schema.Literal('team_invitation_sent'),
   ...TeamResearcherFields,
@@ -378,6 +383,7 @@ export const InterviewCompletedEventSchema = Schema.Struct({
 export const UsageEventSchema = Schema.Union([
   ResearcherSignedUpEventSchema,
   ResearcherSignedInEventSchema,
+  TeamCreatedEventSchema,
   TeamInvitationSentEventSchema,
   TeamInvitationAcceptedEventSchema,
   TeamMemberRoleChangedEventSchema,
