@@ -1507,3 +1507,60 @@ describe('co-parents with no recorded partnership', () => {
     );
   });
 });
+
+describe('a parent two rows above their children', () => {
+  const scaling: ScalingParams = {
+    boxWidth: 0.5,
+    boxHeight: 0.5,
+    legHeight: 0.25,
+    hScale: 1,
+    vScale: 1,
+  };
+
+  it('joins the one sibling bar shared by their biological and adopted children', () => {
+    // Xavier sits on the row between Ann and her children, so no line of
+    // descent comes down from Ann: her line joins the children's bar.
+    const layout: PedigreeLayout = {
+      n: [1, 1, 3],
+      nid: [[0], [1], [2, 3, 4]],
+      pos: [[1], [3], [0, 1, 2]],
+      fam: [[0], [0], [0, 0, 0]],
+      group: [[0], [0], [0, 0, 0]],
+      twins: null,
+      groupMember: [[false], [false], [false, false, false]],
+    };
+    const parents: ParentConnection[][] = [
+      [],
+      [],
+      [{ parentIndex: 0, edgeType: 'biological' }],
+      [{ parentIndex: 0, edgeType: 'biological' }],
+      [{ parentIndex: 0, edgeType: 'adoptive' }],
+    ];
+    const connectors = computeConnectors(
+      layout,
+      scaling,
+      parents,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ['ann', 'x', 'c1', 'c2', 'adopted'],
+    );
+    const barred = connectors.parentChildLines.filter(
+      (line) => line.siblingBar,
+    );
+    expect(barred).toHaveLength(1);
+    expect(barred[0]!.edgeType).toBe('biological');
+    const adopted = connectors.parentChildLines.find((line) =>
+      line.uplines.some((upline) => upline.childId === 'adopted'),
+    );
+    expect(adopted?.edgeType).toBe('adoptive');
+    const fromAnn = connectors.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[0] === 'ann',
+    );
+    expect(fromAnn).toHaveLength(1);
+    expect(fromAnn[0]!.edgeType).toBe('biological');
+    // It ends on the bar, not on any one child.
+    expect(fromAnn[0]!.endpointIds?.[1]).toBeUndefined();
+  });
+});

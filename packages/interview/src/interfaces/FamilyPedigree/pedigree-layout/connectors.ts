@@ -1624,10 +1624,16 @@ export function routePedigree(
         if (!owner.parents.every((parent) => nodeLocation.has(parent))) {
           continue;
         }
-        const key = `${lineKeyOf(owner)}|${sibship}|drop`;
+        // One drop per sibship, whatever each child's tie, in the
+        // sibship's style (see `pushSibship`).
+        const key = `${ownerKey(owner)}|${sibship}|drop`;
         const existing = linesTo.get(key);
         if (existing) {
           existing.childColumns.push(j);
+          if (!isBirthTie(existing.edgeType) && isBirthTie(owner.kind)) {
+            existing.owner = owner;
+            existing.edgeType = owner.kind;
+          }
         } else {
           linesTo.set(key, {
             owner,
