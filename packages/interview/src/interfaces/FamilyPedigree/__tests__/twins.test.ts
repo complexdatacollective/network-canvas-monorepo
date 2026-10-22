@@ -889,23 +889,34 @@ describe('the carrier twins share', () => {
     );
   });
 
-  test('a new twin carried by nobody known leaves nobody recorded as having carried the anchor or their twins', () => {
+  test('a new twin of twins someone is recorded as carrying was carried by them too, without being asked', () => {
     const f = twins({
       'mum-ego-biological': true,
       'mum-sam-biological': true,
     });
-    expect(plan(f, siblingRequest('fraternal')).carrierUpdates).toEqual([
-      {
-        linkId: 'mum-ego-biological',
-        kind: 'biological',
-        isGestationalCarrier: undefined,
-      },
-      {
-        linkId: 'mum-sam-biological',
-        kind: 'biological',
-        isGestationalCarrier: undefined,
-      },
-    ]);
+    const result = plan(f, siblingRequest('fraternal'));
+    expect(result.links).toContainEqual(
+      expect.objectContaining({
+        source: 'mum',
+        target: 'added',
+        isGestationalCarrier: true,
+      }),
+    );
+    // Nobody else is recorded as having carried the twins.
+    expect(
+      (result.carrierUpdates ?? []).every(
+        (update) => update.isGestationalCarrier === false,
+      ),
+    ).toBe(true);
+  });
+
+  test('a new twin carried by nobody known leaves nobody recorded as having carried the anchor or their twins', () => {
+    const f = twins();
+    expect(
+      (plan(f, siblingRequest('fraternal')).carrierUpdates ?? []).every(
+        (update) => update.isGestationalCarrier !== true,
+      ),
+    ).toBe(true);
   });
 
   test('a new twin of someone without parents is carried by the same unnamed parent as them', () => {

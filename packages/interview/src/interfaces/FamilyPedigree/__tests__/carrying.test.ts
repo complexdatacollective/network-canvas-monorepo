@@ -171,7 +171,24 @@ describe('connecting a parent who carried the pregnancy', () => {
 });
 
 describe('adding a parent who carried the pregnancy', () => {
-  test.each(['adoptive', 'social', 'donor'] as const)(
+  test('an adoptive parent added is recorded as not having carried', () => {
+    // Someone else carried an adopted child: the form does not ask.
+    const f = family([person('ego', { isEgo: true })]);
+    const result = plan(f, 'ego', {
+      relation: 'parent',
+      parentKind: 'adoptive',
+      carriedPregnancy: undefined,
+      partnerId: null,
+      partnershipCurrent: true,
+      alsoParentOf: [],
+    });
+    expect(result.links[0]).toMatchObject({
+      kind: 'adoptive',
+      isGestationalCarrier: false,
+    });
+  });
+
+  test.each(['social', 'donor'] as const)(
     'a %s parent who carried is recorded as having carried',
     (parentKind) => {
       const f = family([person('ego', { isEgo: true })]);
