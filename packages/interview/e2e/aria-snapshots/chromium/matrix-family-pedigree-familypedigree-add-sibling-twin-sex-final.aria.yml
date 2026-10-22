@@ -17,16 +17,12 @@
       - text: A biological child
       - radio "An adopted child"
       - text: An adopted child
-    - text: Are they your twin? Answer yes for triplets and other multiple births too. New sibling differs from you in sex at birth, so not Yes, identical twins - matrix check
+    - text: Are they your twin? Answer yes for triplets and other multiple births too.
     - radiogroup "Are they your twin?":
       - radio "No"
       - text: "No"
-      - radio "Yes, identical twins" [disabled]
-      - text: Yes, identical twins New sibling differs from you in sex at birth, so not Yes, identical twins - matrix check
       - radio "Yes, fraternal (non-identical) twins"
       - text: Yes, fraternal (non-identical) twins
-      - radio "Yes, but I don’t know if they are identical"
-      - text: Yes, but I don’t know if they are identical
     - text: Who carried the pregnancy? Required
     - radiogroup "Who carried the pregnancy?":
       - radio "Julie"

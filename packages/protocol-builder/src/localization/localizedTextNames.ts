@@ -1003,24 +1003,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingSiblingTwinUnknown)],
     ),
     rule(
-      'wording.unavailableIdenticalTwinNew',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinNew)],
-    ),
-    rule(
-      'wording.unavailableIdenticalTwinSexNew',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinSexNew)],
-    ),
-    rule(
-      'wording.unavailableTwinCarrierNew',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableTwinCarrierNew)],
-    ),
-    rule(
       'wording.carriedSiblingsPregnancyLabel',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
@@ -1105,18 +1087,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
       [2, words(familyPedigreeMessages.wordingZygosityFraternal)],
-    ),
-    rule(
-      'wording.unavailableIdenticalTwin',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwin)],
-    ),
-    rule(
-      'wording.unavailableIdenticalTwinSex',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinSex)],
     ),
     rule(
       'wording.unavailableSameSexGeneticParent',

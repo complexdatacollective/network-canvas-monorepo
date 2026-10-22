@@ -262,21 +262,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       },
       { key: 'siblingTwinUnknown', label: messages.wordingSiblingTwinUnknown },
       {
-        key: 'unavailableIdenticalTwinNew',
-        label: messages.wordingUnavailableIdenticalTwinNew,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwinNew,
-      },
-      {
-        key: 'unavailableIdenticalTwinSexNew',
-        label: messages.wordingUnavailableIdenticalTwinSexNew,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwinSexNew,
-      },
-      {
-        key: 'unavailableTwinCarrierNew',
-        label: messages.wordingUnavailableTwinCarrierNew,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableTwinCarrierNew,
-      },
-      {
         key: 'carriedSiblingsPregnancyLabel',
         label: messages.wordingCarriedSiblingsPregnancyLabel,
         arguments: PEDIGREE_WORDING_ARGUMENTS.carriedSiblingsPregnancyLabel,
@@ -331,16 +316,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       },
       { key: 'zygosityIdentical', label: messages.wordingZygosityIdentical },
       { key: 'zygosityFraternal', label: messages.wordingZygosityFraternal },
-      {
-        key: 'unavailableIdenticalTwin',
-        label: messages.wordingUnavailableIdenticalTwin,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwin,
-      },
-      {
-        key: 'unavailableIdenticalTwinSex',
-        label: messages.wordingUnavailableIdenticalTwinSex,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwinSex,
-      },
       {
         key: 'unavailableSameSexGeneticParent',
         label: messages.wordingUnavailableSameSexGeneticParent,
