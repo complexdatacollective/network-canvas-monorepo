@@ -725,7 +725,7 @@ export function crossing(a: LineSegment, b: LineSegment): Point | undefined {
  * a hard constraint (Josh, 22 Oct 2026: a straight line ranks above one
  * crossing fewer lines, reversing his 12 Oct ruling).
  */
-const HARD = 1_000_000;
+export const HARD = 1_000_000;
 const COST = {
   // Hard constraints: no line passes through or close by a symbol or a
   // bracket (constraint 8), runs along or close beside another line, or

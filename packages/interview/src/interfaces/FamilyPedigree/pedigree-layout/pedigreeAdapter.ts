@@ -498,7 +498,7 @@ function drawPedigreeAfresh({
     // Each seating weighed is drawn, and chosen by what its drawing costs.
     const routed = new Map<
       PedigreeLayout,
-      { connectors: PedigreeConnectors; crossings: number }
+      { connectors: PedigreeConnectors; broken: number; crossings: number }
     >();
     const route = (
       candidate: PedigreeLayout,
@@ -524,14 +524,14 @@ function drawPedigreeAfresh({
         share,
         drawingCost: (candidate, search, work) => {
           counted.spent += SETUP_STEPS * nodeIds.length;
-          const { connectors, cost, crossings } = route(
+          const { connectors, cost, broken, crossings } = route(
             candidate,
             search,
             work,
           );
           // An abandoned drawing is not kept (see `RoutingWork`).
           if (cost < Number.POSITIVE_INFINITY) {
-            routed.set(candidate, { connectors, crossings });
+            routed.set(candidate, { connectors, broken, crossings });
           }
           return cost;
         },
@@ -550,13 +550,19 @@ function drawPedigreeAfresh({
   // A family with a child carried by a gestational surrogate is drawn
   // both ways, and the children hang from their genetic parents only where
   // that crosses fewer lines than Bennett et al.'s line of descent from the
-  // carrier (Josh, 22 Oct 2026). The two drawings share one budget.
+  // carrier (Josh, 22 Oct 2026) and breaks no more hard constraints, so
+  // fewer crossings never cost a drawing that keeps them. The two drawings
+  // share one budget.
   const geneticParents = hangingFromGeneticParents(input.parents);
   const share = geneticParents ? 0.5 : 1;
   const bennett = laidOut(input.parents, share);
   const genetic = geneticParents ? laidOut(geneticParents, share) : undefined;
   const { parents, layout, connectors } =
-    genetic && genetic.crossings < bennett.crossings ? genetic : bennett;
+    genetic &&
+    genetic.crossings < bennett.crossings &&
+    genetic.broken <= bennett.broken
+      ? genetic
+      : bennett;
   const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
   const connectorData = buildConnectorData(
     layout,

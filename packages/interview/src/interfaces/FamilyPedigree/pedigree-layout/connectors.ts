@@ -5,6 +5,7 @@ import {
   type From,
   courseCost,
   courseCosts,
+  HARD,
   ownerXOf,
   peopleOf,
   JUNCTION_CLEARANCE,
@@ -92,8 +93,9 @@ const cheapestFirst = (costs: number[]) =>
  * The connectors (see `computeConnectors`), and what their routed lines
  * cost the drawing, the cost every line's course is chosen by (see
  * `courseCost`), each meeting of two lines counted once: what a seating
- * costs once drawn. With them, how many times the auxiliary lines cross
- * another line where it shows.
+ * costs once drawn. With them, how many hard constraints the lines break,
+ * and how many times the auxiliary lines cross another line where it
+ * shows.
  */
 export function routePedigree(
   layout: PedigreeLayout,
@@ -112,7 +114,12 @@ export function routePedigree(
   /** How much the search of the lines' courses may do past each line's
    * first routing (see `RoutingWork`); unbounded without it. */
   searchWork?: RoutingWork,
-): { connectors: PedigreeConnectors; cost: number; crossings: number } {
+): {
+  connectors: PedigreeConnectors;
+  cost: number;
+  broken: number;
+  crossings: number;
+} {
   const {
     boxWidth: boxw,
     boxHeight: boxh,
@@ -1653,6 +1660,7 @@ export function routePedigree(
           duplicateArcs: [],
         },
         cost: Number.POSITIVE_INFINITY,
+        broken: Number.POSITIVE_INFINITY,
         crossings: Number.POSITIVE_INFINITY,
       };
     }
@@ -1952,7 +1960,9 @@ export function routePedigree(
     acrossThePage.toReversed(),
     inOrder(acrossThePage, (a, b) => spanOf(b) - spanOf(a)),
   ];
-  let cheapest: { courses: Map<Routed, Course>; total: number } | undefined;
+  let cheapest:
+    | { courses: Map<Routed, Course>; total: number; broken: number }
+    | undefined;
   for (const order of search === 'quick' || routed.length < 2
     ? [acrossThePage]
     : orders) {
@@ -1975,6 +1985,11 @@ export function routePedigree(
       cheapest = {
         courses: new Map(routed.map((entry) => [entry, courseOf(entry)])),
         total,
+        // A line's cost short of its hard constraints is less than one.
+        broken: routed.reduce(
+          (sum, entry) => sum + Math.floor((terms.get(entry) ?? 0) / HARD),
+          0,
+        ),
       };
     }
   }
@@ -1984,6 +1999,7 @@ export function routePedigree(
     scene.lines.push(...entry.drawn);
   }
   const cost = cheapest?.total ?? 0;
+  const broken = cheapest?.broken ?? 0;
 
   // A former partnership's break keeps clear of the auxiliary lines that
   // cross the partnership line, or leave it.
@@ -2130,6 +2146,7 @@ export function routePedigree(
       duplicateArcs,
     },
     cost,
+    broken,
     crossings,
   };
 }
