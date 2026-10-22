@@ -1273,9 +1273,9 @@ them:
   instance, because the published one is a working credential on any
   reachable instance that keeps it. A fresh instance does not need it: on the
   managed service a researcher creates an account at `/sign-up` and names
-  their first team at `/sign-up/team`, and on a self-hosted instance the owner
-  created at [first-run setup](#first-run-setup) creates teams and invites
-  everyone else.
+  their first team at `/sign-up/team`, and on a self-hosted instance
+  [first-run setup](#first-run-setup) creates the owner and their first team,
+  and the owner creates further teams and invites everyone else.
 
 ### First-run setup
 
@@ -1296,15 +1296,19 @@ account and name this instance.
 ```
 
 Open `/setup` on that instance, paste the token, name the instance and create
-the owner's account. The instance is then set up: the token is spent, the
-browser is signed in as the owner, and `/setup` answers as a not-found from
-then on — so re-running a deploy can never reopen it. The owner has no team
-yet, so they land on `/no-team`, which offers to create one; on a self-hosted
-instance only the owner can create teams, and everyone else joins one by
-invitation. Only a sha256 of the token is stored, so nothing on the server can
-print it a second time; **if it is lost, run the schema step again** against
-the still-ownerless database and it issues a new one. An instance that already
-has an owner issues nothing and prints nothing.
+the owner's account. The account is created first, through the auth provider;
+then the claim on the instance, a first team named after the instance, the
+owner's Owner membership and that team's `team.created` audit event are written
+in one transaction, so a failure there leaves no team and setup still open, and
+running it again with the same password adopts the account. The token is spent, the
+browser is signed in as the owner and lands in that team, and `/setup` answers
+as a not-found from then on — so re-running a deploy can never reopen it. On a
+self-hosted instance only the owner can create further teams, and everyone else
+joins one by invitation. Only a sha256 of the
+token is stored, so nothing on the server can print it a second time; **if it
+is lost, run the schema step again** against the still-ownerless database and
+it issues a new one. An instance that already has an owner issues nothing and
+prints nothing.
 
 The name is stored with the instance and reported by both status surfaces —
 the app's `status` procedure and `/api/v1/status`. Until one is given, both

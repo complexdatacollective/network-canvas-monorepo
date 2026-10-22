@@ -664,6 +664,60 @@ export type CreatedTeam = {
   memberId: string;
 };
 
+export const ownerLabel = (
+  name: Redacted.Redacted,
+  email: Redacted.Redacted,
+): Redacted.Redacted =>
+  Redacted.make(
+    (Redacted.value(name).trim() || Redacted.value(email)).slice(0, 320),
+  );
+
+export const createOwnedTeam = Effect.fn('team.createOwned')(function* <
+  E,
+  R,
+>(input: {
+  name: string;
+  ownerUserId: string;
+  ownerLabel: Redacted.Redacted;
+  before: Effect.Effect<void, E, R>;
+}) {
+  const teamId = randomUUID();
+  const access = unsafeMakeTeamAccess(teamId, 'owner');
+  return yield* TenantScope.open(
+    access,
+    Effect.gen(function* () {
+      yield* input.before;
+      yield* store.createTeam({ id: teamId, name: input.name });
+      return yield* audited(
+        'team.create.audited',
+        access,
+        Effect.gen(function* () {
+          const memberId = randomUUID();
+          yield* store.createMember({
+            id: memberId,
+            teamId,
+            userId: input.ownerUserId,
+            role: 'owner',
+          });
+          return changed(
+            { teamId, teamName: Redacted.make(input.name), memberId },
+            [
+              {
+                ...TEAM_EVENT,
+                eventType: 'team.created',
+                subjectType: 'team_member',
+                subjectId: memberId,
+                subjectLabel: input.ownerLabel,
+                details: { role: 'owner' },
+              },
+            ],
+          );
+        }),
+      );
+    }),
+  );
+});
+
 export const createTeam: (input: {
   name: string;
   deploymentMode: DeploymentMode;
@@ -676,48 +730,17 @@ export const createTeam: (input: {
   deploymentMode: DeploymentMode;
 }) {
   const principal = yield* Principal;
-  const name = input.name.trim();
-  const teamId = randomUUID();
-  const access = unsafeMakeTeamAccess(teamId, 'owner');
-
-  return yield* TenantScope.open(
-    access,
-    Effect.gen(function* () {
+  return yield* createOwnedTeam({
+    name: input.name.trim(),
+    ownerUserId: principal.userId,
+    ownerLabel: ownerLabel(principal.name, principal.email),
+    before: Effect.gen(function* () {
       const installation = yield* readInstallation();
       if (
         !mayCreateTeam(input.deploymentMode, installation, principal.userId)
       ) {
         return yield* new TeamCommandError({ code: 'FORBIDDEN' });
       }
-      yield* store.createTeam({ id: teamId, name });
-      return yield* audited(
-        'team.create.audited',
-        access,
-        Effect.gen(function* () {
-          const memberId = randomUUID();
-          yield* store.createMember({
-            id: memberId,
-            teamId,
-            userId: principal.userId,
-            role: 'owner',
-          });
-          return changed({ teamId, teamName: Redacted.make(name), memberId }, [
-            {
-              ...TEAM_EVENT,
-              eventType: 'team.created',
-              subjectType: 'team_member',
-              subjectId: memberId,
-              subjectLabel: Redacted.make(
-                (
-                  Redacted.value(principal.name).trim() ||
-                  Redacted.value(principal.email)
-                ).slice(0, 320),
-              ),
-              details: { role: 'owner' },
-            },
-          ]);
-        }),
-      );
     }),
-  );
+  });
 });

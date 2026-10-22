@@ -2,11 +2,19 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { Effect, Option, type Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
+import type { NotFound } from '@codaco/studio-contract/schema/errors';
+
+import type { AuditSignal } from '../audit/signal.ts';
 import { AuthService } from '../auth/service.ts';
 import type { Database } from '../db/client.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction, UntenantedScope } from '../db/tenant.ts';
+import type { RequestId } from '../http/middleware/request-id.ts';
+import type { Jobs } from '../jobs/jobs.ts';
+import type { Analytics } from '../platform/analytics.ts';
 import { SetCookies } from '../rpc/set-cookies.ts';
+import { createOwnedTeam, ownerLabel } from '../team/commands.ts';
 import { bootstrapTokenMatches, readInstallation } from './bootstrap.ts';
 import { SETUP_TABLES } from './schema.ts';
 
@@ -88,8 +96,8 @@ export const completeSetup: (
   input: CompleteSetupInput,
 ) => Effect.Effect<
   CompletedSetup,
-  SetupCommandError | SqlError.SqlError,
-  Database | AuthService
+  SetupCommandError | NotFound | SqlError.SqlError,
+  Database | AuthService | RequestId | AuditSignal | Analytics | Jobs
 > = Effect.fn('setup.complete')(function* (input: CompleteSetupInput) {
   const existing = yield* UntenantedScope.open(readInstallation());
   if (existing === null || existing.ownerUserId !== null) {
@@ -100,24 +108,36 @@ export const completeSetup: (
   }
 
   const session = yield* establishOwnerSession(input.owner);
+  const instanceName = input.instanceName.trim();
 
-  const owned = yield* UntenantedScope.open(
-    claimInstallation({
-      ownerUserId: session.userId,
-      instanceName: input.instanceName,
-      bootstrapTokenHash: existing.bootstrapTokenHash,
+  const label = ownerLabel(session.name, session.email);
+  yield* createOwnedTeam({
+    name: instanceName,
+    ownerUserId: session.userId,
+    ownerLabel: label,
+    before: Effect.gen(function* () {
+      const owned = yield* claimInstallation({
+        ownerUserId: session.userId,
+        instanceName,
+        bootstrapTokenHash: existing.bootstrapTokenHash,
+      });
+      if (!owned) return yield* new SetupCommandError({ reason: 'closed' });
     }),
+  }).pipe(
+    Effect.provideService(
+      AuditActor,
+      AuditActor.of({ kind: 'user', id: session.userId, label }),
+    ),
   );
-  if (!owned) return yield* new SetupCommandError({ reason: 'closed' });
 
   const setCookies = yield* Effect.serviceOption(SetCookies);
   if (Option.isNone(setCookies) || session.setCookies.length === 0) {
-    return { instanceName: input.instanceName, signedIn: false };
+    return { instanceName, signedIn: false };
   }
   for (const cookie of session.setCookies) {
     yield* setCookies.value.append(cookie);
   }
-  return { instanceName: input.instanceName, signedIn: true };
+  return { instanceName, signedIn: true };
 });
 
 const establishOwnerSession = Effect.fnUntraced(function* (

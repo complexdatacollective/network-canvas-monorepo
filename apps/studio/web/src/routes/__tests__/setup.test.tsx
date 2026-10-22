@@ -25,6 +25,10 @@ import {
   type StudioHandlers,
 } from '../../test/rpcHarness.ts';
 
+const memberships = vi.hoisted(() => ({
+  teams: [] as { id: string; name: string }[],
+}));
+
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
     // A signed-out visitor: setting an instance up is what creates the first
@@ -50,7 +54,9 @@ vi.mock('../../lib/auth.ts', () => ({
     }),
     organization: {
       setActive: vi.fn(),
-      list: vi.fn(() => Promise.resolve({ data: [], error: null })),
+      list: vi.fn(() =>
+        Promise.resolve({ data: memberships.teams, error: null }),
+      ),
     },
     signOut: vi.fn(),
   },
@@ -133,6 +139,7 @@ async function fillAndSubmit() {
 
 beforeEach(() => {
   setupRequired = true;
+  memberships.teams = [];
 });
 
 describe('completing first-run setup', () => {
@@ -140,6 +147,7 @@ describe('completing first-run setup', () => {
     const harness = installSetupHarness(() =>
       Effect.sync(() => {
         setupRequired = false;
+        memberships.teams = [{ id: 'team-first', name: OWNER.instanceName }];
         return { instanceName: OWNER.instanceName, signedIn: true };
       }),
     );
@@ -162,9 +170,9 @@ describe('completing first-run setup', () => {
     );
     // The response carried the session cookie, so the screen records the
     // session rather than asking for it — and hands the researcher on to the
-    // landing resolution, which for an owner with no team yet is `/no-team`.
+    // landing resolution, which is the first team setup created for them.
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/no-team'),
+      expect(router.state.location.pathname).toBe('/team/team-first'),
     );
     expect(queryClient.getQueryData(sessionQueryOptions.queryKey)).toBe(
       'signedIn',
@@ -175,6 +183,24 @@ describe('completing first-run setup', () => {
       expect(
         queryClient.getQueryData<InstanceStatus>(rpcKey('status'))?.setup,
       ).toEqual({ required: false }),
+    );
+  });
+
+  it('lands in the new team even when an empty team list was cached', async () => {
+    installSetupHarness(() =>
+      Effect.sync(() => {
+        setupRequired = false;
+        memberships.teams = [{ id: 'team-first', name: OWNER.instanceName }];
+        return { instanceName: OWNER.instanceName, signedIn: true };
+      }),
+    );
+    const { queryClient, router } = renderSetup();
+    queryClient.setQueryData(['memberships', 'teams'], []);
+
+    await fillAndSubmit();
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/team/team-first'),
     );
   });
 
