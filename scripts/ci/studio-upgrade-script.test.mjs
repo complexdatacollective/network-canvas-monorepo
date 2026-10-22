@@ -69,11 +69,11 @@ function stack({ stuck = [] } = {}) {
   return { dir, state };
 }
 
-function upgrade(s, { args, env = {}, cwd } = {}) {
+function upgrade(s, { args, env = {}, cwd, timeout = 60_000 } = {}) {
   const result = spawnSync(SCRIPT, args ?? ['--dir', s.dir, NEW_API, NEW_WEB], {
     cwd: cwd ?? s.state,
     encoding: 'utf8',
-    timeout: 60_000,
+    timeout,
     env: {
       PATH: process.env.PATH,
       HOME: process.env.HOME,
@@ -108,10 +108,17 @@ const lastLine = (stdout) => stdout.trim().split('\n').at(-1);
 const envWith = (api, web) =>
   ENV_FILE.replace(OLD_API, api).replace(OLD_WEB, web);
 
+const PS =
+  'ps -a --format {{.Service}} {{.State}} {{.ExitCode}} {{.Label "com.docker.compose.oneoff"}} api api-b worker';
+const MAINTENANCE_ON = 'run --rm --no-deps api maintenance on';
+
 const SEQUENCE = [
   'config --services',
-  'run --rm --no-deps api maintenance on',
+  'config --images',
+  'config --images',
+  MAINTENANCE_ON,
   'stop api api-b worker',
+  PS,
   'pull',
   'up -d web api api-b worker',
   'run --rm migrate',
@@ -152,6 +159,11 @@ test('runs the guide’s sequence against every API replica and ends open on the
   assert.match(r.output, /this script takes no backup/);
 });
 
+test('does not count a one-off container’s exit as a replica killed while stopping', () => {
+  const r = upgrade(stack(), { env: { STUB_ONEOFF: '1' } });
+  assert.equal(r.status, 0, r.output);
+});
+
 test('uses the stack directory it is run from when no --dir is given', () => {
   const s = stack();
   const r = upgrade(s, { args: [NEW_API, NEW_WEB], cwd: s.dir });
@@ -159,16 +171,17 @@ test('uses the stack directory it is run from when no --dir is given', () => {
   assert.equal(r.env, envWith(NEW_API, NEW_WEB));
 });
 
-for (const [name, fail] of [
+for (const [step, fail] of [
   ['maintenance-on', 'maintenance-on'],
   ['stop', 'stop'],
+  ['stop', 'killed-worker'],
   ['pull', 'pull'],
   ['up', 'up:1'],
   ['migrate', 'migrate'],
 ]) {
-  test(`rolls back when ${name} fails`, () => {
+  test(`rolls back when ${fail} fails at step ${step}`, () => {
     const r = upgrade(stack(), { env: { STUB_FAIL: fail } });
-    assertRolledBack(r, name);
+    assertRolledBack(r, step);
   });
 }
 
@@ -236,7 +249,7 @@ test('leaves maintenance on and the new images in place when a replica never rep
   assert.equal(r.db, 'new');
   assert.equal(r.maintenance, 'on');
   assert.ok(!r.calls.includes('run --rm --no-deps api maintenance off'));
-  assert.equal(r.calls.at(-1), 'up -d api-b');
+  assert.deepEqual(r.calls.slice(-2), ['up -d api-b', MAINTENANCE_ON]);
 });
 
 test('recreates a replica that has not seen the migration, as the guide’s step 6 says, and finishes', () => {
@@ -261,10 +274,84 @@ test('turns maintenance back on when a replica does not reopen after maintenance
   const r = upgrade(stack(), { env: { STUB_STICKY_FLAG: '1' } });
   assert.equal(r.status, 5, r.output);
   assert.match(r.output, /failed step=reopen-wait after migrate/);
-  assert.match(r.output, /maintenance mode was turned back on/);
+  assert.match(r.output, /ran maintenance on again: maintenance mode is on/);
   assert.equal(r.env, envWith(NEW_API, NEW_WEB));
   assert.equal(r.maintenance, 'on');
-  assert.equal(r.calls.at(-1), 'run --rm --no-deps api maintenance on');
+  assert.equal(r.calls.at(-1), MAINTENANCE_ON);
+});
+
+test('turns maintenance back on when maintenance off fails after it landed', () => {
+  const r = upgrade(stack(), {
+    env: { STUB_FAIL: 'maintenance-off-commit' },
+  });
+  assert.equal(r.status, 5, r.output);
+  assert.match(r.output, /failed step=maintenance-off after migrate/);
+  assert.equal(r.maintenance, 'on');
+  assert.equal(r.calls.at(-1), MAINTENANCE_ON);
+});
+
+test('does not count an upgrade done while a replica fails another readiness check', () => {
+  const r = upgrade(stack(), { env: { STUB_OBJECT_STORE_DOWN: '1' } });
+  assert.equal(r.status, 5, r.output);
+  assert.match(r.output, /failed step=reopen-wait after migrate/);
+  assert.match(r.output, /"objectStore":"failed: unreachable"/);
+  assert.equal(r.maintenance, 'on');
+});
+
+test('does not count a rollback done while a replica fails another readiness check', () => {
+  const r = upgrade(stack(), {
+    env: { STUB_FAIL: 'pull', STUB_OBJECT_STORE_DOWN: '1' },
+  });
+  assert.equal(r.status, 4, r.output);
+  assert.match(r.output, /rollback failed/);
+  assert.equal(r.env, ENV_FILE);
+});
+
+test('bounds a readiness probe that never answers', () => {
+  const r = upgrade(stack(), {
+    env: { STUB_FAIL: 'hang-api-b:1' },
+    timeout: 30_000,
+  });
+  assertRolledBack(r, 'maintenance-wait');
+});
+
+test('rolls back when interrupted before migrate', () => {
+  const r = upgrade(stack(), { env: { STUB_SIGNAL: 'pull' } });
+  assertRolledBack(r, 'pull');
+  assert.match(r.output, /interrupted at step=pull/);
+});
+
+test('leaves maintenance on and the new images in place when interrupted after migrate', () => {
+  const r = upgrade(stack(), { env: { STUB_SIGNAL: 'maintenance-off' } });
+  assert.equal(r.status, 5, r.output);
+  assert.equal(
+    lastLine(r.stdout),
+    '[studio-upgrade] result=fix-forward exit=5',
+  );
+  assert.match(r.output, /interrupted at step=maintenance-off/);
+  assert.equal(r.env, envWith(NEW_API, NEW_WEB));
+  assert.equal(r.db, 'new');
+  assert.equal(r.maintenance, 'on');
+});
+
+test('refuses, changing nothing, when Compose takes its images from another file', () => {
+  const s = stack();
+  const other = join(s.state, 'other.env');
+  writeFileSync(other, envWith(NEW_API, NEW_WEB));
+  const r = upgrade(s, { env: { STUB_RESOLVED_ENV: other } });
+  assert.equal(r.status, 2, r.output);
+  assert.match(r.output, /does not take its images from/);
+  assert.equal(r.env, ENV_FILE);
+  assert.deepEqual(r.calls, ['config --services', 'config --images']);
+});
+
+test('rolls back when rewriting .env does not change the images Compose resolves', () => {
+  const s = stack();
+  const other = join(s.state, 'other.env');
+  writeFileSync(other, ENV_FILE);
+  const r = upgrade(s, { env: { STUB_RESOLVED_ENV: other } });
+  assertRolledBack(r, 'env');
+  assert.ok(!r.calls.includes('run --rm migrate'));
 });
 
 test('refuses, changing nothing, when the arguments or the stack are wrong', () => {
@@ -277,6 +364,21 @@ test('refuses, changing nothing, when the arguments or the stack are wrong', () 
     ],
     [[NEW_API, NEW_WEB.slice(0, -1)], {}, /web image is not pinned by digest/],
     [[NEW_API, NEW_WEB], { STUDIO_API_IMAGE: NEW_API }, /override \.env/],
+    [
+      [NEW_API, NEW_WEB],
+      { STUDIO_UPGRADE_MAINTENANCE_TIMEOUT: 'two' },
+      /MAINTENANCE_TIMEOUT is not a whole number/,
+    ],
+    [
+      [NEW_API, NEW_WEB],
+      { STUDIO_UPGRADE_SCHEMA_TIMEOUT: '08' },
+      /SCHEMA_TIMEOUT is not a whole number/,
+    ],
+    [
+      [NEW_API, NEW_WEB],
+      { STUDIO_UPGRADE_POLL_INTERVAL: '1s' },
+      /POLL_INTERVAL is not a number/,
+    ],
   ]) {
     const s = stack();
     const r = upgrade(s, { args: ['--dir', s.dir, ...args], env });

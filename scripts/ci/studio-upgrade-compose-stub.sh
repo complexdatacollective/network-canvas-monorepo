@@ -3,7 +3,7 @@ set -u
 state="$STUB_STATE"
 [ "${1:-}" = compose ] && shift
 echo "$*" >> "$state/calls.log"
-env_image() { sed -n "s/^STUDIO_API_IMAGE=//p" .env; }
+env_image() { sed -n "s/^STUDIO_${1:-API}_IMAGE=//p" "${STUB_RESOLVED_ENV:-.env}"; }
 schema_of() { [ "$1" = "$STUB_NEW_API" ] && echo new || echo old; }
 should_fail() {
   local key="$1" count=0 entry
@@ -16,7 +16,13 @@ should_fail() {
   return 1
 }
 case "$1" in
-  config) printf '%s\n' traefik web api api-b worker postgres garage migrate ;;
+  config)
+    if [ "$2" = --images ]; then
+      printf '%s\n' traefik "$(env_image WEB)" "$(env_image)" valkey postgres garage
+    else
+      printf '%s\n' traefik web api api-b worker postgres garage migrate
+    fi
+    ;;
   run)
     if [ "$*" = 'run --rm migrate' ]; then
       should_fail migrate && { echo 'migrate refused' >&2; exit 1; }
@@ -30,13 +36,27 @@ case "$1" in
     should_fail "maintenance-$flag" && exit 1
     echo "$flag" > "$state/maintenance"
     [ "$flag" = on ] && touch "$state/flag-was-on"
+    [ "${STUB_SIGNAL:-}" = "maintenance-$flag" ] && kill -TERM "$PPID"
+    should_fail "maintenance-$flag-commit" && exit 1
     ;;
   stop)
     should_fail stop && exit 1
     shift
     for service in "$@"; do touch "$state/stopped-$service"; done
     ;;
-  pull) should_fail pull && exit 1 ;;
+  pull)
+    [ "${STUB_SIGNAL:-}" = pull ] && kill -TERM "$PPID"
+    should_fail pull && exit 1
+    ;;
+  ps)
+    shift 4
+    for service in "$@"; do
+      code=130
+      should_fail "killed-$service" && code=137
+      echo "$service exited $code False"
+      [ -n "${STUB_ONEOFF:-}" ] && echo "$service exited 1 True"
+    done
+    ;;
   up)
     should_fail up && exit 1
     shift 2
@@ -48,6 +68,7 @@ case "$1" in
     ;;
   exec)
     service="$3"
+    should_fail "hang-$service" && exec sleep 120
     [ -f "$state/stopped-$service" ] && exit 1
     image="$(cat "$state/image-$service")"
     schema=ok
@@ -57,7 +78,11 @@ case "$1" in
     [ "$schema" = ok ] || maintenance="$schema"
     [ "$(cat "$state/maintenance")" = on ] && [ -z "${STUB_IGNORE_FLAG:-}" ] && maintenance='failed: maintenance mode is on'
     [ -n "${STUB_STICKY_FLAG:-}" ] && [ -f "$state/flag-was-on" ] && maintenance='failed: maintenance mode is on'
-    printf '{"db":"ok","schema":"%s","maintenance":"%s"}\n' "$schema" "$maintenance"
+    object_store=ok
+    [ -n "${STUB_OBJECT_STORE_DOWN:-}" ] && object_store='failed: unreachable'
+    status=ok
+    [ "$schema/$maintenance/$object_store" = ok/ok/ok ] || status=failing
+    printf '{"status":"%s","checks":{"db":"ok","objectStore":"%s","schema":"%s","maintenance":"%s"}}\n' "$status" "$object_store" "$schema" "$maintenance"
     ;;
   *) echo "stub: unexpected $*" >&2; exit 99 ;;
 esac
