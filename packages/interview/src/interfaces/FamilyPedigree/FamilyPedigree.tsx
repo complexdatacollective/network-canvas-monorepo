@@ -774,7 +774,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family in the middle of the canvas, clear of the prompt above
-  // and the toolbar below, as large as it fits, up to half as large again as
+  // and the toolbar below, as large as it fits, up to a fifth larger than
   // its natural size, and out no further than the zoom buttons go: a family
   // too large even for that is still centred, and the rest of it is reached
   // by panning. This is the view the stage opens on, and the view it goes

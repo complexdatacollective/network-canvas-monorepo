@@ -1360,7 +1360,7 @@ export const MovingBetweenPromptsShowsTheWholeFamily: Story = {
 
 /**
  * A small family is shown as large as the canvas allows, larger than its
- * natural size, but no more than half as large again.
+ * natural size, but no more than a fifth larger.
  */
 export const ASmallFamilyFillsTheCanvas: Story = {
   render: () => <CanvasStory family={threePeople} />,
@@ -1371,7 +1371,7 @@ export const ASmallFamilyFillsTheCanvas: Story = {
     const symbol = personSymbol(canvasElement, 'ego');
     const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
     await expect(scale, 'zoomed in past natural size').toBeGreaterThan(1.01);
-    await expect(scale, 'no more than half as large again').toBeLessThan(1.501);
+    await expect(scale, 'no more than a fifth larger').toBeLessThan(1.201);
   },
 };
 
