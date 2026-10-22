@@ -13,7 +13,6 @@ const protocol = {
     {
       id: 'roster',
       type: 'NameGeneratorRoster',
-      externalDataError: localized('External data could not be loaded.'),
       allAddedNotice: localized('There is nothing left to add from this list.'),
       subject: { entity: 'node', type: 'person' },
       dataSource: 'roster-asset',
@@ -21,7 +20,6 @@ const protocol = {
     {
       id: 'ng',
       type: 'NameGenerator',
-      externalDataError: localized('External data could not be loaded.'),
       subject: { entity: 'node', type: 'person' },
       panels: [
         {

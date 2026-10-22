@@ -142,15 +142,9 @@ export default function GeospatialInterface({
   const { text: outsideAreasLabel } = useLocalizedString(
     stage.outsideAreasLabel,
   );
-  // The search's words are set while the map has a search (`allowSearch`).
-  const searchWording =
-    stage.searchLabel && stage.searchNoMatch && stage.searchFailed
-      ? {
-          label: stage.searchLabel,
-          noMatch: stage.searchNoMatch,
-          failed: stage.searchFailed,
-        }
-      : undefined;
+  // The stage words a failed search while the map has a search
+  // (`allowSearch`); the protocol's interface text words the rest of it.
+  const searchFailed = stage.searchFailed;
 
   const [navState, setNavState] = useState<{
     activeIndex: number;
@@ -536,18 +530,13 @@ export default function GeospatialInterface({
           </div>
         )}
 
-        {mapOptions.allowSearch && searchWording && (
+        {mapOptions.allowSearch && searchFailed && (
           <Suspense fallback={null}>
             {useStub ? (
-              <GeospatialStubSearch
-                searchLabel={searchWording.label}
-                className="absolute top-4 left-4 z-20"
-              />
+              <GeospatialStubSearch className="absolute top-4 left-4 z-20" />
             ) : (
               <GeospatialSearch
-                searchLabel={searchWording.label}
-                searchNoMatch={searchWording.noMatch}
-                searchFailed={searchWording.failed}
+                searchFailed={searchFailed}
                 accessToken={accessToken}
                 map={mapRef.current}
                 proximity={mapOptions.center}

@@ -29,6 +29,8 @@ type ConditionControlProps = {
   diseases: Disease[];
   selectedDiseaseId: string | null;
   onSelect: (id: string | null) => void;
+  /** Classes for the toolbar button. */
+  className?: string;
   /** Forwarded to the toolbar button. */
   ref?: Ref<HTMLButtonElement>;
 };
@@ -59,6 +61,7 @@ function ConditionControl({
   diseases,
   selectedDiseaseId,
   onSelect,
+  className,
   ref,
 }: ConditionControlProps) {
   const selected =
@@ -70,7 +73,10 @@ function ConditionControl({
     <ToolbarMenu
       ref={ref}
       trigger={
-        <ToolbarButton data-testid="narrative-pedigree-condition">
+        <ToolbarButton
+          data-testid="narrative-pedigree-condition"
+          className={className}
+        >
           <span className="flex min-w-0 items-center gap-2">
             {selected && <ColourDot color={selected.color} />}
             {/* A long name is cut short with an ellipsis, so the toolbar

@@ -541,7 +541,7 @@ describe('computeConnectors', () => {
     expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(0.75, 5);
   });
 
-  it('auxiliary connector meets the child’s own line up when donor is parent of only SOME siblings', () => {
+  it('auxiliary connector goes to each child when donor is parent of only SOME siblings', () => {
     // 2 parents (0,1) + 2 donors (2,3) + 2 children (4,5)
     // Donor2 has donor edge to child4 only, Donor3 has donor edge to child5 only
     const donorSomeLayout: PedigreeLayout = {
@@ -590,14 +590,13 @@ describe('computeConnectors', () => {
       donorSomeParents,
     );
     expect(connectors.auxiliaryLines.length).toBe(2);
-    // Each meets the line of descent where it first leads only to the one
-    // child they gave to (the donor line rule, Bennett et al. 2022, 1c):
-    // the top of that child's own line up, on the sibling bar (y =
-    // childLevel(1) - legh(0.25) = 0.75).
+    // A donor of part of a sibship draws a line to each child he gave to,
+    // ending at their centre, which their symbol hides (Josh, 22 Oct 2026):
+    // y = childLevel(1) + boxh / 2 = 1.25.
     connectors.auxiliaryLines.forEach((line, k) => {
       const end = endOf(line);
       expect(end.x).toBeCloseTo(k, 5);
-      expect(end.y).toBeCloseTo(0.75, 5);
+      expect(end.y).toBeCloseTo(1.25, 5);
     });
   });
 
@@ -644,10 +643,10 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
     // An only child: the donor's line and the line of descent converge on
-    // the top of the child (Bennett et al. 2022, 1f), at y = 1.
+    // the centre of the child, at y = 1.25 (Josh, 22 Oct 2026).
     const end = endOf(connectors.auxiliaryLines[0]!);
     expect(end.x).toBeCloseTo(0.5, 5);
-    expect(end.y).toBeCloseTo(1, 5);
+    expect(end.y).toBeCloseTo(1.25, 5);
   });
 
   // mom(0) and biodad(2), birth parents never recorded as partners, seated

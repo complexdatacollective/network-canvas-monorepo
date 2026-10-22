@@ -11,7 +11,14 @@ import {
 } from '@codaco/fresco-ui/Table';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-type Status = 'native' | 'migrate' | 'unsupported';
+/**
+ * - `native`: opened and run (or edited) as it is.
+ * - `migrate`: migrated automatically to the group's schema on import.
+ * - `keepOrUpgrade`: edited as schema 8, or upgraded to schema 9 as a copy,
+ *   whichever the researcher chooses.
+ * - `unsupported`: refused.
+ */
+type Status = 'native' | 'migrate' | 'keepOrUpgrade' | 'unsupported';
 
 type Row = {
   app: string;
@@ -27,13 +34,16 @@ type Row = {
 type Group = {
   label: string;
   schema: number;
+  /** The schema an automatic migration (`migrate`) brings a protocol to. */
+  migratesTo: number;
   rows: Row[];
 };
 
 const GROUPS: Group[] = [
   {
-    label: 'Current generation',
+    label: 'Previous generation',
     schema: 7,
+    migratesTo: 7,
     rows: [
       {
         app: 'Interviewer Classic 6.x.x',
@@ -59,28 +69,29 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    label: 'New generation',
+    label: 'Current generation',
     schema: 9,
+    migratesTo: 8,
     rows: [
       {
         app: 'Interviewer 9.x.x',
         platform: 'Desktop & tablet',
         schema7: 'migrate',
-        schema8: 'migrate',
+        schema8: 'native',
         schema9: 'native',
       },
       {
         app: 'Architect 9.x.x',
         platform: 'Browser',
-        schema7: 'migrate',
-        schema8: 'migrate',
+        schema7: 'keepOrUpgrade',
+        schema8: 'keepOrUpgrade',
         schema9: 'native',
       },
       {
         app: 'Fresco 5.x.x',
         platform: 'Browser',
         schema7: 'migrate',
-        schema8: 'migrate',
+        schema8: 'native',
         schema9: 'native',
       },
     ],
@@ -115,6 +126,14 @@ const StatusCell = ({
       >
         <ArrowUp className="h-4 w-4 shrink-0" aria-hidden />
         Migrates to {targetSchema}
+      </span>
+    );
+  }
+
+  if (status === 'keepOrUpgrade') {
+    return (
+      <span className={cx(SUCCESS_TEXT, 'font-semibold')}>
+        Edits as 8, or upgrades to 9
       </span>
     );
   }
@@ -165,19 +184,19 @@ const AppCompatibilityTable = () => (
                 <TableCell>
                   <StatusCell
                     status={row.schema7}
-                    targetSchema={group.schema}
+                    targetSchema={group.migratesTo}
                   />
                 </TableCell>
                 <TableCell>
                   <StatusCell
                     status={row.schema8}
-                    targetSchema={group.schema}
+                    targetSchema={group.migratesTo}
                   />
                 </TableCell>
                 <TableCell>
                   <StatusCell
                     status={row.schema9}
-                    targetSchema={group.schema}
+                    targetSchema={group.migratesTo}
                   />
                 </TableCell>
               </TableRow>
@@ -195,12 +214,14 @@ const AppCompatibilityTable = () => (
       />
       <p className="text-text/80 text-sm">
         <strong className={cx(WARNING_TEXT, 'font-semibold')}>
-          Migration is one-way.
+          Upgrading is one-way.
         </strong>{' '}
-        Apps cannot export or save protocols in an older schema version. Keep a
-        copy of your original protocol file if you need to continue using apps
-        that only support an older schema. Releases of Interviewer and Fresco
-        made before schema 9 open schema 7 and 8 protocols only, so update them
+        Only Architect upgrades a protocol to schema 9, and only when you choose
+        to; it makes an upgraded copy and leaves the original unchanged. No app
+        can convert a protocol back to an older schema version, so keep a copy
+        of your original protocol file if you need to continue using apps that
+        only support an older schema. Releases of Interviewer and Fresco made
+        before schema 9 open schema 7 and 8 protocols only, so update them
         before you use a schema 9 protocol.
       </p>
     </div>

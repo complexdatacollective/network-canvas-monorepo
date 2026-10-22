@@ -7,7 +7,7 @@ import {
   useMotionValue,
   useReducedMotion,
 } from 'motion/react';
-import { type Ref, useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionButton } from '@codaco/fresco-ui/Button';
@@ -41,8 +41,7 @@ type MenuItem = {
 // Buttons sit on the side of the symbol where the new relative will appear:
 // parents above, children below, siblings to the left and partners to the
 // right. Their DOM order is the arrow-key order of the toolbar. The gap is
-// the wrapper's padding, so it grows with the button. (`AddMenuReachProbe`
-// measures the same size and gap.)
+// the wrapper's padding, so it grows with the button.
 const ITEMS: MenuItem[] = [
   {
     relation: 'parent',
@@ -61,31 +60,6 @@ const ITEMS: MenuItem[] = [
     placement: 'top-full left-1/2 pt-4 -translate-x-1/2 origin-top',
   },
 ];
-
-/**
- * How far the add menu reaches out from a person's symbol, given its probe:
- * so many content units at any zoom, and never less on screen than the
- * buttons' least size allows.
- */
-export function addMenuReach(probe: HTMLElement | null) {
-  if (!probe || probe.clientWidth === 0) return { content: 0, screen: 0 };
-  const content = probe.offsetHeight;
-  return { content, screen: (content * MIN_TARGET) / probe.clientWidth };
-}
-
-/**
- * An invisible box as tall as a button and its gap from the symbol, and as
- * wide as a button, for `addMenuReach` to measure before any menu is shown.
- */
-export function AddMenuReachProbe({ ref }: { ref: Ref<HTMLSpanElement> }) {
-  return (
-    <span
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none invisible absolute top-0 left-0 box-content size-18 pb-4"
-    />
-  );
-}
 
 /**
  * The menu revealed around the selected family member. A Base UI toolbar, so

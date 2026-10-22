@@ -3,6 +3,7 @@
     - heading "Add the members of your family." [level=2]
   - region "Your family":
     - button "Linda"
+    - button "Biological father"
     - button "You"
     - toolbar "Add your relatives":
       - button "Parent"
@@ -15,11 +16,16 @@
       - button "Connect"
       - button "Disconnect"
     - separator
+    - group "History tools":
+      - button "Undo"
+      - button "Redo" [disabled]
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
   - text: Linda added to your family.
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

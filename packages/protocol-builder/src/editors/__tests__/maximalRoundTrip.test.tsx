@@ -296,7 +296,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
         'en-US':
           'You have completed this task. Click the next arrow to continue.',
       },
-      externalDataError: { 'en-US': 'External data could not be loaded.' },
     },
     settle: () => screen.findByRole('textbox', { name: 'Form title' }),
   },
@@ -342,7 +341,6 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         'en-US':
           'You have completed this task. Click the next arrow to continue.',
       },
-      externalDataError: { 'en-US': 'External data could not be loaded.' },
     }),
   },
   {
@@ -483,8 +481,6 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       offlineNotice: { 'en-US': 'You are offline. The map will not load.' },
       mapUnavailable: { 'en-US': 'The map cannot be drawn on this device.' },
       outsideAreasLabel: { 'en-US': 'Outside selectable areas' },
-      searchLabel: { 'en-US': 'Search places' },
-      searchNoMatch: { 'en-US': 'No place matches.' },
       searchFailed: { 'en-US': 'The search failed.' },
     }),
   },

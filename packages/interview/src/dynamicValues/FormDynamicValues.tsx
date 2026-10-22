@@ -104,6 +104,7 @@ export function FormDynamicValues({
   newEntityAttributes,
   coerce,
   labelNode,
+  isParticipant,
   children,
 }: {
   formSubject: StageSubject | null | undefined;
@@ -130,6 +131,13 @@ export function FormDynamicValues({
    * of the stage's own subject.
    */
   labelNode?: LabelNode;
+  /**
+   * Whether the node the form describes is the participant, where an
+   * interface draws the participant among the nodes it asks about (a Family
+   * Pedigree's person form), so its fields' text can be worded for them.
+   * Ignored unless the form describes a node of the stage's own subject.
+   */
+  isParticipant?: boolean;
   children: ReactNode;
 }) {
   const describesStageSubject =
@@ -251,8 +259,14 @@ export function FormDynamicValues({
         ...(fromLabel !== undefined && { edgeFrom: fromLabel }),
         ...(toLabel !== undefined && { edgeTo: toLabel }),
       },
+      participants:
+        isParticipant === undefined ||
+        liveAttributes === undefined ||
+        formSubject?.entity !== 'node'
+          ? {}
+          : { node: isParticipant },
     }),
-    [liveAttributes, formSubject, nodeLabel, fromLabel, toLabel],
+    [liveAttributes, formSubject, nodeLabel, fromLabel, toLabel, isParticipant],
   );
 
   return <DynamicValueEntity {...entities}>{children}</DynamicValueEntity>;

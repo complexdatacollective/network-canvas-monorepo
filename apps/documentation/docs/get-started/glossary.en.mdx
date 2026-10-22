@@ -96,6 +96,15 @@ represent anything your study needs — places, for example. See
 [Codebook](/en/design-protocols/key-concepts/codebook) for how node types are
 defined.
 
+## Piped Text
+
+Text that changes value dynamically based on interview data or context. You
+include a placeholder when designing your interview, and it is replaced by the
+real value when the participant sees the text: an earlier answer, the label of
+the [node](#node) a question asks about, or today's date. Piped text lets a
+[prompt](#prompt) or form question name the alter it concerns. See [Piped
+Text](/en/design-protocols/piped-text).
+
 ## Prompt
 
 A participant-facing question or instruction that explains which data to
@@ -131,9 +140,12 @@ formats.
 
 The set of rules that defines what a valid protocol file looks like. Schemas
 are numbered — a protocol's **schema version** — and a protocol's schema
-version controls which apps can open it. Architect offers to upgrade an older
-protocol to the latest schema version, and Fresco and Interviewer migrate schema
-7 protocols to schema 8 automatically. See [Protocol Schema
+version controls which apps can open it. Current releases of Architect,
+Fresco, and Interviewer open protocols made for earlier schema versions without
+upgrading them. Architect offers to upgrade an older protocol to the latest
+schema version or to keep editing it as schema 8, and Fresco and Interviewer
+run schema 8 protocols as they are and migrate schema 7 protocols to schema 8
+automatically. See [Protocol Schema
 Information](/en/get-started/protocol-schema-information).
 
 ## Sociogram

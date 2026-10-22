@@ -5,14 +5,11 @@ import type { RoutingWork } from './auxiliaryRouting';
 import { routePedigree } from './connectors';
 import {
   computeLayoutMetrics,
-  EDGE_WIDTH,
   type LayoutDimensions,
   SYMBOL_CORNER_RADIUS_PX,
 } from './layoutDimensions';
-import { drawnKind } from './lineOwners';
+import { drawnKind, hangingFromGeneticParents } from './lineOwners';
 import type {
-  LineSegment,
-  ParentChildConnector,
   ParentConnection,
   PartnerConnection,
   PedigreeConnectors,
@@ -194,7 +191,6 @@ function routeLayout(
     hScale: 1,
     vScale: 1,
     cornerRadius: SYMBOL_CORNER_RADIUS_PX / dimensions.nodeWidth,
-    halfStroke: EDGE_WIDTH / 2 / dimensions.nodeWidth,
   };
 
   // Build sets of all and active partner pairs (numeric index keys). The full
@@ -291,9 +287,6 @@ export function buildConnectorData(
     for (const pl of pc.parentLink) {
       transformSegment(pl, sx, sy, xOffset);
     }
-    for (const segment of runSegments(pc)) {
-      transformSegment(segment, sx, sy, xOffset);
-    }
   }
 
   for (const ti of connectors.twinIndicators) {
@@ -308,7 +301,7 @@ export function buildConnectorData(
   }
 
   for (const aux of connectors.auxiliaryLines) {
-    for (const pt of [...aux.points, ...(aux.hops ?? [])]) {
+    for (const pt of aux.points) {
       pt.x = pt.x * sx + xOffset;
       pt.y = pt.y * sy;
     }
@@ -350,14 +343,13 @@ export function buildConnectorData(
       for (const ul of pc.uplines) shiftSegment(ul, -rawMinX, 0);
       if (pc.siblingBar) shiftSegment(pc.siblingBar, -rawMinX, 0);
       for (const pl of pc.parentLink) shiftSegment(pl, -rawMinX, 0);
-      for (const segment of runSegments(pc)) shiftSegment(segment, -rawMinX, 0);
     }
     for (const ti of connectors.twinIndicators) {
       if (ti.segment) shiftSegment(ti.segment, -rawMinX, 0);
       if (ti.label) ti.label.x += -rawMinX;
     }
     for (const aux of connectors.auxiliaryLines) {
-      for (const pt of [...aux.points, ...(aux.hops ?? [])]) pt.x += -rawMinX;
+      for (const pt of aux.points) pt.x += -rawMinX;
     }
     for (const da of connectors.duplicateArcs) {
       for (const pt of da.path.points) pt.x += -rawMinX;
@@ -386,14 +378,13 @@ export function buildConnectorData(
       for (const ul of pc.uplines) shiftSegment(ul, 0, -rawMinY);
       if (pc.siblingBar) shiftSegment(pc.siblingBar, 0, -rawMinY);
       for (const pl of pc.parentLink) shiftSegment(pl, 0, -rawMinY);
-      for (const segment of runSegments(pc)) shiftSegment(segment, 0, -rawMinY);
     }
     for (const ti of connectors.twinIndicators) {
       if (ti.segment) shiftSegment(ti.segment, 0, -rawMinY);
       if (ti.label) ti.label.y += -rawMinY;
     }
     for (const aux of connectors.auxiliaryLines) {
-      for (const pt of [...aux.points, ...(aux.hops ?? [])]) pt.y += -rawMinY;
+      for (const pt of aux.points) pt.y += -rawMinY;
     }
     for (const da of connectors.duplicateArcs) {
       for (const pt of da.path.points) pt.y += -rawMinY;
@@ -402,10 +393,6 @@ export function buildConnectorData(
 
   return { connectors };
 }
-
-/** The stems and sub-bars of a sibship's runs. */
-const runSegments = (pc: ParentChildConnector): LineSegment[] =>
-  (pc.runs ?? []).flatMap((run) => [run.stem, ...(run.bar ? [run.bar] : [])]);
 
 function transformSegment(
   seg: { x1: number; y1: number; x2: number; y2: number },
@@ -505,18 +492,24 @@ function drawPedigreeAfresh({
   const names = nodeNames
     ? indexToId.map((id) => nodeNames.get(id) ?? '')
     : undefined;
-  // Each seating weighed is drawn, and chosen by what its drawing costs.
-  const routed = new Map<PedigreeLayout, PedigreeConnectors>();
   const counted = { spent: SETUP_STEPS * nodeIds.length };
-  const layout = alignPedigree(input, {
-    counted,
-    drawingCost: (candidate, search, work) => {
-      counted.spent += SETUP_STEPS * nodeIds.length;
-      const { connectors, cost } = routeLayout(
+  /** The family laid out and routed with `parents` as its ties. */
+  function laidOut(parents: ParentConnection[][], share: number) {
+    // Each seating weighed is drawn, and chosen by what its drawing costs.
+    const routed = new Map<
+      PedigreeLayout,
+      { connectors: PedigreeConnectors; broken: number; crossings: number }
+    >();
+    const route = (
+      candidate: PedigreeLayout,
+      search: 'quick' | 'thorough',
+      work: RoutingWork,
+    ) =>
+      routeLayout(
         candidate,
         links,
         dimensions,
-        input.parents,
+        parents,
         idToIndex,
         names,
         indexToId,
@@ -524,36 +517,58 @@ function drawPedigreeAfresh({
         search,
         work,
       );
-      // An abandoned drawing is not kept (see `RoutingWork`).
-      if (cost < Number.POSITIVE_INFINITY) routed.set(candidate, connectors);
-      return cost;
-    },
-  });
-  const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
-  // The drawing chosen was drawn while it was weighed; were it not, it is
-  // routed once, with no search for better courses, and counted.
-  let connectors = routed.get(layout);
-  if (!connectors) {
-    const once: RoutingWork = { spent: 0, limit: 0 };
-    connectors = routeLayout(
-      layout,
-      links,
-      dimensions,
-      input.parents,
-      idToIndex,
-      names,
-      indexToId,
-      nodeShapes,
-      'thorough',
-      once,
-    ).connectors;
-    counted.spent += SETUP_STEPS * nodeIds.length + once.spent;
+    const layout = alignPedigree(
+      { ...input, parents },
+      {
+        counted,
+        share,
+        drawingCost: (candidate, search, work) => {
+          counted.spent += SETUP_STEPS * nodeIds.length;
+          const { connectors, cost, broken, crossings } = route(
+            candidate,
+            search,
+            work,
+          );
+          // An abandoned drawing is not kept (see `RoutingWork`).
+          if (cost < Number.POSITIVE_INFINITY) {
+            routed.set(candidate, { connectors, broken, crossings });
+          }
+          return cost;
+        },
+      },
+    );
+    // The drawing chosen was drawn while it was weighed; were it not, it is
+    // routed once, with no search for better courses, and counted.
+    let drawn = routed.get(layout);
+    if (!drawn) {
+      const once: RoutingWork = { spent: 0, limit: 0 };
+      drawn = route(layout, 'thorough', once);
+      counted.spent += SETUP_STEPS * nodeIds.length + once.spent;
+    }
+    return { parents, layout, ...drawn };
   }
+  // A family with a child carried by a gestational surrogate is drawn
+  // both ways, and the children hang from their genetic parents only where
+  // that crosses fewer lines than Bennett et al.'s line of descent from the
+  // carrier (Josh, 22 Oct 2026) and breaks no more hard constraints, so
+  // fewer crossings never cost a drawing that keeps them. The two drawings
+  // share one budget.
+  const geneticParents = hangingFromGeneticParents(input.parents);
+  const share = geneticParents ? 0.5 : 1;
+  const bennett = laidOut(input.parents, share);
+  const genetic = geneticParents ? laidOut(geneticParents, share) : undefined;
+  const { parents, layout, connectors } =
+    genetic &&
+    genetic.crossings < bennett.crossings &&
+    genetic.broken <= bennett.broken
+      ? genetic
+      : bennett;
+  const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
   const connectorData = buildConnectorData(
     layout,
     links,
     dimensions,
-    input.parents,
+    parents,
     idToIndex,
     names,
     indexToId,

@@ -1,6 +1,7 @@
 'use client';
 
 import { createSelector } from '@reduxjs/toolkit';
+import { RotateCcw } from 'lucide-react';
 import {
   type FocusEvent,
   type KeyboardEvent,
@@ -15,20 +16,15 @@ import {
 import { useSelector } from 'react-redux';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import { IconButton } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import {
   SegmentedToolbar,
   ToolbarButton,
+  ToolbarIconButton,
   ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { NodeColorReference } from '@codaco/protocol-validation';
 import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
@@ -785,39 +781,20 @@ export default function NarrativePedigreeView({
       </PedigreeViewport>
       <div
         ref={toolbarRef}
-        className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+        className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center px-4"
         onKeyDown={(event) => zoomForKey(event, panZoom)}
       >
-        {focalId !== null && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <IconButton
-                  size="sm"
-                  variant="default"
-                  aria-label={clearFocusText}
-                  icon={
-                    <Icon
-                      name="RotateCcw"
-                      aria-hidden="true"
-                      className="size-[1em]"
-                    />
-                  }
-                  className="pointer-events-auto"
-                  onClick={() => setFocalId(null)}
-                />
-              }
-            />
-            <TooltipContent>{clearFocusText}</TooltipContent>
-          </Tooltip>
-        )}
         <SegmentedToolbar
           aria-label={intl.formatMessage(messages.toolbarLabel)}
           size="lg"
           className="pointer-events-auto max-w-full min-w-0"
         >
           {diseases.length > 0 && (
+            // The toolbar's labels run a step smaller than a large toolbar's
+            // own text, here and on the snapshot button.
             <ConditionControl
+              key="condition"
+              className="text-base"
               words={conditionControlWords}
               diseases={diseases}
               selectedDiseaseId={selectedDiseaseId}
@@ -832,10 +809,21 @@ export default function NarrativePedigreeView({
               }}
             />
           )}
+          {focalId !== null && (
+            <ToolbarIconButton
+              key="clear-focus"
+              aria-label={clearFocusText}
+              icon={<RotateCcw />}
+              onClick={() => setFocalId(null)}
+            />
+          )}
           {diseases.length > 0 && <ToolbarSeparator />}
           {zoomButtons}
           <ToolbarSeparator />
-          <ToolbarButton onClick={() => setIsCapturing(true)}>
+          <ToolbarButton
+            className="text-base"
+            onClick={() => setIsCapturing(true)}
+          >
             <span className="flex items-center gap-2">
               <Icon name="Camera" aria-hidden="true" className="size-[1em]" />
               {saveSnapshotText}

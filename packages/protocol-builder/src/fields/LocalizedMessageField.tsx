@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useMemo, useRef } from 'react';
 import { z } from 'zod/mini';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
@@ -6,30 +6,45 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
   type RichTextEditorToken,
+  type RichTextInsertMenu,
+  type RichTextInsertMenuItem,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import {
-  TokenizedText,
-  type TokenizedTextPart,
-} from '@codaco/fresco-ui/TokenPill';
-import {
-  composeMessage,
+  dynamicValueNamesIn,
   findMessageArgumentProblem,
   findMissingPlacement,
   type LocaleTag,
   type LocalizedString,
   type MessageArguments,
-  type MessagePart,
+  type MessageNode,
   type MessageVariant,
+  messageStructure,
   messageVariants,
   type MissingPlacement,
   pluralCountExamples,
-  requiredArgumentsOf,
+  printMessageStructure,
 } from '@codaco/protocol-validation';
 
 import { asLocalizedString } from '../localization/localizedText.ts';
+import {
+  countTokenId,
+  documentToMessageNodes,
+  type MessageDocumentFormat,
+  type MessageDocumentLabels,
+  MessageDocumentProblem,
+  messageToDocument,
+} from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
-import type { RichTextContent as JSONContent } from '../markdown/markdownAdapter.ts';
+import type { RichTextContent } from '../markdown/markdownAdapter.ts';
+import {
+  inlineContent,
+  isBlankMessage,
+  MessageNodesSummary,
+  numberSwitchLabels,
+  pluralCategories,
+  UnreadableMessage,
+} from './DynamicTextField.tsx';
 import { LocalizedStringField } from './LocalizedStringField.tsx';
 import {
   type MessageArgumentLabels,
@@ -38,6 +53,24 @@ import {
 } from './messageArgumentLabels.ts';
 
 const messages = defineMessages({
+  insertMenu: {
+    id: 'protocolBuilder.localizedMessage.insertMenu',
+    defaultMessage: 'Inject piped text from this stage',
+    description:
+      'Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text a participant reads whose wording Network Canvas supplies, such as a label on the Family Pedigree. “Piped text” is survey-software vocabulary for text filled in while the interview runs: the menu offers what this text can show or change with, such as a family member’s name, the number of parents still to add, or whether the text is about the participant.',
+  },
+  byCase: {
+    id: 'protocolBuilder.localizedMessage.byCase',
+    defaultMessage: 'Different wording for each case',
+    description:
+      'Second line of an entry in the insert-a-value menu of a text a participant reads. The entry names something the text can change with, such as “Participant or someone else” or “Relation”; choosing it inserts a piece of text with one version for each of its cases, such as one about the participant and one about someone else.',
+  },
+  versionsByCase: {
+    id: 'protocolBuilder.localizedMessage.versionsByCase',
+    defaultMessage: 'Wording that changes with {value}',
+    description:
+      'Accessible name of a piece of text with one version for each case of something it changes with. value is that thing’s name, such as “Participant or someone else” or “Relation”.',
+  },
   pluralVersion: {
     id: 'protocolBuilder.localizedMessage.pluralVersion',
     defaultMessage: 'When “{placeholder}” is {numbers}',
@@ -46,10 +79,9 @@ const messages = defineMessages({
   },
   versionsBlank: {
     id: 'protocolBuilder.localizedMessage.versionsBlank',
-    defaultMessage:
-      'Write every version of this text, or leave them all empty.',
+    defaultMessage: 'Write something in every version of this text.',
     description:
-      'Refusal shown under a text written in several versions (for the participant, for someone else, and so on) when some versions have words and others are empty, in any of the protocol’s languages.',
+      'Refusal shown under a text with a piece written in several versions (one about the participant, one about someone else, and so on) when one of those versions is empty, in any of the protocol’s languages.',
   },
   placementMissing: {
     id: 'protocolBuilder.localizedMessage.placementMissing',
@@ -75,55 +107,24 @@ const messages = defineMessages({
 /** How many examples a plural version's label gives of the numbers it is for. */
 const EXAMPLE_COUNT = 3;
 
-const isBlankVariant = (variant: MessageVariant) =>
-  variant.parts.every((part) => typeof part === 'string' && part.trim() === '');
-
-const documentOf = (parts: readonly MessagePart[]): JSONContent => {
-  const content = parts.flatMap((part): JSONContent[] =>
-    typeof part === 'string'
-      ? part === ''
-        ? []
-        : [{ type: 'text', text: part }]
-      : [{ type: 'token', attrs: { id: part.argument } }],
+/** Whether some version of a switch in `nodes`, at any depth, shows nothing. */
+const hasBlankVersion = (nodes: readonly MessageNode[]): boolean =>
+  nodes.some(
+    (node) =>
+      node.kind === 'switch' &&
+      node.versions.some(
+        (version) =>
+          isBlankMessage(version.nodes) || hasBlankVersion(version.nodes),
+      ),
   );
-  return {
-    type: 'doc',
-    content: [
-      content.length > 0
-        ? { type: 'paragraph', content }
-        : { type: 'paragraph' },
-    ],
-  };
-};
-
-const partsOf = (document: JSONContent | undefined): MessagePart[] => {
-  const parts: MessagePart[] = [];
-  const collect = (nodes: readonly JSONContent[] | undefined) => {
-    for (const node of nodes ?? []) {
-      if (node.type === 'text') {
-        const last = parts.at(-1);
-        const text = node.text ?? '';
-        if (typeof last === 'string') parts[parts.length - 1] = last + text;
-        else if (text !== '') parts.push(text);
-      } else if (node.type === 'token') {
-        const id: unknown = node.attrs?.id;
-        if (typeof id === 'string') parts.push({ argument: id });
-      } else {
-        collect(node.content);
-      }
-    }
-  };
-  collect(document?.content);
-  return parts;
-};
 
 type LocalizedMessageProblem =
   | Readonly<{ kind: 'versionsBlank' | 'unreadable' }>
   | Readonly<{ kind: 'placementMissing'; missing: MissingPlacement }>;
 
 /**
- * What a translation of a message is refused for: some of its versions
- * written and others empty, something its arguments do not offer, or a
+ * What a translation of a message is refused for: a version of a piece of
+ * it left empty, something its arguments do not offer, or a
  * version leaving out a placeholder it must show (see
  * `findMissingPlacement`). Every place that writes a message holds it to
  * this rule: the stage editor's field (`localizedMessageValidation`) and
@@ -140,10 +141,12 @@ const localizedMessageProblem = (
       ? undefined
       : { kind: 'placementMissing', missing };
   }
-  const variants = messageVariants(message, declaration, locale);
-  const blank = variants.filter(isBlankVariant).length;
+  const structure = messageStructure(message);
   return {
-    kind: blank > 0 && blank < variants.length ? 'versionsBlank' : 'unreadable',
+    kind:
+      'nodes' in structure && hasBlankVersion(structure.nodes)
+        ? 'versionsBlank'
+        : 'unreadable',
   };
 };
 
@@ -242,10 +245,10 @@ type VersionGroup = Readonly<{
 }>;
 
 /**
- * A message's versions in `locale`, grouped by their select cases in
- * declared order, each group holding one version per plural category, with
- * the words the researcher reads for each, and the placeholders the text can
- * show.
+ * A message's versions in `locale`, one for every combination of the
+ * setting's cases and plural categories, grouped by their select cases in
+ * declared order, with what a refusal calls each version and each
+ * placeholder.
  */
 function messageVersions(
   message: string,
@@ -258,12 +261,6 @@ function messageVersions(
     const label = placeholderLabels[argument]?.trim();
     return label === undefined || label === '' ? argument : label;
   };
-  const tokens: RichTextEditorToken[] = Object.entries(declaration).flatMap(
-    ([argument, { kind }]) =>
-      kind === 'select'
-        ? []
-        : [{ id: argument, label: placeholderName(argument) }],
-  );
   const selects = Object.entries(declaration).flatMap(([argument, { kind }]) =>
     kind === 'select' ? [argument] : [],
   );
@@ -331,49 +328,54 @@ function messageVersions(
   return {
     variants,
     groups: groupList,
-    tokens,
     placeholderName,
     versionLabel,
   };
 }
 
-function useMessageVersions(
-  message: string,
+/**
+ * What a localized message's editor and summary call its arguments, its
+ * switches and their versions: a select argument by its name and each case
+ * by the heading of its version, a number as its placeholder's name, with
+ * versions labelled by examples of their numbers in `locale`.
+ */
+const messageNaming = (
   declaration: MessageArguments,
   locale: LocaleTag,
-) {
-  const intl = useAppIntl();
-  const labels = useMessageArgumentLabels();
-  return messageVersions(message, declaration, locale, intl, labels);
-}
+  intl: IntlShape,
+  { switchLabels, caseLabels, placeholderLabels }: MessageArgumentLabels,
+) => {
+  const named = (label: string | undefined, argument: string) =>
+    label === undefined || label.trim() === '' ? argument : label;
+  const valueLabel = (argument: string) =>
+    declaration[argument]?.kind === 'select'
+      ? named(switchLabels[argument], argument)
+      : named(placeholderLabels[argument], argument);
+  const numbers = numberSwitchLabels(intl, locale);
+  const labels: MessageDocumentLabels = {
+    switchSummary: (node) => valueLabel(node.argument),
+    switchLabel: (node) =>
+      node.type === 'plural'
+        ? numbers.switchLabel(valueLabel(node.argument))
+        : intl.formatMessage(messages.versionsByCase, {
+            value: valueLabel(node.argument),
+          }),
+    versionLabel: (node, key) =>
+      node.type === 'plural'
+        ? numbers.versionLabel(key)
+        : named(caseLabels[node.argument]?.[key], key),
+  };
+  return { valueLabel, labels, numbers };
+};
+
+/** One line of plain text, which every version of a localized message is. */
+const FORMAT: MessageDocumentFormat = { markdown: false, singleLine: true };
 
 /**
- * A version's words, each placeholder as its name in brackets: what two
- * versions are compared by, to see whether they read the same.
- */
-const versionText = (
-  parts: readonly MessagePart[],
-  tokens: readonly RichTextEditorToken[],
-) =>
-  parts
-    .map((part) =>
-      typeof part === 'string'
-        ? part
-        : `[${tokens.find((token) => token.id === part.argument)?.label ?? part.argument}]`,
-    )
-    .join('');
-
-/** A version's parts for `TokenizedText`, which draws each placeholder as a pill. */
-const tokenizedParts = (parts: readonly MessagePart[]): TokenizedTextPart[] =>
-  parts.map((part) =>
-    typeof part === 'string' ? part : { token: part.argument },
-  );
-
-/**
- * A message's versions in `locale`, read-only, each placeholder drawn as the
- * pill the editor draws: what a summary or an unfocused table cell shows. A
- * message whose versions all read the same shows as its one phrase, and a case
- * whose versions all read the same, whatever the number, shows once.
+ * A message's words in `locale`, read-only, each placeholder drawn as the
+ * pill the editor draws and each set of versions folded to the pill of what
+ * it chooses by, as the editor shows it folded: what a summary or an
+ * unfocused table cell shows.
  */
 export function LocalizedMessageVersionsSummary({
   message,
@@ -384,42 +386,24 @@ export function LocalizedMessageVersionsSummary({
   declaration: MessageArguments;
   locale: LocaleTag;
 }>) {
-  const { variants, groups, tokens } = useMessageVersions(
-    message,
+  const intl = useAppIntl();
+  const argumentLabels = useMessageArgumentLabels();
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) return <>{message}</>;
+  const { valueLabel, labels } = messageNaming(
     declaration,
     locale,
+    intl,
+    argumentLabels,
   );
-  const texts = variants.map((variant) => versionText(variant.parts, tokens));
-  const version = (index: number) => (
-    <TokenizedText
-      parts={tokenizedParts(variants[index]?.parts ?? [])}
-      tokens={tokens}
-    />
-  );
-  if (texts.every((text) => text === texts[0])) return version(0);
-
   return (
-    <dl className="flex flex-col gap-1">
-      {groups.flatMap((group) => {
-        const first = group.versions[0];
-        const same =
-          first !== undefined &&
-          group.versions.every(
-            ({ index }) => texts[index] === texts[first.index],
-          );
-        const shown = same
-          ? [{ index: first.index, label: undefined }]
-          : group.versions;
-        return shown.map(({ index, label }) => (
-          <div key={index}>
-            <dt className="text-sm text-current/70">
-              {[group.label, label].filter(Boolean).join(' · ')}
-            </dt>
-            <dd>{version(index)}</dd>
-          </div>
-        ));
-      })}
-    </dl>
+    <MessageNodesSummary
+      nodes={structure.nodes}
+      markdown={false}
+      multiline={false}
+      valueLabel={valueLabel}
+      switchSummary={labels.switchSummary}
+    />
   );
 }
 
@@ -428,7 +412,7 @@ export type LocalizedMessageVersionsProps = Readonly<{
   name: string;
   /** One translation, as the protocol stores it, or empty. */
   message: string;
-  /** Writes the translation; undefined when every version was emptied. */
+  /** Writes the translation; undefined when it was emptied. */
   onMessageChange: (message: string | undefined) => void;
   readOnly?: boolean;
   disabled?: boolean;
@@ -437,14 +421,20 @@ export type LocalizedMessageVersionsProps = Readonly<{
   ariaLabelledBy: string | undefined;
   ariaDescribedBy: string;
   ariaInvalid?: boolean;
-  /** Focuses the first version as it mounts. */
+  /** Focuses the text as it mounts. */
   autoFocus?: boolean;
+  /** Classes for the editor's own frame, which holds its text and toolbar. */
+  className?: string;
 }>;
 
 /**
- * One translation of a localized message, edited a version at a time: a
- * heading per select case, then a labelled line of text per plural category,
- * each holding the message's placeholders as chips.
+ * One translation of a localized message, edited as piped text is: one line
+ * of text, its placeholders as pills, and a piece of text with a version for
+ * each case (or for each kind of number) only where the text has one, folded
+ * to a pill until it is opened, and able to hold another inside a version.
+ * The insert menu (the toolbar button, or typing `{`) offers what the setting
+ * declares: each placeholder, each select argument as wording for each of its
+ * cases, and each number as wording that fits it, showing the number.
  */
 export function LocalizedMessageVersions({
   id,
@@ -459,95 +449,193 @@ export function LocalizedMessageVersions({
   ariaDescribedBy,
   ariaInvalid,
   autoFocus = false,
+  className,
 }: LocalizedMessageVersionsProps) {
-  const baseId = useId();
-  const { variants, groups, tokens } = useMessageVersions(
-    message,
+  const intl = useAppIntl();
+  const argumentLabels = useMessageArgumentLabels();
+  const { valueLabel, labels, numbers } = messageNaming(
     declaration,
     locale,
+    intl,
+    argumentLabels,
   );
 
-  const write = (index: number, parts: readonly MessagePart[]) => {
-    const next = variants.map((variant, at) =>
-      at === index ? { ...variant, parts } : variant,
-    );
-    onMessageChange(
-      next.every(isBlankVariant)
-        ? undefined
-        : composeMessage(next, declaration, locale),
-    );
+  const items: RichTextInsertMenuItem[] = Object.entries(declaration).map(
+    ([argument, declared]): RichTextInsertMenuItem => {
+      const label = valueLabel(argument);
+      if (declared.kind === 'text') {
+        return {
+          id: `value:${argument}`,
+          label,
+          content: inlineContent(
+            [{ kind: 'argument', name: argument }],
+            FORMAT,
+            labels,
+          ),
+        };
+      }
+      if (declared.kind === 'plural') {
+        return {
+          id: `number:${argument}`,
+          label,
+          description: numbers.menuDescription(),
+          content: inlineContent(
+            [
+              {
+                kind: 'switch',
+                argument,
+                type: 'plural',
+                versions: pluralCategories(locale).map((key) => ({
+                  key,
+                  nodes: [{ kind: 'count' }],
+                })),
+              },
+            ],
+            FORMAT,
+            labels,
+          ),
+        };
+      }
+      return {
+        id: `cases:${argument}`,
+        label,
+        description: intl.formatMessage(messages.byCase),
+        content: inlineContent(
+          [
+            {
+              kind: 'switch',
+              argument,
+              type: 'select',
+              versions: [...new Set([...declared.cases, 'other'])].map(
+                (key) => ({ key, nodes: [] }),
+              ),
+            },
+          ],
+          FORMAT,
+          labels,
+        ),
+      };
+    },
+  );
+  const insertMenu: RichTextInsertMenu = {
+    label: intl.formatMessage(messages.insertMenu),
+    items,
+    trigger: '{',
   };
 
+  // Each placeholder, and each number where its plural shows it. A name the
+  // text uses that the setting does not declare, as an imported translation
+  // can, keeps a pill under its own name, so an edit never drops its words.
+  const tokens: RichTextEditorToken[] = [
+    ...new Set([...Object.keys(declaration), ...dynamicValueNamesIn(message)]),
+  ].flatMap((argument): RichTextEditorToken[] => {
+    const kind = declaration[argument]?.kind;
+    const label = valueLabel(argument);
+    return [
+      ...(kind === 'select' || kind === 'plural'
+        ? []
+        : [{ id: argument, label, text: `{${argument}}`, inToolbar: false }]),
+      ...(kind === 'select' || kind === 'text'
+        ? []
+        : [{ id: countTokenId(argument), label, inToolbar: false }]),
+    ];
+  });
+
+  // What the document's pills and version labels say, so a change of
+  // interface language relabels a document already open.
+  const labelsKey = `${intl.locale}:${locale}`;
+
+  // The stored message as the editor's document, or why it cannot be one.
+  const parsed = useMemo(() => {
+    const structure = messageStructure(message);
+    if (!('nodes' in structure)) return undefined;
+    try {
+      return messageToDocument(structure.nodes, FORMAT, labels);
+    } catch (error) {
+      if (error instanceof MessageDocumentProblem) return undefined;
+      throw error;
+    }
+    // The labels follow the languages (`labelsKey`) and the declaration; the
+    // message decides the document.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [message, declaration, labelsKey]);
+
+  // As `DynamicMessageEditor` does: the editor gets its own last document
+  // back while that document still writes the stored message, so a round
+  // trip never rewrites what the researcher is typing.
+  const lastEmitted = useRef<{
+    message: string;
+    content: RichTextContent;
+    labelsKey: string;
+  } | null>(null);
+  const content =
+    lastEmitted.current?.message === message &&
+    lastEmitted.current.labelsKey === labelsKey
+      ? lastEmitted.current.content
+      : parsed;
+
+  const handleChange = (next: unknown) => {
+    if (typeof next !== 'object' || next === null) return;
+    const document = next as RichTextContent;
+    let nodes: MessageNode[];
+    try {
+      nodes = documentToMessageNodes(document, FORMAT);
+    } catch {
+      return;
+    }
+    const nextMessage = isBlankMessage(nodes)
+      ? undefined
+      : printMessageStructure(nodes);
+    lastEmitted.current = {
+      message: nextMessage ?? '',
+      content: document,
+      labelsKey,
+    };
+    if ((nextMessage ?? '') === message) return;
+    onMessageChange(nextMessage);
+  };
+
+  if (parsed === undefined && message !== '') {
+    return (
+      <UnreadableMessage
+        id={id}
+        name={name}
+        message={message}
+        className={className}
+      />
+    );
+  }
+
   return (
-    <div
+    <RichTextEditorField
       id={id}
-      data-name={name}
-      role="group"
+      name={name}
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
       aria-invalid={ariaInvalid}
-      className="flex flex-col gap-4"
-    >
-      {groups.map((group, groupIndex) => {
-        const groupId = `${baseId}-group-${groupIndex}`;
-        return (
-          <div key={group.key} className="flex flex-col gap-2">
-            {group.label !== '' && (
-              <p id={groupId} className="text-sm font-semibold">
-                {group.label}
-              </p>
-            )}
-            {group.versions.map(({ index, label, variant }) => {
-              const labelId = `${baseId}-version-${index}`;
-              const labelledBy = [
-                group.label === '' ? ariaLabelledBy : groupId,
-                label === undefined ? undefined : labelId,
-              ]
-                .filter((part) => part !== undefined)
-                .join(' ');
-              return (
-                <div key={index} className="flex flex-col gap-1">
-                  {label !== undefined && (
-                    <p id={labelId} className="text-sm">
-                      {label}
-                    </p>
-                  )}
-                  <RichTextEditorField
-                    id={`${id}-${index}`}
-                    name={`${name}-${index}`}
-                    aria-labelledby={labelledBy}
-                    aria-describedby={ariaDescribedBy}
-                    aria-invalid={ariaInvalid}
-                    compact
-                    toolbarOptions={{
-                      bold: false,
-                      italic: false,
-                      history: false,
-                    }}
-                    tokens={tokens.map((token) => ({
-                      ...token,
-                      required: requiredArgumentsOf(
-                        variant,
-                        declaration,
-                        locale,
-                      ).includes(token.id),
-                    }))}
-                    // Every keystroke, so that a host can mark the text
-                    // changed, and judge it, as it is written.
-                    changeMode="input"
-                    readOnly={readOnly}
-                    disabled={disabled}
-                    autoFocus={autoFocus && index === 0}
-                    value={documentOf(variant.parts)}
-                    onChange={(document) => write(index, partsOf(document))}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
+      autoFocus={autoFocus}
+      disabled={disabled}
+      readOnly={readOnly}
+      singleLine
+      // Every keystroke, so that a host can mark the text changed, and judge
+      // it, as it is written.
+      changeMode="input"
+      toolbarOptions={{
+        bold: false,
+        italic: false,
+        links: false,
+        headings: false,
+        lists: false,
+        thematicBreak: false,
+        history: true,
+      }}
+      tokens={tokens}
+      versions
+      insertMenu={insertMenu}
+      value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
+      onChange={handleChange}
+      className={className}
+    />
   );
 }
 
@@ -565,16 +653,15 @@ export type LocalizedMessageFieldProps = CreateFormFieldProps<
 
 /**
  * Participant-facing text that changes with what it is about: a localized
- * message (see `localizedMessage`), edited one version at a time in the
- * editing language (see `LocalizedMessageVersions`).
+ * message (see `localizedMessage`), edited in the editing language as piped
+ * text is (see `LocalizedMessageVersions`).
  *
- * There is a version for each case of each select argument — "about the
- * participant" and "about someone else" — and, within each, one for each
- * plural category of the editing language, labelled with examples of the
- * numbers it is for. The versions are written back as one message; versions
- * that all read the same become one phrase. Emptying every version removes
- * the translation, and emptying only some is refused (see
- * `localizedMessageValidation`).
+ * The text has a version for each case of something it changes with, such
+ * as whether it is about the participant, only where it has one, and
+ * wording that fits a number only where its language needs it. Emptying the
+ * text removes the translation; a version left empty, a placeholder the
+ * supplied wording shows and a translation leaves out, or something the
+ * setting does not offer, is refused (see `localizedMessageValidation`).
  */
 export default function LocalizedMessageField({
   id,

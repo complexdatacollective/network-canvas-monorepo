@@ -150,51 +150,6 @@ const fourGenerations: Family = {
   ],
 };
 
-/**
- * Showing the whole family leaves room for the add menu: the top row's
- * Parent buttons clear of the prompt, and the bottom row's Child buttons
- * clear of the toolbar, where they can be clicked.
- */
-export const TheWholeFamilyLeavesRoomForTheAddMenu: Story = {
-  render: () => <CanvasStory family={fourGenerations} />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByRole('button', { name: /^You/ });
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Show the whole family' }),
-    );
-    await settled(canvasElement);
-
-    await userEvent.hover(personSymbol(canvasElement, 'ego'));
-    const child = await canvas.findByTestId('pedigree-menu-child');
-    await expect(
-      overlaps(boxOf(child), toolbarBox(canvasElement)),
-      'Child clear of the toolbar',
-    ).toBe(false);
-    await expect(
-      inside(boxOf(child), canvasBox(canvasElement)),
-      'Child on the canvas',
-    ).toBe(true);
-
-    const heading = canvas.getByRole('heading', { name: /^Add the members/ });
-    for (const topRow of ['greatGran', 'greatGrandad']) {
-      await userEvent.hover(personSymbol(canvasElement, topRow));
-      await waitFor(() =>
-        expect(
-          personSymbol(canvasElement, topRow).parentElement?.querySelector(
-            '[data-testid="pedigree-menu-parent"]',
-          ),
-        ).not.toBeNull(),
-      );
-      const parent = canvas.getByTestId('pedigree-menu-parent');
-      await expect(
-        overlaps(boxOf(parent), boxOf(heading)),
-        `${topRow}'s Parent clear of the prompt`,
-      ).toBe(false);
-    }
-  },
-};
-
 /** Adds a parent to someone through their add menu, as a woman. */
 async function addMother(canvasElement: HTMLElement, childId: string) {
   const canvas = within(canvasElement);
@@ -1345,78 +1300,38 @@ export const TheStageOpensAsTheWholeFamilyButtonFramesIt: Story = {
   },
 };
 
-/** The size on screen, in pixels, of the smallest name drawn in a symbol. */
-function smallestNameOnScreen(canvasElement: HTMLElement) {
-  let smallest = Number.POSITIVE_INFINITY;
-  for (const person of within(canvasElement).getAllByTestId(
-    'pedigree-person',
-  )) {
-    const symbol = person.querySelector('button') as HTMLElement;
-    const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
-    for (const text of symbol.querySelectorAll('span')) {
-      if (!text.textContent?.trim()) continue;
-      smallest = Math.min(
-        smallest,
-        Number.parseFloat(getComputedStyle(text).fontSize) * scale,
-      );
-    }
-  }
-  return smallest;
-}
+/** How far the middle of the family is from the middle of the canvas,
+ * across. */
+const offCentreAcross = (canvasElement: HTMLElement) => {
+  const viewport = within(canvasElement).getByTestId('pedigree-canvas');
+  const family = viewport.lastElementChild?.firstElementChild;
+  if (!family) throw new Error('No family on the canvas');
+  const box = boxOf(family);
+  const area = boxOf(viewport);
+  return Math.abs((box.left + box.right) / 2 - (area.left + area.right) / 2);
+};
 
-const phonePortrait = {
-  parameters: {
-    viewport: {
-      options: {
-        phonePortrait: {
-          name: 'Phone (portrait)',
-          styles: { width: '390px', height: '844px' },
-          type: 'mobile',
-        },
-      },
-    },
-  },
-  globals: { viewport: { value: 'phonePortrait', isRotated: false } },
+/** Zooms in a step and drags the canvas, as a participant looking closer
+ * might. */
+const moveTheViewAway = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  const before = viewOf(canvasElement);
+  await userEvent.click(canvas.getByRole('button', { name: 'Zoom in' }));
+  await settled(canvasElement);
+  dragCanvas(canvas.getByTestId('pedigree-canvas'), 40, -30);
+  await settled(canvasElement);
+  await expect(viewOf(canvasElement).left, 'the view moved').not.toBeCloseTo(
+    before.left,
+  );
 };
 
 /**
- * On a phone, a family too wide to show whole with every name legible opens
- * on the participant with names at least the smallest legible size, and
- * Show the whole family frames it the same way, zoomed out no further.
+ * Moving to another prompt, either way, shows the whole family again,
+ * wherever the participant had dragged or zoomed it, framed the same way on
+ * a nomination prompt, where no add menu is shown, as on the family's own
+ * prompt.
  */
-export const NamesStayLegibleOnAPhone: Story = {
-  ...phonePortrait,
-  render: () => <CanvasStory family={fourGenerations} />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByRole('button', { name: /^You/ });
-    await settled(canvasElement);
-    await expect(
-      smallestNameOnScreen(canvasElement),
-      'names as the stage opens',
-    ).toBeGreaterThanOrEqual(11.9);
-    await expect(
-      inside(viewOf(canvasElement), canvasBox(canvasElement)),
-      'the participant in view',
-    ).toBe(true);
-    const opened = viewOf(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: 'Zoom out' }));
-    await settled(canvasElement);
-    await showWholeFamily(canvasElement);
-    await expectSameView(viewOf(canvasElement), opened, 'the button');
-    await expect(
-      smallestNameOnScreen(canvasElement),
-      'names after the button',
-    ).toBeGreaterThanOrEqual(11.9);
-  },
-};
-
-/**
- * Moving to another prompt leaves the view where the participant put it,
- * and Show the whole family frames the family the same way on a nomination
- * prompt, where no add menu is shown, as on the family's own prompt.
- */
-export const TheViewStaysPutBetweenPrompts: Story = {
+export const MovingBetweenPromptsShowsTheWholeFamily: Story = {
   render: () => (
     <CanvasStory
       family={fourGenerations}
@@ -1428,32 +1343,64 @@ export const TheViewStaysPutBetweenPrompts: Story = {
     await canvas.findByRole('button', { name: /^You/ });
     await settled(canvasElement);
     const whole = viewOf(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: 'Zoom in' }));
-    await settled(canvasElement);
-    dragCanvas(canvas.getByTestId('pedigree-canvas'), 40, -30);
-    await settled(canvasElement);
-    const chosen = viewOf(canvasElement);
-    await expect(chosen.left, 'the view moved').not.toBeCloseTo(whole.left);
 
+    await moveTheViewAway(canvasElement);
     await userEvent.click(canvas.getByTestId('next-button'));
     await canvas.findByText(HEART_PROMPT);
     await settled(canvasElement);
-    await expectSameView(viewOf(canvasElement), chosen, 'after Next');
+    await expectSameView(viewOf(canvasElement), whole, 'after Next');
 
-    await showWholeFamily(canvasElement);
-    await expectSameView(
-      viewOf(canvasElement),
-      whole,
-      'the whole family on the nomination prompt',
-    );
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Zoom in' }));
-    await settled(canvasElement);
-    const zoomed = viewOf(canvasElement);
+    await moveTheViewAway(canvasElement);
     await userEvent.click(canvas.getByTestId('previous-button'));
     await waitFor(() => expect(canvas.queryByText(HEART_PROMPT)).toBeNull());
     await settled(canvasElement);
-    await expectSameView(viewOf(canvasElement), zoomed, 'after Back');
+    await expectSameView(viewOf(canvasElement), whole, 'after Back');
+  },
+};
+
+/**
+ * A small family is shown as large as the canvas allows, larger than its
+ * natural size, but no more than a fifth larger.
+ */
+export const ASmallFamilyFillsTheCanvas: Story = {
+  render: () => <CanvasStory family={threePeople} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    const symbol = personSymbol(canvasElement, 'ego');
+    const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
+    await expect(scale, 'zoomed in past natural size').toBeGreaterThan(1.01);
+    await expect(scale, 'no more than a fifth larger').toBeLessThan(1.201);
+  },
+};
+
+/**
+ * Closing the panel, after editing someone or adding a relative, shows the
+ * whole family again, wherever the participant had dragged or zoomed it.
+ */
+export const ClosingThePanelShowsTheWholeFamily: Story = {
+  render: () => <CanvasStory family={threePeople} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    const whole = viewOf(canvasElement);
+
+    await moveTheViewAway(canvasElement);
+    await userEvent.click(personSymbol(canvasElement, 'mum'));
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
+    await settled(canvasElement);
+    await expectSameView(viewOf(canvasElement), whole, 'after editing');
+
+    await moveTheViewAway(canvasElement);
+    await addMother(canvasElement, 'mum');
+    await expect(
+      offCentreAcross(canvasElement),
+      'the family centred after adding',
+    ).toBeLessThan(1);
   },
 };
 

@@ -55,6 +55,7 @@ const BINDINGS: DynamicValues = {
   partner: { path: 'dyad.target.name' },
   first: { path: 'dyad.source.$label' },
   second: { path: 'dyad.target.$label' },
+  isYou: { path: 'node.$isParticipant', cases: { participant: true } },
   today: { path: 'now' },
 };
 
@@ -228,6 +229,17 @@ describe('resolveDynamicText', () => {
         labels: { dyadTarget: 'Alice' },
       })?.text,
     ).toBe('Them');
+  });
+
+  it('chooses the version for whether the node is the participant', () => {
+    const living =
+      '{isYou, select, participant {Are you still living?} other {Is this person still living?}}';
+    expect(
+      resolve(living, {}, 'en', { participants: { node: true } })?.text,
+    ).toBe('Are you still living?');
+    expect(
+      resolve(living, {}, 'en', { participants: { node: false } })?.text,
+    ).toBe('Is this person still living?');
   });
 
   it("shows today's date", () => {

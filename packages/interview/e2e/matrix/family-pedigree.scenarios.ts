@@ -209,14 +209,48 @@ const member = (page: Page, name: string | RegExp): Locator =>
 const panel = (page: Page): Locator =>
   page.getByTestId('pedigree-person-panel');
 
-/** Opens the add menu around a person with the mouse and picks a relation. */
+/**
+ * How far a button sits under something drawn over the canvas (the toolbar):
+ * the distance from its top to the top of whatever covers its centre, or 0
+ * when nothing does.
+ */
+const coveredBy = (button: Locator): Promise<number> =>
+  button.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const over = document.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2,
+    );
+    if (!over || element.contains(over)) return 0;
+    return box.bottom - over.getBoundingClientRect().top;
+  });
+
+/**
+ * Opens the add menu around a person with the mouse and picks a relation.
+ * The whole family fills the canvas, so a button can sit under the toolbar;
+ * the participant drags the family up to reach it, and so does this.
+ */
 async function addRelativeOf(
   page: Page,
   name: string,
   relation: 'parent' | 'sibling' | 'partner' | 'child',
 ) {
+  const button = page.getByTestId(`pedigree-menu-${relation}`);
   await member(page, name).hover();
-  await page.getByTestId(`pedigree-menu-${relation}`).click();
+  await expect(button).toBeVisible();
+  const covered = await coveredBy(button);
+  if (covered > 0) {
+    const canvas = await page.getByTestId('pedigree-canvas').boundingBox();
+    if (!canvas) throw new Error('The canvas is not shown');
+    const x = canvas.x + 8;
+    const y = canvas.y + canvas.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y - covered - 24, { steps: 8 });
+    await page.mouse.up();
+    await member(page, name).hover();
+  }
+  await button.click();
   await expect(panel(page)).toBeVisible();
 }
 
@@ -580,7 +614,6 @@ const OWN_WORDS = {
   ),
   zygosityFraternal: 'Fraternal zygosity - matrix check',
   zygosityIdentical: 'Identical zygosity - matrix check',
-  zygosityUnknown: 'Unknown zygosity - matrix check',
   you: 'Me myself - matrix check',
   save: 'Keep these details - matrix check',
   connectTool: 'Link tool - matrix check',
@@ -1788,6 +1821,62 @@ function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
   };
 }
 
+/**
+ * A question asked about each person in the family can be worded for the
+ * participant: "Are you still living?" when it is about them, and "Is this
+ * person still living?" for everyone else.
+ */
+function dynamicValuesWordedForParticipant(): ScenarioDefinition {
+  const { synth, fp, person, relate, parents } = scaffold({
+    askGenderIdentity: false,
+  });
+  fp.stageEntry.dynamicValues = {
+    isParticipant: {
+      path: 'node.$isParticipant',
+      cases: { participant: true },
+    },
+  };
+  fp.addFormField({
+    component: 'Boolean',
+    prompt: {
+      'en-US':
+        '{isParticipant, select, participant {Are you still living?} other {Is this person still living?}}',
+    },
+  });
+  person('ego', { sex: 'female', isEgo: true });
+  person('mum', { sex: 'female' });
+  person('dad', { sex: 'male' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
+
+  return {
+    id: 'dynamic-values-worded-for-participant',
+    covers: ['dynamicValues'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      const living = (name: RegExp) =>
+        panel(page).getByRole('radiogroup', { name });
+      const cancel = async () => {
+        await panel(page)
+          .getByRole('button', { name: 'Cancel', exact: true })
+          .click();
+        await expect(panel(page)).toHaveCount(0);
+      };
+
+      await member(page, 'You').click();
+      await expect(living(/^Are you still living\?/)).toBeVisible();
+      await expect(living(/^Is this person still living\?/)).toHaveCount(0);
+      await cancel();
+
+      await member(page, 'Mother').click();
+      await expect(living(/^Is this person still living\?/)).toBeVisible();
+      await expect(living(/^Are you still living\?/)).toHaveCount(0);
+      await cancel();
+    },
+  };
+}
+
 const HEART = 'Who in your family has had heart disease?';
 const OVARIAN = 'Who in your family has had ovarian cancer?';
 const PROSTATE = 'Who in your family has had prostate cancer?';
@@ -2558,16 +2647,18 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
     'you',
     'relativeTerm',
     'panelTitle',
-    'save',
     'genderIdentityLabel',
     'sexAssignedAtBirthLabel',
-    'dontKnow',
   ] as const;
   const { synth, fp, person, relate, parents } = scaffold({
     framing: 'gendered',
     completeness: { scope: 'firstDegree', enforcement: 'recommended' },
     wording: ownWords(...words),
   });
+  // The Save button and the don't know answer are the interview's shared
+  // words, worded once for the whole protocol.
+  synth.setInterfaceText('buttons', 'save', OWN_WORDS.save);
+  synth.setInterfaceText('buttons', 'dontKnow', OWN_WORDS.dontKnow);
   person('ego', {
     name: 'Ari',
     gender: 'nonBinary',
@@ -2583,7 +2674,11 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
 
   return {
     id: 'wording-people-and-panel',
-    covers: coversWords(...words),
+    covers: [
+      ...coversWords(...words),
+      'interfaceText.buttons.save',
+      'interfaceText.buttons.dontKnow',
+    ],
     seedNetwork: true,
     build: () => synth,
     run: async (ctx) => {
@@ -3336,7 +3431,6 @@ function wordingEditPerson(): ScenarioDefinition {
     'twinZygosityLabel',
     'zygosityFraternal',
     'zygosityIdentical',
-    'zygosityUnknown',
     'unavailableIdenticalTwin',
     'unavailableCarried',
     'unavailableSameSexAsCoParent',
@@ -3344,6 +3438,9 @@ function wordingEditPerson(): ScenarioDefinition {
     'unavailableCarrierRecorded',
   ] as const;
   const { synth, person, relate } = scaffold({ wording: ownWords(...words) });
+  // A twin pair whose zygosity is not known takes the shared don't know
+  // answer.
+  synth.setInterfaceText('buttons', 'dontKnow', OWN_WORDS.dontKnow);
   person('ego', {
     name: 'Ari',
     gender: 'nonBinary',
@@ -3438,7 +3535,7 @@ function wordingEditPerson(): ScenarioDefinition {
       for (const word of [
         'zygosityIdentical',
         'zygosityFraternal',
-        'zygosityUnknown',
+        'dontKnow',
       ] as const) {
         await expect(
           withBea.getByRole('radio', { name: plainWord(word), exact: true }),
@@ -4258,6 +4355,7 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     extendedScope('thirdDegree'),
     formFieldsMissingDetails(),
     dynamicValuesNameRelativesAsDrawn(),
+    dynamicValuesWordedForParticipant(),
     nominationPrompts(),
     sexChangeWithdrawsNomination(),
     connectAndDisconnect(),

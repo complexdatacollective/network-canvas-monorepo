@@ -331,17 +331,17 @@ describe('which supplied settings apply to a stage', () => {
     ).toBe(true);
   });
 
-  it('applies a layout tooltip only while the stage’s automatic layout is on', () => {
-    const path = ['tooltips', 'pauseLayout'];
+  it('applies a drawing tooltip only while the stage’s free drawing is on', () => {
+    const path = ['tooltips', 'enableDrawing'];
     expect(
       suppliedStageSettingApplies(
-        { type: 'Sociogram', behaviours: { automaticLayout: true } },
+        { type: 'Narrative', behaviours: { freeDraw: true } },
         path,
       ),
     ).toBe(true);
     expect(
       suppliedStageSettingApplies(
-        { type: 'Sociogram', behaviours: { automaticLayout: false } },
+        { type: 'Narrative', behaviours: { freeDraw: false } },
         path,
       ),
     ).toBe(false);
@@ -372,35 +372,35 @@ describe('which supplied settings apply to a stage', () => {
 
 describe('the settings a stage holds but no longer shows', () => {
   const tooltips = {
-    pauseLayout: { en: 'Pause' },
-    resumeLayout: { en: 'Resume' },
+    enableDrawing: { en: 'Draw' },
+    disableDrawing: { en: 'Stop drawing' },
   };
 
   it('are the conditional ones whose configuration is off', () => {
     expect(
       inapplicableStageSettings({
-        type: 'Sociogram',
-        behaviours: { automaticLayout: false },
+        type: 'Narrative',
+        behaviours: { freeDraw: false },
         tooltips,
       }),
     ).toEqual([
-      ['tooltips', 'pauseLayout'],
-      ['tooltips', 'resumeLayout'],
+      ['tooltips', 'enableDrawing'],
+      ['tooltips', 'disableDrawing'],
     ]);
   });
 
   it('leave out a setting whose configuration is on, or one the stage lacks', () => {
     expect(
       inapplicableStageSettings({
-        type: 'Sociogram',
-        behaviours: { automaticLayout: true },
+        type: 'Narrative',
+        behaviours: { freeDraw: true },
         tooltips,
       }),
     ).toEqual([]);
     expect(
       inapplicableStageSettings({
-        type: 'Sociogram',
-        behaviours: { automaticLayout: false },
+        type: 'Narrative',
+        behaviours: { freeDraw: false },
       }),
     ).toEqual([]);
   });

@@ -46,6 +46,10 @@ export type ParentConnection = {
   recordedKind?: PedigreeEdgeType;
   /** This parent carried the pregnancy, whatever the kind of their tie. */
   isGestationalCarrier?: boolean;
+  /** On a gestational surrogate's tie: the children she carried hang from
+   * their genetic parents rather than from her, where that drawing crosses
+   * fewer lines (see `hangingFromGeneticParents`). */
+  descentFromGeneticParents?: boolean;
 };
 
 export type PartnerConnection = {
@@ -145,7 +149,7 @@ export type ParentGroupConnector = {
   endsAtBracket?: [boolean, boolean];
 };
 
-/** A child's line up to their sibling bar (or sub-bar). */
+/** A child's line up to their sibling bar. */
 export type Upline = LineSegment & {
   /** The child whose line it is. */
   childId?: string;
@@ -167,31 +171,15 @@ export type ParentChildConnector = {
   siblingBar?: LineSegment;
   parentLink: DescentPiece[];
   parentIds?: string[];
-  /** The runs of two or more children who share donors or surrogates the
-   * rest of the sibship does not: each hangs from a sub-bar of its own, on a
-   * stem down from the sibling bar, and those donors' lines end on the stem.
-   * The children's uplines end on the sub-bar. */
-  runs?: SibshipRun[];
-};
-
-export type SibshipRun = {
-  /** From the sibling bar down to the sub-bar. */
-  stem: LineSegment;
-  /** Absent when the run is a pair of twins, who hang from one point. */
-  bar?: LineSegment;
 };
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
   edgeType: PedigreeEdgeType;
-  /** The line's course, from the parent's centre to its end on the child's
-   * top edge (continuing to their centre, under their symbol), on the
-   * sibling bar it joins, or on the stem of the run of children it joins (a
-   * lone child's line up), which it meets from the side. */
+  /** The line's course, from the parent's centre to the child's centre
+   * (their symbols hide its ends), or to the sibling bar it joins, which it
+   * meets from above. */
   points: Point[];
-  /** Where the line crosses another line, in order along it: it is drawn
-   * hopping over the other line there. */
-  hops?: Point[];
   endpointIds?: [string | undefined, string | undefined];
   /** Whose ties the line draws: one person, or a couple whose line it is. */
   ownerIds?: string[];
@@ -235,6 +223,4 @@ export type ScalingParams = {
   /** How far a square's corners and a diamond's tips are rounded, as a
    * fraction of the box's width (see `SYMBOL_CORNER_RADIUS_PX`). */
   cornerRadius?: number;
-  /** Half the width a line is drawn, as a fraction of the box's width. */
-  halfStroke?: number;
 };

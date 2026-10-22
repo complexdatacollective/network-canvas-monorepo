@@ -3,7 +3,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { narrativePedigreeMessages } from '@codaco/protocol-builder/editors/narrative-pedigree/narrativePedigreeMessages';
 import { narrativeWordingMessages } from '@codaco/protocol-builder/editors/narrative/narrativeWordingMessages';
 import { composerMessages } from '@codaco/protocol-builder/editors/network-composer/composerMessages';
-import { sociogramWordingMessages } from '@codaco/protocol-builder/editors/sociogram/sociogramWordingMessages';
 import {
   type LocalizedString,
   suppliedStageSettingApplies,
@@ -84,24 +83,6 @@ const WORDING: Partial<Record<string, WordingSpec>> = {
     {
       path: 'tooltips.resetAnnotations',
       label: narrativeWordingMessages.resetAnnotationsTooltipLabel,
-    },
-    {
-      path: 'tooltips.pauseLayout',
-      label: narrativeWordingMessages.pauseLayoutTooltipLabel,
-    },
-    {
-      path: 'tooltips.resumeLayout',
-      label: narrativeWordingMessages.resumeLayoutTooltipLabel,
-    },
-  ]),
-  Sociogram: wording(sociogramWordingMessages.wordingTitle, [
-    {
-      path: 'tooltips.pauseLayout',
-      label: sociogramWordingMessages.pauseLayoutTooltipLabel,
-    },
-    {
-      path: 'tooltips.resumeLayout',
-      label: sociogramWordingMessages.resumeLayoutTooltipLabel,
     },
   ]),
   NarrativePedigree: wording(narrativePedigreeMessages.wordingTitle, [

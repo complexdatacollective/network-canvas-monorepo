@@ -63,7 +63,6 @@ function rosterStage(overrides?: Record<string, unknown>) {
     id: 'stage-ngr',
     label: 'Roster',
     type: 'NameGeneratorRoster',
-    externalDataError: { en: 'External data could not be loaded.' },
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     subject: { entity: 'node', type: 'person' },
     dataSource: 'roster',

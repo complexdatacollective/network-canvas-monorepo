@@ -201,9 +201,19 @@ export function buildInterview({
   });
   if (withFormFields) {
     stage.addFormField({ component: 'Number', prompt: 'Age' });
+    // The question is worded for the participant when it is about them.
+    stage.stageEntry.dynamicValues = {
+      isParticipant: {
+        path: 'node.$isParticipant',
+        cases: { participant: true },
+      },
+    };
     stage.addFormField({
       component: 'Boolean',
-      prompt: 'Is this person still living?',
+      prompt: {
+        'en-US':
+          '{isParticipant, select, participant {Are you still living?} other {Is this person still living?}}',
+      },
       validation: { required: true },
     });
   }
@@ -582,8 +592,10 @@ const positionsOf = (canvasElement: HTMLElement) =>
   );
 
 /**
- * Opening someone's details moves them beside the panel; closing it puts the
- * view back as it was.
+ * Opening someone's details moves them beside the panel; closing it with the
+ * mouse shows the whole family again, as the stage opened. (Closed from the
+ * keyboard, focus returns to the person with their add menu, which is
+ * brought into view.)
  */
 export const PanelCloseRestoresView: Story = {
   render: (args) => (
@@ -611,7 +623,9 @@ export const PanelCloseRestoresView: Story = {
       { timeout: 3000 },
     );
 
-    await userEvent.keyboard('{Escape}');
+    await userEvent.click(
+      within(panel() as HTMLElement).getByRole('button', { name: 'Cancel' }),
+    );
     await waitFor(
       () => {
         for (const [id, now] of positionsOf(canvasElement)) {
@@ -653,8 +667,8 @@ export const NominatingConditions: Story = {
     const father = () => canvas.getByRole('button', { name: /^Father/ });
     const mother = () => canvas.getByRole('button', { name: /^Mother/ });
     await canvas.findByText(PROMPT);
-    // The view stays where it was left as the prompt changes, and Show the
-    // whole family brings everyone back.
+    // Moving to another prompt brings back the whole family, wherever the
+    // view was left.
     const viewport = canvas.getByTestId('pedigree-canvas');
     const someoneOutOfView = () =>
       canvas
@@ -665,10 +679,6 @@ export const NominatingConditions: Story = {
     await userEvent.click(canvas.getByTestId('next-button'));
 
     await canvas.findByText(HEART_PROMPT);
-    await expect(someoneOutOfView()).toBe(true);
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Show the whole family' }),
-    );
     await waitFor(() => expectWholeFamilyInView(canvasElement));
     // Selecting is all there is: no tools, and no details panel.
     await waitFor(() =>

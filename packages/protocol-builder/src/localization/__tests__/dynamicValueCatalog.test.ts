@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type DynamicValueSiteContext,
   dynamicValueContextFor,
+  dynamicValueParticipantRolesAt,
   dynamicValueRolesAt,
   type MessageNode,
 } from '@codaco/protocol-validation';
@@ -120,6 +121,50 @@ describe('dynamicValueChoices', () => {
       (choice) => choice.path === 'dyad.source.$label',
     );
     expect(label).toMatchObject({ kind: 'label', optional: false });
+  });
+
+  it('offers whether the node is the participant on a Family Pedigree person form, after its label', () => {
+    const form = { entity: 'node', isStageSubject: true } as const;
+    const pedigree: DynamicValueSiteContext = {
+      ...contextFor('FamilyPedigree', 'formField', true),
+      participantRoles: dynamicValueParticipantRolesAt(
+        { type: 'FamilyPedigree' },
+        'formField',
+        form,
+      ),
+    };
+    const choices = dynamicValueChoices(pedigree);
+    expect(
+      choices
+        .map((choice) => choice.path)
+        .filter((path) => path.startsWith('node.')),
+    ).toEqual([
+      'node.$label',
+      'node.$isParticipant',
+      'node.name',
+      'node.closeness',
+    ]);
+    const participant = choices.find(
+      (choice) => choice.path === 'node.$isParticipant',
+    );
+    expect(participant).toMatchObject({
+      kind: 'participant',
+      optional: false,
+      unshowable: 'switch',
+    });
+    expect(bindingFor(participant!, {}, {}, labelText)).toEqual({
+      name: 'isParticipant',
+      binding: {
+        path: 'node.$isParticipant',
+        cases: { participant: true },
+      },
+    });
+    // Any other node form has no participant among its nodes.
+    expect(
+      dynamicValueChoices(contextFor('AlterForm', 'formField', true)).map(
+        (choice) => choice.path,
+      ),
+    ).not.toContain('node.$isParticipant');
   });
 
   it('offers an edge form both ends of its edge by label alone', () => {

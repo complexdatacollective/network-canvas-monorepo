@@ -820,9 +820,6 @@
     },
     {
       "id": "01455ba0-32ee-11eb-8503-3b4fa95b8bc6",
-      "externalDataError": {
-        "en-US": "External data could not be loaded."
-      },
       "allAddedNotice": {
         "en-US": "There is nothing left to add from this list."
       },
@@ -875,17 +872,8 @@
     },
     {
       "id": "dfde4a90-32ec-11eb-8503-3b4fa95b8bc6",
-      "externalDataError": {
-        "en-US": "External data could not be loaded."
-      },
       "allAddedNotice": {
         "en-US": "There is nothing left to add from this list."
-      },
-      "searchLabel": {
-        "en-US": "Search"
-      },
-      "searchNoMatch": {
-        "en-US": "Nothing matched your search term."
       },
       "label": { "en-US": "University Roster" },
       "type": "NameGeneratorRoster",
@@ -947,18 +935,19 @@
         "entity": "node",
         "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
       },
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "form": {
         "fields": [
           {
             "variable": "95c5bb4d-5ac2-4ddd-8dd9-fca518f15748",
             "prompt": {
-              "en-US": "Did you visit this university, or study there?"
+              "en-US": "Did you visit {nodeLabel} or study there?"
             }
           },
           {
             "variable": "d91ca102-954d-4da1-b8b8-d9490c7bca44",
             "prompt": {
-              "en-US": "Overall, how would you describe your experience at this university?"
+              "en-US": "Overall, how would you describe your experience at {nodeLabel}?"
             }
           }
         ]
@@ -1163,11 +1152,15 @@
         "entity": "node",
         "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
       },
+      "dynamicValues": {
+        "firstLabel": { "path": "dyad.source.$label" },
+        "secondLabel": { "path": "dyad.target.$label" }
+      },
       "prompts": [
         {
           "id": "be867d80-1dce-49ed-984d-5de4ca344d5c",
           "text": {
-            "en-US": "To the best of your knowledge, do these two people spend time together outside of class?"
+            "en-US": "To the best of your knowledge, do {firstLabel} and {secondLabel} spend time together outside of class?"
           },
           "createEdge": "a489e869-2555-4896-a760-2d38046b54f9"
         }
@@ -1587,6 +1580,17 @@
       },
       "error": {
         "en-US": "An error occurred."
+      },
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
       }
     },
     "forms": {

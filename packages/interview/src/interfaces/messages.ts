@@ -56,6 +56,30 @@ export const interfaceMessages = defineMessages({
     description:
       'Short heading above an external-list loading error. This heading intentionally has no final period.',
   },
+  externalDataError: {
+    id: 'interview.interfaces.externalDataError',
+    defaultMessage: 'External data could not be loaded.',
+    description:
+      'Shown under the error heading when a list of people from a file the study provides could not be loaded.',
+  },
+  dontKnow: {
+    id: 'interview.interfaces.dontKnow',
+    defaultMessage: 'Don’t know',
+    description:
+      'Answer option a participant picks when they do not know the answer to a question about a family member, such as whether twins are identical.',
+  },
+  pauseLayout: {
+    id: 'interview.interfaces.pauseLayout',
+    defaultMessage: 'Pause automatic layout',
+    description:
+      'Tooltip and accessible name of the toggle that stops the people on a network diagram from moving into place by themselves.',
+  },
+  resumeLayout: {
+    id: 'interview.interfaces.resumeLayout',
+    defaultMessage: 'Resume automatic layout',
+    description:
+      'Tooltip and accessible name of the toggle that lets the people on a network diagram move into place by themselves again.',
+  },
   availableRosterNodes: {
     id: 'interview.interfaces.availableRosterNodes',
     defaultMessage: 'Available Roster Nodes',
@@ -144,13 +168,13 @@ export const interfaceMessages = defineMessages({
     id: 'interview.interfaces.undo',
     defaultMessage: 'Undo',
     description:
-      'Toolbar action that reverses the most recent edit in the network composer.',
+      'Toolbar action that reverses the most recent change, in the network composer and the family pedigree.',
   },
   redo: {
     id: 'interview.interfaces.redo',
     defaultMessage: 'Redo',
     description:
-      'Toolbar action that reapplies an edit that was undone in the network composer.',
+      'Toolbar action that makes again a change that was undone, in the network composer and the family pedigree.',
   },
   layoutAndDrawing: {
     id: 'interview.interfaces.layoutAndDrawing',

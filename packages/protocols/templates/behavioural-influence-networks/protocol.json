@@ -462,12 +462,6 @@
         },
         "resetAnnotations": {
           "en-US": "Reset annotations"
-        },
-        "pauseLayout": {
-          "en-US": "Pause automatic layout"
-        },
-        "resumeLayout": {
-          "en-US": "Resume automatic layout"
         }
       },
       "type": "Narrative",
@@ -560,6 +554,12 @@
       },
       "no": {
         "en-US": "No"
+      },
+      "pauseLayout": {
+        "en-US": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en-US": "Resume automatic layout"
       }
     },
     "messages": {

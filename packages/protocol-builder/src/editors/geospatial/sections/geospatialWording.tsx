@@ -66,30 +66,6 @@ export const geospatialWordingMessages = defineMessages({
     description:
       'Guidance under the field holding the outside-areas button of a map.',
   },
-  searchLabelLabel: {
-    id: 'protocolBuilder.geospatialWording.searchLabelLabel',
-    defaultMessage: 'Search label',
-    description:
-      'Label of the field holding the search box’s placeholder on a map, which a screen reader also reads out.',
-  },
-  searchLabelHint: {
-    id: 'protocolBuilder.geospatialWording.searchLabelHint',
-    defaultMessage: 'The placeholder shown in the map’s search box.',
-    description:
-      'Guidance under the field holding the search box’s placeholder on a map.',
-  },
-  searchNoMatchLabel: {
-    id: 'protocolBuilder.geospatialWording.searchNoMatchLabel',
-    defaultMessage: 'No search results',
-    description:
-      'Label of the field holding the message shown when a map search matches nothing.',
-  },
-  searchNoMatchHint: {
-    id: 'protocolBuilder.geospatialWording.searchNoMatchHint',
-    defaultMessage: 'Shown when a search of the map matches nothing.',
-    description:
-      'Guidance under the field holding the map search’s no-match message.',
-  },
   searchFailedLabel: {
     id: 'protocolBuilder.geospatialWording.searchFailedLabel',
     defaultMessage: 'Search failed',
@@ -110,7 +86,8 @@ const ALLOW_SEARCH = 'mapOptions.allowSearch';
 
 /**
  * The words a map shows a participant. The offline, unavailable and outside
- * areas messages are always shown; the search messages only with a search.
+ * areas messages are always shown; the failed-search message only with a
+ * search, whose other words are the protocol's interface text.
  */
 export const geospatialWording = (): StageSection => () => (
   <GeospatialWordingSection />
@@ -174,58 +151,23 @@ function GeospatialWordingSection() {
             required={REQUIRED}
           />
           {allowSearch && (
-            <>
-              <Field<typeof LocalizedInputField>
-                name="searchLabel"
-                component={LocalizedInputField}
-                label={intl.formatMessage(
-                  geospatialWordingMessages.searchLabelLabel,
-                )}
-                hint={intl.formatMessage(
-                  geospatialWordingMessages.searchLabelHint,
-                )}
-                initialValue={startingWording(
-                  committedFields,
-                  'searchLabel',
-                  supplied,
-                )}
-                required={REQUIRED}
-              />
-              <Field<typeof LocalizedInputField>
-                name="searchNoMatch"
-                component={LocalizedInputField}
-                wraps
-                label={intl.formatMessage(
-                  geospatialWordingMessages.searchNoMatchLabel,
-                )}
-                hint={intl.formatMessage(
-                  geospatialWordingMessages.searchNoMatchHint,
-                )}
-                initialValue={startingWording(
-                  committedFields,
-                  'searchNoMatch',
-                  supplied,
-                )}
-                required={REQUIRED}
-              />
-              <Field<typeof LocalizedInputField>
-                name="searchFailed"
-                component={LocalizedInputField}
-                wraps
-                label={intl.formatMessage(
-                  geospatialWordingMessages.searchFailedLabel,
-                )}
-                hint={intl.formatMessage(
-                  geospatialWordingMessages.searchFailedHint,
-                )}
-                initialValue={startingWording(
-                  committedFields,
-                  'searchFailed',
-                  supplied,
-                )}
-                required={REQUIRED}
-              />
-            </>
+            <Field<typeof LocalizedInputField>
+              name="searchFailed"
+              component={LocalizedInputField}
+              wraps
+              label={intl.formatMessage(
+                geospatialWordingMessages.searchFailedLabel,
+              )}
+              hint={intl.formatMessage(
+                geospatialWordingMessages.searchFailedHint,
+              )}
+              initialValue={startingWording(
+                committedFields,
+                'searchFailed',
+                supplied,
+              )}
+              required={REQUIRED}
+            />
           )}
         </>
       )}

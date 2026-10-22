@@ -241,6 +241,14 @@ export const captureStory = async (
       });
     }
 
+    // An interface that focuses its first control on mount (e.g. a census
+    // answer) would otherwise be pictured with a keyboard focus ring, which a
+    // participant using a pointer or touch never sees.
+    await page.evaluate(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    });
+
     await page.waitForTimeout(delay);
 
     // Settle loop: screenshot until two consecutive frames are identical, so

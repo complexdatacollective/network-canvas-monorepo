@@ -13,6 +13,10 @@ import { type RefObject, useCallback, useMemo, useRef, useState } from 'react';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.5;
+// The most a fit (Show the whole family, and every reset of the view) zooms
+// in, well below what the participant can zoom in to themselves: a small
+// family is shown a fifth larger than its natural size, no larger.
+const FIT_MAX_SCALE = 1.2;
 // How much of the family stays on screen, at least, however far it is
 // dragged away.
 const KEEP_VISIBLE = 120;
@@ -62,13 +66,6 @@ const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 // How far in from the viewport's edges something is brought into view, when
 // nothing covers them.
 const MARGIN: Insets = { top: 24, right: 24, bottom: 24, left: 24 };
-
-/**
- * How far around something a ring of controls reaches, on every side: so
- * many content units, scaled with the zoom, but never less than so many
- * pixels on screen (for controls that keep a minimum size when zoomed out).
- */
-export type Reach = { content: number; screen: number };
 
 /**
  * Keeps someone in the family on screen, whatever offset is asked for: the
@@ -122,68 +119,6 @@ export function clampPanToKeep(
     if (distance === 0) break;
   }
   return best ? { x: best.x, y: best.y } : { x: next.x, y: next.y };
-}
-
-/**
- * The view that keeps everything in `keep` (boxes in the content, unscaled)
- * inside `area` (viewport pixels), changing `view` as little as it can: it
- * zooms out, no further than the zoom allows, holding `pivot` (a content
- * point) where it is on screen, and then moves just far enough. When even
- * the furthest zoom cannot fit everything, `required` alone is kept in.
- */
-export function viewKeepingInArea({
-  view,
-  required,
-  keep,
-  area,
-  pivot,
-}: {
-  view: View;
-  required: Box;
-  keep: readonly Box[];
-  area: Box;
-  pivot: { x: number; y: number };
-}): View {
-  const all = [required, ...keep].reduce((union, box) => ({
-    left: Math.min(union.left, box.left),
-    top: Math.min(union.top, box.top),
-    right: Math.max(union.right, box.right),
-    bottom: Math.max(union.bottom, box.bottom),
-  }));
-  const areaWidth = area.right - area.left;
-  const areaHeight = area.bottom - area.top;
-  const scale = clamp(
-    Math.min(
-      view.scale,
-      areaWidth / Math.max(all.right - all.left, 1),
-      areaHeight / Math.max(all.bottom - all.top, 1),
-    ),
-    Math.min(MIN_SCALE, view.scale),
-    view.scale,
-  );
-  // Zoomed about the pivot, so it stays where it was on screen.
-  let x = view.x + pivot.x * view.scale - pivot.x * scale;
-  let y = view.y + pivot.y * view.scale - pivot.y * scale;
-  const shift = (
-    offset: number,
-    start: number,
-    end: number,
-    areaStart: number,
-    areaEnd: number,
-  ) => {
-    const from = offset + start * scale;
-    const to = offset + end * scale;
-    if (from < areaStart) return areaStart - from;
-    if (to > areaEnd) return areaEnd - to;
-    return 0;
-  };
-  const fitsAcross = (all.right - all.left) * scale <= areaWidth + 0.5;
-  const fitsDown = (all.bottom - all.top) * scale <= areaHeight + 0.5;
-  const across = fitsAcross ? all : required;
-  const down = fitsDown ? all : required;
-  x += shift(x, across.left, across.right, area.left, area.right);
-  y += shift(y, down.top, down.bottom, area.top, area.bottom);
-  return { x, y, scale };
 }
 
 const unionOf = (boxes: readonly Box[]): Box =>
@@ -312,31 +247,25 @@ export type PanZoom = {
   ) => void;
   /** Pans just enough to bring elements fully into view, inside the given
    * insets (24 pixels from each edge, without them): all of them when they
-   * fit, or else the first; but not so far that the elements in `keep`, with
-   * `around` pixels on screen about each if it can, leave that area. Measured where
-   * the view is headed, so it follows on from a move already under way. */
+   * fit, or else the first. Measured where the view is headed, so it follows
+   * on from a move already under way. */
   bringIntoView: (
     elements: HTMLElement | HTMLElement[],
     insets?: Insets,
-    keep?: { elements: HTMLElement[]; around?: number },
   ) => void;
   /** Zooms by a power of two about the viewport's centre; or, given elements
    * in focus, about the first of them, bringing them all into view. */
   zoomBy: (exponent: number, focus?: ZoomFocus) => void;
-  /** Fits an element of the content in the viewport, inside the given
-   * insets, at no more than its natural size, with room for controls that
-   * reach out around it. Given `least`, it zooms out no further than
-   * `least.scale`: when the element would need to, it is shown at that
-   * zoom with `least.around` in the middle instead. */
+  /** Puts the middle of an element of the content in the middle of the
+   * viewport, inside the given insets, at the zoom that fits it there: as
+   * large as fits, up to a fifth larger than its natural size, and no less than the least zoom. An
+   * element too large to fit even then is still centred, and runs past the
+   * edges. The view it heads for. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,
-    options?: {
-      animated?: boolean;
-      reach?: Reach;
-      least?: { scale: number; around: HTMLElement };
-    },
-  ) => void;
+    options?: { animated?: boolean },
+  ) => View | undefined;
   /** Keeps an element where it is on screen across a change of layout,
    * given where it was in the content before the change. */
   holdInPlace: (
@@ -345,10 +274,9 @@ export type PanZoom = {
   ) => void;
   /** Where an element's centre sits in the content, unscaled. */
   contentPositionOf: (element: HTMLElement) => { x: number; y: number };
-  /** The view as it stands. */
-  view: () => View;
-  /** Glides to a view. */
-  goTo: (view: View) => void;
+  /** Where the view is headed: where a move under way will leave it, or
+   * else where it is. */
+  headed: () => View;
 };
 
 /** What a zoom from the keyboard keeps in view: the focused element (zoomed
@@ -438,21 +366,27 @@ export function usePanZoom({
   );
 
   const moveTo = useCallback(
-    (nextX: number, nextY: number, nextScale: number, animated: boolean) => {
+    (
+      nextX: number,
+      nextY: number,
+      nextScale: number,
+      animated: boolean,
+    ): View => {
       stopAnimating();
-      const target = clampPan(nextX, nextY, nextScale);
+      const target = { ...clampPan(nextX, nextY, nextScale), scale: nextScale };
       if (!animated || reduceMotion) {
         x.set(target.x);
         y.set(target.y);
         scale.set(nextScale);
-        return;
+        return target;
       }
-      destination.current = { ...target, scale: nextScale };
+      destination.current = target;
       animations.current = [
         animate(x, target.x, SPRING),
         animate(y, target.y, SPRING),
         animate(scale, nextScale, SPRING),
       ];
+      return target;
     },
     [stopAnimating, clampPan, reduceMotion, x, y, scale],
   );
@@ -611,7 +545,7 @@ export function usePanZoom({
   );
 
   const bringIntoView = useCallback<PanZoom['bringIntoView']>(
-    (elements, insets = MARGIN, keep) => {
+    (elements, insets = MARGIN) => {
       const viewport = viewportRef.current;
       const targets = Array.isArray(elements) ? elements : [elements];
       if (!viewport || targets.length === 0) return;
@@ -620,28 +554,21 @@ export function usePanZoom({
       const headed = destination.current ?? now;
       // Each element where it will be once the view gets where it is headed.
       const ratio = headed.scale / now.scale;
-      const placedAt = (element: HTMLElement, around = 0): Box => {
+      const placedAt = (element: HTMLElement): Box => {
         const shown = element.getBoundingClientRect();
         const atX = (client: number) =>
           headed.x + (client - box.left - now.x) * ratio;
         const atY = (client: number) =>
           headed.y + (client - box.top - now.y) * ratio;
         return {
-          left: atX(shown.left) - around,
-          right: atX(shown.right) + around,
-          top: atY(shown.top) - around,
-          bottom: atY(shown.bottom) + around,
+          left: atX(shown.left),
+          right: atX(shown.right),
+          top: atY(shown.top),
+          bottom: atY(shown.bottom),
         };
       };
       const shift = shiftIntoArea({
-        targets: targets.map((element) => placedAt(element)),
-        // With room around, or else alone.
-        keep: keep
-          ? [
-              keep.elements.map((element) => placedAt(element, keep.around)),
-              keep.elements.map((element) => placedAt(element)),
-            ]
-          : [],
+        targets: targets.map(placedAt),
         area: {
           left: insets.left,
           top: insets.top,
@@ -672,41 +599,22 @@ export function usePanZoom({
   );
 
   const fitToView = useCallback<PanZoom['fitToView']>(
-    (element, insets, { animated = true, reach, least } = {}) => {
+    (element, insets, { animated = true } = {}) => {
       const viewport = viewportRef.current;
-      if (!viewport) return;
+      if (!viewport) return undefined;
       const width = element.offsetWidth;
       const height = element.offsetHeight;
-      if (width === 0 || height === 0) return;
+      if (width === 0 || height === 0) return undefined;
       const centre = contentPositionOf(element);
       const availableWidth = viewport.clientWidth - insets.left - insets.right;
       const availableHeight =
         viewport.clientHeight - insets.top - insets.bottom;
-      // The reach on either side scales with the zoom, and is never less
-      // than its least size on screen.
-      const around = reach ?? { content: 0, screen: 0 };
       const nextScale = clamp(
-        Math.min(
-          availableWidth / (width + 2 * around.content),
-          (availableWidth - 2 * around.screen) / width,
-          availableHeight / (height + 2 * around.content),
-          (availableHeight - 2 * around.screen) / height,
-        ),
+        Math.min(availableWidth / width, availableHeight / height),
         MIN_SCALE,
-        1,
+        FIT_MAX_SCALE,
       );
-      if (least && nextScale < least.scale) {
-        const middle = contentPositionOf(least.around);
-        const leastScale = clamp(least.scale, MIN_SCALE, 1);
-        moveTo(
-          insets.left + availableWidth / 2 - middle.x * leastScale,
-          insets.top + availableHeight / 2 - middle.y * leastScale,
-          leastScale,
-          animated,
-        );
-        return;
-      }
-      moveTo(
+      return moveTo(
         insets.left + availableWidth / 2 - centre.x * nextScale,
         insets.top + availableHeight / 2 - centre.y * nextScale,
         nextScale,
@@ -730,13 +638,9 @@ export function usePanZoom({
     [contentPositionOf, stopAnimating, x, y, scale],
   );
 
-  const view = useCallback(
-    () => ({ x: x.get(), y: y.get(), scale: scale.get() }),
+  const headed = useCallback(
+    () => destination.current ?? { x: x.get(), y: y.get(), scale: scale.get() },
     [x, y, scale],
-  );
-  const goTo = useCallback(
-    (target: View) => moveTo(target.x, target.y, target.scale, true),
-    [moveTo],
   );
 
   // Stable, so effects that use it run for their own reasons only.
@@ -751,12 +655,10 @@ export function usePanZoom({
       fitToView,
       holdInPlace,
       contentPositionOf,
-      view,
-      goTo,
+      headed,
     }),
     [
-      view,
-      goTo,
+      headed,
       fitToView,
       x,
       y,

@@ -80,8 +80,6 @@ const mockMap = { flyTo } as unknown as MapboxMap;
 
 /** The stage's own search wording, which the protocol holds in English only. */
 const WORDING = {
-  searchLabel: { en: 'Search' },
-  searchNoMatch: { en: 'Nothing matched your search term.' },
   searchFailed: {
     en: 'Search could not be completed. Try again in a moment.',
   },
@@ -220,11 +218,13 @@ describe('GeospatialSearch', () => {
       const searchCount = mockSuggest.mock.calls.length;
 
       // The stage's words belong to the protocol, not the browser's language,
-      // so a change of language leaves them as the stage holds them.
+      // so a change of language leaves them as the stage holds them. The
+      // search box's own label is interface text, which the interview words
+      // in its language where the protocol holds none.
       view.rerender(localizedTree('es'));
       expect(screen.getByRole('combobox')).toBe(input);
       expect(input).toHaveValue('Sidetrack');
-      expect(input).toHaveAttribute('placeholder', 'Search');
+      expect(input).toHaveAttribute('placeholder', 'Buscar');
       expect(status.textContent).toBe(
         'Search could not be completed. Try again in a moment.',
       );

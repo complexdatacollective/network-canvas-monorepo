@@ -21,12 +21,9 @@ const rosterWith = (fields: SectionDoc) => ({
     label: { 'en-US': 'Name Generator Roster' },
     subject: { entity: 'node', type: 'person' },
     panelTitle: { 'en-US': 'Available to add' },
-    externalDataError: { 'en-US': 'External data could not be loaded.' },
     allAddedNotice: {
       'en-US': 'There is nothing left to add from this list.',
     },
-    searchLabel: { 'en-US': 'Search' },
-    searchNoMatch: { 'en-US': 'Nothing matched your search term.' },
     prompts: [
       { id: 'prompt-1', text: { 'en-US': 'Select people from the roster' } },
     ],
@@ -308,10 +305,7 @@ describe("what a roster's cards show", () => {
         'panelTitle',
         'minNodesNotice',
         'maxNodesNotice',
-        'externalDataError',
         'allAddedNotice',
-        'searchLabel',
-        'searchNoMatch',
       ],
     });
   });

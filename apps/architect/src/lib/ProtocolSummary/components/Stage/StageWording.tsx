@@ -22,14 +22,11 @@ type StageWordingProps = {
 const STAGE_WORDING_SETTINGS: readonly WordingSetting[] = [
   [nameGeneratorWordingMessages.minNoticeLabel, 'minNodesNotice'],
   [nameGeneratorWordingMessages.maxNoticeLabel, 'maxNodesNotice'],
-  [nameGeneratorWordingMessages.externalErrorLabel, 'externalDataError'],
   [nameGeneratorWordingMessages.quickAddHintLabel, 'quickAddHint'],
   [nameGeneratorWordingMessages.allAddedLabel, 'allAddedNotice'],
   [geospatialWordingMessages.offlineLabel, 'offlineNotice'],
   [geospatialWordingMessages.unavailableLabel, 'mapUnavailable'],
   [geospatialWordingMessages.outsideAreasLabel, 'outsideAreasLabel'],
-  [nameGeneratorWordingMessages.searchLabelLabel, 'searchLabel'],
-  [nameGeneratorWordingMessages.searchNoMatchLabel, 'searchNoMatch'],
   [geospatialWordingMessages.searchFailedLabel, 'searchFailed'],
   [binBehavioursMessages.unplacedNoticeLabel, 'unplacedNodesNotice'],
 ];

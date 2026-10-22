@@ -8,7 +8,6 @@ import {
   sociogramPromptSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
-import { localizedString, nonBlankText } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';
 
 export const sociogramStage = baseStageSchema.extend({
@@ -17,14 +16,6 @@ export const sociogramStage = baseStageSchema.extend({
   filter: FilterSchema.optional(),
   background: imageOrCirclesBackgroundSchema,
   behaviours: canvasBehavioursSchema,
-  // The layout controls' words (`stage-wording/sociogram.ts`). Required while
-  // the stage's automatic layout is on, which is when the controls show.
-  tooltips: z
-    .strictObject({
-      pauseLayout: localizedString(nonBlankText(), 'plain').optional(),
-      resumeLayout: localizedString(nonBlankText(), 'plain').optional(),
-    })
-    .optional(),
   prompts: z
     .array(sociogramPromptSchema)
     .min(1)

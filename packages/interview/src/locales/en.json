@@ -71,6 +71,14 @@
     "defaultMessage": "Select a family member to edit their details or add their relatives.",
     "description": "Tooltip text, under the heading “Add and edit” (or the stage’s own name for it), of the family tree toolbar tool that is chosen by default: with it, selecting a family member opens their details, and buttons beside them add a parent, sibling, partner or child. Read by participants."
   },
+  "interview.familyPedigree.redoDescription": {
+    "defaultMessage": "Bring back the change you undid.",
+    "description": "Tooltip text, under the heading “Redo”, of the family tree toolbar button that makes again a change to the family tree that Undo reversed. Read by participants."
+  },
+  "interview.familyPedigree.redoneAnnouncement": {
+    "defaultMessage": "Change redone.",
+    "description": "Screen reader announcement after the participant redoes a change to the family tree they had undone."
+  },
   "interview.familyPedigree.removedAnnouncement": {
     "defaultMessage": "{name} removed from your family.",
     "description": "Screen reader announcement after a family member is removed. {name} is their name or, when it is not known, how they are related to the participant."
@@ -114,6 +122,18 @@
   "interview.familyPedigree.trackerProgressLabel": {
     "defaultMessage": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",
     "description": "Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1."
+  },
+  "interview.familyPedigree.undoDescription": {
+    "defaultMessage": "Undo your last change to your family tree.",
+    "description": "Tooltip text, under the heading “Undo”, of the family tree toolbar button that reverses the most recent change: adding, editing or removing a family member, connecting or disconnecting two people, or selecting someone for a question. Read by participants."
+  },
+  "interview.familyPedigree.undoneAnnouncement": {
+    "defaultMessage": "Change undone.",
+    "description": "Screen reader announcement after the participant undoes their most recent change to the family tree."
+  },
+  "interview.familyPedigree.viewToolsLabel": {
+    "defaultMessage": "View controls",
+    "description": "Accessible name of the small toolbar beside the family tree tools that zooms the family tree out and in, and fits the whole family on the screen."
   },
   "interview.familyPedigree.zoomInDescription": {
     "defaultMessage": "Make your family tree bigger, to see part of it more closely.",
@@ -207,6 +227,10 @@
     "defaultMessage": "Discard changes?",
     "description": "Title of the warning shown when a participant tries to leave a form containing invalid unsaved answers."
   },
+  "interview.interfaces.dontKnow": {
+    "defaultMessage": "Don’t know",
+    "description": "Answer option a participant picks when they do not know the answer to a question about a family member, such as whether twins are identical."
+  },
   "interview.interfaces.dragToReposition": {
     "defaultMessage": "Drag to reposition",
     "description": "Accessible name of the handle that moves the floating narrative preset toolbar."
@@ -226,6 +250,10 @@
   "interview.interfaces.errorHeading": {
     "defaultMessage": "Something went wrong",
     "description": "Short heading above an external-list loading error. This heading intentionally has no final period."
+  },
+  "interview.interfaces.externalDataError": {
+    "defaultMessage": "External data could not be loaded.",
+    "description": "Shown under the error heading when a list of people from a file the study provides could not be loaded."
   },
   "interview.interfaces.finishingInterview": {
     "defaultMessage": "Finishing the interview…",
@@ -287,6 +315,10 @@
     "defaultMessage": "Passphrase accepted! Click \"Next\" to continue.",
     "description": "Success message after the participant enters, on the anonymisation screen, the passphrase they chose earlier in the interview. Next refers to the interview navigation arrow."
   },
+  "interview.interfaces.pauseLayout": {
+    "defaultMessage": "Pause automatic layout",
+    "description": "Tooltip and accessible name of the toggle that stops the people on a network diagram from moving into place by themselves."
+  },
   "interview.interfaces.presetNavigation": {
     "defaultMessage": "Preset navigation",
     "description": "Accessible name of the toolbar group that switches between researcher-configured narrative views."
@@ -309,7 +341,7 @@
   },
   "interview.interfaces.redo": {
     "defaultMessage": "Redo",
-    "description": "Toolbar action that reapplies an edit that was undone in the network composer."
+    "description": "Toolbar action that makes again a change that was undone, in the network composer and the family pedigree."
   },
   "interview.interfaces.resizePanel": {
     "defaultMessage": "Resize panel",
@@ -318,6 +350,10 @@
   "interview.interfaces.resizePanels": {
     "defaultMessage": "Resize panel and node list areas",
     "description": "Accessible name of the divider between the source panel and the list of added people; dragging or keyboard controls resize the two areas."
+  },
+  "interview.interfaces.resumeLayout": {
+    "defaultMessage": "Resume automatic layout",
+    "description": "Tooltip and accessible name of the toggle that lets the people on a network diagram move into place by themselves again."
   },
   "interview.interfaces.returnedToDrawer": {
     "defaultMessage": "Returned to the drawer.",
@@ -361,7 +397,7 @@
   },
   "interview.interfaces.undo": {
     "defaultMessage": "Undo",
-    "description": "Toolbar action that reverses the most recent edit in the network composer."
+    "description": "Toolbar action that reverses the most recent change, in the network composer and the family pedigree."
   },
   "interview.interfaces.zoomIn": {
     "defaultMessage": "Zoom in",
