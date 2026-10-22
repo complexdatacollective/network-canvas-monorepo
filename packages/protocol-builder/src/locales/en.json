@@ -524,8 +524,8 @@
     "description": "Placeholder shown in the empty box where a researcher writes a Categorical Bin prompt. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.censusPrompts.dyadGuidance": {
-    "defaultMessage": "The participant sees two people side by side and answers yes or no, so write the question about the pair in front of them — “these two people” rather than a name — and phrase it so that yes and no are both sensible answers.",
-    "description": "Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted phrase is an example of how to refer to the pair."
+    "defaultMessage": "The participant sees two nodes side by side and answers yes or no, so write the question about that pair and phrase it so that yes and no are both sensible answers. To show the two nodes’ labels in the question, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.",
+    "description": "Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations."
   },
   "protocolBuilder.censusPrompts.dyadPlaceholder": {
     "defaultMessage": "Enter text for the prompt here...",
@@ -552,8 +552,8 @@
     "description": "Description of the group holding the rules that order the people the participant picks from for whoever they were asked about."
   },
   "protocolBuilder.censusPrompts.oneToManyGuidance": {
-    "defaultMessage": "The participant sees one person alongside everyone else and selects whoever the question applies to, so write it as a question about that one person and the group — “which of these people does this person know?” rather than a question about a single pair.",
-    "description": "Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question about one person and the group."
+    "defaultMessage": "The participant sees one node alongside the other nodes and selects each of the others that the question applies to, so write the question about that one node and the other nodes as a group rather than about a single pair. To show that node’s label in the question, insert “Node label” with the syringe button in the toolbar.",
+    "description": "Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The quoted name is an entry in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match that entry’s own translation."
   },
   "protocolBuilder.censusPrompts.oneToManyPlaceholder": {
     "defaultMessage": "Enter text for the prompt here...",
@@ -692,8 +692,8 @@
     "description": "Description of the group holding the question one Tie-Strength Census prompt shows the participant."
   },
   "protocolBuilder.censusPrompts.tieStrengthPromptTextHint": {
-    "defaultMessage": "Refer clearly to the two people shown and phrase the prompt for a yes or no response.",
-    "description": "Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what shape of answer it asks for."
+    "defaultMessage": "Refer clearly to the two nodes shown, and phrase the prompt so that every point of the scale, and the decline response, is a sensible answer. To show the two nodes’ labels in the prompt, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.",
+    "description": "Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what answers it has to suit: the points of the scale set by the response attribute, and the decline response the participant uses to say the two nodes are not connected. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations."
   },
   "protocolBuilder.censusPrompts.tieStrengthResponseDescription": {
     "defaultMessage": "Configure the edge and ordinal value created by an affirmative response.",
