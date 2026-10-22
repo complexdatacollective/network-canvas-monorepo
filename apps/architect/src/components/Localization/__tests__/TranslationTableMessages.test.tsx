@@ -207,8 +207,17 @@ describe('TranslationTable: texts with versions', () => {
     await user.click(messageCell('English'));
     const { aboutYou } = await openVersions(user, await editedText('English'));
     await user.type(aboutYou, 'All ');
-    // The first Escape folds the versions back into their pill; the next
-    // leaves the cell as it was saved.
+    // The first Escape folds the versions back into their pill and keeps
+    // the change; the next leaves the cell as it was saved.
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'About the participant' }),
+      ).toBeNull(),
+    );
+    const folded = await editedText('English');
+    const { aboutYou: reopened } = await openVersions(user, folded);
+    expect(reopened).toHaveTextContent(/^All Your brothers and sisters$/);
     await user.keyboard('{Escape}');
     await user.keyboard('{Escape}');
 

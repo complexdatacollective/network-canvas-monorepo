@@ -556,7 +556,9 @@ const useEditedCell = ({
       return;
     }
     if (event.key === 'Escape') {
-      if (!draft.changed) return;
+      // In one version's line, Escape first folds the versions back into
+      // their pill; only Escape in the text around them puts the cell back.
+      if (!draft.changed || editable.matches('[data-version]')) return;
       event.preventDefault();
       event.stopPropagation();
       holdFocus();
