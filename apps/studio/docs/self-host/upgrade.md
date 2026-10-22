@@ -331,75 +331,39 @@ It refuses a reference that is not pinned by digest. It writes both into
 `.env`, then runs the sequence. It waits up to 60 seconds for every API replica to name
 maintenance mode, and up to two minutes after `migrate` for each to report
 its schema ok. A replica that has not by then is recreated with `up -d`, as
-step 6 says, and given two minutes more. Before `maintenance off` it waits,
-again up to two minutes, for `web`, the worker and every API replica to be
-running on the new images with no failing healthcheck, so it never opens the
-instance with the interface or the job runner down. Last, it waits for every
-replica to report maintenance mode off and no readiness check failing. It asks each
-replica from inside its own container, as step 6 does, so it needs no hostname
-and nothing but Bash and Compose. A replica that does not answer is asked
-again; no single question waits longer than what is left of the wait, or 5
-seconds, whichever is longer.
-
-After stopping the API replicas and the worker, it checks that each exited
-through its own shutdown (exit code 130). One Docker killed at the end of its
-stop grace period (137) may have left a request or a job half done, so the
-script rolls back rather than migrate past it. After `up -d` it checks the
-image each container of `web`, the worker and every API replica runs, and rolls
-back before `migrate` if any is not the one it was given, as when a Compose
-override pins one service to an image of its own.
+step 6 says, and given two minutes more. Last, it waits for every replica to
+report maintenance mode off with no readiness check failing. It asks each replica from inside its own
+container, as step 6 does, so it needs no hostname and nothing but Bash and
+Compose.
 
 Run it from the directory holding `.env`, or name that directory with
 `--dir`. It runs Compose as `docker compose` with no `-f`. Set `COMPOSE` to
 run it another way, for a Compose installed as a binary of its own or to pass
-the same `-f` flags as everywhere else. Compose must take the two images from
-that directory's `.env`: the script refuses to start when
-`docker compose config --images` does not name the ones `.env` sets, as
-happens when `COMPOSE_ENV_FILES` or an `--env-file` points Compose elsewhere,
-and rolls back if rewriting `.env` does not change what Compose resolves.
+the same `-f` flags as everywhere else:
 
 ```bash
 COMPOSE="$HOME/.docker/cli-plugins/docker-compose" ./upgrade.sh …
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.override.yml" ./upgrade.sh …
 ```
 
+It is written for the stack `docker-compose.yml` defines, Traefik included.
+If you replaced the proxy or changed how services start, run the sequence by
+hand instead.
+
 `./upgrade.sh --help` lists the variables that change how long it waits.
-
-If you replaced Traefik with a proxy of your own, give the script the command
-that reloads it in `STUDIO_UPGRADE_AFTER_UP`, for the reason step 4 gives. It
-runs that command with Bash in the stack directory after every `up -d` that
-replaces containers: the upgrade's own, the one that recreates a replica that
-missed the migration, and the one that puts the previous images back in a
-rollback.
-
-```bash
-STUDIO_UPGRADE_AFTER_UP='docker compose exec -T nginx nginx -s reload' ./upgrade.sh …
-```
-
-A command that exits non-zero, or runs longer than
-`STUDIO_UPGRADE_AFTER_UP_TIMEOUT` seconds (60 by default) and is stopped,
-counts as a failed step: before `migrate` has changed the database the script
-rolls back, after it, it ends as a fix-forward, and during a rollback it ends
-in 4. Traefik needs no command.
 
 Its exit code says how it ended, and so does its last line,
 `[studio-upgrade] result=<result> exit=<code>`. Every line it prints starts
 with `[studio-upgrade]`, and each step it begins is a `step=<name>` line, so a
 log of a failed run names the step that failed.
 
-Stopping it with Ctrl-C, `kill` or a dropped SSH session does not leave the
-instance half way: before `migrate` has changed the database it rolls back,
-and after, it ends as a fix-forward. It ignores further signals while it does
-either. A `kill -9` cannot be caught; after one, look at the instance as you
-would after a 4 or a 5.
-
-| Exit | Result            | What it left                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ---- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | `upgraded`        | `web`, the worker and every API replica run the new images, every replica reports no readiness check failing, and maintenance mode is off.                                                                                                                                                                                                                                                                                                                                          |
-| 2    | `not-started`     | Nothing changed: an argument or a wait variable was wrong, `.env` was missing or did not set both images once, `STUDIO_API_IMAGE` or `STUDIO_WEB_IMAGE` was set in the shell, where it would override `.env`, or Compose does not read the images from `.env`.                                                                                                                                                                                                                      |
-| 3    | `rolled-back`     | A step failed, or the script was stopped, while `migrate` had not changed the database: before it ran, when it refused, or after it found nothing to apply. The previous images are back in `.env` and running, every replica reports its schema ok and no readiness check failing, and maintenance mode is off.                                                                                                                                                                    |
-| 4    | `rollback-failed` | A step failed before `migrate` changed the database, and putting the previous images back did not bring every replica back ready, with its schema ok and maintenance mode off. `.env` names the previous images; maintenance mode may still be on.                                                                                                                                                                                                                                  |
-| 5    | `fix-forward`     | `migrate` changed the database, and a later step failed or the script was stopped. The new images stay in `.env`, and the script runs `maintenance on` once more so the instance stays closed; the log says if that failed too. The previous images refuse a database `migrate` has moved forward ([Rollback](#rollback) says why), so the script does not put them back: finish the upgrade by hand from step 6, or deploy a newer release, or roll back with the backup you took. |
+| Exit | Result            | What it left                                                                                                                                                                                                                                                                                                                                                           |
+| ---- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | `upgraded`        | The new images serve, every replica reports ready, and maintenance mode is off.                                                                                                                                                                                                                                                                                        |
+| 2    | `not-started`     | Nothing changed: an argument was wrong, `.env` was missing or did not set both images once, or `STUDIO_API_IMAGE` or `STUDIO_WEB_IMAGE` was set in the shell, where it would override `.env`.                                                                                                                                                                          |
+| 3    | `rolled-back`     | A step failed before `migrate` changed the database, or `migrate` refused. The previous images are back in `.env` and running, every replica reports its schema ok, and maintenance mode is off.                                                                                                                                                                       |
+| 4    | `rollback-failed` | A step failed before `migrate` changed the database, and putting the previous images back did not bring every replica back with its schema ok and maintenance mode off. `.env` names the previous images; maintenance mode may still be on.                                                                                                                            |
+| 5    | `fix-forward`     | `migrate` changed the database, and a later step failed. The new images stay in `.env` and maintenance mode is on. The previous images refuse a database `migrate` has moved forward ([Rollback](#rollback) says why), so the script does not put them back: finish the upgrade by hand from step 6, or deploy a newer release, or roll back with the backup you took. |
 
 After a 4 or a 5, look at the instance before running the script again.
 
@@ -407,11 +371,7 @@ The rollback is the one [Rollback](#rollback) allows without a backup: the
 previous digests back in `.env` and `up -d`, then `maintenance off`. It is
 safe only because nothing reached the database: `migrate` applies every
 migration in one transaction, so one that fails or refuses leaves the database
-as it was. A release with no migration is the same: `migrate` prints
-`Schema current.` and changes nothing, so a step that fails after it still
-rolls back. When `migrate` reports that it applied a migration or upgraded
-pinned protocol versions, or prints neither, the script treats the database
-as changed. The script does not take that on trust either. It counts the rollback done
+as it was. The script does not take that on trust. It counts the rollback done
 only when every replica of the previous release reports its schema ok, so a
 `migrate` that changed the database and still exited non-zero ends in 4, not 3.
 
