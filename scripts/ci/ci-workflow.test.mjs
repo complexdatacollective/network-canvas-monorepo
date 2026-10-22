@@ -2978,6 +2978,7 @@ test('detect selects the upgrade lane whenever what the api image is built from 
     'apps/studio/docker-compose.local.yml',
     'apps/studio/release-test/run.sh',
     'apps/studio/release-test/window.mjs',
+    'apps/studio/scripts/upgrade.sh',
     'apps/studio/web/public/maintenance.html',
     '.github/workflows/ci-and-release.yml',
     '.dockerignore',

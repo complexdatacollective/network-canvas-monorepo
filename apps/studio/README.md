@@ -1335,6 +1335,11 @@ The stack and its routing table are drawn in
 from two downloaded files to a signed-in owner and covers the swaps, the
 upgrade sequence, backups and the Postgres major upgrade. `dev:stack` runs the
 same thing locally (see [Development](#running-the-whole-stack-locally)).
+[`scripts/upgrade.sh`](./scripts/upgrade.sh) runs the upgrade sequence against
+a deployment and puts the previous images back when an upgrade fails before
+`migrate` has changed the database; it takes no backup, so
+[the upgrade page](./docs/self-host/upgrade.md#the-upgrade-script) asks for one
+first.
 
 `STUDIO_DEPLOYMENT_MODE` picks the topology at runtime, so one pair of images
 serves both. The managed-only surfaces — marketing, pricing, legal, the sign-up
