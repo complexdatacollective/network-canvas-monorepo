@@ -53,6 +53,8 @@ const TWIN_LABEL_SIZE = 0.3;
  * first. */
 type Join = {
   points: (towardX: number) => Point[];
+  /** Whether a line from `towardX` goes on down the line of descent. */
+  continues?: (towardX: number) => boolean;
 };
 
 /**
@@ -704,6 +706,8 @@ export function routePedigree(
   const sibshipStems = new Map<string, number[]>();
   // Where each sibship's line of descent meets its bar.
   const descentFoot = new Map<string, Point>();
+  // Each sibship's line of descent, by key.
+  const descentLineOf = new Map<string, ParentChildConnector>();
   const joinSibship = (
     key: string,
     i: number,
@@ -1016,6 +1020,7 @@ export function routePedigree(
           parentLink,
         );
         descentLinks.push({ level: i, line: primaryPart, ...descent });
+        descentLineOf.set(`${i},${fam}`, primaryPart);
         if (groupLine && coupleLeftId !== coupleRightId) {
           const pairKey = `${Math.min(coupleLeftId, coupleRightId)},${Math.max(coupleLeftId, coupleRightId)}`;
           if (!coupleDescents.has(pairKey)) {
@@ -1247,11 +1252,12 @@ export function routePedigree(
     if (line.siblingBar) {
       scene.lines.push({ segment: line.siblingBar, kind: 'bar' });
     }
-    // Each line up comes straight down from the bar into its child's
-    // centre, where the lines into the child converge: the others keep its
-    // side of it (Josh, 22 Oct 2026: lines aim centre to centre).
+    // Each line up comes down from the bar into its child's centre, where
+    // the lines into the child converge: the others keep its side of where
+    // it leaves the bar, a twin's slanting in from the twins' shared point
+    // (Josh, 22 Oct 2026: lines aim centre to centre).
     for (const segment of line.uplines) {
-      scene.lines.push({ segment, kind: 'upline', ownerX: segment.x1 });
+      scene.lines.push({ segment, kind: 'upline', ownerX: segment.x2 });
     }
   }
   for (const twin of twinIndicators) {
@@ -1439,12 +1445,26 @@ export function routePedigree(
     // descent drawn with no line down from them joins it at the children's
     // sibling bar. Any other line goes to each child.
     const foot = descentFoot.get(conn.sibship);
+    // A line from straight above where the line of descent meets the bar
+    // would run down along its last drop, so it joins that drop at its top,
+    // where the line of descent turns down, and the two come down as one,
+    // as two co-parents' lines do.
+    const dropTopOf = (towardX: number): Point | undefined => {
+      const drop = descentLineOf.get(conn.sibship)?.parentLink;
+      const last = drop?.at(-1);
+      if (!foot || !drop || drop.length < 2 || !last) return undefined;
+      const vertical =
+        Math.abs(last.x1 - foot.x) < 1e-9 && Math.abs(last.x2 - foot.x) < 1e-9;
+      if (!vertical || Math.abs(towardX - foot.x) > 1e-6) return undefined;
+      return { x: foot.x, y: Math.min(last.y1, last.y2) };
+    };
     const barJoin: Join = {
+      continues: (towardX) => dropTopOf(towardX) !== undefined,
       points: (towardX) =>
         // A copy for each line: each line's points are its own, moved
         // into place one line at a time.
         foot
-          ? [{ ...foot }]
+          ? [dropTopOf(towardX) ?? { ...foot }]
           : barPoints(
               bar!,
               sibshipStems.get(conn.sibship) ?? [],
@@ -1585,11 +1605,13 @@ export function routePedigree(
       // whatever is in the way of a straight line, or (for a co-parent's
       // line) joined to the other's first.
       const stems = sibshipStems.get(conn.sibship);
+      const towardX = from.mate ? (from.x + from.mate.x) / 2 : from.x;
       const joined = draw(
         {
           kind: 'join',
-          points: join.points(from.mate ? (from.x + from.mate.x) / 2 : from.x),
+          points: join.points(towardX),
           layer: conn.childLevel,
+          ...(join.continues?.(towardX) ? { continues: true } : {}),
         },
         undefined,
         stems,
@@ -1999,8 +2021,9 @@ export function routePedigree(
   }
 
   // How many times the auxiliary lines cross another line where it shows
-  // (not under a symbol): each pair of lines counted once, and two lines of
-  // one course crossed at one point once.
+  // (not under a symbol): a piece of line crossing two lines at one point
+  // counts once, and so does a course two lines share, drawn once (two
+  // co-parents' joined run), whatever order the lines are listed in.
   const hiddenBySymbol = (p: Point) =>
     scene.symbols.some(
       (symbol) =>
@@ -2012,7 +2035,7 @@ export function routePedigree(
   const fixedSegments = scene.lines
     .filter((line) => line.owner === undefined)
     .map((line) => line.segment);
-  let crossings = 0;
+  const counted: { at: Point; dx: number; dy: number }[] = [];
   auxiliaryLines.forEach((line, index) => {
     const crossed = [
       ...fixedSegments,
@@ -2021,16 +2044,32 @@ export function routePedigree(
         .flatMap((other) => segmentsOf(other.points)),
     ];
     for (const segment of segmentsOf(line.points)) {
-      crossings += crossed
+      const length = Math.hypot(
+        segment.x2 - segment.x1,
+        segment.y2 - segment.y1,
+      );
+      if (length === 0) continue;
+      const dx = (segment.x2 - segment.x1) / length;
+      const dy = (segment.y2 - segment.y1) / length;
+      const places = crossed
         .flatMap((other) => crossing(segment, other) ?? [])
         .filter((at) => !hiddenBySymbol(at))
         .filter(
           (at, k, all) =>
             all.findIndex((p) => Math.hypot(p.x - at.x, p.y - at.y) < 1e-6) ===
             k,
-        ).length;
+        );
+      for (const at of places) {
+        const shared = counted.some(
+          (other) =>
+            Math.hypot(other.at.x - at.x, other.at.y - at.y) < 1e-6 &&
+            Math.abs(other.dx * dy - other.dy * dx) < 1e-6,
+        );
+        if (!shared) counted.push({ at, dx, dy });
+      }
     }
   });
+  const crossings = counted.length;
 
   // --- Duplicate subject arcs ---
   const allIds = new Set<number>();

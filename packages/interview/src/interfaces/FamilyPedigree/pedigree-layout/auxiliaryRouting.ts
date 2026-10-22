@@ -137,6 +137,9 @@ export type RouteEnd =
       points: Point[];
       /** The children's row. */
       layer: number;
+      /** It ends at the top of the line of descent's last drop, straight
+       * above, and so goes on down it, as a co-parent's line does. */
+      continues?: boolean;
     };
 
 /** How far apart two junctions on one line are, at least, and how far a
@@ -1382,7 +1385,7 @@ function courseCoster(
     // line (Josh, 12 Oct 2026): its last piece is not in line with a piece
     // of line that ends where it ends and runs on beyond it.
     const meetAt = points.findIndex(isTarget);
-    if (meetAt > 0) {
+    if (meetAt > 0 && !(end.kind === 'join' && end.continues)) {
       const at = points[meetAt]!;
       const before = points[meetAt - 1]!;
       const ux = at.x - before.x;

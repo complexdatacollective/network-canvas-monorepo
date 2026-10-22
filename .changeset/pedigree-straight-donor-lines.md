@@ -24,7 +24,12 @@ parents more simply.
 - A line may leave a symbol closer to where another line meets it, as long
   as the two part at a clear angle.
 - A parent no longer sits straight above a child they draw a line of their
-  own to, where that line would run down over the line of descent.
+  own to, where that line would run down over the line of descent. Where a
+  row has no room to move them aside, the people beside them move half a
+  seat with them.
+- A donor sitting straight above where their children's line of descent
+  meets the sibling bar draws a straight line down that joins it, as two
+  co-parents' lines do, instead of hooking round it.
 - Lines into an adopted child cross the adoption bracket to the child's
   centre, and the brackets are drawn in the text colour.
 - Lines into one child each arrive from a direction of their own, and a

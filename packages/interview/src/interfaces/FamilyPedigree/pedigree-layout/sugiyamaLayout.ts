@@ -2429,14 +2429,26 @@ function encodePedigreeLayout(
   const drawsALineInto = (parent: number, child: number) => {
     const lines = graph.owners[child];
     if (!lines?.descent) return false;
-    const own = (other: number) =>
-      graph.owners[other]!.lines.some(
+    const ownOf = (other: number) =>
+      graph.owners[other]!.lines.find(
         (line) => line.parents.length === 1 && line.parents[0] === parent,
       );
-    if (!own(child)) return false;
+    const line = ownOf(child);
+    if (!line) return false;
+    // Only a birth line into a birth line of descent joins the bar.
+    if (!isBirthTie(line.kind) || !isBirthTie(lines.descent.kind)) return true;
     const sibship = sibshipOf(child);
-    return sibship.length === 1 || !sibship.every(own);
+    return (
+      sibship.length === 1 ||
+      !sibship.every((other) => ownOf(other)?.kind === line.kind)
+    );
   };
+  const ownsDescentBelow = (person: number, layer: number) =>
+    graph.owners.some(
+      (lines, child) =>
+        lines.descent?.parents.includes(person) === true &&
+        nodeLocation.get(child)?.layer === layer + 1,
+    );
   for (let layer = 0; layer + 1 < maxLayer; layer++) {
     const row = pos[layer]!;
     for (let col = 0; col < row.length; col++) {
@@ -2462,12 +2474,32 @@ function encodePedigreeLayout(
       const descentX =
         descent.reduce((sum, at) => sum + at, 0) / Math.max(1, descent.length);
       const sides = descent.length > 0 && descentX < x ? [1, -1] : [-1, 1];
-      for (const side of sides) {
+      const roomy = sides.find((side) => {
         const neighbour = row[col + side];
-        if (neighbour === undefined || Math.abs(neighbour - x) >= 1.5) {
-          row[col] = x + side / 2;
-          break;
+        return neighbour === undefined || Math.abs(neighbour - x) >= 1.5;
+      });
+      if (roomy !== undefined) {
+        row[col] = x + roomy / 2;
+        continue;
+      }
+      // Where neither side has room, the people beside them on one side
+      // move half a seat along with them, as far as the row's next gap,
+      // unless one of those has a line of descent down to the next row,
+      // which would no longer come straight down.
+      for (const side of sides) {
+        const pushed: number[] = [];
+        for (
+          let k = col + side;
+          row[k] !== undefined && Math.abs(row[k]! - row[k - side]!) < 1.5;
+          k += side
+        ) {
+          pushed.push(k);
         }
+        if (pushed.some((k) => ownsDescentBelow(nid[layer]![k]!, layer))) {
+          continue;
+        }
+        for (const k of [col, ...pushed]) row[k] = row[k]! + side / 2;
+        break;
       }
     }
   }

@@ -529,7 +529,7 @@ describe('a donor’s line meets the line of descent of the children they gave t
     'a donor to two siblings added apart': 1,
     'a couple with a surrogate for two of three children': 1,
     'three donors to three runs of a sibship': 4,
-    'a sperm donor and a surrogate for two of three half-siblings': 4,
+    'a sperm donor and a surrogate for two of three half-siblings': 3,
   };
 
   for (const size of SYMBOL_SIZES) {
@@ -570,6 +570,30 @@ describe('a donor’s line meets the line of descent of the children they gave t
       it(`passes the strict line checks: a donor to two children who raises the third, recorded ${order.join(', ')} (${size}px symbols)`, () => {
         const { nodes, edges } = donorWhoRaisesAnother(order);
         expect(strictFaultsOf(nodes, edges, size)).toEqual([]);
+      });
+
+      // Paul sits straight above where Hannah's line of descent meets the
+      // bar, so his donor line runs straight down and joins it where it
+      // turns down, as two co-parents' lines do, rather than hooking round
+      // its last drop (Josh, 22 Oct 2026).
+      it(`draws the donor's line straight down into the line of descent: recorded ${order.join(', ')} (${size}px symbols)`, () => {
+        const { nodes, edges } = donorWhoRaisesAnother(order);
+        const drawing = drawAsInterface(nodes, edges, size);
+        const paul = drawing.centre('paul');
+        const donorLine = drawing.connectors.auxiliaryLines.find(
+          (line) => line.edgeType === 'donor',
+        );
+        expect(
+          donorLine?.points.every((p) => Math.abs(p.x - paul.x) < 1e-6),
+        ).toBe(true);
+        const descent = drawing.connectors.parentChildLines.find((line) =>
+          line.parentIds?.includes('hannah'),
+        );
+        const lastDrop = descent?.parentLink.at(-1);
+        expect(donorLine?.points.at(-1)).toEqual({
+          x: lastDrop?.x1,
+          y: lastDrop?.y1,
+        });
       });
     }
 

@@ -15,6 +15,7 @@ import { computeConnectors } from '../connectors';
 import { EDGE_WIDTH, type LayoutDimensions } from '../layoutDimensions';
 import { drawPedigree } from '../pedigreeAdapter';
 import type {
+  AuxiliaryConnector,
   LineSegment,
   ParentConnection,
   ParentGroupConnector,
@@ -436,16 +437,17 @@ const CROSSINGS: Record<string, number> = {
   'a woman who carries her parents’ child and raises a friend’s': 3,
   // Paul's line to Ruby crosses the sibling bar.
   'a donor to two of three half-siblings': 1,
-  // Each donor and carrier line goes to its own child (Josh, 22 Oct 2026),
-  // across the sibling bar and the lines up of the children between.
-  'a sperm donor and a surrogate for two of three half-siblings': 4,
+  // Each donor and carrier line goes to its own child (Josh, 22 Oct 2026):
+  // Paul's line to Ruby crosses the carrier's to the participant and the
+  // participant's line up, and the carrier's to Ruby crosses the bar.
+  'a sperm donor and a surrogate for two of three half-siblings': 3,
   'a surrogate for one of a donor’s two children, the other recorded first': 2,
   'a surrogate for two of a donor’s three children': 4,
   // Hannah's line to Ruby crosses the participant's line up.
   'an egg donor, a sperm donor and a surrogate for two of three children Hannah raises': 1,
-  // The birth parents' line to each child crosses the other child's
-  // adoptive line up.
-  'two siblings adopted together, with the same birth parents': 2,
+  // The birth parents' joined line to the participant crosses their
+  // sibling's adoptive line up.
+  'two siblings adopted together, with the same birth parents': 1,
   // The stepfather's line to the participant crosses their sibling's line
   // up.
   'a stepfather who raises all his partner’s children': 1,
@@ -457,9 +459,57 @@ describe('the lines cross no more often than the fewest crossings found', () => 
       it(`crossings: ${name} (${shape}s)`, () => {
         const { drawing } = draw(people, links, shape);
         expect(crossingCount(drawing, people)).toBe(CROSSINGS[name] ?? 0);
+        // Whatever order the lines are listed in.
+        const reversed = {
+          ...drawing,
+          connectors: {
+            ...drawing.connectors,
+            auxiliaryLines: drawing.connectors.auxiliaryLines.toReversed(),
+          },
+        };
+        expect(crossingCount(reversed, people)).toBe(CROSSINGS[name] ?? 0);
       });
     }
   }
+
+  it('counts a run two co-parents share once where it crosses a bar', () => {
+    const shared = (x: number): AuxiliaryConnector => ({
+      type: 'auxiliary',
+      edgeType: 'donor',
+      points: [
+        { x, y: 0 },
+        { x: 100, y: 100 },
+        { x: 100, y: 300 },
+      ],
+    });
+    const drawing = {
+      size: 40,
+      centre: () => ({ x: -1000, y: -1000 }),
+      shapeOf: () => 'circle' as const,
+      connectors: {
+        groupLines: [],
+        parentChildLines: [
+          {
+            type: 'parent-child' as const,
+            edgeType: 'biological' as const,
+            uplines: [],
+            parentLink: [],
+            siblingBar: {
+              type: 'line' as const,
+              x1: 0,
+              y1: 200,
+              x2: 200,
+              y2: 200,
+            },
+          },
+        ],
+        auxiliaryLines: [shared(0), shared(200)],
+        twinIndicators: [],
+        duplicateArcs: [],
+      },
+    };
+    expect(crossingCount(drawing, [])).toBe(1);
+  });
 });
 
 describe('the drawing draws no partnership that was not recorded', () => {

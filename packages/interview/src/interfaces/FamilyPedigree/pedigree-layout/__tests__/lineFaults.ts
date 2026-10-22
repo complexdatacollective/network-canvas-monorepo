@@ -841,11 +841,21 @@ function faultsOfTarget(drawing: Drawing, _family: Family): string[] {
     // Where the line of descent meets the bar: the lowest end of its line
     // down from the owners.
     const descent = descentOfChild(descents, reached[0]!);
-    const foot = (descent?.parts ?? [])
-      .flatMap((part) => part.parentLink.map(lowerEnd))
-      .toSorted((p, q) => q.y - p.y)[0];
+    const link = (descent?.parts ?? []).flatMap((part) => part.parentLink);
+    const foot = link.map(lowerEnd).toSorted((p, q) => q.y - p.y)[0];
+    // A line from straight above that point joins the line of descent's
+    // last drop at its top, and comes down along it.
+    const last = link.find((segment) => near(lowerEnd(segment), foot!, 1e-3));
+    const dropTop =
+      last && link.length > 1 && Math.abs(last.x1 - last.x2) < 1e-3
+        ? { x: last.x1, y: Math.min(last.y1, last.y2) }
+        : undefined;
+    const fromAbove =
+      dropTop !== undefined &&
+      near(line.end, dropTop, 1) &&
+      line.line.points.every((point) => Math.abs(point.x - dropTop.x) < 1);
     if (foot) {
-      if (!near(line.end, foot, 1)) {
+      if (!near(line.end, foot, 1) && !fromAbove) {
         faults.push(
           `${name} does not end where the line of descent meets the sibling bar`,
         );
@@ -1753,7 +1763,10 @@ export function crossingCount(drawing: Drawing, people: string[]): number {
       twin.segment ? [twin.segment] : [],
     ),
   ];
-  let count = 0;
+  // A piece of line crossing two lines at one point counts once, and so
+  // does a course two lines share, drawn once, whatever order the lines are
+  // listed in.
+  const counted: { at: Point; dx: number; dy: number }[] = [];
   connectors.auxiliaryLines.forEach((line, index) => {
     const crossed = [
       ...fixed,
@@ -1762,15 +1775,29 @@ export function crossingCount(drawing: Drawing, people: string[]): number {
         .flatMap((other) => segmentsOf(other.points)),
     ];
     for (const segment of segmentsOf(line.points)) {
+      const length = Math.hypot(
+        segment.x2 - segment.x1,
+        segment.y2 - segment.y1,
+      );
+      if (length === 0) continue;
+      const dx = (segment.x2 - segment.x1) / length;
+      const dy = (segment.y2 - segment.y1) / length;
       const points = crossed
         .flatMap((other) => crossingOf(segment, other) ?? [])
         .filter((at) => !hidden(at));
-      count += points.filter(
-        (at, k) => points.findIndex((p) => near(p, at, 1e-3)) === k,
-      ).length;
+      for (const at of points.filter(
+        (point, k) => points.findIndex((p) => near(p, point, 1e-3)) === k,
+      )) {
+        const shared = counted.some(
+          (other) =>
+            near(other.at, at, 1e-3) &&
+            Math.abs(other.dx * dy - other.dy * dx) < 1e-6,
+        );
+        if (!shared) counted.push({ at, dx, dy });
+      }
     }
   });
-  return count;
+  return counted.length;
 }
 
 /** Whether two people share genes: one descends from the other, or both
