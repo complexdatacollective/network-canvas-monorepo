@@ -78,8 +78,8 @@ named from their sex assigned at birth.
   draws every child below each of its parents (including when a parent is
   one of the child's own descendants), and joins a step-parent to a child
   with a dashed line. Children adopted into a family share one solid sibship
-  line with their parents' other children, and only the line up to each
-  adopted child is dashed.
+  line with their parents' other children, whether or not the parents are
+  recorded as partners, and only the line up to each adopted child is dashed.
 
 **The Narrative Pedigree** reads the redesigned Family Pedigree. It draws the
 same family on the same canvas, labels people as the Family Pedigree does,
