@@ -3709,9 +3709,10 @@ jobs:
           RELEASE_CHANNEL: stable-tagged
         run: bash .github/scripts/detect-app-release.sh
       # Named by @codaco/studio-api's version and tagged `studio@<version>`,
-      # which detect-app-release.sh cannot express; studio-release.mjs also
-      # keeps the lane from releasing the untagged version main held before
-      # the lane existed.
+      # which detect-app-release.sh cannot express. Only the push that changes
+      # that version releases, so the images are always the release PR's
+      # tree; a failed release is retried by re-running its job, never by a
+      # later push.
       - id: studio
         run: node scripts/release/studio-release.mjs plan
       - id: website
@@ -4470,7 +4471,7 @@ jobs:
             --out "$RUNNER_TEMP/studio-release.json"
       # `gh release create` with assets creates a draft, uploads, and only
       # then publishes, which is what creates the tag: a failed upload leaves
-      # no tag, so the next push to main releases this version again rather
+      # no tag, so re-running this job releases this version again rather
       # than leaving a release a deployment cannot read. Not marked latest:
       # the repository's latest release belongs to the apps.
       - name: Create the studio@${{ env.VERSION }} release

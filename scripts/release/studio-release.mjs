@@ -45,8 +45,9 @@ export const imageRef = (image, digest) => {
   return `${IMAGES[image]}@${digest}`;
 };
 
-// Until the first tag exists only the push that changes studio-api's version
-// releases: the version main held when the lane arrived was never a release.
+// Only the push that changes studio-api's version releases, so the images are
+// built from the release PR's tree; a failed release is retried by re-running
+// that push's job.
 export function planRelease({ apiVersion, previousApiVersion, tags }) {
   if (!STABLE.test(apiVersion)) {
     return {
@@ -58,10 +59,10 @@ export function planRelease({ apiVersion, previousApiVersion, tags }) {
   if (tags.includes(tag)) {
     return { released: false, reason: `${tag} already exists` };
   }
-  if (newestVersion(tags) === null && apiVersion === previousApiVersion) {
+  if (apiVersion === previousApiVersion) {
     return {
       released: false,
-      reason: `no Studio release is tagged yet, and this push did not change ${API_PACKAGE}'s version from ${apiVersion}`,
+      reason: `this push did not change ${API_PACKAGE}'s version from ${apiVersion}`,
     };
   }
   return { released: true, reason: `${tag} is not tagged yet` };
@@ -165,7 +166,7 @@ export function studioReleaseNotes({
     const from = atNewest?.[name] ?? null;
     if (from === to) continue;
     const dir = join(root, GATED_PRODUCT_DIRS[name]);
-    const versions = from ? versionsSince(dir, to, from) : [to];
+    const versions = versionsSince(dir, to, from);
     const sections = versions
       .map((each) => ({ each, body: notesFromChangelog(dir, each) }))
       .filter(({ body }) => body !== '');

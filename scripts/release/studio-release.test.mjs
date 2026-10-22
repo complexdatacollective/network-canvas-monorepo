@@ -48,11 +48,23 @@ test('an untagged studio-api version is released, and a tagged one is not', () =
   assert.equal(
     planRelease({
       apiVersion: '1.2.0',
-      previousApiVersion: '1.2.0',
+      previousApiVersion: '1.1.0',
       tags: ['studio@1.1.0'],
     }).released,
     true,
-    'once a release is tagged the lane heals itself: a version left untagged by a failed run is released by the next push',
+  );
+  assert.deepEqual(
+    planRelease({
+      apiVersion: '1.2.0',
+      previousApiVersion: '1.2.0',
+      tags: ['studio@1.1.0'],
+    }),
+    {
+      released: false,
+      reason:
+        "this push did not change @codaco/studio-api's version from 1.2.0",
+    },
+    'a later push never builds an untagged release from a tree that is not the release PR',
   );
   assert.deepEqual(
     planRelease({
@@ -224,7 +236,7 @@ test('the release notes pin both images and carry what moved since the previous 
   }
 });
 
-test('the first release carries each package at the version it is released at', () => {
+test('the first release carries every changelog section, since none was released before', () => {
   const root = changelogRoot(CHANGELOGS);
   try {
     const body = studioReleaseNotes({
@@ -238,9 +250,12 @@ test('the first release carries each package at the version it is released at', 
     });
     assert.match(
       body,
-      /## @codaco\/studio-api 1\.2\.0\n\n### Minor Changes\n\n- Api two\./,
+      /## @codaco\/studio-api 1\.2\.0\n\n### 1\.2\.0\n\n### Minor Changes\n\n- Api two\./,
     );
-    assert.ok(!body.includes('Api one'));
+    assert.match(body, /### 1\.1\.0\n\n### Minor Changes\n\n- Api one\./);
+    assert.match(body, /### 1\.0\.0\n\n- Api zero\./);
+    assert.match(body, /## @codaco\/studio-web 2\.0\.0\n\n### 2\.0\.0\n/);
+    assert.match(body, /### 1\.0\.0\n\n- Web zero\./);
     assert.match(body, /## @codaco\/studio-contract 0\.2\.0\n\n0\.2\.0\./);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -628,9 +643,14 @@ test('plan reads the versions and tags of the checkout it runs in', () => {
     base: versions('0.3.0', '0.3.0'),
     head: versions('0.3.0', '0.4.0'),
   });
-  const healed = studioRepo({
+  const next = studioRepo({
     base: versions('1.0.0', '1.0.0'),
     head: versions('1.1.0', '1.0.0'),
+    tags: ['studio@1.0.0'],
+  });
+  const later = studioRepo({
+    base: versions('1.1.0', '1.0.0'),
+    head: versions('1.1.0', '1.0.1'),
     tags: ['studio@1.0.0'],
   });
   try {
@@ -641,9 +661,14 @@ test('plan reads the versions and tags of the checkout it runs in', () => {
       run(unmoved, 'plan').outputs,
       'released=false\nversion=0.3.0\n',
     );
-    assert.equal(run(healed, 'plan').outputs, 'released=true\nversion=1.1.0\n');
+    assert.equal(run(next, 'plan').outputs, 'released=true\nversion=1.1.0\n');
+    assert.equal(
+      run(later, 'plan').outputs,
+      'released=false\nversion=1.1.0\n',
+      'a push after an untagged release does not publish its own tree under that version',
+    );
   } finally {
-    for (const repo of [first, unmoved, healed]) {
+    for (const repo of [first, unmoved, next, later]) {
       rmSync(repo, { recursive: true, force: true });
     }
   }
