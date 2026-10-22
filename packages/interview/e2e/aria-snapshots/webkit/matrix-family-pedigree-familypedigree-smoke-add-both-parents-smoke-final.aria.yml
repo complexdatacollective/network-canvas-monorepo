@@ -11,11 +11,16 @@
       - button "Connect"
       - button "Disconnect"
     - separator
+    - group "History tools":
+      - button "Undo"
+      - button "Redo" [disabled]
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
   - text: Robert added to your family.
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
