@@ -1966,6 +1966,143 @@ test('Fresco mirrors under the same release guard as the Netlify lanes', () => {
   }
 });
 
+test('Studio releases publish signed, attested images under the app-lane guard', () => {
+  const detect = parsedWorkflow.jobs['apps-release-detect'];
+  assert.equal(
+    detect.steps.find(({ id }) => id === 'studio')?.run,
+    'node scripts/release/studio-release.mjs plan',
+  );
+  assert.equal(
+    detect.outputs.studio_released,
+    '${{ steps.studio.outputs.released }}',
+  );
+
+  const studio = parsedWorkflow.jobs['apps-release-studio'];
+  assert.ok(studio, 'apps-release-studio exists');
+  assert.equal(studio.needs, 'apps-release-detect');
+  assert.equal(
+    studio.if,
+    "needs.apps-release-detect.outputs.studio_released == 'true'",
+  );
+  assert.deepEqual(studio.concurrency, {
+    'group': 'apps-release-studio',
+    'cancel-in-progress': false,
+  });
+  assert.deepEqual(studio.permissions, {
+    'contents': 'write',
+    'packages': 'write',
+    'id-token': 'write',
+  });
+  assert.equal(
+    studio.env.CERT_IDENTITY,
+    'https://github.com/${{ github.workflow_ref }}',
+  );
+  assert.equal(
+    studio.env.CERT_ISSUER,
+    'https://token.actions.githubusercontent.com',
+  );
+
+  const [checkout, guard, ...rest] = studio.steps;
+  assert.equal(checkout.with['fetch-depth'], 0);
+  assert.equal(checkout.with['fetch-tags'], true);
+  assert.equal(guard.id, 'guard');
+  assert.equal(guard.env.PKG_NAME, 'studio');
+  assert.equal(guard.run, 'bash .github/scripts/app-release-guard.sh');
+  for (const step of rest) {
+    assert.equal(
+      step.if,
+      "steps.guard.outputs.skip != 'true'",
+      `${step.name ?? step.uses} is gated on the guard`,
+    );
+  }
+
+  for (const [id, target] of [
+    ['api', 'studio-api'],
+    ['web', 'studio-web'],
+  ]) {
+    const build = studio.steps.find((step) => step.id === id);
+    assert.match(build.uses, /^docker\/build-push-action@[0-9a-f]{40}$/);
+    assert.equal(build.with.file, 'apps/studio/Dockerfile');
+    assert.equal(build.with.target, target);
+    assert.equal(build.with.platforms, 'linux/amd64,linux/arm64');
+    assert.equal(build.with.push, true);
+    assert.equal(
+      build.with.tags.trim(),
+      `ghcr.io/complexdatacollective/${target}:\${{ env.VERSION }}\nghcr.io/complexdatacollective/${target}:\${{ github.sha }}`,
+    );
+    assert.match(
+      build.with.secrets,
+      /posthog_personal_api_key=\$\{\{ secrets\.POSTHOG_PERSONAL_API_KEY \}\}\nposthog_project_id=\$\{\{ secrets\.POSTHOG_PROJECT_ID \}\}/,
+    );
+    assert.equal(build.with['build-args'], 'SOURCE_MAPS_TARGET=codaco-studio');
+  }
+
+  const names = studio.steps.map(({ name }) => name);
+  const order = [
+    'Generate the SBOMs',
+    'Sign the images and attest their SBOMs',
+    'Verify the signatures and attestations',
+    'Confirm both images pull without credentials',
+    'Write the release notes and studio-release.json',
+    'Point latest at this release',
+    'Create the studio@${{ env.VERSION }} release',
+  ].map((name) => {
+    const index = names.indexOf(name);
+    assert.notEqual(index, -1, `${name} exists`);
+    return index;
+  });
+  assert.deepEqual(
+    order,
+    order.toSorted((a, b) => a - b),
+    'nothing is tagged or moved before the images verify and pull anonymously',
+  );
+
+  const step = (name) => studio.steps.find((each) => each.name === name).run;
+  assert.match(
+    step('Sign the images and attest their SBOMs'),
+    /cosign sign --yes --recursive "\$API_REF" "\$WEB_REF"/,
+  );
+  assert.match(
+    step('Sign the images and attest their SBOMs'),
+    /cosign attest --yes --type cyclonedx --predicate "\$RUNNER_TEMP\/studio-api\.cdx\.json" "\$API_REF"/,
+  );
+  const verify = step('Verify the signatures and attestations');
+  assert.match(
+    verify,
+    /cosign verify --certificate-identity "\$CERT_IDENTITY" --certificate-oidc-issuer "\$CERT_ISSUER" "\$ref"/,
+  );
+  assert.match(
+    verify,
+    /cosign verify-attestation --type cyclonedx --certificate-identity "\$CERT_IDENTITY" --certificate-oidc-issuer "\$CERT_ISSUER" "\$ref"/,
+  );
+  const release = step('Create the studio@${{ env.VERSION }} release');
+  assert.match(release, /gh release create "studio@\$VERSION"/);
+  assert.match(release, /--target "\$GITHUB_SHA"/);
+  assert.match(release, /--latest=false/);
+  for (const asset of [
+    'studio-release.json',
+    'studio-api.cdx.json',
+    'studio-web.cdx.json',
+  ]) {
+    assert.match(
+      release,
+      new RegExp(`"\\$RUNNER_TEMP/${escapeRegExp(asset)}"`),
+    );
+  }
+
+  const upgrade = parsedWorkflow.jobs['studio-upgrade'].steps;
+  const check = upgrade.findIndex(
+    ({ run }) => run === 'node scripts/release/studio-release.mjs check',
+  );
+  const setup = upgrade.findIndex(
+    ({ uses }) => uses === './.github/actions/turbo-ci-setup',
+  );
+  assert.ok(
+    check > setup && setup !== -1,
+    'the release PR checks that studio-api moves with every Studio package, once Node is set up',
+  );
+});
+
 test('release-side jobs stop once their main commit has been superseded', () => {
   const guardStep =
     /- name: Confirm this run still describes main's tip\n(?:\s+#[^\n]*\n)*\s+id: tip\n\s+env:\n\s+EXPECTED_SHA: \$\{\{ github\.sha \}\}\n\s+REF: \$\{\{ github\.ref \}\}\n\s+run: bash \.github\/scripts\/superseded-push-guard\.sh\n/;
@@ -2031,6 +2168,7 @@ test('release-side jobs stop once their main commit has been superseded', () => 
     'interviewer',
     'background-creator',
     'fresco',
+    'studio',
   ]) {
     assert.doesNotMatch(job(`apps-release-${app}`), /superseded-push-guard/);
   }

@@ -66,6 +66,27 @@ STUDIO_API_IMAGE=ghcr.io/complexdatacollective/studio-api@sha256:…
 STUDIO_WEB_IMAGE=ghcr.io/complexdatacollective/studio-web@sha256:…
 ```
 
+Every release is a
+[GitHub release tagged `studio@<version>`](https://github.com/complexdatacollective/network-canvas-monorepo/releases?q=studio%40&expanded=true).
+Its notes begin with those two lines, filled in, and its `studio-release.json`
+asset names the same digests under `images.api` and `images.web`. The images
+are public, so pulling them needs no registry login.
+
+Each image is signed, and carries a CycloneDX SBOM as a signed attestation,
+under the identity of the workflow that built it. To check an image before you
+run it, with [cosign](https://docs.sigstore.dev/cosign/system_config/installation/):
+
+```bash
+cosign verify \
+  --certificate-identity https://github.com/complexdatacollective/network-canvas-monorepo/.github/workflows/ci-and-release.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/complexdatacollective/studio-api@sha256:…
+```
+
+`cosign verify-attestation --type cyclonedx` with the same two flags checks the
+SBOM, which is also attached to the release as `studio-api.cdx.json` and
+`studio-web.cdx.json`.
+
 ## 3. Write the two secret files
 
 These are files rather than variables so they stay out of `docker inspect`, out

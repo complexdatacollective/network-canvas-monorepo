@@ -96,7 +96,8 @@ history it makes step 5 take longer, and the window with it.
 ## The sequence
 
 Put the new image digests in `.env` (`STUDIO_API_IMAGE` and
-`STUDIO_WEB_IMAGE`) first, then:
+`STUDIO_WEB_IMAGE`) first — the release's notes give both lines, and
+[pinning the images](./run.md#2-fill-in-env) says how to check them — then:
 
 <!-- upgrade-sequence start -->
 

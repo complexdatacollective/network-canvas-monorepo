@@ -7,8 +7,9 @@
 // runs Run C — the upgrade from that release to the candidate — whenever the
 // status is `published`, and fails the lane if Run C did not run and pass.
 //
-// A Studio release is identified by its git tag, `@codaco/studio-api@<x.y.z>`,
-// which the publisher creates on the released commit (#1910) beside the images
+// A Studio release is identified by its git tag, `studio@<x.y.z>`, which the
+// publisher (`apps-release-studio`, scripts/release/studio-release.mjs) creates
+// on the released commit beside the images
 // `ghcr.io/complexdatacollective/studio-api:<x.y.z>` and `studio-web:<x.y.z>`.
 // The tag is the whole question: with none there is no migration-era release
 // and no registry is asked anything, so a registry that refuses an
@@ -25,7 +26,7 @@ import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-export const TAG_PREFIX = '@codaco/studio-api@';
+export const TAG_PREFIX = 'studio@';
 export const IMAGES = {
   api: 'ghcr.io/complexdatacollective/studio-api',
   web: 'ghcr.io/complexdatacollective/studio-web',
@@ -33,7 +34,7 @@ export const IMAGES = {
 
 /**
  * The newest `x.y.z` among the tag names. Prereleases, and anything that is
- * not a studio-api release tag, are not releases.
+ * not a Studio release tag, are not releases.
  */
 export function newestVersion(tags) {
   const versions = tags

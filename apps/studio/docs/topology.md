@@ -5,9 +5,10 @@ deployment and the same file in both topologies. The first is what runs; the
 second is where a request goes. Mermaid in Markdown, so they render on GitHub
 and on the documentation site without a build step.
 
-To stand this up, see the [self-host guide](./self-host/README.md). What the
-managed platform adds around it — the host, image publishing, the deploy
-workflows and staging — is
+To stand this up, see the [self-host guide](./self-host/README.md). The
+images both topologies run are published with every release (see
+[Published releases](../README.md#published-releases)). What the managed
+platform adds around them — the host, the deploy workflows and staging — is
 [#1910](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1910).
 
 ## The compose stack

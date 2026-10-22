@@ -39,14 +39,15 @@ tears it down afterwards.
 ### What run C needs from a release
 
 A Studio release is identified by a **git tag**, and by nothing else:
-`@codaco/studio-api@<x.y.z>`, on the commit the release was built from.
+`studio@<x.y.z>`, on the commit the release was built from.
 `previous-release.mjs` reads the repository's tags and takes the newest
-`x.y.z` (a prerelease does not count). The publisher (#1910) must therefore,
-for every Studio release:
+`x.y.z` (a prerelease does not count). The publisher, the `apps-release-studio`
+job in `.github/workflows/ci-and-release.yml`, does this for every Studio
+release:
 
-- push the tag `@codaco/studio-api@<x.y.z>`, where `<x.y.z>` is
-  `@codaco/studio-api`'s version;
-- publish `ghcr.io/complexdatacollective/studio-api:<x.y.z>` and
+- pushes the tag `studio@<x.y.z>`, where `<x.y.z>` is `@codaco/studio-api`'s
+  version;
+- publishes `ghcr.io/complexdatacollective/studio-api:<x.y.z>` and
   `ghcr.io/complexdatacollective/studio-web:<x.y.z>` — both images under the
   studio-api version, even when studio-web's own version differs.
 

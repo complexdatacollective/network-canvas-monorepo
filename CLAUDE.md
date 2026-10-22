@@ -169,8 +169,13 @@ edge.
   Studio. Documentation and Website keep independent stable-semver release PRs,
   production deploys, and Git tags. The Studio lane covers all four Studio
   workspace packages (`@codaco/studio-web`, `@codaco/studio-api`,
-  `@codaco/studio-contract`, `@codaco/studio-sync`); its release PR records versions
-  and changelogs only — Studio has no automated production deploy lane yet.
+  `@codaco/studio-contract`, `@codaco/studio-sync`). Merging its release PR
+  publishes a release named by `@codaco/studio-api`'s version: signed images
+  with SBOMs on GHCR, a `studio@<version>` tag and a GitHub release carrying
+  `studio-release.json` (`apps-release-studio`; see the Studio README,
+  "Published releases"). A Studio release PR must move `@codaco/studio-api`
+  whenever it moves another Studio package. Studio has no automated
+  production deploy lane yet.
 - **One release lane per changeset.** A normal-lane changeset may combine
   libraries, Architect, Background Creator, Interviewer, and Fresco. A Studio
   changeset may combine the Studio packages. Never mix Documentation, Website,
