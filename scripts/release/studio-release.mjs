@@ -45,9 +45,8 @@ export const imageRef = (image, digest) => {
   return `${IMAGES[image]}@${digest}`;
 };
 
-// Only the push that changes studio-api's version releases, so the images are
-// built from the release PR's tree; a failed release is retried by re-running
-// that push's job.
+// Until the first tag exists only the push that changes studio-api's version
+// releases: the version main held when the lane arrived was never a release.
 export function planRelease({ apiVersion, previousApiVersion, tags }) {
   if (!STABLE.test(apiVersion)) {
     return {
@@ -59,10 +58,10 @@ export function planRelease({ apiVersion, previousApiVersion, tags }) {
   if (tags.includes(tag)) {
     return { released: false, reason: `${tag} already exists` };
   }
-  if (apiVersion === previousApiVersion) {
+  if (newestVersion(tags) === null && apiVersion === previousApiVersion) {
     return {
       released: false,
-      reason: `this push did not change ${API_PACKAGE}'s version from ${apiVersion}`,
+      reason: `no Studio release is tagged yet, and this push did not change ${API_PACKAGE}'s version from ${apiVersion}`,
     };
   }
   return { released: true, reason: `${tag} is not tagged yet` };

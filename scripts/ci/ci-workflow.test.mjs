@@ -2099,6 +2099,13 @@ test('Studio releases publish signed, attested images under the app-lane guard',
   assert.match(verify, /sha256sum "\$sbom"/);
   const release = step('Create the studio@${{ env.VERSION }} release');
   assert.match(release, /gh release create "studio@\$VERSION"/);
+  const draft = release.search(
+    /select\(\.draft and \.tag_name == \\"studio@\$VERSION\\"\)[\s\S]*gh api -X DELETE "repos\/\$GITHUB_REPOSITORY\/releases\/\$draft"/,
+  );
+  assert.ok(
+    draft !== -1 && draft < release.indexOf('gh release create'),
+    'a retry deletes the draft a failed run left before creating the release again',
+  );
   assert.match(release, /--target "\$GITHUB_SHA"/);
   assert.match(release, /--latest=false/);
   for (const asset of [

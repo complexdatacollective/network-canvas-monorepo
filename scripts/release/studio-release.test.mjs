@@ -48,23 +48,11 @@ test('an untagged studio-api version is released, and a tagged one is not', () =
   assert.equal(
     planRelease({
       apiVersion: '1.2.0',
-      previousApiVersion: '1.1.0',
+      previousApiVersion: '1.2.0',
       tags: ['studio@1.1.0'],
     }).released,
     true,
-  );
-  assert.deepEqual(
-    planRelease({
-      apiVersion: '1.2.0',
-      previousApiVersion: '1.2.0',
-      tags: ['studio@1.1.0'],
-    }),
-    {
-      released: false,
-      reason:
-        "this push did not change @codaco/studio-api's version from 1.2.0",
-    },
-    'a later push never builds an untagged release from a tree that is not the release PR',
+    'once a release is tagged the lane heals itself: a version left untagged by a failed run is released by the next push',
   );
   assert.deepEqual(
     planRelease({
@@ -648,7 +636,7 @@ test('plan reads the versions and tags of the checkout it runs in', () => {
     head: versions('1.1.0', '1.0.0'),
     tags: ['studio@1.0.0'],
   });
-  const later = studioRepo({
+  const retried = studioRepo({
     base: versions('1.1.0', '1.0.0'),
     head: versions('1.1.0', '1.0.1'),
     tags: ['studio@1.0.0'],
@@ -663,12 +651,12 @@ test('plan reads the versions and tags of the checkout it runs in', () => {
     );
     assert.equal(run(next, 'plan').outputs, 'released=true\nversion=1.1.0\n');
     assert.equal(
-      run(later, 'plan').outputs,
-      'released=false\nversion=1.1.0\n',
-      'a push after an untagged release does not publish its own tree under that version',
+      run(retried, 'plan').outputs,
+      'released=true\nversion=1.1.0\n',
+      'the next push retries a version a failed run left untagged',
     );
   } finally {
-    for (const repo of [first, unmoved, next, later]) {
+    for (const repo of [first, unmoved, next, retried]) {
       rmSync(repo, { recursive: true, force: true });
     }
   }

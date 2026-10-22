@@ -1118,11 +1118,11 @@ pnpm --filter @codaco/studio-api start:migrate # the schema one-shot
 
 ### Published releases
 
-Merging the Release Studio PR publishes a release. Only the push to `main`
-that changes `@codaco/studio-api`'s version releases it, so the images are
-built from the release PR's tree. If that run fails, re-run its
-`apps-release-studio` job; a later push never publishes the version. That
-job, in `.github/workflows/ci-and-release.yml`, does the work, and
+Merging the Release Studio PR publishes a release. A push to `main` releases
+`@codaco/studio-api`'s version when no `studio@<version>` tag exists for it yet,
+so a run that failed is retried by the next push; until the first tag exists,
+only the push that changes that version releases. The `apps-release-studio`
+job in `.github/workflows/ci-and-release.yml` does the work, and
 `scripts/release/studio-release.mjs` makes its decisions and writes its
 documents. It deploys nothing.
 
