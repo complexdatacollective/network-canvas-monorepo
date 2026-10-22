@@ -94,10 +94,10 @@ Architect adds both versions when the value is inserted, and each version is the
 
 In the example above, the heading of an Information stage thanks the participant by name:
 
-| Version      | Text written                      | Participant sees |
-| ------------ | --------------------------------- | ---------------- |
-| If known     | ", " followed by **first_name**   | Thank you, Sam!  |
-| If not known | (empty)                           | Thank you!       |
+| Version      | Text written                    | Participant sees |
+| ------------ | ------------------------------- | ---------------- |
+| If known     | ", " followed by **first_name** | Thank you, Sam!  |
+| If not known | (empty)                         | Thank you!       |
 
 "Thank you" precedes the versions and "!" follows them, so both cases share that wording.
 
@@ -127,11 +127,11 @@ The versions are:
 
 For example, a Per Alter Form question could depend on a "Lives with you" attribute:
 
-| Version          | Text written                                |
-| ---------------- | ------------------------------------------- |
-| If not known     | How often do you see them at home?          |
-| Yes              | How do you share household tasks with them? |
-| No               | How often do you visit them at home?        |
+| Version          | Text written                                 |
+| ---------------- | -------------------------------------------- |
+| If not known     | How often do you see them at home?           |
+| Yes              | How do you share household tasks with them?  |
+| No               | How often do you visit them at home?         |
 | Any other answer | (empty, because yes and no cover every case) |
 
 A categorical answer can include several options. The text then uses the version of the first of those options that has one, or **Any other answer** if none does. Options keep the order they had when the value was inserted, so reordering them in the codebook later does not change which version is used.
@@ -170,7 +170,7 @@ Each value is tinted with the interview's primary color, which distinguishes ins
 
 Today's date can be shown in every text that accepts piped values. The attributes available depend on where the text appears:
 
-| Where the text appears                                                                                                                                                                                                                                                                                                       | Ego Attributes | Contextual Attributes                                                                                                                                                   |
+| Where the text appears                                                                                                                                                                                                                                                                                                        | Ego Attributes | Contextual Attributes                                                                                                                                                   |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Stage text: an Information stage's title and text, an Anonymisation stage's explanation, a Finish Screen's closing and finished text, an Ego Form's introduction title and text, a Name Generator form's title, the panel titles of a name generator, and the panel title of a roster                                         | Yes            | None                                                                                                                                                                    |
 | Prompts on the Name Generator, Quick Add, Roster, Sociogram and Family Pedigree, prompts on an Ordinal Bin or Categorical Bin set to **Drag and drop**, and the label of a Categorical Bin's "other" bin                                                                                                                      | Yes            | None, because these stages show many nodes at once                                                                                                                      |
