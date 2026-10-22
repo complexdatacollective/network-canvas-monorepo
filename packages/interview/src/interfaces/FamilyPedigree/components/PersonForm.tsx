@@ -90,6 +90,7 @@ import {
   mayHaveCarried,
   otherParentChoices,
   sexAnswerGivesWay,
+  type SexConflict,
   sexConflicts,
   sexesRefused,
   planAdditionUnder,
@@ -794,14 +795,21 @@ function SexAssignedAtBirthField({
   const answered = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.find(
     (each) => each === value,
   );
-  const reasonsOf = (sex: PedigreeSexAssignedAtBirth) =>
+  const reasonsOf = (
+    sex: PedigreeSexAssignedAtBirth,
+    only?: SexConflict['rule'],
+  ) =>
     person
-      ? sexConflicts(family, person.id, sex).map((conflict) =>
-          sexConflictReason(reasonContext, person.id, conflict),
-        )
+      ? sexConflicts(family, person.id, sex)
+          .filter((conflict) => only === undefined || conflict.rule === only)
+          .map((conflict) =>
+            sexConflictReason(reasonContext, person.id, conflict),
+          )
       : [];
   const refused = person ? sexesRefused(family, person.id) : [];
-  const refusals = refused.flatMap(reasonsOf);
+  // Only being a surrogate refuses an answer; what else it would contradict
+  // is said only once it is chosen, which it cannot be.
+  const refusals = refused.flatMap((sex) => reasonsOf(sex, 'surrogate'));
   // What the answer chosen changes, said only once it differs from the
   // answer recorded, which contradicts nothing.
   const changes =

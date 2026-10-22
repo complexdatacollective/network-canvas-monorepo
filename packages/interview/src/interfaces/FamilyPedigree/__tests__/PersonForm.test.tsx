@@ -1375,6 +1375,36 @@ describe('reasons an answer is unavailable', () => {
     ).toHaveAccessibleDescription(/^“Male” is unavailable because/);
   });
 
+  it('gives only the surrogacy as the reason Male is unavailable for a surrogate who is also a genetic parent', () => {
+    // Gina carried Ava as a surrogate, and carried Ben with Dan, both genetic
+    // parents. Male stays unavailable, so the field never says what saving
+    // it would change.
+    renderPersonForm('gina', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('gina', { name: 'Gina', sex: ['female'] }),
+        person('dan', { name: 'Dan', sex: ['male'] }),
+        person('ava', { name: 'Ava' }),
+        person('ben', { name: 'Ben' }),
+      ],
+      edges: [
+        link('gina', 'ava', 'surrogate', { carrier: true }),
+        link('gina', 'ben', 'biological', { carrier: true }),
+        link('dan', 'ben', 'biological'),
+      ],
+    });
+    const sex = screen.getByRole('radiogroup', {
+      name: /^Sex assigned at birth/,
+    });
+    const male = within(sex).getByRole('radio', { name: 'Male' });
+    expect(male).toBeDisabled();
+    expect(male).toHaveAccessibleDescription(
+      /^“Male” is unavailable because this person is recorded as having carried ava/,
+    );
+    expect(sex).not.toHaveAccessibleDescription(/if you save/i);
+    expect(sex).not.toHaveAccessibleDescription(/ben/);
+  });
+
   it('explains what a new sex at birth changes on a parent’s own panel from their point of view', async () => {
     const { user } = renderPersonForm('robert', {
       nodes: [
