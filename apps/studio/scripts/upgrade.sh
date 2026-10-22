@@ -17,6 +17,12 @@
 #   STUDIO_UPGRADE_SCHEMA_TIMEOUT        seconds for every API replica to report its
 #                                        schema ok after migrate, given twice (default 120)
 #   STUDIO_UPGRADE_POLL_INTERVAL         seconds between readiness checks (default 1)
+#   STUDIO_UPGRADE_AFTER_UP              a command run with bash in the stack directory
+#                                        after every `up -d` that replaces containers,
+#                                        such as reloading a proxy of your own; a
+#                                        failure counts as a failed step
+#   STUDIO_UPGRADE_AFTER_UP_TIMEOUT      seconds it may take before it is stopped and
+#                                        counted as failed (default 60)
 #
 # Exit codes, each also printed as the last line, `[studio-upgrade] result=<name> exit=<code>`:
 #   0  upgraded        the new images serve; web, the worker and every API
@@ -99,6 +105,9 @@ WHOLE='^(0|[1-9][0-9]*)$'
 [[ "$MAINTENANCE_TIMEOUT" =~ $WHOLE ]] || refuse "STUDIO_UPGRADE_MAINTENANCE_TIMEOUT is not a whole number of seconds: $MAINTENANCE_TIMEOUT"
 [[ "$SCHEMA_TIMEOUT" =~ $WHOLE ]] || refuse "STUDIO_UPGRADE_SCHEMA_TIMEOUT is not a whole number of seconds: $SCHEMA_TIMEOUT"
 [[ "$POLL_INTERVAL" =~ ^[0-9]+(\.[0-9]+)?$ ]] || refuse "STUDIO_UPGRADE_POLL_INTERVAL is not a number of seconds: $POLL_INTERVAL"
+AFTER_UP="${STUDIO_UPGRADE_AFTER_UP:-}"
+AFTER_UP_TIMEOUT="${STUDIO_UPGRADE_AFTER_UP_TIMEOUT:-60}"
+[[ "$AFTER_UP_TIMEOUT" =~ $WHOLE ]] || refuse "STUDIO_UPGRADE_AFTER_UP_TIMEOUT is not a whole number of seconds: $AFTER_UP_TIMEOUT"
 
 cd "$STACK_DIR" 2> /dev/null || refuse "no such directory: $STACK_DIR"
 [ -f .env ] || refuse "no .env in $(pwd)"
@@ -234,6 +243,27 @@ services_check() { # api-image web-image timeout images|ready
   done
 }
 
+after_up() {
+  [ -n "$AFTER_UP" ] || return 0
+  log "running STUDIO_UPGRADE_AFTER_UP: $AFTER_UP"
+  bash -c "$AFTER_UP" < /dev/null &
+  local hook=$! end=$((SECONDS + AFTER_UP_TIMEOUT)) code
+  while kill -0 "$hook" 2> /dev/null; do
+    if [ "$SECONDS" -ge "$end" ]; then
+      pkill -P "$hook" 2> /dev/null
+      kill "$hook" 2> /dev/null
+      wait "$hook"
+      log "STUDIO_UPGRADE_AFTER_UP did not finish within ${AFTER_UP_TIMEOUT}s and was stopped" >&2
+      return 1
+    fi
+    sleep 0.1
+  done
+  wait "$hook"
+  code=$?
+  [ "$code" -eq 0 ] || log "STUDIO_UPGRADE_AFTER_UP failed with exit $code" >&2
+  return "$code"
+}
+
 run_migrate() {
   local out code
   out="$(mktemp)" || return 1
@@ -261,13 +291,14 @@ roll_back() {
   log "restored $OLD_API_LINE"
   log "restored $OLD_WEB_LINE"
   if compose up -d web "${APIS[@]}" worker \
+    && after_up \
     && compose run --rm --no-deps api maintenance off \
     && replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK" "$MAINTENANCE_OFF" "$READY" \
     && services_check "$(env_value "$OLD_API_LINE")" "$(env_value "$OLD_WEB_LINE")" "$SCHEMA_TIMEOUT" ready; then
     log 'rolled back: the previous images serve and maintenance mode is off'
     finish 3
   fi
-  log "rollback failed: the previous images are in .env but web, the worker or an API replica is not running ready on them, or not every API replica reports its schema ok with maintenance mode off (${PENDING[*]:-see above}); maintenance mode may still be on" >&2
+  log "rollback failed: the previous images are in .env but STUDIO_UPGRADE_AFTER_UP failed, web, the worker or an API replica is not running ready on them, or not every API replica reports its schema ok with maintenance mode off (${PENDING[*]:-see above}); maintenance mode may still be on" >&2
   finish 4
 }
 
@@ -313,12 +344,16 @@ step maintenance-wait replicas_report "$MAINTENANCE_TIMEOUT" "$MAINTENANCE_ON" |
 step stop stop_drained || roll_back
 step pull compose pull || roll_back
 step up compose up -d web "${APIS[@]}" worker || roll_back
+step after-up after_up || roll_back
 step images services_check "$NEW_API" "$NEW_WEB" 0 images || roll_back
 step migrate run_migrate || roll_back
 
 if ! step schema-wait replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK"; then
   log "not ready: ${PENDING[*]:-}; recreating them once, as the guide's step 6 says"
-  if ! compose up -d "${PENDING[@]}" || ! replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK"; then
+  if ! compose up -d "${PENDING[@]}" || ! after_up; then
+    after_migrate "recreating ${PENDING[*]:-} or STUDIO_UPGRADE_AFTER_UP after it failed"
+  fi
+  if ! replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK"; then
     after_migrate "not every API replica reported its schema ok (${PENDING[*]:-})"
   fi
 fi

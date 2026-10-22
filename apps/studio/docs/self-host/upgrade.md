@@ -365,6 +365,23 @@ COMPOSE="docker compose -f docker-compose.yml -f docker-compose.override.yml" ./
 
 `./upgrade.sh --help` lists the variables that change how long it waits.
 
+If you replaced Traefik with a proxy of your own, give the script the command
+that reloads it in `STUDIO_UPGRADE_AFTER_UP`, for the reason step 4 gives. It
+runs that command with Bash in the stack directory after every `up -d` that
+replaces containers: the upgrade's own, the one that recreates a replica that
+missed the migration, and the one that puts the previous images back in a
+rollback.
+
+```bash
+STUDIO_UPGRADE_AFTER_UP='docker compose exec -T nginx nginx -s reload' ./upgrade.sh …
+```
+
+A command that exits non-zero, or runs longer than
+`STUDIO_UPGRADE_AFTER_UP_TIMEOUT` seconds (60 by default) and is stopped,
+counts as a failed step: before `migrate` has changed the database the script
+rolls back, after it, it ends as a fix-forward, and during a rollback it ends
+in 4. Traefik needs no command.
+
 Its exit code says how it ended, and so does its last line,
 `[studio-upgrade] result=<result> exit=<code>`. Every line it prints starts
 with `[studio-upgrade]`, and each step it begins is a `step=<name>` line, so a

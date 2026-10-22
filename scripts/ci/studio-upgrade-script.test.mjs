@@ -230,6 +230,81 @@ test('fixes forward after a migrate that upgraded pinned protocol versions', () 
   assert.equal(r.maintenance, 'on');
 });
 
+const AFTER_UP_LOGS = 'echo after-up >> "$STUB_STATE/calls.log"';
+const failingRun = (runs) =>
+  `n=$(cat "$STUB_STATE/hook-runs" 2>/dev/null || echo 0); n=$((n + 1)); echo $n > "$STUB_STATE/hook-runs"; echo after-up >> "$STUB_STATE/calls.log"; case " ${runs} " in *" $n "*) exit 7 ;; esac`;
+
+test('runs STUDIO_UPGRADE_AFTER_UP after up replaces containers', () => {
+  const r = upgrade(stack(), {
+    env: { STUDIO_UPGRADE_AFTER_UP: AFTER_UP_LOGS },
+  });
+  assert.equal(r.status, 0, r.output);
+  const up = SEQUENCE.indexOf('up -d web api api-b worker');
+  assert.deepEqual(r.calls, [
+    ...SEQUENCE.slice(0, up + 1),
+    'after-up',
+    ...SEQUENCE.slice(up + 1),
+  ]);
+});
+
+test('rolls back, running STUDIO_UPGRADE_AFTER_UP again, when it fails after up', () => {
+  const r = upgrade(stack(), {
+    env: { STUDIO_UPGRADE_AFTER_UP: failingRun('1') },
+  });
+  assert.equal(r.status, 3, r.output);
+  assert.match(r.output, /STUDIO_UPGRADE_AFTER_UP failed with exit 7/);
+  assert.match(r.output, /failed step=after-up before migrate/);
+  assert.equal(r.env, ENV_FILE);
+  assert.equal(r.maintenance, 'off');
+  assert.deepEqual(
+    r.calls.filter((call) => call === 'after-up' || call.startsWith('up ')),
+    [
+      'up -d web api api-b worker',
+      'after-up',
+      'up -d web api api-b worker',
+      'after-up',
+    ],
+  );
+});
+
+test('stops STUDIO_UPGRADE_AFTER_UP at its timeout and rolls back', () => {
+  const r = upgrade(stack(), {
+    env: {
+      STUDIO_UPGRADE_AFTER_UP:
+        '[ -f "$STUB_STATE/hung" ] || { touch "$STUB_STATE/hung"; sleep 120; }',
+      STUDIO_UPGRADE_AFTER_UP_TIMEOUT: '1',
+    },
+    timeout: 30_000,
+  });
+  assert.equal(r.status, 3, r.output);
+  assert.match(r.output, /did not finish within 1s and was stopped/);
+  assert.match(r.output, /failed step=after-up before migrate/);
+});
+
+test('reports a failed rollback when STUDIO_UPGRADE_AFTER_UP fails after the rollback’s up', () => {
+  const r = upgrade(stack(), {
+    env: { STUB_FAIL: 'pull', STUDIO_UPGRADE_AFTER_UP: failingRun('1') },
+  });
+  assert.equal(r.status, 4, r.output);
+  assert.match(r.output, /failed step=pull before migrate/);
+  assert.match(r.output, /rollback failed/);
+  assert.equal(r.maintenance, 'on');
+});
+
+test('fixes forward when STUDIO_UPGRADE_AFTER_UP fails after recreating a replica past migrate', () => {
+  const r = upgrade(stack({ stuck: ['api-b'] }), {
+    env: { STUDIO_UPGRADE_AFTER_UP: failingRun('2') },
+  });
+  assert.equal(r.status, 5, r.output);
+  assert.match(r.output, /failed step=schema-wait after migrate/);
+  assert.deepEqual(r.calls.slice(-3), [
+    'up -d api-b',
+    'after-up',
+    MAINTENANCE_ON,
+  ]);
+  assert.equal(r.maintenance, 'on');
+});
+
 test('uses the stack directory it is run from when no --dir is given', () => {
   const s = stack();
   const r = upgrade(s, { args: [NEW_API, NEW_WEB], cwd: s.dir });
@@ -442,6 +517,11 @@ test('refuses, changing nothing, when the arguments or the stack are wrong', () 
       [NEW_API, NEW_WEB],
       { STUDIO_UPGRADE_POLL_INTERVAL: '1s' },
       /POLL_INTERVAL is not a number/,
+    ],
+    [
+      [NEW_API, NEW_WEB],
+      { STUDIO_UPGRADE_AFTER_UP_TIMEOUT: '1m' },
+      /AFTER_UP_TIMEOUT is not a whole number/,
     ],
   ]) {
     const s = stack();
