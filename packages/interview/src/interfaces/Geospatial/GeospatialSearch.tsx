@@ -23,6 +23,7 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { interfaceMessages } from '../messages';
 import {
@@ -45,9 +46,9 @@ const searchContainerVariants = {
 const preventBlur = (e: React.MouseEvent) => e.preventDefault();
 
 /**
- * A status is the stage's own words (a search's outcome, which the stage holds
- * as `searchNoMatch` and `searchFailed`), or the one message built with a
- * place.
+ * A status is the words of a search's outcome (the protocol's
+ * `search.searchNoMatch`, or the stage's `searchFailed`), or the one message
+ * built with a place.
  */
 type SearchStatus =
   | { text: string }
@@ -60,18 +61,14 @@ export default function GeospatialSearch({
   resetKey,
   onSearchPerformed,
   className,
-  searchLabel,
-  searchNoMatch,
   searchFailed: searchFailedWording,
 }: UseGeospatialSearchProps & {
   className?: string;
-  searchLabel: LocalizedString;
-  searchNoMatch: LocalizedString;
   searchFailed: LocalizedString;
 }) {
   const intl = useAppIntl();
-  const { text: searchLabelText } = useLocalizedString(searchLabel);
-  const { text: noMatchText } = useLocalizedString(searchNoMatch);
+  const searchLabelText = intl.formatMessage(commonMessages.search);
+  const noMatchText = intl.formatMessage(runtimeMessages.noSearchMatch);
   const { text: failedText } = useLocalizedString(searchFailedWording);
   const [isOpen, setIsOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<SearchStatus | null>(null);

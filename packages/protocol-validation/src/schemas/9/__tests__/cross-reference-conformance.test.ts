@@ -117,7 +117,6 @@ describe('Cross-reference conformance', () => {
           {
             id: 'roster1',
             type: 'NameGeneratorRoster',
-            externalDataError: localized('External data could not be loaded.'),
             allAddedNotice: localized(
               'There is nothing left to add from this list.',
             ),

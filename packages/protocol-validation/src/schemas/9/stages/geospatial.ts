@@ -73,23 +73,11 @@ const geospatialWording = {
   offlineNotice: localizedString(nonBlankText(), 'plain'),
   mapUnavailable: localizedString(nonBlankText(), 'plain'),
   outsideAreasLabel: localizedString(nonBlankText(), 'plain'),
-  searchLabel: localizedString(nonBlankText(), 'plain').optional(),
-  searchNoMatch: localizedString(nonBlankText(), 'plain').optional(),
   searchFailed: localizedString(nonBlankText(), 'plain').optional(),
 };
 
 const requireGeospatialWording = (stage: StageRecord, ctx: z.RefinementCtx) =>
   requireWhenShown(stage, ctx, [
-    {
-      name: 'searchLabel',
-      when: hasMapSearch,
-      message: 'A map with a search needs a search label.',
-    },
-    {
-      name: 'searchNoMatch',
-      when: hasMapSearch,
-      message: 'A map with a search needs a no-match notice.',
-    },
     {
       name: 'searchFailed',
       when: hasMapSearch,

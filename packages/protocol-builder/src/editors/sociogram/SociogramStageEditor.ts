@@ -5,7 +5,6 @@ import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { sociogramPrompts } from './sections/prompts/sociogramPrompts.tsx';
-import { sociogramWording } from './sections/wording/sociogramWording.tsx';
 
 /**
  * The canvas a participant arranges their network on.
@@ -31,7 +30,6 @@ export const sociogramStageEditor = defineStageEditor('Sociogram', [
   sociogramPrompts(),
   background(),
   nodeLayout(),
-  sociogramWording(),
   skipLogic(),
   interviewerGuidance(),
 ]);

@@ -80,8 +80,6 @@ export const narrativeStage = baseStageSchema.extend({
       freezeAnnotations: localizedString(nonBlankText(), 'plain').optional(),
       unfreezeAnnotations: localizedString(nonBlankText(), 'plain').optional(),
       resetAnnotations: localizedString(nonBlankText(), 'plain').optional(),
-      pauseLayout: localizedString(nonBlankText(), 'plain').optional(),
-      resumeLayout: localizedString(nonBlankText(), 'plain').optional(),
     })
     .optional(),
 });

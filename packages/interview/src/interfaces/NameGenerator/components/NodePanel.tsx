@@ -9,10 +9,7 @@ import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
 import Icon from '@codaco/fresco-ui/Icon';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type {
-  LocalizedString,
-  Panel as PanelType,
-} from '@codaco/protocol-validation';
+import type { Panel as PanelType } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -25,10 +22,7 @@ import Panel from '../../../components/Panel';
 import { DynamicTextParts } from '../../../dynamicValues/DynamicText';
 import useExternalData from '../../../hooks/useExternalData';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import {
-  useLocalizedString,
-  useResolveLocalizedString,
-} from '../../../localization/ProtocolLocalizationProvider';
+import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import { getPanelNodes } from '../../../selectors/name-generator';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getStageSubject } from '../../../selectors/session';
@@ -48,7 +42,6 @@ type NodePanelProps = {
   onUpdate: (nodeCount: number, nodeIndex: Set<string>) => void;
   id: string;
   animationKey?: string | number;
-  externalDataError?: LocalizedString;
 };
 
 function NodePanel(props: NodePanelProps) {
@@ -63,9 +56,7 @@ function NodePanel(props: NodePanelProps) {
     accepts,
     animationKey,
     disableDragging,
-    externalDataError,
   } = props;
-  const resolveString = useResolveLocalizedString();
 
   const stageSubject = useStageSelector(getStageSubject);
   const { text: title, parts: titleParts } = useLocalizedString(
@@ -182,7 +173,7 @@ function NodePanel(props: NodePanelProps) {
             <AppMessage message={interfaceMessages.errorHeading} />
           </Heading>
           <Paragraph>
-            {externalDataError && resolveString(externalDataError).text}
+            <AppMessage message={interfaceMessages.externalDataError} />
           </Paragraph>
         </div>
       ) : needsPassphrase ? (

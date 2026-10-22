@@ -639,17 +639,8 @@
       "minNodesNotice": {
         "en": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
       },
-      "externalDataError": {
-        "en": "External data could not be loaded."
-      },
       "allAddedNotice": {
         "en": "There is nothing left to add from this list."
-      },
-      "searchLabel": {
-        "en": "Search"
-      },
-      "searchNoMatch": {
-        "en": "Nothing matched your search term."
       }
     },
     {
@@ -1213,12 +1204,6 @@
       "outsideAreasLabel": {
         "en": "Outside Selectable Areas"
       },
-      "searchLabel": {
-        "en": "Search"
-      },
-      "searchNoMatch": {
-        "en": "Nothing matched your search term."
-      },
       "searchFailed": {
         "en": "Search could not be completed. Try again in a moment."
       }
@@ -1384,15 +1369,7 @@
             "variable": "place_favourite"
           }
         }
-      ],
-      "tooltips": {
-        "pauseLayout": {
-          "en": "Pause automatic layout"
-        },
-        "resumeLayout": {
-          "en": "Resume automatic layout"
-        }
-      }
+      ]
     },
     {
       "id": "place_story",
@@ -1467,12 +1444,6 @@
         },
         "resetAnnotations": {
           "en": "Reset annotations"
-        },
-        "pauseLayout": {
-          "en": "Pause automatic layout"
-        },
-        "resumeLayout": {
-          "en": "Resume automatic layout"
         }
       }
     },
@@ -1791,6 +1762,12 @@
       },
       "no": {
         "en": "No"
+      },
+      "pauseLayout": {
+        "en": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en": "Resume automatic layout"
       }
     },
     "messages": {
@@ -1802,6 +1779,17 @@
       },
       "error": {
         "en": "An error occurred."
+      },
+      "externalDataError": {
+        "en": "External data could not be loaded."
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
       }
     },
     "forms": {

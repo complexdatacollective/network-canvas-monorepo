@@ -475,7 +475,6 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
     id: 'ngr1',
     label: localized('Roster'),
     type: 'NameGeneratorRoster' as const,
-    externalDataError: localized('External data could not be loaded.'),
     allAddedNotice: localized('There is nothing left to add from this list.'),
     subject: { entity: 'node' as const, type: 'person' },
     dataSource: 'roster-asset',
@@ -498,8 +497,6 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
     expect(
       nameGeneratorRosterStage.safeParse({
         ...baseStage,
-        searchLabel: localized('Search'),
-        searchNoMatch: localized('Nothing matched your search term.'),
         searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
       }).success,
     ).toBe(true);

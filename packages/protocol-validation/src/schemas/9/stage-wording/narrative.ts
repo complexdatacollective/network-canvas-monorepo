@@ -95,32 +95,6 @@ const RESET_ANNOTATIONS_TOOLTIP = {
   'zh-Hant': '清除註記',
 } as const satisfies SuppliedWording;
 
-/** The layout toggle that pauses the automatic layout (also the Sociogram's). */
-export const PAUSE_LAYOUT_TOOLTIP = {
-  'en': 'Pause automatic layout',
-  'de': 'Automatisches Layout pausieren',
-  'es': 'Pausar la disposición automática',
-  'fr': 'Suspendre la disposition automatique',
-  'it': 'Sospendi la disposizione automatica',
-  'nl': 'Automatische lay-out pauzeren',
-  'pt-BR': 'Pausar a disposição automática',
-  'zh-Hans': '暂停自动布局',
-  'zh-Hant': '暫停自動版面配置',
-} as const satisfies SuppliedWording;
-
-/** The layout toggle that resumes the automatic layout (also the Sociogram's). */
-export const RESUME_LAYOUT_TOOLTIP = {
-  'en': 'Resume automatic layout',
-  'de': 'Automatisches Layout fortsetzen',
-  'es': 'Reanudar la disposición automática',
-  'fr': 'Reprendre la disposition automatique',
-  'it': 'Riprendi la disposizione automatica',
-  'nl': 'Automatische lay-out hervatten',
-  'pt-BR': 'Retomar a disposição automática',
-  'zh-Hans': '恢复自动布局',
-  'zh-Hant': '繼續自動版面配置',
-} as const satisfies SuppliedWording;
-
 /** The presets, each a stage's view of the people and their connections. */
 const presetsOf = (stage: StageRecord): readonly StageRecord[] => {
   const presets = stage.presets;
@@ -150,10 +124,6 @@ const anyPresetHasGroups = (stage: StageRecord) =>
 
 /** The free-draw tools show only while the stage's free drawing is on. */
 const drawingIsOn = (stage: StageRecord) => behaviourIsOn(stage, 'freeDraw');
-
-/** The layout toggle shows only while the stage's automatic layout is on. */
-const layoutIsOn = (stage: StageRecord) =>
-  behaviourIsOn(stage, 'automaticLayout');
 
 /** The Narrative's settings Network Canvas words. */
 export const NARRATIVE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
@@ -192,15 +162,5 @@ export const NARRATIVE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
     path: ['tooltips', 'resetAnnotations'],
     message: RESET_ANNOTATIONS_TOOLTIP,
     when: drawingIsOn,
-  },
-  {
-    path: ['tooltips', 'pauseLayout'],
-    message: PAUSE_LAYOUT_TOOLTIP,
-    when: layoutIsOn,
-  },
-  {
-    path: ['tooltips', 'resumeLayout'],
-    message: RESUME_LAYOUT_TOOLTIP,
-    when: layoutIsOn,
   },
 ];

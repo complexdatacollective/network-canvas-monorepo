@@ -506,7 +506,6 @@ describe('generateNetwork constraint conformance', () => {
       {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
-        externalDataError: { en: 'External data could not be loaded.' },
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -1707,7 +1706,6 @@ describe('a rule between two fixed attributes', () => {
     return {
       id: 'stage-1',
       type: 'NameGeneratorRoster',
-      externalDataError: { en: 'External data could not be loaded.' },
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
@@ -2144,7 +2142,6 @@ describe('a fixed value its own rules reject', () => {
     return {
       id: 'stage-1',
       type: 'NameGeneratorRoster',
-      externalDataError: { en: 'External data could not be loaded.' },
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
@@ -2648,7 +2645,6 @@ describe('a fixed value its own rules reject', () => {
       maxNodesNotice: {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
-      externalDataError: { en: 'External data could not be loaded.' },
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
       panels: [{ id: 'panel-1', title: 'Panel', dataSource: 'asset-1' }],
@@ -3127,7 +3123,6 @@ describe('a unique value a prompt fixes', () => {
       {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
-        externalDataError: { en: 'External data could not be loaded.' },
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -3157,7 +3152,6 @@ describe('a unique value a prompt fixes', () => {
       {
         id: 'stage-fix',
         type: 'NameGeneratorRoster',
-        externalDataError: { en: 'External data could not be loaded.' },
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -3250,7 +3244,6 @@ describe('a unique value a prompt fixes', () => {
       {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
-        externalDataError: { en: 'External data could not be loaded.' },
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -3339,7 +3332,6 @@ describe('a unique value a prompt fixes', () => {
     const stage = {
       id: 'stage-roster',
       type: 'NameGeneratorRoster',
-      externalDataError: { en: 'External data could not be loaded.' },
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       minNodesNotice: {
         en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -3408,7 +3400,6 @@ describe('a unique value two roster rows share', () => {
   const rosterStage = {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
-    externalDataError: { en: 'External data could not be loaded.' },
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -3684,7 +3675,6 @@ describe('roster values held against an earlier stage', () => {
     return {
       id,
       type: 'NameGeneratorRoster',
-      externalDataError: { en: 'External data could not be loaded.' },
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       minNodesNotice: {
         en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -4037,7 +4027,6 @@ describe('two roster rows a caller gave one primary key', () => {
   const rosterStage = {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
-    externalDataError: { en: 'External data could not be loaded.' },
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',

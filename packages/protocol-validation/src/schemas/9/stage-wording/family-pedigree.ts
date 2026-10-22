@@ -325,19 +325,6 @@ const DISCONNECT_WOULD_CUT_OFF = {
     '{count, plural, other {移除這個連結會使{names}脫離您的家譜圖。請先將其與您家庭中的其他人連結。}}',
 } as const satisfies SuppliedWording;
 
-/** The answer option for a question about a family member when the participant does not know. */
-const DONT_KNOW = {
-  'en': 'Don’t know',
-  'de': 'Weiß ich nicht',
-  'es': 'No lo sé',
-  'fr': 'Je ne sais pas',
-  'it': 'Non lo so',
-  'nl': 'Weet ik niet',
-  'pt-BR': 'Não sei',
-  'zh-Hans': '不知道',
-  'zh-Hant': '不知道',
-} as const satisfies SuppliedWording;
-
 /** The title of the side panel for a family member being described or added. */
 const PANEL_TITLE = {
   'en': '{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}',
@@ -666,19 +653,6 @@ const YOU = {
   'pt-BR': 'Você',
   'zh-Hans': '您',
   'zh-Hant': '您',
-} as const satisfies SuppliedWording;
-
-/** The button that saves a family member's details. */
-const SAVE = {
-  'en': 'Save',
-  'de': 'Speichern',
-  'es': 'Guardar',
-  'fr': 'Enregistrer',
-  'it': 'Salva',
-  'nl': 'Opslaan',
-  'pt-BR': 'Salvar',
-  'zh-Hans': '保存',
-  'zh-Hant': '儲存',
 } as const satisfies SuppliedWording;
 
 /** The accessible name and tooltip of the connect tool. */
@@ -1119,19 +1093,6 @@ const ZYGOSITY_IDENTICAL = {
   'zh-Hant': '是，同卵',
 } as const satisfies SuppliedWording;
 
-/** The option that the participant does not know whether two twins are identical. */
-const ZYGOSITY_UNKNOWN = {
-  'en': 'I don’t know',
-  'de': 'Ich weiß es nicht',
-  'es': 'No lo sé',
-  'fr': 'Je ne sais pas',
-  'it': 'Non lo so',
-  'nl': 'Ik weet het niet',
-  'pt-BR': 'Não sei',
-  'zh-Hans': '我不知道',
-  'zh-Hant': '我不知道',
-} as const satisfies SuppliedWording;
-
 /** The hint under the question asking which siblings a new biological parent or donor is also the parent of, naming the siblings who share the unnamed parent they take the place of. */
 const STAND_IN_PLACE_TAKEN = {
   'en': '{anchorIsYou, select, true {{count, plural, one {{names} has the same unnamed parent as you, so this person becomes their parent too.} other {{names} have the same unnamed parent as you, so this person becomes their parent too.}}} other {{count, plural, one {{names} has the same unnamed parent as “{anchor}”, so this person becomes their parent too.} other {{names} have the same unnamed parent as “{anchor}”, so this person becomes their parent too.}}}}',
@@ -1353,7 +1314,6 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
     message: DISCONNECT_WOULD_CUT_OFF,
   },
   { path: ['wording', 'disconnectStandIn'], message: DISCONNECT_STAND_IN },
-  { path: ['wording', 'dontKnow'], message: DONT_KNOW },
   {
     path: ['wording', 'framingChoiceDescription'],
     message: FRAMING_CHOICE_DESCRIPTION,
@@ -1489,9 +1449,7 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   },
   { path: ['wording', 'zygosityFraternal'], message: ZYGOSITY_FRATERNAL },
   { path: ['wording', 'zygosityIdentical'], message: ZYGOSITY_IDENTICAL },
-  { path: ['wording', 'zygosityUnknown'], message: ZYGOSITY_UNKNOWN },
   { path: ['wording', 'you'], message: YOU },
-  { path: ['wording', 'save'], message: SAVE },
   { path: ['wording', 'connectTool'], message: CONNECT_TOOL },
   { path: ['wording', 'disconnectTool'], message: DISCONNECT_TOOL },
   {

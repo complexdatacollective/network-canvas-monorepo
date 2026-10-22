@@ -3322,20 +3322,52 @@ describe('SyntheticInterview stage wording', () => {
 
   it('writes a dotted wording name inside its group and keeps the rest', () => {
     const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const layout = person.addVariable({ name: 'layout', type: 'layout' });
     synth
-      .addStage('Sociogram', {
-        initialNodes: { count: 2 },
-        behaviours: { automaticLayout: true },
-        wording: { 'tooltips.pauseLayout': 'Hold still {now}' },
+      .addStage('Narrative', {
+        subject: { entity: 'node', type: person.id },
+        behaviours: { freeDraw: true },
+        wording: { 'tooltips.enableDrawing': 'Draw now {now}' },
       })
-      .addPrompt();
+      .addPreset({ layoutVariable: layout.id });
 
     const { stages } = expectValid(synth);
     expect(stages[0]).toMatchObject({
       tooltips: {
-        pauseLayout: { 'en-US': escapeMessageText('Hold still {now}') },
-        resumeLayout: { 'en-US': expect.any(String) },
+        enableDrawing: { 'en-US': escapeMessageText('Draw now {now}') },
+        disableDrawing: { 'en-US': expect.any(String) },
       },
     });
+  });
+});
+
+describe('SyntheticInterview interface text', () => {
+  it('holds a shared text worded the researcher’s way, and the rest as supplied', () => {
+    const synth = new SyntheticInterview();
+    synth
+      .addStage('Sociogram', {
+        initialNodes: { count: 2 },
+        behaviours: { automaticLayout: true },
+      })
+      .addPrompt();
+    synth.setInterfaceText('buttons', 'pauseLayout', 'Hold still {now}');
+
+    const protocol = synth.getProtocol();
+    expect(protocol.interfaceText?.buttons).toMatchObject({
+      pauseLayout: { 'en-US': escapeMessageText('Hold still {now}') },
+      resumeLayout: { 'en-US': 'Resume automatic layout' },
+    });
+  });
+
+  it('leaves out a shared text nothing in the protocol shows', () => {
+    const synth = new SyntheticInterview();
+    // Automatic layout off, so no pause button shows.
+    synth.addStage('Sociogram', { initialNodes: { count: 2 } }).addPrompt();
+    synth.setInterfaceText('buttons', 'pauseLayout', 'Hold still');
+
+    expect(synth.getProtocol().interfaceText?.buttons).not.toHaveProperty(
+      'pauseLayout',
+    );
   });
 });

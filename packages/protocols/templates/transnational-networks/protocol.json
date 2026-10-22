@@ -1059,18 +1059,6 @@
     },
     {
       "id": "sociogram-ties",
-      "tooltips": {
-        "pauseLayout": {
-          "en-US": "Pause automatic layout",
-          "es": "Pausar la disposición automática",
-          "hu": "Automatikus elrendezés szüneteltetése"
-        },
-        "resumeLayout": {
-          "en-US": "Resume automatic layout",
-          "es": "Reanudar la disposición automática",
-          "hu": "Automatikus elrendezés folytatása"
-        }
-      },
       "type": "Sociogram",
       "label": {
         "en-US": "How these people know each other",
@@ -1147,16 +1135,6 @@
           "en-US": "Reset annotations",
           "es": "Restablecer las anotaciones",
           "hu": "Jegyzetek visszaállítása"
-        },
-        "pauseLayout": {
-          "en-US": "Pause automatic layout",
-          "es": "Pausar la disposición automática",
-          "hu": "Automatikus elrendezés szüneteltetése"
-        },
-        "resumeLayout": {
-          "en-US": "Resume automatic layout",
-          "es": "Reanudar la disposición automática",
-          "hu": "Automatikus elrendezés folytatása"
         }
       },
       "type": "Narrative",
@@ -1356,6 +1334,16 @@
         "en-US": "No",
         "es": "No",
         "hu": "Nem"
+      },
+      "pauseLayout": {
+        "en-US": "Pause automatic layout",
+        "es": "Pausar la disposición automática",
+        "hu": "Automatikus elrendezés szüneteltetése"
+      },
+      "resumeLayout": {
+        "en-US": "Resume automatic layout",
+        "es": "Reanudar la disposición automática",
+        "hu": "Automatikus elrendezés folytatása"
       }
     },
     "messages": {

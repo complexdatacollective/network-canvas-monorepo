@@ -52,7 +52,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Prompt collection',
       'Background',
       'Node layout',
-      'Words on the canvas',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -63,7 +62,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'label',
       'prompts',
       'subject',
-      'tooltips',
     ],
   },
   {

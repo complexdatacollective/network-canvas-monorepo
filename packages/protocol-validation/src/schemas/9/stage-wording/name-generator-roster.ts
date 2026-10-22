@@ -2,16 +2,8 @@ import type {
   SuppliedStageSetting,
   SuppliedWording,
 } from '../supplied-stage-setting.ts';
-import {
-  hasMaximumNodes,
-  hasMinimumNodes,
-  hasRosterSearch,
-} from './conditions.ts';
-import {
-  EXTERNAL_DATA_ERROR,
-  MAX_NODES_NOTICE,
-  MIN_NODES_NOTICE,
-} from './name-generator.ts';
+import { hasMaximumNodes, hasMinimumNodes } from './conditions.ts';
+import { MAX_NODES_NOTICE, MIN_NODES_NOTICE } from './name-generator.ts';
 
 /**
  * The heading above the people a Name Generator Roster offers, in each
@@ -42,32 +34,6 @@ const ALL_ADDED_NOTICE = {
   'zh-Hant': '此清單中已沒有可新增的內容。',
 } as const satisfies SuppliedWording;
 
-/** The search box's placeholder, and its accessible name. */
-const SEARCH_LABEL = {
-  'en': 'Search',
-  'de': 'Suchen',
-  'es': 'Buscar',
-  'fr': 'Rechercher',
-  'it': 'Cerca',
-  'nl': 'Zoeken',
-  'pt-BR': 'Buscar',
-  'zh-Hans': '搜索',
-  'zh-Hant': '搜尋',
-} as const satisfies SuppliedWording;
-
-/** The notice when a search matches nothing. */
-const SEARCH_NO_MATCH = {
-  'en': 'Nothing matched your search term.',
-  'de': 'Keine Treffer für Ihren Suchbegriff.',
-  'es': 'No hay resultados que coincidan con tu búsqueda.',
-  'fr': 'Aucun résultat ne correspond à votre recherche.',
-  'it': 'Nessun risultato per il termine cercato.',
-  'nl': 'Niets gevonden voor je zoekterm.',
-  'pt-BR': 'Nenhum resultado corresponde ao termo buscado.',
-  'zh-Hans': '没有与您的搜索词匹配的结果。',
-  'zh-Hant': '找不到符合搜尋字詞的結果。',
-} as const satisfies SuppliedWording;
-
 /** The Name Generator for Roster Data's settings Network Canvas words. */
 export const NAME_GENERATOR_ROSTER_SUPPLIED_TEXT: readonly SuppliedStageSetting[] =
   [
@@ -82,12 +48,5 @@ export const NAME_GENERATOR_ROSTER_SUPPLIED_TEXT: readonly SuppliedStageSetting[
       message: MAX_NODES_NOTICE,
       when: hasMaximumNodes,
     },
-    { path: ['externalDataError'], message: EXTERNAL_DATA_ERROR },
     { path: ['allAddedNotice'], message: ALL_ADDED_NOTICE },
-    { path: ['searchLabel'], message: SEARCH_LABEL, when: hasRosterSearch },
-    {
-      path: ['searchNoMatch'],
-      message: SEARCH_NO_MATCH,
-      when: hasRosterSearch,
-    },
   ];

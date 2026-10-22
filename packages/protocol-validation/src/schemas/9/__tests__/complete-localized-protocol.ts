@@ -289,7 +289,6 @@ export const completeProtocol = () => ({
       maxNodesNotice: localized(
         'You have completed this task. Click the next arrow to continue.',
       ),
-      externalDataError: localized('External data could not be loaded.'),
       panels: [
         {
           id: 'panel',
@@ -316,7 +315,6 @@ export const completeProtocol = () => ({
     {
       id: 'roster',
       type: 'NameGeneratorRoster',
-      externalDataError: localized('External data could not be loaded.'),
       allAddedNotice: localized('There is nothing left to add from this list.'),
       label: localized('Roster'),
       subject: { entity: 'node', type: 'person' },
@@ -329,8 +327,6 @@ export const completeProtocol = () => ({
       maxNodesNotice: localized(
         'You have completed this task. Click the next arrow to continue.',
       ),
-      searchLabel: localized('Search'),
-      searchNoMatch: localized('Nothing matched your search term.'),
       searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
       cardOptions: {
         additionalProperties: [
@@ -349,10 +345,6 @@ export const completeProtocol = () => ({
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 3 },
       behaviours: { automaticLayout: true },
-      tooltips: {
-        pauseLayout: localized('Pause automatic layout'),
-        resumeLayout: localized('Resume automatic layout'),
-      },
       prompts: [
         {
           id: 'p1',
@@ -516,8 +508,6 @@ export const completeProtocol = () => ({
         freezeAnnotations: localized('Freeze annotations'),
         unfreezeAnnotations: localized('Unfreeze annotations'),
         resetAnnotations: localized('Reset annotations'),
-        pauseLayout: localized('Pause automatic layout'),
-        resumeLayout: localized('Resume automatic layout'),
       },
     },
     {
@@ -558,8 +548,6 @@ export const completeProtocol = () => ({
         targetFeatureProperty: 'name',
         allowSearch: true,
       },
-      searchLabel: localized('Search'),
-      searchNoMatch: localized('Nothing matched your search term.'),
       searchFailed: localized(
         'Search could not be completed. Try again in a moment.',
       ),

@@ -723,10 +723,6 @@
           "en": "{childIsYou, select, true {“{standIn}” stands in for a parent of yours who has not been added yet, so this connection cannot be removed. Add that parent to you instead, and they will take this place.} other {“{standIn}” stands in for a parent of “{child}” who has not been added yet, so this connection cannot be removed. Add that parent to “{child}” instead, and they will take this place.}}",
           "es": "{childIsYou, select, true {«{standIn}» ocupa el lugar de uno de tus progenitores que aún no se ha añadido, así que esta conexión no se puede eliminar. En su lugar, añade a ese progenitor para ti y ocupará este lugar.} other {«{standIn}» ocupa el lugar de un progenitor de «{child}» que aún no se ha añadido, así que esta conexión no se puede eliminar. En su lugar, añade a ese progenitor para «{child}» y ocupará este lugar.}}"
         },
-        "dontKnow": {
-          "en": "Don’t know",
-          "es": "No lo sé"
-        },
         "genderIdentityLabel": {
           "en": "Gender identity",
           "es": "Identidad de género"
@@ -935,17 +931,9 @@
           "en": "Yes, identical",
           "es": "Sí, idénticos"
         },
-        "zygosityUnknown": {
-          "en": "I don’t know",
-          "es": "No lo sé"
-        },
         "you": {
           "en": "You",
           "es": "Tú"
-        },
-        "save": {
-          "en": "Save",
-          "es": "Guardar"
         },
         "connectTool": {
           "en": "Connect",
@@ -1061,6 +1049,14 @@
       "no": {
         "en": "No",
         "es": "No"
+      },
+      "save": {
+        "en": "Save",
+        "es": "Guardar"
+      },
+      "dontKnow": {
+        "en": "Don’t know",
+        "es": "No lo sé"
       }
     },
     "messages": {
