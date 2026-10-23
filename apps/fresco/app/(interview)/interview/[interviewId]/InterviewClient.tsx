@@ -2,7 +2,7 @@
 
 import { parseAsInteger, useQueryState } from 'nuqs';
 import { posthog } from 'posthog-js';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   Shell,
@@ -11,13 +11,15 @@ import {
   type InterviewAnalyticsMetadata,
   type InterviewPayload,
   type StepChangeHandler,
-  type SyncHandler,
 } from '@codaco/interview';
 import type { InterviewCatalog } from '@codaco/interview/catalog';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 
-import { createInterviewSyncHandler } from './createInterviewSyncHandler';
+import {
+  createInterviewSyncHandler,
+  type InterviewSyncHandler,
+} from './createInterviewSyncHandler';
 import type { InterviewView } from './mapInterviewPayload';
 
 type Props = {
@@ -35,7 +37,10 @@ type Props = {
 // The completed view is built from a payload with an empty network, so it must
 // never write anything back: a sync would replace the stored network with that
 // empty one.
-const discardSync: SyncHandler = () => Promise.resolve();
+const discardSync: InterviewSyncHandler = Object.assign(
+  () => Promise.resolve(),
+  { setCurrentStep: () => undefined },
+);
 
 export default function InterviewClient({
   payload,
@@ -53,13 +58,8 @@ export default function InterviewClient({
     parseAsInteger.withDefault(initialStep).withOptions({ history: 'push' }),
   );
 
-  // Refs let onSync read the latest values even though the package's sync
-  // middleware captures the handler once at store creation time.
-  const currentStepRef = useRef(currentStep);
-  useEffect(() => {
-    currentStepRef.current = currentStep;
-  }, [currentStep]);
-
+  // The package captures its handlers once, at store creation, so the asset
+  // handler reads the latest URLs through a ref.
   const assetUrlsRef = useRef(assetUrls);
   useEffect(() => {
     assetUrlsRef.current = assetUrls;
@@ -72,7 +72,12 @@ export default function InterviewClient({
     [setCurrentStep],
   );
 
-  const onSync = useMemo<SyncHandler>(
+  // The step a handler starts from. Later steps are reported to it by the
+  // effect below; this covers the writes a handler issues before that effect
+  // first runs, such as from the Shell's own effects, which run before ours.
+  const [stepAtMount] = useState(currentStep);
+
+  const onSync = useMemo<InterviewSyncHandler>(
     () =>
       view === 'completed'
         ? discardSync
@@ -80,13 +85,23 @@ export default function InterviewClient({
             interviewId: payload.session.id,
             initialSyncRevision,
             protocolHash: payload.protocol.hash,
-            // Read through the ref, not the render's value: the memo runs once, and
-            // the step a write should record is the one in force when it goes on
-            // the wire.
-            getCurrentStep: () => currentStepRef.current,
+            initialStep: stepAtMount,
           }),
-    [view, payload.session.id, payload.protocol.hash, initialSyncRevision],
+    [
+      view,
+      payload.session.id,
+      payload.protocol.hash,
+      initialSyncRevision,
+      stepAtMount,
+    ],
   );
+
+  // The package's sync middleware captures the handler once, at store
+  // creation, so the handler is told each new step rather than rebuilt with
+  // it; a write records whichever step is in force when it goes on the wire.
+  useEffect(() => {
+    onSync.setCurrentStep(currentStep);
+  }, [onSync, currentStep]);
 
   // Once this resolves the Shell shows the interview's completed state in
   // place, so there is nothing to navigate to. A refused finish throws, which

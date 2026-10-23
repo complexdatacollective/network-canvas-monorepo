@@ -258,32 +258,38 @@ const SidebarLink = ({
   );
 };
 
-const renderSidebarItem = (
-  item: TSidebarFolder | SidebarPage,
-  locale: Locale,
-  sidebarContainerRef: RefObject<HTMLDivElement | null>,
-  section: Section,
-  sectionSourceFile: string | undefined,
-) => {
+const SidebarItem = ({
+  item,
+  locale,
+  sidebarContainerRef,
+  section,
+  sectionSourceFile,
+}: {
+  item: TSidebarFolder | SidebarPage;
+  locale: Locale;
+  sidebarContainerRef: RefObject<HTMLDivElement | null>;
+  section: Section;
+  sectionSourceFile: string | undefined;
+}) => {
   if (item.type === 'folder') {
     const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
     const sortedChildren = sortSidebarItems(Object.values(item.children));
     return (
       <SidebarFolder
-        key={item.label}
         label={item.label}
         alwaysOpen={item.expanded}
         href={sourceFile}
       >
-        {sortedChildren.map((child) =>
-          renderSidebarItem(
-            child,
-            locale,
-            sidebarContainerRef,
-            section,
-            sectionSourceFile,
-          ),
-        )}
+        {sortedChildren.map((child) => (
+          <SidebarItem
+            key={child.label}
+            item={child}
+            locale={locale}
+            sidebarContainerRef={sidebarContainerRef}
+            section={section}
+            sectionSourceFile={sectionSourceFile}
+          />
+        ))}
       </SidebarFolder>
     );
   }
@@ -303,7 +309,6 @@ const renderSidebarItem = (
   return (
     <SidebarLink
       sidebarContainerRef={sidebarContainerRef}
-      key={item.label}
       href={href}
       label={item.label}
     />
@@ -367,15 +372,16 @@ export function Sidebar({ className }: { className?: string }) {
 
   return shell(
     <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
-      {sortedSidebarItems.map((item) =>
-        renderSidebarItem(
-          item,
-          locale,
-          sidebarContainerRef,
-          section,
-          sectionData.sourceFile,
-        ),
-      )}
+      {sortedSidebarItems.map((item) => (
+        <SidebarItem
+          key={item.label}
+          item={item}
+          locale={locale}
+          sidebarContainerRef={sidebarContainerRef}
+          section={section}
+          sectionSourceFile={sectionData.sourceFile}
+        />
+      ))}
     </div>,
   );
 }

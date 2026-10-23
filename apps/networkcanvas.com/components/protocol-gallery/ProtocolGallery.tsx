@@ -2,7 +2,7 @@
 
 import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
@@ -62,7 +62,12 @@ export function ProtocolGallery({
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const [sort, setSort] = useState<SortId>('newest');
-  const [resultCount, setResultCount] = useState(protocols.length);
+  // What the Collection last reported for a search. It reports only for a
+  // non-empty query, and the count is cleared whenever the query is, so a new
+  // search never shows the count of an earlier one before its own arrives.
+  const [searchResultCount, setSearchResultCount] = useState<number | null>(
+    null,
+  );
   const prefersReducedMotion = useReducedMotion();
 
   const fieldOptions = useMemo(
@@ -94,17 +99,15 @@ export function ProtocolGallery({
     [],
   );
 
-  useEffect(() => {
-    if (query.trim().length === 0) {
-      setResultCount(filteredProtocols.length);
-    }
-  }, [filteredProtocols, query]);
+  const isSearching = query.trim().length > 0;
+  if (!isSearching && searchResultCount !== null) setSearchResultCount(null);
+  const resultCount = isSearching
+    ? (searchResultCount ?? filteredProtocols.length)
+    : filteredProtocols.length;
 
   const activeSort = sortRules[sort];
   const hasActiveFilters =
-    query.trim().length > 0 ||
-    selectedFields.length > 0 ||
-    selectedEdges.length > 0;
+    isSearching || selectedFields.length > 0 || selectedEdges.length > 0;
   const clearFilters = () => {
     setQuery('');
     setSelectedFields([]);
@@ -169,7 +172,7 @@ export function ProtocolGallery({
               filterFuseOptions={galleryFuseOptions}
               filterDebounceMs={150}
               onFilterResultsChange={(_, matchCount) =>
-                setResultCount(matchCount)
+                setSearchResultCount(matchCount)
               }
               sortBy={activeSort.property}
               sortDirection={activeSort.direction}

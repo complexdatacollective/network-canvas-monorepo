@@ -61,13 +61,8 @@ export default function InterviewClient({
     parseAsInteger.withDefault(initialStep).withOptions({ history: 'push' }),
   );
 
-  // Refs let onSync read the latest values even though the package's sync
-  // middleware captures the handler once at store creation time.
-  const currentStepRef = useRef(currentStep);
-  useEffect(() => {
-    currentStepRef.current = currentStep;
-  }, [currentStep]);
-
+  // The package captures its handlers once, at store creation, so the asset
+  // handler reads the latest URLs through a ref.
   const assetUrlsRef = useRef(assetUrls);
   useEffect(() => {
     assetUrlsRef.current = assetUrls;
@@ -80,18 +75,27 @@ export default function InterviewClient({
     [setCurrentStep],
   );
 
+  // The step a handler starts from. Later steps are reported to it by the
+  // effect below; this covers the writes a handler issues before that effect
+  // first runs, such as from the Shell's own effects, which run before ours.
+  const [stepAtMount] = useState(currentStep);
+
   const onSync = useMemo(
     () =>
       createInterviewSyncHandler({
         interviewId: payload.session.id,
         initialSyncRevision,
-        // Read through the ref, not the render's value: the memo runs once, and
-        // the step a write should record is the one in force when it goes on
-        // the wire.
-        getCurrentStep: () => currentStepRef.current,
+        initialStep: stepAtMount,
       }),
-    [payload.session.id, initialSyncRevision],
+    [payload.session.id, initialSyncRevision, stepAtMount],
   );
+
+  // The package's sync middleware captures the handler once, at store
+  // creation, so the handler is told each new step rather than rebuilt with
+  // it; a write records whichever step is in force when it goes on the wire.
+  useEffect(() => {
+    onSync.setCurrentStep(currentStep);
+  }, [onSync, currentStep]);
 
   const [finished, setFinished] = useState(false);
 
