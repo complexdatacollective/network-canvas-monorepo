@@ -174,7 +174,7 @@ catalog:
   tsx: ^4.23.15
   typescript: ^7.0.2
   uuid: ^14.0.2
-  vite: ^8.3.1
+  vite: ^8.3.5
   vite-plugin-dts: ^5.1.1
   vitest: ^5.0.4
   wrangler: ^4.144.0
@@ -327,6 +327,24 @@ minimumReleaseAgeExclude:
   - '@next/third-parties@16.3.8'
   - 'better-auth@1.7.5'
   - 'electron@43.7.7'
+  - '@oxc-project/types@0.154.0'
+  - '@rolldown/binding-android-arm-eabi@1.2.14'
+  - '@rolldown/binding-android-arm64@1.2.14'
+  - '@rolldown/binding-darwin-arm64@1.2.14'
+  - '@rolldown/binding-darwin-x64@1.2.14'
+  - '@rolldown/binding-freebsd-x64@1.2.14'
+  - '@rolldown/binding-linux-arm-gnueabihf@1.2.14'
+  - '@rolldown/binding-linux-arm64-gnu@1.2.14'
+  - '@rolldown/binding-linux-arm64-musl@1.2.14'
+  - '@rolldown/binding-linux-ppc64-gnu@1.2.14'
+  - '@rolldown/binding-linux-s390x-gnu@1.2.14'
+  - '@rolldown/binding-linux-x64-gnu@1.2.14'
+  - '@rolldown/binding-linux-x64-musl@1.2.14'
+  - '@rolldown/binding-openharmony-arm64@1.2.14'
+  - '@rolldown/binding-win32-arm64-msvc@1.2.14'
+  - '@rolldown/binding-win32-x64-msvc@1.2.14'
+  - 'rolldown@1.2.14'
+  - 'vite@8.3.5'
 patchedDependencies:
   # The addon applies a story's `viewport` parameter by importing `page` from
   # `@vitest/browser/context`, an entry point Vitest 5 no longer serves to a
