@@ -1,7 +1,7 @@
 'use client';
 
 import { MotionConfig, MotionGlobalConfig } from 'motion/react';
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useInsertionEffect } from 'react';
 
 declare global {
   // Base UI checks this flag before waiting for CSS animations to finish.
@@ -59,19 +59,24 @@ export function AnimationProvider({
     disableAnimations ||
     (disableAnimationsForAutomation && isAutomatedVisualHost());
 
-  // This must happen synchronously, before descendants mount and register Base
-  // UI transition callbacks. Automated hosts are long-lived and only move from
-  // animations enabled to disabled, so intentionally keep both flags sticky.
+  // This must happen before any descendant's layout or passive effects, which
+  // is where Motion starts animations and where Base UI's transition callbacks
+  // run — so an insertion effect, which React runs ahead of every layout
+  // effect in the commit, descendants' included. Render-time readers inside
+  // the provider get the same answer from `MotionConfig` below. Automated
+  // hosts are long-lived and only move from animations enabled to disabled,
+  // so intentionally keep both flags sticky.
   //
   // `MotionConfig`'s `skipAnimations` below is not enough for Motion on its
   // own: layout and `layoutId` animations run in Motion's projection engine,
   // which reads only the global flag. Without it a dialog opened from a row
   // that shares its `layoutId` still crossfades in, at an opacity an a11y
   // check reads as failed contrast.
-  if (animationsDisabled) {
+  useInsertionEffect(() => {
+    if (!animationsDisabled) return;
     globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
     MotionGlobalConfig.skipAnimations = true;
-  }
+  }, [animationsDisabled]);
 
   return (
     <MotionConfig
