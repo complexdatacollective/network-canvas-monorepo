@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
+import { EffectDrizzleQueryError } from 'drizzle-orm/effect-core';
 import { Cause, Effect, Exit, Option, Redacted } from 'effect';
 import { describe, expect } from 'vitest';
 
@@ -274,8 +275,25 @@ describe.skipIf(!testDb)('the secret stores', () => {
 
           expect(bare).not.toBe('no failure');
           expect(published).not.toBe('no failure');
-          expect(bare).toContain(marker);
+          // drizzle leaves the bound values off its error unless the client
+          // sets `paramsInErrors`, which Studio's never does.
+          expect(bare).not.toContain(marker);
           expect(published).not.toContain(marker);
+
+          // Were they on it, the published failure would still drop them.
+          const carrying = new EffectDrizzleQueryError({
+            query: 'insert into "webhook_subscriptions" values ($1)',
+            params: [ciphertext],
+            cause: Cause.fail(new Error('refused')),
+          });
+          expect(
+            messageOf(yield* Effect.exit(Effect.fail(carrying))),
+          ).toContain(marker);
+          expect(
+            messageOf(
+              yield* Effect.exit(Effect.fail(carrying).pipe(sqlErrorsOnly)),
+            ),
+          ).not.toContain(marker);
         }).pipe(Effect.orDie),
       );
 

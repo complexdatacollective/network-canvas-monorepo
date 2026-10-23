@@ -50,9 +50,11 @@ describe('the /rpc body bound', () => {
       (error: unknown) => ({ refused: error }),
     );
 
-  it('stops reading a /rpc body over the bound', async () => {
+  // The listener stops reading at the bound and answers 413; with this much
+  // body left unread it closes the connection rather than draining it.
+  it('answers 413 to a /rpc body over the bound', async () => {
     const oversized = await post('status', null, OVERSIZED);
-    expect(oversized).toHaveProperty('refused');
+    expect(oversized).toMatchObject({ status: 413 });
 
     const normal = await post('status', null, 0);
     expect(normal).toMatchObject({ status: 200 });
@@ -66,7 +68,7 @@ describe('the /rpc body bound', () => {
     const payload = { teamId: 'any-team' };
     sessionLookups = 0;
     const oversized = await post('studies.list', payload, OVERSIZED);
-    expect(oversized).toHaveProperty('refused');
+    expect(oversized).toMatchObject({ status: 413 });
     expect(sessionLookups).toBe(0);
 
     const normal = await post('studies.list', payload, 0);

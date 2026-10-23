@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { describe, expect, it } from '@effect/vitest';
 import { Cause, Console, Effect, Layer, Metric, Redacted } from 'effect';
 import { FetchHttpClient } from 'effect/http';
+import { Statement } from 'effect/sql';
 
 import { POSTHOG_API_KEY } from '@codaco/shared-consts';
 
@@ -79,14 +80,18 @@ const exercise = Effect.gen(function* () {
     Effect.withSpan('failing probe'),
     Effect.ignore,
   );
+  // What @effect/sql-pg sets on every statement, under the name its clients
+  // derive from them: the database, which is infrastructure too.
+  const database = {
+    'db.system.name': 'postgresql',
+    'db.namespace': 'studio_production',
+    'server.address': 'studio-db.internal.example.org',
+    'server.port': 5432,
+  };
   yield* Effect.void.pipe(
-    Effect.withSpan('sql.execute', {
+    Effect.withSpan(Statement.spanName(Object.entries(database)), {
       kind: 'client',
-      attributes: {
-        'server.address': 'studio-db.internal.example.org',
-        'db.namespace': 'studio_production',
-        'db.query.text': 'select 1',
-      },
+      attributes: { ...database, 'db.query.text': 'select 1' },
     }),
   );
   yield* Metric.update(Metric.gauge('studio_test_probe'), 1);

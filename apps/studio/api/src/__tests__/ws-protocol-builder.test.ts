@@ -1126,7 +1126,7 @@ describe.skipIf(!testDb || !env.auth)(
       expect(crossSite.exit).toBeUndefined();
     });
 
-    it('stops reading a /rpc/protocol-builder body over the bound', async () => {
+    it('answers 413 to a /rpc/protocol-builder body over the bound', async () => {
       const bounded = await startStudioServer(
         { ...env, deploymentMode: 'self-hosted' },
         studio,
@@ -1152,7 +1152,7 @@ describe.skipIf(!testDb || !env.auth)(
         );
       try {
         const oversized = await post({ cookie: cookieOf(ADA) }, 1024 * 1024);
-        expect(oversized).toHaveProperty('refused');
+        expect(oversized).toMatchObject({ status: 413 });
 
         const normal = await post({ cookie: cookieOf(ADA) }, 0);
         expect(normal).toMatchObject({ status: 200 });
