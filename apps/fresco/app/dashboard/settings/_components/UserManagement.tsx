@@ -463,6 +463,17 @@ type UserManagementProps = {
   twoFactorRequired: boolean;
 };
 
+// Reads a text field out of a submitted form's values. The forms require each
+// of their fields, so a missing or non-text value reads as an empty string and
+// fails the same checks an empty field does.
+function readString(values: unknown, key: string): string {
+  const value =
+    typeof values === 'object' && values !== null && key in values
+      ? Reflect.get(values, key)
+      : undefined;
+  return typeof value === 'string' ? value : '';
+}
+
 function makeUserColumns(
   intl: IntlShape,
   currentUserId: string,
@@ -793,11 +804,9 @@ export default function UserManagement({
   ): Promise<FormSubmissionResult> => {
     setError(null);
 
-    const { username, password, confirmPassword } = values as {
-      username: string;
-      password: string;
-      confirmPassword: string;
-    };
+    const username = readString(values, 'username');
+    const password = readString(values, 'password');
+    const confirmPassword = readString(values, 'confirmPassword');
 
     if (password !== confirmPassword) {
       return {
@@ -823,11 +832,9 @@ export default function UserManagement({
   const handleChangePassword = async (
     values: unknown,
   ): Promise<FormSubmissionResult> => {
-    const { currentPassword, newPassword, confirmNewPassword } = values as {
-      currentPassword: string;
-      newPassword: string;
-      confirmNewPassword: string;
-    };
+    const currentPassword = readString(values, 'currentPassword');
+    const newPassword = readString(values, 'newPassword');
+    const confirmNewPassword = readString(values, 'confirmNewPassword');
 
     if (newPassword !== confirmNewPassword) {
       return {
@@ -861,7 +868,7 @@ export default function UserManagement({
   const handleSwitchToPasskey = async (
     values: unknown,
   ): Promise<FormSubmissionResult> => {
-    const { currentPassword } = values as { currentPassword: string };
+    const currentPassword = readString(values, 'currentPassword');
 
     const { error: genError, data } = await generateRegistrationOptions();
     if (genError || !data) {
@@ -945,10 +952,8 @@ export default function UserManagement({
   const handleSwitchToPassword = async (
     values: unknown,
   ): Promise<FormSubmissionResult> => {
-    const { newPassword, confirmNewPassword } = values as {
-      newPassword: string;
-      confirmNewPassword: string;
-    };
+    const newPassword = readString(values, 'newPassword');
+    const confirmNewPassword = readString(values, 'confirmNewPassword');
 
     if (newPassword !== confirmNewPassword) {
       return {

@@ -103,4 +103,5 @@ export type RateLimitSettings = Readonly<Record<RateLimitScope, RateLimitRule>>;
  * from the table rather than written beside it, so the table stays the only
  * list of what Studio limits.
  */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys over the `as const` RATE_LIMITS table this module defines returns exactly its keys
 export const RATE_LIMIT_SCOPES = Object.keys(RATE_LIMITS) as RateLimitScope[];

@@ -96,6 +96,7 @@ export function getCompatibility(
     return null;
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- APPS is a const object defined in this file, so its entries are exactly [AppId, app] pairs
   const apps = (Object.entries(APPS) as [AppId, (typeof APPS)[AppId]][]).map(
     ([id, app]) => ({
       id,

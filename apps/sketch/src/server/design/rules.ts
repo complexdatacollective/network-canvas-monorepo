@@ -38,6 +38,19 @@ export type NAttribute = Omit<DesignAttribute, 'kind'> & {
   kind: AttributeKind | 'location';
 };
 
+/** The parts of an attribute that resolveCondition reads. */
+export type ConditionTarget = Pick<
+  NAttribute,
+  'kind' | 'options' | 'optionScores'
+>;
+
+/** The built-in name every node has: free text, so conditions on it compare words. */
+export const NAME_CONDITION_TARGET: ConditionTarget = {
+  kind: 'text',
+  options: [],
+  optionScores: [],
+};
+
 export const slug = (s: string): string => {
   const out = s
     .normalize('NFKD')
@@ -226,7 +239,7 @@ const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export const resolveCondition = (
   entity: 'ego' | 'node' | 'edge',
   typeId: string,
-  a: NAttribute | undefined,
+  a: ConditionTarget | undefined,
   attributeId: string,
   operator: Operator,
   rawValue: string,

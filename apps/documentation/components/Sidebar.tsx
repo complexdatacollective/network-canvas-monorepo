@@ -14,18 +14,21 @@ import {
 } from 'react';
 
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type {
-  Locale,
-  Section,
-  SidebarPage,
-  TSideBar,
-  SidebarFolder as TSidebarFolder,
+import {
+  type Locale,
+  type Section,
+  type SidebarPage,
+  toLocale,
+  toSection,
+  type TSideBar,
+  type SidebarFolder as TSidebarFolder,
 } from '~/app/types';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '~/components/ui/collapsible';
+import { routing } from '~/lib/i18n/routing';
 
 const PATH_SEPARATOR_REGEX = /[\\/]/;
 
@@ -331,9 +334,9 @@ const SidebarItem = ({
 
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
-  const locale = useLocale() as Locale;
+  const locale = toLocale(useLocale()) ?? routing.defaultLocale;
   const segments = pathname.split('/');
-  const section = segments[2] as Section | undefined;
+  const section = toSection(segments[2]);
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -341,6 +344,7 @@ export function Sidebar({ className }: { className?: string }) {
   useEffect(() => {
     fetch('/sidebar.json')
       .then((res) => res.json())
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- sidebar.json is written by writeSidebarJson.ts in the TSideBar shape; a strict parse here would reject the partial trees this component deliberately tolerates (see Sidebar.test.tsx)
       .then((data) => setSidebarData(data as TSideBar))
       .catch((error) => {
         // A truncated or missing sidebar.json leaves nothing to navigate with.

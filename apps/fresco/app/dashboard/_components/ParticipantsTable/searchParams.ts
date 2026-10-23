@@ -18,12 +18,17 @@ export const searchParamsParsers = {
   q: parseAsString,
 };
 
-export const searchParamsUrlKeys = Object.fromEntries(
-  Object.keys(searchParamsParsers).map((k) => [
-    k,
-    `${PARTICIPANTS_PREFIX}_${k}`,
-  ]),
-) as Record<keyof typeof searchParamsParsers, string>;
+// Spelled out so the compiler checks it names every parser.
+export const searchParamsUrlKeys: Record<
+  keyof typeof searchParamsParsers,
+  string
+> = {
+  page: `${PARTICIPANTS_PREFIX}_page`,
+  perPage: `${PARTICIPANTS_PREFIX}_perPage`,
+  sort: `${PARTICIPANTS_PREFIX}_sort`,
+  sortField: `${PARTICIPANTS_PREFIX}_sortField`,
+  q: `${PARTICIPANTS_PREFIX}_q`,
+};
 
 export const searchParamsCache = createSearchParamsCache(searchParamsParsers, {
   urlKeys: searchParamsUrlKeys,
