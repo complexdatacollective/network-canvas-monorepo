@@ -52,6 +52,11 @@ updates:
     exclude-paths:
       - 'apps/architect-classic/**'
       - 'apps/interviewer-classic/**'
+    # @types/node follows the Node runtime (.nvmrc), not the newest types: a
+    # major ahead describes APIs the runtime does not have. Move it with Node.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: 'github-actions'
     directory: '/'
