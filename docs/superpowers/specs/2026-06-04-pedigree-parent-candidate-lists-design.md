@@ -119,7 +119,7 @@ aunt/uncle or grandparent be selected as the adoptive parent.
 - **Define parents:** the genetic egg/sperm portion adopts the same
   `BioTriadStep` + candidate-list model as add-child (target = the focal node A,
   whose parents are being created), using `geneticParentCandidates(A,
-'define-parents', …)`, and produces parents via the `buildChildParentage`
+  'define-parents', …)`, and produces parents via the `buildChildParentage`
   helper targeting A. The carrier / other-parents / partnership steps are
   preserved. (This is the largest sub-change, replacing the "Generic" new-person
   egg/sperm steps and the `egoCellTransform`-for-a-focal-node path for this

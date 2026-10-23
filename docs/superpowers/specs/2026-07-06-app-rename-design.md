@@ -88,7 +88,7 @@ never bare-word substring swaps**, because of overlapping strings (see Hazards).
      version error ("Upgrade the protocol using **Architect**, and try importing it
      again") keeps "Architect" unqualified — it directs users to the current Architect,
      not the classic one. (b) The new apps' PWA `manifest.name` (`Network Canvas
-Architect` / `Network Canvas Interviewer`) is already correct and stays as-is;
+     Architect` / `Network Canvas Interviewer`) is already correct and stays as-is;
      only `<title>` and headings that literally contain "Web"/"8"/"v8" change.
 6. **PWA runtime keys (interviewer only, clean break):** IndexedDB name
    (`super('interviewer-v8')`), vault storage key (`interviewer-v8:vault` + export),

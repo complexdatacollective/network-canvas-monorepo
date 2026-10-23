@@ -134,7 +134,7 @@ provides them).
   parent has a **non-`unknown` status** for a shown disease (a transmitting
   ancestor); F is always highlighted. Highlighted edges connect two highlighted
   nodes (unchanged rule). Provide a unit-tested `computeContributors(focalId,
-graph, statusesByDisease)`.
+  graph, statusesByDisease)`.
 - A **"Clear focus"** control (visible when a focal is set) returns to the full
   pedigree. The focal node itself is visually emphasised (Node `selected`/
   `highlighted`), not merely "un-dimmed".

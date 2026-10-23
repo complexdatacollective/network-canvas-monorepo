@@ -173,12 +173,12 @@ way.
 job with:
 
 - `lint` (`//#lint`), `knip` (`//#knip`), `check-changesets` (`pnpm
-check:changesets`), `test-scripts` (`pnpm test:scripts`) — **no build
+  check:changesets`), `test-scripts` (`pnpm test:scripts`) — **no build
   dependency**, start at t=0 in parallel.
 - `build` (`turbo run build`) → `test` and `typecheck`, each `needs: build` so
   they reuse its cache.
 - **`quality` aggregator** — `needs: [lint, knip, check-changesets,
-test-scripts, build, test, typecheck]`, succeeds iff all succeed (using
+  test-scripts, build, test, typecheck]`, succeeds iff all succeed (using
   `if: always()` + an explicit result check so a skipped/failed dependency fails
   the aggregate rather than silently passing). **This is the single required
   queue check**, and the single thing every push-time deploy/release job used to

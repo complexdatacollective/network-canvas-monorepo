@@ -312,7 +312,7 @@ in full. Non-negotiables from its revision + executor's notes:
 - Stale `*.tsbuildinfo` replays diagnostics from OLD configs — the signature
   is `--showConfig` showing a lib present while tsc denies it; delete them.
   Stale pnpm state: `rm node_modules/.pnpm-workspace-state-v1.json &&
-pnpm install --force`.
+  pnpm install --force`.
 - After lockfile-changing merges, reinstall before diagnosing anything.
 - Multi-line `perl` mutation dances on files where the pattern appears twice
   restore into the WRONG site — use unique anchors, and re-run tsc after
@@ -334,4 +334,4 @@ pnpm install --force`.
 - The reconciliation spec's "Executor's notes": premise checks, date
   reconciliation specifics, Invariant B mechanics, merge practicalities.
 - Commit messages on this branch are the decision log; `git log --oneline
-origin/main..HEAD` and read any message before touching its subject.
+  origin/main..HEAD` and read any message before touching its subject.

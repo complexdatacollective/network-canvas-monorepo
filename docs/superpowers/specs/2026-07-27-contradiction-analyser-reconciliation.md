@@ -276,7 +276,7 @@ Nothing here overrides the body above; where the two disagree, re-derive from co
   interview date tests are now three-way-touched surfaces. Resolve by keeping both suites, not by
   picking a side.
 - After any lockfile-changing merge: if typecheck fails somewhere absurd (`Cannot find name
-'document'` in a file CI passes), it is the environment, in order of likelihood: stale
+  'document'` in a file CI passes), it is the environment, in order of likelihood: stale
   `*.tsbuildinfo` **replaying cached diagnostics from the old config** (delete them — this one
   presented as a compiler bug and was not), then pnpm's stale workspace state
   (`rm node_modules/.pnpm-workspace-state-v1.json && pnpm install --force`). `--showConfig` telling

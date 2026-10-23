@@ -134,32 +134,32 @@ export const delegatingRuntime = <R>(
   get ['~effect/ManagedRuntime']() {
     return resolve()['~effect/ManagedRuntime'];
   },
-  get 'memoMap'() {
+  get memoMap() {
     return resolve().memoMap;
   },
-  get 'contextEffect'() {
+  get contextEffect() {
     return resolve().contextEffect;
   },
-  get 'scope'() {
+  get scope() {
     return resolve().scope;
   },
-  get 'cachedContext'() {
+  get cachedContext() {
     return resolve().cachedContext;
   },
-  set 'cachedContext'(context) {
+  set cachedContext(context) {
     resolve().cachedContext = context;
   },
-  get 'disposeEffect'() {
+  get disposeEffect() {
     return resolve().disposeEffect;
   },
-  'context': () => resolve().context(),
-  'runFork': (effect, options) => resolve().runFork(effect, options),
-  'runSync': (effect) => resolve().runSync(effect),
-  'runSyncExit': (effect) => resolve().runSyncExit(effect),
-  'runCallback': (effect, options) => resolve().runCallback(effect, options),
-  'runPromise': (effect, options) => resolve().runPromise(effect, options),
-  'runPromiseExit': (effect, options) =>
+  context: () => resolve().context(),
+  runFork: (effect, options) => resolve().runFork(effect, options),
+  runSync: (effect) => resolve().runSync(effect),
+  runSyncExit: (effect) => resolve().runSyncExit(effect),
+  runCallback: (effect, options) => resolve().runCallback(effect, options),
+  runPromise: (effect, options) => resolve().runPromise(effect, options),
+  runPromiseExit: (effect, options) =>
     resolve().runPromiseExit(effect, options),
-  'dispose': () => resolve().dispose(),
+  dispose: () => resolve().dispose(),
   [Symbol.asyncDispose]: () => resolve().dispose(),
 });

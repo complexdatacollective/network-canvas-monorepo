@@ -35,7 +35,7 @@ experimental.
   example with `resolveLocalizedString`.
 - `hashProtocol` takes the protocol's `schemaVersion`, and from schema 9 its
   `localization` too. A schema 9 hash covers `{ localization, codebook,
-stages }`, so a translation change produces a new hash. Languages have no
+  stages }`, so a translation change produces a new hash. Languages have no
   order, so `hashProtocol` sorts them before hashing: two protocols that differ
   only in the order they list their languages have the same hash. Hashes of
   schema 8 and earlier protocols are unchanged.

@@ -114,7 +114,7 @@ CLI version:
   and a library-only one. App-only and library-only changesets both pass.
   - Because `quality` must pass before merge, a mixed changeset can never reach
     the post-merge library `release` job (where it would abort `changeset
-version`).
+    version`).
   - A changeset referencing **both apps** (both ignored) is _not_ "mixed" and is
     allowed; the version tool consumes it for both apps in one PR run.
 
@@ -206,7 +206,7 @@ preparing to open a PR ("do I need a changeset", "before opening a pull request"
      package(s); bump type = real semver impact on consumers; ships via the
      "Version Packages" PR to npm.
    - **Apps** (`@codaco/architect-web`, `@codaco/interviewer-v8`) → `pnpm
-changeset`, choose the app; bump type only **categorises** the notes (base is
+     changeset`, choose the app; bump type only **categorises** the notes (base is
      fixed, `-beta.N` auto-increments); ships via the "Release apps" PR to Netlify
      production + a GitHub release.
    - **Hard rule:** a single changeset must not list an app _and_ a library — CI

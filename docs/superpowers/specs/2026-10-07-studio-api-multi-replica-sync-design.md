@@ -197,7 +197,7 @@ is irrelevant.
 Add one statement to `makeSyncServer`:
 
 - `renewHeld(draftId, owner)`: `UPDATE leases SET expires_at = now + ttl
-WHERE draft_id, owner, team_id AND expires_at > clock_timestamp()`.
+  WHERE draft_id, owner, team_id AND expires_at > clock_timestamp()`.
 
 "A late heartbeat cannot resurrect an expired lease" still holds, because of
 the expiry predicate. Epoch is deliberately absent. The owner is the tab, and
@@ -391,7 +391,7 @@ staging still leaves nothing behind, subject to GC latency after a crash.
 4. **Doc and comment drift.**
    - `leases.ts:20-23` cites a "0.5 s to 15.5 s" client reconnect ladder. The
      real socket ladder is Effect's default, `min(exponential(500, 1.5),
-spaced(5 s))`, about 6.6 s over five attempts. The `WatchProtocol` loop
+     spaced(5 s))`, about 6.6 s over five attempts. The `WatchProtocol` loop
      is 0.25 s to 4 s (`protocol-builder/src/state/channel.ts:16`).
    - `docs/self-host/requirements.md:241-244` already implies that two API
      containers are fine.

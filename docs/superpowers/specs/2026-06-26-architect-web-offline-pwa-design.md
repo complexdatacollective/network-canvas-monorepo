@@ -74,7 +74,7 @@ Notes:
 
 - `isRunningAsInstalledPwa()` deliberately excludes `fullscreen`/`minimal-ui` (a
   normal tab entering Fullscreen-API fullscreen matches `display-mode:
-fullscreen`); it now only gates the warm, not registration.
+  fullscreen`); it now only gates the warm, not registration.
 - Stage-thumbnail idle-preloading runs in all sessions (HTTP-cache speed).
 
 ## Offline template installation
@@ -256,7 +256,7 @@ mounted at the **main** app root only (not in `preview-main.tsx`). Uses
 - `offlineReady === true` → a subtle, auto-dismissing _"Ready to work offline"_
   confirmation.
 - `onRegisteredSW(swUrl, registration)` → `setInterval(() => registration.update(),
-60 * 60 * 1000)` so long editing sessions are notified of new deploys without a
+  60 * 60 * 1000)` so long editing sessions are notified of new deploys without a
   manual reload.
 
 Reloading is safe because autosave continuously persists to IndexedDB; the

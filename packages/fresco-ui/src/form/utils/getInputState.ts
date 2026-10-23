@@ -7,8 +7,8 @@ export function getInputState(props: {
 }) {
   const {
     // 'data-isValidating': isValidating,
-    disabled: isDisabled,
-    readOnly: isReadOnly,
+    'disabled': isDisabled,
+    'readOnly': isReadOnly,
     'aria-invalid': isInvalid,
   } = props;
 

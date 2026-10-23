@@ -293,9 +293,9 @@ and `Screens/NewStageScreen/interfaceOptions.ts`. New `sections/NarrativePedigre
 
 - **`SourceStage.tsx`** — select a FamilyPedigree stage in the protocol.
 - **`Diseases.tsx`** — rows of `{ variable (boolean node var), label, colour,
-inheritancePattern }`.
+  inheritancePattern }`.
 - **`Presets.tsx`** — rows of `{ label, diseases (multi-select of declared
-diseases), focal (position select) }`.
+  diseases), focal (position select) }`.
 - **`Behaviours.tsx`** — `allowFocalReselection` toggle (pattern from
   `Narrative/NarrativeBehaviours.tsx`).
 

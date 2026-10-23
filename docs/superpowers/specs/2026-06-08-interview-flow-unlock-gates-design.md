@@ -15,7 +15,7 @@ settings drive it:
 - `requireUnlockOnResume` (default `true`) — fires when **resuming** an
   existing in-progress interview, but **not** when starting a new one.
   The new-session flow signals "fresh" via `navigate(..., { state: {
-fresh: true } })` (in `handleSessionCreated` in `src/routes/Home.tsx`),
+  fresh: true } })` (in `handleSessionCreated` in `src/routes/Home.tsx`),
   which `Interview.tsx` reads to skip the gate.
 - `requireUnlockOnExport` (default `false`) — fires before data export.
 

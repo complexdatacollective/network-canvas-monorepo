@@ -157,7 +157,7 @@ function ComboboxField(props: ComboboxFieldProps) {
     'aria-required': ariaRequired,
     'aria-disabled': ariaDisabled,
     'aria-readonly': ariaReadOnly,
-    open: openProp,
+    'open': openProp,
     defaultOpen,
     ...rest
   } = props;

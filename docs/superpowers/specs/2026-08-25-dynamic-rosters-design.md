@@ -351,7 +351,7 @@ branches on asset type. For `dynamicnetwork` it does not call
    removing a node within the stage neither refetches nor resets the
    roster.
 2. `fetch(url, { method, headers, body, signal, referrerPolicy: 'no-referrer',
-credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
+   credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
    are sent with
    `Content-Type: application/json` (set by the app; not overridable).
    `redirect: 'error'` closes a boundary bypass: a followed redirect
@@ -1050,7 +1050,7 @@ and fixtures re-saved at schema 9.
   `id` when it carries one, else the content hash — §5.4 step 5, decided per
   element).
 - `src/interfaces/NameGeneratorRoster/*`, `src/interfaces/NameGenerator/
-components/NodePanel.tsx` — retry UI + failure copy; the roster stage
+  components/NodePanel.tsx` — retry UI + failure copy; the roster stage
   suspends its `useNodeLimits` minNodes gate in the error state (§5.6).
 - `src/components/GeospatialOfflineIndicator.tsx` — generalized predicate
   and copy.
@@ -1216,7 +1216,7 @@ only stages preceding the start stage (§5.9); `PreviewHost` passes it.
   `key-concepts/resources.en.mdx` — the new resource type and test-request
   flow.
 - `interviewer-online-and-offline-workflows.en.mdx`, `gdpr-compliance
-.en.mdx`, `irb-best-practices.en.md` — dynamic rosters join Geospatial as
+  .en.mdx`, `irb-best-practices.en.md` — dynamic rosters join Geospatial as
   a third-party connection to disclose.
 - `protocol-schema-information.en.mdx` — current schema version becomes 9;
   the app-support matrix gains the 9 row and the guidance that re-saving a
