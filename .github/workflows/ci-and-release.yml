@@ -287,22 +287,34 @@ jobs:
           # The Studio upgrade lane, for the `studio-upgrade` job (#1901): an
           # upgrade from the candidate to a code-only release and to a release
           # carrying a migration, run through the self-host guide's own
-          # commands. The lane tests the api image and the generator that
-          # builds the next release's migration, so everything that selects
-          # the stack selects it: the studio-api package and its dependency
-          # closure, the stack's own files and this workflow. A hand-kept list
-          # of "upgrade-path" files inside the package missed the keyring
-          # check, the fingerprint sync and the schema applier in turn. On top
-          # of that, the lane's own inputs that no package graph sees: the
-          # lane itself, the upgrade script it runs, and the maintenance page
-          # its observer reads, served by studio-web. Every Studio release PR
-          # selects it too.
+          # commands. The lane tests the upgrade path of Studio's own code, so
+          # it is selected by Studio's own workspace packages — studio-api,
+          # studio-contract and studio-sync, each as a whole package (a
+          # hand-kept list of "upgrade-path" files inside the api missed the
+          # keyring check, the fingerprint sync and the schema applier in
+          # turn) — not by the shared packages the api image also bundles,
+          # such as interview or protocol-validation: those change on most
+          # pull requests and none of them touches how a deployment upgrades.
+          # The stack's own files and this workflow select it as they select
+          # the stack. On top of that, the lane's own inputs that no package
+          # graph sees: the lane itself, the upgrade script it runs, and the
+          # maintenance page its observer reads, served by studio-web. Every
+          # Studio release PR and every forced run selects it too.
+          studio_upgrade_paths=(
+            apps/studio/api
+            packages/studio-contract
+            packages/studio-sync
+            "${studio_stack_paths[@]}"
+            .github/workflows/ci-and-release.yml
+            apps/studio/release-test
+            apps/studio/scripts
+            apps/studio/web/public/maintenance.html
+          )
           studio_upgrade=false
-          if [[ "$studio" == "true" || "$HEAD_REF" == "changeset-release/studio" ]] \
+          if [[ -z "$gate_base" || "$FORCE_RUN" == "true" \
+            || "$HEAD_REF" == "changeset-release/studio" ]] \
             || ! git diff --quiet "$gate_base" "$CURR" -- \
-              apps/studio/release-test \
-              apps/studio/scripts \
-              apps/studio/web/public/maintenance.html; then
+              "${studio_upgrade_paths[@]}"; then
             studio_upgrade=true
             echo "Studio upgrade inputs changed in ${gate_base:-(no base)}..$CURR."
           fi

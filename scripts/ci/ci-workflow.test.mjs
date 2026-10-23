@@ -2923,12 +2923,13 @@ test('every job quality requires on a detect flag is decided by a cumulative fla
 
 // Runs detect's gate block — the merge base, the studio flag (which also
 // defines the stack's path list) and the upgrade flag — against a throwaway
-// repository. `flag` is stubbed by the package's paths — studio-api and
-// studio-sync stand in for its dependency closure — and diffs over whatever
-// PREV it is handed, so the block's merge-base range is exercised for real.
+// repository. `flag` is stubbed by the package's paths — studio-api,
+// studio-sync and interview stand in for its dependency closure — and diffs
+// over whatever PREV it is handed, so the block's merge-base range is
+// exercised for real.
 // Each entry of `pushes` is one commit; PREV is the last push's parent, as on
 // a `synchronize`, and origin/main is the commit before the first push.
-function runGateSelection({ headRef = '', pushes = [] }) {
+function runGateSelection({ headRef = '', forceRun = false, pushes = [] }) {
   const detectJob = job('detect');
   const block = detectJob.match(
     /^(?<indent> +)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
@@ -2937,7 +2938,7 @@ function runGateSelection({ headRef = '', pushes = [] }) {
   const stub = [
     'flag() {',
     '  [[ -z "$PREV" ]] && { echo true; return; }',
-    '  git diff --quiet "$PREV" "$CURR" -- apps/studio/api packages/studio-sync && echo false || echo true',
+    '  git diff --quiet "$PREV" "$CURR" -- apps/studio/api packages/studio-sync packages/interview && echo false || echo true',
     '}',
   ].join('\n');
   const body = [
@@ -2975,7 +2976,7 @@ function runGateSelection({ headRef = '', pushes = [] }) {
         GITHUB_EVENT_NAME: 'pull_request',
         GITHUB_BASE_REF: 'main',
         HEAD_REF: headRef,
-        FORCE_RUN: 'false',
+        FORCE_RUN: String(forceRun),
         // The push-to-push answer, set so a flag that leans on it shows.
         WORKFLOW_CHANGED: 'false',
         PREV: git('rev-parse', 'HEAD^1'),
@@ -3109,7 +3110,7 @@ test('studio-stack is selected by detect and required by the quality gate', () =
 // nothing else, so these tests pin what selects it, what it is given, and
 // that the gate cannot read a job that never ran as a pass.
 
-test('detect selects the upgrade lane whenever what the api image is built from changes, and for its own inputs', () => {
+test("detect selects the upgrade lane for Studio's own packages, the stack and its own inputs", () => {
   const detectJob = job('detect');
   assert.match(
     detectJob,
@@ -3130,14 +3131,21 @@ test('detect selects the upgrade lane whenever what the api image is built from 
     }).studio_upgrade,
     'true',
   );
-  // Anything in the api image's package graph, the stack's files, the lane's
-  // own inputs and the workflow that defines the job — each on its own.
+  // A forced run, whatever it changed.
+  assert.equal(
+    runGateSelection({ forceRun: true, pushes: [['README.md']] })
+      .studio_upgrade,
+    'true',
+  );
+  // Studio's own packages, the stack's files, the lane's own inputs and the
+  // workflow that defines the job — each on its own.
   for (const file of [
     'apps/studio/api/migrations/0002_next/delta.sql',
     'apps/studio/api/src/secrets/verify.ts',
     'apps/studio/api/scripts/sync-fingerprint.ts',
     'apps/studio/api/scripts/apply.ts',
     'packages/studio-sync/src/jobs.ts',
+    'packages/studio-contract/src/index.ts',
     'apps/studio/docs/self-host/upgrade.md',
     'apps/studio/docs/self-host/backup.md',
     'apps/studio/Dockerfile',
@@ -3181,6 +3189,31 @@ test('detect selects the upgrade lane whenever what the api image is built from 
       .studio_upgrade,
     'false',
   );
+  // A shared package the api image bundles selects the stack, which builds
+  // that image, but not the upgrade lane: it changes on most pull requests
+  // and does not touch how a deployment upgrades.
+  const sharedPackage = runGateSelection({
+    pushes: [['packages/interview/src/index.ts']],
+  });
+  assert.equal(sharedPackage.studio, 'true');
+  assert.equal(sharedPackage.studio_upgrade, 'false');
+  // The lane names Studio's packages by path, so a moved package would
+  // silently stop selecting it.
+  for (const path of [
+    'apps/studio/api',
+    'packages/studio-contract',
+    'packages/studio-sync',
+  ]) {
+    assert.ok(
+      existsSync(new URL(`../../${path}/package.json`, import.meta.url)),
+      `${path} is a workspace package`,
+    );
+    assert.match(
+      job('detect'),
+      new RegExp(`^ +${escapeRegExp(path)}$`, 'm'),
+      `detect watches ${path} for the studio_upgrade flag`,
+    );
+  }
   // Nothing outside Studio selects it.
   assert.equal(
     runGateSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] })
