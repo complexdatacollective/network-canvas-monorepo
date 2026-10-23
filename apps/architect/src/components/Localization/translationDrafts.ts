@@ -1,5 +1,5 @@
 import { isEqual } from 'es-toolkit';
-import { useContext, useRef } from 'react';
+import { useContext, useLayoutEffect, useRef } from 'react';
 import { z } from 'zod/mini';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
@@ -293,8 +293,12 @@ export const useTranslationDraft = ({
   }
   const intl = useAppIntl();
   const languageName = useLanguageName();
+  // Read by a field's validation when it runs, so a check made after a change
+  // of language reports in the new one.
   const words = useRef<Words>({ intl, languageName });
-  words.current = { intl, languageName };
+  useLayoutEffect(() => {
+    words.current = { intl, languageName };
+  });
   const appStore = useAppStore();
   const name = translationFieldName(row.path, locale);
   const field = useFormStore((state) => state.getFieldState(name));

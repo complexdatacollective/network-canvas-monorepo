@@ -5,7 +5,12 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { type ContextType, type ReactNode, useContext } from 'react';
+import {
+  type ContextType,
+  type ReactNode,
+  useContext,
+  useLayoutEffect,
+} from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Capture the props DialogForm receives so the test can invoke the
@@ -23,7 +28,10 @@ vi.mock('~/components/DialogForm/DialogForm', async () => {
   const { default: FormStoreProvider, FormStoreContext } =
     await import('@codaco/fresco-ui/form/store/formStoreProvider');
   const CaptureStore = () => {
-    formStoreRef.current = useContext(FormStoreContext);
+    const store = useContext(FormStoreContext);
+    useLayoutEffect(() => {
+      formStoreRef.current = store;
+    });
     return null;
   };
   return {

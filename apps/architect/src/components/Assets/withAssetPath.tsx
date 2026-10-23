@@ -21,6 +21,8 @@ const mapStateToProps = (state: RootState, { id }: OwnProps) => {
   };
 };
 
-const withAssetUrl = compose(connect(mapStateToProps, {}));
+const withAssetUrl = compose<ReturnType<typeof mapStateToProps>, OwnProps>(
+  connect(mapStateToProps, {}),
+);
 
 export default withAssetUrl;

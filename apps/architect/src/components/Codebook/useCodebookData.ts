@@ -101,25 +101,28 @@ export const useCodebookData = (codebook: Codebook | null): CodebookData => {
   const networkAssets = useSelector(getNetworkAssets);
   const { nodeProcessor, edgeProcessor } = useEntityProcessors();
 
+  const nodeTypes = codebook?.node;
+  const edgeTypes = codebook?.edge;
+
   // Memoize node processing
   const nodes = useMemo(() => {
-    if (!codebook?.node) return [];
+    if (!nodeTypes) return [];
     return processEntityEntries(
-      Object.entries(codebook.node),
+      Object.entries(nodeTypes),
       nodeProcessor,
-      (_value, id) => codebook.node?.[id]?.name ?? id,
+      (_value, id) => nodeTypes[id]?.name ?? id,
     );
-  }, [codebook?.node, nodeProcessor]);
+  }, [nodeTypes, nodeProcessor]);
 
   // Memoize edge processing
   const edges = useMemo(() => {
-    if (!codebook?.edge) return [];
+    if (!edgeTypes) return [];
     return processEntityEntries(
-      Object.entries(codebook.edge),
+      Object.entries(edgeTypes),
       edgeProcessor,
-      (_value, id) => codebook.edge?.[id]?.name ?? id,
+      (_value, id) => edgeTypes[id]?.name ?? id,
     );
-  }, [codebook?.edge, edgeProcessor]);
+  }, [edgeTypes, edgeProcessor]);
 
   // Memoize network assets processing
   const processedNetworkAssets = useMemo(() => {

@@ -1,5 +1,3 @@
-import type React from 'react';
-
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import withAssetMeta from './withAssetMeta';
@@ -16,4 +14,4 @@ const APIKey = ({ meta = { value: '' } }: APIKeyProps) => (
   </Heading>
 );
 
-export default withAssetMeta(APIKey) as React.ComponentType<unknown>;
+export default withAssetMeta(APIKey);

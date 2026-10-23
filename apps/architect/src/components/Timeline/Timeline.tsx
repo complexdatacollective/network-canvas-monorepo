@@ -1,6 +1,13 @@
 import { Plus } from 'lucide-react';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
-import { createElement, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  createElement,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -137,8 +144,12 @@ const warningDialogText = (warning: {
 
 const Timeline = () => {
   const intl = useAppIntl();
+  // The delete confirmation announces in the language current when it is
+  // confirmed, which may not be the one it was opened in.
   const intlRef = useRef(intl);
-  intlRef.current = intl;
+  useLayoutEffect(() => {
+    intlRef.current = intl;
+  });
   const stages = useSelector(getStageList);
   // `getStageList` maps each stage down to `{id, type, label, hasFilter,
   // hasSkipLogic, skipLogic: {destination}}` for cheap render diffing — the

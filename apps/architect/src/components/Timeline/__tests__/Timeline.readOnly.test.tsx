@@ -8,7 +8,7 @@ import {
   within,
 } from '@testing-library/react';
 import type { DragControls, HTMLMotionProps, PanInfo } from 'motion/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useLayoutEffect } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -91,12 +91,15 @@ vi.mock('motion/react', async (importOriginal) => {
   };
 
   const Group = (props: GroupProps) => {
-    gesture.values = props.values;
-    gesture.moveRow = (from, to) => {
-      const next = [...props.values];
-      next.splice(to, 0, ...next.splice(from, 1));
-      props.onReorder(next);
-    };
+    const { values, onReorder } = props;
+    useLayoutEffect(() => {
+      gesture.values = values;
+      gesture.moveRow = (from, to) => {
+        const next = [...values];
+        next.splice(to, 0, ...next.splice(from, 1));
+        onReorder(next);
+      };
+    });
     return <actual.Reorder.Group {...props} />;
   };
 

@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { type CSSProperties, createElement, useEffect, useRef } from 'react';
+import { type CSSProperties, createElement, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -94,11 +94,11 @@ type WindowedStop = TimelineStop & { absoluteIndex: number };
 export default function TransitMap({ stops, count }: TransitMapProps) {
   const intl = useAppIntl();
   const reducedMotion = useReducedMotion();
-  const firstMountRef = useRef(true);
-  const isFirstMount = firstMountRef.current;
-  useEffect(() => {
-    firstMountRef.current = false;
-  }, []);
+  // The opening bloom belongs to the stations the map mounts with. `count`
+  // only ever grows, so it is still the mount's until the first new station
+  // arrives; from then on only the newest station and segment enter.
+  const [mountCount] = useState(count);
+  const isFirstMount = count === mountCount;
 
   const windowSize = Math.min(count, VISIBLE_WINDOW);
   const windowStart = count - windowSize;

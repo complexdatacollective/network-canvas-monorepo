@@ -1,9 +1,14 @@
+import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { makeValidationFunction } from '@codaco/fresco-ui/form/validation/helpers';
 
-import { type ArchitectValidation, splitValidation } from '../toZodValidation';
+import {
+  type ArchitectValidation,
+  splitValidation,
+  useValidationProps,
+} from '../toZodValidation';
 
 type FormValues = Record<string, FieldValue>;
 
@@ -22,7 +27,18 @@ async function runCustom(
     formValues?: FormValues;
   } = {},
 ): Promise<string[]> {
-  const { custom } = splitValidation(validation, fieldName);
+  return runCustomEntry(
+    splitValidation(validation, fieldName).custom,
+    value,
+    formValues,
+  );
+}
+
+async function runCustomEntry(
+  custom: ReturnType<typeof splitValidation>['custom'],
+  value: unknown,
+  formValues: FormValues = {},
+): Promise<string[]> {
   if (!custom) {
     throw new Error('expected the config to produce a custom validation');
   }
@@ -427,6 +443,48 @@ describe('uniqueArrayAttribute', () => {
         },
       }),
     ).resolves.toEqual([
+      'This value is already in use. Enter a different value.',
+    ]);
+  });
+});
+
+describe('useValidationProps', () => {
+  it('keeps one custom entry that validates with the latest config and field name', async () => {
+    const duplicated = { rows: [{ value: 1 }, { value: 1 }] };
+    const { result, rerender } = renderHook(
+      ({
+        validation,
+        fieldName,
+      }: {
+        validation: ArchitectValidation;
+        fieldName: string;
+      }) => useValidationProps(validation, fieldName),
+      {
+        initialProps: {
+          validation: {
+            maxValue: { value: 5, message: 'At most five' },
+            uniqueArrayAttribute: true,
+          },
+          fieldName: 'value',
+        },
+      },
+    );
+    const first = result.current.custom;
+    await expect(runCustomEntry(first, 9)).resolves.toEqual(['At most five']);
+    // Without a bracket path there is no array to compare against.
+    await expect(runCustomEntry(first, 1, duplicated)).resolves.toEqual([]);
+
+    rerender({
+      validation: {
+        maxValue: { value: 2, message: 'At most two' },
+        uniqueArrayAttribute: true,
+      },
+      fieldName: 'rows[1].value',
+    });
+
+    expect(result.current.custom).toBe(first);
+    await expect(runCustomEntry(first, 3)).resolves.toEqual(['At most two']);
+    await expect(runCustomEntry(first, 1, duplicated)).resolves.toEqual([
       'This value is already in use. Enter a different value.',
     ]);
   });
