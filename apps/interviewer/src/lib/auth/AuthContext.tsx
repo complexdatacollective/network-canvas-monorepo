@@ -84,6 +84,29 @@ async function drainSessionWrites(): Promise<void> {
   }
 }
 
+// The vault lives in storage and the WebCrypto layer, not in React: its state
+// can only be learned by asking the auth API, asynchronously.
+async function readAuthState(): Promise<AuthState> {
+  const s = await authApi.status();
+  const kind: AuthStateKind = s.corrupt
+    ? 'corrupt'
+    : !s.configured
+      ? 'unconfigured'
+      : s.locked
+        ? 'locked'
+        : 'unlocked';
+
+  let idleTimeoutMinutes: IdleTimeoutMinutes =
+    DEFAULT_SETTINGS.idleTimeoutMinutes;
+  if (kind === 'unlocked') {
+    const settings = await getSettings();
+    idleTimeoutMinutes =
+      settings?.idleTimeoutMinutes ?? DEFAULT_SETTINGS.idleTimeoutMinutes;
+  }
+
+  return { kind, mode: s.mode, idleTimeoutMinutes };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     kind: 'loading',
@@ -91,33 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const refresh = useCallback(async () => {
-    const s = await authApi.status();
-    const kind: AuthStateKind = s.corrupt
-      ? 'corrupt'
-      : !s.configured
-        ? 'unconfigured'
-        : s.locked
-          ? 'locked'
-          : 'unlocked';
-
-    let idleTimeoutMinutes: IdleTimeoutMinutes =
-      DEFAULT_SETTINGS.idleTimeoutMinutes;
-    if (kind === 'unlocked') {
-      const settings = await getSettings();
-      idleTimeoutMinutes =
-        settings?.idleTimeoutMinutes ?? DEFAULT_SETTINGS.idleTimeoutMinutes;
-    }
-
-    setState({ kind, mode: s.mode, idleTimeoutMinutes });
+    setState(await readAuthState());
   }, []);
 
-  // The vault lives in storage and the WebCrypto layer, not in React: its state
-  // can only be learned by asking the auth API, asynchronously, once the
-  // provider is mounted. The state written here is that answer arriving, so an
+  // The vault's state can only be learned once the provider is mounted, by
+  // asking the auth API; the state written here is that answer arriving, so an
   // effect is the right tool.
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void readAuthState().then(setState);
+  }, []);
 
   // Drop the key now, with no window for anything to finish writing first.
   const lockImmediately = useCallback(async () => {
