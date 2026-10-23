@@ -45,10 +45,6 @@
       - text: Egg or sperm donor
       - radio "Surrogate"
       - text: Surrogate
-    - text: Did Julie carry the pregnancy?
-    - radiogroup "Did Julie carry the pregnancy?":
-      - radio "Yes" [checked]
-      - radio "No"
     - text: How would you define the relationship of “Rob” to “Ben”? “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
     - radiogroup "How would you define the relationship of “Rob” to “Ben”?":
       - radio "Biological parent" [checked]
@@ -61,6 +57,12 @@
       - text: Egg or sperm donor
       - radio "Surrogate" [disabled]
       - text: Surrogate “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+    - text: Who carried the pregnancy?
+    - radiogroup "Who carried the pregnancy?":
+      - radio "Julie" [checked]
+      - text: Julie
+      - radio "Someone else, or I don’t know"
+      - text: Someone else, or I don’t know
     - text: Which siblings of “Ben”, if any, are their twins? Include triplets and other multiple births.
     - group "Which siblings of “Ben”, if any, are their twins?":
       - checkbox "You" [checked]

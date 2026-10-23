@@ -229,6 +229,7 @@ const ROLE = {
   otherParent: 'pedigreeOtherParent',
   childKind: 'pedigreeChildKind',
   carrier: 'pedigreeCarrier',
+  parentCarrier: 'pedigreeParentCarrier',
   biologicalParent: 'pedigreeBiologicalParent',
   otherParentBiological: 'pedigreeOtherParentBiological',
   twin: 'pedigreeTwin',
@@ -1015,26 +1016,44 @@ function readLinkUpdates(
       });
     }
   }
-  for (const link of links.parents) {
-    if (skipped.has(link.id)) continue;
-    const kind =
-      (asString(values[linkField(link, 'kind')]) as
-        | PedigreeParentKind
-        | undefined) ?? link.kind;
-    // The answer as given, or nothing while it is not: "No" only when
-    // answered, or when the parent could not have carried them.
-    const answer = values[linkField(link, 'carrier')];
+  const kindOf = (link: FamilyLink) =>
+    (asString(values[linkField(link, 'kind')]) as
+      | PedigreeParentKind
+      | undefined) ?? link.kind;
+  const asked = links.parents.filter((link) => !skipped.has(link.id));
+  // A surrogate carried them, so none of their other parents did.
+  const surrogate = asked.find((link) => kindOf(link) === 'surrogate');
+  // Who carried the pregnancy, as answered: one of the parents asked about,
+  // or someone else (`ParentCarrierField`).
+  const chosen = asString(values[ROLE.parentCarrier]);
+  for (const link of asked) {
+    const kind = kindOf(link);
+    // "No" recorded for a parent who adopted the person rests on the
+    // adoption, so goes once another kind of parent is chosen.
+    const kept =
+      link.kind === 'adoptive' &&
+      kind !== 'adoptive' &&
+      link.isGestationalCarrier === false
+        ? undefined
+        : link.isGestationalCarrier;
     const isGestationalCarrier =
       kind === 'surrogate'
         ? true
-        : !mayHaveCarried(kind) ||
+        : surrogate !== undefined ||
+            !mayHaveCarried(kind) ||
             !couldCarryPregnancy(
               family.byId.get(link.source)?.sexAssignedAtBirth,
             )
           ? false
-          : typeof answer === 'boolean'
-            ? answer
-            : undefined;
+          : chosen === undefined
+            ? kept
+            : chosen === NONE
+              ? // Someone else, or not known: a parent recorded as having
+                // carried them is no longer, and nobody is said not to have.
+                kept === true
+                ? undefined
+                : kept
+              : chosen === link.source;
     if (
       kind !== link.kind ||
       isGestationalCarrier !== link.isGestationalCarrier
@@ -1492,10 +1511,7 @@ function ExistingRelationshipFields({
   // Who carried the pregnancy, as the answers stand: one parent at most, so
   // while one does, the others are not asked and cannot be a surrogate.
   const linkValues = useFormValue(
-    allParents.flatMap((link) => [
-      linkField(link, 'kind'),
-      linkField(link, 'carrier'),
-    ]),
+    [ROLE.parentCarrier, ...allParents.map((link) => linkField(link, 'kind'))],
     'opaque',
   );
   // The family as the answers leave it. A stand-in whose place a parent
@@ -1584,14 +1600,23 @@ function ExistingRelationshipFields({
         ? []
         : [{ carrierId: surrogateId, childId: twinId }];
     })[0];
-  const carries = (link: FamilyLink) => {
+  // The parents who might have carried the pregnancy, as the answers stand,
+  // asked about in one question while no surrogate is among their parents
+  // (`ParentCarrierField`).
+  const mightHaveCarried = (link: FamilyLink) => {
     const kind = kindOf(link);
-    if (kind === 'surrogate') return true;
-    if (!mayHaveCarried(kind) || !canCarry(link)) return false;
-    const carrier = linkValues[linkField(link, 'carrier')];
-    return carrier === undefined
+    return kind !== 'surrogate' && mayHaveCarried(kind) && canCarry(link);
+  };
+  const surrogateParent = parents.find((link) => kindOf(link) === 'surrogate');
+  const carrierCandidates =
+    surrogateParent === undefined ? parents.filter(mightHaveCarried) : [];
+  const chosenCarrier = asString(linkValues[ROLE.parentCarrier]);
+  const carries = (link: FamilyLink) => {
+    if (kindOf(link) === 'surrogate') return true;
+    if (!mightHaveCarried(link)) return false;
+    return chosenCarrier === undefined
       ? recordedCarrying(link) === true
-      : carrier === true;
+      : chosenCarrier === link.source;
   };
   if (
     partnerships.length === 0 &&
@@ -1682,11 +1707,9 @@ function ExistingRelationshipFields({
             kindChanges={kindChanges}
             givesWay={replacedParents.has(link.source)}
             canCarry={canCarry(link)}
-            carries={carries(link)}
             kindReasons={kindReasons}
             reasonContext={reasonContext}
             anotherCarrier={anotherCarrier}
-            recordedCarrying={recordedCarrying(link)}
             personIsYou={isYou(person.id)}
             parentIsYou={isYou(link.source)}
             parentName={displayName(link.source)}
@@ -1695,6 +1718,16 @@ function ExistingRelationshipFields({
           />
         );
       })}
+      {carrierCandidates.length > 0 && (
+        <ParentCarrierField
+          candidates={carrierCandidates}
+          recordedCarrying={recordedCarrying}
+          kindOf={kindOf}
+          twinSurrogate={twinSurrogate}
+          reasonContext={reasonContext}
+          displayName={displayName}
+        />
+      )}
       <TwinFields
         person={person}
         family={draft}
@@ -1722,11 +1755,9 @@ function ParentLinkFields({
   kindChanges,
   givesWay,
   canCarry,
-  carries,
   kindReasons,
   reasonContext,
   anotherCarrier,
-  recordedCarrying,
   personIsYou,
   parentIsYou,
   parentName,
@@ -1746,8 +1777,6 @@ function ParentLinkFields({
   /** This parent could have carried a pregnancy: they are not recorded as
    * male at birth. */
   canCarry: boolean;
-  /** This parent carried the pregnancy, as the answers stand. */
-  carries: boolean;
   /** Why the kinds of parent that are unavailable are, each naming them. */
   kindReasons: readonly (Reason | undefined | false)[];
   reasonContext: ReasonContext;
@@ -1755,19 +1784,13 @@ function ParentLinkFields({
    * parents, or a surrogate who carried one of their twins, recorded as
    * having carried `childId`. */
   anotherCarrier: { carrierId: string; childId: string } | undefined;
-  /** Whether this parent carried the pregnancy, as recorded, or as recorded
-   * for the person's twins while nothing is recorded for the person. */
-  recordedCarrying: boolean | undefined;
   personIsYou: string;
   parentIsYou: string;
   parentName: string;
   personName: string;
 }) {
   const { wording, text } = usePedigreeWords();
-  const intl = useAppIntl();
   const kindField = linkField(link, 'kind');
-  const values = useFormValue([kindField], 'opaque');
-  const kind = asString(values[kindField]) ?? link.kind;
   const kindUnavailable = (value: string) =>
     (isGeneticKind(value) && !canBeGenetic) ||
     (value === 'surrogate' && (anotherCarrier !== undefined || !canCarry));
@@ -1779,76 +1802,113 @@ function ParentLinkFields({
     derived: link.kind,
     isAvailable: (value) => !kindUnavailable(String(value)),
   });
-  // While another parent carried the pregnancy, only "Yes" would record a
-  // second carrier: it is unavailable, naming them, and "No" stays.
-  const carriedYesReason =
-    !carries && anotherCarrier !== undefined
-      ? joinReasons(reasonContext, [
-          carrierRecordedReason(
-            anotherCarrier.childId,
-            anotherCarrier.carrierId,
-            [yesAnswer(intl)],
-          ),
-        ])
-      : undefined;
-  // Not known shows neither answer chosen, except that while someone else
-  // carried them, "No" is the answer worked out (`useDerivedAnswer`): it
-  // goes again once nobody else did, unless the participant chose it. "No"
-  // recorded for a parent who adopted the person rests on the adoption (an
-  // adoptive parent added is recorded as not having carried), so once another
-  // kind of parent is chosen it is asked afresh.
-  const recordedForKind =
-    link.kind === 'adoptive' &&
-    kind !== 'adoptive' &&
-    recordedCarrying === false
-      ? undefined
-      : recordedCarrying;
-  const carriedAnswer = useDerivedAnswer({
-    name: linkField(link, 'carrier'),
-    nameMode: 'opaque',
-    derived:
-      recordedForKind ?? (anotherCarrier === undefined ? undefined : false),
-    isAvailable: (value) => value !== true || carriedYesReason === undefined,
-  });
-
   return (
-    <>
-      <Field
-        component={RadioGroupField}
-        name={kindField}
-        nameMode="opaque"
-        label={text(wording.parentLinkKindLabel, {
-          personIsYou,
-          parentIsYou,
-          parent: parentName,
-          child: personName,
-        })}
-        options={PARENT_KINDS.map((value) => ({
-          value,
-          label: parentKindLabels[value],
-          disabled: kindUnavailable(value),
-          description: reasonsFor(reasonContext, kindReasons, value),
-        }))}
-        hint={joinReasons(reasonContext, [...kindReasons, ...kindChanges])}
-        {...(givesWay ? { required: true } : {})}
-        {...kindAnswer}
-      />
-      {kind !== 'surrogate' && mayHaveCarried(kind) && canCarry && (
-        <Field
-          component={BooleanField}
-          name={linkField(link, 'carrier')}
-          nameMode="opaque"
-          label={text(wording.parentCarriedLabel, {
-            named: 'true',
-            parentIsYou,
-            parent: parentName,
-          })}
-          options={carriedOptions(intl, carriedYesReason)}
-          hint={carriedYesReason}
-          {...carriedAnswer}
-        />
-      )}
-    </>
+    <Field
+      component={RadioGroupField}
+      name={kindField}
+      nameMode="opaque"
+      label={text(wording.parentLinkKindLabel, {
+        personIsYou,
+        parentIsYou,
+        parent: parentName,
+        child: personName,
+      })}
+      options={PARENT_KINDS.map((value) => ({
+        value,
+        label: parentKindLabels[value],
+        disabled: kindUnavailable(value),
+        description: reasonsFor(reasonContext, kindReasons, value),
+      }))}
+      hint={joinReasons(reasonContext, [...kindReasons, ...kindChanges])}
+      {...(givesWay ? { required: true } : {})}
+      {...kindAnswer}
+    />
+  );
+}
+
+/**
+ * Who carried the pregnancy: one of the person's parents who might have, as
+ * the answers stand, or someone else, as the add forms ask it. Choosing a
+ * parent records them as having carried it and the others as not. While a
+ * surrogate who carried one of the person's twins carried them too, none of
+ * their parents can have, so each is unavailable, naming the surrogate.
+ */
+function ParentCarrierField({
+  candidates,
+  recordedCarrying,
+  kindOf,
+  twinSurrogate,
+  reasonContext,
+  displayName,
+}: {
+  /** The parents who might have carried it, as the answers stand. */
+  candidates: readonly FamilyLink[];
+  /** Whether a parent carried the pregnancy, as recorded, or as recorded
+   * for the person's twins while nothing is recorded for the person. */
+  recordedCarrying: (link: FamilyLink) => boolean | undefined;
+  /** The kind of parent each is, as answered. */
+  kindOf: (link: FamilyLink) => string;
+  twinSurrogate: { carrierId: string; childId: string } | undefined;
+  reasonContext: ReasonContext;
+  displayName: (personId: string) => string;
+}) {
+  const { wording, text } = usePedigreeWords();
+  // "No" recorded for a parent who adopted the person rests on the adoption
+  // (an adoptive parent added is recorded as not having carried), so once
+  // another kind of parent is chosen it is not taken as an answer.
+  const recordedFor = (link: FamilyLink) =>
+    link.kind === 'adoptive' &&
+    kindOf(link) !== 'adoptive' &&
+    recordedCarrying(link) === false
+      ? undefined
+      : recordedCarrying(link);
+  const answers = candidates.map((link) => ({
+    value: link.source,
+    label: displayName(link.source),
+  }));
+  const reasons = [
+    twinSurrogate &&
+      carrierRecordedReason(
+        twinSurrogate.childId,
+        twinSurrogate.carrierId,
+        answers,
+      ),
+  ];
+  // The parent recorded as having carried it; someone else while a twin's
+  // surrogate did, or every parent asked about is recorded as not having;
+  // otherwise nothing, until answered (`useDerivedAnswer`).
+  const recorded = candidates.find((link) => recordedFor(link) === true);
+  const carrierAnswer = useDerivedAnswer({
+    name: ROLE.parentCarrier,
+    derived:
+      twinSurrogate !== undefined
+        ? NONE
+        : recorded !== undefined
+          ? recorded.source
+          : candidates.every((link) => recordedFor(link) === false)
+            ? NONE
+            : undefined,
+    isAvailable: (value) =>
+      value === NONE ||
+      (twinSurrogate === undefined &&
+        candidates.some((link) => link.source === value)),
+  });
+  return (
+    <Field
+      component={RadioGroupField}
+      name={ROLE.parentCarrier}
+      label={text(wording.carrierLabel)}
+      options={[
+        ...answers.map((answer) => ({
+          ...answer,
+          disabled: twinSurrogate !== undefined,
+          description: reasonsFor(reasonContext, reasons, answer.value),
+        })),
+        { value: NONE, label: text(wording.carrierUnknown) },
+      ]}
+      hint={joinReasons(reasonContext, reasons)}
+      {...carrierAnswer}
+    />
   );
 }
 
