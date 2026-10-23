@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 /**
  * Movement past this distance stops a gesture being a tap or a hold. Shared
@@ -127,9 +133,24 @@ export function useNodeGestures({
   const [isHolding, setIsHolding] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
+  // A hold or drag that is no longer applicable — the label now fits, the
+  // host withdrew dragging, or the node became disabled — stops showing as
+  // underway in the same render. What would carry it on outside React (its
+  // timers, the listeners a live gesture attached, the host's drag callbacks)
+  // is settled by the effects below.
+  const holdApplicable = holdEnabled && !disabled;
+  if (!holdApplicable && isHolding) {
+    setIsHolding(false);
+  }
+  const dragApplicable = dragEnabled && !disabled;
+  if (!dragApplicable && isDragging) {
+    setIsDragging(false);
+  }
+
   // Callbacks and enablement are read through refs at the moment they matter,
   // not captured at pointer-down: a hold may stop being applicable — or a drag
-  // handler may change — while the finger is down.
+  // handler may change — while the finger is down. Every commit brings them up
+  // to date before any pointer event can read them.
   const optionsRef = useRef({
     onLongPress,
     onHoldInterrupted,
@@ -139,21 +160,20 @@ export function useNodeGestures({
     holdEnabled,
     dragEnabled,
   });
-  optionsRef.current = {
-    onLongPress,
-    onHoldInterrupted,
-    onDragStart,
-    onDragMove,
-    onDragEnd,
-    holdEnabled,
-    dragEnabled,
-  };
+  useLayoutEffect(() => {
+    optionsRef.current = {
+      onLongPress,
+      onHoldInterrupted,
+      onDragStart,
+      onDragMove,
+      onDragEnd,
+      holdEnabled,
+      dragEnabled,
+    };
+  });
 
-  /**
-   * Stops the hold counting down without giving up the gesture: the finger is
-   * still down, and its eventual release still has to be seen.
-   */
-  const abandonHold = useCallback(() => {
+  /** Stops the hold's feedback and firing timers. */
+  const clearHoldTimers = useCallback(() => {
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -162,18 +182,27 @@ export function useNodeGestures({
       window.clearTimeout(feedbackTimerRef.current);
       feedbackTimerRef.current = null;
     }
-    setIsHolding(false);
   }, []);
+
+  /**
+   * Stops the hold counting down without giving up the gesture: the finger is
+   * still down, and its eventual release still has to be seen.
+   */
+  const abandonHold = useCallback(() => {
+    clearHoldTimers();
+    setIsHolding(false);
+  }, [clearHoldTimers]);
 
   /**
    * Ends a live drag as cancelled, notifying the callback that began it. Used
    * whenever a drag is interrupted from outside its own pointer sequence:
-   * unmount, disabling, or the host withdrawing its drag handlers.
+   * unmount, disabling, or the host withdrawing its drag handlers. Leaves
+   * `isDragging` to the caller: rendering settles it when the interruption
+   * came from the host's props.
    */
-  const cancelActiveDrag = useCallback(() => {
+  const endDragAsCancelled = useCallback(() => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
-    setIsDragging(false);
     const lastEvent = lastDragEventRef.current;
     lastDragEventRef.current = null;
     const endActiveDrag = activeDragEndRef.current;
@@ -183,23 +212,32 @@ export function useNodeGestures({
     }
   }, []);
 
-  /** Drops everything, leaving no timer or listener behind. */
-  const teardown = useCallback(() => {
+  /**
+   * Drops everything outside React, leaving no timer or listener behind and
+   * no pointer owning the gesture.
+   */
+  const releaseGesture = useCallback(() => {
     // A drag still live here was interrupted from outside its own pointer
     // sequence. The host's effects (a DnD item in flight, a pinned simulation
     // node) outlive this hook, so it must hear the drag end as cancelled
     // rather than never hear at all.
-    cancelActiveDrag();
-    abandonHold();
+    endDragAsCancelled();
+    clearHoldTimers();
     activePointerRef.current = null;
     detachRef.current?.();
     detachRef.current = null;
-    setIsDragging(false);
     if (expiryTimerRef.current !== null) {
       window.clearTimeout(expiryTimerRef.current);
       expiryTimerRef.current = null;
     }
-  }, [abandonHold, cancelActiveDrag]);
+  }, [clearHoldTimers, endDragAsCancelled]);
+
+  /** Drops everything, the hold and drag state included. */
+  const teardown = useCallback(() => {
+    releaseGesture();
+    setIsHolding(false);
+    setIsDragging(false);
+  }, [releaseGesture]);
 
   const endGesture = useCallback(() => {
     teardown();
@@ -215,29 +253,29 @@ export function useNodeGestures({
     }, 0);
   }, [teardown]);
 
-  useEffect(() => teardown, [teardown]);
+  useEffect(() => releaseGesture, [releaseGesture]);
 
   // A hold that is no longer applicable — because the label now fits, or the
   // node became disabled — must not still be counting down towards firing,
   // nor leave a suppression behind for an activation it has nothing to do with.
   // What this cancels lives outside React — a pending timer, the pointer
-  // listeners a live gesture attached — so it belongs in an effect; the state
-  // these teardowns reset is a by-product of that, not a derived value.
+  // listeners a live gesture attached — so it belongs in an effect. That the
+  // hold no longer shows as underway is settled while rendering, above.
   useEffect(() => {
-    if (holdEnabled && !disabled) return;
-    abandonHold();
+    if (holdApplicable) return;
+    clearHoldTimers();
     if (disabled) {
-      teardown();
+      releaseGesture();
       suppressClickRef.current = false;
     }
-  }, [abandonHold, disabled, holdEnabled, teardown]);
+  }, [clearHoldTimers, disabled, holdApplicable, releaseGesture]);
 
   // A host may withdraw dragging itself, mid-drag, without disabling the node
   // (toggling repositioning off). The gesture goes on — the finger is still
   // down — but the drag ends now, through the callback that began it.
   useEffect(() => {
-    if (!dragEnabled) cancelActiveDrag();
-  }, [cancelActiveDrag, dragEnabled]);
+    if (!dragEnabled) endDragAsCancelled();
+  }, [endDragAsCancelled, dragEnabled]);
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent) => {
@@ -357,8 +395,8 @@ export function useNodeGestures({
         // an app switch, or a release outside the browser. Nothing else will
         // end the sequence: a live drag must still be heard ending, and the
         // gesture must give up its pointer ownership or the node would refuse
-        // every later press.
-        cancelActiveDrag();
+        // every later press. (`endGesture` tears the gesture down, drag
+        // included, through the same cancellation.)
         endGesture();
       };
 
@@ -400,15 +438,7 @@ export function useNodeGestures({
 
       return true;
     },
-    [
-      abandonHold,
-      cancelActiveDrag,
-      disabled,
-      endGesture,
-      feedbackDelay,
-      holdDuration,
-      teardown,
-    ],
+    [abandonHold, disabled, endGesture, feedbackDelay, holdDuration, teardown],
   );
 
   const shouldSuppressClick = useCallback(() => {
