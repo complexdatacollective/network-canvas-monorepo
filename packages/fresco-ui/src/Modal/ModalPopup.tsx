@@ -9,7 +9,13 @@ import {
   usePresence,
   type VariantLabels,
 } from 'motion/react';
-import { type ComponentProps, useEffect, useId, useRef } from 'react';
+import {
+  type ComponentProps,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 
 import { useSafeAnimate } from '../hooks/useSafeAnimate';
 import {
@@ -123,10 +129,14 @@ export default function ModalPopup({
    * re-render — and an app that re-renders more often than the exit's ~0.3s
    * duration would then never reach `safeToRemove()`, leaving the popup
    * mounted (and animating) forever. Reading it through a ref keeps the effect
-   * keyed on `isPresent` alone, so the exit runs exactly once.
+   * keyed on `isPresent` alone, so the exit runs exactly once. The ref is
+   * brought up to date in a layout effect, which runs before the passive
+   * animation effect of the same commit.
    */
   const safeToRemoveRef = useRef(safeToRemove);
-  safeToRemoveRef.current = safeToRemove;
+  useLayoutEffect(() => {
+    safeToRemoveRef.current = safeToRemove;
+  });
 
   useEffect(() => {
     if (usesDeclarativeAnimation) {
