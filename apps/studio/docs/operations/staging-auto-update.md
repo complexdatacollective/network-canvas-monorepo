@@ -1,7 +1,12 @@
-# Automatic updates
+# Staging automatic updates
 
-`auto-update.sh` deploys each new Studio release to the stack as soon as it is
-published. Run it from cron, hourly. Each run:
+How Codaco keeps its own Studio staging instance on the newest release.
+`auto-update.sh` deploys each new Studio release to that stack as soon as it
+is published, and records the deploy as a GitHub deployment in this
+repository, so it needs a token with write access here. It is not a
+self-hosting feature: self-hosters upgrade with
+[the upgrade script](../self-host/upgrade.md#the-upgrade-script). Run it from
+cron, hourly. Each run:
 
 1. Takes a lock, so a run that starts while the last one is still upgrading
    skips.
@@ -20,7 +25,7 @@ published. Run it from cron, hourly. Each run:
    If Compose rejects it, or it uses a variable `.env` does not set, it names
    the problem and changes nothing.
 8. Records a GitHub deployment for the release's commit, marks it in progress,
-   and runs that release's [`upgrade.sh`](./upgrade.md#the-upgrade-script)
+   and runs that release's [`upgrade.sh`](../self-host/upgrade.md#the-upgrade-script)
    with the two images and `--compose`, which installs the new
    `docker-compose.yml` as part of the upgrade.
 9. Marks the deployment with how `upgrade.sh` ended.
@@ -80,17 +85,20 @@ file:
 
 The account needs to run `docker compose` without `sudo`. If Compose is not
 installed as `docker compose`, add `COMPOSE=<command>` to the line, as
-[the upgrade script](./upgrade.md#the-upgrade-script) describes.
+[the upgrade script](../self-host/upgrade.md#the-upgrade-script) describes.
 
 Nothing stops a run partway through `upgrade.sh`, so do not wrap it in
-`timeout`: a killed upgrade leaves maintenance mode on.
+`timeout`: a killed upgrade leaves maintenance mode on. A run writes
+`.auto-update-halted` before it starts `upgrade.sh` and removes it only after
+an upgrade, so if the run is killed or the host restarts mid-upgrade, later
+runs halt rather than report the half-finished upgrade as up to date.
 
 ## When a run halts
 
 Any upgrade that does not end in `upgraded` writes `.auto-update-halted`,
 naming the release and the result, and every later run stops there. Read
 `auto-update.log` and the upgrade guide's
-[exit codes](./upgrade.md#the-upgrade-script) to see what state the instance is
+[exit codes](../self-host/upgrade.md#the-upgrade-script) to see what state the instance is
 in, put it right, then resume:
 
 ```bash

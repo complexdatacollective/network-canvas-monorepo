@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Deploys the newest Network Canvas Studio release to this stack when it differs
-# from what .env runs, and records the deploy as a GitHub deployment. Meant to
-# run hourly from cron, from the directory holding docker-compose.yml and .env.
+# Deploys the newest Network Canvas Studio release to Codaco's staging stack when
+# it differs from what .env runs, and records the deploy as a GitHub deployment
+# (docs/operations/staging-auto-update.md). Meant to run hourly from cron, from
+# the directory holding docker-compose.yml and .env.
 # Each deploy runs the release's own upgrade.sh with the release's own
 # docker-compose.yml, both fetched from the commit its images were built from.
 #
@@ -133,6 +134,7 @@ status() { # state description
 
 log "deploying Studio $VERSION (deployment $DEPLOYMENT)"
 status in_progress "Upgrading to Studio $VERSION"
+echo "Studio $VERSION: upgrade.sh started at $(date -u +%Y-%m-%dT%H:%M:%SZ) and did not finish" > .auto-update-halted
 bash "$WORK/upgrade.sh" --dir . --compose "$WORK/docker-compose.yml" "$NEW_API" "$NEW_WEB"
 CODE=$?
 
@@ -149,5 +151,7 @@ status "$STATE" "Studio $VERSION: $RESULT"
 if [ "$CODE" -ne 0 ]; then
   echo "Studio $VERSION: upgrade.sh ended $RESULT (exit $CODE) at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > .auto-update-halted
   log "upgrade.sh ended $RESULT; wrote .auto-update-halted"
+else
+  rm -f .auto-update-halted
 fi
 exit "$CODE"

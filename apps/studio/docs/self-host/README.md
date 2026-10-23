@@ -53,7 +53,6 @@ of every process environment, and out of any log line that prints one.
 | [Run the stack](./run.md)                             | From nothing to a signed-in owner                                                                          |
 | [Back up and restore](./backup.md)                    | What to copy, in what order, and why a database without its keyring is not a backup                        |
 | [Upgrade](./upgrade.md)                               | The six commands, the script that runs them, and rollback                                                  |
-| [Automatic updates](./auto-update.md)                 | Deploying each new release from cron with the upgrade script, and recording it as a GitHub deployment      |
 | [Swap an element](./swap.md)                          | A managed database, bucket, Azure Blob container or Redis, and your own reverse proxy                      |
 | [Postgres major upgrade](./postgres-major-upgrade.md) | Moving from one Postgres major to the next without losing the volume you came from                         |
 | [Telemetry](./telemetry.md)                           | What leaves the machine and to whom, sending telemetry to your own OpenTelemetry store, and turning it off |

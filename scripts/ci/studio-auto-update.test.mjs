@@ -107,6 +107,7 @@ exit 0
 const UPGRADE = `#!/usr/bin/env bash
 echo "$*" >> "$STUB_STATE/upgrade.log"
 cp "\${@: -3:1}" "$STUB_STATE/upgrade-compose.yml"
+[ -n "\${STUB_UPGRADE_KILLED:-}" ] && kill -9 "$PPID"
 exit "\${STUB_UPGRADE_EXIT:-0}"
 `;
 
@@ -294,6 +295,25 @@ for (const [code, state, result] of [
     assert.equal(again.upgrade.length, 1);
   });
 }
+
+test('halts later runs when a run dies during the upgrade', () => {
+  const s = setup();
+  const r = run(s, { env: { STUB_UPGRADE_KILLED: '1' } });
+  assert.equal(r.status, null, r.output);
+  assert.match(
+    r.halted,
+    /Studio 0\.4\.0: upgrade\.sh started at .* and did not finish/,
+  );
+
+  writeFileSync(
+    join(s.stack, '.env'),
+    `STUDIO_HOSTNAME=studio.example.org\nSTUDIO_API_IMAGE=${NEW_API}\nSTUDIO_WEB_IMAGE=${NEW_WEB}\n`,
+  );
+  const again = run(s);
+  assert.equal(again.status, 0, again.output);
+  assert.match(again.output, /halted: Studio 0\.4\.0/);
+  assert.doesNotMatch(again.output, /up to date/);
+});
 
 test('changes nothing when an image is not signed by the release workflow', () => {
   const r = run(setup(), { env: { STUB_COSIGN_REJECT: NEW_WEB } });
