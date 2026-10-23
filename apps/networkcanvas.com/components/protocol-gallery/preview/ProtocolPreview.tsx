@@ -50,11 +50,8 @@ export type CompletionLabels = Readonly<
   >
 >;
 
-// The outcome of loading one wave's protocol, tagged with the wave and the
-// attempt it was loaded for.
+// The outcome of loading one wave's protocol.
 type LoadedPreview = {
-  wave: PreviewWave;
-  attempt: number;
   install: PreviewProtocolInstall | null;
   payload: InterviewPayload | null;
   requestedLocales: readonly string[] | null;
@@ -112,16 +109,19 @@ export function ProtocolPreview({
   const [loaded, setLoaded] = useState<LoadedPreview | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
-  // What a load produced counts only for the wave and attempt it was started
-  // for. Changing either, or retrying, therefore shows the loading screen at
-  // once instead of the previous wave's interview or failure.
-  const current =
-    loaded !== null && loaded.wave === wave && loaded.attempt === attempt
-      ? loaded
-      : null;
-  const payload = current?.payload ?? null;
-  const requestedLocales = current?.requestedLocales ?? null;
-  const failure = current?.failure ?? null;
+  // Every change of wave starts a new load, so what the last one produced is
+  // forgotten as the wave changes — even on a return to a wave loaded before,
+  // whose earlier install the new load has already let go of. The loading
+  // screen therefore shows at once, never the previous load's interview or
+  // failure. Retrying forgets it the same way, from its click handler.
+  const [loadedWave, setLoadedWave] = useState(wave);
+  if (wave !== loadedWave) {
+    setLoadedWave(wave);
+    setLoaded(null);
+  }
+  const payload = loaded?.payload ?? null;
+  const requestedLocales = loaded?.requestedLocales ?? null;
+  const failure = loaded?.failure ?? null;
 
   // The install lives in a ref as well as state so the asset resolver, which
   // the Shell holds for its lifetime, reads the current one without being
@@ -153,8 +153,6 @@ export function ProtocolPreview({
 
     const fail = (reason: PreviewFailure) =>
       setLoaded({
-        wave,
-        attempt,
         install: null,
         payload: null,
         requestedLocales: null,
@@ -178,8 +176,6 @@ export function ProtocolPreview({
       installRef.current = result.install;
       setCurrentStep(0);
       setLoaded({
-        wave,
-        attempt,
         install: result.install,
         payload: createPreviewPayload(result.install),
         // Read here, after the protocol has loaded in the browser, so the
@@ -224,11 +220,11 @@ export function ProtocolPreview({
           <InterviewLanguageLabel labels={completionLabels} name="restart" />
         ),
         onAction: () => {
-          if (!current?.install) return;
+          if (!loaded?.install) return;
           setCurrentStep(0);
           setLoaded({
-            ...current,
-            payload: createPreviewPayload(current.install),
+            ...loaded,
+            payload: createPreviewPayload(loaded.install),
           });
         },
       },
@@ -242,7 +238,7 @@ export function ProtocolPreview({
         onAction: () => window.location.assign(backHref),
       },
     ],
-    [completionLabels, current, backHref],
+    [completionLabels, loaded, backHref],
   );
 
   const backAction = (
@@ -260,7 +256,10 @@ export function ProtocolPreview({
             {failure && failure !== 'unsupported-version' ? (
               <Button
                 color="primary"
-                onClick={() => setAttempt((count) => count + 1)}
+                onClick={() => {
+                  setLoaded(null);
+                  setAttempt((count) => count + 1);
+                }}
               >
                 {t('retry')}
               </Button>
