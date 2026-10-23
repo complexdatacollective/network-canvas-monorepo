@@ -5,12 +5,7 @@ import {
   MotionConfigContext,
   MotionGlobalConfig,
 } from 'motion/react';
-import {
-  type ComponentProps,
-  useContext,
-  useLayoutEffect,
-  useState,
-} from 'react';
+import { useContext, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AnimationProvider } from './AnimationProvider';
@@ -28,36 +23,8 @@ describe('AnimationProvider', () => {
     vi.restoreAllMocks();
   });
 
-  /**
-   * Reports what a descendant's effects see as it mounts: where Motion starts
-   * its animations and Base UI runs its transition callbacks.
-   */
-  function RecordAtMount({
-    read,
-    record,
-  }: {
-    read: () => boolean | undefined;
-    record: (value: boolean | undefined) => void;
-  }) {
-    useLayoutEffect(() => {
-      record(read());
-    }, [read, record]);
-    return null;
-  }
-
-  const readBaseUiFlag = () => globalThis.BASE_UI_ANIMATIONS_DISABLED;
-
-  /** Base UI's flag as a descendant of `provider` saw it on mounting. */
-  function baseUiFlagAtMount(
-    props: Omit<ComponentProps<typeof AnimationProvider>, 'children'>,
-  ) {
-    const seen: Array<boolean | undefined> = [];
-    render(
-      <AnimationProvider {...props}>
-        <RecordAtMount read={readBaseUiFlag} record={(v) => seen.push(v)} />
-      </AnimationProvider>,
-    );
-    return seen;
+  function AnimationState() {
+    return <span>{String(globalThis.BASE_UI_ANIMATIONS_DISABLED)}</span>;
   }
 
   function ReducedMotionSetting() {
@@ -95,26 +62,32 @@ describe('AnimationProvider', () => {
     expect(screen.getByText('always')).toBeTruthy();
   });
 
-  it('disables Base UI before descendants mount', () => {
-    expect(baseUiFlagAtMount({ disableAnimations: true })).toEqual([true]);
+  it('disables Base UI before rendering descendants', () => {
+    render(
+      <AnimationProvider disableAnimations>
+        <AnimationState />
+      </AnimationProvider>,
+    );
+
+    expect(screen.getByText('true')).toBeTruthy();
   });
 
   // Layout and `layoutId` animations ignore `MotionConfig`'s `skipAnimations`
   // and read only the global flag, so a disabled provider has to set it.
-  it('skips Motion layout animations before descendants mount', () => {
+  it('skips Motion layout animations before rendering descendants', () => {
     MotionGlobalConfig.skipAnimations = false;
-    const seen: Array<boolean | undefined> = [];
+
+    function GlobalSkipState() {
+      return <span>{String(MotionGlobalConfig.skipAnimations)}</span>;
+    }
 
     render(
       <AnimationProvider disableAnimations>
-        <RecordAtMount
-          read={() => MotionGlobalConfig.skipAnimations}
-          record={(v) => seen.push(v)}
-        />
+        <GlobalSkipState />
       </AnimationProvider>,
     );
 
-    expect(seen).toEqual([true]);
+    expect(screen.getByText('true')).toBeTruthy();
   });
 
   it('leaves Motion layout animations running by default', () => {
@@ -139,9 +112,13 @@ describe('AnimationProvider', () => {
       value: true,
     });
 
-    expect(baseUiFlagAtMount({ disableAnimationsForAutomation: true })).toEqual(
-      [true],
+    render(
+      <AnimationProvider disableAnimationsForAutomation>
+        <AnimationState />
+      </AnimationProvider>,
     );
+
+    expect(screen.getByText('true')).toBeTruthy();
   });
 
   it.each(['?chromatic=true', '?disableAnimations=1'])(
@@ -149,9 +126,13 @@ describe('AnimationProvider', () => {
     (search) => {
       window.history.replaceState({}, '', `/${search}`);
 
-      expect(
-        baseUiFlagAtMount({ disableAnimationsForAutomation: true }),
-      ).toEqual([true]);
+      render(
+        <AnimationProvider disableAnimationsForAutomation>
+          <AnimationState />
+        </AnimationProvider>,
+      );
+
+      expect(screen.getByText('true')).toBeTruthy();
     },
   );
 
@@ -160,9 +141,13 @@ describe('AnimationProvider', () => {
       'Mozilla/5.0 Chromatic/18.1.0',
     );
 
-    expect(baseUiFlagAtMount({ disableAnimationsForAutomation: true })).toEqual(
-      [true],
+    render(
+      <AnimationProvider disableAnimationsForAutomation>
+        <AnimationState />
+      </AnimationProvider>,
     );
+
+    expect(screen.getByText('true')).toBeTruthy();
   });
 
   it('does not auto-detect automation unless requested', () => {
@@ -173,7 +158,13 @@ describe('AnimationProvider', () => {
       value: true,
     });
 
-    expect(baseUiFlagAtMount({})).toEqual([false]);
+    render(
+      <AnimationProvider>
+        <AnimationState />
+      </AnimationProvider>,
+    );
+
+    expect(screen.getByText('false')).toBeTruthy();
   });
 
   it('removes AnimatePresence exits promptly under the shared test setup', async () => {
