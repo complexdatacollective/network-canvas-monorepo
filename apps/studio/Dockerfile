@@ -57,6 +57,10 @@ RUN pnpm dlx "turbo@$(node -p "require('./package.json').devDependencies.turbo")
 # production-only deployment of the server (package.json + prod node_modules).
 FROM base AS builder
 WORKDIR /repo
+# The source-map upload is a Rust binary that reads the system's CA store,
+# which node:24-slim does not ship.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 # No .git in the build context; skip the root husky prepare script.
 ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
