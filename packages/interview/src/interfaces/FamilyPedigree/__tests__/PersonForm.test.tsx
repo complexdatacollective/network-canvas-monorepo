@@ -1139,7 +1139,7 @@ describe('a parent of any kind who carried the pregnancy', () => {
     });
   });
 
-  it('offers a new adoptive sibling’s adoptive parent as having carried them', async () => {
+  it('does not ask who carried a new adopted sibling', async () => {
     const { user } = renderPersonForm('ego', {
       nodes: [
         person('ego', { isEgo: true, sex: ['male'] }),
@@ -1156,15 +1156,19 @@ describe('a parent of any kind who carried the pregnancy', () => {
         ).getByRole('checkbox', { name: parent }),
       );
     }
+    await user.click(screen.getByRole('radio', { name: 'A biological child' }));
+    expect(
+      await screen.findByRole('radiogroup', {
+        name: /^Who carried the pregnancy\?/,
+      }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'An adopted child' }));
     await waitFor(() =>
       expect(
-        within(
-          screen.getByRole('radiogroup', {
-            name: /^Who carried the pregnancy\?/,
-          }),
-        ).getByRole('radio', { name: 'amy' }),
-      ).toBeInTheDocument(),
+        screen.queryByRole('radiogroup', {
+          name: /^Who carried the pregnancy\?/,
+        }),
+      ).not.toBeInTheDocument(),
     );
   });
 
@@ -1185,6 +1189,44 @@ describe('a parent of any kind who carried the pregnancy', () => {
         linkId: 'amy-ego-adoptive',
         kind: 'adoptive',
         isGestationalCarrier: true,
+        isCurrentPartner: true,
+      },
+    ]);
+  });
+});
+
+// An adopted sibling's adoptive parents are recorded as not having carried
+// them; that "No" rests on the adoption, so it goes once the parent is
+// recorded as another kind (Joshua, 22 Oct 2026).
+describe('carrying recorded for an adoptive parent', () => {
+  it('asks again whether a parent carried the pregnancy once they are no longer an adoptive parent', async () => {
+    const { onSubmit, user } = renderPersonForm('sib', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sib', { sex: ['female'] }),
+        person('amy', { sex: ['female'] }),
+      ],
+      edges: [link('amy', 'sib', 'adoptive', { carrier: false })],
+    });
+    const carried = () =>
+      screen.getByRole('radiogroup', {
+        name: /^Did amy carry the pregnancy\?/,
+      });
+    expect(within(carried()).getByRole('radio', { name: 'No' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Biological parent' }));
+    await waitFor(() => {
+      for (const option of within(carried()).getAllByRole('radio')) {
+        expect(option).not.toBeChecked();
+      }
+    });
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].linkUpdates).toEqual([
+      {
+        linkId: 'amy-sib-adoptive',
+        kind: 'biological',
+        isGestationalCarrier: undefined,
         isCurrentPartner: true,
       },
     ]);
@@ -1777,6 +1819,56 @@ describe('twins', () => {
     expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
       twin: 'identical',
     });
+  });
+
+  // An adopted sibling of someone born to the parents they share is not
+  // their twin, and someone else carried them.
+  it('does not ask whether a new adopted sibling is the twin of someone born to their parents', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [person('ego', { isEgo: true, sex: ['male'] }), ...parents],
+      edges: parentLinks('ego'),
+      adding: 'sibling',
+    });
+    await user.click(screen.getByRole('checkbox', { name: 'mum' }));
+    await user.click(screen.getByRole('checkbox', { name: 'dad' }));
+    await user.click(screen.getByRole('radio', { name: 'A biological child' }));
+    await user.click(
+      within(
+        screen.getByRole('radiogroup', { name: /^Are they your twin\?/ }),
+      ).getByRole('radio', { name: 'Yes, identical twins' }),
+    );
+    await user.click(screen.getByRole('radio', { name: 'An adopted child' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('radiogroup', { name: /^Are they your twin\?/ }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole('radiogroup', {
+        name: /^Who carried the pregnancy\?/,
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Male' }));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const { request } = onSubmit.mock.calls[0]![0];
+    expect(request).toMatchObject({ parentKind: 'adoptive', carrier: null });
+    expect(request).not.toHaveProperty('twin', expect.anything());
+  });
+
+  it('asks whether a new adopted sibling is the twin of someone the same parents adopted', async () => {
+    const { user } = renderPersonForm('ego', {
+      nodes: [person('ego', { isEgo: true, sex: ['male'] }), ...parents],
+      edges: [link('mum', 'ego', 'adoptive'), link('dad', 'ego', 'adoptive')],
+      adding: 'sibling',
+    });
+    await user.click(screen.getByRole('checkbox', { name: 'mum' }));
+    await user.click(screen.getByRole('checkbox', { name: 'dad' }));
+    await user.click(screen.getByRole('radio', { name: 'An adopted child' }));
+    expect(
+      screen.getByRole('radiogroup', { name: /^Are they your twin\?/ }),
+    ).toBeInTheDocument();
   });
 
   it('shows identical twins unavailable for a sibling who would not share both parents, saying why', async () => {

@@ -1607,12 +1607,21 @@ function ParentLinkFields({
       : undefined;
   // Not known shows neither answer chosen, except that while someone else
   // carried them, "No" is the answer worked out (`useDerivedAnswer`): it
-  // goes again once nobody else did, unless the participant chose it.
+  // goes again once nobody else did, unless the participant chose it. "No"
+  // recorded for a parent who adopted the person rests on the adoption (an
+  // adopted sibling is recorded as carried by someone else), so once another
+  // kind of parent is chosen it is asked afresh.
+  const recordedForKind =
+    link.kind === 'adoptive' &&
+    kind !== 'adoptive' &&
+    recordedCarrying === false
+      ? undefined
+      : recordedCarrying;
   const carriedAnswer = useDerivedAnswer({
     name: linkField(link, 'carrier'),
     nameMode: 'opaque',
     derived:
-      recordedCarrying ?? (anotherCarrier === undefined ? undefined : false),
+      recordedForKind ?? (anotherCarrier === undefined ? undefined : false),
     isAvailable: (value) => value !== true || carriedYesReason === undefined,
   });
 
@@ -2660,7 +2669,10 @@ function SiblingFields({
   // the sibling will have, as the answers stand, who could have carried it —
   // the parents chosen, and any unnamed parent added for both of them —
   // offered by the name they are shown by, whatever kind of parent they are.
+  // An adopted sibling is not asked: someone else carried them, and none of
+  // the parents who adopted them is recorded as having done so.
   const siblingKind = asString(values[ROLE.siblingKind]);
+  const adopted = siblingKind === 'adoptive';
   const siblingPlan =
     siblingKind === undefined || siblingKind === 'biological'
       ? biologicalPlan
@@ -2677,7 +2689,7 @@ function SiblingFields({
     parents.length > 0 &&
     asStringArray(values[ROLE.sharedParents]).length === 0;
   const carriers =
-    siblingKind === undefined || nothingShared
+    siblingKind === undefined || adopted || nothingShared
       ? []
       : possibleCarriers(
           family,
@@ -2844,6 +2856,22 @@ function SiblingFields({
           ]),
         ]);
   const twinPossible = !carrierLeftOut && outOfReachHint === undefined;
+  // Nor is an adopted sibling the twin of someone born to the parents they
+  // share, so is not asked: only of someone those parents adopted too, and
+  // who none of them carried, as twins adopted together are.
+  const twinAsked =
+    !adopted ||
+    (sharedRecorded.length > 0 &&
+      sharedRecorded.every(
+        (id) =>
+          id !== anchorCarrier &&
+          family.links.some(
+            (link) =>
+              link.source === id &&
+              link.target === anchor.id &&
+              link.kind === 'adoptive',
+          ),
+      ));
   const carrierHint = carrierLeftOut
     ? text(wording.unavailableTwinCarrierNew, {
         who: anchor.isEgo
@@ -2882,8 +2910,9 @@ function SiblingFields({
     name: ROLE.twin,
     derived: undefined,
     isAvailable: (answer) =>
-      answer === NONE ||
-      (twinPossible && (answer !== 'identical' || identicalPossible)),
+      twinAsked &&
+      (answer === NONE ||
+        (twinPossible && (answer !== 'identical' || identicalPossible))),
   });
 
   // Someone with no parents is given an egg parent and a sperm parent,
@@ -3010,36 +3039,38 @@ function SiblingFields({
           {...secondAnswerKept}
         />
       )}
-      <Field
-        component={RadioGroupField}
-        name={ROLE.twin}
-        label={text(wording.siblingTwinLabel, args)}
-        hint={[text(wording.siblingTwinHint), identicalHint]
-          .filter((sentence) => sentence !== undefined)
-          .join(' ')}
-        options={[
-          { value: NONE, label: text(wording.siblingTwinNo) },
-          {
-            value: 'identical',
-            label: text(wording.siblingTwinIdentical),
-            disabled: !twinPossible || !identicalPossible,
-            description: identicalHint,
-          },
-          {
-            value: 'fraternal',
-            label: text(wording.siblingTwinFraternal),
-            disabled: !twinPossible,
-            description: carrierHint,
-          },
-          {
-            value: 'unknown',
-            label: text(wording.siblingTwinUnknown),
-            disabled: !twinPossible,
-            description: carrierHint,
-          },
-        ]}
-        {...twinAnswer}
-      />
+      {twinAsked && (
+        <Field
+          component={RadioGroupField}
+          name={ROLE.twin}
+          label={text(wording.siblingTwinLabel, args)}
+          hint={[text(wording.siblingTwinHint), identicalHint]
+            .filter((sentence) => sentence !== undefined)
+            .join(' ')}
+          options={[
+            { value: NONE, label: text(wording.siblingTwinNo) },
+            {
+              value: 'identical',
+              label: text(wording.siblingTwinIdentical),
+              disabled: !twinPossible || !identicalPossible,
+              description: identicalHint,
+            },
+            {
+              value: 'fraternal',
+              label: text(wording.siblingTwinFraternal),
+              disabled: !twinPossible,
+              description: carrierHint,
+            },
+            {
+              value: 'unknown',
+              label: text(wording.siblingTwinUnknown),
+              disabled: !twinPossible,
+              description: carrierHint,
+            },
+          ]}
+          {...twinAnswer}
+        />
+      )}
       {carriers.length > 0 && (
         <Field
           component={RadioGroupField}

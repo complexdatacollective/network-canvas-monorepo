@@ -9,7 +9,6 @@ import {
   parentChoiceOptions,
   planAddRelative,
   planConnection,
-  possibleCarriers,
   readFamily,
 } from '../model';
 import { config, link, person } from './fixtures';
@@ -268,7 +267,7 @@ describe('adding a child someone carried', () => {
 });
 
 describe('who may have carried a sibling', () => {
-  test('the adoptive parents a sibling is planned to have may have', () => {
+  test('none of the parents who adopted a sibling carried them, whatever the answer', () => {
     const f = family(
       [
         person('ego', { isEgo: true }),
@@ -277,15 +276,81 @@ describe('who may have carried a sibling', () => {
       ],
       [link('amy', 'ego', 'adoptive'), link('rob', 'ego', 'adoptive')],
     );
-    const planned = plan(f, 'ego', {
+    for (const carrier of [null, 'amy']) {
+      const result = plan(f, 'ego', {
+        relation: 'sibling',
+        sharedParentIds: ['amy', 'rob'],
+        parentKind: 'adoptive',
+        carrier,
+      });
+      expect(
+        result.links
+          .filter((planned) => planned.target === 'added')
+          .map((planned) => [planned.source, planned.isGestationalCarrier]),
+      ).toEqual([
+        ['amy', false],
+        ['rob', false],
+      ]);
+    }
+  });
+
+  test('a twin adopted with someone a donor they share carried was carried by that donor too', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('amy', { sex: ['female'] }),
+        person('rob', { sex: ['male'] }),
+        person('don', { sex: ['female'] }),
+      ],
+      [
+        link('amy', 'ego', 'adoptive', { carrier: false }),
+        link('rob', 'ego', 'adoptive'),
+        link('don', 'ego', 'donor', { carrier: true }),
+      ],
+    );
+    const result = plan(f, 'ego', {
       relation: 'sibling',
-      sharedParentIds: ['amy', 'rob'],
+      sharedParentIds: ['amy', 'rob', 'don'],
       parentKind: 'adoptive',
+      twin: 'fraternal',
       carrier: null,
     });
     expect(
-      possibleCarriers(f, planned, 'added', config.sexAssignedAtBirthAttribute),
-    ).toEqual(['amy']);
+      result.links
+        .filter((planned) => planned.target === 'added')
+        .map((planned) => [planned.source, planned.isGestationalCarrier]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['amy', false],
+        ['rob', false],
+        ['don', true],
+      ]),
+    );
+    // What is recorded for the person they are a twin of stays as it is.
+    expect(result.carrierUpdates ?? []).toEqual([]);
+  });
+
+  test('a twin adopted with someone nobody recorded carried leaves their records as they are', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('amy', { sex: ['female'] }),
+        person('rob', { sex: ['male'] }),
+      ],
+      [
+        link('amy', 'ego', 'adoptive', { carrier: false }),
+        link('rob', 'ego', 'adoptive'),
+      ],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['amy', 'rob'],
+      parentKind: 'adoptive',
+      twin: 'fraternal',
+      carrier: null,
+    });
+    expect(result.twins).toHaveLength(1);
+    expect(result.carrierUpdates ?? []).toEqual([]);
   });
 });
 
