@@ -1,4 +1,4 @@
-import Dexie from 'dexie';
+import { Dexie } from 'dexie';
 
 import { RETIRED_DB_NAMES } from './storageNames';
 

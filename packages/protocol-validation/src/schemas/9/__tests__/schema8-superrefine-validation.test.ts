@@ -16,7 +16,7 @@ import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from '../stages/categorical-bin.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';

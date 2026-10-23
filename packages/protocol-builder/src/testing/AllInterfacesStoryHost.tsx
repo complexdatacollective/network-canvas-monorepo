@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { sectionId } from '@codaco/studio-sync/taxonomy';

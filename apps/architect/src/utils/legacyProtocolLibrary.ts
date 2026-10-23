@@ -1,4 +1,4 @@
-import Dexie, { type DBCore, type DexieOptions, type Middleware } from 'dexie';
+import { Dexie, type DBCore, type DexieOptions, type Middleware } from 'dexie';
 
 import type { Protocol } from '@codaco/protocol-validation';
 import { APP_SCHEMA_VERSION } from '~/config';

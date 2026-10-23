@@ -42,7 +42,7 @@ export function newestVersion(tags) {
     .map((tag) => tag.slice(TAG_PREFIX.length))
     .filter((version) => /^\d+\.\d+\.\d+$/.test(version))
     .map((version) => ({ version, parts: version.split('.').map(Number) }))
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       for (let i = 0; i < 3; i += 1) {
         if (a.parts[i] !== b.parts[i]) return b.parts[i] - a.parts[i];
       }

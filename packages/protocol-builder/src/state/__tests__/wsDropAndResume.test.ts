@@ -116,7 +116,7 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       'during-2',
       'after-1',
     ]);
-    expect(revisions).toEqual([...revisions].sort((a, b) => (a < b ? -1 : 1)));
+    expect(revisions).toEqual(revisions.toSorted((a, b) => (a < b ? -1 : 1)));
     expect(new Set(revisions).size).toBe(revisions.length);
   });
 

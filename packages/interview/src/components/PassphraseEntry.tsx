@@ -4,7 +4,7 @@ import { KeyRound } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
 import { AppMessage } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import {
   asFinalFocusTarget,
   resolveFinalFocus,

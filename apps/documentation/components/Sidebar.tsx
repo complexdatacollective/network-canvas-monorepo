@@ -42,7 +42,7 @@ const MotionChevron = motion.create(ChevronRight);
  * @returns {(TSidebarFolder | SidebarPage)[]}
  */
 const sortSidebarItems = (sidebarItems: (TSidebarFolder | SidebarPage)[]) =>
-  sidebarItems.sort((a, b) => {
+  sidebarItems.toSorted((a, b) => {
     // If both items have navOrder, sort by that
     if (a.navOrder !== null && b.navOrder !== null) {
       return a.navOrder - b.navOrder;

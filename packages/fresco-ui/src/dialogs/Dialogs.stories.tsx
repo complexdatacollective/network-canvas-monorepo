@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { action } from 'storybook/actions';
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
-import Button from '../Button';
+import { Button } from '../Button';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import Dialog from './Dialog';

@@ -326,12 +326,12 @@ export function edgeSetProblems(files, expectedIds) {
         held.graphml.push(graphmlFields(body, keyNames).get(ncUUIDProperty));
     }
   }
-  const expected = [...expectedIds].sort(byText);
+  const expected = [...expectedIds].toSorted(byText);
   return Object.entries(held).flatMap(([format, ids]) =>
-    JSON.stringify([...ids].sort(byText)) === JSON.stringify(expected)
+    JSON.stringify(ids.toSorted(byText)) === JSON.stringify(expected)
       ? []
       : [
-          `the exported ${format} files hold the relationships ${JSON.stringify([...ids].sort(byText))}, not ${JSON.stringify(expected)}`,
+          `the exported ${format} files hold the relationships ${JSON.stringify(ids.toSorted(byText))}, not ${JSON.stringify(expected)}`,
         ],
   );
 }

@@ -517,7 +517,7 @@ describe('auxiliary lines keep clear of every other line', () => {
     const lines = connectors.auxiliaryLines.filter(
       (line) => line.edgeType === 'biological',
     );
-    expect(lines.map((line) => [...(line.ownerIds ?? [])].sort())).toEqual([
+    expect(lines.map((line) => (line.ownerIds ?? []).toSorted())).toEqual([
       ['chloe', 'tyler'],
     ]);
   });

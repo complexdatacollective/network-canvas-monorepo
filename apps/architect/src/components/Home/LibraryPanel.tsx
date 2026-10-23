@@ -32,7 +32,7 @@ import {
   useAppIntl,
 } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';

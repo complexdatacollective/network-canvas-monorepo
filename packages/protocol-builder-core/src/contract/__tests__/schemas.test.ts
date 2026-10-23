@@ -42,7 +42,7 @@ const overJson = <S extends Contract>(schema: S, value: S['Type']) => {
   return { wire, decoded };
 };
 
-const accepts = <S extends Contract>(schema: S, value: unknown) =>
+const accepts = (schema: Contract, value: unknown) =>
   Exit.isSuccess(Schema.decodeUnknownExit(schema)(value));
 
 const stage = sectionId({ kind: 'stage', stageId: 'information-1' });
@@ -253,7 +253,7 @@ describe('the protocol-builder group', () => {
   it('declares exactly the fifteen procedures, once each', () => {
     const tags = rpcs.map((rpc) => rpc._tag);
     expect(tags.length).toBe(TAGS.length);
-    expect([...tags].sort()).toEqual([...TAGS]);
+    expect(tags.toSorted()).toEqual([...TAGS]);
   });
 
   it.each(TAGS)('%s refuses exactly what it refused before', (tag) => {
@@ -264,8 +264,8 @@ describe('the protocol-builder group', () => {
       : rpc.errorSchema;
     const declared = REFUSALS.filter((refusal) => Schema.is(error)(refusal))
       .map((refusal) => refusal._tag)
-      .sort();
-    expect(declared).toEqual([...DECLARED[tag]].sort());
+      .toSorted();
+    expect(declared).toEqual(DECLARED[tag].toSorted());
   });
 
   it.each(TAGS)('%s runs behind the host session', (tag) => {

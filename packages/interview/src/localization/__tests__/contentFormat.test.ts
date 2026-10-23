@@ -19,7 +19,7 @@ describe('contentFormatFor', () => {
   });
 
   it('keeps the precision a number was stored with', () => {
-    expect(contentFormatFor('en').formatNumber(3.14159265)).toBe('3.14159265');
+    expect(contentFormatFor('en').formatNumber(3.71828182)).toBe('3.71828182');
   });
 
   it('never shows a small nonzero number as zero', () => {

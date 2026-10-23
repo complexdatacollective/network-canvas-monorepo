@@ -181,7 +181,7 @@ export class LinkCheckCache {
    */
   serialize() {
     const entries = {};
-    for (const url of [...this.#entries.keys()].sort(compareStrings)) {
+    for (const url of [...this.#entries.keys()].toSorted(compareStrings)) {
       const entry = this.#entries.get(url);
       if (this.#isFresh(entry)) entries[url] = entry;
     }

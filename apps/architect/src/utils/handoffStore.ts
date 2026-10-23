@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from 'dexie';
+import { Dexie, type EntityTable } from 'dexie';
 
 import { databaseExists } from './databaseExists';
 

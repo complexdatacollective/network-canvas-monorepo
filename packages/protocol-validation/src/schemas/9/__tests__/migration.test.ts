@@ -11,7 +11,7 @@ import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import migrationV8toV9 from '../migration.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { MAX_STAGE_ID_LENGTH } from '../stages/base.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 

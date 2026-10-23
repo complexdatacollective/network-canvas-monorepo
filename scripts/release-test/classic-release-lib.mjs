@@ -769,14 +769,14 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
           n.querySelector(':scope > data[key="label"]')?.textContent ?? '',
         ]),
       );
-      const graphLabels = [...labelOf.values()].sort((a, b) =>
+      const graphLabels = [...labelOf.values()].toSorted((a, b) =>
         a.localeCompare(b),
       );
       add(
         'graphml nodes are the ones created',
         JSON.stringify(graphLabels) ===
           JSON.stringify(
-            [...expected.nodeNames].sort((a, b) => a.localeCompare(b)),
+            expected.nodeNames.toSorted((a, b) => a.localeCompare(b)),
           ),
         `got ${graphLabels.join(', ') || 'none'}`,
       );
@@ -787,11 +787,11 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
               labelOf.get(e.getAttribute('source')),
               labelOf.get(e.getAttribute('target')),
             ]
-              .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
+              .toSorted((a, b) => (a ?? '').localeCompare(b ?? ''))
               .join('–'),
         );
-        const want = [...expected.edgeBetween]
-          .sort((a, b) => a.localeCompare(b))
+        const want = expected.edgeBetween
+          .toSorted((a, b) => a.localeCompare(b))
           .join('–');
         add(
           `graphml has the ${want} edge`,
@@ -836,12 +836,14 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
   let nodes = [];
   if (nodeFile) {
     nodes = parseCsv(await read(nodeFile));
-    const labels = nodes.map((n) => n.name).sort((a, b) => a.localeCompare(b));
+    const labels = nodes
+      .map((n) => n.name)
+      .toSorted((a, b) => a.localeCompare(b));
     add(
       'exported nodes are the ones created',
       JSON.stringify(labels) ===
         JSON.stringify(
-          [...expected.nodeNames].sort((a, b) => a.localeCompare(b)),
+          expected.nodeNames.toSorted((a, b) => a.localeCompare(b)),
         ),
       `got ${labels.join(', ') || 'none'}`,
     );
@@ -878,11 +880,11 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
       const nameOf = new Map(nodes.map((n) => [n.nodeID, n.name]));
       const pairs = edges.map((e) =>
         [nameOf.get(e.from), nameOf.get(e.to)]
-          .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
+          .toSorted((a, b) => (a ?? '').localeCompare(b ?? ''))
           .join('–'),
       );
-      const want = [...expected.edgeBetween]
-        .sort((a, b) => a.localeCompare(b))
+      const want = expected.edgeBetween
+        .toSorted((a, b) => a.localeCompare(b))
         .join('–');
       add(
         `the ${expected.edgeType} edge connects ${want}`,

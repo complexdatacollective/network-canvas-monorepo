@@ -14,7 +14,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
 } from '../family-pedigree-values.ts';
 import { localizedString } from '../localized-string.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import type { LanguageChange } from '../supplied-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 

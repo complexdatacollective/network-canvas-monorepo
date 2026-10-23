@@ -310,7 +310,7 @@ describe('the interface text a protocol holds', () => {
         },
       }),
     );
-    expect(Object.keys(text.validation ?? {}).sort()).toEqual([
+    expect(Object.keys(text.validation ?? {}).toSorted()).toEqual([
       'greaterThan',
       'maxLength',
       'required',
@@ -326,7 +326,7 @@ describe('the interface text a protocol holds', () => {
     const rules = (stages: readonly unknown[], codebook?: unknown) =>
       Object.keys(
         interfaceTextFor(protocolWith({ stages, codebook })).validation ?? {},
-      ).sort();
+      ).toSorted();
 
     // Choosing a passphrase: it must be given, confirmed and long enough.
     expect(rules([], ENCRYPTED_CODEBOOK)).toEqual([
@@ -361,7 +361,7 @@ describe('the interface text a protocol holds', () => {
             },
           }),
         ).validation ?? {},
-      ).sort();
+      ).toSorted();
     expect(
       withControl({
         component: 'DatePicker',

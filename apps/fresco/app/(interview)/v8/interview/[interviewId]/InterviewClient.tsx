@@ -11,7 +11,7 @@ import {
 import type { InterviewCatalog } from 'fresco-schema-8/interview/catalog';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';
-import posthog from 'posthog-js';
+import { posthog } from 'posthog-js';
 import {
   Suspense,
   useCallback,

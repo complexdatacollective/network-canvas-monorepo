@@ -3,7 +3,7 @@
 import { ExternalLink, Info } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import {
   Tooltip,

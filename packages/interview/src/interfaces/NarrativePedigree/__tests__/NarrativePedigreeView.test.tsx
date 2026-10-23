@@ -407,7 +407,7 @@ function member(nodeId: string): HTMLElement {
 const memberIds = () =>
   Array.from(document.querySelectorAll('[data-pedigree-member]'))
     .map((el) => el.getAttribute('data-node-id') ?? '')
-    .sort((a, b) => a.localeCompare(b));
+    .toSorted((a, b) => a.localeCompare(b));
 
 const waitForFamily = () =>
   waitFor(() =>
@@ -725,7 +725,7 @@ describe('NarrativePedigreeView — focal selection', () => {
     Array.from(document.querySelectorAll('[data-pedigree-member]'))
       .filter((el) => el.getAttribute('data-dimmed') === 'true')
       .map((el) => el.getAttribute('data-node-id') ?? '')
-      .sort((a, b) => a.localeCompare(b));
+      .toSorted((a, b) => a.localeCompare(b));
 
   it('cannot focus on anyone until a condition is chosen', async () => {
     renderView();

@@ -7,9 +7,10 @@ const { captureException } = vi.hoisted(() => ({
   captureException: vi.fn(),
 }));
 
-vi.mock('posthog-js', () => ({
-  default: { captureException },
-}));
+vi.mock('posthog-js', () => {
+  const posthog = { captureException };
+  return { default: posthog, posthog };
+});
 
 function Thrower(): never {
   throw new Error('boom');

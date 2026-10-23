@@ -547,7 +547,7 @@ function categorizeCacheKey(key) {
 /** @param {number[]} values */
 function median(values) {
   if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
+  const sorted = values.toSorted((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
     ? (sorted[mid - 1] + sorted[mid]) / 2
@@ -561,7 +561,7 @@ function median(values) {
  */
 function percentile(values, p) {
   if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
+  const sorted = values.toSorted((a, b) => a - b);
   const rank = Math.ceil((p / 100) * sorted.length) - 1;
   return sorted[Math.min(Math.max(rank, 0), sorted.length - 1)];
 }
@@ -630,7 +630,7 @@ function computeGateLatency(prRuns, jobsByRunId) {
     byDayMap.get(entry.day).push(entry);
   }
   const byDay = [...byDayMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .toSorted(([a], [b]) => a.localeCompare(b))
     .map(([day, dayEntries]) => ({ day, ...summarizeLatency(dayEntries) }));
 
   return {
@@ -674,7 +674,9 @@ function computeGatingJob(prRuns, jobsByRunId) {
     }
     if (latestByBaseName.size === 0) continue;
 
-    const ranked = [...latestByBaseName.entries()].sort((a, b) => b[1] - a[1]);
+    const ranked = [...latestByBaseName.entries()].toSorted(
+      (a, b) => b[1] - a[1],
+    );
     const [winnerName, winnerTime] = ranked[0];
     const marginSeconds =
       ranked.length > 1 ? (winnerTime - ranked[1][1]) / 1000 : null;
@@ -698,7 +700,7 @@ function computeGatingJob(prRuns, jobsByRunId) {
         medianMarginSeconds: median(validMargins),
       };
     })
-    .sort((a, b) => b.runs - a.runs);
+    .toSorted((a, b) => b.runs - a.runs);
 
   return { totalPrRuns: prRuns.length, consideredRuns: totalRuns, table };
 }
@@ -754,7 +756,7 @@ function computeJobDurations(allRuns, jobsByRunId) {
       failures: bucket.failures,
       cancelled: bucket.cancelled,
     }))
-    .sort((a, b) => b.runnerHours - a.runnerHours);
+    .toSorted((a, b) => b.runnerHours - a.runnerHours);
 }
 
 // ---------------------------------------------------------------------------

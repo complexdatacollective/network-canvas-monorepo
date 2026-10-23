@@ -11,7 +11,7 @@ const resizeCanvas = (
   const currentCanvas = canvasRef.current;
 
   const { width, height } = currentCanvas.getBoundingClientRect();
-  const { devicePixelRatio: ratio = 1 } = window;
+  const { devicePixelRatio: ratio } = window;
 
   if (
     currentCanvas.width !== width * ratio ||

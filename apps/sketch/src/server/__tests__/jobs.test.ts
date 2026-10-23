@@ -131,7 +131,7 @@ describe('budget guard', () => {
         async () => (await handleCreateJob(post(validRequest), deps)).status,
       ),
     );
-    expect(statuses.sort((a, b) => a - b)).toEqual([202, 429, 429]);
+    expect(statuses.toSorted((a, b) => a - b)).toEqual([202, 429, 429]);
     expect(await readJob(jobs, 'job-1')).toMatchObject({
       reservedUsd: estimateJobCostUsd('anthropic'),
       spendDate: '2026-10-20',

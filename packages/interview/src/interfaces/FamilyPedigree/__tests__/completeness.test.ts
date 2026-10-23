@@ -300,7 +300,7 @@ describe('evaluateCompleteness', () => {
       'grandparents',
       noneMissing,
     );
-    expect([...asked].sort()).toEqual([
+    expect([...asked].toSorted()).toEqual([
       'children:ego',
       'siblings:dad',
       'siblings:ego',

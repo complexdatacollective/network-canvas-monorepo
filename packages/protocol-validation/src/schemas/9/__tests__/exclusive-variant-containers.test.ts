@@ -21,7 +21,7 @@ import {
   schemaRefusesContainer,
   UNREADABLE_STAGE_CONTAINERS,
 } from '../exclusive-variant-containers.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 
 describe('the exclusive-variant containers of a stage document', () => {
   /**

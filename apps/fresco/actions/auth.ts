@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import z from 'zod';
+import { z } from 'zod';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { type FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';

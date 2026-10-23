@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from 'dexie';
+import { Dexie, type EntityTable } from 'dexie';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolSourceRef } from '~/templates';

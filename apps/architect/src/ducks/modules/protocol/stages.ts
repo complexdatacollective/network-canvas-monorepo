@@ -105,8 +105,8 @@ export const getSkipDestinationDependentStages = <
       candidate.skipLogic.destination.stageId === stageId,
   );
 
-const isStageReferencedAsSkipDestination = <T extends StageDependencyCandidate>(
-  stages: T[],
+const isStageReferencedAsSkipDestination = (
+  stages: StageDependencyCandidate[],
   stageId: string,
 ) => getSkipDestinationDependentStages(stages, stageId).length > 0;
 

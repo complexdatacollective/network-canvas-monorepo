@@ -1,7 +1,7 @@
 'use client';
 
 import { parseAsInteger, useQueryState } from 'nuqs';
-import posthog from 'posthog-js';
+import { posthog } from 'posthog-js';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {

@@ -11,7 +11,7 @@
 // guidance instead: in the system prompt, with the reply parsed as JSON and
 // checked against the schema by the caller, like any other answer.
 
-import Anthropic from '@anthropic-ai/sdk';
+import { Anthropic } from '@anthropic-ai/sdk';
 import type {
   Message,
   MessageCreateParamsNonStreaming,

@@ -435,7 +435,7 @@ describe('dynamicValueNamesUsedIn', () => {
           prompts: [{ text: { en: 'Since {today}', fr: "Depuis '{today}'" } }],
           label: 'Literal {braces} in a label',
         }),
-      ].sort(),
+      ].toSorted(),
     ).toEqual(['braces', 'name', 'today']);
   });
 });

@@ -196,7 +196,7 @@ export const createPageEntry = (
  * @returns {fs.Dirent[]}
  */
 export const sortDirectoryListing = (files: fs.Dirent[]) =>
-  files.sort((a, b) => {
+  files.toSorted((a, b) => {
     const depthA = a.name.split('/').length; // Get depth of directory/file A
     const depthB = b.name.split('/').length; // Get depth of directory/file B
 

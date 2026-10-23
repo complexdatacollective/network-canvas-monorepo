@@ -506,7 +506,7 @@ test('only what existed before is compared, and every loss or change is a differ
   const found = differences(before, after).map(({ kind, table, column }) =>
     [kind, table, column].filter(Boolean).join(' '),
   );
-  assert.deepEqual(found.sort(), [
+  assert.deepEqual(found.toSorted(), [
     'row-added public.created_filled',
     'row-added public.protocols',
     'row-lost public.protocols',
@@ -517,7 +517,10 @@ test('only what existed before is compared, and every loss or change is a differ
     exported({ 'public.protocols': [{ id: 'p1', name: 'One', note: 'x' }] }),
     exported({ 'public.protocols': [{ id: 'p1', name: 'Uno' }] }),
   ).map(({ kind, column }) => `${kind} ${column}`);
-  assert.deepEqual(changed.sort(), ['column-lost note', 'value-changed name']);
+  assert.deepEqual(changed.toSorted(), [
+    'column-lost note',
+    'value-changed name',
+  ]);
 });
 
 test('every mask names its reason and the run that showed the change', () => {
@@ -593,7 +596,7 @@ test('the masks cover their own rows and nothing beside them', () => {
         ({ kind, table, column, key }) =>
           `${kind} ${table} ${column ?? key[0]}${column ? ` ${key[0]}` : ''}`,
       )
-      .sort(),
+      .toSorted(),
     [
       'row-added studio_jobs.jobs early',
       'row-added studio_jobs.jobs forged',

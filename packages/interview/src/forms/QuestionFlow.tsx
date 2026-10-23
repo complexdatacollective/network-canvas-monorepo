@@ -15,7 +15,7 @@ import { createPortal } from 'react-dom';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { parseObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';

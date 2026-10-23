@@ -1,4 +1,4 @@
-import z from 'zod';
+import { z } from 'zod';
 
 import { localizedString, nonBlankText } from '../localized-string.ts';
 

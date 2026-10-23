@@ -42,7 +42,7 @@ describe('the published OpenAPI document', () => {
   });
 
   it('describes status as a name and a version, and no more', () => {
-    expect(Object.keys(document.components.schemas).sort()).toEqual([
+    expect(Object.keys(document.components.schemas).toSorted()).toEqual([
       'NotFoundEncoded',
       'Status',
     ]);
@@ -56,7 +56,7 @@ describe('the published OpenAPI document', () => {
 
   it('publishes its refusal as problem+json with the status its class declares', () => {
     const responses = document.paths['/status']?.get?.responses ?? {};
-    expect(Object.keys(responses).sort()).toEqual(['200', '404']);
+    expect(Object.keys(responses).toSorted()).toEqual(['200', '404']);
     expect(Object.keys(responses['404']?.content ?? {})).toEqual([
       'application/problem+json',
     ]);

@@ -14,7 +14,7 @@ import {
 import { useState, type MouseEvent } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
-import Button from '../Button';
+import { Button } from '../Button';
 import NavDrawer, { type NavDrawerProps } from './NavDrawer';
 import NavItem from './NavItem';
 import NavList, { NavListGroup } from './NavList';

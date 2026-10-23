@@ -515,6 +515,6 @@ describe('PedigreeLayout reading order', () => {
       .getAllByTestId(/^node-/)
       .map((element) => element.textContent);
     expect(order.at(-1)).toBe('child');
-    expect(order.slice(0, 2).sort()).toEqual(['father', 'mother']);
+    expect(order.slice(0, 2).toSorted()).toEqual(['father', 'mother']);
   });
 });

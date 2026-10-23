@@ -2,7 +2,7 @@ import { type ReactNode, createElement, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { LocalizedMessage } from '~/i18n/messageResult';
 

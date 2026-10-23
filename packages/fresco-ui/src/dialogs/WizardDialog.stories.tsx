@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
-import Button from '../Button';
+import { Button } from '../Button';
 import UnconnectedField from '../form/Field/UnconnectedField';
 import InputField from '../form/fields/InputField';
 import RadioGroupField from '../form/fields/RadioGroup';

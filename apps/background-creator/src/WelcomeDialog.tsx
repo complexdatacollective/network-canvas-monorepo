@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';

@@ -1,10 +1,10 @@
 'use client';
 
 import { PostHogErrorBoundary, PostHogProvider } from '@posthog/react';
-import posthog from 'posthog-js';
+import { posthog } from 'posthog-js';
 import type { ReactNode } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 

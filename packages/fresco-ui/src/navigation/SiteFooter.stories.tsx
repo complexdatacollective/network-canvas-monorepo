@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import Button from '../Button';
+import { Button } from '../Button';
 import { cx } from '../utils/cva';
 import SiteFooter from './SiteFooter';
 import type { SiteFooterLink, SiteFooterSocialLink } from './SiteFooter';

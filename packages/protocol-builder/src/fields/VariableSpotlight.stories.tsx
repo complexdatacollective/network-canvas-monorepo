@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useRef, useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';

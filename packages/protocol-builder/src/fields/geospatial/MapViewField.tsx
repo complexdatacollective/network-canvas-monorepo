@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';

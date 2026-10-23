@@ -8,7 +8,7 @@ import {
   formatMessageError,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { getInputState } from '@codaco/fresco-ui/form/utils/getInputState';

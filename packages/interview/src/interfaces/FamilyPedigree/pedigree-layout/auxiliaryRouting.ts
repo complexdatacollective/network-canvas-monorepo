@@ -357,7 +357,7 @@ function simplify(points: Point[]): Point[] {
     }
   }
   reversed.push(kept[0]!);
-  return reversed.reverse();
+  return reversed.toReversed();
 }
 
 const segmentLength = (s: LineSegment) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1);

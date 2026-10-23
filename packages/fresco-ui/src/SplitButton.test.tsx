@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { ChevronDown } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 
-import SplitButton from './SplitButton';
+import { SplitButton } from './SplitButton';
 
 const defaultSegment = {
   'aria-label': 'Open options',

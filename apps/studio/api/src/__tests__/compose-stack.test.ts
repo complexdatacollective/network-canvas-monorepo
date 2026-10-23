@@ -130,7 +130,7 @@ describe('the reference compose stack', () => {
     // Adding a service is a change to what a self-hoster runs, what the
     // self-host guide documents, and what the platform deploys. Failing here
     // is the prompt to do all three.
-    expect(Object.keys(compose.services).sort()).toEqual([
+    expect(Object.keys(compose.services).toSorted()).toEqual([
       'api',
       'garage',
       'migrate',
@@ -469,7 +469,7 @@ describe('the reference compose stack', () => {
         (service) => service.secrets ?? [],
       ),
     );
-    expect([...used].sort()).toEqual([
+    expect([...used].toSorted()).toEqual([
       'postgres_password',
       'studio_secrets_key',
     ]);

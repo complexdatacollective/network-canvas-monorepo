@@ -42,7 +42,7 @@ describe('studio server', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('Content-Type')).toBe('application/json');
       const body = (await res.json()) as Record<string, unknown>;
-      expect(Object.keys(body).sort()).toEqual(['name', 'version']);
+      expect(Object.keys(body).toSorted()).toEqual(['name', 'version']);
       expect(body.name).toBe('Network Canvas Studio');
       expect(body.version).toBe(STUDIO_VERSION);
     } finally {

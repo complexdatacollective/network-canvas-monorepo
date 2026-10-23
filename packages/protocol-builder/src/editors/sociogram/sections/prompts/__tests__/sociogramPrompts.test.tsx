@@ -805,8 +805,8 @@ describe('what tapping a node does, against what the prompt already said', () =>
     // `toEqual` reads a key holding `undefined` as one that is not there, and
     // the rows above turn on which keys a saved prompt HAS: a flag written as
     // `false` and a flag never written are different protocols.
-    expect(Object.keys(saved?.highlight ?? {}).sort()).toEqual(
-      Object.keys(scenario.expected).sort(),
+    expect(Object.keys(saved?.highlight ?? {}).toSorted()).toEqual(
+      Object.keys(scenario.expected).toSorted(),
     );
   });
 });

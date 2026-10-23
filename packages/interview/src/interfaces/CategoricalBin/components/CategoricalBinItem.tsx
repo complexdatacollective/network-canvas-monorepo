@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import {
   getMarkdownLabelText,

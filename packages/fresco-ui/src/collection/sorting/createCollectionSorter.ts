@@ -97,10 +97,7 @@ const chain =
 /**
  * Get the value from an item at the given property path.
  */
-const getValue = <T extends Item>(
-  item: T,
-  property: string | string[],
-): unknown => {
+const getValue = (item: Item, property: string | string[]): unknown => {
   return get(item, property, null);
 };
 

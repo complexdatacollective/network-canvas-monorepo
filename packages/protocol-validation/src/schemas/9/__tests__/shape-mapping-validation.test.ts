@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { asEntityAttributeReference } from '../entity-attribute-reference.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 
 describe('Shape Mapping Validation', () => {
   it('accepts a node definition with only a default shape', () => {

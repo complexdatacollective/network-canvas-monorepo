@@ -5,7 +5,7 @@ import { useCallback, useRef, useState, type FocusEvent } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type { VariableType } from '@codaco/protocol-validation';
 import { ConnectedVariablePill, VariablePill } from '~/components/VariablePill';

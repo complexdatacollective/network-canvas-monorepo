@@ -127,7 +127,7 @@ type ToggleButtonGroupProps = CreateFormFieldProps<
   (string | number)[],
   'fieldset',
   {
-    options: ToggleButtonOption[];
+    options?: ToggleButtonOption[];
     defaultValue?: (string | number)[];
     orientation?: 'horizontal' | 'vertical';
     size?: 'sm' | 'md' | 'lg' | 'xl';

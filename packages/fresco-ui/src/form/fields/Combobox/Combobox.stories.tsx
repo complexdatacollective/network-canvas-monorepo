@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, screen, userEvent, waitFor } from 'storybook/test';
 
-import Button from '../../../Button';
+import { Button } from '../../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../Popover';
 import { presentationalTextValue } from '../../../PresentationalText';
 import Heading from '../../../typography/Heading';

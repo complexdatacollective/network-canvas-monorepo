@@ -1077,8 +1077,8 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   // green while those suites silently stop running.
   const legs = parsedWorkflow.jobs.test.strategy.matrix.include;
   assert.deepEqual(
-    legs.map((leg) => leg.shard).sort((a, b) => a - b),
-    TEST_SHARDS.map((s) => s.shard).sort((a, b) => a - b),
+    legs.map((leg) => leg.shard).toSorted((a, b) => a - b),
+    TEST_SHARDS.map((s) => s.shard).toSorted((a, b) => a - b),
     'every defined bucket has a matrix leg and vice versa',
   );
 
@@ -2623,7 +2623,7 @@ function stackTestVariants() {
   return readdirSync(new URL('variants/', stackTestDirectory))
     .filter((entry) => entry.endsWith('.yml'))
     .map((entry) => entry.replace(/\.yml$/, ''))
-    .sort();
+    .toSorted();
 }
 
 function egressVariants() {
@@ -2634,7 +2634,7 @@ function egressVariants() {
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean)
-    .sort();
+    .toSorted();
 }
 
 test('the studio-stack job runs every stack-test script that exists', () => {
@@ -2786,7 +2786,7 @@ test('the stack-test scripts and the workflow agree on the variant list', () => 
   const declared = /^VARIANTS=\((?<names>[^)]*)\)$/m.exec(lib)?.groups?.names;
   assert.ok(declared, 'lib.sh declares VARIANTS');
   assert.deepEqual(
-    declared.trim().split(/\s+/).sort(),
+    declared.trim().split(/\s+/).toSorted(),
     stackTestVariants(),
     'lib.sh accepts exactly the variants that have an override file',
   );
@@ -2914,12 +2914,12 @@ test('every job quality requires on a detect flag is decided by a cumulative fla
     ),
   );
   assert.deepEqual(
-    [...selecting].sort((a, b) => a.localeCompare(b)),
+    [...selecting].toSorted((a, b) => a.localeCompare(b)),
     GATE_FLAGS,
     'a job quality needs is selected by a detect flag not proved cumulative',
   );
   assert.deepEqual(
-    [...required].sort((a, b) => a.localeCompare(b)),
+    [...required].toSorted((a, b) => a.localeCompare(b)),
     GATE_FLAGS,
     'quality requires a job on a detect flag not proved cumulative',
   );

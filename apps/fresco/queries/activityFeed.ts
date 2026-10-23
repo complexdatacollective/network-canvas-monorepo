@@ -31,7 +31,7 @@ async function activityTypeGroups(
   const collator = new Intl.Collator(intl.locale);
   const ordered = types
     .map((type) => ({ ...type, label: formatActivityType(intl, type.type) }))
-    .sort(
+    .toSorted(
       (a, b) => collator.compare(a.label, b.label) * (sort === 'asc' ? 1 : -1),
     );
   const groups: { label: string; types: string[]; count: number }[] = [];

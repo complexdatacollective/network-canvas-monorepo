@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-table';
 import { parseAsInteger, parseAsStringLiteral, useQueryStates } from 'nuqs';
 import { use, useMemo, type ReactNode } from 'react';
-import superjson from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
@@ -50,7 +50,7 @@ export default function ParticipantsTableRows({
   'use no memo';
   const data = use(participantsPromise);
   const rows = useMemo(
-    () => superjson.parse<GetParticipantsQuery>(data.rows),
+    () => SuperJSON.parse<GetParticipantsQuery>(data.rows),
     [data.rows],
   );
   const { startTransition } = useNuqsTable();
