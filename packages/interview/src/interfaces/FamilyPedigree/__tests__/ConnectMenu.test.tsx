@@ -378,13 +378,13 @@ describe('ConnectMenu', () => {
     );
     expect(biological).not.toHaveAttribute('aria-disabled', 'true');
     expect(biological).toHaveAccessibleDescription(
-      'Choosing “Genetic parent” means “Tom” will no longer be recorded as your biological parent. You will be asked how you would define Tom’s relationship to you instead.',
+      'Choosing “Genetic parent” means “Tom” will no longer be recorded as your biological parent. You will be asked how you would define “Tom”’s relationship to you instead.',
     );
     await userEvent.click(biological);
     expect(onConnect).not.toHaveBeenCalled();
     expect(
       await screen.findByText(
-        'How would you define Tom’s relationship to you?',
+        'How would you define “Tom”’s relationship to you?',
       ),
     ).toBeInTheDocument();
     await userEvent.click(

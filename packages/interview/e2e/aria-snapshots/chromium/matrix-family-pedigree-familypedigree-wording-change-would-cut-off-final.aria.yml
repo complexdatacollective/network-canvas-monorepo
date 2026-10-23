@@ -34,8 +34,8 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: Which of your siblings, if any, are your twins? Include triplets and other multiple births.
-    - group "Which of your siblings, if any, are your twins?":
+    - text: Are any of these siblings your twins? Include triplets and other multiple births.
+    - group "Are any of these siblings your twins?":
       - checkbox "Sam"
       - text: Sam
     - button "Cancel"

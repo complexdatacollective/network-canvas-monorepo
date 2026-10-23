@@ -835,7 +835,7 @@ describe('the carrier twins share', () => {
     ]);
   });
 
-  test('records nothing about carrying for the twins while nobody is known to have carried them', () => {
+  test('records nobody as having carried the twins while nobody is known to have, keeping any recorded “No”', () => {
     const f = twins({
       'mum-sam-biological': true,
       'amy-sam-social': false,
@@ -844,11 +844,6 @@ describe('the carrier twins share', () => {
       {
         linkId: 'mum-sam-biological',
         kind: 'biological',
-        isGestationalCarrier: undefined,
-      },
-      {
-        linkId: 'amy-sam-social',
-        kind: 'social',
         isGestationalCarrier: undefined,
       },
     ]);

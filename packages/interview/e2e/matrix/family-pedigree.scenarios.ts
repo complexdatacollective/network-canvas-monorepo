@@ -2247,12 +2247,12 @@ function relationshipKindsDrawn(): ScenarioDefinition {
       await member(page, 'You').click();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /Ana’s relationship to you/ })
+          .getByRole('radiogroup', { name: /“Ana”’s relationship to you/ })
           .getByRole('radio', { name: 'Step or social parent', exact: true }),
       ).toBeChecked();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /Luis’s relationship to you/ })
+          .getByRole('radiogroup', { name: /“Luis”’s relationship to you/ })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();
       await panel(page)
@@ -3954,7 +3954,7 @@ function identicalTwinSexNotAsked(): ScenarioDefinition {
     run: async ({ page }) => {
       const form = panel(page);
       const twins = form.getByRole('group', {
-        name: /^Which of your siblings, if any, are your twins\?/,
+        name: /^Are any of these siblings your twins\?/,
       });
 
       await member(page, 'You').click();
@@ -4028,7 +4028,7 @@ function wordingIdenticalTwinParents(): ScenarioDefinition {
       await expect(
         form
           .getByRole('radiogroup', {
-            name: 'How would you define Rob’s relationship to Bea?',
+            name: 'How would you define “Rob”’s relationship to “Bea”?',
           })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();
@@ -4500,7 +4500,7 @@ function wordingChangeWouldCutOff(): ScenarioDefinition {
       await member(page, 'You').click();
       await panel(page)
         .getByRole('group', {
-          name: /^Which of your siblings, if any, are your twins/,
+          name: /^Are any of these siblings your twins/,
         })
         .getByRole('checkbox', { name: 'Sam', exact: true })
         .uncheck();

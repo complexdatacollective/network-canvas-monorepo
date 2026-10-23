@@ -873,17 +873,17 @@ describe('an answer that cannot be chosen', () => {
     expect(biological).toBeEnabled();
     expect(
       screen.queryByRole('radiogroup', {
-        name: /shannon’s relationship to you/,
+        name: /“shannon”’s relationship to you/,
       }),
     ).not.toBeInTheDocument();
     await user.click(biological);
     expect(kind).toHaveAccessibleDescription(
       expect.stringContaining(
-        'Choosing “Biological parent” means “shannon” will no longer be recorded as your biological parent. You will be asked how you would define shannon’s relationship to you instead.',
+        'Choosing “Biological parent” means “shannon” will no longer be recorded as your biological parent. You will be asked how you would define “shannon”’s relationship to you instead.',
       ),
     );
     const replaced = screen.getByRole('radiogroup', {
-      name: /^How would you define shannon’s relationship to you\?/,
+      name: /^How would you define “shannon”’s relationship to you\?/,
     });
     expect(
       within(replaced)
@@ -1410,7 +1410,7 @@ describe('a second carrier', () => {
       ],
     });
     const dad = screen.getByRole('radiogroup', {
-      name: /dad’s relationship to you/,
+      name: /“dad”’s relationship to you/,
     });
     const surrogate = within(dad).getByRole('radio', { name: 'Surrogate' });
     expect(surrogate).toBeDisabled();
@@ -2109,7 +2109,7 @@ describe('twins', () => {
       ],
     });
     const twins = screen.getByRole('group', {
-      name: /^Which of your siblings, if any, are your twins\?/,
+      name: /^Are any of these siblings your twins\?/,
     });
     expect(within(twins).getByRole('checkbox', { name: 'kim' })).toBeChecked();
     await user.click(within(twins).getByRole('checkbox', { name: 'sam' }));
@@ -2160,7 +2160,7 @@ describe('twins', () => {
     });
     expect(
       screen.queryByRole('group', {
-        name: /^Which of your siblings, if any, are your twins\?/,
+        name: /^Are any of these siblings your twins\?/,
       }),
     ).not.toBeInTheDocument();
   });
@@ -2185,7 +2185,7 @@ describe('twins', () => {
       ],
     });
     const twins = screen.getByRole('group', {
-      name: /^Which of your siblings, if any, are your twins\?/,
+      name: /^Are any of these siblings your twins\?/,
     });
     expect(
       within(twins).getByRole('checkbox', { name: 'kim' }),
@@ -2212,7 +2212,7 @@ describe('twins', () => {
       ],
     });
     const twins = screen.getByRole('group', {
-      name: /^Which of your siblings, if any, are your twins\?/,
+      name: /^Are any of these siblings your twins\?/,
     });
     expect(
       within(twins).getByRole('checkbox', { name: 'hal' }),
@@ -2242,7 +2242,7 @@ describe('twins', () => {
       ],
     });
     const twins = screen.getByRole('group', {
-      name: /^Which of your siblings, if any, are your twins\?/,
+      name: /^Are any of these siblings your twins\?/,
     });
     const sam = within(twins).getByRole('checkbox', { name: 'sam' });
     expect(sam).toBeChecked();
@@ -2277,7 +2277,7 @@ describe('twins', () => {
     await user.click(
       within(
         screen.getByRole('group', {
-          name: /^Which of your siblings, if any, are your twins\?/,
+          name: /^Are any of these siblings your twins\?/,
         }),
       ).getByRole('checkbox', { name: 'sam' }),
     );
@@ -2522,7 +2522,7 @@ describe('identical twins and sex at birth', () => {
         ]),
       });
       const twins = screen.getByRole('group', {
-        name: /^Which of your siblings, if any, are your twins\?/,
+        name: /^Are any of these siblings your twins\?/,
       });
       await user.click(within(twins).getByRole('checkbox', { name: 'sam' }));
       await user.click(within(twins).getByRole('checkbox', { name: 'kim' }));
@@ -2824,7 +2824,9 @@ describe('twins share one carrier', () => {
     expect(carrier('amy')).not.toBeChecked();
     await user.click(
       within(
-        screen.getByRole('group', { name: /^Which siblings of “sam”/ }),
+        screen.getByRole('group', {
+          name: /^Are any of these siblings twins with “sam”/,
+        }),
       ).getByRole('checkbox', { name: 'ego' }),
     );
     await waitFor(() => expect(carrier('amy')).toBeChecked());
@@ -2844,6 +2846,55 @@ describe('twins share one carrier', () => {
         }),
       ]),
     );
+  });
+
+  it('takes back their twin’s carrier for both twins once it is someone else or not known', async () => {
+    const { onSubmit, user } = renderPersonForm(
+      'sam',
+      twinFamily({ 'amy-ego-social': true }),
+    );
+    expect(carrier('amy')).toBeChecked();
+    await user.click(carrier('Someone else, or I don’t know'));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const updates = onSubmit.mock.calls[0]?.[0].linkUpdates ?? [];
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        linkId: 'amy-ego-social',
+        isGestationalCarrier: undefined,
+      }),
+    );
+    expect(updates).not.toContainEqual(
+      expect.objectContaining({ isGestationalCarrier: true }),
+    );
+  });
+
+  it('keeps a “No” recorded for either twin once who carried them is not known', async () => {
+    const { onSubmit, user } = renderPersonForm(
+      'sam',
+      twinFamily({
+        'mum-ego-biological': true,
+        'mum-sam-biological': true,
+        'amy-ego-social': false,
+        'amy-sam-social': false,
+      }),
+    );
+    expect(carrier('mum')).toBeChecked();
+    await user.click(carrier('Someone else, or I don’t know'));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const updates = onSubmit.mock.calls[0]?.[0].linkUpdates ?? [];
+    // Amy's "No" stays recorded for both twins, so nothing changes for her.
+    expect(
+      updates.filter((update) => update.linkId.startsWith('amy-')),
+    ).toEqual([]);
+    for (const linkId of ['mum-ego-biological', 'mum-sam-biological']) {
+      expect(updates).toContainEqual(
+        expect.objectContaining({ linkId, isGestationalCarrier: undefined }),
+      );
+    }
   });
 
   it('records a twin’s changed carrier for their twin too', async () => {
@@ -2914,7 +2965,7 @@ describe('questions worked out from the answers as they stand', () => {
     });
     const twins = () =>
       screen.queryByRole('group', {
-        name: /^Which siblings of “noah”, if any, are their twins\?/,
+        name: /^Are any of these siblings twins with “noah”\?/,
       });
     await user.click(
       within(twins() as HTMLElement).getByRole('checkbox', { name: 'cody' }),
@@ -2922,7 +2973,7 @@ describe('questions worked out from the answers as they stand', () => {
     await user.click(
       within(
         screen.getByRole('radiogroup', {
-          name: /shannon’s relationship to/,
+          name: /“shannon”’s relationship to/,
         }),
       ).getByRole('radio', { name: 'Surrogate' }),
     );
@@ -2949,13 +3000,13 @@ describe('questions worked out from the answers as they stand', () => {
     });
     const standInRow = () =>
       screen.queryByRole('radiogroup', {
-        name: /standIn’s relationship to you/,
+        name: /“standIn”’s relationship to you/,
       });
     expect(standInRow()).not.toBeNull();
     await user.click(
       within(
         screen.getByRole('radiogroup', {
-          name: /julian’s relationship to you/,
+          name: /“julian”’s relationship to you/,
         }),
       ).getByRole('radio', { name: 'Biological parent' }),
     );
@@ -3613,7 +3664,7 @@ describe('an answer the form worked out, or one no longer available', () => {
     });
   const kindOf = (parent: string) =>
     screen.getByRole('radiogroup', {
-      name: new RegExp(`${parent}’s relationship to you`),
+      name: new RegExp(`“${parent}”’s relationship to you`),
     });
   // Mum is recorded as having carried the participant; nothing is recorded
   // about Amy.
@@ -3723,7 +3774,7 @@ describe('an answer the form worked out, or one no longer available', () => {
       });
     const rick = () =>
       screen.getByRole('radiogroup', {
-        name: /rick’s relationship to/,
+        name: /“rick”’s relationship to/,
       });
 
     const queryZygosity = () =>

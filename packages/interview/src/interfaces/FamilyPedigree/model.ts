@@ -2764,7 +2764,7 @@ export type CarrierUpdate = {
 
 /**
  * What records `carrierId` as the one who carried each of `twinIds`, or
- * nobody known while it is undefined: twins come from one pregnancy, so
+ * nobody known while it is undefined (keeping any "No" recorded): twins come from one pregnancy, so
  * share one carrier. Only parents who could have carried are changed, and a
  * twin a surrogate carried keeps them, since a surrogate always carried the
  * child they are the surrogate of.
@@ -2789,8 +2789,14 @@ export function twinCarrierUpdates(
           ? [{ linkId: link.id, kind: link.kind, isGestationalCarrier: false }]
           : [];
       }
+      // Nobody known to have carried them takes back only who was recorded
+      // as having done so: a recorded "No" still holds.
       const carries =
-        carrierId === undefined ? undefined : link.source === carrierId;
+        carrierId === undefined
+          ? link.isGestationalCarrier === true
+            ? undefined
+            : link.isGestationalCarrier
+          : link.source === carrierId;
       return carries === link.isGestationalCarrier
         ? []
         : [{ linkId: link.id, kind: link.kind, isGestationalCarrier: carries }];

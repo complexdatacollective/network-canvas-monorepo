@@ -1915,7 +1915,7 @@
           "es": "¿Qué tipo de progenitor es?"
         },
         "parentLinkKindLabel": {
-          "en-US": "{parentIsYou, select, true {How would you define your relationship to “{child}”?} other {{personIsYou, select, true {How would you define {parent}’s relationship to you?} other {How would you define {parent}’s relationship to {child}?}}}}",
+          "en-US": "{parentIsYou, select, true {How would you define your relationship to “{child}”?} other {{personIsYou, select, true {How would you define “{parent}”’s relationship to you?} other {How would you define “{parent}”’s relationship to “{child}”?}}}}",
           "es": "{parentIsYou, select, true {¿Cómo definirías tu relación con «{child}»?} other {{personIsYou, select, true {¿Cómo definirías la relación de «{parent}» contigo?} other {¿Cómo definirías la relación de «{parent}» con «{child}»?}}}}"
         },
         "carrierReplaced": {
@@ -1923,7 +1923,7 @@
           "es": "{who, select, carrierIsYou {Si eliges «{answer}», ya no constará que llevaste el embarazo del que nació «{child}», porque solo una persona lleva cada embarazo.} childIsYou {Si eliges «{answer}», ya no constará que «{carrier}» llevó el embarazo del que naciste, porque solo una persona lleva cada embarazo.} other {Si eliges «{answer}», ya no constará que «{carrier}» llevó el embarazo del que nació «{child}», porque solo una persona lleva cada embarazo.}}"
         },
         "geneticParentReplaced": {
-          "en-US": "{who, select, parentIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define your relationship to “{child}” instead.} childIsYou {Choosing “{answer}” means “{parent}” will no longer be recorded as your biological parent. You will be asked how you would define {parent}’s relationship to you instead.} other {Choosing “{answer}” means “{parent}” will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define {parent}’s relationship to {child} instead.}}",
+          "en-US": "{who, select, parentIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define your relationship to “{child}” instead.} childIsYou {Choosing “{answer}” means “{parent}” will no longer be recorded as your biological parent. You will be asked how you would define “{parent}”’s relationship to you instead.} other {Choosing “{answer}” means “{parent}” will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define “{parent}”’s relationship to “{child}” instead.}}",
           "es": "{who, select, parentIsYou {Si eliges «{answer}», ya no constarás como progenitor biológico de «{child}». En lugar de eso, se te preguntará cómo definirías tu relación con «{child}».} childIsYou {Si eliges «{answer}», «{parent}» ya no constará como tu progenitor biológico. En lugar de eso, se te preguntará cómo definirías la relación de «{parent}» contigo.} other {Si eliges «{answer}», «{parent}» ya no constará como progenitor biológico de «{child}». En lugar de eso, se te preguntará cómo definirías la relación de «{parent}» con «{child}».}}"
         },
         "identicalTwinSharesParents": {
@@ -2051,7 +2051,7 @@
           "es": "Incluye también trillizos y otros partos múltiples."
         },
         "twinsLabel": {
-          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which siblings of “{name}”, if any, are their twins?}}",
+          "en-US": "{isYou, select, true {Are any of these siblings your twins?} other {Are any of these siblings twins with “{name}”?}}",
           "es": "{isYou, select, true {¿Cuáles de tus hermanos, si alguno, son tus gemelos o mellizos?} other {¿Cuáles de los hermanos de «{name}», si alguno, son sus gemelos o mellizos?}}"
         },
         "twinZygosityLabel": {

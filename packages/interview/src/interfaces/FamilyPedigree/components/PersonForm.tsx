@@ -1111,7 +1111,21 @@ function twinCarrierSync(
   ).filter((id, at, all) => id !== personId && all.indexOf(id) === at);
   const changed = carrier !== carrierOf(family, personId);
   const joined = (twinChanges?.added.length ?? 0) > 0 && carrier !== undefined;
-  if (!changed && !joined) return [];
+  // Someone with nobody recorded as carrying them is asked about their
+  // twins' carrier (`ParentCarrierField`): answering someone else, or not
+  // known, takes it back for the twins too.
+  const twinsCarrier = twinIds
+    .map((id) => carrierOf(family, id))
+    .find((id) => id !== undefined);
+  const twinsCarrierTakenBack =
+    values[ROLE.parentCarrier] === NONE &&
+    carrier === undefined &&
+    twinsCarrier !== undefined &&
+    existingLinksOf(family, personId).parents.some(
+      (link) =>
+        link.source === twinsCarrier && link.isGestationalCarrier === undefined,
+    );
+  if (!changed && !joined && !twinsCarrierTakenBack) return [];
   return twinCarrierUpdates(family, twinIds, carrier).map((update) => ({
     ...update,
     isCurrentPartner: true,

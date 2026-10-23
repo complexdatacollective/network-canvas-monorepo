@@ -338,7 +338,7 @@ describe('FamilyPedigree removing a twin link', () => {
     await user.click(personButton('ego'));
     const panel = await screen.findByTestId('pedigree-person-panel');
     const twins = within(panel).getByRole('group', {
-      name: /Which of your siblings, if any, are your twins/,
+      name: /Are any of these siblings your twins/,
     });
     await user.click(within(twins).getByRole('checkbox', { name: 'Sibling' }));
     await user.click(within(panel).getByRole('button', { name: 'Save' }));
@@ -726,7 +726,7 @@ describe('FamilyPedigree a parent re-described as genetic', () => {
     await user.click(
       within(
         within(panel).getByRole('radiogroup', {
-          name: /Alex’s relationship to you/,
+          name: /“Alex”’s relationship to you/,
         }),
       ).getByRole('radio', { name: 'Biological parent' }),
     );
