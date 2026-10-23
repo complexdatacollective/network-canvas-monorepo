@@ -56,6 +56,13 @@ export function drawnKind(
 const carrierAmong = (conns: ParentConnection[]) =>
   conns.find((p) => p.isGestationalCarrier === true);
 
+/** A tie two people hold to a child together, partnership or none: a
+ * child's two biological parents conceived them, and their two adoptive
+ * parents adopted them. Social parents are not paired this way: each comes
+ * to the child through their own partnership with a parent. */
+const isJointTie = (kind: PedigreeEdgeType) =>
+  kind === 'biological' || kind === 'adoptive';
+
 /** A tie that passes on genes: a biological parent's or a donor's. */
 const isGenetic = (p: ParentConnection) =>
   p.edgeType === 'biological' || p.edgeType === 'donor';
@@ -108,10 +115,10 @@ export const ownerKey = (owner: LineOwner) =>
  * recorded are one sibship under the person who carried them.
  *
  * Within raising kinds, the owner is the recorded couple who both hold the
- * kind chosen, or failing those the parent recorded first. Every other tie
- * is drawn by a line of its owner's: a recorded couple who both hold that
- * kind of tie, two birth parents with no partnership recorded, or one
- * person.
+ * kind chosen, the two who hold it with no partnership recorded, or failing
+ * those the parent recorded first. Every other tie is drawn by a line of its
+ * owner's: a recorded couple who both hold that kind of tie, the two parents
+ * who hold it with no partnership recorded (`isJointTie`), or one person.
  */
 export function lineOwnersOf(
   parents: ParentConnection[][],
@@ -125,7 +132,7 @@ export function lineOwnersOf(
   const raisedByRelatives = relativeRaisers(parents, partners);
 
   // The owners' ties among parents holding one kind of tie: a recorded
-  // couple, two biological parents with no partnership recorded, or the
+  // couple, the two parents who hold it with no partnership recorded, or the
   // first.
   function ownerAmong(holding: ParentConnection[]): ParentConnection[] {
     if (holding.length === 0) return [];
@@ -134,7 +141,7 @@ export function lineOwnersOf(
         if (a !== b && partnered(a.parentIndex, b.parentIndex)) return [a, b];
       }
     }
-    if (holding.length === 2 && holding[0]!.edgeType === 'biological') {
+    if (holding.length === 2 && isJointTie(holding[0]!.edgeType)) {
       return [holding[0]!, holding[1]!];
     }
     return [holding[0]!];
@@ -259,12 +266,12 @@ export function lineOwnersOf(
           candidate.edgeType === tie.edgeType &&
           candidate.parentIndex !== tie.parentIndex &&
           (partnered(candidate.parentIndex, tie.parentIndex) ||
-            (tie.edgeType === 'biological' &&
+            (isJointTie(tie.edgeType) &&
               !rest.some(
                 (third) =>
                   third !== tie &&
                   third !== candidate &&
-                  third.edgeType === 'biological',
+                  third.edgeType === tie.edgeType,
               ))),
       );
       if (other) drawn.add(other);
