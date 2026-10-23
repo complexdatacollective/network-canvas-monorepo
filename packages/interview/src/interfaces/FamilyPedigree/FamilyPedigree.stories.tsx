@@ -1226,8 +1226,9 @@ export const AParentNotYetShownCanHaveCarriedASibling: Story = {
 /**
  * Jun was adopted by Clare, as was his sister Lucy. His birth mother, added
  * as a parent, is not assumed to be a biological or an adoptive parent, nor
- * Clare's partner, nor Lucy's mother: those questions start unanswered, and
- * stay so as the kind of parent changes. The participant's own answer that
+ * Clare's partner, nor Lucy's mother: those questions start unanswered (the
+ * partner question once a kind of parent is chosen), and stay so as the kind
+ * of parent changes. The participant's own answer that
  * she was not Clare's partner is kept when the kind changes again. Nothing
  * records a partnership.
  */
@@ -1266,9 +1267,7 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
     const kind = await body.findByRole('radiogroup', {
       name: /^What kind of parent are they\?/,
     });
-    const partner = await body.findByRole('radiogroup', {
-      name: /^Are they the partner of another parent\?/,
-    });
+    const partnerName = /^Are they the partner of another parent\?/;
     const alsoParentOf = await body.findByRole('group', {
       name: /^Are they also the parent of/,
     });
@@ -1278,21 +1277,25 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
     const partnerAnswer = () =>
       ['Clare', 'No'].find(
         (name) =>
-          within(partner)
+          within(body.getByRole('radiogroup', { name: partnerName }))
             .getByRole('radio', { name })
             .getAttribute('aria-checked') === 'true',
       );
     const lucyChosen = () =>
       within(alsoParentOf).getByRole('checkbox', { name: 'Lucy' });
 
-    // Nothing is assumed: no kind, no partner, and no sibling is chosen.
+    // Nothing is assumed: no kind and no sibling is chosen, and whose
+    // partner they are is not asked until the kind is.
     for (const option of within(kind).getAllByRole('radio')) {
       await expect(option).not.toBeChecked();
     }
-    await expect(partnerAnswer()).toBeUndefined();
+    await expect(
+      body.queryByRole('radiogroup', { name: partnerName }),
+    ).toBeNull();
     await expect(lucyChosen()).not.toBeChecked();
 
     await chooseKind('Adoptive parent');
+    await body.findByRole('radiogroup', { name: partnerName });
     await expect(partnerAnswer()).toBeUndefined();
     await expect(lucyChosen()).not.toBeChecked();
 
@@ -1302,7 +1305,12 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
 
     // The participant's own answer is kept.
     await chooseKind('Adoptive parent');
-    await userEvent.click(within(partner).getByRole('radio', { name: 'No' }));
+    await userEvent.click(
+      within(body.getByRole('radiogroup', { name: partnerName })).getByRole(
+        'radio',
+        { name: 'No' },
+      ),
+    );
     await chooseKind('Biological parent');
     await chooseKind('Adoptive parent');
     await expect(partnerAnswer()).toBe('No');
@@ -1323,8 +1331,9 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
  * An answer chosen with the pointer or the keyboard is kept when the kind of
  * parent changes: Jun's new parent, made adoptive, has no partner chosen
  * until the participant clicks Clare; made biological again, she is still
- * Clare's partner. Opened afresh, the partner question starts unanswered,
- * and the participant presses Space on No; made adoptive, it stays No.
+ * Clare's partner. Opened afresh and made biological, the partner question
+ * starts unanswered, and the participant presses Space on No; made adoptive,
+ * it stays No.
  */
 export const ChoosingTheAnswerFilledInKeepsIt: Story = {
   args: { requirement: 'none' },
@@ -1353,13 +1362,21 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
       const kind = await body.findByRole('radiogroup', {
         name: /^What kind of parent are they\?/,
       });
-      const partner = await body.findByRole('radiogroup', {
-        name: /^Are they the partner of another parent\?/,
-      });
+      const chooseKind = async (name: string) => {
+        await userEvent.click(within(kind).getByRole('radio', { name }));
+        // Whose partner they are is asked once the kind is chosen.
+        await body.findByRole('radiogroup', {
+          name: /^Are they the partner of another parent\?/,
+        });
+      };
       return {
-        chooseKind: (name: string) =>
-          userEvent.click(within(kind).getByRole('radio', { name })),
-        option: (name: string) => within(partner).getByRole('radio', { name }),
+        chooseKind,
+        option: (name: string) =>
+          within(
+            body.getByRole('radiogroup', {
+              name: /^Are they the partner of another parent\?/,
+            }),
+          ).getByRole('radio', { name }),
       };
     };
 
@@ -1374,6 +1391,7 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
     const byKeyboard = await openAddParent();
+    await byKeyboard.chooseKind('Biological parent');
     await expect(byKeyboard.option('No')).not.toBeChecked();
     byKeyboard.option('No').focus();
     await userEvent.keyboard(' ');
@@ -1621,19 +1639,23 @@ export const AStepParentIsNotAssumedToBeTheirCoParentsPartner: Story = {
     await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
     await userEvent.click(await body.findByRole('radio', { name: 'Man' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Male' }));
-    const partner = await body.findByRole('radiogroup', {
-      name: /^Are they the partner of another parent\?/,
+    const kind = await body.findByRole('radiogroup', {
+      name: /^What kind of parent are they\?/,
     });
-    const rachel = within(partner).getByRole('radio', { name: 'Rachel' });
-    await expect(rachel).not.toBeChecked();
-    await userEvent.click(
+    const rachel = async () =>
       within(
         await body.findByRole('radiogroup', {
-          name: /^What kind of parent are they\?/,
+          name: /^Are they the partner of another parent\?/,
         }),
-      ).getByRole('radio', { name: 'Step or social parent' }),
+      ).getByRole('radio', { name: 'Rachel' });
+    await userEvent.click(
+      within(kind).getByRole('radio', { name: 'Biological parent' }),
     );
-    await expect(rachel).not.toBeChecked();
+    await expect(await rachel()).not.toBeChecked();
+    await userEvent.click(
+      within(kind).getByRole('radio', { name: 'Step or social parent' }),
+    );
+    await expect(await rachel()).not.toBeChecked();
   },
 };
 

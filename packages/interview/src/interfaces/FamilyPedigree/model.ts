@@ -967,8 +967,9 @@ export function planAddRelative({
       } else if (request.otherParent) {
         otherParentId = request.otherParent;
       }
-      // Any kind of parent may have carried the pregnancy: a surrogate
-      // always did, and otherwise the parent the participant chose. The
+      // Any kind of parent but an adoptive one may have carried the
+      // pregnancy: a surrogate always did, and otherwise the parent the
+      // participant chose (`carrierAnswer`). The
       // other parent of a child conceived with a donor's gamete, or carried
       // by a surrogate, is its biological parent.
       const kindFor = (parent: 'anchor' | 'otherParent') => {
@@ -1218,21 +1219,22 @@ export function planAddRelative({
   }
   // The sibling's carrier is one of the parents they are planned to have
   // who could have carried the pregnancy; any other answer, which a later
-  // one has made impossible, records nobody. Someone else carried an adopted
-  // sibling, so none of the parents who adopted them did: an adopted twin
-  // was carried by whoever carried the twins they join when that is a donor
-  // they share, and otherwise by nobody recorded.
+  // one has made impossible, records nobody. A twin was carried by whoever
+  // carried the twins they join, where that is recorded, and is not asked.
+  // Someone else carried an adopted sibling, so none of the parents who
+  // adopted them did: an adopted twin was carried by whoever carried the
+  // twins they join when that is a donor they share, and otherwise by
+  // nobody recorded.
   const twinned = (plan.twins ?? []).length > 0;
   const adopted =
     request.relation === 'sibling' && request.parentKind === 'adoptive';
+  const twinsRecordedCarrier = twinned
+    ? (carrierOf(family, anchorId) ?? twinCarrierOf(family, anchorId))
+    : undefined;
   const carrierChosen =
     request.relation !== 'sibling'
       ? null
-      : adopted
-        ? twinned
-          ? (carrierOf(family, anchorId) ?? twinCarrierOf(family, anchorId))
-          : null
-        : request.carrier;
+      : (twinsRecordedCarrier ?? (adopted ? null : request.carrier));
   const carrier =
     carrierChosen === null || carrierChosen === undefined
       ? undefined
@@ -1283,14 +1285,18 @@ export function planAddRelative({
 /**
  * What the participant's answer about carrying records for a parent of this
  * kind: true when they did, false when they did not, undefined while not
- * answered. A surrogate always carried; a partner never did.
+ * answered. A surrogate always carried; a partner never did. Someone else
+ * carried an adopted child, so the forms adding someone do not ask about an
+ * adoptive parent, and record that they did not: the edit panel can still
+ * record an adoptive parent who carried, and no longer takes it as answered
+ * once the parent is re-described (`ParentLinkFields`).
  */
 function carrierAnswer(
   kind: string,
   carried: boolean | undefined,
 ): boolean | undefined {
   if (kind === 'surrogate') return true;
-  if (!mayHaveCarried(kind)) return false;
+  if (kind === 'adoptive' || !mayHaveCarried(kind)) return false;
   return carried;
 }
 
@@ -1413,11 +1419,36 @@ function zygosityThrough(ab: TwinZygosity, bc: TwinZygosity): TwinZygosity {
 }
 
 /**
+ * Whether one of two siblings was adopted by a parent they share and the
+ * other was born to them: someone adopted by a family was born to someone
+ * else, so is never the twin of a child born to it. Two siblings adopted
+ * together may be twins, and so may two whom a step-parent adopted only one
+ * of, since a step-parent's tie says nothing about the other's birth.
+ */
+export function adoptedApart(family: Family, a: string, b: string): boolean {
+  const bornTo = (kind: FamilyLinkKind) =>
+    kind === 'biological' || kind === 'donor' || kind === 'surrogate';
+  const kindsFrom = (personId: string) =>
+    new Map(
+      parentLinksOf(family, personId).map((link) => [link.source, link.kind]),
+    );
+  const ofA = kindsFrom(a);
+  return [...kindsFrom(b)].some(([parentId, kind]) => {
+    const kindOfA = ofA.get(parentId);
+    return (
+      kindOfA !== undefined &&
+      ((kindOfA === 'adoptive' && bornTo(kind)) ||
+        (kind === 'adoptive' && bornTo(kindOfA)))
+    );
+  });
+}
+
+/**
  * Who could be recorded as the person's twins: their siblings by the
  * kinship model's own test (`siblingTie`: genetic or adoptive siblings, never
  * step or social-only siblings), whose own twin set the person could join —
  * each of its members is the person's sibling too — and everyone already in
- * the person's twin set.
+ * the person's twin set. Nobody adopted apart from them is (`adoptedApart`).
  */
 export function twinCandidatesOf(family: Family, personId: string): string[] {
   const own = twinSetOf(family, personId);
@@ -1426,6 +1457,7 @@ export function twinCandidatesOf(family: Family, personId: string): string[] {
   const isSibling = (id: string) =>
     id !== personId &&
     siblingTie(family, personId, id) !== undefined &&
+    !adoptedApart(family, personId, id) &&
     !isAncestor(family, id, personId) &&
     !isAncestor(family, personId, id);
   const candidates = family.people

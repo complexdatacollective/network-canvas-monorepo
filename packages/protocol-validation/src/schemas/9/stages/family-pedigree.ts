@@ -589,15 +589,6 @@ const WORDING_ARGUMENTS = {
     first: TEXT,
     second: TEXT,
   },
-  unavailableIdenticalTwin: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
-  unavailableIdenticalTwinNew: { ...PERSON_ARGUMENTS, answer: TEXT },
-  unavailableIdenticalTwinSex: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
-  unavailableIdenticalTwinSexNew: { ...PERSON_ARGUMENTS, answer: TEXT },
-  unavailableTwinCarrierNew: {
-    who: { kind: 'select', cases: ['childIsYou', 'carrierIsYou'] },
-    name: TEXT,
-    carrier: TEXT,
-  },
   unavailableSameSexGeneticParent: {
     ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     who: { kind: 'select', cases: ['coParentIsYou', 'childIsYou'] },
@@ -730,13 +721,6 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   unavailableGeneticParentsFull: argumentWording(
     'unavailableGeneticParentsFull',
   ),
-  unavailableIdenticalTwin: argumentWording('unavailableIdenticalTwin'),
-  unavailableIdenticalTwinNew: argumentWording('unavailableIdenticalTwinNew'),
-  unavailableIdenticalTwinSex: argumentWording('unavailableIdenticalTwinSex'),
-  unavailableIdenticalTwinSexNew: argumentWording(
-    'unavailableIdenticalTwinSexNew',
-  ),
-  unavailableTwinCarrierNew: argumentWording('unavailableTwinCarrierNew'),
   unavailableSameSexGeneticParent: argumentWording(
     'unavailableSameSexGeneticParent',
   ),

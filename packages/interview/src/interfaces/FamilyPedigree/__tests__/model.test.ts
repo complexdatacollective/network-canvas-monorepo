@@ -1284,20 +1284,21 @@ describe('planAddRelative', () => {
   });
 
   // Ruling 19: an adoptive parent who carried the child is recorded as such.
-  test('an adopted child records the adoptive parent who carried them', () => {
+  test('an adopted child records that the adoptive parent did not carry them', () => {
+    // Someone else carried an adopted child: the form does not ask.
     const result = plan(nuclearFamily(), 'mum', {
       relation: 'child',
       otherParent: null,
       parentKind: 'adoptive',
       biologicalParent: 'both',
-      carrier: 'anchor',
+      carrier: null,
     });
     expect(result.links).toEqual([
       {
         source: 'mum',
         target: 'added',
         kind: 'adoptive',
-        isGestationalCarrier: true,
+        isGestationalCarrier: false,
       },
     ]);
   });

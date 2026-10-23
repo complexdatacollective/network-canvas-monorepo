@@ -5887,29 +5887,9 @@
     "defaultMessage": "Unavailable answers hint: two genetic parents",
     "description": "Label of the hint explaining that answers are unavailable because the child already has two genetic parents recorded."
   },
-  "protocolBuilder.pedigree.wording.unavailableIdenticalTwin": {
-    "defaultMessage": "Unavailable answers hint: twins’ parents differ",
-    "description": "Label of the hint explaining that two twins cannot be recorded as identical because their biological parents and donors differ."
-  },
-  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew": {
-    "defaultMessage": "Unavailable answers hint: new twin’s parents differ",
-    "description": "Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors."
-  },
-  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSex": {
-    "defaultMessage": "Unavailable answers hint: twins’ sexes at birth differ",
-    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when editing a twin, that the two twins cannot be recorded as identical because one is recorded as female at birth and the other as male."
-  },
-  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": {
-    "defaultMessage": "Unavailable answers hint: new twin’s sex at birth differs",
-    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be an identical twin because they are recorded with a different sex at birth (female or male) from the person they are added to."
-  },
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": {
     "defaultMessage": "Unavailable answers hint: same sex at birth as the other genetic parent",
     "description": "Label of the hint explaining that answers are unavailable because the child’s other genetic parent is recorded with the same sex at birth."
-  },
-  "protocolBuilder.pedigree.wording.unavailableTwinCarrierNew": {
-    "defaultMessage": "Unavailable answers hint: person who carried the twins not chosen",
-    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be a twin of any kind because they would not share the person who carried the one they are added to."
   },
   "protocolBuilder.pedigree.wording.you": {
     "defaultMessage": "Participant’s own name",

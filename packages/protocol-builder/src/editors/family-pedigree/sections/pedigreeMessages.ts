@@ -1646,37 +1646,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the hint explaining that both parents cannot be a new child’s genetic parents because they are recorded with the same sex at birth.',
   },
-  wordingUnavailableIdenticalTwin: {
-    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwin',
-    defaultMessage: 'Unavailable answers hint: twins’ parents differ',
-    description:
-      'Label of the hint explaining that two twins cannot be recorded as identical because their biological parents and donors differ.',
-  },
-  wordingUnavailableIdenticalTwinNew: {
-    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew',
-    defaultMessage: 'Unavailable answers hint: new twin’s parents differ',
-    description:
-      'Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors.',
-  },
-  wordingUnavailableIdenticalTwinSex: {
-    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinSex',
-    defaultMessage: 'Unavailable answers hint: twins’ sexes at birth differ',
-    description:
-      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when editing a twin, that the two twins cannot be recorded as identical because one is recorded as female at birth and the other as male.',
-  },
-  wordingUnavailableIdenticalTwinSexNew: {
-    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew',
-    defaultMessage: 'Unavailable answers hint: new twin’s sex at birth differs',
-    description:
-      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be an identical twin because they are recorded with a different sex at birth (female or male) from the person they are added to.',
-  },
-  wordingUnavailableTwinCarrierNew: {
-    id: 'protocolBuilder.pedigree.wording.unavailableTwinCarrierNew',
-    defaultMessage:
-      'Unavailable answers hint: person who carried the twins not chosen',
-    description:
-      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be a twin of any kind because they would not share the person who carried the one they are added to.',
-  },
   wordingTitle: {
     id: 'protocolBuilder.pedigree.wording.title',
     defaultMessage: 'Participant wording',
