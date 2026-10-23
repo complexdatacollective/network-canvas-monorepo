@@ -77,5 +77,21 @@ describe('sanitizeCellValue', () => {
       expect(sanitizeCellValue(null)).toBeNull();
       expect(sanitizeCellValue(undefined)).toBeUndefined();
     });
+
+    it('writes a bigint as its decimal digits', () => {
+      expect(sanitizeCellValue(12345678901234567890n)).toBe(
+        '12345678901234567890',
+      );
+    });
+
+    it.each([
+      ['function', () => 'source'],
+      ['symbol', Symbol('cell')],
+    ])('refuses a %s rather than writing it into a cell', (kind, value) => {
+      expect(() => sanitizeCellValue(value)).toThrow(TypeError);
+      expect(() => sanitizeCellValue(value)).toThrow(
+        `Cannot write a ${kind} value to a CSV cell`,
+      );
+    });
   });
 });
