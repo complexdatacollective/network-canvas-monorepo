@@ -303,7 +303,7 @@ const rpc =
     try {
       const response = await fetch(`${origin}${path}`, {
         method: 'POST',
-        headers: { 'content-type': 'application/ndjson' },
+        headers: { 'content-type': 'application/x-ndjson' },
         body: `${JSON.stringify({ _tag: 'Request', id: '1', tag, payload, headers: [] })}\n`,
         signal: abort.signal,
       });

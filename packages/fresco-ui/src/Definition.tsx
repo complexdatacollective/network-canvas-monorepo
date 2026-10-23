@@ -41,7 +41,7 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
       sideOffset,
       showArrow,
       className,
-      id: idProp,
+      'id': idProp,
       'aria-describedby': ariaDescribedByProp,
       onBlur,
       onFocus,

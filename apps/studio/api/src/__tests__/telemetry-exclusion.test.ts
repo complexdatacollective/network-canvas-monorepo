@@ -374,7 +374,7 @@ const scenario = (
           {
             method: 'POST',
             headers: {
-              'content-type': 'application/ndjson',
+              'content-type': 'application/x-ndjson',
               'sec-fetch-site': 'same-origin',
               ...sourceHeaders,
               ...headers,

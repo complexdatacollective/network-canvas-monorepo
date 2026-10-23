@@ -200,7 +200,7 @@ replacements, and the one feature deliberately dropped:
   validate → save pipeline from local bytes. The development protocol stays gated
   behind `import.meta.env.DEV` (matching the existing dev-only Library entry).
 - **File import is the primary source**, mechanism unchanged — `<input
-type="file">` in `pickFile.ts`, which already works on iPadOS/Android (opens the
+  type="file">` in `pickFile.ts`, which already works on iPadOS/Android (opens the
   Files picker). See the `accept` fix below.
 
 ### File import on tablets — `accept` fix
@@ -218,7 +218,7 @@ reject wrong files gracefully.
 dialog and the Capacitor share:
 
 - If `navigator.canShare?.({ files: [file] })` → `navigator.share({ files:
-[file], title })` — raises the **native share sheet on iPadOS Safari and Android
+  [file], title })` — raises the **native share sheet on iPadOS Safari and Android
   Chrome** (parity with the retired `@capacitor/share`).
 - Else → `URL.createObjectURL` + `<a download>` (desktop / Firefox).
 
@@ -274,12 +274,12 @@ Enrollment (biometric):
 
 1. Generate the DEK (extractable, AES-GCM-256).
 2. `navigator.credentials.create()` a **platform** passkey — `residentKey:
-'preferred'`, `userVerification: 'required'`, `authenticatorAttachment:
-'platform'`, `extensions: { prf: {} }`. The single-user `user.id` is a stable
+   'preferred'`, `userVerification: 'required'`, `authenticatorAttachment:
+   'platform'`, `extensions: { prf: {} }`. The single-user `user.id` is a stable
    local handle (e.g. the installation id); no user identifier is introduced.
 3. `navigator.credentials.get()` with `allowCredentials: [newCredId]`,
    `extensions: { prf: { eval: { first: prfSalt } } }`, `userVerification:
-'required'` → 32-byte PRF secret. (A follow-up `get()` is used because some
+   'required'` → 32-byte PRF secret. (A follow-up `get()` is used because some
    platforms do not return PRF results at `create()` time.)
 4. HKDF(PRF) → KEK_bio; AES-KW-wrap the DEK → `wrappedDek_bio`.
 5. Capture the **recovery passphrase** → PBKDF2 → KEK_rec; wrap the DEK →
@@ -312,8 +312,8 @@ re-prompts Touch ID / Windows Hello — preserving `StepUpAuthProvider` behaviou
 
 - **Vault record** — a dedicated unencrypted Dexie table holding only wrapped key
   material + params: `{ version, mode, kdf: { salt, iterations }, wrappedDek,
-webauthn?: { credentialId, prfSalt }, recovery?: { salt, iterations,
-wrappedDek } }`. One record (single-user). Safe at rest (no plaintext key).
+  webauthn?: { credentialId, prfSalt }, recovery?: { salt, iterations,
+  wrappedDek } }`. One record (single-user). Safe at rest (no plaintext key).
 - **Session state** — the unlocked non-extractable DEK is held in the vault /
   `AuthContext` until lock / idle / blur. **Reload re-locks** (the DEK cannot be
   safely persisted across reload); this replaces the old

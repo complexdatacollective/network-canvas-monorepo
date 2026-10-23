@@ -47,11 +47,11 @@ function CollectionItemComponent<T>({
   // - aria-label: Should come from rendered item (e.g., Node's label), not DnD's announcedName
   // - onKeyDown: Must be composed with Collection's handler (extracted separately below)
   const {
-    ref: dragRef,
-    tabIndex: dndTabIndex,
-    role: dndRole,
+    'ref': dragRef,
+    'tabIndex': dndTabIndex,
+    'role': dndRole,
     'aria-label': dndAriaLabel,
-    onKeyDown: dndOnKeyDown,
+    'onKeyDown': dndOnKeyDown,
     ...dndDragProps
   } = dndDragPropsRaw as {
     'ref'?: (el: HTMLElement | null) => void;

@@ -1271,7 +1271,7 @@ export default function DynamicTextField({
   onChange,
   disabled,
   readOnly,
-  dynamicValues: siteKind,
+  'dynamicValues': siteKind,
   fieldPath,
   markdown = false,
   singleLine = false,

@@ -54,7 +54,7 @@ describe.skipIf(!testDb)('a participant redemption over HTTP', () => {
     const response = await fetch(`${server.origin}${RPC_PATH}`, {
       method: 'POST',
       headers: {
-        'content-type': 'application/ndjson',
+        'content-type': 'application/x-ndjson',
         'sec-fetch-site': 'same-origin',
       },
       body: `${JSON.stringify({

@@ -212,7 +212,7 @@ their upstream apt repositories at provisioning time.
   `display: none`, or asked only for metadata, reaches `readyState=4` with no
   error — but making it visible, or drawing one of its frames onto a canvas,
   kills the renderer, with `SharedImageManager::ProduceMemory … non-existent
-mailbox` in the browser log just before. It is not memory (it happens on an
+  mailbox` in the browser log just before. It is not memory (it happens on an
   idle VM with 23 GB free and logs no OOM kill), not the file (a 2.7 KB
   fixture and a real H.264 `.mp4` both do it), not the codec (VP8 does it too;
   audio is fine), and not the guest's CPU (`udot`, `smmla` and `bfdot` all

@@ -31,7 +31,7 @@ that trustworthy origin to exist; without it `navigator.credentials` throws `Sec
 ## Key facts established during design
 
 - Electron 42.1.0 (the repo's version) ships `app.configureWebAuthn({ touchID: {
-keychainAccessGroup, promptReason } })` — backported to the 42-x-y line
+  keychainAccessGroup, promptReason } })` — backported to the 42-x-y line
   ([electron #51411](https://github.com/electron/electron/pull/51411)). No native module is
   required for the Touch ID prompt itself.
 - Apple's platform authenticator supports the **PRF** extension on **macOS 15 / Safari 18+**,

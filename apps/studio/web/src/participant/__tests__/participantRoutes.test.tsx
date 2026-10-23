@@ -528,7 +528,7 @@ const answerStatusAndLogs: typeof globalThis.fetch = async (input, init) => {
       requestId: id,
       exit: { _tag: 'Success', value: PUBLIC_STATUS },
     })}\n`,
-    { status: 200, headers: { 'content-type': 'application/ndjson' } },
+    { status: 200, headers: { 'content-type': 'application/x-ndjson' } },
   );
 };
 

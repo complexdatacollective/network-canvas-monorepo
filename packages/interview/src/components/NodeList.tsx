@@ -78,7 +78,7 @@ const NodeList = memo(
     emptyState = null,
     announcedName,
     'aria-label': ariaLabel,
-    renderItem: renderItemOverride,
+    'renderItem': renderItemOverride,
     // All other Collection props passed through
     ...collectionProps
   }: NodeListProps) => {

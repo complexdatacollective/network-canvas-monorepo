@@ -22,8 +22,12 @@ import { Environment } from '../../env.ts';
 // control, and replacing it would mean patching a code path that its own
 // tests, not Studio's, hold to this behaviour.
 //
-// `HttpMiddleware.xForwardedHeaders` is deliberately not used: it takes the
-// *first* entry of the header, which a client writes for itself.
+// `HttpMiddleware.xForwardedHeaders` walks the header from the right as well,
+// but it is deliberately not used. When every hop is a trusted proxy it
+// believes the leftmost one, where this falls back to the peer. It also
+// rewrites the request's `host` and protocol from `X-Forwarded-Host` and
+// `X-Forwarded-Proto`, which every origin check downstream would then read,
+// when all the rate limits need is an address.
 
 /** What a request whose peer address cannot be read is counted against. */
 export const UNKNOWN_ADDRESS = 'unknown';

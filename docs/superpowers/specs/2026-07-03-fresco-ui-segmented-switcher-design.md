@@ -101,7 +101,7 @@ Both consumers move to `SegmentedSwitcher` in the same change:
 2. **`apps/interviewer-v8/src/components/DataView/DataViewToolbar.tsx`** — the inline
    `role="tablist"` status-filter pill group (with its local `layoutId="data-view-status-indicator"`)
    is replaced by `<SegmentedSwitcher size="md" aria-label="Status filter" value={chipFilter}
-onValueChange={setChipFilter} options={all|in-progress|complete}>`. **Counts stay**: each option's
+   onValueChange={setChipFilter} options={all|in-progress|complete}>`. **Counts stay**: each option's
    `label` embeds the existing count node. The TanStack-table column-filter wiring
    (`chipFilter`/`setChipFilter` and the `progress` column filter) stays entirely in
    `DataViewToolbar` — the component only owns presentation + the toggle. Behaviour (filtering,

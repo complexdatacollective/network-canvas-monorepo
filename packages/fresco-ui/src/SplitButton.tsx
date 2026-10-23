@@ -178,12 +178,12 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
     const popoverContentProps = getPopoverContentProps(popover);
     const {
       'aria-label': segmentAriaLabel,
-      className: segmentClassName,
-      children: segmentChildren,
-      disabled: segmentOwnDisabled,
-      icon: segmentIcon,
-      iconPosition: segmentIconPosition,
-      position: segmentPositionProp,
+      'className': segmentClassName,
+      'children': segmentChildren,
+      'disabled': segmentOwnDisabled,
+      'icon': segmentIcon,
+      'iconPosition': segmentIconPosition,
+      'position': segmentPositionProp,
       ...segmentProps
     } = segment;
     const segmentPosition = segmentPositionProp ?? 'right';

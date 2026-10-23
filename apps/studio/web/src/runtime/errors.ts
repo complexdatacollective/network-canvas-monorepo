@@ -1,4 +1,5 @@
-import { Predicate } from 'effect';
+import { Duration, Predicate, Result } from 'effect';
+import * as Headers from 'effect/http/Headers';
 import { RpcClientError } from 'effect/rpc';
 
 import type { FaultCode } from '@codaco/studio-contract/schema/browser-logs';
@@ -105,15 +106,15 @@ export const retryAfterSeconds = (error: unknown): number | undefined => {
   return undefined;
 };
 
-const DELTA_SECONDS = /^\d+$/;
-
+/** Whole seconds or an HTTP date, as the wait in whole seconds, rounded up. */
 export const parseRetryAfter = (
   raw: string | null | undefined,
 ): number | undefined => {
-  const value = raw?.trim();
-  return value !== undefined && DELTA_SECONDS.test(value)
-    ? boundedSeconds(Number(value))
-    : undefined;
+  if (raw === null || raw === undefined) return undefined;
+  const parsed = Headers.parseRetryAfter(raw);
+  if (Result.isFailure(parsed)) return undefined;
+  const wait = Headers.retryAfterDelay(parsed.success, Date.now());
+  return boundedSeconds(Math.ceil(Duration.toSeconds(wait)));
 };
 
 const REFUSAL_FAULTS: Readonly<

@@ -62,7 +62,7 @@
     "redux-remember": "^6.0.2",
     "tailwind-merge": "catalog:",
     "uuid": "catalog:",
-    "wouter": "^3.12.0",
+    "wouter": "^3.13.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -74,7 +74,7 @@
     "@storybook/react-vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "@types/luxon": "^3.7.6",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -83,7 +83,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
-    "fake-indexeddb": "^6.2.5",
+    "fake-indexeddb": "^6.2.6",
     "jsdom": "catalog:",
     "oxfmt": "catalog:",
     "playwright": "catalog:",

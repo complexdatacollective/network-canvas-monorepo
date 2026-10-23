@@ -38,7 +38,7 @@ export default defineConfig({
     actionTimeout: 5_000,
     navigationTimeout: 10_000,
     viewport: { width: 1920, height: 1080 },
-    contextOptions: { reducedMotion: 'reduce' },
+    reducedMotion: 'reduce',
   },
 
   webServer: [

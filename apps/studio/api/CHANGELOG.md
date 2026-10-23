@@ -201,7 +201,7 @@
     keyring that cannot open the stored secrets).
   - On a deploy, open editor sessions are asked to finish and their sockets are
     closed with a plain close frame rather than the previous `1001 Server
-shutting down`; browsers report it as a clean close (#1247).
+    shutting down`; browsers report it as a clean close (#1247).
   - Every response carries an `x-request-id` header, and every error response
     Studio synthesises is RFC 9457 problem JSON.
   - The worker keeps answering `/readyz` while it finishes its in-flight jobs

@@ -66,6 +66,11 @@ export const appVersion = pkg.version;
 // else stays 'self'.
 export const CSP_DIRECTIVES = [
   "default-src 'self'",
+  // No 'wasm-unsafe-eval': mapbox-gl compiles its right-to-left text shaper
+  // (WebAssembly) inside its module worker, a same-origin /assets file that
+  // runs under its own response headers rather than this page policy. A
+  // header that put this policy on /assets would fail that compile for every
+  // map tile with right-to-left text.
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",

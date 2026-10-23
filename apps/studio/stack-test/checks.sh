@@ -61,7 +61,7 @@ rpc() { # tag payload-json [extra curl args...]
   printf '{"_tag":"Request","id":1,"tag":"%s","payload":%s,"headers":[]}\n' \
     "$tag" "$payload" > "$frame_file"
   request -X POST "$URL${RPC_ROUTE:-/rpc}" \
-    -H 'Content-Type: application/ndjson' \
+    -H 'Content-Type: application/x-ndjson' \
     -H "Origin: $ORIGIN" \
     "$@" \
     --data-binary "@$frame_file"

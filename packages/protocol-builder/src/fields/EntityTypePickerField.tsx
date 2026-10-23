@@ -892,7 +892,7 @@ export default function EntityTypePickerField({
   blockChangeReason,
   allowCodebookEditing = true,
   disabled = false,
-  readOnly: readOnlyProp = false,
+  'readOnly': readOnlyProp = false,
   className,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,

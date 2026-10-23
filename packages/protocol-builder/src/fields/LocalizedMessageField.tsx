@@ -670,7 +670,7 @@ export default function LocalizedMessageField({
   onChange,
   disabled,
   readOnly,
-  arguments: declaration,
+  'arguments': declaration,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,

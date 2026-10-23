@@ -38,6 +38,11 @@ const legacyArchitect = legacyApp('architect');
 // the HTML, bumps its precache revision, and propagates on the next update.
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
+  // No 'wasm-unsafe-eval': mapbox-gl compiles its right-to-left text shaper
+  // (WebAssembly) inside its module worker, a same-origin /assets file that
+  // runs under its own response headers rather than this page policy. A
+  // header that put this policy on /assets would fail that compile for every
+  // map tile with right-to-left text.
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",

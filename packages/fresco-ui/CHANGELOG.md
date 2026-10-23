@@ -630,7 +630,7 @@
   A host that wants the components in the reader's language mounts
   `AppI18nProvider` and merges this package's catalogs into the messages it
   passes it — `mergeCatalogs(commonCatalogs[locale], frescoUiCatalogs[locale],
-appCatalog)`, taking `frescoUiCatalogs` from `@codaco/fresco-ui/locales`. The
+  appCatalog)`, taking `frescoUiCatalogs` from `@codaco/fresco-ui/locales`. The
   provider formats only the `messages` it is handed, so mounting it without that
   merge leaves every `frescoUi.*` id on its English default — including the
   en-GB overrides, where the trash-bin icon stays a "Trash bin" rather than a

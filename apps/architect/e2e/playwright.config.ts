@@ -36,9 +36,7 @@ export default defineConfig({
     // preset (1280×720) supplies its own and would override a top-level one.
     // Baselines capture at that size. If a wider canvas is wanted for architect's
     // desktop UI, set viewport inside projects[0].use (not here).
-    // reducedMotion lives under contextOptions (NOT top-level) to dodge a
-    // @playwright/test@1.61.1 TS2769 overload bug — do not "simplify" it back.
-    contextOptions: { reducedMotion: 'reduce' },
+    reducedMotion: 'reduce',
     // Block the service worker: deterministic tests, page.route works, no
     // SW-cache bleed between contexts. SW/offline behaviour is out of scope.
     serviceWorkers: 'block',

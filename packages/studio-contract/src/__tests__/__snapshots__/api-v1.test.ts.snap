@@ -20,6 +20,8 @@ exports[`the published OpenAPI document > matches the committed snapshot 1`] = `
             "type": "string",
           },
           "status": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer",
           },
           "title": {

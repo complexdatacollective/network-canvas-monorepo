@@ -1,4 +1,4 @@
-import { ByteSize, Context, Effect, Schema, Stream } from 'effect';
+import { Bytes, ByteSize, Context, Effect, Schema, Stream } from 'effect';
 import {
   HttpRouter,
   type HttpServerError,
@@ -68,11 +68,5 @@ export const readBodyCapped = Effect.fnUntraced(function* (
     }),
   );
   if (total > maxBytes) return yield* new BodyTooLarge({ maxBytes });
-  const body = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return body;
+  return Bytes.concat(chunks);
 });

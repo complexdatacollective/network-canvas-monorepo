@@ -54,7 +54,7 @@
     "react-dropzone": "catalog:",
     "uuid": "catalog:",
     "workbox-window": "^7.4.1",
-    "wouter": "^3.12.0",
+    "wouter": "^3.13.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -69,7 +69,7 @@
     "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vite-pwa/assets-generator": "^2.0.0",
@@ -77,7 +77,7 @@
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
-    "fake-indexeddb": "^6.2.5",
+    "fake-indexeddb": "^6.2.6",
     "jsdom": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",

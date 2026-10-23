@@ -5,7 +5,7 @@
 `SyntheticInterview` builds localized schema 9 protocols.
 
 - A built protocol declares `localization: { defaultLocale: 'en-US', locales:
-['en-US'] }`. Call `setLocalization({ defaultLocale, locales })` to declare
+  ['en-US'] }`. Call `setLocalization({ defaultLocale, locales })` to declare
   other languages.
 - Every builder option that holds participant-facing text (stage labels,
   prompts, form prompts and hints, option labels, Information items, panel

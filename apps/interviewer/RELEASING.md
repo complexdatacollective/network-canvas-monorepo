@@ -211,7 +211,7 @@ builds a released tag with `INTERVIEWER_BASE_PATH=/v<major>/` and attaches
   lock is managed in Interviewer 9. `scripts/build.mjs` drops `_headers`
   and `_redirects` (Interviewer 9 owns the `/v8/` hosting rules: they must let
   only the same origin frame `/v8/*`, as `Content-Security-Policy:
-frame-ancestors 'self'`, never a wider value, and must not send
+  frame-ancestors 'self'`, never a wider value, and must not send
   `X-Frame-Options: DENY` there; the build's own `<meta>` policy says
   `frame-ancestors 'self'`, but browsers ignore that directive in a meta
   policy, so the app itself only renders nothing when another origin frames
@@ -282,7 +282,7 @@ sub-path tarball. It deploys nothing.
    ```
 
 2. Push the branch, then run the workflow **from main** with `app:
-interviewer` and `source_ref` set to it. The `verify` job runs typecheck and
+   interviewer` and `source_ref` set to it. The `verify` job runs typecheck and
    tests across Interviewer's workspace dependency closure, then a
    `/v<major>/` build, because a maintenance branch gets no pull-request CI.
    After approval, the `release` job checks the version again, writes the

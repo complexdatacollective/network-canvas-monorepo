@@ -100,7 +100,7 @@ script) and **build + test green today**:
 
 5. **`network-canvas-architect#build` inputs:** currently list
    `src/**, scripts/**, tsconfig*.json, electron.vite.config.*,
-electron-builder.config.*, package.json` but omit architect's real renderer
+   electron-builder.config.*, package.json` but omit architect's real renderer
    entry and config files. Add `public/**`, `index.html`, `babel.config.*`,
    `postcss.config.*` so a change to the electron main/preload sources or build
    config correctly invalidates the cache. (Interviewer rides the generic `build`
@@ -125,7 +125,7 @@ electron-builder.config.*, package.json` but omit architect's real renderer
    - Build via turbo. The architect job must build interviewer first so its
      `copy-interviewer` prebuild has a source — turbo handles this automatically:
      `network-canvas-architect#build` already `dependsOn
-network-canvas-interviewer#build` (an explicit task dependency, so it fires
+     network-canvas-interviewer#build` (an explicit task dependency, so it fires
      regardless of the package filter — note `--filter=…^...`, which walks the
      _package.json_ dependency graph, would **not** pull interviewer in, since
      architect has no `workspace:*` dep on it). Running

@@ -16,6 +16,7 @@ import {
   OtlpSerialization,
   type OtlpTracer,
 } from 'effect/observability';
+import { Statement } from 'effect/sql';
 
 import { InstallationIdentity } from './installation-identity.ts';
 import { correlationOf } from './logger.ts';
@@ -116,8 +117,31 @@ const exceptionAttributes = (
   });
 };
 
+/**
+ * A database client's span is named after `db.namespace` or
+ * `server.address[:server.port]`, so a span named that way takes the name it
+ * would have without them.
+ */
+const scrubbedName = (span: OtlpSpan): string => {
+  const entries = span.attributes.map(
+    ({ key, value }) =>
+      [
+        key,
+        value.stringValue ??
+          value.intValue ??
+          value.doubleValue ??
+          value.boolValue,
+      ] as const,
+  );
+  if (span.name !== Statement.spanName(entries)) return span.name;
+  return Statement.spanName(
+    entries.filter(([key]) => !INFRASTRUCTURE_ATTRIBUTES.has(key)),
+  );
+};
+
 const scrubSpan = (span: OtlpSpan): OtlpSpan => ({
   ...span,
+  name: scrubbedName(span),
   attributes: exceptionAttributes(
     span.attributes.filter(
       (attribute) => !INFRASTRUCTURE_ATTRIBUTES.has(attribute.key),

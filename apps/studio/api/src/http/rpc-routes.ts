@@ -24,6 +24,8 @@ export const RpcRoutes = (
     group: StudioRpcs,
     path: RPC_PATH,
     protocol: 'http',
+    // Each call's span is `RpcServer.<tag>`; without a prefix it is the bare tag.
+    spanPrefix: 'RpcServer',
   }).pipe(
     Layer.provide(StudioRpcHandlers(deps)),
     Layer.provide(StudioRpcMiddleware(deps)),

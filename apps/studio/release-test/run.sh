@@ -217,7 +217,7 @@ complete_setup() { # token
   printf '{"_tag":"Request","id":1,"tag":"setup.complete","payload":{"token":"%s","instanceName":"Release test %s","owner":{"name":"Release Test Owner","email":"owner@release-test.invalid","password":"release-test-not-for-production"}},"headers":[]}\n' \
     "$1" "$RUN_NAME" > "$frame"
   body="$(curl -k -s --max-time 30 -X POST "$URL/rpc" \
-    -H 'Content-Type: application/ndjson' -H "Origin: $ORIGIN" \
+    -H 'Content-Type: application/x-ndjson' -H "Origin: $ORIGIN" \
     --data-binary "@$frame")"
   rm -f "$frame"
   case "$body" in
