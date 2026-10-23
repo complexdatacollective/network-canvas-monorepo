@@ -1579,6 +1579,27 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the hint explaining that answers are unavailable because someone else is recorded as having carried the pregnancy.',
   },
+  wordingCarrierReplaced: {
+    id: 'protocolBuilder.pedigree.wording.carrierReplaced',
+    defaultMessage:
+      'Note on a new answer about carrying: earlier carrier no longer recorded',
+    description:
+      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that choosing an answer which records someone as having carried a child’s pregnancy means the person recorded before will no longer be recorded as having carried it, since only one person carries a pregnancy.',
+  },
+  wordingGeneticParentReplaced: {
+    id: 'protocolBuilder.pedigree.wording.geneticParentReplaced',
+    defaultMessage:
+      'Note on a new genetic parent: biological parent recorded is replaced',
+    description:
+      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that choosing a genetic kind of parent (biological parent or donor) means the biological parent recorded with the same sex at birth will no longer be recorded as one, and that they will be asked how they would define that parent’s relationship to the child instead.',
+  },
+  wordingIdenticalTwinSharesParents: {
+    id: 'protocolBuilder.pedigree.wording.identicalTwinSharesParents',
+    defaultMessage:
+      'Note on identical twins: same biological parents recorded for both',
+    description:
+      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that recording two twins as identical will record the same biological parents and donors for both of them.',
+  },
   wordingSexChangeClearsCoParentSex: {
     id: 'protocolBuilder.pedigree.wording.sexChangeClearsCoParentSex',
     defaultMessage:

@@ -764,8 +764,20 @@
           "es": "¿Qué tipo de progenitor es?"
         },
         "parentLinkKindLabel": {
-          "en": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}",
-          "es": "{parentIsYou, select, true {Para esta persona, eres…} other {{personIsYou, select, true {Para ti, {parent} es…} other {Para esta persona, {parent} es…}}}}"
+          "en": "{parentIsYou, select, true {How would you define your relationship to “{child}”?} other {{personIsYou, select, true {How would you define the relationship of “{parent}” to you?} other {How would you define the relationship of “{parent}” to “{child}”?}}}}",
+          "es": "{parentIsYou, select, true {¿Cómo definirías tu relación con «{child}»?} other {{personIsYou, select, true {¿Cómo definirías la relación de «{parent}» contigo?} other {¿Cómo definirías la relación de «{parent}» con «{child}»?}}}}"
+        },
+        "carrierReplaced": {
+          "en": "{who, select, carrierIsYou {Choosing “{answer}” means you will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.} childIsYou {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried you, as only one person carries a pregnancy.} other {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.}}",
+          "es": "{who, select, carrierIsYou {Si eliges «{answer}», ya no constará que llevaste el embarazo del que nació «{child}», porque solo una persona lleva cada embarazo.} childIsYou {Si eliges «{answer}», ya no constará que «{carrier}» llevó el embarazo del que naciste, porque solo una persona lleva cada embarazo.} other {Si eliges «{answer}», ya no constará que «{carrier}» llevó el embarazo del que nació «{child}», porque solo una persona lleva cada embarazo.}}"
+        },
+        "geneticParentReplaced": {
+          "en": "{who, select, parentIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define your relationship to “{child}” instead.} childIsYou {Choosing “{answer}” means “{parent}” will no longer be recorded as your biological parent. You will be asked how you would define the relationship of “{parent}” to you instead.} other {Choosing “{answer}” means “{parent}” will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define the relationship of “{parent}” to “{child}” instead.}}",
+          "es": "{who, select, parentIsYou {Si eliges «{answer}», ya no constarás como progenitor biológico de «{child}». En lugar de eso, se te preguntará cómo definirías tu relación con «{child}».} childIsYou {Si eliges «{answer}», «{parent}» ya no constará como tu progenitor biológico. En lugar de eso, se te preguntará cómo definirías la relación de «{parent}» contigo.} other {Si eliges «{answer}», «{parent}» ya no constará como progenitor biológico de «{child}». En lugar de eso, se te preguntará cómo definirías la relación de «{parent}» con «{child}».}}"
+        },
+        "identicalTwinSharesParents": {
+          "en": "{who, select, personIsYou {Choosing “{answer}” records the same biological parents and donors for you and “{twin}”.} twinIsYou {Choosing “{answer}” records the same biological parents and donors for “{name}” and you.} other {Choosing “{answer}” records the same biological parents and donors for “{name}” and “{twin}”.}}",
+          "es": "{who, select, personIsYou {Si eliges «{answer}», se registrarán los mismos progenitores biológicos y donantes para ti y para «{twin}».} twinIsYou {Si eliges «{answer}», se registrarán los mismos progenitores biológicos y donantes para «{name}» y para ti.} other {Si eliges «{answer}», se registrarán los mismos progenitores biológicos y donantes para «{name}» y «{twin}».}}"
         },
         "parentPartnerLabel": {
           "en": "Are they the partner of another parent?",

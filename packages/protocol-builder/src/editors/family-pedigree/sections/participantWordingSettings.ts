@@ -317,9 +317,19 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       { key: 'zygosityIdentical', label: messages.wordingZygosityIdentical },
       { key: 'zygosityFraternal', label: messages.wordingZygosityFraternal },
       {
+        key: 'identicalTwinSharesParents',
+        label: messages.wordingIdenticalTwinSharesParents,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.identicalTwinSharesParents,
+      },
+      {
         key: 'unavailableSameSexGeneticParent',
         label: messages.wordingUnavailableSameSexGeneticParent,
         arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableSameSexGeneticParent,
+      },
+      {
+        key: 'geneticParentReplaced',
+        label: messages.wordingGeneticParentReplaced,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.geneticParentReplaced,
       },
       {
         key: 'unavailableGeneticParentsFull',
@@ -335,6 +345,11 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         key: 'unavailableCarrierRecorded',
         label: messages.wordingUnavailableCarrierRecorded,
         arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableCarrierRecorded,
+      },
+      {
+        key: 'carrierReplaced',
+        label: messages.wordingCarrierReplaced,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.carrierReplaced,
       },
       {
         key: 'unavailableCannotCarry',

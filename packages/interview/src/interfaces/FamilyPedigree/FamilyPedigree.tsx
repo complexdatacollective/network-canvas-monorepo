@@ -162,6 +162,7 @@ import {
   pedigreeConfigFromStage,
   planAdditionUnder,
   planConnection,
+  connectionUpdates,
   type PlannedLink,
   type PlannedTwin,
   planStandIns,
@@ -554,32 +555,33 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const changedTwins = new Map(
       (plan.changedTwins ?? []).map((twin) => [twin.linkId, twin.zygosity]),
     );
-    // The twins a new sibling joins were carried by whoever carried them.
+    // The twins a new sibling joins were carried by whoever carried them; a
+    // new parent who carried the anchor replaces whoever was recorded as
+    // having, and a biological parent a new genetic parent takes the place
+    // of is the kind of parent the participant said instead.
     const recarried = new Map(
-      (plan.carrierUpdates ?? []).map((update) => [
-        update.linkId,
-        update.isGestationalCarrier,
-      ]),
+      (plan.carrierUpdates ?? []).map((update) => [update.linkId, update]),
     );
     const keptEdges = edges
       .filter((edge) => !removedLinks.has(edge[entityPrimaryKeyProperty]))
       .map((edge) => {
         const linkId = edge[entityPrimaryKeyProperty];
-        if (recarried.has(linkId)) {
+        const update = recarried.get(linkId);
+        if (update) {
           const {
             [config.gestationalCarrierAttribute]: _recorded,
             ...attributes
           } = edge[entityAttributesProperty];
-          const carries = recarried.get(linkId);
+          const carries = update.isGestationalCarrier;
           return {
             ...edge,
-            [entityAttributesProperty]:
-              carries === undefined
-                ? attributes
-                : {
-                    ...attributes,
-                    [config.gestationalCarrierAttribute]: carries,
-                  },
+            [entityAttributesProperty]: {
+              ...attributes,
+              [config.kindAttribute]: [update.kind],
+              ...(carries === undefined
+                ? {}
+                : { [config.gestationalCarrierAttribute]: carries }),
+            },
           };
         }
         const zygosity = changedTwins.get(linkId);
@@ -2180,6 +2182,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }
         relinkedIds.push(update.linkId);
       }
+      // Twins answered identical are given the same biological parents and
+      // donors (`identicalParentLinks`); a stand-in in the place of one of
+      // them gives way below (`keepStandInRule`).
+      const addedParentEdgeIds: string[] = [];
+      for (const link of result.identicalParentLinks ?? []) {
+        const added = await dispatch(
+          addEdge({ ...linkEdge(link), currentStep }),
+        );
+        if (writeFailureMessage(added)) {
+          for (const edgeId of addedParentEdgeIds) dispatch(deleteEdge(edgeId));
+          await restoreLinks(relinkedIds);
+          return writeSubmissionResult(added);
+        }
+        if (addEdge.fulfilled.match(added)) {
+          addedParentEdgeIds.push(added.payload.edgeId);
+        }
+      }
       // Twins answered, re-described or no longer twins. Saving again after a
       // refusal writes only what is left: the form reads the twins from the
       // family as stored.
@@ -2531,9 +2550,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // A connection that makes a stand-in give way where they were someone's
     // only connection to the participant is refused, as a disconnection
     // that would leave them out is.
+    // The newest answer wins: the biological parent a genetic kind takes
+    // the place of is recorded as the kind of parent the participant said,
+    // and whoever carried the child as not known to have, once someone else
+    // is said to have carried them.
+    const updates = connectionUpdates(connection, family);
     const cutOff = peopleCutOffByChange(
       family,
-      { links: [link] },
+      {
+        links: [link],
+        linkKinds: new Map(
+          updates.map((update) => [update.linkId, update.kind]),
+        ),
+      },
       config.sexAssignedAtBirthAttribute,
     );
     if (cutOff.length > 0) {
@@ -2546,6 +2575,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       return;
     }
     await recordChange(async () => {
+      const relinkedIds: string[] = [];
+      for (const update of updates) {
+        const relinked = await writeLinkUpdate(update);
+        if (writeFailureMessage(relinked)) {
+          await restoreLinks(relinkedIds);
+          reportRefusedStandIn(relinked);
+          return;
+        }
+        relinkedIds.push(update.linkId);
+      }
       await addLink(link);
       reportRefusedStandIn(await keepStandInRule());
       await withdrawContradictedAnswers();

@@ -34,8 +34,8 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: Julie is their…
-    - radiogroup "Julie is their…":
+    - text: How would you define the relationship of “Julie” to “Bea”?
+    - radiogroup "How would you define the relationship of “Julie” to “Bea”?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"
@@ -50,8 +50,8 @@
     - radiogroup "Did Julie carry the pregnancy?":
       - radio "Yes"
       - radio "No"
-    - text: Rob is their… “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
-    - radiogroup "Rob is their…":
+    - text: How would you define the relationship of “Rob” to “Bea”? “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+    - radiogroup "How would you define the relationship of “Rob” to “Bea”?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"

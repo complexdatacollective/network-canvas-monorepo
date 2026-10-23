@@ -449,6 +449,12 @@ const WORDING_ARGUMENTS = {
     child: TEXT,
     standIn: TEXT,
   },
+  carrierReplaced: {
+    answer: TEXT,
+    who: { kind: 'select', cases: ['carrierIsYou', 'childIsYou'] },
+    carrier: TEXT,
+    child: TEXT,
+  },
   connectParent: {
     parentIsYou: SELECT_TRUE,
     parent: TEXT,
@@ -459,6 +465,12 @@ const WORDING_ARGUMENTS = {
   connectQuestion: TWO_PEOPLE_ARGUMENTS,
   disconnectConfirmTitle: TWO_PEOPLE_ARGUMENTS,
   disconnectWouldCutOff: { count: PLURAL, names: TEXT },
+  geneticParentReplaced: {
+    answer: TEXT,
+    who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
+    parent: TEXT,
+    child: TEXT,
+  },
   generatedLabelOf: {
     relation: {
       kind: 'select',
@@ -469,6 +481,7 @@ const WORDING_ARGUMENTS = {
     name: TEXT,
     owner: TEXT,
   },
+  identicalTwinSharesParents: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
   otherParentBiologicalLabel: { otherIsYou: SELECT_TRUE, other: TEXT },
   panelTitle: {
     relation: {
@@ -487,6 +500,7 @@ const WORDING_ARGUMENTS = {
     parentIsYou: SELECT_TRUE,
     personIsYou: SELECT_TRUE,
     parent: TEXT,
+    child: TEXT,
   },
   placeholderParentsNote: {
     shared: { kind: 'select', cases: ['eggParent', 'spermParent'] },
@@ -638,6 +652,7 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
     'carriedSiblingsPregnancyLabel',
   ),
   carrierLabel: plainWording(),
+  carrierReplaced: argumentWording('carrierReplaced'),
   carrierUnknown: plainWording(),
   changeWouldCutOff: argumentWording('changeWouldCutOff'),
   childKindAdoptive: plainWording(),
@@ -659,6 +674,8 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   framingChoiceTitle: plainWording().optional(),
   genderIdentityLabel: plainWording().optional(),
   generatedLabelOf: argumentWording('generatedLabelOf'),
+  geneticParentReplaced: argumentWording('geneticParentReplaced'),
+  identicalTwinSharesParents: argumentWording('identicalTwinSharesParents'),
   otherParentBiologicalLabel: argumentWording('otherParentBiologicalLabel'),
   otherParentLabel: plainWording(),
   otherParentNone: plainWording(),

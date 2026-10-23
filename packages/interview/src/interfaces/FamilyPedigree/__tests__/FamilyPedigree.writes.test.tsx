@@ -252,7 +252,9 @@ describe('FamilyPedigree when a write is refused', () => {
     const panel = await screen.findByTestId('pedigree-person-panel');
     await user.click(
       within(
-        within(panel).getByRole('radiogroup', { name: /is your…/ }),
+        within(panel).getByRole('radiogroup', {
+          name: /relationship of .* to you/,
+        }),
       ).getByRole('radio', { name: 'Biological parent' }),
     );
 
@@ -723,7 +725,9 @@ describe('FamilyPedigree a parent re-described as genetic', () => {
     const panel = await screen.findByTestId('pedigree-person-panel');
     await user.click(
       within(
-        within(panel).getByRole('radiogroup', { name: /^“?Alex”? is your…/ }),
+        within(panel).getByRole('radiogroup', {
+          name: /relationship of “Alex” to you/,
+        }),
       ).getByRole('radio', { name: 'Biological parent' }),
     );
     await user.click(within(panel).getByRole('button', { name: 'Save' }));

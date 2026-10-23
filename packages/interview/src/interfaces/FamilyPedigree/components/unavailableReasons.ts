@@ -67,6 +67,23 @@ export type Reason = { answers: readonly UnavailableAnswer[] } & (
       sex: string;
     }
   | { rule: 'bothSameSex'; firstId: string; secondId: string; sex: string }
+  | {
+      /** Not a reason an answer is unavailable but what choosing it does
+       * (newest answer wins): `carrierId` is no longer recorded as having
+       * carried `childId`. */
+      rule: 'carrierReplaced';
+      childId: string;
+      carrierId: string;
+    }
+  | {
+      /** What choosing a genetic kind does (newest answer wins):
+       * `replacedId` is no longer recorded as a biological parent of
+       * `childId`, and the participant is asked how they would define that
+       * parent's relationship instead. */
+      rule: 'geneticParentReplaced';
+      childId: string;
+      replacedId: string;
+    }
 );
 
 const isYou = (context: ReasonContext, personId: string) =>
@@ -90,6 +107,13 @@ const answersArgs = (context: ReasonContext, reason: Reason) => ({
   ),
   count: reason.answers.length,
 });
+
+/** The one answer a reason about what choosing it does names. */
+const answerArg = (context: ReasonContext, reason: Reason) =>
+  listed(
+    context,
+    reason.answers.map((answer) => answer.label),
+  );
 
 /** The answer that is a sex at birth. */
 const sexAnswer = (context: ReasonContext, sex: string): UnavailableAnswer => ({
@@ -117,6 +141,32 @@ export const cannotCarryReason = (
   sex: string,
   answers: readonly UnavailableAnswer[],
 ): Reason => ({ rule: 'cannotCarry', personId, sex, answers });
+
+/** What choosing an answer that records someone else as having carried a
+ * child does: whoever was recorded no longer is. */
+export const carrierReplacedReason = (
+  childId: string,
+  carrierId: string,
+  answer: UnavailableAnswer,
+): Reason => ({
+  rule: 'carrierReplaced',
+  childId,
+  carrierId,
+  answers: [answer],
+});
+
+/** What choosing a genetic kind of parent does: the biological parent with
+ * the same sex at birth is no longer recorded as one. */
+export const geneticParentReplacedReason = (
+  childId: string,
+  replacedId: string,
+  answer: UnavailableAnswer,
+): Reason => ({
+  rule: 'geneticParentReplaced',
+  childId,
+  replacedId,
+  answers: [answer],
+});
 
 /** Why two people cannot both be a new child's genetic parents. */
 export const bothSameSexReason = (
@@ -269,6 +319,28 @@ function formatReason(
             : 'other',
         children,
         sex: sexLabel(context, reason.sex),
+      });
+    case 'carrierReplaced':
+      return words.text(words.wording.carrierReplaced, {
+        answer: answerArg(context, reason),
+        who: isYou(context, reason.carrierId)
+          ? 'carrierIsYou'
+          : isYou(context, reason.childId)
+            ? 'childIsYou'
+            : 'other',
+        carrier: displayName(reason.carrierId),
+        child: displayName(reason.childId),
+      });
+    case 'geneticParentReplaced':
+      return words.text(words.wording.geneticParentReplaced, {
+        answer: answerArg(context, reason),
+        who: isYou(context, reason.replacedId)
+          ? 'parentIsYou'
+          : isYou(context, reason.childId)
+            ? 'childIsYou'
+            : 'other',
+        parent: displayName(reason.replacedId),
+        child: displayName(reason.childId),
       });
     case 'bothSameSex': {
       const [first, second] = isYou(context, reason.secondId)

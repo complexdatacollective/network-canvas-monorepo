@@ -68,27 +68,32 @@ import {
   type PersonDetails,
   type Relation,
   type TwinZygosity,
+  carrierGivingWay,
   carrierOf,
   carrierRecordOf,
   familyWithLinkKinds,
   type FamilyLinkKind,
   adoptedApart,
   couldCarryPregnancy,
+  familyWithIdenticalParents,
   familyWithPlan,
   firmGeneticParentSexes,
   firmGeneticParentsOf,
   geneticParentBlock,
+  geneticParentGivingWay,
   geneticParentsPossible,
   hasCarrier,
   surrogateOf,
   holdsGeneratedLabel,
   differentSexesAtBirth,
   couldBeCarrierOf,
+  identicalParentLinks,
   identicalSetOf,
   identicalTwinBlocks,
   isGeneticKind,
   isStandIn,
   mayHaveCarried,
+  type PlannedLink,
   otherParentChoices,
   sexAnswerGivesWay,
   type SexConflict,
@@ -99,6 +104,7 @@ import {
   planTwinChanges,
   possibleCarriers,
   primaryParentsOf,
+  REPLACED_PARENT_KINDS,
   siblingTie,
   siblingsOf,
   standInPlaceTakenFor,
@@ -119,7 +125,9 @@ import {
   bothSameSexReason,
   cannotCarryReason,
   carrierRecordedReason,
+  carrierReplacedReason,
   geneticParentReason,
+  geneticParentReplacedReason,
   joinReasons,
   type Reason,
   type ReasonContext,
@@ -163,6 +171,9 @@ export type PersonFormResult = {
   /** People whose sex at birth is cleared, since the person's own, as
    * saved, contradicts it (`sexAnswerGivesWay`; edit only). */
   clearedSexIds?: string[];
+  /** Genetic parent links that give twins answered identical the same
+   * biological parents and donors (`identicalParentLinks`; edit only). */
+  identicalParentLinks?: PlannedLink[];
 };
 
 type RelativesGroup = 'siblings' | 'children';
@@ -209,6 +220,7 @@ const ROLE = {
   partnerId: 'pedigreePartnerId',
   partnershipCurrent: 'pedigreePartnershipCurrent',
   alsoParentOf: 'pedigreeAlsoParentOf',
+  replacedParentKind: 'pedigreeReplacedParentKind',
   sharedParents: 'pedigreeSharedParents',
   sharedParentCount: 'pedigreeSharedParentCount',
   siblingKind: 'pedigreeSiblingKind',
@@ -587,10 +599,25 @@ export default function PersonForm({
       unset.push(...patch.patch.unset);
     }
 
+    // Twins answered identical are given the same biological parents and
+    // donors, so their twin changes are read from the family as that leaves
+    // it.
+    const parentLinksForTwins =
+      mode.kind === 'edit'
+        ? identicalTwinParentLinks(
+            draftFamily(family, mode.person.id, values),
+            mode.person.id,
+            values,
+          )
+        : [];
     const twinChanges =
       mode.kind === 'edit'
         ? readTwinChanges(
-            draftFamily(family, mode.person.id, values),
+            familyWithIdenticalParents(
+              draftFamily(family, mode.person.id, values),
+              parentLinksForTwins,
+              config.sexAssignedAtBirthAttribute,
+            ),
             mode.person.id,
             values,
             config.sexAssignedAtBirthAttribute,
@@ -631,7 +658,13 @@ export default function PersonForm({
       unset,
       request:
         mode.kind === 'add'
-          ? readRequest(mode.relation, values, mode.anchor, family)
+          ? readRequest(
+              mode.relation,
+              values,
+              mode.anchor,
+              family,
+              config.sexAssignedAtBirthAttribute,
+            )
           : undefined,
       linkUpdates:
         mode.kind === 'edit' && linkUpdates
@@ -650,6 +683,9 @@ export default function PersonForm({
       relativesAnswers: mode.kind === 'edit' ? relativesAnswers : undefined,
       twinChanges,
       clearedSexIds: givesWay?.clearedSexIds,
+      ...(parentLinksForTwins.length > 0
+        ? { identicalParentLinks: parentLinksForTwins }
+        : {}),
     });
   };
 
@@ -1092,15 +1128,16 @@ function readTwinChanges(
   for (const twinId of chosen) {
     answers.set(
       twinId,
-      identicalUnavailable(
+      identicalTwinOutlook(
         family,
         personId,
         twinId,
         sexOf,
         identicalChosen.filter((id) => id !== twinId),
-      )
-        ? 'fraternal'
-        : (asZygosity(values[twinZygosityField(twinId)]) ?? 'unknown'),
+        sexAttribute,
+      ).possible
+        ? (asZygosity(values[twinZygosityField(twinId)]) ?? 'unknown')
+        : 'fraternal',
     );
   }
   const changes = planTwinChanges(family, personId, answers, sexOf);
@@ -1109,6 +1146,41 @@ function readTwinChanges(
     changes.removedLinkIds.length > 0
     ? changes
     : undefined;
+}
+
+/**
+ * The person and everyone they would be identical to, as answered: the
+ * twins answered identical and everyone identical to those.
+ */
+function identicalGroup(
+  family: Family,
+  personId: string,
+  identicalTwinIds: readonly string[],
+): string[] {
+  return [
+    ...new Set([
+      personId,
+      ...identicalTwinIds.flatMap((id) => identicalSetOf(family, id)),
+    ]),
+  ];
+}
+
+/** The genetic parent links that give the person and the twins answered
+ * identical the same biological parents and donors, where that is possible
+ * (`identicalParentLinks`); none otherwise. */
+function identicalTwinParentLinks(
+  family: Family,
+  personId: string,
+  values: Record<string, FieldValue | undefined>,
+): PlannedLink[] {
+  const identical = asStringArray(values[ROLE.twins]).filter(
+    (twinId) => asZygosity(values[twinZygosityField(twinId)]) === 'identical',
+  );
+  if (identical.length === 0) return [];
+  return (
+    identicalParentLinks(family, identicalGroup(family, personId, identical)) ??
+    []
+  );
 }
 
 /**
@@ -1219,28 +1291,48 @@ function TwinFields({
 }
 
 /**
- * Whether the person and one of their twins could not be identical, with
- * sexes at birth as `sexOf` reads them: identical twins have the same
- * genetic parents and sex at birth (`identicalTwinBlocks`), and answering
- * this twin identical makes everyone identical to them identical to the
- * person and to `identicalWith`, the person's other twins answered
- * identical, and to everyone identical to those, so no two of them may be
- * recorded with different sexes at birth.
+ * Whether the person and one of their twins could be identical, with sexes
+ * at birth as `sexOf` reads them. Identical twins have the same genetic
+ * parents and sex at birth (`identicalTwinBlocks`). Twins whose biological
+ * parents and donors differ are given the same ones when answered identical,
+ * where that is possible (newest answer wins, `identicalParentLinks`), so
+ * only what that leaves rules them out; a difference in sex at birth is
+ * answered in each twin's own panel. Answering this twin identical makes
+ * everyone identical to them identical to the person and to `identicalWith`,
+ * the person's other twins answered identical, and to everyone identical to
+ * those, so no two of them may be recorded with different sexes at birth.
  */
-function identicalUnavailable(
+function identicalTwinOutlook(
   family: Family,
   personId: string,
   twinId: string,
   sexOf: (id: string) => string | undefined,
   identicalWith: readonly string[],
-): boolean {
-  if (identicalTwinBlocks(family, personId, twinId, sexOf).length > 0) {
-    return true;
+  sexAttribute: string,
+): { possible: boolean; parentsAligned: boolean } {
+  const blocks = identicalTwinBlocks(family, personId, twinId, sexOf);
+  const parentLinks = blocks.every((block) => block === 'geneticParents')
+    ? identicalParentLinks(
+        family,
+        identicalGroup(family, personId, [...identicalWith, twinId]),
+      )
+    : undefined;
+  const parentsAligned =
+    blocks.length > 0 &&
+    parentLinks !== undefined &&
+    identicalTwinBlocks(
+      familyWithIdenticalParents(family, parentLinks, sexAttribute),
+      personId,
+      twinId,
+      sexOf,
+    ).length === 0;
+  if (blocks.length > 0 && !parentsAligned) {
+    return { possible: false, parentsAligned };
   }
   const joining = identicalSetOf(family, twinId).filter(
     (id) => id !== personId,
   );
-  return [
+  const clash = [
     personId,
     ...identicalWith.flatMap((id) => identicalSetOf(family, id)),
   ].some((first) =>
@@ -1251,6 +1343,7 @@ function identicalUnavailable(
         differentSexesAtBirth(sexOf(first), sexOf(second)),
     ),
   );
+  return { possible: !clash, parentsAligned };
 }
 
 /**
@@ -1291,19 +1384,20 @@ function TwinZygosityField({
   const recorded = twinsOf(family, person.id).find(
     (each) => each.twinId === twinId,
   );
-  const unavailable = identicalUnavailable(
+  const outlook = identicalTwinOutlook(
     family,
     person.id,
     twinId,
     (id) =>
       id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth,
     identicalWith,
+    sexAttribute,
   );
   // "Fraternal" recorded where identical was impossible was assumed rather
   // than answered, so it is asked afresh once identical is possible.
   const assumedFraternal =
     recorded?.zygosity === 'fraternal' &&
-    identicalUnavailable(
+    !identicalTwinOutlook(
       recordedFamily,
       person.id,
       twinId,
@@ -1313,16 +1407,23 @@ function TwinZygosityField({
           ? [each.twinId]
           : [],
       ),
-    );
+      sexAttribute,
+    ).possible;
   // The answer recorded, followed until the participant answers
   // (`useDerivedAnswer`); none while the question is not asked.
   const zygosityAnswer = useDerivedAnswer({
     name: twinZygosityField(twinId),
     nameMode: 'opaque',
     derived: assumedFraternal ? undefined : recorded?.zygosity,
-    isAvailable: () => !unavailable,
+    isAvailable: () => outlook.possible,
   });
-  if (unavailable) return null;
+  // What answering identical changes is said once it is chosen.
+  const chosenZygosity = asZygosity(
+    useFormValue([twinZygosityField(twinId)], 'opaque')[
+      twinZygosityField(twinId)
+    ],
+  );
+  if (!outlook.possible) return null;
   const args = {
     who,
     name: displayName(person.id),
@@ -1341,6 +1442,14 @@ function TwinZygosityField({
             ? intl.formatMessage(interfaceMessages.dontKnow)
             : text(zygosityWording(wording, value)),
       }))}
+      hint={
+        outlook.parentsAligned && chosenZygosity === 'identical'
+          ? text(wording.identicalTwinSharesParents, {
+              ...args,
+              answer: text(wording.zygosityIdentical),
+            })
+          : undefined
+      }
       required
       {...zygosityAnswer}
     />
@@ -1417,6 +1526,28 @@ function ExistingRelationshipFields({
     geneticParentsPossible(
       otherGeneticParents(link).map(sexOf).concat(sexOf(link.source)),
     );
+  // A parent re-described as genetic where a biological parent with the same
+  // sex at birth is recorded takes their place (newest answer wins,
+  // `geneticParentGivingWay`): that parent's kind is asked again, and must
+  // be answered. Two parents both recorded as genetic, as a family saved
+  // before every change kept the rule may be, are left as they are.
+  const parentGivingWayTo = (link: FamilyLink) =>
+    canBeGenetic(link) || isGeneticKind(link.kind)
+      ? undefined
+      : geneticParentGivingWay(
+          family,
+          person.id,
+          sexOf(link.source),
+          otherGeneticParents(link),
+        );
+  const replacedParents = new Set(
+    parents.flatMap((link) => {
+      const replaced = parentGivingWayTo(link);
+      return replaced !== undefined && isGeneticKind(kindOf(link))
+        ? [replaced]
+        : [];
+    }),
+  );
   // Twins come from one pregnancy: someone with nobody recorded as carrying
   // them was carried by whoever carried their twins as the answers stand,
   // twins newly chosen included, until answered otherwise.
@@ -1500,15 +1631,17 @@ function ExistingRelationshipFields({
         const anotherCarrier = otherParentCarrying
           ? { carrierId: otherParentCarrying.source, childId: person.id }
           : twinSurrogate;
+        const replaces = parentGivingWayTo(link);
         // Why a kind of parent is unavailable, for each that is.
-        const geneticBlock = canBeGenetic(link)
-          ? undefined
-          : geneticParentBlock(
-              family,
-              person.id,
-              otherGeneticParents(link),
-              sexOf(link.source),
-            );
+        const geneticBlock =
+          canBeGenetic(link) || replaces !== undefined
+            ? undefined
+            : geneticParentBlock(
+                family,
+                person.id,
+                otherGeneticParents(link),
+                sexOf(link.source),
+              );
         const sex = sexOf(link.source);
         const kindAnswers = (kinds: readonly PedigreeParentKind[]) =>
           kinds.map((value) => ({ value, label: parentKindLabels[value] }));
@@ -1531,11 +1664,23 @@ function ExistingRelationshipFields({
             sex !== undefined &&
             cannotCarryReason(link.source, sex, kindAnswers(['surrogate'])),
         ];
+        // What the kind chosen replaces, said once it is chosen.
+        const kind = kindOf(link);
+        const kindChanges = [
+          replaces !== undefined &&
+            isGeneticKind(kind) &&
+            geneticParentReplacedReason(person.id, replaces, {
+              value: kind,
+              label: parentKindLabels[kind],
+            }),
+        ];
         return (
           <ParentLinkFields
             key={link.id}
             link={link}
-            canBeGenetic={canBeGenetic(link)}
+            canBeGenetic={canBeGenetic(link) || replaces !== undefined}
+            kindChanges={kindChanges}
+            givesWay={replacedParents.has(link.source)}
             canCarry={canCarry(link)}
             carries={carries(link)}
             kindReasons={kindReasons}
@@ -1545,6 +1690,7 @@ function ExistingRelationshipFields({
             personIsYou={isYou(person.id)}
             parentIsYou={isYou(link.source)}
             parentName={displayName(link.source)}
+            personName={displayName(person.id)}
             parentKindLabels={parentKindLabels}
           />
         );
@@ -1573,6 +1719,8 @@ function ExistingRelationshipFields({
 function ParentLinkFields({
   link,
   canBeGenetic,
+  kindChanges,
+  givesWay,
   canCarry,
   carries,
   kindReasons,
@@ -1582,12 +1730,19 @@ function ParentLinkFields({
   personIsYou,
   parentIsYou,
   parentName,
+  personName,
   parentKindLabels,
 }: {
   parentKindLabels: Readonly<Record<PedigreeParentKind, string>>;
   link: FamilyLink;
-  /** This parent could be a genetic parent alongside the person's others. */
+  /** This parent could be a genetic parent alongside the person's others,
+   * or in the place of one who gives way. */
   canBeGenetic: boolean;
+  /** What the kind chosen replaces in what is recorded, said in the hint. */
+  kindChanges: readonly (Reason | undefined | false)[];
+  /** This biological parent gives way to another parent answered as genetic
+   * in their place, so their kind must be answered again. */
+  givesWay: boolean;
   /** This parent could have carried a pregnancy: they are not recorded as
    * male at birth. */
   canCarry: boolean;
@@ -1606,6 +1761,7 @@ function ParentLinkFields({
   personIsYou: string;
   parentIsYou: string;
   parentName: string;
+  personName: string;
 }) {
   const { wording, text } = usePedigreeWords();
   const intl = useAppIntl();
@@ -1665,6 +1821,7 @@ function ParentLinkFields({
           personIsYou,
           parentIsYou,
           parent: parentName,
+          child: personName,
         })}
         options={PARENT_KINDS.map((value) => ({
           value,
@@ -1672,7 +1829,8 @@ function ParentLinkFields({
           disabled: kindUnavailable(value),
           description: reasonsFor(reasonContext, kindReasons, value),
         }))}
-        hint={joinReasons(reasonContext, kindReasons)}
+        hint={joinReasons(reasonContext, [...kindReasons, ...kindChanges])}
+        {...(givesWay ? { required: true } : {})}
         {...kindAnswer}
       />
       {kind !== 'surrogate' && mayHaveCarried(kind) && canCarry && (
@@ -1771,7 +1929,17 @@ function DraftWatcher({
     config.sexAssignedAtBirthAttribute,
     ...Object.values(ROLE),
   ]);
-  const personValues = useFormValue(personQuestions(roleValues));
+  const replaced = replacedParentQuestion(
+    relation,
+    roleValues,
+    anchor,
+    family,
+    config.sexAssignedAtBirthAttribute,
+  );
+  const personValues = useFormValue([
+    ...personQuestions(roleValues),
+    ...(replaced === undefined ? [] : [replaced.question]),
+  ]);
   const values = useMemo(
     () => ({ ...roleValues, ...personValues }),
     [roleValues, personValues],
@@ -1782,7 +1950,13 @@ function DraftWatcher({
     const kindQuestion = KIND_QUESTION[relation];
     report.current({
       details: readOwnDetails(values, config),
-      request: readRequest(relation, values, anchor, family),
+      request: readRequest(
+        relation,
+        values,
+        anchor,
+        family,
+        config.sexAssignedAtBirthAttribute,
+      ),
       kindUnanswered:
         kindQuestion !== undefined &&
         asString(values[kindQuestion]) === undefined,
@@ -1823,16 +1997,56 @@ function childCarrierChoices(
   ];
 }
 
+/**
+ * The biological parent of the anchor a new parent of a genetic kind takes
+ * the place of, as the answers stand (`geneticParentGivingWay`), with the
+ * question asking how the participant would define their relationship to
+ * the anchor instead, named for them (`aboutPerson`) so that another parent
+ * giving way is asked afresh.
+ */
+function replacedParentQuestion(
+  relation: Relation,
+  values: Record<string, FieldValue | undefined>,
+  anchor: Person,
+  family: Family,
+  sexAttribute: string,
+): { parentId: string; question: string } | undefined {
+  if (relation !== 'parent') return undefined;
+  const kind = asString(values[ROLE.parentKind]);
+  if (kind === undefined || !isGeneticKind(kind)) return undefined;
+  const parentId = geneticParentGivingWay(
+    family,
+    anchor.id,
+    asString(readOwnProperty(values, sexAttribute)),
+  );
+  return parentId === undefined
+    ? undefined
+    : { parentId, question: aboutPerson(ROLE.replacedParentKind, parentId) };
+}
+
 function readRequest(
   relation: Relation,
   values: Record<string, FieldValue | undefined>,
   anchor: Person,
   family: Family,
+  sexAttribute: string,
 ): AddRelativeRequest {
   switch (relation) {
     case 'parent': {
       const partnerId = asString(values[ROLE.partnerId]);
       const partnered = partnerId && partnerId !== NONE ? partnerId : null;
+      const replaced = replacedParentQuestion(
+        relation,
+        values,
+        anchor,
+        family,
+        sexAttribute,
+      );
+      const replacedKind =
+        replaced &&
+        REPLACED_PARENT_KINDS.find(
+          (kind) => kind === asString(values[replaced.question]),
+        );
       return {
         relation,
         parentKind:
@@ -1845,6 +2059,9 @@ function readRequest(
           partnered === null ||
           values[aboutPerson(ROLE.partnershipCurrent, partnered)] !== false,
         alsoParentOf: asStringArray(values[ROLE.alsoParentOf]),
+        ...(replaced && replacedKind
+          ? { replaces: { parentId: replaced.parentId, kind: replacedKind } }
+          : {}),
       };
     }
     case 'partner':
@@ -2139,29 +2356,46 @@ function ParentFields({
   const existingParents = primaryParentsOf(family, anchor.id).filter(
     (parentId) => !isStandIn(family, parentId),
   );
-  // One person carried the pregnancy at most; once someone has, the new
-  // parent cannot have too.
+  // One person carried the pregnancy at most. A new parent answered as
+  // having carried the anchor replaces whoever was recorded as carrying them
+  // or a twin (newest answer wins, `carrierGivingWay`), unless a surrogate
+  // did, who carried them by definition: then the new parent cannot have.
   const anchorHasCarrier = hasCarrier(family, anchor.id);
+  const carrierReplaced = carrierGivingWay(family, anchor.id);
+  const anchorCarrierFixed = anchorHasCarrier && carrierReplaced === undefined;
   // Nor can a parent recorded as male at birth.
-  const canCarry = !anchorHasCarrier && couldCarryPregnancy(sexAssignedAtBirth);
+  const canCarry =
+    !anchorCarrierFixed && couldCarryPregnancy(sexAssignedAtBirth);
   // A genetic parent provided the egg or the sperm, which another genetic
   // parent may already have. A stand-in gives way to a genetic parent
-  // recorded in their place.
+  // recorded in their place, and a biological parent with the same sex at
+  // birth to the new one (newest answer wins, `geneticParentGivingWay`): the
+  // participant is then asked how they would define that parent's
+  // relationship to the anchor instead.
   const canBeGeneticParentOf = (personId: string) =>
     geneticParentsPossible([
       ...firmGeneticParentSexes(family, personId),
       sexAssignedAtBirth,
     ]);
+  const givingWay = geneticParentGivingWay(
+    family,
+    anchor.id,
+    sexAssignedAtBirth,
+  );
   const kindPossible = (kind: string) =>
     isGeneticKind(kind)
-      ? canBeGeneticParentOf(anchor.id)
+      ? canBeGeneticParentOf(anchor.id) || givingWay !== undefined
       : kind !== 'surrogate' || canCarry;
   const siblings = siblingsOf(family, anchor.id);
   const partnerChoice = asString(values[ROLE.partnerId]);
-  // The new parent is the same kind of parent to the siblings chosen.
+  // The new parent is the same kind of parent to the siblings chosen, in the
+  // place of the same biological parent where one gives way.
   const siblingPossible = (siblingId: string) =>
     isGeneticKind(parentKind)
-      ? canBeGeneticParentOf(siblingId)
+      ? canBeGeneticParentOf(siblingId) ||
+        (givingWay !== undefined &&
+          geneticParentGivingWay(family, siblingId, sexAssignedAtBirth) ===
+            givingWay)
       : parentKind !== 'surrogate' || !hasCarrier(family, siblingId);
   const chosenSiblings = asStringArray(values[ROLE.alsoParentOf]);
 
@@ -2193,7 +2427,7 @@ function ParentFields({
   const kindAnswers = (kinds: readonly PedigreeParentKind[]) =>
     kinds.map((value) => ({ value, label: parentKindLabels[value] }));
   const kindReasons = [
-    !canBeGeneticParentOf(anchor.id) &&
+    !kindPossible('biological') &&
       geneticReason(anchor.id, kindAnswers(PARENT_KINDS.filter(isGeneticKind))),
     // One reason at a time: a new parent who could not have carried a
     // pregnancy is told only that.
@@ -2209,7 +2443,31 @@ function ParentFields({
         kindAnswers(['surrogate']),
       ),
   ];
-  const kindHint = joinReasons(reasonContext, kindReasons);
+  // What the kind chosen replaces is said once it is chosen: the biological
+  // parent who gives way to a genetic one, and whoever was recorded as
+  // carrying the anchor, for a surrogate.
+  const chosenParentKind = PARENT_KINDS.find((kind) => kind === chosenKind);
+  const chosenAnswer =
+    chosenParentKind === undefined
+      ? undefined
+      : { value: chosenParentKind, label: parentKindLabels[chosenParentKind] };
+  const kindChanges = chosenAnswer && [
+    isGeneticKind(chosenAnswer.value) &&
+      givingWay !== undefined &&
+      geneticParentReplacedReason(anchor.id, givingWay, chosenAnswer),
+    chosenAnswer.value === 'surrogate' &&
+      canCarry &&
+      carrierReplaced !== undefined &&
+      carrierReplacedReason(
+        carrierReplaced.childId,
+        carrierReplaced.carrierId,
+        chosenAnswer,
+      ),
+  ];
+  const kindHint = joinReasons(reasonContext, [
+    ...kindReasons,
+    ...(kindChanges ?? []),
+  ]);
   // A genetic parent recorded in the place of a stand-in the anchor shares
   // with siblings takes it for them too (`standInPlaceTakenFor`): they are
   // shown chosen, and cannot be unticked, saying why.
@@ -2277,18 +2535,32 @@ function ParentFields({
     couldCarryPregnancy(sexAssignedAtBirth);
   const asksCarried =
     mightHaveCarried &&
-    (!anchorHasCarrier || siblingsWithoutCarrier.length > 0);
+    (!anchorCarrierFixed || siblingsWithoutCarrier.length > 0);
   const carriedAnswer = useDerivedAnswer({
     name: ROLE.carriedPregnancy,
     derived: undefined,
     isAvailable: () => asksCarried,
   });
   const [onlySibling] = siblingsWithoutCarrier;
-  // With nobody left to ask about, because the anchor already has someone
-  // recorded as carrying them, the question is shown unavailable, naming
-  // them: a child has one carrier at most.
+  // "Yes" about the anchor replaces whoever was recorded as carrying them,
+  // said once it is chosen.
+  const carriedChange =
+    asksCarried &&
+    carrierReplaced !== undefined &&
+    asBoolean(values[ROLE.carriedPregnancy]) === true
+      ? joinReasons(reasonContext, [
+          carrierReplacedReason(
+            carrierReplaced.childId,
+            carrierReplaced.carrierId,
+            yesAnswer(intl),
+          ),
+        ])
+      : undefined;
+  // With nobody left to ask about, because a surrogate carried the anchor,
+  // the question is shown unavailable, naming them: a child has one carrier
+  // at most.
   const carriedUnavailable =
-    !asksCarried && mightHaveCarried && anchorHasCarrier;
+    !asksCarried && mightHaveCarried && anchorCarrierFixed;
   // Only "Yes" would record a second carrier, so only it is unavailable,
   // and "No" is the answer shown. It is a question of its own, so the
   // answer is never taken for the siblings the question may go on to ask
@@ -2311,7 +2583,7 @@ function ParentFields({
       component={BooleanField}
       name={ROLE.carriedPregnancy}
       label={
-        anchorHasCarrier
+        anchorCarrierFixed
           ? text(wording.carriedSiblingsPregnancyLabel, {
               single: siblingsWithoutCarrier.length === 1 ? 'true' : 'false',
               count: siblingsWithoutCarrier.length,
@@ -2323,9 +2595,32 @@ function ParentFields({
             })
           : text(wording.parentCarriedLabel, { named: 'false' })
       }
+      hint={carriedChange}
       {...carriedAnswer}
     />
   );
+  // How the participant would define the relationship to the anchor of the
+  // biological parent a genetic kind takes the place of: they are still a
+  // parent, of another kind, and nothing is assumed about which.
+  const replacedField = chosenKind !== undefined &&
+    isGeneticKind(chosenKind) &&
+    givingWay !== undefined && (
+      <Field
+        component={RadioGroupField}
+        name={aboutPerson(ROLE.replacedParentKind, givingWay)}
+        label={text(wording.parentLinkKindLabel, {
+          parentIsYou: family.byId.get(givingWay)?.isEgo ? 'true' : 'false',
+          personIsYou: anchor.isEgo ? 'true' : 'false',
+          parent: displayName(givingWay),
+          child: displayName(anchor.id),
+        })}
+        options={REPLACED_PARENT_KINDS.map((value) => ({
+          value,
+          label: parentKindLabels[value],
+        }))}
+        required
+      />
+    );
 
   // Nothing is assumed about the new parent's partner or the siblings they
   // are a parent of: each question starts unanswered. Only a sibling whose
@@ -2382,7 +2677,8 @@ function ParentFields({
         required
         {...kindAnswer}
       />
-      {!anchorHasCarrier && carriedField}
+      {replacedField}
+      {!anchorCarrierFixed && carriedField}
       {carriedUnavailableField}
       {raises && existingParents.length > 0 && (
         <Field
@@ -2420,7 +2716,7 @@ function ParentFields({
           {...siblingsAnswer}
         />
       )}
-      {anchorHasCarrier && carriedField}
+      {anchorCarrierFixed && carriedField}
     </>
   );
 }
