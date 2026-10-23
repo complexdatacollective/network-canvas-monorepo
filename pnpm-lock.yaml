@@ -331,7 +331,7 @@ overrides:
 packageExtensionsChecksum: sha256-szM874KBbSxTYSFw7iIzEUKof84HNiD4esRjMM2jF0w=
 
 patchedDependencies:
-  '@storybook/addon-vitest@10.6.3': d6679df296630352f07da3f7fdf652eaa51476c7d9983c2e84cb6314b30afdc8
+  '@storybook/addon-vitest': d6679df296630352f07da3f7fdf652eaa51476c7d9983c2e84cb6314b30afdc8
   drizzle-orm@1.0.0-rc.5-5935859: da6e5acf797448dcdf25ef928078d5533acd034d90164ff69f64e8a5b1242320
 
 importers:

@@ -337,5 +337,10 @@ patchedDependencies:
   # layout notices. `vitest/browser` is the same `page` object under the name
   # Vitest 5 serves. 10.6.3 declares Vitest 5 peers but still imports the old
   # entry point; drop this once a release imports `vitest/browser` itself.
-  '@storybook/addon-vitest@10.6.3': patches/@storybook__addon-vitest@10.6.3.patch
+  # Keyed by name, not version, so Dependabot can bump the addon with the rest
+  # of Storybook: an exact-version key stops matching after a bump, and
+  # Dependabot dropped the addon from every Storybook update rather than
+  # rename the patch. pnpm fails the install if the patch stops applying,
+  # which is the signal that upstream changed this code.
+  '@storybook/addon-vitest': patches/@storybook__addon-vitest.patch
   drizzle-orm@1.0.0-rc.5-5935859: patches/drizzle-orm@1.0.0-rc.5-5935859.patch
