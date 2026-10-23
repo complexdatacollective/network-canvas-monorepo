@@ -1,5 +1,222 @@
 # @codaco/documentation
 
+## 0.7.0
+
+### Minor Changes
+
+- The documentation now covers dynamic values: values the interview fills into
+  the text participants read, such as the participant's name, an earlier answer,
+  the labels of the nodes a census question asks about, or today's date. A new
+  Dynamic Values page explains how to insert a value in Architect with the
+  syringe button or by typing `{`, how a node's label is chosen (on a Family
+  Pedigree, the label its family tree shows), which values
+  each kind of text can show, why a value
+  that can be missing needs a version of the text for when it is missing, how to
+  give the text a version for each answer or for each plural form of a number,
+  how participants see values, and that every translation must show the values
+  its default-language text shows. It also lists the problems protocol
+  validation reports. The Prompts, Translating Your Protocol and protocol schema
+  pages link to it, and the schema 9 notes list dynamic values among what is
+  new.
+- The documentation now describes encrypted attributes as a standard feature
+  of schema 9, not an experiment. The Anonymisation interface page no longer
+  says it must be turned on from Architect's Experimental Features page, which
+  Architect no longer has, and the Interfaces, Variables and Export Data Dictionary
+  pages no longer call it experimental. The Anonymisation page also now gives
+  the exported placeholder for an encrypted value as `ENCRYPTED`, the string
+  exports actually write.
+
+  The Anonymisation page now explains how answers are protected: one key for
+  each interview, derived from the participant's passphrase with PBKDF2-SHA256
+  (600,000 iterations, with a salt derived from the interview's id) and used
+  with AES-256-GCM; each answer bound to the person and question it belongs to,
+  and padded; and how a passphrase entered again is checked against the answers
+  already encrypted, without anything about the passphrase or the key being
+  stored. It explains that a participant
+  confirms the passphrase when choosing it, that it must be at least 8
+  characters long unless the stage sets its own minimum, which replaces the
+  default even when shorter, that a maximum shorter than 8 lowers the default
+  minimum to match, and that a forgotten passphrase cannot be recovered by
+  anyone. The export
+  section now says that only answers saved encrypted are replaced with
+  `ENCRYPTED`. Another new section explains that skip logic and filters can't
+  compare the answers to an encrypted attribute, except in a panel over an
+  external data file, but can still check whether it is answered. It explains
+  that upgrading removes the rules that compared these answers and keeps the
+  others, that a stage whose skip logic loses all its rules is always shown, so
+  one that was shown only when a removed rule matched may appear for the first
+  time, and how the rules that remain may match differently. It also explains
+  that a list sorted by an encrypted attribute is sorted by the participant's
+  answers only once the passphrase is entered.
+
+  The schema information page says that schema 9 keeps a protocol's
+  `experiments` setting, for features released within a schema version, and
+  that encrypted attributes are no longer one of them. It explains that
+  upgrading a schema 8 protocol removes the Encrypted Attributes experiment,
+  and what that does to its encrypted attributes. If the experiment was on, they stay marked and
+  answers are encrypted, while the interviews already collected stay with the
+  schema 8 protocol and keep the answers the experimental version protected. If the
+  experiment was off, the attributes are unmarked, so they keep being collected
+  without encryption.
+
+- The documentation covers the Finish Screen, the stage that ends every
+  interview. A new interface page explains its two ways of finishing
+  (participants confirm, or the interview finishes automatically), how to write
+  its closing text and finished text, the words participants read while they
+  finish, and how to choose the outcome it records. It also explains how to end
+  a protocol with more than one Finish Screen, such as a separate ending for
+  participants who are not eligible, how Finish Screens stay together at the end
+  of the protocol, and the text Architect needs before it will download a
+  protocol. The data export and data dictionary pages describe the new
+  `networkCanvasFinishOutcome` column and `nc:finishOutcome` attribute. The
+  skip logic, translation, preview, schema 9, Fresco and Interviewer pages are
+  updated to match, including choosing a later Finish Screen as a skip
+  destination, the Fresco API's new `finishStageId` and `finishOutcome` fields
+  and the removal of Fresco's separate "interview finished" page.
+- The documentation now says that current releases of Architect, Fresco and
+  Interviewer are backwards compatible with protocols made for earlier schema
+  versions. Architect opens and edits them without upgrading them, and lists
+  schema 8 protocols in its library with their own menu. Fresco and Interviewer
+  run schema 8 protocols as they are, mark them as older protocols, and include
+  them in Interviewer's single offline status. The compatibility table no longer
+  says that the current apps migrate every schema 8 protocol to schema 9, and the
+  light bulb and obsolete-protocol guidance is now labelled as applying to
+  Interviewer Classic.
+- The documentation now says that only Architect upgrades a protocol to schema 9,
+  and only when you choose to. Opening a schema 7 or schema 8 protocol in
+  Architect offers to upgrade it, which makes an upgraded copy and leaves the
+  original unchanged, or to keep editing it as schema 8 in the previous version
+  of Architect built into it. Fresco and Interviewer never upgrade a protocol to
+  schema 9: a schema 8 protocol and its interviews keep running as schema 8. They
+  still migrate a schema 7 protocol to schema 8 automatically when you import it,
+  because that is how protocols made in the Classic apps move to them.
+
+  The schema information, Migrating from the Classic Apps, Architect FAQ,
+  Anonymisation, translation, glossary, Interviewer and Fresco pages are updated
+  to match. The Fresco 5.0.0 upgrade notes no longer say that Fresco upgrades the
+  protocols you have already uploaded, or adds a Finish Screen to them.
+
+- The Dynamic Values page is now a Piped Text article at
+  `/en/design-protocols/piped-text`, rewritten in the documentation's academic
+  register. It sets out why network instruments pipe node labels and earlier
+  answers into questions, the methodological precautions piping calls for, and
+  how to insert piped values in Architect, with current screenshots of the insert
+  menu, the value pills, missing-value versions and the interview preview. The old
+  URL redirects to it. The Building a Protocol tutorial now names the university
+  in the Per-Alter Form question and both classmates in the Dyad Census prompt,
+  the CEGRM tutorial explains the template's piped pedigree and "Something else"
+  questions, and the glossary defines piped text.
+- The documentation now covers translated protocols. A new Translating Your
+  Protocol page explains how to choose the language a protocol is written in,
+  add and remove languages, set the default language, find missing translations,
+  translate in the translation table, which shows everything participants see
+  beside its translation into each language, change the language a protocol's text is recorded as, for a protocol upgraded
+  from an earlier version, preview each language, print every translation in
+  the protocol summary, and how participants get their language. It explains
+  that languages have no order and are always listed alphabetically, that a
+  text needs a translation in at least one language and a missing translation
+  is only a warning, that a translation must include the placeholders, such as
+  a person's name or a number, that Network Canvas's English includes, and how
+  participants are shown the best available translation of each text: in their
+  own language or a close regional match, then in the other languages their
+  browser lists, then in the default language, then in any language that has it.
+  It explains that participants never see codebook names, and that Narrative
+  legend labels, Network Composer edge type labels and Network Composer field
+  labels are translated, and the Narrative and Network Composer pages say
+  where each label is shown and that every Network Composer field needs a label.
+  A new page documents the Language Chooser interface, including how to manage
+  the protocol's languages from its editor in Architect. The preview, Fresco and
+  Interviewer guides describe how an interview's language follows the
+  participant's browser rather than a settings menu, and that the language is
+  neither saved with the interview nor exported, and the schema 9 notes describe what the upgrade to schema 9
+  does to a protocol's text. Pages that listed three interface languages now
+  list all ten.
+- The documentation describes schema 9 stages without introduction panels.
+  The Per Alter Form, Per Alter Edge Form and Dyad Census pages explain that
+  instructions for participants now go in an Information stage before the
+  stage; an Ego Form keeps its introduction. The
+  protocol-building tutorial, the translation guide and the schema information
+  page are updated to match, including how upgrading a schema 8 protocol moves
+  each panel into an Information stage.
+- The documentation now covers protocol schema 9, which lets variables, node
+  and edge types, and answer options be named in any language, with spaces and
+  punctuation. The Variables page explains what a name can contain and which
+  names Architect refuses because they would clash in exported data, including
+  names that an export would write the same way. The roster
+  tutorial explains the rules for column headings and values, and how to fix a
+  roster that Architect refuses. The Data Export page and the Export Data
+  Dictionary explain how export files and GraphML attributes are named, why some
+  CSV values start with an apostrophe, what happens when characters are removed
+  from GraphML files or columns are renamed, and how to open the UTF-8 CSV files
+  correctly in Excel, R and Python. The compatibility table and other pages that
+  named schema 8 as the latest version now refer to schema 9, and name the
+  releases that run it: Architect 9.0, Fresco 5.0 and Interviewer 9.0. The Fresco
+  upgrade guide has a section on upgrading to 5.0.0.
+
+### Patch Changes
+
+- The Anonymisation page explains that the explanation participants read is one
+  text whose title is a heading at its start, and the schema information page
+  says that upgrading a schema 8 protocol moves each Anonymisation title there.
+- The dynamic values page explains that an Ordinal Bin or Categorical Bin set to tap to place can name the node being placed in its prompts, and that the prompt needs an "If not known" version for when every node is placed.
+- Menu, select and combobox items now have a small gap between them, so a run of checked or selected items no longer merges into one block.
+- The documentation now explains where the words a participant reads come from, and how to change and translate them.
+
+  Translating Your Protocol has a new section, Words Network Canvas supplies. It explains the two places these words live: stage wording, which is a setting of one kind of stage, and interview text, which is shared across stages and held by the protocol. It lists which stages have wording and what section of the stage editor holds it, says what the interview text holds (Back, Continue, Cancel, Done and Delete, validation messages for the rules a protocol uses, passphrase words, and form words), and says where each appears in the translation table. It also explains that conditional wording, such as a Sociogram's layout tooltips, is added when its setting is switched on and removed when it is switched off. The Adding languages section now says Architect fills in all of this supplied wording in each new language, and the page no longer says the interview's buttons and messages come only in Network Canvas's fixed languages.
+
+  Each affected stage page now says what wording it holds and where to find it: the Finish Screen (the finish button, confirmation question, finished notice and finishing-failed message, which can now be changed), Name Generator, Quick Add and Roster messages, Geospatial messages, the Network Composer, Narrative and Sociogram canvas words, the Narrative Pedigree key, condition and snapshot words, and the Family Pedigree's participant wording (three groups of settings). The Anonymisation page explains where the passphrase words live. Field Validation now describes the validation messages as part of the protocol, one wording per rule.
+
+  The Language Chooser, Fresco, Interviewer and Preview pages, and the schema 9 notes, are corrected to match: the Language Chooser has no visible heading, only a label read by screen readers, and the buttons and messages every stage shares follow your protocol's language, while only the interview's own built-in words follow the participant's language settings.
+
+- The Language Chooser page explains that the screen's heading is part of the
+  protocol: it starts with "Choose a language", is shown in the participant's
+  chosen language, and is edited and translated in the stage editor's new
+  Participant wording section.
+- Translating Your Protocol is rewritten as a full article on localization. It
+  now covers translation as part of instrument design, with references to the
+  cross-cultural survey literature, and gains current Architect screenshots. It
+  also corrects the Languages page's buttons: the pencil opens the translation
+  table, and the two-arrows button changes a language's recorded language. The
+  Building a Protocol tutorial gains a section that adds Spanish to the sample
+  protocol, translates a stage and adds a Language Chooser; the CEGRM tutorial
+  explains how to translate and adapt that instrument; and the rosters tutorial
+  notes that a roster's values are the same in every language.
+- The Family Pedigree page explains that a second carrier, a second same-sex genetic parent and identical twins with different parents are now resolved by the newest answer, and says when the Gestational carrier attribute is left unset because someone else was recorded as having carried the person.
+- The Family Pedigree page now explains that a sex at birth saved by mistake can be corrected from the person's own panel: the newest answer wins, the field says what saving will change, and saving removes the conflicting carried-pregnancy record or clears the other genetic parent's sex at birth.
+- The Family Pedigree page explains that participants read the codebook's labels
+  for the sex assigned at birth answers and the kinds of parent, which
+  researchers can reword and translate but not leave blank, and that Architect fills in those labels
+  in each language Network Canvas has wording for. Translating Your Protocol now lists those labels as a second text Architect
+  fills in when a language is added, and says that changing the language a
+  protocol's text is recorded as turns unchanged supplied text into the
+  supplied text of the language chosen.
+- The Family Pedigree page now explains Undo and Redo: what one step is, the keyboard shortcuts, when the buttons are unavailable, and that the zoom buttons sit in a small toolbar of their own.
+- The Name Generator for Roster Data page explains the panel title above the
+  roster's cards, and Translating Your Protocol lists it with the other text
+  Architect fills in when a language is added.
+- The warning color, used for warning tip boxes and the "migrate" status in the app compatibility table, shifts slightly toward red. It follows a hue change to the Neon Carrot brand color in the shared color palette used across Network Canvas.
+
+  The "Collect data" section color is slightly lighter and less saturated, following a change to the Neon Coral brand color.
+
+- The Family Pedigree interface page describes the redesigned interface. It
+  covers how participants add and describe relatives, who the stage draws,
+  generated labels and encrypted names, the person and relationship attributes
+  the stage records, the wording, completeness and nomination prompt settings,
+  and where a person's symbol comes from. It states the rule that derives which
+  parent gave the egg or the sperm, and when it is unknown, and describes the
+  optional relationship-to-the-participant attribute, its values and how to
+  filter on it.
+
+  The Narrative Pedigree page describes the interface as it reads the redesigned
+  Family Pedigree. It explains that sex-linked inheritance follows sex assigned
+  at birth, that an intersex person is never assumed to have one X chromosome or
+  two, and that mitochondrial donation can be traced only in imported data.
+
+  The Implementing CEGRM tutorial matches the bundled template's 14 stages. It
+  asks about the condition and testing through nomination prompts, ends with a
+  Narrative Pedigree, and marks non-kin people with a `non_kin` attribute. It no
+  longer describes an attribute that nothing writes.
+
 ## 0.6.2
 
 ### Patch Changes
