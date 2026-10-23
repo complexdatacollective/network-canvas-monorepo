@@ -504,7 +504,7 @@ const OWN_WORDS = {
   framingChoiceTitle: 'Words for your family - matrix check',
   genderIdentityLabel: 'Gender identity wording - matrix check',
   geneticParentReplaced: message(
-    '{who, select, replacedIsYou {{answer} replaces you as genetic parent of {child} - matrix check} childIsYou {{answer} replaces {replaced} as your genetic parent - matrix check} other {{answer} replaces {replaced} as genetic parent of {child} - matrix check}}',
+    '{who, select, parentIsYou {{answer} replaces you as genetic parent of {child} - matrix check} childIsYou {{answer} replaces {parent} as your genetic parent - matrix check} other {{answer} replaces {parent} as genetic parent of {child} - matrix check}}',
   ),
   identicalTwinSharesParents: message(
     '{who, select, personIsYou {{answer} gives you and {twin} one set of parents - matrix check} twinIsYou {{answer} gives {name} and you one set of parents - matrix check} other {{answer} gives {name} and {twin} one set of parents - matrix check}}',
@@ -527,7 +527,7 @@ const OWN_WORDS = {
   parentKindCarrier: message('{parentKind} who carried - matrix check'),
   parentKindLabel: 'Kind of new parent - matrix check',
   parentLinkKindLabel: message(
-    '{parentIsYou, select, true {You are kind to {person} - matrix check} other {{personIsYou, select, true {{parent} is your kind - matrix check} other {{parent} is kind to {person} - matrix check}}}}',
+    '{parentIsYou, select, true {You are kind to {child} - matrix check} other {{personIsYou, select, true {{parent} is your kind - matrix check} other {{parent} is kind to {child} - matrix check}}}}',
   ),
   parentPartnerLabel: 'Partner of a parent - matrix check',
   placeholderParentsNote: message(

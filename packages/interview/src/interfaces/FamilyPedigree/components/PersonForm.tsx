@@ -1781,7 +1781,7 @@ function ParentLinkFields({
           personIsYou,
           parentIsYou,
           parent: parentName,
-          person: personName,
+          child: personName,
         })}
         options={PARENT_KINDS.map((value) => ({
           value,
@@ -2559,7 +2559,7 @@ function ParentFields({
           parentIsYou: family.byId.get(givingWay)?.isEgo ? 'true' : 'false',
           personIsYou: anchor.isEgo ? 'true' : 'false',
           parent: displayName(givingWay),
-          person: displayName(anchor.id),
+          child: displayName(anchor.id),
         })}
         options={REPLACED_PARENT_KINDS.map((value) => ({
           value,

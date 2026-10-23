@@ -261,7 +261,7 @@ export default function ConnectMenu({
               parentIsYou: isYou(replacedId) ? 'true' : 'false',
               personIsYou: isYou(parentChoice.childId) ? 'true' : 'false',
               parent: displayName(replacedId),
-              person: displayName(parentChoice.childId),
+              child: displayName(parentChoice.childId),
             })}
           </DropdownMenuLabel>
           {REPLACED_PARENT_KINDS.map((kind, index) => (

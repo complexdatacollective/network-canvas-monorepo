@@ -335,11 +335,11 @@ function formatReason(
       return words.text(words.wording.geneticParentReplaced, {
         answer: answerArg(context, reason),
         who: isYou(context, reason.replacedId)
-          ? 'replacedIsYou'
+          ? 'parentIsYou'
           : isYou(context, reason.childId)
             ? 'childIsYou'
             : 'other',
-        replaced: displayName(reason.replacedId),
+        parent: displayName(reason.replacedId),
         child: displayName(reason.childId),
       });
     case 'bothSameSex': {

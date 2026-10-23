@@ -467,8 +467,8 @@ const WORDING_ARGUMENTS = {
   disconnectWouldCutOff: { count: PLURAL, names: TEXT },
   geneticParentReplaced: {
     answer: TEXT,
-    who: { kind: 'select', cases: ['replacedIsYou', 'childIsYou'] },
-    replaced: TEXT,
+    who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
+    parent: TEXT,
     child: TEXT,
   },
   generatedLabelOf: {
@@ -500,7 +500,7 @@ const WORDING_ARGUMENTS = {
     parentIsYou: SELECT_TRUE,
     personIsYou: SELECT_TRUE,
     parent: TEXT,
-    person: TEXT,
+    child: TEXT,
   },
   placeholderParentsNote: {
     shared: { kind: 'select', cases: ['eggParent', 'spermParent'] },
