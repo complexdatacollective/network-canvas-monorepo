@@ -97,6 +97,7 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
   ): Promise<SuccessOf<Rpcs, Tag>> =>
     run(
       Effect.flatMap(client, (c) =>
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RpcClient.Flat's conditional return type does not resolve for a generic Rpcs; CallAt is that call's resolved shape, pinned by _flatClientShapeProbe
         (c as unknown as CallAt<Rpcs, Tag>)(tag, payload),
       ),
       signal,
@@ -192,6 +193,7 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
     run(
       Effect.flatMap(client, (c) =>
         Stream.runForEach(
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RpcClient.Flat's conditional return type does not resolve for a generic Rpcs; StreamAt is that call's resolved shape, pinned by _flatClientShapeProbe
           (c as unknown as StreamAt<Rpcs, Tag>)(tag, payload),
           (chunk) => Effect.sync(() => onChunk(chunk)),
         ),
@@ -224,6 +226,7 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
       const fiber = runtime.runFork(
         Effect.flatMap(client, (c) =>
           Stream.runForEach(
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RpcClient.Flat's conditional return type does not resolve for a generic Rpcs; StreamAt is that call's resolved shape, pinned by _flatClientShapeProbe
             (c as unknown as StreamAt<Rpcs, Tag>)(tag, payloadRef.current),
             (chunk) => Effect.sync(() => onChunkRef.current(chunk)),
           ),

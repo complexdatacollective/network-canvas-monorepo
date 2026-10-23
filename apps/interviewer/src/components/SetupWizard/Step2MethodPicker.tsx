@@ -13,6 +13,7 @@ import {
 } from '~/lib/pwa/passkeyWindowLimitation';
 
 import type { WizardSelectedMethod } from '../SetupWizardDialog';
+import { isWizardSelectedMethod } from './wizardData';
 
 const messages = defineMessages({
   thisDeviceLockIsAlreadyProtectingStored: {
@@ -80,17 +81,6 @@ const messages = defineMessages({
     description: 'Administration text in Interviewer Step2MethodPicker.',
   },
 });
-
-const WIZARD_METHODS: WizardSelectedMethod[] = [
-  'biometric',
-  'pin',
-  'passphrase',
-  'none',
-];
-
-function isWizardSelectedMethod(value: unknown): value is WizardSelectedMethod {
-  return typeof value === 'string' && WIZARD_METHODS.some((m) => m === value);
-}
 
 // The "no security" confirmation's localised nodes, built at module scope so
 // the picker's change handler stays a plain callback rather than an element

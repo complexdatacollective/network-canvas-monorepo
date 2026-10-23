@@ -178,6 +178,7 @@ export async function decryptJson<T>(
   aad: string,
 ): Promise<T> {
   const bytes = await decryptBytes(field.iv, field.ct, dek, aad);
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the field is AES-GCM authenticated against its AAD, so it is exactly what encryptJson wrote; session callers name `unknown` and parse it, protocol callers name the stored document type
   return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }
 
