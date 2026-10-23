@@ -253,7 +253,7 @@ describe('FamilyPedigree when a write is refused', () => {
     await user.click(
       within(
         within(panel).getByRole('radiogroup', {
-          name: /relationship of .* to you/,
+          name: /’s relationship to you/,
         }),
       ).getByRole('radio', { name: 'Biological parent' }),
     );
@@ -726,7 +726,7 @@ describe('FamilyPedigree a parent re-described as genetic', () => {
     await user.click(
       within(
         within(panel).getByRole('radiogroup', {
-          name: /relationship of “Alex” to you/,
+          name: /Alex’s relationship to you/,
         }),
       ).getByRole('radio', { name: 'Biological parent' }),
     );

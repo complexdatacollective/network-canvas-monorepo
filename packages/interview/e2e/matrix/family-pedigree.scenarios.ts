@@ -2247,12 +2247,12 @@ function relationshipKindsDrawn(): ScenarioDefinition {
       await member(page, 'You').click();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /relationship of “Ana” to you/ })
+          .getByRole('radiogroup', { name: /Ana’s relationship to you/ })
           .getByRole('radio', { name: 'Step or social parent', exact: true }),
       ).toBeChecked();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /relationship of “Luis” to you/ })
+          .getByRole('radiogroup', { name: /Luis’s relationship to you/ })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();
       await panel(page)
@@ -4028,7 +4028,7 @@ function wordingIdenticalTwinParents(): ScenarioDefinition {
       await expect(
         form
           .getByRole('radiogroup', {
-            name: 'How would you define the relationship of “Rob” to “Bea”?',
+            name: 'How would you define Rob’s relationship to Bea?',
           })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();

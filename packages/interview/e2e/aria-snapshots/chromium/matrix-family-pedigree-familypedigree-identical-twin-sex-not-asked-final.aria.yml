@@ -33,8 +33,8 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: How would you define the relationship of “Julie” to “Ben”?
-    - radiogroup "How would you define the relationship of “Julie” to “Ben”?":
+    - text: How would you define Julie’s relationship to Ben?
+    - radiogroup "How would you define Julie’s relationship to Ben?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"
@@ -45,8 +45,8 @@
       - text: Egg or sperm donor
       - radio "Surrogate"
       - text: Surrogate
-    - text: How would you define the relationship of “Rob” to “Ben”? “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
-    - radiogroup "How would you define the relationship of “Rob” to “Ben”?":
+    - text: How would you define Rob’s relationship to Ben? “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+    - radiogroup "How would you define Rob’s relationship to Ben?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"

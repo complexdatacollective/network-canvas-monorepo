@@ -873,17 +873,17 @@ describe('an answer that cannot be chosen', () => {
     expect(biological).toBeEnabled();
     expect(
       screen.queryByRole('radiogroup', {
-        name: /relationship of “shannon” to you/,
+        name: /shannon’s relationship to you/,
       }),
     ).not.toBeInTheDocument();
     await user.click(biological);
     expect(kind).toHaveAccessibleDescription(
       expect.stringContaining(
-        'Choosing “Biological parent” means “shannon” will no longer be recorded as your biological parent. You will be asked how you would define the relationship of “shannon” to you instead.',
+        'Choosing “Biological parent” means “shannon” will no longer be recorded as your biological parent. You will be asked how you would define shannon’s relationship to you instead.',
       ),
     );
     const replaced = screen.getByRole('radiogroup', {
-      name: /^How would you define the relationship of “shannon” to you\?/,
+      name: /^How would you define shannon’s relationship to you\?/,
     });
     expect(
       within(replaced)
@@ -1410,7 +1410,7 @@ describe('a second carrier', () => {
       ],
     });
     const dad = screen.getByRole('radiogroup', {
-      name: /relationship of “dad” to you/,
+      name: /dad’s relationship to you/,
     });
     const surrogate = within(dad).getByRole('radio', { name: 'Surrogate' });
     expect(surrogate).toBeDisabled();
@@ -2922,7 +2922,7 @@ describe('questions worked out from the answers as they stand', () => {
     await user.click(
       within(
         screen.getByRole('radiogroup', {
-          name: /relationship of “shannon” to/,
+          name: /shannon’s relationship to/,
         }),
       ).getByRole('radio', { name: 'Surrogate' }),
     );
@@ -2949,13 +2949,13 @@ describe('questions worked out from the answers as they stand', () => {
     });
     const standInRow = () =>
       screen.queryByRole('radiogroup', {
-        name: /relationship of “standIn” to you/,
+        name: /standIn’s relationship to you/,
       });
     expect(standInRow()).not.toBeNull();
     await user.click(
       within(
         screen.getByRole('radiogroup', {
-          name: /relationship of “julian” to you/,
+          name: /julian’s relationship to you/,
         }),
       ).getByRole('radio', { name: 'Biological parent' }),
     );
@@ -3613,7 +3613,7 @@ describe('an answer the form worked out, or one no longer available', () => {
     });
   const kindOf = (parent: string) =>
     screen.getByRole('radiogroup', {
-      name: new RegExp(`relationship of “${parent}” to you`),
+      name: new RegExp(`${parent}’s relationship to you`),
     });
   // Mum is recorded as having carried the participant; nothing is recorded
   // about Amy.
@@ -3723,7 +3723,7 @@ describe('an answer the form worked out, or one no longer available', () => {
       });
     const rick = () =>
       screen.getByRole('radiogroup', {
-        name: /relationship of “rick” to/,
+        name: /rick’s relationship to/,
       });
 
     const queryZygosity = () =>
