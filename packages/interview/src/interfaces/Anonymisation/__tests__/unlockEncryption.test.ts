@@ -214,6 +214,7 @@ describe('unlocking an interview', () => {
       encryptionKeyId: expect.any(String),
       showPassphrasePrompter: false,
       localePreference: null,
+      restoredLocalePreference: null,
     });
 
     expect(synced.length).toBeGreaterThan(0);

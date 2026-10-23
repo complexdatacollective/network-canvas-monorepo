@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -136,7 +136,9 @@ export function useValidationNetwork(
   );
 
   const latestNetwork = useRef(network);
-  latestNetwork.current = network;
+  useLayoutEffect(() => {
+    latestNetwork.current = network;
+  });
 
   const context = useMemo(() => {
     if (status === 'ready') {

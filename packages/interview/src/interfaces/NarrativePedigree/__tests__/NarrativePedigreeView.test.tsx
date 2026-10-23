@@ -334,6 +334,7 @@ function makeStore({
         encryptionKeyId: null,
         showPassphrasePrompter: false,
         localePreference: null,
+        restoredLocalePreference: null,
       },
     },
     middleware: (g) => g({ serializableCheck: false }),
