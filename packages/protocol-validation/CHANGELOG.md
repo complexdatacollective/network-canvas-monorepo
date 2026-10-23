@@ -1,5 +1,967 @@
 # @codaco/protocol-validation
 
+## 16.0.0
+
+### Major Changes
+
+- 2729855: The Family Pedigree is redesigned, and schema 9 carries the new stage. Schema 8
+  keeps the Family Pedigree stage that has already been released, unchanged.
+
+  **In the interview**, participants build their family on a pan-and-zoom canvas.
+  Selecting a person opens a side panel for their details. Hovering a person, or
+  focusing them from the keyboard, offers to add a parent, partner, sibling or
+  child. The participant is shown as "You" and is never asked their name. People
+  the participant leaves unnamed are shown by a kinship word in the stage's
+  wording: gendered (mother, brother), gamete-based (egg parent, sperm parent),
+  or the participant's own choice. When gender identity is asked, those words
+  follow each person's gender identity; otherwise they follow sex assigned at
+  birth. Gender identity may be left unanswered, because a participant may not
+  know a relative's gender identity; an unanswered biological parent is then
+  named from their sex assigned at birth.
+
+  - Names the participant types follow the name attribute's validation in the
+    codebook. Encrypted name attributes work, using the usual passphrase prompt.
+  - When the participant leaves the stage, each unnamed person is given a
+    distinct label as their name, so later stages can tell people apart, for
+    example "Sister (partner of Tom)". The stage records who holds a generated
+    label in its stage metadata as a fingerprint, not as text. On a return visit
+    the labels follow the family as it changes, and a name typed on a later
+    stage is kept. The `@codaco/shared-consts` stage metadata schema accepts this
+    `generatedLabels` record and no longer requires a `framing`.
+  - The stage draws only the participant's family: the participant and everyone
+    connected to them through the stage's relationships. People of the same
+    type added by other stages are never drawn, labelled, counted towards
+    completeness or offered to nomination prompts. Removing someone also
+    removes anyone connected to the participant only through them, after
+    naming those people. A connection that is someone's only link to the family
+    can't be removed.
+  - Completeness settings can require, or recommend, that a minimum part of the
+    family is recorded, along with every required detail about each person,
+    before the participant continues. From the parents, siblings and children
+    scope upwards, each of the participant's biological children needs their
+    other biological parent; an unnamed parent counts, and that parent's own
+    family is not required.
+  - Which gamete each genetic parent gave is never asked. One shared rule
+    derives it from sex assigned at birth (by elimination where one parent is
+    neither female nor male), and the kinship words and the genetics engine
+    both read it.
+  - No addition gives anyone more than two genetic parents, or two of one sex
+    assigned at birth: a placeholder parent is biological only while a genetic
+    place is open, and "also parent of" links carry the anchor link's kind and
+    carrier. Full siblings need the same parents.
+  - A stage can record each person's relationship to the participant (parent,
+    half sibling, cousin and so on) so later stages can filter on it. It is
+    worked out from the family drawn every time the participant leaves the
+    stage, given to everyone connected to the participant but never the
+    participant, and cleared from anyone no longer connected.
+  - The stage is not left forwards until the participant has chosen its
+    wording, when the stage lets them choose.
+  - The panel for someone new asks its questions a group at a time: who the
+    person is, how they are related, then the study's own questions. It opens
+    with the cursor in the name field. A question answered with a single
+    choice brings the next unanswered one in its group into view, and
+    answering a group's last required question moves on to the next group.
+    A group whose remaining questions are optional can be skipped, and Back
+    returns to the group before with its answers kept. Moving on slides the
+    group out to the left and the next in from the right, and Back the other
+    way round, unless the device asks for reduced motion. Changing someone
+    already in the family still shows all their details at once.
+  - Nomination prompts ask the participant to select the relatives a question
+    applies to, and can leave out people recorded with one sex assigned at
+    birth.
+  - The layout keeps couples side by side when partnerships form chains,
+    draws every child below each of its parents (including when a parent is
+    one of the child's own descendants), and joins a step-parent to a child
+    with a dashed line. Children adopted into a family share one solid sibship
+    line with their parents' other children, whether or not the parents are
+    recorded as partners, and only the line up to each adopted child is dashed.
+
+  **The Narrative Pedigree** reads the redesigned Family Pedigree. It draws the
+  same family on the same canvas, labels people as the Family Pedigree does,
+  and can be operated from the keyboard: arrow keys move between people, Enter
+  or Space focuses on someone, and + and − zoom. Its toolbar offers the
+  conditions in a menu, each beside its colour, with a first choice that shows
+  all conditions, and a key to the symbols appears once a condition is chosen. Sex-linked inheritance reads sex
+  assigned at birth. An intersex person is treated as uncertain, and a parent
+  whose sex isn't known is placed by the gamete their co-parent's sex implies.
+  Arrow keys no longer start a drag of either pedigree's canvas.
+
+  **The schema 9 Family Pedigree stage** names its people by its `subject` and
+  has:
+
+  - `prompt`, the translatable task instructions.
+  - `nodeConfiguration`: `nameAttribute` (text), `sexAssignedAtBirthAttribute`
+    (categorical, with the fixed `PEDIGREE_SEX_ASSIGNED_AT_BIRTH` options),
+    `egoAttribute` (boolean), and optionally `genderIdentity`
+    (`{ attribute, terms }`). Its `terms` give the kinship words
+    (`PEDIGREE_GENDER_WORDS`) that each gender identity option takes. The
+    options of a gender identity attribute that a pedigree binds can be edited
+    only from that stage, though any stage may still record answers to it, and
+    only one stage may manage them: two stages binding the same gender identity
+    attribute are refused. `relationshipToParticipantAttribute` (optional) is a
+    categorical attribute with the fixed `PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT`
+    values, which only the pedigree may write.
+  - `edgeConfiguration`: the family edge type, with `kindAttribute`
+    (categorical, with the fixed `PEDIGREE_RELATIONSHIP_KINDS` options), and
+    `gestationalCarrierAttribute` and `currentPartnerAttribute` (both boolean).
+  - `framing` (optional): `gendered`, `gamete` or `participantPreference`.
+  - `completeness` (optional): `scope`, `enforcement`, and the categorical
+    `relativesNotRecordedAttribute` with the fixed
+    `PEDIGREE_RELATIVES_NOT_RECORDED` options.
+  - `form` (optional): extra person fields, asked after the interface's own.
+  - `nominationPrompts` (optional): each has a translatable `text`, a boolean
+    `attribute`, and optionally `onlyForSexAssignedAtBirth`. The id `pedigree` is
+    reserved.
+
+  The labels of the fixed option sets are translatable, and fixed options are
+  validated by their values only. A Narrative Pedigree disease names its
+  boolean person attribute as `attribute` (it was `variable`).
+  `NarrativeDiseaseEntry` in `@codaco/protocol-utilities` takes `attribute`, and
+  `SyntheticInterview` writes Family Pedigree stages in the new shape.
+
+  **The v8 to v9 migration** converts a schema 8 Family Pedigree. The old
+  attributes map to their new places, `censusPrompt` becomes `prompt`, and the
+  framing carries over. Every converted stage gets a `completeness` setting,
+  since schema 8 always required both of the participant's parents: the
+  parents scope, required, or the grandparents scope at the `requireGrandparents`
+  boundary's enforcement. A recommended grandparents boundary therefore makes
+  the parents a recommendation too, and the migration notes say so. Each
+  person type a converted stage uses gets a new `relativesNotRecorded`
+  attribute, whose name ends in a number when the type already uses that name.
+  An `introScreen` becomes an Information stage titled "Introduction", the
+  heading schema 8 showed above it, inserted just before the pedigree. That
+  stage takes the pedigree's skip logic, and skips that jumped to the pedigree
+  now jump to it. Where a host migrates the interviews recorded against a
+  migrated protocol, each stage's metadata and the resume
+  position follow their stage, so an interview in progress resumes where its
+  participant left it. Interviewer never migrates protocols or interviews:
+  schema 8 ones stay in Interviewer 8. A schema 8 pedigree's stage metadata becomes the new shape,
+  keeping the participant's framing and "no children" answer, and writing to the network any people and
+  relationships that were only held in it. Parent relationships lose the
+  `isActive` flag schema 8 wrote on them, which schema 9 reads as "current
+  partner", and carry the gestational carrier flag as true or false, as the
+  redesigned stage writes them. A person with no sex at birth recorded who gave
+  an egg or a sperm, by schema 8's gamete role, is recorded as female or male.
+  `requireChildrenContributors`, `relationshipVariable` and
+  `gameteRoleVariable` are dropped; their attributes stay in the codebook. The
+  old relationship attribute held English text, so a converted stage records no
+  relationship to the participant until a categorical attribute is chosen for
+  it. Node
+  form fields collecting the name or sex at birth attribute are left out, since
+  the stage asks both itself. A pedigree whose answers share an attribute (two
+  nomination prompts, a nomination prompt and a node form field, or the name
+  and another answer) is not converted: the migrated protocol fails validation,
+  naming the attribute. The migration notes describe all of this to researchers.
+
+  **In Architect**, the stage editor configures the new stage. It has a
+  setting that gives person symbols a shape for each sex assigned at birth or
+  gender identity, and edits a gender identity attribute's options together
+  with their kinship words. The gender identity picker rules out an attribute
+  whose options another stage manages. Recording each person's relationship to
+  the participant is switched on in the person attributes, which creates an
+  attribute with the fixed values labelled in the researcher's language, and
+  the protocol summary lists it. Architect offers and summarises the Narrative
+  Pedigree again, and won't let a Family Pedigree's person type change while a
+  Narrative Pedigree reads it. The Colored Eco-Genetic Relationship Map template
+  marks the people named in "People in your life" with a `non_kin` attribute,
+  instead of treating anyone without a gender identity as non-kin.
+
+- 151e511: Adds protocol schema 9, in which attribute (variable) names can use any
+  script, spaces and punctuation, every string a participant reads can be
+  translated into several languages, and encrypted attributes are no longer
+  experimental.
+
+  **Breaking:**
+
+  - `CURRENT_SCHEMA_VERSION` is now `9`, and `CurrentProtocolSchema` and
+    `CurrentProtocol` describe schema 9. `migrateProtocol` and
+    `protocolMigrator.migrate` called without a target version now produce
+    schema 9 documents. A host that stores or runs protocols must accept
+    schema 9; the matching `@codaco/interview` major runs it.
+  - `migrateProtocol(document, targetVersion, dependencies)` accepts only a
+    target it can validate (7, 8 or 9), and its return type follows the target:
+    `Protocol<V>` for an explicit target, `CurrentProtocol` without one. The
+    result is validated against the target version's own schema, so a migration
+    to 8 refuses names only schema 9 allows. `ProtocolMigrator`'s `migrate` has
+    the same overloads, and it now caches one result per target version for each
+    key, so asking for a second version no longer discards the first.
+    `clearCache(key)` drops all of them.
+  - `detectSchemaVersion` throws `VersionMismatchError` for a document newer
+    than `CURRENT_SCHEMA_VERSION`, instead of `SchemaVersionDetectionError`, so
+    `getProtocolFileErrorKind` reports it as `'newerVersion'`.
+  - A codebook ID of `__proto__` is refused. `validateProtocol` and
+    `migrateProtocol` look for it in the document as it was read, before a
+    schema parse can drop the key, so pass them the raw document.
+    `validateProtocol` now takes `unknown`.
+  - Participant-facing text in a schema 9 protocol is a `LocalizedString`, not a
+    `string` (see Localization below), so code that reads a stage's `label`, a
+    prompt's `text`, an option's `label` and so on must resolve it first, for
+    example with `resolveLocalizedString`.
+  - `hashProtocol` takes the protocol's `schemaVersion`, and from schema 9 its
+    `localization` too. A schema 9 hash covers `{ localization, codebook,
+    stages }`, so a translation change produces a new hash. Languages have no
+    order, so `hashProtocol` sorts them before hashing: two protocols that differ
+    only in the order they list their languages have the same hash. Hashes of
+    schema 8 and earlier protocols are unchanged.
+
+  Schema 9:
+
+  - The v8 to v9 migration keeps existing names as they are. It records the
+    protocol's text as English, since older protocols never recorded a language:
+    it adds `localization: { defaultLocale: 'en', locales: ['en'] }` and wraps
+    every participant-facing string as `{ en: <text> }`, escaped as an ICU literal
+    message. Validation refuses the undetermined language `und` (and `und-*`
+    tags) as a declared language, as the default, and as a localized-string key. A Narrative preset's `highlight` list of variable IDs becomes a list of
+    `{ variable, label }`, and its `edges.display` list of edge type IDs becomes
+    a list of `{ type, label }`, each label taken from the variable's or edge
+    type's name (or its ID) and wrapped as `{ en: <text> }`. Each Network
+    Composer edge entry gets a `label` taken from its edge type's name (or its
+    ID) and wrapped the same way. Codebook node types, edge types and variables
+    have no `label`: participants never see a codebook name. A form field with no caption, or an
+    empty or blank one (a Network Composer field's `label`, or any other form
+    field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
+    that markdown shows it as written, and wrapped the same way. An empty
+    optional text that schema 9 requires to be non-empty is removed, as are
+    Network Composer scale end labels that were not strings. Its migration notes
+    tell researchers what the new version allows, that the text is recorded as
+    English, so they should confirm the default language and change it in
+    Architect if the protocol is written in another one, and which empty
+    questions were filled in.
+  - Schema 9 keeps the optional `experiments` property, for features released
+    within a schema version, but `encryptedVariables` is no longer one of them:
+    an attribute marked `encrypted` is always encrypted. `ExperimentsSchema` and
+    the `Experiments` type now describe schema 9's experiments, and none is
+    defined yet, so schema 9 refuses `encryptedVariables` or any other key in
+    `experiments`. Schema 8 still accepts `experiments.encryptedVariables`.
+  - The v8 to v9 migration keeps `experiments` but removes `encryptedVariables`
+    from it, and leaves a protocol without `experiments` without it. If
+    `experiments.encryptedVariables` was not `true`, it also removes `encrypted`
+    from every node attribute, because schema 8 interviews stored those
+    attributes without encryption. A host that stores `experiments` apart from
+    the rest of the protocol must put it back into the document it migrates, or
+    an encrypted protocol loses its encryption. The v7 to v8 migration now keeps
+    an `experiments` object the document already carries, rather than replacing
+    it with an empty one, so this holds for a document migrated from schema 7
+    too.
+  - Schema 9 refuses an Anonymisation stage whose minimum passphrase length is
+    longer than its maximum, since no participant could choose a passphrase.
+    The v8 to v9 migration removes both lengths from such a stage, so the
+    interview's default minimum applies, and its migration notes say so.
+  - Schema 9 refuses a skip logic, stage filter or panel filter rule that
+    compares the answers to an encrypted node attribute. Rules are checked
+    without the participant's passphrase, so such a rule only ever compared the
+    encrypted text. A rule that only checks whether the attribute is answered
+    (`EXISTS` or `NOT_EXISTS`) still works, so schema 9 accepts it. A panel over
+    an external data file may still compare one, because that file's rows are
+    not encrypted. When `experiments.encryptedVariables` was on, the v8 to v9
+    migration removes the comparing rules and keeps the others. A filter that
+    this leaves with no rules is removed, and so is skip logic left with none,
+    so that stage is always shown; a stage shown only when a removed rule
+    matched may never have appeared before. A filter or skip logic that already
+    had no rules is left alone, and schema 9 still refuses it. Its migration
+    notes tell researchers to check those stages: rules joined with `AND` that
+    lose one match at least as often as before, and rules joined with `OR`
+    match at most as often.
+  - Schema 9 refuses two options of one ordinal or categorical attribute with
+    the same value, compared as text (so `1` and `"1"` are the same value) but
+    without folding case. The v8 to v9 migration keeps the first option with
+    each value and removes the later ones; answers, filters and skip logic keep
+    the value they use. Where that leaves a `minSelected` above the options
+    left, it is removed. An attribute left with one option is still refused.
+  - An introduction panel's `text` is optional in schema 9, and when present,
+    like its `title`, every translation must contain text. The v8 to v9
+    migration removes text that is blank in every language, so the panel shows
+    only its title, and gives a blank title the stage's label. A Categorical Bin
+    prompt's `otherOptionLabel` and `otherVariablePrompt` must also contain text;
+    the migration gives a blank one the other's text, else `Other` or
+    `Please specify`. In a document already in schema 9 form, only the blank
+    translations of these fields are removed.
+
+  - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
+    a message that says so. `VersionlessProtocolSchema`, the version 8 body
+    without its `schemaVersion`, is now exported.
+  - The v3 to v4 migration no longer strips characters outside `[a-zA-Z0-9._:-]`
+    from type names, variable names and option values. It turns tabs and line
+    breaks into spaces, removes other control characters, trims the result, and
+    falls back to the record's ID when nothing is left. Filter, skip logic and
+    panel rules that refer to an option value it changed are updated to match.
+    A migration to schema 7 or 8 still applies the old rule, which those schemas
+    enforce: each migration step now receives the target version as a third
+    argument to `migrate`.
+
+  Localization:
+
+  - A schema 9 protocol declares its languages in a required
+    `localization: { defaultLocale, locales }` block of BCP 47 tags. Every string
+    a participant reads (stage labels, prompts, panel titles, form captions and
+    hints, option labels, Information items, census and pedigree copy) is a
+    `LocalizedString`: a record from a declared locale tag to that language's
+    text. Markdown fields hold markdown in each language.
+  - A localized string needs a translation in at least one declared language, not
+    in every language and not necessarily in the default one. A missing
+    translation, in the default language or any other, is a warning from
+    `analyzeProtocolLocalization` and never a validation error. The order of
+    `locales` has no meaning, so nothing reads it.
+  - Each value is an ICU MessageFormat message. A message may only be literal
+    text unless its setting declares arguments (see the Family Pedigree's
+    checklist wording): otherwise arguments, `plural`, `select`, number and date
+    formats are refused, and markup is read as literal text everywhere. `escapeMessageText` turns plain
+    text into such a message (escaping `{`, `}` and quoting apostrophes) and
+    `messageText` turns it back, so an editor can show and save plain text.
+  - Codebook node types, edge types and variables have only a `name`, which
+    exports and rules use and participants never see. Text participants see
+    belongs to the stage that shows it.
+  - A Narrative preset's optional `highlight` is a list of
+    `{ variable, label }`, where `label` is the localized text the preset
+    switcher shows participants for that attribute.
+  - A new `LanguageChooser` stage lets the participant choose among the
+    protocol's languages.
+  - Disease labels in a Narrative Pedigree stage must be unique in every
+    declared language.
+  - New exports: the `LocalizedString`, `LocalizedStringFormat`, `LocaleTag`,
+    `LocalizationDeclaration`, `LocaleMetadata`, `ResolvedLocalizedString`,
+    `ProtocolLocalizationWarning` and `LocalizedStringHit` types;
+    `resolveLocalizedString` (takes the participant's languages in order of
+    preference, the first being the language shown, and picks the best available
+    translation: the first language or its closest related language, then each
+    other language in turn, then the protocol's default language, then any
+    language that has the text; it reports the language it found and how it found
+    it);
+    `selectProtocolLocale` and `normalizeLocalePreferences` (choose a protocol
+    language from a list of preferences, in order, matching Chinese by script);
+    `sortByLanguageName` (sorts any list of languages alphabetically by name,
+    collated for the language its reader uses); `canonicalizeLocale`;
+    `getLocaleMetadata` (a language's own name and text direction, with CLDR's
+    English name and autonym standing in where the JavaScript runtime has no name
+    for the language); `analyzeProtocolLocalization` (missing translations);
+    `collectLocalizedStrings`; `escapeMessageText` and `messageText`;
+    `escapeMarkdownText` (turns plain text into markdown that shows it as
+    written).
+  - A Network Composer form field is now a union on `component`, so its scale
+    end labels are localized fields of their own. Its `label`, the caption
+    participants read, is required and not blank, since the attribute's own
+    label is not translated.
+  - A form field's `prompt` is held to the same rule: every translation must
+    contain text, so a translation of only spaces (or of invisible characters
+    such as a zero-width space) is invalid, and one blank translation is an
+    error rather than a gap the interview falls back over. A prompt is judged as
+    written, so markdown that draws nothing from visible characters, such as
+    `**` or `&nbsp;`, is not recognised as blank. New exports: `isBlankText` and
+    `isBlankMessage`.
+
+  Participant data files (rosters):
+
+  - `validateNames` and the new `isUsableExternalAttributeName` accept any name
+    the codebook allows once it is in NFC.
+  - `readRosterCsv(text)` reads a CSV roster the way an interview loads it, and
+    keeps a column called `__proto__` or `constructor`, or one whose name
+    contains a dot, exactly as written. The package now depends on `csvtojson`.
+  - `findRosterCharacterProblems(text, format)` finds characters XML 1.0 can't
+    carry in a CSV or JSON roster, placed by column, row and cell, node and
+    attribute, or line, so a host can refuse the file before it reaches an
+    interview. Its types are `RosterCharacterProblem`, `RosterCharacterReport`
+    and `RosterFormat`.
+
+### Minor Changes
+
+- 0aee4be: An Anonymisation stage's explanation is now one text. Its title, which was a
+  separate field, is the explanation's first line, written as a heading, so the
+  stage has one text to edit and translate. Architect shows a single
+  Explanation field in the Task explanation section, with Heading 1 in its
+  toolbar for the title, and the title no longer has a length limit.
+  Participants see the same screen as before.
+
+  Upgrading a protocol from schema 8 moves each Anonymisation title to the
+  start of its explanation as a heading, escaped so it shows exactly as it was
+  written. The migration notes describe this in every supported language.
+
+  For developers: the schema 9 Anonymisation stage's `explanationText` is a
+  localized markdown string rather than `{ title, body }`, and
+  `SyntheticInterview` takes it as one string.
+
+- 7d8e136: A schema 9 Ordinal Bin or Categorical Bin set to tap to place (`behaviours.interactionMode: 'select'`) can name the node being placed in its prompts. The prompt offers that node's label (`node.$label`) and attributes (`node.<id>`) under Contextual Attributes in Architect's insert menu, and the interview fills them in as the participant moves from node to node. Once every node is placed there is no node being placed, so the label can be missing there and the prompt needs an "If not known" version for it, which the interview shows at that point. A bin set to drag and drop still offers no node values, and neither does the label of a Categorical Bin's "other" bin, which is now stage text rather than a prompt.
+- 8b35658: Ordinal and categorical bin stages can now be answered by tapping instead of
+  dragging, which suits touch screens, switch access and participants who find
+  dragging hard.
+
+  **Protocols (`@codaco/protocol-validation`)**
+
+  - Schema 9 bin stages accept `behaviours.interactionMode`, either `drag` (the
+    default when it is left out) or `select`. Bin stages migrated from schema 8
+    have no `behaviours`, so they keep drag and drop.
+
+  **Interview runtime (`@codaco/interview`)**
+
+  - In `select` mode one node in the drawer is shown as selected, and the
+    participant taps the bin it goes in. The next unplaced node is then
+    selected, until everyone has been placed. Tapping another node in the
+    drawer, or one that is already in a bin, selects it instead, so it can go
+    next or have its answer changed. Nothing can be dragged in this mode.
+  - Screen readers announce who is being placed, and each bin is a button
+    named after the person and the bin.
+  - `node_binned` and `node_rebinned` analytics events carry the
+    `interaction_mode`, and a `focal_node` event records each person shown.
+    Both bins now work out whether a person is moving between bins from their
+    stored answer, so a move made after coming back to the stage is recorded as
+    `node_rebinned`, and an ordinal bin records `node_rebinned` at all.
+
+  **Synthetic interviews (`@codaco/protocol-utilities`)**
+
+  - `addStage` accepts `behaviours.interactionMode` for bin stages.
+
+  **Architect**
+
+  - Ordinal and categorical bin stages have a new **Placing nodes** section for
+    choosing between drag and drop and tap to place.
+
+- 8884dec: Ordinal and categorical bin stages can now require the participant to place
+  every node before they move on. The setting is off by default, so existing
+  stages behave as before.
+
+  **Protocols (`@codaco/protocol-validation`)**
+
+  - Schema 9 bin stages' `behaviours` object takes an optional
+    `requireCompletePlacement`.
+  - A bin stage with `requireCompletePlacement: true` needs an
+    `unplacedNodesNotice`: the message the participant sees when they try to
+    continue with a node still unplaced. Network Canvas supplies this text in
+    English, German, Spanish, French, Italian, Dutch, Brazilian Portuguese and
+    Simplified and Traditional Chinese, and `missingSuppliedStageText` seeds it
+    like the other supplied stage wording. With the setting off, the notice is
+    an inapplicable setting.
+
+  **Interview runtime (`@codaco/interview`)**
+
+  - With the setting on, Next is refused on each prompt until every node is in
+    a bin, and the stage's notice is shown. Going back is never blocked. The
+    refusal is recorded as a `stage_validation_failed` event of kind
+    `unplaced_nodes`.
+
+  **Synthetic interviews (`@codaco/protocol-utilities`)**
+
+  - `addStage` accepts `behaviours.requireCompletePlacement` for bin stages.
+
+  **Architect**
+
+  - The **Placing nodes** section of both bin stage editors has a **Require
+    every node to be placed** switch. Turning it on shows the participant's notice,
+    filled in with Network Canvas's text. The protocol summary prints the
+    notice.
+
+  **Interviewer and Fresco**
+
+  - Interviews follow the setting on stages that use it.
+
+- 716e3d7: A Categorical Bin prompt can now show at most 10 bins, which is as many as the
+  interview screen can lay out. The follow-up "other" bin counts towards the 10
+  when it is turned on.
+
+  **Protocols (`@codaco/protocol-validation`)**
+
+  - Schema 9 rejects a Categorical Bin prompt whose attribute has more values
+    than fit, counting the "other" bin when `otherVariable` is set. The limit is
+    exported as `CATEGORICAL_BIN_MAX_BINS`.
+  - An older protocol that goes over the limit can no longer be upgraded to
+    schema 9. Remove values in Architect 8 first, then open it again.
+
+  **Architect**
+
+  - The Categorical Bin prompt editor shows an error once a prompt would draw
+    more than 10 bins, and refuses to save it until values are removed. This
+    replaces the earlier warning at eight bins.
+  - When a list of attribute values has an error, the red outline around each
+    value now follows its rounded corners instead of being cut off at them.
+
+- dfcee00: Node types, edge types and attributes have only a name again. Architect no
+  longer asks for a separate label when you create or edit one, because
+  participants never see either. Where a stage does show an edge type to
+  participants, the stage gives it its own translatable label: in a Narrative
+  preset's legend, and in a Network Composer stage's toolbar. A node with no
+  name is shown as "Unnamed".
+- 9c1aeff: Architect can put values the interview fills in into participant text: for
+  example the participant's name, a person's answer, the two people a census
+  asks about, or today's date. Each text that accepts values has a syringe
+  button in its toolbar, "Inject piped text from interview metadata or a
+  network attribute", with a searchable menu that lists only the values
+  available where that text sits. Typing `{` opens the same menu. A value that
+  can be missing goes in with a version for when it is known and one for when
+  it is not; in the editor it shows as its pill, and while it is selected its
+  versions take the pill's place, one to a line, with the known version first.
+  A version can be left empty, so that nothing is shown in that case; an empty
+  version says "Shows nothing" in the editor. Inserting, removing and editing
+  values can be undone and redone like any other edit. A choice or yes/no value
+  can give the text one version for each answer, each on its own line; a yes/no value shows as words only once both of
+  its answers have labels, so until then the menu lists it greyed out with a
+  hint to add them (a Toggle, which has no labels, points to the
+  different-wording entry instead). A number can give it a version for each plural form
+  of the language. Values show as pills in the stage editors, the translation
+  table and the protocol summary. A translation that leaves out a value is
+  flagged with the value's name, and neither the table nor the stage editor
+  will save it. Text that
+  shows values a field cannot edit is shown as it is, with a note saying why.
+
+  - `@codaco/fresco-ui`'s rich text editor opens its insert menu from an icon
+    button (a syringe icon, named and tipped by the menu's label), and every
+    placeholder pill, in the editor and in `TokenPill`, opens with the same
+    icon, held on one line with the label's first word, and names its value in
+    bold body type wherever it is shown; in the editor a pill shows a pointer. The editor accepts an insert menu (`RichTextInsertMenu`,
+    whose items can be `disabled` with a description saying why), inline value
+    pills, and a versions element for text with one version per case. The
+    versions element shows as a pill (its optional `summary`, or its `label`)
+    and, while it is selected (clicked, reached with the keyboard, or just
+    inserted), shows its versions in the pill's place, one to a row in the
+    order given, an empty one with a muted "Shows nothing" hint that is not
+    saved. Enter or Space opens it, Escape folds it, and leaving the field
+    folds it. A version's edits belong to the field's undo history, undone and
+    redone from the version or the line around it, and choosing from the menu
+    hands the caret back to the text. The editor keeps its history when a host
+    passes the same placeholders in another order.
+  - `@codaco/protocol-validation` exports `messageStructure` and
+    `printMessageStructure`, which turn an ICU message into the tree of
+    versions the editor shows and back, and `pluralValueExamples`, the plural
+    categories a number answer can reach in a language, fractions included.
+    It also exports `collectLocalizedStringsFromSchema`, which finds the
+    localized strings of any value against the schema given, such as one
+    stage against `stageSchema`.
+
+- e749c06: Schema 9 stage text can show values from the interview, such as the participant's name, an attribute of the node a question is about, or today's date. A stage's `dynamicValues` binds each short argument name its messages use (`{partnerName}`) to a value: today's date (`now`) or an attribute of the participant (`ego.<id>`), the node or edge a form describes (`node.<id>`, `edge.<id>`), the two nodes a Dyad Census asks about (`dyad.source.<id>`, `dyad.target.<id>`) or a one-to-many census's focal node (`one_to_many.focal.<id>`). Each of those nodes can also be shown by its label (`node.$label`, `dyad.source.$label`, `dyad.target.$label`, `one_to_many.focal.$label`), as can the two nodes an edge form's edge joins (`edge.from.$label`, `edge.to.$label`): the text the interview shows on the node, chosen by its label rules and falling back to "Unnamed" in the participant's language, so it is never missing. A categorical, ordinal or boolean value's binding can name `cases` for its options.
+
+  - Prompts, form field captions, introduction and panel text, Information screens (but not image descriptions), the anonymisation explanation and the finish screen's heading and text may show values. Stage labels, codebook text, `interfaceText` and wording Network Canvas supplies may not.
+  - Each site shows only what is available there: the participant and today's date everywhere, the pair on a Dyad or Tie Strength Census prompt, the focal node on a one-to-many census prompt, the node being placed on a Geospatial prompt, and on a form field every attribute of the form's subject, including the question a Categorical Bin asks about a node put in its "other" bin. An edge form's fields, a Network Composer edge type's included, also show the two nodes the edge joins, by label only. `dynamicValueContextFor`, `dynamicValueArgumentsAt` and `dynamicValueStatus` give that table, and `findDynamicValueProblems` checks a protocol against it.
+  - An attribute can always be missing, so it is shown only inside a version for when it has one: `{partnerName, select, missing {…} other {…{partnerName}…}}`. Versions can also follow a value's cases or, for a number, its plural category, chosen by the number with every digit it is shown with. `findDynamicValueProblem` is the one checker, given the text's language; text whose every version the values can reach shows nothing is refused. `dynamicMessageParts` gives the version a message reads for given values.
+  - A translation must show every value the protocol's default-language text shows, in the same versions (`findMissingDynamicPlacement`). A plural category only one whole number selects may leave its number out.
+  - A binding to an attribute that does not exist, or one that is encrypted, is an error at every text that uses it.
+  - Text shows a yes/no attribute by its options' labels, so it can show one as words only when the attribute has a label for both yes and no; otherwise the text is refused with a message naming the attribute and asking for the labels (`dynamicValueUnshowableReason`). Text may still choose its wording by any yes/no attribute, including a Toggle, which never has labels. Bindings count as uses of their attribute in `collectEntityAttributeReferences`.
+  - Interview metadata (IDs, start time, protocol name or hash, stage ID) is deliberately not available.
+  - Text cannot contain U+E000, which the interview uses to place values (`DYNAMIC_VALUE_MARKER`).
+
+- 43ffe6f: The words a participant reads in an interview now come from the protocol,
+  in the protocol's language, wherever the protocol can hold them, and the
+  interview shows less text of its own.
+
+  **Stage settings.** Text a participant sees on one kind of stage is now a
+  setting of that stage, which researchers can change and translate. Network
+  Canvas fills each one with its starting wording in every protocol language it
+  has wording for (English, German, Spanish, French, Italian, Dutch, Brazilian
+  Portuguese, and Simplified and Traditional Chinese):
+
+  - Finish screen: the finish button, its confirmation question, the finished
+    notice and the message shown if finishing fails.
+  - Name generators: the minimum and maximum notices, the quick-add hint, the
+    message for an external list that could not load, the roster's "nothing
+    left to add" notice, and its search label and no-match text.
+  - Geospatial: the offline notice, the message for a map that cannot be shown,
+    the label for a place outside the selectable areas, and the search label,
+    no-match and search-failed texts.
+  - Network Composer, Narrative, Sociogram and Narrative Pedigree: the name box
+    placeholder, panel headings, the tools' tooltips, and the Narrative
+    Pedigree's key, its condition menu's "Select a condition" choice, snapshot
+    button and snapshot headings.
+  - Family Pedigree: every word of drawing, connecting and adding to the family,
+    as the stage's `wording`, including the name question and the checklist of
+    family members still needed.
+
+  A setting shown only under some configuration, such as the layout tooltips
+  while automatic layout is on, is held only while that configuration is on:
+  Architect fills it in with the starting wording when the configuration is
+  switched on and removes it when it is switched off, so a protocol never asks
+  for text its participants cannot see to be translated. Upgrading a protocol
+  from schema 8 gives each stage the wording it has always shown. Several
+  settings read differently when they are about the participant and when they
+  are about someone else, or show a name or a number; Architect's stage editor,
+  translation table and protocol summary show each version separately, named,
+  with placeholders as named pills. A translation must show each placeholder
+  in the versions where Network Canvas's English shows it, so a translation
+  cannot drop a person's name or a count by accident. A version for a plural
+  form that only one number takes, such as English "one", may leave the number
+  out. Architect marks the placeholders a version still needs, and names the
+  missing placeholder and its version in the error.
+
+  **Interface text.** The text several stages share is the protocol's
+  `interfaceText`, translated in the translation table like the rest of the
+  protocol, in six groups: interview navigation (Back, Continue, Exit interview
+  and its explanation); buttons (Cancel, Done and Delete, and Yes and No when a
+  stage shows a form); messages (the screen and item errors, and one error
+  message that also stands in for a form that could not be submitted); the
+  passphrase prompt; the discard-changes question and explanation, held with
+  forms; and validation messages, one for each answer check, held only for the
+  checks the protocol uses. The Yes answer is also the discard dialog's confirm
+  button. The interview shows this text in the protocol's language; its own
+  words, such as the language chooser, still follow the participant's browser.
+
+  **Less built-in text.** Headings, labels and messages that repeated what the
+  screen already showed were removed: for example the pedigree checklist's
+  heading, the condition key's "What the symbols mean", the dyad censuses'
+  "Select all that apply", and the separate passphrase confirmations, now one.
+  Canvas tools are icon buttons with tooltips, and drawer toggles show the
+  number of people still to place.
+
+  For developers: `@codaco/app-i18n` adds `AppIntlOverlay`, which lays a set of
+  messages over a catalog in a chosen locale; `@codaco/fresco-ui`'s rich text
+  editor takes a `tokens` prop to insert placeholders, each of which may be
+  marked `required`, the new `TokenPill` subpath draws a placeholder the same
+  way in text that is only read (`TokenPill`, `TokenizedText`), `Table` takes a
+  `scrollerClassName` for its scrolling element, and a dialog's busy
+  confirm button is announced through a status region;
+  `@codaco/protocol-validation` adds `missingSuppliedStageText`,
+  `inapplicableStageSettings`, `suppliedStageSettingApplies`,
+  `messageVariants`, `composeMessage`, `findMessageArgumentProblem`,
+  `findMissingPlacement` and `requiredArgumentsOf`, and a declared `text` or
+  `plural` argument may list the versions it is `required` in; and
+  `SyntheticInterview.addStage` takes a stage's own `wording`.
+
+- c058462: The screen that ends an interview is now part of the protocol. Researchers can
+  write what participants read before and after they finish, translate it like
+  the rest of the protocol, and choose how an interview that ends there is
+  recorded: completed, ineligible, or ended early. That outcome is saved with each
+  interview and exported. A finish stage either waits for participants to confirm
+  or finishes the interview as soon as they reach it, and a protocol can end with
+  several, such as a separate ending for participants who are not eligible.
+
+  **Protocols (`@codaco/protocol-validation`)**
+
+  - Schema 9 adds the `FinishSession` stage type, with a stage name, a `mode`
+    of `confirmation` or `automatic`, the closing screen's Markdown (`content`,
+    heading included, shown only in `confirmation` mode), the finished screen's
+    Markdown (`finishedContent`), the Finish button label, confirmation question
+    and failure message, and an `outcome` of `completed`, `ineligible` or
+    `terminated`. It has no skip logic.
+  - Every schema 9 protocol must end with a finish stage, and may end with
+    several. Validation refuses a protocol with no stages, one whose last stage
+    is not a finish stage, and any other stage after the first finish stage.
+    `findTimelineStructureProblems` reports the same problems for a list of
+    stages without validating the stages themselves.
+  - The v8 to v9 migration appends a finish stage in `confirmation` mode, with
+    id `finish` (or the next free `finish-2`, `finish-3`, …), outcome
+    `completed`, and the text the interview has always shown there, in English under the protocol's default
+    language. Its notes say so. A recorded interview that was on the old
+    finish screen resumes on the new finish stage. Run again over a document
+    already in schema 9 form, it keeps a finish stage the document already ends
+    at, and gives one that has none the supplied text in the document's own
+    languages.
+  - A finish stage's name and text may have no translation at all while a
+    protocol is being written, so a protocol in a language Network Canvas has no
+    closing text for starts without any. `validateProtocol` still refuses a
+    protocol whose finish stage has no finished text, or no closing text in
+    `confirmation` mode, in its default language, with the issue code `finish_stage_text_missing`
+    (`FINISH_STAGE_TEXT_MISSING`) naming what is missing. An editor passes
+    `{ draft: true }` to allow it while the protocol is written.
+    `findFinishStageTextProblems` reports the same problem without validating.
+    Text made only of spaces or invisible characters counts as missing, and a
+    translation of a finish stage's name or text that is given at all
+    must not be blank, in any language and in a draft too.
+  - `createDefaultFinishSessionStage`, `defaultFinishSessionText`,
+    `defaultFinishSessionFields`, `hasDefaultFinishSessionText` and
+    `withDefaultFinishSessionTranslation` supply that text in English, German,
+    Spanish, French, Hungarian, Italian, Dutch, Brazilian Portuguese, and
+    Simplified and Traditional Chinese.
+
+  **Interview runtime (`@codaco/interview`)**
+
+  - In `confirmation` mode the finish stage shows its closing text and a Finish
+    button, which asks participants to confirm; once the interview is finished
+    it shows the finished text. If finishing fails, the closing text comes back
+    with an error toast. Participants can go back until they finish.
+  - In `automatic` mode the interview finishes as soon as the stage is shown,
+    and participants then see the finished text. They can't go back. If
+    finishing fails they see the error with a button to try again.
+  - No finish stage lets participants move forward. Finishing records which
+    finish stage the interview ended at and its outcome.
+  - **Breaking:** `onFinish` is now called as
+    `onFinish(interviewId, { stageId, outcome }, signal)`. Hosts store both
+    values and pass `finishStageId` back in `SessionPayload` when they reopen the
+    interview.
+  - A finished interview opens in its completed state: the finished text of
+    the finish stage it ended at, with no way back into the interview. A host can add its own actions to it with
+    the new `completedActions` prop. Review mode stops before the finish stage,
+    and the stages menu no longer lists finish stages. A review of a protocol
+    with nothing before its finish stage shows that stage's text read-only,
+    with an **Exit review** button when the host passes `onExit`.
+  - A host that lets a finished interview be changed passes the new
+    `openFinishedAsActive` Shell prop. The interview then opens at its stages
+    rather than in its completed state.
+  - A finish stage with no text, which only an Architect preview of a protocol
+    still being written can have, shows the Finish button alone.
+  - `generateNetwork` leaves a completed synthetic interview on the finish
+    stage its route reached, rather than one step past the last stage, and
+    Fresco and Interviewer record that stage and its outcome.
+  - Progress is 100% on every finish stage, not only the last one.
+  - Skip logic that skips to the finish goes to the first finish stage after the
+    stage that owns the rule. Skip logic can also name a later finish stage.
+
+  **Exports (`@codaco/network-exporters`, `@codaco/shared-consts`)**
+
+  - Each interview's outcome is exported: CSV ego files have a
+    `networkCanvasFinishOutcome` column after `COMMIT_HASH`, and
+    GraphML graphs an `nc:finishOutcome` attribute. **Breaking:**
+    `InterviewExportInput` requires `finishOutcome`; pass `null` for an interview with no recorded
+    outcome, whose CSV cell is then empty and whose GraphML attribute is left
+    out. A variable exported under the column's name is renamed
+    `networkCanvasFinishOutcome_2`, with a `'column-renamed'` warning.
+
+  **Architect**
+
+  - A new protocol starts with a finish stage, in each of its languages that
+    Network Canvas has text for. The Finish Screen has its own editor, for its
+    mode, closing and finished text, and outcome. More Finish Screens can be
+    added from the New Stage chooser, and a skip rule can end the interview at
+    any of them.
+  - A protocol whose finish stage is missing text in its default
+    language — a new protocol in a language Network Canvas has no text for, or
+    text a researcher cleared — can be edited, saved and reopened, but not
+    downloaded. The stage list says so, with a link to the finish stage's
+    editor, and every download is refused with the same explanation.
+  - Finish stages stay together at the end of the timeline: they can be
+    reordered among themselves, but dragging one above the first finish stage,
+    or another stage below it, stops at that point. A protocol's only finish
+    stage can't be deleted. New stages are added before the finish stages.
+  - Adding a language fills in the finish stage's text in that language while
+    it is still the text Network Canvas supplied.
+  - Finishing a preview shows the interview's completed state, with a button to
+    start the preview again. The protocol summary prints the finish stage.
+
+  **Interviewer**
+
+  - A finished interview shows its completed state, with an **Exit** button. The
+    outcome and finish stage are saved with the session (encrypted when the
+    vault is on) and exported.
+
+  **Fresco**
+
+  - The `/interview/finished` page is gone: a finished interview's link shows
+    its completed state, including to a participant who returns to it. That
+    page is sent without the interview's answers or the protocol's resources,
+    and nothing on it is saved back to the interview.
+  - With **Freeze Completed Interviews** off, a researcher who opens a finished
+    interview can still change it, as before. With it on, they see the completed
+    state.
+  - Each interview's finish stage and outcome are stored and exported, and
+    included in the interview API. Interviews finished before this upgrade have
+    no outcome.
+  - The finish request must name a finish stage of the interview's protocol and
+    its outcome.
+  - The cookie that limits a participant to one interview per protocol now holds
+    the finished interview's id. The browser no longer lets scripts read it, and
+    it is sent only over HTTPS when the session cookie is (in production, unless
+    `COOKIE_SECURE` says otherwise).
+  - The dashboard's progress counts the finish stage as a stage.
+
+- 1432069: When Fresco cannot upgrade a protocol made with an older version of Network Canvas, it now reports it to analytics both as a refused protocol and as an application error, so failed upgrades can be counted and fixed. Damaged files are still reported only as refused protocols. Nothing is reported when analytics are disabled, and no protocol names or contents are sent.
+
+  For developers: `@codaco/protocol-validation` exports `toReportableProtocolError`, which copies an error that failed to open or upgrade a protocol without its message, keeping its name, its stack frames and its cause chain, so it can be sent to exception tracking without quoting the protocol.
+
+- db8a2af: The interview shows less built-in text, and some of it reads more
+  consistently:
+
+  - In Family Pedigree, the answers to the sex assigned at birth question and
+    the kinds of parent a participant chooses from now show the labels the
+    protocol's codebook gives them, so a researcher can reword and translate
+    them like any other protocol text. The choice of a biological parent who
+    carried the pregnancy uses the protocol's label for a biological parent.
+    Since participants choose from these answers, none of their labels may be
+    blank. Architect fills those labels in for each of the protocol's
+    languages that Network Canvas has wording for, when the attribute is
+    created and when a language is added, and gives a default language it has
+    no wording for the English labels. The supplied English label for a donor
+    is now "Egg or sperm donor".
+  - When a researcher changes the language a protocol's text is recorded as,
+    or chooses another default language, text Network Canvas supplies and the
+    researcher has not changed (the finish screen's text and the Family
+    Pedigree answer labels) becomes the supplied text for the language chosen,
+    so a protocol upgraded as English and corrected to German reads the German
+    text.
+  - The button that confirms finishing the interview says "Finish", like the
+    button that opens the confirmation.
+  - Several buttons and messages now use one wording instead of two: "Pause
+    automatic layout" and "Resume automatic layout" on the Sociogram, "Enter
+    your passphrase" in Family Pedigree, "Zoom in" and "Zoom out", "Nothing
+    matched your search term." on the Geospatial search, and the same Cancel,
+    Save, Back, No and loading text the rest of the interview uses.
+  - The debug-information button no longer repeats its own label as a tooltip.
+  - A stage name made only of spaces is no longer valid, so the interview never
+    needs a name of its own for an unnamed stage.
+  - `ResizableFlexPanel` breakpoints no longer take a `label`, which nothing
+    read. A caller that passes one must remove it.
+
+- 7fa80c2: The Language Chooser stage's heading is now part of the protocol. A new stage
+  starts with "Choose a language" in each of the protocol's languages that
+  Network Canvas has wording for, and the researcher can reword and translate it
+  in the stage's Participant wording section in Architect. The interview shows
+  the stage's heading, in the language the participant has chosen.
+- 630410b: `@codaco/protocol-validation` now exports the version 9 protocol schema as a named value, `ProtocolSchemaV9`, alongside the type of the same name. In `@codaco/fresco-ui`, the `options` prop of `RichSelectGroup` and `ToggleButtonGroup` is now optional, which matches how both components already behaved: without options they render an empty group.
+- 0e9243e: A question on a Family Pedigree stage's person form can be worded for the
+  participant when it is about them: "Are you still living?" for the
+  participant, and "Is this person still living?" for everyone else in their
+  family.
+
+  **Protocols (`@codaco/protocol-validation`)**
+
+  - A dynamic value can read `node.$isParticipant`, whether the node a Family
+    Pedigree person form is about is the participant. It is offered only in
+    that form's questions, is never missing, and only chooses wording: its
+    binding has the one case `participant: true`, and everyone else takes the
+    `other` version. It can never be shown as words.
+  - Exports `dynamicValueParticipantPathFor`, `dynamicValueParticipantRolesAt`
+    and `PARTICIPANT_CASE`.
+
+  **Interview runtime (`@codaco/interview`)**
+
+  - The Family Pedigree person form tells its questions whether the person is
+    the participant, so the right version shows. `useProtocolForm` takes
+    `isParticipant` for this.
+
+  **Architect**
+
+  - In a Family Pedigree person form question, the insert-a-value menu lists
+    **Participant or someone else** under Contextual Attributes. It inserts
+    one version of the text for the participant and one for everyone else. The
+    participant marker attribute stays in the menu too.
+  - The CEGRM template's living-status and birth-year questions use it in
+    place of the participant marker attribute.
+
+- 43acfe0: Per Alter Form, Per Alter Edge Form, Dyad Census and Tie-Strength Census
+  stages no longer have an introduction panel. Instructions for participants
+  before these stages now live in Information stages, so they are written,
+  translated and skipped in one place. An Ego Form keeps its introduction, a
+  title and optional text shown above its questions.
+
+  Per Alter Form, Per Alter Edge Form, Dyad Census and Tie-Strength Census
+  stages now open straight on their first question or pair, and Back from
+  there leaves the stage. When one of these stages has no one to ask about (no
+  person or relationship of its type, or fewer than two people for a census),
+  the interview passes over it going forwards and backwards, and the stages
+  menu shows it as hidden by the answers given so far. Architect no longer offers an introduction section
+  for these stages.
+
+  Upgrading a protocol from schema 8 turns each introduction panel into an
+  Information stage just before its stage, with the panel's title and text.
+  The new stage copies the original stage's skip logic, and skip logic that
+  jumped to the original stage now jumps to the new one. An Ego Form keeps its
+  panel. The migration notes describe this in every supported language.
+
+  For developers: only the schema 9 Ego Form has an `introductionPanel`, and
+  `SyntheticInterview` takes introduction panel options for Ego Forms only.
+
+- 7bc3d43: A Name Generator for Roster Data stage now has a required panel title, the
+  heading above the people a participant can add, which the interview used to
+  show as built-in "Available to add" text. Researchers can change and translate
+  it like any other protocol text, in a new **Roster panel** section of the stage
+  editor, and Architect's protocol summary lists it. A new roster stage starts
+  with "Available to add" in each of the protocol's languages that Network Canvas
+  has wording for, and in English in a default language it has none for, and
+  Architect fills it into a language added later, or a language the protocol's
+  text is corrected to, while the researcher has not changed it in the default
+  language. Upgrading a protocol from schema 8 gives each roster stage the
+  heading the interview has always shown, and the bundled sample and development
+  protocols carry it.
+- 2e44834: Schema 9 requires every stage id to be between 1 and 128 characters, so a protocol that validates can always be stored by hosts such as Studio.
+- 069c9d0: The screen error message, the interview text shown when a task cannot be
+  displayed, can now be formatted. Architect's translation table edits it with
+  the rich text editor, so a researcher can add bold or italic text, lists and
+  links, for example to a page where participants can get help. The interview
+  and the printable protocol summary show it formatted. The wording Network
+  Canvas supplies, and the wording of protocols upgraded from schema 8, reads
+  as before.
+
+  For developers: the schema 9 `interfaceText.messages.stageError` is a
+  localized markdown string, and an interface text entry may declare its
+  `format`.
+
+- 3810333: Interview sessions are now migrated together with the protocol they were
+  recorded against. `migrateProtocolWithSessions` returns the migrated protocol
+  together with a migrator for the sessions recorded against the original. When
+  a migration step adds, removes or reorders stages, the migrator moves each
+  session's stage metadata and resume position with their stages, matched by
+  stage id: a session resumes at the same stage, or at the next one when its
+  stage was removed, and never at a stage inserted before its own. A step that
+  changes how a session represents its data declares a session step beside its
+  protocol transform, and the migrator runs it. Each migrated session is checked
+  against the current network and stage metadata schemas. A session that cannot
+  be migrated is reported, never thrown, with a reason; the new
+  `stages-unmatched` reason covers a step that changes the number of stages of a
+  protocol whose stages have no unique ids.
+- 20cd773: Words that several interfaces show in the same way are now worded once for the
+  whole protocol, as interface text, instead of once per stage.
+
+  **Protocols (`@codaco/protocol-validation`)**
+
+  - Interface text gains `buttons.save` and `buttons.dontKnow` (Family
+    Pedigree), `buttons.pauseLayout` and `buttons.resumeLayout` (Sociogram and
+    Narrative with automatic layout), `messages.externalDataError` (name
+    generators whose panels or roster read a data file), and a new `search`
+    group holding `searchLabel` and `searchNoMatch` (Geospatial and roster
+    search). Each is held only while something in the protocol shows it.
+  - The stage settings they replace are gone: `externalDataError`
+    (NameGenerator, NameGeneratorQuickAdd, NameGeneratorRoster), `searchLabel`
+    and `searchNoMatch` (Geospatial, NameGeneratorRoster), the Sociogram's
+    `tooltips` and the Narrative's `tooltips.pauseLayout` and
+    `tooltips.resumeLayout`, and the Family Pedigree's `wording.save`,
+    `wording.dontKnow` and `wording.zygosityUnknown`. Geospatial `searchFailed`
+    stays on the stage.
+
+  **Synthetic protocols (`@codaco/protocol-utilities`)**
+
+  - `SyntheticInterview.setInterfaceText(group, key, text)` words one interface
+    text the researcher's way.
+
+  **Interview runtime (`@codaco/interview`)**
+
+  - These words come from the protocol's interface text, falling back to the
+    interview's own catalog. The Family Pedigree's twin question uses the same
+    Don't know answer as its other questions.
+
+  **Architect**
+
+  - These words are reworded and translated with the interview's other shared
+    words, under Buttons, Messages and a new Search group, rather than in each
+    stage's editor. The Sociogram editor no longer has a Words on the canvas
+    section.
+
+### Patch Changes
+
+- 1d2b623: Architect's fields for wording that runs to a sentence or more, such as the
+  message a Finish Screen shows when finishing fails, now wrap onto more lines
+  as the text grows, instead of hiding the end of it past the edge of a
+  one-line box. This covers the Finish Screen's confirmation question and
+  failure message, the Family Pedigree's hints and descriptions, the notices and
+  error messages on name generator, bin, geospatial and network composer
+  stages, and an image or video's description.
+
+  The guidance under a Family Pedigree's name question can now be formatted in
+  bold or italics, like a form field's hint, which it is shown as.
+
+- e31a3c9: In the Family Pedigree, more answers saved by mistake can now be corrected without deleting anyone. The newest answer wins:
+
+  - Recording, when adding a parent or connecting two people, that someone carried the pregnancy (a Surrogate included) is no longer unavailable when another parent is recorded as having carried it. That parent is left with nothing recorded about carrying.
+  - Choosing a biological parent or donor while a biological parent with the same sex at birth is recorded is no longer unavailable. The form asks how the participant would define that parent's relationship instead.
+  - Answering that two twins are identical gives both of them the same biological parents and donors, where that is possible.
+
+  A hint under the answer says what choosing it will change, and Undo reverses it once saved. The question about a parent's kind now reads "How would you define “Julie”’s relationship to you?" instead of "Julie is your…". The stage wording gains `carrierReplaced`, `geneticParentReplaced` and `identicalTwinSharesParents`.
+
+- ab9a884: In the Family Pedigree, a sex at birth saved by mistake can now be corrected from the person's own panel. Previously a parent recorded as having carried the pregnancy could not be changed to male, and a genetic parent could not be given the same sex at birth as the other genetic parent, so swapping two parents' answers meant changing a relationship first. Now the newest answer wins: every sex at birth stays available, and saving one that contradicts another record clears that record so it can be answered again. The record that the person carried a pregnancy is removed, and the other genetic parent's sex at birth is cleared. The hint under the field says what saving will change before the participant saves, and Undo reverses it. Only a surrogate still cannot be recorded as male. The stage wording `unavailableSameSexAsCoParent` is replaced by `sexChangeClearsCoParentSex` and `sexChangeEndsCarrying`, and `unavailableCarried` now applies only to surrogates.
+- 0336cf4: In a family pedigree, a question limited to people of one sex assigned at birth
+  no longer shows a note under the family tree saying who can't be selected. The
+  people it leaves out are still shown unavailable. The note's wording setting is
+  gone from Architect and from the schema 9 Family Pedigree stage.
+- 6cc9d9d: The Family Pedigree's add-person steps no longer pre-select any answer: the kind of parent, child or sibling, the other parent, whether two people are still together, shared parents and twins all start unanswered. A step's button reads "Skip" only while nothing on it is answered, and "Continue" once anything is. The "Some details are missing" notice is removed, along with its `missingDetailsList` wording. When participants add their own child, the step-child, donor and surrogate options now say "you" ("A child you carried as a surrogate"), through a new `isYou` argument on the `childKindSocial`, `childKindDonor` and `childKindSurrogate` wording.
+- 72b189a: In the Family Pedigree, twins share one carrier: answering who carried one twin answers it for the other, and the add-child and add-sibling forms now require "Who carried the pregnancy?" to be answered. Continue on a step with a required question left unanswered now shows the same error Save does, instead of doing nothing visible. When participants add a partner, "Are they still together?" names the person ("Are they still together with “Dina”?"). Two people recorded as female and male at birth are not offered as identical twins. Questions no longer put a possessive after a quoted name ("Are they a twin of “Cara”?" instead of "Are they “Cara”’s twin?"). A new sibling who would not share the person who carried someone cannot be their twin. When editing someone's twins, a twin recorded with a different sex at birth from another twin already answered identical cannot be identical too, since all of them would then be identical. Editing someone no longer offers as their twin a sibling someone else carried, and adding a sibling checks "Yes, identical twins" against the sex at birth of every twin identical to the person. Whoever is recorded as carrying one twin counts as having carried them all, so adding or connecting a parent cannot record someone else as carrying another twin. When someone recorded as male at birth cannot be a surrogate, the hint gives only that reason, not also who else carried the pregnancy. Adding a parent asks whether they carried the pregnancy only once their kind of parent is chosen. `validateField` in `@codaco/fresco-ui`'s form store takes a `showErrors` option that marks the field touched so its error shows.
+- 40ff4e9: The schema 9 upgrade notes Architect shows before upgrading a protocol are
+  shorter and plainer, in every supported language. Related changes are
+  grouped under one heading, so the notes about text that may no longer be
+  empty and the notes about the Family Pedigree each appear as a nested list.
+  The heading above each schema version's notes now reads "Changes in schema
+  version {version}:".
+- 01189fd: Clearer German, Spanish, French, Italian, Dutch, Brazilian Portuguese and
+  Chinese wording for the schema 9 text. Every translation added since the last
+  release was checked by blind back-translation and adversarial review, and
+  fixed where it read differently from the English: participant messages now
+  use the polite form throughout in Chinese, the pedigree uses the same words
+  for relatives in the editor as in the interview, and several labels no longer
+  read two ways.
+- Updated dependencies ([15155f3](https://github.com/complexdatacollective/network-canvas-monorepo/commit/15155f30295aadbf41691556a7251685b392ee52), [4de3f45](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4de3f45c1ecc06799211c41c1d72cee8fce7aa10), [2ff161c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2ff161cd71741a8405cef57ac08aa5b5b8ac9fd0), [2729855](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2729855a94c6a71f68283236ddb3c5810f1b6638), [43ffe6f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/43ffe6f1680658ff475ed51bc924557f282afbd8), [c058462](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c0584624345133246137fb4effff9920fce288ff), [2408129](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2408129ceb43de2d91a0365e966cffa462afc6d0), [08d76d8](https://github.com/complexdatacollective/network-canvas-monorepo/commit/08d76d8da691c536eecbb252b7f1960a79321216), [151e511](https://github.com/complexdatacollective/network-canvas-monorepo/commit/151e511823d3cf083db2d2bb8e98c740cb9c657d), [cad7309](https://github.com/complexdatacollective/network-canvas-monorepo/commit/cad7309fa78cb2609416f1f445fdc4ad8ffcf226))
+  - @codaco/app-i18n@0.4.0
+  - @codaco/shared-consts@7.0.0
+
 ## 15.0.0
 
 ### Major Changes
