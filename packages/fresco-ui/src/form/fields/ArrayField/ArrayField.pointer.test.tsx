@@ -11,7 +11,7 @@ const reorderHarness = vi.hoisted(() => ({
 
 vi.mock('motion/react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('motion/react')>();
-  const { forwardRef } = await import('react');
+  const { forwardRef, useEffect } = await import('react');
 
   type GroupProps = {
     children: ReactNode;
@@ -38,8 +38,10 @@ vi.mock('motion/react', async (importOriginal) => {
     style,
     values,
   }: GroupProps) => {
-    reorderHarness.reorder = onReorder;
-    reorderHarness.values = values;
+    useEffect(() => {
+      reorderHarness.reorder = onReorder;
+      reorderHarness.values = values;
+    });
     return (
       <ul className={className} role={role} style={style}>
         {children}

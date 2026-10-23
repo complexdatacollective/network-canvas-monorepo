@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useDragControls } from 'motion/react';
+import { DragControls, useDragControls } from 'motion/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -54,6 +54,20 @@ function FormHarness({ onSubmit }: { onSubmit: () => void }) {
   );
 }
 
+/** Drag controls that report a drag start instead of starting one. */
+class SpyDragControls extends DragControls {
+  private readonly onStart: (event: React.PointerEvent) => void;
+
+  constructor(onStart: (event: React.PointerEvent) => void) {
+    super();
+    this.onStart = onStart;
+  }
+
+  override start(event: React.PointerEvent | PointerEvent) {
+    this.onStart(event as React.PointerEvent);
+  }
+}
+
 function DisabledHarness({
   onMove,
   dragStart,
@@ -61,8 +75,7 @@ function DisabledHarness({
   onMove: (targetIndex: number) => void | boolean;
   dragStart: (event: React.PointerEvent) => void;
 }) {
-  const dragControls = useDragControls();
-  dragControls.start = dragStart;
+  const [dragControls] = useState(() => new SpyDragControls(dragStart));
 
   return (
     <ArrayFieldDragHandle
