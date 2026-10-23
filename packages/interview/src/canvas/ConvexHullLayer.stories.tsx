@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   entityAttributesProperty,
@@ -63,8 +63,7 @@ const NODES_FEW: NcNode[] = [
  * rendering ConvexHullLayer inside an SVG-compatible container.
  */
 function ConvexHullLayerWrapper({ nodes }: { nodes: NcNode[] }) {
-  const storeRef = useRef(createCanvasStore());
-  const store = storeRef.current;
+  const [store] = useState(() => createCanvasStore());
 
   useEffect(() => {
     store.getState().syncFromNodes(nodes, 'layout');

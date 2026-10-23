@@ -17,6 +17,7 @@ import * as mapboxgl from 'mapbox-gl/esm';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import type { CaptureException } from '../../analytics/tracker';
 import { useCaptureException } from '../../analytics/useTrack';
 import { useContractFlags } from '../../contract/context';
 import { useProtocolLocale } from '../../localization/ProtocolLocalizationProvider';
@@ -119,6 +120,56 @@ const convertCssColorToHex = (() => {
   };
 })();
 
+/** What the map is built from: a change to any of it builds the map afresh. */
+type MapBuildInputs = {
+  accessToken: string | null | undefined;
+  center: ExtendedMapOptions['center'];
+  dataSourceUrl: string | null;
+  initialZoom: ExtendedMapOptions['initialZoom'];
+  color: ExtendedMapOptions['color'];
+  targetFeatureProperty: ExtendedMapOptions['targetFeatureProperty'];
+  dataSourceAssetId: string | null | undefined;
+  style: ExtendedMapOptions['style'];
+  showTransit: ExtendedMapOptions['showTransit'];
+  isE2E: boolean;
+  captureException: CaptureException;
+};
+
+const sameBuildInputs = (a: MapBuildInputs, b: MapBuildInputs) =>
+  Object.is(a.accessToken, b.accessToken) &&
+  Object.is(a.center, b.center) &&
+  Object.is(a.dataSourceUrl, b.dataSourceUrl) &&
+  Object.is(a.initialZoom, b.initialZoom) &&
+  Object.is(a.color, b.color) &&
+  Object.is(a.targetFeatureProperty, b.targetFeatureProperty) &&
+  Object.is(a.dataSourceAssetId, b.dataSourceAssetId) &&
+  Object.is(a.style, b.style) &&
+  Object.is(a.showTransit, b.showTransit) &&
+  Object.is(a.isE2E, b.isE2E) &&
+  Object.is(a.captureException, b.captureException);
+
+/** How far the map built from one set of inputs has got. */
+type MapBuildProgress = {
+  loaded: boolean;
+  idle: boolean;
+  geoJsonLoaded: boolean;
+  transitLoaded: boolean;
+  error: Error | null;
+  /** The map, once it has loaded. */
+  map: mapboxgl.Map | null;
+};
+
+type MapBuild = MapBuildProgress & { inputs: MapBuildInputs };
+
+const NOT_BUILT: MapBuildProgress = {
+  loaded: false,
+  idle: false,
+  geoJsonLoaded: false,
+  transitLoaded: false,
+  error: null,
+  map: null,
+};
+
 type UseMapboxProps = {
   mapOptions: ExtendedMapOptions;
   dataSourceAssetId: string | null | undefined;
@@ -167,12 +218,52 @@ export const useMapbox = ({
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [isMapIdleEvent, setIsMapIdleEvent] = useState(false);
-  const [isGeoJsonLoaded, setIsGeoJsonLoaded] = useState(false);
-  const [isTransitLoaded, setIsTransitLoaded] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(initialZoom);
-  const [mapError, setMapError] = useState<Error | null>(null);
+
+  // get token value from asset manifest, using id
+  const getApiAssetKeyValue = useSelector(makeGetApiKeyAssetValue);
+  const accessToken = useMemo(
+    () => getApiAssetKeyValue(tokenAssetId),
+    [getApiAssetKeyValue, tokenAssetId],
+  );
+
+  // What the map is built from: a change to any of it builds the map afresh.
+  const buildInputs: MapBuildInputs = {
+    accessToken,
+    center,
+    dataSourceUrl,
+    initialZoom,
+    color,
+    targetFeatureProperty,
+    dataSourceAssetId,
+    style,
+    showTransit,
+    isE2E,
+    captureException,
+  };
+  // How far the map built from those inputs has got. Replaced during render
+  // when the inputs change, so a prior stage's resolved state can't leak into
+  // a stage that hasn't actually finished loading yet, not even for the frame
+  // before the map is rebuilt. The map's own events update only the build
+  // they belong to.
+  const [build, setBuild] = useState<MapBuild>(() => ({
+    inputs: buildInputs,
+    ...NOT_BUILT,
+  }));
+  let currentBuild = build;
+  if (!sameBuildInputs(build.inputs, buildInputs)) {
+    currentBuild = { inputs: buildInputs, ...NOT_BUILT };
+    setBuild(currentBuild);
+  }
+  const {
+    inputs,
+    loaded: isMapLoaded,
+    idle: isMapIdleEvent,
+    geoJsonLoaded: isGeoJsonLoaded,
+    transitLoaded: isTransitLoaded,
+    error: mapError,
+    map: loadedMap,
+  } = currentBuild;
 
   // Composite readiness flag exposed to e2e tests via `data-map-idle`.
   // Gates the stage as fully rendered: map idle + every async resource
@@ -184,13 +275,6 @@ export const useMapbox = ({
     isMapIdleEvent &&
     (!dataSourceAssetId || isGeoJsonLoaded) &&
     (!showTransit || isTransitLoaded);
-
-  // get token value from asset manifest, using id
-  const getApiAssetKeyValue = useSelector(makeGetApiKeyAssetValue);
-  const accessToken = useMemo(
-    () => getApiAssetKeyValue(tokenAssetId),
-    [getApiAssetKeyValue, tokenAssetId],
-  );
 
   const handleResetMapZoom = useCallback(() => {
     mapRef.current?.flyTo({
@@ -211,14 +295,11 @@ export const useMapbox = ({
     if (!mapContainerRef.current || !center || !accessToken) return;
     if (dataSourceAssetId && !dataSourceUrl) return;
 
-    // Reset readiness flags whenever the map is re-initialised, so a
-    // prior stage's resolved state can't leak into a stage that hasn't
-    // actually finished loading yet.
-    setIsMapLoaded(false);
-    setIsMapIdleEvent(false);
-    setIsGeoJsonLoaded(false);
-    setIsTransitLoaded(false);
-    setMapError(null);
+    // Records progress on the build these inputs began, and on no other.
+    const update = (progress: Partial<MapBuildProgress>) =>
+      setBuild((current) =>
+        current.inputs === inputs ? { ...current, ...progress } : current,
+      );
 
     try {
       appliedMapLanguageRef.current = mapLanguageRef.current;
@@ -245,7 +326,7 @@ export const useMapbox = ({
       // error and surface a contained fallback instead.
       const error = err instanceof Error ? err : new Error(String(err));
       captureException(error, { feature: 'geospatial-map-init' });
-      setMapError(error);
+      update({ error });
       return;
     }
 
@@ -394,7 +475,7 @@ export const useMapbox = ({
       });
 
       // Set loaded AFTER all layers are added to avoid race conditions
-      setIsMapLoaded(true);
+      update({ loaded: true, map: mapRef.current });
     };
 
     const handleMapStyleLoad = () => {
@@ -437,7 +518,7 @@ export const useMapbox = ({
         map.getSource('geojson-data') &&
         map.isSourceLoaded('geojson-data')
       ) {
-        setIsGeoJsonLoaded(true);
+        update({ geoJsonLoaded: true });
       }
 
       if (
@@ -445,16 +526,16 @@ export const useMapbox = ({
         map.getSource(TRANSIT_SOURCE_ID) &&
         map.isSourceLoaded(TRANSIT_SOURCE_ID)
       ) {
-        setIsTransitLoaded(true);
+        update({ transitLoaded: true });
       }
     };
 
     mapRef.current.on('idle', () => {
-      setIsMapIdleEvent(true);
+      update({ idle: true });
       checkLayerReadiness();
     });
     mapRef.current.on('movestart', () => {
-      setIsMapIdleEvent(false);
+      update({ idle: false });
     });
 
     // Keep the Mapbox canvas in sync with its container. The interview shell
@@ -488,7 +569,9 @@ export const useMapbox = ({
       resizeObserver?.disconnect();
       mapRef.current?.remove();
     };
+    // `inputs` changes exactly when one of the values after it does.
   }, [
+    inputs,
     accessToken,
     center,
     dataSourceUrl,
@@ -625,7 +708,7 @@ export const useMapbox = ({
 
   return {
     mapContainerRef,
-    mapRef,
+    map: loadedMap,
     accessToken,
     isStageReady,
     zoomLevel,

@@ -327,6 +327,29 @@ describe('FamilyPedigree and the connect tool', () => {
       screen.queryByTestId('pedigree-connect-menu'),
     ).not.toBeInTheDocument();
   });
+
+  it('draws a line from the first person chosen to the person the mouse is on', async () => {
+    await renderStage();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Connect' }));
+    await user.click(mother());
+    const others = [
+      ...document.querySelectorAll<HTMLElement>('[data-person-id]'),
+    ].filter(
+      (node) =>
+        node.dataset.personId !== 'ego' && node.dataset.personId !== 'mum',
+    );
+    const target = within(others[0]!).getByRole('button');
+    expect(document.querySelector('svg line[stroke-dasharray]')).toBeNull();
+
+    await user.hover(target);
+
+    await waitFor(() =>
+      expect(
+        document.querySelector('svg line[stroke-dasharray]'),
+      ).not.toBeNull(),
+    );
+  });
 });
 
 // Rule (Codex 4229159680): every path that removes a relationship applies the

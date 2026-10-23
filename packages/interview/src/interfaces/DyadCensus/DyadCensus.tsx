@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
@@ -201,9 +201,8 @@ export default function DyadCensus(props: DyadCensusProps) {
     return false;
   });
 
-  // Auto-advance
-  const moveForwardRef = useRef(moveForward);
-  moveForwardRef.current = moveForward;
+  // Auto-advance, through the latest moveForward
+  const advanceToNext = useEffectEvent(() => moveForward());
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -212,7 +211,7 @@ export default function DyadCensus(props: DyadCensusProps) {
       const advance = () => {
         setIsTouched(false);
         setIsChanged(false);
-        moveForwardRef.current();
+        advanceToNext();
       };
 
       if (!isChanged || shouldSkipAnimations) {

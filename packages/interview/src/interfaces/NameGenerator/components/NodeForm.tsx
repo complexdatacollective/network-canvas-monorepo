@@ -160,9 +160,13 @@ const NodeForm = (props: NodeFormProps) => {
   // and the form does not open at all until the passphrase has been entered.
   const editing = useProtectedFormValues(selectedNode, form.fields, variables);
   const editingLocked = selectedNode !== null && editing.status === 'locked';
+  // Closed during render, so a locked person's form is never shown open; the
+  // host is told once that commits.
+  if (editingLocked && show) {
+    setShow(false);
+  }
   useEffect(() => {
     if (!editingLocked) return;
-    setShow(false);
     onClose();
   }, [editingLocked, onClose]);
 

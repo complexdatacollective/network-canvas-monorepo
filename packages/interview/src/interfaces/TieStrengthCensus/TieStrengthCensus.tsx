@@ -2,7 +2,13 @@
 
 import { get } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
-import { type ComponentProps, useEffect, useId, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
@@ -320,9 +326,8 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     return false;
   });
 
-  // Auto-advance
-  const moveForwardRef = useRef(moveForward);
-  moveForwardRef.current = moveForward;
+  // Auto-advance, through the latest moveForward
+  const advanceToNext = useEffectEvent(() => moveForward());
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -331,7 +336,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       const advance = () => {
         setIsTouched(false);
         setIsChanged(false);
-        moveForwardRef.current();
+        advanceToNext();
       };
 
       if (!isChanged || shouldSkipAnimations) {

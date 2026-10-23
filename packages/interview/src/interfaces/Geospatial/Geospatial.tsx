@@ -278,7 +278,7 @@ export default function GeospatialInterface({
   // violations.
   const {
     mapContainerRef,
-    mapRef,
+    map,
     accessToken,
     isStageReady,
     zoomLevel,
@@ -538,7 +538,7 @@ export default function GeospatialInterface({
               <GeospatialSearch
                 searchFailed={searchFailed}
                 accessToken={accessToken}
-                map={mapRef.current}
+                map={map}
                 proximity={mapOptions.center}
                 resetKey={navState.activeIndex}
                 onSearchPerformed={() => {
