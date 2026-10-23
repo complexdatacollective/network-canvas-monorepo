@@ -5,6 +5,7 @@ import {
   type CSSProperties,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -91,8 +92,11 @@ type ScrollAwareDrag = {
  */
 export function useScrollAwareDrag(): ScrollAwareDrag {
   const scrollAxes = useScrollAxes() ?? PAGE_AXES;
+  // Read by `begin` when a gesture starts; kept current by a layout effect.
   const scrollAxesRef = useRef(scrollAxes);
-  scrollAxesRef.current = scrollAxes;
+  useLayoutEffect(() => {
+    scrollAxesRef.current = scrollAxes;
+  });
 
   // The axes the browser was given when the finger landed. The gesture is
   // decided against these, not whatever the region measures mid-gesture,

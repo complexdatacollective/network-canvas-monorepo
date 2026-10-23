@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
@@ -103,8 +103,9 @@ function DropZone({
   children: React.ReactNode;
   onDrop?: (metadata?: DragMetadata) => void;
 }) {
+  const dropId = useId();
   const { dropProps, isOver, willAccept } = useDropTarget({
-    id: `drop-zone-${Math.random().toString(36).slice(2, 11)}`,
+    id: `drop-zone-${dropId}`,
     accepts,
     announcedName: 'Drop zone',
     onDrop,
