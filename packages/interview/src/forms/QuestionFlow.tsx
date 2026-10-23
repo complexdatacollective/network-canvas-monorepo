@@ -337,7 +337,7 @@ export default function QuestionFlow({
   // Only the current step shows; the others stay in the form, hidden, so
   // their answers are kept and saved with the rest.
   useEffect(() => {
-    if (!stepped) return;
+    if (!stepped) return undefined;
     steps.forEach((element, at) => {
       if (!(element instanceof HTMLElement)) return;
       element.hidden = at !== index;
@@ -345,7 +345,11 @@ export default function QuestionFlow({
     });
     shownIndex.current = index;
     shownStep.current = step;
-    if (step) setState(stateOf(step, read));
+    if (!step) return undefined;
+    // The step button's label follows the step now shown, read from its
+    // answers once they have painted, as with every other answer.
+    const frame = requestAnimationFrame(() => setState(stateOf(step, read)));
+    return () => cancelAnimationFrame(frame);
   }, [stepped, steps, index, step, read]);
 
   // Moving on, the step shown leaves to the left and the next comes in from
@@ -355,8 +359,8 @@ export default function QuestionFlow({
     const from = direction.current;
     direction.current = 0;
     if (!stepped || from === 0 || !(step instanceof HTMLElement)) return;
-    step.style.opacity = '0';
-    step.style.transform = slid(from * STEP_SLIDE);
+    step.style.setProperty('opacity', '0');
+    step.style.setProperty('transform', slid(from * STEP_SLIDE));
     void animate(
       step,
       { opacity: [0, 1], transform: [slid(from * STEP_SLIDE), slid(0)] },

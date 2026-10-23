@@ -89,12 +89,59 @@ beforeEach(() => {
  * data, made before anything had been read.
  */
 describe('useExternalData reports where the read has got to', () => {
-  it('starts idle, before the read has been attempted', () => {
+  it('is loading from its first render, before the read has settled', () => {
     onRequestAsset.mockReturnValue(new Promise(() => undefined));
 
     const observations = observe('asset-1');
 
-    expect(observations[0]).toEqual({ state: 'idle', hasData: false });
+    expect(observations[0]).toEqual({ state: 'loading', hasData: false });
+  });
+
+  it('is idle for a source that is not external', () => {
+    const observations = observe('existing');
+
+    expect(observations.at(-1)).toEqual({ state: 'idle', hasData: false });
+    expect(onRequestAsset).not.toHaveBeenCalled();
+  });
+
+  it("never reports one source's data as another's", async () => {
+    assetManifest['asset-2'] = {
+      assetId: 'asset-2',
+      name: 'other.csv',
+      source: 'other.csv',
+    };
+    const nodes = [makeNode('a')];
+    onRequestAsset.mockImplementation((assetId) =>
+      assetId === 'asset-1'
+        ? Promise.resolve('blob:roster')
+        : new Promise(() => undefined),
+    );
+    parseExternalNetworkAsset.mockResolvedValue(nodes);
+
+    const observations: Observation[] = [];
+    function Probe({ dataSource }: { dataSource: string }) {
+      const { externalData, status } = useExternalData(dataSource, SUBJECT);
+      observations.push({
+        state: status.state,
+        hasData: externalData !== null,
+      });
+      return null;
+    }
+    const { rerender } = render(<Probe dataSource="asset-1" />);
+    await waitFor(() => {
+      expect(observations.at(-1)).toEqual({ state: 'ready', hasData: true });
+    });
+
+    const switchedAt = observations.length;
+    rerender(<Probe dataSource="asset-2" />);
+
+    // From the first render with the new source, the first source's data is
+    // gone and the new source is loading; its read never settles here.
+    expect(observations.slice(switchedAt)).not.toHaveLength(0);
+    for (const observation of observations.slice(switchedAt)) {
+      expect(observation).toEqual({ state: 'loading', hasData: false });
+    }
+    delete assetManifest['asset-2'];
   });
 
   it('never claims to be ready without the data', async () => {

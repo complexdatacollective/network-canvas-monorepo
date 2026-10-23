@@ -2,7 +2,7 @@
 
 import { EyeOff, LayoutTemplate, RouteOff } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -269,21 +269,20 @@ export default function StagesMenu({
   // Signal the host once the staggered exit has played out, so the drawer only
   // slides away after the cards are gone. Timings are deterministic tweens on
   // exit, so a single timeout is enough. Keep dependencies to `open` alone: the
-  // count/steps are read from refs so a mid-close filter change can't cancel
-  // (and never re-arm) the pending timeout.
-  const onClosedRef = useRef(onClosed);
-  onClosedRef.current = onClosed;
-  const exitMsRef = useRef(0);
-  exitMsRef.current = reduceMotion
+  // exit time and callback are read through effect events so a mid-close
+  // filter change can't cancel (and never re-arm) the pending timeout.
+  const exitMs = reduceMotion
     ? 0
     : (Math.max(0, count - 1) * steps.exit + EXIT_DURATION + EXIT_BUFFER) *
       1000;
+  const readExitMs = useEffectEvent(() => exitMs);
+  const notifyClosed = useEffectEvent(() => onClosed());
   const prevOpen = useRef(open);
   useEffect(() => {
     const wasOpen = prevOpen.current;
     prevOpen.current = open;
     if (wasOpen && !open) {
-      const id = setTimeout(() => onClosedRef.current(), exitMsRef.current);
+      const id = setTimeout(() => notifyClosed(), readExitMs());
       return () => clearTimeout(id);
     }
     return undefined;

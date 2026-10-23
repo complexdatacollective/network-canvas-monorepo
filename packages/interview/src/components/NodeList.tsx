@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -90,74 +90,65 @@ const NodeList = memo(
     const [containerRef, safeAnimate] = useSafeAnimate();
 
     // --- Item buffering for prompt transitions ---
+    // While the list fades its people out for a new animationKey (a prompt
+    // change) it keeps showing the items it had; otherwise it shows `items`.
     const [displayItems, setDisplayItems] = useState(items);
     const [displayAnimationKey, setDisplayAnimationKey] =
       useState(animationKey);
-    const latestItemsRef = useRef(items);
-    const isTransitioningRef = useRef(false);
-    const prevAnimationKeyRef = useRef(animationKey);
-    const needsExitRef = useRef(false);
+    const [seenAnimationKey, setSeenAnimationKey] = useState(animationKey);
+    // The exit under way: a new object for each animationKey change, so a
+    // change made while one exit runs starts the exit again.
+    const [pendingExit, setPendingExit] = useState<{
+      key: typeof animationKey;
+    } | null>(null);
 
-    // Always keep latest items ref up to date
-    latestItemsRef.current = items;
-
-    // Detect animationKey change synchronously during render so
-    // isTransitioningRef is set BEFORE effects run. This prevents the
-    // items-passthrough effect from flashing the new items in.
-    if (
-      animationKey !== prevAnimationKeyRef.current &&
-      prevAnimationKeyRef.current !== undefined
-    ) {
-      isTransitioningRef.current = true;
-      needsExitRef.current = true;
-      prevAnimationKeyRef.current = animationKey;
+    // Detect an animationKey change synchronously during render, so the list
+    // is already transitioning when it commits and never flashes the new
+    // items in. A list that mounted without a key never transitions.
+    let exit = pendingExit;
+    if (seenAnimationKey !== undefined && animationKey !== seenAnimationKey) {
+      exit = { key: animationKey };
+      setSeenAnimationKey(animationKey);
+      setPendingExit(exit);
     }
 
     // When not transitioning, pass items through immediately
+    if (exit === null && displayItems !== items) {
+      setDisplayItems(items);
+    }
+
+    // Run the exit animation for an animationKey change, then show the new
+    // key with the latest items (passed through once the exit is cleared).
     useEffect(() => {
-      if (!isTransitioningRef.current) {
-        setDisplayItems(items);
+      if (pendingExit === null) {
+        return undefined;
       }
-    }, [items]);
+      let cancelled = false;
+      const finish = () => {
+        if (cancelled) return;
+        setDisplayAnimationKey(pendingExit.key);
+        setPendingExit(null);
+      };
 
-    // Run exit animation when animationKey changed (flagged during render)
-    useEffect(() => {
-      if (!needsExitRef.current) {
-        return;
-      }
-      needsExitRef.current = false;
-
-      const container = containerRef.current;
-      if (!container) {
-        setDisplayItems(latestItemsRef.current);
-        setDisplayAnimationKey(animationKey);
-        isTransitioningRef.current = false;
-        return;
-      }
-
-      const staggerItems = container.querySelectorAll<HTMLElement>(
+      const staggerItems = containerRef.current?.querySelectorAll<HTMLElement>(
         '[data-stagger-item]',
       );
 
-      if (staggerItems.length === 0) {
-        setDisplayItems(latestItemsRef.current);
-        setDisplayAnimationKey(animationKey);
-        isTransitioningRef.current = false;
-        return;
+      if (!staggerItems || staggerItems.length === 0) {
+        finish();
+        return undefined;
       }
-
-      const nextKey = animationKey;
 
       void safeAnimate(
         staggerItems,
         { opacity: 0, scale: 0.6 },
         { duration: EXIT_DURATION },
-      ).then(() => {
-        setDisplayItems(latestItemsRef.current);
-        setDisplayAnimationKey(nextKey);
-        isTransitioningRef.current = false;
-      });
-    }, [animationKey, containerRef, safeAnimate]);
+      ).then(finish);
+
+      return () => {
+        cancelled = true;
+      };
+    }, [pendingExit, containerRef, safeAnimate]);
 
     const keyExtractor = useCallback(
       (node: NcNode) => node[entityPrimaryKeyProperty],
