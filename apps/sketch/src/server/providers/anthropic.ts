@@ -11,7 +11,7 @@
 // guidance instead: in the system prompt, with the reply parsed as JSON and
 // checked against the schema by the caller, like any other answer.
 
-import Anthropic from '@anthropic-ai/sdk';
+import { Anthropic } from '@anthropic-ai/sdk';
 import type {
   Message,
   MessageCreateParamsNonStreaming,
@@ -145,7 +145,14 @@ export const createAnthropicAdapter = (
   // Schemas the API refused to compile, sent as guidance from then on.
   const unconstrained = new Set<string>();
   const getClient = (): AnthropicClientLike => {
-    client ??= new Anthropic({ apiKey: apiKey(), maxRetries: 0 });
+    // SDK 1.x sends the key as `Authorization: Bearer`. Netlify's AI Gateway
+    // injects the key and base URL here and was built against `X-Api-Key`, so
+    // the key keeps going out the way it always has.
+    client ??= new Anthropic({
+      apiKey: apiKey(),
+      defaultHeaders: { 'X-Api-Key': apiKey(), 'Authorization': null },
+      maxRetries: 0,
+    });
     return client;
   };
   return {

@@ -189,7 +189,7 @@ export function LanguageIllustration() {
       <OrbitTrack sweep={1} />
       {bubbles
         .filter((bubble) => bubble.depth <= 0)
-        .sort(byDepth)
+        .toSorted(byDepth)
         .map((bubble) => (
           <GreetingBubble key={bubble.text} bubble={bubble} />
         ))}
@@ -236,7 +236,7 @@ export function LanguageIllustration() {
       <OrbitTrack sweep={0} />
       {bubbles
         .filter((bubble) => bubble.depth > 0)
-        .sort(byDepth)
+        .toSorted(byDepth)
         .map((bubble) => (
           <GreetingBubble key={bubble.text} bubble={bubble} />
         ))}

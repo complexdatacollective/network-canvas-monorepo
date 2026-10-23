@@ -75,7 +75,7 @@ describe('the self-host guide’s outbound hosts', () => {
   });
 
   it('documents exactly the hosts the allowlist carries', () => {
-    expect([...documented].sort()).toEqual([...listed].sort());
+    expect(documented.toSorted()).toEqual(listed.toSorted());
   });
 
   // The daily update check is the one call Studio makes that no setting turns
@@ -191,8 +191,8 @@ describe('the self-host guide’s rate limits', () => {
   });
 
   it('documents exactly the scopes the limiter has', () => {
-    expect(documented.map(([scope]) => scope).sort()).toEqual(
-      [...RATE_LIMIT_SCOPES].sort(),
+    expect(documented.map(([scope]) => scope).toSorted()).toEqual(
+      RATE_LIMIT_SCOPES.toSorted(),
     );
   });
 

@@ -14,7 +14,6 @@ import {
   nonBlankText,
 } from '../localized-string.ts';
 import {
-  hasExternalPanels,
   hasMinimumNodes,
   hasMaximumNodes,
   requireWhenShown,
@@ -57,7 +56,7 @@ export const NODE_COUNT_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
 );
 
 /**
- * The words a name generator shows about its limits and its side panels,
+ * The words a name generator shows about its limits,
  * which Network Canvas supplies (`stage-wording/name-generator.ts`). Each is
  * shown only in some configurations, so each is required only while its
  * configuration is on (`requireNameGeneratorWording`).
@@ -67,7 +66,6 @@ export const nameGeneratorWording = {
     arguments: NODE_COUNT_ARGUMENTS,
   }).optional(),
   maxNodesNotice: localizedString(nonBlankText(), 'plain').optional(),
-  externalDataError: localizedString(nonBlankText(), 'plain').optional(),
 };
 
 /** Refuses a name generator that shows a setting it does not hold. */
@@ -85,11 +83,6 @@ export const requireNameGeneratorWording = (
       name: 'maxNodesNotice',
       when: hasMaximumNodes,
       message: 'A stage with a maximum needs a maximum notice.',
-    },
-    {
-      name: 'externalDataError',
-      when: hasExternalPanels,
-      message: 'A stage with an external panel needs a loading error.',
     },
   ]);
 

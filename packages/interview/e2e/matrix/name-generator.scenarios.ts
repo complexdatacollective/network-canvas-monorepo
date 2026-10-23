@@ -945,10 +945,14 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const ng = synth.addStage('NameGenerator', {
           subject: { entity: 'node', type: person.id },
           form: { title: 'Add a person', fields: [] },
-          // The researcher's own words, so the panel proves it shows the
-          // stage's setting rather than Network Canvas's supplied text.
-          wording: { externalDataError: EXTERNAL_DATA_ERROR },
         });
+        // The researcher's own words, so the panel proves it shows the
+        // protocol's interface text rather than Network Canvas's catalog.
+        synth.setInterfaceText(
+          'messages',
+          'externalDataError',
+          EXTERNAL_DATA_ERROR,
+        );
         ng.addFormField({
           variable: formVar.id,
           component: 'Text',

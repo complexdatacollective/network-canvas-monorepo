@@ -90,7 +90,7 @@ export async function startObservedServer(
       fetch(`${server.origin}${RPC_PATH}`, {
         method: 'POST',
         headers: {
-          'content-type': 'application/ndjson',
+          'content-type': 'application/x-ndjson',
           'sec-fetch-site': 'same-origin',
           ...headers,
         },

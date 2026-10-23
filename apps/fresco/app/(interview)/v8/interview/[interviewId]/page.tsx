@@ -2,7 +2,7 @@ import { loadInterviewCatalog } from 'fresco-schema-8/interview/catalog';
 import { notFound, redirect } from 'next/navigation';
 import { after, connection } from 'next/server';
 import { Suspense } from 'react';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { ErrorMessage } from '~/app/(interview)/interview/_components/ErrorMessage';

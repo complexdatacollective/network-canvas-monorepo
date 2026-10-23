@@ -16,9 +16,10 @@ vi.mock('posthog-js/dist/exception-autocapture', () => {
   return {};
 });
 
-vi.mock('posthog-js/dist/module.no-external', () => ({
-  default: { identify, init, register },
-}));
+vi.mock('posthog-js/dist/module.no-external', () => {
+  const posthog = { identify, init, register };
+  return { default: posthog, posthog };
+});
 
 import { initializeAnalytics } from './analytics';
 

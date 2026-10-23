@@ -906,14 +906,6 @@
       "behaviours": {
         "automaticLayout": true
       },
-      "tooltips": {
-        "pauseLayout": {
-          "en-US": "Pause automatic layout"
-        },
-        "resumeLayout": {
-          "en-US": "Resume automatic layout"
-        }
-      },
       "prompts": [
         {
           "id": "sociogram-knows",
@@ -1040,6 +1032,12 @@
       },
       "no": {
         "en-US": "No"
+      },
+      "pauseLayout": {
+        "en-US": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en-US": "Resume automatic layout"
       }
     },
     "messages": {

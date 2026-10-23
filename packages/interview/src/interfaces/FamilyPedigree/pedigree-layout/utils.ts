@@ -303,6 +303,6 @@ export function inOrder<T>(
 ): T[] {
   return [...items]
     .map((item, at) => ({ item, at }))
-    .sort((a, b) => compare(a.item, b.item) || a.at - b.at)
+    .toSorted((a, b) => compare(a.item, b.item) || a.at - b.at)
     .map(({ item }) => item);
 }

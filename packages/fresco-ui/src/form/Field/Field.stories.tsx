@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { action } from 'storybook/actions';
 import { expect, userEvent, within } from 'storybook/test';
 
-import Button from '../../Button';
+import { Button } from '../../Button';
 import InputField from '../fields/InputField';
 import ToggleField from '../fields/ToggleField';
 import Form from '../Form';

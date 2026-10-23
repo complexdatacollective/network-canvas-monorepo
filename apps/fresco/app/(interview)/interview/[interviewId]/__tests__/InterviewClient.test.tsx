@@ -15,10 +15,14 @@ type ShellHandlers = {
   openFinishedAsActive?: boolean;
 };
 
-const { shell } = vi.hoisted(() => ({ shell: vi.fn() }));
+const { shell, query } = vi.hoisted(() => ({
+  shell: vi.fn(),
+  // The `step` query parameter the client reads its current step from.
+  query: { step: 0 },
+}));
 vi.mock('nuqs', async (importOriginal) => ({
   ...(await importOriginal<typeof Nuqs>()),
-  useQueryState: () => [0, vi.fn()],
+  useQueryState: () => [query.step, vi.fn()],
 }));
 // The handlers the client hands the Shell are what this test checks, so the
 // Shell only records them.
@@ -55,8 +59,8 @@ const payload: InterviewPayload = {
 
 const catalog = await loadInterviewCatalog('en');
 
-function renderClient(view: InterviewView): ShellHandlers {
-  render(
+function clientFor(view: InterviewView) {
+  return (
     <InterviewClient
       payload={payload}
       assetUrls={{}}
@@ -67,11 +71,19 @@ function renderClient(view: InterviewView): ShellHandlers {
       disableAnalytics
       view={view}
       catalog={catalog}
-    />,
+    />
   );
+}
+
+function lastShellProps(): ShellHandlers {
   const props = shell.mock.lastCall?.[0] as ShellHandlers | undefined;
   if (!props) throw new Error('The Shell was not rendered');
   return props;
+}
+
+function renderClient(view: InterviewView): ShellHandlers {
+  render(clientFor(view));
+  return lastShellProps();
 }
 
 /** Ask the Shell's sync handler for a write, as a store change would. */
@@ -94,6 +106,7 @@ const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => {
   shell.mockClear();
+  query.step = 0;
   fetchMock.mockReset();
   fetchMock.mockImplementation(() =>
     Promise.resolve(
@@ -139,4 +152,21 @@ describe('InterviewClient', () => {
       ]);
     },
   );
+
+  it('records the step the participant is on when a write goes out', async () => {
+    // The Shell keeps the handler it was first given, so a step change has to
+    // reach that handler rather than a rebuilt one.
+    query.step = 2;
+    const { rerender } = render(clientFor('active'));
+    const handlers = lastShellProps();
+
+    query.step = 5;
+    rerender(clientFor('active'));
+    await writeThrough(handlers);
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      currentStep: number;
+    };
+    expect(body.currentStep).toBe(5);
+  });
 });

@@ -10,13 +10,16 @@
 // and never insert a stage the model did not write (consent excepted, which
 // the compiler owns). Unknown references are dropped.
 import {
+  type ConditionTarget,
   type DesignIssue,
+  NAME_CONDITION_TARGET,
   type NAttribute,
   resolveCondition,
   slug,
 } from './rules.ts';
 import {
   ATTRIBUTE_KINDS,
+  type DesignNodeFilter,
   type DesignStage,
   type StudyDesign,
 } from './schema.ts';
@@ -68,6 +71,7 @@ const NAME_ALIASES = new Set([
   'display_name',
 ]);
 const deepTrim = <T>(v: T): T =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- trimming only rewrites string values, so the result keeps the shape of T
   (typeof v === 'string'
     ? v.trim()
     : Array.isArray(v)
@@ -95,12 +99,15 @@ export const analyse = (
     path: string,
     message: string,
   ) => issues.push({ severity, code, path, message });
-  const d = deepTrim(structuredClone(raw)) as unknown as NormalizedDesign;
-  d.stages = (raw.stages as DesignStage[]).map((s, i) => ({
-    ...deepTrim(structuredClone(s)),
-    rawIndex: i,
-  })) as NStage[];
-  d.instrumentAttributes = [];
+  const trimmed = deepTrim(structuredClone(raw));
+  const d: NormalizedDesign = {
+    ...trimmed,
+    stages: raw.stages.map((s, i) => ({
+      ...deepTrim(structuredClone(s)),
+      rawIndex: i,
+    })),
+    instrumentAttributes: [],
+  };
 
   // ---- ids -------------------------------------------------------------------
   const fixId = (id: string, fallback: string, path: string) => {
@@ -391,7 +398,10 @@ export const analyse = (
         );
       }
       if (a.numberRange.length === 2) {
-        let [lo, hi] = a.numberRange.map(Math.round) as [number, number];
+        let [lo, hi] = [
+          Math.round(a.numberRange[0]!),
+          Math.round(a.numberRange[1]!),
+        ];
         if (lo > hi) {
           [lo, hi] = [hi, lo];
           add(
@@ -665,12 +675,7 @@ export const analyse = (
   const kept: NStage[] = [];
 
   const checkFilter = (
-    s: NStage & {
-      filter: {
-        match: string;
-        conditions: { attributeId: string; operator: string; value: string }[];
-      };
-    },
+    s: { filter: DesignNodeFilter },
     nodeTypeId: string,
     path: string,
   ) => {
@@ -705,18 +710,14 @@ export const analyse = (
       }
       const a =
         id === 'name'
-          ? ({
-              kind: 'text',
-              options: [],
-              optionScores: [],
-            } as unknown as NAttribute)
+          ? NAME_CONDITION_TARGET
           : listOf(scope).find((x) => x.id === id);
       const r = resolveCondition(
         'node',
         nodeTypeId,
         a,
         id,
-        c.operator as never,
+        c.operator,
         c.value,
       );
       if (typeof r === 'string') {
@@ -787,7 +788,7 @@ export const analyse = (
         entity = 'edge';
       }
       let id = '';
-      let a: NAttribute | undefined;
+      let a: ConditionTarget | undefined;
       if (!(c.operator === 'any_exist' || c.operator === 'none_exist')) {
         id = resolveAttr(
           c.attributeId,
@@ -808,11 +809,7 @@ export const analyse = (
         }
         a =
           id === 'name'
-            ? ({
-                kind: 'text',
-                options: [],
-                optionScores: [],
-              } as unknown as NAttribute)
+            ? NAME_CONDITION_TARGET
             : listOf(scope).find((x) => x.id === id);
       }
       const r = resolveCondition(entity, typeId, a, id, c.operator, c.value);
@@ -1149,7 +1146,7 @@ export const analyse = (
         s.nodeTypeId = t;
         if (!needsNamed(t)) continue;
         const scope = `node:${t}`;
-        checkFilter(s as never, t, path);
+        checkFilter(s, t, path);
         if (s.kind === 'alterForm') {
           s.attributeIds = [
             ...new Set(
@@ -1773,12 +1770,8 @@ export const analyse = (
   const unvalidated: (Writer & { key: string })[] = [];
   const binsKeys = new Set<string>();
   // the filters of the highlight questions asked so far, by attribute
-  type MapFilter = { match: string; conditions: FilterCondition[] };
-  type FilterCondition = {
-    attributeId: string;
-    operator: string;
-    value: string;
-  };
+  type MapFilter = DesignNodeFilter;
+  type FilterCondition = DesignNodeFilter['conditions'][number];
   const highlightFilters = new Map<string, MapFilter[]>();
   // Two map filters provably show different people only when each requires
   // a different single value of the same one-value attribute (group is
@@ -1810,7 +1803,7 @@ export const analyse = (
             typeId,
             attr,
             c.attributeId,
-            c.operator as never,
+            c.operator,
             c.value,
             true,
           );

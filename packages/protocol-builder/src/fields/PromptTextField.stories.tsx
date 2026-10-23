@@ -27,10 +27,11 @@ function DyadCensusGuidance() {
   return (
     <Alert variant="info" className="mb-6">
       <AlertDescription>
-        The participant sees two people side by side and answers yes or no, so
-        write the question about the pair in front of them — “these two people”
-        rather than a name — and phrase it so that yes and no are both sensible
-        answers.
+        The participant sees two nodes side by side and answers yes or no, so
+        write the question about that pair and phrase it so that yes and no are
+        both sensible answers. To show the two nodes’ labels in the question,
+        insert “First node: label” and “Second node: label” with the syringe
+        button in the toolbar.
       </AlertDescription>
     </Alert>
   );

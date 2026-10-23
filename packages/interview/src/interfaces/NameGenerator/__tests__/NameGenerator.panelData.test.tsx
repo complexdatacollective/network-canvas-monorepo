@@ -73,7 +73,6 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'NameGenerator'>['stage'] = {
   id: 'ng1',
   type: 'NameGenerator',
-  externalDataError: { en: 'External data could not be loaded.' },
   label: { en: 'Name Generator' },
   subject: { entity: 'node', type: NODE_TYPE },
   form: {

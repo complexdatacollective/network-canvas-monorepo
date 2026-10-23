@@ -59,7 +59,7 @@ function modulesNaming(identifier: string): string[] {
       ),
     )
     .map(relativeToServer)
-    .sort();
+    .toSorted();
 }
 
 /** Production modules with a string or template whose text names the table. */
@@ -79,7 +79,7 @@ function modulesWithSqlNaming(table: string): string[] {
       ),
     )
     .map(relativeToServer)
-    .sort();
+    .toSorted();
 }
 
 /** Every relative module `entry` reaches, by any import form. */

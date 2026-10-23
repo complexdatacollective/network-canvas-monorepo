@@ -195,6 +195,12 @@ Since a roster might have a large number of people to scan, you can also enable 
 
 Finally, you can permit participants to search through the roster items using a search box. Selecting name and keeping the accuracy low means that people can find others by typing characters close to the person's name if not exactly.
 
+<AppOnly app="current">
+
+In a protocol written in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)), the labels given to card details and sort options are translated like any other text, but the roster's values are not. A roster is a resource, and its contents are the same in every language. Where participants will read values from the roster, such as occupations or course titles, check that participants using each of the protocol's languages will understand them.
+
+</AppOnly>
+
 ### Prompting for a roster item
 
 Much like in other name generator interfaces, in order to select roster items the interface needs a prompt. This could be as simple as "Please select the people you know" however, we strongly encourage researchers to consider using common prompts or ones that relate carefully to a research question. You can use multiple prompts on the same interface.

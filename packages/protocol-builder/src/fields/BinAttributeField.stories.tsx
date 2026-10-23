@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { CATEGORICAL_BIN_MAX_BINS } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
@@ -78,8 +79,9 @@ function TheBins({ committed }: Readonly<{ committed: string | undefined }>) {
       emptyMessage="This type has no categorical attributes yet. Create one to say what the bins are."
       requiredMessage={REFUSAL}
       createLabel="Create a new attribute"
-      optionLimit={8}
-      optionLimitDescription="This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question."
+      optionLimit={CATEGORICAL_BIN_MAX_BINS}
+      optionLimitDescription={`This interface can show at most ${CATEGORICAL_BIN_MAX_BINS} bins in total. If the follow-up other option is turned on, its bin counts towards that total. Remove values or group them, and ask for the detail in a later question.`}
+      optionLimitEnforced
     />
   );
 }

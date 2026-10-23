@@ -8,6 +8,7 @@ import {
   MESSAGES_INTERFACE_TEXT,
   NAVIGATION_INTERFACE_TEXT,
   PASSPHRASE_INTERFACE_TEXT,
+  SEARCH_INTERFACE_TEXT,
   VALIDATION_INTERFACE_TEXT,
 } from './interface-text-wording.ts';
 import type { LocalizedString } from './localized-string.ts';
@@ -22,7 +23,6 @@ import { NAME_GENERATOR_SUPPLIED_TEXT } from './stage-wording/name-generator.ts'
 import { NARRATIVE_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/narrative-pedigree.ts';
 import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
 import { NETWORK_COMPOSER_SUPPLIED_TEXT } from './stage-wording/network-composer.ts';
-import { SOCIOGRAM_SUPPLIED_TEXT } from './stage-wording/sociogram.ts';
 import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
@@ -52,7 +52,6 @@ const SUPPLIED_STAGE_TEXT: Readonly<
   NarrativePedigree: NARRATIVE_PEDIGREE_SUPPLIED_TEXT,
   NetworkComposer: NETWORK_COMPOSER_SUPPLIED_TEXT,
   OrdinalBin: BIN_SUPPLIED_TEXT,
-  Sociogram: SOCIOGRAM_SUPPLIED_TEXT,
 };
 
 const settingsOf = (stageType: string): readonly SuppliedStageSetting[] =>
@@ -251,6 +250,7 @@ export const isSuppliedEnglishMessage = (message: string): boolean => {
         NAVIGATION_INTERFACE_TEXT,
         BUTTONS_INTERFACE_TEXT,
         MESSAGES_INTERFACE_TEXT,
+        SEARCH_INTERFACE_TEXT,
         PASSPHRASE_INTERFACE_TEXT,
         FORMS_INTERFACE_TEXT,
         VALIDATION_INTERFACE_TEXT,

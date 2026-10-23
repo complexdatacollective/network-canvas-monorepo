@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
 
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import pg from 'pg';
+import { Pool } from 'pg';
 
 import { createBetterAuthInstance } from '../src/auth/better-auth.ts';
 import { AUTH_TABLES } from '../src/db/auth-schema.ts';
@@ -23,7 +23,7 @@ export const auth = createBetterAuthInstance({
     socialProviders: {},
   },
   adapter: drizzleAdapter(
-    drizzle({ client: new pg.Pool({ connectionString: DEV_DATABASE_URL }) }),
+    drizzle({ client: new Pool({ connectionString: DEV_DATABASE_URL }) }),
     { provider: 'pg', schema: AUTH_TABLES },
   ),
   // Nothing is sent from here; the generator only reads the plugin set.

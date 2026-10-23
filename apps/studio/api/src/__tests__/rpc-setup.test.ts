@@ -52,7 +52,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     composed.request('/rpc', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/ndjson',
+        'Content-Type': 'application/x-ndjson',
         'sec-fetch-site': 'same-origin',
       },
       body: `${JSON.stringify({
@@ -68,7 +68,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     composed.request('/rpc', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/ndjson',
+        'Content-Type': 'application/x-ndjson',
         'sec-fetch-site': 'same-origin',
       },
       body: `${JSON.stringify({
@@ -254,7 +254,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     const forged = await composed.request('/rpc', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/ndjson',
+        'Content-Type': 'application/x-ndjson',
         'sec-fetch-site': 'cross-site',
       },
       body: `${JSON.stringify({

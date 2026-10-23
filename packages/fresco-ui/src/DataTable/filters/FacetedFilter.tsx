@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button from '../../Button';
+import { Button } from '../../Button';
 import { type ComboboxOption } from '../../form/fields/Combobox/shared';
 import InputField from '../../form/fields/InputField';
 import {

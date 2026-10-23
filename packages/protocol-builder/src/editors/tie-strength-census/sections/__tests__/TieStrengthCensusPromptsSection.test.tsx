@@ -182,7 +182,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     ).toHaveAccessibleDescription(
       // The field's required marker is read out first, so the hint is matched
       // as the end of the description rather than the whole of it.
-      /Refer clearly to the two people shown and phrase the prompt for a yes or no response\.\s*$/,
+      /Refer clearly to the two nodes shown, and phrase the prompt so that every point of the scale, and the decline response, is a sensible answer\. To show the two nodes’ labels in the prompt, insert “First node: label” and “Second node: label” with the syringe button in the toolbar\.\s*$/,
     );
   });
 

@@ -38,7 +38,7 @@ import FormStoreProvider from '../form/store/formStoreProvider';
 import SubmitButton from '../form/SubmitButton';
 import ProgressBar from '../ProgressBar';
 import { ResizableFlexPanel } from '../ResizableFlexPanel';
-import SplitButton from '../SplitButton';
+import { SplitButton } from '../SplitButton';
 
 /** True only for a string the pseudo-locale formatter produced. */
 const wentThroughTheFormatter = (value: string | null | undefined) =>

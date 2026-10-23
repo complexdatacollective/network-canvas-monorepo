@@ -217,7 +217,9 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
       ...missing,
       protocolId: '',
     });
-    expect(Object.keys(foreign).sort()).toEqual(Object.keys(missing).sort());
+    expect(Object.keys(foreign).toSorted()).toEqual(
+      Object.keys(missing).toSorted(),
+    );
   });
 
   it('answers a reachable protocol with nothing open to edit as not found', async () => {

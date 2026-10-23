@@ -13,7 +13,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Badge } from './Badge';
-import Button from './Button';
+import { Button } from './Button';
 import CloseButton from './CloseButton';
 import { surfaceVariants } from './layout/Surface';
 import { usePortalContainer } from './PortalContainer';

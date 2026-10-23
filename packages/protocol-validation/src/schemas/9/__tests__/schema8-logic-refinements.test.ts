@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
 
 /**
@@ -706,7 +706,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       },
       prompts: [{ id: 'p1', text: localized('Who?') }],
       panels,
-      externalDataError: localized('External data could not be loaded.'),
     });
 
     it('rejects an external-data panel filter with an edge rule, on the stage alone', () => {
@@ -734,7 +733,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       const result = stageSchema.safeParse({
         id: 'quickAdd1',
         type: 'NameGeneratorQuickAdd',
-        externalDataError: localized('External data could not be loaded.'),
         quickAddHint: localized('Press Enter when you are finished.'),
         label: localized('Generate'),
         subject: { entity: 'node', type: 'person' },

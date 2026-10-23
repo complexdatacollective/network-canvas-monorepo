@@ -37,13 +37,33 @@ const motionState = vi.hoisted(() => {
     progress: number;
     scroll: number;
     scrollY: { get: () => number };
-    scrollYProgress: { get: () => number };
+    scrollYProgress: {
+      get: () => number;
+      on: (event: string, callback: () => void) => () => void;
+    };
   } = {
     reduced: false,
     progress: 0,
     scroll: 0,
     scrollY: { get: () => state.scroll },
-    scrollYProgress: { get: () => state.progress },
+    // A subscription to the scroll progress, as Motion's `on('change')`. Each
+    // registered callback moves the progress the component reads and then
+    // notifies it, the way a scroll does.
+    scrollYProgress: {
+      get: () => state.progress,
+      on: (event, callback) => {
+        if (event !== 'change') return () => undefined;
+        const notify = (value: number) => {
+          state.progress = value;
+          callback();
+        };
+        motionValueEventCallbacks.push(notify);
+        return () => {
+          const index = motionValueEventCallbacks.indexOf(notify);
+          if (index !== -1) motionValueEventCallbacks.splice(index, 1);
+        };
+      },
+    },
   };
 
   return state;
@@ -120,13 +140,6 @@ vi.mock('motion/react', () => ({
     scrollYProgress: motionState.scrollYProgress,
   }),
   useMotionValue: (initial: number) => createMotionValue(initial),
-  useMotionValueEvent: (
-    _value: MockMotionValue,
-    event: string,
-    callback: (value: number) => void,
-  ) => {
-    if (event === 'change') motionValueEventCallbacks.push(callback);
-  },
   useTransform: (
     input: MockMotionValue,
     inputRangeOrTransformer: number[] | ((value: number) => number),

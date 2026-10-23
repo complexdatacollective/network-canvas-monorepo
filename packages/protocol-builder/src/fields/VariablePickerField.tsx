@@ -4,7 +4,7 @@ import { useCallback, useRef, useState, type FocusEvent } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableType } from '@codaco/protocol-validation';

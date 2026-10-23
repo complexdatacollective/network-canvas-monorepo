@@ -29,6 +29,14 @@ type ProtocolStage = {
   edges?: { form?: Fields }[];
 };
 
+// The stages come from compile(), which gives every one a type; the other
+// fields are optional and read defensively.
+const isProtocolStage = (s: unknown): s is ProtocolStage =>
+  typeof s === 'object' &&
+  s !== null &&
+  'type' in s &&
+  typeof s.type === 'string';
+
 export const DEFAULT_PEOPLE = 12;
 
 // What one stage asks, at the assumed network size: the review reads these
@@ -147,10 +155,14 @@ export const stageCosts = (
   people = DEFAULT_PEOPLE,
 ): StageCost[] => {
   const n = Math.max(1, Math.round(people));
-  return (protocol.stages as ProtocolStage[]).map((s) => ({
-    label: s.label?.[SKETCH_LOCALE] ?? s.type,
-    ...costOf(s, n),
-  }));
+  return protocol.stages.map((s, i) => {
+    if (!isProtocolStage(s))
+      throw new Error(`stages[${i}] is not a stage with a string type.`);
+    return {
+      label: s.label?.[SKETCH_LOCALE] ?? s.type,
+      ...costOf(s, n),
+    };
+  });
 };
 
 export const estimateBurden = (

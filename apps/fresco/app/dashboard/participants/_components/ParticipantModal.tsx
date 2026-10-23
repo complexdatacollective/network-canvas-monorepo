@@ -159,17 +159,12 @@ function ParticipantModal({
   const handleSubmit = async (data: unknown) => {
     setError(null);
 
-    const typedData = data as {
-      identifier: string;
-      label?: string | null;
-    };
-
     const result = editingParticipant
       ? await updateParticipant({
           existingIdentifier: editingParticipant.identifier,
           formData: data,
         })
-      : await createParticipant([typedData]);
+      : await createParticipant([data]);
 
     if (result.error) {
       setError(result.error);

@@ -12,12 +12,6 @@ import {
 
 import { interfaceMessages } from '../messages';
 
-/** The words of the auto-layout pause and resume toggle. */
-export type LayoutWords = Readonly<{
-  pauseLayout: string;
-  resumeLayout: string;
-}>;
-
 /** The words of the free-draw annotation controls. */
 export type DrawingWords = Readonly<{
   enableDrawing: string;
@@ -28,11 +22,12 @@ export type DrawingWords = Readonly<{
 }>;
 
 type BehavioursPanelProps = {
-  // The stage's words for the auto-layout toggle. Given only while the
-  // automatic layout is active (there are positioned nodes). Pausing freezes
-  // the layout so dragging a node repositions it manually instead of
-  // reheating the simulation.
-  layoutWords: LayoutWords | undefined;
+  // Whether to show the auto-layout toggle, which the protocol's interface
+  // text words (`buttons.pauseLayout`): only while the automatic layout is
+  // active (there are positioned nodes). Pausing freezes the layout so
+  // dragging a node repositions it manually instead of reheating the
+  // simulation.
+  showLayoutToggle: boolean;
   simulationEnabled: boolean;
   onToggleSimulation: () => void;
   // The stage's words for the free-draw controls, given only when the stage
@@ -49,7 +44,7 @@ type BehavioursPanelProps = {
 // controls: the automatic-layout pause/resume toggle and (when enabled) the
 // free-draw annotation tools.
 export default function BehavioursPanel({
-  layoutWords,
+  showLayoutToggle,
   simulationEnabled,
   onToggleSimulation,
   drawingWords,
@@ -60,7 +55,7 @@ export default function BehavioursPanel({
   onReset,
 }: BehavioursPanelProps) {
   const intl = useAppIntl();
-  if (layoutWords === undefined && drawingWords === undefined) return null;
+  if (!showLayoutToggle && drawingWords === undefined) return null;
 
   return (
     <SegmentedToolbar
@@ -68,24 +63,24 @@ export default function BehavioursPanel({
       size="lg"
       className="absolute bottom-10 left-10 z-10"
     >
-      {layoutWords !== undefined ? (
+      {showLayoutToggle ? (
         <ToolbarGroup
           key="layout"
           aria-label={intl.formatMessage(interfaceMessages.layoutControls)}
         >
           <ToolbarIconButton
-            aria-label={
+            aria-label={intl.formatMessage(
               simulationEnabled
-                ? layoutWords.pauseLayout
-                : layoutWords.resumeLayout
-            }
+                ? interfaceMessages.pauseLayout
+                : interfaceMessages.resumeLayout,
+            )}
             icon={simulationEnabled ? <Pause /> : <Play />}
             onClick={onToggleSimulation}
           />
         </ToolbarGroup>
       ) : null}
 
-      {layoutWords !== undefined && drawingWords !== undefined ? (
+      {showLayoutToggle && drawingWords !== undefined ? (
         <ToolbarSeparator key="drawing-separator" />
       ) : null}
 

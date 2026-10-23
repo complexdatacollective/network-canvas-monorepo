@@ -9,9 +9,14 @@ closed, if a row changed that nothing explains, if a job queued during the
 upgrade was lost or worked before the instance reopened, or if the rollback
 did not bring back the instance as it was.
 
-CI runs it as the `studio-upgrade` job, on every Studio release PR and on any
-change to what performs or describes an upgrade. The job runs `run.sh` and
-nothing else, so a run that passes here passes there.
+CI runs it as the `studio-upgrade` job, on `main` only, once merging the
+Studio release PR has authorised a release: exactly when `apps-release-studio`
+would publish. It never runs on a pull request. `apps-release-studio` waits
+for it, so a release whose upgrade fails publishes nothing until the failed
+run is re-run (or, once a first release is tagged, the next push to `main`)
+and passes. The job runs `run.sh` and nothing else, so a run that passes here
+passes there; run it locally before merging a change to what performs or
+describes an upgrade.
 
 ```bash
 apps/studio/release-test/run.sh                # build, then every run
@@ -39,14 +44,15 @@ tears it down afterwards.
 ### What run C needs from a release
 
 A Studio release is identified by a **git tag**, and by nothing else:
-`@codaco/studio-api@<x.y.z>`, on the commit the release was built from.
+`studio@<x.y.z>`, on the commit the release was built from.
 `previous-release.mjs` reads the repository's tags and takes the newest
-`x.y.z` (a prerelease does not count). The publisher (#1910) must therefore,
-for every Studio release:
+`x.y.z` (a prerelease does not count). The publisher, the `apps-release-studio`
+job in `.github/workflows/ci-and-release.yml`, does this for every Studio
+release:
 
-- push the tag `@codaco/studio-api@<x.y.z>`, where `<x.y.z>` is
-  `@codaco/studio-api`'s version;
-- publish `ghcr.io/complexdatacollective/studio-api:<x.y.z>` and
+- pushes the tag `studio@<x.y.z>`, where `<x.y.z>` is `@codaco/studio-api`'s
+  version;
+- publishes `ghcr.io/complexdatacollective/studio-api:<x.y.z>` and
   `ghcr.io/complexdatacollective/studio-web:<x.y.z>` — both images under the
   studio-api version, even when studio-web's own version differs.
 

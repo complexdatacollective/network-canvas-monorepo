@@ -4,7 +4,7 @@ import { dateWithinPickerRange } from '@codaco/shared-consts';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { findValidationContradictions } from '../variables/validation-contradictions.ts';
 import {
   EgoVariablesSchema,

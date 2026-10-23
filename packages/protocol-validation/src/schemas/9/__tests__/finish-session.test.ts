@@ -18,7 +18,7 @@ import {
   hasDefaultFinishSessionText,
 } from '../finish-session-defaults.ts';
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { finishSessionStage } from '../stages/finish-session.ts';
 import { findTimelineStructureProblems } from '../timeline-structure.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';

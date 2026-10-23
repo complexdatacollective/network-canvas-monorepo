@@ -186,7 +186,7 @@ type RichSelectGroupProps = CreateFormFieldProps<
   string | number | (string | number)[],
   'fieldset',
   {
-    options: (RichSelectOption | RichSelectSpacer)[];
+    options?: (RichSelectOption | RichSelectSpacer)[];
     multiple?: boolean;
     defaultValue?: string | number | (string | number)[];
     orientation?: 'horizontal' | 'vertical';

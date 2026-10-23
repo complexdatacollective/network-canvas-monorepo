@@ -1,7 +1,10 @@
 {
-  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/classic.json"
+  ],
   "rules": {
-    "react/exhaustive-deps": "warn",
     "no-process-env": "off"
   },
   "overrides": [

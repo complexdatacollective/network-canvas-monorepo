@@ -11,7 +11,7 @@ import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import type { ChoiceDialog } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';

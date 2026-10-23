@@ -165,9 +165,10 @@ describe('ConnectMenu', () => {
     );
   });
 
-  // Ruling 21: a choice that would record a second carrier is unavailable,
-  // with a reason naming who carried the child.
-  it('says who carried the child under each choice that would record a second carrier', async () => {
+  // Ruling 21: one person carries a pregnancy. A choice that carries
+  // replaces whoever was recorded as carrying the child (newest answer
+  // wins), saying so under it.
+  it('says whose record of carrying the child each choice that carries replaces', async () => {
     const family = readFamily(
       [
         person('ego', { isEgo: true }),
@@ -200,7 +201,7 @@ describe('ConnectMenu', () => {
     await userEvent.click(
       await screen.findByTestId('pedigree-connect-parent-amy'),
     );
-    // Each reason names the choice it disables.
+    // Each description names the choice it is under.
     for (const [id, label] of [
       ['biological-carrier', 'Genetic parent (carried the pregnancy)'],
       ['adoptive-carrier', 'Adoptive parent (carried the pregnancy)'],
@@ -209,9 +210,9 @@ describe('ConnectMenu', () => {
       ['surrogate', 'Surrogate'],
     ] as const) {
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
-      expect(item).toHaveAttribute('aria-disabled', 'true');
+      expect(item).not.toHaveAttribute('aria-disabled', 'true');
       expect(item).toHaveAccessibleDescription(
-        `“${label}” is unavailable because “Mum” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Mum” is connected to you.`,
+        `Choosing “${label}” means “Mum” will no longer be recorded as having carried you, as only one person carries a pregnancy.`,
       );
     }
     expect(
@@ -222,14 +223,15 @@ describe('ConnectMenu', () => {
     ).not.toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('shows the reason under every choice it makes unavailable', async () => {
+  it('shows the reason under every choice a surrogate makes unavailable', async () => {
+    // A surrogate carried the child by definition, so is never replaced.
     const family = readFamily(
       [
         person('ego', { isEgo: true }),
         person('huda', { name: 'Huda', sex: ['female'] }),
         person('zainab', { name: 'Zainab', sex: ['female'] }),
       ],
-      [link('huda', 'ego', 'biological', { carrier: true })],
+      [link('huda', 'ego', 'surrogate', { carrier: true })],
       config,
     );
     const anchor = document.createElement('button');
@@ -263,18 +265,21 @@ describe('ConnectMenu', () => {
     ] as const) {
       const reason = `“${label}” is unavailable because “Huda” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Huda” is connected to you.`;
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
+      expect(item).toHaveAttribute('aria-disabled', 'true');
       expect(item).toHaveTextContent(reason);
       expect(item).toHaveAccessibleDescription(reason);
     }
   });
 
-  it('offers the genetic kinds unavailable, saying why, once two genetic parents are recorded', async () => {
+  it('offers the genetic kinds unavailable, saying why, once two genetic parents are recorded and neither gives way', async () => {
+    // Doris's sex at birth is not known, so which of them she would take the
+    // place of is not either.
     const family = readFamily(
       [
         person('ego', { isEgo: true, sex: ['male'] }),
         person('debra', { name: 'Debra', sex: ['female'] }),
         person('steve', { name: 'Steve', sex: ['male'] }),
-        person('doris', { name: 'Doris', sex: ['female'] }),
+        person('doris', { name: 'Doris' }),
       ],
       [
         link('debra', 'ego', 'biological', { carrier: true }),
@@ -324,5 +329,74 @@ describe('ConnectMenu', () => {
     expect(
       screen.getByTestId('pedigree-connect-kind-adoptive'),
     ).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('asks how the biological parent a genetic kind takes the place of is related to the child', async () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('rachel', { name: 'Rachel', sex: ['female'] }),
+        person('tom', { name: 'Tom', sex: ['male'] }),
+        person('mark', { name: 'Mark', sex: ['male'] }),
+      ],
+      [
+        link('rachel', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+      ],
+      config,
+    );
+    const names: Record<string, string> = {
+      ego: 'You',
+      rachel: 'Rachel',
+      tom: 'Tom',
+      mark: 'Mark',
+    };
+    const onConnect = vi.fn();
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'mark', secondId: 'ego' }}
+            family={family}
+            displayName={(id) => names[id] ?? id}
+            parentKindLabels={PARENT_KIND_LABELS}
+            sexLabels={SEX_LABELS}
+            anchor={anchor}
+            onConnect={onConnect}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
+      </TestProtocolLocalization>,
+    );
+    await userEvent.click(
+      await screen.findByTestId('pedigree-connect-parent-mark'),
+    );
+    const biological = await screen.findByTestId(
+      'pedigree-connect-kind-biological',
+    );
+    expect(biological).not.toHaveAttribute('aria-disabled', 'true');
+    expect(biological).toHaveAccessibleDescription(
+      'Choosing “Genetic parent” means “Tom” will no longer be recorded as your biological parent. You will be asked how you would define “Tom”’s relationship to you instead.',
+    );
+    await userEvent.click(biological);
+    expect(onConnect).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(
+        'How would you define “Tom”’s relationship to you?',
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByTestId('pedigree-connect-replaced-social'),
+    );
+    expect(onConnect).toHaveBeenCalledWith({
+      kind: 'parent',
+      parentId: 'mark',
+      childId: 'ego',
+      parentKind: 'biological',
+      carriedPregnancy: false,
+      replaced: { parentId: 'tom', kind: 'social' },
+    });
   });
 });

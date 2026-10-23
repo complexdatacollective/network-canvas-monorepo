@@ -449,6 +449,12 @@ const WORDING_ARGUMENTS = {
     child: TEXT,
     standIn: TEXT,
   },
+  carrierReplaced: {
+    answer: TEXT,
+    who: { kind: 'select', cases: ['carrierIsYou', 'childIsYou'] },
+    carrier: TEXT,
+    child: TEXT,
+  },
   connectParent: {
     parentIsYou: SELECT_TRUE,
     parent: TEXT,
@@ -459,6 +465,12 @@ const WORDING_ARGUMENTS = {
   connectQuestion: TWO_PEOPLE_ARGUMENTS,
   disconnectConfirmTitle: TWO_PEOPLE_ARGUMENTS,
   disconnectWouldCutOff: { count: PLURAL, names: TEXT },
+  geneticParentReplaced: {
+    answer: TEXT,
+    who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
+    parent: TEXT,
+    child: TEXT,
+  },
   generatedLabelOf: {
     relation: {
       kind: 'select',
@@ -469,6 +481,7 @@ const WORDING_ARGUMENTS = {
     name: TEXT,
     owner: TEXT,
   },
+  identicalTwinSharesParents: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
   otherParentBiologicalLabel: { otherIsYou: SELECT_TRUE, other: TEXT },
   panelTitle: {
     relation: {
@@ -487,6 +500,7 @@ const WORDING_ARGUMENTS = {
     parentIsYou: SELECT_TRUE,
     personIsYou: SELECT_TRUE,
     parent: TEXT,
+    child: TEXT,
   },
   placeholderParentsNote: {
     shared: { kind: 'select', cases: ['eggParent', 'spermParent'] },
@@ -501,6 +515,20 @@ const WORDING_ARGUMENTS = {
     names: TEXT,
   },
   removeConfirmTitle: { name: TEXT },
+  sexChangeClearsCoParentSex: {
+    who: {
+      kind: 'select',
+      cases: ['personIsYou', 'childIsYou', 'coParentIsYou'],
+    },
+    coParent: TEXT,
+    children: TEXT,
+    sex: TEXT,
+  },
+  sexChangeEndsCarrying: {
+    who: { kind: 'select', cases: ['personIsYou', 'childIsYou'] },
+    children: TEXT,
+    sex: TEXT,
+  },
   sharedDonorsLabel: {
     ...PERSON_ARGUMENTS,
     hasSurrogate: SELECT_TRUE,
@@ -560,24 +588,6 @@ const WORDING_ARGUMENTS = {
     child: TEXT,
     first: TEXT,
     second: TEXT,
-  },
-  unavailableIdenticalTwin: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
-  unavailableIdenticalTwinNew: { ...PERSON_ARGUMENTS, answer: TEXT },
-  unavailableIdenticalTwinSex: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
-  unavailableIdenticalTwinSexNew: { ...PERSON_ARGUMENTS, answer: TEXT },
-  unavailableTwinCarrierNew: {
-    who: { kind: 'select', cases: ['childIsYou', 'carrierIsYou'] },
-    name: TEXT,
-    carrier: TEXT,
-  },
-  unavailableSameSexAsCoParent: {
-    who: {
-      kind: 'select',
-      cases: ['personIsYou', 'childIsYou', 'coParentIsYou'],
-    },
-    coParent: TEXT,
-    children: TEXT,
-    sex: TEXT,
   },
   unavailableSameSexGeneticParent: {
     ...UNAVAILABLE_ANSWERS_ARGUMENTS,
@@ -642,6 +652,7 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
     'carriedSiblingsPregnancyLabel',
   ),
   carrierLabel: plainWording(),
+  carrierReplaced: argumentWording('carrierReplaced'),
   carrierUnknown: plainWording(),
   changeWouldCutOff: argumentWording('changeWouldCutOff'),
   childKindAdoptive: plainWording(),
@@ -659,11 +670,12 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   disconnectHint: plainWording(),
   disconnectStandIn: argumentWording('disconnectStandIn'),
   disconnectWouldCutOff: argumentWording('disconnectWouldCutOff'),
-  dontKnow: plainWording(),
   framingChoiceDescription: plainWording().optional(),
   framingChoiceTitle: plainWording().optional(),
   genderIdentityLabel: plainWording().optional(),
   generatedLabelOf: argumentWording('generatedLabelOf'),
+  geneticParentReplaced: argumentWording('geneticParentReplaced'),
+  identicalTwinSharesParents: argumentWording('identicalTwinSharesParents'),
   otherParentBiologicalLabel: argumentWording('otherParentBiologicalLabel'),
   otherParentLabel: plainWording(),
   otherParentNone: plainWording(),
@@ -679,6 +691,8 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   removeConfirmDescription: argumentWording('removeConfirmDescription'),
   removeConfirmTitle: argumentWording('removeConfirmTitle'),
   sexAssignedAtBirthLabel: plainWording(),
+  sexChangeClearsCoParentSex: argumentWording('sexChangeClearsCoParentSex'),
+  sexChangeEndsCarrying: argumentWording('sexChangeEndsCarrying'),
   sharedDonorsLabel: argumentWording('sharedDonorsLabel'),
   sharedParentCountBoth: plainWording(),
   sharedParentCountLabel: argumentWording('sharedParentCountLabel'),
@@ -707,22 +721,12 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   unavailableGeneticParentsFull: argumentWording(
     'unavailableGeneticParentsFull',
   ),
-  unavailableIdenticalTwin: argumentWording('unavailableIdenticalTwin'),
-  unavailableIdenticalTwinNew: argumentWording('unavailableIdenticalTwinNew'),
-  unavailableIdenticalTwinSex: argumentWording('unavailableIdenticalTwinSex'),
-  unavailableIdenticalTwinSexNew: argumentWording(
-    'unavailableIdenticalTwinSexNew',
-  ),
-  unavailableTwinCarrierNew: argumentWording('unavailableTwinCarrierNew'),
-  unavailableSameSexAsCoParent: argumentWording('unavailableSameSexAsCoParent'),
   unavailableSameSexGeneticParent: argumentWording(
     'unavailableSameSexGeneticParent',
   ),
   zygosityFraternal: plainWording(),
   zygosityIdentical: plainWording(),
-  zygosityUnknown: plainWording(),
   you: plainWording(),
-  save: plainWording(),
   connectTool: plainWording(),
   disconnectTool: plainWording(),
   framingControlLabel: plainWording().optional(),

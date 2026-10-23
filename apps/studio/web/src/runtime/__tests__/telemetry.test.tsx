@@ -28,7 +28,7 @@ const fetchSpy = vi.fn<typeof globalThis.fetch>(async () =>
   Promise.resolve(
     new Response('', {
       status: 200,
-      headers: { 'content-type': 'application/ndjson' },
+      headers: { 'content-type': 'application/x-ndjson' },
     }),
   ),
 );

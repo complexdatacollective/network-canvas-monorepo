@@ -98,6 +98,34 @@ export type CaptureParameters = {
   advance?: number;
 };
 
+const field = (value: object, key: string): unknown => Reflect.get(value, key);
+
+const isRatio = (value: unknown): value is Ratio =>
+  ALL_RATIOS.some((ratio) => ratio === value);
+
+/** Checks the story's `parameters.capture` block, which arrives untyped from
+ * the live preview, against CaptureParameters. */
+const isCaptureParameters = (value: unknown): value is CaptureParameters => {
+  if (typeof value !== 'object' || value === null) return false;
+  const name = field(value, 'interface');
+  const delay = field(value, 'delay');
+  const ratios = field(value, 'ratios');
+  const env = field(value, 'env');
+  const skip = field(value, 'skip');
+  const advance = field(value, 'advance');
+  return (
+    typeof name === 'string' &&
+    name !== '' &&
+    (delay === undefined || typeof delay === 'number') &&
+    (ratios === undefined ||
+      (Array.isArray(ratios) && ratios.every((ratio) => isRatio(ratio)))) &&
+    (env === undefined ||
+      (Array.isArray(env) && env.every((item) => typeof item === 'string'))) &&
+    (skip === undefined || typeof skip === 'boolean') &&
+    (advance === undefined || typeof advance === 'number')
+  );
+};
+
 export type CaptureStoryEntry = {
   id: string;
   capture: CaptureParameters;
@@ -118,12 +146,18 @@ export const enumerateCaptureStories = async (
       waitUntil: 'domcontentloaded',
     });
     await page.waitForFunction(
-      () =>
-        (
-          window as unknown as {
-            __STORYBOOK_PREVIEW__?: { storyStore?: unknown };
-          }
-        ).__STORYBOOK_PREVIEW__?.storyStore != null,
+      () => {
+        const preview =
+          '__STORYBOOK_PREVIEW__' in window
+            ? window.__STORYBOOK_PREVIEW__
+            : undefined;
+        return (
+          typeof preview === 'object' &&
+          preview !== null &&
+          'storyStore' in preview &&
+          preview.storyStore != null
+        );
+      },
       undefined,
       { timeout: 60_000 },
     );
@@ -137,12 +171,10 @@ export const enumerateCaptureStories = async (
     const entries: CaptureStoryEntry[] = [];
     for (const story of Object.values(extracted)) {
       if (!story.tags?.includes('capture')) continue;
-      const capture = story.parameters?.capture as
-        | CaptureParameters
-        | undefined;
-      if (!capture?.interface) {
+      const capture = story.parameters?.capture;
+      if (!isCaptureParameters(capture)) {
         throw new Error(
-          `Story ${story.id} is tagged 'capture' but has no parameters.capture.interface`,
+          `Story ${story.id} is tagged 'capture' but has no valid parameters.capture (it needs an interface name; delay and advance must be numbers, ratios and env arrays, skip a boolean)`,
         );
       }
       entries.push({ id: story.id, capture });
@@ -199,13 +231,24 @@ export const captureStory = async (
 
     // Wait for the story's render lifecycle — including any play function
     // (e.g. FamilyPedigree replays its quick-start wizard) — to finish.
+    // Serialised into the page below, so it must not reference module scope.
     const renderPhase = () => {
-      const preview = (
-        window as unknown as {
-          __STORYBOOK_PREVIEW__?: { storyRenders?: Array<{ phase?: string }> };
-        }
-      ).__STORYBOOK_PREVIEW__;
-      return preview?.storyRenders?.[0]?.phase;
+      const preview =
+        '__STORYBOOK_PREVIEW__' in window
+          ? window.__STORYBOOK_PREVIEW__
+          : undefined;
+      if (
+        typeof preview !== 'object' ||
+        preview === null ||
+        !('storyRenders' in preview) ||
+        !Array.isArray(preview.storyRenders)
+      ) {
+        return undefined;
+      }
+      const render: unknown = preview.storyRenders[0];
+      return typeof render === 'object' && render !== null && 'phase' in render
+        ? render.phase
+        : undefined;
     };
     // Terminal phases: 'finished' (SB10; older versions used 'completed'),
     // 'errored', 'aborted'.
@@ -240,6 +283,14 @@ export const captureStory = async (
         window.dispatchEvent(new Event('resize'));
       });
     }
+
+    // An interface that focuses its first control on mount (e.g. a census
+    // answer) would otherwise be pictured with a keyboard focus ring, which a
+    // participant using a pointer or touch never sees.
+    await page.evaluate(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    });
 
     await page.waitForTimeout(delay);
 

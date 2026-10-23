@@ -10,7 +10,7 @@ import {
 // Imported from its own module for the reason given in
 // `collectEntityAttributeReferences.ts`: the schema module calls back into
 // this one, and `../schemas/index.ts` would read the schema before it exists.
-import ProtocolSchemaV9 from '../schemas/9/schema.ts';
+import { ProtocolSchemaV9 } from '../schemas/9/schema.ts';
 
 export type LocalizedStringHit = Readonly<{
   path: (string | number)[];

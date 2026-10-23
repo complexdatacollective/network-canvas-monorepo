@@ -7,7 +7,7 @@ import {
   TextOperators,
   TypeLevelOperators,
 } from '../filters/filter.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 
 const isPresence = (operator: FilterOperator) =>
   TypeLevelOperators.safeParse(operator).success;
@@ -136,7 +136,6 @@ describe('Schema 9 rules on encrypted attributes', () => {
           {
             ...nameGenerator,
             skipLogic: undefined,
-            externalDataError: localized('External data could not be loaded.'),
             panels: [
               {
                 id: 'panel-1',

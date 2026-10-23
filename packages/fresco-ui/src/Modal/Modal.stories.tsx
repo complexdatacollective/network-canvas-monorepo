@@ -5,7 +5,7 @@ import { expect, fn, screen, userEvent, within } from 'storybook/test';
 
 import Modal from '.';
 import { AnimationProvider } from '../AnimationProvider';
-import Button from '../Button';
+import { Button } from '../Button';
 import { awaitPassiveEffects } from '../storybook-support/awaitPassiveEffects';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';

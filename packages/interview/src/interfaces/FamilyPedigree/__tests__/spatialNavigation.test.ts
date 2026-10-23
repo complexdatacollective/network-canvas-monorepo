@@ -35,7 +35,7 @@ describe('nearestInDirection', () => {
 
   test('a tie goes to the one on the left, whatever order they come in', () => {
     expect(nearestInDirection(from('ego'), others('ego'), 'up')).toBe('mum');
-    const reversed = new Map([...others('ego')].reverse());
+    const reversed = new Map([...others('ego')].toReversed());
     expect(nearestInDirection(from('ego'), reversed, 'up')).toBe('mum');
   });
 
@@ -64,7 +64,7 @@ describe('nearestInDirection', () => {
 
     test('of two equally placed, the one on the left wins', () => {
       expect(nearestInDirection(grid.get('ana')!, grid, 'up')).toBe('flo');
-      const reversed = new Map([...grid].reverse());
+      const reversed = new Map([...grid].toReversed());
       expect(nearestInDirection(grid.get('ana')!, reversed, 'up')).toBe('flo');
     });
 

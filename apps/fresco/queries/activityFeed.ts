@@ -31,7 +31,7 @@ async function activityTypeGroups(
   const collator = new Intl.Collator(intl.locale);
   const ordered = types
     .map((type) => ({ ...type, label: formatActivityType(intl, type.type) }))
-    .sort(
+    .toSorted(
       (a, b) => collator.compare(a.label, b.label) * (sort === 'asc' ? 1 : -1),
     );
   const groups: { label: string; types: string[]; count: number }[] = [];
@@ -58,14 +58,12 @@ async function activityTypeGroups(
 }
 
 export async function fetchActivities(
-  rawSearchParams: unknown,
+  searchParams: SearchParams,
   locale: string,
 ) {
   'use cache';
   cacheLife('max');
   safeCacheTag('activityFeed');
-
-  const searchParams = rawSearchParams as SearchParams;
 
   const { page, perPage, sort, sortField, q, type } = searchParams;
 

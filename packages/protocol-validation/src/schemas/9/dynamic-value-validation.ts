@@ -18,8 +18,10 @@ import {
   type DynamicValues,
   type DynamicValueVariable,
   dynamicValueAbsentRolesAt,
+  dynamicValueParticipantRolesAt,
   dynamicValueRolesAt,
   dynamicValueStatus,
+  PARTICIPANT_CASE,
   parseDynamicValuePath,
 } from './dynamic-values.ts';
 
@@ -136,6 +138,7 @@ export const dynamicValueContextFor = ({
   return {
     roles: dynamicValueRolesAt(valueStage, site, form),
     absentRoles: dynamicValueAbsentRolesAt(valueStage, site),
+    participantRoles: dynamicValueParticipantRolesAt(valueStage, site, form),
     variablesFor: (role) => {
       if (role === 'ego') return variablesOf(codebook, { entity: 'ego' });
       // An edge's ends are nodes of any type.
@@ -175,6 +178,7 @@ export const stageDynamicValueContext = ({
   return {
     ...prompt,
     roles: new Set([...prompt.roles, ...formField.roles, ...edgeForm]),
+    participantRoles: formField.participantRoles,
   };
 };
 
@@ -209,6 +213,20 @@ const checkBindings = (
     if (!isRecord(cases)) return [];
     const parsed = parseDynamicValuePath(binding.path);
     const base: Path = ['stages', stageIndex, 'dynamicValues', name, 'cases'];
+    // Whether a node is the participant has one case, for the participant;
+    // everyone else reads `other`.
+    if (parsed?.kind === 'participant') {
+      return Object.entries(cases).flatMap(([key, value]) =>
+        key === PARTICIPANT_CASE && value === true
+          ? []
+          : [
+              {
+                path: [...base, key],
+                message: `Whether the node is the participant has one case, "${PARTICIPANT_CASE}", standing for true; everyone else takes the "other" version.`,
+              },
+            ],
+      );
+    }
     if (parsed?.kind !== 'attribute') {
       return [
         {

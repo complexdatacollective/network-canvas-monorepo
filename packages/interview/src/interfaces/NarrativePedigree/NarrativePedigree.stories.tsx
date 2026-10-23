@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import { buildComprehensivePedigree } from './comprehensivePedigreeFixture';

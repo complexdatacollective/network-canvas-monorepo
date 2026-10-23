@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { z } from 'zod/mini';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { PresignedUploadUrl } from '~/lib/storage/services/AssetStorage';
@@ -9,9 +10,21 @@ import {
   uploadToUploadThingWithRetry,
 } from '~/lib/uploadthing/uploadWithRetry';
 
-type PresignResponse =
-  | { provider: 's3'; urls: PresignedUploadUrl[] }
-  | { provider: 'uploadthing' };
+const presignResponseSchema = z.discriminatedUnion('provider', [
+  z.object({
+    provider: z.literal('s3'),
+    urls: z.array(
+      z.object({
+        uploadUrl: z.string(),
+        fileKey: z.string(),
+        publicUrl: z.string(),
+      }) satisfies z.ZodMiniType<PresignedUploadUrl>,
+    ),
+  }),
+  z.object({ provider: z.literal('uploadthing') }),
+]);
+
+type PresignResponse = z.infer<typeof presignResponseSchema>;
 
 async function fetchPresignResponse(
   files: { name: string; size: number }[],
@@ -23,13 +36,22 @@ async function fetchPresignResponse(
   });
 
   if (!response.ok) {
-    const error = (await response.json()) as { error?: string };
+    const failure = z
+      .object({ error: z.optional(z.string()) })
+      .safeParse(await response.json());
     throw new Error(createMessageError(messages.prepare), {
-      cause: error.error,
+      cause: failure.success ? failure.data.error : undefined,
     });
   }
 
-  return (await response.json()) as PresignResponse;
+  const presign = presignResponseSchema.safeParse(await response.json());
+  if (!presign.success) {
+    throw new Error(createMessageError(messages.prepare), {
+      cause: presign.error,
+    });
+  }
+
+  return presign.data;
 }
 
 async function uploadFileToUrl(

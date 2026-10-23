@@ -3,7 +3,7 @@
 // importing it registers the error-wrapping hooks that `init` reads. Session
 // replay, surveys and the rest stay out of the bundle entirely.
 import 'posthog-js/dist/exception-autocapture';
-import posthog from 'posthog-js/dist/module.no-external';
+import { posthog } from 'posthog-js/dist/module.no-external';
 
 import {
   buildAppSuperProperties,

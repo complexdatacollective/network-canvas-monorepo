@@ -541,7 +541,7 @@ describe('computeConnectors', () => {
     expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(0.75, 5);
   });
 
-  it('auxiliary connector meets the child’s own line up when donor is parent of only SOME siblings', () => {
+  it('auxiliary connector goes to each child when donor is parent of only SOME siblings', () => {
     // 2 parents (0,1) + 2 donors (2,3) + 2 children (4,5)
     // Donor2 has donor edge to child4 only, Donor3 has donor edge to child5 only
     const donorSomeLayout: PedigreeLayout = {
@@ -590,14 +590,13 @@ describe('computeConnectors', () => {
       donorSomeParents,
     );
     expect(connectors.auxiliaryLines.length).toBe(2);
-    // Each meets the line of descent where it first leads only to the one
-    // child they gave to (the donor line rule, Bennett et al. 2022, 1c):
-    // the top of that child's own line up, on the sibling bar (y =
-    // childLevel(1) - legh(0.25) = 0.75).
+    // A donor of part of a sibship draws a line to each child he gave to,
+    // ending at their centre, which their symbol hides (Josh, 22 Oct 2026):
+    // y = childLevel(1) + boxh / 2 = 1.25.
     connectors.auxiliaryLines.forEach((line, k) => {
       const end = endOf(line);
       expect(end.x).toBeCloseTo(k, 5);
-      expect(end.y).toBeCloseTo(0.75, 5);
+      expect(end.y).toBeCloseTo(1.25, 5);
     });
   });
 
@@ -644,10 +643,10 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
     // An only child: the donor's line and the line of descent converge on
-    // the top of the child (Bennett et al. 2022, 1f), at y = 1.
+    // the centre of the child, at y = 1.25 (Josh, 22 Oct 2026).
     const end = endOf(connectors.auxiliaryLines[0]!);
     expect(end.x).toBeCloseTo(0.5, 5);
-    expect(end.y).toBeCloseTo(1, 5);
+    expect(end.y).toBeCloseTo(1.25, 5);
   });
 
   // mom(0) and biodad(2), birth parents never recorded as partners, seated
@@ -1505,5 +1504,62 @@ describe('co-parents with no recorded partnership', () => {
         ['bob', 'c1'],
       ]),
     );
+  });
+});
+
+describe('a parent two rows above their children', () => {
+  const scaling: ScalingParams = {
+    boxWidth: 0.5,
+    boxHeight: 0.5,
+    legHeight: 0.25,
+    hScale: 1,
+    vScale: 1,
+  };
+
+  it('joins the one sibling bar shared by their biological and adopted children', () => {
+    // Xavier sits on the row between Ann and her children, so no line of
+    // descent comes down from Ann: her line joins the children's bar.
+    const layout: PedigreeLayout = {
+      n: [1, 1, 3],
+      nid: [[0], [1], [2, 3, 4]],
+      pos: [[1], [3], [0, 1, 2]],
+      fam: [[0], [0], [0, 0, 0]],
+      group: [[0], [0], [0, 0, 0]],
+      twins: null,
+      groupMember: [[false], [false], [false, false, false]],
+    };
+    const parents: ParentConnection[][] = [
+      [],
+      [],
+      [{ parentIndex: 0, edgeType: 'biological' }],
+      [{ parentIndex: 0, edgeType: 'biological' }],
+      [{ parentIndex: 0, edgeType: 'adoptive' }],
+    ];
+    const connectors = computeConnectors(
+      layout,
+      scaling,
+      parents,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ['ann', 'x', 'c1', 'c2', 'adopted'],
+    );
+    const barred = connectors.parentChildLines.filter(
+      (line) => line.siblingBar,
+    );
+    expect(barred).toHaveLength(1);
+    expect(barred[0]!.edgeType).toBe('biological');
+    const adopted = connectors.parentChildLines.find((line) =>
+      line.uplines.some((upline) => upline.childId === 'adopted'),
+    );
+    expect(adopted?.edgeType).toBe('adoptive');
+    const fromAnn = connectors.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[0] === 'ann',
+    );
+    expect(fromAnn).toHaveLength(1);
+    expect(fromAnn[0]!.edgeType).toBe('biological');
+    // It ends on the bar, not on any one child.
+    expect(fromAnn[0]!.endpointIds?.[1]).toBeUndefined();
   });
 });

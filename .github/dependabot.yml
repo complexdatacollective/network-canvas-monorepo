@@ -4,11 +4,31 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
+
+# Every version update — npm and GitHub Actions, patch through major — arrives
+# as one weekly pull request. One PR also keeps lock-step families together
+# (@playwright/test + playwright, storybook + @storybook/*, vitest + @vitest/*,
+# react + react-dom, next + @next/*, @tiptap/*, the Tailwind v4 core), which
+# break the build when one member moves without its siblings.
+#
+# Dependabot drops from the PR any dependency it cannot update and still opens
+# the rest, so check the PR's list against the families above. A family can
+# also arrive split when its packages were published hours apart and the run
+# falls inside the cooldown of only some of them (storybook 10.6.3, Oct 2026:
+# @storybook/addon-docs shipped 80 minutes after the rest).
+#
+# Security (CVE) updates are not version updates: they still open one PR per
+# advisory, immediately.
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: 'weekly'
+
 updates:
   - package-ecosystem: 'npm'
     directory: '/'
-    schedule:
-      interval: 'weekly'
+    patterns: ['*']
+    multi-ecosystem-group: 'dependencies'
     # Align Dependabot with pnpm's minimumReleaseAge gate (24h — see
     # pnpm-workspace.yaml): hold routine version-update PRs until the release is
     # at least a day old, by which point the pnpm age gate also accepts it, so
@@ -32,66 +52,17 @@ updates:
     exclude-paths:
       - 'apps/architect-classic/**'
       - 'apps/interviewer-classic/**'
-    # Group dependency families their publishers release in lock-step at
-    # identical versions. Dependabot updates each catalog entry independently, so
-    # a partial bump (one moved, its siblings left behind) skews the versions and
-    # breaks the build — grouping keeps each family in a single, consistent PR.
-    groups:
-      # @playwright/test + playwright must resolve to the same version or
-      # interview-e2e crashes with "two different versions of @playwright/test".
-      # (The e2e Docker image tag is derived from the resolved version — see
-      # packages/interview/e2e/scripts/run.sh.)
-      playwright:
-        patterns:
-          - '@playwright/test'
-          - 'playwright'
-      # Storybook errors at boot unless every @storybook/* package and the
-      # storybook CLI are the exact same version.
-      storybook:
-        patterns:
-          - '@storybook/*'
-          - 'storybook'
-      # @vitest/* release in lock-step with vitest; a skew installs duplicate
-      # peer variants and triggers TS2769 "two different types" errors.
-      vitest:
-        patterns:
-          - 'vitest'
-          - '@vitest/*'
-      # react-dom must match react exactly; keep the @types packages on the same
-      # React version line.
-      react:
-        patterns:
-          - 'react'
-          - 'react-dom'
-          - '@types/react'
-          - '@types/react-dom'
-      # @next/* ship in lock-step with next.
-      next:
-        patterns:
-          - 'next'
-          - '@next/*'
-      # Tiptap packages release in lock-step and require exact peer versions.
-      tiptap:
-        patterns:
-          - '@tiptap/*'
-      # Tailwind v4 core packages release together. NOT the independently-
-      # versioned plugins (@tailwindcss/typography, @tailwindcss/container-queries).
-      tailwindcss:
-        patterns:
-          - 'tailwindcss'
-          - '@tailwindcss/cli'
-          - '@tailwindcss/postcss'
-          - '@tailwindcss/vite'
+    # @types/node follows the Node runtime (.nvmrc), not the newest types: a
+    # major ahead describes APIs the runtime does not have. Move it with Node.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: 'github-actions'
     directory: '/'
-    schedule:
-      interval: 'weekly'
+    patterns: ['*']
+    multi-ecosystem-group: 'dependencies'
     # Same 1-day cooldown posture for action updates — don't adopt a brand-new
     # action release the day it ships.
     cooldown:
       default-days: 1
-    groups:
-      actions:
-        patterns:
-          - '*'

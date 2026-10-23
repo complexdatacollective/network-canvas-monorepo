@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import Button from '../Button';
+import { Button } from '../Button';
 import RouteFocus, { routeFocusTargetProps } from './RouteFocus';
 
 const TIMELINE = '/protocol/timeline';

@@ -742,11 +742,9 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
       const friendshipType = synth.addEdgeType({ name: 'Friendship' });
       const stage = synth.addStage('Sociogram', {
         behaviours: { automaticLayout: true },
-        wording: {
-          'tooltips.pauseLayout': PAUSE_LAYOUT,
-          'tooltips.resumeLayout': RESUME_LAYOUT,
-        },
       });
+      synth.setInterfaceText('buttons', 'pauseLayout', PAUSE_LAYOUT);
+      synth.setInterfaceText('buttons', 'resumeLayout', RESUME_LAYOUT);
       // Named nodes with null layout — the simulation grids them from scratch.
       ['Ash', 'Bea', 'Cy', 'Dee'].forEach((name, i) => {
         synth.addManualNode(stage.id, personType.id, `person-${i}`, {

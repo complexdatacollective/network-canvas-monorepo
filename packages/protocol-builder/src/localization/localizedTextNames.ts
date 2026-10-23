@@ -19,7 +19,6 @@ import { narrativePresetMessages } from '../editors/narrative/sections/presets/n
 import { narrativeWordingMessages } from '../editors/narrative/sections/wording/narrativeWordingMessages.ts';
 import { composerMessages } from '../editors/network-composer/sections/composerMessages.ts';
 import { sociogramPromptMessages } from '../editors/sociogram/sections/prompts/sociogramPromptMessages.ts';
-import { sociogramWordingMessages } from '../editors/sociogram/sections/wording/sociogramWordingMessages.ts';
 import { tieStrengthPromptMessages } from '../editors/tie-strength-census/sections/TieStrengthCensusPromptsSection.tsx';
 import { geospatialMessages } from '../fields/geospatial/geospatialMessages.ts';
 import { stageNameMessages } from '../naming/stageNameInternals.ts';
@@ -69,14 +68,14 @@ const messages = defineMessages({
   interfaceTextGroup: {
     id: 'protocolBuilder.localizedTextNames.interfaceTextGroup',
     defaultMessage:
-      '{group, select, navigation {Interview navigation} buttons {Buttons} messages {Messages} passphrase {Passphrase} forms {Forms} validation {Validation messages} other {{group}}}',
+      '{group, select, navigation {Interview navigation} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} other {{group}}}',
     description:
-      'Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, the labels of its buttons, its error messages, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules.',
+      'Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, the labels of its buttons, its error messages, those of a search box, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules.',
   },
   interfaceTextName: {
     id: 'protocolBuilder.localizedTextNames.interfaceTextName',
     defaultMessage:
-      '{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} error {Error message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} other {{key}}}',
+      '{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} other {{key}}}',
     description:
       'Names one of the words the interview itself shows, where it is listed for translation: a button, a field label or a message, by what it is for. key says which.',
   },
@@ -334,10 +333,6 @@ const NAME_GENERATOR_LIMIT_RULES: readonly Rule[] = [
     1,
     words(nameGeneratorWordingMessages.maxNoticeLabel),
   ]),
-  rule('externalDataError', NAME_GENERATOR_WORDING, [
-    1,
-    words(nameGeneratorWordingMessages.externalErrorLabel),
-  ]),
 ];
 
 const NARRATIVE_PRESETS: Step = [
@@ -554,29 +549,6 @@ const NARRATIVE_WORDING = [
     narrativeWordingMessages.wordingTitle,
     narrativeWordingMessages.resetAnnotationsTooltipLabel,
   ),
-  settingRule(
-    'tooltips.pauseLayout',
-    narrativeWordingMessages.wordingTitle,
-    narrativeWordingMessages.pauseLayoutTooltipLabel,
-  ),
-  settingRule(
-    'tooltips.resumeLayout',
-    narrativeWordingMessages.wordingTitle,
-    narrativeWordingMessages.resumeLayoutTooltipLabel,
-  ),
-];
-
-const SOCIOGRAM_WORDING = [
-  settingRule(
-    'tooltips.pauseLayout',
-    sociogramWordingMessages.wordingTitle,
-    sociogramWordingMessages.pauseLayoutTooltipLabel,
-  ),
-  settingRule(
-    'tooltips.resumeLayout',
-    sociogramWordingMessages.wordingTitle,
-    sociogramWordingMessages.resumeLayoutTooltipLabel,
-  ),
 ];
 
 const NARRATIVE_PEDIGREE_WORDING = [
@@ -788,14 +760,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     rule('wording.you', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
       2,
       words(familyPedigreeMessages.wordingYou),
-    ]),
-    rule('wording.save', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
-      2,
-      words(familyPedigreeMessages.wordingSave),
-    ]),
-    rule('wording.dontKnow', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
-      2,
-      words(familyPedigreeMessages.wordingDontKnow),
     ]),
     rule(
       'wording.connectQuestion',
@@ -1039,24 +1003,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingSiblingTwinUnknown)],
     ),
     rule(
-      'wording.unavailableIdenticalTwinNew',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinNew)],
-    ),
-    rule(
-      'wording.unavailableIdenticalTwinSexNew',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinSexNew)],
-    ),
-    rule(
-      'wording.unavailableTwinCarrierNew',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableTwinCarrierNew)],
-    ),
-    rule(
       'wording.carriedSiblingsPregnancyLabel',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
@@ -1142,27 +1088,23 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       PEDIGREE_WORDING_ADDING,
       [2, words(familyPedigreeMessages.wordingZygosityFraternal)],
     ),
-    rule('wording.zygosityUnknown', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
-      2,
-      words(familyPedigreeMessages.wordingZygosityUnknown),
-    ]),
     rule(
-      'wording.unavailableIdenticalTwin',
+      'wording.identicalTwinSharesParents',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwin)],
-    ),
-    rule(
-      'wording.unavailableIdenticalTwinSex',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinSex)],
+      [2, words(familyPedigreeMessages.wordingIdenticalTwinSharesParents)],
     ),
     rule(
       'wording.unavailableSameSexGeneticParent',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
       [2, words(familyPedigreeMessages.wordingUnavailableSameSexGeneticParent)],
+    ),
+    rule(
+      'wording.geneticParentReplaced',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingGeneticParentReplaced)],
     ),
     rule(
       'wording.unavailableGeneticParentsFull',
@@ -1182,6 +1124,10 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       PEDIGREE_WORDING_ADDING,
       [2, words(familyPedigreeMessages.wordingUnavailableCarrierRecorded)],
     ),
+    rule('wording.carrierReplaced', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingCarrierReplaced),
+    ]),
     rule(
       'wording.unavailableCannotCarry',
       PEDIGREE_WORDING,
@@ -1195,10 +1141,16 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingUnavailableCarried)],
     ),
     rule(
-      'wording.unavailableSameSexAsCoParent',
+      'wording.sexChangeEndsCarrying',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableSameSexAsCoParent)],
+      [2, words(familyPedigreeMessages.wordingSexChangeEndsCarrying)],
+    ),
+    rule(
+      'wording.sexChangeClearsCoParentSex',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSexChangeClearsCoParentSex)],
     ),
   ],
   Geospatial: [
@@ -1214,14 +1166,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     rule('outsideAreasLabel', GEOSPATIAL_WORDING, [
       1,
       words(geospatialWordingMessages.outsideAreasLabel),
-    ]),
-    rule('searchLabel', GEOSPATIAL_WORDING, [
-      1,
-      words(geospatialWordingMessages.searchLabelLabel),
-    ]),
-    rule('searchNoMatch', GEOSPATIAL_WORDING, [
-      1,
-      words(geospatialWordingMessages.searchNoMatchLabel),
     ]),
     rule('searchFailed', GEOSPATIAL_WORDING, [
       1,
@@ -1283,14 +1227,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     rule('allAddedNotice', NAME_GENERATOR_WORDING, [
       1,
       words(nameGeneratorWordingMessages.allAddedLabel),
-    ]),
-    rule('searchLabel', NAME_GENERATOR_WORDING, [
-      1,
-      words(nameGeneratorWordingMessages.searchLabelLabel),
-    ]),
-    rule('searchNoMatch', NAME_GENERATOR_WORDING, [
-      1,
-      words(nameGeneratorWordingMessages.searchNoMatchLabel),
     ]),
     rule(
       'cardOptions.additionalProperties.#.label',
@@ -1358,10 +1294,7 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   ],
   OneToManyDyadCensus: [CENSUS_PROMPT],
   OrdinalBin: [CENSUS_PROMPT, UNPLACED_NODES_NOTICE],
-  Sociogram: [
-    promptText(sociogramPromptMessages.promptTextLabel),
-    ...SOCIOGRAM_WORDING,
-  ],
+  Sociogram: [promptText(sociogramPromptMessages.promptTextLabel)],
   TieStrengthCensus: [
     CENSUS_PROMPT,
     rule('prompts.#.negativeLabel', PROMPTS, PROMPT, [

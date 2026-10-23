@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField, {

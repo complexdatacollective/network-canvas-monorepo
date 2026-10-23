@@ -17,6 +17,7 @@ import {
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNetwork,
   restoreNode,
 } from '../modules/session';
 import { encryptionUnlocked, passphraseRejected } from '../modules/ui';
@@ -101,6 +102,44 @@ export function createAnalyticsListenerMiddleware({
           action.payload.type,
         ),
       });
+    },
+  });
+
+  // Undo and redo put a captured family back as it was: each person and
+  // relationship it brings back is reported as added again, and each it takes
+  // away as removed, as the change it reverses or repeats was reported.
+  startAppListening({
+    actionCreator: restoreNetwork,
+    effect: (_action, listenerApi) => {
+      const before = listenerApi.getOriginalState().session.network;
+      const after = listenerApi.getState().session.network;
+      const { codebook } = listenerApi.getState().protocol;
+      const idsOf = (entities: readonly { _uid: string }[]) =>
+        new Set(entities.map((entity) => entity[entityPrimaryKeyProperty]));
+      const nodesBefore = idsOf(before?.nodes ?? []);
+      const nodesAfter = idsOf(after?.nodes ?? []);
+      const edgesBefore = idsOf(before?.edges ?? []);
+      const edgesAfter = idsOf(after?.edges ?? []);
+      for (const node of after?.nodes ?? []) {
+        if (nodesBefore.has(node[entityPrimaryKeyProperty])) continue;
+        tracker.track('node_added', {
+          node_id: node[entityPrimaryKeyProperty],
+          node_type_index: codebookTypeIndex(codebook, 'node', node.type),
+        });
+      }
+      for (const id of nodesBefore) {
+        if (!nodesAfter.has(id)) tracker.track('node_removed', { node_id: id });
+      }
+      for (const edge of after?.edges ?? []) {
+        if (edgesBefore.has(edge[entityPrimaryKeyProperty])) continue;
+        tracker.track('edge_created', {
+          edge_id: edge[entityPrimaryKeyProperty],
+          edge_type_index: codebookTypeIndex(codebook, 'edge', edge.type),
+        });
+      }
+      for (const id of edgesBefore) {
+        if (!edgesAfter.has(id)) tracker.track('edge_removed', { edge_id: id });
+      }
     },
   });
 

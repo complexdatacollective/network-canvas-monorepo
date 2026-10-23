@@ -3,7 +3,7 @@ import { TriangleAlert } from 'lucide-react';
 import { expect, screen, userEvent } from 'storybook/test';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { formatExportWarnings } from '@codaco/network-exporters/messages';
 import type { ExportWarning } from '@codaco/network-exporters/output';

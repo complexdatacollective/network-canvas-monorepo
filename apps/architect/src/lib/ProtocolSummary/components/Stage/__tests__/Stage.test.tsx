@@ -210,7 +210,7 @@ describe('Protocol Summary edge labels participants see', () => {
 });
 
 describe('Protocol Summary stage wording that the interview fills in', () => {
-  it('prints a notice’s versions by the arguments its setting declares, not as values the stage binds', () => {
+  it('prints a notice’s versions as the pill of the argument its setting declares, not as a value the stage binds', () => {
     render(
       <SummaryContext.Provider
         value={{ protocol, protocolName: protocol.name, index: [] }}
@@ -230,8 +230,10 @@ describe('Protocol Summary stage wording that the interview fills in', () => {
     );
 
     const row = screen.getByRole('row', { name: /Minimum not reached/ });
-    // The declaration names the number; a stage binding would print `count`.
-    expect(within(row).getByText('When “Number” is 1')).toBeInTheDocument();
+    // The wording that fits the number folds to the number's pill, which the
+    // declaration names; a stage binding would print `count`.
+    const pill = row.querySelector('[data-token="count"]');
+    expect(pill).toHaveTextContent('Number');
     expect(within(row).queryByText('count')).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 import { describe, expect, it } from 'vitest';
 
 import { createInitialNetwork } from '@codaco/interview/contract';

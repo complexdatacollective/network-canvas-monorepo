@@ -34,6 +34,11 @@ export type DynamicValueSources = Readonly<{
     Partial<Record<DynamicValueRole, Readonly<Record<string, unknown>>>>
   >;
   labels: Readonly<Partial<Record<DynamicValueRole, string>>>;
+  /**
+   * Whether each node on screen that may be the participant is (see
+   * `node.$isParticipant`); a role without an entry reads as missing.
+   */
+  participants?: Readonly<Partial<Record<DynamicValueRole, boolean>>>;
   variablesFor: (
     role: DynamicValueRole,
   ) => Readonly<Record<string, Variable>> | undefined;
@@ -90,6 +95,16 @@ const resolveDynamicValue = (
     return label === undefined
       ? { missing: true }
       : { missing: false, value: label };
+  }
+  if (parsed.kind === 'participant') {
+    const isParticipant = sources.participants?.[parsed.role];
+    if (isParticipant === undefined) return { missing: true };
+    const matched = caseOf(binding, isParticipant);
+    return {
+      missing: false,
+      value: isParticipant,
+      ...(matched !== undefined && { case: matched }),
+    };
   }
   // Attribute ids come from the protocol and may name a member every object
   // inherits (`constructor`, `__proto__`), so only an own value counts.

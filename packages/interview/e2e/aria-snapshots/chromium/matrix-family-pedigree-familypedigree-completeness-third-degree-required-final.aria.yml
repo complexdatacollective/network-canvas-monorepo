@@ -19,9 +19,9 @@
       - button "Connect"
       - button "Disconnect"
     - separator
-    - button "Zoom out"
-    - button "Zoom in"
-    - button "Show the whole family"
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
     - separator
     - button /Family tree \d+% complete\. Show what’s still needed\./ [expanded]
     - dialog:
@@ -36,6 +36,10 @@
           - listitem:
             - button "Add biological children for “May”, or say they have none"
             - button "“May” has no biological children"
+  - toolbar "View controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

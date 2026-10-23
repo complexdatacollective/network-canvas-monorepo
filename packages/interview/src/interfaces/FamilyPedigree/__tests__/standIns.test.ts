@@ -15,7 +15,7 @@ import {
   planAddRelative,
   planStandIns,
   readFamily,
-  sexesRuledOut,
+  sexConflicts,
 } from '../model';
 import { config, link, person } from './fixtures';
 
@@ -637,7 +637,7 @@ describe('the stand-in rule', () => {
       ],
       [link('mum', 'ego', 'biological'), link('standIn', 'ego', 'biological')],
     );
-    expect(sexesRuledOut(f, 'mum')).toEqual([]);
+    expect(sexConflicts(f, 'mum', 'male')).toEqual([]);
   });
 
   test('connecting a genetic parent in a stand-in’s place is possible', () => {
@@ -791,7 +791,12 @@ describe('an adopted person with one adoptive parent', () => {
     });
     expect(result.people.map((planned) => planned.id)).toEqual(['added']);
     expect(result.links).toEqual([
-      { source: 'amy', target: 'added', kind: 'adoptive' },
+      {
+        source: 'amy',
+        target: 'added',
+        kind: 'adoptive',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 });

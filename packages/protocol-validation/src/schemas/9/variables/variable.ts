@@ -602,8 +602,8 @@ export type VariablePropertyKey = AllKeys<Variable>;
 type AllValues<T> = T extends unknown ? T[keyof T] : never;
 export type VariablePropertyValue = AllValues<Variable>;
 
-const checkDuplicateVariableNames = <T extends Record<string, Variable>>(
-  variables: T,
+const checkDuplicateVariableNames = (
+  variables: Record<string, Variable>,
   ctx: z.RefinementCtx,
 ) => {
   const variableNames = getVariableNames(variables);

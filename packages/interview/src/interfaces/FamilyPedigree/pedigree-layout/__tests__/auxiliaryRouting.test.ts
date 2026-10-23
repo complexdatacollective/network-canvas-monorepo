@@ -236,8 +236,8 @@ describe('every recorded tie is drawn as a line', () => {
 describe('where auxiliary lines meet a symbol', () => {
   const W = DIMENSIONS.nodeWidth;
 
-  it('brings the lines into one child to a single point on its top, each from the side of its parent', () => {
-    const { connectors, centre, boxOf } = draw(
+  it('brings the lines into one child to its centre, each from the side of its parent', () => {
+    const { connectors, centre } = draw(
       ['ego', 'beth', 'jo', 'tom'],
       [
         parent('beth', 'biological', 'ego', true),
@@ -247,9 +247,9 @@ describe('where auxiliary lines meet a symbol', () => {
       ],
       { ego: 'square', beth: 'circle', jo: 'circle', tom: 'square' },
     );
-    const top = { x: centre('ego').x, y: boxOf('ego').top };
-    // The direction each line arrives from, as an angle off straight down,
-    // negative from the left.
+    // Lines aim centre to centre (Josh, 22 Oct 2026). The direction each
+    // arrives from, as an angle off straight down, negative from the left.
+    const top = centre('ego');
     const arrivals = ['jo', 'tom'].map((from) => {
       const line = connectors.auxiliaryLines.find(
         (l) => l.endpointIds?.[0] === from,
@@ -271,8 +271,8 @@ describe('where auxiliary lines meet a symbol', () => {
     expect(arrivals[0]!.angle).not.toBeCloseTo(arrivals[1]!.angle, 1);
   });
 
-  it('ends a line into a square on the flat part of its top edge', () => {
-    const { connectors, centre, boxOf } = draw(
+  it('aims a line into a child at the centre of their symbol, which hides its end', () => {
+    const { connectors, centre } = draw(
       ['ego', 'mary', 'don'],
       [
         parent('mary', 'biological', 'ego', true),
@@ -283,11 +283,12 @@ describe('where auxiliary lines meet a symbol', () => {
     const line = connectors.auxiliaryLines.find(
       (l) => l.endpointIds?.[0] === 'don',
     )!;
-    const box = boxOf('ego');
-    const entry = edgeCrossing(line.points, box, true);
-    // The square's corners are rounded by a quarter of its width.
-    expect(entry.y).toBeCloseTo(box.top, 0);
-    expect(Math.abs(entry.x - centre('ego').x)).toBeLessThanOrEqual(0.25 * W);
+    const near = (p: P | undefined, q: P) => {
+      expect(p!.x).toBeCloseTo(q.x, 6);
+      expect(p!.y).toBeCloseTo(q.y, 6);
+    };
+    near(line.points[0], centre('don'));
+    near(line.points.at(-1), centre('ego'));
   });
 
   it('leaves a parent at a point clear of their partnership line', () => {
@@ -516,7 +517,7 @@ describe('auxiliary lines keep clear of every other line', () => {
     const lines = connectors.auxiliaryLines.filter(
       (line) => line.edgeType === 'biological',
     );
-    expect(lines.map((line) => [...(line.ownerIds ?? [])].sort())).toEqual([
+    expect(lines.map((line) => (line.ownerIds ?? []).toSorted())).toEqual([
       ['chloe', 'tyler'],
     ]);
   });
@@ -701,63 +702,12 @@ describe('auxiliary lines keep clear of every other line', () => {
     });
     expect(faults).toEqual([]);
   });
-
-  it('marks every crossing an auxiliary line makes with a hop', () => {
-    for (const [people, { connectors, boxOf }] of [
-      [
-        ['ego', 'chloe', 'tyler', 'helen', 'mark', 'sam', 'amber'],
-        adoptedBirthParents(),
-      ],
-      [
-        ['ego', 'carmen', 'egoFather', 'rosa', 'luis', 'diego'],
-        adoptedByGrandparents(),
-      ],
-      [
-        ['ego', 'beth', 'jo', 'tom'],
-        draw(
-          ['ego', 'beth', 'jo', 'tom'],
-          [
-            parent('beth', 'biological', 'ego', true),
-            parent('jo', 'social', 'ego'),
-            partners('beth', 'jo'),
-            parent('tom', 'donor', 'ego'),
-          ],
-          { ego: 'square' },
-        ),
-      ],
-    ] as const) {
-      const boxes = people.map(boxOf);
-      const segments = drawnSegments(connectors);
-      const missing: string[] = [];
-      segments.forEach((a, i) => {
-        segments.forEach((b, j) => {
-          if (j <= i || a.line === b.line) return;
-          if (!a.line.startsWith('aux') && !b.line.startsWith('aux')) return;
-          const at = crossingPoint(a.segment, b.segment);
-          // A crossing under a symbol is not seen.
-          if (!at || boxes.some((box) => inside(at, box))) return;
-          const hopsOn = [a.line, b.line]
-            .filter((line) => line.startsWith('aux'))
-            .flatMap(
-              (line) =>
-                connectors.auxiliaryLines[Number(line.slice(4))]!.hops ?? [],
-            );
-          if (
-            !hopsOn.some((hop) => Math.hypot(hop.x - at.x, hop.y - at.y) < 1)
-          ) {
-            missing.push(`${a.line} × ${b.line} at ${at.x},${at.y}`);
-          }
-        });
-      });
-      expect(missing).toEqual([]);
-    }
-  });
 });
 
 describe('lines of one owner', () => {
   const W = DIMENSIONS.nodeWidth;
 
-  it('run as one course from the owner, and keep clear of each other once they part', () => {
+  it('leave the owner from its centre and keep clear of each other once they part', () => {
     const { connectors, boxOf } = draw(
       ['ego', 'sib', 'mum', 'dad', 'stepdad'],
       [
@@ -790,25 +740,32 @@ describe('lines of one owner', () => {
       ...a!.points.filter((p) => apart(p, bPieces) < 0.5),
       ...b!.points.filter((p) => apart(p, aPieces) < 0.5),
     ];
-    // They leave the stepfather on one course.
-    const leaving = boxOf('stepdad');
-    const firstOutside = a!.points.find((p) => !inside(p, leaving))!;
-    expect(apart(firstOutside, bPieces)).toBeLessThan(0.5);
+    // They leave the stepfather's centre together, parting there as a V
+    // (Josh, 22 Oct 2026: lines aim centre to centre).
+    expect(a!.points[0]).toEqual(b!.points[0]);
     // Everywhere else, away from where they part and from the symbols,
-    // they run on one course or a quarter of a symbol apart (but for as
-    // much again, where lines parting at an angle draw apart).
+    // they never run alongside each other closer than a quarter of a
+    // symbol. Pieces drawing apart at an angle, as a V does, are not
+    // running alongside.
     const symbols = ['ego', 'sib', 'stepdad'].map(boxOf);
+    const heading = (t: LineSegment) => Math.atan2(t.y2 - t.y1, t.x2 - t.x1);
+    const alongside = (s: LineSegment, t: LineSegment) => {
+      const turn = Math.abs(heading(s) - heading(t)) % Math.PI;
+      return Math.min(turn, Math.PI - turn) < Math.PI / 36;
+    };
     const close = aPieces.flatMap((s) => {
       const steps = Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1));
+      const beside = bPieces.filter((t) => alongside(s, t));
       return Array.from({ length: steps }, (_, k) => {
         const t = (k + 0.5) / steps;
         return { x: s.x1 + t * (s.x2 - s.x1), y: s.y1 + t * (s.y2 - s.y1) };
       }).filter((p) => {
+        if (beside.length === 0) return false;
         if (symbols.some((box) => inside(p, box))) return false;
         if (partings.some((q) => Math.hypot(p.x - q.x, p.y - q.y) < 0.3 * W)) {
           return false;
         }
-        const d = apart(p, bPieces);
+        const d = apart(p, beside);
         return d >= 0.5 && d < 0.25 * W - 0.5;
       });
     });
@@ -818,7 +775,7 @@ describe('lines of one owner', () => {
 });
 
 describe('a carrier of some of a sibship', () => {
-  it('draws one straight line to the stem of the run of children she carried, and the couple’s children stay one sibship (Bennett 1c)', () => {
+  it('draws a straight line to each child she carried, and the couple’s children stay one sibship', () => {
     const { connectors } = draw(
       ['ego', 'ana', 'luis', 'carrier', 'leo', 'mia'],
       [
@@ -841,15 +798,16 @@ describe('a carrier of some of a sibship', () => {
     expect(
       sibship[0]!.uplines.flatMap((upline) => upline.childId ?? []).toSorted(),
     ).toEqual(['ego', 'leo', 'mia']);
-    // The carrier's one line is straight and ends on the run's stem.
+    // A line for part of a sibship goes to each child, straight to their
+    // centre (Josh, 22 Oct 2026).
     const lines = connectors.auxiliaryLines.filter(
       (line) => line.endpointIds?.[0] === 'carrier',
     );
-    expect(lines).toHaveLength(1);
-    expect(lines[0]!.points).toHaveLength(2);
-    const end = lines[0]!.points.at(-1)!;
-    const stems = (sibship[0]!.runs ?? []).map((run) => run.stem);
-    expect(stems).toHaveLength(1);
-    expect(pointToSegment(end, stems[0]!)).toBeLessThan(0.5);
+    expect(
+      lines
+        .map((line) => line.endpointIds?.[1] ?? '')
+        .toSorted((a, b) => a.localeCompare(b)),
+    ).toEqual(['ego', 'leo']);
+    for (const line of lines) expect(line.points).toHaveLength(2);
   });
 });

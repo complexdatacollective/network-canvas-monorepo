@@ -375,7 +375,7 @@ function WizardDialogRenderer({
   openDialog: DialogContextType['openDialog'];
 }) {
   const guardedCloseDialog = useCallback(
-    async <T,>(id: string, value: T | null) => {
+    async (id: string, value: unknown) => {
       if (value !== null || !dialog.confirmCancel) {
         await closeDialog(id, value);
         return;
@@ -544,49 +544,46 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
-  const closeDialog = useCallback(
-    async <T = boolean,>(id: string, value: T | null = null) => {
-      let dialogToResolve: DialogState | undefined;
+  const closeDialog = useCallback(async (id: string, value: unknown = null) => {
+    let dialogToResolve: DialogState | undefined;
 
-      // flushSync ensures the updater runs synchronously so that
-      // dialogToResolve is assigned before the check below. Without it,
-      // React 18's automatic batching may defer the updater (e.g. when
-      // another setState like setDialogError was called in the same tick),
-      // leaving dialogToResolve undefined.
-      flushSync(() => {
-        setDialogs((prevDialogs) => {
-          const dialog = prevDialogs.find((d) => d.id === id);
+    // flushSync ensures the updater runs synchronously so that
+    // dialogToResolve is assigned before the check below. Without it,
+    // React 18's automatic batching may defer the updater (e.g. when
+    // another setState like setDialogError was called in the same tick),
+    // leaving dialogToResolve undefined.
+    flushSync(() => {
+      setDialogs((prevDialogs) => {
+        const dialog = prevDialogs.find((d) => d.id === id);
 
-          if (!dialog?.open) {
-            return prevDialogs;
-          }
+        if (!dialog?.open) {
+          return prevDialogs;
+        }
 
-          dialogToResolve = dialog;
+        dialogToResolve = dialog;
 
-          if (dialog.abortController) {
-            dialog.abortController.abort();
-          }
+        if (dialog.abortController) {
+          dialog.abortController.abort();
+        }
 
-          return prevDialogs.map((d) =>
-            d.id === id ? { ...d, open: false } : d,
-          );
-        });
+        return prevDialogs.map((d) =>
+          d.id === id ? { ...d, open: false } : d,
+        );
       });
+    });
 
-      if (!dialogToResolve) {
-        return;
-      }
+    if (!dialogToResolve) {
+      return;
+    }
 
-      dialogToResolve.resolveCallback(value);
+    dialogToResolve.resolveCallback(value);
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
-      if (!isMounted.current) return;
+    if (!isMounted.current) return;
 
-      setDialogs((prevDialogs) => prevDialogs.filter((d) => d.id !== id));
-    },
-    [],
-  );
+    setDialogs((prevDialogs) => prevDialogs.filter((d) => d.id !== id));
+  }, []);
 
   const closeAllDialogs = useCallback(() => {
     // Defer to a microtask so this is safe to call from any lifecycle context

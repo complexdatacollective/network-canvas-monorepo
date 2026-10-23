@@ -10,7 +10,7 @@ import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { networkComposerWords } from './canvas-stage-words.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
@@ -491,7 +491,6 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'roster',
         type: 'NameGeneratorRoster',
-        externalDataError: localized('External data could not be loaded.'),
         allAddedNotice: localized(
           'There is nothing left to add from this list.',
         ),

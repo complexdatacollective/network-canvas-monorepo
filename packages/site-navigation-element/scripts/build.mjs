@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import postcss from 'postcss';
+import { parse } from 'postcss';
 
 const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const generated = join(pkgRoot, '.generated');
@@ -46,9 +46,7 @@ run('pnpm', [
 // 2) Split the compiled CSS for shadow-DOM use. `:root` and `@property`
 // don't apply inside shadow roots as-authored: token blocks must also match
 // `:host`, and `@property` registrations move to a document-level style tag.
-const compiled = postcss.parse(
-  readFileSync(join(generated, 'tailwind.css'), 'utf8'),
-);
+const compiled = parse(readFileSync(join(generated, 'tailwind.css'), 'utf8'));
 const documentProperties = [];
 compiled.walkAtRules('property', (atRule) => {
   documentProperties.push(atRule.toString());
@@ -77,29 +75,27 @@ const fontSources = [
 const fontFiles = new Set();
 const fontFaces = [];
 for (const source of fontSources) {
-  postcss
-    .parse(readFileSync(source, 'utf8'))
-    .walkAtRules('font-face', (face) => {
-      let style = 'normal';
-      let file = null;
-      face.walkDecls('font-style', (decl) => {
-        style = decl.value;
-      });
-      face.walkDecls('src', (decl) => {
-        const match = decl.value.match(
-          /url\('@fontsource-variable\/[^/]+\/files\/([^']+)'\)/,
-        );
-        if (!match) return;
-        file = match[1];
-        decl.value = decl.value.replace(
-          /url\('[^']+'\)/,
-          `url('__NC_FONT_BASE__/${match[1]}')`,
-        );
-      });
-      if (style !== 'normal' || !file) return;
-      fontFiles.add(file);
-      fontFaces.push(face.toString());
+  parse(readFileSync(source, 'utf8')).walkAtRules('font-face', (face) => {
+    let style = 'normal';
+    let file = null;
+    face.walkDecls('font-style', (decl) => {
+      style = decl.value;
     });
+    face.walkDecls('src', (decl) => {
+      const match = decl.value.match(
+        /url\('@fontsource-variable\/[^/]+\/files\/([^']+)'\)/,
+      );
+      if (!match) return;
+      file = match[1];
+      decl.value = decl.value.replace(
+        /url\('[^']+'\)/,
+        `url('__NC_FONT_BASE__/${match[1]}')`,
+      );
+    });
+    if (style !== 'normal' || !file) return;
+    fontFiles.add(file);
+    fontFaces.push(face.toString());
+  });
 }
 writeFileSync(join(generated, 'document-fonts.css'), fontFaces.join('\n\n'));
 

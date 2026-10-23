@@ -55,14 +55,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const intl = useAppIntl();
   const { stage } = props;
 
-  const {
-    behaviours,
-    type,
-    panels,
-    minNodesNotice,
-    maxNodesNotice,
-    externalDataError,
-  } = stage;
+  const { behaviours, type, panels, minNodesNotice, maxNodesNotice } = stage;
 
   let quickAdd: string | null = null;
   let quickAddHint: LocalizedString | null = null;
@@ -296,7 +289,6 @@ const NameGenerator = (props: NameGeneratorProps) => {
               disableAddNew={maxNodesReached || encryptionLocked}
               onOpenChange={setIsPanelsOpen}
               animationKey={promptIndex}
-              externalDataError={externalDataError}
             />
             <NodeList
               items={nodesForPrompt}

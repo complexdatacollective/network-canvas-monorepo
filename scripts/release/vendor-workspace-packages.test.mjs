@@ -433,7 +433,7 @@ test("the schema 8 interview's own edges between its releases are found by name"
   ].join('\n');
 
   assert.deepEqual(
-    schema8StackEdges(lockfile).sort((a, b) =>
+    schema8StackEdges(lockfile).toSorted((a, b) =>
       `${a.parent}>${a.dep}`.localeCompare(`${b.parent}>${b.dep}`),
     ),
     [

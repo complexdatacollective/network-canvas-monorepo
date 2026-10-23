@@ -2,7 +2,7 @@ import { Pencil } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import type { VariableType } from '@codaco/protocol-validation';

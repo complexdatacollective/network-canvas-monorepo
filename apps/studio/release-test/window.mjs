@@ -125,7 +125,7 @@ export function parseSteps(text) {
     }
     steps.set(index, step);
   }
-  return [...steps.values()].sort((a, b) => a.index - b.index);
+  return [...steps.values()].toSorted((a, b) => a.index - b.index);
 }
 
 const isMaintenance = (state) => (step) =>

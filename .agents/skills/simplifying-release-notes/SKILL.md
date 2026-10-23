@@ -47,7 +47,7 @@ and discards the rewrite, so the check turns red again and you re-apply it.
      need.
    - `### New features`
    - `### Interview changes` (Architect: `### Interview changes (seen in
-Preview)`), opening with one sentence that these are shared with the
+     Preview)`), opening with one sentence that these are shared with the
      other two apps.
    - `### Data, security and privacy` (Fresco: `### Data safety and privacy`)
      when there are such changes.

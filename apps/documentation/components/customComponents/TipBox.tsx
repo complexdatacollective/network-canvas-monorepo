@@ -5,7 +5,7 @@ import { Alert, AlertTitle } from '@codaco/fresco-ui/Alert';
 
 export type TipBoxProps = {
   children: ReactNode;
-  danger: boolean;
+  danger?: boolean;
 };
 
 const TipBox = ({ children, danger = false }: TipBoxProps) => {

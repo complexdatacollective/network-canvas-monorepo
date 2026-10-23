@@ -52,18 +52,16 @@ matrixTest(
     });
     await expect(input).toBeVisible();
     await page.getByRole('button', { name: 'Siguiente paso' }).click();
-    await expect(
-      page.getByText('Debes responder a esta pregunta antes de continuar.', {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await expect(input).toBeFocused();
-    await page.evaluate(() => window.__test.setRequestedLocales(['en-GB']));
+    // The required-answer message is interface text the protocol holds, so it
+    // stays in the protocol's language while the controls follow the browser.
     await expect(
       page.getByText('You must answer this question before continuing.', {
         exact: true,
       }),
     ).toBeVisible();
+    await expect(input).toBeFocused();
+    await page.evaluate(() => window.__test.setRequestedLocales(['en-GB']));
+    await expect(page.getByRole('button', { name: 'Next step' })).toBeVisible();
     await input.fill(answer);
     const handle = await input.elementHandle();
     if (!handle) throw new Error('The authored input is missing');

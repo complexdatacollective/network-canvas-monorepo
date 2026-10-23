@@ -1238,17 +1238,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the words shown for the participant when they appear as a family member.',
   },
-  wordingSave: {
-    id: 'protocolBuilder.pedigree.wording.save',
-    defaultMessage: 'Save button',
-    description: 'Label of the button that saves a family member’s details.',
-  },
-  wordingDontKnow: {
-    id: 'protocolBuilder.pedigree.wording.dontKnow',
-    defaultMessage: 'Don’t know option',
-    description:
-      'Label of the option a participant picks when they do not know an answer.',
-  },
   wordingConnectQuestion: {
     id: 'protocolBuilder.pedigree.wording.connectQuestion',
     defaultMessage: 'Connect question',
@@ -1578,12 +1567,6 @@ export const familyPedigreeMessages = defineMessages({
     defaultMessage: 'Fraternal option',
     description: 'Label of the option that two twins are fraternal.',
   },
-  wordingZygosityUnknown: {
-    id: 'protocolBuilder.pedigree.wording.zygosityUnknown',
-    defaultMessage: 'Not known if identical option',
-    description:
-      'Label of the option that the participant does not know whether two twins are identical.',
-  },
   wordingUnavailableAncestor: {
     id: 'protocolBuilder.pedigree.wording.unavailableAncestor',
     defaultMessage: 'Unavailable choice: own ancestor',
@@ -1596,6 +1579,41 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the hint explaining that answers are unavailable because someone else is recorded as having carried the pregnancy.',
   },
+  wordingCarrierReplaced: {
+    id: 'protocolBuilder.pedigree.wording.carrierReplaced',
+    defaultMessage:
+      'Note on a new answer about carrying: earlier carrier no longer recorded',
+    description:
+      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that choosing an answer which records someone as having carried a child’s pregnancy means the person recorded before will no longer be recorded as having carried it, since only one person carries a pregnancy.',
+  },
+  wordingGeneticParentReplaced: {
+    id: 'protocolBuilder.pedigree.wording.geneticParentReplaced',
+    defaultMessage:
+      'Note on a new genetic parent: biological parent recorded is replaced',
+    description:
+      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that choosing a genetic kind of parent (biological parent or donor) means the biological parent recorded with the same sex at birth will no longer be recorded as one, and that they will be asked how they would define that parent’s relationship to the child instead.',
+  },
+  wordingIdenticalTwinSharesParents: {
+    id: 'protocolBuilder.pedigree.wording.identicalTwinSharesParents',
+    defaultMessage:
+      'Note on identical twins: same biological parents recorded for both',
+    description:
+      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that recording two twins as identical will record the same biological parents and donors for both of them.',
+  },
+  wordingSexChangeClearsCoParentSex: {
+    id: 'protocolBuilder.pedigree.wording.sexChangeClearsCoParentSex',
+    defaultMessage:
+      'Note on a new sex at birth answer: other genetic parent’s answer cleared',
+    description:
+      'Label of the note explaining that saving the sex at birth chosen for a genetic parent will clear the sex at birth of the other genetic parent of their children, who is recorded with the same sex at birth.',
+  },
+  wordingSexChangeEndsCarrying: {
+    id: 'protocolBuilder.pedigree.wording.sexChangeEndsCarrying',
+    defaultMessage:
+      'Note on a new sex at birth answer: no longer recorded as having carried',
+    description:
+      'Label of the note explaining that saving a sex at birth that rules out carrying a pregnancy, for someone recorded as having carried one or more children, will record that they did not carry them.',
+  },
   wordingUnavailableCannotCarry: {
     id: 'protocolBuilder.pedigree.wording.unavailableCannotCarry',
     defaultMessage: 'Unavailable answers hint: cannot have carried',
@@ -1607,13 +1625,6 @@ export const familyPedigreeMessages = defineMessages({
     defaultMessage: 'Unavailable answers hint: carried a child',
     description:
       'Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried the pregnancy of one or more children.',
-  },
-  wordingUnavailableSameSexAsCoParent: {
-    id: 'protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent',
-    defaultMessage:
-      'Unavailable answers hint: other genetic parent has that sex at birth',
-    description:
-      'Label of the hint explaining that a sex at birth is unavailable for a genetic parent because the other genetic parent of their children is recorded with that sex at birth.',
   },
   wordingUnavailableGeneticParentsFull: {
     id: 'protocolBuilder.pedigree.wording.unavailableGeneticParentsFull',
@@ -1634,37 +1645,6 @@ export const familyPedigreeMessages = defineMessages({
       'Unavailable answers hint: both parents the same sex at birth',
     description:
       'Label of the hint explaining that both parents cannot be a new child’s genetic parents because they are recorded with the same sex at birth.',
-  },
-  wordingUnavailableIdenticalTwin: {
-    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwin',
-    defaultMessage: 'Unavailable answers hint: twins’ parents differ',
-    description:
-      'Label of the hint explaining that two twins cannot be recorded as identical because their biological parents and donors differ.',
-  },
-  wordingUnavailableIdenticalTwinNew: {
-    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew',
-    defaultMessage: 'Unavailable answers hint: new twin’s parents differ',
-    description:
-      'Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors.',
-  },
-  wordingUnavailableIdenticalTwinSex: {
-    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinSex',
-    defaultMessage: 'Unavailable answers hint: twins’ sexes at birth differ',
-    description:
-      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when editing a twin, that the two twins cannot be recorded as identical because one is recorded as female at birth and the other as male.',
-  },
-  wordingUnavailableIdenticalTwinSexNew: {
-    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew',
-    defaultMessage: 'Unavailable answers hint: new twin’s sex at birth differs',
-    description:
-      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be an identical twin because they are recorded with a different sex at birth (female or male) from the person they are added to.',
-  },
-  wordingUnavailableTwinCarrierNew: {
-    id: 'protocolBuilder.pedigree.wording.unavailableTwinCarrierNew',
-    defaultMessage:
-      'Unavailable answers hint: person who carried the twins not chosen',
-    description:
-      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be a twin of any kind because they would not share the person who carried the one they are added to.',
   },
   wordingTitle: {
     id: 'protocolBuilder.pedigree.wording.title',

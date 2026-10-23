@@ -16,7 +16,6 @@ import {
 import {
   hasMaximumNodes,
   hasMinimumNodes,
-  hasRosterSearch,
   requireWhenShown,
   type StageRecord,
 } from '../stage-wording/conditions.ts';
@@ -59,10 +58,7 @@ const rosterWording = {
     arguments: NODE_COUNT_ARGUMENTS,
   }).optional(),
   maxNodesNotice: localizedString(nonBlankText(), 'plain').optional(),
-  externalDataError: localizedString(nonBlankText(), 'plain'),
   allAddedNotice: localizedString(nonBlankText(), 'plain'),
-  searchLabel: localizedString(nonBlankText(), 'plain').optional(),
-  searchNoMatch: localizedString(nonBlankText(), 'plain').optional(),
 };
 
 const requireRosterWording = (stage: StageRecord, ctx: z.RefinementCtx) =>
@@ -76,16 +72,6 @@ const requireRosterWording = (stage: StageRecord, ctx: z.RefinementCtx) =>
       name: 'maxNodesNotice',
       when: hasMaximumNodes,
       message: 'A stage with a maximum needs a maximum notice.',
-    },
-    {
-      name: 'searchLabel',
-      when: hasRosterSearch,
-      message: 'A roster with a search needs a search label.',
-    },
-    {
-      name: 'searchNoMatch',
-      when: hasRosterSearch,
-      message: 'A roster with a search needs a no-match notice.',
     },
   ]);
 

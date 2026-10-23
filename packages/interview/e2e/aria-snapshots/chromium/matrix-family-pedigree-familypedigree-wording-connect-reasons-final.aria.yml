@@ -7,18 +7,25 @@
     - button "Pat"
     - button "Rachel" [disabled]
     - button "Tom"
+    - button "Sue"
+    - button "Kim"
     - button "You": Me myself - matrix check
+    - button "Zoe"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
       - button "Add and edit"
       - button "Connect" [pressed]
       - button "Disconnect"
     - separator
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
   - menu:
-    - group "Pat parents you - matrix check":
+    - group "Pat parents Zoe - matrix check":
       - menuitem "Biological parent" [disabled]
       - menuitem "Biological parent who carried - matrix check" [disabled]
       - menuitem "Adoptive parent"

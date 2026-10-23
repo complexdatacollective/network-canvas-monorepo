@@ -61,6 +61,7 @@ import {
 } from './interface-owned-options.ts';
 import { InterfaceTextSchema } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
+import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
@@ -1518,6 +1519,27 @@ const ProtocolSchema = z
                   'variable',
                 ],
               });
+            } else if (
+              stage.type === 'CategoricalBin' &&
+              variable &&
+              'options' in variable
+            ) {
+              const binCount =
+                (variable.options?.length ?? 0) +
+                ('otherVariable' in prompt && prompt.otherVariable ? 1 : 0);
+              if (binCount > CATEGORICAL_BIN_MAX_BINS) {
+                ctx.addIssue({
+                  code: 'custom' as const,
+                  message: `CategoricalBin prompt draws ${binCount} bins, but the interface supports at most ${CATEGORICAL_BIN_MAX_BINS}. The "other" bin counts towards the limit when otherVariable is set.`,
+                  path: [
+                    'stages',
+                    stageIndex,
+                    'prompts',
+                    promptIndex,
+                    'variable',
+                  ],
+                });
+              }
             }
           }
         });
@@ -1653,6 +1675,7 @@ const ProtocolSchema = z
     }
   });
 
+export const ProtocolSchemaV9 = ProtocolSchema;
 export type ProtocolSchemaV9 = z.infer<typeof ProtocolSchema>;
 
 export default ProtocolSchema;

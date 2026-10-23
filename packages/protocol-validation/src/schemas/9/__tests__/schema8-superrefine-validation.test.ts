@@ -16,8 +16,9 @@ import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
+import { CATEGORICAL_BIN_MAX_BINS } from '../stages/categorical-bin.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
@@ -665,6 +666,96 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'otherVariable',
         ]);
       }
+    });
+  });
+
+  describe('CategoricalBin bin limit', () => {
+    const protocolWithBins = (optionCount: number, withOther: boolean) => ({
+      ...baseValidProtocol,
+      codebook: {
+        ...baseValidProtocol.codebook,
+        node: {
+          ...baseValidProtocol.codebook.node,
+          person: {
+            ...personDefinition,
+            variables: {
+              ...personDefinition.variables,
+              category: {
+                name: 'Category',
+                type: 'categorical',
+                component: 'CheckboxGroup',
+                options: Array.from({ length: optionCount }, (_, index) => ({
+                  label: localized(`Option ${index + 1}`),
+                  value: `option${index + 1}`,
+                })),
+              },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'categoricalBin1',
+          type: 'CategoricalBin',
+          label: localized('Categorical Bin'),
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            {
+              id: 'prompt1',
+              text: localized('Sort by category'),
+              variable: 'category',
+              ...(withOther && {
+                otherVariable: 'name',
+                otherOptionLabel: localized('Other'),
+                otherVariablePrompt: localized('Please specify'),
+              }),
+            },
+          ],
+        },
+      ],
+    });
+
+    const binLimitIssue = (optionCount: number, withOther: boolean) => {
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithBins(optionCount, withOther)),
+      );
+      return result.success
+        ? undefined
+        : result.error.issues.find((issue) =>
+            issue.message.includes('the interface supports at most'),
+          );
+    };
+
+    it('accepts a prompt that draws the most bins the interface supports', () => {
+      for (const [optionCount, withOther] of [
+        [CATEGORICAL_BIN_MAX_BINS, false],
+        [CATEGORICAL_BIN_MAX_BINS - 1, true],
+      ] as const) {
+        const result = ProtocolSchemaV9.safeParse(
+          withFinishStage(protocolWithBins(optionCount, withOther)),
+        );
+        expect(result.error?.issues).toBeUndefined();
+      }
+    });
+
+    it('rejects a prompt whose values draw more bins than the interface supports', () => {
+      expect(binLimitIssue(CATEGORICAL_BIN_MAX_BINS + 1, false)?.path).toEqual([
+        'stages',
+        0,
+        'prompts',
+        0,
+        'variable',
+      ]);
+    });
+
+    it('counts the other bin towards the limit', () => {
+      expect(binLimitIssue(CATEGORICAL_BIN_MAX_BINS, true)?.path).toEqual([
+        'stages',
+        0,
+        'prompts',
+        0,
+        'variable',
+      ]);
     });
   });
 
@@ -2638,8 +2729,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
           ),
           outsideAreasLabel: localized('Outside Selectable Areas'),
-          searchLabel: localized('Search'),
-          searchNoMatch: localized('Nothing matched your search term.'),
           searchFailed: localized(
             'Search could not be completed. Try again in a moment.',
           ),

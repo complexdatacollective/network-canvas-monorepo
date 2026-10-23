@@ -26,10 +26,7 @@ import {
 import type { StageProps } from '../../types';
 import { compareCodeUnits } from '../../utils/compareCodeUnits';
 import Annotations, { type AnnotationsHandle } from './Annotations';
-import BehavioursPanel, {
-  type DrawingWords,
-  type LayoutWords,
-} from './BehavioursPanel';
+import BehavioursPanel, { type DrawingWords } from './BehavioursPanel';
 import PresetSwitcher from './PresetSwitcher';
 
 type NarrativeProps = StageProps<'Narrative'>;
@@ -38,10 +35,8 @@ const Narrative = ({ stage }: NarrativeProps) => {
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
 
-  // The stage's own words (`stage-wording/narrative.ts`). Each toolbar's words
-  // are given only when the stage holds all of them.
-  const pauseLayout = useOptionalLocalizedText(stage.tooltips?.pauseLayout);
-  const resumeLayout = useOptionalLocalizedText(stage.tooltips?.resumeLayout);
+  // The stage's own words (`stage-wording/narrative.ts`). The drawing tools'
+  // words are given only when the stage holds all of them.
   const enableDrawing = useOptionalLocalizedText(stage.tooltips?.enableDrawing);
   const disableDrawing = useOptionalLocalizedText(
     stage.tooltips?.disableDrawing,
@@ -60,10 +55,6 @@ const Narrative = ({ stage }: NarrativeProps) => {
     links: useOptionalLocalizedText(stage.linksHeading),
     groups: useOptionalLocalizedText(stage.groupsHeading),
   };
-  const layoutWords: LayoutWords | undefined =
-    pauseLayout !== undefined && resumeLayout !== undefined
-      ? { pauseLayout, resumeLayout }
-      : undefined;
   const drawingWords: DrawingWords | undefined =
     enableDrawing !== undefined &&
     disableDrawing !== undefined &&
@@ -353,11 +344,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
         dragConstraints={interfaceRef}
       />
       <BehavioursPanel
-        layoutWords={
-          automaticLayoutEnabled && nodesWithLayout.length > 0
-            ? layoutWords
-            : undefined
-        }
+        showLayoutToggle={automaticLayoutEnabled && nodesWithLayout.length > 0}
         simulationEnabled={layout.simulationEnabled}
         onToggleSimulation={layout.toggleSimulation}
         drawingWords={freeDraw ? drawingWords : undefined}

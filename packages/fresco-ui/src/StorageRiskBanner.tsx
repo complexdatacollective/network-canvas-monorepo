@@ -10,7 +10,7 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Alert, AlertDescription } from './Alert';
-import Button, { type ButtonProps } from './Button';
+import { type ButtonProps, Button } from './Button';
 import CloseButton from './CloseButton';
 import { cx } from './utils/cva';
 

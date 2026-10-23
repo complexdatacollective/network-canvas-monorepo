@@ -7,7 +7,8 @@ import type {
   SiteNavigationLinkRenderProps,
   SiteNavigationLocale,
 } from '@codaco/fresco-ui/navigation/SiteNavigation';
-import type { Locale } from '~/app/types';
+import { type Locale, toLocale } from '~/app/types';
+import { routing } from '~/lib/i18n/routing';
 import { resolveNetworkCanvasUrl } from '~/lib/siteUrls';
 import { Link } from '~/navigation';
 
@@ -30,7 +31,7 @@ function renderNavigationLink({
 }
 
 export default function SharedNav() {
-  const locale = useLocale() as Locale;
+  const locale = toLocale(useLocale()) ?? routing.defaultLocale;
 
   return (
     <SiteNavigation

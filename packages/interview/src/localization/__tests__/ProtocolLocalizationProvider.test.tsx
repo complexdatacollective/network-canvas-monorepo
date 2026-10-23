@@ -175,7 +175,7 @@ describe('ProtocolLocalizationProvider', () => {
     const { latest } = renderLocale(
       makeProps({
         localization: { defaultLocale: 'en', locales: ['ar', 'es', 'en'] },
-        localeOptions: [...localeOptions].reverse(),
+        localeOptions: localeOptions.toReversed(),
       }),
     );
 

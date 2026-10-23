@@ -95,8 +95,9 @@ function errorMessages(error: unknown): string {
 }
 
 /**
- * drizzle's `EffectDrizzleQueryError` message interpolates the query text and
- * every bind parameter, so it is never published unconverted.
+ * drizzle's `EffectDrizzleQueryError` message interpolates the query text, and
+ * every bind parameter when the client sets `paramsInErrors`, so it is never
+ * published unconverted.
  */
 const asSqlError = (
   error: SqlError.SqlError | EffectDrizzleQueryError,

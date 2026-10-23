@@ -247,7 +247,7 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
     // Nothing was stored to check it.
     expect(store.getState().session.network.nodes).toEqual(nodes);
-    expect(Object.keys(store.getState().session.network).sort()).toEqual([
+    expect(Object.keys(store.getState().session.network).toSorted()).toEqual([
       'edges',
       'ego',
       'nodes',

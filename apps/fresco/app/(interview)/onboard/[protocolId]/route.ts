@@ -1,4 +1,5 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod/mini';
 
 import { createInterview } from '~/actions/interviews';
 import { env } from '~/env';
@@ -6,6 +7,12 @@ import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
 import { interviewPath } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
+
+// The body may be empty (`null`), but a participant identifier that is present
+// must be text.
+const postBodySchema = z.nullish(
+  z.object({ participantIdentifier: z.optional(z.string()) }),
+);
 
 const handler = async (
   req: NextRequest,
@@ -48,10 +55,12 @@ const handler = async (
   // If the request is a POST, check the request body for a participant identifier.
   // Otherwise, check the searchParams for a participant identifier.
   if (req.method === 'POST') {
-    const postData = (await req.json()) as
-      | { participantIdentifier?: string }
-      | undefined;
-    participantIdentifier = postData?.participantIdentifier;
+    const postData = postBodySchema.safeParse(await req.json());
+    if (!postData.success) {
+      url.pathname = '/onboard/error';
+      return NextResponse.redirect(url);
+    }
+    participantIdentifier = postData.data?.participantIdentifier;
   } else {
     const searchParams = req.nextUrl.searchParams;
     participantIdentifier =

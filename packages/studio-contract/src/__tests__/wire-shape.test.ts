@@ -23,7 +23,7 @@ import {
   CreateTeamInvitationResult,
 } from '../schema/team.ts';
 
-const encode = <S extends Schema.Codec<unknown, unknown>>(schema: S) =>
+const encode = (schema: Schema.Codec<unknown, unknown>) =>
   Schema.encodeUnknownSync(Schema.toCodecJson(schema));
 const decode = <S extends Schema.Codec<unknown, unknown>>(schema: S) =>
   Schema.decodeUnknownSync(Schema.toCodecJson(schema));

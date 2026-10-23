@@ -8,6 +8,14 @@ import { z } from 'zod';
 
 type Json = { [k: string]: unknown };
 
+const isJson = (v: unknown): v is Json =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+const jsonOrEmpty = (v: unknown): Json => (isJson(v) ? v : {});
+
+const stringsOrEmpty = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+
 // Keywords we allow anywhere in the emitted schema (outside `properties` maps).
 const ALLOWED = new Set([
   'type',
@@ -38,12 +46,13 @@ export const toProviderJsonSchema = (
     unrepresentable: 'throw',
     cycles: 'throw',
     reused: 'inline',
-  }) as Json;
-  const defs = (raw.definitions ?? {}) as Json;
+  });
+  if (!isJson(raw)) throw new Error('zod did not emit an object JSON Schema');
+  const defs = jsonOrEmpty(raw.definitions);
   const walk = (node: unknown): unknown => {
     if (Array.isArray(node)) return node.map(walk);
-    if (!node || typeof node !== 'object') return node;
-    const o = node as Json;
+    if (!isJson(node)) return node;
+    const o = node;
     if (typeof o.$ref === 'string') {
       const keys = Object.keys(o).filter((k) => k !== '$ref');
       if (keys.length)
@@ -60,13 +69,13 @@ export const toProviderJsonSchema = (
       if (k === 'definitions') {
         if (opts.defs !== false)
           out.$defs = Object.fromEntries(
-            Object.entries(v as Json).map(([dk, dv]) => [dk, walk(dv)]),
+            Object.entries(jsonOrEmpty(v)).map(([dk, dv]) => [dk, walk(dv)]),
           );
         continue;
       }
       if (k === 'properties') {
         out.properties = Object.fromEntries(
-          Object.entries(v as Json).map(([pk, pv]) => [pk, walk(pv)]),
+          Object.entries(jsonOrEmpty(v)).map(([pk, pv]) => [pk, walk(pv)]),
         );
         continue;
       }
@@ -84,7 +93,8 @@ export const toProviderJsonSchema = (
     if (out.type === 'object') out.additionalProperties = false;
     return out;
   };
-  const result = walk(raw) as Json;
+  const result = walk(raw);
+  if (!isJson(result)) throw new Error('normalised schema is not an object');
   assertProviderSafe(result);
   return result;
 };
@@ -94,8 +104,8 @@ export const countUnions = (s: unknown): number => {
   let n = 0;
   const walk = (node: unknown) => {
     if (Array.isArray(node)) return node.forEach(walk);
-    if (!node || typeof node !== 'object') return;
-    const o = node as Json;
+    if (!isJson(node)) return;
+    const o = node;
     if (Array.isArray(o.anyOf) || Array.isArray(o.oneOf)) n++;
     if (Array.isArray(o.type)) n++;
     Object.values(o).forEach(walk);
@@ -109,11 +119,11 @@ export const countOptional = (s: unknown): number => {
   let n = 0;
   const walk = (node: unknown) => {
     if (Array.isArray(node)) return node.forEach(walk);
-    if (!node || typeof node !== 'object') return;
-    const o = node as Json;
-    if (o.type === 'object' && o.properties) {
-      const req = new Set((o.required as string[]) ?? []);
-      n += Object.keys(o.properties as Json).filter((k) => !req.has(k)).length;
+    if (!isJson(node)) return;
+    const o = node;
+    if (o.type === 'object' && isJson(o.properties)) {
+      const req = new Set(stringsOrEmpty(o.required));
+      n += Object.keys(o.properties).filter((k) => !req.has(k)).length;
     }
     Object.values(o).forEach(walk);
   };
@@ -130,12 +140,12 @@ export const schemaStats = (s: Json) => {
     maxDepth = 0;
   const walk = (node: unknown, depth: number) => {
     if (Array.isArray(node)) return node.forEach((x) => walk(x, depth));
-    if (!node || typeof node !== 'object') return;
-    const o = node as Json;
+    if (!isJson(node)) return;
+    const o = node;
     if (o.type === 'object') {
       objects++;
       maxDepth = Math.max(maxDepth, depth);
-      properties += Object.keys((o.properties as Json) ?? {}).length;
+      properties += Object.keys(jsonOrEmpty(o.properties)).length;
     }
     if (Array.isArray(o.enum)) {
       enums++;
@@ -165,8 +175,8 @@ const assertProviderSafe = (root: Json) => {
   const walk = (node: unknown, path: string, inProps: boolean) => {
     if (Array.isArray(node))
       return node.forEach((x, i) => walk(x, `${path}[${i}]`, false));
-    if (!node || typeof node !== 'object') return;
-    const o = node as Json;
+    if (!isJson(node)) return;
+    const o = node;
     if (inProps || path.endsWith('.$defs')) {
       for (const [k, v] of Object.entries(o)) walk(v, `${path}.${k}`, false);
       return;
@@ -177,8 +187,8 @@ const assertProviderSafe = (root: Json) => {
     if (o.type === 'object') {
       if (o.additionalProperties !== false)
         throw new Error(`open object at ${path}`);
-      const props = Object.keys((o.properties as Json) ?? {});
-      const req = (o.required as string[]) ?? [];
+      const props = Object.keys(jsonOrEmpty(o.properties));
+      const req = stringsOrEmpty(o.required);
       // ASSERT, never force: a stray .optional() must fail the build.
       if (props.length !== req.length || props.some((p) => !req.includes(p)))
         throw new Error(`not every property required at ${path}`);

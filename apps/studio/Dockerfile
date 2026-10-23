@@ -43,7 +43,7 @@
 #   docker build -f apps/studio/Dockerfile --target studio-web -t studio-web .
 
 FROM node:24-slim AS base
-RUN npm install --global pnpm@11.20.0
+RUN npm install --global pnpm@11.28.6
 
 # Prune the monorepo to the subset the two Studio deployables need. turbo runs
 # at the exact version the root package.json pins, so the prune reads

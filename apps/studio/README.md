@@ -1116,6 +1116,74 @@ pnpm --filter @codaco/studio-api start:worker # the background worker
 pnpm --filter @codaco/studio-api start:migrate # the schema one-shot
 ```
 
+### Published releases
+
+Merging the Release Studio PR publishes a release. A push to `main` releases
+`@codaco/studio-api`'s version when no `studio@<version>` tag exists for it yet,
+so a run that failed is retried by the next push; until the first tag exists,
+only the push that changes that version releases. The `apps-release-studio`
+job in `.github/workflows/ci-and-release.yml` does the work, and
+`scripts/release/studio-release.mjs` makes its decisions and writes its
+documents. It deploys nothing.
+
+A release is named by `@codaco/studio-api`'s version, the one a running
+instance reports and the update check compares, whatever the other Studio
+packages' versions are. A release PR that moves another Studio package without
+moving `@codaco/studio-api` fails its `quality-support` check, because merging
+it would publish nothing. Once the release PR merges, the upgrade lane
+(`studio-upgrade`, see `release-test/README.md`) runs on `main`, and nothing is
+published unless it passes.
+
+Each release publishes:
+
+- `ghcr.io/complexdatacollective/studio-api` and `studio-web`, public, for
+  `linux/amd64` and `linux/arm64`, tagged with the version and the commit sha.
+  `latest` moves to them once the release below is published.
+- A keyless cosign signature on each image (index and platform manifests),
+  under the workflow identity
+  `https://github.com/complexdatacollective/network-canvas-monorepo/.github/workflows/ci-and-release.yml@refs/heads/main`
+  and issuer `https://token.actions.githubusercontent.com`. The job verifies
+  both before it tags anything.
+- A CycloneDX 1.6 SBOM per image, attached to the release as
+  `studio-api.cdx.json` and `studio-web.cdx.json`. Each merges a scan of the
+  image for both platforms (OS packages, the Node runtime, and the
+  `node_modules` the api image ships) with pnpm's lockfile view of the package
+  built into it, which is the only record of the libraries bundled into the
+  web client. For `studio-web` that view includes its devDependencies, because
+  the client's runtime libraries are declared there; a build of the same tree
+  decides which of them the bundle carries, and the SBOM gives those scope
+  `required` and every other npm component, the build and test tools, scope
+  `excluded`.
+- A cosign attestation on each image, of type
+  `https://networkcanvas.com/studio/sbom-reference/v1`, naming its SBOM's
+  release asset URL and sha256 digest. The SBOMs are megabytes, and the public
+  transparency log refuses attestations over 100 KB, so the image carries this
+  reference rather than the SBOM. The job verifies that each image's
+  attestation names the digest of the file it uploads.
+- The git tag `studio@<version>` on the commit the images were built from, and
+  a GitHub release of that name, not marked latest, whose notes pin both
+  digests and carry each Studio package's changelog since the previous
+  release (every section, for the first release), or link each changelog at the tag when that is longer than GitHub
+  allows.
+- `studio-release.json`, a release asset, at
+  `https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/studio@<version>/studio-release.json`:
+
+| Key          | What it is                                                 |
+| ------------ | ---------------------------------------------------------- |
+| `version`    | `x.y.z`, `@codaco/studio-api`'s version                    |
+| `date`       | when the release was published, ISO-8601 UTC ending in `Z` |
+| `notes`      | the GitHub release's https URL                             |
+| `migration`  | the newest `NNNN_slug` migration the release carries       |
+| `tag`        | `studio@<version>`                                         |
+| `commit`     | the full sha the images were built from                    |
+| `images.api` | `ghcr.io/complexdatacollective/studio-api@sha256:…`        |
+| `images.web` | `ghcr.io/complexdatacollective/studio-web@sha256:…`        |
+
+The first four keys are the release manifest the update check reads
+(`api/src/update/manifest.ts`), and `scripts/release/studio-release.test.mjs`
+decodes the document with that schema, so the file can be served as that
+manifest unchanged. Keys are only ever added.
+
 ### Health checks
 
 There is no `HEALTHCHECK` in the image, deliberately: the entrypoint decides
@@ -1394,8 +1462,9 @@ is not supported. They use named prepared statements and the `options`
 startup parameter, the worker `LISTEN`s, and `migrate` holds a session
 advisory lock.
 
-The platform that runs it — the host, image publishing, the deploy workflows
-and staging — is
+The images are published with every release (see
+[Published releases](#published-releases)). The platform that runs them — the
+host, the deploy workflows and staging — is
 [#1910](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1910).
 
 A self-host is one team, or a few, under exactly the enforcement the managed

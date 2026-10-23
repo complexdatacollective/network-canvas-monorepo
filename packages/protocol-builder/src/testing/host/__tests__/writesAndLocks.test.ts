@@ -389,9 +389,9 @@ describe('every write, against every lock on every section it touches', () => {
   it('enumerates a call for every procedure the contract has', () => {
     // A procedure nobody exercises escapes the enumeration below entirely, so
     // the contract itself says what the list has to contain.
-    expect([...new Set(CALLS.map((call) => call.procedure))].sort()).toEqual(
-      procedureTags().sort(),
-    );
+    expect(
+      [...new Set(CALLS.map((call) => call.procedure))].toSorted(),
+    ).toEqual(procedureTags().toSorted());
   });
 
   for (const call of CALLS) {

@@ -232,7 +232,7 @@ describe('unlocking an interview', () => {
     expect(JSON.stringify(synced)).not.toContain('DO NOT PERSIST');
     expect(JSON.stringify(synced)).not.toContain('Alice');
     // Nothing about the key is stored with the network.
-    expect(Object.keys(persisted?.network ?? {}).sort()).toEqual([
+    expect(Object.keys(persisted?.network ?? {}).toSorted()).toEqual([
       'edges',
       'ego',
       'nodes',

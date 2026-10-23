@@ -11,7 +11,7 @@ import {
   type AdditionalAttributes,
 } from '@codaco/protocol-validation';
 
-import Button, { IconButton, MotionButton } from '../Button';
+import { IconButton, MotionButton, Button } from '../Button';
 import Dialog from '../dialogs/Dialog';
 import RichTextRenderer from '../RichTextRenderer';
 import { withDialogProvider } from '../storybook-support/withDialogProvider';

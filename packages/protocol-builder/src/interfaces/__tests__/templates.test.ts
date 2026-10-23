@@ -215,7 +215,6 @@ describe('a new stage given nothing but a name', () => {
       ...(type === 'NameGeneratorRoster'
         ? {
             panelTitle: { en: 'Available to add' },
-            externalDataError: { en: 'External data could not be loaded.' },
             allAddedNotice: {
               en: 'There is nothing left to add from this list.',
             },
@@ -281,16 +280,6 @@ describe('a new stage given nothing but a name', () => {
             tooltips: {
               addPerson: { en: 'Add node' },
               automaticLayout: { en: 'Automatic layout' },
-            },
-          }
-        : {}),
-      // The template turns automatic layout on, so its tooltips are asked; no
-      // preset highlights, shows edges or groups, and drawing is off.
-      ...(type === 'Narrative'
-        ? {
-            tooltips: {
-              pauseLayout: { en: 'Pause automatic layout' },
-              resumeLayout: { en: 'Resume automatic layout' },
             },
           }
         : {}),

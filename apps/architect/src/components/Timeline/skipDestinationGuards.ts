@@ -90,8 +90,8 @@ const formatStageReference = <T extends TimelineStage>(
   };
 };
 
-export const getSkipDestinationDeleteWarning = <T extends TimelineStage>(
-  stages: T[],
+export const getSkipDestinationDeleteWarning = (
+  stages: TimelineStage[],
   stageId: string,
 ): TimelineWarning | null => {
   const destinationStage = stages.find((stage) => stage.id === stageId);

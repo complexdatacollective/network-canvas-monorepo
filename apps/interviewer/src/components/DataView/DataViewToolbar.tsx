@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { DataTableFacetedFilter } from '@codaco/fresco-ui/DataTable/DataTableFacetedFilter';
 import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import BooleanFilter from '@codaco/fresco-ui/DataTable/filters/BooleanFilter';

@@ -1,6 +1,6 @@
 'use client';
 
-import { MousePointer2, Unlink, Waypoints } from 'lucide-react';
+import { MousePointer2, Redo2, Undo2, Unlink, Waypoints } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   useCallback,
@@ -26,6 +26,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
 import {
   SegmentedToolbar,
+  ToolbarGroup,
   ToolbarIconButton,
   ToolbarSeparator,
   ToolbarToggleGroup,
@@ -76,6 +77,7 @@ import {
   addNodesAndEdges,
   deleteEdge,
   deleteNode,
+  restoreNetwork,
   updateEdge,
   updateNode,
   updateStageMetadata,
@@ -87,6 +89,12 @@ import { readOwnProperty, writeOwnProperty } from '../../utils/ownProperty';
 import { getDecryptionScope } from '../Anonymisation/decryptionScope';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useReportUnreadable } from '../Anonymisation/useReportUnreadable';
+import { interfaceMessages } from '../messages';
+import {
+  createUndoStore,
+  type UndoCommand,
+  useUndoStore,
+} from '../NetworkComposer/useUndoStore';
 import { pedigreeFraming } from '../pedigree-common/framing';
 import {
   participantsFamily,
@@ -113,10 +121,7 @@ import {
   RELATIVES_NOT_RECORDED,
   relativesToAskAbout,
 } from './completeness';
-import AddRelativeMenu, {
-  AddMenuReachProbe,
-  addMenuReach,
-} from './components/AddRelativeMenu';
+import AddRelativeMenu from './components/AddRelativeMenu';
 import CompletenessTracker from './components/CompletenessTracker';
 import ConnectMenu, {
   type ConnectPair,
@@ -132,6 +137,11 @@ import PersonForm, {
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
 import { decryptDetails, useDecryptedNames } from './encryptedNames';
+import {
+  changeBetween,
+  type FamilyHistoryPoint,
+  restoreSide,
+} from './familyHistory';
 import {
   distinctNames,
   generateLabels,
@@ -152,6 +162,7 @@ import {
   pedigreeConfigFromStage,
   planAdditionUnder,
   planConnection,
+  connectionUpdates,
   type PlannedLink,
   type PlannedTwin,
   planStandIns,
@@ -179,13 +190,7 @@ import {
   sharedRecordWrites,
   stepsSharingFamily,
 } from './sharedRecord';
-import type { Point } from './spatialNavigation';
-import {
-  type Box,
-  usePanZoom,
-  type View,
-  viewKeepingInArea,
-} from './usePanZoom';
+import { usePanZoom, type View } from './usePanZoom';
 
 /**
  * What selecting a person does: open their details (with their add menu on
@@ -212,28 +217,6 @@ type PanelState = {
    * one. */
   then?: 'sibling' | 'child';
 } | null;
-
-/**
- * The least zoom at which every name drawn in the given symbols is at least
- * as large on screen as `text-xs`, the size below which a name stops being
- * legible.
- */
-const legibleScale = (symbols: Iterable<HTMLElement>) => {
-  const rootSize =
-    Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
-    16;
-  let smallest = Number.POSITIVE_INFINITY;
-  for (const symbol of symbols) {
-    for (const text of symbol.querySelectorAll('span')) {
-      if (!text.textContent?.trim()) continue;
-      smallest = Math.min(
-        smallest,
-        Number.parseFloat(getComputedStyle(text).fontSize),
-      );
-    }
-  }
-  return Number.isFinite(smallest) ? (rootSize * 0.75) / smallest : 0;
-};
 
 /** The buttons of the add menu shown around a person's symbol, if any. */
 const menuItemsOf = (symbol: HTMLElement) => [
@@ -372,6 +355,66 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       dispatch(updateStageMetadata({ currentStep: step, metadata }));
     }
   };
+
+  // Undo and redo. Each change the participant makes to the family is one
+  // step, however many people and relationships it writes: adding someone
+  // (with any parents or stand-ins the addition draws), saving their
+  // details, removing them (with anyone removed with them), connecting or
+  // disconnecting two people, answering from the list of what is still
+  // needed, or selecting someone for a prompt. Undoing a step puts back only
+  // what that change wrote (`familyHistory`). The history is the prompt's:
+  // moving on to another prompt or stage saves everyone's labels, and starts
+  // it afresh.
+  const [history, setHistory] = useState(() => ({
+    promptId: prompt.id,
+    store: createUndoStore(),
+  }));
+  if (history.promptId !== prompt.id) {
+    setHistory({ promptId: prompt.id, store: createUndoStore() });
+  }
+  const undoStore = history.store;
+  const canUndo = useUndoStore(
+    undoStore,
+    (state) => state.past.length > 0 || state.recording > 0,
+  );
+  const canRedo = useUndoStore(undoStore, (state) => state.future.length > 0);
+  const historyPoint = (): FamilyHistoryPoint => {
+    const session = getActiveSession(store.getState());
+    return {
+      nodes: session.network.nodes,
+      edges: session.network.edges,
+      stageMetadata: session.stageMetadata,
+    };
+  };
+  // Makes a change to the family as one step of its history, resolving to
+  // what the change resolves to. A change that writes nothing (one the
+  // session refuses outright) is no step.
+  const recordChange = <T,>(change: () => Promise<T>) =>
+    new Promise<T>((resolve, reject) => {
+      undoStore
+        .getState()
+        .record(async (): Promise<UndoCommand | null> => {
+          const before = historyPoint();
+          const outcome = await change();
+          resolve(outcome);
+          const step = changeBetween(before, historyPoint());
+          if (!step) return null;
+          return {
+            label: 'Change the family',
+            undo: () => {
+              dispatch(
+                restoreNetwork(restoreSide(historyPoint(), step, 'before')),
+              );
+            },
+            redo: () => {
+              dispatch(
+                restoreNetwork(restoreSide(historyPoint(), step, 'after')),
+              );
+            },
+          };
+        })
+        .catch(reject);
+    });
 
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
@@ -512,32 +555,33 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const changedTwins = new Map(
       (plan.changedTwins ?? []).map((twin) => [twin.linkId, twin.zygosity]),
     );
-    // The twins a new sibling joins were carried by whoever carried them.
+    // The twins a new sibling joins were carried by whoever carried them; a
+    // new parent who carried the anchor replaces whoever was recorded as
+    // having, and a biological parent a new genetic parent takes the place
+    // of is the kind of parent the participant said instead.
     const recarried = new Map(
-      (plan.carrierUpdates ?? []).map((update) => [
-        update.linkId,
-        update.isGestationalCarrier,
-      ]),
+      (plan.carrierUpdates ?? []).map((update) => [update.linkId, update]),
     );
     const keptEdges = edges
       .filter((edge) => !removedLinks.has(edge[entityPrimaryKeyProperty]))
       .map((edge) => {
         const linkId = edge[entityPrimaryKeyProperty];
-        if (recarried.has(linkId)) {
+        const update = recarried.get(linkId);
+        if (update) {
           const {
             [config.gestationalCarrierAttribute]: _recorded,
             ...attributes
           } = edge[entityAttributesProperty];
-          const carries = recarried.get(linkId);
+          const carries = update.isGestationalCarrier;
           return {
             ...edge,
-            [entityAttributesProperty]:
-              carries === undefined
-                ? attributes
-                : {
-                    ...attributes,
-                    [config.gestationalCarrierAttribute]: carries,
-                  },
+            [entityAttributesProperty]: {
+              ...attributes,
+              [config.kindAttribute]: [update.kind],
+              ...(carries === undefined
+                ? {}
+                : { [config.gestationalCarrierAttribute]: carries }),
+            },
           };
         }
         const zygosity = changedTwins.get(linkId);
@@ -713,7 +757,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   );
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
-  const menuReachRef = useRef<HTMLSpanElement>(null);
   // How far in from each edge of the canvas the prompt and the toolbar leave
   // it clear.
   const clearInsets = useCallback(() => {
@@ -732,27 +775,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   }, []);
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
-  // The whole family, clear of the prompt above and the toolbar below, with
-  // room around it for anyone's add menu. The room is left on every prompt,
-  // including those where no menu is shown, so the same family is framed
-  // the same way whichever prompt it is shown on. It is shown only as far
-  // out as names stay legible: when the whole family would be drawn
-  // smaller, the participant is shown in the middle at the least legible
-  // zoom instead, and the rest is reached by panning or zooming out.
+  // The whole family in the middle of the canvas, clear of the prompt above
+  // and the toolbar below, as large as it fits, up to a fifth larger than
+  // its natural size, and out no further than the zoom buttons go: a family
+  // too large even for that is still centred, and the rest of it is reached
+  // by panning. This is the view the stage opens on, and the view it goes
+  // back to whenever the participant asks for it, moves to another prompt,
+  // or finishes adding or editing someone; where they had dragged or zoomed
+  // it to is not kept. Until they move it again, it keeps the family framed
+  // as the layout changes (`framedView`).
+  const framedView = useRef<View | null>(null);
   const showWholeFamily = useCallback(
     ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
-      const ego = family.egoId ? nodeRefs.current.get(family.egoId) : undefined;
-      panZoom.fitToView(layout, clearInsets(), {
-        animated,
-        reach: addMenuReach(menuReachRef.current),
-        least: ego
-          ? { scale: legibleScale(nodeRefs.current.values()), around: ego }
-          : undefined,
-      });
+      framedView.current =
+        panZoom.fitToView(layout, clearInsets(), { animated }) ?? null;
     },
-    [panZoom, clearInsets, family.egoId],
+    [panZoom, clearInsets],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
@@ -1055,8 +1095,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   });
 
   // The stage opens as Show the whole family frames it, once the
-  // participant's symbol is laid out. Moving between prompts
-  // leaves the view where the participant put it.
+  // participant's symbol is laid out, and goes back to it on every prompt.
   const fitted = useRef(false);
   useEffect(() => {
     if (fitted.current) return;
@@ -1065,23 +1104,60 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     fitted.current = true;
     showWholeFamily({ animated: false });
   });
+  const framedPromptId = useRef(prompt.id);
+  useEffect(() => {
+    if (framedPromptId.current === prompt.id) return;
+    framedPromptId.current = prompt.id;
+    showWholeFamily();
+  }, [prompt.id, showWholeFamily]);
 
-  // Adding someone can move everyone else in the layout. The person in
-  // question (the one selected, focused, or else the participant) stays where
-  // they are on screen, and the family moves around them.
-  const heldPosition = useRef<{ id: string; x: number; y: number } | null>(
-    null,
-  );
+  // Adding someone can move everyone else in the layout. While the family
+  // is framed as Show the whole family frames it, it is framed afresh.
+  // Otherwise the person in question (the one selected, focused, or else the
+  // participant) stays where they are on screen, and the family moves around
+  // them.
+  const heldPosition = useRef<{
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   useLayoutEffect(() => {
     const id = selectedId ?? focusedId ?? family.egoId;
     const element = id ? nodeRefs.current.get(id) : undefined;
-    if (!id || !element) {
+    const layout = contentRef.current?.firstElementChild;
+    if (!id || !element || !(layout instanceof HTMLElement)) {
       heldPosition.current = null;
       return;
     }
     const previous = heldPosition.current;
-    if (previous?.id === id) panZoom.holdInPlace(element, previous);
-    heldPosition.current = { id, ...panZoom.contentPositionOf(element) };
+    const now = {
+      id,
+      ...panZoom.contentPositionOf(element),
+      width: layout.offsetWidth,
+      height: layout.offsetHeight,
+    };
+    heldPosition.current = now;
+    if (previous?.id !== id) return;
+    const framed = framedView.current;
+    const headed = panZoom.headed();
+    const stillFramed =
+      framed !== null &&
+      Math.abs(headed.x - framed.x) < 0.5 &&
+      Math.abs(headed.y - framed.y) < 0.5 &&
+      Math.abs(headed.scale - framed.scale) < 0.001;
+    if (!stillFramed) {
+      framedView.current = null;
+      panZoom.holdInPlace(element, previous);
+      return;
+    }
+    const moved =
+      Math.abs(previous.x - now.x) >= 0.5 ||
+      Math.abs(previous.y - now.y) >= 0.5 ||
+      previous.width !== now.width ||
+      previous.height !== now.height;
+    if (moved) showWholeFamily();
   });
 
   // The person selected moves to the middle of the part of the screen the
@@ -1127,112 +1203,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return () => cancelAnimationFrame(frame);
   }, [selectedId, panelAnchorId, panZoom, clearInsets]);
 
-  // Closing the panel puts the view back as it was when the panel opened:
-  // the same zoom, with the person it was opened from where they were on
-  // screen. (While it is open, the panel holds pointer input away from the
-  // canvas, so nothing else has moved it.) An addition grows the family
-  // around that person; if the one added would be out of sight, the view
-  // moves just far enough to show them.
-  const viewBeforePanel = useRef<{
-    view: View;
-    anchorId: string;
-    anchorAt: Point;
-    subjectId: string;
-  } | null>(null);
-  // The one just added, placed in view as the panel closed, and the person
-  // the panel was opened from, to whom focus (and the add menu) returns:
-  // bringing that person's menu into view keeps the one added in view too.
-  const placedOnClose = useRef<{
-    anchorId: string;
-    subjectId: string;
-  } | null>(null);
-  const rememberView = (anchorId: string, subjectId: string) => {
-    if (panel?.open) return;
-    placedOnClose.current = null;
-    const anchor = nodeRefs.current.get(anchorId);
-    viewBeforePanel.current = anchor
-      ? {
-          view: panZoom.view(),
-          anchorId,
-          anchorAt: panZoom.contentPositionOf(anchor),
-          subjectId,
-        }
-      : null;
-  };
+  // Closing the panel, once someone is added or edited (or the panel is
+  // cancelled), shows the whole family again.
+  const panelWasOpen = useRef(false);
   useEffect(() => {
-    if (selectedId) return;
-    const before = viewBeforePanel.current;
-    viewBeforePanel.current = null;
-    const viewport = viewportRef.current;
-    if (!before || !viewport) return;
-    const { scale } = before.view;
-    let { x, y } = before.view;
-    const anchor = nodeRefs.current.get(before.anchorId);
-    if (anchor) {
-      const now = panZoom.contentPositionOf(anchor);
-      x += (before.anchorAt.x - now.x) * scale;
-      y += (before.anchorAt.y - now.y) * scale;
-    }
-    const subject = nodeRefs.current.get(before.subjectId);
-    if (!subject || subject === anchor) {
-      panZoom.goTo({ x, y, scale });
+    if (selectedId) {
+      panelWasOpen.current = true;
       return;
     }
-    // Everyone clear of the prompt and the toolbar stays clear of them, as
-    // the one added comes into the clear area too, with room for their add
-    // menu, the family zooming out if it has to.
-    const insets = clearInsets();
-    const area = {
-      left: insets.left,
-      top: insets.top,
-      right: viewport.clientWidth - insets.right,
-      bottom: viewport.clientHeight - insets.bottom,
-    };
-    const boxOf = (element: HTMLElement) => {
-      const centre = panZoom.contentPositionOf(element);
-      const halfWidth = element.offsetWidth / 2;
-      const halfHeight = element.offsetHeight / 2;
-      return {
-        left: centre.x - halfWidth,
-        top: centre.y - halfHeight,
-        right: centre.x + halfWidth,
-        bottom: centre.y + halfHeight,
-      };
-    };
-    // (To within a pixel, as someone placed at the edge of the area sits.)
-    const isClear = (box: Box) =>
-      x + box.left * scale >= area.left - 1 &&
-      x + box.right * scale <= area.right + 1 &&
-      y + box.top * scale >= area.top - 1 &&
-      y + box.bottom * scale <= area.bottom + 1;
-    const keep = [...nodeRefs.current.values()]
-      .filter((element) => element !== subject)
-      .map(boxOf)
-      .filter(isClear);
-    const reach = addMenuReach(menuReachRef.current);
-    const around = Math.max(reach.content, reach.screen / scale);
-    const added = boxOf(subject);
-    placedOnClose.current = {
-      anchorId: before.anchorId,
-      subjectId: before.subjectId,
-    };
-    panZoom.goTo(
-      viewKeepingInArea({
-        view: { x, y, scale },
-        required: {
-          left: added.left - around,
-          top: added.top - around,
-          right: added.right + around,
-          bottom: added.bottom + around,
-        },
-        keep,
-        area,
-        pivot: anchor
-          ? panZoom.contentPositionOf(anchor)
-          : panZoom.contentPositionOf(subject),
-      }),
-    );
-  }, [selectedId, panZoom, clearInsets]);
+    if (!panelWasOpen.current) return;
+    panelWasOpen.current = false;
+    showWholeFamily();
+  }, [selectedId, showWholeFamily]);
 
   // An add menu opened from the keyboard, or by a tap, is brought into the
   // clear part of the canvas with its person. (One shown by the mouse
@@ -1241,27 +1223,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const menuFromFocus = menuPersonId !== null && menuPersonId === focusedId;
   const revealedMenuId = useRef<string | null>(null);
   // Brings someone, and their add menu when it shows, into the clear part of
-  // the canvas, without taking the one just added out of it again.
+  // the canvas.
   const reveal = useCallback(
-    (personId: string, element: HTMLElement) => {
-      const placed = placedOnClose.current;
-      const keep =
-        placed?.anchorId === personId
-          ? nodeRefs.current.get(placed.subjectId)
-          : undefined;
-      if (placed?.anchorId !== personId) placedOnClose.current = null;
-      const reach = addMenuReach(menuReachRef.current);
-      const scale = panZoom.scale.get();
-      panZoom.bringIntoView(
-        [element, ...menuItemsOf(element)],
-        clearInsets(),
-        keep
-          ? {
-              elements: [keep],
-              around: Math.max(reach.content * scale, reach.screen),
-            }
-          : undefined,
-      );
+    (element: HTMLElement) => {
+      panZoom.bringIntoView([element, ...menuItemsOf(element)], clearInsets());
     },
     [panZoom, clearInsets],
   );
@@ -1271,7 +1236,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     revealedMenuId.current = id;
     const element = id ? nodeRefs.current.get(id) : undefined;
     if (!id || !element) return;
-    reveal(id, element);
+    reveal(element);
   }, [menuFromFocus, menuPersonId, reveal]);
 
   // Anything that could write what the study encrypts waits for the
@@ -1297,7 +1262,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // may need, fixed so the people drawn while the form is filled in are
     // the ones added.
     const ids = Array.from({ length: 8 }, () => uuid());
-    rememberView(anchor.id, ids[0] ?? anchor.id);
     setPanel({
       open: true,
       key: uuid(),
@@ -1536,15 +1500,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const recorded = person.relativesNotRecorded.filter(
       (value) => value !== group.none && value !== group.unknown,
     );
-    await dispatch(
-      updateNode({
-        nodeId: person.id,
-        attributePatch: {
-          set: { [attribute]: [...recorded, group.none] },
-          unset: [],
-        },
-        currentStep,
-      }),
+    await recordChange(() =>
+      dispatch(
+        updateNode({
+          nodeId: person.id,
+          attributePatch: {
+            set: { [attribute]: [...recorded, group.none] },
+            unset: [],
+          },
+          currentStep,
+        }),
+      ),
     );
     setAnnouncement(
       intl.formatMessage(
@@ -1617,7 +1583,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       writeOwnProperty(attributes, variable, value);
     }
     const person = { ...recorded, attributes };
-    rememberView(personId, personId);
     setPanel({
       open: true,
       key: uuid(),
@@ -1679,7 +1644,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       // The canvas does not scroll; keyboard focus pans to the person, clear
       // of the prompt and the toolbar.
       const element = nodeRefs.current.get(personId);
-      if (element) reveal(personId, element);
+      if (element) reveal(element);
     }
   };
 
@@ -1757,15 +1722,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       const person = family.byId.get(personId);
       if (!person) return;
       if (!canSelect(person)) return;
-      void dispatch(
-        updateNode({
-          nodeId: personId,
-          attributePatch: {
-            set: { [nomination.attribute]: !isNominated(person) },
-            unset: [],
-          },
-          currentStep,
-        }),
+      const { attribute } = nomination;
+      const nominated = isNominated(person);
+      void recordChange(() =>
+        dispatch(
+          updateNode({
+            nodeId: personId,
+            attributePatch: { set: { [attribute]: !nominated }, unset: [] },
+            currentStep,
+          }),
+        ),
       );
       return;
     }
@@ -2092,7 +2058,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // giving way). A write the session refuses (a protected answer whose key
   // went, say) keeps it open with their answers and says why, so they can
   // save again.
-  const handleSubmit = async (
+  const submitPanel = async (
     result: PersonFormResult,
   ): Promise<FormSubmissionResult> => {
     if (!panel) return { success: true };
@@ -2126,7 +2092,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             update.kind,
           ]),
         ),
-        sexes: new Map([[mode.person.id, sexAssignedAtBirth]]),
+        sexes: new Map([
+          [mode.person.id, sexAssignedAtBirth],
+          ...(result.clearedSexIds ?? []).map((id) => [id, undefined] as const),
+        ]),
         twins: result.twinChanges?.added,
         removedLinkIds: result.twinChanges?.removedLinkIds,
       });
@@ -2154,6 +2123,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       );
       if (writeFailureMessage(updated)) return writeSubmissionResult(updated);
+      // A genetic parent beside them recorded with the sex at birth they
+      // were just given has theirs cleared, to be answered again: the newest
+      // answer wins (`sexAnswerGivesWay`). Nobody whose sex at birth is not
+      // known is withdrawn from a prompt limited to one sex.
+      for (const personId of result.clearedSexIds ?? []) {
+        const cleared = await dispatch(
+          updateNode({
+            nodeId: personId,
+            attributePatch: { set: {}, unset: [sexAttribute] },
+            currentStep,
+          }),
+        );
+        if (writeFailureMessage(cleared)) {
+          return writeSubmissionResult(cleared);
+        }
+      }
       // A sex at birth the participant chose for a stand-in, rather than the
       // one that followed from the other genetic parent, is something they
       // told about them: they are someone in their own right from then on,
@@ -2196,6 +2181,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           return writeSubmissionResult(relinked);
         }
         relinkedIds.push(update.linkId);
+      }
+      // Twins answered identical are given the same biological parents and
+      // donors (`identicalParentLinks`); a stand-in in the place of one of
+      // them gives way below (`keepStandInRule`).
+      const addedParentEdgeIds: string[] = [];
+      for (const link of result.identicalParentLinks ?? []) {
+        const added = await dispatch(
+          addEdge({ ...linkEdge(link), currentStep }),
+        );
+        if (writeFailureMessage(added)) {
+          for (const edgeId of addedParentEdgeIds) dispatch(deleteEdge(edgeId));
+          await restoreLinks(relinkedIds);
+          return writeSubmissionResult(added);
+        }
+        if (addEdge.fulfilled.match(added)) {
+          addedParentEdgeIds.push(added.payload.edgeId);
+        }
       }
       // Twins answered, re-described or no longer twins. Saving again after a
       // refusal writes only what is left: the form reads the twins from the
@@ -2359,6 +2361,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return { success: true };
   };
 
+  // Whatever the panel saves is one step of the family's history.
+  const handleSubmit = (result: PersonFormResult) =>
+    recordChange(() => submitPanel(result));
+
   // Ending connecting or disconnecting, however it ends, takes back what it
   // last said.
   const chooseTool = (next: Tool) => {
@@ -2489,6 +2495,51 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setAnnouncement('');
   };
 
+  // Undo and redo wait while a person's details are open (their answers are
+  // not the family's yet), and while nothing in the family can be changed.
+  const historyLocked = !!panel?.open || detailsLocked || wordingForced;
+  // A pair half chosen to connect or disconnect is let go: the family it was
+  // chosen in is not the one shown any more.
+  const travel = async (direction: 'undo' | 'redo') => {
+    if (historyLocked) return;
+    endConnecting();
+    setConnectNotice(null);
+    await undoStore.getState()[direction]();
+    setAnnouncement(
+      intl.formatMessage(
+        direction === 'undo'
+          ? messages.undoneAnnouncement
+          : messages.redoneAnnouncement,
+      ),
+    );
+  };
+  // Ctrl+Z (⌘Z) undoes, and Ctrl+Shift+Z (⌘⇧Z) or Ctrl+Y redoes, anywhere on
+  // the stage but in a text field, which keeps its own undo.
+  const handleHistoryKeyDown = (event: React.KeyboardEvent) => {
+    if (event.defaultPrevented || event.altKey) return;
+    if (!(event.metaKey || event.ctrlKey)) return;
+    const key = event.key.toLowerCase();
+    const direction =
+      key === 'z'
+        ? event.shiftKey
+          ? 'redo'
+          : 'undo'
+        : key === 'y'
+          ? 'redo'
+          : null;
+    if (!direction) return;
+    const { target } = event;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    ) {
+      return;
+    }
+    event.preventDefault();
+    if (direction === 'undo' ? canUndo : canRedo) void travel(direction);
+  };
+
   const handleConnect = async (connection: Connection) => {
     endConnecting();
     const link = planConnection(
@@ -2499,9 +2550,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // A connection that makes a stand-in give way where they were someone's
     // only connection to the participant is refused, as a disconnection
     // that would leave them out is.
+    // The newest answer wins: the biological parent a genetic kind takes
+    // the place of is recorded as the kind of parent the participant said,
+    // and whoever carried the child as not known to have, once someone else
+    // is said to have carried them.
+    const updates = connectionUpdates(connection, family);
     const cutOff = peopleCutOffByChange(
       family,
-      { links: [link] },
+      {
+        links: [link],
+        linkKinds: new Map(
+          updates.map((update) => [update.linkId, update.kind]),
+        ),
+      },
       config.sexAssignedAtBirthAttribute,
     );
     if (cutOff.length > 0) {
@@ -2513,9 +2574,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       );
       return;
     }
-    await addLink(link);
-    reportRefusedStandIn(await keepStandInRule());
-    await withdrawContradictedAnswers();
+    await recordChange(async () => {
+      const relinkedIds: string[] = [];
+      for (const update of updates) {
+        const relinked = await writeLinkUpdate(update);
+        if (writeFailureMessage(relinked)) {
+          await restoreLinks(relinkedIds);
+          reportRefusedStandIn(relinked);
+          return;
+        }
+        relinkedIds.push(update.linkId);
+      }
+      await addLink(link);
+      reportRefusedStandIn(await keepStandInRule());
+      await withdrawContradictedAnswers();
+    });
     setJustConnected(connection);
   };
 
@@ -2528,16 +2601,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
       onConfirm: () => {
-        for (const linkId of linksBetween(firstId, secondId)) {
-          dispatch(deleteEdge(linkId));
-        }
         removed = true;
       },
     });
     endConnecting();
     if (removed) {
       // A genetic parent disconnected leaves a stand-in in their place.
-      reportRefusedStandIn(await keepStandInRule());
+      await recordChange(async () => {
+        for (const linkId of linksBetween(firstId, secondId)) {
+          dispatch(deleteEdge(linkId));
+        }
+        reportRefusedStandIn(await keepStandInRule());
+      });
       setAnnouncement(
         intl.formatMessage(messages.disconnectedAnnouncement, args),
       );
@@ -2586,8 +2661,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       },
       onConfirm: () => {
         if (survivorId) setLastFocusedId(survivorId);
-        for (const linkId of linkIds) dispatch(deleteEdge(linkId));
-        for (const id of removedIds) dispatch(deleteNode(id));
         removed = true;
         if (focusedId !== null && removedIds.includes(focusedId)) {
           setFocusedId(null);
@@ -2602,10 +2675,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         );
       },
     });
-    // Removing a parent who tells half siblings apart leaves an unnamed
-    // stand-in in their place, so the half-sibling answer is never lost
-    // (ruling 22).
-    if (removed) reportRefusedStandIn(await keepStandInRule());
+    if (!removed) return;
+    await recordChange(async () => {
+      for (const linkId of linkIds) dispatch(deleteEdge(linkId));
+      for (const id of removedIds) dispatch(deleteNode(id));
+      // Removing a parent who tells half siblings apart leaves an unnamed
+      // stand-in in their place, so the half-sibling answer is never lost
+      // (ruling 22).
+      reportRefusedStandIn(await keepStandInRule());
+    });
   };
 
   // Escape in the add menu returns focus to its person; Escape on the person
@@ -2690,6 +2768,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         className="relative flex h-full w-full flex-col"
         onPointerDown={handleStagePointerDown}
         onPointerMove={handleStagePointerMove}
+        onKeyDown={handleHistoryKeyDown}
       >
         <div
           ref={promptRef}
@@ -2698,7 +2777,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           <Prompts prompts={prompts} currentPromptId={prompt.id} />
         </div>
         {measurementContainer}
-        <AddMenuReachProbe ref={menuReachRef} />
         <div className="relative flex min-h-0 w-full flex-1 flex-col">
           {/* Drag to pan, wheel or pinch to zoom. */}
           <PedigreeViewport
@@ -2854,10 +2932,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   )}
               </p>
             )}
-            {/* Rises into place when the stage first loads. */}
+            {/* The family's tools and the view's controls, side by side, rise
+              into place when the stage first loads. */}
             <motion.div
-              // No wider than the stage, so a toolbar that does not fit scrolls.
-              className="max-w-full min-w-0"
+              // No wider than the stage: the view's controls go below the
+              // tools when the two do not fit side by side, and tools that do
+              // not fit on their own scroll.
+              className="flex max-w-full min-w-0 flex-wrap items-center justify-center gap-3"
               initial={reduceMotion ? false : { y: '150%', opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               // A heavy spring, damped just short of settling straight, so it
@@ -2946,7 +3027,43 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   />
                 )}
                 {(!nomination || participantFraming) && <ToolbarSeparator />}
-                {zoomButtons}
+                <ToolbarGroup
+                  aria-label={intl.formatMessage(
+                    interfaceMessages.historyTools,
+                  )}
+                  disabled={historyLocked}
+                >
+                  <ToolbarIconButton
+                    aria-label={intl.formatMessage(interfaceMessages.undo)}
+                    tooltip={
+                      <ToolTip
+                        name={intl.formatMessage(interfaceMessages.undo)}
+                        description={intl.formatMessage(
+                          messages.undoDescription,
+                        )}
+                      />
+                    }
+                    icon={<Undo2 />}
+                    disabled={!canUndo}
+                    onClick={() => void travel('undo')}
+                    data-testid="pedigree-undo"
+                  />
+                  <ToolbarIconButton
+                    aria-label={intl.formatMessage(interfaceMessages.redo)}
+                    tooltip={
+                      <ToolTip
+                        name={intl.formatMessage(interfaceMessages.redo)}
+                        description={intl.formatMessage(
+                          messages.redoDescription,
+                        )}
+                      />
+                    }
+                    icon={<Redo2 />}
+                    disabled={!canRedo}
+                    onClick={() => void travel('redo')}
+                    data-testid="pedigree-redo"
+                  />
+                </ToolbarGroup>
                 {progress && completeness && !nomination && (
                   <ToolbarSeparator />
                 )}
@@ -2966,6 +3083,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     }
                   />
                 )}
+              </SegmentedToolbar>
+              <SegmentedToolbar
+                aria-label={intl.formatMessage(messages.viewToolsLabel)}
+                size="lg"
+                className="pointer-events-auto"
+              >
+                {zoomButtons}
               </SegmentedToolbar>
             </motion.div>
           </div>
@@ -3039,7 +3163,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               {panel?.mode.kind === 'add' ? (
                 <span ref={setStepNavigation} className="contents" />
               ) : (
-                <SubmitButton form={formId}>{text(wording.save)}</SubmitButton>
+                <SubmitButton form={formId}>
+                  <AppMessage message={commonMessages.save} />
+                </SubmitButton>
               )}
             </>
           }

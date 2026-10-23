@@ -16,7 +16,7 @@ import {
   useQueryStates,
 } from 'nuqs';
 import { use, useMemo, type ReactNode } from 'react';
-import superjson from 'superjson';
+import { SuperJSON } from 'superjson';
 import { z } from 'zod/mini';
 
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
@@ -118,7 +118,7 @@ export default function InterviewsTableRows({
   'use no memo';
   const data = use(interviewsPromise);
   const rows = useMemo(
-    () => superjson.parse<GetInterviewsQuery>(data.rows),
+    () => SuperJSON.parse<GetInterviewsQuery>(data.rows),
     [data.rows],
   );
   const { startTransition } = useNuqsTable();

@@ -6,7 +6,7 @@ import { useCallback, useId, useRef } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button from '../../Button';
+import { Button } from '../../Button';
 import {
   type PresentationalText,
   presentationalTextProps,

@@ -159,7 +159,7 @@ const ActionToolbar = ({
   leadingActions,
   className,
   'aria-label': providedAriaLabel,
-  leadingAriaLabel: providedLeadingAriaLabel,
+  'leadingAriaLabel': providedLeadingAriaLabel,
 }: ActionToolbarProps) => {
   const intl = useAppIntl();
   const ariaLabel =

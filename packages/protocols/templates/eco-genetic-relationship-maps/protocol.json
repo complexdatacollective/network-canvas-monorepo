@@ -643,9 +643,6 @@
         "disconnectWouldCutOff": {
           "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}"
         },
-        "dontKnow": {
-          "en-US": "Don’t know"
-        },
         "panelTitle": {
           "en-US": "{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}"
         },
@@ -671,7 +668,16 @@
           "en-US": "What kind of parent are they?"
         },
         "parentLinkKindLabel": {
-          "en-US": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}"
+          "en-US": "{parentIsYou, select, true {How would you define your relationship to “{child}”?} other {{personIsYou, select, true {How would you define “{parent}”’s relationship to you?} other {How would you define “{parent}”’s relationship to “{child}”?}}}}"
+        },
+        "carrierReplaced": {
+          "en-US": "{who, select, carrierIsYou {Choosing “{answer}” means you will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.} childIsYou {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried you, as only one person carries a pregnancy.} other {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.}}"
+        },
+        "geneticParentReplaced": {
+          "en-US": "{who, select, parentIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define your relationship to “{child}” instead.} childIsYou {Choosing “{answer}” means “{parent}” will no longer be recorded as your biological parent. You will be asked how you would define “{parent}”’s relationship to you instead.} other {Choosing “{answer}” means “{parent}” will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define “{parent}”’s relationship to “{child}” instead.}}"
+        },
+        "identicalTwinSharesParents": {
+          "en-US": "{who, select, personIsYou {Choosing “{answer}” records the same biological parents and donors for you and “{twin}”.} twinIsYou {Choosing “{answer}” records the same biological parents and donors for “{name}” and you.} other {Choosing “{answer}” records the same biological parents and donors for “{name}” and “{twin}”.}}"
         },
         "parentPartnerLabel": {
           "en-US": "Are they the partner of another parent?"
@@ -691,6 +697,12 @@
         "sexAssignedAtBirthLabel": {
           "en-US": "Sex assigned at birth"
         },
+        "sexChangeClearsCoParentSex": {
+          "en-US": "{who, select, personIsYou {You and “{coParent}” are both genetic parents of {children}, and “{coParent}” is also recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth, so if you save, the sex at birth of “{coParent}” will be cleared for you to answer again.} childIsYou {This person and “{coParent}” are both your genetic parents, and “{coParent}” is also recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth, so if you save, the sex at birth of “{coParent}” will be cleared for you to answer again.} coParentIsYou {You and this person are both genetic parents of {children}, and you are also recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth, so if you save, your own sex at birth will be cleared for you to answer again.} other {This person and “{coParent}” are both genetic parents of {children}, and “{coParent}” is also recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth, so if you save, the sex at birth of “{coParent}” will be cleared for you to answer again.}}"
+        },
+        "sexChangeEndsCarrying": {
+          "en-US": "{who, select, personIsYou {You are recorded as having carried {children}, and nobody recorded as “{sex}” at birth can carry a pregnancy. If you save, you will no longer be recorded as having carried {children}.} childIsYou {This person is recorded as having carried you, and nobody recorded as “{sex}” at birth can carry a pregnancy. If you save, they will no longer be recorded as having carried you.} other {This person is recorded as having carried {children}, and nobody recorded as “{sex}” at birth can carry a pregnancy. If you save, they will no longer be recorded as having carried {children}.}}"
+        },
         "sharedParentCountBoth": {
           "en-US": "Both parents"
         },
@@ -708,9 +720,6 @@
         },
         "you": {
           "en-US": "You"
-        },
-        "save": {
-          "en-US": "Save"
         },
         "connectTool": {
           "en-US": "Connect"
@@ -761,7 +770,7 @@
           "en-US": "Include triplets and other multiple births."
         },
         "twinsLabel": {
-          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which siblings of “{name}”, if any, are their twins?}}"
+          "en-US": "{isYou, select, true {Are any of these siblings your twins?} other {Are any of these siblings twins with “{name}”?}}"
         },
         "twinZygosityLabel": {
           "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}"
@@ -784,21 +793,6 @@
         "unavailableGeneticParentsFull": {
           "en-US": "{who, select, childIsYou {{count, plural, one {“{answers}” is unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose it, first change how one of them is connected to you.} other {{answers} are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.}}} includesYou {{count, plural, one {“{answers}” is unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose it, first change how one of you is connected to “{child}”.} other {{answers} are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.}}} other {{count, plural, one {“{answers}” is unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose it, first change how one of them is connected to “{child}”.} other {{answers} are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}}}"
         },
-        "unavailableIdenticalTwin": {
-          "en-US": "{who, select, personIsYou {“{answer}” is unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose it, first record the same biological parents and donors for both of you.} twinIsYou {“{answer}” is unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose it, first record the same biological parents and donors for both of you.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose it, first record the same biological parents and donors for both of them.}}"
-        },
-        "unavailableIdenticalTwinNew": {
-          "en-US": "{isYou, select, true {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all the same ones as “{name}”. To choose it, choose all the biological parents and donors of “{name}” above.}}"
-        },
-        "unavailableIdenticalTwinSex": {
-          "en-US": "{who, select, personIsYou {“{answer}” is unavailable because identical twins have the same sex at birth, and you and “{twin}” are recorded with different ones. To choose it, first change the sex at birth of one of you.} twinIsYou {“{answer}” is unavailable because identical twins have the same sex at birth, and “{name}” and you are recorded with different ones. To choose it, first change the sex at birth of one of you.} other {“{answer}” is unavailable because identical twins have the same sex at birth, and “{name}” and “{twin}” are recorded with different ones. To choose it, first change the sex at birth of one of them.}}"
-        },
-        "unavailableIdenticalTwinSexNew": {
-          "en-US": "{isYou, select, true {“{answer}” is unavailable because identical twins have the same sex at birth, and this sibling is recorded with a different one from yours. To choose it, go back and change this sibling’s sex at birth.} other {“{answer}” is unavailable because identical twins have the same sex at birth, and this sibling is recorded with a different one from that of “{name}”. To choose it, go back and change this sibling’s sex at birth.}}"
-        },
-        "unavailableTwinCarrierNew": {
-          "en-US": "{who, select, childIsYou {This sibling cannot be your twin, because twins are carried in the same pregnancy and “{carrier}”, who carried you, is not chosen above. To answer yes, choose “{carrier}” above.} carrierIsYou {This sibling cannot be a twin of “{name}”, because twins are carried in the same pregnancy and you carried “{name}” but are not chosen above. To answer yes, choose yourself above.} other {This sibling cannot be a twin of “{name}”, because twins are carried in the same pregnancy and “{carrier}”, who carried “{name}”, is not chosen above. To answer yes, choose “{carrier}” above.}}"
-        },
         "unavailableSameSexGeneticParent": {
           "en-US": "{who, select, coParentIsYou {{count, plural, one {“{answers}” is unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose it, first change your sex at birth or how you are connected to “{child}”.} other {{answers} are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.}}} childIsYou {{count, plural, one {“{answers}” is unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}” or how they are connected to you.} other {{answers} are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.}}} other {{count, plural, one {“{answers}” is unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.} other {{answers} are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}}}"
         },
@@ -807,9 +801,6 @@
         },
         "zygosityIdentical": {
           "en-US": "Yes, identical"
-        },
-        "zygosityUnknown": {
-          "en-US": "I don’t know"
         },
         "disconnectStandIn": {
           "en-US": "{childIsYou, select, true {“{standIn}” stands in for a parent of yours who has not been added yet, so this connection cannot be removed. Add that parent to you instead, and they will take this place.} other {“{standIn}” stands in for a parent of “{child}” who has not been added yet, so this connection cannot be removed. Add that parent to “{child}” instead, and they will take this place.}}"
@@ -828,9 +819,6 @@
         },
         "standInPlaceTaken": {
           "en-US": "{anchorIsYou, select, true {{count, plural, one {{names} has the same unnamed parent as you, so this person becomes their parent too.} other {{names} have the same unnamed parent as you, so this person becomes their parent too.}}} other {{count, plural, one {{names} has the same unnamed parent as “{anchor}”, so this person becomes their parent too.} other {{names} have the same unnamed parent as “{anchor}”, so this person becomes their parent too.}}}}"
-        },
-        "unavailableSameSexAsCoParent": {
-          "en-US": "{who, select, personIsYou {“{sex}” is unavailable because you and “{coParent}” are both genetic parents of {children}, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of you is connected to {children}.} childIsYou {“{sex}” is unavailable because this person and “{coParent}” are both your genetic parents, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of them is connected to you.} coParentIsYou {“{sex}” is unavailable because you and this person are both genetic parents of {children}, and you are recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change your sex at birth, or how one of you is connected to {children}.} other {“{sex}” is unavailable because this person and “{coParent}” are both genetic parents of {children}, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of them is connected to {children}.}}"
         }
       },
       "type": "FamilyPedigree",
@@ -889,7 +877,10 @@
       },
       "dynamicValues": {
         "nodeLabel": { "path": "node.$label" },
-        "isEgo": { "path": "node.is_ego", "cases": { "yes": true } }
+        "isParticipant": {
+          "path": "node.$isParticipant",
+          "cases": { "participant": true }
+        }
       },
       "edgeConfiguration": {
         "type": "family_relationship",
@@ -902,13 +893,13 @@
           {
             "variable": "living_status",
             "prompt": {
-              "en-US": "{isEgo, select, yes {Are you living or deceased?} other {Is {nodeLabel} living or deceased?}}"
+              "en-US": "{isParticipant, select, participant {Are you living or deceased?} other {Is {nodeLabel} living or deceased?}}"
             }
           },
           {
             "variable": "birth_year",
             "prompt": {
-              "en-US": "{isEgo, select, yes {What year were you born?} other {What year was {nodeLabel} born?}}"
+              "en-US": "{isParticipant, select, participant {What year were you born?} other {What year was {nodeLabel} born?}}"
             },
             "hint": {
               "en-US": "Leave this blank if you do not know."
@@ -1190,14 +1181,6 @@
     },
     {
       "id": "socio-exchanges",
-      "tooltips": {
-        "pauseLayout": {
-          "en-US": "Pause automatic layout"
-        },
-        "resumeLayout": {
-          "en-US": "Resume automatic layout"
-        }
-      },
       "type": "Sociogram",
       "label": {
         "en-US": "Exchanges of support"
@@ -1713,6 +1696,18 @@
       },
       "no": {
         "en-US": "No"
+      },
+      "save": {
+        "en-US": "Save"
+      },
+      "dontKnow": {
+        "en-US": "Don’t know"
+      },
+      "pauseLayout": {
+        "en-US": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en-US": "Resume automatic layout"
       }
     },
     "messages": {

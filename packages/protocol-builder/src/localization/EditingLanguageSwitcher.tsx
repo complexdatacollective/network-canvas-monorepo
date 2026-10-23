@@ -2,7 +2,7 @@ import { ChevronDown, Languages } from 'lucide-react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
   DropdownMenuContent,

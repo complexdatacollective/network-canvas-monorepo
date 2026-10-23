@@ -2,7 +2,7 @@ import type { StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
-import Button from '../Button';
+import { Button } from '../Button';
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -1685,7 +1685,7 @@ describe('a person with three partners', () => {
         new Set(['0,1', '0,2', '0,3']),
       );
       expect(
-        conn.twinIndicators.map((t) => [t.code, [...(t.twinIds ?? [])].sort()]),
+        conn.twinIndicators.map((t) => [t.code, (t.twinIds ?? []).toSorted()]),
       ).toStrictEqual([[code, ['kidA', 'kidA2']]]);
       // The twins hang from one sibling bar, with one line of descent from
       // their parents' routed partnership line.
@@ -1737,14 +1737,17 @@ describe('a person with three partners', () => {
         line.edgeType,
       ]),
     );
-    // Two adopters with no partnership: the child descends from the first
-    // recorded, by a dashed line, and the other draws a line of their own.
-    const descent = conn.parentChildLines.find((line) =>
-      line.uplines.some((upline) => upline.childId === 'kidC'),
-    );
-    expect(descent?.parentIds).toStrictEqual(['parent']);
-    expect(descent?.edgeType).toBe('adoptive');
-    expect(lines.get('parent→kidC')).toBeUndefined();
+    // Two adopters with no partnership adopted the child together, as two
+    // biological parents with none conceived one: they are the child's
+    // co-parents. Seated apart (the parent sits between a and b), each
+    // draws a dashed line of their own, as co-parents who cannot sit
+    // together do.
+    expect(
+      conn.parentChildLines.some((line) =>
+        line.uplines.some((upline) => upline.childId === 'kidC'),
+      ),
+    ).toBe(false);
+    expect(lines.get('parent→kidC')).toBe('adoptive');
     expect(lines.get('c→kidC')).toBe('adoptive');
   });
 });
@@ -1782,11 +1785,13 @@ describe('partnerships that cannot share a row', () => {
       new Set(pairs),
     );
     const drawn = conn.groupLines.map((line) =>
-      [...(line.partnerIds ?? [])].sort().join(','),
+      (line.partnerIds ?? []).toSorted().join(','),
     );
     for (const p of ped.partners ?? []) {
       expect(drawn).toContain(
-        [ped.id[p.partnerIndex1]!, ped.id[p.partnerIndex2]!].sort().join(','),
+        [ped.id[p.partnerIndex1]!, ped.id[p.partnerIndex2]!]
+          .toSorted()
+          .join(','),
       );
     }
     return result;
@@ -1835,7 +1840,7 @@ describe('partnerships that cannot share a row', () => {
     );
     const line = conn.groupLines.find(
       (l) =>
-        [...(l.partnerIds ?? [])].sort().join() === 'grandchild,grandparent',
+        (l.partnerIds ?? []).toSorted().join() === 'grandchild,grandparent',
     )!;
     const segments = [line.segment, ...(line.endpointSegments ?? [])];
     const parentAt = positionOf(result, 1)!;
@@ -2827,7 +2832,7 @@ describe('a child adopted by a relative', () => {
     expect(
       conn.auxiliaryLines
         .filter((line) => line.edgeType === 'biological')
-        .map((line) => [...(line.ownerIds ?? [])].sort()),
+        .map((line) => (line.ownerIds ?? []).toSorted()),
     ).toEqual([['dad', 'mum']]);
   });
 

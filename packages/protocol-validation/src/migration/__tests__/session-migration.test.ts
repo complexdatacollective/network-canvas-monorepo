@@ -396,7 +396,7 @@ describe('stage positions, moved by the framework for every step', () => {
 
   it('follows stages a step reorders', () => {
     const migrateSession = migratorOf(
-      stageChain((ids) => [...ids].reverse()),
+      stageChain((ids) => ids.toReversed()),
       'a',
       'b',
       'c',

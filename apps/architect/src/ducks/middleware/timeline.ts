@@ -31,6 +31,17 @@ type TimelineState<T = unknown> = {
 };
 
 /**
+ * What the undo/redo cases may find: state persisted before undo/redo existed
+ * lacks `future` and `futureTimeline`, so those cases default them on read.
+ * Everything that reads the slice otherwise sees the strict `TimelineState`.
+ */
+type PersistedTimelineState<T = unknown> = Omit<
+  TimelineState<T>,
+  'future' | 'futureTimeline'
+> &
+  Partial<Pick<TimelineState<T>, 'future' | 'futureTimeline'>>;
+
+/**
  * The fields the undo/redo guards read, widened to `unknown` so both the
  * reducer's own immer draft and a selector's view of the wrapped slice satisfy
  * it. `past` and `future` are optional because rehydrated state predates them:
@@ -111,13 +122,14 @@ const createTimelineReducer = <T>(
     extraReducers: (builder) => {
       builder
         .addCase(timelineActions.undo, (state) => {
+          const stored: Draft<PersistedTimelineState<T>> = state;
           const {
             past,
             present,
             timeline,
             future = [],
             futureTimeline = [],
-          } = state;
+          } = stored;
 
           if (!canUndo(state)) {
             return;
@@ -183,13 +195,14 @@ const createTimelineReducer = <T>(
           },
         )
         .addCase(timelineActions.redo, (state) => {
+          const stored: Draft<PersistedTimelineState<T>> = state;
           const {
             future = [],
             futureTimeline = [],
             present,
             past,
             timeline,
-          } = state;
+          } = stored;
 
           if (!canRedo(state)) {
             return;

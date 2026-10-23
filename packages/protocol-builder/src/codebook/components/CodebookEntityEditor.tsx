@@ -16,7 +16,7 @@ import {
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ColorPickerField, {

@@ -238,7 +238,7 @@ describe('peopleCutOff', () => {
       [link('mum', 'ego', 'biological'), link('grandma', 'mum', 'biological')],
     );
     expect(
-      peopleCutOff(motherOnly, { linkIds: ['mum-ego-biological'] }).sort(),
+      peopleCutOff(motherOnly, { linkIds: ['mum-ego-biological'] }).toSorted(),
     ).toEqual(['grandma', 'mum']);
   });
 
@@ -281,8 +281,8 @@ describe('planRemovePerson', () => {
   it('removes every link touching the person', () => {
     const plan = planRemovePerson(familyOf(family, familyLinks), 'dad');
     expect(plan.cutOffIds).toEqual([]);
-    expect(plan.linkIds.sort()).toEqual(
-      ['dad-ego-biological', 'mum-dad-partner'].sort(),
+    expect(plan.linkIds.toSorted()).toEqual(
+      ['dad-ego-biological', 'mum-dad-partner'].toSorted(),
     );
   });
 
@@ -301,8 +301,8 @@ describe('planRemovePerson', () => {
       ),
       'mum',
     );
-    expect(plan.cutOffIds.sort()).toEqual(['aunt', 'grandma', 'grandpa']);
-    expect(plan.linkIds.sort()).toEqual(
+    expect(plan.cutOffIds.toSorted()).toEqual(['aunt', 'grandma', 'grandpa']);
+    expect(plan.linkIds.toSorted()).toEqual(
       [
         'mum-dad-partner',
         'mum-ego-biological',
@@ -311,7 +311,7 @@ describe('planRemovePerson', () => {
         'grandpa-mum-biological',
         'grandma-aunt-biological',
         'grandpa-aunt-biological',
-      ].sort(),
+      ].toSorted(),
     );
   });
 });

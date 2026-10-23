@@ -261,6 +261,7 @@ const createRule = (
   // Mutation-based approach: f(options) returns a runner function, then we
   // attach .type and .options. This requires an assertion because TypeScript
   // cannot track property additions to function objects.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `.type` and `.options` are attached on the next two lines
   const rule = f(options) as unknown as RuleFunctionWithMetadata;
   rule.type = type;
   rule.options = options;
@@ -284,12 +285,17 @@ export const getRuleFunction = ({
   type,
   options,
 }: FilterRule): FilterRuleRunner => {
+  // The node, edge and ego factories all return a filter runner, but
+  // `createRule` returns the union with the single-entity runners.
   switch (type) {
     case 'node':
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- nodeRule returns a filter runner
       return createRule('node', options, nodeRule) as FilterRuleRunner;
     case 'edge':
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- edgeRule returns a filter runner
       return createRule('edge', options, edgeRule) as FilterRuleRunner;
     case 'ego':
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- egoRule returns a filter runner
       return createRule('ego', options, egoRule) as FilterRuleRunner;
   }
 };

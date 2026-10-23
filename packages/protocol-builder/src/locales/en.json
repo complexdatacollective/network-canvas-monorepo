@@ -391,6 +391,10 @@
     "defaultMessage": "Choose the attribute whose values become the bins.",
     "description": "Refusal shown when a researcher saves a bin prompt without saying which attribute it sorts people by. A bin is one answer the participant drags a network member into."
   },
+  "protocolBuilder.censusPrompts.binLimitExceededTitle": {
+    "defaultMessage": "Too many bins",
+    "description": "Heading of the error shown when the attribute a bin prompt uses offers more values than the interview screen can draw as bins, so the prompt cannot be saved until some are removed."
+  },
   "protocolBuilder.censusPrompts.binLimitTitle": {
     "defaultMessage": "More bins than fit on one screen",
     "description": "Heading of the warning shown when the attribute a bin prompt uses offers more values than the interview screen can draw as bins."
@@ -451,9 +455,13 @@
     "defaultMessage": "Categorical response",
     "description": "Heading of the group that picks the attribute whose values are the bins the participant drags people into."
   },
-  "protocolBuilder.censusPrompts.categoricalBinLimitDescription": {
-    "defaultMessage": "This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question.",
-    "description": "Body of the warning shown when a Categorical Bin prompt would draw more bins than its interview screen is designed for. The follow-up bin is the extra one this prompt can add for answers none of the attribute’s values cover."
+  "protocolBuilder.censusPrompts.categoricalBinMaxBinsDescription": {
+    "defaultMessage": "This interface can show at most {limit, number} bins in total. If the follow-up other option is turned on, its bin counts towards that total. Remove values or group them, and ask for the detail in a later question.",
+    "description": "Body of the error shown when a Categorical Bin prompt would draw more bins than its interview screen can show. {limit} is the largest number of bins allowed. The follow-up other option is the switchable section of this prompt that adds one more bin for answers none of the attribute’s values cover; use the same name for it as that section’s heading."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinMaxBinsRefusal": {
+    "defaultMessage": "This prompt would show {count, number} bins, but at most {limit, number} fit, including the follow-up other bin if it is turned on. Remove values before saving.",
+    "description": "Refusal shown when a researcher saves a Categorical Bin prompt that would draw more bins than its interview screen can show. {count} is how many bins the prompt would draw, including the follow-up other bin when it is turned on; {limit} is the largest number allowed, and also includes that bin."
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherAttributeCreateLabel": {
     "defaultMessage": "Create a new text attribute",
@@ -524,8 +532,8 @@
     "description": "Placeholder shown in the empty box where a researcher writes a Categorical Bin prompt. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.censusPrompts.dyadGuidance": {
-    "defaultMessage": "The participant sees two people side by side and answers yes or no, so write the question about the pair in front of them — “these two people” rather than a name — and phrase it so that yes and no are both sensible answers.",
-    "description": "Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted phrase is an example of how to refer to the pair."
+    "defaultMessage": "The participant sees two nodes side by side and answers yes or no, so write the question about that pair and phrase it so that yes and no are both sensible answers. To show the two nodes’ labels in the question, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.",
+    "description": "Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations."
   },
   "protocolBuilder.censusPrompts.dyadPlaceholder": {
     "defaultMessage": "Enter text for the prompt here...",
@@ -552,8 +560,8 @@
     "description": "Description of the group holding the rules that order the people the participant picks from for whoever they were asked about."
   },
   "protocolBuilder.censusPrompts.oneToManyGuidance": {
-    "defaultMessage": "The participant sees one person alongside everyone else and selects whoever the question applies to, so write it as a question about that one person and the group — “which of these people does this person know?” rather than a question about a single pair.",
-    "description": "Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question about one person and the group."
+    "defaultMessage": "The participant sees one node alongside the other nodes and selects each of the others that the question applies to, so write the question about that one node and the other nodes as a group rather than about a single pair. To show that node’s label in the question, insert “Node label” with the syringe button in the toolbar.",
+    "description": "Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The quoted name is an entry in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match that entry’s own translation."
   },
   "protocolBuilder.censusPrompts.oneToManyPlaceholder": {
     "defaultMessage": "Enter text for the prompt here...",
@@ -692,8 +700,8 @@
     "description": "Description of the group holding the question one Tie-Strength Census prompt shows the participant."
   },
   "protocolBuilder.censusPrompts.tieStrengthPromptTextHint": {
-    "defaultMessage": "Refer clearly to the two people shown and phrase the prompt for a yes or no response.",
-    "description": "Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what shape of answer it asks for."
+    "defaultMessage": "Refer clearly to the two nodes shown, and phrase the prompt so that every point of the scale, and the decline response, is a sensible answer. To show the two nodes’ labels in the prompt, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.",
+    "description": "Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what answers it has to suit: the points of the scale set by the response attribute, and the decline response the participant uses to say the two nodes are not connected. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations."
   },
   "protocolBuilder.censusPrompts.tieStrengthResponseDescription": {
     "defaultMessage": "Configure the edge and ordinal value created by an affirmative response.",
@@ -1503,6 +1511,10 @@
     "defaultMessage": "Wording that fits the number",
     "description": "Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with a version for each kind of number (such as one or several), so the words agree with the number, as in “1 child” and “3 children”."
   },
+  "protocolBuilder.dynamicText.byParticipant": {
+    "defaultMessage": "Different wording for the participant and everyone else",
+    "description": "Second line of the “Participant or someone else” entry in the insert-a-value menu. Choosing it inserts a piece of text with two versions: one shown when the question is asked about the participant themselves (such as “Are you still living?”), one for everyone else in their family (such as “Is this person still living?”)."
+  },
   "protocolBuilder.dynamicText.dyadSourceValue": {
     "defaultMessage": "First node: {attribute}",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the first of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
@@ -1522,6 +1534,10 @@
   "protocolBuilder.dynamicText.interviewGroup": {
     "defaultMessage": "Interview Attributes",
     "description": "Heading in the insert-a-value menu above values that come from the interview itself rather than from the network, such as today’s date."
+  },
+  "protocolBuilder.dynamicText.isParticipant": {
+    "defaultMessage": "Participant or someone else",
+    "description": "Name of a value in the insert-a-value menu of a question on the Family Pedigree stage, and of the piece of text it inserts: whether the family member the question is asked about is the participant themselves or someone else in their family. It only chooses between two versions of the text and is never shown itself."
   },
   "protocolBuilder.dynamicText.needsAnswerLabels": {
     "defaultMessage": "Add labels for its yes and no answers first",
@@ -2475,22 +2491,6 @@
     "defaultMessage": "Search failed",
     "description": "Label of the field holding the message shown when a map search could not run."
   },
-  "protocolBuilder.geospatialWording.searchLabelHint": {
-    "defaultMessage": "The placeholder shown in the map’s search box.",
-    "description": "Guidance under the field holding the search box’s placeholder on a map."
-  },
-  "protocolBuilder.geospatialWording.searchLabelLabel": {
-    "defaultMessage": "Search label",
-    "description": "Label of the field holding the search box’s placeholder on a map, which a screen reader also reads out."
-  },
-  "protocolBuilder.geospatialWording.searchNoMatchHint": {
-    "defaultMessage": "Shown when a search of the map matches nothing.",
-    "description": "Guidance under the field holding the map search’s no-match message."
-  },
-  "protocolBuilder.geospatialWording.searchNoMatchLabel": {
-    "defaultMessage": "No search results",
-    "description": "Label of the field holding the message shown when a map search matches nothing."
-  },
   "protocolBuilder.geospatialWording.title": {
     "defaultMessage": "Messages",
     "description": "Heading of the section holding the words a map shows a participant: when it is offline, when it cannot be drawn, its outside-areas button, and its search. A map is a Geospatial stage."
@@ -2695,6 +2695,10 @@
     "defaultMessage": "This text shows values the interview fills in, so it can’t be edited in this field. It is kept as it is.",
     "description": "Shown in place of a text field when the stored text includes values filled in during the interview, such as the participant’s name, and this field cannot show them. The stored text is shown below it unchanged."
   },
+  "protocolBuilder.localizedMessage.byCase": {
+    "defaultMessage": "Different wording for each case",
+    "description": "Second line of an entry in the insert-a-value menu of a text a participant reads. The entry names something the text can change with, such as “Participant or someone else” or “Relation”; choosing it inserts a piece of text with one version for each of its cases, such as one about the participant and one about someone else."
+  },
   "protocolBuilder.localizedMessage.caseAboutParticipant": {
     "defaultMessage": "When it is about the participant",
     "description": "Heading over the version of a message used when it is about the participant themself."
@@ -2895,6 +2899,10 @@
     "defaultMessage": "When the twin is the participant",
     "description": "Heading over the version of a message used when the twin it is about is the participant themself."
   },
+  "protocolBuilder.localizedMessage.insertMenu": {
+    "defaultMessage": "Inject piped text from this stage",
+    "description": "Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text a participant reads whose wording Network Canvas supplies, such as a label on the Family Pedigree. “Piped text” is survey-software vocabulary for text filled in while the interview runs: the menu offers what this text can show or change with, such as a family member’s name, the number of parents still to add, or whether the text is about the participant."
+  },
   "protocolBuilder.localizedMessage.placeholderAnchor": {
     "defaultMessage": "Name of the person they are added to",
     "description": "Name of the placeholder, inserted into a message, that shows the name of the person a new family member is added to."
@@ -3011,13 +3019,97 @@
     "defaultMessage": "When “{placeholder}” is {numbers}",
     "description": "Label of the box holding the version of a text shown for some numbers. placeholder is the name of the number the text can show, such as “Parents missing”; numbers lists examples of the numbers that version is for, in the language being edited, such as “1” or “0, 2, 3, …”."
   },
+  "protocolBuilder.localizedMessage.switchAnchorIsYou": {
+    "defaultMessage": "Person they are added to: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person a new family member is being added to is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchChildIsYou": {
+    "defaultMessage": "Child: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the child the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchCurrent": {
+    "defaultMessage": "Current or ended partnership",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the partnership the text is about is current or has ended. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchFirstIsYou": {
+    "defaultMessage": "First of the two people: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the first of the two people the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchFraming": {
+    "defaultMessage": "Words used for parents",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the stage describes parents as egg and sperm parents or as mothers and fathers. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchHasLabel": {
+    "defaultMessage": "How the message refers to the other question",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether a validation message about an answer names the other question it is compared with, by that question’s label, or refers to the previous answer instead. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchHasOthers": {
+    "defaultMessage": "Whether others would be removed",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether removing someone would also remove other people. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchHasSurrogate": {
+    "defaultMessage": "Surrogate recorded or not",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether a surrogate is recorded as having carried the people the text is about. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchIsYou": {
+    "defaultMessage": "Participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the family member the text is about is the participant themself or someone else in their family. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchNamed": {
+    "defaultMessage": "Named or unnamed",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person the text is about has a name or not. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchOtherIsYou": {
+    "defaultMessage": "Other parent: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the child’s other parent is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchParent": {
+    "defaultMessage": "Egg or sperm parent",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the parent the text is about is the egg parent or the sperm parent. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchParentIsYou": {
+    "defaultMessage": "Parent: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the parent the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchPartnerIsYou": {
+    "defaultMessage": "Partner: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the partner the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchPersonIsYou": {
+    "defaultMessage": "Person: participant or someone else",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the person the text is about is the participant themself or someone else. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchRelation": {
+    "defaultMessage": "Relation of the person being added or edited",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: the relation of the family member the text is about, such as a parent, a sibling or a partner, or whether the person is being edited. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchShared": {
+    "defaultMessage": "Parents the siblings share",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: which parents two siblings share: only the egg parent, only the sperm parent, or both. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchSingle": {
+    "defaultMessage": "One person or several",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: whether the text is asking about one person or about several people. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchTerm": {
+    "defaultMessage": "Kind of relative",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: the kind of relative a word names, such as mother or brother-in-law. The participant never sees this name."
+  },
+  "protocolBuilder.localizedMessage.switchWho": {
+    "defaultMessage": "Who is the participant",
+    "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: which of the people the text is about, if any, is the participant themself. The participant never sees this name."
+  },
   "protocolBuilder.localizedMessage.unreadable": {
     "defaultMessage": "This text uses something it cannot show. Write it again here.",
     "description": "Refusal shown under a text written in several versions when a translation imported from elsewhere uses a placeholder or a choice this text does not offer."
   },
   "protocolBuilder.localizedMessage.versionsBlank": {
-    "defaultMessage": "Write every version of this text, or leave them all empty.",
-    "description": "Refusal shown under a text written in several versions (for the participant, for someone else, and so on) when some versions have words and others are empty, in any of the protocol’s languages."
+    "defaultMessage": "Write something in every version of this text.",
+    "description": "Refusal shown under a text with a piece written in several versions (one about the participant, one about someone else, and so on) when one of those versions is empty, in any of the protocol’s languages."
+  },
+  "protocolBuilder.localizedMessage.versionsByCase": {
+    "defaultMessage": "Wording that changes with {value}",
+    "description": "Accessible name of a piece of text with one version for each case of something it changes with. value is that thing’s name, such as “Participant or someone else” or “Relation”."
   },
   "protocolBuilder.localizedTextNames.diseasePosition": {
     "defaultMessage": "Disease {position, number}",
@@ -3028,11 +3120,11 @@
     "description": "Names one field of a form where a text is listed without its translation, used when the field records no attribute the codebook names. position is the field’s place in the form, counting from one."
   },
   "protocolBuilder.localizedTextNames.interfaceTextGroup": {
-    "defaultMessage": "{group, select, navigation {Interview navigation} buttons {Buttons} messages {Messages} passphrase {Passphrase} forms {Forms} validation {Validation messages} other {{group}}}",
-    "description": "Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, the labels of its buttons, its error messages, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules."
+    "defaultMessage": "{group, select, navigation {Interview navigation} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} other {{group}}}",
+    "description": "Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, the labels of its buttons, its error messages, those of a search box, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules."
   },
   "protocolBuilder.localizedTextNames.interfaceTextName": {
-    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} error {Error message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} other {{key}}}",
+    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} other {{key}}}",
     "description": "Names one of the words the interview itself shows, where it is listed for translation: a button, a field label or a message, by what it is for. key says which."
   },
   "protocolBuilder.localizedTextNames.itemPosition": {
@@ -3119,14 +3211,6 @@
     "defaultMessage": "These start with wording Network Canvas supplies, which you can change. Each one appears only where its limit, panel or field is part of this stage.",
     "description": "Description of the messages section of a name generator. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
   },
-  "protocolBuilder.nameGeneratorWording.externalErrorHint": {
-    "defaultMessage": "Shown in place of a list of people from a data file when that file could not be loaded.",
-    "description": "Guidance under the field holding the message shown in place of a list of people from a data file that could not be loaded."
-  },
-  "protocolBuilder.nameGeneratorWording.externalErrorLabel": {
-    "defaultMessage": "Data could not be loaded",
-    "description": "Label of the field holding the message shown when a list of people from a data file could not be loaded."
-  },
   "protocolBuilder.nameGeneratorWording.maxNoticeHint": {
     "defaultMessage": "Shown once the participant has named the most people this stage allows.",
     "description": "Guidance under the field holding the message shown when the stage’s maximum number of people has been named."
@@ -3151,25 +3235,9 @@
     "defaultMessage": "Quick-add hint",
     "description": "Label of the field holding the line shown beside the quick-add name field, telling the participant how to finish."
   },
-  "protocolBuilder.nameGeneratorWording.searchLabelHint": {
-    "defaultMessage": "The placeholder shown in the search box.",
-    "description": "Guidance under the field holding the search box’s placeholder."
-  },
-  "protocolBuilder.nameGeneratorWording.searchLabelLabel": {
-    "defaultMessage": "Search label",
-    "description": "Label of the field holding the search box’s placeholder, which a screen reader also reads out."
-  },
-  "protocolBuilder.nameGeneratorWording.searchNoMatchHint": {
-    "defaultMessage": "Shown when a search matches nothing.",
-    "description": "Guidance under the field holding the no-match message."
-  },
-  "protocolBuilder.nameGeneratorWording.searchNoMatchLabel": {
-    "defaultMessage": "No search results",
-    "description": "Label of the field holding the message shown when a search matches nothing."
-  },
   "protocolBuilder.nameGeneratorWording.title": {
     "defaultMessage": "Messages",
-    "description": "Heading of the section holding the words a name generator shows a participant about its limits, its side panels, its search and its quick-add field. A name generator is a stage that asks the participant to name people."
+    "description": "Heading of the section holding the words a name generator shows a participant about its limits, a roster’s list and its quick-add field. A name generator is a stage that asks the participant to name people."
   },
   "protocolBuilder.narrative.attributesHeadingHint": {
     "defaultMessage": "Shown only when a preset highlights members.",
@@ -3203,10 +3271,6 @@
     "defaultMessage": "Groups heading",
     "description": "Label of the setting holding the heading of the panel that lists the groups a preset shows."
   },
-  "protocolBuilder.narrative.layoutTooltipHint": {
-    "defaultMessage": "Shown only when automatic layout is turned on.",
-    "description": "Hint under the layout tooltip settings, saying when they are used."
-  },
   "protocolBuilder.narrative.linksHeadingHint": {
     "defaultMessage": "Shown only when a preset shows connections.",
     "description": "Hint under the links heading setting, saying when the setting is used."
@@ -3215,24 +3279,16 @@
     "defaultMessage": "Links heading",
     "description": "Label of the setting holding the heading of the panel that lists the connections a preset shows."
   },
-  "protocolBuilder.narrative.pauseLayoutTooltipLabel": {
-    "defaultMessage": "Pause layout tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that pauses the automatic layout."
-  },
   "protocolBuilder.narrative.resetAnnotationsTooltipLabel": {
     "defaultMessage": "Reset annotations tooltip",
     "description": "Label of the setting holding the tooltip of the tool that removes every drawn annotation."
-  },
-  "protocolBuilder.narrative.resumeLayoutTooltipLabel": {
-    "defaultMessage": "Resume layout tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that resumes the automatic layout."
   },
   "protocolBuilder.narrative.unfreezeAnnotationsTooltipLabel": {
     "defaultMessage": "Unfreeze annotations tooltip",
     "description": "Label of the setting holding the tooltip of the tool that lets the drawn annotations move again."
   },
   "protocolBuilder.narrative.wordingDescription": {
-    "defaultMessage": "The headings of the highlight, link and group panels, and the labels of the drawing and layout tools. These start with wording Network Canvas supplies, which you can change.",
+    "defaultMessage": "The headings of the highlight, link and group panels, and the labels of the drawing tools. These start with wording Network Canvas supplies, which you can change.",
     "description": "Description of the words section of a narrative canvas."
   },
   "protocolBuilder.narrative.wordingTitle": {
@@ -5531,6 +5587,10 @@
     "defaultMessage": "Carrier question",
     "description": "Label of the question asking who carried the pregnancy."
   },
+  "protocolBuilder.pedigree.wording.carrierReplaced": {
+    "defaultMessage": "Note on a new answer about carrying: earlier carrier no longer recorded",
+    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that choosing an answer which records someone as having carried a child’s pregnancy means the person recorded before will no longer be recorded as having carried it, since only one person carries a pregnancy."
+  },
   "protocolBuilder.pedigree.wording.carrierUnknown": {
     "defaultMessage": "Other or unknown carrier option",
     "description": "Label of the option for someone else, or for not knowing who carried the pregnancy."
@@ -5619,10 +5679,6 @@
     "defaultMessage": "Connection that would leave someone out",
     "description": "Label of the warning that removing a connection would leave people outside the family tree."
   },
-  "protocolBuilder.pedigree.wording.dontKnow": {
-    "defaultMessage": "Don’t know option",
-    "description": "Label of the option a participant picks when they do not know an answer."
-  },
   "protocolBuilder.pedigree.wording.drawingTitle": {
     "defaultMessage": "Drawing the family",
     "description": "Heading of the group of words shown while the participant draws their family on the canvas."
@@ -5650,6 +5706,14 @@
   "protocolBuilder.pedigree.wording.generatedLabelOf": {
     "defaultMessage": "Label for a relative",
     "description": "Label of a family member, named by how they relate to the participant."
+  },
+  "protocolBuilder.pedigree.wording.geneticParentReplaced": {
+    "defaultMessage": "Note on a new genetic parent: biological parent recorded is replaced",
+    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that choosing a genetic kind of parent (biological parent or donor) means the biological parent recorded with the same sex at birth will no longer be recorded as one, and that they will be asked how they would define that parent’s relationship to the child instead."
+  },
+  "protocolBuilder.pedigree.wording.identicalTwinSharesParents": {
+    "defaultMessage": "Note on identical twins: same biological parents recorded for both",
+    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the note telling the participant that recording two twins as identical will record the same biological parents and donors for both of them."
   },
   "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": {
     "defaultMessage": "Other parent is biological question",
@@ -5711,13 +5775,17 @@
     "defaultMessage": "Remove person question",
     "description": "Label of the question asking whether to remove a family member."
   },
-  "protocolBuilder.pedigree.wording.save": {
-    "defaultMessage": "Save button",
-    "description": "Label of the button that saves a family member’s details."
-  },
   "protocolBuilder.pedigree.wording.sexAssignedAtBirthLabel": {
     "defaultMessage": "Sex assigned at birth question",
     "description": "Label of the question asking a family member’s sex assigned at birth."
+  },
+  "protocolBuilder.pedigree.wording.sexChangeClearsCoParentSex": {
+    "defaultMessage": "Note on a new sex at birth answer: other genetic parent’s answer cleared",
+    "description": "Label of the note explaining that saving the sex at birth chosen for a genetic parent will clear the sex at birth of the other genetic parent of their children, who is recorded with the same sex at birth."
+  },
+  "protocolBuilder.pedigree.wording.sexChangeEndsCarrying": {
+    "defaultMessage": "Note on a new sex at birth answer: no longer recorded as having carried",
+    "description": "Label of the note explaining that saving a sex at birth that rules out carrying a pregnancy, for someone recorded as having carried one or more children, will record that they did not carry them."
   },
   "protocolBuilder.pedigree.wording.sharedDonorsLabel": {
     "defaultMessage": "Shared donors question",
@@ -5827,33 +5895,9 @@
     "defaultMessage": "Unavailable answers hint: two genetic parents",
     "description": "Label of the hint explaining that answers are unavailable because the child already has two genetic parents recorded."
   },
-  "protocolBuilder.pedigree.wording.unavailableIdenticalTwin": {
-    "defaultMessage": "Unavailable answers hint: twins’ parents differ",
-    "description": "Label of the hint explaining that two twins cannot be recorded as identical because their biological parents and donors differ."
-  },
-  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew": {
-    "defaultMessage": "Unavailable answers hint: new twin’s parents differ",
-    "description": "Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors."
-  },
-  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSex": {
-    "defaultMessage": "Unavailable answers hint: twins’ sexes at birth differ",
-    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when editing a twin, that the two twins cannot be recorded as identical because one is recorded as female at birth and the other as male."
-  },
-  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": {
-    "defaultMessage": "Unavailable answers hint: new twin’s sex at birth differs",
-    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be an identical twin because they are recorded with a different sex at birth (female or male) from the person they are added to."
-  },
-  "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": {
-    "defaultMessage": "Unavailable answers hint: other genetic parent has that sex at birth",
-    "description": "Label of the hint explaining that a sex at birth is unavailable for a genetic parent because the other genetic parent of their children is recorded with that sex at birth."
-  },
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": {
     "defaultMessage": "Unavailable answers hint: same sex at birth as the other genetic parent",
     "description": "Label of the hint explaining that answers are unavailable because the child’s other genetic parent is recorded with the same sex at birth."
-  },
-  "protocolBuilder.pedigree.wording.unavailableTwinCarrierNew": {
-    "defaultMessage": "Unavailable answers hint: person who carried the twins not chosen",
-    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be a twin of any kind because they would not share the person who carried the one they are added to."
   },
   "protocolBuilder.pedigree.wording.you": {
     "defaultMessage": "Participant’s own name",
@@ -5866,10 +5910,6 @@
   "protocolBuilder.pedigree.wording.zygosityIdentical": {
     "defaultMessage": "Identical option",
     "description": "Label of the option that two twins are identical."
-  },
-  "protocolBuilder.pedigree.wording.zygosityUnknown": {
-    "defaultMessage": "Not known if identical option",
-    "description": "Label of the option that the participant does not know whether two twins are identical."
   },
   "protocolBuilder.promptAttribute.lockedOptions": {
     "defaultMessage": "These values are set by the interface that uses this attribute, so they cannot be changed here.",
@@ -7470,26 +7510,6 @@
   "protocolBuilder.slotVariable.variableTypeChangedRefusal": {
     "defaultMessage": "\"{attributeName}\" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.",
     "description": "Refusal shown under an attribute control when the attribute it holds still exists but has been given a different type, so the interface can no longer write or read it. attributeName is the codebook name of the attribute, which is not translated."
-  },
-  "protocolBuilder.sociogram.layoutTooltipHint": {
-    "defaultMessage": "Shown only when automatic layout is turned on.",
-    "description": "Hint under the layout tooltip settings, saying when they are used."
-  },
-  "protocolBuilder.sociogram.pauseLayoutTooltipLabel": {
-    "defaultMessage": "Pause layout tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that pauses the automatic layout."
-  },
-  "protocolBuilder.sociogram.resumeLayoutTooltipLabel": {
-    "defaultMessage": "Resume layout tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that resumes the automatic layout."
-  },
-  "protocolBuilder.sociogram.wordingDescription": {
-    "defaultMessage": "The labels of the layout tools. These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the words section of a sociogram canvas."
-  },
-  "protocolBuilder.sociogram.wordingTitle": {
-    "defaultMessage": "Words on the canvas",
-    "description": "Heading of the section holding the words a participant reads on a sociogram canvas. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.sortOptions.attributeColumn": {
     "defaultMessage": "Attribute",

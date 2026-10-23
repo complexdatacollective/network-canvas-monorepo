@@ -1,11 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import {
-  clampPanToKeep,
-  shiftIntoArea,
-  viewCentredOn,
-  viewKeepingInArea,
-} from '../usePanZoom';
+import { clampPanToKeep, shiftIntoArea, viewCentredOn } from '../usePanZoom';
 
 const viewport = { width: 1000, height: 800 };
 
@@ -115,57 +110,6 @@ describe('clampPanToKeep, across generations', () => {
       insets,
     );
     expect(childInView(y)).toBe(true);
-  });
-});
-
-describe('viewKeepingInArea', () => {
-  const area = { left: 0, top: 100, right: 1000, bottom: 700 };
-  const box = (top: number) => ({
-    left: 400,
-    top,
-    right: 500,
-    bottom: top + 100,
-  });
-
-  test('moves just far enough to show the one required, when everyone fits', () => {
-    const view = viewKeepingInArea({
-      view: { x: 0, y: 0, scale: 1 },
-      required: box(0),
-      keep: [box(300)],
-      area,
-      pivot: { x: 450, y: 350 },
-    });
-    expect(view).toEqual({ x: 0, y: 100, scale: 1 });
-  });
-
-  test('zooms out about the pivot, rather than push someone kept out of the area', () => {
-    const view = viewKeepingInArea({
-      view: { x: 0, y: 0, scale: 1 },
-      required: box(-200),
-      keep: [box(500)],
-      area,
-      pivot: { x: 450, y: 550 },
-    });
-    expect(view.scale).toBeCloseTo(600 / 800);
-    for (const kept of [box(-200), box(500)]) {
-      expect(view.y + kept.top * view.scale).toBeGreaterThanOrEqual(
-        area.top - 0.001,
-      );
-      expect(view.y + kept.bottom * view.scale).toBeLessThanOrEqual(
-        area.bottom + 0.001,
-      );
-    }
-  });
-
-  test('never zooms in', () => {
-    const view = viewKeepingInArea({
-      view: { x: 0, y: 0, scale: 0.5 },
-      required: box(300),
-      keep: [],
-      area,
-      pivot: { x: 0, y: 0 },
-    });
-    expect(view.scale).toBe(0.5);
   });
 });
 

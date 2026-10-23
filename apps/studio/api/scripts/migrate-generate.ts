@@ -129,17 +129,24 @@ function field(entity: Entity, name: 'schema' | 'table'): string | null {
   return typeof value === 'string' ? value : null;
 }
 
+/** A privilege (one GRANT) has no name of its own, so it is named by what it grants. */
+function nameOf(entity: Entity): string {
+  return entity.entityType === 'privileges'
+    ? `${entity.type} to ${entity.grantee} by ${entity.grantor}`
+    : entity.name;
+}
+
 function entityKey(entity: Entity): string {
   return JSON.stringify([
     entity.entityType,
     field(entity, 'schema'),
     field(entity, 'table'),
-    entity.name,
+    nameOf(entity),
   ]);
 }
 
 function qualified(entity: Entity): string {
-  return [field(entity, 'schema'), field(entity, 'table'), entity.name]
+  return [field(entity, 'schema'), field(entity, 'table'), nameOf(entity)]
     .filter((part) => part !== null)
     .join('.');
 }
@@ -277,14 +284,14 @@ export function unfilledColumns(prev: Snapshot, cur: Snapshot): string[] {
   // can reach the new constraint with a row it never filled.
   const unfilledFrom = (column: Entity, table: string, source: string) => {
     const previous = was.get(source) ?? new Map<string, Entity>();
-    const same = previous.get(column.name);
+    const same = previous.get(nameOf(column));
     if (same !== undefined) return !notNull(same);
     if (!hasValue(column, 'default') && !hasValue(column, 'identity')) {
       return true;
     }
     const kept = now.get(table) ?? new Map<string, Entity>();
     return [...previous.values()].some(
-      (lost) => !kept.has(lost.name) && !notNull(lost),
+      (lost) => !kept.has(nameOf(lost)) && !notNull(lost),
     );
   };
 
@@ -415,6 +422,7 @@ function readSnapshot(path: string): Snapshot {
   Schema.decodeUnknownSync(Schema.fromJsonString(SnapshotShape))(text);
   // The shape is drizzle-kit's own (`PostgresSnapshot`), written by this
   // script; the decode above refuses anything that is not one of them.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle-kit's snapshot type is too large to mirror as a schema; the decode above checks the parts this script reads
   return JSON.parse(text) as Snapshot;
 }
 

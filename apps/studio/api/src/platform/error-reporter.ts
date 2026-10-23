@@ -224,7 +224,7 @@ export class ErrorReporter extends Context.Service<
                           stacktrace: {
                             type: 'raw',
                             frames: [...exception.frames]
-                              .reverse()
+                              .toReversed()
                               .map((frame) => ({
                                 platform: exception.platform,
                                 filename: frame.filename,

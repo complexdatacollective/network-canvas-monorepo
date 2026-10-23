@@ -202,6 +202,8 @@ export {
   type DynamicValueStatus,
   dynamicValueArgumentsAt,
   dynamicValueLabelPathFor,
+  dynamicValueParticipantPathFor,
+  dynamicValueParticipantRolesAt,
   dynamicValuePathFor,
   dynamicValueRolesAt,
   dynamicValueStatus,
@@ -211,6 +213,7 @@ export {
   isAttributeDynamicValueRole,
   isLabelledDynamicValueRole,
   type LabelledDynamicValueRole,
+  PARTICIPANT_CASE,
   type ParsedDynamicValuePath,
   parseDynamicValuePath,
 } from './schemas/9/dynamic-values.ts';

@@ -66,7 +66,7 @@ import {
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button, { buttonVariants, iconButtonVariants } from '../../Button';
+import { buttonVariants, iconButtonVariants, Button } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import {
   controlVariants,

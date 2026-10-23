@@ -10,6 +10,8 @@ import { FilterSchema } from '../filters/index.ts';
 import { baseStageSchema } from './base.ts';
 import { binWording, requireBinWording } from './bin-wording.ts';
 
+export const CATEGORICAL_BIN_MAX_BINS = 10;
+
 export const categoricalBinStage = baseStageSchema
   .extend({
     type: z.literal('CategoricalBin'),

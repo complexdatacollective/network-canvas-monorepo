@@ -9,7 +9,7 @@ import { type KeyboardEvent, useState } from 'react';
  * WHY THIS EXISTS. Every other Base UI popup trigger — menu, select, popover —
  * handles Escape itself while its popup is open: it closes the popup and stops
  * the event, so a dialog behind it never sees the key. `Combobox.Trigger` does
- * not (checked against @base-ui/react 1.8.0 and its `master`): with the search
+ * not (checked against @base-ui/react 1.9.0): with the search
  * input inside the popup, Base UI gives the dismiss handling to that input and
  * leaves the trigger with none. Escape pressed while the trigger holds focus
  * therefore reaches `document`, where an enclosing dialog's dismiss listener —
@@ -23,9 +23,10 @@ import { type KeyboardEvent, useState } from 'react';
  * too. That second path is what made `Dialog > Popups Inside A Dialog` flaky
  * under a loaded CI run.
  *
- * Base UI's `actionsRef` can only unmount a combobox, not close it, so this
- * owns the `open` state: spread `open` and `onOpenChange` onto `Combobox.Root`,
- * and `onTriggerKeyDown` onto `Combobox.Trigger`. `onOpenChange` is called for
+ * This owns the `open` state, so it closes the popup through that state rather
+ * than through `actionsRef.close()` (added in Base UI 1.9): spread `open` and
+ * `onOpenChange` onto `Combobox.Root`, and `onTriggerKeyDown` onto
+ * `Combobox.Trigger`. `onOpenChange` is called for
  * every close, including this one, so a caller resetting its search query
  * there keeps doing so.
  *

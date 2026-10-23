@@ -43,7 +43,7 @@ export const buildReviewMessage = (
 ): string => {
   const heaviest = costs
     .filter((c) => c.answers > 0)
-    .sort((a, b) => b.answers - a.answers)
+    .toSorted((a, b) => b.answers - a.answers)
     .slice(0, 6)
     .map(
       (c) =>

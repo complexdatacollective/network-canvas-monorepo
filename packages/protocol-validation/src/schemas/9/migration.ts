@@ -31,7 +31,7 @@ import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
-import ProtocolSchemaV9 from './schema.ts';
+import { ProtocolSchemaV9 } from './schema.ts';
 import { freshStageId } from './stage-ids.ts';
 import { missingSuppliedStageText } from './supplied-stage-text.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';

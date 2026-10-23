@@ -40,6 +40,22 @@ describe('ensureError', () => {
     });
   });
 
+  describe('an Error class thrown instead of an instance', () => {
+    // A class that extends Error inherits from the Error constructor, not from
+    // Error.prototype, so it is not an Error. It used to be returned as one.
+    it('returns a real Error describing it rather than the class itself', () => {
+      class CustomError extends Error {}
+
+      const result = ensureError(CustomError);
+
+      expect(result).toBeInstanceOf(Error);
+      expect(result).not.toBe(CustomError);
+      expect(result.message).toContain(
+        'This value was thrown as is, not through an Error',
+      );
+    });
+  });
+
   describe('error-shaped plain objects', () => {
     // `dispatch(thunk).unwrap()` rethrows Redux Toolkit's SerializedError: a
     // PLAIN OBJECT carrying name/message/stack. Stringifying it put the whole

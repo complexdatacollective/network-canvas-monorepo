@@ -11,6 +11,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { z } from 'zod';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -21,11 +23,21 @@ type NetlifyRedirect = {
   force?: boolean;
 };
 
-type VercelRedirect = {
-  source: string;
-  destination: string;
-  permanent: boolean;
-};
+const VercelConfigSchema = z.object({
+  redirects: z
+    .array(
+      z.object({
+        source: z.string(),
+        destination: z.string(),
+        permanent: z.boolean(),
+      }),
+    )
+    .optional(),
+});
+
+type VercelRedirect = NonNullable<
+  z.infer<typeof VercelConfigSchema>['redirects']
+>[number];
 
 type ValidationIssue = {
   severity: 'error' | 'warning';
@@ -41,13 +53,26 @@ function parseNetlifyToml(content: string): NetlifyRedirect[] {
   const lines = content.split('\n');
   let currentRedirect: Partial<NetlifyRedirect> = {};
 
+  // A block with no `from` or `to` is not a redirect. Netlify's default
+  // status, 301, applies when a block names none.
+  const completeRedirect = (
+    partial: Partial<NetlifyRedirect>,
+  ): NetlifyRedirect | null =>
+    partial.from && partial.to
+      ? {
+          ...partial,
+          from: partial.from,
+          to: partial.to,
+          status: partial.status ?? 301,
+        }
+      : null;
+
   for (const line of lines) {
     const trimmed = line.trim();
 
     if (trimmed === '[[redirects]]') {
-      if (currentRedirect.from && currentRedirect.to) {
-        redirects.push(currentRedirect as NetlifyRedirect);
-      }
+      const completed = completeRedirect(currentRedirect);
+      if (completed) redirects.push(completed);
       currentRedirect = {};
     } else if (trimmed.startsWith('from = ')) {
       currentRedirect.from = trimmed.match(/from = "(.+)"/)?.[1] || '';
@@ -64,9 +89,8 @@ function parseNetlifyToml(content: string): NetlifyRedirect[] {
   }
 
   // Add last redirect if exists
-  if (currentRedirect.from && currentRedirect.to) {
-    redirects.push(currentRedirect as NetlifyRedirect);
-  }
+  const completed = completeRedirect(currentRedirect);
+  if (completed) redirects.push(completed);
 
   return redirects;
 }
@@ -268,11 +292,7 @@ function main() {
 
     // Read and parse vercel.json
     const vercelContent = readFileSync(join(docsDir, 'vercel.json'), 'utf-8');
-    // `JSON.parse` is typed `unknown` by @total-typescript/ts-reset, so the
-    // shape this script reads is stated here.
-    const vercelConfig = JSON.parse(vercelContent) as {
-      redirects?: VercelRedirect[];
-    };
+    const vercelConfig = VercelConfigSchema.parse(JSON.parse(vercelContent));
     const vercelRedirects: VercelRedirect[] = vercelConfig.redirects ?? [];
     console.log(`✓ Found ${vercelRedirects.length} redirects in vercel.json\n`);
 

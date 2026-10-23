@@ -217,7 +217,7 @@ Three additions, each minimal and gated so nothing ships to users:
    minimum needed; everything addressable by accessible name/label stays that
    way (toolbar buttons already expose `aria-label`; `fresco-ui` dialogs already
    expose `dialog-primary/-cancel/-secondary/-submit` and `wizard-next/-back/
--cancel`).
+   -cancel`).
 
 All three land in an early PR and are reviewed on their own (see Delivery).
 
@@ -326,7 +326,7 @@ NarrativePedigree) will need the most section sub-flow work; the shared
 **(c) Timeline** (`timeline.spec.ts`) — against the fixture protocol:
 
 - Reorder via motion `Reorder`: `mouse.down()` → several `mouse.move(..,
-{steps})` → `mouse.up()`; assert one `moveStage` committed (new order in
+  {steps})` → `mouse.up()`; assert one `moveStage` committed (new order in
   store JSON). Guard against the 25px² click-vs-drag threshold.
 - Insert-at-index via `InsertButton` → picker → new stage lands at the right
   index.
@@ -383,7 +383,7 @@ Reuse interview's discipline exactly:
   hardcoded). Named volume shields host arm64 `node_modules`.
 - `maxDiffPixels: 250`, `animations: 'disabled'`, `reducedMotion: 'reduce'`.
 - The e2e build sets `VITE_E2E=true` (store hook) and `VITE_DISABLE_ANALYTICS=
-true` (no PostHog pollution).
+  true` (no PostHog pollution).
 
 ### 9. CI wiring
 

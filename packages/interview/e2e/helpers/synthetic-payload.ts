@@ -140,6 +140,9 @@ export function buildSyntheticPayload(
     schemaVersion: raw.protocol.schemaVersion,
     codebook: raw.protocol.codebook,
     stages: raw.protocol.stages,
+    ...(raw.protocol.interfaceText
+      ? { interfaceText: raw.protocol.interfaceText }
+      : {}),
     ...(Object.keys(assetManifest).length > 0 ? { assetManifest } : {}),
     ...(raw.protocol.experiments
       ? { experiments: raw.protocol.experiments }

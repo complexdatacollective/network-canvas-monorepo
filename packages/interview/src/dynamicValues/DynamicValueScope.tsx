@@ -118,6 +118,8 @@ type RoleValues<T> = Readonly<Partial<Record<DynamicValueRole, T | undefined>>>;
 export type DynamicValueEntities = Readonly<{
   attributes?: RoleValues<Readonly<Record<string, unknown>>>;
   labels?: RoleValues<string>;
+  /** Whether each node that may be the participant is. */
+  participants?: RoleValues<boolean>;
 }>;
 
 /** `values` with each role in `given` replaced, and each given undefined removed. */
@@ -143,11 +145,12 @@ const withRoles = <T,>(
  */
 export const withDynamicValueEntities = (
   sources: DynamicValueSources,
-  { attributes, labels }: DynamicValueEntities,
+  { attributes, labels, participants }: DynamicValueEntities,
 ): DynamicValueSources => ({
   ...sources,
   attributes: withRoles(sources.attributes, attributes),
   labels: withRoles(sources.labels, labels),
+  participants: withRoles(sources.participants ?? {}, participants),
 });
 
 /**
@@ -161,6 +164,7 @@ export const withDynamicValueEntities = (
 export function DynamicValueEntity({
   attributes,
   labels,
+  participants,
   children,
 }: DynamicValueEntities & { children: ReactNode }) {
   const parent = useContext(DynamicValueScopeContext);
@@ -168,8 +172,12 @@ export function DynamicValueEntity({
     () =>
       parent === null
         ? null
-        : withDynamicValueEntities(parent, { attributes, labels }),
-    [parent, attributes, labels],
+        : withDynamicValueEntities(parent, {
+            attributes,
+            labels,
+            participants,
+          }),
+    [parent, attributes, labels, participants],
   );
 
   return (

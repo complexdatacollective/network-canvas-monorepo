@@ -375,6 +375,9 @@ const DEFAULT_LOCALIZATION: LocalizationInput = {
   locales: ['en-US'],
 };
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 /** Set `value` at `path` inside `config`, copying each group on the way so a
  * group shared with another stage is never changed. */
 function setAtPath(
@@ -385,10 +388,7 @@ function setAtPath(
   let container = config;
   for (const key of path.slice(0, -1)) {
     const child = container[key];
-    const copy: Record<string, unknown> =
-      typeof child === 'object' && child !== null
-        ? { ...(child as Record<string, unknown>) }
-        : {};
+    const copy: Record<string, unknown> = isObject(child) ? { ...child } : {};
     container[key] = copy;
     container = copy;
   }
@@ -412,6 +412,7 @@ export class SyntheticInterview {
   private ordinalPromptCounter = 0;
   private experiments: Experiments | undefined;
   private localization: LocalizationInput = DEFAULT_LOCALIZATION;
+  private interfaceText = new Map<string, Map<string, TextInput>>();
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
@@ -1079,185 +1080,168 @@ export class SyntheticInterview {
       stageEntry: entry,
     };
 
-    switch (type) {
-      case 'NameGenerator':
-        return {
-          ...base,
-          addFormField: (opts: AddFormFieldOpts) => {
-            const field = this.resolveFormField(
-              {
-                component: opts.component,
-                variable: opts.variable,
-                prompt: opts.prompt,
-                hint: opts.hint,
-                showValidationHints: opts.showValidationHints,
-                parameters: opts.parameters,
-                validation: opts.validation,
-              },
-              entry.subject!.type,
-            );
-            entry.form ??= { title: 'Add a person', fields: [] };
-            entry.form.fields.push(field);
-          },
-          addPrompt: (opts?: AddPromptInput) => {
-            entry.prompts.push(this.resolvePrompt(opts, entry));
-          },
-          addPanel: (opts?: AddPanelOpts) => {
-            entry.panels.push({
-              id: this.nextId('panel'),
-              title: opts?.title ?? 'Panel',
-              dataSource: opts?.dataSource ?? 'existing',
-              ...(opts?.filter ? { filter: opts.filter } : {}),
-            });
-          },
-        } as StageHandleMap[T];
+    const handles: { [K in StageType]: () => StageHandleMap[K] } = {
+      NameGenerator: () => ({
+        ...base,
+        addFormField: (opts: AddFormFieldOpts) => {
+          const field = this.resolveFormField(
+            {
+              component: opts.component,
+              variable: opts.variable,
+              prompt: opts.prompt,
+              hint: opts.hint,
+              showValidationHints: opts.showValidationHints,
+              parameters: opts.parameters,
+              validation: opts.validation,
+            },
+            entry.subject!.type,
+          );
+          entry.form ??= { title: 'Add a person', fields: [] };
+          entry.form.fields.push(field);
+        },
+        addPrompt: (opts?: AddPromptInput) => {
+          entry.prompts.push(this.resolvePrompt(opts, entry));
+        },
+        addPanel: (opts?: AddPanelOpts) => {
+          entry.panels.push({
+            id: this.nextId('panel'),
+            title: opts?.title ?? 'Panel',
+            dataSource: opts?.dataSource ?? 'existing',
+            ...(opts?.filter ? { filter: opts.filter } : {}),
+          });
+        },
+      }),
 
-      case 'NameGeneratorQuickAdd':
-        return {
-          ...base,
-          addPrompt: (opts?: AddPromptInput) => {
-            entry.prompts.push(this.resolvePrompt(opts, entry));
-          },
-          addPanel: (opts?: AddPanelOpts) => {
-            entry.panels.push({
-              id: this.nextId('panel'),
-              title: opts?.title ?? 'Panel',
-              dataSource: opts?.dataSource ?? 'existing',
-              ...(opts?.filter ? { filter: opts.filter } : {}),
-            });
-          },
-        } as StageHandleMap[T];
+      NameGeneratorQuickAdd: () => ({
+        ...base,
+        addPrompt: (opts?: AddPromptInput) => {
+          entry.prompts.push(this.resolvePrompt(opts, entry));
+        },
+        addPanel: (opts?: AddPanelOpts) => {
+          entry.panels.push({
+            id: this.nextId('panel'),
+            title: opts?.title ?? 'Panel',
+            dataSource: opts?.dataSource ?? 'existing',
+            ...(opts?.filter ? { filter: opts.filter } : {}),
+          });
+        },
+      }),
 
-      case 'NameGeneratorRoster':
-        return {
-          ...base,
-          addPrompt: (opts?: AddPromptInput) => {
-            entry.prompts.push(this.resolvePrompt(opts, entry));
-          },
-        } as StageHandleMap[T];
+      NameGeneratorRoster: () => ({
+        ...base,
+        addPrompt: (opts?: AddPromptInput) => {
+          entry.prompts.push(this.resolvePrompt(opts, entry));
+        },
+      }),
 
-      case 'Sociogram':
-        return {
-          ...base,
-          addPrompt: (opts?: AddPromptInput) => {
-            entry.prompts.push(this.resolveSociogramPrompt(opts, entry));
-          },
-        } as StageHandleMap[T];
+      Sociogram: () => ({
+        ...base,
+        addPrompt: (opts?: AddPromptInput) => {
+          entry.prompts.push(this.resolveSociogramPrompt(opts, entry));
+        },
+      }),
 
-      case 'Narrative':
-        return {
-          ...base,
-          addPreset: (opts?: AddPresetInput) => {
-            entry.presets.push(this.resolveNarrativePreset(opts, entry));
-          },
-        } as StageHandleMap[T];
+      Narrative: () => ({
+        ...base,
+        addPreset: (opts?: AddPresetInput) => {
+          entry.presets.push(this.resolveNarrativePreset(opts, entry));
+        },
+      }),
 
-      case 'DyadCensus':
-        return {
-          ...base,
-          addPrompt: (opts?: AddDyadCensusPromptInput) => {
-            entry.prompts.push(this.resolveDyadCensusPrompt(opts));
-          },
-        } as StageHandleMap[T];
+      DyadCensus: () => ({
+        ...base,
+        addPrompt: (opts?: AddDyadCensusPromptInput) => {
+          entry.prompts.push(this.resolveDyadCensusPrompt(opts));
+        },
+      }),
 
-      case 'OneToManyDyadCensus':
-        return {
-          ...base,
-          addPrompt: (opts?: AddOneToManyDyadCensusPromptInput) => {
-            entry.prompts.push(
-              this.resolveOneToManyDyadCensusPrompt(opts, entry),
-            );
-          },
-        } as StageHandleMap[T];
+      OneToManyDyadCensus: () => ({
+        ...base,
+        addPrompt: (opts?: AddOneToManyDyadCensusPromptInput) => {
+          entry.prompts.push(
+            this.resolveOneToManyDyadCensusPrompt(opts, entry),
+          );
+        },
+      }),
 
-      case 'OrdinalBin':
-        return {
-          ...base,
-          addPrompt: (opts?: AddOrdinalBinPromptInput) => {
-            entry.prompts.push(this.resolveOrdinalBinPrompt(opts, entry));
-          },
-        } as StageHandleMap[T];
+      OrdinalBin: () => ({
+        ...base,
+        addPrompt: (opts?: AddOrdinalBinPromptInput) => {
+          entry.prompts.push(this.resolveOrdinalBinPrompt(opts, entry));
+        },
+      }),
 
-      case 'CategoricalBin':
-        return {
-          ...base,
-          addPrompt: (opts?: AddCategoricalBinPromptInput) => {
-            entry.prompts.push(this.resolveCategoricalBinPrompt(opts, entry));
-          },
-        } as StageHandleMap[T];
+      CategoricalBin: () => ({
+        ...base,
+        addPrompt: (opts?: AddCategoricalBinPromptInput) => {
+          entry.prompts.push(this.resolveCategoricalBinPrompt(opts, entry));
+        },
+      }),
 
-      case 'EgoForm':
-        return {
-          ...base,
-          addFormField: (opts: AddFormFieldOpts) => {
-            const field = this.resolveEgoFormField(opts);
-            entry.form ??= { title: EGO_FORM_DEFAULT_TITLE, fields: [] };
-            entry.form.fields.push(field);
-          },
-        } as StageHandleMap[T];
+      EgoForm: () => ({
+        ...base,
+        addFormField: (opts: AddFormFieldOpts) => {
+          const field = this.resolveEgoFormField(opts);
+          entry.form ??= { title: EGO_FORM_DEFAULT_TITLE, fields: [] };
+          entry.form.fields.push(field);
+        },
+      }),
 
-      case 'Information':
-        return base as StageHandleMap[T];
+      Information: () => base,
 
-      case 'TieStrengthCensus':
-        return {
-          ...base,
-          addPrompt: (opts?: AddTieStrengthCensusPromptInput) => {
-            entry.prompts.push(
-              this.resolveTieStrengthCensusPrompt(opts, entry),
-            );
-          },
-        } as StageHandleMap[T];
+      TieStrengthCensus: () => ({
+        ...base,
+        addPrompt: (opts?: AddTieStrengthCensusPromptInput) => {
+          entry.prompts.push(this.resolveTieStrengthCensusPrompt(opts, entry));
+        },
+      }),
 
-      case 'AlterForm':
-        return {
-          ...base,
-          addFormField: (opts: AddFormFieldOpts) => {
-            const field = this.resolveFormField(
-              {
-                component: opts.component,
-                variable: opts.variable,
-                prompt: opts.prompt,
-                hint: opts.hint,
-                showValidationHints: opts.showValidationHints,
-                parameters: opts.parameters,
-                validation: opts.validation,
-              },
-              entry.subject!.type,
-            );
-            entry.form ??= { title: 'About this person', fields: [] };
-            entry.form.fields.push(field);
-          },
-        } as StageHandleMap[T];
+      AlterForm: () => ({
+        ...base,
+        addFormField: (opts: AddFormFieldOpts) => {
+          const field = this.resolveFormField(
+            {
+              component: opts.component,
+              variable: opts.variable,
+              prompt: opts.prompt,
+              hint: opts.hint,
+              showValidationHints: opts.showValidationHints,
+              parameters: opts.parameters,
+              validation: opts.validation,
+            },
+            entry.subject!.type,
+          );
+          entry.form ??= { title: 'About this person', fields: [] };
+          entry.form.fields.push(field);
+        },
+      }),
 
-      case 'AlterEdgeForm':
-        return {
-          ...base,
-          addFormField: (opts: AddFormFieldOpts) => {
-            const field = this.resolveEdgeFormField(
-              {
-                component: opts.component,
-                variable: opts.variable,
-                prompt: opts.prompt,
-                hint: opts.hint,
-                showValidationHints: opts.showValidationHints,
-                parameters: opts.parameters,
-                validation: opts.validation,
-              },
-              entry.subject!.type,
-            );
-            entry.form ??= {
-              title: 'Describe this relationship',
-              fields: [],
-            };
-            entry.form.fields.push(field);
-          },
-        } as StageHandleMap[T];
+      AlterEdgeForm: () => ({
+        ...base,
+        addFormField: (opts: AddFormFieldOpts) => {
+          const field = this.resolveEdgeFormField(
+            {
+              component: opts.component,
+              variable: opts.variable,
+              prompt: opts.prompt,
+              hint: opts.hint,
+              showValidationHints: opts.showValidationHints,
+              parameters: opts.parameters,
+              validation: opts.validation,
+            },
+            entry.subject!.type,
+          );
+          entry.form ??= {
+            title: 'Describe this relationship',
+            fields: [],
+          };
+          entry.form.fields.push(field);
+        },
+      }),
 
-      case 'Anonymisation':
-        return base as StageHandleMap[T];
+      Anonymisation: () => base,
 
-      case 'FamilyPedigree': {
+      FamilyPedigree: () => {
         const person = entry.nodeConfiguration;
         const relationship = entry.edgeConfiguration;
         invariant(
@@ -1297,56 +1281,52 @@ export class SyntheticInterview {
             entry.form ??= { title: 'Add a person', fields: [] };
             entry.form.fields.push(field);
           },
-        } as StageHandleMap[T];
-      }
+        };
+      },
 
-      case 'Geospatial':
-        return {
-          ...base,
-          addPrompt: (opts?: AddGeospatialPromptInput) => {
-            const prompt = this.resolveGeospatialPrompt(opts, entry);
-            entry.prompts.push(prompt);
-          },
-        } as StageHandleMap[T];
+      Geospatial: () => ({
+        ...base,
+        addPrompt: (opts?: AddGeospatialPromptInput) => {
+          const prompt = this.resolveGeospatialPrompt(opts, entry);
+          entry.prompts.push(prompt);
+        },
+      }),
 
-      case 'NarrativePedigree':
-      case 'LanguageChooser':
-      case 'FinishSession':
-        return base as StageHandleMap[T];
-      case 'NetworkComposer':
-        return {
-          ...base,
-          addEdgeType: (opts?: AddNetworkComposerEdgeInput) => {
-            const edgeTypeId = opts?.type ?? this.addEdgeType().id;
-            const edgeEntry: NetworkComposerEdgeEntry = {
-              id: this.nextId('composer-edge'),
-              subject: { entity: 'edge', type: edgeTypeId },
-              label:
-                opts?.label ??
-                this.edgeTypes.get(edgeTypeId)?.name ??
-                edgeTypeId,
+      NarrativePedigree: () => base,
+      LanguageChooser: () => base,
+      FinishSession: () => base,
+      NetworkComposer: () => ({
+        ...base,
+        addEdgeType: (opts?: AddNetworkComposerEdgeInput) => {
+          const edgeTypeId = opts?.type ?? this.addEdgeType().id;
+          const edgeEntry: NetworkComposerEdgeEntry = {
+            id: this.nextId('composer-edge'),
+            subject: { entity: 'edge', type: edgeTypeId },
+            label:
+              opts?.label ?? this.edgeTypes.get(edgeTypeId)?.name ?? edgeTypeId,
+          };
+          if (opts?.form) {
+            edgeEntry.form = {
+              fields: opts.form.fields.map((f) =>
+                this.resolveNetworkComposerEdgeFormField(f, edgeTypeId),
+              ),
             };
-            if (opts?.form) {
-              edgeEntry.form = {
-                fields: opts.form.fields.map((f) =>
-                  this.resolveNetworkComposerEdgeFormField(f, edgeTypeId),
-                ),
-              };
-            }
-            entry.networkComposerEdges ??= [];
-            entry.networkComposerEdges.push(edgeEntry);
-            return { id: edgeTypeId };
-          },
-          addNodeFormField: (opts: NetworkComposerFormFieldInput) => {
-            const field = this.resolveNetworkComposerFormField(
-              opts,
-              entry.subject!.type,
-            );
-            entry.nodeForm ??= { fields: [] };
-            entry.nodeForm.fields.push(field);
-          },
-        } as StageHandleMap[T];
-    }
+          }
+          entry.networkComposerEdges ??= [];
+          entry.networkComposerEdges.push(edgeEntry);
+          return { id: edgeTypeId };
+        },
+        addNodeFormField: (opts: NetworkComposerFormFieldInput) => {
+          const field = this.resolveNetworkComposerFormField(
+            opts,
+            entry.subject!.type,
+          );
+          entry.nodeForm ??= { fields: [] };
+          entry.nodeForm.fields.push(field);
+        },
+      }),
+    };
+    return handles[type]();
   }
 
   // --- Resolution helpers ---
@@ -1894,8 +1874,19 @@ export class SyntheticInterview {
       codebook,
       // Stage configs are built dynamically and satisfy the Stage schema
       // at runtime, but TypeScript can't verify this statically.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stage configs are assembled from loose records; the unit tests parse generated protocols against the Stage schema
       stages: stages as Stage[],
       assets: this.assets as unknown[],
+      ...(this.interfaceText.size > 0 && {
+        interfaceText: Object.fromEntries(
+          [...this.interfaceText].map(([group, entries]) => [
+            group,
+            Object.fromEntries(
+              [...entries].map(([key, text]) => [key, this.localized(text)]),
+            ),
+          ]),
+        ),
+      }),
     });
   }
 
@@ -3195,6 +3186,18 @@ export class SyntheticInterview {
    */
   setLocalization(localization: LocalizationInput): void {
     this.localization = localization;
+  }
+
+  /**
+   * Word one of the interview's shared texts (an `interfaceText` entry, such
+   * as `buttons.save` or `messages.externalDataError`) the researcher's way.
+   * The protocol holds it only while something in it shows that text; every
+   * entry not set here takes the text Network Canvas supplies.
+   */
+  setInterfaceText(group: string, key: string, text: TextInput): void {
+    const entries = this.interfaceText.get(group) ?? new Map();
+    entries.set(key, text);
+    this.interfaceText.set(group, entries);
   }
 
   /**

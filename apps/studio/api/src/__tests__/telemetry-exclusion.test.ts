@@ -374,7 +374,7 @@ const scenario = (
           {
             method: 'POST',
             headers: {
-              'content-type': 'application/ndjson',
+              'content-type': 'application/x-ndjson',
               'sec-fetch-site': 'same-origin',
               ...sourceHeaders,
               ...headers,
@@ -768,7 +768,7 @@ describe.skipIf(!testDb || !baseEnv.auth || !baseEnv.secrets)(
         expect(outcome.queued).toBeGreaterThan(0);
 
         const channels = new Set(sent.flatMap(channelsOf));
-        expect([...channels].sort()).toEqual(
+        expect([...channels].toSorted()).toEqual(
           [
             'analytics events',
             'error reports',
@@ -776,12 +776,12 @@ describe.skipIf(!testDb || !baseEnv.auth || !baseEnv.secrets)(
             'log records',
             'metrics',
             'spans',
-          ].sort(),
+          ].toSorted(),
         );
 
         const excluded = excludedValues(fixture, outcome.secrets);
-        expect(Object.keys(excluded).sort()).toEqual(
-          [...TELEMETRY_EXCLUSIONS].sort(),
+        expect(Object.keys(excluded).toSorted()).toEqual(
+          TELEMETRY_EXCLUSIONS.toSorted(),
         );
         const leaks = Object.entries(excluded).flatMap(([kind, values]) => {
           expect(values.length, kind).toBeGreaterThan(0);

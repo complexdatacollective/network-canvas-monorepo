@@ -26,9 +26,9 @@ const messages = defineMessages({
   guidance: {
     id: 'protocolBuilder.censusPrompts.dyadGuidance',
     defaultMessage:
-      'The participant sees two people side by side and answers yes or no, so write the question about the pair in front of them — “these two people” rather than a name — and phrase it so that yes and no are both sensible answers.',
+      'The participant sees two nodes side by side and answers yes or no, so write the question about that pair and phrase it so that yes and no are both sensible answers. To show the two nodes’ labels in the question, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.',
     description:
-      'Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted phrase is an example of how to refer to the pair.',
+      'Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations.',
   },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.dyadPlaceholder',

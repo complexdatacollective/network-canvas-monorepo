@@ -892,8 +892,8 @@ function buildSearchFlowScenario(): ScenarioDefinition {
         subject: { entity: 'node', type: person.id },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions({ allowSearch: true }),
-        wording: { searchLabel: SEARCH_LABEL },
       });
+      synth.setInterfaceText('search', 'searchLabel', SEARCH_LABEL);
       geo.addPrompt({
         variable: locationVar.id,
         text: 'Search for or select this person’s neighbourhood.',
@@ -1012,11 +1012,9 @@ function buildSearchNoMatchAndFailureScenario(): ScenarioDefinition {
         subject: { entity: 'node', type: person.id },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions({ allowSearch: true }),
-        wording: {
-          searchNoMatch: SEARCH_NO_MATCH,
-          searchFailed: SEARCH_FAILED,
-        },
+        wording: { searchFailed: SEARCH_FAILED },
       });
+      synth.setInterfaceText('search', 'searchNoMatch', SEARCH_NO_MATCH);
       geo.addPrompt({
         variable: locationVar.id,
         text: 'Search for this person’s neighbourhood.',

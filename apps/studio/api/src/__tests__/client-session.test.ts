@@ -88,7 +88,7 @@ async function callerOverHttp(
   const response = await callerServed.handler(
     new Request('http://studio.test/rpc/protocol-builder', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/ndjson', ...headers },
+      headers: { 'Content-Type': 'application/x-ndjson', ...headers },
       body: `${JSON.stringify({
         _tag: 'Request',
         id: 1,

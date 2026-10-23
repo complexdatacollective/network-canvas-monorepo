@@ -11,6 +11,7 @@ import {
   MESSAGES_INTERFACE_TEXT,
   NAVIGATION_INTERFACE_TEXT,
   PASSPHRASE_INTERFACE_TEXT,
+  SEARCH_INTERFACE_TEXT,
   VALIDATION_INTERFACE_TEXT,
 } from './interface-text-wording.ts';
 import {
@@ -19,6 +20,12 @@ import {
   localizedString,
   nonBlankText,
 } from './localized-string.ts';
+import {
+  hasExternalPanels,
+  hasMapSearch,
+  hasRosterSearch,
+} from './stage-wording/conditions.ts';
+import { behaviourIsOn } from './stage-wording/configuration.ts';
 import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
@@ -31,13 +38,15 @@ import {
  * belong to no one stage, in the protocol's own languages, so a participant
  * reads them in the language of the interview whatever languages Network
  * Canvas ships. Text that belongs to one kind of stage is that stage's
- * setting instead.
+ * setting instead; text several kinds of stage show alike, such as Save, a
+ * search box and the automatic layout toggle, is interface text.
  *
- * A protocol holds only the text it can show: the `navigation` and
- * `messages` groups always, the `buttons` group always but for its Yes and No
- * (shown with forms), each other group only while the protocol uses what it
- * is for, and of the validation group only the messages of the rules it uses
- * (see `INTERFACE_TEXT_GROUPS`). Architect writes and removes the groups as the
+ * A protocol holds only the text it can show: the `navigation` group always,
+ * the `buttons` and `messages` groups always but for the entries only some
+ * stages show (Yes and No with forms, Save and Don't know on a Family
+ * Pedigree), each other group only while the protocol uses what it is for,
+ * and of the validation group only the messages of the rules it uses (see
+ * `INTERFACE_TEXT_GROUPS`). Architect writes and removes the groups as the
  * protocol changes, with the wording Network Canvas supplies, and the
  * researcher may change and translate them like any other text.
  */
@@ -260,17 +269,66 @@ type InterfaceTextGroup = Readonly<{
   entriesUsedBy?: (protocol: ProtocolDocument) => ReadonlySet<string>;
 }>;
 
-/** The buttons every interview shows; Yes and No wait for a form. */
-const ALWAYS_SHOWN_BUTTONS: ReadonlySet<string> = new Set([
-  'cancel',
-  'done',
-  'delete',
-]);
+const hasStage = (
+  protocol: ProtocolDocument,
+  shows: (stage: Readonly<Record<string, unknown>>) => boolean,
+) => stagesOf(protocol).some(shows);
 
+const ofType =
+  (...types: readonly string[]) =>
+  (stage: Readonly<Record<string, unknown>>) =>
+    typeof stage.type === 'string' && types.includes(stage.type);
+
+/** A Sociogram or Narrative shows the layout toggle while its layout is on. */
+const showsLayoutToggle = (stage: Readonly<Record<string, unknown>>) =>
+  ofType('Sociogram', 'Narrative')(stage) &&
+  behaviourIsOn(stage, 'automaticLayout');
+
+/**
+ * A roster always reads its people from an external source, and another name
+ * generator does when it has a panel that does: either says so when the
+ * source cannot be loaded.
+ */
+const showsExternalData = (stage: Readonly<Record<string, unknown>>) =>
+  ofType('NameGeneratorRoster')(stage) ||
+  (ofType('NameGenerator', 'NameGeneratorQuickAdd')(stage) &&
+    hasExternalPanels(stage));
+
+/** A roster with a search, or a map with a search box. */
+const showsSearch = (stage: Readonly<Record<string, unknown>>) =>
+  (ofType('NameGeneratorRoster')(stage) && hasRosterSearch(stage)) ||
+  (ofType('Geospatial')(stage) && hasMapSearch(stage));
+
+/**
+ * Which buttons the protocol shows: Cancel, Done and Delete always, Yes and
+ * No with a form, Save and Don't know on a Family Pedigree, and the layout
+ * toggle on a canvas whose automatic layout is on.
+ */
 const buttonsUsed = (protocol: ProtocolDocument): ReadonlySet<string> =>
-  usesForms(protocol)
-    ? new Set(Object.keys(BUTTONS_INTERFACE_TEXT))
-    : ALWAYS_SHOWN_BUTTONS;
+  new Set([
+    'cancel',
+    'done',
+    'delete',
+    ...(usesForms(protocol) ? ['yes', 'no'] : []),
+    ...(hasStage(protocol, ofType('FamilyPedigree'))
+      ? ['save', 'dontKnow']
+      : []),
+    ...(hasStage(protocol, showsLayoutToggle)
+      ? ['pauseLayout', 'resumeLayout']
+      : []),
+  ]);
+
+/**
+ * Which messages the protocol shows: the errors any interview may show, and
+ * the external data error on a stage that loads people from a file.
+ */
+const messagesUsed = (protocol: ProtocolDocument): ReadonlySet<string> =>
+  new Set([
+    'stageError',
+    'itemUnavailable',
+    'error',
+    ...(hasStage(protocol, showsExternalData) ? ['externalDataError'] : []),
+  ]);
 
 /**
  * Every group of interface text, in the order Architect lists them, and when
@@ -283,7 +341,15 @@ const INTERFACE_TEXT_GROUPS = {
     usedBy: () => true,
     entriesUsedBy: buttonsUsed,
   },
-  messages: { entries: MESSAGES_INTERFACE_TEXT, usedBy: () => true },
+  messages: {
+    entries: MESSAGES_INTERFACE_TEXT,
+    usedBy: () => true,
+    entriesUsedBy: messagesUsed,
+  },
+  search: {
+    entries: SEARCH_INTERFACE_TEXT,
+    usedBy: (protocol) => hasStage(protocol, showsSearch),
+  },
   passphrase: { entries: PASSPHRASE_INTERFACE_TEXT, usedBy: usesPassphrase },
   forms: { entries: FORMS_INTERFACE_TEXT, usedBy: usesForms },
   validation: {
@@ -327,7 +393,8 @@ const partialGroupSchema = (
 export const InterfaceTextSchema = z.strictObject({
   navigation: groupSchema(NAVIGATION_INTERFACE_TEXT).optional(),
   buttons: partialGroupSchema(BUTTONS_INTERFACE_TEXT).optional(),
-  messages: groupSchema(MESSAGES_INTERFACE_TEXT).optional(),
+  messages: partialGroupSchema(MESSAGES_INTERFACE_TEXT).optional(),
+  search: groupSchema(SEARCH_INTERFACE_TEXT).optional(),
   passphrase: groupSchema(PASSPHRASE_INTERFACE_TEXT).optional(),
   forms: groupSchema(FORMS_INTERFACE_TEXT).optional(),
   validation: partialGroupSchema(VALIDATION_INTERFACE_TEXT).optional(),
@@ -335,7 +402,7 @@ export const InterfaceTextSchema = z.strictObject({
 
 /**
  * The interface text a protocol holds, by group and name. An entry of a group
- * held only in part (`buttons`, `validation`) may be absent.
+ * held only in part (`buttons`, `messages`, `validation`) may be absent.
  */
 export type InterfaceText = Readonly<
   Partial<

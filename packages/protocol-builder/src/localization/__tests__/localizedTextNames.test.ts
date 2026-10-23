@@ -165,10 +165,6 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
           [...fixtureStage(type), 'maxNodesNotice'],
           en('You have named enough people.'),
         ],
-        [
-          [...fixtureStage(type), 'externalDataError'],
-          en('The list could not be loaded.'),
-        ],
       ] as const,
   ),
   // The notice a bin stage shows while its completion gate holds the
@@ -187,8 +183,6 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       ] as const,
   ),
   [[...fixtureStage('Geospatial'), 'mapOptions', 'allowSearch'], true],
-  [[...fixtureStage('Geospatial'), 'searchLabel'], en('Search places')],
-  [[...fixtureStage('Geospatial'), 'searchNoMatch'], en('No place matches.')],
   [[...fixtureStage('Geospatial'), 'searchFailed'], en('The search failed.')],
   [
     [...fixtureStage('CategoricalBin'), 'prompts', 0, 'otherVariable'],
@@ -321,14 +315,6 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   [[...fixtureStage('NetworkComposer'), 'convexHullVariable'], 'contactType'],
   [[...fixtureStage('NetworkComposer'), 'groupsHeading'], en('Groups')],
   [[...fixtureStage('Narrative'), 'behaviours', 'automaticLayout'], true],
-  [
-    [...fixtureStage('Narrative'), 'tooltips', 'pauseLayout'],
-    en('Pause automatic layout'),
-  ],
-  [
-    [...fixtureStage('Narrative'), 'tooltips', 'resumeLayout'],
-    en('Resume automatic layout'),
-  ],
   [[...fixtureStage('NarrativePedigree'), 'showAtRiskStatuses'], true],
   [
     [

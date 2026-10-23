@@ -149,7 +149,7 @@ describe('bundleProtocol', () => {
     const files = Object.keys(zip.files).filter(
       (path) => !zip.files[path]?.dir,
     );
-    expect(files.sort()).toEqual([
+    expect(files.toSorted()).toEqual([
       'assets/id-1',
       'assets/id-2.png',
       'protocol.json',

@@ -42,11 +42,13 @@ export const sectionColorClasses: Record<SectionColor, string> = {
   'cerulean-blue': 'bg-cerulean-blue theme-dark:bg-cerulean-blue-dark',
 };
 
-const colorBySlug = new Map(SECTIONS.map(({ key, color }) => [key, color]));
+const colorBySlug = new Map<string, SectionColor>(
+  SECTIONS.map(({ key, color }) => [key, color]),
+);
 
 // Maps a section slug (the first path segment of a docs URL) to its homepage
 // background-colour class, or undefined when the slug is not a known section.
 export const getSectionColorClass = (slug: string): string | undefined => {
-  const color = colorBySlug.get(slug as Section);
+  const color = colorBySlug.get(slug);
   return color ? sectionColorClasses[color] : undefined;
 };

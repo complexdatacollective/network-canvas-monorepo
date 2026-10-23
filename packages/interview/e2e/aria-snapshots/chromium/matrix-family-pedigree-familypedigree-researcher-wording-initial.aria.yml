@@ -14,11 +14,15 @@
       - button "Connect"
       - button "Disconnect"
     - separator
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
+    - separator
+    - button "Family tree 0% complete. Show what’s still needed."
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
-    - separator
-    - button "Family tree 0% complete. Show what’s still needed."
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

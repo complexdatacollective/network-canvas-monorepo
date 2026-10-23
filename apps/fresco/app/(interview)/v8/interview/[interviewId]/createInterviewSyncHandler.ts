@@ -23,8 +23,21 @@ type Args = {
    * older than what is stored.
    */
   initialSyncRevision: number;
-  /** Reads the host's current step at the moment a write is put on the wire. */
-  getCurrentStep: () => number;
+  /**
+   * The host's step when the handler is built. The host reports every later
+   * step through `setCurrentStep`, and a write records whichever step is in
+   * force when it goes on the wire.
+   */
+  initialStep: number;
+};
+
+/**
+ * The sync handler, plus the setter the host reports its current step through.
+ * The handler owns the step rather than reading it from the host, so the host
+ * hands it over from an effect instead of exposing a value to read later.
+ */
+export type InterviewSyncHandler = SyncHandler & {
+  setCurrentStep: (step: number) => void;
 };
 
 /** What the sync route reports back about the write it was handed. */
@@ -79,8 +92,9 @@ async function readOutcome(response: Response): Promise<SyncOutcome> {
 export function createInterviewSyncHandler({
   interviewId,
   initialSyncRevision,
-  getCurrentStep,
-}: Args): SyncHandler {
+  initialStep,
+}: Args): InterviewSyncHandler {
+  let currentStep = initialStep;
   let inFlight: AbortController | null = null;
   // Numbers the writes this browser issues, so the server can tell which of two
   // it is holding at once is the newer one: a write issued later always carries
@@ -119,7 +133,7 @@ export function createInterviewSyncHandler({
     inFlight = controller;
     const body = JSON.stringify({
       ...session,
-      currentStep: getCurrentStep(),
+      currentStep,
       syncRevision: revision,
     });
 
@@ -146,7 +160,7 @@ export function createInterviewSyncHandler({
     }
   };
 
-  return createDebouncedSyncHandler(
+  const sync = createDebouncedSyncHandler(
     async (id, session, { unloading }) => {
       if (id !== interviewId) {
         throw new Error(
@@ -199,4 +213,10 @@ export function createInterviewSyncHandler({
     },
     { waitMs: SYNC_DEBOUNCE_MS },
   );
+
+  return Object.assign(sync, {
+    setCurrentStep: (step: number) => {
+      currentStep = step;
+    },
+  });
 }

@@ -56,7 +56,7 @@ existence/usage handling — it is wired automatically.
 ## Background: current behaviour
 
 - **Usage index** — `getVariableIndex` runs `collectPaths(paths.variables,
-protocol)` producing `{ pathString: variableId }`. `makeGetIsUsed` turns the
+  protocol)` producing `{ pathString: variableId }`. `makeGetIsUsed` turns the
   set of referenced ids into an "in use" map; `getUsageAsStageMeta` maps each
   usage path to a display location (stage link, or "Used as validation for X"
   via `codebookVariableReferenceRegex`).
@@ -114,7 +114,7 @@ Why brand **and** meta (verified against the installed Zod 4):
 - `.brand<...>()` is purely **type-level** — the runtime `_zod.def` is identical
   to an unbranded string, so a runtime walk cannot detect it. The brand exists
   only to give the inferred type a distinct identity (`prompt.variable:
-EntityAttributeReference` instead of `string`), which documents intent and
+  EntityAttributeReference` instead of `string`), which documents intent and
   lets the compiler catch a plain-string assignment.
 - `.meta({...})` is the **runtime** marker the extractor walks. It round-trips
   reliably, including when wrapped by `.optional()` (the meta lives on the inner

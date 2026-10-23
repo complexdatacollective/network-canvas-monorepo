@@ -8,6 +8,8 @@ import {
   areConnected,
   areLinked,
   type Family,
+  familyWithIdenticalParents,
+  identicalParentLinks,
   identicalTwinBlocks,
   identicalTwinsPossible,
   planAddRelative,
@@ -643,6 +645,36 @@ describe('who could be someone’s twin', () => {
     expect(twinCandidatesOf(f, 'ego')).toEqual(['sib']);
   });
 
+  test('a child born to the parents who adopted the person could not', () => {
+    const adopted = family(
+      [
+        person('ego', { isEgo: true }),
+        person('lucy', { name: 'Lucy' }),
+        person('mum', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'adoptive'),
+        link('dad', 'ego', 'adoptive'),
+        link('mum', 'lucy', 'biological'),
+        link('dad', 'lucy', 'biological'),
+      ],
+    );
+    expect(twinCandidatesOf(adopted, 'ego')).toEqual([]);
+    expect(twinCandidatesOf(adopted, 'lucy')).toEqual([]);
+  });
+
+  test('a sibling whom a step-parent adopted, and the person not, still could', () => {
+    // Ego and Sam share their biological parents; their stepfather adopted
+    // Sam and is a step-parent to Ego.
+    const f = siblings(
+      [link('step', 'ego', 'social'), link('step', 'sam', 'adoptive')],
+      [person('step', { name: 'Stepdad', sex: ['male'] })],
+    );
+    expect(twinCandidatesOf(f, 'ego')).toEqual(['sam']);
+    expect(twinCandidatesOf(f, 'sam')).toEqual(['ego']);
+  });
+
   test('a sibling whose twins are not all the person’s siblings could not', () => {
     // Kim is Sam's twin through their father, but not the participant's
     // sibling, so the participant cannot join their set.
@@ -803,7 +835,7 @@ describe('the carrier twins share', () => {
     ]);
   });
 
-  test('records nothing about carrying for the twins while nobody is known to have carried them', () => {
+  test('records nobody as having carried the twins while nobody is known to have, keeping any recorded “No”', () => {
     const f = twins({
       'mum-sam-biological': true,
       'amy-sam-social': false,
@@ -812,11 +844,6 @@ describe('the carrier twins share', () => {
       {
         linkId: 'mum-sam-biological',
         kind: 'biological',
-        isGestationalCarrier: undefined,
-      },
-      {
-        linkId: 'amy-sam-social',
-        kind: 'social',
         isGestationalCarrier: undefined,
       },
     ]);
@@ -889,23 +916,34 @@ describe('the carrier twins share', () => {
     );
   });
 
-  test('a new twin carried by nobody known leaves nobody recorded as having carried the anchor or their twins', () => {
+  test('a new twin of twins someone is recorded as carrying was carried by them too, without being asked', () => {
     const f = twins({
       'mum-ego-biological': true,
       'mum-sam-biological': true,
     });
-    expect(plan(f, siblingRequest('fraternal')).carrierUpdates).toEqual([
-      {
-        linkId: 'mum-ego-biological',
-        kind: 'biological',
-        isGestationalCarrier: undefined,
-      },
-      {
-        linkId: 'mum-sam-biological',
-        kind: 'biological',
-        isGestationalCarrier: undefined,
-      },
-    ]);
+    const result = plan(f, siblingRequest('fraternal'));
+    expect(result.links).toContainEqual(
+      expect.objectContaining({
+        source: 'mum',
+        target: 'added',
+        isGestationalCarrier: true,
+      }),
+    );
+    // Nobody else is recorded as having carried the twins.
+    expect(
+      (result.carrierUpdates ?? []).every(
+        (update) => update.isGestationalCarrier === false,
+      ),
+    ).toBe(true);
+  });
+
+  test('a new twin carried by nobody known leaves nobody recorded as having carried the anchor or their twins', () => {
+    const f = twins();
+    expect(
+      (plan(f, siblingRequest('fraternal')).carrierUpdates ?? []).every(
+        (update) => update.isGestationalCarrier !== true,
+      ),
+    ).toBe(true);
   });
 
   test('a new twin of someone without parents is carried by the same unnamed parent as them', () => {
@@ -935,5 +973,86 @@ describe('the carrier twins share', () => {
       carrier: 'mum',
     } as AddRelativeRequest);
     expect(result.carrierUpdates).toBeUndefined();
+  });
+});
+
+// Josh, 22 Oct 2026 ("Parents only"): twins answered identical are given the
+// same biological parents and donors where that is possible.
+describe('identical twins’ parents brought into line', () => {
+  const nodes = [
+    person('ego', { isEgo: true, sex: ['male'] }),
+    person('ben', { sex: ['male'] }),
+    person('rachel', { sex: ['female'] }),
+    person('tom', { sex: ['male'] }),
+    person('mark', { sex: ['male'] }),
+  ];
+
+  test('each twin is given the genetic parents the other has', () => {
+    const f = family(nodes, [
+      link('rachel', 'ego', 'biological', { carrier: true }),
+      link('tom', 'ben', 'donor'),
+      link('ego', 'ben', 'unknownZygosityTwin'),
+    ]);
+    const links = identicalParentLinks(f, ['ego', 'ben']);
+    expect(links).toEqual([
+      {
+        source: 'rachel',
+        target: 'ben',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      {
+        source: 'tom',
+        target: 'ego',
+        kind: 'donor',
+        isGestationalCarrier: undefined,
+      },
+    ]);
+    expect(
+      identicalTwinBlocks(
+        familyWithIdenticalParents(
+          f,
+          links ?? [],
+          config.sexAssignedAtBirthAttribute,
+        ),
+        'ego',
+        'ben',
+      ),
+    ).toEqual([]);
+  });
+
+  test('nothing is brought into line when together they would have too many genetic parents', () => {
+    const f = family(nodes, [
+      link('tom', 'ego', 'biological'),
+      link('mark', 'ben', 'biological'),
+      link('ego', 'ben', 'unknownZygosityTwin'),
+    ]);
+    expect(identicalParentLinks(f, ['ego', 'ben'])).toBeUndefined();
+  });
+
+  test('nothing is brought into line when it would make someone their own ancestor', () => {
+    const f = family(
+      [
+        ...nodes,
+        person('cal', { sex: ['male'] }),
+        person('dee', { sex: ['female'] }),
+      ],
+      [
+        link('ego', 'cal', 'biological'),
+        link('cal', 'dee', 'biological'),
+        link('dee', 'ben', 'biological', { carrier: true }),
+        link('ego', 'ben', 'unknownZygosityTwin'),
+      ],
+    );
+    expect(identicalParentLinks(f, ['ego', 'ben'])).toBeUndefined();
+  });
+
+  test('nothing is brought into line when a twin has that parent as another kind', () => {
+    const f = family(nodes, [
+      link('tom', 'ego', 'biological'),
+      link('tom', 'ben', 'social'),
+      link('ego', 'ben', 'unknownZygosityTwin'),
+    ]);
+    expect(identicalParentLinks(f, ['ego', 'ben'])).toBeUndefined();
   });
 });

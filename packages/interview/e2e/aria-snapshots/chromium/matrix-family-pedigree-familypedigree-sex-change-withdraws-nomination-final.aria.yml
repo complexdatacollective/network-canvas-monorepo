@@ -6,10 +6,15 @@
     - button "Rob" [disabled]
     - button "You" [disabled]
   - toolbar "Family tree tools":
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
+  - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

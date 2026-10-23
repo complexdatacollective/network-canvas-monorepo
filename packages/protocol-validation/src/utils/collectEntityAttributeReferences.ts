@@ -25,7 +25,7 @@ import { getEntityTypeReferenceDescriptor } from '../schemas/9/entity-type-refer
 // Importing the schema module directly gives a live binding resolved at call
 // time instead, so the walk works whichever module the consumer entered
 // through.
-import ProtocolSchemaV9 from '../schemas/9/schema.ts';
+import { ProtocolSchemaV9 } from '../schemas/9/schema.ts';
 import {
   getStageReferenceSite,
   registeredStageReferenceSites,

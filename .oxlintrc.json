@@ -19,9 +19,15 @@
     "no-underscore-dangle": "off",
 
     "typescript/consistent-type-definitions": ["error", "type"],
+    // `typeof import('x')` stays allowed: it is how vitest types a mock's
+    // `importOriginal`, and a separate `import type * as` buys nothing there.
     "typescript/consistent-type-imports": [
       "warn",
-      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+      {
+        "prefer": "type-imports",
+        "fixStyle": "inline-type-imports",
+        "disallowTypeAnnotations": false
+      }
     ],
     "no-unused-vars": [
       "error",
@@ -101,6 +107,8 @@
     {
       "files": [
         "**/scripts/**",
+        "apps/studio/release-test/**",
+        "apps/studio/stack-test/**",
         "**/vite.config.*",
         "**/vitest.config.*",
         "**/next.config.*",

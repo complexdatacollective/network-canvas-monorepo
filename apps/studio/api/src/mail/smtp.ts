@@ -1,5 +1,5 @@
 import { Effect, Layer, Redacted } from 'effect';
-import nodemailer from 'nodemailer';
+import { createTransport } from 'nodemailer';
 
 import { UPGRADE_GUIDE_URL } from '@codaco/studio-contract/surfaces';
 
@@ -58,7 +58,7 @@ export function MailerSmtp(transport: {
       // nodemailer's defaults are longer than anything that waits on a send.
       const sender = yield* Effect.acquireRelease(
         Effect.sync(() =>
-          nodemailer.createTransport({
+          createTransport({
             url: transport.url,
             connectionTimeout: 10_000,
             greetingTimeout: 10_000,

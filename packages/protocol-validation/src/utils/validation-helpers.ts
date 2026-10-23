@@ -81,8 +81,8 @@ export const variableHasType = (
 /**
  * Check for duplicate IDs in array of objects with id property
  */
-export const findDuplicateId = <T extends { id: string }>(
-  items: T[],
+export const findDuplicateId = (
+  items: readonly { id: string }[],
 ): string | null => {
   const seen = new Set<string>();
   for (const item of items) {

@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 const MAILCHIMP_ACTION =

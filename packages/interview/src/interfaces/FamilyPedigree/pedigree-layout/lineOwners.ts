@@ -56,6 +56,13 @@ export function drawnKind(
 const carrierAmong = (conns: ParentConnection[]) =>
   conns.find((p) => p.isGestationalCarrier === true);
 
+/** A tie two people hold to a child together, partnership or none: a
+ * child's two biological parents conceived them, and their two adoptive
+ * parents adopted them. Social parents are not paired this way: each comes
+ * to the child through their own partnership with a parent. */
+const isJointTie = (kind: PedigreeEdgeType) =>
+  kind === 'biological' || kind === 'adoptive';
+
 /** A tie that passes on genes: a biological parent's or a donor's. */
 const isGenetic = (p: ParentConnection) =>
   p.edgeType === 'biological' || p.edgeType === 'donor';
@@ -88,9 +95,11 @@ export const ownerKey = (owner: LineOwner) =>
  * genetic parent (their partnership line then carries it), or with the
  * other biological parent as a pair when no partnership is recorded between
  * them; so an only child sits under their carrier. When no one person
- * carried every child, it comes from the biological parents, and each
- * carrier draws a line of their own to the run of children they carried, as
- * a donor does. A child with no biological parent recorded has their
+ * carried every child, or a gestational surrogate carried them and the
+ * drawing that hangs them from their genetic parents crosses fewer lines
+ * (`descentFromGeneticParents`, Josh, 22 Oct 2026), it comes from the
+ * biological parents, and each carrier draws a line of their own to the
+ * children they carried, as a donor does. A child with no biological parent recorded has their
  * carrier as their birth owner, with a partner who is the other genetic
  * parent.
  *
@@ -106,10 +115,10 @@ export const ownerKey = (owner: LineOwner) =>
  * recorded are one sibship under the person who carried them.
  *
  * Within raising kinds, the owner is the recorded couple who both hold the
- * kind chosen, or failing those the parent recorded first. Every other tie
- * is drawn by a line of its owner's: a recorded couple who both hold that
- * kind of tie, two birth parents with no partnership recorded, or one
- * person.
+ * kind chosen, the two who hold it with no partnership recorded, or failing
+ * those the parent recorded first. Every other tie is drawn by a line of its
+ * owner's: a recorded couple who both hold that kind of tie, the two parents
+ * who hold it with no partnership recorded (`isJointTie`), or one person.
  */
 export function lineOwnersOf(
   parents: ParentConnection[][],
@@ -123,7 +132,7 @@ export function lineOwnersOf(
   const raisedByRelatives = relativeRaisers(parents, partners);
 
   // The owners' ties among parents holding one kind of tie: a recorded
-  // couple, two biological parents with no partnership recorded, or the
+  // couple, the two parents who hold it with no partnership recorded, or the
   // first.
   function ownerAmong(holding: ParentConnection[]): ParentConnection[] {
     if (holding.length === 0) return [];
@@ -132,7 +141,7 @@ export function lineOwnersOf(
         if (a !== b && partnered(a.parentIndex, b.parentIndex)) return [a, b];
       }
     }
-    if (holding.length === 2 && holding[0]!.edgeType === 'biological') {
+    if (holding.length === 2 && isJointTie(holding[0]!.edgeType)) {
       return [holding[0]!, holding[1]!];
     }
     return [holding[0]!];
@@ -206,13 +215,17 @@ export function lineOwnersOf(
       (other) => carrierAmong(parents[other]!)?.parentIndex,
     );
     const carrier = carrierAmong(conns);
-    if (carrier && carriers.every((c) => c === carrier.parentIndex)) {
+    if (
+      carrier &&
+      !carrier.descentFromGeneticParents &&
+      carriers.every((c) => c === carrier.parentIndex)
+    ) {
       return carrierTies(conns, carrier);
     }
     return own;
   };
 
-  return parents.map((conns, child) => {
+  const childLines = parents.map((conns, child) => {
     const ofKind = (kinds: PedigreeEdgeType[]) =>
       conns.filter((p) => kinds.includes(recordedKind(p)));
     const raisers = [...ofKind(['adoptive']), ...ofKind(['social'])];
@@ -253,12 +266,12 @@ export function lineOwnersOf(
           candidate.edgeType === tie.edgeType &&
           candidate.parentIndex !== tie.parentIndex &&
           (partnered(candidate.parentIndex, tie.parentIndex) ||
-            (tie.edgeType === 'biological' &&
+            (isJointTie(tie.edgeType) &&
               !rest.some(
                 (third) =>
                   third !== tie &&
                   third !== candidate &&
-                  third.edgeType === 'biological',
+                  third.edgeType === tie.edgeType,
               ))),
       );
       if (other) drawn.add(other);
@@ -284,4 +297,62 @@ export function lineOwnersOf(
       lines,
     };
   });
+
+  // A child with no biological parent recorded, hanging from the person who
+  // carried them, joins the sibship that person carries for someone, when
+  // there is exactly one: twins a surrogate carried share one bar, though
+  // only one twin's father is recorded (Josh, 22 Oct 2026).
+  return childLines.map((lines, child) => {
+    const { descent } = lines;
+    if (
+      !descent ||
+      cases[child] !== 'birth' ||
+      biologicalOwner[child]!.length > 0
+    ) {
+      return lines;
+    }
+    const carried = new Set(
+      childLines.flatMap((other, k) =>
+        k !== child &&
+        other.descent &&
+        other.sibship !== undefined &&
+        other.sibship !== lines.sibship &&
+        ownerKey(other.descent) === ownerKey(descent)
+          ? [other.sibship]
+          : [],
+      ),
+    );
+    if (carried.size !== 1) return lines;
+    return { ...lines, sibship: [...carried][0]! };
+  });
+}
+
+/** A gestational surrogate's tie to a child with a biological parent
+ * recorded: one whose children may hang from their genetic parents instead
+ * of from her. */
+const isSurrogacy = (conns: ParentConnection[], tie: ParentConnection) =>
+  tie.isGestationalCarrier === true &&
+  recordedKind(tie) === 'surrogate' &&
+  conns.some((p) => p.edgeType === 'biological');
+
+/**
+ * The family's ties with every gestational surrogate's children hanging
+ * from their genetic parents rather than from her (see `lineOwnersOf`), or
+ * undefined when no child was carried by one. The drawing keeps Bennett et
+ * al.'s line of descent from the carrier unless this one crosses fewer
+ * lines (Josh, 22 Oct 2026).
+ */
+export function hangingFromGeneticParents(
+  parents: ParentConnection[][],
+): ParentConnection[][] | undefined {
+  if (!parents.some((conns) => conns.some((tie) => isSurrogacy(conns, tie)))) {
+    return undefined;
+  }
+  return parents.map((conns) =>
+    conns.map((tie) =>
+      isSurrogacy(conns, tie)
+        ? { ...tie, descentFromGeneticParents: true }
+        : tie,
+    ),
+  );
 }

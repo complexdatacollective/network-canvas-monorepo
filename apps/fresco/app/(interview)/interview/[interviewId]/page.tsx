@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { after, connection } from 'next/server';
 import { Suspense } from 'react';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';

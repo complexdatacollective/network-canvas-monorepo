@@ -4,7 +4,7 @@ import { Effect, Stream } from 'effect';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { HostUnauthorized } from '@codaco/protocol-builder-core/contract/session';

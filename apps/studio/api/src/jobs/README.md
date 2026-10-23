@@ -391,7 +391,7 @@ order:
    may claim a job against a schema this build did not make, or sign a webhook
    delivery with a keyring that cannot produce the key ids already stored.
 3. `MailerLive`, then `MaintenanceDatabase.layer({ url, applicationName:
-'studio-worker' })` — the client the queue runs on, and the only one of
+   'studio-worker' })` — the client the queue runs on, and the only one of
    `src/db/client.ts`'s three the worker builds. Every read and every write
    the queue and its handlers make goes through this one client, including the
    denied-attempts summary's audit append — which is why §4 no longer has two

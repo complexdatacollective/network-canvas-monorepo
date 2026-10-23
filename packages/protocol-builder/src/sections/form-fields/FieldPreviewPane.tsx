@@ -4,7 +4,7 @@ import { type ReactNode, Suspense, useContext, useId, useMemo } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Form from '@codaco/fresco-ui/form/Form';
 import {
   useFormHasValue,

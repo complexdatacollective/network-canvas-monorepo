@@ -93,7 +93,7 @@ is idempotent.
 
 - **Existing person chosen:** create **only** the partner edge
   `{from: anchorId, to: existingId, [relationshipTypeVariable]: ['partner'],
-[isActiveVariable]: current/ex}`. **Never call `addNode`.** Duplicating the partner
+  [isActiveVariable]: current/ex}`. **Never call `addNode`.** Duplicating the partner
   is the antipattern that severs the loop and makes the inbreeding coefficient
   uncomputable — the whole point is that the _same_ node is reachable as both a
   relative and a partner.
@@ -281,7 +281,7 @@ This is correct and necessary on its own.
   screening prompt + link-existing edge wiring (no `addNode`).
 - `genetics/geneticGraph.ts` (`buildGeneticGraph`) — edge de-dup (§4.4).
 - `genetics/status.ts` + `genetics/computeStatuses.ts` + `genetics/patterns/
-{autosomal,xLinked}.ts` — the `atRiskHomozygous` flag dimension + the two-sided AR
+  {autosomal,xLinked}.ts` — the `atRiskHomozygous` flag dimension + the two-sided AR
   rule + the XLR daughter rule (§4.2–4.3).
 - `interfaces/NarrativePedigree/components/{StickerNode,ClassicNotationNode}.tsx` —
   surface the flag (non-reassuring copy).

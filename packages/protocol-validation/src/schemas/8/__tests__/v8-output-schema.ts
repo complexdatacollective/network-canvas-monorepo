@@ -1,5 +1,5 @@
 import migrationV8toV9 from '../../9/migration.ts';
-import ProtocolSchemaV9 from '../../9/schema.ts';
+import { ProtocolSchemaV9 } from '../../9/schema.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
 /**

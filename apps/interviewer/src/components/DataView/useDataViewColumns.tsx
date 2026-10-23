@@ -6,7 +6,7 @@ import { useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';

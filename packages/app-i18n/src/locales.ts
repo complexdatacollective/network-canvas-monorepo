@@ -98,7 +98,9 @@ export const pseudoAppLocale: AppLocale = {
 export function mergeCatalogs(
   ...catalogs: readonly CatalogMessages[]
 ): CatalogMessages {
-  return Object.assign({}, ...catalogs) as CatalogMessages;
+  const merged: Record<string, string | MessageFormatElement[]> = {};
+  for (const catalog of catalogs) Object.assign(merged, catalog);
+  return merged;
 }
 
 /**

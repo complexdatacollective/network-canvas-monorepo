@@ -2,11 +2,7 @@ import type {
   SuppliedStageSetting,
   SuppliedWording,
 } from '../supplied-stage-setting.ts';
-import {
-  hasExternalPanels,
-  hasMaximumNodes,
-  hasMinimumNodes,
-} from './conditions.ts';
+import { hasMaximumNodes, hasMinimumNodes } from './conditions.ts';
 
 /**
  * The notice that says how many people are still needed. Each language's
@@ -40,19 +36,6 @@ export const MAX_NODES_NOTICE = {
   'zh-Hant': '您已完成此任務。請點選「下一步」箭頭繼續。',
 } as const satisfies SuppliedWording;
 
-/** What a participant sees when an external list of people did not load. */
-export const EXTERNAL_DATA_ERROR = {
-  'en': 'External data could not be loaded.',
-  'de': 'Externe Daten konnten nicht geladen werden.',
-  'es': 'No se pudieron cargar los datos externos.',
-  'fr': 'Les données externes n’ont pas pu être chargées.',
-  'it': 'Non è stato possibile caricare i dati esterni.',
-  'nl': 'Externe gegevens konden niet worden geladen.',
-  'pt-BR': 'Não foi possível carregar os dados externos.',
-  'zh-Hans': '无法加载外部数据。',
-  'zh-Hant': '無法載入外部資料。',
-} as const satisfies SuppliedWording;
-
 /** The settings every name generator's limits and panels share. */
 export const NAME_GENERATOR_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   {
@@ -64,10 +47,5 @@ export const NAME_GENERATOR_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
     path: ['maxNodesNotice'],
     message: MAX_NODES_NOTICE,
     when: hasMaximumNodes,
-  },
-  {
-    path: ['externalDataError'],
-    message: EXTERNAL_DATA_ERROR,
-    when: hasExternalPanels,
   },
 ];

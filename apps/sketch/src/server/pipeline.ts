@@ -120,7 +120,7 @@ export const estimateJobCostUsd = (provider: Provider): number => {
 // An error that carries an HTTP status came back from the provider, which
 // rejected the request without generating. Anything else (a timeout, a
 // dropped connection) may have been generated and billed regardless.
-const providerAnswered = (error: unknown) =>
+const providerAnswered = (error: unknown): error is { status: number } =>
   typeof error === 'object' &&
   error !== null &&
   'status' in error &&
@@ -130,9 +130,9 @@ const providerAnswered = (error: unknown) =>
 // the same request again, so retrying it only wastes the job's time.
 const providerRejected = (error: unknown) =>
   providerAnswered(error) &&
-  (error as { status: number }).status >= 400 &&
-  (error as { status: number }).status < 500 &&
-  ![408, 409, 429].includes((error as { status: number }).status);
+  error.status >= 400 &&
+  error.status < 500 &&
+  ![408, 409, 429].includes(error.status);
 
 type PipelineInput = {
   description: string;

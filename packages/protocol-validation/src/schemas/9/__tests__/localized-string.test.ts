@@ -11,7 +11,7 @@ import {
   localizedString,
   ProtocolLocalizationSchema,
 } from '../localized-string.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { informationStage as informationStageSchema } from '../stages/information.ts';
 
 const issuesOf = (schema: z.ZodType, value: unknown) => {

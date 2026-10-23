@@ -73,7 +73,7 @@ const canonical = (value) =>
     : isRecord(value)
       ? Object.fromEntries(
           Object.keys(value)
-            .sort()
+            .toSorted()
             .map((key) => [key, canonical(value[key])]),
         )
       : value;

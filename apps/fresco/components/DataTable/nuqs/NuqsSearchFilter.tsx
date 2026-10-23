@@ -1,8 +1,8 @@
 'use client';
-import { debounce } from 'es-toolkit';
+import { debounce, type DebouncedFunction } from 'es-toolkit';
 import { Search } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -57,28 +57,36 @@ export default function NuqsSearchFilter({
   // being clobbered when the pending commit fires.
   const lastWrittenRef = useRef<string | null>(value);
 
-  const debouncedCommit = useMemo(
-    () =>
-      debounce(
-        (next: string | null) => {
-          lastWrittenRef.current = next;
-          void setValue(next);
-        },
-        debounceMs,
-        { edges: ['trailing'] },
-      ),
-    [setValue, debounceMs],
-  );
+  // Built in an effect rather than during render: it is only ever called from
+  // the change handler and cancelled from effects, and the commit it debounces
+  // records what it wrote in `lastWrittenRef`.
+  const debouncedCommitRef = useRef<DebouncedFunction<
+    (next: string | null) => void
+  > | null>(null);
 
-  useEffect(() => () => debouncedCommit.cancel(), [debouncedCommit]);
+  useEffect(() => {
+    const commit = debounce(
+      (next: string | null) => {
+        lastWrittenRef.current = next;
+        void setValue(next);
+      },
+      debounceMs,
+      { edges: ['trailing'] },
+    );
+    debouncedCommitRef.current = commit;
+    return () => {
+      commit.cancel();
+      debouncedCommitRef.current = null;
+    };
+  }, [setValue, debounceMs]);
 
   useEffect(() => {
     if (value !== lastWrittenRef.current) {
-      debouncedCommit.cancel();
+      debouncedCommitRef.current?.cancel();
       lastWrittenRef.current = value;
       setLocal(value ?? '');
     }
-  }, [value, debouncedCommit]);
+  }, [value]);
 
   return (
     <InputField
@@ -91,7 +99,7 @@ export default function NuqsSearchFilter({
       onChange={(next) => {
         const v = next ?? '';
         setLocal(v);
-        debouncedCommit(v.length > 0 ? v : null);
+        debouncedCommitRef.current?.(v.length > 0 ? v : null);
       }}
     />
   );

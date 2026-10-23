@@ -50,7 +50,7 @@ Paths are relative to `apps/studio/api/` unless they start with `apps/`,
      already shares `*studio-env`).
    - `T/process-separation.test.ts` forbids the worker from loading the
      host modules (`PROTOCOL_BUILDER_HOST` = `rpc|handlers|session|leases|
-presence|publisher`). `pb/schema.ts` is outside that set and already
+     presence|publisher`). `pb/schema.ts` is outside that set and already
      reachable through `db/schema.ts`.
 5. **Connection keys are per watch, not per socket or per owner.** One
    socket can carry several `WatchProtocol` streams.
@@ -77,13 +77,13 @@ presence|publisher`). `pb/schema.ts` is outside that set and already
    - The relay seeds a `section → owner` map once, keeps it up to date from
      relayed lock events, and checks only believed-held sections.
    - Migration 0003 adds the partial index `protocol_events (draft_id,
-section_id, cursor DESC) WHERE kind = 'lock'` for the seed and the
+     section_id, cursor DESC) WHERE kind = 'lock'` for the seed and the
      reaper recheck. The columns are verified in `pb/schema.ts`.
 9. **Ghost presence never rings,** so the safety poll diffs presence.
 10. **A new relay must fix `next` before `subscribe` returns,** or events
     between the relay's start and the backlog read are lost.
 11. **Valkey subscriber.** The rate limiter's client (`retryStrategy: () =>
-null`, 250 ms timeout) stays untouched. The doorbell opens its own
+    null`, 250 ms timeout) stays untouched. The doorbell opens its own
     subscriber connection with ioredis reconnects and re-subscribes itself
     on every `ready` (`autoResubscribe: false`: ioredis's own resubscribe
     never reports the server's confirmation, and `Resync` must follow it),
@@ -344,7 +344,7 @@ one-permit semaphore; contact registrations per `(draft, owner)`; graces per
   so a re-record cannot commit after the close's expiry and leave a live row
   nothing renews.
 - **`contact`:** `upsertContact`, throttled to once per 30 s per `(draft,
-owner)`, then a local contact registration until `IDLE_MS`.
+  owner)`, then a local contact registration until `IDLE_MS`.
 - **Maintenance closure:** when `MaintenanceTriggers.closure` is a
   non-migration closure (`socketClosure` in `pb/rpc.ts:64`, moved to a
   shared module that `rpc.ts` and `leases.ts` import), the tick, `contact`
@@ -422,7 +422,7 @@ changed move.
 out a TTL.
 
 - `ageLeases(owner, byMs)` / `ageConnections(match, byMs)`: `UPDATE …
-SET expires_at = clock_timestamp() + interval '2 s'` (or `- …` to lapse).
+  SET expires_at = clock_timestamp() + interval '2 s'` (or `- …` to lapse).
 - `leaseExpiry(owner)` / `connectionRows(draftId)`: reads.
 - `liveLeases(owner)`: replaces `Leases.heldSections`.
 - Renewal-count seam: a span-recording `Tracer` layer provided beneath
@@ -476,7 +476,7 @@ attempts, no further `sync.renewHeld` spans and an unchanged `leaseExpiry`.
 - Default channel `studio:protocol-events`.
 - `/readyz`: `Effect.serviceOption(WebSocketDrain)` is read once in
   `HealthRoutes`. When draining it answers `503 {status:'failing',
-checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
+  checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
   are untouched. V wires `Doorbell` into no program.
 
 **Tests:**
@@ -803,7 +803,7 @@ promoteStaged(key: StagingKey, hash: string, mediaType: string): Effect<void, Ob
 - **`inspect`:** open the secret. **`preview`:** `getStaged` → `data:` URL.
 - **GC** (worker, per team, `noAuditMaintenanceTransaction`):
   1. Select staged rows with **no `protocol_connections` row for `(draft,
-owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
+     owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
   2. Delete each object, **then** the row.
   3. Orphan sweep: `listStaged('staging/<teamId>/', now - 1 day)` minus
      keys with rows → delete.
@@ -868,7 +868,7 @@ owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
   object the store would not delete is unnamed from then on, so a later orphan
   sweep takes it.
 - `releaseOwner`'s statement locks the owner's rows in `(edit_id,
-resource_id)` order and skips them while a socket connection row of the
+  resource_id)` order and skips them while a socket connection row of the
   owner is live, so a tab that reconnected on another replica during the
   grace keeps its staging.
 - `onReleased` publishes the released locks and the presence change first,

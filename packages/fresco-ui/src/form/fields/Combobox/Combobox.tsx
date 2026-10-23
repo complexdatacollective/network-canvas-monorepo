@@ -12,7 +12,7 @@ import {
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button from '../../../Button';
+import { Button } from '../../../Button';
 import { useComboboxTriggerEscape } from '../../../hooks/useComboboxTriggerEscape';
 import Surface from '../../../layout/Surface';
 import { usePortalContainer } from '../../../PortalContainer';
@@ -157,7 +157,7 @@ function ComboboxField(props: ComboboxFieldProps) {
     'aria-required': ariaRequired,
     'aria-disabled': ariaDisabled,
     'aria-readonly': ariaReadOnly,
-    open: openProp,
+    'open': openProp,
     defaultOpen,
     ...rest
   } = props;

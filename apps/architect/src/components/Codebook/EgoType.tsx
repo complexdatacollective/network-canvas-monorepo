@@ -4,7 +4,7 @@ import { connect } from 'react-redux';
 
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import type { RootState } from '~/ducks/store';

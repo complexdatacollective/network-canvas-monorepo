@@ -146,7 +146,7 @@ that version (the job schema among them), an optional hand-written backfill,
 the Drizzle snapshot, and a manifest of their hashes.
 
 - `scripts/migrate-generate.ts` (`pnpm --filter @codaco/studio-api
-migrate:generate --name <slug>`) writes the next directory. It refuses a
+  migrate:generate --name <slug>`) writes the next directory. It refuses a
   stale fingerprint, an ambiguous drop-and-create it would have to guess a
   rename for, a dropped table or column the author did not name with
   `--drop` (hand-written ones too, at `--seal`), a column made NOT NULL with
@@ -190,9 +190,9 @@ migrate:generate --name <slug>`) writes the next directory. It refuses a
   setting any other way. After each artefact it
   fires the file's deferred checks, naming every deferrable constraint
   `IMMEDIATE` and deferring the `INITIALLY DEFERRED` ones again (never `SET
-CONSTRAINTS ALL`), then refuses a file that ended the transaction (the
+  CONSTRAINTS ALL`), then refuses a file that ended the transaction (the
   transaction id moved), left the role switched (`current_user <>
-session_user`, so a backfill's `SET LOCAL ROLE studio_maintenance` must end
+  session_user`, so a backfill's `SET LOCAL ROLE studio_maintenance` must end
   with `RESET ROLE`), changed `search_path` or the team or erasure setting, or
   left a trigger not firing; a backfill may change no trigger and no table's
   row-level security. A statement Postgres refuses is reported with its

@@ -164,10 +164,15 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     readStored(DIRECTION_STORAGE_KEY, isDirectionMode) ?? 'auto';
 
   const withAppI18n: Decorator = (Story, context) => {
+    // Storybook types `globals` values as `any`; narrow before use.
+    const storedLocale: unknown = context.globals[LOCALE_KEY];
+    const storedMode: unknown = context.globals[DIRECTION_KEY];
     const locale =
-      (context.globals[LOCALE_KEY] as string | undefined) ?? defaultLocale;
+      typeof storedLocale === 'string' ? storedLocale : defaultLocale;
     const mode =
-      (context.globals[DIRECTION_KEY] as DirectionMode | undefined) ?? 'auto';
+      typeof storedMode === 'string' && isDirectionMode(storedMode)
+        ? storedMode
+        : 'auto';
 
     const declared =
       offered.find((entry) => entry.locale === locale)?.direction ?? 'ltr';

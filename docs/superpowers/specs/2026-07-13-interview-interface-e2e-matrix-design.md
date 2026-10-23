@@ -38,7 +38,7 @@ surface and harness constraints. Key facts the design rests on:
 - **Raw payload install already works.** `window.__test.installProtocol`
   (`e2e/host/src/testHooks.ts:93-100`) accepts a `ProtocolPayload`
   (`src/contract/types.ts:32-37`: `Omit<CurrentProtocol, 'assetManifest'> &
-{ id, hash, importedAt, assets: ResolvedAsset[] }`) — no `.netcanvas`
+  { id, hash, importedAt, assets: ResolvedAsset[] }`) — no `.netcanvas`
   needed. The Playwright-side `ProtocolFixture.install()` only supports
   `.netcanvas` paths today.
 - **`testHooks.createInterview()` always starts from an empty network at step

@@ -67,7 +67,7 @@ type ActionButtonProps = Omit<React.ComponentProps<'button'>, 'ref' | 'color'> &
   };
 
 const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(
-  ({ iconName = 'add-a-person', className, disabled, ...rest }, ref) => {
+  ({ iconName, className, disabled, ...rest }, ref) => {
     const intl = useAppIntl();
     return (
       <button

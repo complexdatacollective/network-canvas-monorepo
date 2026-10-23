@@ -9,7 +9,7 @@ import {
 } from '../dynamic-value-validation.ts';
 import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
 type Protocol = ReturnType<typeof completeProtocol>;
@@ -778,6 +778,101 @@ describe('dynamic values in stage text', () => {
       });
     });
 
+    describe('whether the node is the participant', () => {
+      const participant = {
+        isYou: { path: 'node.$isParticipant', cases: { participant: true } },
+      };
+      const choosing =
+        '{isYou, select, participant {What year were you born?} other {What year were they born?}}';
+
+      it("lets a Family Pedigree's person form choose its wording by it", () => {
+        const protocol = editing('familyPedigree', (stage) => {
+          stage.dynamicValues = participant;
+          (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
+            en: choosing,
+          };
+        });
+        expect(issuesOf(protocol)).toEqual([]);
+        expect(
+          argumentsAt(
+            protocol,
+            'familyPedigree',
+            ['form', 'fields', 0, 'prompt'],
+            'formField',
+          ),
+        ).toEqual(['isYou']);
+      });
+
+      it('needs no missing version, since it is never missing', () => {
+        const protocol = editing('familyPedigree', (stage) => {
+          stage.dynamicValues = participant;
+          (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
+            en: '{isYou, select, participant {Your birth year?} other {Their birth year?}}',
+          };
+        });
+        expect(issuesOf(protocol)).toEqual([]);
+      });
+
+      it('refuses to show it as words', () => {
+        const protocol = editing('familyPedigree', (stage) => {
+          stage.dynamicValues = participant;
+          (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
+            en: 'Participant: {isYou}',
+          };
+        });
+        expect(issuesOf(protocol)).toEqual([
+          expect.objectContaining({
+            message: expect.stringContaining('only chooses wording'),
+          }),
+        ]);
+      });
+
+      it('is not offered on any other node form, or outside the person form', () => {
+        const alterForm = editing('alterForm', (stage) => {
+          stage.dynamicValues = participant;
+          (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
+            en: choosing,
+          };
+        });
+        expect(issuesOf(alterForm)).toEqual([
+          expect.objectContaining({
+            message: expect.stringContaining(
+              'known only in the questions of a Family Pedigree',
+            ),
+          }),
+        ]);
+        expect(
+          argumentsAt(
+            editing('familyPedigree', (stage) => {
+              stage.dynamicValues = participant;
+            }),
+            'familyPedigree',
+            ['nominationPrompts', 0, 'text'],
+            'prompt',
+          ),
+        ).toEqual([]);
+      });
+
+      it('refuses any case but the participant', () => {
+        const protocol = editing('familyPedigree', (stage) => {
+          stage.dynamicValues = {
+            isYou: {
+              path: 'node.$isParticipant',
+              cases: { participant: true, someoneElse: false },
+            },
+          };
+        });
+        expect(issuesOf(protocol)).toEqual([
+          expect.objectContaining({
+            path:
+              'stages.' +
+              String(stageIndex(protocol, 'familyPedigree')) +
+              '.dynamicValues.isYou.cases.someoneElse',
+          }),
+        ]);
+      });
+    });
+
     it('reports a value used where it is not available', () => {
       const protocol = editing('sociogram', (stage) => {
         stage.dynamicValues = { them: { path: 'node.nickname' } };
@@ -1035,5 +1130,5 @@ const schemaDynamicValueSites = (): string[] => {
     }
   };
   visit(ProtocolSchemaV9, [], undefined, new Set());
-  return [...found].sort();
+  return [...found].toSorted();
 };

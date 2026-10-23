@@ -82,7 +82,7 @@ These improvements to the interview are shared with Architect's Preview and Fres
     re-declaring one.
   - `Fiber.RuntimeFiber` collapsed into `Fiber.Fiber` in Effect 4, so the sink
     handle that `makeZipOutput` carries is typed `Fiber.Fiber<OutputResult,
-OutputError>`.
+    OutputError>`.
 
   Error classes are unchanged: they remain `Data.TaggedError`, so nothing in the
   package's public types pulls in Effect Schema.

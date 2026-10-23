@@ -7,7 +7,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
