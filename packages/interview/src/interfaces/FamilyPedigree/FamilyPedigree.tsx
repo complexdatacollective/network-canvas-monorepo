@@ -2090,7 +2090,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             update.kind,
           ]),
         ),
-        sexes: new Map([[mode.person.id, sexAssignedAtBirth]]),
+        sexes: new Map([
+          [mode.person.id, sexAssignedAtBirth],
+          ...(result.clearedSexIds ?? []).map((id) => [id, undefined] as const),
+        ]),
         twins: result.twinChanges?.added,
         removedLinkIds: result.twinChanges?.removedLinkIds,
       });
@@ -2118,6 +2121,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       );
       if (writeFailureMessage(updated)) return writeSubmissionResult(updated);
+      // A genetic parent beside them recorded with the sex at birth they
+      // were just given has theirs cleared, to be answered again: the newest
+      // answer wins (`sexAnswerGivesWay`). Nobody whose sex at birth is not
+      // known is withdrawn from a prompt limited to one sex.
+      for (const personId of result.clearedSexIds ?? []) {
+        const cleared = await dispatch(
+          updateNode({
+            nodeId: personId,
+            attributePatch: { set: {}, unset: [sexAttribute] },
+            currentStep,
+          }),
+        );
+        if (writeFailureMessage(cleared)) {
+          return writeSubmissionResult(cleared);
+        }
+      }
       // A sex at birth the participant chose for a stand-in, rather than the
       // one that followed from the other genetic parent, is something they
       // told about them: they are someone in their own right from then on,

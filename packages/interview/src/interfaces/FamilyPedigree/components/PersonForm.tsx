@@ -31,6 +31,7 @@ import {
   type LocalizedString,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
+  type PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -89,7 +90,10 @@ import {
   isStandIn,
   mayHaveCarried,
   otherParentChoices,
-  sexesRuledOut,
+  sexAnswerGivesWay,
+  type SexConflict,
+  sexConflicts,
+  sexesRefused,
   planAdditionUnder,
   planStandIns,
   planTwinChanges,
@@ -121,7 +125,7 @@ import {
   type ReasonContext,
   reasonsFor,
   type UnavailableAnswer,
-  sexRuledOutReason,
+  sexConflictReason,
 } from './unavailableReasons';
 
 export type PersonFormMode =
@@ -156,6 +160,9 @@ export type PersonFormResult = {
   relativesAnswers?: Partial<Record<RelativesGroup, RelativesAnswer>>;
   /** Changes to who the person's twins are (edit only). */
   twinChanges?: ReturnType<typeof planTwinChanges>;
+  /** People whose sex at birth is cleared, since the person's own, as
+   * saved, contradicts it (`sexAnswerGivesWay`; edit only). */
+  clearedSexIds?: string[];
 };
 
 type RelativesGroup = 'siblings' | 'children';
@@ -603,6 +610,22 @@ export default function PersonForm({
             ),
           )
         : undefined;
+    // What the sex at birth chosen contradicts gives way to it.
+    const sex = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.find(
+      (value) => value === asString(values[config.sexAssignedAtBirthAttribute]),
+    );
+    const givesWay =
+      mode.kind === 'edit' &&
+      sex !== undefined &&
+      sex !== mode.person.sexAssignedAtBirth
+        ? sexAnswerGivesWay(family, mode.person.id, sex)
+        : undefined;
+    const uncarried = (givesWay?.uncarriedLinkIds ?? []).flatMap((linkId) => {
+      const link = family.links.find((each) => each.id === linkId);
+      return link
+        ? [{ ...linkUpdateOf(link), isGestationalCarrier: undefined }]
+        : [];
+    });
     return onSubmit({
       set,
       unset,
@@ -621,10 +644,12 @@ export default function PersonForm({
                 twinChanges,
                 values,
               ),
+              ...uncarried,
             ]
           : undefined,
       relativesAnswers: mode.kind === 'edit' ? relativesAnswers : undefined,
       twinChanges,
+      clearedSexIds: givesWay?.clearedSexIds,
     });
   };
 
@@ -637,21 +662,6 @@ export default function PersonForm({
     sexLabels: optionLabels.sexAssignedAtBirth,
     formatList: contentFormat.formatList,
   };
-  // A person recorded as a parent cannot be given a sex at birth that
-  // contradicts it.
-  const ruledOut = person ? sexesRuledOut(family, person.id) : [];
-  const sexReasons = person
-    ? ruledOut.map((reason) =>
-        sexRuledOutReason(reasonContext, person.id, reason),
-      )
-    : [];
-  const sexOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
-    value,
-    label: optionLabels.sexAssignedAtBirth[value],
-    disabled: ruledOut.some((reason) => reason.sex === value),
-    description: reasonsFor(reasonContext, sexReasons, value),
-  }));
-
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
       <DerivedAnswersScope>
@@ -693,15 +703,11 @@ export default function PersonForm({
                 initialValue={person?.genderIdentity}
               />
             )}
-            <Field
-              component={RadioGroupField}
-              name={config.sexAssignedAtBirthAttribute}
-              nameMode="opaque"
-              label={text(wording.sexAssignedAtBirthLabel)}
-              options={sexOptions}
-              required
-              hint={joinReasons(reasonContext, sexReasons)}
-              initialValue={person?.sexAssignedAtBirth}
+            <SexAssignedAtBirthField
+              person={person}
+              family={family}
+              sexAttribute={config.sexAssignedAtBirthAttribute}
+              reasonContext={reasonContext}
             />
           </section>
           {mode.kind === 'add' && onDraftChange && (
@@ -761,6 +767,81 @@ export default function PersonForm({
  * Whether the person has siblings, and children, asked when the family must
  * account for them and none are recorded yet.
  */
+/** A link as it is recorded, as an update that leaves it so. */
+const linkUpdateOf = (link: FamilyLink): LinkUpdate => ({
+  linkId: link.id,
+  kind: link.kind,
+  isGestationalCarrier: link.isGestationalCarrier,
+  isCurrentPartner: link.isCurrentPartner,
+});
+
+/**
+ * The person's sex at birth. Nothing else recorded makes an answer
+ * unavailable, except being a surrogate, who always carried the pregnancy:
+ * an answer that contradicts how someone is recorded as a parent gives way
+ * to it when it is saved (`sexAnswerGivesWay`), so a mistake in either of two
+ * answers that depend on each other can be corrected where it was made. The
+ * hint says what saving the answer chosen will change before it is saved.
+ */
+function SexAssignedAtBirthField({
+  person,
+  family,
+  sexAttribute,
+  reasonContext,
+}: {
+  person: Person | undefined;
+  family: Family;
+  sexAttribute: string;
+  reasonContext: ReasonContext;
+}) {
+  const { wording, text } = usePedigreeWords();
+  const value = asString(useFormValue([sexAttribute], 'opaque')[sexAttribute]);
+  const answered = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.find(
+    (each) => each === value,
+  );
+  const reasonsOf = (
+    sex: PedigreeSexAssignedAtBirth,
+    only?: SexConflict['rule'],
+  ) =>
+    person
+      ? sexConflicts(family, person.id, sex)
+          .filter((conflict) => only === undefined || conflict.rule === only)
+          .map((conflict) =>
+            sexConflictReason(reasonContext, person.id, conflict),
+          )
+      : [];
+  const refused = person ? sexesRefused(family, person.id) : [];
+  // Only being a surrogate refuses an answer; what else it would contradict
+  // is said only once it is chosen, which it cannot be.
+  const refusals = refused.flatMap((sex) => reasonsOf(sex, 'surrogate'));
+  // What the answer chosen changes, said only once it differs from the
+  // answer recorded, which contradicts nothing.
+  const changes =
+    answered !== undefined &&
+    answered !== person?.sexAssignedAtBirth &&
+    !refused.includes(answered)
+      ? reasonsOf(answered)
+      : [];
+  const options = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((sex) => ({
+    value: sex,
+    label: reasonContext.sexLabels[sex],
+    disabled: refused.includes(sex),
+    description: reasonsFor(reasonContext, refusals, sex),
+  }));
+  return (
+    <Field
+      component={RadioGroupField}
+      name={sexAttribute}
+      nameMode="opaque"
+      label={text(wording.sexAssignedAtBirthLabel)}
+      options={options}
+      required
+      hint={joinReasons(reasonContext, [...refusals, ...changes])}
+      initialValue={person?.sexAssignedAtBirth}
+    />
+  );
+}
+
 function RelativesQuestions({
   person,
   askAbout,

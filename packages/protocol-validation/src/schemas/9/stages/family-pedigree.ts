@@ -501,6 +501,20 @@ const WORDING_ARGUMENTS = {
     names: TEXT,
   },
   removeConfirmTitle: { name: TEXT },
+  sexChangeClearsCoParentSex: {
+    who: {
+      kind: 'select',
+      cases: ['personIsYou', 'childIsYou', 'coParentIsYou'],
+    },
+    coParent: TEXT,
+    children: TEXT,
+    sex: TEXT,
+  },
+  sexChangeEndsCarrying: {
+    who: { kind: 'select', cases: ['personIsYou', 'childIsYou'] },
+    children: TEXT,
+    sex: TEXT,
+  },
   sharedDonorsLabel: {
     ...PERSON_ARGUMENTS,
     hasSurrogate: SELECT_TRUE,
@@ -560,15 +574,6 @@ const WORDING_ARGUMENTS = {
     child: TEXT,
     first: TEXT,
     second: TEXT,
-  },
-  unavailableSameSexAsCoParent: {
-    who: {
-      kind: 'select',
-      cases: ['personIsYou', 'childIsYou', 'coParentIsYou'],
-    },
-    coParent: TEXT,
-    children: TEXT,
-    sex: TEXT,
   },
   unavailableSameSexGeneticParent: {
     ...UNAVAILABLE_ANSWERS_ARGUMENTS,
@@ -669,6 +674,8 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   removeConfirmDescription: argumentWording('removeConfirmDescription'),
   removeConfirmTitle: argumentWording('removeConfirmTitle'),
   sexAssignedAtBirthLabel: plainWording(),
+  sexChangeClearsCoParentSex: argumentWording('sexChangeClearsCoParentSex'),
+  sexChangeEndsCarrying: argumentWording('sexChangeEndsCarrying'),
   sharedDonorsLabel: argumentWording('sharedDonorsLabel'),
   sharedParentCountBoth: plainWording(),
   sharedParentCountLabel: argumentWording('sharedParentCountLabel'),
@@ -697,7 +704,6 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   unavailableGeneticParentsFull: argumentWording(
     'unavailableGeneticParentsFull',
   ),
-  unavailableSameSexAsCoParent: argumentWording('unavailableSameSexAsCoParent'),
   unavailableSameSexGeneticParent: argumentWording(
     'unavailableSameSexGeneticParent',
   ),

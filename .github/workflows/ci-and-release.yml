@@ -294,12 +294,14 @@ jobs:
           # of "upgrade-path" files inside the package missed the keyring
           # check, the fingerprint sync and the schema applier in turn. On top
           # of that, the lane's own inputs that no package graph sees: the
-          # lane itself and the maintenance page its observer reads, served by
-          # studio-web. Every Studio release PR selects it too.
+          # lane itself, the upgrade script it runs, and the maintenance page
+          # its observer reads, served by studio-web. Every Studio release PR
+          # selects it too.
           studio_upgrade=false
           if [[ "$studio" == "true" || "$HEAD_REF" == "changeset-release/studio" ]] \
             || ! git diff --quiet "$gate_base" "$CURR" -- \
               apps/studio/release-test \
+              apps/studio/scripts \
               apps/studio/web/public/maintenance.html; then
             studio_upgrade=true
             echo "Studio upgrade inputs changed in ${gate_base:-(no base)}..$CURR."
@@ -1377,14 +1379,15 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio_upgrade == 'true'
     runs-on: ubuntu-latest
-    # Two image builds (the candidate pair, then the migration-bearing api)
-    # and two upgrade cycles of about a minute each. The cache below keeps the
+    # Two image builds (the candidate pair, then the migration-bearing api),
+    # two upgrade cycles of about a minute each, and run B's three runs of
+    # scripts/upgrade.sh, under a minute together. The cache below keeps the
     # builds warm after the first run.
     timeout-minutes: 40
     permissions:
       contents: read
-      # Run C. The previous release is the newest `@codaco/studio-api@<x.y.z>`
-      # git tag (previous-release.mjs); with none, GHCR is never asked. With
+      # Run C. The previous release is the newest `studio@<x.y.z>` git tag
+      # (previous-release.mjs); with none, GHCR is never asked. With
       # one, run.sh logs in to ghcr.io with this job's token and pulls that
       # release's images, and any failure fails the job.
       packages: read
@@ -1400,6 +1403,12 @@ jobs:
       # workspace's own dependencies. Not part of a self-hoster's path: the
       # upgrade itself runs only Docker commands.
       - uses: ./.github/actions/turbo-ci-setup
+      # A Studio release is named by studio-api's version, so a release PR
+      # that moves another Studio package without it would merge and never
+      # be published (apps-release-studio). Trivially true on a feature PR,
+      # which moves no version.
+      - name: Check every moved Studio package moves studio-api too
+        run: node scripts/release/studio-release.mjs check
       # The same cache-capable builder and cache exposure as `studio-stack`;
       # see the comments there. Created but not made current (no `--use`):
       # BUILDX_BUILDER selects it for the image builds, and build.sh's
@@ -3659,6 +3668,8 @@ jobs:
       fresco_version: ${{ steps.fresco.outputs.version }}
       interviewer_released: ${{ steps.interviewer.outputs.released }}
       interviewer_version: ${{ steps.interviewer.outputs.version }}
+      studio_released: ${{ steps.studio.outputs.released }}
+      studio_version: ${{ steps.studio.outputs.version }}
       website_released: ${{ steps.website.outputs.released }}
       website_version: ${{ steps.website.outputs.version }}
     steps:
@@ -3700,6 +3711,12 @@ jobs:
           PKG_NAME: '@codaco/interviewer'
           RELEASE_CHANNEL: stable-tagged
         run: bash .github/scripts/detect-app-release.sh
+      # Named by @codaco/studio-api's version and tagged `studio@<version>`,
+      # which detect-app-release.sh cannot express; studio-release.mjs also
+      # keeps the lane from releasing the untagged version main held before
+      # the lane existed.
+      - id: studio
+        run: node scripts/release/studio-release.mjs plan
       - id: website
         env:
           PKG_JSON: apps/networkcanvas.com/package.json
@@ -4194,6 +4211,301 @@ jobs:
           body_path: ${{ runner.temp }}/fresco-notes.md
           prerelease: false
           make_latest: 'false'
+
+  # Publishes a Studio release: both images to GHCR, signed with keyless
+  # cosign under this workflow's identity and attested with a CycloneDX SBOM
+  # each, then the `studio@<version>` tag and a GitHub release carrying the
+  # notes, both SBOMs and studio-release.json, which names the images by
+  # digest for a deployment to pin. It deploys nothing. Every decision and
+  # document comes from scripts/release/studio-release.mjs, whose tests run on
+  # pull requests; the build itself is the one `studio-stack` runs on them.
+  apps-release-studio:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.studio_released == 'true'
+    runs-on: ubuntu-latest
+    # Both targets for two platforms, the arm64 half under QEMU.
+    timeout-minutes: 90
+    # The versionless group and the guard of the app lanes, for their reason:
+    # concurrent main runs can hold different untagged versions, and the
+    # `latest` tag and the newest release must never go backwards.
+    concurrency:
+      group: apps-release-studio
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      packages: write
+      # Keyless cosign: the signing certificate is issued for this job's
+      # OIDC token, so the identity verified below is this workflow on main.
+      id-token: write
+    env:
+      VERSION: ${{ needs.apps-release-detect.outputs.studio_version }}
+      CERT_IDENTITY: https://github.com/${{ github.workflow_ref }}
+      CERT_ISSUER: https://token.actions.githubusercontent.com
+      SBOM_REFERENCE_TYPE: https://networkcanvas.com/studio/sbom-reference/v1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-tags: true
+          # Full history: the guard checks that this tree contains the newest
+          # released commit, and the notes read each package's version at the
+          # newest release tag.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Skip if this version should not be released
+        id: guard
+        env:
+          PKG_NAME: studio
+        run: bash .github/scripts/app-release-guard.sh
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          install: false
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      # For the lockfile half of each SBOM, which reads package metadata
+      # (licences among it) from the store, and the web client's bundle
+      # inventory.
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - if: steps.guard.outputs.skip != 'true'
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+      - if: steps.guard.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - if: steps.guard.outputs.skip != 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Both builds pass the PostHog secrets and SOURCE_MAPS_TARGET, so the
+      # shared builder stage is one cache entry: studio-api's build uploads the
+      # web bundle's source maps (once per platform) and studio-web's reuses
+      # it. The source label is what links each GHCR package to this
+      # repository. Provenance is off because the attestation a deployment
+      # verifies is cosign's, and the index stays two platforms and nothing
+      # else.
+      - name: Build and push studio-api
+        id: api
+        if: steps.guard.outputs.skip != 'true'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: apps/studio/Dockerfile
+          target: studio-api
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          sbom: false
+          secrets: |
+            posthog_personal_api_key=${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+            posthog_project_id=${{ secrets.POSTHOG_PROJECT_ID }}
+          build-args: SOURCE_MAPS_TARGET=codaco-studio
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          annotations: |
+            index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            index:org.opencontainers.image.description=Network Canvas Studio server: serve, worker, migrate, maintenance and rotate-secrets
+          tags: |
+            ghcr.io/complexdatacollective/studio-api:${{ env.VERSION }}
+            ghcr.io/complexdatacollective/studio-api:${{ github.sha }}
+      - name: Build and push studio-web
+        id: web
+        if: steps.guard.outputs.skip != 'true'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: apps/studio/Dockerfile
+          target: studio-web
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          sbom: false
+          secrets: |
+            posthog_personal_api_key=${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+            posthog_project_id=${{ secrets.POSTHOG_PROJECT_ID }}
+          build-args: SOURCE_MAPS_TARGET=codaco-studio
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          annotations: |
+            index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            index:org.opencontainers.image.description=Network Canvas Studio web client and maintenance page, served by nginx
+          tags: |
+            ghcr.io/complexdatacollective/studio-web:${{ env.VERSION }}
+            ghcr.io/complexdatacollective/studio-web:${{ github.sha }}
+      - name: Record the image references
+        id: refs
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          {
+            echo "api=ghcr.io/complexdatacollective/studio-api@$API_DIGEST"
+            echo "web=ghcr.io/complexdatacollective/studio-web@$WEB_DIGEST"
+          } >> "$GITHUB_OUTPUT"
+      - id: syft
+        if: steps.guard.outputs.skip != 'true'
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: v1.54.1
+      # One CycloneDX document per image, from three: the pushed image scanned
+      # once per platform (the OS packages, the Node runtime, and the
+      # node_modules studio-api ships) and pnpm's lockfile view of the package
+      # built into it. The lockfile half is what lists the libraries bundled
+      # into the web client, which no image scan can see. studio-web declares
+      # them all as devDependencies, so its half is not `--prod`, and pnpm's
+      # scopes say nothing about what ships: the web document takes them from
+      # the packages a build of the same tree bundles instead.
+      - name: Generate the SBOMs
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          SYFT: ${{ steps.syft.outputs.cmd }}
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          sboms="$RUNNER_TEMP/sbom"
+          mkdir -p "$sboms"
+          # Packages only: per-file entries quadruple the document, and the
+          # attestation carries all of it.
+          export SYFT_FILE_METADATA_SELECTION=none SYFT_FILE_EXECUTABLE_SELECTION=none
+          for platform in amd64 arm64; do
+            "$SYFT" scan "registry:$API_REF" --platform "linux/$platform" -q -o "cyclonedx-json@1.6=$sboms/api-$platform.json"
+            "$SYFT" scan "registry:$WEB_REF" --platform "linux/$platform" -q -o "cyclonedx-json@1.6=$sboms/web-$platform.json"
+          done
+          pnpm sbom --sbom-format cyclonedx --sbom-spec-version 1.6 --sbom-type application \
+            --filter @codaco/studio-api --prod > "$sboms/api-lockfile.json"
+          pnpm sbom --sbom-format cyclonedx --sbom-spec-version 1.6 --sbom-type application \
+            --filter @codaco/studio-web > "$sboms/web-lockfile.json"
+          node scripts/release/studio-release.mjs bundle --out "$sboms/web-bundle.json"
+          node scripts/release/studio-release.mjs sbom --image api --version "$VERSION" --digest "$API_DIGEST" \
+            --inputs "$sboms/api-amd64.json,$sboms/api-arm64.json,$sboms/api-lockfile.json" \
+            --out "$RUNNER_TEMP/studio-api.cdx.json"
+          node scripts/release/studio-release.mjs sbom --image web --version "$VERSION" --digest "$WEB_DIGEST" \
+            --inputs "$sboms/web-amd64.json,$sboms/web-arm64.json,$sboms/web-lockfile.json" \
+            --runtime "$sboms/web-bundle.json" --out "$RUNNER_TEMP/studio-web.cdx.json"
+      - if: steps.guard.outputs.skip != 'true'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      # `--recursive` signs each platform's manifest as well as the index, so a
+      # deployment that pins one platform's digest verifies too. The public
+      # transparency log refuses attestations over 100 KB, and each SBOM is
+      # megabytes, so each image attests the release asset's URL and digest
+      # instead of the SBOM itself.
+      - name: Sign the images and attest their SBOMs
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+        run: |
+          for image in api web; do
+            node scripts/release/studio-release.mjs sbom-reference --version "$VERSION" \
+              --repository "$GITHUB_REPOSITORY" --sbom "$RUNNER_TEMP/studio-$image.cdx.json" \
+              --out "$RUNNER_TEMP/studio-$image.sbom-reference.json"
+          done
+          cosign sign --yes --recursive "$API_REF" "$WEB_REF"
+          cosign attest --yes --type "$SBOM_REFERENCE_TYPE" --predicate "$RUNNER_TEMP/studio-api.sbom-reference.json" "$API_REF"
+          cosign attest --yes --type "$SBOM_REFERENCE_TYPE" --predicate "$RUNNER_TEMP/studio-web.sbom-reference.json" "$WEB_REF"
+      # Verified the way a deployment verifies, against this workflow's
+      # identity on main, before anything names the digests.
+      - name: Verify the signatures and attestations
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+        run: |
+          for image in api web; do
+            ref_var="${image^^}_REF"
+            ref="${!ref_var}"
+            sbom="$RUNNER_TEMP/studio-$image.cdx.json"
+            cosign verify --certificate-identity "$CERT_IDENTITY" --certificate-oidc-issuer "$CERT_ISSUER" "$ref" > /dev/null
+            attested=$(cosign verify-attestation --type "$SBOM_REFERENCE_TYPE" --certificate-identity "$CERT_IDENTITY" --certificate-oidc-issuer "$CERT_ISSUER" "$ref" \
+              | jq -r '.payload | @base64d | fromjson | .predicate.sbom.digest.sha256')
+            if ! grep -qx "$(sha256sum "$sbom" | cut -d' ' -f1)" <<< "$attested"; then
+              echo "::error::no attestation on $ref names the digest of $sbom"
+              exit 1
+            fi
+            echo "$ref: signature and SBOM attestation verified for $CERT_IDENTITY"
+          done
+      # A self-hoster pulls with no registry credentials, and so does a
+      # deployment. A GHCR package starts private and only an organization
+      # owner can make it public, so the first release stops here, untagged,
+      # until that is done; re-running this job then releases it.
+      - name: Confirm both images pull without credentials
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          for pair in "studio-api@$API_DIGEST" "studio-web@$WEB_DIGEST"; do
+            name="${pair%@*}"
+            token=$(curl -fsS "https://ghcr.io/token?scope=repository:complexdatacollective/$name:pull" | jq -r .token)
+            if ! curl -fsS -o /dev/null -I \
+              -H "Authorization: Bearer $token" \
+              -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' \
+              "https://ghcr.io/v2/complexdatacollective/$name/manifests/${pair#*@}"; then
+              echo "::error::ghcr.io/complexdatacollective/$name is not public. An organization owner must set its visibility to public (package settings, Danger Zone), then re-run this job."
+              exit 1
+            fi
+          done
+      - name: Write the release notes and studio-release.json
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          node scripts/release/studio-release.mjs notes --version "$VERSION" \
+            --repository "$REPOSITORY" --api-digest "$API_DIGEST" --web-digest "$WEB_DIGEST" \
+            --out "$RUNNER_TEMP/studio-notes.md"
+          node scripts/release/studio-release.mjs manifest --version "$VERSION" \
+            --commit "$GITHUB_SHA" --repository "$REPOSITORY" \
+            --api-digest "$API_DIGEST" --web-digest "$WEB_DIGEST" \
+            --out "$RUNNER_TEMP/studio-release.json"
+      # `gh release create` with assets creates a draft, uploads, and only
+      # then publishes, which is what creates the tag: a failed upload leaves
+      # no tag, so the next push to main releases this version again rather
+      # than leaving a release a deployment cannot read. The retry first
+      # deletes the draft a failed run left. Not marked latest: the
+      # repository's latest release belongs to the apps.
+      - name: Create the studio@${{ env.VERSION }} release
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
+            --jq ".[] | select(.draft and .tag_name == \"studio@$VERSION\") | .id" |
+            while read -r draft; do
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$draft"
+            done
+          gh release create "studio@$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Studio $VERSION" \
+            --notes-file "$RUNNER_TEMP/studio-notes.md" \
+            --latest=false \
+            "$RUNNER_TEMP/studio-release.json" \
+            "$RUNNER_TEMP/studio-api.cdx.json" \
+            "$RUNNER_TEMP/studio-web.cdx.json"
+      # Moved only once the release is published, so `latest` never names an
+      # image no release describes.
+      - name: Point latest at this release
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+        run: |
+          docker buildx imagetools create -t ghcr.io/complexdatacollective/studio-api:latest "$API_REF"
+          docker buildx imagetools create -t ghcr.io/complexdatacollective/studio-web:latest "$WEB_REF"
 
   # Documentation follows the same generated-release-PR gate as the PWA apps,
   # but uses normal semver and produces only a Netlify deployment + git tag.

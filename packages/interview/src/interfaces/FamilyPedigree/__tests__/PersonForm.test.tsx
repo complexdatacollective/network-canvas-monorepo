@@ -851,8 +851,11 @@ describe('an answer that cannot be chosen', () => {
     );
   });
 
-  it('names the other genetic parent whose sex at birth rules a sex out', () => {
-    renderPersonForm('robin', {
+  // Josh, 22 Oct 2026: the newest answer wins, so a sex at birth that
+  // contradicts the other genetic parent's, or a pregnancy carried, is not
+  // greyed out; the field says what saving it changes.
+  it('says what a sex at birth contradicting the records changes on saving', async () => {
+    const { user } = renderPersonForm('robin', {
       nodes: [
         person('ego', { isEgo: true, sex: ['female'] }),
         person('robin', { sex: ['intersex'] }),
@@ -866,8 +869,18 @@ describe('an answer that cannot be chosen', () => {
     const sex = screen.getByRole('radiogroup', {
       name: /^Sex assigned at birth/,
     });
-    expect(within(sex).getByRole('radio', { name: 'Male' })).toBeDisabled();
-    expect(sex).toHaveAccessibleDescription(/“donor”.*“Male” at birth/);
+    const male = within(sex).getByRole('radio', { name: 'Male' });
+    expect(male).toBeEnabled();
+    expect(sex).not.toHaveAccessibleDescription(/if you save/);
+    await user.click(male);
+    await waitFor(() =>
+      expect(sex).toHaveAccessibleDescription(
+        /the sex at birth of “donor” will be cleared for you to answer again/,
+      ),
+    );
+    expect(sex).toHaveAccessibleDescription(
+      /If you save, they will no longer be recorded as having carried you\./,
+    );
   });
 });
 
@@ -1406,7 +1419,7 @@ describe('a second carrier', () => {
 // naming the answers it disables, from the point of view of the panel's own
 // person.
 describe('reasons an answer is unavailable', () => {
-  it('says once that an answer is unavailable for the two children the participant carried', () => {
+  it('says once that an answer is unavailable for the two children the participant carried as a surrogate', () => {
     renderPersonForm('ego', {
       nodes: [
         person('ego', { isEgo: true, sex: ['female'] }),
@@ -1414,8 +1427,8 @@ describe('reasons an answer is unavailable', () => {
         person('ben', { name: 'Ben' }),
       ],
       edges: [
-        link('ego', 'ava', 'biological', { carrier: true }),
-        link('ego', 'ben', 'biological', { carrier: true }),
+        link('ego', 'ava', 'surrogate', { carrier: true }),
+        link('ego', 'ben', 'surrogate', { carrier: true }),
       ],
     });
     const sex = screen.getByRole('radiogroup', {
@@ -1435,8 +1448,38 @@ describe('reasons an answer is unavailable', () => {
     ).toHaveAccessibleDescription(/^“Male” is unavailable because/);
   });
 
-  it('explains a sex at birth ruled out on a parent’s own panel from their point of view', () => {
-    renderPersonForm('robert', {
+  it('gives only the surrogacy as the reason Male is unavailable for a surrogate who is also a genetic parent', () => {
+    // Gina carried Ava as a surrogate, and carried Ben with Dan, both genetic
+    // parents. Male stays unavailable, so the field never says what saving
+    // it would change.
+    renderPersonForm('gina', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('gina', { name: 'Gina', sex: ['female'] }),
+        person('dan', { name: 'Dan', sex: ['male'] }),
+        person('ava', { name: 'Ava' }),
+        person('ben', { name: 'Ben' }),
+      ],
+      edges: [
+        link('gina', 'ava', 'surrogate', { carrier: true }),
+        link('gina', 'ben', 'biological', { carrier: true }),
+        link('dan', 'ben', 'biological'),
+      ],
+    });
+    const sex = screen.getByRole('radiogroup', {
+      name: /^Sex assigned at birth/,
+    });
+    const male = within(sex).getByRole('radio', { name: 'Male' });
+    expect(male).toBeDisabled();
+    expect(male).toHaveAccessibleDescription(
+      /^“Male” is unavailable because this person is recorded as having carried ava/,
+    );
+    expect(sex).not.toHaveAccessibleDescription(/if you save/i);
+    expect(sex).not.toHaveAccessibleDescription(/ben/);
+  });
+
+  it('explains what a new sex at birth changes on a parent’s own panel from their point of view', async () => {
+    const { user } = renderPersonForm('robert', {
       nodes: [
         person('ego', { isEgo: true, sex: ['female'] }),
         person('linda', { name: 'Linda', sex: ['female'] }),
@@ -1453,8 +1496,11 @@ describe('reasons an answer is unavailable', () => {
     const sex = screen.getByRole('radiogroup', {
       name: /^Sex assigned at birth/,
     });
-    expect(sex).toHaveAccessibleDescription(
-      /“Female” is unavailable because this person and “linda” are both your genetic parents, and “linda” is recorded as “Female” at birth\./,
+    await user.click(within(sex).getByRole('radio', { name: 'Female' }));
+    await waitFor(() =>
+      expect(sex).toHaveAccessibleDescription(
+        /This person and “linda” are both your genetic parents, and “linda” is also recorded as “Female” at birth\./,
+      ),
     );
     // Sam's parents are the same two people, so the conflict is said once.
     expect(sex).not.toHaveAccessibleDescription(/genetic parents of sam/);

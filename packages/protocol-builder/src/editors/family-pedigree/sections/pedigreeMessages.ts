@@ -1579,6 +1579,20 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the hint explaining that answers are unavailable because someone else is recorded as having carried the pregnancy.',
   },
+  wordingSexChangeClearsCoParentSex: {
+    id: 'protocolBuilder.pedigree.wording.sexChangeClearsCoParentSex',
+    defaultMessage:
+      'Note on a new sex at birth answer: other genetic parent’s answer cleared',
+    description:
+      'Label of the note explaining that saving the sex at birth chosen for a genetic parent will clear the sex at birth of the other genetic parent of their children, who is recorded with the same sex at birth.',
+  },
+  wordingSexChangeEndsCarrying: {
+    id: 'protocolBuilder.pedigree.wording.sexChangeEndsCarrying',
+    defaultMessage:
+      'Note on a new sex at birth answer: no longer recorded as having carried',
+    description:
+      'Label of the note explaining that saving a sex at birth that rules out carrying a pregnancy, for someone recorded as having carried one or more children, will record that they did not carry them.',
+  },
   wordingUnavailableCannotCarry: {
     id: 'protocolBuilder.pedigree.wording.unavailableCannotCarry',
     defaultMessage: 'Unavailable answers hint: cannot have carried',
@@ -1590,13 +1604,6 @@ export const familyPedigreeMessages = defineMessages({
     defaultMessage: 'Unavailable answers hint: carried a child',
     description:
       'Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried the pregnancy of one or more children.',
-  },
-  wordingUnavailableSameSexAsCoParent: {
-    id: 'protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent',
-    defaultMessage:
-      'Unavailable answers hint: other genetic parent has that sex at birth',
-    description:
-      'Label of the hint explaining that a sex at birth is unavailable for a genetic parent because the other genetic parent of their children is recorded with that sex at birth.',
   },
   wordingUnavailableGeneticParentsFull: {
     id: 'protocolBuilder.pedigree.wording.unavailableGeneticParentsFull',

@@ -1,7 +1,7 @@
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import type { PedigreeSexAssignedAtBirth } from '@codaco/protocol-validation';
 
-import type { Family, GeneticParentBlock, SexRuledOut } from '../model';
+import type { Family, GeneticParentBlock, SexConflict } from '../model';
 import type { PedigreeWords } from '../pedigreeWords';
 
 /**
@@ -31,11 +31,23 @@ export type Reason = { answers: readonly UnavailableAnswer[] } & (
   | { rule: 'geneticParent'; block: GeneticParentBlock }
   | {
       /** The person the panel describes, a genetic parent of `childId`
-       * beside `coParentId`, cannot be given the sex at birth they have. */
-      rule: 'sameSexAsCoParent';
+       * beside `coParentId`, is being given the sex at birth `coParentId`
+       * has: saving clears `coParentId`'s (`sexAnswerGivesWay`). Names no
+       * answer, since none is unavailable. */
+      rule: 'clearsCoParentSex';
       personId: string;
       childId: string;
       coParentId: string;
+      sex: string;
+    }
+  | {
+      /** The person the panel describes, recorded as having carried
+       * `childId`, is being given a sex at birth that rules it out: saving
+       * removes that answer (`sexAnswerGivesWay`). Names no answer,
+       * since none is unavailable. */
+      rule: 'endsCarrying';
+      personId: string;
+      childId: string;
       sex: string;
     }
   | { rule: 'carrierRecorded'; childId: string; carrierId: string }
@@ -47,8 +59,8 @@ export type Reason = { answers: readonly UnavailableAnswer[] } & (
       sex: string;
     }
   | {
-      /** The person the panel describes carried `childId`, so cannot be
-       * given a sex at birth that rules it out. */
+      /** The person the panel describes is the surrogate who carried
+       * `childId`, so cannot be given a sex at birth that rules it out. */
       rule: 'carried';
       personId: string;
       childId: string;
@@ -114,30 +126,36 @@ export const bothSameSexReason = (
   answers: readonly UnavailableAnswer[],
 ): Reason => ({ rule: 'bothSameSex', firstId, secondId, sex, answers });
 
-/** Why the person the panel describes cannot be given a sex at birth,
- * phrased from their own point of view. */
-export const sexRuledOutReason = (
+/** What giving the person the panel describes a sex at birth contradicts,
+ * phrased from their own point of view: why it is unavailable, for a
+ * surrogate, or else what saving it changes. */
+export const sexConflictReason = (
   context: ReasonContext,
   personId: string,
-  reason: SexRuledOut,
+  conflict: SexConflict,
 ): Reason => {
-  const answers = [sexAnswer(context, reason.sex)];
-  return reason.rule === 'sameSexGeneticParent'
-    ? {
-        rule: 'sameSexAsCoParent',
+  const { childId, sex } = conflict;
+  switch (conflict.rule) {
+    case 'sameSexGeneticParent':
+      return {
+        rule: 'clearsCoParentSex',
         personId,
-        childId: reason.childId,
-        coParentId: reason.coParentId,
-        sex: reason.sex,
-        answers,
-      }
-    : {
+        childId,
+        coParentId: conflict.coParentId,
+        sex,
+        answers: [],
+      };
+    case 'carried':
+      return { rule: 'endsCarrying', personId, childId, sex, answers: [] };
+    case 'surrogate':
+      return {
         rule: 'carried',
         personId,
-        childId: reason.childId,
-        sex: reason.sex,
-        answers,
+        childId,
+        sex,
+        answers: [sexAnswer(context, sex)],
       };
+  }
 };
 
 /** Why a genetic parent recorded in the way makes answers unavailable, as
@@ -196,8 +214,8 @@ function formatReason(
   switch (reason.rule) {
     case 'geneticParent':
       return formatGeneticParent(context, reason, reason.block);
-    case 'sameSexAsCoParent':
-      return words.text(words.wording.unavailableSameSexAsCoParent, {
+    case 'clearsCoParentSex':
+      return words.text(words.wording.sexChangeClearsCoParentSex, {
         who: isYou(context, reason.personId)
           ? 'personIsYou'
           : aboutYou
@@ -232,6 +250,16 @@ function formatReason(
         name: reason.personId === undefined ? '' : displayName(reason.personId),
         sex: sexLabel(context, reason.sex),
       });
+    case 'endsCarrying':
+      return words.text(words.wording.sexChangeEndsCarrying, {
+        who: isYou(context, reason.personId)
+          ? 'personIsYou'
+          : aboutYou
+            ? 'childIsYou'
+            : 'other',
+        children,
+        sex: sexLabel(context, reason.sex),
+      });
     case 'carried':
       return words.text(words.wording.unavailableCarried, {
         who: isYou(context, reason.personId)
@@ -260,10 +288,10 @@ function formatReason(
 /** What a reason says apart from the child it is about, for the reasons
  * that can be about several children at once. */
 const mergeKey = (reason: Reason) => {
-  if (reason.rule === 'carried') {
+  if (reason.rule === 'carried' || reason.rule === 'endsCarrying') {
     return JSON.stringify([reason.rule, reason.personId, reason.sex]);
   }
-  if (reason.rule === 'sameSexAsCoParent') {
+  if (reason.rule === 'clearsCoParentSex') {
     return JSON.stringify([
       reason.rule,
       reason.personId,
@@ -292,7 +320,9 @@ export function joinReasons(
     if (!reason) continue;
     const key = mergeKey(reason);
     const childId =
-      reason.rule === 'carried' || reason.rule === 'sameSexAsCoParent'
+      reason.rule === 'carried' ||
+      reason.rule === 'endsCarrying' ||
+      reason.rule === 'clearsCoParentSex'
         ? reason.childId
         : undefined;
     const merged =
