@@ -82,10 +82,13 @@ shipped_in 839aefd11 '@codaco/fresco-ui'
 - **The pending changeset describes the behaviour you just changed** → edit
   that changeset rather than adding a second one. Two notes about one shipped
   behaviour read as two changes.
-- **A Studio package** → this question does not apply. The Studio lane has no
-  tags and no deploy lane yet (its release PR "records versions and changelogs
-  only"), so nothing Studio has reached anyone, and its changesets exist to
+- **A Studio package** → Studio releases are tagged `studio@<version>`, not
+  per package, so ask `shipped_in <commit> studio`. Until the first `studio@`
+  tag exists nothing Studio has reached anyone, and its changesets exist to
   build the changelog its first release will carry. Write them regardless.
+  A Studio release is named by `@codaco/studio-api`'s version, so a change
+  that releases any Studio package must also name `@codaco/studio-api`
+  somewhere in the release, or the release PR's `studio-upgrade` check fails.
 
 Two things about the shape of that function, both learned the hard way:
 
@@ -122,12 +125,12 @@ The Studio lane spans all four Studio workspace packages —
 `@codaco/studio-sync` — so one Studio changeset may name any combination of
 them.
 
-| Lane                                                          | Bump type          | Ships via                                        |
-| ------------------------------------------------------------- | ------------------ | ------------------------------------------------ |
-| Libraries, Architect, Background Creator, Fresco, Interviewer | Real semver impact | "Version Packages" PR → npm and/or app release   |
-| Documentation                                                 | Real semver impact | "Release Documentation" PR → Netlify + tag       |
-| Website                                                       | Real semver impact | "Release Website" PR → Netlify + tag             |
-| Studio                                                        | Real semver impact | "Release Studio" PR → versions + changelogs only |
+| Lane                                                          | Bump type          | Ships via                                                          |
+| ------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------ |
+| Libraries, Architect, Background Creator, Fresco, Interviewer | Real semver impact | "Version Packages" PR → npm and/or app release                     |
+| Documentation                                                 | Real semver impact | "Release Documentation" PR → Netlify + tag                         |
+| Website                                                       | Real semver impact | "Release Website" PR → Netlify + tag                               |
+| Studio                                                        | Real semver impact | "Release Studio" PR → GHCR images + `studio@` tag + GitHub release |
 
 ## How to author
 

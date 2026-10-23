@@ -510,7 +510,8 @@
       // changeset guards read .changeset; the release guards read the fresco
       // and studio deployment trees; the CI workflow guard reads
       // apps/studio/stack-test, apps/studio/release-test and the self-host
-      // guide the Studio jobs run; the released-migration guard reads
+      // guide the Studio jobs run; the upgrade-script suite runs
+      // apps/studio/scripts; the released-migration guard reads
       // apps/studio/api/migrations; the PWA hosting and legacy-app guards read
       // each app's _headers, _redirects and older-major pin.
       "inputs": [
@@ -527,6 +528,7 @@
         "apps/fresco/CLAUDE.md",
         "apps/studio/stack-test/**",
         "apps/studio/release-test/**",
+        "apps/studio/scripts/**",
         "apps/studio/api/migrations/**",
         "apps/studio/docs/self-host/**",
         "apps/*/public/_headers",
