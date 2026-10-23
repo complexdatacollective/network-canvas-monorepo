@@ -1,9 +1,10 @@
 import {
   type ComponentProps,
-  useRef,
   useCallback,
   useId,
+  useLayoutEffect,
   useMemo,
+  useState,
 } from 'react';
 import { z } from 'zod/mini';
 
@@ -66,27 +67,40 @@ import countGraphemes from '~/utils/countGraphemes';
  * `JSON.stringify` of the validation props. A function is dropped by
  * `JSON.stringify`, so the memo key stays a tiny constant; handing it a live
  * Zod object instead would serialise that object's internals on every render.
+ *
+ * The validation keeps the language its message is written in, and `setIntl`
+ * changes it, so one validation serves the dialog's whole lifetime.
  */
 const makeNameLengthValidation = (
-  getIntl: () => IntlShape,
-): CustomFieldValidation => ({
-  schema: () =>
-    z.unknown().check(
-      z.superRefine((value, ctx) => {
-        if (typeof value !== 'string') return;
-        if (countGraphemes(value.trim()) <= PROTOCOL_NAME_MAX_LENGTH) return;
-        ctx.addIssue({
-          code: 'custom',
-          input: value,
-          message: getIntl().formatMessage(PROTOCOL_NAME_TOO_LONG_MESSAGE, {
-            max: PROTOCOL_NAME_MAX_LENGTH,
+  initialIntl: IntlShape,
+): { custom: CustomFieldValidation; setIntl: (intl: IntlShape) => void } => {
+  let intl = initialIntl;
+  return {
+    custom: {
+      schema: () =>
+        z.unknown().check(
+          z.superRefine((value, ctx) => {
+            if (typeof value !== 'string') return;
+            if (countGraphemes(value.trim()) <= PROTOCOL_NAME_MAX_LENGTH) {
+              return;
+            }
+            ctx.addIssue({
+              code: 'custom',
+              input: value,
+              message: intl.formatMessage(PROTOCOL_NAME_TOO_LONG_MESSAGE, {
+                max: PROTOCOL_NAME_MAX_LENGTH,
+              }),
+              path: [],
+            });
           }),
-          path: [],
-        });
-      }),
-    ),
-  hint: '',
-});
+        ),
+      hint: '',
+    },
+    setIntl: (next) => {
+      intl = next;
+    },
+  };
+};
 
 const remainingMessages = defineMessages({
   protocolNameIsRequired: {
@@ -251,11 +265,10 @@ const NewProtocolDialog = ({
     [intl.locale],
   );
   const formId = useId();
-  const intlRef = useRef(intl);
-  intlRef.current = intl;
-  const nameLengthValidation = useRef(
-    makeNameLengthValidation(() => intlRef.current),
-  );
+  const [nameLengthValidation] = useState(() => makeNameLengthValidation(intl));
+  useLayoutEffect(() => {
+    nameLengthValidation.setIntl(intl);
+  }, [nameLengthValidation, intl]);
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => onOpenChange(newOpen),
@@ -329,7 +342,7 @@ const NewProtocolDialog = ({
             required={intl.formatMessage(
               remainingMessages.protocolNameIsRequired,
             )}
-            custom={nameLengthValidation.current}
+            custom={nameLengthValidation.custom}
             dir="auto"
             autoFocus
           />

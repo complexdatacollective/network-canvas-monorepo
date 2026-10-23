@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { z } from 'zod/mini';
 
 import {
@@ -326,7 +326,8 @@ export function splitValidation(
  * carrying validator closures (or a `custom` entry rebuilt each render)
  * serialises identically every time, so the memo would pin the very first
  * closure forever. This keeps ONE `custom` entry for the field's lifetime
- * whose schema reads the latest config through a ref, so a changed config
+ * whose schema reads the latest config, field name and language — handed to it
+ * after every commit, before any effect can validate — so a changed config
  * never re-registers the field.
  */
 export function useValidationProps(
@@ -334,20 +335,23 @@ export function useValidationProps(
   fieldName: string,
 ): SplitValidation {
   const intl = useAppIntl();
-  const intlRef = useRef(intl);
-  intlRef.current = intl;
-  const validationRef = useRef(validation);
-  validationRef.current = validation;
-  const fieldNameRef = useRef(fieldName);
-  fieldNameRef.current = fieldName;
 
-  const customRef = useRef<CustomFieldValidation | undefined>(undefined);
-  customRef.current ??= makeCustomValidation(
-    () =>
-      partitionRules(validationRef.current ?? {}, intlRef.current).customConfig,
-    () => fieldNameRef.current,
-    () => intlRef.current,
-  );
+  const [live] = useState(() => {
+    let inputs = { validation, fieldName, intl };
+    return {
+      custom: makeCustomValidation(
+        () => partitionRules(inputs.validation ?? {}, inputs.intl).customConfig,
+        () => inputs.fieldName,
+        () => inputs.intl,
+      ),
+      setInputs: (next: typeof inputs) => {
+        inputs = next;
+      },
+    };
+  });
+  useLayoutEffect(() => {
+    live.setInputs({ validation, fieldName, intl });
+  });
 
   const { nativeProps, customConfig } = partitionRules(validation ?? {}, intl);
 
@@ -357,5 +361,5 @@ export function useValidationProps(
     return { nativeProps };
   }
 
-  return { nativeProps, custom: customRef.current };
+  return { nativeProps, custom: live.custom };
 }

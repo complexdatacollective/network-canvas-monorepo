@@ -45,28 +45,29 @@ type AssetMeta = Record<string, unknown> & {
   name?: string;
   value?: string;
 };
-const getRenderer = (meta: AssetMeta) => {
-  switch (meta.type) {
+const AssetPreview = ({ id, type }: { id: string; type?: string }) => {
+  switch (type) {
     case 'image':
-      return BackgroundImage;
+      return <BackgroundImage id={id} />;
     case 'audio':
-      return ({ id }: { id: string }) => <Audio id={id} controls />;
+      return <Audio id={id} controls />;
     case 'video':
-      return ({ id }: { id: string }) => <Video id={id} controls />;
+      return <Video id={id} controls />;
     case 'network':
-      return Network;
+      return <Network id={id} />;
     case 'geojson':
-      return GeoJSON;
+      return <GeoJSON id={id} />;
     case 'apikey':
-      return APIKey;
+      return <APIKey id={id} />;
     default:
-      return () => (
+      return (
         <Paragraph>
           <AppMessage message={extraMessages.unavailable} />
         </Paragraph>
       );
   }
 };
+
 type PreviewOwnProps = {
   id: string;
   show?: boolean;
@@ -86,7 +87,6 @@ const Preview = ({
   onClose = () => {},
 }: PreviewProps) => {
   const intl = useAppIntl();
-  const AssetRenderer = getRenderer(meta);
   const handleDownload = useCallback(() => {
     onDownload(assetPath, meta);
   }, [onDownload, assetPath, meta]);
@@ -122,7 +122,7 @@ const Preview = ({
         </>
       }
     >
-      <AssetRenderer id={id} />
+      <AssetPreview id={id} type={meta.type} />
     </Dialog>
   );
 };

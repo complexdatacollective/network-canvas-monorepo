@@ -217,13 +217,15 @@ const ProtocolInfoCard = () => {
             max: PROTOCOL_NAME_MAX_LENGTH,
           })
         : describeAllowance(notice.graphemes, intl);
-  const lastAnnouncedThreshold = useRef<number | null>(
+  const [lastAnnouncedThreshold, setLastAnnouncedThreshold] = useState<
+    number | null
+  >(() =>
     announceThresholdFor(PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? '')),
   );
 
   /**
    * The name this component last sent to the store, held only until the store
-   * hands it back. It answers exactly one question, in the effect below: is
+   * hands it back. It answers exactly one question, in the adoption below: is
    * this `name` change the one I just dispatched, or did it arrive from
    * somewhere else?
    *
@@ -232,37 +234,45 @@ const ProtocolInfoCard = () => {
    * would go on matching forever, so undo/redo — which can bring the
    * researcher's own committed string back through the store later, from a
    * surface this component knows nothing about — would keep being read as
-   * self-initiated when it is external like any other rename. So the effect
-   * SPENDS the token on every run, matched or not: the window in which a
-   * commit can be recognised as this component's own is the single `name`
-   * change its dispatch produces, and nothing wider. A token whose dispatch
+   * self-initiated when it is external like any other rename. So the adoption
+   * SPENDS the token on every arriving name, matched or not: the window in
+   * which a commit can be recognised as this component's own is the single
+   * `name` change its dispatch produces, and nothing wider. A token whose dispatch
    * somehow never landed cannot lie in wait for a later collision either — the
    * next change spends it and falls back to clearing, which is the safe
    * direction.
    *
-   * A ref rather than anything module-scoped, so it cannot leak across
-   * unmounts: it is created with the instance and dies with it, and a remount
-   * begins with no claim on any name.
+   * Component state rather than anything module-scoped, so it cannot leak
+   * across unmounts: it is created with the instance and dies with it, and a
+   * remount begins with no claim on any name.
    */
-  const selfCommittedName = useRef<string | null>(null);
+  const [selfCommittedName, setSelfCommittedName] = useState<string | null>(
+    null,
+  );
 
-  // This stays an effect, and not because syncing a prop into state usually
-  // should. It SPENDS the token above, exactly once per arriving `name`, and
-  // effects are the only place that can promise that: React may call a
-  // component's body twice for one render, and a second pass would find the
-  // token already spent and read its own commit as somebody else's — clearing
-  // the refusal notice the token exists to protect.
-  useEffect(() => {
+  // Each arriving `name` is adopted during render, compared against the last
+  // one seen, rather than synced from an effect, so the field never paints the
+  // previous name first. It SPENDS the token above exactly once per arriving
+  // `name`. That is safe during render only because the token is state, not a
+  // ref: React may call a component's body twice for one render, and both
+  // passes read the same token, so neither finds it already spent and reads
+  // its own commit as somebody else's — clearing the refusal notice the token
+  // exists to protect.
+  const [adoptedName, setAdoptedName] = useState(name);
+  if (name !== adoptedName) {
+    setAdoptedName(name);
     setLocalName(name ?? '');
     // An external rename (undo, autosave round-trip, another surface) is not
     // the researcher typing, so it must not speak — but it does re-baseline
     // which threshold the next keystroke would be crossing.
-    lastAnnouncedThreshold.current = announceThresholdFor(
-      PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? ''),
+    setLastAnnouncedThreshold(
+      announceThresholdFor(
+        PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? ''),
+      ),
     );
 
-    const wasSelfCommitted = selfCommittedName.current === name;
-    selfCommittedName.current = null;
+    const wasSelfCommitted = selfCommittedName === name;
+    setSelfCommittedName(null);
 
     // Dropping the notice is right for an external rename and wrong for a
     // rename this component just committed, so the two cannot share one
@@ -278,7 +288,7 @@ const ProtocolInfoCard = () => {
     if (!wasSelfCommitted) {
       setNotice(null);
     }
-  }, [name]);
+  }
 
   const handleNameChange = (raw: string) => {
     const next = raw.replace(/\n/g, ' ');
@@ -308,8 +318,8 @@ const ProtocolInfoCard = () => {
     const threshold = announceThresholdFor(
       PROTOCOL_NAME_MAX_LENGTH - nextCount,
     );
-    if (threshold !== lastAnnouncedThreshold.current) {
-      lastAnnouncedThreshold.current = threshold;
+    if (threshold !== lastAnnouncedThreshold) {
+      setLastAnnouncedThreshold(threshold);
       setNotice(
         threshold === null ? null : { graphemes: nextCount, isRefusal: false },
       );
@@ -333,7 +343,7 @@ const ProtocolInfoCard = () => {
    * control's `aria-describedby` describing a name it does not hold.
    *
    * The baseline re-bases to the committed value's band, exactly as the
-   * external-rename effect above does. It decides what the NEXT keystroke
+   * external-rename adoption above does. It decides what the NEXT keystroke
    * counts as a crossing, so a baseline stranded on the phantom's band
    * swallows the next genuine one in silence.
    *
@@ -355,14 +365,16 @@ const ProtocolInfoCard = () => {
    * keystroke clears it, as it always has.
    *
    * Surviving this function is only half of it: when the blur also commits a
-   * rename, the store hands `name` straight back to the synchronisation effect
-   * above, whose job is to reset these same channels for renames from
-   * elsewhere. `selfCommittedName` is what stops that effect from undoing the
+   * rename, the store hands `name` straight back to the adoption above, whose
+   * job is to reset these same channels for renames from elsewhere.
+   * `selfCommittedName` is what stops that adoption from undoing the
    * decision made here — see the reasoning on the token.
    */
   const resyncNameChannels = (committed: string) => {
-    lastAnnouncedThreshold.current = announceThresholdFor(
-      PROTOCOL_NAME_MAX_LENGTH - countGraphemes(committed),
+    setLastAnnouncedThreshold(
+      announceThresholdFor(
+        PROTOCOL_NAME_MAX_LENGTH - countGraphemes(committed),
+      ),
     );
     setNotice((current) => (current?.isRefusal ? current : null));
   };
@@ -382,20 +394,33 @@ const ProtocolInfoCard = () => {
 
   // Demotion to read-only discards any uncommitted draft. The controls are
   // disabled, so nothing will commit it, and when editing returns the reloaded
-  // protocol can carry the same name and description — leaving the effects
-  // above with no change to run on and the re-enabled fields showing text that
-  // was never saved.
-  useEffect(() => {
-    if (!readOnly) {
-      return;
+  // protocol can carry the same name and description — leaving the
+  // synchronisation above with no change to run on and the re-enabled fields
+  // showing text that was never saved. Applied during render, like the name's
+  // adoption, whenever read-only is entered or the stored values change while
+  // it lasts.
+  const [draftResetInputs, setDraftResetInputs] = useState({
+    readOnly,
+    name,
+    description,
+  });
+  if (
+    draftResetInputs.readOnly !== readOnly ||
+    draftResetInputs.name !== name ||
+    draftResetInputs.description !== description
+  ) {
+    setDraftResetInputs({ readOnly, name, description });
+    if (readOnly) {
+      setLocalName(name ?? '');
+      setLocalDescription(description);
+      setNotice(null);
+      setLastAnnouncedThreshold(
+        announceThresholdFor(
+          PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? ''),
+        ),
+      );
     }
-    setLocalName(name ?? '');
-    setLocalDescription(description);
-    setNotice(null);
-    lastAnnouncedThreshold.current = announceThresholdFor(
-      PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? ''),
-    );
-  }, [readOnly, name, description]);
+  }
 
   return (
     <ProtocolCard
@@ -507,11 +532,10 @@ const ProtocolInfoCard = () => {
               // meaningless rather than about the history.)
               if (trimmed !== name) {
                 // Claim the commit before it leaves, because it comes back:
-                // the store re-renders this component with the new `name` and
-                // runs the synchronisation effect, which must not read this
-                // rename as somebody else's and clear the refusal the resync
-                // above just kept.
-                selfCommittedName.current = trimmed;
+                // the store re-renders this component with the new `name`,
+                // whose adoption must not read this rename as somebody else's
+                // and clear the refusal the resync above just kept.
+                setSelfCommittedName(trimmed);
                 dispatch(updateProtocolName({ name: trimmed }));
               }
             }}

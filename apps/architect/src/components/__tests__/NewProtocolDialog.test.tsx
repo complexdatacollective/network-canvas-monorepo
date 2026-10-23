@@ -10,6 +10,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import {
+  AppIntlOverlay,
+  type AppMessageOverride,
+} from '@codaco/app-i18n/react';
+import {
   PROTOCOL_NAME_MAX_LENGTH,
   PROTOCOL_NAME_TOO_LONG_MESSAGE as protocolNameTooLongDescriptor,
 } from '~/config';
@@ -135,6 +139,32 @@ describe('NewProtocolDialog', () => {
       await screen.findByText('Protocol name is required'),
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('explains an over-limit name in the language shown when it is checked', async () => {
+    // The dialog stays open across a change of language; the explanation
+    // follows it rather than the language the dialog was opened in.
+    const english: AppMessageOverride = () => undefined;
+    const renamed: AppMessageOverride = (message) =>
+      message.id === protocolNameTooLongDescriptor.id
+        ? 'Name too long, in the new language'
+        : undefined;
+    const dialog = (override: AppMessageOverride) => (
+      <AppIntlOverlay override={override}>
+        <NewProtocolDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />
+      </AppIntlOverlay>
+    );
+    const { rerender } = render(dialog(english));
+    rerender(dialog(renamed));
+
+    fireEvent.change(nameInput(), {
+      target: { value: 'A'.repeat(PROTOCOL_NAME_MAX_LENGTH + 1) },
+    });
+    submit();
+
+    expect(
+      await screen.findByText('Name too long, in the new language'),
+    ).toBeInTheDocument();
   });
 });
 
