@@ -42,7 +42,7 @@
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@tanstack/react-table": "catalog:",
-    "dexie": "^4.4.6",
+    "dexie": "^4.4.7",
     "effect": "catalog:",
     "jszip": "catalog:",
     "lucide-react": "catalog:",
@@ -84,7 +84,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-pwa": "^1.3.0",
+    "vite-plugin-pwa": "^2.0.0",
     "vitest": "catalog:"
   }
 }
