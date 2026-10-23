@@ -3773,7 +3773,7 @@ describe('an answer the form worked out, or one no longer available', () => {
     await save(user);
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     const result = onSubmit.mock.calls[0]?.[0];
-    expect(result.identicalParentLinks).toEqual([
+    expect(result?.identicalParentLinks).toEqual([
       {
         source: 'rachel',
         target: 'ben',
@@ -3781,7 +3781,7 @@ describe('an answer the form worked out, or one no longer available', () => {
         isGestationalCarrier: true,
       },
     ]);
-    expect(result.twinChanges).toMatchObject({
+    expect(result?.twinChanges).toMatchObject({
       changed: [{ zygosity: 'identical' }],
     });
   });
