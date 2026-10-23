@@ -9,9 +9,14 @@ closed, if a row changed that nothing explains, if a job queued during the
 upgrade was lost or worked before the instance reopened, or if the rollback
 did not bring back the instance as it was.
 
-CI runs it as the `studio-upgrade` job, on every Studio release PR and on any
-change to what performs or describes an upgrade. The job runs `run.sh` and
-nothing else, so a run that passes here passes there.
+CI runs it as the `studio-upgrade` job, on `main` only, once merging the
+Studio release PR has authorised a release: exactly when `apps-release-studio`
+would publish. It never runs on a pull request. `apps-release-studio` waits
+for it, so a release whose upgrade fails publishes nothing until the failed
+run is re-run (or, once a first release is tagged, the next push to `main`)
+and passes. The job runs `run.sh` and nothing else, so a run that passes here
+passes there; run it locally before merging a change to what performs or
+describes an upgrade.
 
 ```bash
 apps/studio/release-test/run.sh                # build, then every run
