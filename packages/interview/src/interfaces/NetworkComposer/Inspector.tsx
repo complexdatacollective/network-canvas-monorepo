@@ -113,15 +113,15 @@ const sameAnswer = (a: FieldValue, b: FieldValue) =>
 /**
  * Watches the form's values and, once they settle, calls `onSettled` to
  * validate and persist them — so attribute edits save automatically (when
- * valid) without a Save button. `pendingSave` holds the timer while an edit is
+ * valid) without a Save button. `pendingSaveRef` holds the timer while an edit is
  * waiting to settle.
  */
 function AutoPersist({
   onSettled,
-  pendingSave,
+  pendingSaveRef,
 }: {
   onSettled: () => void;
-  pendingSave: RefObject<ReturnType<typeof setTimeout> | null>;
+  pendingSaveRef: RefObject<ReturnType<typeof setTimeout> | null>;
 }) {
   const values = useFormStore(
     useShallow((state) => {
@@ -158,12 +158,12 @@ function AutoPersist({
     if (!isDirty) return;
 
     const handle = setTimeout(() => {
-      pendingSave.current = null;
+      pendingSaveRef.current = null;
       onSettled();
     }, AUTOSAVE_DELAY);
-    pendingSave.current = handle;
+    pendingSaveRef.current = handle;
     return () => clearTimeout(handle);
-  }, [values, isDirty, onSettled, pendingSave]);
+  }, [values, isDirty, onSettled, pendingSaveRef]);
 
   return null;
 }
@@ -203,7 +203,7 @@ function AttributeFormInner({
   });
   const storeApi = useContext(FormStoreContext);
   const { confirm } = useDialog();
-  const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The answers the form last saved, or was opened with. An answer changed
   // outside the form since, as by an undo, is not an edit of the form's.
   const savedRef = useRef(initialValues);
@@ -441,9 +441,9 @@ function AttributeFormInner({
       return true;
     }
 
-    if (pendingSave.current !== null) {
-      clearTimeout(pendingSave.current);
-      pendingSave.current = null;
+    if (pendingSaveRef.current !== null) {
+      clearTimeout(pendingSaveRef.current);
+      pendingSaveRef.current = null;
     }
     return (async () => {
       // A save refused while the answers are being checked would cut the
@@ -490,7 +490,7 @@ function AttributeFormInner({
           <div>{fieldComponents}</div>
         </FormWithoutProvider>
       </ScrollArea>
-      <AutoPersist onSettled={saveIfValid} pendingSave={pendingSave} />
+      <AutoPersist onSettled={saveIfValid} pendingSaveRef={pendingSaveRef} />
     </div>
   );
 }

@@ -314,6 +314,9 @@ export default function QuestionFlow({
   const saving = useRef(false);
   const advanceTimer = useRef<number | undefined>(undefined);
   const completeTimer = useRef<number | undefined>(undefined);
+  /** Counts the options chosen, so only the latest choice decides what
+   * follows it. */
+  const latestChoice = useRef(0);
   const completed = useRef(onComplete);
   useLayoutEffect(() => {
     completed.current = onComplete;
@@ -337,7 +340,7 @@ export default function QuestionFlow({
   // Only the current step shows; the others stay in the form, hidden, so
   // their answers are kept and saved with the rest.
   useEffect(() => {
-    if (!stepped) return;
+    if (!stepped) return undefined;
     steps.forEach((element, at) => {
       if (!(element instanceof HTMLElement)) return;
       element.hidden = at !== index;
@@ -345,7 +348,11 @@ export default function QuestionFlow({
     });
     shownIndex.current = index;
     shownStep.current = step;
-    if (step) setState(stateOf(step, read));
+    if (!step) return undefined;
+    // The step button's label follows the step now shown, read from its
+    // answers once they have painted, as with every other answer.
+    const frame = requestAnimationFrame(() => setState(stateOf(step, read)));
+    return () => cancelAnimationFrame(frame);
   }, [stepped, steps, index, step, read]);
 
   // Moving on, the step shown leaves to the left and the next comes in from
@@ -355,8 +362,8 @@ export default function QuestionFlow({
     const from = direction.current;
     direction.current = 0;
     if (!stepped || from === 0 || !(step instanceof HTMLElement)) return;
-    step.style.opacity = '0';
-    step.style.transform = slid(from * STEP_SLIDE);
+    step.style.setProperty('opacity', '0');
+    step.style.setProperty('transform', slid(from * STEP_SLIDE));
     void animate(
       step,
       { opacity: [0, 1], transform: [slid(from * STEP_SLIDE), slid(0)] },
@@ -515,7 +522,13 @@ export default function QuestionFlow({
       // as when going back to review a step, does not move the form on.
       const changedAnswer = !isUnanswered(field, read);
       if (changedAnswer) window.clearTimeout(completeTimer.current);
+      latestChoice.current += 1;
+      const choice = latestChoice.current;
       requestAnimationFrame(() => {
+        // A choice made before this frame, a changed answer included,
+        // supersedes this one: its decision is made from newer answers, and
+        // clearing the timers cannot stop one this frame has not yet set.
+        if (choice !== latestChoice.current) return;
         if (!field.isConnected || isUnanswered(field, read)) return;
         const [next] = waitingAfter(root, field, read);
         if (next) {

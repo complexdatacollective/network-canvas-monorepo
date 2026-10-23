@@ -33,6 +33,25 @@ import Inspector, { type InspectorProps } from '../Inspector';
 import NetworkComposer from '../NetworkComposer';
 import { composerWords, OVERTAKEN_EDIT_NOTICE } from './composerWords';
 
+// What the drawer is asked to show on each render: the real drawer renders
+// it, and a test can read what it was given while it slides away.
+const drawerRenders = vi.hoisted(
+  (): { open: boolean; title: string; showsEditor: boolean }[] => [],
+);
+vi.mock('../ComposerDrawer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../ComposerDrawer')>();
+  const { createElement } = await import('react');
+  const RecordingDrawer = (props: Parameters<typeof actual.default>[0]) => {
+    drawerRenders.push({
+      open: props.open,
+      title: props.title,
+      showsEditor: Boolean(props.children),
+    });
+    return createElement(actual.default, props);
+  };
+  return { ...actual, default: RecordingDrawer };
+});
+
 beforeAll(() => {
   if (typeof window.ResizeObserver === 'undefined') {
     window.ResizeObserver = class ResizeObserver {
@@ -474,6 +493,30 @@ describe('NetworkComposer inspector — node', () => {
       expect(
         nodes.find((n) => n[entityPrimaryKeyProperty] === NODE_A_ID),
       ).toBeUndefined();
+    });
+  });
+
+  it('keeps showing the person while the drawer slides away', async () => {
+    const store = makeStore();
+    renderInterface(store);
+
+    const nodeA = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeA);
+    });
+    await screen.findByTestId('inspector-panel');
+    drawerRenders.length = 0;
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    });
+
+    // The selection has cleared and the drawer closes, but what slides away
+    // is still Alice's editor.
+    expect(drawerRenders.at(-1)).toEqual({
+      open: false,
+      title: 'Alice',
+      showsEditor: true,
     });
   });
 });

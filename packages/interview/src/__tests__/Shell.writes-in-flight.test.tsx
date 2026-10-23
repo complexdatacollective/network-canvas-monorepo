@@ -25,9 +25,13 @@ const stageWrites = vi.hoisted(
 );
 
 vi.mock('../interfaces', async () => {
+  const { useEffect } = await import('react');
   const { useTrackWrite } = await import('../store/WritesInFlightContext');
   const ObservedInterface = ({ stage }: { stage: { id: string } }) => {
-    stageWrites.trackWrite = useTrackWrite();
+    const trackWrite = useTrackWrite();
+    useEffect(() => {
+      stageWrites.trackWrite = trackWrite;
+    });
     return <div data-testid="stage" data-stage-interface={stage.id} />;
   };
 

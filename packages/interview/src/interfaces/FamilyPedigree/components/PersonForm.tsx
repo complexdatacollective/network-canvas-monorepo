@@ -2018,11 +2018,10 @@ function DraftWatcher({
     () => ({ ...roleValues, ...personValues }),
     [roleValues, personValues],
   );
-  const report = useRef(onDraftChange);
-  report.current = onDraftChange;
+  const report = useEffectEvent((draft: PersonDraft) => onDraftChange(draft));
   useEffect(() => {
     const kindQuestion = KIND_QUESTION[relation];
-    report.current({
+    report({
       details: readOwnDetails(values, config),
       request: readRequest(
         relation,

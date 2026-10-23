@@ -274,11 +274,15 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
 /**
  * Tells screen reader users that the interview is being finished while an
  * automatic finish stage shows only a spinner. The live region is in place
- * before its text, so the text arriving is announced.
+ * before its text, so the text arriving is announced: the text follows a
+ * frame after the region has been painted.
  */
 function FinishingAnnouncement() {
   const [announced, setAnnounced] = useState(false);
-  useEffect(() => setAnnounced(true), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setAnnounced(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   return (
     <div role="status" aria-live="polite" className="sr-only">
       {announced && (

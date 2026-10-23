@@ -1,7 +1,7 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { type Ref, useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -134,8 +134,10 @@ function CompletenessTracker({
   // Read from timers and handlers that outlive the render they came from.
   const hoveredRef = useRef(false);
   const focusedRef = useRef(false);
-  hoveredRef.current = hovered;
-  focusedRef.current = focused;
+  useLayoutEffect(() => {
+    hoveredRef.current = hovered;
+    focusedRef.current = focused;
+  });
   const expanded = !suppressed && (open || hovered || focused);
 
   // Leaving waits a moment, so the pointer can cross the gap between the

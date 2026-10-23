@@ -125,7 +125,7 @@ function buildSchema8Interview() {
 }
 
 function InterviewFromPayload({ build }: { build: () => string }) {
-  const rawPayload = useMemo(build, [build]);
+  const rawPayload = useMemo(() => build(), [build]);
   return (
     <div className="flex h-dvh w-full">
       <StoryInterviewShell

@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useCallback, useRef } from 'react';
+import { type ReactNode, useCallback, useLayoutEffect, useRef } from 'react';
 
 import type { ToastVariant } from '@codaco/fresco-ui/Toast';
 
@@ -39,7 +39,9 @@ export function useInterviewToast() {
   );
 
   const resolvePositionerPropsRef = useRef(resolvePositionerProps);
-  resolvePositionerPropsRef.current = resolvePositionerProps;
+  useLayoutEffect(() => {
+    resolvePositionerPropsRef.current = resolvePositionerProps;
+  });
 
   const showToast = useCallback(
     (options: InterviewToastOptions): string =>
