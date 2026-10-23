@@ -1241,11 +1241,10 @@ export default function RichTextEditorField({
   // The editor an item from the insert menu was just put into. Closing the
   // menu hands it the caret, so the next key, Undo included, acts on the
   // text the item went into rather than on the button that opened the menu.
-  const pickedIntoRef = useRef<Editor | null>(null);
-  // Forgotten whenever the menu opens, however it was opened.
-  useLayoutEffect(() => {
-    if (isInsertMenuOpen) pickedIntoRef.current = null;
-  }, [isInsertMenuOpen]);
+  // Forgotten whenever the menu is asked to open, however it was opened —
+  // including an open that lands in the same render as the pick's close, and
+  // so never shows the menu as closed.
+  const [pickedInto, setPickedInto] = useState<Editor | null>(null);
   const onTrigger = useCallback(
     (typedIn: Editor, position: number) => {
       const coords = typedIn.view.coordsAtPos(position);
@@ -1258,9 +1257,10 @@ export default function RichTextEditorField({
           height: coords.bottom - coords.top,
         },
       });
+      setPickedInto(null);
       setIsInsertMenuOpen(true);
     },
-    [setTriggered, setIsInsertMenuOpen],
+    [setTriggered, setIsInsertMenuOpen, setPickedInto],
   );
   // The version being written, when the caret is in one: the toolbar acts on
   // it rather than on the line around it.
@@ -1864,13 +1864,13 @@ export default function RichTextEditorField({
         )
         .run();
       selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
-      pickedIntoRef.current = into;
+      setPickedInto(into);
     } else {
       const { from, to } = actOn.state.selection;
       const sizeBefore = actOn.state.doc.content.size;
       actOn.chain().focus().insertContent(content).run();
       selectInsertedVersions(actOn, from, sizeBefore, to - from);
-      pickedIntoRef.current = actOn;
+      setPickedInto(actOn);
     }
     setTriggered(null);
     setIsInsertMenuOpen(false);
@@ -2311,6 +2311,7 @@ export default function RichTextEditorField({
                     open={isInsertMenuOpen && !isDisabled}
                     onOpenChange={(open) => {
                       setIsInsertMenuOpen(open);
+                      if (open) setPickedInto(null);
                       if (!open) setTriggered(null);
                     }}
                   >
@@ -2358,9 +2359,8 @@ export default function RichTextEditorField({
                         ) {
                           return false;
                         }
-                        const picked = pickedIntoRef.current;
-                        if (picked !== null && !picked.isDestroyed) {
-                          return picked.view.dom;
+                        if (pickedInto !== null && !pickedInto.isDestroyed) {
+                          return pickedInto.view.dom;
                         }
                         return triggered === null
                           ? true
