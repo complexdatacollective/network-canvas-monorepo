@@ -25,6 +25,7 @@ import { useInterviewToast } from '../../../toast/useInterviewToast';
 import { getEntityAttributes } from '../../../utils/networkEntities';
 import { useNodeLabel } from '../../Anonymisation/useNodeLabel';
 import { interfaceMessages } from '../../messages';
+import { useBinNodeSize } from '../useBinNodeSize';
 import type { OrdinalBinItem as OrdinalBinItemType } from '../useOrdinalBins';
 
 type OrdinalBinItemProps = {
@@ -109,6 +110,8 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const track = useTrack();
   const codebook = useSelector(getCodebook);
   const headerRef = useRef<HTMLDivElement & HTMLButtonElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const nodeSize = useBinNodeSize(bodyRef, isPortrait);
   // The label's text, not its markdown source: a screen reader should not read
   // the asterisks around an emphasised word.
   const spokenLabel = useMemo(
@@ -296,23 +299,26 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
           />
         </div>
       )}
-      <NodeList
-        id={listId}
-        items={sortedNodes}
-        nodeSize="sm"
-        orientation={isPortrait ? 'horizontal' : 'vertical'}
-        className={bodyClasses}
-        announcedName={intl.formatMessage(interfaceMessages.ordinalContainer, {
-          label: spokenLabel,
-        })}
-        {...(select
-          ? {
-              dragAndDrop: false,
-              onItemClick: select.onChoose,
-              selectedItemId: select.focalNode?.[entityPrimaryKeyProperty],
-            }
-          : { onDrop: handleDrop, accepts: ['NODE'] })}
-      />
+      <div ref={bodyRef} className="flex min-h-0 min-w-0 overflow-hidden">
+        <NodeList
+          id={listId}
+          items={sortedNodes}
+          nodeSize={nodeSize}
+          orientation={isPortrait ? 'horizontal' : 'vertical'}
+          className={bodyClasses}
+          announcedName={intl.formatMessage(
+            interfaceMessages.ordinalContainer,
+            { label: spokenLabel },
+          )}
+          {...(select
+            ? {
+                dragAndDrop: false,
+                onItemClick: select.onChoose,
+                selectedItemId: select.focalNode?.[entityPrimaryKeyProperty],
+              }
+            : { onDrop: handleDrop, accepts: ['NODE'] })}
+        />
+      </div>
     </motion.div>
   );
 });

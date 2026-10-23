@@ -49,7 +49,7 @@ const MARKDOWN_ORDINAL_LABELS = [
   'Refuse to Answer',
 ];
 
-type LabelSet = 'short' | 'survey' | 'markdown';
+type LabelSet = 'short' | 'digits' | 'survey' | 'markdown';
 
 type ColorScale =
   | 'ord-color-seq-1'
@@ -103,7 +103,10 @@ function buildOptions(
   }
 
   for (let i = 0; i < binCount; i++) {
-    const label = ORDINAL_LABELS[i] ?? `Option ${i + 1}`;
+    const label =
+      labelSet === 'digits'
+        ? String(i + 1)
+        : (ORDINAL_LABELS[i] ?? `Option ${i + 1}`);
     options.push({ label, value: i + 1 });
   }
 
@@ -221,7 +224,7 @@ const meta: Meta<StoryArgs> = {
   },
   argTypes: {
     binCount: {
-      control: { type: 'range', min: 2, max: 7 },
+      control: { type: 'range', min: 2, max: 10 },
       description: 'Number of ordinal bins',
     },
     hasMissingValue: {
@@ -245,11 +248,11 @@ const meta: Meta<StoryArgs> = {
       description: 'Color scale for the bins',
     },
     initialNodeCount: {
-      control: { type: 'range', min: 0, max: 15 },
+      control: { type: 'range', min: 0, max: 40 },
       description: 'Total number of nodes in the network',
     },
     unassignedCount: {
-      control: { type: 'range', min: 0, max: 15 },
+      control: { type: 'range', min: 0, max: 40 },
       description: 'Nodes without a value (appear in bucket)',
     },
     promptCount: {
@@ -264,7 +267,7 @@ const meta: Meta<StoryArgs> = {
     },
     labelSet: {
       control: 'inline-radio',
-      options: ['short', 'survey', 'markdown'],
+      options: ['short', 'digits', 'survey', 'markdown'],
       description:
         'Which response set the prompt offers. "survey" is a real five-option instrument whose labels are full clauses; "markdown" shows authored emphasis. Both fix the bin count at five.',
     },
@@ -352,6 +355,54 @@ export default meta;
 type Story = StoryObj<StoryArgs>;
 
 export const Default: Story = {
+  render: (args) => <OrdinalBinStoryWrapper {...args} />,
+};
+
+// The interview's type and spacing follow the viewport, so these sizes are
+// set on the story's viewport rather than on a frame inside a wider one.
+const DEVICE_VIEWPORTS = {
+  viewport: {
+    options: {
+      laptop: {
+        name: 'Laptop',
+        styles: { width: '1280px', height: '800px' },
+        type: 'desktop',
+      },
+      tabletLandscape: {
+        name: 'Tablet (landscape)',
+        styles: { width: '1024px', height: '768px' },
+        type: 'tablet',
+      },
+    },
+  },
+};
+
+const NINE_DIGIT_BINS = {
+  binCount: 9,
+  labelSet: 'digits',
+  initialNodeCount: 30,
+  unassignedCount: 4,
+} satisfies Partial<StoryArgs>;
+
+/**
+ * A nine-point scale with single-digit labels, as the ROBUST gallery protocol
+ * uses. On a laptop each bin is wide enough for its people at full size.
+ */
+export const NineBinsOnALaptop: Story = {
+  args: NINE_DIGIT_BINS,
+  parameters: DEVICE_VIEWPORTS,
+  globals: { viewport: { value: 'laptop', isRotated: false } },
+  render: (args) => <OrdinalBinStoryWrapper {...args} />,
+};
+
+/**
+ * The same scale on a landscape tablet, where the bins are too narrow for
+ * full-size people: each bin steps its people down a size to fit.
+ */
+export const NineBinsOnATablet: Story = {
+  args: NINE_DIGIT_BINS,
+  parameters: DEVICE_VIEWPORTS,
+  globals: { viewport: { value: 'tabletLandscape', isRotated: false } },
   render: (args) => <OrdinalBinStoryWrapper {...args} />,
 };
 
