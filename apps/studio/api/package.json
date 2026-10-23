@@ -1,6 +1,6 @@
 {
   "name": "@codaco/studio-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Network Canvas Studio server — the Node deployable behind the studio-api image: public data API, internal RPC surface, app WebSocket endpoint, background worker, and the schema migrate command.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
