@@ -38,7 +38,8 @@ const EdgeColors = [
 type EdgeColorSequence = (typeof EdgeColors)[number];
 
 type EdgeSummaryProps = {
-  color: EdgeColorSequence;
+  // A colour outside the palette leaves the icon uncoloured.
+  color: EdgeColorSequence | undefined;
   count: number;
   typeName: string;
 };
@@ -143,13 +144,12 @@ const NetworkSummary = ({
 
   const edgeSummaries = network.edges
     .map(({ type: edgeType, count, name, color }) => {
-      const edgeColor = EdgeColors.find((candidate) => candidate === color);
-      if (!edgeColor) return null;
+      if (!color) return null;
 
       return (
         <EdgeSummary
           key={edgeType}
-          color={edgeColor}
+          color={EdgeColors.find((candidate) => candidate === color)}
           count={count}
           typeName={name}
         />
