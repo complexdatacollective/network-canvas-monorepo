@@ -153,6 +153,7 @@ export class Database extends Context.Service<Database, DatabaseService>()(
  * status surface.
  */
 export const DatabaseAbsent: Layer.Layer<Database> = Layer.succeed(Database)(
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the empty target is never read: the `get` trap throws for every property
   new Proxy({} as DatabaseService, {
     get: (_target, property) => {
       throw new Error(

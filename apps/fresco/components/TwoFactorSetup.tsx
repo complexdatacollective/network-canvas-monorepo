@@ -311,7 +311,10 @@ function RecoveryCodesStep() {
     setBackEnabled(false);
   }, [setBackEnabled]);
 
-  const codes = data.recoveryCodes as string[];
+  // The set-up step stores the codes before this step is shown.
+  const codes = Array.isArray(data.recoveryCodes)
+    ? data.recoveryCodes.filter((code) => typeof code === 'string')
+    : [];
 
   return <RecoveryCodes codes={codes} />;
 }

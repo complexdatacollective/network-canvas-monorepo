@@ -422,6 +422,7 @@ function readSnapshot(path: string): Snapshot {
   Schema.decodeUnknownSync(Schema.fromJsonString(SnapshotShape))(text);
   // The shape is drizzle-kit's own (`PostgresSnapshot`), written by this
   // script; the decode above refuses anything that is not one of them.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle-kit's snapshot type is too large to mirror as a schema; the decode above checks the parts this script reads
   return JSON.parse(text) as Snapshot;
 }
 
