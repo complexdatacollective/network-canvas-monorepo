@@ -66,6 +66,15 @@ const valueCount = (
     : 0;
 };
 
+export const drawnValueCount = (
+  variables: Readonly<Variables>,
+  draftedValues: unknown,
+  variableId: string | undefined,
+): number =>
+  Array.isArray(draftedValues)
+    ? draftedValues.length
+    : valueCount(variables, variableId);
+
 export type BinAttributeSlot = Readonly<{
   /** Where the prompt keeps this attribute. */
   name: string;
@@ -99,6 +108,8 @@ export type BinAttributeFieldProps = Readonly<{
    */
   optionLimit?: number;
   optionLimitDescription?: string;
+  /** Whether going over `optionLimit` refuses the prompt rather than warning. */
+  optionLimitEnforced?: boolean;
   /**
    * Bins this interface draws that are not the attribute's own values — the
    * one a categorical bin adds for everything else.
@@ -148,6 +159,7 @@ export default function BinAttributeField({
   createLabel,
   optionLimit,
   optionLimitDescription,
+  optionLimitEnforced = false,
   extraBins = 0,
   draftConflicting,
   draftSlotMap,
@@ -232,9 +244,7 @@ export default function BinAttributeField({
   // about — which is after the decision it exists to inform.
   const draftedValues = useRowValue(attributeOptionsFieldFor(slot.name));
   const drawn =
-    (Array.isArray(draftedValues)
-      ? draftedValues.length
-      : valueCount(allVariables, picked)) + extraBins;
+    drawnValueCount(allVariables, draftedValues, picked) + extraBins;
 
   return (
     <>
@@ -271,9 +281,16 @@ export default function BinAttributeField({
       {optionLimit !== undefined &&
         optionLimitDescription !== undefined &&
         drawn > optionLimit && (
-          <Alert variant="warning" className="mb-8">
+          <Alert
+            variant={optionLimitEnforced ? 'destructive' : 'warning'}
+            className="mb-8"
+          >
             <AlertTitle>
-              {intl.formatMessage(binMessages.binLimitTitle)}
+              {intl.formatMessage(
+                optionLimitEnforced
+                  ? binMessages.binLimitExceededTitle
+                  : binMessages.binLimitTitle,
+              )}
             </AlertTitle>
             <AlertDescription>{optionLimitDescription}</AlertDescription>
           </Alert>

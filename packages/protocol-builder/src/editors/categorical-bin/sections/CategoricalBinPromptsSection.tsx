@@ -5,12 +5,16 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
-import type { VariableType } from '@codaco/protocol-validation';
+import {
+  CATEGORICAL_BIN_MAX_BINS,
+  type VariableType,
+} from '@codaco/protocol-validation';
 
 import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
 import BinAttributeField, {
   type BinAttributeSlot,
   binAttributePickIssue,
+  drawnValueCount,
 } from '../../../fields/BinAttributeField.tsx';
 import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import {
@@ -25,6 +29,8 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { variablesForSubject } from '../../../protocol-context.ts';
+import { attributeOptionsFieldFor } from '../../../sections/AttributeValueFields.tsx';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
@@ -46,9 +52,6 @@ const BINS_TYPE = 'categorical' as const satisfies VariableType;
 
 /** The follow-up answer is typed by the participant, so it is stored as text. */
 const FOLLOW_UP_TYPE = 'text' as const satisfies VariableType;
-
-/** What this interface can draw at once before the bins stop being readable. */
-const BIN_LIMIT = 8;
 
 /** What only a Categorical Bin says; the words both bins use are in `binMessages`. */
 export const categoricalBinPromptMessages = defineMessages({
@@ -85,11 +88,18 @@ export const categoricalBinPromptMessages = defineMessages({
       'Shown in place of the attribute picker’s options when the node type this stage collects has no attribute whose answers come from a named list.',
   },
   binLimitDescription: {
-    id: 'protocolBuilder.censusPrompts.categoricalBinLimitDescription',
+    id: 'protocolBuilder.censusPrompts.categoricalBinMaxBinsDescription',
     defaultMessage:
-      'This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question.',
+      'This interface can show at most {limit, number} bins in total. If the follow-up other option is turned on, its bin counts towards that total. Remove values or group them, and ask for the detail in a later question.',
     description:
-      'Body of the warning shown when a Categorical Bin prompt would draw more bins than its interview screen is designed for. The follow-up bin is the extra one this prompt can add for answers none of the attribute’s values cover.',
+      'Body of the error shown when a Categorical Bin prompt would draw more bins than its interview screen can show. {limit} is the largest number of bins allowed. The follow-up other option is the switchable section of this prompt that adds one more bin for answers none of the attribute’s values cover; use the same name for it as that section’s heading.',
+  },
+  binLimitRefusal: {
+    id: 'protocolBuilder.censusPrompts.categoricalBinMaxBinsRefusal',
+    defaultMessage:
+      'This prompt would show {count, number} bins, but at most {limit, number} fit, including the follow-up other bin if it is turned on. Remove values before saving.',
+    description:
+      'Refusal shown when a researcher saves a Categorical Bin prompt that would draw more bins than its interview screen can show. {count} is how many bins the prompt would draw, including the follow-up other bin when it is turned on; {limit} is the largest number allowed, and also includes that bin.',
   },
   otherTitle: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherTitle',
@@ -278,10 +288,12 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           )}
           requiredMessage={intl.formatMessage(binMessages.binAttributeRequired)}
           createLabel={intl.formatMessage(binMessages.attributeCreateLabel)}
-          optionLimit={BIN_LIMIT}
+          optionLimit={CATEGORICAL_BIN_MAX_BINS}
           optionLimitDescription={intl.formatMessage(
             categoricalBinPromptMessages.binLimitDescription,
+            { limit: CATEGORICAL_BIN_MAX_BINS },
           )}
+          optionLimitEnforced
           extraBins={followUpBins}
         />
       </Section>
@@ -388,6 +400,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
  * one, and Architect has to strip its own on the way out.
  */
 export default function CategoricalBinPromptsSection() {
+  const intl = useAppIntl();
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
@@ -424,13 +437,38 @@ export default function CategoricalBinPromptsSection() {
           return { refused: { fieldErrors: { [slot.name]: [issue] } } };
         }
       }
+      const binCount =
+        drawnValueCount(
+          subject === undefined
+            ? {}
+            : variablesForSubject(protocolContext, subject),
+          row[attributeOptionsFieldFor(BINS_FIELD)],
+          asString(row[BINS_FIELD]),
+        ) + (asString(row[OTHER_FIELD]) ? 1 : 0);
+      if (binCount > CATEGORICAL_BIN_MAX_BINS) {
+        return {
+          refused: {
+            fieldErrors: {
+              [attributeOptionsFieldFor(BINS_FIELD)]: [
+                intl.formatMessage(
+                  categoricalBinPromptMessages.binLimitRefusal,
+                  {
+                    count: binCount,
+                    limit: CATEGORICAL_BIN_MAX_BINS,
+                  },
+                ),
+              ],
+            },
+          },
+        };
+      }
       // After the picks, because the values are the picked attribute's: a
       // prompt refused for naming an attribute it cannot draw has no list to
       // write anywhere. The follow-up answer is typed rather than chosen, so
       // only the bins carry one.
       return await binOptions.commit(row, context);
     },
-    [binOptions, identity.id, protocolContext, subject],
+    [binOptions, identity.id, intl, protocolContext, subject],
   );
 
   return (

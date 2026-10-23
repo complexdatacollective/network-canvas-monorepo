@@ -10,7 +10,10 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
-import type { Stage } from '@codaco/protocol-validation';
+import {
+  CATEGORICAL_BIN_MAX_BINS,
+  type Stage,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -75,18 +78,10 @@ import { useCategoricalBins } from './useCategoricalBins';
 
 type CategoricalBinStageProps = StageProps<'CategoricalBin'>;
 
-const CAT_COLOR_VARS = [
-  'var(--cat-1)',
-  'var(--cat-2)',
-  'var(--cat-3)',
-  'var(--cat-4)',
-  'var(--cat-5)',
-  'var(--cat-6)',
-  'var(--cat-7)',
-  'var(--cat-8)',
-  'var(--cat-9)',
-  'var(--cat-10)',
-];
+const CAT_COLOR_VARS = Array.from(
+  { length: CATEGORICAL_BIN_MAX_BINS },
+  (_, index) => `var(--cat-${index + 1})`,
+);
 
 const binsContainerVariants = {
   initial: { opacity: 0 },

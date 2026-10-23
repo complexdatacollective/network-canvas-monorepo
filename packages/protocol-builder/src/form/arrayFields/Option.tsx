@@ -165,18 +165,15 @@ const parseOptionValue = (value: string) => {
   return isNumberLike(canonical) ? toNumber(canonical) : canonical;
 };
 
-// Background and rounding live on the ArrayField item Surface (see Options.tsx
-// itemClasses); this inner wrapper only owns layout + the error-state border.
-const ROW_CLASSES =
-  'w-full border-2 border-transparent p-5 transition-colors duration-300 ease-in-out';
+// Background, rounding and the error-state border live on the ArrayField item
+// Surface (see Options.tsx itemClasses); this inner wrapper only owns layout.
+const ROW_CLASSES = 'w-full p-5';
 
 export type OptionsContextValue = {
   /** Resolved name of the array field these rows belong to. */
   arrayName: string;
   /** Every row, so a cell can see the ones it must not read the same as. */
   rows: readonly OptionValue[];
-  /** The array field itself is reporting an error (minTwoOptions et al). */
-  showArrayError: boolean;
   /** Where each value would be exported, when the list knows its attribute. */
   exportColumns: OptionExportColumns | undefined;
 };
@@ -217,8 +214,7 @@ export default function Option({
   const intl = useAppIntl();
   const localize = useLocalizedText();
   const localization = useProtocolLocalization();
-  const { arrayName, rows, showArrayError, exportColumns } =
-    useOptionsContext();
+  const { arrayName, rows, exportColumns } = useOptionsContext();
   const { hasEdited, markEdited } = useEditedCells();
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
@@ -267,13 +263,7 @@ export default function Option({
     const label = localize(item.label);
 
     return (
-      <div
-        className={cx(
-          'flex items-center gap-3',
-          ROW_CLASSES,
-          showArrayError && 'border-destructive',
-        )}
-      >
+      <div className={cx('flex items-center gap-3', ROW_CLASSES)}>
         {isSortable && (
           <ArrayFieldDragHandle
             dragControls={dragControls}
@@ -339,11 +329,7 @@ export default function Option({
 
   return (
     <div
-      className={cx(
-        'flex flex-col gap-4',
-        ROW_CLASSES,
-        showArrayError && 'border-destructive',
-      )}
+      className={cx('flex flex-col gap-4', ROW_CLASSES)}
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return;
         event.stopPropagation();

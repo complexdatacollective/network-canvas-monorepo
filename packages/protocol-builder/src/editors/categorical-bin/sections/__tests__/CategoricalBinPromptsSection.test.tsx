@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { CATEGORICAL_BIN_MAX_BINS } from '@codaco/protocol-validation';
+
 import {
   attributeField,
   chooseAttributeById,
@@ -525,10 +527,10 @@ describe('a categorical bin prompt whose attributes are not the kind it needs', 
  * can draw.
  */
 describe('a categorical bin with more bins than fit on one screen', () => {
-  const WARNING = 'More bins than fit on one screen';
+  const WARNING = 'Too many bins';
 
-  /** Opens a prompt over an attribute with `count` values, and reads the alert. */
-  async function warnsWith(count: number, followUpBin: boolean) {
+  /** Opens a prompt over an attribute with `count` values. */
+  async function openWith(count: number, followUpBin: boolean) {
     const harness = renderStageEditor(
       openStage({
         label: { 'en-US': 'Categorical Bin' },
@@ -581,25 +583,37 @@ describe('a categorical bin with more bins than fit on one screen', () => {
         ).toBeChecked(),
       );
     }
+    return harness;
+  }
+
+  async function warnsWith(count: number, followUpBin: boolean) {
+    await openWith(count, followUpBin);
     return screen.queryByText(WARNING) !== null;
   }
 
-  it('warns about nine values on their own', async () => {
-    expect(await warnsWith(9, false)).toBe(true);
+  it('refuses more values than the interface can show', async () => {
+    expect(await warnsWith(CATEGORICAL_BIN_MAX_BINS + 1, false)).toBe(true);
   });
 
-  /**
-   * The bin the follow-up question fills is drawn on the same screen as the
-   * rest, so eight values and a follow-up bin is nine bins — which is what the
-   * warning's own words already promise to count.
-   */
-  it('warns about eight values and a follow-up bin', async () => {
-    expect(await warnsWith(8, true)).toBe(true);
+  it('counts the follow-up bin towards the limit', async () => {
+    expect(await warnsWith(CATEGORICAL_BIN_MAX_BINS, true)).toBe(true);
   });
 
-  /** And says nothing about the eight bins the interface is designed for. */
-  it('says nothing about eight values on their own', async () => {
-    expect(await warnsWith(8, false)).toBe(false);
+  it('says nothing at the limit itself', async () => {
+    expect(await warnsWith(CATEGORICAL_BIN_MAX_BINS, false)).toBe(false);
+  });
+
+  it('keeps the prompt open when it is saved over the limit', async () => {
+    const harness = await openWith(CATEGORICAL_BIN_MAX_BINS + 1, false);
+    expect(screen.getByText(WARNING)).toBeInTheDocument();
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        `This prompt would show ${CATEGORICAL_BIN_MAX_BINS + 1} bins, but at most ${CATEGORICAL_BIN_MAX_BINS} fit, including the follow-up other bin if it is turned on. Remove values before saving.`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
 

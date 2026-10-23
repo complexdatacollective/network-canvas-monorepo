@@ -52,6 +52,12 @@ export const binMessages = defineMessages({
     description:
       'Heading of the warning shown when the attribute a bin prompt uses offers more values than the interview screen can draw as bins.',
   },
+  binLimitExceededTitle: {
+    id: 'protocolBuilder.censusPrompts.binLimitExceededTitle',
+    defaultMessage: 'Too many bins',
+    description:
+      'Heading of the error shown when the attribute a bin prompt uses offers more values than the interview screen can draw as bins, so the prompt cannot be saved until some are removed.',
+  },
   lockedOptions: {
     id: 'protocolBuilder.promptAttribute.lockedOptions',
     defaultMessage:
