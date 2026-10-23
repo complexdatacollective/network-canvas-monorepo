@@ -85,4 +85,25 @@ describe('Node selected ring choreography', () => {
 
     expect(ringCalls().length).toBeGreaterThan(0);
   });
+
+  it('springs the ring in once, however many reasons there are to show it', () => {
+    const { rerender } = render(
+      <Node label="Ash" onClick={vi.fn()} selected={false} />,
+    );
+
+    rerender(<Node label="Ash" onClick={vi.fn()} selected />);
+    expect(ringCalls()).toHaveLength(1);
+
+    // Highlighting a node whose ring already shows changes nothing about the
+    // ring, and neither does withdrawing one of two reasons for it.
+    rerender(<Node label="Ash" onClick={vi.fn()} selected highlighted />);
+    rerender(
+      <Node label="Ash" onClick={vi.fn()} selected={false} highlighted />,
+    );
+    expect(ringCalls()).toHaveLength(1);
+
+    // The last reason going retracts it.
+    rerender(<Node label="Ash" onClick={vi.fn()} selected={false} />);
+    expect(ringCalls()).toHaveLength(2);
+  });
 });

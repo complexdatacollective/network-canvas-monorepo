@@ -24,7 +24,6 @@ import {
   useNodeGestures,
 } from './hooks/useNodeGestures';
 import { useNodeInteractions } from './hooks/useNodeInteractions';
-import usePrevious from './hooks/usePrevious';
 import {
   useSafeAnimate,
   useShouldSkipAnimations,
@@ -583,16 +582,19 @@ export default function Node(props: UINodeProps) {
     setDisplayedSelected(selected);
   }
 
-  // Track previous states for animation transitions
-  const prevSelected = usePrevious(displayedSelected);
-  const prevHighlighted = usePrevious(highlighted);
+  // Whether the ring was showing when the effect below last ran, so it
+  // animates only on the transitions in and out of showing. Read and written
+  // by that effect alone. Starts false, so a node that mounts selected or
+  // highlighted springs its ring in.
+  const wasActiveRef = useRef(false);
 
   // Box-shadow animation for selected and highlighted states
   useEffect(() => {
-    if (!stateScope.current) return;
-
     const isActive = displayedSelected || highlighted;
-    const wasActive = prevSelected === true || prevHighlighted === true;
+    const wasActive = wasActiveRef.current;
+    wasActiveRef.current = isActive;
+
+    if (!stateScope.current) return;
 
     if (isActive && !wasActive) {
       // Spring animation - overshoots then rebounds to resting state
@@ -617,14 +619,7 @@ export default function Node(props: UINodeProps) {
         { duration: 0.15 },
       );
     }
-  }, [
-    displayedSelected,
-    highlighted,
-    prevSelected,
-    prevHighlighted,
-    stateScope,
-    animate,
-  ]);
+  }, [displayedSelected, highlighted, stateScope, animate]);
 
   const nodeContent = (
     <>
