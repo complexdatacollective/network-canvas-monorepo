@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 
 import { useCollectionStore, useCollectionStoreApi } from '../contexts';
-import type { Collection, Key, Node } from '../types';
+import type { Collection, CollectionStore, Key, Node } from '../types';
 
 /**
  * Hook to access collection data and navigation methods.
@@ -36,46 +36,58 @@ export function useCollectionData<T>(): Collection<T> {
   const size = useCollectionStore<T, number>((state) => state.size);
 
   // Create stable collection interface
-  const collection = useMemo<Collection<T>>(() => {
-    const store = storeApi.getState();
-
-    return {
-      size,
-
-      getKeys(): Iterable<Key> {
-        return orderedKeys;
-      },
-
-      getItem(key: Key): Node<T> | undefined {
-        return items.get(key);
-      },
-
-      getFirstKey(): Key | null {
-        return store.getFirstKey();
-      },
-
-      getLastKey(): Key | null {
-        return store.getLastKey();
-      },
-
-      getKeyBefore(key: Key): Key | null {
-        return store.getKeyBefore(key);
-      },
-
-      getKeyAfter(key: Key): Key | null {
-        return store.getKeyAfter(key);
-      },
-
-      *[Symbol.iterator](): Iterator<Node<T>> {
-        for (const key of orderedKeys) {
-          const node = items.get(key);
-          if (node) {
-            yield node;
-          }
-        }
-      },
-    };
-  }, [storeApi, items, orderedKeys, size]);
+  const collection = useMemo<Collection<T>>(
+    () => createCollectionView(storeApi.getState(), items, orderedKeys, size),
+    [storeApi, items, orderedKeys, size],
+  );
 
   return collection;
+}
+
+/**
+ * Builds the Collection interface over a snapshot of the store's items and
+ * order; the key navigation methods delegate to the store.
+ */
+export function createCollectionView<T>(
+  store: CollectionStore<T>,
+  items: Map<Key, Node<T>>,
+  orderedKeys: Key[],
+  size: number,
+): Collection<T> {
+  return {
+    size,
+
+    getKeys(): Iterable<Key> {
+      return orderedKeys;
+    },
+
+    getItem(key: Key): Node<T> | undefined {
+      return items.get(key);
+    },
+
+    getFirstKey(): Key | null {
+      return store.getFirstKey();
+    },
+
+    getLastKey(): Key | null {
+      return store.getLastKey();
+    },
+
+    getKeyBefore(key: Key): Key | null {
+      return store.getKeyBefore(key);
+    },
+
+    getKeyAfter(key: Key): Key | null {
+      return store.getKeyAfter(key);
+    },
+
+    *[Symbol.iterator](): Iterator<Node<T>> {
+      for (const key of orderedKeys) {
+        const node = items.get(key);
+        if (node) {
+          yield node;
+        }
+      }
+    },
+  };
 }

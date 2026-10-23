@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Collection } from '../components/Collection';
@@ -369,13 +369,16 @@ describe('Collection Filtering', () => {
       function ControlledWrapper() {
         const [query, setQuery] = useState('Carrot');
         const [, setRenderCount] = useState(0);
-        useEffect(() => {
-          if (query === '') setRenderCount((count) => count + 1);
-        }, [query]);
         return (
           <>
             <button type="button" onClick={() => setQuery('')}>
               Clear controlled query
+            </button>
+            <button
+              type="button"
+              onClick={() => setRenderCount((count) => count + 1)}
+            >
+              Re-render
             </button>
             <FilterableCollection filterExecution="sync" filterQuery={query} />
           </>
@@ -391,6 +394,9 @@ describe('Collection Filtering', () => {
       });
 
       await user.click(screen.getByText('Clear controlled query'));
+      // A further render with the query still cleared must not bring back the
+      // stale filter.
+      await user.click(screen.getByText('Re-render'));
 
       await waitFor(() => {
         expect(screen.getAllByTestId(/^item-/)).toHaveLength(testItems.length);

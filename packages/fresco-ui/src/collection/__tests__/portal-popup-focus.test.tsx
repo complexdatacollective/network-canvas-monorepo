@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { describe, expect, it } from 'vitest';
 
@@ -92,7 +92,10 @@ const renderCollection = (
   const portalContainerRef: { current: HTMLElement | null } = { current: null };
 
   const CapturePortalContainer = () => {
-    portalContainerRef.current = usePortalContainer();
+    const portalContainer = usePortalContainer();
+    useEffect(() => {
+      portalContainerRef.current = portalContainer;
+    });
     return null;
   };
 

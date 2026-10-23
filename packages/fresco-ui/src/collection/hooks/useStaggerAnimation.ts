@@ -45,16 +45,17 @@ export function useStaggerAnimation(
   const hasAnimatedRef = useRef(false);
   const prevAnimationKeyRef = useRef(animationKey);
 
-  // Reset hasAnimatedRef when animationKey changes so the stagger re-runs
-  if (
-    animationKey !== prevAnimationKeyRef.current &&
-    prevAnimationKeyRef.current !== undefined
-  ) {
-    hasAnimatedRef.current = false;
-    prevAnimationKeyRef.current = animationKey;
-  }
-
   useEffect(() => {
+    // Reset hasAnimatedRef when animationKey changes so the stagger re-runs.
+    // This effect re-runs on every key change, so it sees each one.
+    if (
+      animationKey !== prevAnimationKeyRef.current &&
+      prevAnimationKeyRef.current !== undefined
+    ) {
+      hasAnimatedRef.current = false;
+      prevAnimationKeyRef.current = animationKey;
+    }
+
     if (!enabled || hasAnimatedRef.current || itemCount === 0) {
       return;
     }
