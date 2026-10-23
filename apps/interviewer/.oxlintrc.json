@@ -7,6 +7,10 @@
     }
   },
   "rules": {
+    // React Compiler rules this package has not adopted yet (#1643). Held at
+    // "warn" until its remaining sites are fixed; then this block goes.
+    "react/refs": "warn",
+    "react/set-state-in-effect": "warn",
     "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-duplicate-classes": "error",
     "tailwindcss/no-conflicting-classes": "warn",

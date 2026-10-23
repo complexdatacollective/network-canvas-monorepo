@@ -5,8 +5,6 @@ import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Children,
-  isValidElement,
   type ReactNode,
   type RefObject,
   useEffect,
@@ -154,12 +152,16 @@ const FolderTriggerContent = ({
 const SidebarFolder = ({
   label,
   href,
+  childHrefs,
   defaultOpen,
   alwaysOpen,
   children,
 }: {
   label: string;
   href?: Route | URL;
+  // The links the folder's direct children render, so the folder opens when
+  // one of them is the current page.
+  childHrefs: readonly (Route | undefined)[];
   defaultOpen?: boolean;
   alwaysOpen?: boolean;
   children?: React.ReactNode;
@@ -169,12 +171,8 @@ const SidebarFolder = ({
   const memoizedIsOpen = useMemo(() => {
     if (alwaysOpen) return true;
     if (defaultOpen) return true;
-    return Children.toArray(children).some(
-      (child) =>
-        isValidElement<{ href?: string }>(child) &&
-        child.props.href === pathname,
-    );
-  }, [alwaysOpen, defaultOpen, children, pathname]);
+    return childHrefs.some((childHref) => childHref === pathname);
+  }, [alwaysOpen, defaultOpen, childHrefs, pathname]);
 
   const [isOpen, setIsOpen] = useState(memoizedIsOpen);
 
@@ -265,52 +263,69 @@ const SidebarLink = ({
   );
 };
 
-const renderSidebarItem = (
+type SidebarItemContext = {
+  locale: Locale;
+  section: Section;
+  sectionSourceFile: string | undefined;
+};
+
+// The link an item renders: a folder's own page, or a page's route. A hidden
+// page renders nothing, so it has none.
+function sidebarItemHref(
   item: TSidebarFolder | SidebarPage,
-  locale: Locale,
-  sidebarContainerRef: RefObject<HTMLDivElement | null>,
-  section: Section,
-  sectionSourceFile: string | undefined,
-) => {
+  { locale, section, sectionSourceFile }: SidebarItemContext,
+): Route | undefined {
   if (item.type === 'folder') {
-    const sourceFile = processSourceFile(item.type, locale, item.sourceFile);
+    return processSourceFile(item.type, locale, item.sourceFile);
+  }
+  if (item.hidden) return undefined;
+  // The section's index page is served at the section root, so link there
+  // instead of the file-derived URL. Otherwise the sidebar entry is never
+  // marked active when a reader lands on /{locale}/{section}.
+  return item.sourceFile === sectionSourceFile
+    ? (`/${locale}/${section}` as Route)
+    : processSourceFile(item.type, locale, item.sourceFile);
+}
+
+const SidebarItem = ({
+  item,
+  sidebarContainerRef,
+  ...context
+}: SidebarItemContext & {
+  item: TSidebarFolder | SidebarPage;
+  sidebarContainerRef: RefObject<HTMLDivElement | null>;
+}) => {
+  const href = sidebarItemHref(item, context);
+
+  if (item.type === 'folder') {
     const sortedChildren = sortSidebarItems(Object.values(item.children));
     return (
       <SidebarFolder
-        key={item.label}
         label={item.label}
         alwaysOpen={item.expanded}
-        href={sourceFile}
-      >
-        {sortedChildren.map((child) =>
-          renderSidebarItem(
-            child,
-            locale,
-            sidebarContainerRef,
-            section,
-            sectionSourceFile,
-          ),
+        href={href}
+        childHrefs={sortedChildren.map((child) =>
+          sidebarItemHref(child, context),
         )}
+      >
+        {sortedChildren.map((child) => (
+          <SidebarItem
+            key={child.label}
+            item={child}
+            sidebarContainerRef={sidebarContainerRef}
+            {...context}
+          />
+        ))}
       </SidebarFolder>
     );
   }
 
   // Skip pages that are hidden from sidebar
-  if (item.hidden) {
-    return null;
-  }
+  if (href === undefined) return null;
 
-  // The section's index page is served at the section root, so link there
-  // instead of the file-derived URL. Otherwise the sidebar entry is never
-  // marked active when a reader lands on /{locale}/{section}.
-  const href =
-    item.sourceFile === sectionSourceFile
-      ? (`/${locale}/${section}` as Route)
-      : processSourceFile(item.type, locale, item.sourceFile);
   return (
     <SidebarLink
       sidebarContainerRef={sidebarContainerRef}
-      key={item.label}
       href={href}
       label={item.label}
     />
@@ -375,15 +390,16 @@ export function Sidebar({ className }: { className?: string }) {
 
   return shell(
     <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
-      {sortedSidebarItems.map((item) =>
-        renderSidebarItem(
-          item,
-          locale,
-          sidebarContainerRef,
-          section,
-          sectionData.sourceFile,
-        ),
-      )}
+      {sortedSidebarItems.map((item) => (
+        <SidebarItem
+          key={item.label}
+          item={item}
+          locale={locale}
+          sidebarContainerRef={sidebarContainerRef}
+          section={section}
+          sectionSourceFile={sectionData.sourceFile}
+        />
+      ))}
     </div>,
   );
 }

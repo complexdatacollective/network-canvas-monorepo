@@ -85,8 +85,10 @@ vi.mock('@codaco/interview/contract', () => ({
   }),
 }));
 
+// The page's query string, which picks the wave.
+let search = '';
 vi.mock('next/navigation', () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(search),
 }));
 
 let sessions = 0;
@@ -138,6 +140,7 @@ const COMPLETION_LABELS = Object.fromEntries(
 ) as CompletionLabels;
 
 beforeEach(() => {
+  search = '';
   initialInterviewLocale = 'en';
   shellProps.length = 0;
   sessions = 0;
@@ -268,5 +271,77 @@ describe('<ProtocolPreview />', () => {
     );
 
     expect(assign).toHaveBeenCalledWith(BACK_HREF);
+  });
+
+  it('shows the loading screen on a return to a wave whose new load has not finished', async () => {
+    // Wave B's protocol never arrives, so going A → B → A leaves A's first
+    // load as the last one that finished. Its interview belongs to an install
+    // the new load of A has already let go of, so it must not come back.
+    let finishSecondLoadOfA = () => {};
+    let loadsOfA = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((path: string) => {
+        if (path === '/protocols/b.netcanvas') return new Promise(() => {});
+        loadsOfA += 1;
+        const bytes = new Response(new Uint8Array([1, 2, 3]));
+        if (loadsOfA === 1) return Promise.resolve(bytes);
+        return new Promise<Response>((resolve) => {
+          finishSecondLoadOfA = () => resolve(bytes);
+        });
+      }),
+    );
+    const waves = [
+      {
+        wave: 1,
+        protocolFilename: 'a.netcanvas',
+        protocolPath: '/protocols/a.netcanvas',
+      },
+      {
+        wave: 2,
+        protocolFilename: 'b.netcanvas',
+        protocolPath: '/protocols/b.netcanvas',
+      },
+    ];
+    // Stands in for the router re-rendering the page when the query changes.
+    function Page() {
+      const [, rerender] = useState(0);
+      return (
+        <>
+          <button type="button" onClick={() => rerender((n) => n + 1)}>
+            Navigate
+          </button>
+          <ProtocolPreview
+            waves={waves}
+            backHref={BACK_HREF}
+            completionLabels={COMPLETION_LABELS}
+          />
+        </>
+      );
+    }
+    const navigateTo = (wave: number) => {
+      search = `wave=${wave}`;
+      fireEvent.click(screen.getByRole('button', { name: 'Navigate' }));
+    };
+
+    search = 'wave=1';
+    renderWithIntl(<Page />);
+    expect(await screen.findByTestId('shell')).toHaveAttribute(
+      'data-session',
+      'session-1',
+    );
+
+    navigateTo(2);
+    expect(screen.queryByTestId('shell')).toBeNull();
+
+    navigateTo(1);
+    expect(screen.queryByTestId('shell')).toBeNull();
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    await act(async () => finishSecondLoadOfA());
+    expect(await screen.findByTestId('shell')).toHaveAttribute(
+      'data-session',
+      'session-2',
+    );
   });
 });
