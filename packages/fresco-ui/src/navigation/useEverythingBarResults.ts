@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -85,6 +86,12 @@ type ResultsState = {
   revealed: Partial<Record<EverythingBarGroup, number>>;
   /** Providers a group is waiting on before its next slice can be revealed. */
   awaiting: Partial<Record<EverythingBarGroup, string[]>>;
+  /**
+   * The groups each remote provider has been seen to serve, for a provider
+   * that does not declare them. Kept across resets: it is what places a
+   * provider's pending and error rows once its results are gone.
+   */
+  seenGroups: Record<string, EverythingBarGroup[]>;
 };
 
 type ResultsAction =
@@ -123,6 +130,7 @@ const INITIAL_STATE: ResultsState = {
   providers: {},
   revealed: {},
   awaiting: {},
+  seenGroups: {},
 };
 
 function resultsReducer(
@@ -141,6 +149,7 @@ function resultsReducer(
       ),
       revealed: {},
       awaiting: {},
+      seenGroups: state.seenGroups,
     };
   }
 
@@ -153,18 +162,20 @@ function resultsReducer(
   switch (action.type) {
     case 'page': {
       const previous = state.providers[action.providerId];
+      const items = action.append
+        ? [...(previous?.items ?? []), ...action.items]
+        : action.items;
+      const delivered = [...new Set(items.map((item) => item.group))];
       return {
         ...state,
         providers: {
           ...state.providers,
-          [action.providerId]: {
-            status: 'ready',
-            items: action.append
-              ? [...(previous?.items ?? []), ...action.items]
-              : action.items,
-            next: action.next,
-          },
+          [action.providerId]: { status: 'ready', items, next: action.next },
         },
+        seenGroups:
+          delivered.length > 0
+            ? { ...state.seenGroups, [action.providerId]: delivered }
+            : state.seenGroups,
       };
     }
     case 'failed': {
@@ -285,21 +296,17 @@ export function useEverythingBarResults({
   const [committedQuery, setCommittedQuery] = useState('');
   const [highlightKey, setHighlightKey] = useState<string | null>(null);
 
+  // The latest providers, state, derivation and options, for the effects and
+  // handlers below; all four are written by one layout effect once the render
+  // has worked them out.
   const providersRef = useRef(providers);
-  providersRef.current = providers;
   const stateRef = useRef(state);
-  stateRef.current = state;
   const generationRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
   /** What each provider last asked for, so its error row retries exactly that. */
   const lastRequestRef = useRef<
     Record<string, { cursor: string | undefined; append: boolean }>
   >({});
-  /**
-   * The groups each remote provider has been seen to serve, for a provider
-   * that does not declare them.
-   */
-  const seenGroupsRef = useRef<Record<string, EverythingBarGroup[]>>({});
 
   const remoteProviders = providers.filter(isRemoteProvider);
   // Identity, not id. The array itself may be a fresh literal on every render;
@@ -500,12 +507,9 @@ export function useEverythingBarResults({
     const delivered = [
       ...new Set(remoteStateOf(provider).items.map((i) => i.group)),
     ];
-    if (delivered.length > 0) {
-      seenGroupsRef.current[provider.id] = delivered;
-      return delivered;
-    }
+    if (delivered.length > 0) return delivered;
 
-    return seenGroupsRef.current[provider.id] ?? [];
+    return state.seenGroups[provider.id] ?? [];
   };
 
   const derivation: Derivation = {};
@@ -556,7 +560,6 @@ export function useEverythingBarResults({
   }
 
   const derivationRef = useRef(derivation);
-  derivationRef.current = derivation;
 
   const sections: EverythingBarSection[] = [];
   if (isEmptyQuery && recents.length > 0) {
@@ -620,11 +623,17 @@ export function useEverythingBarResults({
   const options = sections
     .flatMap((section) => section.rows)
     .filter((row) => row.kind !== 'pending');
-  const optionKeysRef = useRef<string[]>([]);
-  optionKeysRef.current = options.map((row) => row.key);
+  const optionKeys = options.map((row) => row.key);
+  const optionKeysRef = useRef(optionKeys);
+  useLayoutEffect(() => {
+    providersRef.current = providers;
+    stateRef.current = state;
+    derivationRef.current = derivation;
+    optionKeysRef.current = optionKeys;
+  });
   // The rendered sequence as one value, so the effect below re-runs exactly
   // when the set of options changes — not on every render.
-  const optionSequence = optionKeysRef.current.join('\u0000');
+  const optionSequence = optionKeys.join('\u0000');
 
   // The highlight moves only when the researcher moves it, or when the item it
   // names has left the list entirely.
