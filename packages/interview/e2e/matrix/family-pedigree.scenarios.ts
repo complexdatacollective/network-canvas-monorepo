@@ -2247,12 +2247,12 @@ function relationshipKindsDrawn(): ScenarioDefinition {
       await member(page, 'You').click();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /relationship of “Ana” to you/ })
+          .getByRole('radiogroup', { name: /“Ana”’s relationship to you/ })
           .getByRole('radio', { name: 'Step or social parent', exact: true }),
       ).toBeChecked();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /relationship of “Luis” to you/ })
+          .getByRole('radiogroup', { name: /“Luis”’s relationship to you/ })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();
       await panel(page)
@@ -3605,7 +3605,8 @@ function wordingAddChild(): ScenarioDefinition {
 function wordingEditPerson(): ScenarioDefinition {
   const words = [
     'parentLinkKindLabel',
-    'parentCarriedLabel',
+    'carrierLabel',
+    'carrierUnknown',
     'stillTogetherLabel',
     'twinsLabel',
     'twinsHint',
@@ -3672,20 +3673,28 @@ function wordingEditPerson(): ScenarioDefinition {
           }),
         ).toBeVisible();
       }
-      await expect(
-        form.getByRole('radiogroup', {
-          name: /^Did Julie carry them - matrix check/,
-        }),
-      ).toBeVisible();
-      // Julie carried Ari, so Pam cannot have, and the form says so, and that
-      // Ari has two genetic parents already.
-      const pamCarried = form.getByRole('radiogroup', {
-        name: /^Did Pam carry them - matrix check/,
+      // One question asks which parent carried Ari: Julie, as recorded, or
+      // Pam, but not Rob, who is male at birth.
+      const carrier = form.getByRole('radiogroup', {
+        name: /^Carrier of the pregnancy - matrix check/,
       });
-      await expect(pamCarried).toBeVisible();
       await expect(
-        pamCarried.getByRole('radio', { name: 'Yes', exact: true }),
-      ).toBeDisabled();
+        carrier.getByRole('radio', { name: 'Julie', exact: true }),
+      ).toBeChecked();
+      await expect(
+        carrier.getByRole('radio', { name: 'Pam', exact: true }),
+      ).toBeEnabled();
+      await expect(
+        carrier.getByRole('radio', { name: 'Rob', exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        carrier.getByRole('radio', {
+          name: plainWord('carrierUnknown'),
+          exact: true,
+        }),
+      ).toBeEnabled();
+      // Julie carried Ari, so Pam cannot be a surrogate, and the form says
+      // so, and that Ari has two genetic parents already.
       await expect(
         form
           .getByText(
@@ -3945,7 +3954,7 @@ function identicalTwinSexNotAsked(): ScenarioDefinition {
     run: async ({ page }) => {
       const form = panel(page);
       const twins = form.getByRole('group', {
-        name: /^Which of your siblings, if any, are your twins\?/,
+        name: /^Are any of these siblings your twins\?/,
       });
 
       await member(page, 'You').click();
@@ -4019,7 +4028,7 @@ function wordingIdenticalTwinParents(): ScenarioDefinition {
       await expect(
         form
           .getByRole('radiogroup', {
-            name: 'How would you define the relationship of “Rob” to “Bea”?',
+            name: 'How would you define “Rob”’s relationship to “Bea”?',
           })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();
@@ -4491,7 +4500,7 @@ function wordingChangeWouldCutOff(): ScenarioDefinition {
       await member(page, 'You').click();
       await panel(page)
         .getByRole('group', {
-          name: /^Which of your siblings, if any, are your twins/,
+          name: /^Are any of these siblings your twins/,
         })
         .getByRole('checkbox', { name: 'Sam', exact: true })
         .uncheck();

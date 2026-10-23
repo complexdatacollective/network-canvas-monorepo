@@ -33,8 +33,8 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: How would you define the relationship of “Julie” to “Ben”?
-    - radiogroup "How would you define the relationship of “Julie” to “Ben”?":
+    - text: How would you define “Julie”’s relationship to “Ben”?
+    - radiogroup "How would you define “Julie”’s relationship to “Ben”?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"
@@ -45,12 +45,8 @@
       - text: Egg or sperm donor
       - radio "Surrogate"
       - text: Surrogate
-    - text: Did Julie carry the pregnancy?
-    - radiogroup "Did Julie carry the pregnancy?":
-      - radio "Yes" [checked]
-      - radio "No"
-    - text: How would you define the relationship of “Rob” to “Ben”? “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
-    - radiogroup "How would you define the relationship of “Rob” to “Ben”?":
+    - text: How would you define “Rob”’s relationship to “Ben”? “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+    - radiogroup "How would you define “Rob”’s relationship to “Ben”?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"
@@ -61,8 +57,14 @@
       - text: Egg or sperm donor
       - radio "Surrogate" [disabled]
       - text: Surrogate “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
-    - text: Which siblings of “Ben”, if any, are their twins? Include triplets and other multiple births.
-    - group "Which siblings of “Ben”, if any, are their twins?":
+    - text: Who carried the pregnancy?
+    - radiogroup "Who carried the pregnancy?":
+      - radio "Julie" [checked]
+      - text: Julie
+      - radio "Someone else, or I don’t know"
+      - text: Someone else, or I don’t know
+    - text: Are any of these siblings twins with “Ben”? Include triplets and other multiple births.
+    - group "Are any of these siblings twins with “Ben”?":
       - checkbox "You" [checked]
       - text: You
     - button "Delete"

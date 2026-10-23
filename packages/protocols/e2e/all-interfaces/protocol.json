@@ -876,13 +876,13 @@
           "en-US": "What kind of parent are they?"
         },
         "parentLinkKindLabel": {
-          "en-US": "{parentIsYou, select, true {How would you define your relationship to “{child}”?} other {{personIsYou, select, true {How would you define the relationship of “{parent}” to you?} other {How would you define the relationship of “{parent}” to “{child}”?}}}}"
+          "en-US": "{parentIsYou, select, true {How would you define your relationship to “{child}”?} other {{personIsYou, select, true {How would you define “{parent}”’s relationship to you?} other {How would you define “{parent}”’s relationship to “{child}”?}}}}"
         },
         "carrierReplaced": {
           "en-US": "{who, select, carrierIsYou {Choosing “{answer}” means you will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.} childIsYou {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried you, as only one person carries a pregnancy.} other {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.}}"
         },
         "geneticParentReplaced": {
-          "en-US": "{who, select, parentIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define your relationship to “{child}” instead.} childIsYou {Choosing “{answer}” means “{parent}” will no longer be recorded as your biological parent. You will be asked how you would define the relationship of “{parent}” to you instead.} other {Choosing “{answer}” means “{parent}” will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define the relationship of “{parent}” to “{child}” instead.}}"
+          "en-US": "{who, select, parentIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define your relationship to “{child}” instead.} childIsYou {Choosing “{answer}” means “{parent}” will no longer be recorded as your biological parent. You will be asked how you would define “{parent}”’s relationship to you instead.} other {Choosing “{answer}” means “{parent}” will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define “{parent}”’s relationship to “{child}” instead.}}"
         },
         "identicalTwinSharesParents": {
           "en-US": "{who, select, personIsYou {Choosing “{answer}” records the same biological parents and donors for you and “{twin}”.} twinIsYou {Choosing “{answer}” records the same biological parents and donors for “{name}” and you.} other {Choosing “{answer}” records the same biological parents and donors for “{name}” and “{twin}”.}}"
@@ -978,7 +978,7 @@
           "en-US": "Include triplets and other multiple births."
         },
         "twinsLabel": {
-          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which siblings of “{name}”, if any, are their twins?}}"
+          "en-US": "{isYou, select, true {Are any of these siblings your twins?} other {Are any of these siblings twins with “{name}”?}}"
         },
         "twinZygosityLabel": {
           "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}"
