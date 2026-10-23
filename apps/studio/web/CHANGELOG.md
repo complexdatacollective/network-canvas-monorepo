@@ -1,5 +1,276 @@
 # @codaco/studio-web
 
+## 1.0.0
+
+### Major Changes
+
+- Names in a protocol can now be written in any language. In the protocol
+  editor, node types, edge types, attributes and option values can use any
+  script, spaces and punctuation. A name still can't be empty, start or end with
+  a space, or contain tabs, line breaks or other invisible control characters.
+  Protocols are saved as schema 9, the protocol version that allows these names,
+  and the interview preview runs them.
+
+  - The hint under a node or edge type's name suggests names you can type in as
+    they are, such as "Friends" or "Colleagues", and each language suggests
+    names its researchers would naturally use.
+  - A name that would clash with another column in exported data is refused, and
+    the message names the other column. A categorical attribute is exported as
+    one column for each option, and a layout attribute as one column for each
+    coordinate, and no attribute can take the name of a column every export
+    includes. Names that an export would write the same way are refused too,
+    such as "close friend" and "close_friend", which GraphML files both write as
+    "close_friend".
+  - A participant data file (roster) that contains a character exported data
+    can't carry, usually an invisible control character pasted in from another
+    program, is refused when you add it. The message names the row and column,
+    or the line, to fix. The server refuses such a file too, and its refusal
+    carries the problem as structured detail (`code: 'roster-characters'`), so
+    the editor can explain it in your language.
+  - A roster's column headers can be any name an attribute can have, and the
+    messages about headers that can't be used say what is not allowed. A roster
+    with a header that can't be used, or with two headers that are the same name
+    written two ways, such as an accented letter stored as one character in one
+    and as two in the other, is now refused when you add it, rather than being
+    published and then turned away by the interview when a participant reaches
+    it. So is a roster the interview couldn't otherwise load: one that can't be
+    read, has a row with more or fewer cells than its header, has no rows, or
+    holds a value no attribute can take. The server refuses these files too.
+
+### Minor Changes
+
+- Ordinal and categorical bin stages have a new **Placing nodes** section in the
+  stage editor for choosing between drag and drop and tap to place. With tap to
+  place, the participant taps a bin to put the selected node in it instead of
+  dragging it.
+- The **Placing nodes** section of both bin stage editors has a **Require every
+  node to be placed** switch. Turning it on stops the participant moving on until
+  every node is in a bin, and shows a notice they see when they try, filled in
+  with Network Canvas's text.
+- Encrypted attributes are no longer experimental. Protocols keep their
+  `experiments` setting, for features released within a schema version, and
+  the protocol settings section still accepts and keeps it, but
+  `encryptedVariables` is no longer one of its experiments: the settings
+  section refuses it, and an attribute marked as encrypted is always
+  encrypted. A stored schema 8 protocol is upgraded with its
+  experiments included, so attributes it encrypted stay encrypted, and
+  attributes it marked as encrypted without turning the experiment on are
+  unmarked and keep being collected without encryption.
+
+  In the protocol editor, an Anonymisation stage's passphrase lengths now show
+  the minimum that applies: 8 unless the stage sets its own, or the stage's
+  maximum when that is shorter.
+
+  Skip logic, stage filters and panel filters are checked without the
+  participant's passphrase, so they can't compare the answers to an encrypted
+  attribute, but they can still check whether it is answered. When you build
+  one of these rules, the protocol editor offers an encrypted attribute only
+  with "exists" and "does not exist", except in a panel that lists people from
+  an external data file, whose rows are not encrypted. A stored rule that
+  compares one is marked, and can't be saved until it is changed. The editor
+  won't let you encrypt an attribute while one of these rules compares its
+  answers.
+
+- Studio reports unexpected failures to its telemetry destination, once each,
+  while `STUDIO_TELEMETRY` is on. A defect in an RPC or HTTP handler is reported
+  with its request id and team id, and a job that fails for good is reported
+  with its queue and job id. An interrupted request and a typed refusal are never
+  reported. Each report carries the error's type, its stack frames and the
+  installation id, never the error's message. With no OpenTelemetry endpoint set
+  the report is a PostHog Error Tracking event with no person profile, sent with
+  Effect's HTTP client. With an endpoint set it is an error-level log record with
+  `exception.*` attributes. With telemetry off the reporter is never built.
+
+  The public `status` RPC now says whether telemetry is on. The researcher web
+  app, and a participant page whose session says so, catch uncaught errors and
+  unhandled rejections and send the error's type and its frames inside Studio's
+  own bundle to a new same-origin `telemetry.report` RPC, without cookies. The
+  API drops these reports while telemetry is off, refuses any frame that does not
+  name a bundle file, and limits them to 30 a minute per client address
+  (`error_report_address`). Nothing is written to cookies or local storage, and
+  `posthog-js` is no longer part of the Studio bundle. A `studio-web` image
+  built with the BuildKit secrets `posthog_personal_api_key` and
+  `posthog_project_id`, and the build arg `SOURCE_MAPS_TARGET` naming the
+  destination project, uploads the source maps of the bundle it ships to PostHog
+  and deletes them before the image is assembled. Without them nothing is
+  uploaded. The build fails if the build arg and the secrets are not supplied
+  together.
+
+  Exported spans and log records no longer carry an error message, even one that
+  spans several lines, and span events no longer carry the `effect.cause` text.
+
+- A new protocol now starts with a Finish Screen stage, the screen every schema 9
+  interview ends at, carrying Network Canvas's supplied text in English. A
+  protocol created in Studio is therefore valid from the start, where before it
+  had no stages at all and could not be published until one was added by hand.
+
+  The timeline keeps finish stages last, as Architect does. A protocol can end
+  with several, so different routes through the interview can end differently,
+  for example a "completed" ending and an "ineligible" one. A screen added
+  without a position, or at a position past the first finish stage, goes in
+  front of it. A finish stage added without a position goes at the end, and one
+  placed above the first finish stage takes that stage's place, so no other
+  screen is ever left after a finish stage. Finish stages can be reordered among
+  themselves, but not above the first one, and a reorder that would put a
+  screen after a finish stage or leave the interview ending somewhere else is
+  refused. In the editor's outline, the move buttons that would do that are not
+  offered. Any finish stage can be removed except the last one left. Saving a
+  screen as a different kind is refused when it would turn a finish stage into
+  another kind of screen, or another screen into a finish stage.
+
+  Publishing refuses a protocol whose finish stage is missing text it shows in
+  its default language, naming what is missing. A protocol in a language Network
+  Canvas has no closing text for starts that way.
+
+  Development seed data now leaves a completed interview at the finish stage it
+  ended at, as Interviewer and Fresco record it, rather than past the last stage.
+
+  A finished interview now records where it ended: the finish stage the
+  participant confirmed Finish on, and the outcome that stage declares
+  (completed, ineligible or terminated). Before, Studio recorded every finish as
+  completed and kept neither. The participant finish call carries both, and the
+  server records them only when they name one of the protocol's finish stages and
+  the outcome it declares; any other finish is refused and nothing is saved. The
+  session and its frozen snapshot, which exports read, carry both values. A
+  finish sent again after the interview has finished, with any outcome, is
+  answered as already finished and changes nothing.
+
+  The upgrade adds the migration `0005_session_finish`. An interview completed
+  before it keeps no finish stage or outcome, since none was recorded; every
+  interview completed after it must record both.
+
+  Finishing an interview now leaves the participant on the interview's own
+  finished screen, the text its finish stage shows once the interview is
+  finished. Before, Studio replaced the interview with its generic
+  "You've finished this interview" page the moment the finish was recorded, so
+  the protocol's closing text was never shown. The generic page is still shown
+  when a participant opens an interview that was already finished.
+
+- New researchers can sign up and get into a team without help. On the managed
+  service, "Create an account" now creates an account with an emailed link,
+  Google or Microsoft (there is no password option), then asks for a team name
+  and opens the new team's study list. Someone who already has a team and opens
+  the sign-up page goes straight to their work, and the sign-in page links to
+  sign-up.
+
+  The "No team yet" screen is no longer a dead end. On the managed service it
+  links to team creation; on a self-hosted instance the owner can create a team
+  from it, and anyone else is told that a team owner has to invite them. It always
+  explains how to join a team by invitation.
+
+- Studio now keeps protocols that are written in more than one language. A
+  protocol declares the languages its text is written in, and every screen name,
+  prompt and label in it is stored as one translation for each of those
+  languages.
+
+  - The protocol editor names each screen in the language you are editing in. A
+    screen with no name in that language is listed under the name a participant
+    would be shown instead, and a screen with no name in any language is listed
+    by its position, such as "Screen 3". A protocol with more than one language
+    has a language menu beside each text field, and choosing a language there
+    switches the whole editor.
+  - A screen added from the outline starts as "Untitled screen" in the
+    protocol's default language. Its other languages are left untranslated, so
+    they show as needing a translation, and a participant reading one sees the
+    fallback rather than English presented as a translation.
+  - Comparing two versions names each screen that was added, removed or changed
+    by its name in the protocol's default language, or in another language that
+    has text when the default has none. Versions saved before protocols could be
+    translated are still described by their plain names.
+  - Editing a version that was saved in an older protocol format now starts a
+    draft that has been upgraded to the current format, with its text written in
+    English. Before, the draft kept the old format and could not
+    be edited.
+  - A protocol created in Studio is written in English (`en`),
+    as a protocol upgraded from an earlier version is, because Studio does not
+    yet ask which language you are writing in. The sample protocol, the demo
+    protocol and the protocols a new instance seeds declare their language, US
+    English.
+  - A protocol's language declaration is saved with its settings, so a draft that
+    declares languages passes the check made before each save.
+
+- Per Alter Form, Per Alter Edge Form, Dyad Census and Tie-Strength Census
+  stages no longer have an introduction panel. In the protocol editor, these
+  stages no longer offer an introduction section; instructions for
+  participants go in an Information stage instead. An Ego Form keeps its
+  introduction section.
+
+  A stored schema 8 protocol is upgraded with each introduction panel turned
+  into an Information stage just before its stage, with the panel's title and
+  text and the stage's skip logic. An Ego Form keeps its panel.
+
+- A Name Generator for Roster Data stage now has a required panel title, the
+  heading above the people a participant can add, set in a new **Roster panel**
+  section of the stage editor. A new roster stage starts with "Available to add"
+  in each of the protocol's languages that Network Canvas has wording for, and in
+  English in a default language it has none for.
+- Researchers can create a team. "Create a team" in the header's team switcher
+  asks for a name, makes the researcher the new team's owner and opens it. On the
+  managed service any signed-in researcher can create a team; on a self-hosted
+  instance only the instance's owner can, and the entry is not shown to anyone
+  else. Creating a team is recorded in the team's activity log as "Team created",
+  counted as a `team_created` usage event, and limited to five per researcher per
+  hour (`team_create`).
+- The researcher web app and participant pages now send operational logs to the
+  same telemetry destination as the server, through the api, while
+  `STUDIO_TELEMETRY` is on. The public `status` RPC reports the configured
+  `STUDIO_LOG_LEVEL`, and `participant.session` reports it to an interview page
+  (`null` while telemetry is off), so a page logs at that level and sends nothing
+  while telemetry is off.
+
+  The researcher app logs RPC requests that never reached the server, editor
+  connections that dropped and came back, editing locks that were lost or
+  refused, screens that failed to render, and update checks that failed.
+  Participant pages log only entries from a fixed catalogue: a session that
+  failed to load, an answer save that failed or succeeded only after retrying, a
+  connection lost or restored, an asset that failed to load, and a stage that
+  failed to render. Every entry has a constant message, and its attributes are
+  limited to a stage index, an interface type, a fault code, an attempt count and
+  a duration.
+
+  The api receives these records at `/api/telemetry/researcher/logs` (signed-in
+  researchers) and `/api/telemetry/participant/logs` (a valid participant
+  session), same origin only, with a 64 KiB body bound and two new rate limits:
+  `researcher_log` (60 a minute per researcher) and `participant_log` (30 a minute
+  per participant session). It refuses a whole participant batch that holds any
+  record outside the catalogue or any extra or free-text attribute, drops any
+  researcher record that is not a catalogued entry, drops records below the
+  configured level, and forwards the rest as `service.name = studio-web` with the
+  installation id, the surface and, where it is known, the team.
+
+### Patch Changes
+
+- Menu, select and combobox items now have a small gap between them, so a run of checked or selected items no longer merges into one block.
+- Interviews show less built-in text, and some of it reads more consistently:
+
+  - In Family Pedigree, the answers to the sex assigned at birth question and
+    the kinds of parent a participant chooses from show the labels the
+    protocol's codebook gives them, so they can be reworded and translated like
+    any other protocol text, but not left blank. The stage editor fills those
+    labels in for each of the protocol's languages that Network Canvas has
+    wording for when it creates the attribute. The supplied English label for a
+    donor is now "Egg or sperm donor".
+  - The button that confirms finishing the interview says "Finish", like the
+    button that opens the confirmation.
+  - Several buttons and messages use one wording instead of two, such as
+    "Enter your passphrase", "Zoom in" and "Zoom out".
+  - A stage name made only of spaces is no longer valid.
+
+- The api now forwards a participant page's usability events to PostHog only when every event in the batch is in the interview's analytics catalogue and every property decodes to its declared type, with no property the catalogue does not declare. A batch holding any other event, an extra property, free text where a code or number is expected, or a timestamp that is not an ISO 8601 UTC instant is refused whole and nothing in it is forwarded, as the participant log route refuses a batch.
+
+  Of what decodes, the api forwards the event's catalogued codes, numbers and flags. It replaces each entity id with an id derived on the server from the installation, the session and the page's id. It stamps each event with the server's clock, keeping from the page's timestamps only the order and spacing of the batch's events, up to ten minutes apart. It reports an exception's type only when it is a standard JavaScript or DOM error name, and `Error` otherwise. It withholds the interview package version, the protocol digest, a stage crash's component stack, and the identifiers the page reports about itself, which the server sets. The participant contract now declares the `$exception_list` shape and the timestamp a participant page sends.
+
+- In the Family Pedigree stage editor, the name attribute's validation no longer offers the "Required answer" rule. The interview gives every family member a name, either the one the participant types or a label generated from their relationship to the participant, so the rule could never apply. A rule already set on the attribute can still be switched off there.
+- In the Family Pedigree stage editor, the Symbols choice has its usual space again before the "Record each person's relationship to the participant" section.
+- First-run setup on a self-hosted instance now creates the owner's first team,
+  named after the instance, with the owner as its Owner, so the owner lands in a
+  team instead of on "No team yet". The team, the owner's membership, the claim on
+  the instance and the team's "Team created" activity entry are written together:
+  if any of them fails, setup stays open and can be run again.
+
+  The instance name is trimmed once, so the instance and its first team share
+  exactly the same name.
+
 ## 0.3.0
 
 ### Minor Changes
