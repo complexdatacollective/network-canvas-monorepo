@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@codaco/fresco-ui/Button';
+import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 
 export type GroupVariable = {
   id: string;
@@ -52,7 +53,7 @@ export default function GroupPicker({
               className="inline-block size-3 shrink-0 rounded-full"
               style={{ backgroundColor: `var(--cat-${index + 1})` }}
             />
-            {option.label}
+            <OptionLabel label={option.label} />
           </Button>
         );
       })}
