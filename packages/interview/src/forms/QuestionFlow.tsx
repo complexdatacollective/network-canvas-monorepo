@@ -314,6 +314,9 @@ export default function QuestionFlow({
   const saving = useRef(false);
   const advanceTimer = useRef<number | undefined>(undefined);
   const completeTimer = useRef<number | undefined>(undefined);
+  /** Counts the options chosen, so only the latest choice decides what
+   * follows it. */
+  const latestChoice = useRef(0);
   const completed = useRef(onComplete);
   useLayoutEffect(() => {
     completed.current = onComplete;
@@ -519,7 +522,13 @@ export default function QuestionFlow({
       // as when going back to review a step, does not move the form on.
       const changedAnswer = !isUnanswered(field, read);
       if (changedAnswer) window.clearTimeout(completeTimer.current);
+      latestChoice.current += 1;
+      const choice = latestChoice.current;
       requestAnimationFrame(() => {
+        // A choice made before this frame, a changed answer included,
+        // supersedes this one: its decision is made from newer answers, and
+        // clearing the timers cannot stop one this frame has not yet set.
+        if (choice !== latestChoice.current) return;
         if (!field.isConnected || isUnanswered(field, read)) return;
         const [next] = waitingAfter(root, field, read);
         if (next) {

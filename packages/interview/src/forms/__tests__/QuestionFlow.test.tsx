@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -373,8 +373,29 @@ describe('QuestionFlow moving on from a complete form', () => {
     render(<CompletingFlow onComplete={onComplete} initialFirst="red" />);
 
     const second = screen.getByRole('radiogroup', { name: 'Second colour' });
+    // Both choices land before the first one's frame, however busy the
+    // machine: frames are held until both clicks are in, then run in order.
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    const requestFrame = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        nextFrame += 1;
+        frames.set(nextFrame, callback);
+        return nextFrame;
+      });
+    const cancelFrame = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation((handle) => {
+        frames.delete(handle);
+      });
     await user.click(within(second).getByRole('radio', { name: 'Blue' }));
     await user.click(within(second).getByRole('radio', { name: 'Red' }));
+    requestFrame.mockRestore();
+    cancelFrame.mockRestore();
+    act(() => {
+      for (const callback of frames.values()) callback(performance.now());
+    });
     await pause();
     expect(onComplete).not.toHaveBeenCalled();
   });
