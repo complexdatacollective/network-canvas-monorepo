@@ -94,7 +94,7 @@ describe('a response that is not a refusal', () => {
             requestId: postedRequestId(init),
             exit: { _tag: 'Success', value: INSTANCE_STATUS },
           })}\n`,
-          { status: 200, headers: { 'content-type': 'application/ndjson' } },
+          { status: 200, headers: { 'content-type': 'application/x-ndjson' } },
         ),
       ),
     );

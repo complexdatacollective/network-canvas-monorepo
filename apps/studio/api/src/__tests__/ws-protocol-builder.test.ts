@@ -1038,7 +1038,7 @@ describe.skipIf(!testDb || !env.auth)(
         {
           method: 'POST',
           headers: {
-            'content-type': 'application/ndjson',
+            'content-type': 'application/x-ndjson',
             'sec-fetch-site': 'same-origin',
             ...headers,
           },
@@ -1096,7 +1096,7 @@ describe.skipIf(!testDb || !env.auth)(
             path: PROTOCOL_BUILDER_RPC_PATH,
             method: 'POST',
             headers: {
-              'content-type': 'application/ndjson',
+              'content-type': 'application/x-ndjson',
               'sec-fetch-site': 'same-origin',
               'content-length': String(2 ** 30),
             },
@@ -1138,7 +1138,7 @@ describe.skipIf(!testDb || !env.auth)(
         fetch(`${bounded.origin}${PROTOCOL_BUILDER_RPC_PATH}`, {
           method: 'POST',
           headers: {
-            'content-type': 'application/ndjson',
+            'content-type': 'application/x-ndjson',
             'sec-fetch-site': 'same-origin',
             ...headers,
           },
@@ -1169,7 +1169,7 @@ describe.skipIf(!testDb || !env.auth)(
       const response = await fetch(`${server.origin}${path}`, {
         method: 'POST',
         headers: {
-          'content-type': 'application/ndjson',
+          'content-type': 'application/x-ndjson',
           'sec-fetch-site': 'same-origin',
           'cookie': cookieOf(ADA),
         },
@@ -1344,7 +1344,7 @@ describe.skipIf(!testDb || !env.auth)(
         {
           method: 'POST',
           headers: {
-            'content-type': 'application/ndjson',
+            'content-type': 'application/x-ndjson',
             'sec-fetch-site': 'same-origin',
             'cookie': cookieOf(ADA),
           },
@@ -1397,7 +1397,7 @@ describe.skipIf(!testDb || !env.auth)(
         {
           method: 'POST',
           headers: {
-            'content-type': 'application/ndjson',
+            'content-type': 'application/x-ndjson',
             'sec-fetch-site': 'same-origin',
             'cookie': cookieOf(ADA),
           },
