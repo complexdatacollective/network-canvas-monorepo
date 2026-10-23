@@ -74,8 +74,11 @@ export function useScaleLabelLayout({
   const minRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // Read by `measure`; updated before the layout effects below measure.
   const labelsRef = useRef(labels);
-  labelsRef.current = labels;
+  useLayoutEffect(() => {
+    labelsRef.current = labels;
+  });
 
   const measure = useCallback(() => {
     if (!rootRef.current) return;

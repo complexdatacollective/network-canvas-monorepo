@@ -22,6 +22,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -203,8 +204,10 @@ function VersionEditor({
   const writtenRef = useRef<readonly JSONContent[] | null>(null);
   const onChangeRef = useRef(onChange);
   const onEscapeRef = useRef(onEscape);
-  onChangeRef.current = onChange;
-  onEscapeRef.current = onEscape;
+  useLayoutEffect(() => {
+    onChangeRef.current = onChange;
+    onEscapeRef.current = onEscape;
+  });
 
   const extensions = nested?.extensions;
   const schema = useMemo(
@@ -317,8 +320,11 @@ function VersionsView({
     () => versionsAttributesOf(node.attrs),
     [node.attrs],
   );
+  // Read by a version's change, which can arrive before the next render.
   const latest = useRef(attributes);
-  latest.current = attributes;
+  useLayoutEffect(() => {
+    latest.current = attributes;
+  });
   const nested = useContext(NestedEditingContext);
   const active = nested?.active ?? true;
   const versionsId = useId();
@@ -331,14 +337,21 @@ function VersionsView({
   // the line, which can move the line's selection off it.
   const [folded, setFolded] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
-  useEffect(() => {
+  // Followed as they change, while rendering. A field that is not active as
+  // the element mounts folds it at once.
+  const [wasSelected, setWasSelected] = useState(selected);
+  const [wasActive, setWasActive] = useState(true);
+  if (selected !== wasSelected) {
+    setWasSelected(selected);
     if (!selected) setFolded(false);
-  }, [selected]);
-  useEffect(() => {
-    if (active) return;
-    setFolded(true);
-    setFocusWithin(false);
-  }, [active]);
+  }
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (!active) {
+      setFolded(true);
+      setFocusWithin(false);
+    }
+  }
   const expanded = (selected || focusWithin) && !folded;
 
   useEffect(() => {
