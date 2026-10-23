@@ -120,7 +120,6 @@ jobs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
       studio: ${{ steps.flags.outputs.studio }}
-      studio_upgrade: ${{ steps.flags.outputs.studio_upgrade }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -134,9 +133,6 @@ jobs:
           # detection (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
           EVENT_ACTION: ${{ github.event.action }}
-          # The Studio release PR always runs the upgrade lane (#1901). Only a
-          # PR into main is that release PR.
-          HEAD_REF: ${{ github.base_ref == 'main' && github.head_ref || '' }}
         run: |
           # Determine the comparison base — the commit range whose diff decides
           # which conditional jobs run. We DON'T use turbo-ignore because it
@@ -232,12 +228,12 @@ jobs:
           # earlier run's verdict (carry-forward-statuses republishes check
           # runs; it does not feed `quality`), so a push-to-push flag would let
           # an unrelated push after a failing run skip the job and pass the
-          # gate. The flags are `studio` (studio-stack) and `studio_upgrade`
-          # (studio-upgrade); ci-workflow.test.mjs fails if `quality` comes to
-          # require a job on any other detect output. The E2E suites and the
-          # `--affected` test jobs are scoped from the PR base the same way.
+          # gate. The flag is `studio` (studio-stack); ci-workflow.test.mjs
+          # fails if `quality` comes to require a job on any other detect
+          # output. The E2E suites and the `--affected` test jobs are scoped
+          # from the PR base the same way.
           #
-          # This workflow defines both jobs, so it is an input of both, diffed
+          # This workflow defines the job, so it is one of its inputs, diffed
           # over the same range: WORKFLOW_CHANGED above is push to push and
           # cannot stand in for it.
           gate_base="$PREV"
@@ -284,29 +280,6 @@ jobs:
             echo "Studio stack inputs changed in ${gate_base:-(no base)}..$CURR."
           fi
 
-          # The Studio upgrade lane, for the `studio-upgrade` job (#1901): an
-          # upgrade from the candidate to a code-only release and to a release
-          # carrying a migration, run through the self-host guide's own
-          # commands. The lane tests the api image and the generator that
-          # builds the next release's migration, so everything that selects
-          # the stack selects it: the studio-api package and its dependency
-          # closure, the stack's own files and this workflow. A hand-kept list
-          # of "upgrade-path" files inside the package missed the keyring
-          # check, the fingerprint sync and the schema applier in turn. On top
-          # of that, the lane's own inputs that no package graph sees: the
-          # lane itself, the upgrade script it runs, and the maintenance page
-          # its observer reads, served by studio-web. Every Studio release PR
-          # selects it too.
-          studio_upgrade=false
-          if [[ "$studio" == "true" || "$HEAD_REF" == "changeset-release/studio" ]] \
-            || ! git diff --quiet "$gate_base" "$CURR" -- \
-              apps/studio/release-test \
-              apps/studio/scripts \
-              apps/studio/web/public/maintenance.html; then
-            studio_upgrade=true
-            echo "Studio upgrade inputs changed in ${gate_base:-(no base)}..$CURR."
-          fi
-
           # Either public site can contain inbound links to routes owned by the
           # other. Crawl both paired previews whenever either site changes so a
           # removed route cannot escape the link check on the unchanged peer.
@@ -318,7 +291,6 @@ jobs:
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
           echo "studio=$studio" >> "$GITHUB_OUTPUT"
-          echo "studio_upgrade=$studio_upgrade" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether E2E must run for this ref. Feature PRs select the
   # suites whose subject package or workspace dependency closure changed.
@@ -912,6 +884,14 @@ jobs:
         id: studio-schema-docs
         continue-on-error: true
         run: pnpm --filter @codaco/studio-api check:schema-docs
+      # A Studio release is named by studio-api's version, so a release PR
+      # that moves another Studio package without it would merge and never
+      # be published (apps-release-studio). Trivially true on a feature PR,
+      # which moves no version.
+      - name: Check every moved Studio package moves studio-api too
+        id: studio-release
+        continue-on-error: true
+        run: node scripts/release/studio-release.mjs check
       - name: Check changed public package versions are unoccupied on npm
         id: npm_versions
         continue-on-error: true
@@ -977,6 +957,7 @@ jobs:
           HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
           DIALOG_EXITS_OUTCOME: ${{ steps.dialog-exits.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
+          STUDIO_RELEASE_OUTCOME: ${{ steps.studio-release.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
@@ -992,6 +973,7 @@ jobs:
             "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
             "dialog-exits=$DIALOG_EXITS_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
+            "studio-release=$STUDIO_RELEASE_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
@@ -1366,18 +1348,15 @@ jobs:
   # lane fails if the instance served anything between `maintenance on` and
   # `maintenance off`, or if the data after differs from the data before.
   #
-  # Selected by detect's `studio_upgrade` flag, judged on the whole pull
-  # request: every Studio release PR, any change the studio flag sees (what
-  # the api image is built from), and the lane's own inputs outside the
-  # package graph. Never on `merge_group` or `push`, like `studio-stack`.
+  # Runs only on main, once merging the Studio release PR has authorised a
+  # release: exactly when `apps-release-studio` would publish
+  # (apps-release-detect's `studio_released`). Never on a pull request.
+  # `apps-release-studio` needs it, so a release whose upgrade fails publishes
+  # nothing. Re-running the failed run retries it; once a first release is
+  # tagged, so does any later push to main while the version is untagged.
   studio-upgrade:
-    needs: detect
-    if: >-
-      github.event_name != 'merge_group'
-      && github.event_name != 'push'
-      && !(github.event_name == 'workflow_dispatch'
-      && inputs.interview_e2e_benchmark == true)
-      && needs.detect.outputs.studio_upgrade == 'true'
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.studio_released == 'true'
     runs-on: ubuntu-latest
     # Two image builds (the candidate pair, then the migration-bearing api),
     # two upgrade cycles of about a minute each, and run B's three runs of
@@ -1403,12 +1382,6 @@ jobs:
       # workspace's own dependencies. Not part of a self-hoster's path: the
       # upgrade itself runs only Docker commands.
       - uses: ./.github/actions/turbo-ci-setup
-      # A Studio release is named by studio-api's version, so a release PR
-      # that moves another Studio package without it would merge and never
-      # be published (apps-release-studio). Trivially true on a feature PR,
-      # which moves no version.
-      - name: Check every moved Studio package moves studio-api too
-        run: node scripts/release/studio-release.mjs check
       # The same cache-capable builder and cache exposure as `studio-stack`;
       # see the comments there. Created but not made current (no `--use`):
       # BUILDX_BUILDER selects it for the image builds, and build.sh's
@@ -1935,7 +1908,6 @@ jobs:
       - test-studio-server
       - studio-stack
       - studio-egress
-      - studio-upgrade
       - test-storybook
       - detect
       - e2e-policy
@@ -1960,8 +1932,6 @@ jobs:
           STUDIO_STACK_REQUIRED: ${{ needs.detect.outputs.studio }}
           STUDIO_STACK_RESULT: ${{ needs.studio-stack.result }}
           STUDIO_EGRESS_RESULT: ${{ needs.studio-egress.result }}
-          STUDIO_UPGRADE_REQUIRED: ${{ needs.detect.outputs.studio_upgrade }}
-          STUDIO_UPGRADE_RESULT: ${{ needs.studio-upgrade.result }}
           E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
           E2E_INTERVIEW_REQUIRED: ${{ needs.e2e-policy.outputs.interview }}
           E2E_INTERVIEWER_REQUIRED: ${{ needs.e2e-policy.outputs.interviewer }}
@@ -2039,17 +2009,6 @@ jobs:
             echo "studio-egress passed"
           else
             echo "studio-egress is not required for this event (result: $STUDIO_EGRESS_RESULT)"
-          fi
-
-          # The Studio upgrade lane (#1901), keyed on its flag the same way.
-          if [[ "$STUDIO_UPGRADE_REQUIRED" == "true" ]]; then
-            if [[ "$STUDIO_UPGRADE_RESULT" != "success" ]]; then
-              echo "::error::quality gate failed — studio-upgrade concluded '$STUDIO_UPGRADE_RESULT'"
-              exit 1
-            fi
-            echo "studio-upgrade passed"
-          else
-            echo "studio-upgrade is not required for this event (result: $STUDIO_UPGRADE_RESULT)"
           fi
 
           if [[ "$E2E_POLICY_RESULT" != "success" ]]; then
@@ -4220,7 +4179,8 @@ jobs:
   # document comes from scripts/release/studio-release.mjs, whose tests run on
   # pull requests; the build itself is the one `studio-stack` runs on them.
   apps-release-studio:
-    needs: apps-release-detect
+    # The upgrade lane passes before anything is published.
+    needs: [apps-release-detect, studio-upgrade]
     if: needs.apps-release-detect.outputs.studio_released == 'true'
     runs-on: ubuntu-latest
     # Both targets for two platforms, the arm64 half under QEMU.
@@ -5041,8 +5001,8 @@ jobs:
   # Nothing here feeds `quality`, which is the only required check. A job the
   # gate requires on a detect flag therefore cannot rely on this job to keep
   # its verdict: its flag is judged on the cumulative PR diff instead, so the
-  # job re-runs on every push of a pull request that selects it (studio-stack,
-  # studio-upgrade).
+  # job re-runs on every push of a pull request that selects it
+  # (studio-stack).
   carry-forward-statuses:
     needs:
       - detect

@@ -88,7 +88,7 @@ shipped_in 839aefd11 '@codaco/fresco-ui'
   build the changelog its first release will carry. Write them regardless.
   A Studio release is named by `@codaco/studio-api`'s version, so a change
   that releases any Studio package must also name `@codaco/studio-api`
-  somewhere in the release, or the release PR's `studio-upgrade` check fails.
+  somewhere in the release, or the release PR's `quality-support` check fails.
 
 Two things about the shape of that function, both learned the hard way:
 

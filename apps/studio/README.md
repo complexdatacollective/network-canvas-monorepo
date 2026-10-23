@@ -1129,8 +1129,10 @@ documents. It deploys nothing.
 A release is named by `@codaco/studio-api`'s version, the one a running
 instance reports and the update check compares, whatever the other Studio
 packages' versions are. A release PR that moves another Studio package without
-moving `@codaco/studio-api` fails its `studio-upgrade` check, because merging it
-would publish nothing.
+moving `@codaco/studio-api` fails its `quality-support` check, because merging
+it would publish nothing. Once the release PR merges, the upgrade lane
+(`studio-upgrade`, see `release-test/README.md`) runs on `main`, and nothing is
+published unless it passes.
 
 Each release publishes:
 
