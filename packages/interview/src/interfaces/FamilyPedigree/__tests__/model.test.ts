@@ -14,7 +14,9 @@ import {
   possibleCarriers,
   primaryParentsOf,
   readFamily,
-  sexesRuledOut,
+  sexAnswerGivesWay,
+  sexConflicts,
+  sexesRefused,
   siblingsOf,
   twinCandidatesOf,
 } from '../model';
@@ -1665,29 +1667,83 @@ describe('otherParentChoices', () => {
   });
 });
 
-describe('sexesRuledOut', () => {
-  test('names the other genetic parent whose sex at birth rules a sex out', () => {
-    const family = readFamily(
-      [
-        person('ego', { isEgo: true }),
-        person('robin', { sex: ['intersex'] }),
-        person('donor', { sex: ['male'] }),
-      ],
-      [
-        link('robin', 'ego', 'biological', { carrier: true }),
-        link('donor', 'ego', 'donor'),
-      ],
-      config,
-    );
-    expect(sexesRuledOut(family, 'robin')).toEqual([
+describe('sexConflicts', () => {
+  const family = readFamily(
+    [
+      person('ego', { isEgo: true }),
+      person('robin', { sex: ['intersex'] }),
+      person('donor', { sex: ['male'] }),
+    ],
+    [
+      link('robin', 'ego', 'biological', { carrier: true }),
+      link('donor', 'ego', 'donor'),
+    ],
+    config,
+  );
+
+  test('names the other genetic parent with that sex, and the pregnancy it rules out', () => {
+    expect(sexConflicts(family, 'robin', 'male')).toEqual([
       {
         sex: 'male',
         rule: 'sameSexGeneticParent',
         childId: 'ego',
         coParentId: 'donor',
       },
-      { sex: 'male', rule: 'carried', childId: 'ego' },
+      {
+        sex: 'male',
+        rule: 'carried',
+        childId: 'ego',
+        linkId: 'robin-ego-biological',
+      },
     ]);
+    expect(sexConflicts(family, 'robin', 'female')).toEqual([]);
+  });
+
+  // Josh, 22 Oct 2026: a sex at birth saved by mistake must be correctable
+  // from the person's own panel, so only a surrogate is refused one.
+  test('refuses a sex at birth only to a surrogate', () => {
+    expect(sexesRefused(family, 'robin')).toEqual([]);
+    const surrogacy = readFamily(
+      [person('ego', { isEgo: true }), person('gail', { sex: ['female'] })],
+      [link('gail', 'ego', 'surrogate', { carrier: true })],
+      config,
+    );
+    expect(sexesRefused(surrogacy, 'gail')).toEqual(['male']);
+    expect(sexConflicts(surrogacy, 'gail', 'male')).toEqual([
+      { sex: 'male', rule: 'surrogate', childId: 'ego' },
+    ]);
+  });
+});
+
+describe('sexAnswerGivesWay', () => {
+  test('ends the carrying and clears the other genetic parent, once each', () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('sis', { name: 'Bea' }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('dad', 'ego', 'biological'),
+        link('mum', 'sis', 'biological', { carrier: true }),
+        link('dad', 'sis', 'biological'),
+      ],
+      config,
+    );
+    expect(sexAnswerGivesWay(family, 'mum', 'male')).toEqual({
+      uncarriedLinkIds: ['mum-ego-biological', 'mum-sis-biological'],
+      clearedSexIds: ['dad'],
+    });
+    expect(sexAnswerGivesWay(family, 'dad', 'female')).toEqual({
+      uncarriedLinkIds: [],
+      clearedSexIds: ['mum'],
+    });
+    expect(sexAnswerGivesWay(family, 'mum', 'intersex')).toEqual({
+      uncarriedLinkIds: [],
+      clearedSexIds: [],
+    });
   });
 });
 

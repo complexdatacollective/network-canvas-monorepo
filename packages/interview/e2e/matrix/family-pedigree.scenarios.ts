@@ -558,6 +558,12 @@ const OWN_WORDS = {
   siblingTwinLabel: message(
     '{isYou, select, true {Is this your twin - matrix check} other {Is this a twin of {name} - matrix check}}',
   ),
+  sexChangeClearsCoParentSex: message(
+    '{who, select, personIsYou {Saving clears {coParent}, also {sex}, for {children} - matrix check} childIsYou {Saving clears {coParent}, your other parent, also {sex} - matrix check} coParentIsYou {Saving clears yours, also {sex}, for {children} - matrix check} other {Saving clears {coParent}, also {sex}, for {children} - matrix check}}',
+  ),
+  sexChangeEndsCarrying: message(
+    '{who, select, personIsYou {Saving as {sex} ends your carrying {children} - matrix check} childIsYou {Saving as {sex} ends carrying you - matrix check} other {Saving as {sex} ends carrying {children} - matrix check}}',
+  ),
   siblingTwinNo: 'Not twins - matrix check',
   siblingTwinUnknown: 'Twins of unknown kind - matrix check',
   standInPlaceTaken: message(
@@ -605,9 +611,6 @@ const OWN_WORDS = {
   ),
   unavailableTwinCarrierNew: message(
     '{who, select, childIsYou {{carrier} carried you but is not chosen, so no twin - matrix check} carrierIsYou {You carried {name} but are not chosen, so no twin - matrix check} other {{carrier} carried {name} but is not chosen, so no twin - matrix check}}',
-  ),
-  unavailableSameSexAsCoParent: message(
-    '{who, select, personIsYou {You and {coParent} parent {children}, both {sex} - matrix check} childIsYou {This person and {coParent} parent you, both {sex} - matrix check} coParentIsYou {You and this person parent {children}, both {sex} - matrix check} other {This person and {coParent} parent {children}, both {sex} - matrix check}}',
   ),
   unavailableSameSexGeneticParent: message(
     '{who, select, coParentIsYou {You and {child} share a sex {sex}, so not {answers} - matrix check} childIsYou {{coParent} shares a sex {sex} with another parent of yours, so not {answers} - matrix check} other {{coParent} shares a sex {sex} for {child}, so not {answers} - matrix check}}',
@@ -2028,6 +2031,70 @@ function sexChangeWithdrawsNomination(): ScenarioDefinition {
 }
 
 /**
+ * A parent's sex at birth saved by mistake can be corrected from the
+ * parents' own panels: the newest answer wins. Julie, who carried Ari, and
+ * Rob were saved the wrong way round. Rob can still be made female, which
+ * clears Julie's sex at birth; Julie can then be made male, which removes
+ * the record that she carried Ari, leaving it unanswered rather than
+ * recording that she did not.
+ */
+function sexChangeGivesWay(): ScenarioDefinition {
+  const { synth, fp, person, relate, parents } = scaffold();
+  person('ego', {
+    isEgo: true,
+    name: 'Ari',
+    sex: 'intersex',
+    gender: 'nonBinary',
+  });
+  person('mum', { name: 'Julie', sex: 'female', gender: 'woman' });
+  person('dad', { name: 'Rob', sex: 'male', gender: 'man' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
+
+  return {
+    id: 'sex-change-gives-way',
+    covers: [],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      const form = panel(page);
+      const sexAnswer = (name: string) =>
+        form
+          .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
+          .getByRole('radio', { name, exact: true });
+
+      await member(page, 'Rob').click();
+      await expect(sexAnswer('Female')).toBeEnabled();
+      await sexAnswer('Female').check();
+      await expect(
+        form.getByText(/sex at birth of “Julie” will be cleared/),
+      ).toBeVisible();
+      await submitPanel(page, 'Save');
+
+      await member(page, 'Julie').click();
+      await expect(sexAnswer('Female')).not.toBeChecked();
+      await expect(sexAnswer('Male')).toBeEnabled();
+      await sexAnswer('Male').check();
+      await expect(
+        form.getByText(/no longer be recorded as having carried you/),
+      ).toBeVisible();
+      await submitPanel(page, 'Save');
+
+      const network = await networkOf(ctx);
+      const julie = nodeNamed(network, fp.name, 'Julie');
+      const rob = nodeNamed(network, fp.name, 'Rob');
+      const ari = nodeNamed(network, fp.name, 'Ari');
+      expect(julie?.[ATTR][fp.sexAssignedAtBirth]).toEqual(['male']);
+      expect(rob?.[ATTR][fp.sexAssignedAtBirth]).toEqual(['female']);
+      const [julieToAri] = linksBetween(network, julie?.[PK], ari?.[PK]);
+      expect(julieToAri?.[ATTR][fp.kind]).toEqual(['biological']);
+      expect(julieToAri?.[ATTR][fp.gestationalCarrier]).toBeUndefined();
+    },
+  };
+}
+
+/**
  * Connecting and disconnecting people already shown. Tom is recorded only as
  * Rachel's partner, so that partnership cannot be removed: he would leave the
  * family tree. The connect tool makes him the participant's adoptive parent,
@@ -3418,8 +3485,9 @@ function wordingAddChild(): ScenarioDefinition {
 /**
  * Editing someone already in the family, in the stage's own words: how each
  * of their parents is related to them and who carried them, whether a
- * partnership is current, their twins and whether each pair is identical, and
- * the reasons a sex at birth, or a kind of parent, is unavailable.
+ * partnership is current, their twins and whether each pair is identical, the
+ * reasons a sex at birth, or a kind of parent, is unavailable, and what a new
+ * sex at birth changes on saving.
  */
 function wordingEditPerson(): ScenarioDefinition {
   const words = [
@@ -3433,7 +3501,8 @@ function wordingEditPerson(): ScenarioDefinition {
     'zygosityIdentical',
     'unavailableIdenticalTwin',
     'unavailableCarried',
-    'unavailableSameSexAsCoParent',
+    'sexChangeClearsCoParentSex',
+    'sexChangeEndsCarrying',
     'unavailableGeneticParentsFull',
     'unavailableCarrierRecorded',
   ] as const;
@@ -3454,6 +3523,8 @@ function wordingEditPerson(): ScenarioDefinition {
   person('bea', { name: 'Bea', gender: 'woman', sex: 'female' });
   person('cal', { name: 'Cal', gender: 'man', sex: 'male' });
   person('dan', { name: 'Dan', gender: 'man', sex: 'male' });
+  person('eve', { name: 'Eve', gender: 'woman', sex: 'female' });
+  person('gia', { name: 'Gia', gender: 'woman', sex: 'female' });
   relate('mum', 'dad', 'partner');
   relate('mum', 'ego', 'biological', { carrier: true });
   relate('dad', 'ego', 'biological');
@@ -3463,6 +3534,8 @@ function wordingEditPerson(): ScenarioDefinition {
   relate('dad', 'bea', 'biological');
   relate('mum', 'cal', 'biological', { carrier: true });
   relate('dan', 'cal', 'biological');
+  relate('lee', 'eve', 'biological');
+  relate('gia', 'eve', 'surrogate', { carrier: true });
 
   return {
     id: 'wording-edit-person',
@@ -3566,48 +3639,48 @@ function wordingEditPerson(): ScenarioDefinition {
           name: /^Still with Rob - matrix check/,
         }),
       ).toBeVisible();
-      // Julie carried Ari, Bea and Cal, so she cannot be recorded as male at
-      // birth; nor can she, as a genetic parent beside Rob (of Ari and Bea)
-      // and Dan (of Cal), who are. The answer is described by each reason,
-      // in the stage's own words. A reason that is about Ari is said once,
-      // about Ari, and not again for Bea and Cal.
+      // Julie carried Ari, Bea and Cal, and is a genetic parent beside Rob
+      // (of Ari and Bea) and Dan (of Cal), who are male at birth. She may
+      // still be recorded as male: the newest answer wins, and the field says
+      // what saving it changes, in the stage's own words. What is about Ari
+      // is said once, about Ari, and not again for Bea and Cal.
+      const sexField = form.getByRole('radiogroup', {
+        name: /^Sex assigned at birth/,
+      });
       const sexAnswer = (name: string) =>
-        form
-          .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
-          .getByRole('radio', { name, exact: true });
-      await expect(sexAnswer('Male')).toBeDisabled();
-      for (const reason of [
-        /Carried you so not Male - matrix check/,
-        /This person and Rob parent you, both Male - matrix check/,
-        /This person and Dan parent Cal, both Male - matrix check/,
+        sexField.getByRole('radio', { name, exact: true });
+      await expect(sexAnswer('Male')).toBeEnabled();
+      await expect(form.getByText(/Saving /)).toHaveCount(0);
+      await sexAnswer('Male').check();
+      for (const change of [
+        /Saving as Male ends carrying you - matrix check/,
+        /Saving clears Rob, your other parent, also Male - matrix check/,
+        /Saving clears Dan, also Male, for Cal - matrix check/,
       ]) {
-        await expect(sexAnswer('Male')).toHaveAccessibleDescription(reason);
+        await expect(form.getByText(change)).toBeVisible();
       }
-      for (const repeated of [
-        /Carried (Bea|Cal)/,
-        /This person and Rob parent Bea/,
-      ]) {
-        await expect(sexAnswer('Male')).not.toHaveAccessibleDescription(
-          repeated,
-        );
-      }
-      await expect(sexAnswer('Male')).not.toHaveAccessibleDescription(
-        /is unavailable because/,
-      );
+      await expect(form.getByText(/ends carrying (Bea|Cal)/)).toHaveCount(0);
+      await expect(form.getByText(/clears Rob, also Male/)).toHaveCount(0);
+      await expect(form.getByText(/is unavailable because/)).toHaveCount(0);
       await cancel();
 
       await member(page, 'Rob').click();
-      await expect(sexAnswer('Female')).toBeDisabled();
-      for (const reason of [
-        /This person and Julie parent you, both Female - matrix check/,
-      ]) {
-        await expect(sexAnswer('Female')).toHaveAccessibleDescription(reason);
-      }
-      await expect(sexAnswer('Female')).not.toHaveAccessibleDescription(
-        /This person and Julie parent Bea/,
-      );
-      await expect(sexAnswer('Female')).not.toHaveAccessibleDescription(
-        /is unavailable because/,
+      await expect(sexAnswer('Female')).toBeEnabled();
+      await sexAnswer('Female').check();
+      await expect(
+        form.getByText(
+          /Saving clears Julie, your other parent, also Female - matrix check/,
+        ),
+      ).toBeVisible();
+      await expect(form.getByText(/clears Julie, also Female/)).toHaveCount(0);
+      await cancel();
+
+      // Gia, a surrogate, carried Eve without being her genetic parent, so
+      // cannot be recorded as male at birth.
+      await member(page, 'Gia').click();
+      await expect(sexAnswer('Male')).toBeDisabled();
+      await expect(sexAnswer('Male')).toHaveAccessibleDescription(
+        /Carried Eve so not Male - matrix check/,
       );
       await cancel();
 
@@ -4358,6 +4431,7 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     dynamicValuesWordedForParticipant(),
     nominationPrompts(),
     sexChangeWithdrawsNomination(),
+    sexChangeGivesWay(),
     connectAndDisconnect(),
     relationshipKindsDrawn(),
     encryptedNames(),

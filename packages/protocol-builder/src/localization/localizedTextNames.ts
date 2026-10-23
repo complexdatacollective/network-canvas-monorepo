@@ -1155,10 +1155,16 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingUnavailableCarried)],
     ),
     rule(
-      'wording.unavailableSameSexAsCoParent',
+      'wording.sexChangeEndsCarrying',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingUnavailableSameSexAsCoParent)],
+      [2, words(familyPedigreeMessages.wordingSexChangeEndsCarrying)],
+    ),
+    rule(
+      'wording.sexChangeClearsCoParentSex',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSexChangeClearsCoParentSex)],
     ),
   ],
   Geospatial: [
