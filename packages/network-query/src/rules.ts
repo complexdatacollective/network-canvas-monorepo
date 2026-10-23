@@ -72,6 +72,8 @@ const singleNodeRule = (options: FilterRule['options']) => (node: NcNode) => {
   );
 };
 
+type SingleNodeRule = typeof singleNodeRule;
+
 // Reduce edges to any that match the rule
 // Filter nodes by the resulting edges
 const edgeRule =
@@ -114,6 +116,8 @@ const edgeRule =
       edges: filteredEdges,
     };
   };
+
+type EdgeRule = typeof edgeRule;
 
 /**
  * Creates an alter rule, which can be called with `rule(node)`
@@ -183,6 +187,8 @@ const nodeRule =
     };
   };
 
+type NodeRule = typeof nodeRule;
+
 /**
  * Creates an ego rule, which can be called with `rule(ego)`
  *
@@ -240,16 +246,27 @@ type SingleRuleRunner =
 // Backward-compat alias used by query.ts
 export type RuleFunctionWithMetadata = FilterRuleRunner | SingleRuleRunner;
 
-// Calls the rule factory and attaches `.type` and `.options` to the runner it
-// returns. Generic over the factory so each call keeps its own runner type.
-const createRule = <
-  T extends FilterRule['type'],
-  R extends (...args: never[]) => unknown,
->(
-  type: T,
+type RuleFunction =
+  | EgoRule
+  | NodeRule
+  | EdgeRule
+  | SingleNodeRule
+  | SingleEdgeRule;
+
+const createRule = (
+  type: FilterRule['type'],
   options: FilterRule['options'],
-  f: (options: FilterRule['options']) => R,
-) => Object.assign(f(options), { type, options });
+  f: RuleFunction,
+): RuleFunctionWithMetadata => {
+  // Mutation-based approach: f(options) returns a runner function, then we
+  // attach .type and .options. This requires an assertion because TypeScript
+  // cannot track property additions to function objects.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `.type` and `.options` are attached on the next two lines
+  const rule = f(options) as unknown as RuleFunctionWithMetadata;
+  rule.type = type;
+  rule.options = options;
+  return rule;
+};
 
 /**
  * Creates a configured rule function based on the ruleConfig
@@ -268,13 +285,18 @@ export const getRuleFunction = ({
   type,
   options,
 }: FilterRule): FilterRuleRunner => {
+  // The node, edge and ego factories all return a filter runner, but
+  // `createRule` returns the union with the single-entity runners.
   switch (type) {
     case 'node':
-      return createRule('node', options, nodeRule);
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- nodeRule returns a filter runner
+      return createRule('node', options, nodeRule) as FilterRuleRunner;
     case 'edge':
-      return createRule('edge', options, edgeRule);
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- edgeRule returns a filter runner
+      return createRule('edge', options, edgeRule) as FilterRuleRunner;
     case 'ego':
-      return createRule('ego', options, egoRule);
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- egoRule returns a filter runner
+      return createRule('ego', options, egoRule) as FilterRuleRunner;
   }
 };
 
