@@ -20,3 +20,5 @@ when it is turned on.
 - The Categorical Bin prompt editor shows an error once a prompt would draw
   more than 10 bins, and refuses to save it until values are removed. This
   replaces the earlier warning at eight bins.
+- When a list of attribute values has an error, the red outline around each
+  value now follows its rounded corners instead of being cut off at them.

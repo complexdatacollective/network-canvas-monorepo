@@ -6,6 +6,7 @@ import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
 
 import { minimumOptionsMessage } from '../../codebook/editing.ts';
@@ -250,10 +251,9 @@ export default function Options({
     () => ({
       arrayName: name,
       rows: value,
-      showArrayError: ariaInvalid,
       exportColumns,
     }),
-    [ariaInvalid, exportColumns, name, value],
+    [exportColumns, name, value],
   );
 
   const itemTemplate = useCallback(() => ({}), []);
@@ -270,7 +270,12 @@ export default function Options({
         aria-invalid={ariaInvalid}
         itemComponent={Option}
         itemTemplate={itemTemplate}
-        itemClasses="p-0! shadow-none"
+        // The list-level error border goes on the row's Surface, which owns
+        // the rounding: drawn on a child, the Surface's clip cuts its corners.
+        itemClasses={cx(
+          'border-2 border-transparent p-0! shadow-none transition-colors duration-300 ease-in-out',
+          ariaInvalid && 'border-destructive',
+        )}
         addButtonLabel={addButtonLabel}
         itemLabel={optionNoun}
         emptyStateMessage={intl.formatMessage(messages.emptyState)}
