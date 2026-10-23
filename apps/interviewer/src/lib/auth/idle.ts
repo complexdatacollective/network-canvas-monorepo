@@ -1,4 +1,4 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useEffectEvent, useSyncExternalStore } from 'react';
 
 const DEFAULT_ACTIVITY_EVENTS: Array<keyof WindowEventMap> = [
   'mousedown',
@@ -53,8 +53,10 @@ export function useIdleTimer({
   enabled,
   onIdle,
 }: IdleTimerOptions): void {
-  const onIdleRef = useRef(onIdle);
-  onIdleRef.current = onIdle;
+  // The latest onIdle, without re-arming the timer when its identity changes.
+  const handleIdle = useEffectEvent(() => {
+    onIdle();
+  });
   const held = useSyncExternalStore(
     subscribeIdleLockHolds,
     isIdleLockHeld,
@@ -68,7 +70,7 @@ export function useIdleTimer({
     let lastActivityAt = Date.now();
 
     const fireIdle = () => {
-      onIdleRef.current();
+      handleIdle();
     };
 
     const resetIdle = () => {

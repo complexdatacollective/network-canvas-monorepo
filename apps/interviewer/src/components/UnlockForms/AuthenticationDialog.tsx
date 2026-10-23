@@ -154,8 +154,32 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
 
-  openRef.current = open;
-  onAuthenticatedRef.current = onAuthenticated;
+  // Read after an authenticator resolves, so they must be the committed
+  // values; updated before the layout effects below run.
+  useLayoutEffect(() => {
+    openRef.current = open;
+    onAuthenticatedRef.current = onAuthenticated;
+  });
+
+  // Each open cycle starts with the reset pane closed, and with the recovery
+  // pane open only where a passkey cannot be reached from this window; a
+  // close retires both panes and the pending biometric flag the platform
+  // prompt owns. The panes depend on the recovery options, so a change to
+  // them while open starts the cycle afresh. Placed while rendering (null
+  // before the first render), so the panes change in the same commit as the
+  // open state.
+  const paneCycle = `${open}|${allowRecovery}|${allowDestructiveRecovery}|${auth.mode}|${limited}`;
+  const [placedPaneCycle, setPlacedPaneCycle] = useState<string | null>(null);
+  if (paneCycle !== placedPaneCycle) {
+    setPlacedPaneCycle(paneCycle);
+    setResetOpen(false);
+    if (open) {
+      setRecoveryOpen(allowRecovery && auth.mode === 'biometric' && limited);
+    } else {
+      setBiometricPending(false);
+      setRecoveryOpen(false);
+    }
+  }
 
   const isUnlock = auth.kind === 'locked';
   const authenticateWithPin = isUnlock
@@ -241,24 +265,12 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
     invalidatePendingAuthentication();
   }, [invalidatePendingAuthentication, open]);
 
-  // The open cycle is this dialog's synchronisation boundary with WebAuthn: it
-  // has to retire the in-flight biometric attempt (`autoAttempted`, and the
-  // pending flag the platform prompt owns) in the same commit that resets the
-  // recovery and reset panes, and after the layout effect above has invalidated
-  // any attempt still awaiting the authenticator. None of that is derivable
-  // during render, so the effect is the right tool here.
+  // A close retires the automatic biometric attempt, so the next open cycle
+  // makes its own, after the layout effect above has invalidated any attempt
+  // still awaiting the authenticator.
   useEffect(() => {
-    if (!open) {
-      autoAttempted.current = false;
-      setBiometricPending(false);
-      setRecoveryOpen(false);
-      setResetOpen(false);
-      return;
-    }
-
-    setResetOpen(false);
-    setRecoveryOpen(allowRecovery && auth.mode === 'biometric' && limited);
-  }, [allowDestructiveRecovery, allowRecovery, auth.mode, limited, open]);
+    if (!open) autoAttempted.current = false;
+  }, [open]);
 
   useEffect(() => {
     if (
