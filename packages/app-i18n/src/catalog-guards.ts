@@ -40,10 +40,28 @@ export type ExtractedCatalog = Readonly<Record<string, ExtractedMessage>>;
 const lookupTable = <T>(
   record: Readonly<Record<string, T>>,
 ): Readonly<Record<string, T>> => {
-  const table = Object.create(null) as Record<string, T>;
+  const table: Record<string, T> = Object.create(null);
   for (const [id, value] of Object.entries(record)) table[id] = value;
   return table;
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** What the extractor writes back: a map of message id to descriptor object. */
+const isExtractorOutput = (
+  value: unknown,
+): value is Record<string, Record<string, unknown>> =>
+  isRecord(value) && Object.values(value).every(isRecord);
+
+const isExtractedCatalog = (value: unknown): value is ExtractedCatalog =>
+  isRecord(value) &&
+  Object.values(value).every(
+    (entry) =>
+      isRecord(entry) &&
+      typeof entry.defaultMessage === 'string' &&
+      typeof entry.description === 'string',
+  );
 
 const MESSAGE_ID_PATTERN = /^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)+$/;
 
@@ -167,15 +185,18 @@ export async function extractMessages(
           }
         },
       });
-      return [
-        file,
-        JSON.parse(raw) as Record<string, Record<string, unknown>>,
-      ] as const;
+      const extracted: unknown = JSON.parse(raw);
+      if (!isExtractorOutput(extracted)) {
+        throw new Error(
+          `extractMessages: the extractor did not return a map of message id to descriptor for ${file}`,
+        );
+      }
+      return [file, extracted] as const;
     }),
   );
 
   const declaredIn = new Map<string, string>();
-  const merged = Object.create(null) as Record<string, Record<string, unknown>>;
+  const merged: Record<string, Record<string, unknown>> = Object.create(null);
   for (const [file, extracted] of perFile) {
     for (const [id, entry] of Object.entries(extracted)) {
       const first = declaredIn.get(id);
@@ -189,7 +210,7 @@ export async function extractMessages(
     }
   }
 
-  const catalog = Object.create(null) as Record<string, ExtractedMessage>;
+  const catalog: Record<string, ExtractedMessage> = Object.create(null);
   for (const [id, entry] of Object.entries(merged).toSorted(([a], [b]) =>
     a < b ? -1 : 1,
   )) {
@@ -644,26 +665,33 @@ export type LocaleStamp = Readonly<{
  * rather than being quietly blessed.
  */
 export function stampTranslationSources(localesDir: string): LocaleStamp[] {
-  const english = lookupTable(
-    JSON.parse(
-      readFileSync(join(localesDir, 'en.json'), 'utf8'),
-    ) as ExtractedCatalog,
+  const englishPath = join(localesDir, 'en.json');
+  const extractedEnglish: unknown = JSON.parse(
+    readFileSync(englishPath, 'utf8'),
   );
+  if (!isExtractedCatalog(extractedEnglish)) {
+    throw new Error(
+      `${englishPath} is not a map of message id to defaultMessage and description`,
+    );
+  }
+  const english = lookupTable(extractedEnglish);
 
   const stamps: LocaleStamp[] = [];
   for (const fileName of readdirSync(localesDir).toSorted()) {
     const locale = runtimeCatalogLocale(fileName);
     if (locale === undefined) continue;
 
-    const catalog = lookupTable(
-      JSON.parse(readFileSync(join(localesDir, fileName), 'utf8')) as Record<
-        string,
-        string
-      >,
+    const catalogPath = join(localesDir, fileName);
+    const parsedCatalog: unknown = JSON.parse(
+      readFileSync(catalogPath, 'utf8'),
     );
+    if (!isSources(parsedCatalog)) {
+      throw new Error(`${catalogPath} is not a map of message id to string`);
+    }
+    const catalog = lookupTable(parsedCatalog);
     const previous = readTranslationSources(localesDir, locale);
 
-    const next = Object.create(null) as Record<string, string>;
+    const next: Record<string, string> = Object.create(null);
     const recorded: StampedTranslation[] = [];
     for (const id of Object.keys(catalog).toSorted()) {
       const current = english[id]?.defaultMessage;

@@ -24,6 +24,7 @@ export const RATIOS: Record<Ratio, RatioConfig> = {
   '1:1': { viewport: { width: 960, height: 960 }, widths: [320, 640, 960] },
 };
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RATIOS is a Record<Ratio, ...> literal, so its keys are exactly the Ratio members
 export const ALL_RATIOS = Object.keys(RATIOS) as Ratio[];
 
 export const DEVICE_SCALE_FACTOR = 2;

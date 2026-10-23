@@ -72,8 +72,6 @@ const singleNodeRule = (options: FilterRule['options']) => (node: NcNode) => {
   );
 };
 
-type SingleNodeRule = typeof singleNodeRule;
-
 // Reduce edges to any that match the rule
 // Filter nodes by the resulting edges
 const edgeRule =
@@ -116,8 +114,6 @@ const edgeRule =
       edges: filteredEdges,
     };
   };
-
-type EdgeRule = typeof edgeRule;
 
 /**
  * Creates an alter rule, which can be called with `rule(node)`
@@ -187,8 +183,6 @@ const nodeRule =
     };
   };
 
-type NodeRule = typeof nodeRule;
-
 /**
  * Creates an ego rule, which can be called with `rule(ego)`
  *
@@ -246,26 +240,16 @@ type SingleRuleRunner =
 // Backward-compat alias used by query.ts
 export type RuleFunctionWithMetadata = FilterRuleRunner | SingleRuleRunner;
 
-type RuleFunction =
-  | EgoRule
-  | NodeRule
-  | EdgeRule
-  | SingleNodeRule
-  | SingleEdgeRule;
-
-const createRule = (
-  type: FilterRule['type'],
+// Calls the rule factory and attaches `.type` and `.options` to the runner it
+// returns. Generic over the factory so each call keeps its own runner type.
+const createRule = <
+  T extends FilterRule['type'],
+  R extends (...args: never[]) => unknown,
+>(
+  type: T,
   options: FilterRule['options'],
-  f: RuleFunction,
-): RuleFunctionWithMetadata => {
-  // Mutation-based approach: f(options) returns a runner function, then we
-  // attach .type and .options. This requires an assertion because TypeScript
-  // cannot track property additions to function objects.
-  const rule = f(options) as unknown as RuleFunctionWithMetadata;
-  rule.type = type;
-  rule.options = options;
-  return rule;
-};
+  f: (options: FilterRule['options']) => R,
+) => Object.assign(f(options), { type, options });
 
 /**
  * Creates a configured rule function based on the ruleConfig
@@ -286,11 +270,11 @@ export const getRuleFunction = ({
 }: FilterRule): FilterRuleRunner => {
   switch (type) {
     case 'node':
-      return createRule('node', options, nodeRule) as FilterRuleRunner;
+      return createRule('node', options, nodeRule);
     case 'edge':
-      return createRule('edge', options, edgeRule) as FilterRuleRunner;
+      return createRule('edge', options, edgeRule);
     case 'ego':
-      return createRule('ego', options, egoRule) as FilterRuleRunner;
+      return createRule('ego', options, egoRule);
   }
 };
 

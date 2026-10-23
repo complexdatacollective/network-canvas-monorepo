@@ -30,6 +30,7 @@ function isEditableElement(element: Element | null): boolean {
     // counts as nothing being edited.
     try {
       return isEditableElement(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the tag name is IFRAME, and an `instanceof` check would fail for a frame from another realm
         (element as HTMLIFrameElement).contentDocument?.activeElement ?? null,
       );
     } catch {
@@ -38,7 +39,7 @@ function isEditableElement(element: Element | null): boolean {
   }
   return (
     EDITABLE_TAGS.has(element.tagName) ||
-    (element as HTMLElement).isContentEditable
+    ('isContentEditable' in element && element.isContentEditable === true)
   );
 }
 

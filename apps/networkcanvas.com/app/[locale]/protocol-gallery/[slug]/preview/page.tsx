@@ -58,6 +58,7 @@ async function loadCompletionLabels(): Promise<CompletionLabels> {
       ] as const;
     }),
   );
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- entries has one pair for every member of `locales`, which is the full Locale list, so every key is present
   return Object.fromEntries(entries) as CompletionLabels;
 }
 
