@@ -100,7 +100,7 @@ const failingChecks = (result: Readiness): string =>
   Object.entries(result.checks)
     .filter(([, verdict]) => verdict.startsWith('failed'))
     .map(([name]) => name)
-    .sort()
+    .toSorted()
     .join(',');
 
 const recordTransition = Effect.fnUntraced(function* (

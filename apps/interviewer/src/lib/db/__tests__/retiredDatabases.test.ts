@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import Dexie from 'dexie';
+import { Dexie } from 'dexie';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { deleteRetiredDatabases } from '../retiredDatabases';

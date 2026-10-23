@@ -10,7 +10,7 @@ import {
 import { useTranslations } from 'next-intl';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { SchemaVersionTooltip } from '~/components/get-started/SchemaVersionTooltip';

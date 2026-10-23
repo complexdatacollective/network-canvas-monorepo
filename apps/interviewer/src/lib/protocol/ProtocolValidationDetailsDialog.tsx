@@ -4,7 +4,7 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ScrollArea as ScrollableArea } from '@codaco/fresco-ui/ScrollArea';

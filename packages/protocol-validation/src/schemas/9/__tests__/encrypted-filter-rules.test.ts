@@ -7,7 +7,7 @@ import {
   TextOperators,
   TypeLevelOperators,
 } from '../filters/filter.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 
 const isPresence = (operator: FilterOperator) =>
   TypeLevelOperators.safeParse(operator).success;

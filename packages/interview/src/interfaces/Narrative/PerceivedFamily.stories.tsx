@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';

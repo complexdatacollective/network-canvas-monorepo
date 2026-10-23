@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   inapplicableStageSettings,

@@ -2,7 +2,7 @@ import { BookOpenText, Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useId } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import { PreviewProtocolButton } from '~/components/protocol-gallery/PreviewProtocolButton';
 import type { ProtocolDownload } from '~/lib/protocolGallery';

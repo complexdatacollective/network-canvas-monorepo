@@ -24,7 +24,7 @@ import ProtocolSchemaV8 from '../../8/schema.ts';
 import { interfaceTextFor } from '../interface-text.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import {
   asSchema8Protocol,

@@ -4,7 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { siteLocales } from '@codaco/shared-consts';
 
-import Button from '../Button';
+import { Button } from '../Button';
 import SiteNavigation from './SiteNavigation';
 import type { SiteNavigationLocale } from './SiteNavigation';
 

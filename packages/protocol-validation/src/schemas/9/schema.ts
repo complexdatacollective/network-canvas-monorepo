@@ -1675,6 +1675,7 @@ const ProtocolSchema = z
     }
   });
 
+export const ProtocolSchemaV9 = ProtocolSchema;
 export type ProtocolSchemaV9 = z.infer<typeof ProtocolSchema>;
 
 export default ProtocolSchema;

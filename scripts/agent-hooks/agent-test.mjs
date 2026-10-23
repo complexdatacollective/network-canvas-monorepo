@@ -86,7 +86,7 @@ function dependentsOf(names) {
   }
   return selected
     .filter((name) => !seeds.includes(name) && hasTests(name))
-    .sort((a, b) => a.localeCompare(b));
+    .toSorted((a, b) => a.localeCompare(b));
 }
 
 // Discovery failures exit non-zero: an unchecked change must never read as
@@ -119,7 +119,7 @@ const targets = [
     ...renamedConsumers,
     ...(includeDependents ? optional : []),
   ]),
-].sort((a, b) => a.localeCompare(b));
+].toSorted((a, b) => a.localeCompare(b));
 if (renamedConsumers.length > 0) {
   console.log(
     `agent:test: a workspace package was renamed or removed; running the tests of the packages that still declare it (${renamedConsumers.join(', ')}).`,

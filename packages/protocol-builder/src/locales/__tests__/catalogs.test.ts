@@ -193,7 +193,9 @@ const BRITISH_TO_AMERICAN: ReadonlyMap<string, string> = new Map(
  * identifiers that happen to appear in copy.
  */
 function respell(text: string, table: ReadonlyMap<string, string>): string {
-  const alternatives = [...table.keys()].sort((a, b) => b.length - a.length);
+  const alternatives = [...table.keys()].toSorted(
+    (a, b) => b.length - a.length,
+  );
   return text.replace(
     new RegExp(`\\b(?:${alternatives.join('|')})\\b`, 'gi'),
     (word) => {

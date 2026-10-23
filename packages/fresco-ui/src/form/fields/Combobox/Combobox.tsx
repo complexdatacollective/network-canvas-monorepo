@@ -12,7 +12,7 @@ import {
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button from '../../../Button';
+import { Button } from '../../../Button';
 import { useComboboxTriggerEscape } from '../../../hooks/useComboboxTriggerEscape';
 import Surface from '../../../layout/Surface';
 import { usePortalContainer } from '../../../PortalContainer';

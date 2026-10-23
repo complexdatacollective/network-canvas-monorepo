@@ -1,7 +1,7 @@
 import { Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';

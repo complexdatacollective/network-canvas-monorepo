@@ -9,7 +9,7 @@ import {
   useAppIntl,
 } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';

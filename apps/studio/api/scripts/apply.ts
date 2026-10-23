@@ -5,7 +5,7 @@ import {
 } from 'drizzle-kit/api-postgres';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Effect } from 'effect';
-import pg from 'pg';
+import { escapeIdentifier, type Pool, type PoolClient } from 'pg';
 
 import { OwnerDatabase } from '../src/db/client.ts';
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
@@ -76,7 +76,7 @@ export function schemaFingerprintOf(
 
 export class MigratedDatabaseRefused extends Error {}
 
-async function refuseMigratedDatabase(lock: pg.PoolClient): Promise<void> {
+async function refuseMigratedDatabase(lock: PoolClient): Promise<void> {
   const history = await lock.query<{ present: boolean }>(
     `select to_regclass('public.${HISTORY_TABLE}') is not null as present`,
   );
@@ -110,7 +110,7 @@ export type ApplyOutcome = {
  * pool deadlocks here until its connection timeout, not at the first
  * statement.
  */
-export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
+export async function applySchema(pool: Pool): Promise<ApplyOutcome> {
   const fingerprint = await computeSchemaFingerprint();
   if (fingerprint !== SCHEMA_FINGERPRINT) {
     throw new Error(
@@ -189,7 +189,7 @@ export type ResetOptions = SeedOptions & {
  * non-local safety check — this function always does the drop.
  */
 export async function resetSchemaAndSeed(
-  pool: pg.Pool,
+  pool: Pool,
   db: DbEnv,
   options: ResetOptions,
 ): Promise<void> {
@@ -213,13 +213,13 @@ export function seedDatabase(
   );
 }
 
-async function sweepScratch(pool: pg.Pool): Promise<void> {
+async function sweepScratch(pool: Pool): Promise<void> {
   const leftoverSchemas = await pool.query<{ nspname: string }>(
     `select nspname from pg_namespace where nspname like 'studio\\_test\\_%'`,
   );
   for (const { nspname } of leftoverSchemas.rows) {
     await pool.query(
-      `drop schema if exists ${pg.escapeIdentifier(nspname)} cascade`,
+      `drop schema if exists ${escapeIdentifier(nspname)} cascade`,
     );
   }
   if (leftoverSchemas.rowCount) {
@@ -231,7 +231,7 @@ async function sweepScratch(pool: pg.Pool): Promise<void> {
   );
   for (const { datname } of leftoverDatabases.rows) {
     await pool.query(
-      `drop database if exists ${pg.escapeIdentifier(datname)} with (force)`,
+      `drop database if exists ${escapeIdentifier(datname)} with (force)`,
     );
   }
   if (leftoverDatabases.rowCount) {

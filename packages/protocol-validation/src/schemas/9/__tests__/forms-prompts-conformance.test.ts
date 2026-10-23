@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import type { NodeDefinition } from '../codebook/definitions.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 
 /**
  * Schema-conformance refinements for forms and prompts:

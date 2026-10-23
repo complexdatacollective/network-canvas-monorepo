@@ -326,7 +326,7 @@ describe('readFamily with encrypted names', () => {
 describe('relatives', () => {
   test('derives parents, partners and siblings', () => {
     const family = nuclearFamily();
-    expect(primaryParentsOf(family, 'ego').sort()).toEqual(['dad', 'mum']);
+    expect(primaryParentsOf(family, 'ego').toSorted()).toEqual(['dad', 'mum']);
     expect(partnersOf(family, 'mum')).toEqual(['dad']);
     expect(siblingsOf(family, 'ego')).toEqual(['sib']);
     expect(fullSiblingsOf(family, 'ego')).toEqual(['sib']);

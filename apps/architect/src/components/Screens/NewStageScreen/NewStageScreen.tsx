@@ -8,7 +8,7 @@ import { useLocation } from 'wouter';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Tag from '@codaco/fresco-ui/Tag';

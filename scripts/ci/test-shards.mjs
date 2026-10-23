@@ -200,7 +200,7 @@ export function workspaceTestPackages(root = REPO_ROOT) {
   }
   // Sorted so the emitted filter list is stable across platforms: it is
   // compared against in tests and read by a human in the job log.
-  return [...names].sort((a, b) => a.localeCompare(b));
+  return [...names].toSorted((a, b) => a.localeCompare(b));
 }
 
 /**

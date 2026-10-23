@@ -16,7 +16,7 @@ import { useDispatch } from 'react-redux';
 import type { ThunkDispatch } from 'redux-thunk';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
   entityAttributesProperty,

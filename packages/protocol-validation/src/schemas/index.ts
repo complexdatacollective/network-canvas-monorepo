@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import ProtocolSchemaV7 from './7/schema.ts';
 import ProtocolSchemaV8 from './8/schema.ts';
-import ProtocolSchemaV9 from './9/schema.ts';
+import { ProtocolSchemaV9 } from './9/schema.ts';
 
 export const SchemaVersionSchema = z.union([
   z.literal(1),

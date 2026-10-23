@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import {
   getUsesRetiredMapboxToken,
   getUsesTestingMapboxToken,

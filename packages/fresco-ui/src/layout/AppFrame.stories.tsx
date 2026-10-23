@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Menu } from 'lucide-react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import Button, { IconButton } from '../Button';
+import { IconButton, Button } from '../Button';
 import AppFrame, { DEFAULT_SKIP_TARGET_ID } from './AppFrame';
 
 /**

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import type { SyntheticInterview } from '@codaco/protocol-utilities';
 

@@ -243,7 +243,7 @@ describe('assignFileNames', () => {
       );
 
     const forward = byId(types);
-    const reversed = byId([...types].reverse());
+    const reversed = byId(types.toReversed());
 
     expect(reversed).toEqual(forward);
   });

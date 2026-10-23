@@ -26,7 +26,7 @@ const sources = readdirSync(protocolsRoot, {
     (file) =>
       path.basename(file) === 'protocol.json' && !MIGRATION_FIXTURES.has(file),
   )
-  .sort();
+  .toSorted();
 
 describe('canonical protocol sources', () => {
   it('finds the sources', () => {

@@ -1,5 +1,5 @@
 import { Cause, Effect, type LogLevel, References } from 'effect';
-import pg from 'pg';
+import { Pool } from 'pg';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -30,8 +30,8 @@ function connect(
   db: DbEnv,
   role?: string,
   { logLevel = 'Info', ...limits }: PoolLimits = {},
-): pg.Pool {
-  const pool = new pg.Pool({
+): Pool {
+  const pool = new Pool({
     connectionString: db.url,
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
     ...(role === undefined ? {} : { options: `-c role=${role}` }),
@@ -57,7 +57,7 @@ function connect(
 }
 
 /** The application's pool: every session runs as the application role. */
-export function createPool(db: DbEnv, limits: PoolLimits = {}): pg.Pool {
+export function createPool(db: DbEnv, limits: PoolLimits = {}): Pool {
   return connect(db, TENANT_ROLES.app, limits);
 }
 
@@ -65,6 +65,6 @@ export function createPool(db: DbEnv, limits: PoolLimits = {}): pg.Pool {
 export function createOwnerPool(
   db: DbEnv,
   options: Pick<PoolLimits, 'logLevel'> = {},
-): pg.Pool {
+): Pool {
   return connect(db, undefined, options);
 }

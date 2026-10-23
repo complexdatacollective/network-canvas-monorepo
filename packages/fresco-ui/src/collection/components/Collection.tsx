@@ -210,6 +210,7 @@ function CollectionContent<T extends Record<string, unknown>>({
     // Consumer bundlers replace this flag, so the check is dropped from
     // production builds.
     if (import.meta.env.DEV && !scrollable && virtualized) {
+      // oxlint-disable-next-line no-console -- dev-only warning for a misconfigured prop, dead-code-eliminated from production builds by the DEV guard above
       console.warn(
         'Collection: `virtualized` needs a scroll container to measure against and is ignored when `scrollable` is false.',
       );

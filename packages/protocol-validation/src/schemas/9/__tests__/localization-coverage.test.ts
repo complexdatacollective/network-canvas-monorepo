@@ -15,7 +15,7 @@ import {
   type LocalizedStringFormat,
   localizedString,
 } from '../localized-string.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   PEDIGREE_PERSON_ARGUMENTS,

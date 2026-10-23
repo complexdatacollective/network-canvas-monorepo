@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 

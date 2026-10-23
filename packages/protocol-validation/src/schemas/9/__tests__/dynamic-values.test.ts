@@ -9,7 +9,7 @@ import {
 } from '../dynamic-value-validation.ts';
 import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
 type Protocol = ReturnType<typeof completeProtocol>;
@@ -1130,5 +1130,5 @@ const schemaDynamicValueSites = (): string[] => {
     }
   };
   visit(ProtocolSchemaV9, [], undefined, new Set());
-  return [...found].sort();
+  return [...found].toSorted();
 };

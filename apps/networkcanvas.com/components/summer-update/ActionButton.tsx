@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 
 export function ActionButton({
   children,

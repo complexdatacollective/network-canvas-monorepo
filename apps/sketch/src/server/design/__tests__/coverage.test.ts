@@ -45,7 +45,7 @@ describe('the coverage design', () => {
       JSON.stringify(result.validation.error?.issues),
     ).toBe(true);
     expect(result.retry).toBe(false);
-    expect([...new Set(stageTypes(result.protocol))].sort()).toEqual(
+    expect([...new Set(stageTypes(result.protocol))].toSorted()).toEqual(
       EMITTED_TYPES,
     );
     expect(result.protocol).toEqual(readJsonFixture('coverage.protocol.json'));
@@ -70,8 +70,8 @@ describe('the coverage design', () => {
       readFixture('coverage.classmates_roster.csv'),
     );
     expect(assets[1]?.content).toBe(worldCountriesGeojson());
-    expect(Object.keys(protocol.assetManifest ?? {}).sort()).toEqual(
-      ['classmates_roster', GEOJSON_ASSET_ID, MAPBOX_ASSET_ID].sort(),
+    expect(Object.keys(protocol.assetManifest ?? {}).toSorted()).toEqual(
+      ['classmates_roster', GEOJSON_ASSET_ID, MAPBOX_ASSET_ID].toSorted(),
     );
     expect(summary.rosterCount).toBe(1);
     expect(summary.nodeTypes).toEqual(['Classmate', 'Place', 'Mentor']);

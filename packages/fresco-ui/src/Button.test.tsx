@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { Check } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
-import Button, { buttonVariants, IconButton } from './Button';
+import { buttonVariants, IconButton, Button } from './Button';
 
 describe('Button', () => {
   it('derives the raised edge from the selected button color', () => {

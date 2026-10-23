@@ -199,7 +199,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
   });
 
   afterEach(async () => {
-    for (const client of opened.splice(0).reverse()) await client.dispose();
+    for (const client of opened.splice(0).toReversed()) await client.dispose();
     for (const close of pools.splice(0)) await close();
     for (const scope of scopes.splice(0)) {
       await Effect.runPromise(Scope.close(scope, Exit.void));
@@ -868,7 +868,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
           expect(revisionsOf(channel.events, stage.sectionId)).toEqual([]);
         }
 
-        for (const ring of [...writer.rung].reverse()) reader.send(ring);
+        for (const ring of writer.rung.toReversed()) reader.send(ring);
         await until(
           () =>
             stages.every(

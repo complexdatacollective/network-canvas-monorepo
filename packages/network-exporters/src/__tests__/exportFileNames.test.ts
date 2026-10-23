@@ -203,8 +203,8 @@ describe('the file names of an export of types whose names collide', () => {
   });
 
   it('names a type whose name is empty or collides by its id, and the same way on every run', async () => {
-    const first = [...(await collect()).files.keys()].sort();
-    const second = [...(await collect()).files.keys()].sort();
+    const first = [...(await collect()).files.keys()].toSorted();
+    const second = [...(await collect()).files.keys()].toSorted();
 
     expect(second).toEqual(first);
     expect(first).toContain('participant_interview-1_attributeList_empty.csv');
@@ -240,7 +240,9 @@ describe('the file names of an export of types whose names collide', () => {
     const entries = unzipSync(zipped.bytes);
 
     expect(result.status).toBe('success');
-    expect(Object.keys(entries).sort()).toEqual([...files.keys()].sort());
+    expect(Object.keys(entries).toSorted()).toEqual(
+      [...files.keys()].toSorted(),
+    );
     // Not the GraphML and ego files, which record the time of each export.
     for (const [name, text] of files) {
       if (name.includes('_attributeList_') || name.includes('_edgeList_')) {

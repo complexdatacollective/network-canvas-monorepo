@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import Form from '@codaco/fresco-ui/form/Form';

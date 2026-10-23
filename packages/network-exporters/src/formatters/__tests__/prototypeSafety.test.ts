@@ -30,7 +30,7 @@ const hazards = [
   'valueOf',
 ];
 
-const prototypeBefore = Object.getOwnPropertyNames(Object.prototype).sort();
+const prototypeBefore = Object.getOwnPropertyNames(Object.prototype).toSorted();
 
 // An object literal cannot hold an own `__proto__` key; this can.
 const record = <Value>(entries: readonly (readonly [string, Value])[]) =>
@@ -211,7 +211,7 @@ describe.each([
       rowsOf(edgeListRows(network, codebook, options, () => undefined));
       rowsOf(egoListRows(network, codebook, options, () => undefined));
 
-      expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(
+      expect(Object.getOwnPropertyNames(Object.prototype).toSorted()).toEqual(
         prototypeBefore,
       );
       expect(Object.getPrototypeOf({})).toBe(Object.prototype);

@@ -18,7 +18,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { makeRpcAdapter } from '@codaco/effect-query/adapter';
 import type { RpcAdapter } from '@codaco/effect-query/types';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';

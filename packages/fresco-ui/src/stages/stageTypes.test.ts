@@ -28,7 +28,7 @@ describe('STAGE_TYPE_COLORS', () => {
     }
     const shared = [...byBase.values()]
       .filter((stages) => stages.length > 1)
-      .map((stages) => stages.sort());
+      .map((stages) => stages.toSorted());
 
     expect(shared).toEqual([
       ['NameGenerator', 'NameGeneratorRoster'],

@@ -30,7 +30,7 @@ const link = (from: string, to: string): NcEdge => ({
 const point = (
   nodes: readonly NcNode[],
   edges: readonly NcEdge[] = [],
-  stageMetadata: FamilyHistoryPoint['stageMetadata'] = undefined,
+  stageMetadata?: FamilyHistoryPoint['stageMetadata'],
 ): FamilyHistoryPoint => ({ nodes, edges, stageMetadata });
 
 const ids = (entities: readonly (NcNode | NcEdge)[]) =>

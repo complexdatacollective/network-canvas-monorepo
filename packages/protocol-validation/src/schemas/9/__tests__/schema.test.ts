@@ -4,7 +4,7 @@ import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
-import ProtocolSchemaV9 from '../schema.ts';
+import { ProtocolSchemaV9 } from '../schema.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 type Variables = Record<string, { name: string; [key: string]: unknown }>;

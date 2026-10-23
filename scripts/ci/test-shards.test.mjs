@@ -67,8 +67,8 @@ test('the shards partition the workspace suites with no overlap or gap', () => {
   );
   const all = workspaceTestPackages(REPO_ROOT);
   assert.deepEqual(
-    [...assigned].sort(),
-    all.filter((name) => name !== '@codaco/studio-api').sort(),
+    assigned.toSorted(),
+    all.filter((name) => name !== '@codaco/studio-api').toSorted(),
     'the buckets cover every workspace test suite but the Studio server one',
   );
 });

@@ -308,7 +308,7 @@ export function changedFiles(root) {
     if (diff) for (const line of diff.split('\n')) if (line) files.add(line);
   }
   return [...files]
-    .sort((a, b) => a.localeCompare(b))
+    .toSorted((a, b) => a.localeCompare(b))
     .map((rel) => path.join(root, rel));
 }
 
@@ -410,7 +410,7 @@ export function packagesForFiles(
     seeds.add(manifest.name);
     if (manifest.scripts?.[script]) names.add(manifest.name);
   }
-  const sorted = (set) => [...set].sort((a, b) => a.localeCompare(b));
+  const sorted = (set) => [...set].toSorted((a, b) => a.localeCompare(b));
   return { packages: sorted(names), seeds: sorted(seeds), all };
 }
 
@@ -448,7 +448,7 @@ export function previousPackageNames(root, files, { base } = {}) {
     }
     if (currentName !== oldName) names.add(oldName);
   }
-  return [...names].sort((a, b) => a.localeCompare(b));
+  return [...names].toSorted((a, b) => a.localeCompare(b));
 }
 
 export function workspacePackages(

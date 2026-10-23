@@ -6,7 +6,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 const computeRadii = (n: number, q: number) =>
   range(1, n + 1)
     .map((i) => 50 * (1 - (1 - i / n) ** q))
-    .reverse();
+    .toReversed();
 
 type RadarProps = {
   'n': number;

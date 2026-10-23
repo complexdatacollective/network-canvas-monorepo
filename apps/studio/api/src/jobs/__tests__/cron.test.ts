@@ -137,7 +137,7 @@ describe.skipIf(!db)('recurring work', () => {
         }).pipe(Effect.provide(layerWorker()));
 
         assert.deepStrictEqual(
-          [...outcomes].sort((a, b) => Number(a) - Number(b)),
+          outcomes.toSorted((a, b) => Number(a) - Number(b)),
           [false, true],
         );
         const created = yield* readJobs('denied-attempts-summary');
@@ -196,8 +196,8 @@ describe.skipIf(!db)('recurring work', () => {
           );
           assert.deepStrictEqual(dropped, ['retired-sweep']);
           assert.deepStrictEqual(
-            (yield* schedules()).map(({ name }) => name).sort(),
-            JOB_SCHEDULES.map(({ queue }) => queue).sort(),
+            (yield* schedules()).map(({ name }) => name).toSorted(),
+            JOB_SCHEDULES.map(({ queue }) => queue).toSorted(),
           );
         }).pipe(Effect.provide(layerWorker()));
       }).pipe(Effect.provide(jobsLayer)),

@@ -8,7 +8,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Badge } from '../Badge';
-import Button from '../Button';
+import { Button } from '../Button';
 import Dialog from '../dialogs/Dialog';
 import Surface from '../layout/Surface';
 import {

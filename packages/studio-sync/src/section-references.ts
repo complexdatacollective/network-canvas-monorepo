@@ -220,7 +220,7 @@ function withoutReference(
 function inRemovalOrder(
   references: readonly SectionReference[],
 ): SectionReference[] {
-  return [...references].sort((a, b) => comparePaths(b.path, a.path));
+  return references.toSorted((a, b) => comparePaths(b.path, a.path));
 }
 
 function comparePaths(a: DocumentPath, b: DocumentPath): number {

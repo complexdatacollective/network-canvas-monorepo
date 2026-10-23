@@ -72,7 +72,7 @@ describe('comprehensive pedigree — deterministic synthetic data', () => {
             variable !== '' && n[entityAttributesProperty][variable] === true,
         )
         .map((n) => n[entityPrimaryKeyProperty])
-        .sort();
+        .toSorted();
 
     it(`seed ${seed}: exactly one ego`, () => {
       expect(idsWith(EGO_VAR)).toEqual(['ego']);

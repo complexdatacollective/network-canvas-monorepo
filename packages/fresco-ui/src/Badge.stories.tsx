@@ -287,9 +287,10 @@ const contrastRatio = (
   a: readonly [number, number, number],
   b: readonly [number, number, number],
 ) => {
-  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort(
-    (x, y) => y - x,
-  ) as [number, number];
+  const [lighter, darker] = [
+    relativeLuminance(a),
+    relativeLuminance(b),
+  ].toSorted((x, y) => y - x) as [number, number];
   return (lighter + 0.05) / (darker + 0.05);
 };
 

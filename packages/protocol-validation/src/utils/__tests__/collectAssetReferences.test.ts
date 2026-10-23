@@ -77,7 +77,7 @@ const protocol = {
 const assetIdsIn = (value: unknown) =>
   collectAssetReferences(value)
     .map((hit) => hit.assetId)
-    .sort();
+    .toSorted();
 
 describe('collectAssetReferences', () => {
   it('finds every asset a protocol names, from the schema tags alone', () => {

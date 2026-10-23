@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { Redacted } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';

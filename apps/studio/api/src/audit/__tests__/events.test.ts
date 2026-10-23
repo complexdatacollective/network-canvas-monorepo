@@ -216,8 +216,8 @@ describe('audit event registry', () => {
   });
 
   it('holds every bound the zod schemas carried', () => {
-    const withDetails = <Key extends AuditEventKey>(
-      key: Key,
+    const withDetails = (
+      key: AuditEventKey,
       details: Record<string, unknown>,
     ) => {
       const fixture = AUDIT_EVENT_REGISTRY[key].fixture;

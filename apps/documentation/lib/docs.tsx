@@ -16,7 +16,7 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { z } from 'zod';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import {
   Table,
   TableBody,

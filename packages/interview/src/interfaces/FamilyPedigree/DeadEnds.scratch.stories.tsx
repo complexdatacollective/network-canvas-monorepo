@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import { buildInterview, type Family } from './FamilyPedigree.stories';

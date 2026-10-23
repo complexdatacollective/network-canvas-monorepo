@@ -315,7 +315,7 @@ describe.skipIf(!db)('the native queue', () => {
           );
 
           const live = yield* readJobs('denied-attempts-summary');
-          assert.deepStrictEqual(live.map((row) => row.state).sort(), [
+          assert.deepStrictEqual(live.map((row) => row.state).toSorted(), [
             'active',
             'created',
           ]);
