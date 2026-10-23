@@ -431,8 +431,8 @@ function parentLinksOf(family: Family, personId: string) {
 /**
  * The record a new answer that someone else carried the person's pregnancy
  * replaces (newest answer wins): whoever is recorded as having carried them,
- * or a twin of theirs (`carrierRecordOf`), unless that is a surrogate, who
- * carried the child they are the surrogate of by definition. Undefined when
+ * or a twin of theirs (`carrierRecordOf`), unless that is a surrogate of
+ * any of them, who carried the pregnancy by definition. Undefined when
  * nobody is recorded, or the record is a surrogate's.
  */
 export function carrierGivingWay(
@@ -441,9 +441,12 @@ export function carrierGivingWay(
 ): { carrierId: string; childId: string } | undefined {
   const record = carrierRecordOf(family, personId);
   if (record === undefined) return undefined;
-  return surrogateOf(family, record.childId) === record.carrierId
-    ? undefined
-    : record;
+  // Twins were carried in one pregnancy, so a surrogate of any of them
+  // carried them all.
+  const carriedBySurrogate = twinSetOf(family, personId).some(
+    (childId) => surrogateOf(family, childId) === record.carrierId,
+  );
+  return carriedBySurrogate ? undefined : record;
 }
 
 /**
@@ -1506,7 +1509,9 @@ export function identicalParentLinks(
       ) {
         continue;
       }
-      if (areConnected(family, parentId, childId)) return undefined;
+      if (parentConnectionBlock(family, parentId, childId) !== undefined) {
+        return undefined;
+      }
       links.push({
         source: parentId,
         target: childId,

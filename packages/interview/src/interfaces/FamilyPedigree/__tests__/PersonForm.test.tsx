@@ -3899,3 +3899,47 @@ describe('an answer the form worked out, or one no longer available', () => {
     expectUnanswered(carrier());
   });
 });
+
+describe('identical twins whose parents and sexes at birth both differ', () => {
+  const parents = [
+    person('mum', { name: 'Julie', sex: ['female'] }),
+    person('dad', { name: 'Rob', sex: ['male'] }),
+  ];
+  const parentLinks = (childId: string) => [
+    link('mum', childId, 'biological', { carrier: true }),
+    link('dad', childId, 'biological'),
+  ];
+
+  it('offers identical once the sex at birth answered matches, bringing the parents into line', async () => {
+    // Sam has only Julie recorded; the participant is recorded male and Sam
+    // female. Correcting the participant's answer to female leaves only the
+    // parents differing, which answering identical brings into line.
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sam', { name: 'Sam', sex: ['female'] }),
+        ...parents,
+      ],
+      edges: [
+        ...parentLinks('ego'),
+        link('mum', 'sam', 'biological', { carrier: true }),
+        link('ego', 'sam', 'unknownZygosityTwin'),
+      ],
+    });
+    const identical = () =>
+      within(
+        screen.getByRole('radiogroup', {
+          name: /^Are you and “sam” identical twins\?/,
+        }),
+      ).getByRole('radio', { name: 'Yes, identical' });
+    expect(identical()).toBeDisabled();
+
+    await user.click(
+      within(
+        screen.getByRole('radiogroup', { name: /^Sex assigned at birth/ }),
+      ).getByRole('radio', { name: 'Female' }),
+    );
+
+    await waitFor(() => expect(identical()).toBeEnabled());
+  });
+});

@@ -5,6 +5,7 @@ import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import {
   type AddRelativeRequest,
   availableParentChoices,
+  carrierGivingWay,
   type Family,
   parentChoiceOptions,
   planAddRelative,
@@ -631,6 +632,23 @@ describe('a new parent replacing what is recorded', () => {
         isGestationalCarrier: undefined,
       },
     ]);
+  });
+
+  test('a surrogate of a twin is never replaced, though recorded as a parent of another', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam'),
+        person('sue', { sex: ['female'] }),
+      ],
+      [
+        link('sue', 'ego', 'biological', { carrier: true }),
+        link('sue', 'sam', 'surrogate', { carrier: true }),
+        link('ego', 'sam', 'unknownZygosityTwin'),
+      ],
+    );
+    expect(carrierGivingWay(f, 'ego')).toBeUndefined();
+    expect(carrierGivingWay(f, 'sam')).toBeUndefined();
   });
 
   test('a surrogate who carried the anchor is never replaced', () => {

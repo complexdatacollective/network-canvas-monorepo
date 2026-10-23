@@ -1300,9 +1300,9 @@ function TwinZygosityField({
   // differ. That answer is worked out from the answers as they stand, so
   // follows them until the participant answers, and "identical" is never
   // left chosen while it is unavailable (`useDerivedAnswer`).
-  const blocks = identicalTwinBlocks(family, person.id, twinId, (id) =>
-    id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth,
-  );
+  const sexOf = (id: string) =>
+    id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth;
+  const blocks = identicalTwinBlocks(family, person.id, twinId, sexOf);
   // Twins whose biological parents and donors differ are given the same
   // ones when answered identical, where that is possible (newest answer
   // wins, `identicalParentLinks`); a difference in sex at birth is answered
@@ -1320,14 +1320,13 @@ function TwinZygosityField({
       familyWithIdenticalParents(family, parentLinks, sexAttribute),
       person.id,
       twinId,
+      sexOf,
     ).length === 0;
   const blocking = parentsAligned ? [] : blocks;
   // Answering this twin identical makes everyone identical to them identical
   // to the person and to the twins answered identical, and to everyone
   // identical to those: so no two of them may be recorded with different
   // sexes at birth.
-  const sexOf = (id: string) =>
-    id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth;
   const joining = identicalSetOf(family, twinId).filter(
     (id) => id !== person.id,
   );

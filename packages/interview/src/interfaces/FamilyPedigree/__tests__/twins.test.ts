@@ -994,6 +994,23 @@ describe('identical twins’ parents brought into line', () => {
     expect(identicalParentLinks(f, ['ego', 'ben'])).toBeUndefined();
   });
 
+  test('nothing is brought into line when it would make someone their own ancestor', () => {
+    const f = family(
+      [
+        ...nodes,
+        person('cal', { sex: ['male'] }),
+        person('dee', { sex: ['female'] }),
+      ],
+      [
+        link('ego', 'cal', 'biological'),
+        link('cal', 'dee', 'biological'),
+        link('dee', 'ben', 'biological', { carrier: true }),
+        link('ego', 'ben', 'unknownZygosityTwin'),
+      ],
+    );
+    expect(identicalParentLinks(f, ['ego', 'ben'])).toBeUndefined();
+  });
+
   test('nothing is brought into line when a twin has that parent as another kind', () => {
     const f = family(nodes, [
       link('tom', 'ego', 'biological'),
