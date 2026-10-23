@@ -37,7 +37,11 @@ function sessionWith(name: string): SessionSnapshot {
   };
 }
 
-type SyncBody = { network: SessionSnapshot['network']; syncRevision?: number };
+type SyncBody = {
+  network: SessionSnapshot['network'];
+  syncRevision?: number;
+  currentStep?: number;
+};
 
 /**
  * The endpoint's own rule, so these tests measure what the participant's
@@ -160,7 +164,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: 0,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 2,
+      initialStep: 2,
     });
 
     // An ordinary write goes out and stays on the wire. Track its outcome now:
@@ -213,7 +217,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: 0,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 0,
+      initialStep: 0,
     });
 
     const ordinary = settle(
@@ -255,7 +259,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: 41,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 0,
+      initialStep: 0,
     });
 
     await onSync('interview-1', sessionWith('resumed'), ORDINARY);
@@ -278,7 +282,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: 0,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 0,
+      initialStep: 0,
     });
 
     // The other tab has written several times since this one loaded.
@@ -308,7 +312,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: 0,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 0,
+      initialStep: 0,
     });
 
     state.revision = 20;
@@ -332,7 +336,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: drifted,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 0,
+      initialStep: 0,
     });
 
     await onSync('interview-1', sessionWith('drifted'), ORDINARY);
@@ -359,7 +363,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: 4,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 0,
+      initialStep: 0,
     });
 
     await onSync('interview-1', sessionWith('after-finish'), ORDINARY);
@@ -376,7 +380,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: 0,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 0,
+      initialStep: 0,
     });
 
     await onSync('interview-1', sessionWith('first'), ORDINARY);
@@ -393,6 +397,28 @@ describe('createInterviewSyncHandler', () => {
     expect(bodies[1]?.syncRevision).toBe(2);
   });
 
+  it('records the step the host last reported when a write goes on the wire', async () => {
+    // The step is reported to the handler rather than read from the host, so
+    // a write must carry the newest step reported before it was put on the
+    // wire — not the one the handler was built with.
+    const { apply } = makeServer();
+    const { fetchMock, bodies } = makeAutoFetch(apply);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 3,
+    });
+
+    await onSync('interview-1', sessionWith('first'), UNLOADING);
+    onSync.setCurrentStep(5);
+    await onSync('interview-1', sessionWith('second'), UNLOADING);
+
+    expect(bodies.map((body) => body.currentStep)).toEqual([3, 5]);
+  });
+
   it('refuses a sync for an interview it does not belong to', async () => {
     const { apply } = makeServer();
     const { fetchMock } = makeAutoFetch(apply);
@@ -402,7 +428,7 @@ describe('createInterviewSyncHandler', () => {
       interviewId: 'interview-1',
       initialSyncRevision: 0,
       protocolHash: 'protocol-hash',
-      getCurrentStep: () => 0,
+      initialStep: 0,
     });
 
     await expect(

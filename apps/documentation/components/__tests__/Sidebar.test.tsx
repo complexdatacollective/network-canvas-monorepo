@@ -32,6 +32,22 @@ const sidebarJson = {
           navOrder: null,
           sourceFile: '/docs/design-protocols/key-concepts.en.mdx',
         },
+        'interface-documentation': {
+          type: 'folder',
+          label: 'Interface documentation',
+          navOrder: null,
+          sourceFile:
+            '/docs/design-protocols/interface-documentation/index.en.mdx',
+          children: {
+            information: {
+              type: 'file',
+              label: 'Information',
+              navOrder: null,
+              sourceFile:
+                '/docs/design-protocols/interface-documentation/information.en.mdx',
+            },
+          },
+        },
       },
     },
   },
@@ -59,6 +75,28 @@ describe('Sidebar', () => {
 
     expect(await screen.findByText('Key concepts')).toBeInTheDocument();
   });
+
+  it.each([
+    {
+      pathname: '/en/design-protocols/interface-documentation/information',
+      state: 'open',
+    },
+    { pathname: '/en/design-protocols/key-concepts', state: 'closed' },
+  ])(
+    'opens a folder only when one of its pages is the current page ($pathname)',
+    async ({ pathname, state }) => {
+      mockUsePathname.mockReturnValue(pathname);
+      mockSidebarFetch({ json: () => Promise.resolve(sidebarJson) });
+
+      render(<Sidebar />);
+
+      const folderLabel = await screen.findByText('Interface documentation');
+      expect(folderLabel.closest('[data-state]')).toHaveAttribute(
+        'data-state',
+        state,
+      );
+    },
+  );
 
   it('renders search only when the path names no known section', async () => {
     // A legacy, non-locale-prefixed URL that reached the app without being

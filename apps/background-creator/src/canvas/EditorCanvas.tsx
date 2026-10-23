@@ -4,6 +4,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -191,14 +192,16 @@ export function EditorCanvas(): ReactElement {
   // latest value without re-binding.
   const [editing, setEditing] = useState<TextEdit | null>(null);
   const editingRef = useRef<TextEdit | null>(null);
-  editingRef.current = editing;
 
   // The stage's pointer/dblclick handlers are stable (attached imperatively
   // below); keep the dialog context in a ref so they can open the zone-label
   // editor without re-binding the listeners each time the dialog store renders.
   const dialogs = useDialog();
   const dialogsRef = useRef(dialogs);
-  dialogsRef.current = dialogs;
+  useLayoutEffect(() => {
+    editingRef.current = editing;
+    dialogsRef.current = dialogs;
+  });
 
   const stageSize = useStageSize(previewAspect, containerRef);
 

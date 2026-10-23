@@ -1,8 +1,8 @@
 'use client';
 
-import { queue } from 'async';
+import { queue, type QueueObject } from 'async';
 import { hashProtocol as hashLegacyProtocol } from 'fresco-schema-8/protocol-validation';
-import { useCallback, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import {
   createAppIntl,
@@ -162,6 +162,8 @@ function getValidationErrorMessage(
   }
 }
 
+type ImportJob = { file: File; toastId: string };
+
 function generateJobId(): string {
   return `import-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
@@ -173,7 +175,9 @@ export const useProtocolImport = () => {
   // Store refs to toast manager functions so the queue callback can access them
   // without being recreated when toast manager changes
   const toastRef = useRef({ add, update, close });
-  toastRef.current = { add, update, close };
+  useLayoutEffect(() => {
+    toastRef.current = { add, update, close };
+  });
 
   const addImportToast = (toastId: string, fileName: string) => {
     toastRef.current.add({
@@ -245,13 +249,55 @@ export const useProtocolImport = () => {
     });
   };
 
-  const processJob = async ({
-    file,
-    toastId,
-  }: {
-    file: File;
-    toastId: string;
-  }) => {
+  // The queue outlives renders, so its worker calls the latest `processJob`,
+  // which the layout effect below hands over before any import can start.
+  const processJobRef = useRef<((job: ImportJob) => Promise<void>) | null>(
+    null,
+  );
+
+  // Built on the first import rather than during render, which would build and
+  // discard a queue on every render to keep the first one.
+  const jobQueue = useRef<QueueObject<ImportJob> | null>(null);
+
+  const importProtocols = useCallback((files: File[]) => {
+    files.forEach((file) => {
+      const sizeError = getProtocolSizeError(file, createMessageError);
+      if (sizeError) {
+        toastRef.current.add({
+          id: generateJobId(),
+          variant: 'destructive',
+          title: file.name,
+          description: <AppErrorMessage error={sizeError} />,
+          timeout: 0,
+        });
+        return;
+      }
+
+      const jobAlreadyExists = activeJobs.current.has(file.name);
+
+      if (jobAlreadyExists) {
+        // eslint-disable-next-line no-console
+        console.warn(`Skipping duplicate job: ${file.name}`);
+        return;
+      }
+
+      activeJobs.current.add(file.name);
+
+      const toastId = generateJobId();
+      addImportToast(toastId, file.name);
+
+      jobQueue.current ??= queue(
+        async (job: ImportJob) => processJobRef.current?.(job),
+        2,
+      );
+      jobQueue.current.push({ file, toastId }).catch((error) => {
+        // eslint-disable-next-line no-console
+        console.log('jobQueue error', error);
+      });
+    });
+  }, []);
+
+  const processJob = async ({ file, toastId }: ImportJob) => {
     const fileName = file.name;
     const protocolName = fileName.replace(/\.netcanvas$/i, '');
 
@@ -503,41 +549,9 @@ export const useProtocolImport = () => {
     }
   };
 
-  const jobQueue = useRef(queue(processJob, 2));
-
-  const importProtocols = useCallback((files: File[]) => {
-    files.forEach((file) => {
-      const sizeError = getProtocolSizeError(file, createMessageError);
-      if (sizeError) {
-        toastRef.current.add({
-          id: generateJobId(),
-          variant: 'destructive',
-          title: file.name,
-          description: <AppErrorMessage error={sizeError} />,
-          timeout: 0,
-        });
-        return;
-      }
-
-      const jobAlreadyExists = activeJobs.current.has(file.name);
-
-      if (jobAlreadyExists) {
-        // eslint-disable-next-line no-console
-        console.warn(`Skipping duplicate job: ${file.name}`);
-        return;
-      }
-
-      activeJobs.current.add(file.name);
-
-      const toastId = generateJobId();
-      addImportToast(toastId, file.name);
-
-      jobQueue.current.push({ file, toastId }).catch((error) => {
-        // eslint-disable-next-line no-console
-        console.log('jobQueue error', error);
-      });
-    });
-  }, []);
+  useLayoutEffect(() => {
+    processJobRef.current = processJob;
+  });
 
   return {
     importProtocols,

@@ -50,6 +50,14 @@ export type CompletionLabels = Readonly<
   >
 >;
 
+// The outcome of loading one wave's protocol.
+type LoadedPreview = {
+  install: PreviewProtocolInstall | null;
+  payload: InterviewPayload | null;
+  requestedLocales: readonly string[] | null;
+  failure: PreviewFailure | null;
+};
+
 export type ProtocolPreviewProps = {
   waves: PreviewWave[];
   backHref: string;
@@ -97,14 +105,23 @@ export function ProtocolPreview({
   const t = useTranslations('ProtocolGallery.preview');
   const wave = useWave(waves);
 
-  const [install, setInstall] = useState<PreviewProtocolInstall | null>(null);
-  const [payload, setPayload] = useState<InterviewPayload | null>(null);
-  const [requestedLocales, setRequestedLocales] = useState<
-    readonly string[] | null
-  >(null);
-  const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState<LoadedPreview | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
+
+  // Every change of wave starts a new load, so what the last one produced is
+  // forgotten as the wave changes — even on a return to a wave loaded before,
+  // whose earlier install the new load has already let go of. The loading
+  // screen therefore shows at once, never the previous load's interview or
+  // failure. Retrying forgets it the same way, from its click handler.
+  const [loadedWave, setLoadedWave] = useState(wave);
+  if (wave !== loadedWave) {
+    setLoadedWave(wave);
+    setLoaded(null);
+  }
+  const payload = loaded?.payload ?? null;
+  const requestedLocales = loaded?.requestedLocales ?? null;
+  const failure = loaded?.failure ?? null;
 
   // The install lives in a ref as well as state so the asset resolver, which
   // the Shell holds for its lifetime, reads the current one without being
@@ -132,33 +149,40 @@ export function ProtocolPreview({
   useEffect(() => {
     if (!wave) return;
     let cancelled = false;
-    setInstall(null);
     installRef.current = null;
-    setPayload(null);
-    setRequestedLocales(null);
-    setFailure(null);
-    setCurrentStep(0);
+
+    const fail = (reason: PreviewFailure) =>
+      setLoaded({
+        install: null,
+        payload: null,
+        requestedLocales: null,
+        failure: reason,
+      });
 
     const load = async () => {
       let bytes: Uint8Array;
       try {
         bytes = await fetchProtocolBytes(wave.protocolPath);
       } catch {
-        if (!cancelled) setFailure('unavailable');
+        if (!cancelled) fail('unavailable');
         return;
       }
       const result = await installPreviewProtocol(bytes, wave.protocolFilename);
       if (cancelled) return;
       if (!result.ok) {
-        setFailure(result.reason);
+        fail(result.reason);
         return;
       }
       installRef.current = result.install;
-      setInstall(result.install);
-      // Read here, after the protocol has loaded in the browser, so the
-      // server render never depends on the visitor's languages.
-      setRequestedLocales(navigator.languages);
-      setPayload(createPreviewPayload(result.install));
+      setCurrentStep(0);
+      setLoaded({
+        install: result.install,
+        payload: createPreviewPayload(result.install),
+        // Read here, after the protocol has loaded in the browser, so the
+        // server render never depends on the visitor's languages.
+        requestedLocales: navigator.languages,
+        failure: null,
+      });
     };
     void load();
 
@@ -196,9 +220,12 @@ export function ProtocolPreview({
           <InterviewLanguageLabel labels={completionLabels} name="restart" />
         ),
         onAction: () => {
-          if (!install) return;
+          if (!loaded?.install) return;
           setCurrentStep(0);
-          setPayload(createPreviewPayload(install));
+          setLoaded({
+            ...loaded,
+            payload: createPreviewPayload(loaded.install),
+          });
         },
       },
       {
@@ -211,7 +238,7 @@ export function ProtocolPreview({
         onAction: () => window.location.assign(backHref),
       },
     ],
-    [completionLabels, install, backHref],
+    [completionLabels, loaded, backHref],
   );
 
   const backAction = (
@@ -229,7 +256,10 @@ export function ProtocolPreview({
             {failure && failure !== 'unsupported-version' ? (
               <Button
                 color="primary"
-                onClick={() => setAttempt((count) => count + 1)}
+                onClick={() => {
+                  setLoaded(null);
+                  setAttempt((count) => count + 1);
+                }}
               >
                 {t('retry')}
               </Button>
