@@ -6,7 +6,9 @@ import {
   areConnected,
   availableParentChoices,
   canConnectPartners,
+  connectionUpdates,
   geneticParentsPossible,
+  parentChoiceOptions,
   planConnection,
   readFamily,
   sexConflicts,
@@ -101,15 +103,20 @@ describe('connecting two people', () => {
     ]);
   });
 
-  test('parents: one person carried the pregnancy', () => {
+  test('parents: one person carried the pregnancy, the newest answer winning', () => {
     const f = family(people, [
       link('mum', 'ego', 'biological', { carrier: true }),
     ]);
     expect(kinds(availableParentChoices(f, 'dad', 'ego'))).toEqual([
       'biological',
+      'biological+carried',
       'adoptive',
+      'adoptive+carried',
       'social',
+      'social+carried',
       'donor',
+      'donor+carried',
+      'surrogate',
     ]);
   });
 
@@ -159,11 +166,97 @@ describe('connecting two people', () => {
       ],
       [link('mother', 'ego', 'biological')],
     );
+    // The newest answer wins: the father takes the place of the biological
+    // parent recorded with the same sex at birth, who is then the kind of
+    // parent the participant says.
+    expect(kinds(availableParentChoices(f, 'father', 'ego'))).toEqual([
+      'biological',
+      'adoptive',
+      'social',
+      'donor',
+    ]);
+    expect(
+      parentChoiceOptions(f, 'father', 'ego')
+        .filter((option) => option.replacesParent !== undefined)
+        .map((option) => [option.choice.parentKind, option.replacesParent]),
+    ).toEqual([
+      ['biological', 'mother'],
+      ['donor', 'mother'],
+    ]);
+    expect(kinds(availableParentChoices(f, 'donor', 'ego'))).toContain('donor');
+  });
+
+  test('parents: a donor never gives way to another genetic parent', () => {
+    const f = family(
+      [
+        ...people,
+        person('donor', { sex: ['male'] }),
+        person('father', { sex: ['male'] }),
+      ],
+      [link('donor', 'ego', 'donor')],
+    );
     expect(kinds(availableParentChoices(f, 'father', 'ego'))).toEqual([
       'adoptive',
       'social',
     ]);
-    expect(kinds(availableParentChoices(f, 'donor', 'ego'))).toContain('donor');
+  });
+
+  test('parents: nobody gives way when it is not clear who would', () => {
+    // Beside a mother and a father, a parent recorded as neither female nor
+    // male at birth could have given either gamete.
+    const f = family(
+      [
+        ...people,
+        person('mother', { sex: ['female'] }),
+        person('father', { sex: ['male'] }),
+        person('parent', { sex: ['intersex'] }),
+      ],
+      [
+        link('mother', 'ego', 'biological', { carrier: true }),
+        link('father', 'ego', 'biological'),
+      ],
+    );
+    expect(
+      parentChoiceOptions(f, 'parent', 'ego').filter(
+        (option) => option.replacesParent !== undefined,
+      ),
+    ).toEqual([]);
+    expect(kinds(availableParentChoices(f, 'parent', 'ego'))).not.toContain(
+      'biological',
+    );
+  });
+
+  test('parents: a genetic parent who replaces another records them as the kind chosen', () => {
+    const f = family(
+      [
+        ...people,
+        person('mother', { sex: ['female'] }),
+        person('tom', { sex: ['male'] }),
+        person('mark', { sex: ['male'] }),
+      ],
+      [
+        link('mother', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+      ],
+    );
+    const updates = connectionUpdates(
+      {
+        kind: 'parent',
+        parentId: 'mark',
+        childId: 'ego',
+        parentKind: 'biological',
+        carriedPregnancy: false,
+        replaced: { parentId: 'tom', kind: 'social' },
+      },
+      f,
+    );
+    expect(updates).toEqual([
+      {
+        linkId: f.links.find((each) => each.source === 'tom')?.id,
+        kind: 'social',
+        isGestationalCarrier: undefined,
+      },
+    ]);
   });
 
   test('sexes at birth that contradict a person’s recorded children', () => {

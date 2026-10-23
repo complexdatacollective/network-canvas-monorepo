@@ -828,12 +828,14 @@ describe('adding a child', () => {
 
 describe('an answer that cannot be chosen', () => {
   it('says which recorded parent rules out a kind of parent', async () => {
+    // A donor gave a gamete and nothing else, so never gives way to another
+    // genetic parent.
     const { user } = renderPersonForm('ego', {
       nodes: [
         person('ego', { isEgo: true, sex: ['female'] }),
         person('shannon', { sex: ['female'] }),
       ],
-      edges: [link('shannon', 'ego', 'biological', { carrier: true })],
+      edges: [link('shannon', 'ego', 'donor')],
       adding: 'parent',
     });
     await user.click(screen.getByRole('radio', { name: 'Female' }));
@@ -846,9 +848,64 @@ describe('an answer that cannot be chosen', () => {
       ).toBeDisabled(),
     );
     expect(kind).toHaveAccessibleDescription(/“shannon”.*“Female” at birth/);
+  });
+
+  // Josh, 22 Oct 2026: the newest answer wins. A new biological parent
+  // takes the place of the one recorded with the same sex at birth, and the
+  // form asks how the participant would define that parent's relationship
+  // to them instead.
+  it('asks how a biological parent a new one takes the place of is related to them', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('shannon', { sex: ['female'] }),
+      ],
+      edges: [link('shannon', 'ego', 'biological', { carrier: true })],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    const kind = screen.getByRole('radiogroup', {
+      name: /^What kind of parent are they\?/,
+    });
+    const biological = within(kind).getByRole('radio', {
+      name: 'Biological parent',
+    });
+    expect(biological).toBeEnabled();
+    expect(
+      screen.queryByRole('radiogroup', {
+        name: /relationship of “shannon” to you/,
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(biological);
     expect(kind).toHaveAccessibleDescription(
-      /“shannon” is recorded as having carried you/,
+      expect.stringContaining(
+        'Choosing “Biological parent” means “shannon” will no longer be recorded as your biological parent. You will be asked how you would define the relationship of “shannon” to you instead.',
+      ),
     );
+    const replaced = screen.getByRole('radiogroup', {
+      name: /^How would you define the relationship of “shannon” to you\?/,
+    });
+    expect(
+      within(replaced)
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label') ?? radio.textContent),
+    ).toHaveLength(2);
+    // It must be answered: nothing is assumed about them.
+    await save(user);
+    await waitFor(() =>
+      expect(replaced).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await user.click(
+      within(replaced).getByRole('radio', { name: 'Adoptive parent' }),
+    );
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      parentKind: 'biological',
+      replaces: { parentId: 'shannon', kind: 'adoptive' },
+    });
   });
 
   // Josh, 22 Oct 2026: the newest answer wins, so a sex at birth that
@@ -1304,7 +1361,9 @@ describe('a second carrier', () => {
         link('dad', 'ego', 'biological'),
       ],
     });
-    const dad = screen.getByRole('radiogroup', { name: /^dad is your…/ });
+    const dad = screen.getByRole('radiogroup', {
+      name: /relationship of “dad” to you/,
+    });
     const surrogate = within(dad).getByRole('radio', { name: 'Surrogate' });
     expect(surrogate).toBeDisabled();
     expect(surrogate).toHaveAccessibleDescription(
@@ -1356,8 +1415,10 @@ describe('a second carrier', () => {
     );
   });
 
-  it('shows a new parent’s carrying question unavailable, naming who carried them', async () => {
-    const { user } = renderPersonForm('ego', {
+  // Josh, 22 Oct 2026: the newest answer wins. A new parent who carried
+  // the pregnancy replaces whoever was recorded as having carried it.
+  it('says a new parent who carried them replaces whoever was recorded as having', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
       nodes: [
         person('ego', { isEgo: true, sex: ['male'] }),
         person('mum', { sex: ['female'] }),
@@ -1366,21 +1427,30 @@ describe('a second carrier', () => {
       adding: 'parent',
     });
     await user.click(screen.getByRole('radio', { name: 'Female' }));
+    expect(screen.getByRole('radio', { name: 'Surrogate' })).toBeEnabled();
     await user.click(screen.getByRole('radio', { name: 'Adoptive parent' }));
     const question = await screen.findByRole('radiogroup', {
       name: /^Did this parent carry the pregnancy\?/,
     });
     const yes = within(question).getByRole('radio', { name: 'Yes' });
-    expect(yes).toBeDisabled();
+    expect(yes).toBeEnabled();
+    expect(yes).not.toBeChecked();
+    expect(
+      within(question).getByRole('radio', { name: 'No' }),
+    ).not.toBeChecked();
+    expect(question).not.toHaveAccessibleDescription(/mum/);
+    await user.click(yes);
     expect(question).toHaveAccessibleDescription(
-      /“mum” is recorded as having carried you/,
+      expect.stringContaining(
+        'Choosing “Yes” means “mum” will no longer be recorded as having carried you, as only one person carries a pregnancy.',
+      ),
     );
-    expect(yes).toHaveAccessibleDescription(
-      /^“Yes” is unavailable because “mum” is recorded as having carried you/,
-    );
-    const no = within(question).getByRole('radio', { name: 'No' });
-    expect(no).toBeEnabled();
-    expect(no).toBeChecked();
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      parentKind: 'adoptive',
+      carriedPregnancy: true,
+    });
   });
 });
 
@@ -1477,19 +1547,24 @@ describe('reasons an answer is unavailable', () => {
   });
 
   it('ties each unavailable kind of parent to its own reason', async () => {
+    // A new parent recorded as neither female nor male at birth could have
+    // given either gamete, so neither recorded parent gives way to them; a
+    // surrogate carried them, so is never replaced.
     const { user } = renderPersonForm('ego', {
       nodes: [
         person('ego', { isEgo: true, sex: ['female'] }),
         person('claire', { name: 'Claire', sex: ['female'] }),
         person('robin', { name: 'Robin', sex: ['male'] }),
+        person('sue', { name: 'Sue', sex: ['female'] }),
       ],
       edges: [
-        link('claire', 'ego', 'biological', { carrier: true }),
+        link('claire', 'ego', 'biological'),
         link('robin', 'ego', 'biological'),
+        link('sue', 'ego', 'surrogate', { carrier: true }),
       ],
       adding: 'parent',
     });
-    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await user.click(screen.getByRole('radio', { name: 'Intersex' }));
     const kind = screen.getByRole('radiogroup', {
       name: /^What kind of parent are they\?/,
     });
@@ -1508,7 +1583,7 @@ describe('reasons an answer is unavailable', () => {
     expect(
       within(kind).getByRole('radio', { name: 'Surrogate' }),
     ).toHaveAccessibleDescription(
-      /^“Surrogate” is unavailable because “claire” is recorded as having carried you/,
+      /^“Surrogate” is unavailable because “sue” is recorded as having carried you/,
     );
     expect(
       within(kind).getByRole('radio', { name: 'Adoptive parent' }),
@@ -2719,7 +2794,9 @@ describe('questions worked out from the answers as they stand', () => {
     );
     await user.click(
       within(
-        screen.getByRole('radiogroup', { name: /^shannon is their…/ }),
+        screen.getByRole('radiogroup', {
+          name: /relationship of “shannon” to/,
+        }),
       ).getByRole('radio', { name: 'Surrogate' }),
     );
     await waitFor(() => expect(twins()).toBeNull());
@@ -2744,11 +2821,15 @@ describe('questions worked out from the answers as they stand', () => {
       ],
     });
     const standInRow = () =>
-      screen.queryByRole('radiogroup', { name: /^standIn is your…/ });
+      screen.queryByRole('radiogroup', {
+        name: /relationship of “standIn” to you/,
+      });
     expect(standInRow()).not.toBeNull();
     await user.click(
       within(
-        screen.getByRole('radiogroup', { name: /^julian is your…/ }),
+        screen.getByRole('radiogroup', {
+          name: /relationship of “julian” to you/,
+        }),
       ).getByRole('radio', { name: 'Biological parent' }),
     );
     await waitFor(() => expect(standInRow()).toBeNull());
@@ -3404,7 +3485,9 @@ describe('an answer the form worked out, or one no longer available', () => {
       name: new RegExp(`^Did ${parent} carry the pregnancy\\?`),
     });
   const kindOf = (parent: string) =>
-    screen.getByRole('radiogroup', { name: new RegExp(`^${parent} is your…`) });
+    screen.getByRole('radiogroup', {
+      name: new RegExp(`relationship of “${parent}” to you`),
+    });
   // Mum is recorded as having carried the participant; nothing is recorded
   // about Amy.
   const carrierRecorded = {
@@ -3511,7 +3594,9 @@ describe('an answer the form worked out, or one no longer available', () => {
         name: /^Are “noah” and “cody” identical twins\?/,
       });
     const rick = () =>
-      screen.getByRole('radiogroup', { name: /^rick is their…/ });
+      screen.getByRole('radiogroup', {
+        name: /relationship of “rick” to/,
+      });
 
     it('shows recorded identical twins as not known to be identical once a parent is re-described so they differ', async () => {
       const { onSubmit, user } = renderPersonForm('noah', {
@@ -3573,13 +3658,165 @@ describe('an answer the form worked out, or one no longer available', () => {
     });
   });
 
+  // Josh, 22 Oct 2026: the newest answer wins. A parent re-described as
+  // biological takes the place of the biological parent recorded with the
+  // same sex at birth, whose kind is then asked again.
+  it('asks again the kind of a biological parent another parent re-described as biological replaces', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('rachel', { sex: ['female'] }),
+        person('tom', { sex: ['male'] }),
+        person('mark', { sex: ['male'] }),
+      ],
+      edges: [
+        link('rachel', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+        link('mark', 'ego', 'social'),
+      ],
+    });
+    const markBiological = within(kindOf('mark')).getByRole('radio', {
+      name: 'Biological parent',
+    });
+    expect(markBiological).toBeEnabled();
+    expect(
+      within(kindOf('tom')).getByRole('radio', { name: 'Biological parent' }),
+    ).toBeChecked();
+    await choose(user, kindOf('mark'), 'Biological parent');
+    await waitFor(() => expectUnanswered(kindOf('tom')));
+    expect(kindOf('mark')).toHaveAccessibleDescription(
+      expect.stringContaining(
+        'Choosing “Biological parent” means “tom” will no longer be recorded as your biological parent.',
+      ),
+    );
+    expect(
+      within(kindOf('tom')).getByRole('radio', { name: 'Biological parent' }),
+    ).toBeDisabled();
+    // Nothing is assumed about Tom: the question must be answered.
+    await save(user);
+    await waitFor(() =>
+      expect(kindOf('tom')).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await choose(user, kindOf('tom'), 'Step or social parent');
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].linkUpdates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          linkId: 'mark-ego-social',
+          kind: 'biological',
+        }),
+        expect.objectContaining({
+          linkId: 'tom-ego-biological',
+          kind: 'social',
+        }),
+      ]),
+    );
+  });
+
+  it('leaves two parents both recorded as biological as they are', async () => {
+    // Neither was re-described by the participant, so neither replaces the
+    // other.
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('tom', { sex: ['male'] }),
+        person('mark', { sex: ['male'] }),
+      ],
+      edges: [
+        link('tom', 'ego', 'biological'),
+        link('mark', 'ego', 'biological'),
+      ],
+    });
+    for (const parent of ['tom', 'mark']) {
+      expect(
+        within(kindOf(parent)).getByRole('radio', {
+          name: 'Biological parent',
+        }),
+      ).toBeDisabled();
+    }
+  });
+
+  // Josh, 22 Oct 2026 ("Parents only"): answering twins identical gives
+  // them the same biological parents and donors; a difference in sex at
+  // birth is still answered in each twin's own panel.
+  it('gives twins answered identical the same biological parents', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('rachel', { sex: ['female'] }),
+        person('tom', { sex: ['male'] }),
+        person('ben', { sex: ['male'] }),
+      ],
+      edges: [
+        link('rachel', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+        link('tom', 'ben', 'biological'),
+        link('ego', 'ben', 'unknownZygosityTwin'),
+      ],
+    });
+    const zygosity = screen.getByRole('radiogroup', {
+      name: /^Are you and “ben” identical twins\?/,
+    });
+    const identical = within(zygosity).getByRole('radio', {
+      name: 'Yes, identical',
+    });
+    expect(identical).toBeEnabled();
+    await user.click(identical);
+    expect(zygosity).toHaveAccessibleDescription(
+      expect.stringContaining(
+        'Choosing “Yes, identical” records the same biological parents and donors for you and “ben”.',
+      ),
+    );
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const result = onSubmit.mock.calls[0]?.[0];
+    expect(result?.identicalParentLinks).toEqual([
+      {
+        source: 'rachel',
+        target: 'ben',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+    ]);
+    expect(result?.twinChanges).toMatchObject({
+      changed: [{ zygosity: 'identical' }],
+    });
+  });
+
+  it('keeps identical unavailable for twins recorded with different sexes at birth', async () => {
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('rachel', { sex: ['female'] }),
+        person('tom', { sex: ['male'] }),
+        person('ben', { sex: ['male'] }),
+      ],
+      edges: [
+        link('rachel', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+        link('tom', 'ben', 'biological'),
+        link('ego', 'ben', 'unknownZygosityTwin'),
+      ],
+    });
+    expect(
+      within(
+        screen.getByRole('radiogroup', {
+          name: /^Are you and “ben” identical twins\?/,
+        }),
+      ).getByRole('radio', { name: 'Yes, identical' }),
+    ).toBeDisabled();
+  });
+
   it('asks the kind of parent again, unanswered, once a sex at birth that ruled the chosen kind out is changed', async () => {
     const { user } = renderPersonForm('ego', {
       nodes: [
         person('ego', { isEgo: true, sex: ['female'] }),
         person('shannon', { sex: ['female'] }),
       ],
-      edges: [link('shannon', 'ego', 'biological', { carrier: true })],
+      edges: [link('shannon', 'ego', 'donor')],
       adding: 'parent',
     });
     const kind = () =>
@@ -3660,5 +3897,49 @@ describe('an answer the form worked out, or one no longer available', () => {
     await choose(user, otherParent(), 'No other parent');
     await choose(user, otherParent(), 'sam');
     expectUnanswered(carrier());
+  });
+});
+
+describe('identical twins whose parents and sexes at birth both differ', () => {
+  const parents = [
+    person('mum', { name: 'Julie', sex: ['female'] }),
+    person('dad', { name: 'Rob', sex: ['male'] }),
+  ];
+  const parentLinks = (childId: string) => [
+    link('mum', childId, 'biological', { carrier: true }),
+    link('dad', childId, 'biological'),
+  ];
+
+  it('offers identical once the sex at birth answered matches, bringing the parents into line', async () => {
+    // Sam has only Julie recorded; the participant is recorded male and Sam
+    // female. Correcting the participant's answer to female leaves only the
+    // parents differing, which answering identical brings into line.
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sam', { name: 'Sam', sex: ['female'] }),
+        ...parents,
+      ],
+      edges: [
+        ...parentLinks('ego'),
+        link('mum', 'sam', 'biological', { carrier: true }),
+        link('ego', 'sam', 'unknownZygosityTwin'),
+      ],
+    });
+    const identical = () =>
+      within(
+        screen.getByRole('radiogroup', {
+          name: /^Are you and “sam” identical twins\?/,
+        }),
+      ).getByRole('radio', { name: 'Yes, identical' });
+    expect(identical()).toBeDisabled();
+
+    await user.click(
+      within(
+        screen.getByRole('radiogroup', { name: /^Sex assigned at birth/ }),
+      ).getByRole('radio', { name: 'Female' }),
+    );
+
+    await waitFor(() => expect(identical()).toBeEnabled());
   });
 });

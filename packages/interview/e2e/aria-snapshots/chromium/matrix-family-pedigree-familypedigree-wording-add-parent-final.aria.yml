@@ -5,18 +5,22 @@
   - dialog "Add your parent":
     - heading "Add your parent" [level=2]
     - button "Close"
-    - text: Kind of new parent - matrix check Required You have Julie and Rob as genetic parents, so none of Biological parent and Egg or sperm donor - matrix check Julie carried you on record, so not Surrogate - matrix check
+    - text: Kind of new parent - matrix check Required
     - radiogroup "Kind of new parent - matrix check":
-      - radio "Biological parent" [disabled]
-      - text: Biological parent You have Julie and Rob as genetic parents, so none of Biological parent and Egg or sperm donor - matrix check
+      - radio "Biological parent"
+      - text: Biological parent
       - radio "Adoptive parent"
       - text: Adoptive parent
       - radio "Step or social parent" [checked]
       - text: Step or social parent
-      - radio "Egg or sperm donor" [disabled]
-      - text: Egg or sperm donor You have Julie and Rob as genetic parents, so none of Biological parent and Egg or sperm donor - matrix check
-      - radio "Surrogate" [disabled]
-      - text: Surrogate Julie carried you on record, so not Surrogate - matrix check
+      - radio "Egg or sperm donor"
+      - text: Egg or sperm donor
+      - radio "Surrogate"
+      - text: Surrogate
+    - text: Did the new parent carry them - matrix check
+    - radiogroup "Did the new parent carry them - matrix check":
+      - radio "Yes"
+      - radio "No" [checked]
     - text: Partner of a parent - matrix check
     - radiogroup "Partner of a parent - matrix check":
       - radio "Julie"
@@ -29,12 +33,8 @@
     - group "Also parent of these - matrix check":
       - checkbox "Bea" [checked]
       - text: Bea
-      - checkbox "Bo"
+      - checkbox "Bo" [checked]
       - text: Bo
-    - text: Did this parent carry Bea - matrix check
-    - radiogroup "Did this parent carry Bea - matrix check":
-      - radio "Yes"
-      - radio "No"
     - button "Cancel"
     - button "Back"
     - button "Save"

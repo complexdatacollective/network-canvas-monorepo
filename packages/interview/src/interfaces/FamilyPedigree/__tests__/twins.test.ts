@@ -8,6 +8,8 @@ import {
   areConnected,
   areLinked,
   type Family,
+  familyWithIdenticalParents,
+  identicalParentLinks,
   identicalTwinBlocks,
   identicalTwinsPossible,
   planAddRelative,
@@ -935,5 +937,86 @@ describe('the carrier twins share', () => {
       carrier: 'mum',
     } as AddRelativeRequest);
     expect(result.carrierUpdates).toBeUndefined();
+  });
+});
+
+// Josh, 22 Oct 2026 ("Parents only"): twins answered identical are given the
+// same biological parents and donors where that is possible.
+describe('identical twins’ parents brought into line', () => {
+  const nodes = [
+    person('ego', { isEgo: true, sex: ['male'] }),
+    person('ben', { sex: ['male'] }),
+    person('rachel', { sex: ['female'] }),
+    person('tom', { sex: ['male'] }),
+    person('mark', { sex: ['male'] }),
+  ];
+
+  test('each twin is given the genetic parents the other has', () => {
+    const f = family(nodes, [
+      link('rachel', 'ego', 'biological', { carrier: true }),
+      link('tom', 'ben', 'donor'),
+      link('ego', 'ben', 'unknownZygosityTwin'),
+    ]);
+    const links = identicalParentLinks(f, ['ego', 'ben']);
+    expect(links).toEqual([
+      {
+        source: 'rachel',
+        target: 'ben',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      {
+        source: 'tom',
+        target: 'ego',
+        kind: 'donor',
+        isGestationalCarrier: undefined,
+      },
+    ]);
+    expect(
+      identicalTwinBlocks(
+        familyWithIdenticalParents(
+          f,
+          links ?? [],
+          config.sexAssignedAtBirthAttribute,
+        ),
+        'ego',
+        'ben',
+      ),
+    ).toEqual([]);
+  });
+
+  test('nothing is brought into line when together they would have too many genetic parents', () => {
+    const f = family(nodes, [
+      link('tom', 'ego', 'biological'),
+      link('mark', 'ben', 'biological'),
+      link('ego', 'ben', 'unknownZygosityTwin'),
+    ]);
+    expect(identicalParentLinks(f, ['ego', 'ben'])).toBeUndefined();
+  });
+
+  test('nothing is brought into line when it would make someone their own ancestor', () => {
+    const f = family(
+      [
+        ...nodes,
+        person('cal', { sex: ['male'] }),
+        person('dee', { sex: ['female'] }),
+      ],
+      [
+        link('ego', 'cal', 'biological'),
+        link('cal', 'dee', 'biological'),
+        link('dee', 'ben', 'biological', { carrier: true }),
+        link('ego', 'ben', 'unknownZygosityTwin'),
+      ],
+    );
+    expect(identicalParentLinks(f, ['ego', 'ben'])).toBeUndefined();
+  });
+
+  test('nothing is brought into line when a twin has that parent as another kind', () => {
+    const f = family(nodes, [
+      link('tom', 'ego', 'biological'),
+      link('tom', 'ben', 'social'),
+      link('ego', 'ben', 'unknownZygosityTwin'),
+    ]);
+    expect(identicalParentLinks(f, ['ego', 'ben'])).toBeUndefined();
   });
 });

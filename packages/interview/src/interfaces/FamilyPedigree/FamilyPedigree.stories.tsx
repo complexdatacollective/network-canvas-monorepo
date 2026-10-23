@@ -955,7 +955,7 @@ export const RedescribingAParentWithdrawsNewSiblingsAnswers: Story = {
     await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
     const panel = within(panelOf(canvasElement) as HTMLElement);
     const tom = await panel.findByRole('radiogroup', {
-      name: 'Tom is their…',
+      name: 'How would you define the relationship of “Tom” to “Kim”?',
     });
     await userEvent.click(
       within(tom).getByRole('radio', { name: 'Biological parent' }),
