@@ -13,10 +13,8 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
-import {
-  getMarkdownLabelText,
-  RenderMarkdown,
-} from '@codaco/fresco-ui/RenderMarkdown';
+import OptionLabel from '@codaco/fresco-ui/OptionLabel';
+import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Stage } from '@codaco/protocol-validation';
@@ -270,9 +268,10 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
           { label: spokenLabel, count: nodes.length },
         )}
       >
-        <Heading level="h3" className="[&_strong]:font-black">
-          <RenderMarkdown>{label}</RenderMarkdown>
-        </Heading>
+        <OptionLabel
+          label={label}
+          render={<Heading level="h3" className="[&_strong]:font-black" />}
+        />
         <span className="ml-auto text-sm opacity-60">
           {contentFormat.formatNumber(nodes.length)}
         </span>
