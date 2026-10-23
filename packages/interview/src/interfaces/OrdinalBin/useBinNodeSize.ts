@@ -1,3 +1,5 @@
+'use client';
+
 import { type RefObject, useLayoutEffect, useState } from 'react';
 
 type BinNodeSize = 'sm' | 'xs';
