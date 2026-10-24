@@ -215,7 +215,7 @@ function buildStage(otherVariable = OTHER_VARIABLE): CategoricalBinStage {
         variable: asEntityAttributeReference(CATEGORY_VARIABLE),
         otherVariable: asEntityAttributeReference(otherVariable),
         otherVariablePrompt: { en: OTHER_PROMPT_TEXT },
-        otherOptionLabel: { en: 'Other' },
+        otherOptionLabel: { en: '**Other**' },
       },
     ],
   };

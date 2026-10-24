@@ -14,6 +14,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import OptionLabel, { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type {
@@ -444,12 +445,15 @@ const ShapeMappingEditor = ({
           </Heading>
           {getDiscreteOptions().map((option) => (
             <div key={String(option.value)} className={ITEM_ROW_CLASSES}>
-              <span className="flex-1 text-sm">{option.label}</span>
+              <OptionLabel
+                label={option.label}
+                render={<span className="flex-1 text-sm" />}
+              />
               <ShapePickerControl
                 small
                 nodeColor={nodeColor}
                 aria-label={intl.formatMessage(messages.shapeFor, {
-                  value1: option.label,
+                  value1: optionLabelText(option.label),
                 })}
                 value={getShapeForValue(option.value)}
                 onChange={(shape) => {

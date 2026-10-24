@@ -207,7 +207,7 @@ describe('a value shown by answer in an open dialog', () => {
             contactFreq: {
               ...contactFreq,
               options: [
-                { label: { 'en-US': 'Every week' }, value: 3 },
+                { label: { 'en-US': '**Every** week' }, value: 3 },
                 { label: { 'en-US': 'Monthly' }, value: 2 },
                 { label: { 'en-US': 'Rarely' }, value: 1 },
               ],

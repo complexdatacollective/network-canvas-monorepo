@@ -2,12 +2,8 @@
 
 import { type ReactNode, useId } from 'react';
 
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
+import OptionLabel from '../../OptionLabel';
+import { type PresentationalText } from '../../PresentationalText';
 import {
   controlLabelVariants,
   controlVariants,
@@ -158,18 +154,18 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
                 }}
                 size={size}
               />
-              <span
-                className={cx(
-                  controlLabelVariants({ size }),
-                  'cursor-[inherit] transition-colors duration-200',
-                  isOptionDisabled && 'opacity-50',
-                )}
-                {...presentationalTextProps(option.label)}
-              >
-                <RenderMarkdown>
-                  {presentationalTextValue(option.label)}
-                </RenderMarkdown>
-              </span>
+              <OptionLabel
+                label={option.label}
+                render={
+                  <span
+                    className={cx(
+                      controlLabelVariants({ size }),
+                      'cursor-[inherit] transition-colors duration-200',
+                      isOptionDisabled && 'opacity-50',
+                    )}
+                  />
+                }
+              />
             </label>
           );
         })}

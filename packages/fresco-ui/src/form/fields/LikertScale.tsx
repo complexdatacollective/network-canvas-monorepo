@@ -7,12 +7,11 @@ import { useMemo, useRef, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import OptionLabel, { optionLabelText } from '../../OptionLabel';
 import {
   type PresentationalText,
   presentationalTextProps,
-  presentationalTextValue,
 } from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
   sliderControlVariants,
@@ -260,7 +259,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={() =>
                   currentOption
-                    ? presentationalTextValue(currentOption.label)
+                    ? optionLabelText(currentOption.label)
                     : intl.formatMessage(messages.noSelection)
                 }
               >
@@ -287,15 +286,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
           visible={active.active && options.length > 0}
           anchor={thumbEl}
         >
-          {popoverOption ? (
-            <RenderMarkdown
-              render={
-                <span {...presentationalTextProps(popoverOption.label)} />
-              }
-            >
-              {presentationalTextValue(popoverOption.label)}
-            </RenderMarkdown>
-          ) : null}
+          {popoverOption ? <OptionLabel label={popoverOption.label} /> : null}
         </ScaleValuePopover>
 
         {options.length > 0 && layout.tier === 'full' && (
@@ -309,24 +300,24 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
               const isFirst = index === 0;
               const isLast = index === options.length - 1;
               return (
-                <div
+                <OptionLabel
                   key={index}
-                  className={cx(
-                    controlLabelVariants({ size: 'sm' }),
-                    options.length === 1
-                      ? 'text-center'
-                      : isFirst
-                        ? 'text-left'
-                        : isLast
-                          ? 'text-right'
-                          : 'text-center',
-                  )}
-                  {...presentationalTextProps(option.label)}
-                >
-                  <RenderMarkdown>
-                    {presentationalTextValue(option.label)}
-                  </RenderMarkdown>
-                </div>
+                  label={option.label}
+                  render={
+                    <div
+                      className={cx(
+                        controlLabelVariants({ size: 'sm' }),
+                        options.length === 1
+                          ? 'text-center'
+                          : isFirst
+                            ? 'text-left'
+                            : isLast
+                              ? 'text-right'
+                              : 'text-center',
+                      )}
+                    />
+                  }
+                />
               );
             })}
           </div>
@@ -344,24 +335,24 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
               const percentage =
                 options.length > 1 ? (index / (options.length - 1)) * 100 : 50;
               return (
-                <div
+                <OptionLabel
                   key={index}
-                  className={cx(
-                    controlLabelVariants({ size: 'sm' }),
-                    'absolute text-center',
-                    ROTATED_LABEL_WRAP_CLASS,
-                  )}
-                  style={{
-                    left: `${percentage}%`,
-                    top: '50%',
-                    transform: `translate(-50%, -50%) rotate(${layout.rotateDeg}deg)`,
-                  }}
-                  {...presentationalTextProps(option.label)}
-                >
-                  <RenderMarkdown>
-                    {presentationalTextValue(option.label)}
-                  </RenderMarkdown>
-                </div>
+                  label={option.label}
+                  render={
+                    <div
+                      className={cx(
+                        controlLabelVariants({ size: 'sm' }),
+                        'absolute text-center',
+                        ROTATED_LABEL_WRAP_CLASS,
+                      )}
+                      style={{
+                        left: `${percentage}%`,
+                        top: '50%',
+                        transform: `translate(-50%, -50%) rotate(${layout.rotateDeg}deg)`,
+                      }}
+                    />
+                  }
+                />
               );
             })}
           </div>
@@ -369,28 +360,28 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
 
         {options.length > 1 && layout.tier === 'anchors' && (
           <div className="relative mt-2 flex justify-between px-3">
-            <div
-              className={cx(
-                controlLabelVariants({ size: 'sm' }),
-                'max-w-24 text-left',
-              )}
-              {...presentationalTextProps(options[0]!.label)}
-            >
-              <RenderMarkdown>
-                {presentationalTextValue(options[0]!.label)}
-              </RenderMarkdown>
-            </div>
-            <div
-              className={cx(
-                controlLabelVariants({ size: 'sm' }),
-                'max-w-24 text-right',
-              )}
-              {...presentationalTextProps(options[options.length - 1]!.label)}
-            >
-              <RenderMarkdown>
-                {presentationalTextValue(options[options.length - 1]!.label)}
-              </RenderMarkdown>
-            </div>
+            <OptionLabel
+              label={options[0]!.label}
+              render={
+                <div
+                  className={cx(
+                    controlLabelVariants({ size: 'sm' }),
+                    'max-w-24 text-left',
+                  )}
+                />
+              }
+            />
+            <OptionLabel
+              label={options[options.length - 1]!.label}
+              render={
+                <div
+                  className={cx(
+                    controlLabelVariants({ size: 'sm' }),
+                    'max-w-24 text-right',
+                  )}
+                />
+              }
+            />
           </div>
         )}
       </div>
@@ -401,11 +392,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
         className="sr-only"
         {...presentationalTextProps(currentOption?.label)}
       >
-        {currentOption ? (
-          <RenderMarkdown>
-            {presentationalTextValue(currentOption.label)}
-          </RenderMarkdown>
-        ) : null}
+        {currentOption ? <OptionLabel label={currentOption.label} /> : null}
       </div>
     </div>
   );

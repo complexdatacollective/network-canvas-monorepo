@@ -10,6 +10,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
+import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import {
   CATEGORICAL_BIN_MAX_BINS,
   type Stage,
@@ -437,7 +438,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
 
       const result = await openDialog({
         type: 'form',
-        title: resolve(otherOptionLabel).text,
+        title: <OptionLabel label={resolve(otherOptionLabel).text} />,
         children: (
           <OtherResponse
             node={node}

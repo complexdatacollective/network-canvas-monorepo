@@ -9,6 +9,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import {
   headingTagBelow,
   useEnclosingHeadingLevel,
@@ -445,13 +446,16 @@ export default function NodeShapeMappingFields({
               {groupHeading(intl.formatMessage(messages.shapeForEachValue))}
               {answers.map((answer, index) => (
                 <div key={JSON.stringify(answer.value)} className={ROW_CLASSES}>
-                  <span
-                    className="min-w-0 flex-1 text-sm"
-                    lang={answer.label.lang}
-                    dir={answer.label.dir}
-                  >
-                    {answer.label.text}
-                  </span>
+                  <OptionLabel
+                    label={answer.label.text}
+                    render={
+                      <span
+                        className="min-w-0 flex-1 text-sm"
+                        lang={answer.label.lang}
+                        dir={answer.label.dir}
+                      />
+                    }
+                  />
                   <div className="shrink-0">
                     <UnconnectedField
                       name={`shape-for-${index + 1}`}

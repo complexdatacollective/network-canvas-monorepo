@@ -9,6 +9,7 @@ import RichTextEditorField, {
   type RichTextInsertMenu,
   type RichTextInsertMenuItem,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
   ALLOWED_MARKDOWN_SECTION_TAGS,
@@ -425,7 +426,7 @@ const messageLabelsFor = ({
     const choice = choiceByName.get(node.argument);
     const matched = choice?.options.find((each) => each.value === option);
     if (matched !== undefined) {
-      const text = labelText(matched.label);
+      const text = optionLabelText(labelText(matched.label));
       if (text !== '') return text;
       if (typeof matched.value === 'boolean') {
         return intl.formatMessage(matched.value ? messages.yes : messages.no);
