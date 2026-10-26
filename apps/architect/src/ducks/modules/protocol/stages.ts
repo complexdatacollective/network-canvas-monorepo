@@ -1,6 +1,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
+import {
+  findTimelineStructureProblems,
+  isFinishSessionStage,
+  type SkipLogicDestination,
+  type Stage,
+} from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
@@ -25,11 +30,48 @@ const initialStage = {
   label: '',
 };
 
-type StageDependencyCandidate = Pick<Stage, 'id' | 'label' | 'type'> & {
+type StageDependencyCandidate = Pick<Stage, 'id' | 'type'> & {
   sourceStageId?: string;
   skipLogic?: {
     destination?: SkipLogicDestination;
   };
+};
+
+/**
+ * Whether deleting this stage would leave the interview with no finish stage
+ * to end at. A protocol's only finish stage cannot be deleted; one with
+ * several may lose any of them but the last that remains.
+ */
+export const isLastFinishStage = (
+  stages: readonly Pick<Stage, 'id' | 'type'>[],
+  stageId: string,
+) => {
+  const finishStageIds = stages.flatMap((stage) =>
+    stage.type === 'FinishSession' ? [stage.id] : [],
+  );
+  return finishStageIds.length === 1 && finishStageIds[0] === stageId;
+};
+
+/**
+ * Where a stage being created is inserted. Finish stages sit together at the
+ * end of the interview, so a stage that is not one never goes after the first
+ * finish stage, where no participant could reach it: a position at or past
+ * that stage puts it just before. A finish stage goes where it was asked for
+ * among the others, and otherwise at the end.
+ */
+export const creationIndex = (
+  stages: readonly Pick<Stage, 'type'>[],
+  stage: Pick<Stage, 'type'>,
+  index: number | undefined,
+) => {
+  const requested = index ?? stages.length;
+  const firstFinish = stages.findIndex(isFinishSessionStage);
+  if (isFinishSessionStage(stage)) {
+    return firstFinish !== -1 && requested >= firstFinish
+      ? Math.min(requested, stages.length)
+      : stages.length;
+  }
+  return firstFinish === -1 ? requested : Math.min(requested, firstFinish);
 };
 
 export const getFamilyPedigreeDependentStages = <
@@ -63,8 +105,8 @@ export const getSkipDestinationDependentStages = <
       candidate.skipLogic.destination.stageId === stageId,
   );
 
-const isStageReferencedAsSkipDestination = <T extends StageDependencyCandidate>(
-  stages: T[],
+const isStageReferencedAsSkipDestination = (
+  stages: StageDependencyCandidate[],
   stageId: string,
 ) => getSkipDestinationDependentStages(stages, stageId).length > 0;
 
@@ -106,6 +148,10 @@ const deleteStageAsync = createAppAsyncThunk(
     const allStages = getProtocol(state)?.stages ?? [];
 
     if (isStageReferencedAsSkipDestination(allStages, stageId)) {
+      return stageId;
+    }
+
+    if (isLastFinishStage(allStages, stageId)) {
       return stageId;
     }
 
@@ -164,6 +210,17 @@ const stagesSlice = createSlice({
         return;
       }
 
+      // The interview ends at its finish stages, which sit together at the
+      // end: they may change places among themselves, but a move that would
+      // leave another stage after the first of them, or the interview ending
+      // anywhere else, is refused.
+      if (
+        findTimelineStructureProblems(reorderedStages).length >
+        findTimelineStructureProblems(state).length
+      ) {
+        return;
+      }
+
       const movedStage = state[oldIndex];
       if (!movedStage) {
         return;
@@ -181,6 +238,10 @@ const stagesSlice = createSlice({
           return;
         }
 
+        if (isLastFinishStage(state, stageId)) {
+          return;
+        }
+
         return state.filter((stage) => stage.id !== stageId);
       })
       // The ONLY way a stage is created or edited. It always saves the whole
@@ -191,7 +252,7 @@ const stagesSlice = createSlice({
 
         if (!stageId) {
           state.splice(
-            index ?? state.length,
+            creationIndex(state, stage, index),
             0,
             prune({ ...initialStage, ...stage }),
           );

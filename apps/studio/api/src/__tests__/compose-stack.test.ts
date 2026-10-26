@@ -96,7 +96,6 @@ const NOT_FORWARDED: Record<string, string> = {
   PORT: 'the server default, 3000, is the port Traefik and the healthcheck use',
   WORKER_HEALTH_PORT:
     'the server default, 3001, is the port the worker healthcheck probes',
-  STUDIO_DEPLOYMENT_MODE: 'managed deployments only; the stack is self-hosted',
   STUDIO_DEV_DEFAULTS: 'development only',
   STUDIO_SEED_ADMIN_PASSWORD: 'read only by the seed command',
   STUDIO_SECRETS_KEY: 'delivered as the STUDIO_SECRETS_KEY_FILE secret',
@@ -131,7 +130,7 @@ describe('the reference compose stack', () => {
     // Adding a service is a change to what a self-hoster runs, what the
     // self-host guide documents, and what the platform deploys. Failing here
     // is the prompt to do all three.
-    expect(Object.keys(compose.services).sort()).toEqual([
+    expect(Object.keys(compose.services).toSorted()).toEqual([
       'api',
       'garage',
       'migrate',
@@ -470,7 +469,7 @@ describe('the reference compose stack', () => {
         (service) => service.secrets ?? [],
       ),
     );
-    expect([...used].sort()).toEqual([
+    expect([...used].toSorted()).toEqual([
       'postgres_password',
       'studio_secrets_key',
     ]);

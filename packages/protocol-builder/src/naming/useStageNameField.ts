@@ -2,8 +2,15 @@ import { useCallback } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { useField } from '@codaco/fresco-ui/form/hooks/useField';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import {
+  asLocalizedString,
+  localeDirection,
+  translationText,
+} from '../localization/localizedText.ts';
+import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import { MAX_LABEL_LENGTH } from './generateStageLabel.ts';
 import {
   LABEL,
@@ -31,6 +38,10 @@ export type StageNameFieldProps = Readonly<{
    * save.
    */
   'form': string;
+  /** The editing language, which the name's text is written in. */
+  'lang': string | undefined;
+  'dir': 'ltr' | 'rtl' | undefined;
+  /** The name's translation in the editing language, as plain text. */
   'value': string;
   'onChange': (value: string) => void;
   /** `useAutoStageName().onBlur`, for a host that proposes names. */
@@ -57,6 +68,8 @@ export type StageNameField = Readonly<{
    * one.
    */
   error: string | undefined;
+  /** Every translation of the name, for a control that shows which are missing. */
+  translations: LocalizedString | undefined;
   containerProps: StageNameContainerProps;
   fieldProps: StageNameFieldProps;
 }>;
@@ -71,6 +84,7 @@ export type StageNameField = Readonly<{
  */
 export function useStageNameField(): StageNameField {
   const { formId } = useStageEditorForm();
+  const { locale } = useEditingLanguage();
   const intl = useAppIntl();
   const write = useStageNameWriter();
   const { id, containerProps, fieldProps, meta } = useStageNameRegistration();
@@ -92,20 +106,22 @@ export function useStageNameField(): StageNameField {
     id,
     label,
     error,
+    translations: asLocalizedString(fieldProps.value),
     containerProps,
     fieldProps: {
       'id': id,
       'name': LABEL,
       'form': formId,
-      // Normalised for RENDERING, as every connected control must: the value
-      // is not a string for the one render between a structural write and the
-      // effect that repairs it.
-      'value': typeof fieldProps.value === 'string' ? fieldProps.value : '',
+      'lang': locale,
+      'dir': locale === undefined ? undefined : localeDirection(locale),
+      'value':
+        locale === undefined ? '' : translationText(fieldProps.value, locale),
       onChange,
       placeholder,
       'characterLimit': MAX_LABEL_LENGTH,
       'disabled': fieldProps.disabled,
-      'readOnly': fieldProps.readOnly,
+      // Nothing can be written until the protocol's languages are known.
+      'readOnly': fieldProps.readOnly || locale === undefined,
       'aria-required': fieldProps['aria-required'],
       'aria-invalid': fieldProps['aria-invalid'],
       'aria-labelledby': fieldProps['aria-labelledby'],

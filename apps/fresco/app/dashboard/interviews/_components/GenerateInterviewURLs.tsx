@@ -2,7 +2,7 @@
 
 import { FileUp } from 'lucide-react';
 import { use, useState, useTransition } from 'react';
-import superjson from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import {
@@ -68,7 +68,7 @@ export const GenerateInterviewURLs = ({
   const intl = useAppIntl();
 
   const rawProtocols = use(protocolsPromise);
-  const protocols = superjson.parse<GetProtocolsQuery>(rawProtocols);
+  const protocols = SuperJSON.parse<GetProtocolsQuery>(rawProtocols);
   const { add } = useToast();
 
   const [interviewsToExport, setInterviewsToExport] = useState<

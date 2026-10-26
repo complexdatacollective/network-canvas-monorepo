@@ -69,6 +69,9 @@ import {
 import { testCipher } from './support/secrets.ts';
 import { startStudioServer } from './support/serve.ts';
 
+// The sample protocol declares en-US as its only language.
+const enUS = (text: string) => ({ 'en-US': text });
+
 const env = readEnv();
 
 const TEAM_ID = 'protocol-builder-ws-team';
@@ -291,8 +294,8 @@ describe.skipIf(!testDb || !env.auth)(
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label,
-              title: label,
+              label: enUS(label),
+              title: enUS(label),
               items: [],
             }),
           }),
@@ -410,8 +413,8 @@ describe.skipIf(!testDb || !env.auth)(
           kind: 'stage',
           document: Redacted.make({
             type: 'Information',
-            label: 'Made over the socket',
-            title: 'Made over the socket',
+            label: enUS('Made over the socket'),
+            title: enUS('Made over the socket'),
             items: [],
           }),
         }),
@@ -550,7 +553,7 @@ describe.skipIf(!testDb || !env.auth)(
           sectionId,
           document: Redacted.make({
             ...Redacted.value(resumed.document),
-            label: 'Renamed after the reconnect',
+            label: enUS('Renamed after the reconnect'),
           }),
           revision: resumed.revision,
         }),
@@ -561,8 +564,8 @@ describe.skipIf(!testDb || !env.auth)(
       const read = await second.run(
         second.client('GetSection', { protocolId, sectionId }),
       );
-      expect(Redacted.value(read.document).label).toBe(
-        'Renamed after the reconnect',
+      expect(Redacted.value(read.document).label).toEqual(
+        enUS('Renamed after the reconnect'),
       );
       await second.run(second.client('ReleaseLock', { protocolId, sectionId }));
       await watched.stop();
@@ -943,7 +946,7 @@ describe.skipIf(!testDb || !env.auth)(
             sectionId,
             document: Redacted.make({
               ...Redacted.value(acquired.value.document),
-              label: 'Written',
+              label: enUS('Written'),
             }),
             revision: acquired.value.revision,
           }),
@@ -982,7 +985,7 @@ describe.skipIf(!testDb || !env.auth)(
       { lock: 'readOnly', holder: ADA.userId },
       'NotLockHolder',
       'ok',
-      'Written',
+      enUS('Written'),
       'SectionNotFound',
       'ok',
     ];
@@ -1035,7 +1038,7 @@ describe.skipIf(!testDb || !env.auth)(
         {
           method: 'POST',
           headers: {
-            'content-type': 'application/ndjson',
+            'content-type': 'application/x-ndjson',
             'sec-fetch-site': 'same-origin',
             ...headers,
           },
@@ -1093,7 +1096,7 @@ describe.skipIf(!testDb || !env.auth)(
             path: PROTOCOL_BUILDER_RPC_PATH,
             method: 'POST',
             headers: {
-              'content-type': 'application/ndjson',
+              'content-type': 'application/x-ndjson',
               'sec-fetch-site': 'same-origin',
               'content-length': String(2 ** 30),
             },
@@ -1123,7 +1126,7 @@ describe.skipIf(!testDb || !env.auth)(
       expect(crossSite.exit).toBeUndefined();
     });
 
-    it('stops reading a /rpc/protocol-builder body over the bound', async () => {
+    it('answers 413 to a /rpc/protocol-builder body over the bound', async () => {
       const bounded = await startStudioServer(
         { ...env, deploymentMode: 'self-hosted' },
         studio,
@@ -1135,7 +1138,7 @@ describe.skipIf(!testDb || !env.auth)(
         fetch(`${bounded.origin}${PROTOCOL_BUILDER_RPC_PATH}`, {
           method: 'POST',
           headers: {
-            'content-type': 'application/ndjson',
+            'content-type': 'application/x-ndjson',
             'sec-fetch-site': 'same-origin',
             ...headers,
           },
@@ -1149,7 +1152,7 @@ describe.skipIf(!testDb || !env.auth)(
         );
       try {
         const oversized = await post({ cookie: cookieOf(ADA) }, 1024 * 1024);
-        expect(oversized).toHaveProperty('refused');
+        expect(oversized).toMatchObject({ status: 413 });
 
         const normal = await post({ cookie: cookieOf(ADA) }, 0);
         expect(normal).toMatchObject({ status: 200 });
@@ -1166,7 +1169,7 @@ describe.skipIf(!testDb || !env.auth)(
       const response = await fetch(`${server.origin}${path}`, {
         method: 'POST',
         headers: {
-          'content-type': 'application/ndjson',
+          'content-type': 'application/x-ndjson',
           'sec-fetch-site': 'same-origin',
           'cookie': cookieOf(ADA),
         },
@@ -1341,7 +1344,7 @@ describe.skipIf(!testDb || !env.auth)(
         {
           method: 'POST',
           headers: {
-            'content-type': 'application/ndjson',
+            'content-type': 'application/x-ndjson',
             'sec-fetch-site': 'same-origin',
             'cookie': cookieOf(ADA),
           },
@@ -1394,7 +1397,7 @@ describe.skipIf(!testDb || !env.auth)(
         {
           method: 'POST',
           headers: {
-            'content-type': 'application/ndjson',
+            'content-type': 'application/x-ndjson',
             'sec-fetch-site': 'same-origin',
             'cookie': cookieOf(ADA),
           },

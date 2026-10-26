@@ -1,7 +1,11 @@
 # CEGRM-derived template proposals for Architect
 
 > **Status:** Proposal A **implemented** as the `eco-genetic-relationship-maps` template; B and C
-> remain open for discussion. Three candidate Architect templates built on the
+> remain open for discussion. The proposals predate the redesigned Family Pedigree, and the
+> configurations below use its old schema. The implemented template differs where the interface
+> changed: there is no `relationship_to_ego` attribute (nothing writes one), and the people added
+> on the quick-add stage are marked with a `non_kin` boolean, which the later stages filter on to
+> tell family from non-kin. Three candidate Architect templates built on the
 > `FamilyPedigree` + `NarrativePedigree` interfaces and loosely based on the **Colored
 > Eco-Genetic Relationship Map (CEGRM)** (Kenen & Peters, _J Genet Couns_ 2001).
 >

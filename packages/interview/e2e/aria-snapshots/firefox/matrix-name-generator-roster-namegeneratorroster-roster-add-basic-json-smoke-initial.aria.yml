@@ -21,13 +21,13 @@
       - term: Age
       - definition: /\d+/
       - term: Location
-      - definition: —
+      - definition: No value
     - option "Ben Brown":
       - heading "Ben Brown" [level=4]
       - term: Age
       - definition: /\d+/
       - term: Location
-      - definition: —
+      - definition: No value
     - option "Drew Diaz":
       - heading "Drew Diaz" [level=4]
       - term: Age

@@ -1,5 +1,4 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { compose } from '@reduxjs/toolkit';
 import { useEffect, useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -112,8 +111,4 @@ const Network = ({
     </>
   );
 };
-export default compose(withAssetPath)(
-  Network as unknown as React.ComponentType<unknown>,
-) as unknown as React.ComponentType<{
-  id: string;
-}>;
+export default withAssetPath(Network);

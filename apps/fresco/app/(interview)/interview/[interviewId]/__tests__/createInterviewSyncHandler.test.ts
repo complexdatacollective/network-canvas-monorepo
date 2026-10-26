@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { SessionPayload, SyncOptions } from '@codaco/interview/contract';
+import type { SessionSnapshot, SyncOptions } from '@codaco/interview/contract';
 
 import { createInterviewSyncHandler } from '../createInterviewSyncHandler';
 
@@ -22,7 +22,7 @@ function settle(write: Promise<void>) {
   );
 }
 
-function sessionWith(name: string): SessionPayload {
+function sessionWith(name: string): SessionSnapshot {
   return {
     id: 'interview-1',
     startTime: '2026-08-12T00:00:00.000Z',
@@ -37,7 +37,11 @@ function sessionWith(name: string): SessionPayload {
   };
 }
 
-type SyncBody = { network: SessionPayload['network']; syncRevision?: number };
+type SyncBody = {
+  network: SessionSnapshot['network'];
+  syncRevision?: number;
+  currentStep?: number;
+};
 
 /**
  * The endpoint's own rule, so these tests measure what the participant's
@@ -159,7 +163,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
-      getCurrentStep: () => 2,
+      protocolHash: 'protocol-hash',
+      initialStep: 2,
     });
 
     // An ordinary write goes out and stays on the wire. Track its outcome now:
@@ -211,7 +216,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
-      getCurrentStep: () => 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 0,
     });
 
     const ordinary = settle(
@@ -252,7 +258,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 41,
-      getCurrentStep: () => 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 0,
     });
 
     await onSync('interview-1', sessionWith('resumed'), ORDINARY);
@@ -274,7 +281,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
-      getCurrentStep: () => 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 0,
     });
 
     // The other tab has written several times since this one loaded.
@@ -303,7 +311,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
-      getCurrentStep: () => 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 0,
     });
 
     state.revision = 20;
@@ -326,7 +335,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: drifted,
-      getCurrentStep: () => 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 0,
     });
 
     await onSync('interview-1', sessionWith('drifted'), ORDINARY);
@@ -352,7 +362,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 4,
-      getCurrentStep: () => 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 0,
     });
 
     await onSync('interview-1', sessionWith('after-finish'), ORDINARY);
@@ -368,7 +379,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
-      getCurrentStep: () => 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 0,
     });
 
     await onSync('interview-1', sessionWith('first'), ORDINARY);
@@ -385,6 +397,28 @@ describe('createInterviewSyncHandler', () => {
     expect(bodies[1]?.syncRevision).toBe(2);
   });
 
+  it('records the step the host last reported when a write goes on the wire', async () => {
+    // The step is reported to the handler rather than read from the host, so
+    // a write must carry the newest step reported before it was put on the
+    // wire — not the one the handler was built with.
+    const { apply } = makeServer();
+    const { fetchMock, bodies } = makeAutoFetch(apply);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 3,
+    });
+
+    await onSync('interview-1', sessionWith('first'), UNLOADING);
+    onSync.setCurrentStep(5);
+    await onSync('interview-1', sessionWith('second'), UNLOADING);
+
+    expect(bodies.map((body) => body.currentStep)).toEqual([3, 5]);
+  });
+
   it('refuses a sync for an interview it does not belong to', async () => {
     const { apply } = makeServer();
     const { fetchMock } = makeAutoFetch(apply);
@@ -393,7 +427,8 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
-      getCurrentStep: () => 0,
+      protocolHash: 'protocol-hash',
+      initialStep: 0,
     });
 
     await expect(

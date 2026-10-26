@@ -1,7 +1,13 @@
 'use client';
 
 import { type Remote, releaseProxy, wrap } from 'comlink';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { createSearchWorker } from '../filtering/createSearchWorker.ts';
 import type {
@@ -17,7 +23,7 @@ import type { Key, KeyExtractor } from '../types';
 type SearchEngine = {
   init: (
     items: (Record<string, unknown> & { _key: Key })[],
-    keys: string[],
+    keys: FilterProperty[],
     options?: FuseOptions,
   ) => void;
   search: (query: string, minQueryLength?: number) => WorkerSearchResult;
@@ -66,25 +72,26 @@ export function useSearchWorker<T extends Record<string, unknown>>({
   const [isReady, setIsReady] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
 
-  // Convert FilterProperty[] to string[] for fuse.js
-  const fuseKeys = filterKeys.map((key) =>
-    Array.isArray(key) ? key.join('.') : key,
-  );
-  const fuseKeysRef = useRef(fuseKeys);
-  fuseKeysRef.current = fuseKeys;
-
+  // Path arrays go to Fuse as arrays: joining them with '.' would split a
+  // segment that itself contains a dot (a variable named `a.b`) into two.
+  // Read through refs so a new array or options object each render does not
+  // rebuild the index; updated in a layout effect, before the index effect.
+  const filterKeysRef = useRef(filterKeys);
   const fuseOptionsRef = useRef(fuseOptions);
-  fuseOptionsRef.current = fuseOptions;
+  useLayoutEffect(() => {
+    filterKeysRef.current = filterKeys;
+    fuseOptionsRef.current = fuseOptions;
+  });
 
   const isUnmountedRef = useRef(false);
 
   // Initialize worker
   useEffect(() => {
     isUnmountedRef.current = false;
-    if (!enabled) {
-      setIsReady(false);
-      return;
-    }
+    // While disabled the index is never built, and the cleanup below resets
+    // readiness whenever the worker is torn down, so `isReady` is already
+    // false here.
+    if (!enabled) return;
 
     const worker = createSearchWorker();
 
@@ -129,7 +136,7 @@ export function useSearchWorker<T extends Record<string, unknown>>({
 
         await apiRef.current.init(
           serializedItems,
-          fuseKeysRef.current,
+          filterKeysRef.current,
           fuseOptionsRef.current,
         );
         if (!cancelled && !isUnmountedRef.current) {

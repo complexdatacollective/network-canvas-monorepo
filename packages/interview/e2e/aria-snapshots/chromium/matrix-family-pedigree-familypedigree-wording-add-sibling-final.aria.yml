@@ -1,0 +1,34 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your sibling":
+    - heading "Add your sibling" [level=2]
+    - button "Close"
+    - text: Parents shared with you - matrix check Required
+    - group "Parents shared with you - matrix check":
+      - checkbox "Julie" [checked]
+      - text: Julie
+      - checkbox "Rob"
+      - text: Rob
+    - text: Kind of sibling - matrix check Required
+    - radiogroup "Kind of sibling - matrix check":
+      - radio "Biological kind - matrix check" [checked]
+      - text: Biological kind - matrix check
+      - radio "Adopted kind - matrix check"
+      - text: Adopted kind - matrix check
+    - text: Is this your twin - matrix check Triplets count as twins - matrix check
+    - radiogroup "Is this your twin - matrix check":
+      - radio "Not twins - matrix check"
+      - text: Not twins - matrix check
+      - radio "Fraternal twin option - matrix check"
+      - text: Fraternal twin option - matrix check
+    - text: Carrier of the pregnancy - matrix check Required
+    - radiogroup "Carrier of the pregnancy - matrix check":
+      - radio "Julie"
+      - text: Julie
+      - radio "Another or unknown carrier - matrix check"
+      - text: Another or unknown carrier - matrix check
+    - button "Cancel"
+    - button "Back"
+    - button "Save"

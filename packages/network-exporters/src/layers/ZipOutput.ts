@@ -1,6 +1,8 @@
 import { Effect, Fiber, Layer } from 'effect';
 import { Zip, ZipPassThrough } from 'fflate';
 
+import { normalizeForComparison } from '@codaco/shared-consts';
+
 import { OutputError } from '../errors';
 import type { OutputResult } from '../output';
 import { Output } from '../services/Output';
@@ -60,10 +62,7 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
           if (queue.length > 0) {
             const head = queue.shift();
             if (head === null) {
-              resolve({
-                value: undefined as unknown as Uint8Array,
-                done: true,
-              });
+              resolve({ value: undefined, done: true });
               return;
             }
             if (head === undefined) {
@@ -80,10 +79,7 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
           resolveNext = () => {
             const head = queue.shift();
             if (head === null) {
-              resolve({
-                value: undefined as unknown as Uint8Array,
-                done: true,
-              });
+              resolve({ value: undefined, done: true });
               return;
             }
             if (head === undefined) {
@@ -101,7 +97,20 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
     }),
   };
 
+  // Extracting an archive on macOS or Windows writes names that differ only in
+  // case, or in Unicode normalization, to one file, so such entries are
+  // duplicates even though the zip format would store both.
+  const claimedNames = new Set<string>();
+
   const appendEntry = async (name: string, data: AsyncIterable<Uint8Array>) => {
+    const claim = normalizeForComparison(name);
+    if (claimedNames.has(claim)) {
+      throw new Error(
+        `Refusing to write "${name}" to the export: a file with that name is already in it, and overwriting it would lose data.`,
+      );
+    }
+    claimedNames.add(claim);
+
     const passThrough = new ZipPassThrough(name);
     zip.add(passThrough);
     try {
@@ -152,6 +161,26 @@ type ZipSink = (
   fileName: string,
 ) => Effect.Effect<OutputResult, OutputError>;
 
+type ZipSession = {
+  readonly handle: ZipStreamHandle;
+  readonly sinkFiber: Fiber.Fiber<OutputResult, OutputError>;
+};
+
+// `OutputHandle` is `unknown`, so the service methods get back whatever `begin`
+// returned without a type. Each session is registered under its own identity so
+// a handle this layer did not issue is recognised rather than assumed.
+const sessions = new WeakMap<object, ZipSession>();
+
+const sessionFor = (rawHandle: unknown): ZipSession | undefined =>
+  typeof rawHandle === 'object' && rawHandle !== null
+    ? sessions.get(rawHandle)
+    : undefined;
+
+const unknownHandleError = () =>
+  new OutputError({
+    cause: new Error('Handle was not issued by this zip output'),
+  });
+
 export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
   Layer.succeed(Output, {
     begin: () =>
@@ -161,11 +190,15 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
         // Forking keeps sink failures inside the Effect runtime so they propagate
         // through the join in `end` instead of becoming detached promise rejections.
         const sinkFiber = Effect.runFork(sink(handle.iterable, fileName));
-        return { handle, sinkFiber };
+        const session: ZipSession = { handle, sinkFiber };
+        sessions.set(session, session);
+        return session;
       }),
 
     writeEntry: (rawHandle, entry) => {
-      const { handle } = rawHandle as { handle: ZipStreamHandle };
+      const session = sessionFor(rawHandle);
+      if (!session) return Effect.fail(unknownHandleError());
+      const { handle } = session;
       return Effect.tryPromise({
         try: () => handle.appendEntry(entry.name, entry.data),
         catch: (cause) => {
@@ -176,10 +209,9 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
     },
 
     end: (rawHandle) => {
-      const { handle, sinkFiber } = rawHandle as {
-        handle: ZipStreamHandle;
-        sinkFiber: Fiber.Fiber<OutputResult, OutputError>;
-      };
+      const session = sessionFor(rawHandle);
+      if (!session) return Effect.fail(unknownHandleError());
+      const { handle, sinkFiber } = session;
       return Effect.tryPromise({
         try: () => handle.finalize(),
         catch: (cause) => {
@@ -204,10 +236,10 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
     // pinning everything it buffered. Rejecting the iterable unblocks it;
     // the interrupt then reaps it regardless of where it was suspended.
     abort: (rawHandle) => {
-      const { handle, sinkFiber } = rawHandle as {
-        handle: ZipStreamHandle;
-        sinkFiber: Fiber.Fiber<OutputResult, OutputError>;
-      };
+      const session = sessionFor(rawHandle);
+      // A handle this layer never issued holds nothing to release.
+      if (!session) return Effect.void;
+      const { handle, sinkFiber } = session;
       return Effect.sync(() =>
         handle.abort(new Error('Export was cancelled')),
       ).pipe(Effect.andThen(Fiber.interrupt(sinkFiber)), Effect.asVoid);

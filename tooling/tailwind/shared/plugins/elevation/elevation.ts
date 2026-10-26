@@ -138,6 +138,15 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
         const stripColorPrefix = (value: string) =>
           value.replace(/var\(--color-/g, 'var(--');
 
+        // Tailwind types `api.theme` as returning `any`. The backgroundColor,
+        // textColor and colors theme keys each resolve to a map of utility
+        // name to CSS color string.
+        const colorValues = (key: string): Record<string, string> => {
+          const resolved = api.theme?.(key) ?? api.theme?.('colors') ?? {};
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- api.theme is typed any; these theme keys resolve to name-to-color-string maps
+          return resolved as Record<string, string>;
+        };
+
         // `modifiers: 'any'` ensures alpha-modified classes like `bg-primary/90`
         // still set --scoped-bg. Shadow derivation uses the solid color, so the
         // alpha on the visible background is intentionally discarded here.
@@ -148,9 +157,7 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
             }),
           },
           {
-            values: (api.theme?.('backgroundColor') ??
-              api.theme?.('colors') ??
-              {}) as Record<string, string>,
+            values: colorValues('backgroundColor'),
             modifiers: 'any',
           },
         );
@@ -162,9 +169,7 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
             }),
           },
           {
-            values: (api.theme?.('textColor') ??
-              api.theme?.('colors') ??
-              {}) as Record<string, string>,
+            values: colorValues('textColor'),
             modifiers: 'any',
           },
         );

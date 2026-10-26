@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
@@ -22,6 +23,7 @@ import type {
 } from '@codaco/fresco-ui/collection/sorting/types';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
+import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -38,10 +40,16 @@ import Panel from '../../components/Panel';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
+import {
+  useLocalizedString,
+  useContentLocale,
+  useResolveLocalizedString,
+} from '../../localization/ProtocolLocalizationProvider';
 import { getNodeVariables } from '../../selectors/interface';
 import {
   getSearchOptions,
@@ -60,7 +68,6 @@ import { addNode, deleteNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
-import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
 import { buildRosterSortConfig } from './buildRosterSortConfig';
@@ -69,13 +76,14 @@ import DropOverlay from './DropOverlay';
 import { convertNamesToUUIDs, type NameGeneratorRosterProps } from './helpers';
 import useItems, { type UseItemElement } from './useItems';
 
-const ErrorMessage = (_props: { error: Error }) => (
-  <div className="flex flex-1 flex-col items-center justify-center">
-    <Heading level="h2">
+const ErrorMessage = () => (
+  <div className="flex flex-1 flex-col items-center justify-center gap-2">
+    <Icon name="warning" />
+    <Heading level="h2" className="sr-only">
       <AppMessage message={interfaceMessages.errorHeading} />
     </Heading>
     <Paragraph>
-      <AppMessage message={interfaceMessages.externalDataUnavailable} />
+      <AppMessage message={interfaceMessages.externalDataError} />
     </Paragraph>
   </div>
 );
@@ -100,11 +108,22 @@ const keyExtractor = (item: UseItemElement) => item.id;
 const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const intl = useAppIntl();
   const { stage } = props;
+  const { text: panelTitleText, parts: panelTitleParts } = useLocalizedString(
+    stage.panelTitle,
+  );
+  const panelTitle =
+    panelTitleParts === undefined ? (
+      panelTitleText
+    ) : (
+      <DynamicTextParts parts={panelTitleParts} />
+    );
+  const { text: allAddedNotice } = useLocalizedString(stage.allAddedNotice);
+  // The protocol's interface text words the search (`search.searchLabel`).
+  const searchLabel = intl.formatMessage(commonMessages.search);
 
   const { isLastPrompt } = usePrompts();
 
-  const { requirePassphrase, passphrase, passphraseInvalid, isEnabled } =
-    usePassphrase();
+  const { requirePassphrase, unlocked } = usePassphrase();
   const { showToast } = useInterviewToast();
 
   const interfaceRef = useRef(null);
@@ -173,21 +192,34 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   // --- Sort setup ---
   const sortOptions = useStageSelector(getSortOptions);
+  const resolve = useResolveLocalizedString();
+  const contentLocale = useContentLocale();
 
+  // Sort buttons take plain text, so their labels are resolved here.
   const { initialSortRules, sortableProperties } = useMemo<{
     initialSortRules: SortRule[] | undefined;
     sortableProperties: SortableProperty[] | undefined;
   }>(
-    () => buildRosterSortConfig(sortOptions, nodeVariables),
-    [sortOptions, nodeVariables],
+    () =>
+      buildRosterSortConfig(
+        sortOptions && {
+          sortOrder: sortOptions.sortOrder,
+          sortableProperties: sortOptions.sortableProperties?.map(
+            ({ label, variable }) => ({ label: resolve(label).text, variable }),
+          ),
+        },
+        nodeVariables,
+      ),
+    [sortOptions, nodeVariables, resolve],
   );
 
   // --- Encryption detection ---
   const useEncryption = useMemo(() => {
-    const isEncrypted = (variableId: string) =>
-      isAttributeEncrypted(isEnabled, codebookForNodeType, variableId);
-
-    if (Object.keys(newNodeAttributes).some(isEncrypted)) {
+    if (
+      Object.keys(newNodeAttributes).some(
+        (variableId) => codebookForNodeType[variableId]?.encrypted,
+      )
+    ) {
       return true;
     }
 
@@ -218,8 +250,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
       [] as string[],
     );
 
-    return itemAttributesWithCodebookMatches.some(isEncrypted);
-  }, [items, codebookForNodeType, newNodeAttributes, isEnabled]);
+    return itemAttributesWithCodebookMatches.some(
+      (itemAttribute) => codebookForNodeType[itemAttribute]?.encrypted,
+    );
+  }, [items, codebookForNodeType, newNodeAttributes]);
 
   useEffect(() => {
     if (useEncryption) {
@@ -227,14 +261,16 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     }
   }, [useEncryption, requirePassphrase]);
 
-  // Answers this stage would encrypt can only be taken once a passphrase that
-  // works is in force.
-  const encryptionLocked = useEncryption && (!passphrase || passphraseInvalid);
+  // Answers this stage would encrypt can only be taken once the interview's
+  // passphrase has been entered.
+  const encryptionLocked = useEncryption && !unlocked;
 
   const { maxNodesReached } = useNodeLimits({
     stageNodeCount,
     minNodes,
     maxNodes,
+    minNodesNotice: stage.minNodesNotice,
+    maxNodesNotice: stage.maxNodesNotice,
     isLastPrompt,
   });
 
@@ -340,26 +376,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     // Reachable only once the roster has actually arrived: the panel below
     // renders the collection at all only in the `ready` state, so an empty
     // `items` here means the list really is empty rather than not yet read.
-    if (items.length === 0) {
-      return (
-        <>
-          <AppMessage message={interfaceMessages.emptyRoster} />
-        </>
-      );
+    if (items.length === 0 || filteredItems.length === 0) {
+      return <>{allAddedNotice}</>;
     }
-    if (filteredItems.length === 0) {
-      return (
-        <>
-          <AppMessage message={interfaceMessages.rosterAlreadyAdded} />
-        </>
-      );
-    }
-    return (
-      <>
-        <AppMessage message={runtimeMessages.noSearchMatch} />
-      </>
-    );
-  }, [items.length, filteredItems.length]);
+    return <AppMessage message={runtimeMessages.noSearchMatch} />;
+  }, [items.length, filteredItems.length, allAddedNotice]);
 
   // --- DnD setup for source panel ---
   const sourceCollectionId = `source-nodes-${useId()}`;
@@ -434,11 +455,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         className="min-h-0 w-full flex-1 basis-full"
         aria-label={intl.formatMessage(interfaceMessages.resizePanels)}
       >
-        <Panel
-          title={intl.formatMessage(interfaceMessages.availableToAdd)}
-          panelNumber={0}
-          noCollapse
-        >
+        <Panel title={panelTitle} panelNumber={0} noCollapse>
           {/*
             `idle` is the state of the first frame, before the effect that
             reads the roster has run. Treating it as loading is what keeps the
@@ -447,12 +464,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           */}
           {itemsStatus.state === 'idle' || itemsStatus.state === 'loading' ? (
             <div className="flex flex-1 items-center justify-center">
-              <Loading
-                message={intl.formatMessage(interfaceMessages.loading)}
-              />
+              <Loading message={intl.formatMessage(commonMessages.loading)} />
             </div>
           ) : itemsStatus.state === 'error' ? (
-            <ErrorMessage error={itemsStatus.error} />
+            <ErrorMessage />
           ) : (
             <div className="relative flex min-h-0 flex-1 flex-col [&_.card]:cursor-grab">
               <Collection
@@ -466,6 +481,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                 filterFuseOptions={filterFuseOptions}
                 onFilterChange={handleFilterChange}
                 sortRules={initialSortRules}
+                sortLocale={contentLocale}
                 dragAndDropHooks={dragAndDropHooks}
                 disabledKeys={disabledKeys}
                 virtualized
@@ -480,11 +496,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     <div>
                       {searchOptions && (
                         <div className="flex flex-wrap gap-2 p-2">
-                          <CollectionFilterInput
-                            placeholder={intl.formatMessage(
-                              interfaceMessages.searchTerm,
-                            )}
-                          />
+                          <CollectionFilterInput placeholder={searchLabel} />
                         </div>
                       )}
                       {sortableProperties && sortableProperties.length > 0 && (

@@ -9,14 +9,17 @@ import { findVariableRoleConflicts } from '@codaco/protocol-validation';
 
 import { analyse } from '../analyse.ts';
 import { buildProtocol } from '../build.ts';
+import { buildWordingRequest } from '../feedback.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
 type Json = Record<string, unknown>;
+/** Participant-facing text, in Sketch's one language. */
+type LocalizedText = { en: string };
 type Stage = Json & {
   id: string;
   type: string;
   panels?: { dataSource: string }[];
-  prompts?: { text: string }[];
+  prompts?: { text: LocalizedText }[];
   filter?: { rules: { options: Json }[] };
   skipLogic?: {
     action: string;
@@ -327,7 +330,10 @@ describe('compiler review fixes', () => {
     expect(r.retry).toBe(true);
     expect(r.validation.success).toBe(true);
     const ids = r.stages.map((s) => s.id);
-    expect(ids.indexOf('later_details')).toBe(ids.indexOf('later') + 1);
+    // the form is a new kind of task, so its introduction screen comes first
+    expect(
+      ids.slice(ids.indexOf('later') + 1, ids.indexOf('later') + 3),
+    ).toEqual(['later_details_intro', 'later_details']);
     expect(stageById(r.stages, 'later').type).toBe('NameGeneratorQuickAdd');
     const details = stageById(r.stages, 'later_details') as Stage & {
       form: { fields: unknown[] };
@@ -695,7 +701,7 @@ describe('compiler review fixes', () => {
       }),
     );
     expect(stageById(r.stages, 'rc').prompts?.map((p) => p.text)).toEqual([
-      'How strong?',
+      { en: 'How strong?' },
     ]);
     const removed = r.issues.find((i) => i.code === 'NO_STRENGTH_REMOVED');
     expect(removed?.message).toContain('"Dating?" was removed');
@@ -791,14 +797,16 @@ describe('compiler review fixes', () => {
     );
     expect(r.validation.success).toBe(true);
     const ids = r.stages.map((s) => s.id);
-    expect(ids.indexOf('roster_overlap')).toBe(ids.indexOf('roster') + 1);
+    expect(
+      ids.slice(ids.indexOf('roster') + 1, ids.indexOf('roster') + 3),
+    ).toEqual(['roster_overlap_intro', 'roster_overlap']);
     const form = stageById(r.stages, 'roster_overlap') as Stage & {
-      form: { fields: { prompt: string }[] };
+      form: { fields: { prompt: LocalizedText }[] };
     };
     expect(form.type).toBe('AlterForm');
     expect(form.form.fields.map((f) => f.prompt)).toEqual([
-      'Who are you **close** to?',
-      'Who do you ask for **advice**?',
+      { en: 'Who are you **close** to?' },
+      { en: 'Who do you ask for **advice**?' },
     ]);
     // the form is the only writer, so its validation is never bypassed
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
@@ -991,10 +999,10 @@ describe('compiler review fixes', () => {
     expect(r.validation.success).toBe(true);
     const fields = (
       stageById(r.stages, 'e') as Stage & {
-        form: { fields: { prompt: string }[] };
+        form: { fields: { prompt: LocalizedText }[] };
       }
     ).form.fields.map((f) => f.prompt);
-    expect(fields).toEqual(['Nickname?', 'Full name?']);
+    expect(fields).toEqual([{ en: 'Nickname?' }, { en: 'Full name?' }]);
   });
 
   it('gives a second map question on the same location its own answer', async () => {
@@ -1932,7 +1940,7 @@ describe('instrument attributes', () => {
     );
     expect(r.validation.success).toBe(true);
     const form = stageById(r.stages, 'roster_overlap_2') as Stage & {
-      form: { fields: { prompt: string }[] };
+      form: { fields: { prompt: LocalizedText }[] };
     };
     expect(form.form.fields).toHaveLength(2);
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
@@ -2472,5 +2480,358 @@ describe('instrument attributes', () => {
       }),
     );
     expect(JSON.stringify(stageById(r.stages, 'b'))).toContain('Role?');
+  });
+
+  describe('schema 9', () => {
+    const egoForm = {
+      kind: 'egoForm',
+      ...c('about'),
+      attributeIds: ['age'],
+    };
+    const alterForm = {
+      kind: 'alterForm',
+      ...c('af'),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      attributeIds: ['age'],
+    };
+
+    it('gives only the Ego Form an introduction panel, and ends at a finish stage', async () => {
+      const r = await build(
+        design({
+          egoAttributes: [A('age', 'number', 'Your age?')],
+          nodeTypes: [person([A('age', 'number', 'Their age?')])],
+          stages: [egoForm, ng(), alterForm],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(stageById(r.stages, 'about').introductionPanel).toBeDefined();
+      expect(stageById(r.stages, 'af').introductionPanel).toBeUndefined();
+      expect(r.stages.at(-1)?.type).toBe('FinishSession');
+      expect(r.protocol.schemaVersion).toBe(9);
+      expect(r.protocol.localization).toEqual({
+        defaultLocale: 'en',
+        locales: ['en'],
+      });
+    });
+
+    it('shows braces the models wrote as written', async () => {
+      const r = await build(
+        design({
+          stages: [
+            ng('ng', {
+              prompts: [{ text: 'Who {else}?', tagAttributeId: '' }],
+            }),
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(stageById(r.stages, 'ng').prompts?.[0]?.text).toEqual({
+        en: "Who '{'else'}'?",
+      });
+    });
+
+    it('writes a type name as one unpadded NFC line', async () => {
+      const r = await build(
+        design({
+          nodeTypes: [{ ...person(), singular: ' Cafe\u0301\nregular ' }],
+          stages: [ng()],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      const codebook = r.protocol.codebook as {
+        node: Record<string, { name: string }>;
+      };
+      expect(codebook.node.person?.name).toBe('Café regular');
+    });
+  });
+
+  describe('task introductions', () => {
+    const drinks = A('drinks', 'yes_no', 'Do you drink?');
+    const skipNonDrinkers = {
+      mode: 'skip_if',
+      whenSkipped: 'next_stage',
+      match: 'all',
+      conditions: [
+        {
+          about: 'participant',
+          typeId: '',
+          attributeId: 'drinks',
+          operator: 'is',
+          value: 'no',
+        },
+      ],
+    };
+    const af = (id: string, extra: Json = {}) => ({
+      kind: 'alterForm',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      attributeIds: ['age'],
+      ...extra,
+    });
+    const people = person([
+      A('age', 'number', 'Their age?'),
+      A('job', 'text', 'Their job?'),
+      A('town', 'text', 'Their town?'),
+    ]);
+    const ids = (stages: Stage[]) => stages.map((s) => s.id);
+
+    it('puts an Information screen before the first stage of each kind of task', async () => {
+      const r = await build(
+        design({
+          nodeTypes: [people],
+          stages: [
+            ng('ng', { minNodes: 1 }),
+            ng('ng2', { prompts: [{ text: 'Who else?', tagAttributeId: '' }] }),
+            af('af'),
+            af('af2', { attributeIds: ['job'] }),
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(ids(r.stages)).toEqual([
+        'researcher_notes',
+        'ng_intro',
+        'ng',
+        'ng2',
+        'af_intro',
+        'af',
+        'af2',
+        'finish',
+      ]);
+      const intro = stageById(r.stages, 'ng_intro') as Stage & {
+        title: LocalizedText;
+        items: { content: LocalizedText }[];
+      };
+      expect(intro.type).toBe('Information');
+      expect(intro.title).toEqual({ en: 'Naming people' });
+      expect(intro.items[0]?.content.en).toContain('type the name');
+    });
+
+    it('shows the screen exactly when its stage shows', async () => {
+      const r = await build(
+        design({
+          nodeTypes: [people],
+          stages: [ng(), af('af')],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(stageById(r.stages, 'af_intro').skipLogic).toEqual(
+        stageById(r.stages, 'af').skipLogic,
+      );
+      expect(stageById(r.stages, 'af').skipLogic).toBeDefined();
+    });
+
+    it('introduces a task again after a stage that may not show', async () => {
+      const r = await build(
+        design({
+          egoAttributes: [drinks],
+          nodeTypes: [people],
+          stages: [
+            { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
+            ng('ng', { minNodes: 1 }),
+            af('af', { skipLogic: skipNonDrinkers }),
+            af('af2', { attributeIds: ['job'] }),
+            af('af3', { attributeIds: ['town'] }),
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      const all = ids(r.stages);
+      expect(all).toContain('af3');
+      expect(all).toContain('af_intro');
+      expect(all).toContain('af2_intro');
+      expect(all).not.toContain('af3_intro');
+    });
+
+    it('introduces a task again after a stage skipped when no one was named', async () => {
+      const colleague = {
+        ...people,
+        id: 'colleague',
+        singular: 'Colleague',
+        plural: 'Colleagues',
+      };
+      const stages = (minNodes: number) => [
+        ng('ng', { minNodes }),
+        ng('ng_c', {
+          nodeTypeId: 'colleague',
+          minNodes,
+          prompts: [{ text: 'Who do you work with?', tagAttributeId: '' }],
+        }),
+        af('af'),
+        af('af_c', { nodeTypeId: 'colleague' }),
+      ];
+      const maybe = await build(
+        design({ nodeTypes: [people, colleague], stages: stages(0) }),
+      );
+      expect(maybe.validation.success).toBe(true);
+      expect(ids(maybe.stages)).toContain('af_c_intro');
+      const sure = await build(
+        design({ nodeTypes: [people, colleague], stages: stages(1) }),
+      );
+      expect(sure.validation.success).toBe(true);
+      expect(ids(sure.stages)).toContain('af_intro');
+      expect(ids(sure.stages)).not.toContain('af_c_intro');
+    });
+
+    it('describes only the composer tools the stage has', async () => {
+      const r = await build(
+        design({
+          nodeTypes: [people],
+          stages: [
+            {
+              kind: 'networkComposer',
+              ...c('nc'),
+              nodeTypeId: 'person',
+              attributeIds: [],
+              groupAttributeId: '',
+              relationships: [],
+            },
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      const text = (
+        stageById(r.stages, 'nc_intro') as Stage & {
+          items: { content: LocalizedText }[];
+        }
+      ).items[0]!.content.en;
+      expect(text).toContain('Add people and move them around.');
+      expect(text).not.toContain('groups');
+      expect(text).not.toContain('draw lines');
+    });
+
+    it("keeps the design's own instructions screen as the introduction", async () => {
+      const r = await build(
+        design({
+          stages: [
+            {
+              kind: 'information',
+              ...c('how_to'),
+              role: 'instructions',
+              content: 'Type each name.',
+            },
+            ng(),
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(ids(r.stages)).not.toContain('ng_intro');
+    });
+
+    it('adds its own introduction after instructions that may not show', async () => {
+      const r = await build(
+        design({
+          egoAttributes: [drinks],
+          stages: [
+            { kind: 'egoForm', ...c('e'), attributeIds: ['drinks'] },
+            {
+              kind: 'information',
+              ...c('how_to'),
+              skipLogic: skipNonDrinkers,
+              role: 'instructions',
+              content: 'Type each name.',
+            },
+            ng(),
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      expect(ids(r.stages)).toContain('ng_intro');
+    });
+
+    it('explains only the map tasks that are new', async () => {
+      const r = await build(
+        design({
+          relationships: [
+            {
+              id: 'knows',
+              name: 'Know each other',
+              attributes: [],
+            },
+          ],
+          stages: [
+            ng(),
+            {
+              kind: 'sociogram',
+              ...c('map1'),
+              nodeTypeId: 'person',
+              filter: noFilter,
+              prompts: [
+                {
+                  task: 'position',
+                  text: 'Place them.',
+                  relationshipId: '',
+                  attributeId: '',
+                },
+              ],
+            },
+            {
+              kind: 'sociogram',
+              ...c('map2'),
+              nodeTypeId: 'person',
+              filter: noFilter,
+              prompts: [
+                {
+                  task: 'connect',
+                  text: 'Who knows whom?',
+                  relationshipId: 'knows',
+                  attributeId: '',
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      expect(r.validation.success).toBe(true);
+      const text = (id: string) =>
+        (
+          stageById(r.stages, id) as Stage & {
+            items: { content: LocalizedText }[];
+          }
+        ).items[0]!.content.en;
+      expect(text('map1_intro')).toContain('onto the circles');
+      expect(text('map2_intro')).toContain('tap one and then the other');
+      expect(text('map2_intro')).not.toContain('onto the circles');
+    });
+
+    it('asks the writer to word each introduction, and uses its wording', async () => {
+      const d = parseDesign(design({ stages: [ng()] }));
+      const { design: normalized } = analyse(d);
+      expect(
+        buildWordingRequest(normalized).stages.find(
+          (x) => x.stageKey === 'ng/intro',
+        )?.draft,
+      ).toContain('type the name');
+      const r = await buildProtocol(
+        d,
+        {
+          protocolName: '',
+          protocolDescription: '',
+          stages: [
+            {
+              stageKey: 'ng/intro',
+              label: '',
+              title: 'Who you know',
+              text: 'Add everyone you can think of.',
+            },
+          ],
+          prompts: [],
+          questions: [],
+        },
+        { now: NOW },
+      );
+      const intro = (r.protocol.stages as unknown as Stage[]).find(
+        (x) => x.id === 'ng_intro',
+      ) as Stage & {
+        title: LocalizedText;
+        items: { content: LocalizedText }[];
+      };
+      expect(intro.title).toEqual({ en: 'Who you know' });
+      expect(intro.items[0]?.content).toEqual({
+        en: 'Add everyone you can think of.',
+      });
+    });
   });
 });

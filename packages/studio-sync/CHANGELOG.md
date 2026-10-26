@@ -1,5 +1,82 @@
 # @codaco/studio-sync
 
+## 1.0.0
+
+### Major Changes
+
+- Encrypted attributes are no longer experimental. Protocols keep their
+  `experiments` setting, for features released within a schema version, and
+  the protocol settings section still accepts and keeps it, but
+  `encryptedVariables` is no longer one of its experiments: the settings
+  section refuses it, and an attribute marked as encrypted is always
+  encrypted. A stored schema 8 protocol is upgraded with its
+  experiments included, so attributes it encrypted stay encrypted, and
+  attributes it marked as encrypted without turning the experiment on are
+  unmarked and keep being collected without encryption.
+
+  In the protocol editor, an Anonymisation stage's passphrase lengths now show
+  the minimum that applies: 8 unless the stage sets its own, or the stage's
+  maximum when that is shorter.
+
+  Skip logic, stage filters and panel filters are checked without the
+  participant's passphrase, so they can't compare the answers to an encrypted
+  attribute, but they can still check whether it is answered. When you build
+  one of these rules, the protocol editor offers an encrypted attribute only
+  with "exists" and "does not exist", except in a panel that lists people from
+  an external data file, whose rows are not encrypted. A stored rule that
+  compares one is marked, and can't be saved until it is changed. The editor
+  won't let you encrypt an attribute while one of these rules compares its
+  answers.
+
+### Minor Changes
+
+- Researchers can create a team. "Create a team" in the header's team switcher
+  asks for a name, makes the researcher the new team's owner and opens it. On the
+  managed service any signed-in researcher can create a team; on a self-hosted
+  instance only the instance's owner can, and the entry is not shown to anyone
+  else. Creating a team is recorded in the team's activity log as "Team created",
+  counted as a `team_created` usage event, and limited to five per researcher per
+  hour (`team_create`).
+
+### Patch Changes
+
+- A protocol keeps the interview's shared words (its `interfaceText`) when
+  Studio stores and edits it: a new protocol starts with them, and the protocol
+  settings section carries them through every save. A protocol Studio assembles
+  holds the words for what it shows now, so adding a form or a passphrase gives
+  it their words, removing one drops them, and words the researcher changed are
+  kept.
+- Studio now keeps protocols that are written in more than one language. A
+  protocol declares the languages its text is written in, and every screen name,
+  prompt and label in it is stored as one translation for each of those
+  languages.
+
+  - The protocol editor names each screen in the language you are editing in. A
+    screen with no name in that language is listed under the name a participant
+    would be shown instead, and a screen with no name in any language is listed
+    by its position, such as "Screen 3". A protocol with more than one language
+    has a language menu beside each text field, and choosing a language there
+    switches the whole editor.
+  - A screen added from the outline starts as "Untitled screen" in the
+    protocol's default language. Its other languages are left untranslated, so
+    they show as needing a translation, and a participant reading one sees the
+    fallback rather than English presented as a translation.
+  - Comparing two versions names each screen that was added, removed or changed
+    by its name in the protocol's default language, or in another language that
+    has text when the default has none. Versions saved before protocols could be
+    translated are still described by their plain names.
+  - Editing a version that was saved in an older protocol format now starts a
+    draft that has been upgraded to the current format, with its text written in
+    English. Before, the draft kept the old format and could not
+    be edited.
+  - A protocol created in Studio is written in English (`en`),
+    as a protocol upgraded from an earlier version is, because Studio does not
+    yet ask which language you are writing in. The sample protocol, the demo
+    protocol and the protocols a new instance seeds declare their language, US
+    English.
+  - A protocol's language declaration is saved with its settings, so a draft that
+    declares languages passes the check made before each save.
+
 ## 0.3.0
 
 ### Minor Changes

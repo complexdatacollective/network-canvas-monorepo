@@ -122,27 +122,14 @@ export default defineConfig({
     // compiles its OWN sources and its OWN catalogs, and cannot reach these:
     // the FormatJS source transform excludes node_modules, and the catalog
     // compiler only ever matches `.json` module ids, by which point this
-    // package's catalogs are JavaScript. That same integration swaps in
-    // FormatJS's no-parser runtime, so anything left as an ICU string throws
-    // at format time and react-intl falls back to returning the raw source —
-    // a placeholder message renders as "Enter at most {max} characters." and
-    // a plural one as its entire `{count, plural, …}` body.
-    //
-    // `build: 'library'` compiles the messages without aliasing the ICU
-    // parser away. Whether a bundle carries the parser is the consuming
-    // application's decision, and this package lands in several — including
-    // their dev servers and test runs, where string messages have to keep
-    // working. The alias happened to be inert here, because react-intl
-    // arrives through the external `@codaco/app-i18n` and this build resolves
-    // no parser to replace, but relying on that would make a package's build
-    // correct only by accident of who its dependencies are.
+    // package's catalogs are JavaScript. Compiling here ships them as AST, so
+    // the consumer neither parses them at run time nor depends on its own
+    // bundler configuration to format them.
     //
     // Gated the way dts is, because only the published artifact needs it:
     // Storybook and Vitest load this config too and resolve this package from
     // source, where readable ICU strings and parse errors are the point.
-    !process.env.STORYBOOK &&
-      !process.env.VITEST &&
-      appI18n({ build: 'library' }),
+    !process.env.STORYBOOK && !process.env.VITEST && appI18n(),
     // Skip dts emission when this config is loaded by Storybook (preview
     // build) or Vitest. Storybook's CLI sets STORYBOOK=true; Vitest sets
     // VITEST=true.

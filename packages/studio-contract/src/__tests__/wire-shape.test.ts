@@ -23,7 +23,7 @@ import {
   CreateTeamInvitationResult,
 } from '../schema/team.ts';
 
-const encode = <S extends Schema.Codec<unknown, unknown>>(schema: S) =>
+const encode = (schema: Schema.Codec<unknown, unknown>) =>
   Schema.encodeUnknownSync(Schema.toCodecJson(schema));
 const decode = <S extends Schema.Codec<unknown, unknown>>(schema: S) =>
   Schema.decodeUnknownSync(Schema.toCodecJson(schema));
@@ -44,6 +44,7 @@ const VALID_ME = {
   name: Redacted.make('Ada Lovelace'),
   locale: null,
   teams: [{ teamId: TeamId.make('team-1'), role: 'owner' }],
+  canCreateTeam: false,
 };
 
 const VALID_STATUS = {
@@ -68,6 +69,7 @@ const ENCODED_ME = {
   name: 'Ada Lovelace',
   locale: null,
   teams: [{ teamId: 'team-1', role: 'owner' }],
+  canCreateTeam: false,
 };
 
 const ENCODED_STATUS = {

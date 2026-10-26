@@ -4,7 +4,7 @@ import { Play } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { MouseEvent } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 
 // The features string asks for a separate popup window sized for an interview.
 // A browser that refuses the popup leaves the click to the anchor, which opens

@@ -9,7 +9,7 @@
   - button "Category Other, 1 item":
     - heading "Other" [level=4]
     - paragraph: Alice
-  - button "Collapse drawer" [expanded]: 1 unplaced
+  - button "1 unplaced Collapse drawer" [expanded]
   - button "Bob"
   - navigation:
     - button "Settings"

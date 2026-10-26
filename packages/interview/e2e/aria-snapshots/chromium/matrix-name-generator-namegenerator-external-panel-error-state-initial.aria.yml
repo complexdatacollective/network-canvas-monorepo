@@ -3,8 +3,9 @@
     - heading "Who do you know?" [level=2]
   - button "Broken source":
     - heading "Broken source" [level=3]
+  - img "Warning"
   - heading "Something went wrong" [level=4]
-  - paragraph: External data could not be loaded.
+  - paragraph: The list could not load - matrix check
   - listbox "Added Nodes"
   - button "Add a person":
     - img "Add a person"

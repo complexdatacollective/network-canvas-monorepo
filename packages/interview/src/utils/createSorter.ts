@@ -23,12 +23,24 @@ export type LegacyOrProtocolSortRule = {
 
 /**
  * Creating a collator that is reused by string comparison is significantly faster
- * than using `localeCompare` directly.
+ * than using `localeCompare` directly. One is kept per locale, because
+ * constructing it is the expensive part and sorters are rebuilt often.
+ *
+ * `undefined` asks for the runtime's own locale.
  *
  * See: https://stackoverflow.com/a/52369951/1497330
  *      https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Collator/Collator
  */
-const collator = new Intl.Collator();
+const collators = new Map<string | undefined, Intl.Collator>();
+
+const collatorFor = (locale: string | undefined): Intl.Collator => {
+  let collator = collators.get(locale);
+  if (collator === undefined) {
+    collator = new Intl.Collator(locale);
+    collators.set(locale, collator);
+  }
+  return collator;
+};
 
 /* Maps a `_createdIndex` index value to all items in an array */
 const withCreatedIndex = (items: Item[]) =>
@@ -83,7 +95,7 @@ const chain =
  * Also places non-strings at the end of the sorting order.
  */
 const stringFunction =
-  ({ property, direction }: ProcessedSortRule) =>
+  ({ property, direction }: ProcessedSortRule, collator: Intl.Collator) =>
   (a: Item, b: Item) => {
     const firstValue = get(a, property, null) as string | null;
     const secondValue = get(b, property, null) as string | null;
@@ -252,7 +264,7 @@ type Item = Record<string, unknown>;
  *
  * Returns -1 if a < b, 0 if a === b, and 1 if a > b.
  */
-const getSortFunction = (rule: ProcessedSortRule) => {
+const getSortFunction = (rule: ProcessedSortRule, collator: Intl.Collator) => {
   const {
     property,
     direction = 'asc',
@@ -267,7 +279,7 @@ const getSortFunction = (rule: ProcessedSortRule) => {
   }
 
   if (type === 'string') {
-    return stringFunction(rule);
+    return stringFunction(rule, collator);
   }
 
   if (type === 'boolean') {
@@ -298,12 +310,16 @@ const getSortFunction = (rule: ProcessedSortRule) => {
   console.warn(
     "🤔 Sort rule missing required property 'type', or type was not recognized. Sorting as a string, which may cause incorrect results. Supported types are: number, boolean, string, date, hierarchy, categorical.",
   );
-  return stringFunction(rule);
+  return stringFunction(rule, collator);
 };
 
 /**
  * Creates a sort function that sorts a collection of items according to a set
  * of sort rules.
+ *
+ * Text is put in alphabetical order for `locale`, the language the participant
+ * is reading the protocol in (`useContentLocale`). Left out, the runtime's own
+ * locale decides.
  *
  * Below is *heavily* inspired by this SO answer:
  * https://stackoverflow.com/questions/6913512/how-to-sort-an-array-of-objects-by-multiple-fields/72649463#72649463
@@ -311,8 +327,12 @@ const getSortFunction = (rule: ProcessedSortRule) => {
  */
 const createSorter = <T extends Item = Item>(
   sortRules: ProcessedSortRule[] = [],
+  locale?: string,
 ) => {
-  const sortFunctions = sortRules.map(getSortFunction);
+  const collator = collatorFor(locale);
+  const sortFunctions = sortRules.map((rule) =>
+    getSortFunction(rule, collator),
+  );
   return (items: T[]) =>
     withoutCreatedIndex(
       withCreatedIndex(items).toSorted(chain(...sortFunctions)),
@@ -418,11 +438,14 @@ export const processProtocolSortRule =
       return { ...sortRule, type: sortRule.type };
     }
 
-    const variableDefinition: Variable | null = get(
-      codebookVariables,
-      sortRule.property,
-      null,
-    );
+    // An own-property lookup, not a lodash path: the property is a variable id
+    // or name, and `a.b` or `__proto__` must not be read as a path.
+    const variableDefinition: Variable | null =
+      codebookVariables !== undefined &&
+      typeof sortRule.property === 'string' &&
+      Object.hasOwn(codebookVariables, sortRule.property)
+        ? (codebookVariables[sortRule.property] ?? null)
+        : null;
 
     // Don't modify the rule if there is no variable definition matching the
     // property. Assume string

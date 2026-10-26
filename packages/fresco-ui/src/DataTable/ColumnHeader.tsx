@@ -15,7 +15,7 @@ import React, { type ReactNode, useRef, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button, { buttonVariants } from '../Button';
+import { buttonVariants, Button } from '../Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -200,7 +200,7 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
             <DropdownMenuRadioGroup
               value={isSorted || undefined}
               onValueChange={(value) => column.toggleSorting(value !== 'asc')}
-              className="flex flex-col gap-1"
+              className="flex flex-col"
             >
               <DropdownMenuRadioItem
                 value="asc"

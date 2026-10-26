@@ -1,0 +1,34 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your sibling":
+    - heading "Add your sibling" [level=2]
+    - button "Close"
+    - text: Which parents do they share with you? Required A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.
+    - radiogroup "Which parents do they share with you?":
+      - radio "Both parents" [checked]
+      - text: Both parents
+      - radio "Only the biological mother"
+      - text: Only the biological mother
+      - radio "Only the biological father"
+      - text: Only the biological father
+    - text: Same surrogate as you - matrix check
+    - group "Same surrogate as you - matrix check":
+      - checkbox "Gail"
+      - text: Gail
+    - text: To the parents they share, are they… Required
+    - radiogroup "To the parents they share, are they…":
+      - radio "A biological child" [checked]
+      - text: A biological child
+      - radio "An adopted child"
+      - text: An adopted child
+    - text: Who carried the pregnancy? Required
+    - radiogroup "Who carried the pregnancy?":
+      - radio "Biological mother"
+      - text: Biological mother
+      - radio "Someone else, or I don’t know"
+      - text: Someone else, or I don’t know
+    - button "Cancel"
+    - button "Back"
+    - button "Save"

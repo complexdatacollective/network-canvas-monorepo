@@ -50,7 +50,7 @@ below preserve earlier results without promoting them to final evidence.
 
 - Read root CLAUDE.md and applicable UI/refactor/oracle/Architect E2E skills.
 - Installed isolated locked dependencies with `pnpm install --frozen-lockfile
---ignore-scripts`; no cross-worktree source symlinks.
+  --ignore-scripts`; no cross-worktree source symlinks.
 - First census: 489 non-test/non-story production TS/TSX source modules.
 - Initial executable action was the whole-app source conversion. Current next
   actions and remaining integration gates are recorded at the end of this plan.
@@ -112,8 +112,8 @@ by the current acceptance matrix and the latest checkpoint at the end.
   third-person exceptions, álter/álteres, whole count plurals, inclusive maximum
   guidance, and whole field-preview badges with translated type/control names.
 - Actual optimized PWA build passed (`VITE_DISABLE_ANALYTICS=true
-VITE_DISABLE_ANIMATIONS=true pnpm --config.verify-deps-before-run=false
---filter @codaco/architect build`), including offline integrity/lease/cache
+  VITE_DISABLE_ANIMATIONS=true pnpm --config.verify-deps-before-run=false
+  --filter @codaco/architect build`), including offline integrity/lease/cache
   validation and 99 precache entries. Later source changes require a final build.
 - Initial full unit suite: 2,353 passed, 117 failed, 3 todo in 278 files. Failures
   are being repaired, not accepted as baselines. The focused catalog/provider/

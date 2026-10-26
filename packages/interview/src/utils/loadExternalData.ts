@@ -1,8 +1,11 @@
-import csv from 'csvtojson';
 import { hash } from 'ohash';
 
 // import CSVWorker from './csvDecoder.worker';
-import type { Codebook, StageSubject } from '@codaco/protocol-validation';
+import {
+  type Codebook,
+  readRosterCsv,
+  type StageSubject,
+} from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
   entityAttributesProperty,
@@ -39,6 +42,8 @@ type ExternalNode = Record<string, unknown> & {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+// Built with Object.fromEntries, which defines own properties: assigning a
+// column called `__proto__` onto a plain object would set its prototype instead.
 const parseExternalAttributes = (
   value: unknown,
 ): Record<string, VariableValue> => {
@@ -46,15 +51,17 @@ const parseExternalAttributes = (
     throw new TypeError('External node attributes must be an object.');
   }
 
-  const attributes: Record<string, VariableValue> = {};
-
-  for (const [name, attributeValue] of Object.entries(value)) {
-    if (attributeValue !== null && attributeValue !== undefined) {
-      attributes[name] = VariableValueSchema.parse(attributeValue);
-    }
-  }
-
-  return attributes;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        ([, attributeValue]) =>
+          attributeValue !== null && attributeValue !== undefined,
+      )
+      .map(([name, attributeValue]) => [
+        name,
+        VariableValueSchema.parse(attributeValue),
+      ]),
+  );
 };
 
 const parseExternalNode = (value: unknown): ExternalNode => {
@@ -95,10 +102,10 @@ const parseExternalNetwork = (value: unknown): { nodes: ExternalNode[] } => {
 const CSVToJSONNetworkFormat = async (
   data: string,
 ): Promise<ExternalNode[]> => {
-  const network: unknown[] = await csv({ flatKeys: true }).fromString(data);
+  const { rows } = await readRosterCsv(data);
 
-  return network.map((entry) => ({
-    [entityAttributesProperty]: parseExternalAttributes(entry),
+  return rows.map(({ values }) => ({
+    [entityAttributesProperty]: parseExternalAttributes(values),
   }));
 };
 
@@ -143,18 +150,28 @@ export const makeVariableUUIDReplacer =
     // it was parsed for, keeping primary keys unique within a single network.
     const uuid = `${subjectType}_${hash({ node, index })}`;
 
-    const attributes: NcNode[EntityAttributesProperty] = {};
-
-    for (const [attributeKey, attributeValue] of Object.entries(
-      node[entityAttributesProperty] ?? {},
-    )) {
-      const variableId =
-        getParentKeyByNameValue(
-          codebookDefinition?.variables ?? {},
-          attributeKey,
-        ) ?? attributeKey;
-      attributes[variableId] = attributeValue;
-    }
+    // Two headings can resolve to one variable, such as one name written
+    // composed and decomposed. Refused, because keeping either would silently
+    // drop the other column's values.
+    const headingByKey = new Map<string, string>();
+    const attributes: NcNode[EntityAttributesProperty] = Object.fromEntries(
+      Object.entries(node[entityAttributesProperty] ?? {}).map(
+        ([attributeKey, attributeValue]): [string, VariableValue] => {
+          const key = getParentKeyByNameValue(
+            codebookDefinition?.variables,
+            attributeKey,
+          );
+          const earlier = headingByKey.get(key);
+          if (earlier !== undefined) {
+            throw new Error(
+              `The roster headings ${JSON.stringify(earlier)} and ${JSON.stringify(attributeKey)} both resolve to the attribute ${JSON.stringify(key)}.`,
+            );
+          }
+          headingByKey.set(key, attributeKey);
+          return [key, attributeValue];
+        },
+      ),
+    );
 
     return {
       type: subjectType,

@@ -52,7 +52,10 @@ const finalMessages = defineMessages({
   },
 });
 
-type TimelineStage = Pick<Stage, 'id' | 'label' | 'type'> & {
+// `label` is the display text, already resolved from the stage's localized
+// label (see `getStageList`).
+type TimelineStage = Pick<Stage, 'id' | 'type'> & {
+  label: string;
   skipLogic?: {
     destination?: SkipLogicDestination;
   };
@@ -87,8 +90,8 @@ const formatStageReference = <T extends TimelineStage>(
   };
 };
 
-export const getSkipDestinationDeleteWarning = <T extends TimelineStage>(
-  stages: T[],
+export const getSkipDestinationDeleteWarning = (
+  stages: TimelineStage[],
   stageId: string,
 ): TimelineWarning | null => {
   const destinationStage = stages.find((stage) => stage.id === stageId);

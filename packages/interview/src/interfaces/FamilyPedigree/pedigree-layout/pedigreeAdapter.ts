@@ -1,19 +1,22 @@
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import type { PedigreeTwinKind } from '@codaco/protocol-validation';
 
-import type { VariableConfig } from '../store';
-import { getEdgeRelationshipType } from '../utils/edgeUtils';
-import { computeConnectors } from './connectors';
+import { alignPedigree } from './alignPedigree';
+import type { RoutingWork } from './auxiliaryRouting';
+import { routePedigree } from './connectors';
 import {
   computeLayoutMetrics,
   type LayoutDimensions,
+  SYMBOL_CORNER_RADIUS_PX,
 } from './layoutDimensions';
+import { drawnKind, hangingFromGeneticParents } from './lineOwners';
 import type {
   ParentConnection,
   PartnerConnection,
   PedigreeConnectors,
   PedigreeInput,
   PedigreeLayout,
+  PedigreeLink,
+  PedigreeSymbolShape,
   Relation,
   ScalingParams,
 } from './types';
@@ -28,32 +31,32 @@ type ConversionResult = {
   idToIndex: Map<string, number>;
 };
 
-function readEdge(edge: NcEdge, config: VariableConfig) {
+/** The layout's twin code for each twin kind: 1 identical (monozygotic),
+ * 2 fraternal (dizygotic), 3 zygosity unknown. */
+const TWIN_CODES: Record<PedigreeTwinKind, 1 | 2 | 3> = {
+  identicalTwin: 1,
+  fraternalTwin: 2,
+  unknownZygosityTwin: 3,
+};
+
+const isTwinKind = (kind: PedigreeLink['kind']): kind is PedigreeTwinKind =>
+  kind in TWIN_CODES;
+
+function readLink(link: PedigreeLink) {
   return {
-    relationshipType:
-      getEdgeRelationshipType(edge, config.relationshipTypeVariable) ??
-      'biological',
-    isActive: edge[entityAttributesProperty][config.isActiveVariable] !== false,
-    isGestationalCarrier:
-      edge[entityAttributesProperty][config.isGestationalCarrierVariable] ===
-      true,
+    relationshipType: link.kind,
+    isActive: link.isActive !== false,
+    isGestationalCarrier: link.isGestationalCarrier === true,
   };
 }
 
-export function storeToPedigreeInput(
-  nodes: Map<string, NcNode>,
-  edges: Map<string, NcEdge>,
-  variableConfig: VariableConfig,
+export function toPedigreeInput(
+  nodeIds: readonly string[],
+  links: readonly PedigreeLink[],
 ): ConversionResult {
-  const indexToId: string[] = [];
+  const indexToId: string[] = [...nodeIds];
   const idToIndex = new Map<string, number>();
-
-  let idx = 0;
-  for (const nodeId of nodes.keys()) {
-    indexToId.push(nodeId);
-    idToIndex.set(nodeId, idx);
-    idx++;
-  }
+  indexToId.forEach((nodeId, index) => idToIndex.set(nodeId, index));
 
   const n = indexToId.length;
   const id: string[] = indexToId.slice();
@@ -61,15 +64,25 @@ export function storeToPedigreeInput(
   const relations: Relation[] = [];
   const partnerConnections: PartnerConnection[] = [];
 
-  for (const edge of edges.values()) {
-    const { relationshipType, isActive, isGestationalCarrier } = readEdge(
-      edge,
-      variableConfig,
-    );
+  const twinPairs = new Set<string>();
+  for (const link of links) {
+    const { kind } = link;
+    if (isTwinKind(kind)) {
+      const i1 = idToIndex.get(link.source);
+      const i2 = idToIndex.get(link.target);
+      if (i1 === undefined || i2 === undefined) continue;
+      const pairKey = `${Math.min(i1, i2)},${Math.max(i1, i2)}`;
+      if (twinPairs.has(pairKey)) continue;
+      twinPairs.add(pairKey);
+      relations.push({ id1: i1, id2: i2, code: TWIN_CODES[kind] });
+      continue;
+    }
+    const { isActive, isGestationalCarrier } = readLink(link);
+    const relationshipType = kind;
 
     if (relationshipType === 'partner') {
-      const i1 = idToIndex.get(edge.from);
-      const i2 = idToIndex.get(edge.to);
+      const i1 = idToIndex.get(link.source);
+      const i2 = idToIndex.get(link.target);
       if (i1 === undefined || i2 === undefined) continue;
       relations.push({ id1: i1, id2: i2, code: 4 });
       partnerConnections.push({
@@ -78,50 +91,22 @@ export function storeToPedigreeInput(
         isActive,
       });
     } else {
-      const childIdx = idToIndex.get(edge.to);
-      const parentIdx = idToIndex.get(edge.from);
+      const childIdx = idToIndex.get(link.target);
+      const parentIdx = idToIndex.get(link.source);
       if (childIdx === undefined || parentIdx === undefined) continue;
 
+      // Each tie as it is drawn (carrying the pregnancy is a birth tie), and
+      // as recorded, where the two differ.
+      const edgeType = drawnKind(relationshipType, isGestationalCarrier);
       parents[childIdx]!.push({
         parentIndex: parentIdx,
-        edgeType: relationshipType,
+        edgeType,
+        ...(edgeType === relationshipType
+          ? {}
+          : { recordedKind: relationshipType }),
         isGestationalCarrier,
       });
     }
-  }
-
-  // Remap biological edges to 'donor' for children with adoptive parents.
-  // This makes biological edges auxiliary so the child is positioned under
-  // adoptive parents instead, matching standard pedigree conventions.
-  for (let i = 0; i < n; i++) {
-    const hasAdoptiveParent = parents[i]!.some(
-      (p) => p.edgeType === 'adoptive',
-    );
-    if (!hasAdoptiveParent) continue;
-    for (const p of parents[i]!) {
-      if (p.edgeType === 'biological') {
-        p.edgeType = 'donor';
-      }
-    }
-  }
-
-  // A child with no primary (biological/social/adoptive) parent — e.g. a
-  // donor-conceived child carried by a gestational carrier ("single parent, two
-  // donors") — descends from the carrier. Promote the carrier's edge to a
-  // primary type so it anchors the line of descent (the carrier's line of
-  // descent is solid in standard pedigree nomenclature), with the gamete donors
-  // remaining auxiliary. Without this the child has only auxiliary parents,
-  // forms no family unit, and renders no line of descent at all.
-  for (let i = 0; i < n; i++) {
-    const hasPrimaryParent = parents[i]!.some(
-      (p) =>
-        p.edgeType === 'biological' ||
-        p.edgeType === 'social' ||
-        p.edgeType === 'adoptive',
-    );
-    if (hasPrimaryParent) continue;
-    const carrier = parents[i]!.find((p) => p.isGestationalCarrier);
-    if (carrier) carrier.edgeType = 'social';
   }
 
   return {
@@ -181,16 +166,22 @@ export function pedigreeLayoutToPositions(
   return positions;
 }
 
-export function buildConnectorData(
+/**
+ * A layout's connectors, routed, in layout units (columns and rows), and
+ * what their routed lines cost the drawing (see `routePedigree`).
+ */
+function routeLayout(
   layout: PedigreeLayout,
-  edges: Map<string, NcEdge>,
+  links: readonly PedigreeLink[],
   dimensions: LayoutDimensions,
-  variableConfig: VariableConfig,
-  parents: ParentConnection[][] = [],
+  parents: ParentConnection[][],
   idToIndex?: Map<string, number>,
   nodeNames?: string[],
   indexToId?: string[],
-): ConnectorRenderData {
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
+  search: 'quick' | 'thorough' = 'thorough',
+  work?: RoutingWork,
+) {
   const metrics = computeLayoutMetrics(dimensions);
   const boxHeight = dimensions.nodeHeight / metrics.rowHeight;
   const scaling: ScalingParams = {
@@ -199,6 +190,7 @@ export function buildConnectorData(
     legHeight: (1 - boxHeight) / 2,
     hScale: 1,
     vScale: 1,
+    cornerRadius: SYMBOL_CORNER_RADIUS_PX / dimensions.nodeWidth,
   };
 
   // Build sets of all and active partner pairs (numeric index keys). The full
@@ -209,11 +201,11 @@ export function buildConnectorData(
   if (idToIndex) {
     partnerPairs = new Set<string>();
     activePartnerPairs = new Set<string>();
-    for (const edge of edges.values()) {
-      const { relationshipType, isActive } = readEdge(edge, variableConfig);
+    for (const link of links) {
+      const { relationshipType, isActive } = readLink(link);
       if (relationshipType !== 'partner') continue;
-      const i1 = idToIndex.get(edge.from);
-      const i2 = idToIndex.get(edge.to);
+      const i1 = idToIndex.get(link.source);
+      const i2 = idToIndex.get(link.target);
       if (i1 === undefined || i2 === undefined) continue;
       const pairKey = `${Math.min(i1, i2)},${Math.max(i1, i2)}`;
       partnerPairs.add(pairKey);
@@ -221,7 +213,7 @@ export function buildConnectorData(
     }
   }
 
-  const connectors = computeConnectors(
+  return routePedigree(
     layout,
     scaling,
     parents,
@@ -231,7 +223,40 @@ export function buildConnectorData(
     nodeNames,
     indexToId,
     partnerPairs,
+    nodeShapes && indexToId
+      ? indexToId.map((nodeId) => nodeShapes.get(nodeId))
+      : undefined,
+    search,
+    work,
   );
+}
+
+export function buildConnectorData(
+  layout: PedigreeLayout,
+  links: readonly PedigreeLink[],
+  dimensions: LayoutDimensions,
+  parents: ParentConnection[][] = [],
+  idToIndex?: Map<string, number>,
+  nodeNames?: string[],
+  indexToId?: string[],
+  /** Each person's symbol shape, by node id. */
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
+  /** The layout's connectors, already routed (see `routeLayout`). */
+  routed?: PedigreeConnectors,
+): ConnectorRenderData {
+  const metrics = computeLayoutMetrics(dimensions);
+  const connectors =
+    routed ??
+    routeLayout(
+      layout,
+      links,
+      dimensions,
+      parents,
+      idToIndex,
+      nodeNames,
+      indexToId,
+      nodeShapes,
+    ).connectors;
 
   // Transform all coordinates to pixel space
   const sx = metrics.siblingSpacing;
@@ -246,9 +271,9 @@ export function buildConnectorData(
     if (sp.doubleSegment) {
       transformSegment(sp.doubleSegment, sx, sy, xOffset);
     }
-    if (sp.descentXPositions) {
-      for (let k = 0; k < sp.descentXPositions.length; k++) {
-        sp.descentXPositions[k] = sp.descentXPositions[k]! * sx + xOffset;
+    for (const positions of [sp.descentXPositions, sp.auxiliaryXPositions]) {
+      for (let k = 0; k < (positions?.length ?? 0); k++) {
+        positions![k] = positions![k]! * sx + xOffset;
       }
     }
     sp.nodeHalfWidth = metrics.containerWidth / 2;
@@ -258,7 +283,7 @@ export function buildConnectorData(
     for (const ul of pc.uplines) {
       transformSegment(ul, sx, sy, xOffset);
     }
-    transformSegment(pc.siblingBar, sx, sy, xOffset);
+    if (pc.siblingBar) transformSegment(pc.siblingBar, sx, sy, xOffset);
     for (const pl of pc.parentLink) {
       transformSegment(pl, sx, sy, xOffset);
     }
@@ -272,11 +297,13 @@ export function buildConnectorData(
       ti.label.x = ti.label.x * sx + xOffset;
       ti.label.y = ti.label.y * sy;
     }
+    if (ti.labelSize !== undefined) ti.labelSize *= sy;
   }
 
   for (const aux of connectors.auxiliaryLines) {
-    for (const seg of [aux.segment]) {
-      transformSegment(seg, sx, sy, xOffset);
+    for (const pt of aux.points) {
+      pt.x = pt.x * sx + xOffset;
+      pt.y = pt.y * sy;
     }
   }
 
@@ -305,10 +332,16 @@ export function buildConnectorData(
         shiftSegment(endpoint, -rawMinX, 0);
       }
       if (sp.doubleSegment) shiftSegment(sp.doubleSegment, -rawMinX, 0);
+      // The break keeps clear of these, so they move with the line.
+      for (const positions of [sp.descentXPositions, sp.auxiliaryXPositions]) {
+        for (let k = 0; k < (positions?.length ?? 0); k++) {
+          positions![k] = positions![k]! - rawMinX;
+        }
+      }
     }
     for (const pc of connectors.parentChildLines) {
       for (const ul of pc.uplines) shiftSegment(ul, -rawMinX, 0);
-      shiftSegment(pc.siblingBar, -rawMinX, 0);
+      if (pc.siblingBar) shiftSegment(pc.siblingBar, -rawMinX, 0);
       for (const pl of pc.parentLink) shiftSegment(pl, -rawMinX, 0);
     }
     for (const ti of connectors.twinIndicators) {
@@ -316,7 +349,7 @@ export function buildConnectorData(
       if (ti.label) ti.label.x += -rawMinX;
     }
     for (const aux of connectors.auxiliaryLines) {
-      for (const seg of [aux.segment]) shiftSegment(seg, -rawMinX, 0);
+      for (const pt of aux.points) pt.x += -rawMinX;
     }
     for (const da of connectors.duplicateArcs) {
       for (const pt of da.path.points) pt.x += -rawMinX;
@@ -343,7 +376,7 @@ export function buildConnectorData(
     }
     for (const pc of connectors.parentChildLines) {
       for (const ul of pc.uplines) shiftSegment(ul, 0, -rawMinY);
-      shiftSegment(pc.siblingBar, 0, -rawMinY);
+      if (pc.siblingBar) shiftSegment(pc.siblingBar, 0, -rawMinY);
       for (const pl of pc.parentLink) shiftSegment(pl, 0, -rawMinY);
     }
     for (const ti of connectors.twinIndicators) {
@@ -351,7 +384,7 @@ export function buildConnectorData(
       if (ti.label) ti.label.y += -rawMinY;
     }
     for (const aux of connectors.auxiliaryLines) {
-      for (const seg of [aux.segment]) shiftSegment(seg, 0, -rawMinY);
+      for (const pt of aux.points) pt.y += -rawMinY;
     }
     for (const da of connectors.duplicateArcs) {
       for (const pt of da.path.points) pt.y += -rawMinY;
@@ -382,4 +415,165 @@ function shiftSegment(
   seg.x2 += dx;
   seg.y1 += dy;
   seg.y2 += dy;
+}
+
+type DrawPedigreeInput = {
+  nodeIds: readonly string[];
+  links: readonly PedigreeLink[];
+  dimensions: LayoutDimensions;
+  nodeNames?: ReadonlyMap<string, string>;
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>;
+};
+
+type DrawnPedigree = {
+  positions: Map<string, { x: number; y: number }>;
+  connectorData: ConnectorRenderData;
+  /** The work laying the family out took, in steps of about a tenth of a
+   * microsecond (see `RoutingWork`): every step of the seatings, of every
+   * drawing's lines, first routings included, and of setting each drawing
+   * up. Bounded before the layout starts, so it is how long a layout takes
+   * on any machine, and the same on every one. */
+  work: number;
+};
+
+/**
+ * What setting up one drawing counts towards the work, for each person,
+ * measured: its lines of descent and the scene its lines are routed in,
+ * and turning the drawing chosen into what is drawn, which the line
+ * search's own steps do not count.
+ */
+const SETUP_STEPS = 50;
+
+/** How many of the families drawn last are kept, to be drawn again at no
+ * cost. */
+const DRAWINGS_KEPT = 8;
+const drawingsKept = new Map<string, DrawnPedigree>();
+
+/**
+ * A family laid out and its connectors routed, exactly as `PedigreeLayout`
+ * draws it: each person's top-left corner, by node id, and the connectors.
+ * The same family, drawn again (as it is on every render that rebuilds its
+ * records), is the drawing already made: the layout is a function of what is
+ * drawn alone, and its search is the slowest work the interface does. The
+ * drawing returned is shared, and never changed by those who read it.
+ */
+export function drawPedigree(input: DrawPedigreeInput): DrawnPedigree {
+  const key = JSON.stringify([
+    input.nodeIds,
+    input.links,
+    input.dimensions,
+    input.nodeNames ? [...input.nodeNames] : null,
+    input.nodeShapes ? [...input.nodeShapes] : null,
+  ]);
+  const kept = drawingsKept.get(key);
+  if (kept) {
+    // The latest drawn are kept longest.
+    drawingsKept.delete(key);
+    drawingsKept.set(key, kept);
+    return kept;
+  }
+  const drawn = drawPedigreeAfresh(input);
+  drawingsKept.set(key, drawn);
+  for (const oldest of drawingsKept.keys()) {
+    if (drawingsKept.size <= DRAWINGS_KEPT) break;
+    drawingsKept.delete(oldest);
+  }
+  return drawn;
+}
+
+function drawPedigreeAfresh({
+  nodeIds,
+  links,
+  dimensions,
+  nodeNames,
+  nodeShapes,
+}: DrawPedigreeInput): DrawnPedigree {
+  const { input, indexToId, idToIndex } = toPedigreeInput(nodeIds, links);
+  const names = nodeNames
+    ? indexToId.map((id) => nodeNames.get(id) ?? '')
+    : undefined;
+  const counted = { spent: SETUP_STEPS * nodeIds.length };
+  /** The family laid out and routed with `parents` as its ties. */
+  function laidOut(parents: ParentConnection[][], share: number) {
+    // Each seating weighed is drawn, and chosen by what its drawing costs.
+    const routed = new Map<
+      PedigreeLayout,
+      { connectors: PedigreeConnectors; broken: number; crossings: number }
+    >();
+    const route = (
+      candidate: PedigreeLayout,
+      search: 'quick' | 'thorough',
+      work: RoutingWork,
+    ) =>
+      routeLayout(
+        candidate,
+        links,
+        dimensions,
+        parents,
+        idToIndex,
+        names,
+        indexToId,
+        nodeShapes,
+        search,
+        work,
+      );
+    const layout = alignPedigree(
+      { ...input, parents },
+      {
+        counted,
+        share,
+        drawingCost: (candidate, search, work) => {
+          counted.spent += SETUP_STEPS * nodeIds.length;
+          const { connectors, cost, broken, crossings } = route(
+            candidate,
+            search,
+            work,
+          );
+          // An abandoned drawing is not kept (see `RoutingWork`).
+          if (cost < Number.POSITIVE_INFINITY) {
+            routed.set(candidate, { connectors, broken, crossings });
+          }
+          return cost;
+        },
+      },
+    );
+    // The drawing chosen was drawn while it was weighed; were it not, it is
+    // routed once, with no search for better courses, and counted.
+    let drawn = routed.get(layout);
+    if (!drawn) {
+      const once: RoutingWork = { spent: 0, limit: 0 };
+      drawn = route(layout, 'thorough', once);
+      counted.spent += SETUP_STEPS * nodeIds.length + once.spent;
+    }
+    return { parents, layout, ...drawn };
+  }
+  // A family with a child carried by a gestational surrogate is drawn
+  // both ways, and the children hang from their genetic parents only where
+  // that crosses fewer lines than Bennett et al.'s line of descent from the
+  // carrier (Josh, 22 Oct 2026) and breaks no more hard constraints, so
+  // fewer crossings never cost a drawing that keeps them. The two drawings
+  // share one budget.
+  const geneticParents = hangingFromGeneticParents(input.parents);
+  const share = geneticParents ? 0.5 : 1;
+  const bennett = laidOut(input.parents, share);
+  const genetic = geneticParents ? laidOut(geneticParents, share) : undefined;
+  const { parents, layout, connectors } =
+    genetic &&
+    genetic.crossings < bennett.crossings &&
+    genetic.broken <= bennett.broken
+      ? genetic
+      : bennett;
+  const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
+  const connectorData = buildConnectorData(
+    layout,
+    links,
+    dimensions,
+    parents,
+    idToIndex,
+    names,
+    indexToId,
+    nodeShapes,
+    connectors,
+  );
+  return { positions, connectorData, work: counted.spent };
 }

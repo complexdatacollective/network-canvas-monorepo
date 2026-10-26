@@ -1,26 +1,50 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import {
+  createAction,
+  createSlice,
+  type PayloadAction,
+} from '@reduxjs/toolkit';
+
+import type { LocaleTag } from '@codaco/protocol-validation';
 
 import { transitionStage } from './session';
 
 type UIState = {
   FORM_IS_READY: boolean;
-  passphrase: string | null;
   /**
-   * Counts the passphrases entered, so that entering the one in force again
-   * can be told apart from it staying in force.
+   * Names the decryption scope holding the interview's encryption key, while
+   * one is in force. Only this opaque id is kept here: the key and the
+   * passphrase it came from are never put in Redux state.
    */
-  passphraseEntry: number;
+  encryptionKeyId: string | null;
   showPassphrasePrompter: boolean;
-  passphraseInvalid: boolean;
+  /**
+   * The language the participant chose on a language chooser stage (or the
+   * host stated for them), or `null` to follow the browser's languages. It is
+   * not interview data: never part of the session handed to the host, and
+   * kept only in the tab's sessionStorage (see
+   * `localization/localePreferenceStorage`).
+   */
+  localePreference: LocaleTag | null;
+  /**
+   * The preference read back from the tab's sessionStorage when the interview
+   * mounted, until the preference changes to another language: the interview
+   * opens in it rather than changing to it (see `InterviewI18nProvider`).
+   * Once the participant (or the host) moves on, a change back to that
+   * language is a change like any other, made with the interview on screen.
+   */
+  restoredLocalePreference: LocaleTag | null;
 };
 
-const initialState = {
+const initialState: UIState = {
   FORM_IS_READY: false,
-  passphrase: null,
-  passphraseEntry: 0,
+  encryptionKeyId: null,
   showPassphrasePrompter: false,
-  passphraseInvalid: false,
-} as UIState;
+  localePreference: null,
+  restoredLocalePreference: null,
+};
+
+/** A passphrase was turned away because it does not open the interview. */
+export const passphraseRejected = createAction('ui/passphraseRejected');
 
 const uiSlice = createSlice({
   name: 'ui',
@@ -30,19 +54,31 @@ const uiSlice = createSlice({
       ...state,
       FORM_IS_READY: action.payload,
     }),
-    setPassphrase: (state, action: PayloadAction<string>) => ({
+    encryptionUnlocked: (state, action: PayloadAction<string>) => ({
       ...state,
-      passphraseInvalid: false,
-      passphrase: action.payload,
-      passphraseEntry: state.passphraseEntry + 1,
+      encryptionKeyId: action.payload,
     }),
     setShowPassphrasePrompter: (state, action: PayloadAction<boolean>) => ({
       ...state,
       showPassphrasePrompter: action.payload,
     }),
-    setPassphraseInvalid: (state, action: PayloadAction<boolean>) => ({
+    setLocalePreference: (state, action: PayloadAction<LocaleTag>) =>
+      state.localePreference === action.payload
+        ? state
+        : {
+            ...state,
+            localePreference: action.payload,
+            restoredLocalePreference: null,
+          },
+    // What the tab's sessionStorage held for this interview when it mounted,
+    // or `null` when it held nothing the protocol still declares.
+    localePreferenceRestored: (
+      state,
+      action: PayloadAction<LocaleTag | null>,
+    ) => ({
       ...state,
-      passphraseInvalid: action.payload,
+      localePreference: action.payload ?? state.localePreference,
+      restoredLocalePreference: action.payload,
     }),
   },
   extraReducers: (builder) => {
@@ -54,11 +90,10 @@ const uiSlice = createSlice({
   },
   selectors: {
     formIsReady: (state) => state.FORM_IS_READY,
-    getPassphrase: (state) => state.passphrase,
-    getPassphraseEntry: (state) => state.passphraseEntry,
-    showPassphrasePrompter: (state) =>
-      state.showPassphrasePrompter || state.passphraseInvalid,
-    getPassphraseInvalid: (state) => state.passphraseInvalid,
+    getEncryptionKeyId: (state) => state.encryptionKeyId,
+    showPassphrasePrompter: (state) => state.showPassphrasePrompter,
+    getLocalePreference: (state) => state.localePreference,
+    getRestoredLocalePreference: (state) => state.restoredLocalePreference,
   },
 });
 
@@ -68,16 +103,17 @@ export default uiSlice.reducer;
 // Export the action creators
 export const {
   setFormIsReady,
-  setPassphrase,
+  encryptionUnlocked,
   setShowPassphrasePrompter,
-  setPassphraseInvalid,
+  setLocalePreference,
+  localePreferenceRestored,
 } = uiSlice.actions;
 
 // Export the selectors
 export const {
   formIsReady,
-  getPassphrase,
-  getPassphraseEntry,
+  getEncryptionKeyId,
   showPassphrasePrompter,
-  getPassphraseInvalid,
+  getLocalePreference,
+  getRestoredLocalePreference,
 } = uiSlice.selectors;

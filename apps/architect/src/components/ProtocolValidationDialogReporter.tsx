@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -11,7 +11,6 @@ import {
   collapseProtocolHistory,
   guardState,
 } from '~/hooks/useProtocolNavGuard';
-import { toBrowserPath } from '~/utils/appBase';
 import {
   type ProtocolValidationDialogEvent,
   subscribeProtocolValidationDialogEvents,
@@ -107,9 +106,8 @@ const ProtocolValidationDialogReporter = () => {
     // the standard leave-editor prompt and remove the protocol session from
     // browser history. Back must not reopen the invalid editor state.
     guardState.bypass = true;
-    const home = toBrowserPath('/');
-    const collapsed = collapseProtocolHistory(home, () => {
-      history.replaceState(null, '', home);
+    const collapsed = collapseProtocolHistory('/', () => {
+      history.replaceState(null, '', '/');
     });
     void Promise.resolve(collapsed).finally(() => {
       guardState.bypass = false;

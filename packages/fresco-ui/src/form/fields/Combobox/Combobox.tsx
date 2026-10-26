@@ -12,10 +12,15 @@ import {
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button from '../../../Button';
+import { Button } from '../../../Button';
 import { useComboboxTriggerEscape } from '../../../hooks/useComboboxTriggerEscape';
 import Surface from '../../../layout/Surface';
 import { usePortalContainer } from '../../../PortalContainer';
+import {
+  isPresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../../PresentationalText';
 import { ScrollArea } from '../../../ScrollArea';
 import {
   dropdownItemVariants,
@@ -118,7 +123,7 @@ function isComboboxOption(value: unknown): value is ComboboxOption {
     'value' in value &&
     (typeof value.value === 'string' || typeof value.value === 'number') &&
     'label' in value &&
-    typeof value.label === 'string'
+    isPresentationalText(value.label)
   );
 }
 
@@ -152,7 +157,7 @@ function ComboboxField(props: ComboboxFieldProps) {
     'aria-required': ariaRequired,
     'aria-disabled': ariaDisabled,
     'aria-readonly': ariaReadOnly,
-    open: openProp,
+    'open': openProp,
     defaultOpen,
     ...rest
   } = props;
@@ -243,6 +248,11 @@ function ComboboxField(props: ComboboxFieldProps) {
 
   return (
     <Combobox.Root
+      // Base UI filters and announces items by `String(item.label)`, which
+      // would read an object label as "[object Object]".
+      itemToStringLabel={(option: ComboboxOption) =>
+        presentationalTextValue(option.label)
+      }
       {...rest}
       multiple
       items={options}
@@ -272,7 +282,7 @@ function ComboboxField(props: ComboboxFieldProps) {
           state,
         })}
       >
-        <span className="flex-1 truncate text-start">
+        <span className="min-w-0 flex-1 truncate text-start">
           <Combobox.Value
             placeholder={
               <span className="text-input-contrast/50 italic">
@@ -333,9 +343,7 @@ function ComboboxField(props: ComboboxFieldProps) {
             </Combobox.Empty>
             <Combobox.List
               className="max-h-64 overflow-hidden has-data-empty:hidden"
-              render={
-                <ScrollArea viewportClassName="px-2 flex flex-col gap-1 " />
-              }
+              render={<ScrollArea viewportClassName="flex flex-col px-2" />}
             >
               {(option: ComboboxOption) => (
                 <Combobox.Item
@@ -343,6 +351,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                   value={option}
                   disabled={option.disabled}
                   className={dropdownItemVariants()}
+                  {...presentationalTextProps(option.label)}
                 >
                   <Combobox.ItemIndicator
                     className={cx(
@@ -352,7 +361,9 @@ function ComboboxField(props: ComboboxFieldProps) {
                   >
                     <Check />
                   </Combobox.ItemIndicator>
-                  {renderOption ? renderOption(option) : option.label}
+                  {renderOption
+                    ? renderOption(option)
+                    : presentationalTextValue(option.label)}
                 </Combobox.Item>
               )}
             </Combobox.List>

@@ -119,6 +119,11 @@ const CONTROL_LABELS = defineMessages({
   },
 } satisfies Record<keyof typeof ComponentTypes, MessageDescriptor>);
 
+const hasControlLabel = (
+  component: string,
+): component is keyof typeof CONTROL_LABELS =>
+  Object.hasOwn(CONTROL_LABELS, component);
+
 /**
  * What one input control is called, for a surface naming a control the
  * researcher has already chosen rather than offering the list.
@@ -129,8 +134,8 @@ const CONTROL_LABELS = defineMessages({
 export const controlLabel = (
   component: string | undefined,
 ): MessageDescriptor | undefined =>
-  component !== undefined && component in CONTROL_LABELS
-    ? CONTROL_LABELS[component as keyof typeof CONTROL_LABELS]
+  component !== undefined && hasControlLabel(component)
+    ? CONTROL_LABELS[component]
     : undefined;
 
 /**

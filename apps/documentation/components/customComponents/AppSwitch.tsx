@@ -32,8 +32,8 @@ export const AppSwitch = ({
   const [selectedApp, selectApp] = useSelectedApp(axis);
 
   const options = Children.toArray(children)
-    .filter(isValidElement)
-    .map((child) => child.props as Partial<AppOptionProps>)
+    .filter(isValidElement<Partial<AppOptionProps>>)
+    .map((child) => child.props)
     .filter(
       (props): props is AppOptionProps => typeof props.label === 'string',
     );

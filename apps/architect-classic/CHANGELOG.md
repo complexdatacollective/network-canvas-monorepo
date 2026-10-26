@@ -1,5 +1,11 @@
 # network-canvas-architect
 
+## Unreleased
+
+- **Requires macOS 13 (Ventura) or later.** Architect now runs on Electron 45, which no longer
+  supports macOS 12 (Monterey). On a Mac that cannot be updated past macOS 12, keep using
+  Architect 6.6.3.
+
 ## 6.6.3
 
 - **Fixed a crash when editing stages.** Adding or opening a stage whose editor shows option

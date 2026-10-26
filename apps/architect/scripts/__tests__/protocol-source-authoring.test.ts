@@ -55,8 +55,22 @@ const makeProtocol = (
   assetManifest: CurrentProtocol['assetManifest'] = {},
 ): CurrentProtocol => ({
   name: 'Test Template',
-  schemaVersion: 8,
-  stages: [],
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [
+    {
+      id: 'finish',
+      type: 'FinishSession',
+      label: { en: 'Finish' },
+      mode: 'confirmation',
+      content: { en: '# All done\n\nThank you.' },
+      finishedContent: { en: 'This interview is finished.' },
+      finishLabel: { en: 'Finish' },
+      finishConfirmation: { en: 'Finish this interview?' },
+      finishFailed: { en: 'The interview could not be finished.' },
+      outcome: 'completed',
+    },
+  ],
   codebook: {
     node: {},
     edge: {},

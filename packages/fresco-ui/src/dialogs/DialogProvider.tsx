@@ -57,28 +57,17 @@ const messages = defineMessages({
     id: 'frescoUi.dialogProvider.pleaseWait',
     defaultMessage: 'Please wait...',
     description:
-      'Label shown on a confirm button while its action is still running.',
+      'Announced to screen readers, never shown, while a confirm button’s action is still running; the button shows a spinner.',
   },
   areYouSure: {
     id: 'frescoUi.dialogProvider.areYouSure',
     defaultMessage: 'Are you sure?',
     description: 'Default title of a confirmation dialog.',
   },
-  cannotBeUndone: {
-    id: 'frescoUi.dialogProvider.cannotBeUndone',
-    defaultMessage: 'This action cannot be undone.',
-    description: 'Default description of a confirmation dialog.',
-  },
   submit: {
     id: 'frescoUi.dialogProvider.submit',
     defaultMessage: 'Submit',
     description: 'Default submit action of a form dialog.',
-  },
-  errorOccurred: {
-    id: 'frescoUi.dialogProvider.errorOccurred',
-    defaultMessage: 'An error occurred',
-    description:
-      'Fallback error shown in a confirmation dialog when the failing action carries no message of its own.',
   },
 });
 
@@ -386,7 +375,7 @@ function WizardDialogRenderer({
   openDialog: DialogContextType['openDialog'];
 }) {
   const guardedCloseDialog = useCallback(
-    async <T,>(id: string, value: T | null) => {
+    async (id: string, value: unknown) => {
       if (value !== null || !dialog.confirmCancel) {
         await closeDialog(id, value);
         return;
@@ -555,49 +544,46 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
-  const closeDialog = useCallback(
-    async <T = boolean,>(id: string, value: T | null = null) => {
-      let dialogToResolve: DialogState | undefined;
+  const closeDialog = useCallback(async (id: string, value: unknown = null) => {
+    let dialogToResolve: DialogState | undefined;
 
-      // flushSync ensures the updater runs synchronously so that
-      // dialogToResolve is assigned before the check below. Without it,
-      // React 18's automatic batching may defer the updater (e.g. when
-      // another setState like setDialogError was called in the same tick),
-      // leaving dialogToResolve undefined.
-      flushSync(() => {
-        setDialogs((prevDialogs) => {
-          const dialog = prevDialogs.find((d) => d.id === id);
+    // flushSync ensures the updater runs synchronously so that
+    // dialogToResolve is assigned before the check below. Without it,
+    // React 18's automatic batching may defer the updater (e.g. when
+    // another setState like setDialogError was called in the same tick),
+    // leaving dialogToResolve undefined.
+    flushSync(() => {
+      setDialogs((prevDialogs) => {
+        const dialog = prevDialogs.find((d) => d.id === id);
 
-          if (!dialog?.open) {
-            return prevDialogs;
-          }
+        if (!dialog?.open) {
+          return prevDialogs;
+        }
 
-          dialogToResolve = dialog;
+        dialogToResolve = dialog;
 
-          if (dialog.abortController) {
-            dialog.abortController.abort();
-          }
+        if (dialog.abortController) {
+          dialog.abortController.abort();
+        }
 
-          return prevDialogs.map((d) =>
-            d.id === id ? { ...d, open: false } : d,
-          );
-        });
+        return prevDialogs.map((d) =>
+          d.id === id ? { ...d, open: false } : d,
+        );
       });
+    });
 
-      if (!dialogToResolve) {
-        return;
-      }
+    if (!dialogToResolve) {
+      return;
+    }
 
-      dialogToResolve.resolveCallback(value);
+    dialogToResolve.resolveCallback(value);
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
-      if (!isMounted.current) return;
+    if (!isMounted.current) return;
 
-      setDialogs((prevDialogs) => prevDialogs.filter((d) => d.id !== id));
-    },
-    [],
-  );
+    setDialogs((prevDialogs) => prevDialogs.filter((d) => d.id !== id));
+  }, []);
 
   const closeAllDialogs = useCallback(() => {
     // Defer to a microtask so this is safe to call from any lifecycle context
@@ -677,7 +663,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
               (e instanceof Error ? (
                 <AppErrorMessage error={e.message} />
               ) : (
-                <AppMessage message={messages.errorOccurred} />
+                <AppMessage message={commonMessages.genericError} />
               )),
           );
           return;
@@ -713,7 +699,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
               (e instanceof Error ? (
                 <AppErrorMessage error={e.message} />
               ) : (
-                <AppMessage message={messages.errorOccurred} />
+                <AppMessage message={commonMessages.genericError} />
               )),
           );
         } finally {
@@ -725,9 +711,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         id: dialogId,
         type: 'choice',
         title: options.title ?? <AppMessage message={messages.areYouSure} />,
-        description: options.description ?? (
-          <AppMessage message={messages.cannotBeUndone} />
-        ),
+        description: options.description,
         intent: options.intent ?? 'destructive',
         size: options.size,
         finalFocus: options.finalFocus,
@@ -844,13 +828,15 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             onClick={handlePrimaryClick}
             autoFocus={autoFocusButton === 'primary'}
             disabled={isLoading}
+            aria-busy={isLoading}
             icon={isLoading ? <Loader2 className="animate-spin" /> : undefined}
             data-testid="dialog-primary"
           >
-            {isLoading
-              ? intl.formatMessage(messages.pleaseWait)
-              : dialog.actions.primary.label}
+            {dialog.actions.primary.label}
           </Button>
+          <span role="status" className="sr-only">
+            {isLoading ? intl.formatMessage(messages.pleaseWait) : null}
+          </span>
         </>
       );
     }

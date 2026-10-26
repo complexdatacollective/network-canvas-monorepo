@@ -7,9 +7,13 @@ import { useMemo } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button from '../../Button';
+import { Button } from '../../Button';
 import { type ComboboxOption } from '../../form/fields/Combobox/shared';
 import InputField from '../../form/fields/InputField';
+import {
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { ScrollArea } from '../../ScrollArea';
 import { dropdownItemVariants } from '../../styles/controlVariants';
 import { cx } from '../../utils/cva';
@@ -144,8 +148,9 @@ export default function FacetedFilter({
                   'flex-1',
                   !selectedValues.includes(String(option.value)) && 'ms-4',
                 )}
+                {...presentationalTextProps(option.label)}
               >
-                {option.label}
+                {presentationalTextValue(option.label)}
               </span>
             </Combobox.Item>
           )}

@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer",
-  "version": "8.5.0",
+  "version": "8.5.1",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -26,8 +26,6 @@
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --grep @visual --update-snapshots",
     "test:e2e:native": "playwright test --config e2e/playwright.config.ts --grep-invert @visual",
-    "test:e2e:subpath": "INTERVIEWER_BASE_PATH=/v8/ VITE_DISABLE_ANALYTICS=true pnpm turbo run build --filter=@codaco/interviewer && playwright test --config e2e/playwright.subpath.config.ts",
-    "test:e2e:subpath:native": "playwright test --config e2e/playwright.subpath.config.ts",
     "test:e2e:headed": "pnpm turbo run build --filter=@codaco/interviewer && playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {
@@ -44,18 +42,19 @@
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@tanstack/react-table": "catalog:",
-    "dexie": "^4.4.6",
+    "dexie": "^4.4.7",
     "effect": "catalog:",
     "jszip": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",
     "posthog-js": "catalog:",
+    "protocol-validation-schema-8": "npm:@codaco/protocol-validation@15.0.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-dropzone": "catalog:",
     "uuid": "catalog:",
     "workbox-window": "^7.4.1",
-    "wouter": "^3.12.0",
+    "wouter": "^3.13.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -70,7 +69,7 @@
     "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vite-pwa/assets-generator": "^2.0.0",
@@ -78,14 +77,14 @@
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
-    "fake-indexeddb": "^6.2.5",
+    "fake-indexeddb": "^6.2.6",
     "jsdom": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-pwa": "^1.3.0",
+    "vite-plugin-pwa": "^2.0.0",
     "vitest": "catalog:"
   }
 }

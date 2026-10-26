@@ -111,6 +111,7 @@ const NavDrawerPanel = ({
   closeLabel,
   panelRef,
   wasNavigationClose,
+  opening,
   children,
 }: {
   label: string;
@@ -129,7 +130,9 @@ const NavDrawerPanel = ({
    * known until the close happens — this component is mounted for the whole
    * time the drawer is open.
    */
-  wasNavigationClose: () => boolean;
+  wasNavigationClose: (opening: number) => boolean;
+  /** Which opening of the drawer this panel was mounted for. */
+  opening: number;
   children: ReactNode;
 }) => {
   useEffect(() => {
@@ -141,11 +144,11 @@ const NavDrawerPanel = ({
 
     return () => {
       if (!ownerDocument) return;
-      if (!wasNavigationClose()) return;
+      if (!wasNavigationClose(opening)) return;
 
       focusRouteTarget(ownerDocument);
     };
-  }, [panelRef, wasNavigationClose]);
+  }, [panelRef, wasNavigationClose, opening]);
 
   return (
     <div
@@ -239,12 +242,12 @@ const NavDrawer = ({
   const labelId = useId();
 
   /**
-   * Which of the two closes is in progress. Read by `finalFocus` and by the
-   * panel's unmount cleanup, which Base UI and React may run in either order —
-   * so it is cleared when the drawer next OPENS rather than by whichever of
-   * them runs first.
+   * Which of the two closes is in progress: the opening a navigation closed,
+   * if one did. Read by `finalFocus` and by the panel's unmount cleanup, which
+   * Base UI and React may run in either order — so neither clears it, and an
+   * opening it does not name was not closed by a navigation.
    */
-  const closedByNavigation = useRef(false);
+  const closedByNavigation = useRef<number | null>(null);
   const lastLocation = useRef(location);
   /**
    * The panel inside the popup, held here because both halves of the focus
@@ -255,22 +258,27 @@ const NavDrawer = ({
   // Stable, so the panel's effect is never torn down and re-run by a render of
   // this component — which for that effect would mean an unmount, and an
   // unmount is the signal it exists to read.
-  const wasNavigationClose = useCallback(() => closedByNavigation.current, []);
+  const wasNavigationClose = useCallback(
+    (opening: number) => closedByNavigation.current === opening,
+    [],
+  );
 
   /**
-   * Cleared during the render that OPENS the drawer, the same way `Modal`
-   * captures its opener, and deliberately not from an effect. The panel is a
-   * child, so its mount effect runs BEFORE any effect here — and under
-   * `StrictMode` React immediately runs that effect's cleanup once as a
-   * rehearsal. With the record still reading "navigated" from a previous close,
-   * the rehearsal would perform the handoff against a drawer that is opening,
-   * dragging focus to the route heading the moment the researcher opened the
-   * navigation.
+   * Each opening is counted during the render that OPENS the drawer, the same
+   * way `Modal` captures its opener, and deliberately not from an effect. The
+   * panel is a child, so its mount effect runs BEFORE any effect here — and
+   * under `StrictMode` React immediately runs that effect's cleanup once as a
+   * rehearsal. Were the record of a previous close by navigation still taken
+   * to describe this opening, the rehearsal would perform the handoff against
+   * a drawer that is opening, dragging focus to the route heading the moment
+   * the researcher opened the navigation. The panel mounts already knowing
+   * its opening, which no close has named yet.
    */
   const [wasOpen, setWasOpen] = useState(false);
+  const [opening, setOpening] = useState(0);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) closedByNavigation.current = false;
+    if (open) setOpening((current) => current + 1);
   }
 
   useEffect(() => {
@@ -281,9 +289,9 @@ const NavDrawer = ({
 
     if (!open) return;
 
-    closedByNavigation.current = true;
+    closedByNavigation.current = opening;
     onOpenChange(false);
-  }, [location, open, onOpenChange]);
+  }, [location, open, onOpenChange, opening]);
 
   const closedTarget = shouldReduceMotion
     ? { opacity: 0.99 }
@@ -311,7 +319,7 @@ const NavDrawer = ({
         // document to ask about is `null` for the same reason.
         finalFocus={() => {
           const ownerDocument = panelRef.current?.ownerDocument;
-          return closedByNavigation.current &&
+          return closedByNavigation.current === opening &&
             ownerDocument !== undefined &&
             hasRouteFocusTarget(ownerDocument)
             ? false
@@ -340,6 +348,7 @@ const NavDrawer = ({
           closeLabel={closeLabel}
           panelRef={panelRef}
           wasNavigationClose={wasNavigationClose}
+          opening={opening}
         >
           {children}
         </NavDrawerPanel>

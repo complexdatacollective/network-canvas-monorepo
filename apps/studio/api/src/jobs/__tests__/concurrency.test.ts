@@ -297,7 +297,7 @@ describe.skipIf(!db)('the queue under real contention', () => {
             'two workers handled the same job',
           );
           assert.deepStrictEqual(
-            [...new Set(ran.map((entry) => entry.worker))].sort(),
+            [...new Set(ran.map((entry) => entry.worker))].toSorted(),
             ['first', 'second'],
             'only one of the two workers claimed anything',
           );
@@ -345,7 +345,7 @@ describe.skipIf(!db)('the queue under real contention', () => {
           }).pipe(Effect.provide(backgroundWorker(), { local: true }));
 
           assert.strictEqual(intervals.length, count);
-          const ordered = [...intervals].sort(
+          const ordered = intervals.toSorted(
             (left, right) => left.start - right.start,
           );
           for (let index = 1; index < ordered.length; index += 1) {

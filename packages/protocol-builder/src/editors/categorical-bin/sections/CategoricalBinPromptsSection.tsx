@@ -5,18 +5,22 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
-import type { VariableType } from '@codaco/protocol-validation';
+import {
+  CATEGORICAL_BIN_MAX_BINS,
+  type VariableType,
+} from '@codaco/protocol-validation';
 
 import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
 import BinAttributeField, {
   type BinAttributeSlot,
   binAttributePickIssue,
+  drawnValueCount,
 } from '../../../fields/BinAttributeField.tsx';
+import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
 } from '../../../fields/PromptTextField.tsx';
-import RichTextField from '../../../fields/RichTextField.tsx';
 import type {
   RowEditorProps,
   RowSaveContext,
@@ -24,6 +28,9 @@ import type {
   RowValues,
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { variablesForSubject } from '../../../protocol-context.ts';
+import { attributeOptionsFieldFor } from '../../../sections/AttributeValueFields.tsx';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
@@ -38,6 +45,7 @@ const BINS_FIELD = 'variable';
 const OTHER_FIELD = 'otherVariable';
 const OTHER_LABEL_FIELD = 'otherOptionLabel';
 const OTHER_PROMPT_FIELD = 'otherVariablePrompt';
+const OTHER_PROMPT_PATH = [OTHER_PROMPT_FIELD];
 
 /** Only a categorical attribute has the named values this interface bins by. */
 const BINS_TYPE = 'categorical' as const satisfies VariableType;
@@ -45,11 +53,8 @@ const BINS_TYPE = 'categorical' as const satisfies VariableType;
 /** The follow-up answer is typed by the participant, so it is stored as text. */
 const FOLLOW_UP_TYPE = 'text' as const satisfies VariableType;
 
-/** What this interface can draw at once before the bins stop being readable. */
-const BIN_LIMIT = 8;
-
 /** What only a Categorical Bin says; the words both bins use are in `binMessages`. */
-const messages = defineMessages({
+export const categoricalBinPromptMessages = defineMessages({
   placeholder: {
     id: 'protocolBuilder.censusPrompts.categoricalBinPlaceholder',
     defaultMessage: 'Enter your prompt...',
@@ -83,11 +88,18 @@ const messages = defineMessages({
       'Shown in place of the attribute picker’s options when the node type this stage collects has no attribute whose answers come from a named list.',
   },
   binLimitDescription: {
-    id: 'protocolBuilder.censusPrompts.categoricalBinLimitDescription',
+    id: 'protocolBuilder.censusPrompts.categoricalBinMaxBinsDescription',
     defaultMessage:
-      'This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question.',
+      'This interface can show at most {limit, number} bins in total. If the follow-up other option is turned on, its bin counts towards that total. Remove values or group them, and ask for the detail in a later question.',
     description:
-      'Body of the warning shown when a Categorical Bin prompt would draw more bins than its interview screen is designed for. The follow-up bin is the extra one this prompt can add for answers none of the attribute’s values cover.',
+      'Body of the error shown when a Categorical Bin prompt would draw more bins than its interview screen can show. {limit} is the largest number of bins allowed. The follow-up other option is the switchable section of this prompt that adds one more bin for answers none of the attribute’s values cover; use the same name for it as that section’s heading.',
+  },
+  binLimitRefusal: {
+    id: 'protocolBuilder.censusPrompts.categoricalBinMaxBinsRefusal',
+    defaultMessage:
+      'This prompt would show {count, number} bins, but at most {limit, number} fit, including the follow-up other bin if it is turned on. Remove values before saving.',
+    description:
+      'Refusal shown when a researcher saves a Categorical Bin prompt that would draw more bins than its interview screen can show. {count} is how many bins the prompt would draw, including the follow-up other bin when it is turned on; {limit} is the largest number allowed, and also includes that bin.',
   },
   otherTitle: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherTitle',
@@ -216,7 +228,7 @@ const OTHER_SLOT: BinAttributeSlot = Object.freeze({
   // exclude different attributes: the follow-up is typed into an input that
   // honours the attribute's own codebook rules.
   writerClass: 'validated',
-  goneRefusal: messages.otherAttributeGoneRefusal,
+  goneRefusal: categoricalBinPromptMessages.otherAttributeGoneRefusal,
 });
 
 const asString = (value: unknown): string | undefined =>
@@ -253,27 +265,35 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        placeholder={intl.formatMessage(messages.placeholder)}
+        placeholder={intl.formatMessage(
+          categoricalBinPromptMessages.placeholder,
+        )}
         title={intl.formatMessage(censusMessages.promptTextTitle)}
         description={intl.formatMessage(censusMessages.promptTextDescription)}
       />
       <Section
-        title={intl.formatMessage(messages.binsTitle)}
-        description={intl.formatMessage(messages.binsDescription)}
+        title={intl.formatMessage(categoricalBinPromptMessages.binsTitle)}
+        description={intl.formatMessage(
+          categoricalBinPromptMessages.binsDescription,
+        )}
       >
         <BinAttributeField
           slot={BINS_SLOT}
           subject={subject}
           committed={asString(item[BINS_FIELD])}
           label={intl.formatMessage(binMessages.attributeLabel)}
-          hint={intl.formatMessage(messages.binsHint)}
-          emptyMessage={intl.formatMessage(messages.binsEmpty)}
+          hint={intl.formatMessage(categoricalBinPromptMessages.binsHint)}
+          emptyMessage={intl.formatMessage(
+            categoricalBinPromptMessages.binsEmpty,
+          )}
           requiredMessage={intl.formatMessage(binMessages.binAttributeRequired)}
           createLabel={intl.formatMessage(binMessages.attributeCreateLabel)}
-          optionLimit={BIN_LIMIT}
+          optionLimit={CATEGORICAL_BIN_MAX_BINS}
           optionLimitDescription={intl.formatMessage(
-            messages.binLimitDescription,
+            categoricalBinPromptMessages.binLimitDescription,
+            { limit: CATEGORICAL_BIN_MAX_BINS },
           )}
+          optionLimitEnforced
           extraBins={followUpBins}
         />
       </Section>
@@ -284,8 +304,10 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         then not be asked anything in.
       */}
       <Section
-        title={intl.formatMessage(messages.otherTitle)}
-        description={intl.formatMessage(messages.otherDescription)}
+        title={intl.formatMessage(categoricalBinPromptMessages.otherTitle)}
+        description={intl.formatMessage(
+          categoricalBinPromptMessages.otherDescription,
+        )}
         toggleable
         disabled={!chosen}
         defaultOpen={committedOther !== undefined}
@@ -300,11 +322,21 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           slot={OTHER_SLOT}
           subject={subject}
           committed={committedOther}
-          label={intl.formatMessage(messages.otherAttributeLabel)}
-          hint={intl.formatMessage(messages.otherAttributeHint)}
-          emptyMessage={intl.formatMessage(messages.otherAttributeEmpty)}
-          requiredMessage={intl.formatMessage(messages.otherAttributeRequired)}
-          createLabel={intl.formatMessage(messages.otherAttributeCreateLabel)}
+          label={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeLabel,
+          )}
+          hint={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeHint,
+          )}
+          emptyMessage={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeEmpty,
+          )}
+          requiredMessage={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeRequired,
+          )}
+          createLabel={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeCreateLabel,
+          )}
         />
         <CodebookVariableValidationSection
           subject={subject}
@@ -313,27 +345,46 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
               ? otherVariable
               : undefined
           }
-          description={messages.otherValidationDescription}
+          description={categoricalBinPromptMessages.otherValidationDescription}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={OTHER_LABEL_FIELD}
-          component={RichTextField}
-          label={intl.formatMessage(messages.otherBinLabel)}
-          hint={intl.formatMessage(messages.otherBinHint)}
-          placeholder={intl.formatMessage(messages.otherBinPlaceholder)}
+          component={LocalizedRichTextField}
+          // The bin's caption, which is not about the node being placed.
+          dynamicValues="stageText"
+          label={intl.formatMessage(categoricalBinPromptMessages.otherBinLabel)}
+          hint={intl.formatMessage(categoricalBinPromptMessages.otherBinHint)}
+          placeholder={intl.formatMessage(
+            categoricalBinPromptMessages.otherBinPlaceholder,
+          )}
           singleLine
-          initialValue={asString(item[OTHER_LABEL_FIELD])}
-          required={intl.formatMessage(messages.otherBinRequired)}
+          compact
+          initialValue={asLocalizedString(item[OTHER_LABEL_FIELD])}
+          required={intl.formatMessage(
+            categoricalBinPromptMessages.otherBinRequired,
+          )}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={OTHER_PROMPT_FIELD}
-          component={RichTextField}
-          label={intl.formatMessage(messages.otherPromptLabel)}
-          hint={intl.formatMessage(messages.otherPromptHint)}
-          placeholder={intl.formatMessage(messages.otherPromptPlaceholder)}
+          component={LocalizedRichTextField}
+          // A question about the node just put in the "other" bin, which is
+          // a one-field form about it.
+          dynamicValues="formField"
+          fieldPath={OTHER_PROMPT_PATH}
+          label={intl.formatMessage(
+            categoricalBinPromptMessages.otherPromptLabel,
+          )}
+          hint={intl.formatMessage(
+            categoricalBinPromptMessages.otherPromptHint,
+          )}
+          placeholder={intl.formatMessage(
+            categoricalBinPromptMessages.otherPromptPlaceholder,
+          )}
           singleLine
-          initialValue={asString(item[OTHER_PROMPT_FIELD])}
-          required={intl.formatMessage(messages.otherPromptRequired)}
+          initialValue={asLocalizedString(item[OTHER_PROMPT_FIELD])}
+          required={intl.formatMessage(
+            categoricalBinPromptMessages.otherPromptRequired,
+          )}
         />
       </Section>
       <BinSortOrders subject={subject} item={item} disabled={!chosen} />
@@ -349,6 +400,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
  * one, and Architect has to strip its own on the way out.
  */
 export default function CategoricalBinPromptsSection() {
+  const intl = useAppIntl();
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
@@ -385,13 +437,38 @@ export default function CategoricalBinPromptsSection() {
           return { refused: { fieldErrors: { [slot.name]: [issue] } } };
         }
       }
+      const binCount =
+        drawnValueCount(
+          subject === undefined
+            ? {}
+            : variablesForSubject(protocolContext, subject),
+          row[attributeOptionsFieldFor(BINS_FIELD)],
+          asString(row[BINS_FIELD]),
+        ) + (asString(row[OTHER_FIELD]) ? 1 : 0);
+      if (binCount > CATEGORICAL_BIN_MAX_BINS) {
+        return {
+          refused: {
+            fieldErrors: {
+              [attributeOptionsFieldFor(BINS_FIELD)]: [
+                intl.formatMessage(
+                  categoricalBinPromptMessages.binLimitRefusal,
+                  {
+                    count: binCount,
+                    limit: CATEGORICAL_BIN_MAX_BINS,
+                  },
+                ),
+              ],
+            },
+          },
+        };
+      }
       // After the picks, because the values are the picked attribute's: a
       // prompt refused for naming an attribute it cannot draw has no list to
       // write anywhere. The follow-up answer is typed rather than chosen, so
       // only the bins carry one.
       return await binOptions.commit(row, context);
     },
-    [binOptions, identity.id, protocolContext, subject],
+    [binOptions, identity.id, intl, protocolContext, subject],
   );
 
   return (

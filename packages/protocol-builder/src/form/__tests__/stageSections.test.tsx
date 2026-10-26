@@ -7,6 +7,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import type {
   StageEditorActions,
@@ -50,9 +51,11 @@ function captureSections() {
   };
 }
 
+const en = (text: string) => ({ 'en-US': text });
+
 const initialFields: SectionDoc = {
-  label: 'Welcome',
-  title: 'Welcome to the study',
+  label: en('Welcome'),
+  title: en('Welcome to the study'),
   items: [],
 };
 
@@ -93,7 +96,7 @@ const twoSections = (
       <Field
         name="title"
         label="Page heading"
-        component={InputField}
+        component={LocalizedInputField}
         required={REQUIRED}
       />
     </BuilderSection>
@@ -164,7 +167,11 @@ describe('the sections a stage editor publishes to its host', () => {
     const { harness, probe } = renderEditor(
       <>
         <BuilderSection title="Page content">
-          <Field name="title" label="Page heading" component={InputField} />
+          <Field
+            name="title"
+            label="Page heading"
+            component={LocalizedInputField}
+          />
         </BuilderSection>
         <Revealable>
           <BuilderSection title="Interviewer guidance">
@@ -200,8 +207,7 @@ describe('the sections a stage editor publishes to its host', () => {
 
   it('tells a subscriber when the form’s own errors change', async () => {
     const { harness, probe } = renderEditor(twoSections, {
-      label: 'Welcome',
-      title: '',
+      label: en('Welcome'),
       items: [],
     });
     await waitFor(() => expect(probe.store().getSnapshot()).toHaveLength(2));

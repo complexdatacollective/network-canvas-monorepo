@@ -30,9 +30,15 @@ fi
 # E2E must not depend on live analytics requests or their non-deterministic
 # timing. Reuse the app's build-time analytics gate so the build under test
 # never initializes PostHog at all.
+#
+# INTERVIEWER_SKIP_LEGACY_V8=true leaves the pinned Interviewer 8 out of the
+# build under test. Bundled, its worker downloads in the background and the
+# offline-readiness status races it. The specs that host a schema 8 interview
+# build their own copy with a stub at /v8/ (e2e/fixtures/legacy-interviewer.ts).
 docker run --rm \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
+  -e INTERVIEWER_SKIP_LEGACY_V8=true \
   -v "$(pwd)":/workspace \
   -v interviewer-e2e-node-modules:/workspace/node_modules \
   -v interviewer-e2e-turbo-cache:/workspace/.turbo/cache \

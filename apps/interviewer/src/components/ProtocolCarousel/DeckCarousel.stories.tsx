@@ -23,7 +23,8 @@ function makeProtocol(name: string, description: string): ProtocolWithCounts {
   const protocol: CurrentProtocol = {
     name,
     description,
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };
@@ -31,7 +32,7 @@ function makeProtocol(name: string, description: string): ProtocolWithCounts {
     id: `story-${name}`,
     hash: `hash-${name}`,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: '2026-05-20T10:00:00.000Z',
     description,
     codebook: {},

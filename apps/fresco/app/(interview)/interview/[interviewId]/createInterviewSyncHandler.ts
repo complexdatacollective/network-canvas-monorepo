@@ -1,6 +1,6 @@
 import {
   createDebouncedSyncHandler,
-  type SessionPayload,
+  type SessionSnapshot,
   type SyncHandler,
 } from '@codaco/interview/contract';
 
@@ -23,8 +23,27 @@ type Args = {
    * older than what is stored.
    */
   initialSyncRevision: number;
-  /** Reads the host's current step at the moment a write is put on the wire. */
-  getCurrentStep: () => number;
+  /**
+   * The hash of the protocol the page loaded the interview with. Every upgrade
+   * that rewrites a protocol and its interviews gives the protocol a new hash,
+   * so the endpoint uses it to refuse a tab left open across one.
+   */
+  protocolHash: string;
+  /**
+   * The host's step when the handler is built. The host reports every later
+   * step through `setCurrentStep`, and a write records whichever step is in
+   * force when it goes on the wire.
+   */
+  initialStep: number;
+};
+
+/**
+ * The sync handler, plus the setter the host reports its current step through.
+ * The handler owns the step rather than reading it from the host, so the host
+ * hands it over from an effect instead of exposing a value to read later.
+ */
+export type InterviewSyncHandler = SyncHandler & {
+  setCurrentStep: (step: number) => void;
 };
 
 /** What the sync route reports back about the write it was handed. */
@@ -76,8 +95,10 @@ async function readOutcome(response: Response): Promise<SyncOutcome> {
 export function createInterviewSyncHandler({
   interviewId,
   initialSyncRevision,
-  getCurrentStep,
-}: Args): SyncHandler {
+  protocolHash,
+  initialStep,
+}: Args): InterviewSyncHandler {
+  let currentStep = initialStep;
   let inFlight: AbortController | null = null;
   // Numbers the writes this browser issues, so the server can tell which of two
   // it is holding at once is the newer one: a write issued later always carries
@@ -95,7 +116,7 @@ export function createInterviewSyncHandler({
   };
 
   const post = async (
-    session: SessionPayload,
+    session: SessionSnapshot,
     revision: number,
     unloading: boolean,
   ): Promise<SyncOutcome> => {
@@ -114,10 +135,18 @@ export function createInterviewSyncHandler({
 
     const controller = new AbortController();
     inFlight = controller;
+    // Named fields rather than the whole snapshot: the endpoint writes only
+    // these.
     const body = JSON.stringify({
-      ...session,
-      currentStep: getCurrentStep(),
+      id: session.id,
+      network: session.network,
+      stageMetadata: session.stageMetadata,
+      lastUpdated: session.lastUpdated,
+      currentStep,
       syncRevision: revision,
+      // The protocol the page loaded the interview with, so the endpoint can
+      // refuse a tab left open across an upgrade that migrated it.
+      protocolHash,
     });
 
     try {
@@ -143,7 +172,7 @@ export function createInterviewSyncHandler({
     }
   };
 
-  return createDebouncedSyncHandler(
+  const sync = createDebouncedSyncHandler(
     async (id, session, { unloading }) => {
       if (id !== interviewId) {
         throw new Error(
@@ -196,4 +225,10 @@ export function createInterviewSyncHandler({
     },
     { waitMs: SYNC_DEBOUNCE_MS },
   );
+
+  return Object.assign(sync, {
+    setCurrentStep: (step: number) => {
+      currentStep = step;
+    },
+  });
 }

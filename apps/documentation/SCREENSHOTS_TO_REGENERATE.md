@@ -26,6 +26,43 @@ walkthrough depends on, has been recaptured; the stage shots need an interview
 driven through the sample protocol with representative data, which is a
 separate pass. Every other row is done.
 
+## Protocol localization (schema 9)
+
+Protocols can now be written in more than one language, and the interview
+gained a Language Chooser interface. These images predate that work:
+
+| Image                                      | Page                                                | What changed                                                                                                                                                  |
+| ------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `architect/overview-screen.png`            | `design-protocols/getting-started.en.mdx`           | The protocol navigation has a **Languages** tab between **Codebook** and **Summary**.                                                                         |
+| `architect/codebook-web.png`               | `design-protocols/key-concepts/codebook.en.mdx`     | Same navigation change. Check every other Architect capture that shows the protocol navigation bar too.                                                       |
+| `key-concepts/interfaces/utilities.png`    | `design-protocols/key-concepts/interfaces.en.mdx`   | The utility interfaces now include **Language Chooser**, between Information and Anonymisation.                                                               |
+| `interviewer-guide/interview-settings.png` | `collect-data/interviewer/using-interviewer.en.mdx` | The interview settings menu no longer has **Interface language**; it holds **Text size** and **Exit interview**. The alt text already describes the new menu. |
+
+`architect/new-protocol-dialog.png` was recaptured in October 2026 from
+Architect on the schema 9 line, together with a new set under
+`architect/localization/` for the Translating Your Protocol article (the
+Languages page, the Add languages dialog, the translation table, the stage-list
+notes, the stage editor's language menu and missing-translation note), the
+Language Chooser page (its stage editor) and Preview Mode (the Preview language
+menu). Still outstanding for Translating Your Protocol: the **Change language**
+dialog, and a **Summary** tab stage listing a text in every language.
+
+## Stage introduction panels removed (schema 9)
+
+Schema 9 removed the introduction panel from the Per Alter Form, Per Alter
+Edge Form, Dyad Census and Tie-Strength Census. Instructions now go in an
+Information stage placed before the stage; the Ego Form keeps its panel. The
+Building a protocol tutorial now shows this capture only to Architect Classic
+readers; Architect needs a fresh one:
+
+| Image                                | Page                                                    | What changed                                                                                                               |
+| ------------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `architect-guide/per-alter-form.png` | `design-protocols/tutorials/building-a-protocol.en.mdx` | Shows the removed **Task introduction** section. Recapture the Per Alter Form editor, then show it in the `current` block. |
+
+The Per Alter Form and Per Alter Edge Form interface pages no longer show
+`interface-documentation/per-alter-form/architect-intro.png` and
+`interface-documentation/per-edge-form/architect-intro.png`.
+
 ## Using Interviewer (Interviewer screenshots)
 
 Source: `docs/collect-data/interviewer/using-interviewer.en.mdx`

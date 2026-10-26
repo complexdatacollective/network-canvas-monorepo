@@ -75,7 +75,7 @@ function buildStore(tracker: Tracker) {
       protocol: {
         id: 'p1',
         hash: 'h1',
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'PROMPT_TEXT_TRIGGER',
         description: 'PROMPT_TEXT_TRIGGER',
         codebook: {
@@ -221,11 +221,18 @@ function buildRosterStore(tracker: Tracker) {
       protocol: {
         id: 'p1',
         hash: 'h1',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: rosterCodebook,
         stages: [
           { id: 's0', type: 'Information' },
-          { id: 's1', type: 'NameGeneratorRoster', prompts: [{ id: 'p1' }] },
+          {
+            id: 's1',
+            type: 'NameGeneratorRoster',
+            allAddedNotice: {
+              en: 'There is nothing left to add from this list.',
+            },
+            prompts: [{ id: 'p1' }],
+          },
         ],
       } as never,
     },

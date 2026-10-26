@@ -48,13 +48,16 @@ const messages = defineMessages({
   },
   importSuccess: {
     id: 'interviewer.protocolImport.importSuccess',
-    defaultMessage:
-      '{migrated, select, true {{name} was migrated to the current schema.} other {{name} is ready to use.}}',
+    defaultMessage: '{name} is ready to use.',
     description: 'Administration text in Interviewer useProtocolImport.',
   },
 });
 
-export type ImportRequest = { source: 'file'; file: File; label: string };
+export type ImportRequest = {
+  source: 'file';
+  file: File;
+  label: string;
+};
 
 // An in-flight protocol import, tracked by this hook and rendered by
 // ProtocolDeck as a loading-state DeckCard that fills in as the import
@@ -66,19 +69,6 @@ export type PendingImport = {
   phase: ImportPhase;
   progress?: number;
 };
-
-// Loads the dev-only Development protocol, or null in a production build.
-// The `import.meta.env.DEV` test has to guard the dynamic import itself: an
-// unguarded `import()` is emitted as its own chunk (the protocol and its
-// inlined ~23 MB video) in every build, even though nothing in production
-// ever requests it. scripts/assert-pwa-build.mjs fails a build that ships it.
-const loadDevelopmentProtocol = import.meta.env.DEV
-  ? async () => {
-      const { loadBundledDevelopmentProtocol } =
-        await import('./bundledDevelopmentProtocol');
-      return loadBundledDevelopmentProtocol();
-    }
-  : null;
 
 // Minimum time the pending (installing) card stays visible, even when the
 // import itself finishes faster.
@@ -184,14 +174,21 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             peekedName ?? undefined,
           );
         } else if (request.source === 'development') {
-          // The trigger that reaches this branch is itself DEV-gated in Home.
-          if (!loadDevelopmentProtocol) {
+          // Dev-only, like the trigger in Home. The import sits behind
+          // `import.meta.env.DEV`, which production replaces with `false`, so
+          // the module, the protocol and its media (a 23MB video among them)
+          // are left out of the production build rather than emitted as a
+          // chunk nothing fetches; scripts/assert-pwa-build.mjs checks that.
+          if (!import.meta.env.DEV) {
             throw new Error(
-              'The Development protocol is only bundled in development builds',
+              'The Development protocol is only available in development',
             );
+          } else {
+            const { loadBundledDevelopmentProtocol } =
+              await import('./bundledDevelopmentProtocol');
+            const bundled = await loadBundledDevelopmentProtocol();
+            result = await importBundledProtocol(bundled, onProgress);
           }
-          const bundled = await loadDevelopmentProtocol();
-          result = await importBundledProtocol(bundled, onProgress);
         } else {
           // Dynamically imported so the sample's inlined media stays out of
           // the initial load. The chunk is precached, so this still resolves
@@ -220,10 +217,10 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
           await onInstalled();
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
           // No protocol name or contents — only the anonymous content hash,
-          // import source, and whether a schema migration ran.
+          // import source, and the schema version it was kept on.
           analytics.track('protocol_installed', {
             source: request.source,
-            migrated: result.migrated,
+            schema_version: result.protocol.schemaVersion,
             protocol_hash: result.hash,
           });
           toast.add({
@@ -232,10 +229,7 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             }),
             description: createElement(AppMessage, {
               message: messages.importSuccess,
-              values: {
-                name: result.protocol.name,
-                migrated: String(result.migrated),
-              },
+              values: { name: result.name },
             }),
             variant: 'success',
           });

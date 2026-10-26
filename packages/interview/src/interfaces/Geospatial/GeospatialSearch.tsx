@@ -1,6 +1,6 @@
 'use client';
 import { Toggle } from '@base-ui/react';
-import { Search, X } from 'lucide-react';
+import { Loader2, Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   useCallback,
@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
@@ -20,7 +21,10 @@ import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
+import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { interfaceMessages } from '../messages';
 import {
   type Suggestion,
@@ -42,19 +46,13 @@ const searchContainerVariants = {
 const preventBlur = (e: React.MouseEvent) => e.preventDefault();
 
 /**
- * Search outcomes, as whole sentences a translator can work with — never
- * assembled from fragments, and never a status code.
+ * A status is the words of a search's outcome (the protocol's
+ * `search.searchNoMatch`, or the stage's `searchFailed`), or the one message
+ * built with a place.
  */
-const NO_RESULTS_MESSAGE = interfaceMessages.noSearchResults;
-/**
- * Kept distinct from `NO_RESULTS_MESSAGE` on purpose: a search that could not
- * run tells us nothing about whether the place exists, and saying "Nothing
- * matched your search." to someone who is simply offline is a false statement
- * the participant cannot act on.
- */
-const SEARCH_FAILED_MESSAGE = interfaceMessages.searchFailed;
-const RETRIEVE_FAILED_MESSAGE = interfaceMessages.placeUnavailable;
-type SearchStatus = { message: MessageDescriptor; values?: { place: string } };
+type SearchStatus =
+  | { text: string }
+  | { message: MessageDescriptor; values?: { place: string } };
 
 export default function GeospatialSearch({
   accessToken,
@@ -63,8 +61,15 @@ export default function GeospatialSearch({
   resetKey,
   onSearchPerformed,
   className,
-}: UseGeospatialSearchProps & { className?: string }) {
+  searchFailed: searchFailedWording,
+}: UseGeospatialSearchProps & {
+  className?: string;
+  searchFailed: LocalizedString;
+}) {
   const intl = useAppIntl();
+  const searchLabelText = intl.formatMessage(commonMessages.search);
+  const noMatchText = intl.formatMessage(runtimeMessages.noSearchMatch);
+  const { text: failedText } = useLocalizedString(searchFailedWording);
   const [isOpen, setIsOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<SearchStatus | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -250,12 +255,12 @@ export default function GeospatialSearch({
                 message: interfaceMessages.mapMoved,
                 values: { place: suggestion.name },
               }
-            : { message: RETRIEVE_FAILED_MESSAGE },
+            : { text: failedText },
         );
       });
       closeSearch();
     },
-    [handleSelect, closeSearch],
+    [handleSelect, closeSearch, failedText],
   );
 
   // KeyDown handler factory for suggestions
@@ -330,8 +335,8 @@ export default function GeospatialSearch({
   const settledMessage = !hasSettledEmpty
     ? null
     : searchFailed
-      ? SEARCH_FAILED_MESSAGE
-      : NO_RESULTS_MESSAGE;
+      ? failedText
+      : noMatchText;
 
   // A settled outcome joins the live region as soon as the search settles.
   // Adopted during render rather than copied in by an effect, so it is
@@ -351,7 +356,7 @@ export default function GeospatialSearch({
   if (lastSettledMessage !== settledMessage) {
     setLastSettledMessage(settledMessage);
     if (settledMessage) {
-      setStatusMessage({ message: settledMessage });
+      setStatusMessage({ text: settledMessage });
     }
   }
 
@@ -379,7 +384,12 @@ export default function GeospatialSearch({
         className="sr-only"
         data-testid="geospatial-search-status"
       >
-        {statusMessage && <AppMessage {...statusMessage} />}
+        {statusMessage &&
+          ('text' in statusMessage ? (
+            statusMessage.text
+          ) : (
+            <AppMessage {...statusMessage} />
+          ))}
       </div>
 
       <Toggle
@@ -420,7 +430,7 @@ export default function GeospatialSearch({
                 ref={inputRef}
                 type="text"
                 autoFocus
-                placeholder={intl.formatMessage(interfaceMessages.searchPlace)}
+                placeholder={searchLabelText}
                 value={query}
                 onChange={handleSearchQueryChange}
                 onKeyDown={handleInputKeyDown}
@@ -502,11 +512,17 @@ export default function GeospatialSearch({
                       )}
                     >
                       {isLoading ? (
-                        <AppMessage message={interfaceMessages.searching} />
+                        <>
+                          <Loader2
+                            className="mx-auto size-4 animate-spin"
+                            aria-hidden="true"
+                          />
+                          <span className="sr-only">
+                            <AppMessage message={commonMessages.loading} />
+                          </span>
+                        </>
                       ) : (
-                        <AppMessage
-                          message={settledMessage ?? NO_RESULTS_MESSAGE}
-                        />
+                        (settledMessage ?? noMatchText)
                       )}
                     </div>
                   )}

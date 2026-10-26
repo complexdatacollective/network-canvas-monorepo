@@ -22,21 +22,23 @@ const messages = defineMessages({
 export function buildDeleteProtocolMessage(
   protocolName: string,
   protocolSessions: StoredSessionLite[],
-): { description: LocalizedMessage; hasUnexported: boolean } {
+): { description: LocalizedMessage } {
   const unexportedCount = protocolSessions.filter(
     (session) => session.exportedAt === null,
   ).length;
-  const hasUnexported = unexportedCount > 0;
   return {
-    description: hasUnexported
-      ? { descriptor: messages.unexported, values: { count: unexportedCount } }
-      : {
-          descriptor: messages.exported,
-          values: {
-            name: protocolName,
-            count: protocolSessions.length,
+    description:
+      unexportedCount > 0
+        ? {
+            descriptor: messages.unexported,
+            values: { count: unexportedCount },
+          }
+        : {
+            descriptor: messages.exported,
+            values: {
+              name: protocolName,
+              count: protocolSessions.length,
+            },
           },
-        },
-    hasUnexported,
   };
 }

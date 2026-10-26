@@ -1,4 +1,7 @@
 import {
+  CloudCheck,
+  CloudDownload,
+  CloudOff,
   FlaskConical,
   Info,
   LineChart,
@@ -17,7 +20,7 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -36,6 +39,7 @@ import {
   ManageAuthenticator,
   ResetDeviceRow,
 } from '~/components/ManageAuthenticator';
+import { offlineMessages } from '~/components/offlineMessages';
 import SecurityBehaviorControls, {
   type Behavior,
 } from '~/components/SecurityBehaviorControls';
@@ -52,8 +56,14 @@ import {
   listProtocols,
   updateSettings,
 } from '~/lib/db/api';
-import type { ProtocolWithCounts, StoredSettings } from '~/lib/db/types';
+import {
+  isCurrentProtocol,
+  type ProtocolWithCounts,
+  type StoredSettings,
+} from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import { useAppOffline } from '~/lib/pwa/appOffline';
+import { useOfflineDownload } from '~/lib/pwa/offlineDownload';
 import {
   estimateStorage,
   formatBytes,
@@ -535,6 +545,9 @@ export function SettingsDialog({
     return () => media.removeEventListener('change', update);
   }, []);
   const [section, setSection] = useState<Section>('about');
+  const offline = useAppOffline();
+  const download = useOfflineDownload();
+  const downloadingOffline = offline === 'not-ready' && download.downloading;
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [storage, setStorage] = useState<StorageEstimate>({
     usage: null,
@@ -561,18 +574,6 @@ export function SettingsDialog({
     total: 0,
   });
 
-  const reload = useCallback(async () => {
-    const [s, e, persisted] = await Promise.all([
-      getSettings(),
-      estimateStorage(),
-      isStoragePersisted(),
-    ]);
-    setSettings(s);
-    setStorage(e);
-    setStoragePersisted(persisted);
-    setInstallationId(getInstallationId());
-  }, []);
-
   // Monotonic guard: the open-effect and the synthetic-tab effect can both call
   // reloadSynthetic concurrently, so an earlier (e.g. empty, pre-import-commit)
   // listProtocols() could otherwise resolve last and clobber a newer result.
@@ -586,12 +587,14 @@ export function SettingsDialog({
       countSyntheticSessions(),
     ]);
     if (seq !== reloadSyntheticSeq.current) return;
-    setProtocols(ps);
+    // Synthetic interviews are generated for schema 9 protocols only.
+    const current = ps.filter(isCurrentProtocol);
+    setProtocols(current);
     setSyntheticCount(n);
     // Default to the first protocol when none is selected yet.
-    setSelectedProtocolHash((current) => {
-      if (current && ps.some((p) => p.hash === current)) return current;
-      return ps[0]?.hash ?? '';
+    setSelectedProtocolHash((selected) => {
+      if (selected && current.some((p) => p.hash === selected)) return selected;
+      return current[0]?.hash ?? '';
     });
   }, []);
 
@@ -618,9 +621,20 @@ export function SettingsDialog({
   // tool and the state it writes is the response landing.
   useEffect(() => {
     if (!open) return;
-    void reload();
+    const load = async () => {
+      const [s, e, persisted] = await Promise.all([
+        getSettings(),
+        estimateStorage(),
+        isStoragePersisted(),
+      ]);
+      setSettings(s);
+      setStorage(e);
+      setStoragePersisted(persisted);
+      setInstallationId(getInstallationId());
+    };
+    void load();
     void reloadSyntheticWithFeedback();
-  }, [open, reload, reloadSyntheticWithFeedback]);
+  }, [open, reloadSyntheticWithFeedback]);
 
   // Re-query protocols whenever the Synthetic tab is (re)selected, so a protocol
   // imported moments before Settings opened — its DB write lands ~0.6-2.1s after
@@ -904,6 +918,54 @@ export function SettingsDialog({
                         {storagePersisted
                           ? intl.formatMessage(messages.persisted)
                           : intl.formatMessage(messages.bestEffort)}
+                      </span>
+                    }
+                  />
+                ) : null}
+                {downloadingOffline ? (
+                  <SettingsRow
+                    title={intl.formatMessage(offlineMessages.settingTitle)}
+                    desc={intl.formatMessage(offlineMessages.downloadingHelp)}
+                    control={
+                      <span
+                        data-testid="offline-setting"
+                        className="text-info inline-flex items-center gap-1.5 text-xs"
+                      >
+                        <CloudDownload className="size-3.5" aria-hidden />
+                        {intl.formatMessage(offlineMessages.downloading, {
+                          hasProgress: String(download.progress !== null),
+                          percent: intl.formatNumber(download.progress ?? 0, {
+                            style: 'percent',
+                          }),
+                        })}
+                      </span>
+                    }
+                  />
+                ) : offline === 'ready' || offline === 'not-ready' ? (
+                  <SettingsRow
+                    title={intl.formatMessage(offlineMessages.settingTitle)}
+                    desc={intl.formatMessage(
+                      offline === 'ready'
+                        ? offlineMessages.readyHelp
+                        : offlineMessages.notReadyHelp,
+                    )}
+                    control={
+                      <span
+                        data-testid="offline-setting"
+                        className={`inline-flex items-center gap-1.5 text-xs ${
+                          offline === 'ready' ? 'text-text/60' : 'text-warning'
+                        }`}
+                      >
+                        {offline === 'ready' ? (
+                          <CloudCheck className="size-3.5" aria-hidden />
+                        ) : (
+                          <CloudOff className="size-3.5" aria-hidden />
+                        )}
+                        {intl.formatMessage(
+                          offline === 'ready'
+                            ? offlineMessages.ready
+                            : offlineMessages.notReady,
+                        )}
                       </span>
                     }
                   />

@@ -174,17 +174,20 @@ export const createPageEntry = (
   matterResult: matter.GrayMatterFile<string>,
   parentPath: string,
 ): SidebarPage => {
-  const title = matterResult.data?.title as string | undefined;
-  const navOrder = matterResult.data?.navOrder as number | undefined;
-  const hidden = matterResult.data?.hidden as boolean | undefined;
+  // Front matter is whatever the author wrote, so only a value of the expected
+  // type is used.
+  const { title, navOrder, hidden } = matterResult.data ?? {};
+  const pageTitle = typeof title === 'string' ? title : undefined;
+  const pageNavOrder = typeof navOrder === 'number' ? navOrder : undefined;
+  const pageHidden = typeof hidden === 'boolean' ? hidden : undefined;
   const sourceFile = join(parentPath, file.name).replace(process.cwd(), '');
 
   return {
     type: 'page',
     sourceFile,
-    label: title ?? file.name,
-    navOrder: navOrder ?? null,
-    hidden,
+    label: pageTitle ?? file.name,
+    navOrder: pageNavOrder ?? null,
+    hidden: pageHidden,
   };
 };
 
@@ -196,7 +199,7 @@ export const createPageEntry = (
  * @returns {fs.Dirent[]}
  */
 export const sortDirectoryListing = (files: fs.Dirent[]) =>
-  files.sort((a, b) => {
+  files.toSorted((a, b) => {
     const depthA = a.name.split('/').length; // Get depth of directory/file A
     const depthB = b.name.split('/').length; // Get depth of directory/file B
 

@@ -25,6 +25,7 @@ import {
   utils,
 } from '~/selectors/indexes';
 import { getCodebook, getProtocol } from '~/selectors/protocol';
+import { localizedText } from '~/utils/localizedText';
 const extraMessages = defineMessages({
   ego: {
     id: 'architect.codebook.entity.ego',
@@ -68,7 +69,10 @@ const getStageMetaByIndex = createSelector(
   [getProtocol],
   (protocol): StageMeta[] => {
     if (!protocol) return [];
-    return protocol.stages.map(({ label, id }: Stage) => ({ label, id }));
+    return protocol.stages.map(({ label, id }: Stage) => ({
+      label: localizedText(label, protocol.localization),
+      id,
+    }));
   },
 );
 

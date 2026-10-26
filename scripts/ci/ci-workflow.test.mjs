@@ -437,12 +437,6 @@ test('every reader of earlier runs, releases or release PRs is scoped to the bas
     /github\.base_ref/,
     'the E2E policy is told the pull request base',
   );
-  assert.match(
-    parsedWorkflow.jobs.detect.steps.find(({ id }) => id === 'flags').env
-      .HEAD_REF,
-    /github\.base_ref == 'main' && github\.head_ref/,
-    'only a pull request into main counts as the Studio release PR',
-  );
   // Lookups of "the" release PR by head branch name.
   assert.match(
     job('version-packages-freshness'),
@@ -1083,8 +1077,8 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   // green while those suites silently stop running.
   const legs = parsedWorkflow.jobs.test.strategy.matrix.include;
   assert.deepEqual(
-    legs.map((leg) => leg.shard).sort((a, b) => a - b),
-    TEST_SHARDS.map((s) => s.shard).sort((a, b) => a - b),
+    legs.map((leg) => leg.shard).toSorted((a, b) => a - b),
+    TEST_SHARDS.map((s) => s.shard).toSorted((a, b) => a - b),
     'every defined bucket has a matrix leg and vice versa',
   );
 
@@ -1391,44 +1385,6 @@ test('release-sensitive app builds run before merge', () => {
   assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/studio-web build/);
-});
-
-// The /v8/ sub-path build is only otherwise made from a released tag, after
-// that release is in production; a broken one must fail at PR time instead.
-test('the Architect /v8/ sub-path build runs before merge', () => {
-  const steps = parsedWorkflow.jobs['quality-support'].steps;
-  const step = steps.find(
-    (candidate) => candidate.id === 'architect_subpath_build',
-  );
-  assert.ok(step, 'quality-support builds Architect under /v8/');
-  assert.equal(step.env?.ARCHITECT_BASE_PATH, '/v8/');
-  // build.mjs runs assert-pwa-build.mjs, which holds the sub-path shape.
-  assert.match(step.run, /^pnpm --filter=@codaco\/architect build$/);
-  assert.equal(step['continue-on-error'], true);
-  // Matches the release-time sub-path build: no upload credentials.
-  assert.equal(step.env?.POSTHOG_PERSONAL_API_KEY, undefined);
-  assert.equal(step.env?.POSTHOG_PROJECT_ID, undefined);
-});
-
-// Interviewer 8 ships inside Interviewer 9 at /v8/ the same way, so its
-// sub-path build is held to the same pre-merge check.
-test('the Interviewer /v8/ sub-path build runs before merge', () => {
-  const steps = parsedWorkflow.jobs['quality-support'].steps;
-  const step = steps.find(
-    (candidate) => candidate.id === 'interviewer_subpath_build',
-  );
-  assert.ok(step, 'quality-support builds Interviewer under /v8/');
-  assert.equal(step.env?.INTERVIEWER_BASE_PATH, '/v8/');
-  // build.mjs drops the hosting rules, writes dist-info.json and runs
-  // assert-pwa-build.mjs, which holds the sub-path shape.
-  assert.match(step.run, /^pnpm --filter=@codaco\/interviewer build$/);
-  assert.equal(step['continue-on-error'], true);
-  assert.equal(step.env?.POSTHOG_PERSONAL_API_KEY, undefined);
-  assert.equal(step.env?.POSTHOG_PROJECT_ID, undefined);
-  // After the root build it replaces, so the root build's own assertions ran
-  // first against a root dist.
-  const rootBuild = steps.findIndex((candidate) => candidate.id === 'build');
-  assert.ok(rootBuild !== -1 && rootBuild < steps.indexOf(step));
 });
 
 // Every check in quality-support is `continue-on-error`, so the job's own
@@ -2004,6 +1960,182 @@ test('Fresco mirrors under the same release guard as the Netlify lanes', () => {
   }
 });
 
+test('Studio releases publish signed, attested images under the app-lane guard', () => {
+  const detect = parsedWorkflow.jobs['apps-release-detect'];
+  assert.equal(
+    detect.steps.find(({ id }) => id === 'studio')?.run,
+    'node scripts/release/studio-release.mjs plan',
+  );
+  assert.equal(
+    detect.outputs.studio_released,
+    '${{ steps.studio.outputs.released }}',
+  );
+
+  const studio = parsedWorkflow.jobs['apps-release-studio'];
+  assert.ok(studio, 'apps-release-studio exists');
+  assert.deepEqual(studio.needs, ['apps-release-detect', 'studio-upgrade']);
+  assert.equal(
+    studio.if,
+    "needs.apps-release-detect.outputs.studio_released == 'true'",
+  );
+  assert.deepEqual(studio.concurrency, {
+    'group': 'apps-release-studio',
+    'cancel-in-progress': false,
+  });
+  assert.deepEqual(studio.permissions, {
+    'contents': 'write',
+    'packages': 'write',
+    'id-token': 'write',
+  });
+  assert.equal(
+    studio.env.CERT_IDENTITY,
+    'https://github.com/${{ github.workflow_ref }}',
+  );
+  assert.equal(
+    studio.env.CERT_ISSUER,
+    'https://token.actions.githubusercontent.com',
+  );
+
+  const [checkout, guard, ...rest] = studio.steps;
+  assert.equal(checkout.with['fetch-depth'], 0);
+  assert.equal(checkout.with['fetch-tags'], true);
+  assert.equal(guard.id, 'guard');
+  assert.equal(guard.env.PKG_NAME, 'studio');
+  assert.equal(guard.run, 'bash .github/scripts/app-release-guard.sh');
+  for (const step of rest) {
+    assert.equal(
+      step.if,
+      "steps.guard.outputs.skip != 'true'",
+      `${step.name ?? step.uses} is gated on the guard`,
+    );
+  }
+
+  for (const [id, target] of [
+    ['api', 'studio-api'],
+    ['web', 'studio-web'],
+  ]) {
+    const build = studio.steps.find((step) => step.id === id);
+    assert.match(build.uses, /^docker\/build-push-action@[0-9a-f]{40}$/);
+    assert.equal(build.with.file, 'apps/studio/Dockerfile');
+    assert.equal(build.with.target, target);
+    assert.equal(build.with.platforms, 'linux/amd64,linux/arm64');
+    assert.equal(build.with.push, true);
+    assert.equal(
+      build.with.tags.trim(),
+      `ghcr.io/complexdatacollective/${target}:\${{ env.VERSION }}\nghcr.io/complexdatacollective/${target}:\${{ github.sha }}`,
+    );
+    assert.match(
+      build.with.secrets,
+      /posthog_personal_api_key=\$\{\{ secrets\.POSTHOG_PERSONAL_API_KEY \}\}\nposthog_project_id=\$\{\{ secrets\.POSTHOG_PROJECT_ID \}\}/,
+    );
+    assert.equal(build.with['build-args'], 'SOURCE_MAPS_TARGET=codaco-studio');
+  }
+
+  const names = studio.steps.map(({ name }) => name);
+  const order = [
+    'Generate the SBOMs',
+    'Sign the images and attest their SBOMs',
+    'Verify the signatures and attestations',
+    'Confirm both images pull without credentials',
+    'Write the release notes and studio-release.json',
+    'Create the studio@${{ env.VERSION }} release',
+    'Point latest at this release',
+  ].map((name) => {
+    const index = names.indexOf(name);
+    assert.notEqual(index, -1, `${name} exists`);
+    return index;
+  });
+  assert.deepEqual(
+    order,
+    order.toSorted((a, b) => a - b),
+    'nothing is tagged before the images verify and pull anonymously, and latest moves only once the release is published',
+  );
+
+  const step = (name) => studio.steps.find((each) => each.name === name).run;
+  assert.match(
+    step('Sign the images and attest their SBOMs'),
+    /cosign sign --yes --recursive "\$API_REF" "\$WEB_REF"/,
+  );
+  assert.equal(
+    studio.env.SBOM_REFERENCE_TYPE,
+    'https://networkcanvas.com/studio/sbom-reference/v1',
+  );
+  for (const image of ['api', 'web']) {
+    assert.match(
+      step('Sign the images and attest their SBOMs'),
+      new RegExp(
+        `cosign attest --yes --type "\\$SBOM_REFERENCE_TYPE" --predicate "\\$RUNNER_TEMP/studio-${image}\\.sbom-reference\\.json" "\\$${image.toUpperCase()}_REF"`,
+      ),
+    );
+  }
+  assert.doesNotMatch(
+    step('Sign the images and attest their SBOMs'),
+    /--predicate "[^"]*\.cdx\.json"/,
+    'no SBOM goes to the public transparency log whole',
+  );
+  assert.match(
+    step('Generate the SBOMs'),
+    /studio-release\.mjs bundle --out "\$sboms\/web-bundle\.json"/,
+  );
+  assert.match(
+    step('Generate the SBOMs'),
+    /--runtime "\$sboms\/web-bundle\.json" --out "\$RUNNER_TEMP\/studio-web\.cdx\.json"/,
+  );
+  const verify = step('Verify the signatures and attestations');
+  assert.match(
+    verify,
+    /cosign verify --certificate-identity "\$CERT_IDENTITY" --certificate-oidc-issuer "\$CERT_ISSUER" "\$ref"/,
+  );
+  assert.match(
+    verify,
+    /cosign verify-attestation --type "\$SBOM_REFERENCE_TYPE" --certificate-identity "\$CERT_IDENTITY" --certificate-oidc-issuer "\$CERT_ISSUER" "\$ref"/,
+  );
+  assert.match(verify, /sha256sum "\$sbom"/);
+  const release = step('Create the studio@${{ env.VERSION }} release');
+  assert.match(release, /gh release create "studio@\$VERSION"/);
+  const draft = release.search(
+    /select\(\.draft and \.tag_name == \\"studio@\$VERSION\\"\)[\s\S]*gh api -X DELETE "repos\/\$GITHUB_REPOSITORY\/releases\/\$draft"/,
+  );
+  assert.ok(
+    draft !== -1 && draft < release.indexOf('gh release create'),
+    'a retry deletes the draft a failed run left before creating the release again',
+  );
+  assert.match(release, /--target "\$GITHUB_SHA"/);
+  assert.match(release, /--latest=false/);
+  for (const asset of [
+    'studio-release.json',
+    'studio-api.cdx.json',
+    'studio-web.cdx.json',
+  ]) {
+    assert.match(
+      release,
+      new RegExp(`"\\$RUNNER_TEMP/${escapeRegExp(asset)}"`),
+    );
+  }
+
+  // On every pull request, so the Studio release PR is refused before it
+  // merges rather than when the upgrade lane runs on main.
+  const support = parsedWorkflow.jobs['quality-support'].steps;
+  const check = support.findIndex(
+    ({ run }) => run === 'node scripts/release/studio-release.mjs check',
+  );
+  const setup = support.findIndex(
+    ({ uses }) => uses === './.github/actions/turbo-ci-setup',
+  );
+  assert.ok(
+    check > setup && setup !== -1,
+    'every pull request checks that studio-api moves with every Studio package, once Node is set up',
+  );
+  assert.equal(support[check].id, 'studio-release');
+  assert.match(
+    job('quality-support'),
+    /"studio-release=\$STUDIO_RELEASE_OUTCOME"/,
+    'quality-support fails when the check fails',
+  );
+  // Full history: the check compares with the newest release tag.
+  assert.match(job('quality-support'), /fetch-depth: 0/);
+});
+
 test('release-side jobs stop once their main commit has been superseded', () => {
   const guardStep =
     /- name: Confirm this run still describes main's tip\n(?:\s+#[^\n]*\n)*\s+id: tip\n\s+env:\n\s+EXPECTED_SHA: \$\{\{ github\.sha \}\}\n\s+REF: \$\{\{ github\.ref \}\}\n\s+run: bash \.github\/scripts\/superseded-push-guard\.sh\n/;
@@ -2069,6 +2201,7 @@ test('release-side jobs stop once their main commit has been superseded', () => 
     'interviewer',
     'background-creator',
     'fresco',
+    'studio',
   ]) {
     assert.doesNotMatch(job(`apps-release-${app}`), /superseded-push-guard/);
   }
@@ -2414,77 +2547,6 @@ test('Architect E2E builds disable both animation systems', () => {
   );
 });
 
-test('Architect native E2E also runs the /v8/ sub-path suite against a /v8/ build', () => {
-  const nativeJob = job('architect-e2e-native');
-  assert.ok(nativeJob, 'architect-e2e-native job exists');
-
-  const rootRun = nativeJob.indexOf(
-    'run: pnpm --filter @codaco/architect run test:e2e:native',
-  );
-  const subpathBuild = nativeJob.indexOf(
-    '- name: Build the /v8/ sub-path app under test',
-  );
-  const subpathRun = nativeJob.indexOf(
-    'run: pnpm --filter @codaco/architect run test:e2e:subpath:native',
-  );
-  // The sub-path build replaces dist/, so it must come after the root specs.
-  assert.ok(
-    rootRun !== -1 && subpathBuild > rootRun,
-    'the /v8/ build follows the root specs',
-  );
-  assert.ok(
-    subpathRun > subpathBuild,
-    'the sub-path specs run against the /v8/ build',
-  );
-  assert.match(
-    nativeJob,
-    /- name: Build the \/v8\/ sub-path app under test\n\s+if: \$\{\{ !cancelled\(\) && matrix\.shard == '2\/2' \}\}\n\s+env:\n\s+ARCHITECT_BASE_PATH: \/v8\/\n/,
-    'the sub-path build sets the base, on one shard, even after a root failure',
-  );
-});
-
-test('Interviewer native E2E also runs the /v8/ sub-path suite against a /v8/ build', () => {
-  const steps = parsedWorkflow.jobs['interviewer-e2e-native'].steps;
-  const index = (predicate) => steps.findIndex(predicate);
-  const rootRun = index(
-    ({ run }) =>
-      run === 'pnpm --filter @codaco/interviewer run test:e2e:native',
-  );
-  const subpathBuild = index(
-    ({ name }) => name === 'Build the /v8/ sub-path app under test',
-  );
-  const subpathRun = index(
-    ({ run }) =>
-      run === 'pnpm --filter @codaco/interviewer run test:e2e:subpath:native',
-  );
-  // The sub-path build replaces dist/, so it must come after the root specs.
-  assert.ok(
-    rootRun !== -1 && subpathBuild > rootRun,
-    'the /v8/ build follows the root specs',
-  );
-  assert.ok(
-    subpathRun > subpathBuild,
-    'the sub-path specs run against the /v8/ build',
-  );
-  const build = steps[subpathBuild];
-  assert.equal(build.env?.INTERVIEWER_BASE_PATH, '/v8/');
-  assert.equal(
-    build.run,
-    'pnpm exec turbo run build --filter=@codaco/interviewer',
-  );
-  // Even after a root failure.
-  assert.equal(build.if, '${{ !cancelled() }}');
-  assert.equal(steps[subpathRun].if, '${{ !cancelled() }}');
-  const report = steps.find(
-    ({ name }) => name === 'Upload the /v8/ sub-path report',
-  );
-  assert.equal(
-    report?.with.path,
-    'apps/interviewer/e2e/playwright-report-subpath/',
-  );
-  assert.doesNotMatch(report.with.name, /playwright-report/);
-});
-
 test('release job refuses a first publication on the publish path before changesets/action', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');
@@ -2561,7 +2623,7 @@ function stackTestVariants() {
   return readdirSync(new URL('variants/', stackTestDirectory))
     .filter((entry) => entry.endsWith('.yml'))
     .map((entry) => entry.replace(/\.yml$/, ''))
-    .sort();
+    .toSorted();
 }
 
 function egressVariants() {
@@ -2572,7 +2634,7 @@ function egressVariants() {
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean)
-    .sort();
+    .toSorted();
 }
 
 test('the studio-stack job runs every stack-test script that exists', () => {
@@ -2724,7 +2786,7 @@ test('the stack-test scripts and the workflow agree on the variant list', () => 
   const declared = /^VARIANTS=\((?<names>[^)]*)\)$/m.exec(lib)?.groups?.names;
   assert.ok(declared, 'lib.sh declares VARIANTS');
   assert.deepEqual(
-    declared.trim().split(/\s+/).sort(),
+    declared.trim().split(/\s+/).toSorted(),
     stackTestVariants(),
     'lib.sh accepts exactly the variants that have an override file',
   );
@@ -2827,7 +2889,7 @@ test('detect fails closed on a flag naming no workspace package', () => {
 
 // The detect outputs `quality` requires a job on, each proved cumulative by
 // `runGateSelection` below.
-const GATE_FLAGS = ['studio', 'studio_upgrade'];
+const GATE_FLAGS = ['studio'];
 
 test('every job quality requires on a detect flag is decided by a cumulative flag', () => {
   const qualityJob = job('quality');
@@ -2852,28 +2914,27 @@ test('every job quality requires on a detect flag is decided by a cumulative fla
     ),
   );
   assert.deepEqual(
-    [...selecting].sort((a, b) => a.localeCompare(b)),
+    [...selecting].toSorted((a, b) => a.localeCompare(b)),
     GATE_FLAGS,
     'a job quality needs is selected by a detect flag not proved cumulative',
   );
   assert.deepEqual(
-    [...required].sort((a, b) => a.localeCompare(b)),
+    [...required].toSorted((a, b) => a.localeCompare(b)),
     GATE_FLAGS,
     'quality requires a job on a detect flag not proved cumulative',
   );
 });
 
-// Runs detect's gate block — the merge base, the studio flag (which also
-// defines the stack's path list) and the upgrade flag — against a throwaway
-// repository. `flag` is stubbed by the package's paths — studio-api and
+// Runs detect's gate block — the merge base and the studio flag — against a
+// throwaway repository. `flag` is stubbed by the package's paths — studio-api and
 // studio-sync stand in for its dependency closure — and diffs over whatever
 // PREV it is handed, so the block's merge-base range is exercised for real.
 // Each entry of `pushes` is one commit; PREV is the last push's parent, as on
 // a `synchronize`, and origin/main is the commit before the first push.
-function runGateSelection({ headRef = '', pushes = [] }) {
+function runGateSelection({ pushes = [] }) {
   const detectJob = job('detect');
   const block = detectJob.match(
-    /^(?<indent> +)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
+    /^(?<indent> +)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio=false\n[\s\S]*?^\k<indent>fi$/m,
   );
   assert.ok(block, 'detect computes the gate flags in one block');
   const stub = [
@@ -2916,7 +2977,6 @@ function runGateSelection({ headRef = '', pushes = [] }) {
         PATH: process.env.PATH,
         GITHUB_EVENT_NAME: 'pull_request',
         GITHUB_BASE_REF: 'main',
-        HEAD_REF: headRef,
         FORCE_RUN: 'false',
         // The push-to-push answer, set so a flag that leans on it shows.
         WORKFLOW_CHANGED: 'false',
@@ -3048,87 +3108,8 @@ test('studio-stack is selected by detect and required by the quality gate', () =
 // ── The Studio upgrade lane (#1901) ────────────────────────────────────────
 //
 // `apps/studio/release-test/run.sh` is the whole lane; the job runs it and
-// nothing else, so these tests pin what selects it, what it is given, and
-// that the gate cannot read a job that never ran as a pass.
-
-test('detect selects the upgrade lane whenever what the api image is built from changes, and for its own inputs', () => {
-  const detectJob = job('detect');
-  assert.match(
-    detectJob,
-    /studio_upgrade: \$\{\{ steps\.flags\.outputs\.studio_upgrade \}\}/,
-    'detect publishes the studio_upgrade flag',
-  );
-  assert.match(
-    detectJob,
-    /HEAD_REF: \$\{\{ github\.base_ref == 'main' && github\.head_ref \|\| '' \}\}/,
-    'detect receives the head ref of a pull request into main',
-  );
-
-  // Every Studio release PR, whatever it changed.
-  assert.equal(
-    runGateSelection({
-      headRef: 'changeset-release/studio',
-      pushes: [['README.md']],
-    }).studio_upgrade,
-    'true',
-  );
-  // Anything in the api image's package graph, the stack's files, the lane's
-  // own inputs and the workflow that defines the job — each on its own.
-  for (const file of [
-    'apps/studio/api/migrations/0002_next/delta.sql',
-    'apps/studio/api/src/secrets/verify.ts',
-    'apps/studio/api/scripts/sync-fingerprint.ts',
-    'apps/studio/api/scripts/apply.ts',
-    'packages/studio-sync/src/jobs.ts',
-    'apps/studio/docs/self-host/upgrade.md',
-    'apps/studio/docs/self-host/backup.md',
-    'apps/studio/Dockerfile',
-    'apps/studio/docker-compose.yml',
-    'apps/studio/docker-compose.local.yml',
-    'apps/studio/release-test/run.sh',
-    'apps/studio/release-test/window.mjs',
-    'apps/studio/web/public/maintenance.html',
-    '.github/workflows/ci-and-release.yml',
-    '.dockerignore',
-    'package.json',
-    'pnpm-lock.yaml',
-    'pnpm-workspace.yaml',
-    'patches/some-package.patch',
-    'turbo.json',
-  ]) {
-    assert.equal(
-      runGateSelection({ pushes: [[file]] }).studio_upgrade,
-      'true',
-      `a change to ${file} selects the upgrade lane`,
-    );
-    assert.equal(
-      runGateSelection({ pushes: [[file], ['README.md']] }).studio_upgrade,
-      'true',
-      `an unrelated push after a change to ${file} still selects the lane`,
-    );
-  }
-  // Judged on the whole pull request: a later push that touches nothing the
-  // lane reads still runs it, so a failed lane cannot be skipped past.
-  assert.equal(
-    runGateSelection({
-      pushes: [['apps/studio/api/src/db/migrate.ts'], ['README.md']],
-    }).studio_upgrade,
-    'true',
-    'an unrelated push after an upgrade-path push still selects the lane',
-  );
-  // Studio's web app is not in the api image's graph and does not select it.
-  assert.equal(
-    runGateSelection({ pushes: [['apps/studio/web/src/main.tsx']] })
-      .studio_upgrade,
-    'false',
-  );
-  // Nothing outside Studio selects it.
-  assert.equal(
-    runGateSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] })
-      .studio_upgrade,
-    'false',
-  );
-}, 120_000);
+// nothing else, so these tests pin when it runs, what it is given, and that
+// a Studio release cannot publish without it.
 
 test('studio-upgrade deployments run with telemetry off', () => {
   const runScript = readFileSync(
@@ -3145,7 +3126,7 @@ test('studio-upgrade deployments run with telemetry off', () => {
   );
 });
 
-test('studio-upgrade runs the lane and is required by the quality gate', () => {
+test('studio-upgrade runs the lane only once a Studio release is authorised, and gates its publish', () => {
   const upgrade = job('studio-upgrade');
   assert.ok(upgrade, 'studio-upgrade job exists');
   assert.ok(
@@ -3158,18 +3139,18 @@ test('studio-upgrade runs the lane and is required by the quality gate', () => {
     upgrade,
     /run: apps\/studio\/release-test\/run\.sh --runs A,B\n/,
   );
-  assert.match(
-    upgrade,
-    /needs\.detect\.outputs\.studio_upgrade == 'true'/,
-    'the job is gated on its flag',
+  // apps-release-detect runs only on a push to main, and `studio_released`
+  // is true only for a Studio version the release PR moved and no tag holds.
+  const { needs, if: condition } = parsedWorkflow.jobs['studio-upgrade'];
+  assert.equal(needs, 'apps-release-detect');
+  assert.equal(
+    condition,
+    "needs.apps-release-detect.outputs.studio_released == 'true'",
   );
-  for (const excluded of ['merge_group', 'push']) {
-    assert.match(
-      upgrade,
-      new RegExp(`github\\.event_name != '${excluded}'`),
-      `the job never runs on ${excluded}`,
-    );
-  }
+  assert.match(
+    job('apps-release-detect'),
+    /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'push'/,
+  );
   // Run C pulls a tagged release's images from ghcr.io, logging in with the
   // job's token, which needs the permission to read packages.
   assert.match(upgrade, /packages: read/);
@@ -3177,21 +3158,21 @@ test('studio-upgrade runs the lane and is required by the quality gate', () => {
   // build-next.sh seals against history and run C checks out a tag.
   assert.match(upgrade, /fetch-depth: 0/);
 
+  // Nothing is published until the lane has passed.
+  assert.deepEqual(parsedWorkflow.jobs['apps-release-studio'].needs, [
+    'apps-release-detect',
+    'studio-upgrade',
+  ]);
+  assert.doesNotMatch(
+    parsedWorkflow.jobs['apps-release-studio'].if,
+    /always\(\)|failure\(\)|cancelled\(\)/,
+    'the release runs only when the lane succeeded',
+  );
+
+  // Never on a pull request, so the gate neither waits for it nor reads it.
   const qualityJob = job('quality');
-  assert.match(qualityJob, /^ {6}- studio-upgrade$/m, 'quality needs the job');
-  assert.match(
-    qualityJob,
-    /STUDIO_UPGRADE_REQUIRED: \$\{\{ needs\.detect\.outputs\.studio_upgrade \}\}/,
-  );
-  assert.match(
-    qualityJob,
-    /STUDIO_UPGRADE_RESULT: \$\{\{ needs\.studio-upgrade\.result \}\}/,
-  );
-  assert.match(
-    qualityJob,
-    /if \[\[ "\$STUDIO_UPGRADE_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_UPGRADE_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
-    'quality fails when a required studio-upgrade did not succeed',
-  );
+  assert.doesNotMatch(qualityJob, /studio-upgrade|STUDIO_UPGRADE/);
+  assert.doesNotMatch(job('detect'), /studio_upgrade/);
 });
 
 // PostHog resolves a minified stack frame by matching the chunk ID injected
@@ -3320,3 +3301,76 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     /github\.event\.action == 'closed'/,
   );
 });
+
+// Architect 9 and Interviewer 9 each serve their 8.x line at /v8/ from their
+// own deploy, extracted at build time from the tarball apps/<app>/legacy-<app>.json
+// pins. A production deploy without it would strand every researcher who kept
+// a schema 8 protocol on 8.x, so both lanes that deploy each app require it in
+// the build (which fails while nothing is pinned) and check the built dist
+// again, outside the turbo cache, before anything goes out.
+for (const { app, label, envName } of [
+  {
+    app: 'architect',
+    label: 'Architect 8',
+    envName: 'ARCHITECT_REQUIRE_LEGACY_V8',
+  },
+  {
+    app: 'interviewer',
+    label: 'Interviewer 8',
+    envName: 'INTERVIEWER_REQUIRE_LEGACY_V8',
+  },
+]) {
+  test(`every ${app} production build requires the bundled ${label}`, () => {
+    const hotfixWorkflow = parse(
+      readFileSync(new URL('hotfix-release.yml', WORKFLOW_DIR), 'utf8'),
+    );
+    const lanes = [
+      {
+        name: `apps-release-${app}`,
+        steps: parsedWorkflow.jobs[`apps-release-${app}`].steps,
+        required: 'true',
+        firstOutward: `Deploy ${app} to production`,
+      },
+      {
+        name: 'hotfix-release',
+        steps: hotfixWorkflow.jobs['hotfix-release'].steps,
+        required: `\${{ inputs.app == '${app}' && hashFiles('apps/${app}/legacy-${app}.json') != '' && 'true' || '' }}`,
+        // The tag is claimed before the deploy; neither may happen first.
+        firstOutward: 'Claim the release tag',
+      },
+    ];
+
+    for (const { name, steps, required, firstOutward } of lanes) {
+      const buildIndex = steps.findIndex((step) =>
+        new RegExp(
+          `turbo run build --filter="?@codaco\\/(?:${app}|\\$APP)"?$`,
+        ).test(step.run?.trim() ?? ''),
+      );
+      assert.notEqual(buildIndex, -1, `${name} builds ${app}`);
+      assert.equal(
+        steps[buildIndex].env?.[envName],
+        required,
+        `${name}'s build requires ${label}`,
+      );
+
+      const checkIndex = steps.findIndex(
+        (step) => step.name === `Check ${label} is bundled`,
+      );
+      const outwardIndex = steps.findIndex(
+        (step) => step.name === firstOutward,
+      );
+      assert.ok(
+        buildIndex < checkIndex && checkIndex < outwardIndex,
+        `${name} checks dist/v8 after building and before "${firstOutward}"`,
+      );
+      assert.match(
+        steps[checkIndex].run,
+        /for file in index\.html sw\.js dist-info\.json; do/,
+      );
+      assert.ok(
+        steps[checkIndex].run.includes(`-f "apps/${app}/dist/v8/$file"`),
+        `${name} checks apps/${app}/dist/v8`,
+      );
+    }
+  });
+}

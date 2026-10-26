@@ -183,6 +183,31 @@ export const MarkdownLabels: Story = {
   render: (args) => <ControlledVAS {...args} initialValue={args.value} />,
 };
 
+/**
+ * Protocol copy arrives as `PresentationalText`: each endpoint label renders
+ * as Markdown on an element carrying the text's own `lang` and `dir`, so an
+ * Arabic label lays out right-to-left inside a left-to-right page.
+ */
+export const LocalizedLabels: Story = {
+  args: {
+    value: 0.5,
+    minLabel: { text: '**ليس على الإطلاق**', lang: 'ar', dir: 'rtl' },
+    maxLabel: { text: '**Muchísimo**', lang: 'es', dir: 'ltr' },
+  },
+  render: (args) => <ControlledVAS {...args} initialValue={args.value} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const min = canvas.getByText('ليس على الإطلاق');
+    await expect(min.tagName).toBe('STRONG');
+    await expect(min.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(min).direction).toBe('rtl');
+    await expect(
+      canvas.getByText('Muchísimo').closest('[lang]'),
+    ).toHaveAttribute('lang', 'es');
+  },
+};
+
 function UnsetVASWithValueDisplay({
   ...args
 }: Omit<

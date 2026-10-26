@@ -12,15 +12,27 @@ import {
 
 import { interfaceMessages } from '../messages';
 
+/** The words of the free-draw annotation controls. */
+export type DrawingWords = Readonly<{
+  enableDrawing: string;
+  disableDrawing: string;
+  freezeAnnotations: string;
+  unfreezeAnnotations: string;
+  resetAnnotations: string;
+}>;
+
 type BehavioursPanelProps = {
-  // Auto-layout pause/resume. Shown whenever the automatic layout is active
-  // (there are positioned nodes). Pausing freezes the layout so dragging a node
-  // repositions it manually instead of reheating the simulation.
+  // Whether to show the auto-layout toggle, which the protocol's interface
+  // text words (`buttons.pauseLayout`): only while the automatic layout is
+  // active (there are positioned nodes). Pausing freezes the layout so
+  // dragging a node repositions it manually instead of reheating the
+  // simulation.
   showLayoutToggle: boolean;
   simulationEnabled: boolean;
   onToggleSimulation: () => void;
-  // Free-draw annotation controls, shown only when the stage enables freeDraw.
-  showDrawingControls: boolean;
+  // The stage's words for the free-draw controls, given only when the stage
+  // enables freeDraw.
+  drawingWords: DrawingWords | undefined;
   isDrawingEnabled: boolean;
   isFrozen: boolean;
   onToggleDrawing: () => void;
@@ -35,7 +47,7 @@ export default function BehavioursPanel({
   showLayoutToggle,
   simulationEnabled,
   onToggleSimulation,
-  showDrawingControls,
+  drawingWords,
   isDrawingEnabled,
   isFrozen,
   onToggleDrawing,
@@ -43,7 +55,7 @@ export default function BehavioursPanel({
   onReset,
 }: BehavioursPanelProps) {
   const intl = useAppIntl();
-  if (!showLayoutToggle && !showDrawingControls) return null;
+  if (!showLayoutToggle && drawingWords === undefined) return null;
 
   return (
     <SegmentedToolbar
@@ -57,22 +69,22 @@ export default function BehavioursPanel({
           aria-label={intl.formatMessage(interfaceMessages.layoutControls)}
         >
           <ToolbarIconButton
-            aria-label={
+            aria-label={intl.formatMessage(
               simulationEnabled
-                ? intl.formatMessage(interfaceMessages.pauseAutomaticLayout)
-                : intl.formatMessage(interfaceMessages.resumeAutomaticLayout)
-            }
+                ? interfaceMessages.pauseLayout
+                : interfaceMessages.resumeLayout,
+            )}
             icon={simulationEnabled ? <Pause /> : <Play />}
             onClick={onToggleSimulation}
           />
         </ToolbarGroup>
       ) : null}
 
-      {showLayoutToggle && showDrawingControls ? (
+      {showLayoutToggle && drawingWords !== undefined ? (
         <ToolbarSeparator key="drawing-separator" />
       ) : null}
 
-      {showDrawingControls ? (
+      {drawingWords !== undefined ? (
         <ToolbarGroup
           key="drawing"
           aria-label={intl.formatMessage(interfaceMessages.drawingControls)}
@@ -80,8 +92,8 @@ export default function BehavioursPanel({
           <ToolbarIconButton
             aria-label={
               isDrawingEnabled
-                ? intl.formatMessage(interfaceMessages.disableDrawing)
-                : intl.formatMessage(interfaceMessages.enableDrawing)
+                ? drawingWords.disableDrawing
+                : drawingWords.enableDrawing
             }
             icon={<Pencil />}
             pressed={isDrawingEnabled}
@@ -90,15 +102,15 @@ export default function BehavioursPanel({
           <ToolbarIconButton
             aria-label={
               isFrozen
-                ? intl.formatMessage(interfaceMessages.unfreezeAnnotations)
-                : intl.formatMessage(interfaceMessages.freezeAnnotations)
+                ? drawingWords.unfreezeAnnotations
+                : drawingWords.freezeAnnotations
             }
             icon={<Snowflake />}
             pressed={isFrozen}
             onPressedChange={onToggleFreeze}
           />
           <ToolbarIconButton
-            aria-label={intl.formatMessage(interfaceMessages.resetAnnotations)}
+            aria-label={drawingWords.resetAnnotations}
             icon={<RotateCcw />}
             onClick={onReset}
           />

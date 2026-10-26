@@ -15,11 +15,10 @@ export type AppLocale = Readonly<{
 /**
  * A locale's messages. The two value forms are the two build modes, not a
  * choice a host makes: ICU source strings under the dev server and vitest,
- * pre-parsed AST in production, where `appI18n()` compiles every catalog and
- * drops the ICU parser from the bundle. A catalog that reaches a production
- * bundle as strings has nothing left to parse it, so a host that assembles one
- * outside the `src/locales/<tag>.json` the plugin compiles has to compile it
- * itself.
+ * pre-parsed AST in production, where `appI18n()` compiles every catalog. A
+ * host that assembles a catalog outside the `src/locales/<tag>.json` the
+ * plugin compiles gets strings, which are parsed at run time; compile it
+ * to AST to avoid that.
  */
 export type CatalogMessages = Readonly<
   Record<string, string | MessageFormatElement[]>
@@ -99,7 +98,9 @@ export const pseudoAppLocale: AppLocale = {
 export function mergeCatalogs(
   ...catalogs: readonly CatalogMessages[]
 ): CatalogMessages {
-  return Object.assign({}, ...catalogs) as CatalogMessages;
+  const merged: Record<string, string | MessageFormatElement[]> = {};
+  for (const catalog of catalogs) Object.assign(merged, catalog);
+  return merged;
 }
 
 /**

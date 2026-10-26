@@ -78,7 +78,7 @@ The two named regressions:
   per entity, compounding to ~2.5% per multi-entity network).
 - `a[3,4] differentFrom b; b[4,5] <= a` — now **refused** by
   `analyseFeasibility` with rules `differentFrom, lessThanOrEqualToVariable,
-minValue, maxValue` (previously accepted, then threw seed-dependently).
+  minValue, maxValue` (previously accepted, then threw seed-dependently).
 
 ## C3 — Generated data stays varied
 

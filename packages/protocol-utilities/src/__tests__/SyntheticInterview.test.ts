@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { type Filter, stageSchema } from '@codaco/protocol-validation';
+import {
+  type Filter,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  stageSchema,
+  validateProtocol,
+  analyzeProtocolLocalization,
+  CurrentProtocolSchema,
+  escapeMessageText,
+  type LocalizedString,
+  messageText,
+} from '@codaco/protocol-validation';
 import {
   NcNetworkSchema,
   entityAttributesProperty,
@@ -13,6 +25,20 @@ import {
   DEFAULT_SYNTHETIC_SEED,
   SyntheticInterview,
 } from '../SyntheticInterview.ts';
+
+/**
+ * Validates a built protocol against the current schema. The builder emits the
+ * interview payload's `id` and `assets` in place of a protocol file's `name`.
+ */
+function validateSynthetic(
+  protocol: ReturnType<SyntheticInterview['getProtocol']>,
+) {
+  const { id: _id, assets: _assets, ...file } = protocol;
+  return validateProtocol({
+    ...file,
+    name: 'Synthetic protocol',
+  } as unknown as Parameters<typeof validateProtocol>[0]);
+}
 
 describe('SyntheticInterview', () => {
   describe('determinism', () => {
@@ -268,12 +294,12 @@ describe('SyntheticInterview', () => {
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
-      const prompts = stageConfig.prompts as { text: string }[];
-      const panels = stageConfig.panels as { title: string }[];
+      const prompts = stageConfig.prompts as { text: LocalizedString }[];
+      const panels = stageConfig.panels as { title: LocalizedString }[];
       expect(prompts).toHaveLength(1);
-      expect(prompts[0]!.text).toBe('Name your friends');
+      expect(prompts[0]!.text).toEqual({ 'en-US': 'Name your friends' });
       expect(panels).toHaveLength(1);
-      expect(panels[0]!.title).toBe('Previous contacts');
+      expect(panels[0]!.title).toEqual({ 'en-US': 'Previous contacts' });
     });
 
     it('generates initial nodes', () => {
@@ -298,7 +324,7 @@ describe('SyntheticInterview', () => {
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const prompts = stageConfig.prompts as {
-        text: string;
+        text: LocalizedString;
         layout: { layoutVariable: string };
         edges: { create: string; display: string[] };
         highlight: { allowHighlighting: boolean; variable: string };
@@ -306,7 +332,7 @@ describe('SyntheticInterview', () => {
       expect(prompts).toHaveLength(1);
 
       const prompt = prompts[0]!;
-      expect(prompt.text).toBe('Place people');
+      expect(prompt.text).toEqual({ 'en-US': 'Place people' });
       expect(prompt.layout.layoutVariable).toBeTruthy();
       expect(prompt.edges.create).toBeTruthy();
       expect(prompt.highlight.allowHighlighting).toBe(true);
@@ -352,18 +378,46 @@ describe('SyntheticInterview', () => {
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const presets = stageConfig.presets as {
-        label: string;
+        label: LocalizedString;
         layoutVariable: string;
         groupVariable: string;
-        highlight: string[];
+        highlight: { variable: string; label: LocalizedString }[];
       }[];
       expect(presets).toHaveLength(1);
 
       const preset = presets[0]!;
-      expect(preset.label).toBe('Full View');
+      expect(preset.label).toEqual({ 'en-US': 'Full View' });
       expect(preset.layoutVariable).toBeTruthy();
       expect(preset.groupVariable).toBeTruthy();
-      expect(preset.highlight).toHaveLength(1);
+      expect(preset.highlight).toEqual([
+        { variable: expect.any(String), label: { 'en-US': 'Highlighted' } },
+      ]);
+    });
+
+    it("labels each highlight with its attribute's name, as copy in the default language", () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const close = person.addVariable({
+        type: 'boolean',
+        name: "Friend's {nickname}",
+      });
+      const stage = si.addStage('Narrative', {
+        subject: { entity: 'node', type: person.id },
+      });
+      stage.addPreset({ highlight: [close.id] });
+
+      const { stages } = expectValid(si);
+      const narrative = stages[0];
+      expect(narrative?.type === 'Narrative' && narrative.presets[0]).toEqual(
+        expect.objectContaining({
+          highlight: [
+            {
+              variable: close.id,
+              label: { 'en-US': escapeMessageText("Friend's {nickname}") },
+            },
+          ],
+        }),
+      );
     });
 
     it('creates presets with explicit edge display', () => {
@@ -377,9 +431,11 @@ describe('SyntheticInterview', () => {
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const presets = stageConfig.presets as {
-        edges: { display: string[] };
+        edges: { display: { type: string; label: Record<string, string> }[] };
       }[];
-      expect(presets[0]!.edges.display).toEqual([et.id]);
+      expect(presets[0]!.edges.display).toEqual([
+        { type: et.id, label: { 'en-US': 'Friendship' } },
+      ]);
     });
 
     it('supports behaviours (freeDraw, allowRepositioning)', () => {
@@ -686,9 +742,9 @@ describe('SyntheticInterview', () => {
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       expect(stageConfig.type).toBe('NameGeneratorQuickAdd');
       expect(stageConfig.quickAdd).toBeTruthy();
-      const prompts = stageConfig.prompts as { text: string }[];
+      const prompts = stageConfig.prompts as { text: LocalizedString }[];
       expect(prompts).toHaveLength(1);
-      expect(prompts[0]!.text).toBe('Name your friends');
+      expect(prompts[0]!.text).toEqual({ 'en-US': 'Name your friends' });
     });
 
     it('supports panels', () => {
@@ -699,9 +755,9 @@ describe('SyntheticInterview', () => {
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
-      const panels = stageConfig.panels as { title: string }[];
+      const panels = stageConfig.panels as { title: LocalizedString }[];
       expect(panels).toHaveLength(1);
-      expect(panels[0]!.title).toBe('Existing');
+      expect(panels[0]!.title).toEqual({ 'en-US': 'Existing' });
     });
   });
 
@@ -763,12 +819,12 @@ describe('SyntheticInterview', () => {
       const prompts = stageConfig.prompts as {
         createEdge: string;
         edgeVariable: string;
-        negativeLabel: string;
+        negativeLabel: LocalizedString;
       }[];
       expect(prompts).toHaveLength(1);
       expect(prompts[0]!.createEdge).toBe(et.id);
       expect(prompts[0]!.edgeVariable).toBe(varRef.id);
-      expect(prompts[0]!.negativeLabel).toBe('No Friendship');
+      expect(prompts[0]!.negativeLabel).toEqual({ 'en-US': 'No Friendship' });
     });
 
     it('auto-creates edge type and variable when none provided', () => {
@@ -795,7 +851,6 @@ describe('SyntheticInterview', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('AlterForm', {
         initialNodes: { count: 3 },
-        introductionPanel: { title: 'About each person' },
       });
       stage.addFormField({ component: 'Text', prompt: 'Nickname' });
       stage.addFormField({ component: 'Number', prompt: 'Age' });
@@ -803,12 +858,44 @@ describe('SyntheticInterview', () => {
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       expect(stageConfig.type).toBe('AlterForm');
-      expect(stageConfig.introductionPanel).toBeDefined();
+      expect(stageConfig).not.toHaveProperty('introductionPanel');
 
       const form = stageConfig.form as {
         fields: { variable: string; component: string }[];
       };
       expect(form.fields).toHaveLength(2);
+    });
+  });
+
+  describe('EgoForm', () => {
+    it('carries the introduction shown above the questions', () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('EgoForm', {
+        introductionPanel: { title: 'Your details', text: 'A few questions.' },
+      });
+      stage.addFormField({ component: 'Text', prompt: 'Nickname' });
+
+      const stageConfig = si.getProtocol().stages[0] as Record<string, unknown>;
+      expect(stageConfig.introductionPanel).toEqual({
+        title: { 'en-US': 'Your details' },
+        text: { 'en-US': 'A few questions.' },
+      });
+      const form = stageConfig.form as Record<string, unknown>;
+      expect(form).not.toHaveProperty('title');
+      expect(form.fields).toHaveLength(1);
+    });
+
+    it('defaults the introduction title when none is given', () => {
+      const si = new SyntheticInterview();
+      si.addStage('EgoForm').addFormField({
+        component: 'Text',
+        prompt: 'Nickname',
+      });
+
+      expect(
+        (si.getProtocol().stages[0] as Record<string, unknown>)
+          .introductionPanel,
+      ).toEqual({ title: { 'en-US': 'About you' } });
     });
   });
 
@@ -832,7 +919,6 @@ describe('SyntheticInterview', () => {
 
       const stage = si.addStage('AlterEdgeForm', {
         subject: { entity: 'edge', type: et.id },
-        introductionPanel: { title: 'About each relationship' },
       });
       stage.addFormField({ component: 'RadioGroup', prompt: 'Closeness' });
 
@@ -861,23 +947,16 @@ describe('SyntheticInterview', () => {
     it('creates subjectless stage with explanationText', () => {
       const si = new SyntheticInterview();
       si.addStage('Anonymisation', {
-        explanationText: {
-          title: 'Protect Your Data',
-          body: 'Enter a passphrase.',
-        },
+        explanationText: '# Protect Your Data\n\nEnter a passphrase.',
       });
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       expect(stageConfig.type).toBe('Anonymisation');
       expect(stageConfig.subject).toBeUndefined();
-
-      const explText = stageConfig.explanationText as {
-        title: string;
-        body: string;
-      };
-      expect(explText.title).toBe('Protect Your Data');
-      expect(explText.body).toBe('Enter a passphrase.');
+      expect(stageConfig.explanationText).toEqual({
+        'en-US': '# Protect Your Data\n\nEnter a passphrase.',
+      });
     });
 
     it('provides default explanationText', () => {
@@ -886,101 +965,248 @@ describe('SyntheticInterview', () => {
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
-      const explText = stageConfig.explanationText as {
-        title: string;
-        body: string;
-      };
-      expect(explText.title).toBeTruthy();
-      expect(explText.body).toBeTruthy();
+      const explText = stageConfig.explanationText as LocalizedString;
+      expect(explText['en-US']).toMatch(/^# .+\n\n.+/);
     });
   });
 
   describe('FamilyPedigree', () => {
-    it('creates stage with new config structure', () => {
+    it('builds a valid stage with its person and family types and default prompt', async () => {
       const si = new SyntheticInterview();
-      const nt = si.addNodeType({ name: 'Person' });
-      const et = si.addEdgeType({ name: 'Family' });
-      const relVar = et.addVariable({
-        type: 'categorical',
-        name: 'Relationship',
-        options: [
-          { label: 'Parent', value: 'parent' },
-          { label: 'Child', value: 'child' },
-        ],
-      });
-      nt.addVariable({
-        type: 'categorical',
-        name: 'Sex',
-        options: [
-          { label: 'Male', value: 'male' },
-          { label: 'Female', value: 'female' },
-        ],
-      });
-      const nameVar = nt.addVariable({ type: 'text', name: 'Name' });
-      const egoVar = nt.addVariable({ type: 'boolean', name: 'Is Ego' });
-      const relToEgoVar = nt.addVariable({
-        type: 'text',
-        name: 'Rel to Ego',
-      });
-      const bioSexVar = nt.addVariable({
-        type: 'text',
-        name: 'Biological Sex',
-      });
-      const isActiveVar = et.addVariable({
-        type: 'boolean',
-        name: 'Is Active',
-      });
-      const isGestVar = et.addVariable({
-        type: 'boolean',
-        name: 'Is Gest Carrier',
-      });
-
-      const stage = si.addStage('FamilyPedigree', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 3 },
-        nodeConfig: {
-          type: nt.id,
-          nodeLabelVariable: nameVar.id,
-          egoVariable: egoVar.id,
-          relationshipVariable: relToEgoVar.id,
-          biologicalSexVariable: bioSexVar.id,
-          form: [{ variable: nameVar.id, prompt: 'Name' }],
-        },
-        edgeConfig: {
-          type: et.id,
-          relationshipTypeVariable: relVar.id,
-          isActiveVariable: isActiveVar.id,
-          isGestationalCarrierVariable: isGestVar.id,
-        },
-        censusPrompt: 'Build your family pedigree',
-      });
-      stage.addDiseaseNominationStep({
-        text: 'Who has the disease?',
-        variable: 'hasDisease',
-      });
+      const stage = si.addStage('FamilyPedigree');
 
       const protocol = si.getProtocol();
-      const stageConfig = protocol.stages[0] as Record<string, unknown>;
-      expect(stageConfig.type).toBe('FamilyPedigree');
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
 
-      const nodeConfig = stageConfig.nodeConfig as Record<string, unknown>;
-      expect(nodeConfig.type).toBe(nt.id);
-      expect(nodeConfig.nodeLabelVariable).toBe(nameVar.id);
+      const config = protocol.stages[0] as unknown as Record<string, unknown>;
+      expect(config.type).toBe('FamilyPedigree');
+      expect(config.subject).toEqual({
+        entity: 'node',
+        type: stage.personType,
+      });
+      expect(config.prompt).toEqual({ 'en-US': expect.any(String) });
+      expect(config.nodeConfiguration).toEqual({
+        nameAttribute: stage.name,
+        nameField: {
+          prompt: { 'en-US': 'Name (optional)' },
+          hint: {
+            'en-US': expect.stringContaining('first name') as unknown as string,
+          },
+        },
+        genderIdentity: {
+          attribute: stage.genderIdentity,
+          terms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
+        },
+        sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
+        egoAttribute: stage.ego,
+      });
+      expect(config.edgeConfiguration).toEqual({
+        type: stage.edgeType,
+        kindAttribute: stage.kind,
+        gestationalCarrierAttribute: stage.gestationalCarrier,
+        currentPartnerAttribute: stage.currentPartner,
+      });
+      expect(config).not.toHaveProperty('form');
+    });
 
-      const edgeConfig = stageConfig.edgeConfig as Record<string, unknown>;
-      expect(edgeConfig.type).toBe(et.id);
-      expect(edgeConfig.relationshipTypeVariable).toBe(relVar.id);
-      expect(edgeConfig.isActiveVariable).toBe(isActiveVar.id);
+    it('seeds the gender identity variable with the six default options and gives the other owned variables exactly the interface options', () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree');
+      const { codebook } = si.getProtocol();
 
-      expect(stageConfig.censusPrompt).toBe('Build your family pedigree');
-      expect(stageConfig.label).toBeDefined();
+      type Typed = Record<string, { variables: Record<string, unknown> }>;
+      const person = (codebook.node as Typed)[stage.personType]!.variables;
+      const family = (codebook.edge as Typed)[stage.edgeType]!.variables;
+      expect(person[stage.name]).toMatchObject({ type: 'text' });
+      expect(person[stage.ego]).toMatchObject({ type: 'boolean' });
+      expect(person[stage.genderIdentity!]).toMatchObject({
+        type: 'categorical',
+        options: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
+          value,
+          label: { 'en-US': expect.any(String) },
+        })),
+      });
+      expect(person[stage.sexAssignedAtBirth]).toMatchObject({
+        type: 'categorical',
+        options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(
+          ({ value, label }) => ({ value, label: { 'en-US': label } }),
+        ),
+      });
+      expect(family[stage.kind]).toMatchObject({
+        type: 'categorical',
+        options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS.map(({ value, label }) => ({
+          value,
+          label: { 'en-US': label },
+        })),
+      });
+      expect(family[stage.gestationalCarrier]).toMatchObject({
+        type: 'boolean',
+      });
+      expect(family[stage.currentPartner]).toMatchObject({ type: 'boolean' });
+    });
 
-      const nomPrompts = stageConfig.nominationPrompts as {
-        text: string;
-        variable: string;
-      }[];
-      expect(nomPrompts).toHaveLength(1);
-      expect(nomPrompts[0]!.text).toBe('Who has the disease?');
+    it('takes researcher-defined gender identity options and the words each takes', async () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree', {
+        genderIdentities: [
+          { value: 'transWoman', label: 'Trans woman', words: 'feminine' },
+          { value: 'agender', label: 'Agender', words: 'neutral' },
+        ],
+      });
+      const protocol = si.getProtocol();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: { genderIdentity: { terms: unknown } };
+      };
+      expect(config.nodeConfiguration.genderIdentity.terms).toEqual([
+        { value: 'transWoman', words: 'feminine' },
+        { value: 'agender', words: 'neutral' },
+      ]);
+      type Typed = Record<string, { variables: Record<string, unknown> }>;
+      expect(
+        (protocol.codebook.node as Typed)[stage.personType]!.variables[
+          stage.genderIdentity!
+        ],
+      ).toMatchObject({
+        options: [
+          { value: 'transWoman', label: { 'en-US': 'Trans woman' } },
+          { value: 'agender', label: { 'en-US': 'Agender' } },
+        ],
+      });
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it("keeps a stage's own wording and supplies the rest", async () => {
+      const si = new SyntheticInterview();
+      si.addStage('FamilyPedigree', {
+        nameField: { prompt: 'What do you call them?' },
+        completeness: {
+          scope: 'firstDegree',
+          enforcement: 'recommended',
+          itemText: {
+            siblings: {
+              listItem:
+                '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
+            },
+          },
+          recommendedNote: 'Next again skips these.',
+        },
+      });
+      const protocol = si.getProtocol();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: { nameField: unknown };
+        completeness: {
+          itemText: Record<string, Record<string, unknown>>;
+          recommendedNote: unknown;
+        };
+      };
+      // A name question without a hint keeps none: the hint is the
+      // researcher's to remove.
+      expect(config.nodeConfiguration.nameField).toEqual({
+        prompt: { 'en-US': 'What do you call them?' },
+      });
+      // A message is written as given, its arguments intact.
+      expect(config.completeness.itemText.siblings!.listItem).toEqual({
+        'en-US':
+          '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
+      });
+      expect(config.completeness.itemText.siblings!.noneButton).toEqual({
+        'en-US': expect.any(String) as unknown as string,
+      });
+      expect(Object.keys(config.completeness.itemText).toSorted()).toEqual([
+        'children',
+        'details',
+        'parents',
+        'siblings',
+      ]);
+      expect(config.completeness.recommendedNote).toEqual({
+        'en-US': 'Next again skips these.',
+      });
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it('leaves gender identity out when the stage does not ask about it', async () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree', {
+        askGenderIdentity: false,
+      });
+      const protocol = si.getProtocol();
+      expect(stage.genderIdentity).toBeUndefined();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: Record<string, unknown>;
+      };
+      expect(config.nodeConfiguration).toEqual({
+        nameAttribute: stage.name,
+        nameField: {
+          prompt: { 'en-US': 'Name (optional)' },
+          hint: {
+            'en-US': expect.stringContaining('first name') as unknown as string,
+          },
+        },
+        sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
+        egoAttribute: stage.ego,
+      });
+      // No gender identity variable is created either.
+      type Typed = Record<string, { variables: Record<string, unknown> }>;
+      const variables = (protocol.codebook.node as Typed)[stage.personType]!
+        .variables;
+      expect(Object.keys(variables)).toHaveLength(3);
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it('reuses a supplied person type and adds researcher form fields', async () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Relative' });
+      const stage = si.addStage('FamilyPedigree', {
+        subject: { entity: 'node', type: person.id },
+        prompt: 'Draw your family',
+        form: {
+          fields: [{ component: 'Text', prompt: 'Occupation' }],
+        },
+      });
+      stage.addFormField({ component: 'Toggle', prompt: 'Deceased' });
+
+      const protocol = si.getProtocol();
+      expect(stage.personType).toBe(person.id);
+      const config = protocol.stages[0] as unknown as {
+        prompt: LocalizedString;
+        form: { fields: { prompt: LocalizedString }[] };
+      };
+      expect(config.prompt).toEqual({ 'en-US': 'Draw your family' });
+      expect(config.form.fields.map((field) => field.prompt)).toEqual([
+        { 'en-US': 'Occupation' },
+        { 'en-US': 'Deceased' },
+      ]);
+      expect(config.form).not.toHaveProperty('title');
+
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it('seeds people and relationships a story writes onto it', () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree', {
+        initialNodes: { count: 2 },
+      });
+      si.setNodeAttribute(0, stage.ego, true);
+      si.setNodeAttribute(1, stage.genderIdentity!, ['woman']);
+      si.addEdges([[1, 0]], stage.edgeType);
+      si.setEdgeAttribute(0, stage.kind, ['biological']);
+
+      const network = si.getNetwork();
+      expect(network.nodes).toHaveLength(2);
+      expect(network.edges).toHaveLength(1);
+      expect(network.edges[0]![entityAttributesProperty][stage.kind]).toEqual([
+        'biological',
+      ]);
     });
   });
 
@@ -1163,6 +1389,42 @@ describe('SyntheticInterview', () => {
 
       const result = stageSchema.safeParse(builtStage);
       expect(result.success).toBe(true);
+    });
+
+    it('captions a field given no label with its variable name, as markdown that shows it as written', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const nickname = person.addVariable({
+        type: 'text',
+        name: 'nick_name',
+        component: 'Text',
+      });
+      const knows = si.addEdgeType({ name: 'Knows' });
+      const note = knows.addVariable({
+        type: 'text',
+        name: 'Note',
+        component: 'Text',
+      });
+      const stage = si.addStage('NetworkComposer', {
+        subject: { entity: 'node', type: person.id },
+      });
+      stage.addNodeFormField({ variable: nickname.id, component: 'Text' });
+      stage.addEdgeType({
+        type: knows.id,
+        form: { fields: [{ variable: note.id, component: 'Text' }] },
+      });
+
+      const builtStage = si.getProtocol().stages[0] as {
+        nodeForm: { fields: { label: unknown }[] };
+        edges: { form: { fields: { label: unknown }[] } }[];
+      };
+      expect(builtStage.nodeForm.fields[0]?.label).toEqual({
+        'en-US': 'nick\\_name',
+      });
+      expect(builtStage.edges[0]?.form.fields[0]?.label).toEqual({
+        'en-US': 'Note',
+      });
+      expect(stageSchema.safeParse(builtStage).success).toBe(true);
     });
 
     it('rejects duplicate edge subject types via the schema refinement', () => {
@@ -1369,7 +1631,7 @@ describe('e2e-matrix builder extensions', () => {
     const stage = synth.getProtocol().stages[0] as {
       form: { fields: Record<string, unknown>[] };
     };
-    expect(stage.form.fields[0]?.hint).toBe('A helpful hint');
+    expect(stage.form.fields[0]?.hint).toEqual({ 'en-US': 'A helpful hint' });
     expect(stage.form.fields[0]?.showValidationHints).toBe(true);
   });
 
@@ -1403,16 +1665,23 @@ describe('e2e-matrix builder extensions', () => {
     ]);
   });
 
-  it('emits Anonymisation validation and protocol experiments', () => {
+  it('emits Anonymisation validation', () => {
     const synth = new SyntheticInterview();
     synth.addStage('Anonymisation', {
       validation: { minLength: 4, maxLength: 12 },
     });
-    synth.setExperiments({ encryptedVariables: true });
     const stage = synth.getProtocol().stages[0] as Record<string, unknown>;
     expect(stage.validation).toEqual({ minLength: 4, maxLength: 12 });
-    const payload = synth.getInterviewPayload();
-    expect(payload.protocol.experiments).toEqual({ encryptedVariables: true });
+  });
+
+  it('emits protocol experiments only once they are set', () => {
+    const synth = new SyntheticInterview();
+    expect(synth.getInterviewPayload().protocol).not.toHaveProperty(
+      'experiments',
+    );
+
+    synth.setExperiments({});
+    expect(synth.getInterviewPayload().protocol.experiments).toStrictEqual({});
   });
 
   it('passes additionalAttributes through NameGenerator-family prompts', () => {
@@ -1503,7 +1772,9 @@ describe('e2e-matrix builder extensions', () => {
     const stage = synth.getProtocol().stages[0] as {
       nodeForm: { fields: Record<string, unknown>[] };
     };
-    expect(stage.nodeForm.fields[0]?.hint).toBe('Enter age in years');
+    expect(stage.nodeForm.fields[0]?.hint).toEqual({
+      'en-US': 'Enter age in years',
+    });
     expect(stage.nodeForm.fields[0]?.showValidationHints).toBe(true);
   });
 });
@@ -2742,5 +3013,361 @@ describe('validation rules on the generated ego', () => {
     const attrs = egoAttributesOf(si.getNetwork());
     expect(attrs).toHaveProperty(nickname.id);
     expect(typeof attrs[nickname.id]).toBe('string');
+  });
+});
+
+// The builder's output carries no protocol name, which the schema requires;
+// everything else that is parsed came from the builder.
+const expectValid = (synth: SyntheticInterview) => {
+  const { localization, schemaVersion, codebook, stages } = synth.getProtocol();
+  const result = CurrentProtocolSchema.safeParse({
+    name: 'Localized protocol',
+    localization,
+    schemaVersion,
+    codebook,
+    stages,
+  });
+  expect(result.error?.issues ?? []).toEqual([]);
+  if (!result.success) throw new Error('The built protocol is invalid');
+  return result.data;
+};
+
+describe('localization', () => {
+  it('declares en-US as the only language by default', () => {
+    const synth = new SyntheticInterview();
+    const stage = synth.addStage('NameGenerator', { label: 'Friends' });
+    stage.addPrompt({ text: 'Name your friends' });
+    stage.addFormField({ component: 'Text', prompt: 'Name' });
+
+    const protocol = expectValid(synth);
+    expect(protocol.localization).toEqual({
+      defaultLocale: 'en-US',
+      locales: ['en-US'],
+    });
+    expect(protocol.stages[0]?.label).toEqual({ 'en-US': 'Friends' });
+  });
+
+  it('escapes plain text into an ICU literal message', () => {
+    const synth = new SyntheticInterview();
+    const stage = synth.addStage('NameGenerator', {
+      label: "Don't skip {this}",
+    });
+    stage.addPrompt({ text: 'Who uses {curly} braces?' });
+    stage.addFormField({ component: 'Text', prompt: 'Name' });
+
+    const built = expectValid(synth).stages[0];
+    if (built?.type !== 'NameGenerator') {
+      throw new Error('Expected a NameGenerator stage');
+    }
+    expect(built.label).toEqual({ 'en-US': "Don't skip '{'this'}'" });
+    const text = built.prompts[0]?.text;
+    expect(text).toEqual({ 'en-US': "Who uses '{'curly'}' braces?" });
+    expect(messageText(text?.['en-US'] ?? '')).toBe('Who uses {curly} braces?');
+  });
+
+  it('writes plain text in a default language set after it was added', () => {
+    const synth = new SyntheticInterview();
+    const stage = synth.addStage('NameGenerator', { label: 'Amigos' });
+    stage.addPrompt({ text: 'Nombra a tus amigos' });
+    stage.addFormField({ component: 'Text', prompt: 'Nombre' });
+    synth.setLocalization({ defaultLocale: 'es', locales: ['es'] });
+
+    const protocol = expectValid(synth);
+    expect(protocol.localization).toEqual({
+      defaultLocale: 'es',
+      locales: ['es'],
+    });
+    expect(protocol.stages[0]?.label).toEqual({ es: 'Amigos' });
+  });
+
+  it('emits locale maps as written in a multi-language protocol', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({
+      defaultLocale: 'en-US',
+      locales: ['en-US', 'es', 'ar'],
+    });
+    const person = synth.addNodeType({
+      name: 'Person',
+    });
+    const closeness = person.addVariable({
+      name: 'closeness',
+      type: 'ordinal',
+      options: [
+        {
+          label: { 'en-US': 'Close', 'es': 'Cercano', 'ar': 'قريب' },
+          value: 1,
+        },
+        {
+          label: { 'en-US': 'Distant', 'es': 'Lejano', 'ar': 'بعيد' },
+          value: 2,
+        },
+      ],
+    });
+    const stage = synth.addStage('NameGenerator', {
+      subject: { entity: 'node', type: person.id },
+      label: { 'en-US': 'Friends', 'es': 'Amigos', 'ar': 'أصدقاء' },
+    });
+    stage.addPrompt({
+      text: {
+        'en-US': 'Name your friends',
+        'es': 'Nombra a tus amigos',
+        'ar': 'اذكر أصدقاءك',
+      },
+    });
+    stage.addFormField({
+      component: 'Text',
+      prompt: { 'en-US': 'Name', 'es': 'Nombre', 'ar': 'الاسم' },
+    });
+    // Plain text is written in the default language only.
+    stage.addPanel({ title: 'Previous contacts' });
+
+    const protocol = expectValid(synth);
+    expect(protocol.localization).toEqual({
+      defaultLocale: 'en-US',
+      locales: ['en-US', 'es', 'ar'],
+    });
+    const personType = protocol.codebook.node?.[person.id];
+    expect(personType?.variables?.[closeness.id]).toMatchObject({
+      options: [
+        {
+          label: { 'en-US': 'Close', 'es': 'Cercano', 'ar': 'قريب' },
+          value: 1,
+        },
+        {
+          label: { 'en-US': 'Distant', 'es': 'Lejano', 'ar': 'بعيد' },
+          value: 2,
+        },
+      ],
+    });
+
+    const built = protocol.stages[0];
+    if (built?.type !== 'NameGenerator') {
+      throw new Error('Expected a NameGenerator stage');
+    }
+    expect(built.prompts[0]?.text).toEqual({
+      'en-US': 'Name your friends',
+      'es': 'Nombra a tus amigos',
+      'ar': 'اذكر أصدقاءك',
+    });
+    expect(built.panels?.[0]?.title).toEqual({
+      'en-US': 'Previous contacts',
+    });
+
+    const missing = analyzeProtocolLocalization(protocol).filter((warning) =>
+      warning.path.includes('panels'),
+    );
+    expect(missing.map(({ locale }) => locale)).toEqual(['es', 'ar']);
+  });
+
+  it('names an auto-created variable from the default-language caption', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'es', locales: ['en-US', 'es'] });
+    const stage = synth.addStage('EgoForm', {
+      introductionPanel: { title: 'Sobre ti' },
+    });
+    stage.addFormField({
+      component: 'Text',
+      prompt: { 'en-US': 'Your nickname', 'es': "Tu apodo '{'casa'}'" },
+    });
+
+    const variables = expectValid(synth).codebook.ego?.variables ?? {};
+    expect(Object.values(variables).map(({ name }) => name)).toContain(
+      'Tu apodo {casa}',
+    );
+  });
+});
+
+describe('LanguageChooser stage', () => {
+  it('builds a subjectless stage', () => {
+    const synth = new SyntheticInterview();
+    synth.addStage('LanguageChooser');
+
+    const stage = expectValid(synth).stages[0];
+    expect(stage?.type).toBe('LanguageChooser');
+    expect(stage).not.toHaveProperty('subject');
+  });
+
+  it('adds nothing to the generated network', () => {
+    const synth = new SyntheticInterview();
+    synth.addStage('LanguageChooser');
+
+    const network = synth.getNetwork();
+    expect(network.nodes).toEqual([]);
+    expect(network.edges).toEqual([]);
+  });
+});
+
+describe('FinishSession stage', () => {
+  it('ends a protocol built without one at a finish stage with the supplied text', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en', 'es'] });
+    synth.addInformationStage({ title: 'Welcome' });
+
+    const { stages } = expectValid(synth);
+    expect(stages).toHaveLength(2);
+    expect(stages[1]).toEqual({
+      id: 'finish',
+      type: 'FinishSession',
+      mode: 'confirmation',
+      label: { en: 'Finish Interview', es: 'Finalizar entrevista' },
+      content: {
+        en: '# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+        es: '# Finalizar entrevista\n\nHas llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora.',
+      },
+      finishedContent: {
+        en: '# Interview Finished\n\nThank you for participating!',
+        es: '# Entrevista finalizada\n\n¡Gracias por participar!',
+      },
+      finishLabel: { en: 'Finish', es: 'Finalizar' },
+      finishConfirmation: {
+        en: 'Are you sure you want to finish the interview?',
+        es: '¿Seguro que quieres finalizar la entrevista?',
+      },
+      finishFailed: {
+        en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+        es: 'No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.',
+      },
+      outcome: 'completed',
+    });
+  });
+
+  it('writes English under a default language with no supplied text', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'ja', locales: ['ja'] });
+
+    const stage = expectValid(synth).stages.at(-1);
+    expect(stage).toMatchObject({
+      type: 'FinishSession',
+      label: { ja: 'Finish Interview' },
+      content: {
+        ja: '# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+      },
+      finishedContent: {
+        ja: '# Interview Finished\n\nThank you for participating!',
+      },
+    });
+  });
+
+  it('keeps a finish stage the fixture adds, and adds no second one', () => {
+    const synth = new SyntheticInterview();
+    synth.addInformationStage({ title: 'Welcome' });
+    synth.addFinishSessionStage({
+      label: 'Not eligible',
+      content: '# Not eligible\n\nThank you for your time.',
+      outcome: 'ineligible',
+    });
+
+    const { stages } = expectValid(synth);
+    expect(stages).toHaveLength(2);
+    expect(stages[1]).toMatchObject({
+      type: 'FinishSession',
+      mode: 'confirmation',
+      label: { 'en-US': 'Not eligible' },
+      content: { 'en-US': '# Not eligible\n\nThank you for your time.' },
+      outcome: 'ineligible',
+    });
+  });
+
+  it('adds nothing to the generated network', () => {
+    const synth = new SyntheticInterview();
+    synth.addFinishSessionStage();
+
+    const network = synth.getNetwork();
+    expect(network.nodes).toEqual([]);
+    expect(network.edges).toEqual([]);
+  });
+});
+
+describe('SyntheticInterview stage wording', () => {
+  it('writes the wording a fixture gives a stage as plain text', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const nameVariable = person.addVariable({ type: 'text', name: 'fullName' });
+    synth
+      .addStage('NameGeneratorQuickAdd', {
+        subject: { entity: 'node', type: person.id },
+        quickAdd: nameVariable.id,
+        wording: { quickAddHint: 'Type a name, then press {Enter}' },
+      })
+      .addPrompt({ text: 'Who do you know?' });
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).toMatchObject({
+      quickAddHint: {
+        'en-US': escapeMessageText('Type a name, then press {Enter}'),
+      },
+    });
+  });
+
+  it('writes a Family Pedigree setting into its wording group, named with or without it', () => {
+    const synth = new SyntheticInterview();
+    synth.addStage('FamilyPedigree', {
+      wording: {
+        // The supplied title names the person, so a replacement must too; a
+        // string is literal text, so a message is given by language.
+        'panelTitle': { 'en-US': 'Relatives of {name}' },
+        'wording.biologicalParentLabel': 'Birth parent',
+      },
+    });
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).not.toHaveProperty('panelTitle');
+    expect(stages[0]).toMatchObject({
+      wording: {
+        panelTitle: { 'en-US': 'Relatives of {name}' },
+        biologicalParentLabel: { 'en-US': 'Birth parent' },
+      },
+    });
+  });
+
+  it('writes a dotted wording name inside its group and keeps the rest', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const layout = person.addVariable({ name: 'layout', type: 'layout' });
+    synth
+      .addStage('Narrative', {
+        subject: { entity: 'node', type: person.id },
+        behaviours: { freeDraw: true },
+        wording: { 'tooltips.enableDrawing': 'Draw now {now}' },
+      })
+      .addPreset({ layoutVariable: layout.id });
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).toMatchObject({
+      tooltips: {
+        enableDrawing: { 'en-US': escapeMessageText('Draw now {now}') },
+        disableDrawing: { 'en-US': expect.any(String) },
+      },
+    });
+  });
+});
+
+describe('SyntheticInterview interface text', () => {
+  it('holds a shared text worded the researcher’s way, and the rest as supplied', () => {
+    const synth = new SyntheticInterview();
+    synth
+      .addStage('Sociogram', {
+        initialNodes: { count: 2 },
+        behaviours: { automaticLayout: true },
+      })
+      .addPrompt();
+    synth.setInterfaceText('buttons', 'pauseLayout', 'Hold still {now}');
+
+    const protocol = synth.getProtocol();
+    expect(protocol.interfaceText?.buttons).toMatchObject({
+      pauseLayout: { 'en-US': escapeMessageText('Hold still {now}') },
+      resumeLayout: { 'en-US': 'Resume automatic layout' },
+    });
+  });
+
+  it('leaves out a shared text nothing in the protocol shows', () => {
+    const synth = new SyntheticInterview();
+    // Automatic layout off, so no pause button shows.
+    synth.addStage('Sociogram', { initialNodes: { count: 2 } }).addPrompt();
+    synth.setInterfaceText('buttons', 'pauseLayout', 'Hold still');
+
+    expect(synth.getProtocol().interfaceText?.buttons).not.toHaveProperty(
+      'pauseLayout',
+    );
   });
 });

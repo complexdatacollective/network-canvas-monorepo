@@ -89,6 +89,30 @@ export const PROTOCOL_FILE_ERROR_KINDS = [
   'upgradeFailed',
 ];
 
+/**
+ * The kinds that mean an upgrade of ours failed, not that the file was wrong.
+ *
+ * Fresco upgrades a protocol only from schema 7 to schema 8, and the analytics
+ * lane imports no schema 7 protocol while it is judging the damaged imports:
+ * they are schema 8 and 9, which Fresco stores as they are. A refusal naming a
+ * failed upgrade there means an import tried to upgrade a protocol it should
+ * have taken as it is. They are kept apart from the kinds that describe a
+ * damaged file, so that such a refusal cannot stand in for one. Bound to the package's own
+ * `APP_DEFECT_KINDS` by
+ * `scripts/release-test/fresco-release-test-lane-contracts.test.mjs`.
+ */
+export const APP_DEFECT_KINDS = ['upgradeStepFailed', 'upgradeFailed'];
+
+const exceptionTypes = (properties) => {
+  const list = Array.isArray(properties.$exception_list)
+    ? properties.$exception_list
+    : [];
+  return [
+    ...list.map((entry) => String(entry?.type ?? '')),
+    String(properties.$exception_type ?? ''),
+  ].filter(Boolean);
+};
+
 const asText = (buffer, encoding = 'utf8') => buffer.toString(encoding);
 
 /**
@@ -260,7 +284,10 @@ const check = (id, pass, detail) => ({
  *
  * `damagedImportFrom` is the ISO timestamp the driver recorded before it
  * imported the damaged protocol fixtures, so the "not an application error"
- * assertion reads only the window that import could have produced.
+ * assertion reads only the window those imports could have produced. Nothing
+ * imported in it is reported as an exception: a damaged file is the file's
+ * fault, a protocol refused as invalid sends nothing at all, and none of them
+ * is old enough to be upgraded, so none can fail an upgrade.
  *
  * `listeningRecords` is how many times the sink announced itself, which the
  * reader counts from the same file. Exactly one means it bound its ports once
@@ -487,19 +514,30 @@ export function evaluateAnalyticsContract({
   const unknownReasons = reasons.filter(
     (reason) => !PROTOCOL_FILE_ERROR_KINDS.includes(reason),
   );
+  const fileFaults = reasons.filter(
+    (reason) =>
+      PROTOCOL_FILE_ERROR_KINDS.includes(reason) &&
+      !APP_DEFECT_KINDS.includes(reason),
+  );
+  const upgradeFailures = reasons.filter((reason) =>
+    APP_DEFECT_KINDS.includes(reason),
+  );
   checks.push(
     check(
       'analytics-damaged-file-not-an-error',
-      importFailures.length > 0 &&
+      fileFaults.length > 0 &&
         exceptions.length === 0 &&
+        upgradeFailures.length === 0 &&
         unknownReasons.length === 0,
-      importFailures.length === 0
-        ? 'no ProtocolImportFailed event was captured after the damaged imports, so nothing shows how they were reported'
+      fileFaults.length === 0
+        ? 'no ProtocolImportFailed event naming a damaged file was captured after the damaged imports, so nothing shows how they were reported'
         : exceptions.length > 0
-          ? `${exceptions.length} exception event(s) were reported for a damaged file, which buries the failures that are real faults`
-          : unknownReasons.length > 0
-            ? `ProtocolImportFailed carried reason(s) outside the fixed vocabulary: ${unknownReasons.join(', ')} — a free-form reason can hold the researcher's own file and resource names`
-            : `${importFailures.length} damaged import(s) reported as ${[...new Set(reasons)].join(', ')}, with no exception event`,
+          ? `${exceptions.length} exception event(s) (${[...new Set(exceptions.flatMap((event) => exceptionTypes(propertiesOf(event))))].join(', ') || 'no type'}) were reported during the damaged imports, which buries the failures that are real faults`
+          : upgradeFailures.length > 0
+            ? `ProtocolImportFailed named ${upgradeFailures.length} failed upgrade(s) (${[...new Set(upgradeFailures)].join(', ')}), but every protocol imported then was schema 8 or 9, which Fresco stores as it is`
+            : unknownReasons.length > 0
+              ? `ProtocolImportFailed carried reason(s) outside the fixed vocabulary: ${unknownReasons.join(', ')} — a free-form reason can hold the researcher's own file and resource names`
+              : `${fileFaults.length} damaged import(s) reported as ${[...new Set(fileFaults)].join(', ')}, with no exception event of their own`,
     ),
   );
 

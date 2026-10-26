@@ -14,11 +14,21 @@ export function hasDocumentationSection(pathname: string): boolean {
   return sections.some((candidate) => candidate === section);
 }
 
+// Narrow a URL segment to a workflow section, or undefined when it names none.
+export function toSection(value: string | undefined): Section | undefined {
+  return sections.find((candidate) => candidate === value);
+}
+
 export const locales = ['en'] as const;
 
 const zlocales = z.enum(locales);
 
 export type Locale = (typeof locales)[number];
+
+// Narrow a string to a documentation locale, or undefined when it names none.
+export function toLocale(value: string | undefined): Locale | undefined {
+  return locales.find((candidate) => candidate === value);
+}
 
 const _itemTypes = [
   'section', // Top level workflow sections
@@ -82,7 +92,7 @@ const SidebarLocaleDefinitionSchema = z.record(
 
 export type SidebarLocaleDefinition = Record<Section, SidebarSection>;
 
-const _SideBarSchema = z.record(zlocales, SidebarLocaleDefinitionSchema);
+export const SideBarSchema = z.record(zlocales, SidebarLocaleDefinitionSchema);
 
 // Can't infer this from above because of this: https://github.com/colinhacks/zod/issues/2623
 export type TSideBar = Record<Locale, SidebarLocaleDefinition>;

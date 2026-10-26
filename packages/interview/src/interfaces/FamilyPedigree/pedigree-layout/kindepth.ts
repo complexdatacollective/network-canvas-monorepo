@@ -7,12 +7,16 @@ import { chaseup, layerConstraints } from './utils';
  *
  * When align=true, adjusts depths so parent group members plot on the same line.
  *
- * @param parents - parents[i] = array of parent connections for person i
+ * @param parents - parents[i] = array of parent connections for person i;
+ *   these set each person's depth
  * @param align - whether to align parent group depths
+ * @param alsoAligned - alsoAligned[i] = further parents of person i who join
+ *   its parent group for alignment without setting its depth
  */
 export function kindepth(
   parents: ParentConnection[][],
   align = false,
+  alsoAligned: ParentConnection[][] = [],
 ): number[] {
   const n = parents.length;
   if (n === 1) return [0];
@@ -92,9 +96,10 @@ export function kindepth(
   const groups: number[][] = [];
 
   for (let i = 0; i < n; i++) {
-    if (parents[i]!.length < 2) continue;
+    const groupParents = [...parents[i]!, ...(alsoAligned[i] ?? [])];
+    if (groupParents.length < 2) continue;
     const [anchor, ...rest] = [
-      ...new Set(parents[i]!.map((p) => p.parentIndex)),
+      ...new Set(groupParents.map((p) => p.parentIndex)),
     ].toSorted((a, b) => depth[a]! - depth[b]! || a - b);
     const memberIndices = [
       anchor!,
@@ -118,8 +123,12 @@ export function kindepth(
 
   const ngroups = groups.length;
   const done: boolean[] = Array.from({ length: ngroups }, () => false);
+  const aligned = (group: number[]) =>
+    group.every((m) => depth[m] === depth[group[0]!]);
 
-  for (;;) {
+  // Each pass moves someone strictly deeper or gives up on a group, so this
+  // bound is never reached in practice; it only guarantees termination.
+  for (let pass = 0; pass < n * (ngroups + 1); pass++) {
     // Find groups where members have different depths
     const groupsToFix: number[] = [];
     for (let i = 0; i < ngroups; i++) {
@@ -154,8 +163,19 @@ export function kindepth(
 
     const abad = chaseup([bad], parents);
 
+    // Another group that holds both good and bad, or only members of this
+    // group (a couple who also have children with a third parent), is
+    // aligned by the same move, so it neither makes bad more than a
+    // marry-in nor ties bad to good's side. Kinship2 never meets this: there,
+    // no two groups share a parent pair.
+    const movesWithThisGroup = (g: number[]) =>
+      (g.includes(good) && g.includes(bad)) ||
+      g.every((m) => members.includes(m));
+
     // Simple case: solitary marry-in
-    const badAppearances = groups.filter((g) => g.includes(bad)).length;
+    const badAppearances = groups.filter(
+      (g, i) => g.includes(bad) && (i === who || !movesWithThisGroup(g)),
+    ).length;
     if (abad.length === 1 && badAppearances === 1) {
       depth[bad] = depth[good]!;
       // A marry-in may still have children of their own outside this group.
@@ -164,7 +184,9 @@ export function kindepth(
       let agood = chaseup([good], parents);
 
       // Chase group members and their ancestors, excluding the given group
-      const otherGroups = groups.filter((_, i) => i !== who);
+      const otherGroups = groups.filter(
+        (g, i) => i !== who && !movesWithThisGroup(g),
+      );
 
       for (;;) {
         // Find group co-members of anyone in agood
@@ -205,12 +227,17 @@ export function kindepth(
         }
 
         pushChildrenBelowParents();
+      } else {
+        // bad cannot join good's row; leave this group as it is.
+        done[who] = true;
       }
     }
 
-    // Mark groups involving 'bad' as done
+    // A group is finished once its members share a row. One that 'bad' also
+    // belongs to but that is still unaligned (a donor shared by two families,
+    // say) is aligned on a later pass, so its other members follow bad.
     for (let i = 0; i < ngroups; i++) {
-      if (groups[i]!.includes(bad)) {
+      if (groups[i]!.includes(bad) && aligned(groups[i]!)) {
         done[i] = true;
       }
     }

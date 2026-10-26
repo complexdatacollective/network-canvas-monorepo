@@ -1,12 +1,13 @@
 // A tiny non-redux signal for operations that must not be interrupted by a
 // service-worker update reload: a .netcanvas import (which can start before React
-// mounts, from the OS file handler) and a protocol export. Kept out of the redux
-// `app` slice because that slice is persisted — a flag stuck `true` after a tab
-// closed mid-operation would wrongly block updates forever. Read via
-// useSyncExternalStore so a React component re-renders when it changes.
+// mounts, from the OS file handler), a protocol export or library download, and
+// a protocol commit. Kept out of the redux `app` slice because that slice is
+// persisted — a flag stuck `true` after a tab closed mid-operation would
+// wrongly block updates forever. Read via useSyncExternalStore so a React
+// component re-renders when it changes.
 
 let importInProgress = false;
-let exportInProgress = false;
+let exportsInProgress = 0;
 let protocolCommitsInProgress = 0;
 
 const listeners = new Set<() => void>();
@@ -22,29 +23,39 @@ export const setImportInProgress = (value: boolean) => {
   emit();
 };
 
-export const setExportInProgress = (value: boolean) => {
-  exportInProgress = value;
-  emit();
-};
-
-// A commit is critical from the moment validation is queued until its accepted
-// snapshot has finished writing to IndexedDB. Reference-count the real async
-// lifecycle so overlapping commits are protected without a timer guess.
-export const beginProtocolCommit = (): (() => void) => {
-  protocolCommitsInProgress += 1;
+// Exports and commits are reference-counted, because they overlap: the library
+// can bundle several protocols at once, alongside an export from the editor,
+// and the first to finish must not mark the others done. Each `begin…` returns
+// the function to call once that operation settles; calling it again is a
+// no-op.
+const beginCounted = (adjust: (delta: 1 | -1) => void): (() => void) => {
+  adjust(1);
   emit();
 
   let finished = false;
   return () => {
     if (finished) return;
     finished = true;
-    protocolCommitsInProgress = Math.max(0, protocolCommitsInProgress - 1);
+    adjust(-1);
     emit();
   };
 };
 
+/** A protocol bundling into a `.netcanvas` download, from editor or library. */
+export const beginExport = (): (() => void) =>
+  beginCounted((delta) => {
+    exportsInProgress = Math.max(0, exportsInProgress + delta);
+  });
+
+// A commit is critical from the moment validation is queued until its accepted
+// snapshot has finished writing to IndexedDB.
+export const beginProtocolCommit = (): (() => void) =>
+  beginCounted((delta) => {
+    protocolCommitsInProgress = Math.max(0, protocolCommitsInProgress + delta);
+  });
+
 export const isCriticalOperationInProgress = () =>
-  importInProgress || exportInProgress || protocolCommitsInProgress > 0;
+  importInProgress || exportsInProgress > 0 || protocolCommitsInProgress > 0;
 
 export const subscribeCriticalOperation = (listener: () => void) => {
   listeners.add(listener);

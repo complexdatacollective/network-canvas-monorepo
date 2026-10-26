@@ -20,7 +20,11 @@ const englishIntl = createAppIntl({ locale: 'en' });
  * reasoned about and tested without assembling whole stage documents, and the
  * package's protocol read model satisfies it directly.
  */
-export type DestinationStage = Readonly<{ id: string; label: string }>;
+export type DestinationStage = Readonly<{
+  id: string;
+  label: string;
+  type?: string;
+}>;
 
 /**
  * Where the stage being edited sits, or will sit, in the interview.
@@ -266,7 +270,7 @@ export const routeDestination = (
  * where a host that appends puts it.
  */
 export function stagePlacement(
-  stages: readonly DestinationStage[],
+  stages: readonly Readonly<{ id: string }>[],
   stageId: string,
   position?: number,
 ): StagePlacement {
@@ -289,12 +293,13 @@ const isLaterStage = (index: number, placement: StagePlacement): boolean =>
   placement.isNew ? index >= placement.index : index > placement.index;
 
 /**
- * The number the researcher will see against this stage once the stage being
- * edited exists — which is one higher than today's for every stage a new
- * stage is about to be inserted in front of.
+ * The number the researcher will see against the stage at `index` once the
+ * stage being edited exists, counting from one: one higher than today's for a
+ * stage a new stage is about to be inserted in front of, and today's for every
+ * stage before it.
  */
-const stageNumber = (index: number, placement: StagePlacement): number =>
-  index + 1 + (placement.isNew ? 1 : 0);
+export const stageNumber = (index: number, placement: StagePlacement): number =>
+  index + 1 + (isLaterStage(index, placement) && placement.isNew ? 1 : 0);
 
 const stageOptionLabel = (
   stage: DestinationStage,
@@ -315,7 +320,9 @@ const stageOptionLabel = (
  * Where the interview may continue from here.
  *
  * Only later stages are offered: the interview runs forwards, and a skip that
- * pointed backwards would be a loop rather than a route.
+ * pointed backwards would be a loop rather than a route. The first finish
+ * stage is offered as ending the interview; any further finish stage is
+ * offered by name.
  *
  * A destination the stage currently holds that is NOT among them is added at
  * the end, disabled. Leaving it out would make the control fall back to its
@@ -335,8 +342,24 @@ export function stageDestinationOptions(
     },
   ];
 
+  const route = destinationRoute(value);
+  const firstFinishIndex = stages.findIndex(
+    (stage) => stage.type === 'FinishSession',
+  );
   stages.forEach((stage, index) => {
     if (!isLaterStage(index, placement)) return;
+    // The first finish stage is where ending the interview goes, which is
+    // offered below; offering it as a stage too would name one route twice.
+    // Any later finish stage (a separate ending, such as one for ineligible
+    // participants) is reached only by naming it. One already named stays
+    // offered when the endings are reordered and it becomes the first: the
+    // route is still valid, and choosing again must not lose it.
+    if (
+      index === firstFinishIndex &&
+      route !== `${STAGE_ROUTE_PREFIX}${stage.id}`
+    ) {
+      return;
+    }
     options.push({
       value: `${STAGE_ROUTE_PREFIX}${stage.id}`,
       label: stageOptionLabel(stage, index, placement, intl),
@@ -348,7 +371,6 @@ export function stageDestinationOptions(
     label: intl.formatMessage(messages.finish),
   });
 
-  const route = destinationRoute(value);
   if (!options.some((option) => option.value === route)) {
     options.push({
       value: route,

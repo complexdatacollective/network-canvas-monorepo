@@ -5,8 +5,9 @@
  * may break. Words never break by default — a word longer than the line
  * overflows horizontally, exactly as in a browser. `hyphens-auto` allows
  * breaks at the dictionary points below, and `wrap-anywhere` at any
- * character. That is enough to exercise the fit ladder end to end without a
- * browser.
+ * character. A soft hyphen is a break point unless `hyphens-none` says to
+ * ignore it, and takes no width. That is enough to exercise the fit ladder
+ * end to end without a browser.
  */
 const CHARACTERS_PER_LINE: Record<string, number> = {
   'text-lg': 9,
@@ -30,13 +31,22 @@ const HYPHENATION_POINTS: Record<string, readonly string[]> = {
 
 type WrapMode = 'none' | 'hyphens' | 'anywhere';
 
-const fragmentsOf = (word: string, mode: WrapMode): readonly string[] => {
-  if (mode === 'anywhere') return [...word];
+const SOFT_HYPHEN = '\u00AD';
+
+const fragmentsOf = (
+  word: string,
+  mode: WrapMode,
+  honourSoftHyphens: boolean,
+): readonly string[] => {
+  const parts = word.split(SOFT_HYPHEN);
+  const plain = parts.join('');
+  if (mode === 'anywhere') return [...plain];
+  if (honourSoftHyphens && parts.length > 1) return parts;
   if (mode === 'hyphens') {
-    const known = HYPHENATION_POINTS[word.toLowerCase()];
+    const known = HYPHENATION_POINTS[plain.toLowerCase()];
     if (known) return known;
   }
-  return [word];
+  return [plain];
 };
 
 const readLabelShape = (element: HTMLElement) => {
@@ -54,6 +64,8 @@ const readLabelShape = (element: HTMLElement) => {
       ? 'hyphens'
       : 'none';
 
+  const honourSoftHyphens = !className.includes('hyphens-none');
+
   const words = (element.textContent ?? '').split(/\s+/).filter(Boolean);
 
   // Greedy wrap: fragments of one word join without spaces; a fragment that
@@ -62,7 +74,7 @@ const readLabelShape = (element: HTMLElement) => {
   let column = 0;
   let widestFragment = 0;
   for (const word of words) {
-    fragmentsOf(word, mode).forEach((fragment, index) => {
+    fragmentsOf(word, mode, honourSoftHyphens).forEach((fragment, index) => {
       widestFragment = Math.max(widestFragment, fragment.length);
       const width = fragment.length + (index === 0 && column > 0 ? 1 : 0);
       if (column > 0 && column + width > perLine) {

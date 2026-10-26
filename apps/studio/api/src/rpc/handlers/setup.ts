@@ -9,10 +9,15 @@ import {
 } from '@codaco/studio-contract/schema/errors';
 
 import { completeSetup, SetupCommandError } from '../../setup/commands.ts';
+import { withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 
 const refusals = <A, R>(
-  command: Effect.Effect<A, SetupCommandError | SqlError.SqlError, R>,
+  command: Effect.Effect<
+    A,
+    SetupCommandError | NotFound | SqlError.SqlError,
+    R
+  >,
 ): Effect.Effect<A, Unauthorized | NotFound | Conflict, R> =>
   command.pipe(
     Effect.catch(
@@ -33,5 +38,5 @@ export const SetupHandlers = (deps: RpcDeps) =>
     'setup.complete': (payload) =>
       deps.services === undefined
         ? new NotFound({})
-        : refusals(completeSetup(payload)),
+        : refusals(withRequestId(completeSetup(payload))),
   });

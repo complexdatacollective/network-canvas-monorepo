@@ -15,7 +15,6 @@ import {
 } from '../db/api';
 import { getSessionDek } from '../db/sessionKey';
 import { DEFAULT_SETTINGS } from '../db/types';
-import { IS_EMBEDDED_IN_INTERVIEWER_9 } from '../interviewer9Embed';
 import { VAULT_STORAGE_KEY } from '../vault/vaultStore';
 import * as authApi from './api';
 import type { AuthMode } from './api';
@@ -85,6 +84,29 @@ async function drainSessionWrites(): Promise<void> {
   }
 }
 
+// The vault lives in storage and the WebCrypto layer, not in React: its state
+// can only be learned by asking the auth API, asynchronously.
+async function readAuthState(): Promise<AuthState> {
+  const s = await authApi.status();
+  const kind: AuthStateKind = s.corrupt
+    ? 'corrupt'
+    : !s.configured
+      ? 'unconfigured'
+      : s.locked
+        ? 'locked'
+        : 'unlocked';
+
+  let idleTimeoutMinutes: IdleTimeoutMinutes =
+    DEFAULT_SETTINGS.idleTimeoutMinutes;
+  if (kind === 'unlocked') {
+    const settings = await getSettings();
+    idleTimeoutMinutes =
+      settings?.idleTimeoutMinutes ?? DEFAULT_SETTINGS.idleTimeoutMinutes;
+  }
+
+  return { kind, mode: s.mode, idleTimeoutMinutes };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     kind: 'loading',
@@ -92,48 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const refresh = useCallback(async () => {
-    const s = await authApi.status();
-    const kind: AuthStateKind = s.corrupt
-      ? 'corrupt'
-      : !s.configured
-        ? 'unconfigured'
-        : s.locked
-          ? 'locked'
-          : 'unlocked';
-
-    let idleTimeoutMinutes: IdleTimeoutMinutes =
-      DEFAULT_SETTINGS.idleTimeoutMinutes;
-    if (kind === 'unlocked') {
-      const settings = await getSettings();
-      idleTimeoutMinutes =
-        settings?.idleTimeoutMinutes ?? DEFAULT_SETTINGS.idleTimeoutMinutes;
-    }
-
-    setState({ kind, mode: s.mode, idleTimeoutMinutes });
+    setState(await readAuthState());
   }, []);
 
-  // The vault lives in storage and the WebCrypto layer, not in React: its state
-  // can only be learned by asking the auth API, asynchronously, once the
-  // provider is mounted. The state written here is that answer arriving, so an
+  // The vault's state can only be learned once the provider is mounted, by
+  // asking the auth API; the state written here is that answer arriving, so an
   // effect is the right tool.
-  //
-  // Interviewer 8 framed by Interviewer 9 first takes the key Interviewer 9
-  // hands over (see interviewer9Embed.ts), so its first answer is "unlocked"
-  // rather than a lock screen. The state stays 'loading' (a spinner, nothing
-  // that asks for input) until Interviewer 9 replies or the wait times out.
   useEffect(() => {
-    if (!IS_EMBEDDED_IN_INTERVIEWER_9) {
-      void refresh();
-      return undefined;
-    }
-    let active = true;
-    void authApi.adoptInterviewer9Unlock().then(() => {
-      if (active) void refresh();
-    });
-    return () => {
-      active = false;
-    };
-  }, [refresh]);
+    void readAuthState().then(setState);
+  }, []);
 
   // Drop the key now, with no window for anything to finish writing first.
   const lockImmediately = useCallback(async () => {

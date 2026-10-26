@@ -11,7 +11,11 @@ import {
   assertSpecifierDrivenChanges,
   assertVendoredLockfile,
   collectClosure,
+  keptVersions,
+  schema8StackEdges,
   lockfileEdges,
+  onVendoredLine,
+  overrideSelector,
   packagesChangedSince,
   patchDockerfileForVendor,
   previouslyVendoredPackages,
@@ -319,6 +323,169 @@ test('the lockfile guard fails on a registry resolution of a vendored package', 
   );
 });
 
+test('the lockfile guard leaves an older release line to the bundled schema 8 interview', () => {
+  const stage = mkdtempSync(join(tmpdir(), 'stage-'));
+  const manifest = {
+    vendored: { '@x/ui': 'x-ui-2.1.0.tgz', '@x/i18n': 'x-i18n-0.4.0.tgz' },
+    registry: [],
+  };
+  // The schema 8 interview's own copies, on older lines.
+  writeFileSync(
+    join(stage, 'pnpm-lock.yaml'),
+    "packages:\n  '@x/ui@1.9.0': {}\n  '@x/ui@file:vendor/x-ui-2.1.0.tgz': {}\n  '@x/i18n@0.3.0': {}\n  '@x/i18n@file:vendor/x-i18n-0.4.0.tgz': {}\n",
+  );
+  assert.match(assertVendoredLockfile(stage, manifest), /2 vendored/);
+
+  // A registry copy on the vendored line, or a later one, is still refused.
+  for (const stray of ["'@x/ui@2.0.0'", "'@x/ui@3.0.0'", "'@x/i18n@0.4.1'"]) {
+    writeFileSync(
+      join(stage, 'pnpm-lock.yaml'),
+      `packages:\n  ${stray}: {}\n  '@x/ui@file:vendor/x-ui-2.1.0.tgz': {}\n  '@x/i18n@file:vendor/x-i18n-0.4.0.tgz': {}\n`,
+    );
+    assert.throws(
+      () => assertVendoredLockfile(stage, manifest),
+      /also resolved from the registry/,
+      stray,
+    );
+  }
+});
+
+test('an override reaches the vendored release line and later ones, never older ones', () => {
+  assert.equal(
+    overrideSelector('@codaco/interview', '11.2.0'),
+    '@codaco/interview@>=11.0.0-0',
+  );
+  assert.equal(
+    overrideSelector('@codaco/app-i18n', '0.4.1'),
+    '@codaco/app-i18n@>=0.4.0-0',
+  );
+  assert.equal(onVendoredLine('10.0.0', '11.2.0'), false);
+  assert.equal(onVendoredLine('11.0.0', '11.2.0'), true);
+  assert.equal(onVendoredLine('0.3.0', '0.4.1'), false);
+  assert.equal(onVendoredLine('1.0.0', '0.4.1'), true);
+});
+
+test('an override leaves the exact release the schema 8 interview pins on the vendored line', () => {
+  // A minor release keeps fresco-ui on the 8 line the schema 8 interview pins.
+  assert.equal(
+    overrideSelector('@codaco/fresco-ui', '8.1.0', '8.0.0'),
+    '@codaco/fresco-ui@>8.0.0',
+  );
+  // A pin on an older line is already out of reach.
+  assert.equal(
+    overrideSelector('@codaco/interview', '11.0.0', '10.0.0'),
+    '@codaco/interview@>=11.0.0-0',
+  );
+  // Pending code whose bump is not applied yet carries the pin's number; the
+  // key still leaves the pin's exact edge alone.
+  assert.equal(
+    overrideSelector('@codaco/fresco-ui', '8.0.0', '8.0.0'),
+    '@codaco/fresco-ui@>8.0.0',
+  );
+});
+
+test('the schema 8 pins are read from the staged tree', () => {
+  const stage = mkdtempSync(join(tmpdir(), 'stage-'));
+  assert.deepEqual(keptVersions(stage), {});
+  mkdirSync(join(stage, 'schema-8'));
+  writeFileSync(
+    join(stage, 'schema-8', 'package.json'),
+    JSON.stringify({
+      dependencies: { '@x/ui': '8.0.0', '@x/i18n': '^0.3.0' },
+    }),
+  );
+  // Only exact pins: a range is not a release the interview keeps.
+  assert.deepEqual(keptVersions(stage), { '@x/ui': '8.0.0' });
+});
+
+test("the schema 8 interview's own edges between its releases are found by name", () => {
+  const lockfile = [
+    'lockfileVersion: 9.0',
+    '',
+    'snapshots:',
+    '',
+    "  '@codaco/interview@10.0.0(abc)':",
+    '    dependencies:',
+    "      '@codaco/network-query': 1.2.6(@codaco/app-i18n@0.3.0)",
+    "      '@codaco/protocol-validation': 15.0.0(@codaco/app-i18n@0.3.0)",
+    '      immer: 11.1.8',
+    '',
+    "  '@codaco/network-query@1.2.6(@codaco/app-i18n@0.3.0)':",
+    '    dependencies:',
+    "      '@codaco/protocol-validation': 15.0.0(@codaco/app-i18n@0.3.0)",
+    '',
+    "  '@codaco/protocol-validation@15.0.0(@codaco/app-i18n@0.3.0)':",
+    '    dependencies:',
+    "      '@codaco/app-i18n': 0.3.0",
+    '',
+    "  '@codaco/app-i18n@0.3.0': {}",
+    '',
+    '  fresco-schema-8@file:apps/fresco/schema-8(def):',
+    '    dependencies:',
+    "      '@codaco/interview': 10.0.0(abc)",
+    "      '@codaco/protocol-validation': 15.0.0(@codaco/app-i18n@0.3.0)",
+    '',
+    // The app's own copy, outside the stack, is not held.
+    "  '@codaco/network-exporters@5.0.0':",
+    '    dependencies:',
+    "      '@codaco/network-query': link:../network-query",
+    '',
+  ].join('\n');
+
+  assert.deepEqual(
+    schema8StackEdges(lockfile).toSorted((a, b) =>
+      `${a.parent}>${a.dep}`.localeCompare(`${b.parent}>${b.dep}`),
+    ),
+    [
+      {
+        parent: '@codaco/interview@10.0.0',
+        dep: '@codaco/network-query',
+        version: '1.2.6',
+      },
+      {
+        parent: '@codaco/interview@10.0.0',
+        dep: '@codaco/protocol-validation',
+        version: '15.0.0',
+      },
+      {
+        parent: '@codaco/network-query@1.2.6',
+        dep: '@codaco/protocol-validation',
+        version: '15.0.0',
+      },
+      {
+        parent: '@codaco/protocol-validation@15.0.0',
+        dep: '@codaco/app-i18n',
+        version: '0.3.0',
+      },
+    ],
+  );
+  assert.deepEqual(schema8StackEdges('lockfileVersion: 9.0\n'), []);
+});
+
+test('the lockfile guard leaves the exact release the schema 8 interview pins', () => {
+  const stage = mkdtempSync(join(tmpdir(), 'stage-'));
+  const manifest = {
+    vendored: { '@x/ui': 'x-ui-8.1.0.tgz' },
+    registry: [],
+    kept: { '@x/ui': '8.0.0' },
+  };
+  writeFileSync(
+    join(stage, 'pnpm-lock.yaml'),
+    "packages:\n  '@x/ui@8.0.0': {}\n  '@x/ui@file:vendor/x-ui-8.1.0.tgz': {}\n",
+  );
+  assert.match(assertVendoredLockfile(stage, manifest), /1 vendored/);
+
+  // Any other registry release on that line is still refused.
+  writeFileSync(
+    join(stage, 'pnpm-lock.yaml'),
+    "packages:\n  '@x/ui@8.0.1': {}\n  '@x/ui@file:vendor/x-ui-8.1.0.tgz': {}\n",
+  );
+  assert.throws(
+    () => assertVendoredLockfile(stage, manifest),
+    /also resolved from the registry/,
+  );
+});
+
 // The lines of apps/fresco/Dockerfile the patches anchor on, in order.
 const DOCKERFILE = [
   'COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml prisma.config.ts env.js ./',
@@ -350,6 +517,16 @@ test('vendored shared-consts installs from its tarball beside a registry protoco
     patched,
     /"@codaco\/protocol-validation@\$\(LV @codaco\/protocol-validation\)" \\\n\s+"\/tmp\/vendor\/codaco-shared-consts-6\.0\.0\.tgz"; \\/,
   );
+});
+
+test('a runner stage that installs no interview needs no interview patch', () => {
+  const fresco5 = DOCKERFILE.split('\n')
+    .filter((line) => !line.includes('npm pack'))
+    .join('\n');
+  const patched = patchDockerfileForVendor(fresco5, {
+    '@codaco/interview': 'codaco-interview-11.0.0.tgz',
+  });
+  assert.doesNotMatch(patched, /codaco-interview/);
 });
 
 test('packages outside the runner stage leave its install lines alone', () => {
@@ -511,7 +688,7 @@ test('a seeded policy names the previous hotfix’s tarballs, and gives them up'
       'overrides:',
       '  # Packages changed since fresco@4.1.4 (and their dependents), bundled by the hotfix lane (local tarballs).',
       "  '@codaco/fresco-ui': 'file:vendor/codaco-fresco-ui-6.4.0.tgz'",
-      "  '@codaco/interview': 'file:vendor/codaco-interview-9.0.1.tgz'",
+      "  '@codaco/interview@>=9.0.0-0': 'file:vendor/codaco-interview-9.0.1.tgz'",
       "  'effect@3.17.7': '3.17.7'",
       '',
     ].join('\n'),

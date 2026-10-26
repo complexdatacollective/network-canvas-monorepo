@@ -20,10 +20,6 @@ const build = () => {
     label: 'About Each Person',
     initialNodes: { count: 3 },
     subject: { entity: 'node', type: nt.id },
-    introductionPanel: {
-      title: 'About Each Person',
-      text: 'Please provide additional information about each person.',
-    },
   });
   stage.addFormField({ component: 'Text', prompt: 'Nickname' });
   stage.addFormField({ component: 'Number', prompt: 'Age' });
@@ -40,15 +36,12 @@ const meta: Meta = {
   tags: ['capture'],
   parameters: {
     layout: 'fullscreen',
-    // advance: move past the introduction slide so the per-entity form
-    // is pictured (showNavigation keeps the Next button available; the
-    // runner removes the navigation before screenshotting).
-    capture: { interface: 'AlterForm', advance: 1 } satisfies CaptureParameters,
+    capture: { interface: 'AlterForm' } satisfies CaptureParameters,
   },
 };
 
 export default meta;
 
 export const Capture: StoryObj = {
-  render: () => <CaptureStory build={build} showNavigation />,
+  render: () => <CaptureStory build={build} />,
 };

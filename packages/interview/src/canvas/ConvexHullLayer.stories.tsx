@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   entityAttributesProperty,
@@ -13,9 +13,9 @@ import { createCanvasStore } from './useCanvasStore';
 type CategoricalValue = string | number | boolean;
 
 const CATEGORICAL_OPTIONS = [
-  { value: 'group-a', label: 'Group A' },
-  { value: 'group-b', label: 'Group B' },
-  { value: 'group-c', label: 'Group C' },
+  { value: 'group-a', label: { en: 'Group A' } },
+  { value: 'group-b', label: { en: 'Group B' } },
+  { value: 'group-c', label: { en: 'Group C' } },
 ];
 
 function makeNode(
@@ -63,8 +63,7 @@ const NODES_FEW: NcNode[] = [
  * rendering ConvexHullLayer inside an SVG-compatible container.
  */
 function ConvexHullLayerWrapper({ nodes }: { nodes: NcNode[] }) {
-  const storeRef = useRef(createCanvasStore());
-  const store = storeRef.current;
+  const [store] = useState(() => createCanvasStore());
 
   useEffect(() => {
     store.getState().syncFromNodes(nodes, 'layout');

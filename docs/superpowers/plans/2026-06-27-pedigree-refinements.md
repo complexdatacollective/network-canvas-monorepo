@@ -110,9 +110,9 @@ identical to today's, parameterised by `variant`.
 **Interfaces:**
 
 - Produces: `computeContributors(focalId: string | null, graph: GeneticGraph,
-statusesByDisease: Map<string, Map<string, Status>>): { nodes: Set<string>;
-edges: Set<string> }`. When `focalId` is null → `{ nodes: <all node ids>, edges:
-<all genetic edges> }` (nothing dimmed). Otherwise: the highlighted node set is
+  statusesByDisease: Map<string, Map<string, Status>>): { nodes: Set<string>;
+  edges: Set<string> }`. When `focalId` is null → `{ nodes: <all node ids>, edges:
+  <all genetic edges> }` (nothing dimmed). Otherwise: the highlighted node set is
   the focal plus every **ancestor reachable from the focal through a chain of
   transmitting nodes** — walk parents only, and from a node continue to a parent
   only if that **parent has a non-`unknown` status for at least one disease in
@@ -244,7 +244,7 @@ transmits.
 
 - [ ] **Step 1:** Replace the inline `NotationOverlay` SVG set with
       `<StatusMarker variant="classic" status={status} color={disease.color}
-atRiskHomozygous={…} />`.
+  atRiskHomozygous={…} />`.
 - [ ] **Step 2:** Change the underlying `Node` body colour so the symbol reads in
       the **disease colour** (match the all-diseases sticker for that disease) rather
       than `node-color-seq-1`; reduce the rendered size (smaller than today's `sm`
@@ -303,8 +303,8 @@ node; `computeNodeDisplayLabels` keys by `_uid`, excludes ego, reads
   `ClassicNotationNode` (T6), `ActionButton` + camera icon (T1).
 
 - [ ] **Step 1:** Replace preset state with `const [selectedDiseaseId,
-setSelectedDiseaseId] = useState<string|null>(null)` and `const [focalId,
-setFocalId] = useState<string|null>(null)`. Remove `activePresetIndex`,
+  setSelectedDiseaseId] = useState<string|null>(null)` and `const [focalId,
+  setFocalId] = useState<string|null>(null)`. Remove `activePresetIndex`,
       `activePreset`, `presets`/`behaviours` reads, and the `PresetSwitcher` import.
 - [ ] **Step 2:** `shownDiseases` = all `diseases` when `selectedDiseaseId===null`,
       else the single selected disease. Drive sticker-vs-classic off `shownDiseases.length`
@@ -314,17 +314,17 @@ setFocalId] = useState<string|null>(null)`. Remove `activePresetIndex`,
       Any node click sets `setFocalId(node.id)`; the focal node renders emphasised
       (`Node selected`/`highlighted`). Always allow node selection (drop `allowReselect`).
 - [ ] **Step 4:** Render `<DiseaseLegend diseases={diseases} selectedDiseaseId
-onSelect={setSelectedDiseaseId} />` where the switcher was; add a **"Clear focus"**
+  onSelect={setSelectedDiseaseId} />` where the switcher was; add a **"Clear focus"**
       control shown when `focalId !== null` calling `setFocalId(null)`; replace the text
       snapshot `Button` with `<ActionButton iconName="camera" aria-label="Save snapshot"
-onClick={handleSnapshot} />`.
+  onClick={handleSnapshot} />`.
 - [ ] **Step 5:** Add an `aria-live="polite"` region announcing disease selection
       ("Showing all diseases" / "Showing <label>") and focal changes ("Focused on
       <label>. Showing who contributes to their inheritance." / "Focus cleared.").
 - [ ] **Step 6:** Run the (to-be-rewritten in T11) targeted story/unit checks that
       compile against this file; at minimum ensure the file typechecks in isolation and
       existing non-preset assertions pass. Commit: `feat(interview): legend + interactive
-focal NarrativePedigree view`.
+  focal NarrativePedigree view`.
 
 ---
 

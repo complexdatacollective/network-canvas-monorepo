@@ -28,7 +28,9 @@ import {
 
 const { protocolAssetKeys } = PROTOCOL_TABLES;
 
-const EFFECT_SQL_PG_YIELDS_BUFFER = false;
+// drizzle-orm's effect-postgres codec hands a bytea column back as a Buffer
+// wherever `Buffer` exists; a raw @effect/sql-pg read is a plain Uint8Array.
+const DRIZZLE_YIELDS_BUFFER = true;
 
 const MAPBOX_KEY = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJub3QtYS1yZWFsLWtleSJ9';
 
@@ -212,7 +214,7 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
       }),
     );
     expect(ciphertext).toBeInstanceOf(Uint8Array);
-    expect(Buffer.isBuffer(ciphertext)).toBe(EFFECT_SQL_PG_YIELDS_BUFFER);
+    expect(Buffer.isBuffer(ciphertext)).toBe(DRIZZLE_YIELDS_BUFFER);
   });
 
   it('replaces the row when the researcher changes the key', async () => {
@@ -318,7 +320,7 @@ describe.skipIf(!storeDb)('the sections_hold_no_asset_keys trigger', () => {
         id: 'nameGenerator1',
         type: 'NameGenerator',
         subject: { entity: 'node', type: 'person' },
-        form: { title: 'Add person', fields: [] },
+        form: { title: { en: 'Add person' }, fields: [] },
       }),
     ).toMatchObject({ state: NOT_REFUSED });
   });

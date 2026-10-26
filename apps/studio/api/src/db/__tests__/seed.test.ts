@@ -614,6 +614,36 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
     );
 
     it.effect(
+      'keeps every collecting study’s newest wave and its links redeemable',
+      () =>
+        Effect.gen(function* () {
+          expect(
+            yield* count(`select count(*)::int as n
+         from study_waves w
+         join studies s on s.id = w.study_id
+         where s.state in ('live', 'paused')
+           and w.wave_number = (select max(wave_number) from study_waves
+                                 where study_id = s.id)
+           and w.closes_at is not null`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n
+         from interview_links l
+         join study_waves w on w.id = l.wave_id
+         where w.closes_at is null and l.expires_at is not null`),
+          ).toBe(0);
+          expect(
+            yield* count(`select count(*)::int as n
+         from interview_links l
+         join study_waves w on w.id = l.wave_id
+         join studies s on s.id = l.study_id
+         where s.state = 'live' and w.closes_at is null
+           and l.revoked_at is null`),
+          ).toBeGreaterThan(0);
+        }),
+    );
+
+    it.effect(
       'records on every link exactly the redemptions its sessions are',
       () =>
         Effect.gen(function* () {
@@ -638,7 +668,7 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
     );
 
     it.effect(
-      'parks each in-progress session at a stage and each completed one past the last',
+      'parks each in-progress session at a stage and each completed one at its finish stage',
       () =>
         Effect.gen(function* () {
           expect(
@@ -647,7 +677,14 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           ).toBe(0);
           expect(
             yield* count(`select count(*)::int as n from interview_sessions
-         where status = 'completed' and current_stage_id is not null`),
+         where status = 'completed' and current_stage_id is null`),
+          ).toBe(0);
+          // And records that stage, with its outcome, as where it finished.
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions
+         where status = 'completed'
+           and (finish_stage_id is distinct from current_stage_id
+                or finish_outcome is null)`),
           ).toBe(0);
           expect(
             yield* count(`select count(*)::int as n from interview_sessions

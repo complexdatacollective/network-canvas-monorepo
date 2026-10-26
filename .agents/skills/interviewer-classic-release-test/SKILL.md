@@ -60,9 +60,9 @@ Pixel_Tablet_API_35 -k "system-images;android-35;google_apis;arm64-v8a" -d
 pixel_tablet` (installing the image with `sdkmanager` asks the user first).
 
 1. Boot the emulator unless `adb devices` already lists one: run `emulator
--avd Pixel_Tablet_API_35 -no-snapshot -no-audio -no-boot-anim` in the
+   -avd Pixel_Tablet_API_35 -no-snapshot -no-audio -no-boot-anim` in the
    background (with a long timeout), then wait for `adb shell getprop
-sys.boot_completed` to print 1.
+   sys.boot_completed` to print 1.
 2. Build: `node scripts/release-test/classic-release-build.mjs --app interviewer --platform android`.
 3. Walk: `node scripts/release-test/interviewer-classic-release-walker.mjs --platform android --app-path apps/interviewer-classic/android/app/build/outputs/apk/debug/app-debug.apk --artifacts <dir>`.
 
@@ -120,7 +120,7 @@ projects or Capacitor, and at least once per release otherwise.
 
 1. Build the Cordova release once (about 20 minutes; the work directory can be
    reused across runs): `scripts/release-test/build-cordova-interviewer.sh
-<scratch dir>/cordova all`. It prints the simulator `.app` and the debug
+   <scratch dir>/cordova all`. It prints the simulator `.app` and the debug
    APK.
 2. Build the candidate as above (`classic-release-build.mjs`). On Android the
    Cordova APK and the candidate must be signed by the same debug keystore,

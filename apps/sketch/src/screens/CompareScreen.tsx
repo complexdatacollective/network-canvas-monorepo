@@ -181,13 +181,13 @@ const RunCard = ({
           </dl>
           <div className="text-ink-muted -mt-2 text-sm">
             {result.attempts <= 1 ? (
-              <p className="m-0">Passed schema 8 validation with no retry.</p>
+              <p className="m-0">Passed schema 9 validation with no retry.</p>
             ) : (
               <>
                 <p className="m-0">
                   {result.fixedIssues.length > 0
                     ? `Fixed ${plural(result.fixedIssues.length, 'validation issue', 'validation issues')}, then passed:`
-                    : 'Revised once, then passed schema 8 validation.'}
+                    : 'Revised once, then passed schema 9 validation.'}
                 </p>
                 {result.fixedIssues.length > 0 && (
                   <ul className="m-0 mt-1 flex list-disc flex-col gap-0.5 pl-5">

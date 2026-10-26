@@ -7,11 +7,15 @@
     "automaticLayout": true
   },
   "id": "id-1",
-  "label": "Explore Your Network",
+  "label": {
+    "en": "Explore Your Network"
+  },
   "presets": [
     {
       "id": "id-2",
-      "label": "Default view",
+      "label": {
+        "en": "Default view"
+      },
       "layoutVariable": "id-3"
     }
   ],

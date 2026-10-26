@@ -3,7 +3,9 @@ import { hasLocale } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import type { CompletionLabels } from '~/components/protocol-gallery/preview/ProtocolPreview';
 import { ProtocolPreviewLoader } from '~/components/protocol-gallery/preview/ProtocolPreviewLoader';
+import { locales } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 import { getProtocolBySlug, loadProtocolGallery } from '~/lib/protocolGallery';
 import { protocolGalleryHref } from '~/lib/siteUrls';
@@ -36,6 +38,30 @@ export async function generateMetadata({
   };
 }
 
+// The interview's language can differ from the page's, and the finish
+// confirmation and the completed state's actions follow the interview, so
+// every language's text goes along.
+async function loadCompletionLabels(): Promise<CompletionLabels> {
+  const entries = await Promise.all(
+    locales.map(async (locale) => {
+      const t = await getTranslations({
+        locale,
+        namespace: 'ProtocolGallery.preview',
+      });
+      return [
+        locale,
+        {
+          finishConfirmation: t('finishConfirmation'),
+          restart: t('restart'),
+          backToProtocol: t('backToProtocol'),
+        },
+      ] as const;
+    }),
+  );
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- entries has one pair for every member of `locales`, which is the full Locale list, so every key is present
+  return Object.fromEntries(entries) as CompletionLabels;
+}
+
 export default async function ProtocolPreviewPage({
   params,
 }: ProtocolPreviewPageProps) {
@@ -57,6 +83,7 @@ export default async function ProtocolPreviewPage({
           }),
         )}
         backHref={protocolGalleryHref(locale, protocol.slug)}
+        completionLabels={await loadCompletionLabels()}
       />
     </main>
   );

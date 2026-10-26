@@ -45,6 +45,9 @@ type ShownLoadFailure = Readonly<{
 
 const AppI18nContext = createContext<AppI18nContextValue | null>(null);
 
+/** The formatter an `AppIntlOverlay` puts in place of the one above it. */
+const AppIntlOverlayContext = createContext<IntlShape | null>(null);
+
 /**
  * `<html lang>`/`<html dir>` have to be written in the layout phase, not after
  * paint. A passive effect lands one frame late, so an app booting into a
@@ -178,8 +181,13 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
     [intl, active, locales, setLocale, failure],
   );
 
+  // An overlay above this provider worded the language above it, not this one.
   return (
-    <AppI18nContext.Provider value={value}>{children}</AppI18nContext.Provider>
+    <AppI18nContext.Provider value={value}>
+      <AppIntlOverlayContext.Provider value={null}>
+        {children}
+      </AppIntlOverlayContext.Provider>
+    </AppI18nContext.Provider>
   );
 }
 
@@ -251,11 +259,21 @@ const LONGEST_RETRY_MS = 30_000;
  * `preloaded` is a catalog delivered some other way — a server passing the
  * request locale's messages down as props — which renders without a load
  * while it matches `locale`.
+ *
+ * `restored` is a locale the host brought back from storage after mounting,
+ * such as a choice kept from before a reload. The host only learns it once
+ * something is on screen, but to the user it is the language the page opens
+ * in, so while `locale` is `restored` a change to it suspends until it has
+ * loaded, as a first load does, instead of keeping the language on screen.
+ * Wording the host shows from elsewhere then changes over in the same render
+ * as the catalog, rather than ahead of it. A restored locale that cannot be
+ * loaded leaves the language on screen and is reported as `failure`.
  */
 export function useLocaleCatalog(
   source: CatalogSource,
   locale: string,
   preloaded?: RenderedCatalog,
+  restored?: string,
 ): RenderedCatalog & Readonly<{ failure?: LocaleLoadFailure }> {
   const peek = () => source.peek(locale);
   const loaded = useSyncExternalStore(source.subscribe, peek, peek);
@@ -318,19 +336,24 @@ export function useLocaleCatalog(
   }, [source, locale, ready, failures]);
 
   if (ready !== undefined) return { locale, messages: ready };
-  if (rendered !== null) {
+  if (
+    rendered !== null &&
+    (restored !== locale || current.failure !== undefined)
+  ) {
     return current.failure === undefined
       ? rendered
       : { ...rendered, failure: current.failure };
   }
   const outcome = use(outcomeOf(source.attempt(locale)));
   if ('messages' in outcome) return { locale, messages: outcome.messages };
-  // From here English is on screen, so a later render must not suspend
-  // again while the retries above are in flight.
+  // From here the fallback is on screen, so a later render must not suspend
+  // again while the retries above are in flight. A first load falls back to
+  // English; a restored locale keeps the language already shown.
   const failure = { locale, error: outcome.error };
-  setRendered(SOURCE_LANGUAGE);
+  const shown = rendered ?? SOURCE_LANGUAGE;
+  setRendered(shown);
   setFailed({ locale, count: 0, failure });
-  return { ...SOURCE_LANGUAGE, failure };
+  return { ...shown, failure };
 }
 
 /**
@@ -340,8 +363,54 @@ export function useLocaleCatalog(
  * useIntl (which throws without a provider).
  */
 export function useAppIntl(): IntlShape {
+  const overlay = useContext(AppIntlOverlayContext);
   const context = useContext(AppI18nContext);
+  if (overlay !== null) return overlay;
   return context === null ? getDefaultIntl() : context.intl;
+}
+
+/**
+ * The text an overlay shows for a message in place of its catalog's, or
+ * undefined to leave the message to the catalog.
+ */
+export type AppMessageOverride = (
+  message: MessageDescriptor,
+  values: Parameters<IntlShape['formatMessage']>[1],
+) => string | undefined;
+
+/**
+ * Shows other text for some messages beneath it: each message `override`
+ * answers for, in place of its catalog's wording, and every other message as
+ * the formatter above it would. A host uses it for wording that comes from
+ * somewhere other than a package catalog, such as a protocol that words the
+ * interface itself. Everything else about the formatter, the locale included,
+ * is the one above it.
+ */
+export function AppIntlOverlay({
+  override,
+  children,
+}: Readonly<{ override: AppMessageOverride; children: ReactNode }>) {
+  const parent = useAppIntl();
+  const intl = useMemo((): IntlShape => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- FormatMessage is an overload set that no single implementation signature satisfies; the one here serves its untyped overload
+    const formatMessage = ((
+      message: MessageDescriptor,
+      values?: Parameters<IntlShape['formatMessage']>[1],
+      options?: Parameters<IntlShape['formatMessage']>[2],
+    ) =>
+      override(message, values) ??
+      parent.formatMessage(
+        message,
+        values,
+        options,
+      )) as IntlShape['formatMessage'];
+    return { ...parent, formatMessage, $t: formatMessage };
+  }, [parent, override]);
+  return (
+    <AppIntlOverlayContext.Provider value={intl}>
+      {children}
+    </AppIntlOverlayContext.Provider>
+  );
 }
 
 /**

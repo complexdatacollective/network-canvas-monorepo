@@ -85,8 +85,7 @@ export default function TwoFactorVerify({
   const [useRecovery, setUseRecovery] = useState(false);
 
   const handleSubmit: FormSubmitHandler = async (data) => {
-    const values = data as Record<string, string>;
-    const code = values.code;
+    const code = typeof data.code === 'string' ? data.code : undefined;
     if (!code) {
       return {
         success: false,

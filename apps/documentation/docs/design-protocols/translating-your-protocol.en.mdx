@@ -1,0 +1,376 @@
+---
+title: Translating Your Protocol
+navOrder: 5
+date: 22nd October 2026
+---
+
+<Definition>
+  Localization prepares a protocol so that participants can complete the
+  interview in more than one language. A localized Network Canvas protocol
+  holds each participant-facing text in each of its languages, and the
+  interview presents every participant with the version that best matches the
+  language they use.
+</Definition>
+
+<TipBox>
+
+Localization requires [schema 9](/en/get-started/protocol-schema-information#schema-version-9). Protocols are localized in Architect and can be fielded in Fresco 5.0 or later, or in Interviewer 9.0 or later. Architect Classic and Interviewer Classic cannot open a schema 9 protocol.
+
+</TipBox>
+
+## Overview
+
+Many network studies recruit participants who do not share a language. Studies of migration and transnational ties, comparative studies across countries, and studies of linguistically diverse local populations often need an instrument that each participant can complete in the language they read most comfortably. Before schema 9, a Network Canvas protocol was written in a single language, and a multilingual study had to maintain a separate protocol for each language. Every structural change then had to be repeated in each copy, and any divergence between the copies became a difference in measurement.
+
+Schema 9 replaces this arrangement with a single protocol that holds several languages. The protocol has one sequence of stages, one codebook, and one set of skip logic and filtering rules. Only the text that participants read varies between languages. Because variable names, node and edge types, and the values of response options are shared, interviews conducted in different languages produce data with an identical structure, and the data can be pooled without recoding. A shared structure does not by itself establish that the measures are equivalent across languages, which is the subject of the next section.
+
+The **Transnational Networks** template in Architect is an example of this approach. It is written in English, Hungarian and Spanish, and can be opened from the **Templates** tab of the home screen.
+
+## Translation as part of instrument design
+
+Translating a protocol is a methodological task as well as a linguistic one. The aim is equivalence of meaning: a participant reading the Spanish version of a prompt should understand the same task, and report the same kind of relationship, as a participant reading the English version. Literal correspondence between the two texts does not guarantee this, and in some cases it works against it ([Beaton et al., 2000](https://doi.org/10.1097/00007632-200012150-00014); [Wild et al., 2005](https://doi.org/10.1111/j.1524-4733.2005.04054.x)).
+
+Name generators deserve particular attention, because their wording defines the boundary of the network that is elicited. Cognitive interviews with English-speaking respondents have shown that even a widely used name generator, the General Social Survey item about discussing "important matters", is understood in several different ways, and that its interpretation is shaped by the questions that precede it ([Bailey and Marsden, 1999](<https://doi.org/10.1016/S0378-8733(99)00013-1>)). Translation adds a further source of variation. The relational terms on which name generators depend, such as "friend", "close" or "family", may not correspond exactly between languages and cultures, and the same General Social Survey item has been examined separately as it functions in a Chinese context ([Ruan, 1998](<https://doi.org/10.1016/S0378-8733(98)00004-5>)). A translated name generator should therefore be evaluated by the relationships it elicits in the target population as well as by the accuracy of its wording.
+
+The Cross-Cultural Survey Guidelines favor team-based translation over a single translator followed by back-translation, although guidelines for adapting health measures retain back-translation as a required step ([Beaton et al., 2000](https://doi.org/10.1097/00007632-200012150-00014); [Wild et al., 2005](https://doi.org/10.1111/j.1524-4733.2005.04054.x)). The TRAPD model (Translation, Review, Adjudication, Pretesting and Documentation) has two or more translators prepare independent versions, which are then reviewed together with a subject-matter expert. An adjudicator settles the final wording, the result is pretested with members of the target population, and decisions are documented for later users of the data ([Survey Research Center, 2016](https://ccsg.isr.umich.edu/chapters/translation/overview); [Walde and Völlm, 2023](https://doi.org/10.3389/fpsyt.2023.1199989)). Back-translation, whose use as a check on equivalence was set out systematically by [Brislin (1970)](https://doi.org/10.1177/135910457000100301), remains useful as one source of evidence within such a procedure.
+
+The [translation table](#the-translation-table), which presents every text beside its translations, can be used for review and adjudication, and the [Summary](#printing-your-translations) tab prints the whole protocol in every language for reviewers who do not use Architect. [Preview mode](#previewing-a-language) lets the research team check each stage in each language before the translation is pretested with participants.
+
+Some adaptation lies outside the text of the protocol. Images, videos, audio, rosters and maps are the same in every language (see [What stays the same in every language](#what-stays-the-same-in-every-language)), so a resource that contains words should be chosen to suit every participant, or explained in text that can be translated. Response options may also need adaptation. Kinship terms, educational qualifications and institutions often have no direct equivalent in another language, and the categories themselves may need to change.
+
+## How a localized protocol is organized
+
+A localized protocol has a set of **protocol languages**, one of which is its **default language**. Every text that participants see, such as a prompt or the label of a response option, is stored once, with a translation for each language into which it has been translated. Each language is identified by a language code, such as `es` for Spanish or `pt-BR` for Brazilian Portuguese, and a protocol may include regional variants of the same language, such as Spanish (`es`) and Mexican Spanish (`es-MX`).
+
+A text does not need a translation in every language. It must have a translation in at least one of the protocol's languages, and this need not be the default language. Where a translation is missing, participants see the text in another language, chosen by the rules described in [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see). Architect therefore reports a missing translation as a warning, and a protocol with missing translations can still be saved, previewed and fielded.
+
+### What can be translated
+
+Every text that participants read can be translated. This includes:
+
+- stage names, which participants see in the interview's list of stages
+- prompts, Ego Form introductions and panel titles
+- form titles, and the questions and hints of form fields, including the labels and hints of [Network Composer](/en/design-protocols/interface-documentation/network-composer) fields
+- the labels of response options, and the labels at each end of a slider
+- the titles, text and resource descriptions of Information stages
+- the text of other interfaces, such as the explanation on an [Anonymisation](/en/design-protocols/interface-documentation/anonymisation) stage
+- the labels of the attributes and edge types that a [Narrative](/en/design-protocols/interface-documentation/narrative) preset highlights and draws (see [Labels in a Narrative stage's legend](#labels-in-a-narrative-stages-legend))
+- the labels of the edge types that a [Network Composer](/en/design-protocols/interface-documentation/network-composer) stage allows participants to draw (see [Labels for Network Composer edge types](#labels-for-network-composer-edge-types))
+- the wording that a stage shows around its content, such as the Finish Screen's button, a Name Generator's minimum and maximum notices, or the tooltips of a Network Composer's tools (see [Stage wording](#stage-wording))
+- the buttons and messages shared by every stage, such as Back, Continue and the messages shown when an answer is not valid (see [Interview text](#interview-text))
+
+### What stays the same in every language
+
+- **Names and values.** Attribute names, node and edge type names, and the values of response options appear in the exported data, so they are identical in every language. Participants never see a codebook name. Where a stage presents a node type, edge type or attribute to participants, it does so through a label of its own, and that label can be translated.
+- **Resources.** Images, videos, audio, rosters and maps are the same in every language.
+- **The interview's built-in words**, such as the labels of the navigation controls. These belong to the interview software rather than the protocol. Network Canvas provides them in a fixed set of languages, and they follow the participant's language settings (see [How participants get their language](#how-participants-get-their-language)).
+
+## Managing your protocol's languages
+
+### Choosing languages when creating a protocol
+
+The **Create New Protocol** dialog asks for the **Protocol languages**, the languages in which participants can take the interview. Architect suggests the language in which its own interface is shown, and further languages can be found by searching the list. When more than one language is chosen, the dialog also asks for the **Default language**.
+
+![The Create New Protocol dialog, with English and Spanish chosen as protocol languages and English as the default language.](/assets/img/architect/new-protocol-dialog.png)
+
+A protocol created from a template is already written in a language, so Architect does not ask. The templates supplied with Architect are written in American English (`en-US`), and the Transnational Networks template is also written in Hungarian and Spanish.
+
+### The Languages page
+
+The **Languages** page, opened from the protocol's navigation bar between **Codebook** and **Summary**, lists the protocol's languages. A warning symbol appears on the **Languages** link while any translation is missing. Each language is listed with:
+
+- its name, its name in its own language, and its language code
+- a **Default** badge, on the default language
+- a progress bar and a count of the texts translated into it, such as "46 of 209 strings translated"
+- a **Missing translations** badge, while some texts have no translation in it
+- three buttons: **Edit translations** (a pencil), which opens [the translation table](#the-translation-table) showing that language beside the default language; **Change to a different language** (two arrows), described in [Changing the language your text is recorded as](#changing-the-language-your-text-is-recorded-as); and **Remove** (a trash can), described in [Removing a language](#removing-a-language)
+
+Once a protocol has more than one language, the page also explains the order in which participants are shown translations, offers the **Default language** list, and provides an **Open translation table** button. Languages have no order of their own. Architect lists them alphabetically by name, and the order in which they are stored makes no difference to participants.
+
+![The Languages page of a protocol written in American English and Spanish. Spanish has a Missing translations badge, with 46 of 209 texts translated.](/assets/img/architect/localization/languages-page.png)
+
+The same list, with the same rules, appears in the editor of a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage, so that languages can be managed without leaving the stage. A change made there also applies to the stage's unsaved changes. Because the translation table opens over the **Languages** page, opening it from a Language Chooser stage leaves the stage, and Architect asks whether to discard any unsaved changes first.
+
+### Adding languages
+
+**Add languages** opens a dialog in which one or more languages can be chosen. A new language begins with no translations of the researcher's own text. Until that text is translated, participants who use the new language see it in another language.
+
+![The Add languages dialog, with Spanish chosen.](/assets/img/architect/localization/add-languages-dialog.png)
+
+The exception is wording that Network Canvas supplies (see [Words Network Canvas supplies](#words-network-canvas-supplies)). Network Canvas provides this wording in English, German, Spanish, French, Italian, Dutch, Brazilian Portuguese, and Simplified and Traditional Chinese, and the closing and finished text of the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) is also available in Hungarian. When one of these languages is added, Architect fills in the supplied wording in that language. It does so text by text, and only where the text in the default language is still the supplied wording. A text that has been reworded in the default language is left for the researcher to translate. The supplied wording comprises:
+
+- the closing and finished text of each Finish Screen, and its stage name if that too is unchanged
+- the sex assigned at birth answers and the kinds of parent in a [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree#sex-assigned-at-birth), and the wording of its [name question](/en/design-protocols/interface-documentation/family-pedigree#name), [checklist](/en/design-protocols/interface-documentation/family-pedigree#what-the-list-says) and other [participant wording](/en/design-protocols/interface-documentation/family-pedigree#participant-wording)
+- the [panel title of a Name Generator for Roster Data](/en/design-protocols/interface-documentation/name-generator-roster#alter-nomination), "Available to add"
+- the [stage wording](#stage-wording) of the other stages that have it
+- the [interview text](#interview-text)
+
+When the default language is one for which Network Canvas supplies no wording, the supplied wording is entered in English but recorded as the default language, because a stage must hold its wording in at least one language, and it can then be translated. Any other language for which Network Canvas supplies no wording starts with no translation of it.
+
+A supplied translation is ordinary text, and it can be edited like any other.
+
+### The default language and which translation participants see
+
+The default language is the language in which participants start the interview when their browser lists none of the protocol's languages. It is chosen from the **Default language** list on the **Languages** page.
+
+For each text, a participant sees the first of the following that has a translation, in the order Architect lists on the **Languages** page:
+
+1. **Their own language.** This is the language in which the interview is shown: the one they chose on a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage, or otherwise the best match among the languages their browser lists, or otherwise the default language (see [How participants get their language](#how-participants-get-their-language)).
+2. **A closely related language.** For example, European Portuguese (`pt-PT`) is closest to Brazilian Portuguese (`pt-BR`), Mexican Spanish (`es-MX`) is closest to Spanish (`es`), and Chinese as used in Taiwan (`zh-TW`) is closest to Traditional Chinese (`zh-Hant`).
+3. **Another language their browser lists**, in the order the browser lists them, each matched exactly or by its closest related language.
+4. **The default language.**
+5. **Any other language of the protocol** that has the text.
+
+Which languages count as closely related is determined by the language matching data of the Unicode CLDR project, which also treats some languages as acceptable substitutes for one another, such as Swiss German (`gsw`) for German (`de`). When a protocol includes two variants of a language, such as Spanish (`es`) and Mexican Spanish (`es-MX`), a participant whose own language is one of them sees the text in that variant if it has a translation, and otherwise in the other variant, before any other language.
+
+As an illustration, consider a protocol written in English (the default), French and Brazilian Portuguese, in which the question "How often do you see them?" has been translated into Brazilian Portuguese but not into French.
+
+| The participant                                                        | Sees                 | Reason                                                                                                                                          |
+| ---------------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Uses a browser set to European Portuguese (`pt-PT`)                    | Brazilian Portuguese | European Portuguese is not a protocol language, and its closest related language is Brazilian Portuguese.                                       |
+| Uses French, and their browser lists no other language of the protocol | English              | French has no translation, and no other language in the browser does, so the default language is used.                                          |
+| Uses French, and their browser also lists Portuguese                   | Brazilian Portuguese | French has no translation, so the browser's other languages are tried before the default language, and Portuguese matches Brazilian Portuguese. |
+
+Had the question been written only in Brazilian Portuguese, a participant using English would still see it, because no other language has it.
+
+### Removing a language
+
+The **Remove** button at the end of a language's row stops offering that language. Architect asks for confirmation, because every translation in that language is deleted, and participants can no longer choose it.
+
+Two languages cannot be removed:
+
+- the default language, until another language has been made the default
+- a language that holds the only translation of some text, until that text has been translated into another language, so that every text remains available to participants
+
+For these languages, the button is unavailable, and pointing to it, or moving to it with the keyboard, shows the reason.
+
+### Changing the language your text is recorded as
+
+Each text is recorded as being written in a particular language. When Architect upgrades a protocol created before Network Canvas recorded languages, it records all of the text as English, because it cannot determine the language in which the text is actually written. The text itself is not changed.
+
+If the text is in fact written in another language, or the wrong language was chosen when the protocol was created, the record should be corrected before translations are added:
+
+1. Open the **Languages** page.
+2. In the row of the language to correct, select **Change to a different language** (the two-arrows button), named, for example, "Change English to a different language".
+3. Choose the correct language from the **Language** list.
+4. Select **Change language**.
+
+Every text recorded as the old language is then recorded as the chosen language, and if the old language was the default, the new language becomes the default. Nothing is translated or deleted, and the change can be undone. Supplied wording that has not been changed in the default language, such as a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen)'s closing and finished text, becomes the supplied wording in the chosen language, or is left untranslated where Network Canvas supplies none. The same happens when a different default language is chosen.
+
+A language can only be changed into one the protocol does not already have, since the change would otherwise merge two sets of translations.
+
+## Finding missing translations
+
+Although missing translations do not prevent a protocol from being used, they should be completed before data collection begins. Architect indicates them in three places:
+
+- The **Languages** link in the navigation bar carries a warning symbol.
+- The stage list shows a note naming the languages with missing translations. Its **Show missing translations** link opens the translation table on every text that lacks a translation.
+- On the **Languages** page, each language with missing translations has a **Missing translations** badge. The texts a language lacks can be listed by opening the translation table and choosing, for example, **Missing Spanish** under **Translations to show**.
+
+When a protocol has more than one language but no Language Chooser stage, the stage list shows a second note, **Participants can't choose a language**. Omitting a Language Chooser is a legitimate design choice, so this note can be dismissed for the protocol.
+
+![The two notes at the top of the stage list: one reports that some wording is not yet translated into Spanish, and the other that participants cannot choose a language.](/assets/img/architect/localization/stage-list-notes.png)
+
+## The translation table
+
+The translation table presents every participant-facing text beside its translation into each of the protocol's languages. It opens over the **Languages** page from **Open translation table**, from a language's **Edit translations** button, or from any of the links described in [Finding missing translations](#finding-missing-translations). When the table holds more texts or languages than the window can show, it scrolls, and the language names and the names of the texts remain in view.
+
+![The translation table, showing the first stages of the Sample Protocol in American English and Spanish. Untranslated Spanish cells show the American English text in lighter type, tagged "Shown in American English".](/assets/img/architect/localization/translation-table.png)
+
+Each row is one text and each column one language, in alphabetical order. The heading of each column shows the language's name, a **Default** badge for the default language, and the number of texts translated into it. Rows are grouped by location: the stages in order, then the codebook, then the protocol itself, and finally the [interview text](#interview-text). A stage's group shows its position, its name in the default language and its interface, and the stage's name is a link that opens it. Each row is named as the stage editor names the text, such as "Page content › Page heading".
+
+A cell without a translation shows, in lighter type, the text that participants using that language will see instead, with a tag naming the language, such as **Shown in American English**. An asterisk after the tag indicates that participants may see the text in a different language, because the other languages in a participant's browser are tried before the default language. No asterisk appears when the text is shown in a closely related language, or when only one language has the text.
+
+### Choosing which texts and languages to show
+
+The controls above the table determine what it shows:
+
+- **Translations to show** selects **All translations**, **Missing in any shown language**, or the texts missing from one language, such as **Missing Spanish**. A text that is translated while this filter is active remains in view until the filter changes, so that it does not disappear during editing.
+- **Search translations** finds texts by their location, or by their wording in any shown language.
+- The **Languages** menu, such as **Languages (2 of 2)**, shows and hides columns. At least one language is always shown. Translators working on one language may find it helpful to show only that language and the language they translate from, which is the view **Edit translations** opens.
+
+A count beneath the table, such as "Showing 8 of 209 strings", reports how many texts are shown.
+
+### Editing translations
+
+Selecting a cell opens it for editing. Changes remain in the table until **Save** is selected, and a dot in the corner of a cell marks an unsaved change. Pressing Escape in a cell restores its saved text, and deleting all of a cell's text removes the translation.
+
+When a cell is left, Architect checks that its text can be saved and, if it cannot, the cell explains why. For example, the only translation of a text cannot be cleared unless another translation is first written in the same row. **Save** saves nothing while any cell has a problem; it moves to the first such cell instead, bringing it into view even if a search, filter or hidden column had concealed it.
+
+Some texts vary according to the number or the person they refer to, such as the items of a Family Pedigree [checklist](/en/design-protocols/interface-documentation/family-pedigree#what-the-list-says), or the message for a validation rule that takes a number. Such a cell lists each version, with placeholders, such as a person's name, shown as labeled pills. When the cell is opened, each version has its own labeled box. The number of versions follows the grammar of the language: a language that distinguishes one, two and five items has a version for each. A translation must include each placeholder that Network Canvas's English wording includes in the corresponding version. The button that inserts a placeholder is highlighted while a version still requires it, and leaving the cell names any placeholder that is missing. A version used for a single number, such as English "one item", may omit the number.
+
+Researchers' own text can also show values, such as the participant's name, and a translation must show them in the same way (see [Translating text that shows values](/en/design-protocols/dynamic-values#translating-text-that-shows-values)).
+
+Formatted text, such as the content of an Information stage, is displayed as participants will see it until the cell is opened. It then shows the same formatting controls as the stage editor, which remain in view while a long text is scrolled.
+
+The table can be navigated with the keyboard:
+
+| Key                             | Effect                                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Enter                           | Moves to the next row in a single-line text; starts a new line in a text with line breaks.                               |
+| Ctrl+Enter, or ⌘+Enter on a Mac | Moves to the next row.                                                                                                   |
+| Up and down arrows              | Move to the row above or below, from the first or last line of a cell.                                                   |
+| Tab                             | Moves to the next cell. In formatted text, it moves to the formatting controls first, and in a list it indents the item. |
+| Escape                          | Restores the cell's saved text.                                                                                          |
+
+The help button (a question mark) above the table summarizes these keys. **Save** applies every change at once and closes the table, and a single Undo reverses the whole save. **Cancel** closes the table without saving, after asking for confirmation if there are unsaved changes. Pressing Escape outside a cell, or clicking outside the table, does not close it, and Architect also asks before discarding unsaved changes when the browser's Back button is used or the page is reloaded.
+
+## Translating within the stage editor
+
+A text can also be translated where it is written, in the stage editor. When a protocol has more than one language, each text field has a language menu showing the language being edited, followed by badges for **Default** and for the number of missing translations. All of the fields in an editor change language together, so that a stage can be worked through one language at a time. The editor always opens in the default language, and its previews show text in the language being edited.
+
+![A stage editor's language menu, listing American English, marked Default, and Spanish, marked Missing.](/assets/img/architect/localization/editor-language-menu.png)
+
+Under a text that has no translation in the language being edited, a note names the language in which participants will see it instead, such as "Not translated into Spanish yet. Participants using Spanish will see the American English text." Where another of the protocol's languages also has the text and is not closely related, the note adds that participants may see that language if their browser lists it.
+
+![The Page heading field with Spanish chosen for editing. The field is empty, and a note says that participants using Spanish will see the American English text.](/assets/img/architect/localization/editor-missing-translation.png)
+
+A protocol with only one language shows no language menus.
+
+### Labels in a Narrative stage's legend
+
+A [Narrative](/en/design-protocols/interface-documentation/narrative) preset can highlight nodes that have one or more true-or-false attributes, and draw one or more edge types. During the interview, the preset switcher lists these attributes and edge types by label. In the Narrative stage editor, each attribute and edge type ticked under **Node highlighting** and **Connections** has a **Label for "…"** field, which starts as the attribute's or edge type's name and has a language menu like any other text. Every highlighted attribute and drawn edge type requires a label.
+
+### Labels for Network Composer edge types
+
+Each edge type that a [Network Composer](/en/design-protocols/interface-documentation/network-composer) stage allows participants to draw has a label, by which participants choose the edge type in the stage's toolbar and which titles the form for that kind of edge. The label is written in the stage editor beneath the edge type. If left empty, it starts as the edge type's name, and it has a language menu like any other text.
+
+## Words Network Canvas supplies
+
+In addition to the researcher's own text, an interview shows wording that Network Canvas supplies. The protocol holds all of this wording, so each item can be reworded and translated like any other text. It falls into two groups, according to where participants encounter it.
+
+### Stage wording
+
+Some wording belongs to a particular kind of stage, such as the button that finishes the interview, or the notice that a Name Generator's minimum has not been reached. This wording is a setting of the stage, so a protocol holds, and needs translating, only the wording of the stages it uses. Each setting is found in the stage editor and, in the translation table, under its stage:
+
+| Stage                                                                                                                                                                                                                                                                                           | Section of the stage editor | Contents                                                                                                                                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Finish Screen](/en/design-protocols/interface-documentation/finish-screen#finishing-the-interview)                                                                                                                                                                                             | **Finishing the interview** | The finish button, the confirmation question and the message shown when finishing fails                                                                                                               |
+| [Name Generator](/en/design-protocols/interface-documentation/name-generator-using-forms#messages), [Quick Add](/en/design-protocols/interface-documentation/name-generator-using-quick-add#messages) and [Roster](/en/design-protocols/interface-documentation/name-generator-roster#messages) | **Messages**                | The minimum and maximum notices, the quick-add hint, the message for external data that could not be loaded and, on a roster, the "nothing left to add" notice and the search label and no-match text |
+| [Geospatial](/en/design-protocols/interface-documentation/geospatial#messages)                                                                                                                                                                                                                  | **Messages**                | The offline notice, the message shown when the map is unavailable, the label for places outside the selectable areas, and the search label, no-match text and search-failed message                   |
+| [Network Composer](/en/design-protocols/interface-documentation/network-composer#words-on-the-canvas), [Narrative](/en/design-protocols/interface-documentation/narrative#words-on-the-canvas) and [Sociogram](/en/design-protocols/interface-documentation/sociogram#words-on-the-canvas)      | **Words on the canvas**     | The name box's placeholder, the panel headings and the tooltips of the canvas tools                                                                                                                   |
+| [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree#words-on-the-pedigree)                                                                                                                                                                                     | **Words on the pedigree**   | The key, the first choice of the condition menu, the snapshot button, the tooltip and the headings of snapshots                                                                                       |
+| [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree#participant-wording)                                                                                                                                                                                             | **Participant wording**     | The wording for drawing the family, connecting people and adding a family member                                                                                                                      |
+| [Categorical Bin](/en/design-protocols/interface-documentation/categorical-bin) and [Ordinal Bin](/en/design-protocols/interface-documentation/ordinal-bin)                                                                                                                                     | **Placing nodes**           | The notice shown when a participant tries to continue before placing every node, held only while **Require every node to be placed** is switched on                                                   |
+| [Language Chooser](/en/design-protocols/interface-documentation/language-chooser#configuring-the-language-chooser)                                                                                                                                                                              | **Participant wording**     | The heading above the list of languages                                                                                                                                                               |
+
+A stage holds only the wording it can show. Wording that applies only while part of a stage is enabled, such as the layout tooltips that accompany automatic layout, or the search messages that accompany a map's search, is present only while that part is enabled. Architect adds it, with the supplied wording in each of the protocol's languages, when the part is enabled, and removes it when the part is disabled.
+
+### Interview text
+
+Other wording is shared across stages and therefore belongs to the interview as a whole. The protocol holds it as its **interview text**:
+
+- **Interview navigation.** The Back and Continue buttons, and the Exit interview button with its explanation.
+- **Buttons.** Cancel, Done and Delete, and, when a stage shows a form, the Yes and No answers. The Yes answer also confirms the discarding of changes.
+- **Messages.** The messages shown when a stage or an item could not be displayed, and a general error message shown whenever something goes wrong without a more specific message, including when a form could not be submitted.
+- **Passphrase wording.** The wording that requests, confirms and explains a passphrase, and the messages shown when answers protected by it are locked or unavailable. A protocol holds this only when it encrypts an attribute or includes an [Anonymisation](/en/design-protocols/interface-documentation/anonymisation) stage.
+- **Forms.** The question and explanation of the confirmation that asks whether to discard changes. A protocol holds these only when a stage shows a form.
+- **Validation messages.** The message a participant sees when an answer breaks a rule, such as a value that is too large or a required answer that is missing. Each rule has one wording, shared by every question that uses it, and the protocol holds only the rules it uses.
+
+Architect adds the wording a protocol needs, and removes wording it no longer needs, as the protocol is built: enabling a validation rule adds its message, and removing the last use of a rule removes it. Wording that has been changed is retained for as long as the protocol needs it.
+
+In the translation table, the interview text forms the final group, **Interview text**, and each row is named for the wording it holds. The translation table is the only place where this wording can be changed, so a protocol with a single language keeps Network Canvas's wording.
+
+## Previewing a language
+
+[Preview mode](/en/design-protocols/preview-mode) shows a stage as participants will see it, in a language chosen from the **Preview language** menu above the preview (see [Choosing the preview language](/en/design-protocols/preview-mode#choosing-the-preview-language)). A text with no translation in the preview language appears as it would to a participant using that language. Previewing each stage in each language allows the team to check a translation, including the length of translated text, before it is pretested with participants.
+
+![A preview of a Language Chooser stage in Spanish. The Preview language menu above it is set to español, and the stage's heading reads "Elige un idioma".](/assets/img/architect/localization/preview-language.png)
+
+## Printing your translations
+
+The **Summary** tab presents the whole protocol on one page, which can be printed with the **Print** button. When a protocol has more than one language, the summary shows every text in each of the protocol's languages, listed alphabetically, with the default language marked **Default**, and its cover lists the protocol's languages. Where a text has not yet been translated into a language, the summary says so and names the language that participants will see instead. Where the summary refers to a text listed elsewhere in it, such as a stage name in its contents, it uses the default language.
+
+The printed summary can be submitted to an ethics committee for review.
+
+## How participants get their language
+
+When an interview starts, it uses the first language in the participant's language settings that the protocol is written in, counting close regional matches. A participant whose browser is set to Mexican Spanish (`es-MX`) is therefore shown Spanish (`es`) text, and one set to European Portuguese (`pt-PT`) is shown Brazilian Portuguese (`pt-BR`) text. If none of the participant's languages matches, the interview uses the default language. Wherever the protocol has no translation in that language, the participant sees another language's translation (see [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see)).
+
+The source of these settings depends on the application:
+
+- **Fresco** uses the languages set in the participant's web browser. The language of the Fresco dashboard does not affect interviews.
+- **Interviewer** uses the language settings of the device or browser on which it runs. Interviewer's own **App language** setting does not affect interviews.
+
+A [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage allows participants to choose for themselves, and is the only means of changing the language during an interview. It lists the protocol's languages alphabetically, each in its own language. Once a participant has chosen, the interview keeps the choice until the browser tab is closed, even after the page is reloaded. The choice is not saved with the interview, so an interview opened in a new tab, or resumed on a different device, selects its language again until the participant chooses.
+
+The wording the protocol holds, including its [stage wording](#stage-wording) and [interview text](#interview-text), is shown in the interview's language like the rest of the protocol. The interview's built-in words, such as the labels of its navigation controls, follow the participant's language settings separately. They are available in English, English (UK), Spanish, German, French, Italian, Dutch, Brazilian Portuguese, and Simplified and Traditional Chinese, and are shown in English when none of the participant's languages is among them.
+
+When the interview is shown in a right-to-left language, such as Arabic or Hebrew, its stages are laid out from right to left.
+
+## Languages in your data
+
+The language in which an interview was shown is neither saved with the interview nor included in exported data. Answers, the values of categorical and ordinal options, and the names of node types, edge types and attributes are the same whichever language the participant read.
+
+Where the language of administration is analytically relevant, for example when testing whether a measure behaves equivalently across language groups, it should be recorded explicitly. One approach is a question in an Ego Form, completed by the participant or the interviewer, that records the language in which the interview was conducted.
+
+## Recommended practice
+
+<GoodPractice>
+
+Plan the protocol's languages before writing it. Write the source text with translation in mind, avoiding idioms and culturally specific examples that have no counterpart in the other languages.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Use a documented, team-based translation procedure, and record the decisions made during review and adjudication. Name generators and response categories warrant particular scrutiny, because they determine which relationships are reported and how they are classified.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Pretest the protocol in every language with members of the population who will take it, using preview mode or a test deployment, before data collection begins.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Complete every translation before fielding the protocol. The translation table's **Missing in any shown language** view lists any that remain.
+
+</GoodPractice>
+
+<BadPractice>
+
+Avoid relying on machine translation without review by fluent speakers who understand the study's constructs. Such output may read fluently while changing the meaning of a prompt.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid changing a protocol's structure in response to a problem found in one language without considering its effect on the others. Every language shares the same stages and codebook, so a structural change applies to all of them.
+
+</BadPractice>
+
+## References
+
+- Bailey S, Marsden PV.
+  [Interpretation and interview context: examining the General Social Survey
+  name generator using cognitive methods.](<https://doi.org/10.1016/S0378-8733(99)00013-1>)
+  _Social Networks_. 1999;21(3):287–309.
+- Beaton DE, Bombardier C, Guillemin F, Ferraz MB.
+  [Guidelines for the process of cross-cultural adaptation of self-report
+  measures.](https://doi.org/10.1097/00007632-200012150-00014) _Spine_.
+  2000;25(24):3186–3191.
+- Brislin RW.
+  [Back-translation for cross-cultural research.](https://doi.org/10.1177/135910457000100301)
+  _Journal of Cross-Cultural Psychology_. 1970;1(3):185–216.
+- Ruan D.
+  [The content of the General Social Survey discussion networks: an
+  exploration of General Social Survey discussion name generator in a Chinese
+  context.](<https://doi.org/10.1016/S0378-8733(98)00004-5>) _Social Networks_.
+  1998;20(3):247–264.
+- Survey Research Center.
+  [Translation: overview.](https://ccsg.isr.umich.edu/chapters/translation/overview)
+  In: _Guidelines for Best Practice in Cross-Cultural Surveys_. Ann Arbor:
+  Survey Research Center, Institute for Social Research, University of
+  Michigan; 2016.
+- Walde P, Völlm BA.
+  [The TRAPD approach as a method for questionnaire
+  translation.](https://doi.org/10.3389/fpsyt.2023.1199989) _Frontiers in
+  Psychiatry_. 2023;14:1199989.
+- Wild D, Grove A, Martin M, et al.
+  [Principles of good practice for the translation and cultural adaptation
+  process for patient-reported outcomes (PRO) measures: report of the ISPOR
+  Task Force for Translation and Cultural Adaptation.](https://doi.org/10.1111/j.1524-4733.2005.04054.x)
+  _Value in Health_. 2005;8(2):94–104.

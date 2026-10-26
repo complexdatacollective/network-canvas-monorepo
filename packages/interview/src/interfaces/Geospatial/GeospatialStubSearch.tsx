@@ -25,6 +25,7 @@ type Props = {
 
 export default function GeospatialStubSearch({ className }: Props) {
   const intl = useAppIntl();
+  const searchLabelText = intl.formatMessage(commonMessages.search);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -103,7 +104,7 @@ export default function GeospatialStubSearch({ className }: Props) {
             <InputField
               type="text"
               autoFocus
-              placeholder={intl.formatMessage(interfaceMessages.searchPlace)}
+              placeholder={searchLabelText}
               value={query}
               onChange={handleQueryChange}
               onKeyDown={(e) => {
@@ -113,7 +114,7 @@ export default function GeospatialStubSearch({ className }: Props) {
               }}
               data-testid="geospatial-search-input"
               role="combobox"
-              aria-label={intl.formatMessage(commonMessages.search)}
+              aria-label={searchLabelText}
               aria-expanded={showSuggestions}
               aria-autocomplete="list"
               aria-haspopup="listbox"

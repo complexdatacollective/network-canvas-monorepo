@@ -172,17 +172,39 @@ export function relevanceDirsForSubject(subjectName, packages) {
   return dirs;
 }
 
+// Directories that group nested workspace packages without being a package
+// themselves, such as apps/studio (apps/studio/api, apps/studio/web). A
+// top-level workspace root such as apps/ or packages/ is never one.
+function nestedGroupDirs(packageDirs) {
+  const dirs = new Set(packageDirs);
+  return [
+    ...new Set(
+      packageDirs
+        .map((dir) => dirname(dir))
+        .filter((dir) => dir.includes('/') && !dirs.has(dir)),
+    ),
+  ];
+}
+
 // The first changed path that can affect the suite, or undefined when every
-// changed path provably cannot: it is inert, or it lives inside a workspace
-// package outside the suite's relevance closure. Any other path — root
+// changed path provably cannot: it is inert, it lives inside a workspace
+// package outside the suite's relevance closure, or it lives in a nested
+// group directory none of whose packages is in that closure (apps/studio's
+// compose files and scripts belong to Studio alone). Any other path — root
 // configs, .github/, scripts/, the lockfile, anything unrecognised — is
 // relevant, so the suite runs (fail closed).
 function firstRelevantPath(changedPaths, relevanceDirs, packages) {
   const packageDirs = [...packages.values()].map((pkg) => pkg.dir);
+  const groupDirs = nestedGroupDirs(packageDirs);
   return changedPaths.find((changedPath) => {
     if (isInertPath(changedPath)) return false;
     const owner = packageDirs.find((dir) => changedPath.startsWith(`${dir}/`));
-    return owner === undefined || relevanceDirs.has(owner);
+    if (owner !== undefined) return relevanceDirs.has(owner);
+    const group = groupDirs.find((dir) => changedPath.startsWith(`${dir}/`));
+    if (group === undefined) return true;
+    return packageDirs.some(
+      (dir) => dir.startsWith(`${group}/`) && relevanceDirs.has(dir),
+    );
   });
 }
 
@@ -216,7 +238,9 @@ export function suiteSelectionForPaths(changedPaths, cwd) {
       continue;
     }
     required[key] = true;
-    reasons[key] = packageDirs.some((dir) => witness.startsWith(`${dir}/`))
+    reasons[key] = [...packageDirs, ...nestedGroupDirs(packageDirs)].some(
+      (dir) => witness.startsWith(`${dir}/`),
+    )
       ? `\`${witness}\` is in the ${subject} workspace dependency closure`
       : `fails closed: \`${witness}\` is outside every workspace package`;
   }

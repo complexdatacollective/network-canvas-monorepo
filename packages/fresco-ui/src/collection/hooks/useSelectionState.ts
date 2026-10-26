@@ -1,13 +1,39 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useCollectionStoreApi } from '../contexts';
 import { Selection } from '../selection/Selection';
 import { SelectionManager } from '../selection/SelectionManager';
 import type { SelectionProps, SelectionState } from '../selection/types';
 import type { Key } from '../types';
-import { useCollectionData } from './useCollection';
+import { createCollectionView } from './useCollection';
+
+/**
+ * Whether selection is controlled, and the change callback, as of the latest
+ * render. The SelectionManager lives for the hook's whole lifetime, so its
+ * `setState` reads these when it runs rather than capturing them; a layout
+ * effect keeps them current.
+ */
+class SelectionChangeTarget {
+  isControlled = false;
+  onSelectionChange: ((keys: Set<Key>) => void) | undefined;
+
+  update(
+    isControlled: boolean,
+    onSelectionChange: ((keys: Set<Key>) => void) | undefined,
+  ) {
+    this.isControlled = isControlled;
+    this.onSelectionChange = onSelectionChange;
+  }
+}
 
 /**
  * Hook to manage selection state within a collection.
@@ -46,17 +72,16 @@ export function useSelectionState(
   } = props;
 
   const storeApi = useCollectionStoreApi<unknown>();
-  const collection = useCollectionData();
 
   // Track if we're in controlled mode
   const isControlled = controlledSelectedKeys !== undefined;
-  const onSelectionChangeRef = useRef(onSelectionChange);
-  onSelectionChangeRef.current = onSelectionChange;
 
-  // Keep a ref to the latest collection so the stable SelectionManager can
-  // resolve it lazily without being re-created on every collection update.
-  const collectionRef = useRef(collection);
-  collectionRef.current = collection;
+  // Track controlled mode and the change callback outside render so `setState`
+  // stays stable across renders.
+  const [changeTarget] = useState(() => new SelectionChangeTarget());
+  useLayoutEffect(() => {
+    changeTarget.update(isControlled, onSelectionChange);
+  });
 
   // Initialize selection state from props
   useEffect(() => {
@@ -103,10 +128,6 @@ export function useSelectionState(
     storeApi.getState().setDisabledKeys(new Set(disabledKeysProp ?? []));
   }, [storeApi, disabledKeysProp]);
 
-  // Track controlled mode via ref so `setState` stays stable across renders.
-  const isControlledRef = useRef(isControlled);
-  isControlledRef.current = isControlled;
-
   // Create setState function for SelectionManager. Reads everything lazily so
   // it never changes identity — this is what lets SelectionManager itself stay
   // referentially stable.
@@ -125,12 +146,12 @@ export function useSelectionState(
       };
 
       // In controlled mode, only call onChange, don't update state directly
-      if (isControlledRef.current && 'selectedKeys' in updates) {
+      if (changeTarget.isControlled && 'selectedKeys' in updates) {
         const newKeys = updates.selectedKeys;
         if (newKeys && newKeys !== 'all') {
-          onSelectionChangeRef.current?.(new Set(newKeys));
+          changeTarget.onSelectionChange?.(new Set(newKeys));
         } else if (newKeys === 'all') {
-          onSelectionChangeRef.current?.(materializeAll());
+          changeTarget.onSelectionChange?.(materializeAll());
         }
         // Remove selectedKeys from updates in controlled mode
         const otherUpdates = Object.fromEntries(
@@ -145,26 +166,34 @@ export function useSelectionState(
         if ('selectedKeys' in updates && updates.selectedKeys !== undefined) {
           const newKeys = updates.selectedKeys;
           if (newKeys === 'all') {
-            onSelectionChangeRef.current?.(materializeAll());
+            changeTarget.onSelectionChange?.(materializeAll());
           } else {
-            onSelectionChangeRef.current?.(new Set(newKeys));
+            changeTarget.onSelectionChange?.(new Set(newKeys));
           }
         }
       }
     },
-    [storeApi],
+    [storeApi, changeTarget],
   );
 
   // Create a stable SelectionManager. Both the collection and state are
-  // resolved lazily (via refs / store getters), so a single instance serves
-  // the component's entire lifetime — no re-creation on selection changes.
-  // This avoids a context-cascade re-render of every CollectionItem on every
+  // resolved lazily from the store, so a single instance serves the
+  // component's entire lifetime — no re-creation on selection changes. This
+  // avoids a context-cascade re-render of every CollectionItem on every
   // toggle. SelectionManager's own `onSelectionChange` option is intentionally
-  // not set here — `setState` above already notifies via `onSelectionChangeRef`.
+  // not set here — `setState` above already notifies via `changeTarget`.
   const selectionManager = useMemo(
     () =>
       new SelectionManager(
-        () => collectionRef.current,
+        () => {
+          const store = storeApi.getState();
+          return createCollectionView(
+            store,
+            store.items,
+            store.orderedKeys,
+            store.size,
+          );
+        },
         () => storeApi.getState(),
         setState,
       ),

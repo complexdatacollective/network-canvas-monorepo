@@ -9,7 +9,7 @@ import {
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button, { IconButton } from '../../Button';
+import { IconButton, Button } from '../../Button';
 import InputField from '../../form/fields/InputField';
 import SelectField from '../../form/fields/Select/Native';
 import Paragraph from '../../typography/Paragraph';

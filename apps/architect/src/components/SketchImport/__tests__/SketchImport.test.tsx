@@ -44,7 +44,8 @@ const readyMessage = { type: 'sketch-import:ready', version: 1 };
 
 const makeProtocol = () => ({
   name: 'From Sketch',
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {

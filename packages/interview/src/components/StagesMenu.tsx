@@ -2,7 +2,7 @@
 
 import { EyeOff, LayoutTemplate, RouteOff } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -19,13 +19,14 @@ import manifest, {
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import {
   getSkipMap,
   getStageAvailabilityMap,
   type StageAvailability,
 } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
-import { getProtocolStages } from '../store/modules/protocol';
+import { getStages } from '../store/modules/protocol';
 
 type StagesMenuProps = {
   onSelect: (index: number) => void;
@@ -47,6 +48,7 @@ type StageItem = {
   id: string;
   index: number;
   type: string;
+  /** The stage's name as the participant reads it. */
   label: string;
   position: string;
   isCurrent: boolean;
@@ -70,7 +72,7 @@ const FILTER_MIN_QUERY_LENGTH = 2;
 // than being re-sorted by match quality.
 const FILTER_FUSE_OPTIONS = { includeScore: false };
 // Horizontal cards sit in a spaced row; the timeline segments bridge the gap
-// (half of `gap-6` = `-left-3` / `-right-3`) so the line stays continuous.
+// (half of `gap-6` = `-start-3` / `-end-3`) so the line stays continuous.
 const HORIZONTAL_GAP = 6;
 
 // Timeline (line + numbered nodes) reveals as a directional "wipe"; the stage
@@ -191,7 +193,8 @@ export default function StagesMenu({
   onClosed,
 }: StagesMenuProps) {
   const intl = useAppIntl();
-  const stages = useSelector(getProtocolStages);
+  const resolve = useResolveLocalizedString();
+  const stages = useSelector(getStages);
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const availabilityMap = useSelector(getStageAvailabilityMap);
   const skipMap = useSelector(getSkipMap);
@@ -208,24 +211,30 @@ export default function StagesMenu({
     [orientation, isHorizontal],
   );
 
+  // Finish stages are left out: a participant reaches the end of the
+  // interview with Next, and a review never goes there.
   const items = useMemo<StageItem[]>(
     () =>
-      stages.map((stage, index) => ({
-        id: stage.id,
-        index,
-        type: stage.type,
-        label: stage.label.trim()
-          ? stage.label
-          : intl.formatMessage(messages.untitledStage),
-        position: intl.formatNumber(index + 1, { useGrouping: false }),
-        isCurrent: index === currentStageIndex,
-        isUnavailable: skipMap[index] === true,
-        availability: availabilityMap[index] ?? { kind: 'available' },
-      })),
-    [stages, currentStageIndex, availabilityMap, skipMap, intl],
+      stages.flatMap((stage, index) => {
+        if (stage.type === 'FinishSession') return [];
+        const label = resolve(stage.label).text;
+        return [
+          {
+            id: stage.id,
+            index,
+            type: stage.type,
+            label,
+            position: intl.formatNumber(index + 1, { useGrouping: false }),
+            isCurrent: index === currentStageIndex,
+            isUnavailable: skipMap[index] === true,
+            availability: availabilityMap[index] ?? { kind: 'available' },
+          },
+        ];
+      }),
+    [stages, currentStageIndex, availabilityMap, skipMap, intl, resolve],
   );
 
-  const currentId = items[currentStageIndex]?.id;
+  const currentId = items.find((item) => item.isCurrent)?.id;
 
   const [matchingKeys, setMatchingKeys] = useState<Set<Key> | null>(null);
   const visibleItems = useMemo(
@@ -260,21 +269,20 @@ export default function StagesMenu({
   // Signal the host once the staggered exit has played out, so the drawer only
   // slides away after the cards are gone. Timings are deterministic tweens on
   // exit, so a single timeout is enough. Keep dependencies to `open` alone: the
-  // count/steps are read from refs so a mid-close filter change can't cancel
-  // (and never re-arm) the pending timeout.
-  const onClosedRef = useRef(onClosed);
-  onClosedRef.current = onClosed;
-  const exitMsRef = useRef(0);
-  exitMsRef.current = reduceMotion
+  // exit time and callback are read through effect events so a mid-close
+  // filter change can't cancel (and never re-arm) the pending timeout.
+  const exitMs = reduceMotion
     ? 0
     : (Math.max(0, count - 1) * steps.exit + EXIT_DURATION + EXIT_BUFFER) *
       1000;
+  const readExitMs = useEffectEvent(() => exitMs);
+  const notifyClosed = useEffectEvent(() => onClosed());
   const prevOpen = useRef(open);
   useEffect(() => {
     const wasOpen = prevOpen.current;
     prevOpen.current = open;
     if (wasOpen && !open) {
-      const id = setTimeout(() => onClosedRef.current(), exitMsRef.current);
+      const id = setTimeout(() => notifyClosed(), readExitMs());
       return () => clearTimeout(id);
     }
     return undefined;
@@ -347,11 +355,11 @@ export default function StagesMenu({
     );
 
     const availabilityStatus =
-      item.availability.kind === 'local-skip'
-        ? intl.formatMessage(messages.hiddenByAnswers)
+      item.availability.kind === 'available'
+        ? null
         : item.availability.kind === 'bypassed'
           ? intl.formatMessage(messages.outsideCurrentPath)
-          : null;
+          : intl.formatMessage(messages.hiddenByAnswers);
     const AvailabilityIcon =
       item.availability.kind === 'bypassed' ? RouteOff : EyeOff;
 
@@ -398,7 +406,7 @@ export default function StagesMenu({
         {item.isUnavailable && (
           <span
             aria-hidden
-            className="bg-cerulean-blue elevation-low absolute top-1 right-1 flex size-6 items-center justify-center rounded-full text-white"
+            className="bg-cerulean-blue elevation-low absolute inset-e-1 top-1 flex size-6 items-center justify-center rounded-full text-white"
           >
             <AvailabilityIcon className="size-3.5" />
           </span>
@@ -427,8 +435,8 @@ export default function StagesMenu({
             // horizontal scroll — a scroll container's own end padding is
             // dropped from the scrollable area, flushing the last card to the
             // edge.
-            isFirst && 'ml-6',
-            isLast && 'mr-6',
+            isFirst && 'ms-6',
+            isLast && 'me-6',
           )}
         >
           <span className="relative flex h-8 w-full items-center justify-center">
@@ -439,13 +447,13 @@ export default function StagesMenu({
               initial={animate}
               animate={animate}
               className={cx(
-                'bg-neon-coral pointer-events-none absolute top-1/2 h-1 origin-left -translate-y-1/2',
+                'bg-neon-coral pointer-events-none absolute top-1/2 h-1 origin-left -translate-y-1/2 rtl:origin-right',
                 isOnly
                   ? 'hidden'
                   : isFirst
-                    ? '-right-3 left-1/2'
+                    ? 'inset-s-1/2 -inset-e-3'
                     : isLast
-                      ? 'right-1/2 -left-3'
+                      ? '-inset-s-3 inset-e-1/2'
                       : '-inset-x-3',
               )}
             />
@@ -469,7 +477,7 @@ export default function StagesMenu({
         initial={animate}
         animate={animate}
         className={cx(
-          'group focusable hover:elevation-medium relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-[color,background-color,box-shadow] duration-200',
+          'group focusable hover:elevation-medium relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start transition-[color,background-color,box-shadow] duration-200',
           'data-selected:bg-primary data-selected:text-primary-contrast',
           'hover:bg-accent data-focused:bg-accent',
         )}
@@ -481,7 +489,7 @@ export default function StagesMenu({
           initial={animate}
           animate={animate}
           className={cx(
-            'bg-neon-coral pointer-events-none absolute left-8 w-1 origin-top -translate-x-1/2',
+            'bg-neon-coral pointer-events-none absolute inset-s-8 w-1 origin-top -translate-x-1/2 rtl:translate-x-1/2',
             isOnly
               ? 'hidden'
               : isFirst

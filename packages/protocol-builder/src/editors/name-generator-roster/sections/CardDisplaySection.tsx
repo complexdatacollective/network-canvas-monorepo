@@ -25,7 +25,7 @@ import {
 /** Where a roster stage records the extra facts its cards show. */
 const CARD_PROPERTIES = 'cardOptions.additionalProperties';
 
-const messages = defineMessages({
+export const cardDisplayMessages = defineMessages({
   title: {
     id: 'protocolBuilder.cardDisplay.title',
     defaultMessage: 'Card display',
@@ -113,22 +113,22 @@ const messages = defineMessages({
 const cardPropertyColumns = (intl: IntlShape): PropertyField[] => [
   {
     fieldName: 'variable',
-    label: intl.formatMessage(messages.attributeColumn),
+    label: intl.formatMessage(cardDisplayMessages.attributeColumn),
   },
   {
     fieldName: 'label',
-    control: 'input',
-    label: intl.formatMessage(messages.labelColumn),
-    placeholder: intl.formatMessage(messages.labelPlaceholder),
+    control: 'localizedInput',
+    label: intl.formatMessage(cardDisplayMessages.labelColumn),
+    placeholder: intl.formatMessage(cardDisplayMessages.labelPlaceholder),
   },
 ];
 
 const CARD_CAPABILITY: SectionCapability = {
   fields: [CARD_PROPERTIES],
   confirmClear: {
-    title: messages.clearTitle,
-    description: messages.clearDescription,
-    confirmLabel: messages.clearConfirm,
+    title: cardDisplayMessages.clearTitle,
+    description: cardDisplayMessages.clearDescription,
+    confirmLabel: cardDisplayMessages.clearConfirm,
   },
 };
 
@@ -153,7 +153,7 @@ export default function CardDisplaySection() {
     columns.names,
   );
   const options = useColumnOptionGetter(columns.names, orphans.options);
-  const shell = useColumnSectionShell(columns, messages.description);
+  const shell = useColumnSectionShell(columns, cardDisplayMessages.description);
   const properties = useMemo(() => cardPropertyColumns(intl), [intl]);
   const validation = useMemo(
     () => makeMultiSelectValidation(properties, orphans.dangling),
@@ -162,7 +162,7 @@ export default function CardDisplaySection() {
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.title)}
+      title={intl.formatMessage(cardDisplayMessages.title)}
       description={shell.description}
       disabled={shell.disabled}
       // Everything below names a column of the data file, so a different file
@@ -182,7 +182,7 @@ export default function CardDisplaySection() {
             a fragment of it, so a translator moves the whole clause and the
             emphasised word travels with it.
           */}
-          {intl.formatMessage(messages.titledByName, {
+          {intl.formatMessage(cardDisplayMessages.titledByName, {
             strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
           })}
         </AlertDescription>
@@ -203,10 +203,10 @@ export default function CardDisplaySection() {
       */}
       <Field<typeof OptionalList>
         name={CARD_PROPERTIES}
-        label={intl.formatMessage(messages.fieldLabel)}
-        hint={intl.formatMessage(messages.fieldHint)}
+        label={intl.formatMessage(cardDisplayMessages.fieldLabel)}
+        hint={intl.formatMessage(cardDisplayMessages.fieldHint)}
         component={OptionalList}
-        addButtonLabel={intl.formatMessage(messages.addLabel)}
+        addButtonLabel={intl.formatMessage(cardDisplayMessages.addLabel)}
         properties={properties}
         options={options}
         // An orphan counts: the row holding it is one of the rows this limit

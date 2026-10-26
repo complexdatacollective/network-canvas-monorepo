@@ -1,0 +1,33 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your sibling":
+    - heading "Add your sibling" [level=2]
+    - button "Close"
+    - text: Which parents do they share with you? Required
+    - group "Which parents do they share with you?":
+      - checkbox "Amy"
+      - text: Amy
+      - checkbox "Rob"
+      - text: Rob
+      - checkbox "Sam" [checked]
+      - text: Sam
+      - checkbox "Gail" [checked]
+      - text: Gail
+    - paragraph: Sharing only Sam and Gail with you is not enough - matrix check
+    - text: To the parents they share, are they… Required
+    - radiogroup "To the parents they share, are they…":
+      - radio "A biological child" [checked]
+      - text: A biological child
+      - radio "An adopted child"
+      - text: An adopted child
+    - text: Are they your twin? Answer yes for triplets and other multiple births too.
+    - radiogroup "Are they your twin?":
+      - radio "No"
+      - text: "No"
+      - radio "Yes, fraternal (non-identical) twins"
+      - text: Yes, fraternal (non-identical) twins
+    - button "Cancel"
+    - button "Back"
+    - button "Save"

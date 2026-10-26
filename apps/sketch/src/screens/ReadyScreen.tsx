@@ -32,7 +32,7 @@ const summaryChips = (summary: ProtocolSummary): string[] => {
       plural(summary.rosterCount, 'placeholder roster', 'placeholder rosters'),
     );
   }
-  chips.push('Schema 8');
+  chips.push('Schema 9');
   return chips;
 };
 

@@ -17,14 +17,16 @@ import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { useOptionalLocalizedText } from '../../localization/ProtocolLocalizationProvider';
 import {
   getCategoricalOptions,
   getNetworkEdges,
   getNetworkNodes,
 } from '../../selectors/session';
 import type { StageProps } from '../../types';
+import { compareCodeUnits } from '../../utils/compareCodeUnits';
 import Annotations, { type AnnotationsHandle } from './Annotations';
-import BehavioursPanel from './BehavioursPanel';
+import BehavioursPanel, { type DrawingWords } from './BehavioursPanel';
 import PresetSwitcher from './PresetSwitcher';
 
 type NarrativeProps = StageProps<'Narrative'>;
@@ -32,6 +34,41 @@ type NarrativeProps = StageProps<'Narrative'>;
 const Narrative = ({ stage }: NarrativeProps) => {
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
+
+  // The stage's own words (`stage-wording/narrative.ts`). The drawing tools'
+  // words are given only when the stage holds all of them.
+  const enableDrawing = useOptionalLocalizedText(stage.tooltips?.enableDrawing);
+  const disableDrawing = useOptionalLocalizedText(
+    stage.tooltips?.disableDrawing,
+  );
+  const freezeAnnotations = useOptionalLocalizedText(
+    stage.tooltips?.freezeAnnotations,
+  );
+  const unfreezeAnnotations = useOptionalLocalizedText(
+    stage.tooltips?.unfreezeAnnotations,
+  );
+  const resetAnnotations = useOptionalLocalizedText(
+    stage.tooltips?.resetAnnotations,
+  );
+  const headings = {
+    attributes: useOptionalLocalizedText(stage.attributesHeading),
+    links: useOptionalLocalizedText(stage.linksHeading),
+    groups: useOptionalLocalizedText(stage.groupsHeading),
+  };
+  const drawingWords: DrawingWords | undefined =
+    enableDrawing !== undefined &&
+    disableDrawing !== undefined &&
+    freezeAnnotations !== undefined &&
+    unfreezeAnnotations !== undefined &&
+    resetAnnotations !== undefined
+      ? {
+          enableDrawing,
+          disableDrawing,
+          freezeAnnotations,
+          unfreezeAnnotations,
+          resetAnnotations,
+        }
+      : undefined;
   const interfaceRef = useRef<HTMLDivElement>(null);
 
   const [presetIndex, setPresetIndex] = useState(0);
@@ -179,7 +216,9 @@ const Narrative = ({ stage }: NarrativeProps) => {
   );
 
   // Filter edges by display types
-  const displayEdgeTypes = currentPreset?.edges?.display;
+  const displayEdgeTypes = currentPreset?.edges?.display?.map(
+    ({ type }) => type,
+  );
   const filteredEdges = useMemo(
     () =>
       showEdges && displayEdgeTypes
@@ -196,7 +235,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
     () =>
       nodesWithLayout
         .map((node) => node[entityPrimaryKeyProperty])
-        .toSorted((a, b) => a.localeCompare(b))
+        .toSorted(compareCodeUnits)
         .join(','),
     [nodesWithLayout],
   );
@@ -245,7 +284,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   // Highlight attribute
   const highlightAttribute = showHighlightedNodes
-    ? (highlight[highlightIndex] ?? undefined)
+    ? highlight[highlightIndex]?.variable
     : undefined;
 
   const underlays = convexHullVariable ? (
@@ -296,6 +335,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
         showHighlighting={showHighlightedNodes}
         showEdges={showEdges}
         showHulls={showConvexHulls}
+        headings={headings}
         onChangePreset={handleChangePreset}
         onToggleHulls={handleToggleHulls}
         onToggleEdges={handleToggleEdges}
@@ -307,7 +347,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
         showLayoutToggle={automaticLayoutEnabled && nodesWithLayout.length > 0}
         simulationEnabled={layout.simulationEnabled}
         onToggleSimulation={layout.toggleSimulation}
-        showDrawingControls={freeDraw}
+        drawingWords={freeDraw ? drawingWords : undefined}
         isDrawingEnabled={isDrawingEnabled}
         isFrozen={isFrozen}
         onToggleDrawing={handleToggleDrawing}

@@ -22,7 +22,13 @@ const ROWS: Row[] = [
  */
 let deliver: (rows: Row[]) => void;
 
-function Host({ initialRows = [] as Row[] }: { initialRows?: Row[] }) {
+function Host({
+  initialRows = [] as Row[],
+  immediateAdd = true,
+}: {
+  initialRows?: Row[];
+  immediateAdd?: boolean;
+}) {
   const [rows, setRows] = useState<Row[]>(initialRows);
   deliver = setRows;
 
@@ -34,7 +40,7 @@ function Host({ initialRows = [] as Row[] }: { initialRows?: Row[] }) {
         onChange={(next) => setRows(next ?? [])}
         itemComponent={LabelledRow}
         itemTemplate={() => ({ id: `row-${Math.random()}`, label: 'New' })}
-        immediateAdd
+        immediateAdd={immediateAdd}
       />
     </DialogProvider>
   );
@@ -100,6 +106,16 @@ describe('rows that are simply there when the list opens', () => {
     render(<Host />);
 
     // No value ever arrives: this list is empty rather than still waiting.
+    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
+
+    expect(enterStyleOf('New')).toEqual(ENTERING);
+  });
+
+  it('still animates in a draft row opened on a list that really is empty', () => {
+    // Without `immediateAdd` the new row is a draft the value never hears
+    // about, so the researcher's request is all that opens the list.
+    render(<Host immediateAdd={false} />);
+
     fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
 
     expect(enterStyleOf('New')).toEqual(ENTERING);

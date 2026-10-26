@@ -8,6 +8,7 @@ import { NotFound } from '@codaco/studio-contract/schema/errors';
 import { updateUserLocale } from '../../account/commands.ts';
 import { AuthService } from '../../auth/service.ts';
 import { UntenantedScope } from '../../db/tenant.ts';
+import { mayCreateTeam } from '../../team/commands.ts';
 import { requireDatabase } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 
@@ -27,6 +28,11 @@ export const AccountHandlers = (deps: RpcDeps) =>
           locale: principal.locale,
           // Better Auth's own team list drops the role.
           teams: decodeTeams(yield* auth.listMemberships(principal.userId)),
+          canCreateTeam: mayCreateTeam(
+            deps.deployment.mode,
+            yield* deps.readInstallation,
+            principal.userId,
+          ),
         };
       }),
     'account.updateLocale': (payload) =>

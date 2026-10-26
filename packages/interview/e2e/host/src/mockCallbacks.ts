@@ -1,6 +1,7 @@
 import type {
   AssetRequestHandler,
   FinishHandler,
+  SessionFinish,
   SyncHandler,
 } from '../../../src/contract/types';
 
@@ -26,7 +27,11 @@ export type FinishBehavior =
   | { mode: 'manual' }
   | { mode: 'hang-until-abort' };
 
-type FinishCallRecord = { interviewId: string; aborted: boolean };
+type FinishCallRecord = {
+  interviewId: string;
+  finish: SessionFinish;
+  aborted: boolean;
+};
 
 let finishBehavior: FinishBehavior = { mode: 'resolve' };
 let finishCalls: FinishCallRecord[] = [];
@@ -64,10 +69,11 @@ export function resetFinishInstrumentation(): void {
 
 export const mockFinish: FinishHandler = async (
   interviewId: string,
+  finish: SessionFinish,
   signal: AbortSignal,
 ): Promise<void> => {
   const behavior = finishBehavior;
-  const call: FinishCallRecord = { interviewId, aborted: false };
+  const call: FinishCallRecord = { interviewId, finish, aborted: false };
   finishCalls.push(call);
 
   const onAbort = () => {

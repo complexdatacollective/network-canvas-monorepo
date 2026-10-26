@@ -20,7 +20,6 @@ import { TeamInvitationId } from '@codaco/studio-contract/schema/ids';
 
 import LocaleSync from './i18n/LocaleSync.tsx';
 import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
-import StudioLocaleSwitcher from './i18n/StudioLocaleSwitcher.tsx';
 import {
   fetchDeploymentMode,
   fetchSetupRequirement,
@@ -52,14 +51,16 @@ import AcceptInvitation from './routes/AcceptInvitation.tsx';
 import AppLayout from './routes/AppLayout.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
 import Marketing from './routes/Marketing.tsx';
+import NoTeam from './routes/NoTeam.tsx';
 import NotFoundScreen from './routes/NotFoundScreen.tsx';
 import Setup, { SetupClosed } from './routes/Setup.tsx';
 import SignIn from './routes/SignIn.tsx';
+import SignUp from './routes/SignUp.tsx';
+import SignUpTeam from './routes/SignUpTeam.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
 import TeamMembers from './routes/TeamMembers.tsx';
 import TeamStudies from './routes/TeamStudies.tsx';
 import AccountArea from './shell/AccountArea.tsx';
-import NoTeamSignOut from './shell/NoTeamSignOut.tsx';
 import Placeholder, { type PlaceholderProps } from './shell/Placeholder.tsx';
 import ProtocolOutlineArea from './shell/ProtocolOutlineArea.tsx';
 import ScreenMain from './shell/ScreenMain.tsx';
@@ -67,7 +68,6 @@ import { ScreenTeamProvider } from './shell/screenTeam.tsx';
 import SiteLayout from './shell/SiteLayout.tsx';
 import StudyArea from './shell/StudyArea.tsx';
 import TeamArea from './shell/TeamArea.tsx';
-import UpdateNotice from './shell/UpdateNotice.tsx';
 
 const isTeamInvitationId = Schema.is(TeamInvitationId);
 
@@ -239,32 +239,6 @@ const screens = defineMessages({
     description:
       'What the Legal screen at /legal/$document will do, shown on it while it is not yet built.',
   },
-  signUpTitle: {
-    id: 'studio.screens.signUpTitle',
-    defaultMessage: 'Create an account',
-    description:
-      'Name of the Create an account screen at /sign-up, used as its heading.',
-  },
-  signUpDescription: {
-    id: 'studio.screens.signUpDescription',
-    defaultMessage:
-      'Where a researcher creates their Studio account, and the first step of the funnel that ends with a team and a first study.',
-    description:
-      'What the Create an account screen at /sign-up will do, shown on it while it is not yet built.',
-  },
-  signUpTeamTitle: {
-    id: 'studio.screens.signUpTeamTitle',
-    defaultMessage: 'Name your team',
-    description:
-      'Name of the Name your team screen at /sign-up/team, used as its heading.',
-  },
-  signUpTeamDescription: {
-    id: 'studio.screens.signUpTeamDescription',
-    defaultMessage:
-      'Names the team the new account will own — the boundary every study, member and invoice belongs to.',
-    description:
-      'What the Name your team screen at /sign-up/team will do, shown on it while it is not yet built.',
-  },
   signUpPlanTitle: {
     id: 'studio.screens.signUpPlanTitle',
     defaultMessage: 'Choose a plan',
@@ -303,19 +277,6 @@ const screens = defineMessages({
       'Where checkout returns: the subscription is confirmed, the team exists, and its first study is created.',
     description:
       'What the Account ready screen at /sign-up/complete will do, shown on it while it is not yet built.',
-  },
-  noTeamTitle: {
-    id: 'studio.screens.noTeamTitle',
-    defaultMessage: 'No team yet',
-    description:
-      'Name of the No team yet screen at /no-team, used as its heading.',
-  },
-  noTeamDescription: {
-    id: 'studio.screens.noTeamDescription',
-    defaultMessage:
-      'What a signed-in researcher who belongs to no team sees: how to create one, or what to expect while waiting for an invitation.',
-    description:
-      'What the No team yet screen at /no-team will do, shown on it while it is not yet built.',
   },
   sessionConsentTitle: {
     id: 'studio.screens.sessionConsentTitle',
@@ -824,23 +785,53 @@ const signInRoute = createRoute({
 const signUpRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up',
-  beforeLoad: topologyGuard('/sign-up'),
-  component: screenPlaceholder({
-    title: screens.signUpTitle,
-    description: screens.signUpDescription,
-    issue: '#1255',
+  validateSearch: (search): { error?: string } => ({
+    error: typeof search.error === 'string' ? search.error : undefined,
   }),
+  // A signed-in researcher has an account already: one with no team continues
+  // to the funnel's next step, and anyone else goes where `/sign-in` would
+  // send them. A session or landing that cannot be read leaves them here.
+  beforeLoad: async (options) => {
+    await topologyGuard('/sign-up')(options);
+    const { queryClient } = options.context;
+    const session = await queryClient
+      .fetchQuery(sessionQueryOptions)
+      .catch((error: unknown) => {
+        if (isSessionUnknown(error)) return undefined;
+        throw error;
+      });
+    if (session !== 'signedIn') return;
+    const destination = await resolveLandingDestination(queryClient).catch(
+      () => undefined,
+    );
+    if (destination === undefined) return;
+    if (destination.to === '/no-team') throw redirect({ to: '/sign-up/team' });
+    throw landingRedirect(destination);
+  },
+  component: SignUp,
 });
 
+/**
+ * Where both sign-up callbacks land. It is for a session with no team: a
+ * researcher who already belongs to one, including somebody who signed up
+ * with an address that already had an account, goes to their landing
+ * destination instead.
+ */
 const signUpTeamRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-up/team',
-  beforeLoad: topologyGuard('/sign-up/team'),
-  component: screenPlaceholder({
-    title: screens.signUpTeamTitle,
-    description: screens.signUpTeamDescription,
-    issue: '#1249',
-  }),
+  beforeLoad: async (options) => {
+    await topologyGuard('/sign-up/team')(options);
+    const { queryClient } = options.context;
+    const session = await queryClient.fetchQuery(sessionQueryOptions);
+    if (session === 'signedOut') throw redirect({ to: '/sign-up' });
+    const destination = await resolveLandingDestination(queryClient).catch(
+      () => undefined,
+    );
+    if (destination === undefined || destination.to === '/no-team') return;
+    throw landingRedirect(destination);
+  },
+  component: SignUpTeam,
 });
 
 const signUpPlanRoute = createRoute({
@@ -945,32 +936,7 @@ const noTeamRoute = createRoute({
     if (destination === undefined || destination.to === '/no-team') return;
     throw landingRedirect(destination);
   },
-  // Neither control is part of the unbuilt screen: they are what a terminus
-  // owes the session it holds. Every redirect this session can trigger ends
-  // here — the guard above from `/sign-in`, the app shell's guard from
-  // everywhere else — and no screen they can reach carries the account menu or
-  // the account area.
-  //
-  // So the sign-out, without which signing in as somebody else means clearing
-  // the cookie by hand. And so the language, which is a per-account preference
-  // with nothing to do with teams: the header that carries the switcher is
-  // behind the same redirect, and a researcher waiting on an invitation would
-  // otherwise read this screen in a language they cannot change. And so the
-  // update notice (#1901): setup ends here for the installation's owner, who
-  // has no team until they create one, and the app shell that carries it
-  // elsewhere is behind the same redirect.
-  component: screenPlaceholder({
-    title: screens.noTeamTitle,
-    description: screens.noTeamDescription,
-    issue: '#1249',
-    action: (
-      <>
-        <UpdateNotice className="m-0" />
-        <NoTeamSignOut />
-        <StudioLocaleSwitcher />
-      </>
-    ),
-  }),
+  component: NoTeam,
 });
 
 // ---------------------------------------------------------------------------

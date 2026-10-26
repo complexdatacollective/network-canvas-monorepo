@@ -9,6 +9,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import RichTextField from '../../fields/RichTextField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { resolveTranslation } from '../../localization/localizedText.ts';
 import { useResourceClient } from '../../resources/client.tsx';
 import type { ResourceDescriptor } from '../../resources/types.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
@@ -157,7 +158,7 @@ describe('the stage-editor test harness', () => {
     // The fixture's own name, written out rather than read back off the seed:
     // a control showing whatever the seed happens to hold would pass over a
     // form that was never given the document at all.
-    expect(harness.seeded.fields.label).toBe('Information');
+    expect(harness.seeded.fields.label).toEqual({ 'en-US': 'Information' });
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
       'Information',
     );
@@ -209,7 +210,7 @@ describe('the stage-editor test harness', () => {
     const harness = renderStageEditor({
       stage: {
         type: 'Information',
-        fields: { label: '', title: '', items: [] },
+        fields: { label: {}, title: {}, items: [] },
       },
       sections: commonSections,
     });
@@ -230,8 +231,9 @@ describe('the stage-editor test harness', () => {
 
     // `label` is owned without a section owning it: the stage's name is drawn
     // by the harness's own host chrome, as a host draws it, so it is a field of
-    // the form wherever it sits on the page.
-    expect(harness.ownedKeys()).toEqual(['label', 'subject']);
+    // the form wherever it sits on the page. `dynamicValues` likewise: the
+    // shell registers the stage's bindings whichever sections it holds.
+    expect(harness.ownedKeys()).toEqual(['dynamicValues', 'label', 'subject']);
     await expect(harness.roundTrip()).rejects.toThrow(/keys: form, prompts/);
 
     // Declared, the same mount round-trips: the list is a statement an editor
@@ -544,7 +546,16 @@ describe('what a round trip refuses', () => {
     // Named by its own path, not as "mapOptions changed": which of the map's
     // eight settings went is the whole of what a reader needs.
     await expect(
-      harness.roundTrip({ unowned: ['subject', 'mapOptions', 'prompts'] }),
+      harness.roundTrip({
+        unowned: [
+          'subject',
+          'mapOptions',
+          'prompts',
+          'mapUnavailable',
+          'offlineNotice',
+          'outsideAreasLabel',
+        ],
+      }),
     ).rejects.toThrow(/Dropped: mapOptions\.showTransit\./);
   });
 
@@ -561,7 +572,14 @@ describe('what a round trip refuses', () => {
     });
 
     const request = await harness.roundTrip({
-      unowned: ['subject', 'mapOptions', 'prompts'],
+      unowned: [
+        'subject',
+        'mapOptions',
+        'prompts',
+        'mapUnavailable',
+        'offlineNotice',
+        'outsideAreasLabel',
+      ],
     });
 
     expect(request.stageDocument.mapOptions).toMatchObject({
@@ -629,10 +647,14 @@ describe('the resources a harnessed stage can reach', () => {
 
 /** The interview the fixture describes, in order, as the researcher sees it. */
 const fixtureStageLabels = (): string[] =>
-  fixtureStageIds().map((id) => {
-    const label = loadFixtureStage(id).fields.label;
-    return typeof label === 'string' ? label : '';
-  });
+  fixtureStageIds().map(
+    (id) =>
+      resolveTranslation(
+        loadFixtureStage(id).fields.label,
+        undefined,
+        undefined,
+      ).text,
+  );
 
 /** Where `information-1` sits in that interview. */
 const INFORMATION_INDEX = fixtureStageIds().indexOf('information-1');
@@ -656,9 +678,11 @@ const destinationOptions = (): string[] => {
 };
 
 /** The stages the interview may continue at, as the researcher will see them. */
+// The fixture ends at its finish stage, which is offered as ending the
+// interview rather than as a stage.
 const stagesFrom = (index: number, displaced: number): string[] =>
   fixtureStageLabels()
-    .slice(index)
+    .slice(index, -1)
     .map(
       (label, offset) => `Stage ${index + offset + 1 + displaced} — ${label}`,
     );
@@ -710,8 +734,8 @@ describe('a stage being created', () => {
         type: 'Information',
         position: INFORMATION_INDEX,
         fields: {
-          label: 'A new page',
-          title: 'A new page',
+          label: { 'en-US': 'A new page' },
+          title: { 'en-US': 'A new page' },
           items: [],
           // A destination its insertion position allows, so the schema's rule
           // about skipping forwards is judged against the interview it joins.
@@ -736,7 +760,7 @@ describe('a stage being created', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'Information',
-      label: 'A new page',
+      label: { 'en-US': 'A new page' },
     });
     // Under an id the edit minted, in the section the host answered with: the
     // stage is in the protocol now, which is what saving a new one means.
@@ -777,7 +801,7 @@ describe('a stage the interview already contains', () => {
       stage: {
         id: 'information-1',
         type: 'Information',
-        fields: { label: '', title: 'A page', items: [] },
+        fields: { label: {}, title: { 'en-US': 'A page' }, items: [] },
       },
       sections: <></>,
     });
@@ -835,7 +859,7 @@ describe('the harness editor slot', () => {
    */
   it('does not accept an editor written for a different interface', () => {
     const mismatched: RenderStageEditorOptions<'Information'> = {
-      stage: { type: 'Information', fields: { label: '' } },
+      stage: { type: 'Information', fields: { label: {} } },
       // @ts-expect-error an EgoForm editor cannot edit an Information stage
       editor: EgoFormEditor,
     };
@@ -887,7 +911,7 @@ describe('a codebook change the harness seeds', () => {
   };
 
   /** A section reading the codebook, the way every attribute picker does. */
-  function PersonAttributesSection() {
+  function NodeConfigurationSection() {
     const { codebook } = useProtocolContext();
     const names = Object.keys(codebook.node?.person?.variables ?? {});
     return (
@@ -903,7 +927,7 @@ describe('a codebook change the harness seeds', () => {
       sections: (
         <>
           {commonSections}
-          <PersonAttributesSection />
+          <NodeConfigurationSection />
         </>
       ),
     });

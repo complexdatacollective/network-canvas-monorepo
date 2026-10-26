@@ -24,7 +24,6 @@ import {
   useNodeGestures,
 } from './hooks/useNodeGestures';
 import { useNodeInteractions } from './hooks/useNodeInteractions';
-import usePrevious from './hooks/usePrevious';
 import {
   useSafeAnimate,
   useShouldSkipAnimations,
@@ -32,6 +31,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
 import { cva, type VariantProps } from './utils/cva';
+import { withLabelBreakPoints } from './utils/labelBreakPoints';
 
 export type NodeShape = 'circle' | 'square' | 'diamond';
 
@@ -189,16 +189,25 @@ const LABEL_FIT_OVERRIDES: Record<NodeSize, readonly string[]> = {
 /**
  * Wrapping rungs appended below each size's floor. A broken word is always
  * harder to read than a whole one at a smaller size, so the rungs above never
- * break inside words — a name whose longest word cannot fit a line overflows,
- * which the fitter reads as "step down". Only when no size can hold the word
- * whole does the ladder concede to breaking it: first at a hyphenation point
- * the reader expects (dictionary-driven, marked with a visible hyphen, never
- * splitting off fewer than two characters — requires a `lang` in scope), and
- * as a true last resort anywhere at all, which keeps a pathological name
- * inside the shape and leaves the long-press reveal to carry the rest.
+ * break inside words: they set `hyphens-none`, which makes the browser ignore
+ * a soft hyphen too (a generated label such as "bio\u00ADlogical" carries
+ * them), so a name whose longest word cannot fit a line overflows, which the
+ * fitter reads as "step down". Only when no size can hold the word whole does
+ * the ladder concede to breaking it: first at a hyphenation point the reader
+ * expects (a soft hyphen, or the browser's dictionary, marked with a visible
+ * hyphen and never splitting off fewer than three characters either side — the dictionary
+ * needs a `lang` in scope), and as a true last resort anywhere at all, which
+ * keeps a pathological name inside the shape and leaves the long-press reveal
+ * to carry the rest. The last resort balances its lines so that a word with
+ * no break points is cut into even pieces rather than leaving a lone letter.
+ *
+ * Chromium never hyphenates a capitalised word from its dictionary, which is
+ * nearly every name, so at these rungs `Node` also marks break points in the
+ * label itself (see `withLabelBreakPoints`).
  */
-const HYPHENATED_BREAKS = 'hyphens-auto [hyphenate-limit-chars:6_3_2]';
-const EMERGENCY_BREAKS = 'wrap-anywhere';
+const NO_BREAKS = 'hyphens-none';
+const HYPHENATED_BREAKS = 'hyphens-auto [hyphenate-limit-chars:6_3_3]';
+const EMERGENCY_BREAKS = 'hyphens-manual wrap-anywhere text-balance';
 
 // The diamond is an 85%-scale square rotated 45 degrees. In root-size
 // coordinates its edge is |x| + |y| = 0.85 / sqrt(2), or about 60.1% from the
@@ -216,11 +225,14 @@ const buildFitSteps = (
   const atFloor = (breaks: string) =>
     labelVariants({ size, className: withLabelClass(`${floor} ${breaks}`) });
   return [
-    // The first rung is the size's untouched default, so a label that already
-    // fits renders exactly as it did before fitting existed.
-    labelVariants({ size, className: labelClassName }),
+    // The first rung is the size's default, so a label that already fits
+    // renders as it did before fitting existed.
+    labelVariants({ size, className: withLabelClass(NO_BREAKS) }),
     ...LABEL_FIT_OVERRIDES[size].map((className) =>
-      labelVariants({ size, className: withLabelClass(className) }),
+      labelVariants({
+        size,
+        className: withLabelClass(`${NO_BREAKS} ${className}`),
+      }),
     ),
     atFloor(HYPHENATED_BREAKS),
     atFloor(EMERGENCY_BREAKS),
@@ -428,16 +440,36 @@ export default function Node(props: UINodeProps) {
     shape === 'diamond'
       ? DIAMOND_LABEL_FIT_STEPS[size ?? 'md']
       : LABEL_FIT_STEPS[size ?? 'md'];
+
+  // A label that only fits once words are broken is shown with break points
+  // marked in it (see `withLabelBreakPoints`). They are added only after a fit
+  // has landed on a breaking rung for this very label, so the great majority
+  // of names are rendered exactly as given.
+  const [breakPointsFor, setBreakPointsFor] = useState<string>();
+  const markBreakPoints = breakPointsFor === label;
+  const displayedLabel = markBreakPoints ? withLabelBreakPoints(label) : label;
+  const fitKey = `${markBreakPoints ? 'breakable' : 'plain'}:${label}`;
   const {
     ref: labelRef,
     stepIndex,
     isTruncated,
+    fittedWatch,
   } = useFitText<HTMLSpanElement>({
     steps: fitSteps,
     containerRef: labelBoxRef,
-    watch: label,
+    watch: fitKey,
     enabled: !loading,
   });
+  // The breaking rungs are the last two of every ladder.
+  const reachedBreakingRung = stepIndex >= fitSteps.length - 2;
+  if (
+    reachedBreakingRung &&
+    fittedWatch === fitKey &&
+    !markBreakPoints &&
+    withLabelBreakPoints(label) !== label
+  ) {
+    setBreakPointsFor(label);
+  }
 
   // A keyboard drag already owns arrow keys and the node's position; revealing
   // the label on top of that is noise.
@@ -550,16 +582,28 @@ export default function Node(props: UINodeProps) {
     setDisplayedSelected(selected);
   }
 
-  // Track previous states for animation transitions
-  const prevSelected = usePrevious(displayedSelected);
-  const prevHighlighted = usePrevious(highlighted);
+  // Whether the ring was showing when the effect below last ran, so it
+  // animates only on the transitions in and out of showing. Starts false, so
+  // a node that mounts selected or highlighted springs its ring in.
+  const wasActiveRef = useRef(false);
+  // Unmounting stops the scope's animations (Motion's `useAnimate` does so in
+  // its own cleanup), so the ring is forgotten too: a node mounted again, as
+  // StrictMode and Activity do, springs it in afresh instead of leaving it
+  // stopped where it was.
+  useEffect(
+    () => () => {
+      wasActiveRef.current = false;
+    },
+    [],
+  );
 
   // Box-shadow animation for selected and highlighted states
   useEffect(() => {
-    if (!stateScope.current) return;
-
     const isActive = displayedSelected || highlighted;
-    const wasActive = prevSelected === true || prevHighlighted === true;
+    const wasActive = wasActiveRef.current;
+    wasActiveRef.current = isActive;
+
+    if (!stateScope.current) return;
 
     if (isActive && !wasActive) {
       // Spring animation - overshoots then rebounds to resting state
@@ -584,21 +628,14 @@ export default function Node(props: UINodeProps) {
         { duration: 0.15 },
       );
     }
-  }, [
-    displayedSelected,
-    highlighted,
-    prevSelected,
-    prevHighlighted,
-    stateScope,
-    animate,
-  ]);
+  }, [displayedSelected, highlighted, stateScope, animate]);
 
   const nodeContent = (
     <>
       {loading && <Loader2 className="animate-spin" size={24} />}
       {!loading && (
         <span ref={labelRef} className={fitSteps[stepIndex] ?? fitSteps[0]}>
-          {label}
+          {displayedLabel}
         </span>
       )}
     </>

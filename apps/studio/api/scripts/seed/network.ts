@@ -16,6 +16,7 @@ import { Effect } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import { generateNetwork } from '@codaco/protocol-utilities';
+import { isFinishSessionStage } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import type { Transaction } from '../../src/db/tenant.ts';
@@ -70,6 +71,7 @@ function withSeededIds(generated: GeneratedInterview): GeneratedInterview {
     UUID_PATTERN,
     (match) => replacements.get(match) ?? match,
   );
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the text is this function's own serialization of a GeneratedInterview with UUID strings swapped for UUID strings, so it parses back to the same shape
   return JSON.parse(rewritten) as GeneratedInterview;
 }
 
@@ -105,6 +107,8 @@ const SESSION_COLUMNS = [
   'last_activity_at',
   'completed_at',
   'abandoned_at',
+  'finish_stage_id',
+  'finish_outcome',
 ] as const;
 
 const NODE_COLUMNS = [
@@ -217,6 +221,11 @@ export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
       if (version === undefined) {
         throw new Error(`wave ${wave.id} pins an unknown version ${versionId}`);
       }
+      // Where every completed session ended: the protocol's finish stage.
+      const finishStage = version.stages.find(isFinishSessionStage);
+      if (finishStage === undefined) {
+        throw new Error(`version ${versionId} has no finish stage`);
+      }
       const statuses = statusMix(count, study.key === 'closed');
       const anonymousLink = study.links.find(
         (link) => link.kind === 'anonymous',
@@ -305,9 +314,9 @@ export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
           startedAt,
           faker.number.int({ min: 8, max: 95 }),
         );
-        // Completed sessions sit past the last stage, with no stage id; an
-        // abandoned one at the stage it dropped out of; a paused one at the
-        // stage chosen above.
+        // Completed sessions sit at the finish stage they ended at, as a
+        // participant's finished interview does; an abandoned one at the stage
+        // it dropped out of; a paused one at the stage chosen above.
         const stageIndex =
           inProgressStageIndex ?? Math.max(0, generated.currentStep);
         const stageId = version.stages[stageIndex]?.id ?? null;
@@ -337,6 +346,8 @@ export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
           lastActivityAt,
           status === 'completed' ? lastActivityAt : null,
           status === 'abandoned' ? lastActivityAt : null,
+          status === 'completed' ? finishStage.id : null,
+          status === 'completed' ? finishStage.outcome : null,
         ]);
 
         for (const row of generated.network.nodes.map(nodeRow)) {
@@ -373,6 +384,8 @@ export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
             network: generated.network,
             stageMetadata: generated.stageMetadata ?? {},
             currentStep: generated.currentStep,
+            finishStageId: finishStage.id,
+            finishOutcome: finishStage.outcome,
           });
           snapshotRows.push([
             sessionId,

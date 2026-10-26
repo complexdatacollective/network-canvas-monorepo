@@ -13,6 +13,10 @@ import type { InterfaceScenarios } from './types.js';
 
 const FIXTURES_DIR = path.resolve(import.meta.dirname, '../helpers/fixtures');
 
+// A researcher's own wording for the panel that could not load, distinct from
+// the text Network Canvas supplies.
+const EXTERNAL_DATA_ERROR = 'The list could not load - matrix check';
+
 type NetworkState = NonNullable<SessionPayload['network']>;
 
 /** Find the first node whose attributes contain the given label value. */
@@ -96,7 +100,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
         // Below minLength: field error visible, dialog stays open on submit.
         await stage.form.fillText('person-name', 'A');
-        await page.getByRole('button', { name: 'Finished' }).click();
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
         await expect(stage.form.getFieldError('person-name')).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -176,7 +180,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // A NEW node named 'Bob' is blocked by uniqueness.
         await stage.nameGenerator.openAddForm();
         await stage.form.fillText('person-name', 'Bob');
-        await page.getByRole('button', { name: 'Finished' }).click();
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
         await expect(stage.form.getFieldError('person-name')).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
         const afterDup = await protocol.getNetworkState(interview.interviewId);
@@ -215,7 +219,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // Above maxValue: submit blocked, no node created.
         await stage.nameGenerator.openAddForm();
         await stage.form.fillNumber('age', '200');
-        await page.getByRole('button', { name: 'Finished' }).click();
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
         await expect(stage.form.getFieldError('age')).toBeVisible();
         const afterBlocked = await protocol.getNetworkState(
           interview.interviewId,
@@ -232,7 +236,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         expect(storedAge).toBe(30);
 
         // Bin drag deletes the node.
-        await stage.deleteNode('Contact');
+        await stage.deleteNode('Unnamed');
         const afterDelete = await protocol.getNetworkState(
           interview.interviewId,
         );
@@ -283,7 +287,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // uniqueness rule has to treat them as the same ID.
         await stage.nameGenerator.openAddForm();
         await stage.form.fillNumber('alterId', '12');
-        await page.getByRole('button', { name: 'Finished' }).click();
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
         await expect(stage.form.getFieldError('alterId')).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
         const afterDuplicate = await protocol.getNetworkState(
@@ -612,7 +616,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
     {
       id: 'min-nodes-behaviour',
-      covers: ['behaviours', 'behaviours.minNodes'],
+      covers: ['behaviours', 'behaviours.minNodes', 'minNodesNotice'],
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
@@ -666,7 +670,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
     {
       id: 'max-nodes-behaviour',
-      covers: ['behaviours.maxNodes'],
+      covers: ['behaviours.maxNodes', 'maxNodesNotice'],
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -925,7 +929,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
     {
       id: 'external-panel-error-state',
-      covers: ['panels[].dataSource=asset(external)'],
+      covers: ['panels[].dataSource=asset(external)', 'externalDataError'],
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
@@ -942,6 +946,13 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           subject: { entity: 'node', type: person.id },
           form: { title: 'Add a person', fields: [] },
         });
+        // The researcher's own words, so the panel proves it shows the
+        // protocol's interface text rather than Network Canvas's catalog.
+        synth.setInterfaceText(
+          'messages',
+          'externalDataError',
+          EXTERNAL_DATA_ERROR,
+        );
         ng.addFormField({
           variable: formVar.id,
           component: 'Text',
@@ -965,9 +976,10 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         await expect(panel).toBeAttached();
         await expect(panel).toBeHidden();
         await expect(panel.getByText('Something went wrong')).toBeAttached();
+        await expect(panel.getByText(EXTERNAL_DATA_ERROR)).toBeAttached();
         await expect(
           panel.getByText('External data could not be loaded.'),
-        ).toBeAttached();
+        ).toHaveCount(0);
 
         // No crash: the main list is present and the add flow still works.
         await expect(page.getByTestId('node-list')).toBeVisible();

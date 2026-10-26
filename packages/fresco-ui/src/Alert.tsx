@@ -10,7 +10,9 @@ import {
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Icon from './Icon';
+import InfoIcon from './icons/info.svg.react';
+import SuccessIcon from './icons/success.svg.react';
+import WarningIcon from './icons/warning.svg.react';
 import Surface from './layout/Surface';
 import {
   headingTagBelow,
@@ -62,16 +64,19 @@ type AlertIconStyle = React.CSSProperties & {
   '--warning-icon-accent-dark'?: string;
 };
 
+// The illustrated icons are imported directly rather than through Icon, whose
+// name lookup holds every Lucide icon: an Alert is often on an app's first
+// screen, and that lookup would put the whole icon set in front of it.
 const InfoAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <Icon {...props} name="info" />
+  <InfoIcon className="size-32" {...props} />
 );
 
 const SuccessAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <Icon {...props} name="success" />
+  <SuccessIcon className="size-32" {...props} />
 );
 
 const WarningAlertIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <Icon {...props} name="warning" />
+  <WarningIcon className="size-32" {...props} />
 );
 
 const variantIcons: Record<Variant, AlertIcon | null> = {

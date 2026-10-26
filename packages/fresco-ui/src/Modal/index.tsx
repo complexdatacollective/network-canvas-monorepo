@@ -2,7 +2,13 @@
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { AnimatePresence } from 'motion/react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { PortalContainerScope, usePortalContainer } from '../PortalContainer';
 import { asFinalFocusTarget } from '../utils/finalFocus';
@@ -100,7 +106,7 @@ export default function Modal({
   // remounts with `open` already true and a transition-only capture would never
   // fire for them.
   const [wasOpen, setWasOpen] = useState(false);
-  const openerRef = useRef<HTMLElement | null>(null);
+  const [opener, setOpener] = useState<HTMLElement | null>(null);
 
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -112,9 +118,18 @@ export default function Modal({
       // page's active element the `<iframe>` itself, so the opener would be
       // the frame element rather than the control that opened the modal.
       const ownerDocument = portalContainer?.ownerDocument ?? document;
-      openerRef.current = asFinalFocusTarget(ownerDocument.activeElement);
+      setOpener(asFinalFocusTarget(ownerDocument.activeElement));
     }
   }
+
+  // Handed to the popup as a ref, read only when focus is returned on close.
+  // Copying the captured opener into it from a layout effect keeps that read
+  // free of re-renders, and the popup cannot close before this commit's
+  // effects have run.
+  const openerRef = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    openerRef.current = opener;
+  }, [opener]);
 
   /**
    * Isolate everything outside this modal while it is open. See

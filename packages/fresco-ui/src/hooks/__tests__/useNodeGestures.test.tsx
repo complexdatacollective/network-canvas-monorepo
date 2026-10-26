@@ -538,6 +538,7 @@ describe('useNodeGestures: drags', () => {
     expect(onDragEnd).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
       cancelled: true,
     });
+    expect(isDragging()).toBe(false);
 
     // The interruption consumed the drag: releasing afterwards ends nothing.
     fireEvent.pointerUp(window, { pointerId: 1 });
@@ -565,6 +566,7 @@ describe('useNodeGestures: drags', () => {
     expect(onDragEnd).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
       cancelled: true,
     });
+    expect(isDragging()).toBe(false);
 
     // The interruption consumed the drag; the release neither ends it again
     // nor turns into a tap.

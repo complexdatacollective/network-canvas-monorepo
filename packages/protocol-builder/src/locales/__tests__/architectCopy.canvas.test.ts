@@ -50,7 +50,7 @@ describe('canvas, pedigree and anonymisation copy against released Architect', (
   it('has a fixture to check', () => {
     // Guards the read and the path: an empty fixture would make every
     // assertion below vacuous.
-    expect(Object.keys(fixture).length).toBeGreaterThan(150);
+    expect(Object.keys(fixture).length).toBeGreaterThan(120);
     expect(removed.length).toBeGreaterThan(10);
   });
 

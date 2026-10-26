@@ -1,6 +1,14 @@
 // fake-indexeddb must be imported before Dexie opens a database.
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type MockInstance,
+  vi,
+} from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
@@ -16,12 +24,13 @@ import { setSessionDek } from '../sessionKey';
 import {
   createSession,
   getSession,
-  getSessionsByIds,
+  getSessionsForExport,
   listSessions,
   markSessionFinished,
   markSessionUnfinished,
   markSessionsExported,
   querySessions,
+  reencryptSession,
   updateSession,
 } from '../sessions';
 
@@ -44,17 +53,80 @@ const initialNetwork: NcNetwork = {
   edges: [],
 };
 
+// Deterministic stand-ins for salts, IVs and ciphertexts. The repo never
+// decrypts these values, so only their shape matters.
+const bytes = (length: number, offset: number) =>
+  Array.from({ length }, (_, index) => (index * 37 + offset) % 256);
+
+// Nothing about the key is stored: the interview derives it from the
+// participant's passphrase and the session's id, so the repo must keep each
+// value, its `{ iv }` and the session's id as they are. A schema 8 interview
+// that later gains a passphrase holds both value shapes, so this one does too.
+const encryptedNetwork: NcNetwork = {
+  ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+  nodes: [
+    {
+      [entityPrimaryKeyProperty]: 'n1',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 4) },
+      _secureAttributes: { name: { iv: bytes(12, 5) } },
+    },
+    {
+      [entityPrimaryKeyProperty]: 'n2',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 6) },
+      _secureAttributes: { name: { iv: bytes(12, 7), salt: bytes(16, 8) } },
+    },
+  ],
+  edges: [],
+};
+
+const schema8EncryptedNetwork: NcNetwork = {
+  ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+  nodes: [
+    {
+      [entityPrimaryKeyProperty]: 'n1',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 9) },
+      _secureAttributes: { name: { iv: bytes(12, 10), salt: bytes(16, 11) } },
+    },
+  ],
+  edges: [],
+};
+
 type InformationStage = Extract<
   NonNullable<CurrentProtocol['stages'][number]>,
   { type: 'Information' }
 >;
 
+type FinishStage = Extract<
+  NonNullable<CurrentProtocol['stages'][number]>,
+  { type: 'FinishSession' }
+>;
+
+const finishStage: FinishStage = {
+  id: 'finish',
+  type: 'FinishSession',
+  mode: 'confirmation',
+  label: { en: 'Finish' },
+  content: { en: '# Finish\n\nThank you.' },
+  finishedContent: {
+    en: '# Interview Finished\n\nThank you for participating!',
+  },
+  finishLabel: { en: 'Finish' },
+  finishConfirmation: { en: 'Finish this interview?' },
+  finishFailed: { en: 'The interview could not be finished.' },
+  outcome: 'completed',
+};
+
+const finish = { stageId: 'finish', outcome: 'completed' } as const;
+
 function informationStage(id: string): InformationStage {
   return {
     id,
     type: 'Information',
-    label: id,
-    title: id,
+    label: { en: id },
+    title: { en: id },
     items: [],
   };
 }
@@ -64,6 +136,7 @@ const authoredStages: CurrentProtocol['stages'] = [
   informationStage('stage-1'),
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 const stagesWithFinishRoute: CurrentProtocol['stages'] = [
@@ -78,6 +151,7 @@ const stagesWithFinishRoute: CurrentProtocol['stages'] = [
   },
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 const stagesWithNoActiveAuthoredStage: CurrentProtocol['stages'] = [
@@ -92,6 +166,7 @@ const stagesWithNoActiveAuthoredStage: CurrentProtocol['stages'] = [
   informationStage('stage-1'),
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 describe('sessions repo — encryption at boundary', () => {
@@ -129,7 +204,7 @@ describe('sessions repo — encryption at boundary', () => {
     const back = await getSession(created.id);
     expect(back?.network).toEqual(initialNetwork);
 
-    const byIds = await getSessionsByIds([created.id]);
+    const byIds = await getSessionsForExport([created.id]);
     expect(byIds[0]?.network).toEqual(initialNetwork);
   });
 
@@ -150,6 +225,48 @@ describe('sessions repo — encryption at boundary', () => {
     const back = await getSession(created.id);
     expect(back?.network.nodes).toHaveLength(0);
     expect(back?.progress).toBe(55);
+  });
+
+  it('keeps a write that lands while the row is being re-encrypted', async () => {
+    // Written before the device was secured, so the sweep has it to wrap.
+    const dek = await makeDek();
+    setSessionDek(null);
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    setSessionDek(dek);
+
+    // Interviewer 8, in its frame, saves an answer after the sweep has read
+    // the row and before it writes the re-wrapped copy back.
+    const answered: NcNetwork = { ...initialNetwork, nodes: [] };
+    const realGet = (id: string) => db.sessions.get(id);
+    // Only the key form of `get` is used; its overloads defeat inference.
+    const getSpy = (
+      vi.spyOn(db.sessions, 'get') as unknown as MockInstance<
+        (id: string) => Promise<StoredSessionRow | undefined>
+      >
+    ).mockImplementationOnce(async (id) => {
+      const read = await realGet(id);
+      if (read) {
+        await db.sessions.put({
+          ...read,
+          network: answered,
+          lastUpdatedAt: '2099-01-01T00:00:00.000Z',
+        });
+      }
+      return read;
+    });
+
+    await reencryptSession(created.id);
+    getSpy.mockRestore();
+
+    const raw = await db.sessions.get(created.id);
+    expect(raw?._enc?.network).toBeDefined();
+    expect(raw?.lastUpdatedAt).toBe('2099-01-01T00:00:00.000Z');
+    expect((await getSession(created.id))?.network).toEqual(answered);
   });
 
   it('lists and queries without touching the key (returns lite rows)', async () => {
@@ -179,6 +296,53 @@ describe('sessions repo — encryption at boundary', () => {
     expect(result.statusCounts.all).toBe(1);
     expect(result.rows[0]?.caseId).toBe('case-1');
   });
+});
+
+describe('sessions repo — participant passphrase encryption', () => {
+  beforeEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+  afterEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  it.each([
+    {
+      label: 'IV-only values',
+      network: encryptedNetwork,
+    },
+    {
+      label: 'schema 8 values',
+      network: schema8EncryptedNetwork,
+    },
+  ])(
+    'keeps $label through syncs, resumes, re-encryption and export reads',
+    async ({ network }) => {
+      // No vault yet, so rows are written in plaintext.
+      const created = await createSession({
+        protocolHash: 'h1',
+        protocolName: 'Study',
+        caseId: 'case-1',
+        initialNetwork,
+      });
+      // What the interview route's sync handler writes.
+      await updateSession(created.id, { network, currentStep: 1 });
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+
+      // Securing the device re-encrypts every stored session under its key.
+      setSessionDek(await makeDek());
+      await reencryptSession(created.id);
+      expect((await db.sessions.get(created.id))?._enc).toBeDefined();
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+
+      await updateSession(created.id, { network, currentStep: 2 });
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+      const [exported] = await getSessionsForExport([created.id]);
+      expect(exported?.network).toStrictEqual(network);
+    },
+  );
 });
 
 // Formats a Date as its LOCAL calendar day, matching the 'YYYY-MM-DD' strings
@@ -329,7 +493,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
     await markSessionsExported([created.id]);
 
     const list = await listSessions();
@@ -352,7 +516,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       initialNetwork,
     });
     await updateSession(created.id, { currentStep: 4, progress: 100 });
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
     await markSessionsExported([created.id]);
 
     await markSessionUnfinished(created.id, authoredStages);
@@ -377,7 +541,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       initialNetwork,
     });
     await updateSession(created.id, { currentStep: 4, progress: 100 });
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
 
     await markSessionUnfinished(created.id, stagesWithFinishRoute);
 
@@ -396,7 +560,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       initialNetwork,
     });
     await updateSession(created.id, { currentStep: 4, progress: 100 });
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
 
     await markSessionUnfinished(created.id, stagesWithNoActiveAuthoredStage);
 
@@ -421,6 +585,122 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
     const session = await getSession(created.id);
     expect(session?.currentStep).toBe(2);
     expect(session?.progress).toBe(60);
+  });
+});
+
+describe('sessions repo — finish stage and outcome', () => {
+  beforeEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(await makeDek());
+  });
+  afterEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  async function createStudySession() {
+    return createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+  }
+
+  it('records the finish stage and its outcome with the finish time', async () => {
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, {
+      stageId: 'finish-ineligible',
+      outcome: 'ineligible',
+    });
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).not.toBeNull();
+    expect(session?.finishStageId).toBe('finish-ineligible');
+    expect(session?.finishOutcome).toBe('ineligible');
+    expect(session?.network).toEqual(initialNetwork);
+  });
+
+  it('stores the finish stage and outcome encrypted, never in plaintext', async () => {
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, {
+      stageId: 'finish-terminated',
+      outcome: 'terminated',
+    });
+
+    const raw = await db.sessions.get(created.id);
+    expect(raw?.finishedAt).not.toBeNull();
+    expect(raw?._enc?.finish).toBeDefined();
+    expect(raw?.finishStageId).toBeUndefined();
+    expect(raw?.finishOutcome).toBeUndefined();
+    expect(JSON.stringify(raw)).not.toContain('terminated');
+  });
+
+  it('keeps the finish stage and outcome through a later write', async () => {
+    const created = await createStudySession();
+    await markSessionFinished(created.id, finish);
+
+    await updateSession(created.id, { network: initialNetwork });
+
+    const session = await getSession(created.id);
+    expect(session?.finishStageId).toBe('finish');
+    expect(session?.finishOutcome).toBe('completed');
+  });
+
+  it('clears the finish time, stage and outcome together when marked unfinished', async () => {
+    const created = await createStudySession();
+    await markSessionFinished(created.id, finish);
+
+    await markSessionUnfinished(created.id, authoredStages);
+
+    const raw = await db.sessions.get(created.id);
+    expect(raw?._enc?.finish).toBeUndefined();
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBeNull();
+    expect(session?.finishStageId ?? null).toBeNull();
+    expect(session?.finishOutcome ?? null).toBeNull();
+
+    // Finishing again records the new finish, not a remnant of the old one.
+    await markSessionFinished(created.id, {
+      stageId: 'finish-ineligible',
+      outcome: 'ineligible',
+    });
+    const refinished = await getSession(created.id);
+    expect(refinished?.finishStageId).toBe('finish-ineligible');
+    expect(refinished?.finishOutcome).toBe('ineligible');
+  });
+
+  it('reads a session finished before outcomes were recorded as unknown', async () => {
+    const created = await createStudySession();
+    // A finish written by an earlier version: the time alone.
+    await db.sessions.update(created.id, {
+      finishedAt: '2026-01-02T00:00:00.000Z',
+    });
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBe('2026-01-02T00:00:00.000Z');
+    expect(session?.finishStageId ?? null).toBeNull();
+    expect(session?.finishOutcome ?? null).toBeNull();
+  });
+
+  it('records and clears the finish in plaintext when no key is in use', async () => {
+    setSessionDek(null);
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, finish);
+    const raw = await db.sessions.get(created.id);
+    expect(raw?._enc).toBeUndefined();
+    expect(raw?.finishStageId).toBe('finish');
+    expect(raw?.finishOutcome).toBe('completed');
+    expect((await getSession(created.id))?.finishOutcome).toBe('completed');
+
+    await markSessionUnfinished(created.id, authoredStages);
+    const reopened = await db.sessions.get(created.id);
+    expect(reopened?.finishedAt).toBeNull();
+    expect(reopened).not.toHaveProperty('finishStageId');
+    expect(reopened).not.toHaveProperty('finishOutcome');
   });
 });
 

@@ -46,6 +46,7 @@ const createPrismaClient = () => {
   });
 };
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `prisma` is this module's own optional slot on globalThis, written only below
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createPrismaClient> | undefined;
 };

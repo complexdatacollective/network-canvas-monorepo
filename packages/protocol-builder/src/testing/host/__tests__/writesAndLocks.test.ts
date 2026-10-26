@@ -203,7 +203,7 @@ const CALLS: readonly Call[] = [
         sectionId: INFORMATION,
         document: Redacted.make({
           ...host.store.read(INFORMATION).document,
-          label: 'Renamed by the enumeration',
+          label: { 'en-US': 'Renamed by the enumeration' },
         }),
         revision: host.store.read(INFORMATION).revision,
       }),
@@ -280,7 +280,10 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookEdge',
-        document: Redacted.make({ name: 'Knows', color: 'edge-color-seq-1' }),
+        document: Redacted.make({
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+        }),
       }),
   },
   {
@@ -294,7 +297,11 @@ const CALLS: readonly Call[] = [
         kind: 'codebookEgo',
         document: Redacted.make({
           variables: {
-            ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+            ego_age: {
+              name: 'ego_age',
+              type: 'number',
+              component: 'Number',
+            },
           },
         }),
       }),
@@ -382,9 +389,9 @@ describe('every write, against every lock on every section it touches', () => {
   it('enumerates a call for every procedure the contract has', () => {
     // A procedure nobody exercises escapes the enumeration below entirely, so
     // the contract itself says what the list has to contain.
-    expect([...new Set(CALLS.map((call) => call.procedure))].sort()).toEqual(
-      procedureTags().sort(),
-    );
+    expect(
+      [...new Set(CALLS.map((call) => call.procedure))].toSorted(),
+    ).toEqual(procedureTags().toSorted());
   });
 
   for (const call of CALLS) {

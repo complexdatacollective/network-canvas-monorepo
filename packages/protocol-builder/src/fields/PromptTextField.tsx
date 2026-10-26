@@ -3,19 +3,18 @@ import type { ReactNode } from 'react';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
 import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
 import type { RowPreviewProps } from '../form/rowDialog.tsx';
-import RichTextField from './RichTextField.tsx';
+import { asLocalizedString } from '../localization/localizedText.ts';
+import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
+import { DynamicTextPreview } from './DynamicTextPreview.tsx';
+import { LocalizedRichTextField } from './LocalizedStringField.tsx';
 
 const WRITE_THE_QUESTION = createMessageError(
   censusMessages.promptTextRequired,
 );
-
-const asString = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value : undefined;
 
 export type PromptTextFieldProps = Readonly<{
   /** The prompt as the dialog opened on it, for the field's initial value. */
@@ -82,14 +81,15 @@ export function PromptTextField({
   const fields = (
     <>
       {guidance}
-      <Field<typeof RichTextField>
+      <Field<typeof LocalizedRichTextField>
         name="text"
-        component={RichTextField}
+        component={LocalizedRichTextField}
+        dynamicValues="prompt"
         label={intl.formatMessage(censusMessages.promptTextLabel)}
         {...(hint === undefined ? {} : { hint })}
         placeholder={placeholder}
         singleLine
-        initialValue={asString(item.text)}
+        initialValue={asLocalizedString(item.text)}
         required={WRITE_THE_QUESTION}
       />
       {children}
@@ -112,18 +112,21 @@ export function PromptTextField({
  *
  * The question is markdown, so it is rendered as markdown: a row showing
  * `**these two people**` would make the researcher open the interview to find
- * out what the participant actually reads.
+ * out what the participant actually reads. It is shown in the editing
+ * language, or in the language a participant reading that one would be shown
+ * instead.
  */
 export function PromptTextPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const text = asString(item.text)?.trim() ?? '';
+  const localize = useLocalizedText();
+  const shown = localize(item.text);
 
-  if (text === '') {
+  if (shown.text.trim() === '') {
     return (
       <span className="text-sm text-current/70 italic">
         {intl.formatMessage(censusMessages.promptTextEmptyPreview)}
       </span>
     );
   }
-  return <RenderMarkdown render={<div />}>{text}</RenderMarkdown>;
+  return <DynamicTextPreview value={item.text} />;
 }

@@ -2,11 +2,15 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   asEntityAttributeReference,
+  type LocalizedString,
   NodeShapes,
   type NodeDefinition,
   type NodeShape,
   type VariableType,
+  VariableTypes,
 } from '@codaco/protocol-validation';
+
+import { asLocalizedString } from '../localization/localizedText.ts';
 
 type ShapeMapping = NonNullable<NodeDefinition['shape']['dynamic']>;
 type DiscreteShapeMapping = Extract<ShapeMapping, { type: 'discrete' }>;
@@ -28,8 +32,8 @@ export type ShapeMappingDraft = Partial<
 > & { type?: ShapeMappingType };
 
 /** One answer a discrete mapping can give a shape to. */
-export type ShapeMappingOption = Readonly<{
-  label: string;
+type ShapeMappingOption = Readonly<{
+  label: LocalizedString;
   value: DiscreteShapeMapEntry['value'];
 }>;
 
@@ -151,15 +155,16 @@ const readOptions = (
   value: unknown,
 ): readonly ShapeMappingOption[] | undefined => {
   if (!Array.isArray(value)) return undefined;
-  const options = value.flatMap((entry) =>
-    isRecord(entry) &&
-    typeof entry.label === 'string' &&
-    isOptionValue(entry.value)
-      ? [{ label: entry.label, value: entry.value }]
-      : [],
-  );
+  const options = value.flatMap((entry) => {
+    if (!isRecord(entry) || !isOptionValue(entry.value)) return [];
+    const label = asLocalizedString(entry.label);
+    return label === undefined ? [] : [{ label, value: entry.value }];
+  });
   return options.length === 0 ? undefined : options;
 };
+
+const isVariableType = (value: unknown): value is VariableType =>
+  typeof value === 'string' && Object.hasOwn(VariableTypes, value);
 
 const readNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
@@ -179,7 +184,7 @@ export const shapeMappingVariables = (
     Object.entries(variables).flatMap(([id, variable]) => {
       if (!isRecord(variable)) return [];
       const { name, type } = variable;
-      if (typeof name !== 'string' || typeof type !== 'string') return [];
+      if (typeof name !== 'string' || !isVariableType(type)) return [];
       const validation = isRecord(variable.validation)
         ? variable.validation
         : {};
@@ -191,7 +196,7 @@ export const shapeMappingVariables = (
           id,
           {
             name,
-            type: type as VariableType,
+            type,
             ...(options === undefined ? {} : { options }),
             validation: {
               ...(minValue === undefined ? {} : { minValue }),

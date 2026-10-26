@@ -16,8 +16,8 @@
 #                      sidecar, against seeded rows
 #   C  from a release  the previous PUBLISHED studio-api/studio-web → the
 #                      candidate. Runs whenever previous-release.mjs finds a
-#                      `@codaco/studio-api@<x.y.z>` tag, pulling that
-#                      release's images from GHCR, and the lane fails if it
+#                      `studio@<x.y.z>` tag, pulling that release's images
+#                      from GHCR, and the lane fails if it
 #                      then did not run and pass. Until a tag exists the
 #                      summary says `previousRelease: none` — there is no
 #                      migration-era release to upgrade from, and GHCR is not
@@ -27,7 +27,9 @@
 # upgrade.sh (the guide's sequence under the observer); export again; diff;
 # the run's own checks; then the guide's rollback — the "from" digests back in
 # `.env` and backup.md's restore block, as written, from the backup the
-# upgrade took — and a third export, which must match the first. Everything
+# upgrade took — and a third export, which must match the first. Run B then
+# drives scripts/upgrade.sh through a rollback, an upgrade and a refused
+# downgrade on the restored instance. Everything
 # lands in $WORK_DIR/run-<name>/ and $WORK_DIR/summary.json, and under GitHub
 # Actions each run's line is added to the job's step summary.
 #
@@ -215,7 +217,7 @@ complete_setup() { # token
   printf '{"_tag":"Request","id":1,"tag":"setup.complete","payload":{"token":"%s","instanceName":"Release test %s","owner":{"name":"Release Test Owner","email":"owner@release-test.invalid","password":"release-test-not-for-production"}},"headers":[]}\n' \
     "$1" "$RUN_NAME" > "$frame"
   body="$(curl -k -s --max-time 30 -X POST "$URL/rpc" \
-    -H 'Content-Type: application/ndjson' -H "Origin: $ORIGIN" \
+    -H 'Content-Type: application/x-ndjson' -H "Origin: $ORIGIN" \
     --data-binary "@$frame")"
   rm -f "$frame"
   case "$body" in
@@ -252,20 +254,20 @@ pull_previous_release() { # version
   if [ -n "${GITHUB_TOKEN:-}" ]; then
     printf '%s' "$GITHUB_TOKEN" \
       | docker login ghcr.io -u "${GITHUB_ACTOR:-x-access-token}" --password-stdin > /dev/null \
-      || die "could not log in to ghcr.io to pull the release @codaco/studio-api@$1"
+      || die "could not log in to ghcr.io to pull the release studio@$1"
     logged_in=true
   elif [ -n "${CI:-}" ]; then
-    die "run C needs GITHUB_TOKEN (with packages: read) to pull @codaco/studio-api@$1's images from ghcr.io"
+    die "run C needs GITHUB_TOKEN (with packages: read) to pull studio@$1's images from ghcr.io"
   fi
   local image status=0
   for image in "ghcr.io/complexdatacollective/studio-api:$1" "ghcr.io/complexdatacollective/studio-web:$1"; do
     docker pull -q "$image" > /dev/null || {
       status=$?
-      echo "[release-test] could not pull $image, the image of the tag @codaco/studio-api@$1" >&2
+      echo "[release-test] could not pull $image, the image of the tag studio@$1" >&2
     }
   done
   if $logged_in; then docker logout ghcr.io > /dev/null 2>&1 || true; fi
-  [ "$status" -eq 0 ] || die "the release @codaco/studio-api@$1 is tagged but its images cannot be pulled"
+  [ "$status" -eq 0 ] || die "the release studio@$1 is tagged but its images cannot be pulled"
 }
 
 # The guide's rollback (upgrade.md): the digests that were replaced back in
@@ -313,6 +315,48 @@ rollback() { # from-api from-web history-before probe-job
   else
     problems+=('the restored instance differs from the one before the upgrade (diff-restored.json)')
   fi
+}
+
+# scripts/upgrade.sh on the instance the rollback restored, three times: a
+# release whose web image cannot be pulled (rolled back after the stop), the
+# release itself (upgraded, its migration applied), and back to the restored
+# release (its migrate refuses the newer history, so it is rolled back).
+script_upgrade() { # label expected-exit failed-step api web serving-api serving-web history
+  local code=0 log="$RUN_DIR/upgrade-script-$1.log" flag history
+  say "upgrade script ($1): expecting exit $2"
+  "$STUDIO_DIR/scripts/upgrade.sh" --dir "$DEPLOY_DIR" "$4" "$5" < /dev/null > "$log" 2>&1 || code=$?
+  if [ "$code" -ne "$2" ]; then
+    tail -n 30 "$log" >&2
+    problems+=("upgrade script ($1) exited $code, not $2 ($(basename "$log"))")
+    return 1
+  fi
+  if [ "$3" != - ] && ! grep -q "failed step=$3 before migrate" "$log"; then
+    problems+=("upgrade script ($1) did not fail at $3 ($(basename "$log"))")
+    return 1
+  fi
+  if ! wait_ready 60; then
+    problems+=("after the upgrade script ($1), /readyz did not answer 200")
+    return 1
+  fi
+  flag="$(echo 'SELECT maintenance FROM deployment_state WHERE id = 1;' | psql_)"
+  history="$(history_versions)"
+  if [ "$flag" = f ] && [ "$history" = "$8" ] \
+    && [ "$(image_var "$DEPLOY_DIR/.env" STUDIO_API_IMAGE)" = "$6" ] \
+    && [ "$(image_var "$DEPLOY_DIR/.env" STUDIO_WEB_IMAGE)" = "$7" ] \
+    && running_image_is api "$6" && running_image_is worker "$6" && running_image_is web "$7"; then
+    checks+=("upgrade script ($1) exited $2: .env names and api and worker run $6, web $7, history $history, maintenance off")
+    return 0
+  fi
+  problems+=("after the upgrade script ($1): maintenance '$flag', history '$history' (want $8), or .env or the containers not on $6 and $7")
+  return 1
+}
+
+script_upgrades() { # from-api from-web to-api to-web history-before
+  local unpullable
+  unpullable="${2%@*}@sha256:$(printf '%064d' 0)"
+  script_upgrade unpullable-web 3 pull "$3" "$unpullable" "$1" "$2" "$5" || return 0
+  script_upgrade release 0 - "$3" "$4" "$3" "$4" "$5,$NEXT_VERSION" || return 0
+  script_upgrade refused-downgrade 3 migrate "$1" "$2" "$3" "$4" "$5,$NEXT_VERSION" || return 0
 }
 
 # run_one <name> <from-api> <from-web> <to-api> <to-web> <seed-checkout>
@@ -417,6 +461,9 @@ run_one() {
   # The upgraded stack's logs, before the rollback replaces its containers.
   compose_all logs --no-color > "$RUN_DIR/logs-upgraded.txt" 2>&1 || true
   rollback "$from_api" "$from_web" "$history_before" "$probe"
+  if [ "$RUN_NAME" = B ] && $restore_ok; then
+    script_upgrades "$from_api" "$from_web" "$to_api" "$to_web" "$history_before"
+  fi
 
   teardown
   trap - EXIT
@@ -470,8 +517,8 @@ for run in "${selected[@]}"; do
       # The previous release's own seed, from its own commit.
       previous_tree="$WORK_DIR/previous-tree"
       git -C "$REPO_ROOT" worktree remove --force "$previous_tree" > /dev/null 2>&1 || true
-      git -C "$REPO_ROOT" worktree add --detach "$previous_tree" "@codaco/studio-api@$previous_newest" \
-        || die "could not check out the tag @codaco/studio-api@$previous_newest to seed the previous release from"
+      git -C "$REPO_ROOT" worktree add --detach "$previous_tree" "studio@$previous_newest" \
+        || die "could not check out the tag studio@$previous_newest to seed the previous release from"
       pull_previous_release "$previous_newest"
       (cd "$previous_tree" && pnpm install --frozen-lockfile --prefer-offline > "$WORK_DIR/previous-install.log" 2>&1) \
         || die "could not install the previous release's checkout (see $WORK_DIR/previous-install.log)"

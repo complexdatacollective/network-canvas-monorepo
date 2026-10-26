@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import type { Variable } from '@codaco/protocol-validation';
 
+import type { PresentationalText } from '../../PresentationalText';
 import type { FieldNameMode } from '../FieldNamespace';
 import type { CustomFieldValidation, ValidationContext } from '../store/types';
 import type { ValidationPropKey } from '../validation/functions';
@@ -269,10 +270,13 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
    * @default legacy
    */
   nameMode?: FieldNameMode;
-  /** Strings retain protocol Markdown; React nodes support literal rich labels. */
-  label: ReactNode;
+  /**
+   * Strings retain protocol Markdown; React nodes support literal rich labels.
+   * A `PresentationalText` object is Markdown shown under its own `lang`/`dir`.
+   */
+  label: ReactNode | PresentationalText;
   /** Supplementary text rendered below the label. */
-  hint?: ReactNode;
+  hint?: ReactNode | PresentationalText;
   /**
    * Visually hide the label while keeping it as the control's accessible name.
    * Use when a surrounding heading already names the field, so the redundant

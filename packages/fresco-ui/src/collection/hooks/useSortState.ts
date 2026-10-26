@@ -1,12 +1,34 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useShallow } from 'zustand/shallow';
 
 import { useCollectionStore, useCollectionStoreApi } from '../contexts';
 import { getInitialSortRules } from '../sorting/initialSortRules';
 import { SortManager } from '../sorting/SortManager';
 import type { SortProps, SortState } from '../sorting/types';
+
+type SortChangeCallback = NonNullable<SortProps['onSortChange']>;
+
+/**
+ * The sort change callback as of the latest render. The SortManager and its
+ * `setState` outlive the render that created them, so they read the callback
+ * from here when they run rather than capturing it; a layout effect keeps it
+ * current.
+ */
+class SortChangeTarget {
+  onSortChange: SortChangeCallback | undefined;
+
+  update(onSortChange: SortChangeCallback | undefined) {
+    this.onSortChange = onSortChange;
+  }
+}
 
 /**
  * Hook to manage sort state within a collection.
@@ -43,24 +65,27 @@ export function useSortState(props: SortProps = {}): SortManager {
     defaultSortDirection = 'asc',
     onSortChange,
     sortRules: controlledSortRules,
+    sortLocale,
   } = props;
 
   const storeApi = useCollectionStoreApi<unknown>();
 
   // Track if we're in controlled mode
   const isControlled = controlledSortBy !== undefined;
-  const onSortChangeRef = useRef(onSortChange);
-  onSortChangeRef.current = onSortChange;
+  const [changeTarget] = useState(() => new SortChangeTarget());
+  useLayoutEffect(() => {
+    changeTarget.update(onSortChange);
+  });
 
   // Initialize sort state from default props synchronously (uncontrolled mode).
   // Runs before the store subscription so the first read picks up defaults.
   // CollectionProvider seeds the store with these same rules, so this is a
   // no-op for a Collection-created store; it keeps a bare CollectionProvider
   // (no rules passed) correct, re-sorting the already-seeded items.
-  const hasInitialized = useRef(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const initialSortRules = getInitialSortRules(props);
-  if (!isControlled && !hasInitialized.current && initialSortRules.length > 0) {
-    hasInitialized.current = true;
+  if (!isControlled && !hasInitialized && initialSortRules.length > 0) {
+    setHasInitialized(true);
     const [firstRule] = initialSortRules;
     if (firstRule) {
       const store = storeApi.getState();
@@ -85,6 +110,16 @@ export function useSortState(props: SortProps = {}): SortManager {
       sortRules: state.sortRules,
     })),
   );
+
+  // Re-order when the language the text is sorted in changes. The store was
+  // seeded with the locale the first render used, so this does nothing until it
+  // differs from that.
+  useEffect(() => {
+    const store = storeApi.getState();
+    if (store.sortLocale === sortLocale) return;
+    store.setSortLocale(sortLocale);
+    store.resortItems();
+  }, [storeApi, sortLocale]);
 
   // Sync controlled sort props
   useEffect(() => {
@@ -128,7 +163,7 @@ export function useSortState(props: SortProps = {}): SortManager {
           'sortDirection' in updates ||
           'sortType' in updates
         ) {
-          onSortChangeRef.current?.({
+          changeTarget.onSortChange?.({
             property: updates.sortProperty ?? store.sortProperty,
             direction: updates.sortDirection ?? store.sortDirection,
             type: updates.sortType ?? store.sortType,
@@ -142,15 +177,16 @@ export function useSortState(props: SortProps = {}): SortManager {
         store.resortItems();
       }
     },
-    [storeApi, isControlled],
+    [storeApi, isControlled, changeTarget],
   );
 
-  // Create SortManager
+  // Create SortManager. Its callback calls through to the prop that is current
+  // when it runs.
   const sortManager = useMemo(() => {
     return new SortManager(sortState, setState, {
-      onSortChange: onSortChangeRef.current,
+      onSortChange: (state) => changeTarget.onSortChange?.(state),
     });
-  }, [sortState, setState]);
+  }, [sortState, setState, changeTarget]);
 
   return sortManager;
 }

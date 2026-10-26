@@ -1,15 +1,18 @@
-import { act, render } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import type { AnalyticsClient } from '../analytics/tracker';
 import { createDebouncedSyncHandler } from '../contract/debouncedSync';
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import Shell from '../Shell';
-import { updateStageMetadata } from '../store/modules/session';
+import { deleteNode, updateStageMetadata } from '../store/modules/session';
+import type { store as createStore } from '../store/store';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -28,6 +31,7 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
+    localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego-1',
@@ -42,7 +46,8 @@ const payload = {
     hash: 'protocol-hash',
     importedAt: '2026-01-01T00:00:00.000Z',
     name: 'Unmount-flush protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       ego: { variables: {} },
       node: {},
@@ -53,8 +58,8 @@ const payload = {
       {
         id: 'only-stage',
         type: 'Information',
-        label: 'Only stage',
-        title: 'Only stage',
+        label: { en: 'Only stage' },
+        title: { en: 'Only stage' },
         items: [],
       },
     ],
@@ -81,6 +86,7 @@ function renderShell(onSync: SyncHandler) {
     <Shell
       payload={payload}
       onSync={onSync}
+      requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
@@ -207,5 +213,74 @@ describe('Shell sync flushes', () => {
       expect.objectContaining({ stageMetadata: { 0: [[0, 'a', 'b', false]] } }),
       { immediate: true, unloading: false },
     );
+  });
+});
+
+// The store captures its sync handler and tracker once, when it is built, and
+// is not rebuilt for a host's new inline handler; what reaches the host is
+// whichever handler and tracker are current when the store hands work over.
+describe('Shell store handlers', () => {
+  const shell = (onSync: SyncHandler, posthogClient?: AnalyticsClient) => (
+    <Shell
+      payload={payload}
+      onSync={onSync}
+      requestedLocales={[]}
+      onFinish={() => Promise.resolve()}
+      onRequestAsset={() => Promise.resolve('')}
+      analytics={{ installationId: 'test', hostApp: 'test' }}
+      posthogClient={posthogClient}
+      disableAnalytics={posthogClient === undefined}
+      hideNavigation
+      flags={{ isE2E: true }}
+    />
+  );
+
+  it('writes through the onSync the host passes now, without rebuilding the store', async () => {
+    const first = vi.fn<SyncHandler>().mockResolvedValue(undefined);
+    const second = vi.fn<SyncHandler>().mockResolvedValue(undefined);
+    const view = render(shell(first));
+    // The exposed store is typed as a plain redux store; Shell builds it with
+    // the interview's flush helpers.
+    const store = liveStore() as ReturnType<typeof createStore>;
+
+    view.rerender(shell(second));
+    expect(liveStore()).toBe(store);
+    first.mockClear();
+
+    act(() => {
+      store.dispatch(answer(true));
+    });
+    await act(async () => {
+      await store.flushSync();
+    });
+
+    expect(second).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({ stageMetadata: { 0: [[0, 'a', 'b', true]] } }),
+      expect.anything(),
+    );
+    expect(first).not.toHaveBeenCalled();
+  });
+
+  it('reports what the store tracks to the tracker resolved after it was built', async () => {
+    const client = {
+      capture: vi.fn(),
+      register: vi.fn(),
+      captureException: vi.fn(),
+    };
+    render(
+      shell(() => Promise.resolve(), client as unknown as AnalyticsClient),
+    );
+    const store = liveStore();
+
+    await waitFor(() => {
+      act(() => {
+        store.dispatch(deleteNode('someone'));
+      });
+      expect(client.capture).toHaveBeenCalledWith(
+        'node_removed',
+        expect.anything(),
+      );
+    });
   });
 });

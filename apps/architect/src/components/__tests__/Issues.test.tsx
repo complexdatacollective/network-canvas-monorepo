@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { useContext, type ReactNode } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -183,12 +183,12 @@ describe('<Issues />', () => {
   });
 
   describe('a field that fails several rules', () => {
-    // Reachable today via an Introduction Panel / Anonymisation title over 50
-    // characters that trims to empty: `required` and `maxLength` both fail, and
-    // the form store keeps every message.
-    const FIELD = 'introductionPanel.title';
-    const LABEL = 'Introduction Panel Title';
-    const ANCHOR_ID = 'field_introductionPanel_title';
+    // A required text with a length limit that is over the limit and trims to
+    // empty: `required` and `maxLength` both fail, and the form store keeps
+    // every message.
+    const FIELD = 'title';
+    const LABEL = 'Title';
+    const ANCHOR_ID = 'field_title';
     const MESSAGES = [
       'This field is required.',
       'Too long. Enter fewer than 50 characters.',
@@ -415,6 +415,56 @@ describe('a field the stage editor renders itself', () => {
     expect(row()).toHaveTextContent(MESSAGE);
     expect(row().querySelector('a')).toBeNull();
   });
+
+  it('names a field that has come onto the page by the next open', async () => {
+    // The page is read again on every open: a field inside a section the
+    // researcher expanded after the panel first opened is found then.
+    function CollapsedSection() {
+      const [expanded, setExpanded] = useState(false);
+      return expanded ? (
+        <Field<typeof ListControl>
+          name={FIELD}
+          label="Prompts"
+          component={ListControl}
+        />
+      ) : (
+        <button type="button" onClick={() => setExpanded(true)}>
+          Expand the section
+        </button>
+      );
+    }
+    const view = renderStageForm({
+      children: (
+        <>
+          <CollapsedSection />
+          <IssuesHarness />
+        </>
+      ),
+    });
+    act(() => {
+      view
+        .getStoreApi()
+        .getState()
+        .setErrors({ formErrors: [], fieldErrors: { [FIELD]: [MESSAGE] } });
+      view.reportRefusedSubmit();
+    });
+    await screen.findAllByTestId('issue');
+    expect(row().querySelector('a')).toBeNull();
+
+    const trigger = screen.getByRole('button', { name: 'Issues (1)' });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() =>
+      expect(trigger).toHaveAttribute('aria-expanded', 'false'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Expand the section' }));
+    fireEvent.click(trigger);
+    await screen.findAllByTestId('issue');
+
+    expect(row()).toHaveTextContent(`Prompts - ${MESSAGE}`);
+    const href = row().querySelector('a')?.getAttribute('href');
+    expect(href).toBeDefined();
+    expect(document.querySelector(href!)).not.toBeNull();
+  });
 });
 
 /**
@@ -425,8 +475,8 @@ describe('a field the stage editor renders itself', () => {
  * left exactly where they started with the invalid control somewhere below.
  */
 describe('<Issues /> focus', () => {
-  const TITLE = 'introductionPanel.title';
-  const TEXT = 'introductionPanel.text';
+  const TITLE = 'title';
+  const TEXT = 'content';
 
   const renderTwoInvalidFields = async () => {
     const view = renderStageForm({
@@ -434,14 +484,14 @@ describe('<Issues /> focus', () => {
         <>
           <ArchitectField
             name={TITLE}
-            label="Introduction Panel Title"
+            label="Title"
             component={InputField}
             initialValue=""
             validation={{ required: true }}
           />
           <ArchitectField
             name={TEXT}
-            label="Introduction Panel Text"
+            label="Content"
             component={InputField}
             initialValue=""
             validation={{ required: true }}

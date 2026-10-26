@@ -1,6 +1,5 @@
 - main:
   - heading "About You" [level=1]
-  - paragraph: This form has enough fields to overflow the viewport.
   - text: Question 1 Required
   - textbox "Question 1": An answer
   - text: Question 2
@@ -20,8 +19,7 @@
   - text: Question 9
   - textbox "Question 9"
   - status:
-    - button "Scroll to see more questions":
-      - heading "Scroll to see more questions" [level=4]
+    - button "Scroll to see more questions"
   - navigation:
     - button "Settings"
     - button "Previous Step"

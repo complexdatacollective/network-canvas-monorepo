@@ -18,7 +18,7 @@ const discoverProtocolFiles = (root: string): string[] =>
     .filter((entry): entry is string => typeof entry === 'string')
     .filter((entry) => path.basename(entry) === 'protocol.json')
     .map((entry) => path.join(root, entry))
-    .sort();
+    .toSorted();
 
 const protocolFiles = discoverProtocolFiles(protocolsRoot);
 

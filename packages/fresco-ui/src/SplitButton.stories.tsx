@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Check, ChevronDown, Download, Plus, Settings } from 'lucide-react';
 
 import { BUTTON_COLORS, BUTTON_VARIANTS } from './button-constants';
-import SplitButton, { type SplitButtonProps } from './SplitButton';
+import { type SplitButtonProps, SplitButton } from './SplitButton';
 
 const iconMap = {
   check: <Check aria-hidden="true" />,

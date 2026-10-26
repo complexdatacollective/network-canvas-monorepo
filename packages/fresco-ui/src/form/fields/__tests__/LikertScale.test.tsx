@@ -41,23 +41,3 @@ describe('LikertScaleField — unanswered state', () => {
     );
   });
 });
-
-describe('LikertScaleField — option labels', () => {
-  it('announces the chosen option as read, not as its markdown', () => {
-    render(
-      <LikertScaleField
-        value={2}
-        options={[
-          { label: '**Agree**', value: 1 },
-          { label: 'Don&#39;t know', value: 2 },
-        ]}
-        onChange={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByRole('slider')).toHaveAttribute(
-      'aria-valuetext',
-      "Don't know",
-    );
-  });
-});

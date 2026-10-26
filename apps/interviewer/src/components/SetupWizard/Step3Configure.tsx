@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { WizardSelectedMethod } from '~/components/SetupWizardDialog';
@@ -43,10 +43,7 @@ const WIZARD_METHODS: WizardSelectedMethod[] = [
 ];
 
 function asSelectedMethod(v: unknown): WizardSelectedMethod | null {
-  if (typeof v === 'string' && WIZARD_METHODS.some((m) => m === v)) {
-    return v as WizardSelectedMethod;
-  }
-  return null;
+  return WIZARD_METHODS.find((m) => m === v) ?? null;
 }
 
 export default function Step3Configure({

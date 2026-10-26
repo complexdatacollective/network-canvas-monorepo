@@ -14,11 +14,13 @@ import { readMessage } from '../testing/i18n.ts';
 const FIRST_STAGE = 'stage-first';
 const SECOND_STAGE = 'stage-second';
 
+const text = (value: string) => ({ 'en-US': value });
+
 const informationStage = (id: string, label: string): SectionDoc => ({
   id,
   type: 'Information',
-  label,
-  title: label,
+  label: text(label),
+  title: text(label),
   items: [],
 });
 
@@ -32,6 +34,9 @@ const protocolSections = (): Record<string, SectionDoc> => ({
     SECOND_STAGE,
     'Second',
   ),
+  [sectionId({ kind: 'settings' })]: {
+    localization: { defaultLocale: 'en-US', locales: ['en-US'] },
+  },
   [sectionId({ kind: 'stageOrder' })]: {
     stages: [SECOND_STAGE, FIRST_STAGE],
   },
@@ -53,7 +58,10 @@ const protocolSections = (): Record<string, SectionDoc> => ({
   },
   [sectionId({ kind: 'codebookEgo' })]: {
     variables: {
-      consented: { name: 'Consented', type: 'boolean' },
+      consented: {
+        name: 'Consented',
+        type: 'boolean',
+      },
     },
   },
 });
@@ -63,6 +71,10 @@ describe('protocolContextFromSections', () => {
     const context = protocolContextFromSections(protocolSections());
 
     expect(context.issues).toEqual([]);
+    expect(context.localization).toEqual({
+      defaultLocale: 'en-US',
+      locales: ['en-US'],
+    });
     expect(context.orderedStages.map(({ id }) => id)).toEqual([
       SECOND_STAGE,
       FIRST_STAGE,
@@ -130,7 +142,10 @@ describe('protocolContextFromSections', () => {
     sections[edgeId] = {
       ...sections[edgeId],
       variables: {
-        age: { name: 'RelationshipAge', type: 'number' },
+        age: {
+          name: 'RelationshipAge',
+          type: 'number',
+        },
       },
     };
     sections[egoId] = {
@@ -206,14 +221,18 @@ describe('protocolContextFromSections', () => {
     sections[stageSectionId] = {
       id: FIRST_STAGE,
       type: 'NameGenerator',
-      label: 'First',
+      label: text('First'),
       subject: { entity: 'node', type: 'person' },
-      form: { title: 'Add', fields: [{ variable: 'name', prompt: 'Name' }] },
-      prompts: [{ id: 'p1', text: 'Who?' }],
+      form: {
+        title: text('Add'),
+        fields: [{ variable: 'name', prompt: text('Name') }],
+      },
+      prompts: [{ id: 'p1', text: text('Who?') }],
+      // The only thing this stage gets wrong is the rule.
       panels: [
         {
           id: 'panel-1',
-          title: 'From a file',
+          title: text('From a file'),
           dataSource: 'roster-asset',
           filter: {
             rules: [

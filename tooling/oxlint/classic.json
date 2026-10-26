@@ -1,0 +1,64 @@
+{
+  // The classic apps (architect-classic, interviewer-classic) are frozen
+  // schema 7 codebases: they take fixes, not modernisation. Every rule the
+  // shared configs hold at "warn" is switched off here, so their warnings do
+  // not bury the ones worth acting on elsewhere. Rules at "error" still run.
+  // Extend this after the shared configs; a new "warn" rule added to
+  // `.oxlintrc.json` or `react.json` needs an "off" entry here too.
+  "categories": {
+    "suspicious": "off"
+  },
+  "rules": {
+    "no-console": "off",
+    "import/no-cycle": "off",
+    "import/no-duplicates": "off",
+    "promise/no-callback-in-promise": "off",
+    "unicorn/no-thenable": "off",
+
+    "typescript/await-thenable": "off",
+    "typescript/consistent-type-imports": "off",
+    "typescript/no-base-to-string": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-floating-promises": "off",
+    "typescript/no-implied-eval": "off",
+    "typescript/no-misused-spread": "off",
+    "typescript/no-redundant-type-constituents": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/no-useless-default-assignment": "off",
+    "typescript/restrict-template-expressions": "off",
+    "typescript/switch-exhaustiveness-check": "off",
+    "typescript/unbound-method": "off",
+
+    "react/exhaustive-deps": "off",
+    "react/error-boundaries": "off",
+    "react/globals": "off",
+    "react/immutability": "off",
+    "react/incompatible-library": "off",
+    "react/no-find-dom-node": "off",
+    "react/no-unsafe": "off",
+    "react/preserve-manual-memoization": "off",
+    "react/purity": "off",
+    "react/refs": "off",
+    "react/set-state-in-effect": "off",
+    "react/set-state-in-render": "off",
+    "react/static-components": "off",
+    "react/use-memo": "off",
+    "react/void-use-memo": "off",
+
+    "jsx-a11y/alt-text": "off",
+    "jsx-a11y/anchor-is-valid": "off",
+    "jsx-a11y/aria-props": "off",
+    "jsx-a11y/aria-proptypes": "off",
+    "jsx-a11y/aria-unsupported-elements": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+    "jsx-a11y/interactive-supports-focus": "off",
+    "jsx-a11y/label-has-associated-control": "off",
+    "jsx-a11y/media-has-caption": "off",
+    "jsx-a11y/no-noninteractive-element-interactions": "off",
+    "jsx-a11y/no-noninteractive-tabindex": "off",
+    "jsx-a11y/no-static-element-interactions": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "jsx-a11y/role-has-required-aria-props": "off",
+    "jsx-a11y/role-supports-aria-props": "off"
+  }
+}

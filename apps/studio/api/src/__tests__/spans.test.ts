@@ -46,9 +46,11 @@ describe.skipIf(!testDb)('the spans of one signed-in change', () => {
     const trace = server.observed.spans.filter(
       (span) => span.traceId === command!.traceId,
     );
+    // A statement's span is named after the database, so find it by system.
     const statements = trace.filter(
       (span) =>
-        span.name === 'sql.execute' && ancestorsOf(span).includes(command!),
+        span.attributes.get('db.system.name') === 'postgresql' &&
+        ancestorsOf(span).includes(command!),
     );
     expect(statements.length).toBeGreaterThan(0);
     for (const statement of statements) {

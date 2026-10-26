@@ -1,4 +1,6 @@
 import ChildProcess from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { withPostHogConfig } from '@posthog/nextjs-config';
 import type { NextConfig } from 'next';
@@ -18,34 +20,38 @@ import pkg from './package.json' with { type: 'json' };
  */
 const I18N_SOURCE = /formatMessage|defineMessage|FormattedMessage|\$t\b/;
 
-let commitHash = 'Unknown commit hash';
-
-try {
-  commitHash = ChildProcess.execSync('git log --pretty=format:"%h" -n1')
-    .toString()
-    .trim();
-} catch (error) {
-  if (error instanceof Error) {
-    // eslint-disable-next-line no-console
-    console.info(
-      'Error getting commit hash:',
-      error.message ?? 'Unknown error',
-    );
-  } else {
-    // eslint-disable-next-line no-console
-    console.info('Error getting commit hash:', error);
+/**
+ * The commit this build came from. A checkout answers through git; the
+ * released image is built from the mirrored tree, which the Docker build sees
+ * without its .git, so scripts/release/mirror-app.mjs records the monorepo
+ * commit in `source-commit` instead.
+ */
+function readCommitHash() {
+  try {
+    return ChildProcess.execSync('git log --pretty=format:"%h" -n1', {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
+  } catch {
+    // Not a git checkout; fall through to the recorded commit.
   }
+  try {
+    const recorded = readFileSync(
+      join(process.cwd(), 'source-commit'),
+      'utf8',
+    ).trim();
+    if (/^[0-9a-f]{7,40}$/i.test(recorded)) return recorded.slice(0, 10);
+  } catch {
+    // Not a mirrored tree either.
+  }
+  return 'Unknown commit hash';
 }
 
+const commitHash = readCommitHash();
+
 const config: NextConfig = {
-  // Next 16.3 stopped emitting `.next/next-server.js.nft.json` when
-  // `output: 'standalone'` is set, and Vercel's build adapter needs it to
-  // package functions — every Vercel deploy dies in `onBuildComplete`.
-  // Standalone exists only for the Docker image, so drop it there.
-  // Fixed upstream for 16.4 (vercel/next.js#96646); remove when the catalog
-  // moves off 16.3.x.
-  // eslint-disable-next-line no-process-env
-  output: process.env.VERCEL ? undefined : 'standalone',
+  output: 'standalone',
   reactStrictMode: true,
   reactCompiler: true,
   cacheComponents: true,
@@ -62,16 +68,6 @@ const config: NextConfig = {
         as: '*.js',
       },
     },
-    resolveAlias:
-      // Source descriptors and all workspace catalogs use the shared compiler.
-      // Published packages already contain compiled ICU ASTs.
-      // eslint-disable-next-line no-process-env
-      process.env.NODE_ENV === 'production'
-        ? {
-            '@formatjs/icu-messageformat-parser':
-              '@formatjs/icu-messageformat-parser/no-parser.js',
-          }
-        : {},
   },
   transpilePackages: ['@codaco/shared-consts'],
   experimental: {

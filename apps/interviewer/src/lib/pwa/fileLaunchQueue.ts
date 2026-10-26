@@ -76,6 +76,35 @@ export const initFileLaunchCapture = (): void => {
   });
 };
 
+/**
+ * Queue a file this page obtains some other way than from the OS, so it meets
+ * the same import as a launched one: after unlock, on Home. `read` resolving
+ * nothing, or rejecting, counts as one file that could not be read.
+ */
+export const queueLaunchFileRead = (
+  read: () => Promise<File | undefined>,
+): void => {
+  pendingLaunchReads += 1;
+  emit();
+  void (async () => {
+    try {
+      const file = await read();
+      if (file) {
+        pendingFiles = [...pendingFiles, file];
+      } else {
+        pendingFailureCount += 1;
+      }
+    } catch (error: unknown) {
+      // oxlint-disable-next-line no-console -- only diagnostic for why a queued file could not be read; the user only sees an aggregate failure count
+      console.error('Failed to read a queued file', error);
+      pendingFailureCount += 1;
+    }
+  })().finally(() => {
+    pendingLaunchReads -= 1;
+    emit();
+  });
+};
+
 export const subscribeLaunchFiles = (listener: () => void): (() => void) => {
   listeners.add(listener);
   return () => {

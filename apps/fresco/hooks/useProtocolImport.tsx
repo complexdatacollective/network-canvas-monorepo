@@ -1,7 +1,8 @@
 'use client';
 
-import { queue } from 'async';
-import { useCallback, useRef } from 'react';
+import { queue, type QueueObject } from 'async';
+import { hashProtocol as hashLegacyProtocol } from 'fresco-schema-8/protocol-validation';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import {
   createAppIntl,
@@ -13,12 +14,14 @@ import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import {
+  CURRENT_SCHEMA_VERSION,
   createNetcanvasReader,
   getProtocolFileErrorKind,
   hashProtocol,
   isProtocolFileFault,
   loadNetcanvasArchive,
   missingAssetsError,
+  toReportableProtocolError,
 } from '@codaco/protocol-validation';
 import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
@@ -40,9 +43,11 @@ import {
   captureClientException,
 } from '~/lib/posthog-client';
 import {
-  validateAndMigrateProtocol,
+  validateImportedProtocol,
   type ProtocolValidationError,
-} from '~/lib/protocol/validateAndMigrateProtocol';
+} from '~/lib/protocol/validateImportedProtocol';
+import { validateImportedLegacyProtocol } from '~/lib/schema-8/validateImportedProtocol';
+import { LEGACY_SCHEMA_VERSION } from '~/lib/schema-8/version';
 import { type AssetInsertType } from '~/schemas/protocol';
 import { DatabaseError } from '~/utils/databaseError';
 import {
@@ -80,19 +85,19 @@ const messages = defineMessages({
     description: 'Researcher-facing protocolImport: name has been imported.',
   },
 
-  missingDependencies: {
-    id: 'fresco.protocolImport.validation.missingDependencies',
-    defaultMessage: 'Migration failed: missing {dependencies}.',
-    description:
-      'Researcher-facing protocolImport.validation: Migration failed: missing dependencies.',
-  },
-
   validationFailed: {
     id: 'fresco.protocolImport.validation.validationFailed',
     defaultMessage:
       'The protocol is invalid. Please check the protocol structure.',
     description:
       'Researcher-facing protocolImport.validation: The protocol is invalid. Please check the protocol structure.',
+  },
+
+  missingDependencies: {
+    id: 'fresco.protocolImport.validation.missingDependencies',
+    defaultMessage: 'Migration failed: missing {dependencies}.',
+    description:
+      'Researcher-facing protocolImport.validation: Migration failed: missing dependencies.',
   },
 
   unsupportedVersion: {
@@ -148,14 +153,16 @@ function getValidationErrorMessage(
         count: APP_SUPPORTED_SCHEMA_VERSIONS.length,
         versions: { list: APP_SUPPORTED_SCHEMA_VERSIONS.map(String) },
       });
-    case 'validation-failed':
-      return createMessageError(messages.validationFailed);
     case 'missing-dependencies':
       return createMessageError(messages.missingDependencies, {
         dependencies: { list: validationError.missingDependencies },
       });
+    case 'validation-failed':
+      return createMessageError(messages.validationFailed);
   }
 }
+
+type ImportJob = { file: File; toastId: string };
 
 function generateJobId(): string {
   return `import-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -168,7 +175,19 @@ export const useProtocolImport = () => {
   // Store refs to toast manager functions so the queue callback can access them
   // without being recreated when toast manager changes
   const toastRef = useRef({ add, update, close });
-  toastRef.current = { add, update, close };
+  useLayoutEffect(() => {
+    toastRef.current = { add, update, close };
+  });
+
+  const addImportToast = (toastId: string, fileName: string) => {
+    toastRef.current.add({
+      id: toastId,
+      title: fileName,
+      description: <ImportToastContent phase="parsing" progress={0} />,
+      icon: <Spinner size="xs" />,
+      timeout: 0,
+    });
+  };
 
   const updateToastPhase = (
     toastId: string,
@@ -230,13 +249,55 @@ export const useProtocolImport = () => {
     });
   };
 
-  const processJob = async ({
-    file,
-    toastId,
-  }: {
-    file: File;
-    toastId: string;
-  }) => {
+  // The queue outlives renders, so its worker calls the latest `processJob`,
+  // which the layout effect below hands over before any import can start.
+  const processJobRef = useRef<((job: ImportJob) => Promise<void>) | null>(
+    null,
+  );
+
+  // Built on the first import rather than during render, which would build and
+  // discard a queue on every render to keep the first one.
+  const jobQueue = useRef<QueueObject<ImportJob> | null>(null);
+
+  const importProtocols = useCallback((files: File[]) => {
+    files.forEach((file) => {
+      const sizeError = getProtocolSizeError(file, createMessageError);
+      if (sizeError) {
+        toastRef.current.add({
+          id: generateJobId(),
+          variant: 'destructive',
+          title: file.name,
+          description: <AppErrorMessage error={sizeError} />,
+          timeout: 0,
+        });
+        return;
+      }
+
+      const jobAlreadyExists = activeJobs.current.has(file.name);
+
+      if (jobAlreadyExists) {
+        // eslint-disable-next-line no-console
+        console.warn(`Skipping duplicate job: ${file.name}`);
+        return;
+      }
+
+      activeJobs.current.add(file.name);
+
+      const toastId = generateJobId();
+      addImportToast(toastId, file.name);
+
+      jobQueue.current ??= queue(
+        async (job: ImportJob) => processJobRef.current?.(job),
+        2,
+      );
+      jobQueue.current.push({ file, toastId }).catch((error) => {
+        // eslint-disable-next-line no-console
+        console.log('jobQueue error', error);
+      });
+    });
+  }, []);
+
+  const processJob = async ({ file, toastId }: ImportJob) => {
     const fileName = file.name;
     const protocolName = fileName.replace(/\.netcanvas$/i, '');
 
@@ -260,11 +321,17 @@ export const useProtocolImport = () => {
       const reader = createNetcanvasReader(zip);
       const protocolJson = await reader.readProtocol();
 
-      // Phase: Validating
+      // Fresco never upgrades a protocol to the current schema. A schema 8
+      // protocol is stored as it is and runs in the schema 8 interview Fresco
+      // bundles; a schema 7 protocol is brought up to schema 8 on the way, as
+      // Fresco 4 did.
       updateToastPhase(toastId, 'validating');
-      const validationResult = await validateAndMigrateProtocol(protocolJson, {
-        name: protocolName,
-      });
+      const validationResult =
+        protocolJson.schemaVersion <= LEGACY_SCHEMA_VERSION
+          ? await validateImportedLegacyProtocol(protocolJson, {
+              name: protocolName,
+            })
+          : await validateImportedProtocol(protocolJson);
 
       if (!validationResult.success) {
         const errorMessage = getValidationErrorMessage(validationResult);
@@ -279,7 +346,10 @@ export const useProtocolImport = () => {
 
       // Phase: Checking duplicates
       updateToastPhase(toastId, 'checking-duplicates');
-      const protocolHash = hashProtocol(validatedProtocol);
+      const protocolHash =
+        validatedProtocol.schemaVersion === CURRENT_SCHEMA_VERSION
+          ? hashProtocol(validatedProtocol)
+          : hashLegacyProtocol(validatedProtocol);
       const exists = await getProtocolByHash(protocolHash);
       if (exists) {
         updateToastPhase(toastId, 'error', {
@@ -424,10 +494,6 @@ export const useProtocolImport = () => {
         throw new DatabaseError(result.error, result.errorDetails);
       }
 
-      captureClientEvent('ProtocolInstalled', {
-        protocol: fileName,
-      });
-
       // Phase: Complete
       updateToastPhase(toastId, 'complete', { displayName: protocolName });
 
@@ -435,23 +501,26 @@ export const useProtocolImport = () => {
     } catch (e) {
       const error = ensureError(e);
       const protocolFileError = describeProtocolFileErrorMessage(error);
-      // A file the researcher chose being damaged, truncated, or too old to
-      // upgrade is an answer about that file, not a defect in Fresco. Sending
-      // it to exception tracking buries the failures that are defects, and the
-      // message carries researcher-authored resource names. Record the kind
-      // instead, which is a fixed vocabulary and holds nothing from the file.
+      // Every protocol the import refuses is recorded by its kind, a fixed
+      // vocabulary that holds nothing from the file, so refusals can be
+      // counted by cause.
       //
-      // `isProtocolFileFault`, not merely "can this be described": a migration
-      // step that throws because of a bug in it is re-raised as
-      // `MigrationStepError` and describes itself as a protocol that cannot be
-      // upgraded, so treating every describable failure as the file's fault
-      // would hide our own migration defects.
-      if (isProtocolFileFault(error)) {
-        captureClientEvent('ProtocolImportFailed', {
-          reason: getProtocolFileErrorKind(error),
-        });
-      } else {
-        captureClientException(error);
+      // A file the researcher chose being damaged or truncated is an answer
+      // about that file, not a defect in Fresco, so it stops there: sending
+      // it to exception tracking would bury the failures that are defects,
+      // and the message carries researcher-authored resource names.
+      // `isProtocolFileFault` draws that line.
+      const refusalKind = getProtocolFileErrorKind(error);
+      if (refusalKind !== null) {
+        captureClientEvent('ProtocolImportFailed', { reason: refusalKind });
+      }
+      //
+      // A classified error is sent as a copy that keeps its name and stack
+      // but not its message, which can quote the researcher's protocol.
+      if (!isProtocolFileFault(error)) {
+        captureClientException(
+          refusalKind === null ? error : toReportableProtocolError(error),
+        );
       }
 
       // Best-effort cleanup of any blobs uploaded before the failure, so a
@@ -480,47 +549,9 @@ export const useProtocolImport = () => {
     }
   };
 
-  const jobQueue = useRef(queue(processJob, 2));
-
-  const importProtocols = useCallback((files: File[]) => {
-    files.forEach((file) => {
-      const sizeError = getProtocolSizeError(file, createMessageError);
-      if (sizeError) {
-        toastRef.current.add({
-          id: generateJobId(),
-          variant: 'destructive',
-          title: file.name,
-          description: <AppErrorMessage error={sizeError} />,
-          timeout: 0,
-        });
-        return;
-      }
-
-      const jobAlreadyExists = activeJobs.current.has(file.name);
-
-      if (jobAlreadyExists) {
-        // eslint-disable-next-line no-console
-        console.warn(`Skipping duplicate job: ${file.name}`);
-        return;
-      }
-
-      activeJobs.current.add(file.name);
-
-      const toastId = generateJobId();
-      toastRef.current.add({
-        id: toastId,
-        title: file.name,
-        description: <ImportToastContent phase="parsing" progress={0} />,
-        icon: <Spinner size="xs" />,
-        timeout: 0,
-      });
-
-      jobQueue.current.push({ file, toastId }).catch((error) => {
-        // eslint-disable-next-line no-console
-        console.log('jobQueue error', error);
-      });
-    });
-  }, []);
+  useLayoutEffect(() => {
+    processJobRef.current = processJob;
+  });
 
   return {
     importProtocols,

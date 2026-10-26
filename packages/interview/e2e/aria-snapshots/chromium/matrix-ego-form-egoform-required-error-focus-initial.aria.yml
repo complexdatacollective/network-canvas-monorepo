@@ -1,6 +1,5 @@
 - main:
   - heading "About you" [level=1]
-  - paragraph: Please answer the questions below.
   - text: Text question Required
   - textbox "Text question"
   - text: Long text question Required

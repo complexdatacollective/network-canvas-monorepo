@@ -116,6 +116,7 @@ vi.mock('@codaco/interview/contract', () => ({
 }));
 
 // Import the function under test
+import { addEvent } from '~/lib/activityFeed';
 import { Prisma } from '~/lib/db/generated/client';
 
 import { createInterview } from '../interviews';
@@ -138,6 +139,7 @@ describe('createInterview', () => {
       schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
       stages: [],
       codebook: { node: {}, edge: {} },
+      localization: { defaultLocale: 'en', locales: ['en'] },
       experiments: null,
     });
   });
@@ -378,12 +380,13 @@ describe('createInterview', () => {
       expect(result.errorType).toBe('no-protocol');
     });
 
-    it('refuses a protocol below the runtime schema version without creating anything', async () => {
-      // A row the deploy-time migration tolerated-and-left; every recruitment
-      // link attempt must be refused here, before an interview is persisted.
+    it('refuses a protocol of a schema version no bundled interview runs, without creating anything', async () => {
+      // Schema 8 runs in the bundled schema 8 interview and schema 9 in the
+      // current one; nothing runs schema 7, so every recruitment link attempt
+      // must be refused here, before an interview is persisted.
       mockProtocolFindUnique.mockResolvedValue({
         id: 'protocol-123',
-        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1,
+        schemaVersion: 7,
       });
 
       const result = await createInterview({
@@ -394,6 +397,31 @@ describe('createInterview', () => {
       expect(result.createdInterviewId).toBeNull();
       expect(result.errorType).toBe('incompatible-protocol');
       expect(mockPrismaCreate).not.toHaveBeenCalled();
+    });
+
+    it('starts an interview of a schema 8 protocol, kept as it was imported', async () => {
+      mockProtocolFindUnique.mockResolvedValue({
+        id: 'protocol-123',
+        schemaVersion: 8,
+        stages: [],
+        codebook: { node: {}, edge: {} },
+        experiments: null,
+      });
+      mockPrismaCreate.mockResolvedValue({
+        id: 'interview-v8',
+        participant: { id: 'p', identifier: 'TEST-PARTICIPANT', label: null },
+      });
+
+      const result = await createInterview({
+        participantIdentifier: 'TEST-PARTICIPANT',
+        protocolId: 'protocol-123',
+      });
+
+      expect(result).toMatchObject({
+        errorType: null,
+        createdInterviewId: 'interview-v8',
+        schemaVersion: 8,
+      });
     });
 
     it('refuses a protocol it cannot read without creating anything', async () => {
@@ -543,6 +571,51 @@ describe('createInterview', () => {
           [entityAttributesProperty]: {},
         },
       });
+    });
+  });
+
+  describe('analytics', () => {
+    const created: MockInterviewResult = {
+      id: 'interview-analytics',
+      participant: {
+        id: 'participant-id',
+        identifier: 'PARTICIPANT-001',
+        label: null,
+      },
+    };
+
+    it('records one Interview Started event for an identified participant', async () => {
+      mockPrismaCreate.mockResolvedValue(created);
+
+      await createInterview({
+        participantIdentifier: 'PARTICIPANT-001',
+        protocolId: 'protocol-123',
+      });
+
+      expect(vi.mocked(addEvent)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(addEvent)).toHaveBeenCalledWith(
+        'Interview Started',
+        expect.any(String),
+        expect.objectContaining({ kind: 'interviewStarted' }),
+        { usingAnonymousParticipant: false },
+      );
+    });
+
+    it('marks an anonymous participant on the Interview Started event', async () => {
+      mockGetAppSetting.mockResolvedValue(true);
+      mockPrismaCreate.mockResolvedValue(created);
+
+      await createInterview({
+        participantIdentifier: undefined,
+        protocolId: 'protocol-123',
+      });
+
+      expect(vi.mocked(addEvent)).toHaveBeenCalledWith(
+        'Interview Started',
+        expect.any(String),
+        expect.objectContaining({ kind: 'interviewStarted' }),
+        { usingAnonymousParticipant: true },
+      );
     });
   });
 });

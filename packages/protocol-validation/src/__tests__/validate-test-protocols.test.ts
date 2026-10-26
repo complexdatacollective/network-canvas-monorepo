@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { migrateProtocol, validateProtocol } from '../index.ts';
+import {
+  CATEGORICAL_BIN_MAX_BINS,
+  CURRENT_SCHEMA_VERSION,
+  type CurrentProtocol,
+  MigrationResultInvalidError,
+  migrateProtocol,
+  validateProtocol,
+} from '../index.ts';
 import { extractProtocol } from '../utils/extractProtocol.ts';
 import { downloadAndDecryptProtocols } from './utils.ts';
 
@@ -14,7 +21,7 @@ const hasGitHubToken = !!process.env.GITHUB_TOKEN;
  *
  * One loop over all ~90 of them shared a single budget and reported a failure
  * as the corpus stopping somewhere: `migrateProtocol` throws when what it
- * produced does not survive the v8 schema, which ends the loop, leaves every
+ * produced does not survive the current schema, which ends the loop, leaves every
  * protocol after it unvalidated, and names in the report only the rule that
  * was broken — never the protocol that broke it. Splitting the loop gives each
  * protocol a budget it cannot exhaust on another protocol's behalf, and puts
@@ -23,6 +30,19 @@ const hasGitHubToken = !!process.env.GITHUB_TOKEN;
  * The download is cached against the release asset's size, so this costs one
  * request when the corpus has not changed.
  */
+/**
+ * Protocols that schema 9 deliberately refuses, by the message every one of
+ * their issues must carry. Each is refused for exactly that reason and nothing
+ * else, so a new problem in one of them still fails the corpus.
+ *
+ * FGZ_SeBeMi (schema 5, last saved November 2021) has a Categorical Bin prompt
+ * with eleven values. The interface lays out at most CATEGORICAL_BIN_MAX_BINS;
+ * the researcher removes values in the schema 8 Architect before upgrading.
+ */
+const EXPECTED_REFUSALS: Readonly<Record<string, string>> = {
+  'FGZ_SeBeMi_Protocol_version_1.9.netcanvas': `but the interface supports at most ${CATEGORICAL_BIN_MAX_BINS}.`,
+};
+
 const protocolFiles = hasGitHubToken
   ? [...(await downloadAndDecryptProtocols()).entries()].map(
       ([filename, buffer]) => ({ filename, buffer }),
@@ -60,7 +80,7 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
       if (
         !Number.isInteger(protocolVersion) ||
         protocolVersion < 1 ||
-        protocolVersion > 8
+        protocolVersion > CURRENT_SCHEMA_VERSION
       ) {
         ctx.skip(
           `unsupported schema version: ${String(protocol.schemaVersion)}`,
@@ -69,8 +89,8 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
 
       const protocolName = filename.replace(/\.netcanvas$/, '');
 
-      if (protocolVersion === 8) {
-        // Validate v8 protocols directly
+      if (protocolVersion === CURRENT_SCHEMA_VERSION) {
+        // Validate current-version protocols directly
         const protocolWithName = !('name' in protocol)
           ? { ...protocol, name: protocolName }
           : protocol;
@@ -90,18 +110,43 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
         return;
       }
 
-      // For versions 1-7, migrate to v8 then validate. `migrateProtocol`
-      // reports a migration that does not survive the v8 schema by throwing,
-      // so it is logged here as well: that throw is this corpus's likeliest
-      // failure and it carries nothing about which protocol produced it.
-      let migratedProtocol: ReturnType<typeof migrateProtocol>;
+      // Older versions are migrated to the current one, then validated.
+      // `migrateProtocol` reports a migration that does not survive the
+      // current schema by throwing, so it is logged here as well: that throw
+      // is this corpus's likeliest failure and it carries nothing about which
+      // protocol produced it.
+      const expectedRefusal = EXPECTED_REFUSALS[filename];
+      if (expectedRefusal !== undefined) {
+        const refusal = (() => {
+          try {
+            migrateProtocol(protocol, undefined, { name: protocolName });
+          } catch (error) {
+            return error;
+          }
+          return undefined;
+        })();
+        expect(refusal).toBeInstanceOf(MigrationResultInvalidError);
+        const issues = JSON.parse(
+          (refusal as Error).message.replace(
+            'Migration resulted in invalid protocol: ',
+            '',
+          ),
+        ) as { message: string }[];
+        expect(issues.length).toBeGreaterThan(0);
+        for (const issue of issues) {
+          expect(issue.message).toContain(expectedRefusal);
+        }
+        return;
+      }
+
+      let migratedProtocol: CurrentProtocol;
       try {
         migratedProtocol = migrateProtocol(protocol, undefined, {
           name: protocolName,
         });
       } catch (error) {
         console.error(
-          `Migration failed for ${filename} (v${protocolVersion} → v8):`,
+          `Migration failed for ${filename} (v${protocolVersion} → v${CURRENT_SCHEMA_VERSION}):`,
           error,
         );
         throw error;
@@ -111,7 +156,7 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
 
       if (!migrationResult.success) {
         console.error(
-          `Migration validation failed for ${filename} (v${protocolVersion} → v8):`,
+          `Migration validation failed for ${filename} (v${protocolVersion} → v${CURRENT_SCHEMA_VERSION}):`,
           migrationResult.error,
         );
       }

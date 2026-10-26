@@ -1,3 +1,5 @@
+import { type CurrentProtocol as LegacyProtocol } from 'fresco-schema-8/protocol-validation';
+
 import {
   defineMessages,
   createAppIntl,
@@ -46,7 +48,7 @@ type ProtocolAssetsResult = {
  * validation long before reaching here.
  */
 export const partitionProtocolAssets = (
-  protocol: CurrentProtocol,
+  protocol: Pick<CurrentProtocol | LegacyProtocol, 'assetManifest'>,
   extractedAssets: ExtractedAsset[],
 ): ProtocolAssetsResult => {
   const assetManifest = protocol.assetManifest;

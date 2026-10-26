@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
@@ -95,8 +95,7 @@ const Sociogram = (stageProps: SociogramProps) => {
   const edges = useStageSelector(getEdges);
 
   // Zustand store for real-time positions
-  const storeRef = useRef(createCanvasStore());
-  const store = storeRef.current;
+  const [store] = useState(() => createCanvasStore());
 
   // Measure the rendered node size off-screen so the layout's collision radius
   // tracks the live `--theme-root-size` scaling. A size="sm" Node matches the
@@ -274,7 +273,6 @@ const Sociogram = (stageProps: SociogramProps) => {
   const handleUnplaceNode = useCallback(
     (nodeId: string) => {
       const node = allNodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
-      // Read before the node leaves the canvas, as the canvas showed it.
       const name = node ? labelNode(node) : null;
 
       track('node_unplaced', { node_id: nodeId });

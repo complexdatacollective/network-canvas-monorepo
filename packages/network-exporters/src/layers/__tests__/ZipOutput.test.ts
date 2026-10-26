@@ -129,6 +129,53 @@ describe('makeZipOutput', () => {
     }
   });
 
+  it.each([
+    ['an identical name', 'a.csv', 'a.csv'],
+    ['a name that differs only in case', 'Friend.csv', 'friend.csv'],
+    [
+      'a name that differs only in Unicode normalization',
+      'caf\u00e9.csv',
+      'cafe\u0301.csv',
+    ],
+  ])(
+    'refuses %s instead of overwriting the first file',
+    async (_, first, second) => {
+      const sink = (stream: AsyncIterable<Uint8Array>, fileName: string) =>
+        Effect.tryPromise({
+          try: async () => {
+            try {
+              for await (const _chunk of stream) {
+                // drain
+              }
+            } catch {
+              // The failed write aborts the stream; only the write matters here.
+            }
+            return { key: fileName };
+          },
+          catch: (cause) => new OutputError({ cause }),
+        });
+
+      const program = Effect.gen(function* () {
+        const out = yield* Output;
+        const handle = yield* out.begin();
+        yield* out.writeEntry(handle, { name: first, data: bytesOf('first') });
+        return yield* Effect.result(
+          out.writeEntry(handle, { name: second, data: bytesOf('second') }),
+        );
+      });
+
+      const result = await Effect.runPromise(
+        program.pipe(Effect.provide(makeZipOutput(sink))),
+      );
+
+      expect(result._tag).toBe('Failure');
+      if (result._tag === 'Failure') {
+        expect(result.failure).toBeInstanceOf(OutputError);
+        expect(String(result.failure.cause)).toContain('already in it');
+      }
+    },
+  );
+
   it('surfaces a throwing source iterable as OutputError without hanging end()', async () => {
     // Sink that drains chunks until the stream rejects (or completes).
     const sink = (stream: AsyncIterable<Uint8Array>, fileName: string) =>
@@ -263,4 +310,70 @@ describe('makeZipOutput', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(producerClosed).toBe(true);
   });
+
+  // Handles are recognised by identity, so a copy of a real session with the
+  // same fields is as foreign as null.
+  it.each<[string, (issued: unknown) => unknown]>([
+    ['a copy of a handle it issued', (issued) => Object.assign({}, issued)],
+    ['null', () => null],
+    ['a string', () => 'handle'],
+  ])(
+    'refuses %s, and aborting it leaves the live export to finish',
+    async (_label, foreignFrom) => {
+      const captured: { bytes: Uint8Array | null } = { bytes: null };
+      const sink = (stream: AsyncIterable<Uint8Array>, fileName: string) =>
+        Effect.tryPromise({
+          try: async () => {
+            const chunks: Uint8Array[] = [];
+            for await (const chunk of stream) chunks.push(chunk);
+            const bytes = new Uint8Array(
+              chunks.reduce((a, b) => a + b.length, 0),
+            );
+            let offset = 0;
+            for (const c of chunks) {
+              bytes.set(c, offset);
+              offset += c.length;
+            }
+            captured.bytes = bytes;
+            return { key: fileName };
+          },
+          catch: (cause) => new OutputError({ cause }),
+        });
+
+      const program = Effect.gen(function* () {
+        const out = yield* Output;
+        const issued = yield* out.begin();
+        const foreign = foreignFrom(issued);
+
+        const writeError = yield* Effect.flip(
+          out.writeEntry(foreign, { name: 'x.txt', data: bytesOf('x') }),
+        );
+        const endError = yield* Effect.flip(out.end(foreign));
+        yield* out.abort?.(foreign) ?? Effect.void;
+
+        yield* out.writeEntry(issued, {
+          name: 'kept.txt',
+          data: bytesOf('kept'),
+        });
+        yield* out.end(issued);
+        return { writeError, endError };
+      });
+
+      const { writeError, endError } = await Effect.runPromise(
+        program.pipe(Effect.provide(makeZipOutput(sink))),
+      );
+
+      for (const error of [writeError, endError]) {
+        expect(error).toBeInstanceOf(OutputError);
+        expect(error.cause).toEqual(
+          new Error('Handle was not issued by this zip output'),
+        );
+      }
+      const bytes = captured.bytes;
+      if (bytes === null) throw new Error('the live export never finished');
+      const kept = unzipSync(bytes)['kept.txt'];
+      if (!kept) throw new Error('kept.txt missing from zip');
+      expect(new TextDecoder().decode(kept)).toBe('kept');
+    },
+  );
 });

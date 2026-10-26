@@ -1,8 +1,8 @@
-import { Redacted } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
-import { OwnerScope } from '../db/tenant.ts';
+import { OwnerScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
 import { issueBootstrapToken, readInstallation } from '../setup/bootstrap.ts';
 import { liveAuthService } from './support/auth.ts';
@@ -52,7 +52,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     composed.request('/rpc', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/ndjson',
+        'Content-Type': 'application/x-ndjson',
         'sec-fetch-site': 'same-origin',
       },
       body: `${JSON.stringify({
@@ -68,7 +68,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     composed.request('/rpc', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/ndjson',
+        'Content-Type': 'application/x-ndjson',
         'sec-fetch-site': 'same-origin',
       },
       body: `${JSON.stringify({
@@ -184,8 +184,28 @@ describe.skipIf(!testDb)('setup.complete', () => {
     const me = await signedIn.call(signedIn.rpc('me', undefined));
     expect(Redacted.value(me.email)).toBe(account.email);
     expect(Redacted.value(me.name)).toBe(account.name);
-    expect(me.teams).toEqual([]);
+    expect(me.teams).toHaveLength(1);
+    const [membership] = me.teams;
+    expect(membership?.role).toBe('owner');
     await signedIn.dispose();
+
+    const firstTeam = await database.run(
+      OwnerScope.open(
+        Effect.gen(function* () {
+          const { sql } = yield* Transaction;
+          const teams = yield* sql<{ name: string }>`
+            select name from teams where id = ${membership?.teamId ?? ''}`;
+          const events = yield* sql<{ event_type: string; actor_id: string }>`
+            select event_type, actor_id from audit_events
+             where team_id = ${membership?.teamId ?? ''}`;
+          return { teams, events };
+        }),
+      ),
+    );
+    expect(firstTeam.teams).toEqual([{ name: INSTANCE_NAME }]);
+    expect(firstTeam.events).toEqual([
+      { event_type: 'team.created', actor_id: me.userId },
+    ]);
 
     const installation = await database.run(
       OwnerScope.open(readInstallation()),
@@ -201,11 +221,40 @@ describe.skipIf(!testDb)('setup.complete', () => {
     expect(reported.name).toBe(INSTANCE_NAME);
   });
 
+  it('gives the instance and its first team the same trimmed name', async () => {
+    const response = await completeOverHttp({
+      token,
+      instanceName: `  ${INSTANCE_NAME}  `,
+      owner: owner(),
+    });
+    expect(await exitFrameOf(response)).toEqual({
+      instanceName: INSTANCE_NAME,
+      signedIn: true,
+    });
+
+    const installation = await database.run(
+      OwnerScope.open(readInstallation()),
+    );
+    expect(installation?.name).toBe(INSTANCE_NAME);
+    const teams = await database.run(
+      OwnerScope.open(
+        Effect.gen(function* () {
+          const { sql } = yield* Transaction;
+          return yield* sql<{ name: string }>`
+            select t.name from teams t
+              join team_members m on m.team_id = t.id
+             where m.user_id = ${installation?.ownerUserId ?? ''}`;
+        }),
+      ),
+    );
+    expect(teams).toEqual([{ name: INSTANCE_NAME }]);
+  });
+
   it('refuses a call that cannot show it came from our own origin', async () => {
     const forged = await composed.request('/rpc', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/ndjson',
+        'Content-Type': 'application/x-ndjson',
         'sec-fetch-site': 'cross-site',
       },
       body: `${JSON.stringify({
@@ -313,7 +362,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     const response = await completeOverHttp({
       token,
       instanceName: INSTANCE_NAME,
-      owner: account,
+      owner: { ...account, name: 'Someone Else Entirely' },
     });
 
     expect(response.status).toBe(200);
@@ -328,6 +377,20 @@ describe.skipIf(!testDb)('setup.complete', () => {
       (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
     ).toBe(me.userId);
     await signedIn.dispose();
+
+    const labels = await database.run(
+      OwnerScope.open(
+        Effect.gen(function* () {
+          const { sql } = yield* Transaction;
+          return yield* sql<{ actor_label: string; subject_label: string }>`
+            select actor_label, subject_label from audit_events
+             where team_id = ${me.teams[0]?.teamId ?? ''}`;
+        }),
+      ),
+    );
+    expect(labels).toEqual([
+      { actor_label: account.name, subject_label: account.name },
+    ]);
   });
 
   it('refuses an address whose password the caller cannot produce', async () => {

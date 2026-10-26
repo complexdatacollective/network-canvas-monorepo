@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Codebook } from '../../schemas/8/schema.ts';
+import type { Codebook } from '../../schemas/9/schema.ts';
 import { validateReferences } from '../validateEntityAttributeReferences.ts';
 
 // Minimal fixture: Variable discriminated-union requires many optional fields

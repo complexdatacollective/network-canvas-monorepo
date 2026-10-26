@@ -1,0 +1,1039 @@
+import {
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  DynamicMessageEditor,
+  type DynamicMessageSite,
+  type BlockMarkdown,
+  DynamicMessageSummary,
+} from '@codaco/protocol-builder/fields/DynamicTextField';
+import {
+  LocalizedMessageVersions,
+  LocalizedMessageVersionsSummary,
+} from '@codaco/protocol-builder/fields/LocalizedMessageField';
+import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
+import {
+  localeDirection,
+  type ProtocolLocalization,
+  resolveTranslation,
+  withMessage,
+  withTranslation,
+} from '@codaco/protocol-builder/localization/localizedText';
+import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
+import {
+  type DynamicValues,
+  type DynamicValueSite,
+  dynamicValueContextFor,
+  type LocaleTag,
+  type LocalizedString,
+  type LocalizedStringFormat,
+  type MessageArguments,
+} from '@codaco/protocol-validation';
+import { useAppSelector } from '~/ducks/hooks';
+import type { TranslationRow } from '~/selectors/issues';
+import { getProtocol } from '~/selectors/protocol';
+import { cx } from '~/utils/cva';
+
+import { isBlankTranslation, useTranslationDraft } from './translationDrafts';
+import { useLanguageName } from './useLanguageName';
+
+const messages = defineMessages({
+  shownIn: {
+    id: 'architect.localization.translationTable.shownIn',
+    defaultMessage: 'Shown in {language}',
+    description:
+      'Tag in an empty cell of the translation table, under the wording participants see instead of the missing translation. language is the language of that wording.',
+  },
+  shownInUnlessBrowserLists: {
+    id: 'architect.localization.translationTable.shownInUnlessBrowserLists',
+    defaultMessage: 'Shown in {language}*',
+    description:
+      'Tag in an empty cell of the translation table, under the wording participants see instead of the missing translation, when they may see another language instead. The asterisk refers to a note below the table explaining that the participant’s browser can list a language that has a translation. language is the language of the wording shown.',
+  },
+  notTranslated: {
+    id: 'architect.localization.translationTable.notTranslated',
+    defaultMessage: 'Not translated yet. Participants see it in {language}.',
+    description:
+      'Screen-reader description of an empty cell of the translation table, when participants see a closely related language instead, such as Brazilian Portuguese for European Portuguese. language is that language.',
+  },
+  notTranslatedUnlessBrowserLists: {
+    id: 'architect.localization.translationTable.notTranslatedUnlessBrowserLists',
+    defaultMessage:
+      'Not translated yet. Participants see it in {language}, unless their browser also lists a language that has a translation.',
+    description:
+      'Screen-reader description of an empty cell of the translation table. Participants see the wording in another language their web browser lists, when it has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages.',
+  },
+  noTranslation: {
+    id: 'architect.localization.translationTable.noTranslation',
+    defaultMessage: 'Not translated into any language.',
+    description:
+      'Shown in an empty cell of the translation table when the localized string has no translation in any of the protocol’s languages.',
+  },
+});
+
+export type TranslationCellProps = {
+  /** The text, as the protocol has it. */
+  row: TranslationRow;
+  /** True where no translation has a line break, so Enter moves on. */
+  singleLine: boolean;
+  locale: LocaleTag;
+  localization: ProtocolLocalization;
+  /** The row header and column header that name the cell. */
+  labelledBy: string;
+  rowIndex: number;
+  colIndex: number;
+  /** Moves focus to the cell `delta` rows away; false where there is none. */
+  onMove: (delta: number) => boolean;
+};
+
+// A cell pointed at gets a thin frame and a cell being edited a thick one, so
+// the two read apart without relying on colour.
+const CELL_CLASSES = cx(
+  'border-outline relative border-e border-b p-0 align-top',
+  'hover:not-focus-within:bg-current/3 hover:not-focus-within:outline-1 hover:not-focus-within:-outline-offset-1 hover:not-focus-within:outline-current/30',
+  'focus-within:bg-input focus-within:text-input-contrast focus-within:outline-primary focus-within:outline-2 focus-within:-outline-offset-2',
+);
+
+// A cell whose text cannot be saved is framed as an error, beside the note
+// that says why.
+const INVALID_CELL_CLASSES = 'focus-within:outline-destructive';
+
+/**
+ * Marks a change not yet saved into the protocol. Saving the table saves it,
+ * and the mark goes.
+ */
+const UnsavedMark = () => (
+  <span
+    aria-hidden
+    className="bg-primary pointer-events-none absolute inset-e-1.5 bottom-1.5 size-1.5 rounded-full"
+  />
+);
+
+// The text, the stand-in that shows through an empty cell, and the sizer that
+// grows the cell share one padding and wrapping, so each lines up over the
+// others.
+const CELL_TEXT_CLASSES = 'px-3 py-2 wrap-break-word';
+const PLAIN_TEXT_CLASSES = cx(CELL_TEXT_CLASSES, 'whitespace-pre-wrap');
+
+/** Every declared language the text has a translation in. */
+const translatedLocales = (
+  value: LocalizedString,
+  localization: ProtocolLocalization,
+) => localization.locales.filter((locale) => Object.hasOwn(value, locale));
+
+const headingAsParagraph = ({ children }: { children?: ReactNode }) => (
+  <p className="mb-2 font-semibold last:mb-0">{children}</p>
+);
+
+// Headings would add to the page's outline from inside a table cell, and a
+// link would add a stop to the Tab order between cells, so a cell draws
+// headings as bold lines and links as their text.
+const CELL_MARKDOWN_ELEMENTS = [
+  'p',
+  'br',
+  'em',
+  'strong',
+  'ul',
+  'ol',
+  'li',
+  'hr',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+];
+
+const cellMarkdownComponents = {
+  p: ({ children }: { children?: ReactNode }) => (
+    <p className="mb-2 last:mb-0">{children}</p>
+  ),
+  h1: headingAsParagraph,
+  h2: headingAsParagraph,
+  h3: headingAsParagraph,
+  h4: headingAsParagraph,
+  h5: headingAsParagraph,
+  h6: headingAsParagraph,
+};
+
+/** The same rules for text that shows values. */
+const CELL_BLOCK_MARKDOWN: BlockMarkdown = {
+  allowedElements: CELL_MARKDOWN_ELEMENTS,
+  components: cellMarkdownComponents,
+};
+
+const CellMarkdown = ({ children }: { children: string }) => (
+  <RenderMarkdown
+    allowedElements={CELL_MARKDOWN_ELEMENTS}
+    components={cellMarkdownComponents}
+    unwrapDisallowed
+  >
+    {children}
+  </RenderMarkdown>
+);
+
+/**
+ * The translation participants reading in `locale` see where the text has none
+ * of its own, or null where it has no translation at all. Only a related
+ * language is certain: Architect cannot know which other languages a browser
+ * lists, and that only matters when the text has more than one translation to
+ * choose from.
+ */
+export const fallbackFor = (
+  value: LocalizedString | undefined,
+  locale: LocaleTag,
+  localization: ProtocolLocalization,
+) => {
+  if (value === undefined) return null;
+  const translated = translatedLocales(value, localization);
+  if (translated.length === 0) return null;
+  const shown = resolveTranslation(value, localization, locale);
+  return shown.lang === undefined
+    ? null
+    : {
+        text: shown.text,
+        lang: shown.lang,
+        dir: shown.dir,
+        unlessBrowserLists:
+          shown.matchedBy !== 'selected' && translated.length > 1,
+      };
+};
+
+/**
+ * What participants reading in `locale` see while the cell is empty: the text
+ * the interview falls back to, muted, tagged with its language.
+ */
+const Fallback = ({
+  id,
+  value,
+  format,
+  locale,
+  localization,
+  messageArguments,
+  dynamicSite,
+}: {
+  id: string;
+  value: LocalizedString | undefined;
+  format: LocalizedStringFormat;
+  locale: LocaleTag;
+  localization: ProtocolLocalization;
+  messageArguments?: MessageArguments;
+  /** Where text with values sits, for text that shows them. */
+  dynamicSite?: DynamicMessageSite;
+}) => {
+  const intl = useAppIntl();
+  const languageName = useLanguageName();
+  const shown = fallbackFor(value, locale, localization);
+
+  if (shown === null) {
+    return (
+      <p
+        id={id}
+        lang={intl.locale}
+        className={cx(
+          CELL_TEXT_CLASSES,
+          'pointer-events-none col-start-1 row-start-1 text-current/60 italic',
+        )}
+      >
+        {intl.formatMessage(messages.noTranslation)}
+      </p>
+    );
+  }
+
+  const { unlessBrowserLists } = shown;
+  const language = languageName(shown.lang);
+
+  // The tag lines up with the text it names the language of, not with the
+  // column's language when the two are written in different directions.
+  return (
+    <div
+      id={id}
+      dir={shown.dir}
+      className={cx(
+        format === 'markdown' ? CELL_TEXT_CLASSES : PLAIN_TEXT_CLASSES,
+        'pointer-events-none col-start-1 row-start-1 flex flex-col items-start gap-1',
+      )}
+    >
+      <div lang={shown.lang} className="w-full text-current/60">
+        {dynamicSite !== undefined ? (
+          <DynamicMessageSummary
+            message={shown.text}
+            markdown={format === 'markdown'}
+            locale={shown.lang}
+            site={dynamicSite}
+            blockMarkdown={CELL_BLOCK_MARKDOWN}
+          />
+        ) : messageArguments !== undefined ? (
+          <LocalizedMessageVersionsSummary
+            message={shown.text}
+            declaration={messageArguments}
+            locale={shown.lang}
+          />
+        ) : format === 'markdown' ? (
+          <CellMarkdown>{shown.text}</CellMarkdown>
+        ) : (
+          shown.text
+        )}
+      </div>
+      <span
+        lang={intl.locale}
+        dir="auto"
+        aria-hidden
+        className="max-w-full rounded-sm bg-current/8 px-1.5 text-xs leading-5 text-current/80"
+      >
+        {intl.formatMessage(
+          unlessBrowserLists
+            ? messages.shownInUnlessBrowserLists
+            : messages.shownIn,
+          { language },
+        )}
+      </span>
+      <span lang={intl.locale} className="sr-only">
+        {intl.formatMessage(
+          unlessBrowserLists
+            ? messages.notTranslatedUnlessBrowserLists
+            : messages.notTranslated,
+          { language },
+        )}
+      </span>
+    </div>
+  );
+};
+
+/** Why the cell's text cannot be saved, in Architect's language. */
+const ProblemNote = ({ id, children }: { id: string; children: string }) => {
+  const intl = useAppIntl();
+  return (
+    <p
+      id={id}
+      role="status"
+      lang={intl.locale}
+      dir="auto"
+      className="text-destructive-ink px-3 pb-2 text-sm"
+    >
+      {children}
+    </p>
+  );
+};
+
+const isCaretAt = (element: HTMLTextAreaElement, edge: 'start' | 'end') => {
+  const { selectionStart, selectionEnd, value } = element;
+  if (selectionStart !== selectionEnd) return false;
+  return edge === 'start'
+    ? selectionStart === 0
+    : selectionEnd === value.length;
+};
+
+/**
+ * Plain text, edited where it is shown. A change is kept in the table until
+ * the table is saved, and checked once focus leaves the cell; Escape puts
+ * back what the protocol has.
+ */
+const PlainTextCell = ({
+  row,
+  singleLine,
+  locale,
+  localization,
+  labelledBy,
+  rowIndex,
+  colIndex,
+  onMove,
+}: TranslationCellProps) => {
+  const fallbackId = useId();
+  const noteId = useId();
+  const formScope = useFormFieldScope();
+  const draft = useTranslationDraft({ row, locale });
+  const { text, error } = draft;
+  const empty = isBlankTranslation(row, text);
+  const fallbackShown = empty && error === undefined;
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Escape' && draft.changed) {
+      event.preventDefault();
+      event.stopPropagation();
+      draft.revert();
+      return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey && !event.altKey) {
+      const modifier = event.metaKey || event.ctrlKey;
+      if (!singleLine && !modifier) return;
+      event.preventDefault();
+      // The last row has nowhere to go, so the cell is checked where it is.
+      if (!onMove(1)) draft.leave();
+      return;
+    }
+    if (
+      (event.key === 'ArrowUp' && isCaretAt(event.currentTarget, 'start')) ||
+      (event.key === 'ArrowDown' && isCaretAt(event.currentTarget, 'end'))
+    ) {
+      if (onMove(event.key === 'ArrowUp' ? -1 : 1)) event.preventDefault();
+    }
+  };
+
+  // A trailing line break only takes up room once something follows it.
+  const sizerText = text.concat(' ');
+  const describedBy = [
+    fallbackShown ? fallbackId : undefined,
+    error === undefined ? undefined : noteId,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <td
+      lang={locale}
+      dir={localeDirection(locale)}
+      data-field-path={draft.name}
+      data-field-form={formScope}
+      className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
+    >
+      <div className="grid">
+        <div
+          aria-hidden
+          className={cx(
+            PLAIN_TEXT_CLASSES,
+            'invisible col-start-1 row-start-1',
+          )}
+        >
+          {sizerText}
+        </div>
+        {fallbackShown && (
+          <Fallback
+            id={fallbackId}
+            value={withTranslation(row.value, locale, empty ? '' : text)}
+            format={row.format}
+            locale={locale}
+            localization={localization}
+          />
+        )}
+        <textarea
+          rows={1}
+          value={text}
+          onChange={(event) => draft.change(event.target.value)}
+          onBlur={draft.leave}
+          onKeyDown={handleKeyDown}
+          aria-labelledby={labelledBy}
+          aria-describedby={describedBy || undefined}
+          aria-invalid={error !== undefined}
+          data-row={rowIndex}
+          data-col={colIndex}
+          className={cx(
+            PLAIN_TEXT_CLASSES,
+            'col-start-1 row-start-1 block size-full resize-none overflow-hidden bg-transparent outline-none',
+            'scroll-ms-(--translation-table-names) scroll-mt-(--translation-table-sticky-top)',
+          )}
+        />
+      </div>
+      {error !== undefined && <ProblemNote id={noteId}>{error}</ProblemNote>}
+      {draft.changed && <UnsavedMark />}
+    </td>
+  );
+};
+
+/**
+ * Whether the caret in a contenteditable is at the very start or end of its
+ * text, where the up and down arrow keys have no line left to move to.
+ */
+const isEditableCaretAt = (editable: HTMLElement, edge: 'start' | 'end') => {
+  const selection = editable.ownerDocument.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) {
+    return false;
+  }
+  const caret = selection.getRangeAt(0);
+  const before = editable.ownerDocument.createRange();
+  before.selectNodeContents(editable);
+  if (edge === 'start') before.setEnd(caret.startContainer, caret.startOffset);
+  else before.setStart(caret.endContainer, caret.endOffset);
+  return before.toString() === '';
+};
+
+// The stage editor's rich-text field, fitted to a cell: no frame of its own,
+// its text where the cell shows text, with headings drawn as the cell draws
+// them when it is not being edited. Its toolbar wraps inside the cell's frame,
+// and stays in view below the sticky headings while a long text scrolls under
+// it, which it can only do while the editor's frame does not clip it.
+const CELL_EDITOR_CLASSES = cx(
+  'min-w-0 overflow-visible rounded-none border-0 bg-transparent text-current',
+  '[&>:first-child]:min-h-0 [&>:first-child]:px-3 [&>:first-child]:py-2',
+  '[&_.tiptap.ProseMirror]:min-h-0',
+  '[&_.tiptap_:is(h1,h2,h3,h4)]:mt-0 [&_.tiptap_:is(h1,h2,h3,h4)]:mb-2 [&_.tiptap_:is(h1,h2,h3,h4)]:font-[inherit] [&_.tiptap_:is(h1,h2,h3,h4)]:text-base [&_.tiptap_:is(h1,h2,h3,h4)]:font-semibold',
+  '[&_[role=toolbar]]:sticky [&_[role=toolbar]]:top-(--translation-table-sticky-top) [&_[role=toolbar]]:z-1 [&_[role=toolbar]]:mx-0.5 [&_[role=toolbar]]:mt-0.5 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:flex-wrap [&_[role=toolbar]]:gap-0.5 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
+  '[&_[role=toolbar]_[role=separator]]:mx-1',
+);
+
+const EDITABLE_SELECTOR = '[contenteditable="true"]';
+
+const focusEditorIn = (cell: HTMLElement | null) =>
+  cell
+    ?.querySelector<HTMLElement>(EDITABLE_SELECTOR)
+    ?.focus({ preventScroll: true });
+
+/**
+ * A cell shown as participants see it until it has focus, then edited in
+ * place: whether it is being edited, and what to do as focus comes and goes.
+ * Leaving the cell checks its text; Escape puts back what the protocol has,
+ * and Enter, where it moves on, moves to the cell below.
+ */
+const useEditedCell = ({
+  draft,
+  singleLine,
+  onMove,
+  isAtEdge,
+}: {
+  draft: ReturnType<typeof useTranslationDraft>;
+  singleLine: boolean;
+  onMove: (delta: number) => boolean;
+  isAtEdge: (editable: HTMLElement, edge: 'start' | 'end') => boolean;
+}) => {
+  const cellRef = useRef<HTMLTableCellElement>(null);
+  const leaveTimer = useRef<number | null>(null);
+  const [editing, setEditing] = useState(false);
+  // The editor takes no new value while it has focus, so putting back what
+  // the protocol has replaces it with a fresh one.
+  const [revision, setRevision] = useState(0);
+
+  // The cell holds focus while the editor replaces what had it, so focus is
+  // never left nowhere in between.
+  const holdFocus = () => cellRef.current?.focus({ preventScroll: true });
+
+  useEffect(
+    () => () => {
+      if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current);
+    },
+    [],
+  );
+
+  const onFocus = (event: FocusEvent<HTMLTableCellElement>) => {
+    if (leaveTimer.current !== null) {
+      window.clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+    if (!editing) {
+      holdFocus();
+      setEditing(true);
+    } else if (event.target === cellRef.current) {
+      focusEditorIn(cellRef.current);
+    }
+  };
+
+  // Focus that moves into the editor's link form has left the cell's
+  // elements but not the cell: the form is in a portal, and its focus event
+  // reaches the cell through React before this check runs.
+  const onBlur = (event: FocusEvent<HTMLTableCellElement>) => {
+    if (!editing) return;
+    const next = event.relatedTarget;
+    if (next instanceof Node && cellRef.current?.contains(next)) return;
+    leaveTimer.current = window.setTimeout(() => {
+      leaveTimer.current = null;
+      // The window itself lost focus, as when switching to another app; focus
+      // comes back here with it.
+      if (!document.hasFocus()) return;
+      if (cellRef.current?.contains(document.activeElement)) return;
+      setEditing(false);
+      draft.leave();
+    }, 0);
+  };
+
+  // Caught before the editor sees them, and only from its text: the toolbar
+  // and the link form keep their own keys.
+  const onKeyDownCapture = (event: KeyboardEvent<HTMLTableCellElement>) => {
+    const editable = event.target;
+    if (
+      !(editable instanceof HTMLElement) ||
+      !editable.matches(EDITABLE_SELECTOR)
+    ) {
+      return;
+    }
+    if (event.key === 'Escape') {
+      // In one version's line, Escape first folds the versions back into
+      // their pill; only Escape in the text around them puts the cell back.
+      if (!draft.changed || editable.matches('[data-version]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      holdFocus();
+      draft.revert();
+      setRevision((current) => current + 1);
+      return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey && !event.altKey) {
+      const modifier = event.metaKey || event.ctrlKey;
+      if (!singleLine && !modifier) return;
+      event.preventDefault();
+      event.stopPropagation();
+      // The last row has nowhere to go, so the cell is checked where it is.
+      if (!onMove(1)) draft.leave();
+      return;
+    }
+    if (
+      (event.key === 'ArrowUp' && isAtEdge(editable, 'start')) ||
+      (event.key === 'ArrowDown' && isAtEdge(editable, 'end'))
+    ) {
+      if (onMove(event.key === 'ArrowUp' ? -1 : 1)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+  };
+
+  return {
+    editing,
+    revision,
+    cellProps: {
+      ref: cellRef,
+      tabIndex: -1,
+      onFocus,
+      onBlur,
+      onKeyDownCapture: editing ? onKeyDownCapture : undefined,
+    },
+  };
+};
+
+/** Focus, by any means, turns the cell into its editor. */
+const CellOpener = ({
+  labelledBy,
+  describedBy,
+  invalid,
+  rowIndex,
+  colIndex,
+}: {
+  labelledBy: string;
+  describedBy: string;
+  invalid: boolean;
+  rowIndex: number;
+  colIndex: number;
+}) => (
+  <button
+    type="button"
+    aria-labelledby={labelledBy}
+    aria-describedby={describedBy}
+    aria-invalid={invalid}
+    data-row={rowIndex}
+    data-col={colIndex}
+    className="absolute inset-0 cursor-text scroll-ms-(--translation-table-names) scroll-mt-(--translation-table-sticky-top) outline-none"
+  />
+);
+
+/**
+ * Rich text, shown as participants see it until the cell has focus, then
+ * edited in the cell with the same editor the stage editor uses.
+ */
+const RichTextCell = ({
+  row,
+  singleLine,
+  locale,
+  localization,
+  labelledBy,
+  rowIndex,
+  colIndex,
+  onMove,
+}: TranslationCellProps) => {
+  const contentId = useId();
+  const editorId = useId();
+  const noteId = useId();
+  const formScope = useFormFieldScope();
+  const draft = useTranslationDraft({ row, locale });
+  const { text, error } = draft;
+  const { editing, revision, cellProps } = useEditedCell({
+    draft,
+    singleLine,
+    onMove,
+    isAtEdge: isEditableCaretAt,
+  });
+  const empty = isBlankTranslation(row, text);
+  const fallbackShown = empty && error === undefined;
+  const value = withTranslation(row.value, locale, empty ? '' : text);
+  const describedBy = [
+    fallbackShown || !editing ? contentId : undefined,
+    error === undefined ? undefined : noteId,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <td
+      {...cellProps}
+      lang={locale}
+      dir={localeDirection(locale)}
+      data-field-path={draft.name}
+      data-field-form={formScope}
+      className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
+    >
+      {editing ? (
+        <>
+          {fallbackShown && (
+            <div className="sr-only">
+              <Fallback
+                id={contentId}
+                value={value}
+                format={row.format}
+                locale={locale}
+                localization={localization}
+              />
+            </div>
+          )}
+          <RichTextField
+            key={revision}
+            id={editorId}
+            name={editorId}
+            aria-labelledby={labelledBy}
+            aria-describedby={describedBy}
+            aria-invalid={error !== undefined}
+            value={text}
+            onChange={(markdown) => draft.change(markdown ?? '')}
+            singleLine={singleLine}
+            className={CELL_EDITOR_CLASSES}
+            autoFocus
+          />
+        </>
+      ) : (
+        <>
+          <div className="grid">
+            {empty ? (
+              <Fallback
+                id={contentId}
+                value={value}
+                format={row.format}
+                locale={locale}
+                localization={localization}
+              />
+            ) : (
+              <div
+                id={contentId}
+                className={cx(CELL_TEXT_CLASSES, 'col-start-1 row-start-1')}
+              >
+                <CellMarkdown>{text}</CellMarkdown>
+              </div>
+            )}
+          </div>
+          <CellOpener
+            labelledBy={labelledBy}
+            describedBy={describedBy}
+            invalid={error !== undefined}
+            rowIndex={rowIndex}
+            colIndex={colIndex}
+          />
+        </>
+      )}
+      {error !== undefined && <ProblemNote id={noteId}>{error}</ProblemNote>}
+      {draft.changed && <UnsavedMark />}
+    </td>
+  );
+};
+
+/**
+ * A localized message: shown with its placeholders and versions as pills
+ * until the cell has focus, then edited in the cell with the stage editor's
+ * own editor, as piped text is.
+ */
+const MessageCell = ({
+  row,
+  locale,
+  localization,
+  labelledBy,
+  rowIndex,
+  colIndex,
+  messageArguments,
+  onMove,
+}: TranslationCellProps & { messageArguments: MessageArguments }) => {
+  const contentId = useId();
+  const editorId = useId();
+  const noteId = useId();
+  const formScope = useFormFieldScope();
+  const draft = useTranslationDraft({ row, locale });
+  const { text: message, error } = draft;
+  const { editing, revision, cellProps } = useEditedCell({
+    draft,
+    // The text is one line, so Enter always moves on.
+    singleLine: true,
+    onMove,
+    isAtEdge: isEditableCaretAt,
+  });
+  const empty = isBlankTranslation(row, message);
+  const fallbackShown = empty && error === undefined;
+  const value = withMessage(row.value, locale, empty ? undefined : message);
+  const describedBy = [
+    fallbackShown || !editing ? contentId : undefined,
+    error === undefined ? undefined : noteId,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <td
+      {...cellProps}
+      lang={locale}
+      dir={localeDirection(locale)}
+      data-field-path={draft.name}
+      data-field-form={formScope}
+      className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
+    >
+      {editing ? (
+        <>
+          {fallbackShown && (
+            <div className="sr-only">
+              <Fallback
+                id={contentId}
+                value={value}
+                format="plain"
+                locale={locale}
+                localization={localization}
+                messageArguments={messageArguments}
+              />
+            </div>
+          )}
+          <LocalizedMessageVersions
+            key={revision}
+            id={editorId}
+            name={editorId}
+            message={message}
+            onMessageChange={(next) => draft.change(next ?? '')}
+            declaration={messageArguments}
+            locale={locale}
+            ariaLabelledBy={labelledBy}
+            ariaDescribedBy={describedBy}
+            ariaInvalid={error !== undefined}
+            autoFocus
+            className={CELL_EDITOR_CLASSES}
+          />
+        </>
+      ) : (
+        <>
+          <div className="grid">
+            {empty ? (
+              <Fallback
+                id={contentId}
+                value={value}
+                format="plain"
+                locale={locale}
+                localization={localization}
+                messageArguments={messageArguments}
+              />
+            ) : (
+              <div
+                id={contentId}
+                className={cx(PLAIN_TEXT_CLASSES, 'col-start-1 row-start-1')}
+              >
+                <LocalizedMessageVersionsSummary
+                  message={message}
+                  declaration={messageArguments}
+                  locale={locale}
+                />
+              </div>
+            )}
+          </div>
+          <CellOpener
+            labelledBy={labelledBy}
+            describedBy={describedBy}
+            invalid={error !== undefined}
+            rowIndex={rowIndex}
+            colIndex={colIndex}
+          />
+        </>
+      )}
+      {error !== undefined && <ProblemNote id={noteId}>{error}</ProblemNote>}
+      {draft.changed && <UnsavedMark />}
+    </td>
+  );
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * What text at `path` can show: the roles on screen where it sits and their
+ * attributes, and its stage's bindings. The table never adds a binding; a
+ * translation shows the values the stage already names.
+ */
+const useDynamicSite = (
+  path: TranslationRow['path'],
+  site: DynamicValueSite,
+): DynamicMessageSite => {
+  const protocol = useAppSelector(getProtocol);
+  const [root, stageIndex, ...sitePath] = path;
+  const stage =
+    root === 'stages' && typeof stageIndex === 'number'
+      ? protocol?.stages[stageIndex]
+      : undefined;
+  const codebook = protocol?.codebook;
+  return useMemo(() => {
+    const bindings = (
+      isRecord(stage) && isRecord(stage.dynamicValues)
+        ? stage.dynamicValues
+        : {}
+    ) as DynamicValues;
+    return {
+      context: dynamicValueContextFor({ codebook, stage, sitePath, site }),
+      bindings,
+    };
+    // `sitePath` is a fresh array each render; the row's path decides it.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [codebook, stage, site, JSON.stringify(path)]);
+};
+
+/**
+ * Text that can show values the interview fills in: shown with its values
+ * as pills until the cell has focus, then edited in the cell with the stage
+ * editor's own editor, offering the values the stage already binds.
+ */
+const DynamicCell = ({
+  row,
+  singleLine,
+  locale,
+  localization,
+  labelledBy,
+  rowIndex,
+  colIndex,
+  onMove,
+  dynamicValues,
+}: TranslationCellProps & { dynamicValues: DynamicValueSite }) => {
+  const contentId = useId();
+  const editorId = useId();
+  const noteId = useId();
+  const formScope = useFormFieldScope();
+  const site = useDynamicSite(row.path, dynamicValues);
+  const draft = useTranslationDraft({ row, locale });
+  const { text: message, error } = draft;
+  const markdown = row.format === 'markdown';
+  const { editing, revision, cellProps } = useEditedCell({
+    draft,
+    singleLine: !markdown || singleLine,
+    onMove,
+    isAtEdge: isEditableCaretAt,
+  });
+  const empty = isBlankTranslation(row, message);
+  const fallbackShown = empty && error === undefined;
+  const value = withMessage(row.value, locale, empty ? undefined : message);
+  const originalMessage = row.value[localization.defaultLocale];
+  const original =
+    originalMessage === undefined
+      ? undefined
+      : { locale: localization.defaultLocale, message: originalMessage };
+  const describedBy = [
+    fallbackShown || !editing ? contentId : undefined,
+    error === undefined ? undefined : noteId,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <td
+      {...cellProps}
+      lang={locale}
+      dir={localeDirection(locale)}
+      data-field-path={draft.name}
+      data-field-form={formScope}
+      className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
+    >
+      <ProtocolLocalizationProvider
+        localization={localization}
+        initialLocale={locale}
+      >
+        {editing ? (
+          <>
+            {fallbackShown && (
+              <div className="sr-only">
+                <Fallback
+                  id={contentId}
+                  value={value}
+                  format={row.format}
+                  locale={locale}
+                  localization={localization}
+                  dynamicSite={site}
+                />
+              </div>
+            )}
+            <DynamicMessageEditor
+              key={revision}
+              id={editorId}
+              name={editorId}
+              ariaLabelledBy={labelledBy}
+              ariaDescribedBy={describedBy}
+              ariaInvalid={error !== undefined}
+              autoFocus
+              readOnly={false}
+              markdown={markdown}
+              singleLine={!markdown || singleLine}
+              compact={false}
+              message={message}
+              onMessageChange={(next) => draft.change(next ?? '')}
+              original={original}
+              locale={locale}
+              site={site}
+              showsProblems={false}
+              className={CELL_EDITOR_CLASSES}
+            />
+          </>
+        ) : (
+          <>
+            <div className="grid">
+              {empty ? (
+                <Fallback
+                  id={contentId}
+                  value={value}
+                  format={row.format}
+                  locale={locale}
+                  localization={localization}
+                  dynamicSite={site}
+                />
+              ) : (
+                <div
+                  id={contentId}
+                  className={cx(
+                    markdown ? CELL_TEXT_CLASSES : PLAIN_TEXT_CLASSES,
+                    'col-start-1 row-start-1',
+                  )}
+                >
+                  <DynamicMessageSummary
+                    message={message}
+                    markdown={markdown}
+                    locale={locale}
+                    site={site}
+                    blockMarkdown={CELL_BLOCK_MARKDOWN}
+                  />
+                </div>
+              )}
+            </div>
+            <CellOpener
+              labelledBy={labelledBy}
+              describedBy={describedBy}
+              invalid={error !== undefined}
+              rowIndex={rowIndex}
+              colIndex={colIndex}
+            />
+          </>
+        )}
+      </ProtocolLocalizationProvider>
+      {error !== undefined && <ProblemNote id={noteId}>{error}</ProblemNote>}
+      {draft.changed && <UnsavedMark />}
+    </td>
+  );
+};
+
+/** One translation of one text: a cell of the translation table. */
+const TranslationCell = (props: TranslationCellProps) => {
+  const { arguments: messageArguments, dynamicValues, format } = props.row;
+  if (dynamicValues !== undefined) {
+    return <DynamicCell {...props} dynamicValues={dynamicValues} />;
+  }
+  if (messageArguments !== undefined) {
+    return <MessageCell {...props} messageArguments={messageArguments} />;
+  }
+  return format === 'markdown' ? (
+    <RichTextCell {...props} />
+  ) : (
+    <PlainTextCell {...props} />
+  );
+};
+
+export default TranslationCell;

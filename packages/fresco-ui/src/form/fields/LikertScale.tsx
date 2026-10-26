@@ -7,7 +7,12 @@ import { useMemo, useRef, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { getMarkdownLabelText, RenderMarkdown } from '../../RenderMarkdown';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
+import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
   sliderControlVariants,
@@ -31,7 +36,7 @@ import {
 import { useSliderActive } from './scale/useSliderActive';
 
 type Option = {
-  label: string;
+  label: PresentationalText;
   value: string | number;
 };
 
@@ -255,7 +260,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={() =>
                   currentOption
-                    ? getMarkdownLabelText(currentOption.label)
+                    ? presentationalTextValue(currentOption.label)
                     : intl.formatMessage(messages.noSelection)
                 }
               >
@@ -283,7 +288,13 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
           anchor={thumbEl}
         >
           {popoverOption ? (
-            <RenderMarkdown>{popoverOption.label}</RenderMarkdown>
+            <RenderMarkdown
+              render={
+                <span {...presentationalTextProps(popoverOption.label)} />
+              }
+            >
+              {presentationalTextValue(popoverOption.label)}
+            </RenderMarkdown>
           ) : null}
         </ScaleValuePopover>
 
@@ -310,8 +321,11 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                           ? 'text-right'
                           : 'text-center',
                   )}
+                  {...presentationalTextProps(option.label)}
                 >
-                  <RenderMarkdown>{option.label}</RenderMarkdown>
+                  <RenderMarkdown>
+                    {presentationalTextValue(option.label)}
+                  </RenderMarkdown>
                 </div>
               );
             })}
@@ -342,8 +356,11 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                     top: '50%',
                     transform: `translate(-50%, -50%) rotate(${layout.rotateDeg}deg)`,
                   }}
+                  {...presentationalTextProps(option.label)}
                 >
-                  <RenderMarkdown>{option.label}</RenderMarkdown>
+                  <RenderMarkdown>
+                    {presentationalTextValue(option.label)}
+                  </RenderMarkdown>
                 </div>
               );
             })}
@@ -357,17 +374,21 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 controlLabelVariants({ size: 'sm' }),
                 'max-w-24 text-left',
               )}
+              {...presentationalTextProps(options[0]!.label)}
             >
-              <RenderMarkdown>{options[0]!.label}</RenderMarkdown>
+              <RenderMarkdown>
+                {presentationalTextValue(options[0]!.label)}
+              </RenderMarkdown>
             </div>
             <div
               className={cx(
                 controlLabelVariants({ size: 'sm' }),
                 'max-w-24 text-right',
               )}
+              {...presentationalTextProps(options[options.length - 1]!.label)}
             >
               <RenderMarkdown>
-                {options[options.length - 1]!.label}
+                {presentationalTextValue(options[options.length - 1]!.label)}
               </RenderMarkdown>
             </div>
           </div>
@@ -375,9 +396,15 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
       </div>
 
       {measurementNode}
-      <div aria-live="polite" className="sr-only">
+      <div
+        aria-live="polite"
+        className="sr-only"
+        {...presentationalTextProps(currentOption?.label)}
+      >
         {currentOption ? (
-          <RenderMarkdown>{currentOption.label}</RenderMarkdown>
+          <RenderMarkdown>
+            {presentationalTextValue(currentOption.label)}
+          </RenderMarkdown>
         ) : null}
       </div>
     </div>

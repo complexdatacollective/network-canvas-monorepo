@@ -1,16 +1,9 @@
-// First, and as a dependency of this module rather than of main.tsx: it strips
-// a `?open=` protocol id or `?import=` hand-off key from the address bar as it
-// is evaluated, and `posthog.init` below must never see either. An entry's
-// import order does not survive bundling, which hoists this module into a
-// chunk shared with the preview entry that main's own code runs after; only a
-// direct dependency is guaranteed to be evaluated first.
-import './utils/urlLaunchRequest';
 // The no-external build carries no script loader, so an extension exists only
 // if it is bundled here. Exception autocapture is the one Architect uses;
 // importing it registers the error-wrapping hooks that `init` reads. Session
 // replay, surveys and the rest stay out of the bundle entirely.
 import 'posthog-js/dist/exception-autocapture';
-import posthog from 'posthog-js/dist/module.no-external';
+import { posthog } from 'posthog-js/dist/module.no-external';
 
 import {
   buildAppSuperProperties,

@@ -66,6 +66,37 @@ STUDIO_API_IMAGE=ghcr.io/complexdatacollective/studio-api@sha256:…
 STUDIO_WEB_IMAGE=ghcr.io/complexdatacollective/studio-web@sha256:…
 ```
 
+Every release is a
+[GitHub release tagged `studio@<version>`](https://github.com/complexdatacollective/network-canvas-monorepo/releases?q=studio%40&expanded=true).
+Its notes begin with those two lines, filled in, and its `studio-release.json`
+asset names the same digests under `images.api` and `images.web`. The images
+are public, so pulling them needs no registry login.
+
+Each image is signed, and carries a signed attestation naming the digest of its
+CycloneDX SBOM, under the identity of the workflow that built it. To check an image before you
+run it, with [cosign](https://docs.sigstore.dev/cosign/system_config/installation/):
+
+```bash
+cosign verify \
+  --certificate-identity https://github.com/complexdatacollective/network-canvas-monorepo/.github/workflows/ci-and-release.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/complexdatacollective/studio-api@sha256:…
+```
+
+The SBOMs are attached to the release as `studio-api.cdx.json` and
+`studio-web.cdx.json`. To check one belongs to the image, compare its digest
+with the one the image's attestation names:
+
+```bash
+cosign verify-attestation \
+  --type https://networkcanvas.com/studio/sbom-reference/v1 \
+  --certificate-identity https://github.com/complexdatacollective/network-canvas-monorepo/.github/workflows/ci-and-release.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/complexdatacollective/studio-api@sha256:… \
+  | jq -r '.payload | @base64d | fromjson | .predicate.sbom.digest.sha256'
+sha256sum studio-api.cdx.json
+```
+
 ## 3. Write the two secret files
 
 These are files rather than variables so they stay out of `docker inspect`, out
@@ -192,8 +223,14 @@ curl https://studio.example.org/readyz
 ## 7. Finish setup in the browser
 
 Open `https://studio.example.org/setup`, paste the token, give the instance a
-name, and create the owner's account. You land signed in as the owner. The
+name, and create the owner's account. Setup also creates the owner's first
+team, named after the instance, and you land signed in on its study list. The
 token is spent, and `/setup` answers as a not-found from then on.
+
+On a self-hosted instance only the owner can create teams, from the team
+switcher; everyone else joins a team when one of its owners or admins invites
+them, which needs mail (the next step). Until then, someone who signs in
+without a team is told who has to invite them.
 
 That is the instance running. The name you gave is reported by the app's
 `status` procedure and by `/api/v1/status`.

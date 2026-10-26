@@ -6,7 +6,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -686,9 +686,9 @@ function EntityTypeCodebookControls({
    * hold different definition types, and one indexed by a union is a union of
    * maps nothing can be read out of without narrowing it again. Each map is
    * carried with its kind for the same reason the name is judged across both:
-   * a record key belongs to ONE map, and `VariableNameSchema`'s alphabet is
-   * the protocol author's, so a codebook may legally key a node and an edge
-   * the same. Excluded by id alone, editing that node would take the edge's
+   * a record key is an id that belongs to ONE map, and nothing keeps the two
+   * maps' ids apart, so a codebook may legally key a node and an edge the
+   * same. Excluded by id alone, editing that node would take the edge's
    * name out of the collision list too, and the rename would be refused by
    * the schema instead of by the field.
    */
@@ -892,7 +892,7 @@ export default function EntityTypePickerField({
   blockChangeReason,
   allowCodebookEditing = true,
   disabled = false,
-  readOnly: readOnlyProp = false,
+  'readOnly': readOnlyProp = false,
   className,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
@@ -1154,6 +1154,8 @@ export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
     entityType: EntitySubject['entity'];
     /** See `EntityTypePickerFieldProps`. */
     confirmChange?: () => EntityTypeChangeConfirmation | undefined;
+    /** See `EntityTypePickerFieldProps`. */
+    blockChangeReason?: string;
   }
 >;
 

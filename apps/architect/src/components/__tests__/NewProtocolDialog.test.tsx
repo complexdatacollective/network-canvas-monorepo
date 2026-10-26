@@ -1,7 +1,18 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
+import {
+  AppIntlOverlay,
+  type AppMessageOverride,
+} from '@codaco/app-i18n/react';
 import {
   PROTOCOL_NAME_MAX_LENGTH,
   PROTOCOL_NAME_TOO_LONG_MESSAGE as protocolNameTooLongDescriptor,
@@ -126,6 +137,176 @@ describe('NewProtocolDialog', () => {
 
     expect(
       await screen.findByText('Protocol name is required'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('explains an over-limit name in the language shown when it is checked', async () => {
+    // The dialog stays open across a change of language; the explanation
+    // follows it rather than the language the dialog was opened in.
+    const english: AppMessageOverride = () => undefined;
+    const renamed: AppMessageOverride = (message) =>
+      message.id === protocolNameTooLongDescriptor.id
+        ? 'Name too long, in the new language'
+        : undefined;
+    const dialog = (override: AppMessageOverride) => (
+      <AppIntlOverlay override={override}>
+        <NewProtocolDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />
+      </AppIntlOverlay>
+    );
+    const { rerender } = render(dialog(english));
+    rerender(dialog(renamed));
+
+    fireEvent.change(nameInput(), {
+      target: { value: 'A'.repeat(PROTOCOL_NAME_MAX_LENGTH + 1) },
+    });
+    submit();
+
+    expect(
+      await screen.findByText('Name too long, in the new language'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('NewProtocolDialog protocol languages', () => {
+  const renderWithLanguages = () => {
+    const onSubmit = vi.fn();
+    render(
+      <NewProtocolDialog
+        open
+        onOpenChange={vi.fn()}
+        chooseLanguages
+        onSubmit={onSubmit}
+      />,
+    );
+    return onSubmit;
+  };
+
+  const languageList = () =>
+    screen.getByRole('combobox', { name: 'Protocol languages' });
+  const defaultSelect = () =>
+    screen.queryByRole('combobox', { name: 'Default language' });
+
+  // Each option is named "<name> (<tag>)", then the language's own name.
+  // Scoped to the list, because the default-language select has options too.
+  const toggleLanguages = async (user: UserEvent, tags: readonly string[]) => {
+    await user.click(languageList());
+    const list = await screen.findByRole('listbox');
+    for (const tag of tags) {
+      await user.click(
+        within(list).getByRole('option', { name: new RegExp(`\\(${tag}\\)`) }),
+      );
+    }
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument(),
+    );
+  };
+
+  it('starts on the language that best matches Architect’s own, and names it', () => {
+    renderWithLanguages();
+
+    expect(languageList()).toHaveTextContent('English');
+  });
+
+  it('asks for no default language while one language is chosen', () => {
+    renderWithLanguages();
+
+    expect(defaultSelect()).not.toBeInTheDocument();
+  });
+
+  it('creates a one-language protocol with that language as its default', async () => {
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Étude',
+        localization: { defaultLocale: 'en', locales: ['en'] },
+      }),
+    );
+  });
+
+  it('asks for the default among several languages, starting on Architect’s own', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    await toggleLanguages(user, ['fr-CA']);
+
+    const select = await screen.findByRole('combobox', {
+      name: 'Default language',
+    });
+    expect(select).toHaveValue('en');
+    // Alphabetical by name: Canadian French before English.
+    expect(
+      [...select.querySelectorAll('option')].map((option) => option.value),
+    ).toEqual(['fr-CA', 'en']);
+
+    fireEvent.change(select, { target: { value: 'fr-CA' } });
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Étude',
+        localization: { defaultLocale: 'fr-CA', locales: ['en', 'fr-CA'] },
+      }),
+    );
+  });
+
+  it('never keeps a default that is no longer one of the chosen languages', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    await toggleLanguages(user, ['fr-CA']);
+    fireEvent.change(
+      await screen.findByRole('combobox', { name: 'Default language' }),
+      { target: { value: 'fr-CA' } },
+    );
+    await toggleLanguages(user, ['fr-CA', 'de']);
+
+    await waitFor(() => expect(defaultSelect()).toHaveValue('en'));
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Étude',
+        localization: { defaultLocale: 'en', locales: ['en', 'de'] },
+      }),
+    );
+  });
+
+  it('defaults to the first chosen language when Architect’s own is not chosen', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    await toggleLanguages(user, ['en', 'fr', 'de']);
+
+    await waitFor(() => expect(defaultSelect()).toHaveValue('fr'));
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Étude',
+        localization: { defaultLocale: 'fr', locales: ['fr', 'de'] },
+      }),
+    );
+  });
+
+  it('requires at least one language', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    await toggleLanguages(user, ['en']);
+    submit();
+
+    expect(
+      await screen.findByText('Choose at least one language.'),
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });

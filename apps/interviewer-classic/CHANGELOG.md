@@ -1,5 +1,11 @@
 # network-canvas-interviewer
 
+## Unreleased
+
+- **The macOS app requires macOS 13 (Ventura) or later.** The desktop app now runs on Electron
+  45, which no longer supports macOS 12 (Monterey). On a Mac that cannot be updated past
+  macOS 12, keep using Interviewer 6.6.3. The iPad and Android apps are not affected.
+
 ## 6.6.3
 
 - **Restored protocols and interviews after upgrading the iOS and Android apps.** Upgrading an

@@ -1,5 +1,9 @@
 import type { BrowserContext, Page } from '@playwright/test';
 
+import {
+  PROTOCOL_DB_NAME,
+  SESSION_PREFIX,
+} from '../../src/utils/storageNames.js';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
@@ -12,9 +16,9 @@ const PROTOCOL_ROUTES = [
   '/protocol',
   '/protocol/codebook',
   '/protocol/assets',
+  '/protocol/localization',
   '/protocol/summary',
   '/protocol/stage/new?type=Information',
-  '/protocol/experiments',
 ];
 
 async function settle(page: Page) {
@@ -28,9 +32,9 @@ async function settle(page: Page) {
 // `readProtocolJson` (which requires a row to exist). A phantom protocol must
 // leave this empty.
 async function readProtocolIds(page: Page): Promise<string[]> {
-  const ids: unknown = await page.evaluate(async () => {
+  const ids: unknown = await page.evaluate(async (dbName) => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open('ArchitectProtocolDB');
+      const req = indexedDB.open(dbName);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
@@ -48,7 +52,7 @@ async function readProtocolIds(page: Page): Promise<string[]> {
     });
     db.close();
     return keys.map(String);
-  });
+  }, PROTOCOL_DB_NAME);
   return Array.isArray(ids) ? ids.map(String) : [];
 }
 
@@ -103,6 +107,8 @@ const VIEW_CONTROLS: readonly ViewControl[] = [
   { role: 'button', name: /^open menu$/i },
   { role: 'combobox', name: /^interface language:/i },
   { role: 'button', name: /^download$/i },
+  // Sends the saved copy, as Download does; it writes nothing here.
+  { role: 'button', name: /^send to interviewer$/i },
   { role: 'button', name: /^print$/i },
   // The browser's own storage warning, offering to install the app.
   {
@@ -223,12 +229,15 @@ async function openInSecondTab(
   // protocol id the library would have set had the user opened it there.
   const secondTab = await context.newPage();
   await secondTab.goto('/');
-  await secondTab.evaluate((storageId) => {
-    sessionStorage.setItem(
-      '@@remember-app',
-      JSON.stringify({ activeProtocolId: storageId }),
-    );
-  }, protocolId);
+  await secondTab.evaluate(
+    ({ storageId, sessionPrefix }) => {
+      sessionStorage.setItem(
+        `${sessionPrefix}app`,
+        JSON.stringify({ activeProtocolId: storageId }),
+      );
+    },
+    { storageId: protocolId, sessionPrefix: SESSION_PREFIX },
+  );
   await secondTab.goto(route);
   await settle(secondTab);
   return secondTab;
@@ -291,20 +300,6 @@ test('a second tab on the same protocol can look through every page, changes not
     expect(await editingControls(secondTab), tab).toEqual([]);
   }
 
-  // Experiments has no link; it is reached by address.
-  await secondTab.evaluate(() => {
-    history.pushState(null, '', '/protocol/experiments');
-  });
-  await expect(
-    secondTab.getByRole('button', { name: 'Go Back' }),
-  ).toBeVisible();
-  expect(await editingControls(secondTab)).toEqual([]);
-
-  // Experiments has no project navigation of its own; leave it the way it
-  // offers.
-  await secondTab.getByRole('button', { name: 'Go Back' }).click();
-  await expect(secondTab).toHaveURL(/\/protocol$/);
-
   await main.getByRole('link', { name: /^Codebook/ }).click();
   await expect(secondTab).toHaveURL(/\/protocol\/codebook$/);
   const createNodeType = secondTab.getByRole('button', {
@@ -355,9 +350,11 @@ test('a stage editor open read-only becomes editable in place when the other tab
   await secondTab.waitForURL(/\/protocol$/);
   const saved = await readProtocolJson(
     secondTab,
-    (row) => row.stages[0]?.label === 'Renamed after the reclaim',
+    (row) => row.stages[0]?.label['en-US'] === 'Renamed after the reclaim',
   );
-  expect(saved.stages[0]?.label).toBe('Renamed after the reclaim');
+  expect(saved.stages[0]?.label).toEqual({
+    'en-US': 'Renamed after the reclaim',
+  });
 
   // Back on the stage list, this tab holds the protocol: the same control that
   // read "View stage" while it could not edit now says "Edit stage".

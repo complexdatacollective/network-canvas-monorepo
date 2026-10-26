@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useSyncExternalStore } from 'react';
 
 const DEFAULT_ACTIVITY_EVENTS: Array<keyof WindowEventMap> = [
   'mousedown',
@@ -7,6 +7,40 @@ const DEFAULT_ACTIVITY_EVENTS: Array<keyof WindowEventMap> = [
   'touchstart',
   'wheel',
 ];
+
+// While Interviewer 9 hosts a schema 8 interview, Interviewer 8 runs in a
+// same-origin iframe (components/Interviewer8Frame.tsx) and keeps its own idle
+// lock there. Taps and keys inside the frame never reach this window, so this
+// app's timer would lock it mid-interview; a hold switches the timer off. Once
+// every hold is released the timer starts again, counting from zero.
+let idleLockHolds = 0;
+const idleLockHoldListeners = new Set<() => void>();
+
+const notifyIdleLockHoldListeners = () => {
+  for (const listener of idleLockHoldListeners) listener();
+};
+
+/** Suspend the idle lock until the returned release is called. */
+export function holdIdleLock(): () => void {
+  idleLockHolds += 1;
+  notifyIdleLockHoldListeners();
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    idleLockHolds -= 1;
+    notifyIdleLockHoldListeners();
+  };
+}
+
+const subscribeIdleLockHolds = (listener: () => void) => {
+  idleLockHoldListeners.add(listener);
+  return () => {
+    idleLockHoldListeners.delete(listener);
+  };
+};
+
+const isIdleLockHeld = () => idleLockHolds > 0;
 
 type IdleTimerOptions = {
   timeoutMs: number;
@@ -19,16 +53,24 @@ export function useIdleTimer({
   enabled,
   onIdle,
 }: IdleTimerOptions): void {
-  const onIdleRef = useRef(onIdle);
-  onIdleRef.current = onIdle;
+  // The latest onIdle, without re-arming the timer when its identity changes.
+  const handleIdle = useEffectEvent(() => {
+    onIdle();
+  });
+  const held = useSyncExternalStore(
+    subscribeIdleLockHolds,
+    isIdleLockHeld,
+    isIdleLockHeld,
+  );
+  const running = enabled && !held;
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!running) return;
     let idleTimer: number | undefined;
     let lastActivityAt = Date.now();
 
     const fireIdle = () => {
-      onIdleRef.current();
+      handleIdle();
     };
 
     const resetIdle = () => {
@@ -67,5 +109,5 @@ export function useIdleTimer({
       document.removeEventListener('visibilitychange', handleVisibility);
       if (idleTimer !== undefined) window.clearTimeout(idleTimer);
     };
-  }, [enabled, timeoutMs]);
+  }, [running, timeoutMs]);
 }

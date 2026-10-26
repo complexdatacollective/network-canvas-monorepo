@@ -87,6 +87,35 @@ export const ruleSetTargets = (
 ): readonly RuleTargetType[] => RULE_SET_TARGETS[variant];
 
 /**
+ * Whether a rule set of this kind may compare an encrypted attribute's
+ * answers. Every set may check whether one is answered.
+ *
+ * Only an external-data panel may compare them. Its rules read the
+ * researcher's own rows, which are never encrypted; every other set reads
+ * interview answers, and rules are checked without the participant's
+ * passphrase. The protocol schema draws the line in the same place
+ * (`readsInterview`).
+ */
+const RULE_SET_ALLOWS_ENCRYPTED_ATTRIBUTES: Readonly<
+  Record<RuleSetVariant, boolean>
+> = Object.freeze({
+  filter: false,
+  query: false,
+  interviewNetworkPanel: false,
+  externalDataPanel: true,
+});
+
+export const ruleSetAllowsEncryptedAttributes = (
+  variant: RuleSetVariant,
+): boolean => RULE_SET_ALLOWS_ENCRYPTED_ATTRIBUTES[variant];
+
+type RuleSetReading = Readonly<{
+  intl?: IntlShape;
+  /** See `ruleSetAllowsEncryptedAttributes`. Off unless the set says so. */
+  allowEncryptedAttributes?: boolean;
+}>;
+
+/**
  * The stored shape of a filter or skip-logic field: one opaque object value
  * holding the rules and how they combine.
  */
@@ -172,6 +201,25 @@ export const asRuleSetValue = (value: unknown): RuleSetValue | undefined => {
  */
 const isRuleRow = (value: unknown): value is RuleDraft =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Whether a stored value is a rule set as it stands: a record whose `rules`, if
+ * it has any, are rows, and whose `join`, if it has one, is a string.
+ *
+ * `asRuleSetValue` reads a rule set but builds a new one, dropping whatever
+ * else the record holds; this asks the question of the value itself, for a
+ * caller that must hand the stored value on unchanged.
+ */
+export const isRuleSetValue = (value: unknown): value is RuleSetValue => {
+  const record = asRuleSetRecord(value);
+  if (record === undefined) return false;
+  const rules = Reflect.get(record, 'rules');
+  const join = Reflect.get(record, 'join');
+  return (
+    (rules === undefined || (Array.isArray(rules) && rules.every(isRuleRow))) &&
+    (join === undefined || typeof join === 'string')
+  );
+};
 
 export const ruleSetRules = (value: unknown): readonly RuleDraft[] =>
   asRuleSetValue(value)?.rules ?? [];
@@ -263,6 +311,9 @@ const RULE_PROBLEM_SUMMARIES: Readonly<
   targetNotOffered: 'unusable',
   missingEntityType: 'codebook',
   missingAttribute: 'codebook',
+  // Like `targetNotOffered`: whether the rule can read this attribute depends
+  // on where the rule sits, not on anything that changed in the codebook.
+  encryptedAttribute: 'unusable',
   invalidOperator: 'codebook',
   invalidOperand: 'codebook',
   invalidPattern: 'unusable',
@@ -311,7 +362,7 @@ export const ruleSetIssues = (
   value: unknown,
   codebook: Readonly<Codebook>,
   targets: readonly RuleTargetType[],
-  intl: IntlShape = englishIntl,
+  { intl = englishIntl, allowEncryptedAttributes = false }: RuleSetReading = {},
 ): RuleSetIssue[] => {
   const rules = ruleSetRules(value);
   // Worked out once for the set rather than per rule: whether an id is a
@@ -324,6 +375,7 @@ export const ruleSetIssues = (
       codebook,
       targets,
       duplicateIds,
+      allowEncryptedAttributes,
       intl,
     });
     return problems.map((problem) => ({
@@ -344,12 +396,15 @@ export const ruleSetValidationMessage = (
   value: unknown,
   codebook: Readonly<Codebook>,
   targets: readonly RuleTargetType[],
-  intl: IntlShape = englishIntl,
+  { intl = englishIntl, allowEncryptedAttributes = false }: RuleSetReading = {},
 ): string | undefined => {
   const shape = ruleSetProblem(value, intl);
   if (shape !== undefined) return shape;
 
-  const issues = ruleSetIssues(value, codebook, targets, intl);
+  const issues = ruleSetIssues(value, codebook, targets, {
+    intl,
+    allowEncryptedAttributes,
+  });
   const first = issues[0];
   if (first === undefined) return undefined;
   // Counted by ROW, not by problem. One rule can carry several — losing its

@@ -26,6 +26,14 @@
       "draft": ""
     },
     {
+      "stageKey": "name_friends/intro",
+      "kind": "introduction to nameGenerator",
+      "purpose": "Elicit friends and the people the participant spends time with at university.",
+      "title": "introduction screen title; draft: \"Naming people\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will be asked a question. Tap the add button, then type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
+    },
+    {
       "stageKey": "name_friends",
       "kind": "nameGenerator",
       "purpose": "Elicit friends and the people the participant spends time with at university.",
@@ -34,12 +42,28 @@
       "draft": ""
     },
     {
+      "stageKey": "friend_details/intro",
+      "kind": "introduction to alterForm",
+      "purpose": "When and where each tie formed.",
+      "title": "introduction screen title; draft: \"About the people you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "Next, you will answer a few questions about each of the people you named, one at a time."
+    },
+    {
       "stageKey": "friend_details",
       "kind": "alterForm",
       "purpose": "When and where each tie formed.",
-      "title": "introduction title",
-      "text": "introduction text",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "friend_bins/intro",
+      "kind": "introduction to bins",
+      "purpose": "Closeness, how they met, and perceived heavy drinking for everyone named.",
+      "title": "introduction screen title; draft: \"Sorting the people you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
     },
     {
       "stageKey": "friend_bins",
@@ -50,12 +74,28 @@
       "draft": ""
     },
     {
+      "stageKey": "friend_map/intro",
+      "kind": "introduction to sociogram",
+      "purpose": "Arrange the network, record who knows whom, and mark drinking companions.",
+      "title": "introduction screen title; draft: \"Your network map\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the people you named on a map, with you at the centre.\n\nDrag each of the people onto the circles. The closer to the centre you place someone, the closer they are to you.\n\nTo connect two of the people, tap one and then the other. Do the same again to remove a connection.\n\nTap each person the question describes. Tap them again to undo."
+    },
+    {
       "stageKey": "friend_map",
       "kind": "sociogram",
       "purpose": "Arrange the network, record who knows whom, and mark drinking companions.",
       "title": "none: return \"\"",
       "text": "none: return \"\"",
       "draft": ""
+    },
+    {
+      "stageKey": "drinking_together/intro",
+      "kind": "introduction to bins",
+      "purpose": "How often the participant drinks with each drinking companion.",
+      "title": "introduction screen title; draft: \"Sorting the people you named\"",
+      "text": "introduction screen text: what the next screen asks the participant to do, and how",
+      "draft": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
     },
     {
       "stageKey": "drinking_together",

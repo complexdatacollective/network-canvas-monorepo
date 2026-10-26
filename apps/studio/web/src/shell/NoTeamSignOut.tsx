@@ -1,7 +1,7 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 
 import { SIGN_OUT_FAILURE_MESSAGE, useSignOut } from './useSignOut.ts';
 
@@ -9,13 +9,12 @@ const messages = defineMessages({
   signOut: {
     id: 'studio.shell.noTeamSignOut',
     defaultMessage: 'Sign out',
-    description:
-      'Button on the no-team screen that ends the session — the only way off that screen.',
+    description: 'Button on the no-team screen that ends the session.',
   },
 });
 
 /**
- * The way off `/no-team`, and the only one a researcher there has.
+ * Signing out from `/no-team`.
  *
  * A session with no team memberships is redirected here from every app route
  * (§6.4), and `/sign-in`'s own guard resolves the same landing and sends it

@@ -1,5 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react';
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useSyncExternalStore } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { useMeasureItems } from '../hooks/useMeasureItems';
@@ -48,62 +48,88 @@ function Harness({
 }
 
 /**
+ * An external store holding the collection version, standing in for the
+ * collection store whose updates produce fresh items arrays.
+ */
+function createVersionStore() {
+  let version = 0;
+  const listeners = new Set<() => void>();
+  return {
+    getVersion: () => version,
+    setVersion: (next: number) => {
+      version = next;
+      listeners.forEach((listener) => listener());
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+type VersionStore = ReturnType<typeof createVersionStore>;
+
+/**
  * Rebuilds the collection identity on every `version` bump, mirroring an
  * upstream memo that produces a fresh items array per store update. With
- * `hijack`, the first bump schedules a second one from a layout effect, so
- * the second identity change lands in the very commit where the hook is
+ * `hijack`, the first bump makes a second store update from a layout effect,
+ * so the second identity change lands in the very commit where the hook is
  * recovering from the first — the interleaving a burst of store updates
  * produces (parent layout effects run after the hook's own).
  */
 function Parent({
-  start,
+  versionStore,
   hijack,
 }: {
-  start: { current: (() => void) | null };
+  versionStore: VersionStore;
   hijack: boolean;
 }) {
-  const [version, setVersion] = useState(0);
-  start.current = () => setVersion(1);
+  const version = useSyncExternalStore(
+    versionStore.subscribe,
+    versionStore.getVersion,
+  );
   const collection = useMemo(() => {
     void version; // referenced so each bump rebuilds the collection identity
     return makeCollection(IDS);
   }, [version]);
   const layout = useMemo(() => new ListLayout<Item>(), []);
-  // Setting state from a layout effect IS the thing under test: it is the only
-  // way to land the second identity change in the commit that is recovering
-  // from the first. Deriving it during render would schedule the bump before
-  // the hook's own layout effect and reproduce nothing.
+  // Updating the store from a layout effect IS the thing under test: it is the
+  // only way to land the second identity change in the commit that is
+  // recovering from the first. Deriving it during render would schedule the
+  // bump before the hook's own layout effect and reproduce nothing.
   useLayoutEffect(() => {
-    if (hijack && version === 1) setVersion(2);
-  }, [hijack, version]);
+    if (hijack && version === 1) versionStore.setVersion(2);
+  }, [hijack, version, versionStore]);
   return <Harness collection={collection} layout={layout} />;
 }
 
 const mountAndSettle = async (hijack: boolean) => {
-  const start = { current: null as (() => void) | null };
-  render(<Parent start={start} hijack={hijack} />);
+  const versionStore = createVersionStore();
+  render(<Parent versionStore={versionStore} hijack={hijack} />);
   // Flush the ResizeObserver mock's one-shot sentinel callback (fires with a
   // synthetic 800×600 rect, invalidating the first measurement) so the hook
   // reaches a stable completed state before the test manipulates it.
   await act(async () => {});
   await waitFor(() => expect(lastResult.isComplete).toBe(true));
-  return start;
+  return versionStore;
 };
 
 describe('useMeasureItems', () => {
   it('re-measures after a single collection identity change', async () => {
-    const start = await mountAndSettle(false);
+    const versionStore = await mountAndSettle(false);
 
-    act(() => start.current?.());
+    act(() => versionStore.setVersion(1));
 
     await waitFor(() => expect(lastResult.isComplete).toBe(true));
     expect(lastResult.measurements.size).toBe(IDS.length);
   });
 
   it('re-measures when a second identity change lands in the recovery commit', async () => {
-    const start = await mountAndSettle(true);
+    const versionStore = await mountAndSettle(true);
 
-    act(() => start.current?.());
+    act(() => versionStore.setVersion(1));
 
     // Without a re-measure trigger in the reset path, the second change wipes
     // the measurements the recovery commit just took, and no dependency of

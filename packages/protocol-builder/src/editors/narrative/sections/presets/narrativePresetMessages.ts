@@ -208,6 +208,24 @@ export const narrativePresetMessages = defineMessages({
     description:
       'Guidance under the preset connection-types tick list, saying that ticking nothing is a real answer rather than an unfinished one.',
   },
+  presetEdgeLegendLabel: {
+    id: 'protocolBuilder.networkCanvas.presetEdgeLegendLabel',
+    defaultMessage: 'Label for “{edgeType}”',
+    description:
+      'Label of the text box naming one drawn edge type in the interview. edgeType is the edge type’s name in the protocol’s codebook, which is not translated.',
+  },
+  presetEdgeLegendHint: {
+    id: 'protocolBuilder.networkCanvas.presetEdgeLegendHint',
+    defaultMessage:
+      'Shown during the interview, in the legend of connections this preset draws.',
+    description:
+      'Guidance under the text box naming one drawn edge type, saying where the label appears.',
+  },
+  presetEdgeLegendRequired: {
+    id: 'protocolBuilder.networkCanvas.presetEdgeLegendRequired',
+    defaultMessage: 'Enter a label for this edge type.',
+    description: 'Shown when the label of a drawn edge type is left empty.',
+  },
   presetHighlightTitle: {
     id: 'protocolBuilder.networkCanvas.presetHighlightTitle',
     defaultMessage: 'Node highlighting',
@@ -225,6 +243,25 @@ export const narrativePresetMessages = defineMessages({
     defaultMessage: 'Highlight attributes',
     description:
       'Label of the tick list choosing which true-or-false codebook attributes make a node stand out.',
+  },
+  presetHighlightLegendLabel: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightLegendLabel',
+    defaultMessage: 'Label for “{attribute}”',
+    description:
+      'Label of the text box naming one highlighted attribute in the interview. attribute is the attribute’s name in the protocol’s codebook, which is not translated.',
+  },
+  presetHighlightLegendHint: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightLegendHint',
+    defaultMessage:
+      'Shown during the interview, in the list of attributes this preset can highlight.',
+    description:
+      'Guidance under the text box naming one highlighted attribute, saying where the label appears.',
+  },
+  presetHighlightLegendRequired: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightLegendRequired',
+    defaultMessage: 'Enter a label for this attribute.',
+    description:
+      'Shown when the label of a highlighted attribute is left empty.',
   },
   presetUnavailableHighlightAttribute: {
     id: 'protocolBuilder.networkCanvas.presetUnavailableHighlightAttribute',

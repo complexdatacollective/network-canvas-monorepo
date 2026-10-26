@@ -3,13 +3,14 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
 import JSZip from 'jszip';
+import { z } from 'zod';
 
 /**
- * Bundles the schema-8 `@codaco/sample-protocol` package (the same protocol
+ * Bundles the schema-9 `@codaco/sample-protocol` package (the same protocol
  * Architect ships as its built-in template) into a downloadable
  * `.netcanvas` file in `public/protocols/`.
  *
- * Run at build time (prebuild) so the download offered in the schema-8 tutorials
+ * Run at build time (prebuild) so the download offered in the schema-9 tutorials
  * always matches the protocol bundled in Architect — no hand-maintained copy
  * to drift. The output file is gitignored.
  */
@@ -31,9 +32,9 @@ async function generate() {
   const protocolJson = readFileSync(protocolJsonPath, 'utf8');
 
   // Use the protocol's own lastModified so the zip is reproducible across builds.
-  const { lastModified } = JSON.parse(protocolJson) as {
-    lastModified?: string;
-  };
+  const { lastModified } = z
+    .object({ lastModified: z.string().optional() })
+    .parse(JSON.parse(protocolJson));
   const date = lastModified ? new Date(lastModified) : new Date(0);
 
   const zip = new JSZip();

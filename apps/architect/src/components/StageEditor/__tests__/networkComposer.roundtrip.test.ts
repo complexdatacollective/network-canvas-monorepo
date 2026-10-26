@@ -4,25 +4,33 @@ import { networkComposerStage } from '@codaco/protocol-validation';
 
 const stage = {
   id: 's1',
-  label: 'Compose',
+  label: { en: 'Compose' },
   type: 'NetworkComposer',
+  addNamePlaceholder: { en: 'Type a name' },
+  overtakenEditNotice: { en: 'Your last change was undone.' },
+  tooltips: {
+    addPerson: { en: 'Add a person' },
+    automaticLayout: { en: 'Arrange automatically' },
+    drawConnection: { en: 'Draw a connection' },
+  },
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
   background: { concentricCircles: 4 },
   nodeForm: {
-    fields: [{ variable: 'age', component: 'Number', label: 'Age?' }],
+    fields: [{ variable: 'age', component: 'Number', label: { en: 'Age?' } }],
   },
   edges: [
     {
       id: 'edge-1',
       subject: { entity: 'edge', type: 'knows' },
+      label: { en: 'Connection' },
       form: {
         fields: [
           {
             variable: 'closeness',
             component: 'VisualAnalogScale',
-            label: 'How close?',
+            label: { en: 'How close?' },
           },
         ],
       },
@@ -46,8 +54,16 @@ describe('NetworkComposer editor output validates', () => {
       networkComposerStage.safeParse({
         ...stage,
         edges: [
-          { id: 'edge-1', subject: { entity: 'edge', type: 'knows' } },
-          { id: 'edge-2', subject: { entity: 'edge', type: 'knows' } },
+          {
+            id: 'edge-1',
+            subject: { entity: 'edge', type: 'knows' },
+            label: { en: 'Connection' },
+          },
+          {
+            id: 'edge-2',
+            subject: { entity: 'edge', type: 'knows' },
+            label: { en: 'Connection' },
+          },
         ],
       }).success,
     ).toBe(false);

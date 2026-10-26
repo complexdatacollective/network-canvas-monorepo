@@ -29,6 +29,7 @@ import {
 import { testDb } from '../../__tests__/support/database.ts';
 import {
   ADA,
+  enUS,
   GRACE,
   latch,
   revisionsOf,
@@ -198,7 +199,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
   });
 
   afterEach(async () => {
-    for (const client of opened.splice(0).reverse()) await client.dispose();
+    for (const client of opened.splice(0).toReversed()) await client.dispose();
     for (const close of pools.splice(0)) await close();
     for (const scope of scopes.splice(0)) {
       await Effect.runPromise(Scope.close(scope, Exit.void));
@@ -411,8 +412,8 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: 'Past the bound',
-              title: 'Past the bound',
+              label: enUS('Past the bound'),
+              title: enUS('Past the bound'),
               items: [],
             }),
           }),
@@ -545,8 +546,8 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: 'Watched',
-              title: 'Watched',
+              label: enUS('Watched'),
+              title: enUS('Watched'),
               items: [],
             }),
           }),
@@ -787,8 +788,8 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: 'Polled beside an unreadable draft',
-              title: 'Polled beside an unreadable draft',
+              label: enUS('Polled beside an unreadable draft'),
+              title: enUS('Polled beside an unreadable draft'),
               items: [],
             }),
           }),
@@ -867,7 +868,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
           expect(revisionsOf(channel.events, stage.sectionId)).toEqual([]);
         }
 
-        for (const ring of [...writer.rung].reverse()) reader.send(ring);
+        for (const ring of writer.rung.toReversed()) reader.send(ring);
         await until(
           () =>
             stages.every(

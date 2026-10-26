@@ -147,7 +147,25 @@ const SILENT: Announcements = ['', ''];
  */
 const RouteFocus = ({ location, ownerDocument }: RouteFocusProps) => {
   const lastLocation = useRef<string | null>(null);
-  const [announcements, setAnnouncements] = useState<Announcements>(SILENT);
+
+  // Every change of the committed location is a navigation of its own,
+  // counted while rendering. An announcement belongs to the navigation it was
+  // made for, and the regions say nothing for any other: a route with no
+  // landing point has no name to announce — there is no heading to take one
+  // from, and inventing one would announce something the page does not say —
+  // and must NOT leave the regions holding the PREVIOUS route's title, which
+  // tells a screen reader the researcher is on a page they have already left.
+  const [navigation, setNavigation] = useState({ location, count: 0 });
+  if (navigation.location !== location) {
+    setNavigation({ location, count: navigation.count + 1 });
+  }
+  const navigationCount = navigation.count;
+  const [announced, setAnnounced] = useState<{
+    navigation: number;
+    regions: Announcements;
+  }>({ navigation: 0, regions: SILENT });
+  const announcements =
+    announced.navigation === navigationCount ? announced.regions : SILENT;
 
   // Everything below reads and moves the live DOM — the committed route's
   // landing point, and where focus currently is — and what it announces is
@@ -174,22 +192,19 @@ const RouteFocus = ({ location, ownerDocument }: RouteFocusProps) => {
       if (!target) return false;
 
       const destination = target.textContent?.trim() ?? '';
-      setAnnouncements(([first]): Announcements =>
-        first === '' ? [destination, ''] : ['', destination],
-      );
+      // Into whichever region the last announcement left empty. Both render
+      // empty from the moment the location changes, so the region written
+      // here always changes, whatever the text.
+      setAnnounced(({ regions: [first] }) => ({
+        navigation: navigationCount,
+        regions: first === '' ? [destination, ''] : ['', destination],
+      }));
       return true;
     };
 
     if (land()) return undefined;
 
-    // A route with no landing point has no name to announce — there is no
-    // heading to take one from, and inventing one would announce something the
-    // page does not say. What it must NOT do is stay quiet and leave the
-    // regions holding the PREVIOUS route's title, which tells a screen reader
-    // the researcher is on a page they have already left.
-    setAnnouncements(SILENT);
-
-    // …or the landing point simply is not here YET. A lazy or Suspense-backed
+    // The landing point may simply not be here YET. A lazy or Suspense-backed
     // route commits the location while it still shows a fallback, so this
     // effect runs before the heading exists — and nothing changes the location
     // afterwards, so without this it would never run again: focus would stay
@@ -212,7 +227,7 @@ const RouteFocus = ({ location, ownerDocument }: RouteFocusProps) => {
     });
     observer.observe(scope, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [location, ownerDocument]);
+  }, [location, ownerDocument, navigationCount]);
 
   return (
     <>

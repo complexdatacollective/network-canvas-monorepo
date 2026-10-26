@@ -37,7 +37,7 @@ remaining fully overridable.
 - **Live.** While auto-naming is active, the name field is kept in sync with the
   generated name as the researcher sets the subject type and configures the
   stage (e.g. `Form Name Generator` → `Person Form Name Generator` → `Person
-Form Name Generator with Roster Panels`).
+  Form Name Generator with Roster Panels`).
 - **Override.** The moment the researcher types a non-empty value into the name
   field, auto-naming disengages and the field is theirs.
 - **Re-engage on blur, not mid-edit.** Clearing the field leaves it empty while

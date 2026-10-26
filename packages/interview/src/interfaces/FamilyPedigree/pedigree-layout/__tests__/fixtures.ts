@@ -1,9 +1,25 @@
+import {
+  FAMILY_PEDIGREE_GAPS,
+  type LayoutDimensions,
+} from '../layoutDimensions';
 import type {
   ParentConnection,
   PartnerConnection,
   PedigreeInput,
   Relation,
 } from '../types';
+
+/**
+ * The symbol size and gaps the interface draws with: a small Node
+ * (`size-24`, 96px at the default root font size) and Family Pedigree's
+ * gaps. Oracles of what the participant sees measure the drawing at these
+ * proportions.
+ */
+export const INTERFACE_DIMENSIONS: LayoutDimensions = {
+  nodeWidth: 96,
+  nodeHeight: 96,
+  ...FAMILY_PEDIGREE_GAPS,
+};
 
 const sp = (parentIndex: number): ParentConnection => ({
   parentIndex,
@@ -144,7 +160,7 @@ export const surrogacyWithSibling: PedigreeInput = {
 
 /**
  * Two intermarrying sibships whose union descends asymmetrically — a distilled
- * form of the comprehensive NarrativePedigree gen-II/III structure.
+ * form of a comprehensive three-generation family.
  *
  *   gg1(0) ⚭ gg2(1)
  *      |         |
@@ -162,8 +178,9 @@ export const surrogacyWithSibling: PedigreeInput = {
  * has an EXTRA child (extraA) besides cousinA, the barycentre of sibA's family
  * pulls one way while the cousin union pulls the couple the other way, freezing
  * the block in an orientation that crosses the descent to the cousin union. The
- * barycentric sweeps only reorder whole blocks, so only a block-reversal
- * (reflection) reaches the mirror orientation that removes the crossing.
+ * barycentric sweeps only reorder whole blocks, so only the seating search,
+ * which turns blocks round, reaches the mirror orientation that removes the
+ * crossing.
  */
 export const twoSibshipIntermarriage: PedigreeInput = {
   id: [

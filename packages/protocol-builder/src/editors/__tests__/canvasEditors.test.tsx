@@ -22,7 +22,11 @@ type CanvasEditorCase = Readonly<{
   editor: Partial<StageEditorRegistry>;
   /** The outline a researcher reads down the side of the stage, in order. */
   sections: readonly string[];
-  /** The top-level stage keys those sections have a field for. */
+  /**
+   * The top-level stage keys those sections have a field for, and
+   * `dynamicValues`, which every stage editor registers for the values its
+   * text may show.
+   */
   ownedKeys: readonly string[];
 }>;
 
@@ -51,7 +55,14 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['background', 'behaviours', 'label', 'prompts', 'subject'],
+    ownedKeys: [
+      'background',
+      'behaviours',
+      'dynamicValues',
+      'label',
+      'prompts',
+      'subject',
+    ],
   },
   {
     interfaceName: 'Narrative',
@@ -63,10 +74,22 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Visualization presets',
       'Background',
       'Narrative behaviors',
+      'Words on the canvas',
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['background', 'behaviours', 'label', 'presets', 'subject'],
+    ownedKeys: [
+      'attributesHeading',
+      'background',
+      'behaviours',
+      'dynamicValues',
+      'groupsHeading',
+      'label',
+      'linksHeading',
+      'presets',
+      'subject',
+      'tooltips',
+    ],
   },
   {
     interfaceName: 'NetworkComposer',
@@ -77,19 +100,24 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Node configuration',
       'Editable attributes',
       'Edge configuration',
+      'Words on the canvas',
       'Background',
       'Skip logic',
       'Interviewer guidance',
     ],
     ownedKeys: [
+      'addNamePlaceholder',
       'background',
       'behaviours',
       'convexHullVariable',
+      'dynamicValues',
       'edges',
       'label',
       'layoutVariable',
+      'overtakenEditNotice',
       'quickAdd',
       'subject',
+      'tooltips',
     ],
   },
   {
@@ -109,10 +137,20 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Prompt collection',
       'Map appearance',
       'Map starting position',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['label', 'mapOptions', 'prompts', 'subject'],
+    ownedKeys: [
+      'dynamicValues',
+      'label',
+      'mapOptions',
+      'mapUnavailable',
+      'offlineNotice',
+      'outsideAreasLabel',
+      'prompts',
+      'subject',
+    ],
   },
   {
     interfaceName: 'NarrativePedigree',
@@ -125,10 +163,21 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Pedigree source',
       'Disease mappings',
       'At-risk statuses',
+      'Words on the pedigree',
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['diseases', 'label', 'showAtRiskStatuses', 'sourceStageId'],
+    ownedKeys: [
+      'conditionText',
+      'diseases',
+      'dynamicValues',
+      'keyHeading',
+      'label',
+      'saveSnapshot',
+      'showAtRiskStatuses',
+      'sourceStageId',
+      'tooltips',
+    ],
   },
   {
     interfaceName: 'Anonymisation',
@@ -144,7 +193,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['explanationText', 'label', 'validation'],
+    ownedKeys: ['dynamicValues', 'explanationText', 'label', 'validation'],
   },
 ];
 

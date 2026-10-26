@@ -13,7 +13,7 @@ import {
   protocolStrings,
 } from '../../testing/localeSweep.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import Options, { optionsValidation } from '../arrayFields/Options.tsx';
+import Options, { optionsValidationFor } from '../arrayFields/Options.tsx';
 import { READ_ONLY_MESSAGE } from '../readOnlyRefusal.ts';
 
 const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
@@ -55,7 +55,7 @@ const optionsSection = (
       label="Opciones de respuesta"
       component={Options}
       addButtonLabel="Crear una opción nueva"
-      {...optionsValidation}
+      {...optionsValidationFor()}
     />
   </BuilderSection>
 );

@@ -9,9 +9,10 @@ const { init, register } = vi.hoisted(() => ({
   register: vi.fn(),
 }));
 
-vi.mock('posthog-js', () => ({
-  default: { init, register },
-}));
+vi.mock('posthog-js', () => {
+  const posthog = { init, register };
+  return { default: posthog, posthog };
+});
 
 vi.mock('../isProductionHost', () => ({
   isProductionHost: () => true,

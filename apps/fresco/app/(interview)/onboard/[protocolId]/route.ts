@@ -1,10 +1,18 @@
-import { cookies } from 'next/headers';
 import { after, NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod/mini';
 
 import { createInterview } from '~/actions/interviews';
 import { env } from '~/env';
+import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
+import { interviewPath } from '~/lib/schema-8/version';
 import { getAppSetting } from '~/queries/appSettings';
+
+// The body may be empty (`null`), but a participant identifier that is present
+// must be text.
+const postBodySchema = z.nullish(
+  z.object({ participantIdentifier: z.optional(z.string()) }),
+);
 
 const handler = async (
   req: NextRequest,
@@ -26,12 +34,20 @@ const handler = async (
 
   const limitInterviews = await getAppSetting('limitInterviews');
 
-  // if limitInterviews is enabled
-  // Check cookies for interview already completed for this user for this protocol
-  // and redirect to finished page
-  if (limitInterviews && (await cookies()).get(protocolId)) {
-    url.pathname = '/interview/finished';
-    return NextResponse.redirect(url);
+  // When limitInterviews is enabled, a browser that has already finished an
+  // interview of this protocol is sent back to that interview, which shows its
+  // completed state, instead of starting another.
+  if (limitInterviews) {
+    const limitedInterviewId = await getLimitedInterviewId(protocolId);
+
+    if (limitedInterviewId) {
+      url.pathname = `/interview/${limitedInterviewId}`;
+      return NextResponse.redirect(url, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      });
+    }
   }
 
   let participantIdentifier: string | undefined;
@@ -39,10 +55,12 @@ const handler = async (
   // If the request is a POST, check the request body for a participant identifier.
   // Otherwise, check the searchParams for a participant identifier.
   if (req.method === 'POST') {
-    const postData = (await req.json()) as
-      | { participantIdentifier?: string }
-      | undefined;
-    participantIdentifier = postData?.participantIdentifier;
+    const postData = postBodySchema.safeParse(await req.json());
+    if (!postData.success) {
+      url.pathname = '/onboard/error';
+      return NextResponse.redirect(url);
+    }
+    participantIdentifier = postData.data?.participantIdentifier;
   } else {
     const searchParams = req.nextUrl.searchParams;
     participantIdentifier =
@@ -85,19 +103,15 @@ const handler = async (
   // Note: the interview id is the unauthenticated access capability for the
   // participant flow, so it must never be written to logs (where it could leak
   // and let a third party read or tamper with the interview).
-
-  after(async () => {
-    await captureEvent('InterviewStarted', {
-      usingAnonymousParticipant: !participantIdentifier,
-    });
-    await flushPostHog();
-  });
+  //
+  // The start is reported to analytics by `createInterview`, through the
+  // activity feed, so nothing is captured here.
 
   // Redirect to the interview
   // Explicitly disable caching to prevent Netlify from caching this redirect
   // (Netlify adds max-age=86400 by default, causing all users to get the same interview)
   // See: https://github.com/opennextjs/opennextjs-netlify/issues/3460
-  url.pathname = `/interview/${result.createdInterviewId}`;
+  url.pathname = interviewPath(result.createdInterviewId, result.schemaVersion);
   return NextResponse.redirect(url, {
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate',

@@ -5,14 +5,15 @@ import { type ReactNode, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
-import { getInterviewProgress } from '@codaco/interview';
-import type { ProtocolWithCounts } from '~/lib/db/types';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { isCurrentProtocol, type ProtocolWithCounts } from '~/lib/db/types';
 
 import { DataViewToolbar } from './DataViewToolbar';
 import { ExportDialog } from './ExportDialog';
+import { protocolTotalSteps } from './protocolTotalSteps';
 import { useDataViewColumns } from './useDataViewColumns';
 import { useDataViewUrlState } from './useDataViewUrlState';
 import { useSessionMutations } from './useSessionMutations';
@@ -117,23 +118,22 @@ const bannerVariants = {
 
 export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   const intl = useAppIntl();
-  // Total interview steps (including the engine's appended finish stage) by
-  // protocol hash, for the progress column's "step X of Y" label. Derived via
-  // getInterviewProgress so the host never hard-codes the +1 for the finish
-  // stage.
-  const { protocolTotalSteps, protocolStages } = useMemo(() => {
+  // Total interview steps by protocol hash, for the progress column's "step X
+  // of Y" label, counted the way the engine that runs the interview counts
+  // them (protocolTotalSteps). Stages are kept for the schema 9 protocols
+  // only: they are what marking an interview unfinished needs, and only a
+  // schema 9 interview is reopened here.
+  const { totalStepsByHash, protocolStages } = useMemo(() => {
     const totalSteps = new Map<string, number>();
-    const stagesByHash = new Map<
-      string,
-      ProtocolWithCounts['protocol']['stages']
-    >();
+    const stagesByHash = new Map<string, CurrentProtocol['stages']>();
     for (const protocol of protocols) {
-      const stages = protocol.protocol.stages ?? [];
-      totalSteps.set(protocol.hash, getInterviewProgress(stages, 0).totalSteps);
-      stagesByHash.set(protocol.hash, stages);
+      totalSteps.set(protocol.hash, protocolTotalSteps(protocol));
+      if (isCurrentProtocol(protocol)) {
+        stagesByHash.set(protocol.hash, protocol.protocol.stages);
+      }
     }
     return {
-      protocolTotalSteps: totalSteps,
+      totalStepsByHash: totalSteps,
       protocolStages: stagesByHash,
     };
   }, [protocols]);
@@ -206,7 +206,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   });
 
   const columns = useDataViewColumns({
-    protocolTotalSteps,
+    protocolTotalSteps: totalStepsByHash,
     isSelected,
     toggleRowSelected,
     togglePageSelected,
@@ -214,11 +214,10 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     someOnPageSelected,
     markingUnfinishedId,
     mutationsBusy: exportFlow.phase !== 'idle' || preparingExport || deleting,
+    canMarkUnfinished: (session) => protocolStages.has(session.protocolHash),
     onMarkUnfinished: (session) => {
-      void handleMarkUnfinished(
-        session,
-        protocolStages.get(session.protocolHash) ?? [],
-      );
+      const stages = protocolStages.get(session.protocolHash);
+      if (stages) void handleMarkUnfinished(session, stages);
     },
   });
 

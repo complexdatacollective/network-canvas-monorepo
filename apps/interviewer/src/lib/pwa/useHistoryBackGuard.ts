@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import { isEmbedClosed } from '~/lib/interviewer9Embed';
-
 // The pinned entry is tagged so we can tell ours apart from a normal history
 // entry — both on the popstate re-push and when the gated exit unwinds it.
-type SentinelState = { ncBackGuard?: boolean } | null;
-
 function isSentinel(state: unknown): boolean {
-  return (state as SentinelState)?.ncBackGuard === true;
+  return (
+    typeof state === 'object' &&
+    state !== null &&
+    'ncBackGuard' in state &&
+    state.ncBackGuard === true
+  );
 }
-
-/** Whether a history entry's state is the one this guard pins. */
-export const isHistoryBackGuardEntry = isSentinel;
 
 // Pin the history while a sensitive screen (an interview) is mounted so a
 // history-back (browser button, macOS two-finger swipe, iPadOS edge swipe —
@@ -26,9 +24,25 @@ export const isHistoryBackGuardEntry = isSentinel;
 // idle-lock/unlock remount the route tears down without exiting, so we leave the
 // sentinel in place and the next mount reuses it (guarded below) rather than
 // stacking a second one.
+// How long one step of an exit that steps over a departed frame's entries
+// waits for this window's popstate before it takes that step to have been one
+// such entry (see `stepOverFrameEntries`).
+const FRAME_ENTRY_STEP_MS = 250;
+
+type ExitOptions = {
+  /**
+   * Entries an iframe pushed may lie above the sentinel (Interviewer 8 hosted
+   * by the interview route pins its own). Once that frame is gone, a step back
+   * over one changes nothing this window shows and fires no popstate here, so
+   * a step that brings none within a moment is followed by another, at most
+   * once per entry in the history, until a popstate lands below the sentinel.
+   */
+  stepOverFrameEntries?: boolean;
+};
+
 export function useHistoryBackGuard(
   active: boolean,
-): (goHome: () => void) => void {
+): (goHome: () => void, options?: ExitOptions) => void {
   const armedRef = useRef(false);
 
   useEffect(() => {
@@ -41,9 +55,7 @@ export function useHistoryBackGuard(
     }
     armedRef.current = true;
     const onPopState = () => {
-      // Interviewer 8 inside Interviewer 9 pops this entry itself as its
-      // interview closes (interviewer9Navigation.ts), whatever closed it.
-      if (armedRef.current && !isEmbedClosed()) {
+      if (armedRef.current) {
         window.history.pushState({ ncBackGuard: true }, '', url);
       }
     };
@@ -57,7 +69,7 @@ export function useHistoryBackGuard(
     };
   }, [active]);
 
-  return useCallback((goHome: () => void) => {
+  return useCallback((goHome: () => void, options?: ExitOptions) => {
     // Disarm first so the unwinding pop doesn't trigger a re-pin. If we're on
     // our sentinel, pop it (revealing the interview entry beneath), then replace
     // that entry with Home via goHome — this removes both our sentinel and the
@@ -73,7 +85,34 @@ export function useHistoryBackGuard(
     // entry beneath the sentinel — not the sentinel while the traversal is still
     // in flight. There is always an entry below the sentinel (the guard pushed it
     // on top of the interview entry), so the popstate is guaranteed to fire.
-    window.addEventListener('popstate', () => goHome(), { once: true });
-    window.history.back();
+    if (!options?.stepOverFrameEntries) {
+      window.addEventListener('popstate', () => goHome(), { once: true });
+      window.history.back();
+      return;
+    }
+    let steps = 0;
+    let timer: number | undefined;
+    const finish = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('popstate', onPopState);
+      goHome();
+    };
+    const step = () => {
+      window.clearTimeout(timer);
+      if (steps >= window.history.length) {
+        finish();
+        return;
+      }
+      steps += 1;
+      timer = window.setTimeout(step, FRAME_ENTRY_STEP_MS);
+      window.history.back();
+    };
+    function onPopState() {
+      // Still a sentinel (one stacked by a re-pin): keep going down.
+      if (isSentinel(window.history.state)) step();
+      else finish();
+    }
+    window.addEventListener('popstate', onPopState);
+    step();
   }, []);
 }

@@ -5,6 +5,8 @@ import {
   type TypedStartListening,
 } from '@reduxjs/toolkit';
 
+import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
+
 import { codebookTypeIndex } from '../../analytics/codebookTypeIndex';
 import type { Tracker } from '../../analytics/tracker';
 import {
@@ -15,9 +17,10 @@ import {
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNetwork,
   restoreNode,
 } from '../modules/session';
-import { setPassphrase, setPassphraseInvalid } from '../modules/ui';
+import { encryptionUnlocked, passphraseRejected } from '../modules/ui';
 import type { AppDispatch, RootState } from '../store';
 
 type AnalyticsListenerArgs = {
@@ -62,13 +65,10 @@ export function createAnalyticsListenerMiddleware({
   startAppListening({
     actionCreator: addNodesAndEdges.fulfilled,
     effect: (action, listenerApi) => {
-      const before =
-        listenerApi.getOriginalState().session.network?.nodes.length ?? 0;
       const state = listenerApi.getState();
-      const added = state.session.network?.nodes.slice(before) ?? [];
-      for (const node of added) {
+      for (const node of action.payload.nodes) {
         tracker.track('node_added', {
-          node_id: node._uid,
+          node_id: node.nodeId,
           node_type_index: codebookTypeIndex(
             state.protocol.codebook,
             'node',
@@ -95,13 +95,51 @@ export function createAnalyticsListenerMiddleware({
     actionCreator: restoreNode,
     effect: (action, listenerApi) => {
       tracker.track('node_added', {
-        node_id: action.payload._uid,
+        node_id: action.payload[entityPrimaryKeyProperty],
         node_type_index: codebookTypeIndex(
           listenerApi.getState().protocol.codebook,
           'node',
           action.payload.type,
         ),
       });
+    },
+  });
+
+  // Undo and redo put a captured family back as it was: each person and
+  // relationship it brings back is reported as added again, and each it takes
+  // away as removed, as the change it reverses or repeats was reported.
+  startAppListening({
+    actionCreator: restoreNetwork,
+    effect: (_action, listenerApi) => {
+      const before = listenerApi.getOriginalState().session.network;
+      const after = listenerApi.getState().session.network;
+      const { codebook } = listenerApi.getState().protocol;
+      const idsOf = (entities: readonly { _uid: string }[]) =>
+        new Set(entities.map((entity) => entity[entityPrimaryKeyProperty]));
+      const nodesBefore = idsOf(before?.nodes ?? []);
+      const nodesAfter = idsOf(after?.nodes ?? []);
+      const edgesBefore = idsOf(before?.edges ?? []);
+      const edgesAfter = idsOf(after?.edges ?? []);
+      for (const node of after?.nodes ?? []) {
+        if (nodesBefore.has(node[entityPrimaryKeyProperty])) continue;
+        tracker.track('node_added', {
+          node_id: node[entityPrimaryKeyProperty],
+          node_type_index: codebookTypeIndex(codebook, 'node', node.type),
+        });
+      }
+      for (const id of nodesBefore) {
+        if (!nodesAfter.has(id)) tracker.track('node_removed', { node_id: id });
+      }
+      for (const edge of after?.edges ?? []) {
+        if (edgesBefore.has(edge[entityPrimaryKeyProperty])) continue;
+        tracker.track('edge_created', {
+          edge_id: edge[entityPrimaryKeyProperty],
+          edge_type_index: codebookTypeIndex(codebook, 'edge', edge.type),
+        });
+      }
+      for (const id of edgesBefore) {
+        if (!edgesAfter.has(id)) tracker.track('edge_removed', { edge_id: id });
+      }
     },
   });
 
@@ -155,20 +193,19 @@ export function createAnalyticsListenerMiddleware({
     },
   });
 
-  // Anonymisation. The passphrase value itself is never sent.
+  // Anonymisation. Neither the passphrase nor anything derived from it is
+  // sent.
   startAppListening({
-    actionCreator: setPassphrase,
+    actionCreator: encryptionUnlocked,
     effect: () => {
       tracker.track('passphrase_set');
     },
   });
 
   startAppListening({
-    actionCreator: setPassphraseInvalid,
-    effect: (action) => {
-      if (action.payload) {
-        tracker.track('passphrase_validation_failed');
-      }
+    actionCreator: passphraseRejected,
+    effect: () => {
+      tracker.track('passphrase_validation_failed');
     },
   });
 

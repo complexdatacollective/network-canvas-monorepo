@@ -6,7 +6,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { SuccessOf } from '@codaco/effect-query/types';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
@@ -20,6 +20,7 @@ import { Unauthorized } from '@codaco/studio-contract/schema/errors';
 
 import { invalidateInstanceStatus } from '../lib/deployment.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
+import { invalidateMemberships } from '../lib/landing.ts';
 import { sessionQueryOptions } from '../lib/session.ts';
 import { isConflict, isNotFound } from '../runtime/errors.ts';
 import { rpcCall } from '../runtime/rpc.ts';
@@ -162,7 +163,7 @@ export default function Setup() {
     // (§11.2), and a focused screen has no area layout to own that landmark.
     <main
       id="main-content"
-      className="flex h-full items-center justify-center p-4"
+      className="flex min-h-full items-center justify-center p-4"
     >
       <Surface maxWidth="xl" spacing="lg">
         <Heading level="h1" {...routeFocusTargetProps}>
@@ -200,6 +201,7 @@ export default function Setup() {
             }
 
             await invalidateInstanceStatus(queryClient);
+            await invalidateMemberships(queryClient);
             if (completed.signedIn) {
               queryClient.setQueryData(
                 sessionQueryOptions.queryKey,
@@ -275,7 +277,7 @@ export function SetupClosed() {
   return (
     <main
       id="main-content"
-      className="flex h-full items-center justify-center p-4"
+      className="flex min-h-full items-center justify-center p-4"
     >
       <Surface maxWidth="xl" spacing="lg">
         <Heading level="h1" {...routeFocusTargetProps}>

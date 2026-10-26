@@ -3,7 +3,7 @@
 import { type Row, type RowSelectionState } from '@tanstack/react-table';
 import { FileUp } from 'lucide-react';
 import { use, useMemo, useState, useTransition } from 'react';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import {

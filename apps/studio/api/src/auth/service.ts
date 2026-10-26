@@ -49,6 +49,8 @@ export type IdentifiedTeamMembership = TeamMembership & {
 
 export type EstablishedSession = {
   readonly userId: string;
+  readonly name: Redacted.Redacted;
+  readonly email: Redacted.Redacted;
   readonly setCookies: ReadonlyArray<string>;
 };
 
@@ -307,6 +309,8 @@ const makeLive = Effect.gen(function* () {
           kind: 'created',
           session: {
             userId: response.user.id,
+            name: Redacted.make(response.user.name),
+            email: Redacted.make(response.user.email),
             setCookies: headers.getSetCookie(),
           },
         };
@@ -340,6 +344,8 @@ const makeLive = Effect.gen(function* () {
           kind: 'signedIn',
           session: {
             userId: response.user.id,
+            name: Redacted.make(response.user.name),
+            email: Redacted.make(response.user.email),
             setCookies: headers.getSetCookie(),
           },
         };

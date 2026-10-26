@@ -6,7 +6,6 @@ import {
   type MotionValue,
   useMotionTemplate,
   useMotionValue,
-  useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useTransform,
@@ -21,6 +20,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 
 import NetworkWeaveBackground from '@codaco/art/NetworkWeaveBackground';
@@ -354,30 +354,35 @@ function useConvergenceReveal(
   const centerY = String(convergence.y * 100);
   const maskImage = useMotionTemplate`radial-gradient(circle at ${centerX}% ${centerY}%, transparent ${innerRadius}px, #000 ${radius}px)`;
 
-  const [masked, setMasked] = useState(resolved !== undefined);
+  // Whether the reveal of the current resolution has run to completion. It is
+  // set by the tween's own completion, and forgotten whenever the target stops
+  // being resolved so that the next resolution reveals again.
+  const [revealFinished, setRevealFinished] = useState(false);
+  if (resolved !== true && revealFinished) setRevealFinished(false);
+  // No mask when the caller opts out, a full mask while measuring, and once
+  // resolved a mask until the reveal finishes — at once under reduced motion,
+  // where there is no reveal to play.
+  const masked =
+    resolved === undefined
+      ? false
+      : !resolved || !(revealFinished || reduceMotion === true);
+
   const hasRevealedRef = useRef(false);
   // Read via a ref so a mid-reveal convergence change (e.g. a fonts.ready layout
   // shift) doesn't re-run the effect and stop the tween before it completes. The
   // mask centre still tracks live convergence — it is computed on each render.
+  // Updated in a layout effect declared before the tween's, so the tween reads
+  // the convergence of the render that started it.
   const convergenceRef = useRef(convergence);
-  convergenceRef.current = convergence;
-
-  // Drives the reveal tween. `masked` is not derived from `resolved`: it is
-  // one end of the animation this effect starts and stops on the Motion value
-  // above, and it is cleared by the tween's own completion, so it can only be
-  // set from where that animation is controlled.
   useLayoutEffect(() => {
-    if (resolved === undefined) {
-      hasRevealedRef.current = false;
-      radius.set(REVEAL_INITIAL_RADIUS);
-      setMasked(false);
-      return undefined;
-    }
+    convergenceRef.current = convergence;
+  });
 
-    if (!resolved) {
+  // Drives the reveal tween on the Motion value above.
+  useLayoutEffect(() => {
+    if (resolved !== true) {
       hasRevealedRef.current = false;
       radius.set(REVEAL_INITIAL_RADIUS);
-      setMasked(true);
       return undefined;
     }
 
@@ -386,7 +391,6 @@ function useConvergenceReveal(
 
     if (reduceMotion) {
       radius.set(0);
-      setMasked(false);
       return undefined;
     }
 
@@ -401,7 +405,7 @@ function useConvergenceReveal(
     const controls = animate(radius, 0, {
       duration: REVEAL_DURATION_SECONDS,
       ease: REVEAL_EASE,
-      onComplete: () => setMasked(false),
+      onComplete: () => setRevealFinished(true),
     });
     return () => controls.stop();
   }, [radius, reduceMotion, resolved]);
@@ -460,33 +464,28 @@ export function PageBackground({
   const { scrollY, scrollYProgress } = useScroll();
   const scrollFlareStart = scrollFlareRange?.[0] ?? flare;
   const scrollFlareEnd = scrollFlareRange?.[1] ?? flare;
-  const [scrollFlare, setScrollFlare] = useState(() =>
-    interpolateScrollFlare(
-      scrollYProgress.get(),
-      scrollFlareStart,
-      scrollFlareEnd,
-    ),
+  // The scroll position lives in a Motion value, not in React, so it is read as
+  // an external store — subscribed only while a flare range needs it, and
+  // re-read whenever that changes.
+  const hasScrollFlareRange = scrollFlareRange !== undefined;
+  const subscribeToScrollProgress = useCallback(
+    (onChange: () => void) =>
+      hasScrollFlareRange
+        ? scrollYProgress.on('change', onChange)
+        : () => undefined,
+    [hasScrollFlareRange, scrollYProgress],
   );
-  useMotionValueEvent(scrollYProgress, 'change', (progress) => {
-    if (!scrollFlareRange) return;
-
-    setScrollFlare(
-      interpolateScrollFlare(progress, scrollFlareStart, scrollFlareEnd),
-    );
-  });
-  // Re-reads the scroll progress when the range it is interpolated against
-  // changes. The progress lives in a Motion value, not in React, and it does
-  // not emit a 'change' just because the range moved, so the current position
-  // has to be pulled from it — an external store read, not a derivation.
-  useLayoutEffect(() => {
-    setScrollFlare(
-      interpolateScrollFlare(
-        scrollYProgress.get(),
-        scrollFlareStart,
-        scrollFlareEnd,
-      ),
-    );
-  }, [scrollFlareEnd, scrollFlareStart, scrollYProgress]);
+  const readScrollProgress = () => scrollYProgress.get();
+  const scrollProgress = useSyncExternalStore(
+    subscribeToScrollProgress,
+    readScrollProgress,
+    readScrollProgress,
+  );
+  const scrollFlare = interpolateScrollFlare(
+    scrollProgress,
+    scrollFlareStart,
+    scrollFlareEnd,
+  );
   const targetScrollOpacity = useTransform(
     scrollY,
     [0, scrollFadeEnd ?? 1],

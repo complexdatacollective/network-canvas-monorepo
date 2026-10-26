@@ -1,6 +1,12 @@
 'use client';
 
-import { type ReactNode, useContext, useEffect, useRef } from 'react';
+import {
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 
 import type { ToastVariant } from '@codaco/fresco-ui/Toast';
 
@@ -38,7 +44,9 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
   const track = useTrack();
 
   const constraintsRef = useRef(constraints);
-  constraintsRef.current = constraints;
+  useLayoutEffect(() => {
+    constraintsRef.current = constraints;
+  });
 
   // Track active constraint toasts: constraint index -> toast ID
   const activeToastsRef = useRef(new Map<number, string>());
@@ -63,8 +71,14 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
     prevIsMetRef.current = constraints.map((c) => c.isMet);
   }, [constraints, closeToast]);
 
+  // A stage with nothing to check registers no handler: navigation treats any
+  // registered handler as a reason to keep Next live at a review's end.
+  const hasConstraints = constraints.length > 0;
+
   // Register the keyed beforeNext handler
   useEffect(() => {
+    if (!hasConstraints) return;
+
     const handler = (direction: Direction, intent: NavigationIntent) => {
       if (intent === 'jump') {
         return true;
@@ -114,7 +128,7 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
       }
       activeToasts.clear();
     };
-  }, [registerBeforeNext, showToast, closeToast, track]);
+  }, [hasConstraints, registerBeforeNext, showToast, closeToast, track]);
 
   return { showToast, closeToast };
 }

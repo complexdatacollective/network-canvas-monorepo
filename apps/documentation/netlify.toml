@@ -32,6 +32,11 @@ to = "/en/design-protocols/installing-architect-classic"
 status = 301
 
 [[redirects]]
+from = "/en/design-protocols/dynamic-values"
+to = "/en/design-protocols/piped-text"
+status = 301
+
+[[redirects]]
 from = "/en/get-started/release-announcements"
 to = "/en/get-started/protocol-schema-information"
 status = 301

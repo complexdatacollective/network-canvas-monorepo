@@ -259,12 +259,24 @@ test('a staged tree can be published later, from a checkout that never staged it
 
   // Phase 1: no token. The trusted publisher is checked against the remote
   // now, so a mismatch surfaces here rather than at the push.
+  const stagedSha = 'abcdef0123456789abcdef0123456789abcdef01';
   execFileSync('node', stageArgs(trustedPublisher), {
     cwd: REPO_ROOT,
-    env: { ...process.env, MIRROR_STAGE_DIR: stage, MIRROR_REPO_URL: remote },
+    env: {
+      ...process.env,
+      MIRROR_STAGE_DIR: stage,
+      MIRROR_REPO_URL: remote,
+      MONOREPO_SHA: stagedSha,
+    },
     stdio: 'pipe',
   });
   assert.ok(existsSync(join(stage, 'app.ts')));
+  // The image is built without the tree's .git, so the commit it reports is
+  // the one recorded here.
+  assert.equal(
+    readFileSync(join(stage, 'source-commit'), 'utf8'),
+    `${stagedSha}\n`,
+  );
   assert.equal(
     readFileSync(
       join(stage, '.github', 'workflows', 'docker-publish.yml'),

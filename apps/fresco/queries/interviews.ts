@@ -1,4 +1,5 @@
 import 'server-only';
+import { CodebookSchema as LegacyCodebookSchema } from 'fresco-schema-8/protocol-validation';
 import { cacheLife } from 'next/cache';
 import { stringify } from 'superjson';
 
@@ -6,11 +7,13 @@ import { CodebookSchema } from '@codaco/protocol-validation';
 import {
   buildInterviewOrderBy,
   buildInterviewWhere,
+  PROGRESS_STAGE_COUNT_SQL,
 } from '~/app/dashboard/_components/InterviewsTable/buildInterviewWhere';
 import type { InterviewsSearchParams } from '~/app/dashboard/_components/InterviewsTable/searchParams';
 import { safeCacheTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { Prisma } from '~/lib/db/generated/client';
+import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 
 type NetworkSummaryEntry = {
   type: string;
@@ -121,7 +124,7 @@ export async function getInterviews(searchParams: InterviewsSearchParams) {
       i."currentStep", i."protocolId", i."isSynthetic",
       par."identifier" AS "participantIdentifier",
       p."name" AS "protocolName",
-      COALESCE(jsonb_array_length(p."stages"::jsonb), 0)::int AS "stageCount",
+      ${Prisma.raw(PROGRESS_STAGE_COUNT_SQL)}::int AS "stageCount",
       ${Prisma.raw(NODE_SUMMARY_SQL)} AS "nodeSummary",
       ${Prisma.raw(EDGE_SUMMARY_SQL)} AS "edgeSummary"
     FROM "Interview" i
@@ -161,7 +164,7 @@ export async function getInterviewFilterOptions() {
   safeCacheTag('getProtocols');
 
   const protocols = await prisma.protocol.findMany({
-    select: { name: true, codebook: true },
+    select: { name: true, codebook: true, schemaVersion: true },
   });
 
   const protocolNames = [...new Set(protocols.map((p) => p.name))].toSorted();
@@ -172,7 +175,11 @@ export async function getInterviewFilterOptions() {
     // Options only narrow the list, so a codebook that does not parse offers
     // no types rather than failing the dashboard. Every path that would use
     // the protocol refuses it, and reports it there.
-    const codebook = CodebookSchema.safeParse(p.codebook);
+    const codebook = (
+      isLegacySchemaVersion(p.schemaVersion)
+        ? LegacyCodebookSchema
+        : CodebookSchema
+    ).safeParse(p.codebook);
     if (!codebook.success) continue;
 
     for (const [type, def] of Object.entries(codebook.data.node ?? {})) {
@@ -231,6 +238,7 @@ async function prisma_getInterviewsForExport(interviewIds: string[]) {
       id: true,
       startTime: true,
       finishTime: true,
+      finishOutcome: true,
       network: true,
       protocol: { select: { hash: true } },
       participant: { select: { label: true, identifier: true } },

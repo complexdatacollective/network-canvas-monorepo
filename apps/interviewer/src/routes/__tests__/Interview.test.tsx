@@ -3,8 +3,14 @@ import { type ReactNode, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
-import type { InterviewPayload, SessionPayload } from '@codaco/interview';
+import type {
+  CompletedAction,
+  FinishHandler,
+  InterviewPayload,
+  SessionPayload,
+} from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
@@ -41,33 +47,18 @@ function refreshStepUpContextIdentities() {
 vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
   useStepUpAuth: () => stepUpContext,
 }));
-const takeEntryUnlockGraceMock = vi.fn((_sessionId: string) => false);
-const endEntryUnlockGraceMock = vi.fn();
-vi.mock('~/lib/auth/entryUnlockGrace', () => ({
-  takeEntryUnlockGrace: (sessionId: string) =>
-    takeEntryUnlockGraceMock(sessionId),
-  endEntryUnlockGrace: () => endEntryUnlockGraceMock(),
-}));
-
-// Interviewer 8 inside Interviewer 9 (a /v8/ build) returns to Interviewer 9
-// wherever the root app goes Home.
-const subpath = vi.hoisted(() => ({
-  isSubpath: false,
-  returnToInterviewer9: vi.fn(() => {
-    historyGuard.log.push('returned to Interviewer 9');
-  }),
-}));
-vi.mock('~/lib/appBase', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('~/lib/appBase')>()),
-  get IS_SUBPATH_BUILD() {
-    return subpath.isSubpath;
-  },
-}));
-vi.mock('~/lib/interviewer9Navigation', () => ({
-  returnToInterviewer9: () => subpath.returnToInterviewer9(),
-}));
 
 const getSettingsMock = vi.fn();
+const getSessionSchemaVersionMock = vi.fn<() => Promise<number | undefined>>();
+const getSessionHeaderMock = async () => {
+  const schemaVersion = await getSessionSchemaVersionMock();
+  return {
+    protocolHash: 'h1',
+    finishedAt: sessionFinishedAt.current,
+    schemaVersion,
+  };
+};
+const sessionFinishedAt: { current: string | null } = { current: null };
 const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
@@ -76,6 +67,7 @@ const updateSettingsMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
+  getSessionHeader: () => getSessionHeaderMock(),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
   updateSession: (...a: unknown[]) => updateSessionMock(...a),
   updateSettings: (...a: unknown[]) => updateSettingsMock(...a),
@@ -90,16 +82,74 @@ vi.mock('~/lib/assets/assetResolver', () => ({
 // gated exit just runs its navigation callback. The returned exit function must
 // be a stable reference (the real hook uses useCallback), or consumers that put
 // it in effect deps re-run every render.
-// Each exit is logged, so a case can see that it went through the guard (which
-// pops the pinned entry first) rather than around it.
-const historyGuard = vi.hoisted(() => ({ log: [] as string[] }));
-vi.mock('~/lib/pwa/useHistoryBackGuard', () => {
-  const exit = (goHome: () => void) => {
-    historyGuard.log.push('guard popped');
-    goHome();
+const { exitToHomeSpy } = vi.hoisted(() => ({
+  exitToHomeSpy: vi.fn((goHome: () => void) => goHome()),
+}));
+vi.mock('~/lib/pwa/useHistoryBackGuard', () => ({
+  useHistoryBackGuard: () => exitToHomeSpy,
+}));
+
+// Interviewer 8 as a build bundles it (or not). The address itself is the
+// real one.
+const { legacyInterviewer, settleLockMock, lockSettled, lockMock, frameMock } =
+  vi.hoisted(() => ({
+    legacyInterviewer: {
+      current: { version: '8.5.0', path: '/v8/' } as {
+        version: string;
+        path: '/v8/';
+      } | null,
+    },
+    settleLockMock: vi.fn<() => Promise<boolean>>(),
+    lockSettled: { current: true },
+    lockMock: vi.fn(() => Promise.resolve()),
+    frameMock:
+      vi.fn<
+        (props: {
+          src: string;
+          enterAuthorized: boolean;
+          onClosed: () => void;
+          onLost: () => void;
+          onUnavailable: () => void;
+        }) => void
+      >(),
+  }));
+vi.mock('~/lib/legacyInterviewer', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('~/lib/legacyInterviewer')>();
+  return {
+    ...actual,
+    getBundledLegacyInterviewer: () => legacyInterviewer.current,
   };
-  return { useHistoryBackGuard: () => exit };
 });
+vi.mock('~/components/useSettleLockForInterviewer8', () => ({
+  useSettleLockForInterviewer8: () => ({
+    settled: lockSettled.current,
+    settleLock: () => settleLockMock(),
+  }),
+}));
+vi.mock('~/lib/auth/AuthContext', () => ({
+  useAuth: () => ({ lock: lockMock }),
+}));
+// The frame and its handshake are covered in Interviewer8Frame's own test;
+// here it stands in for itself with the props the route gives it.
+vi.mock('~/components/Interviewer8Frame', () => ({
+  Interviewer8Frame: (props: {
+    src: string;
+    enterAuthorized: boolean;
+    onClosed: () => void;
+    onLost: () => void;
+    onUnavailable: () => void;
+  }) => {
+    frameMock(props);
+    return <iframe title="Interview" src={props.src} />;
+  },
+}));
+
+function lastFrameProps() {
+  const props = frameMock.mock.calls.at(-1)?.[0];
+  if (!props) throw new Error('Interviewer 8 was never hosted');
+  return props;
+}
 vi.mock('~/lib/installationId', () => ({
   getInstallationId: () => 'test-install',
 }));
@@ -134,13 +184,12 @@ type CapturedShellProps = {
   disableAnalytics: boolean;
   posthogClient?: unknown;
   finishConfirmationDescription: ReactNode;
-  requestedLocale: string;
-  localePreference: string | null;
-  onLocaleChange: (locale: string | null) => void;
+  requestedLocales: readonly string[];
   initialStageOverrideIndex?: number;
   payload: InterviewPayload;
   onExit: () => void;
-  onFinish: (id: string) => Promise<void>;
+  onFinish: FinishHandler;
+  completedActions?: readonly CompletedAction[];
   onSync: (
     id: string,
     session: SessionPayload,
@@ -151,10 +200,12 @@ type CapturedShellProps = {
     meta: { progress: number; totalSteps: number },
   ) => void;
   reviewMode: boolean;
+  flags?: { isDevelopment?: boolean };
 };
 
-const { shellMock } = vi.hoisted(() => ({
+const { shellMock, shellInterfaceLocale } = vi.hoisted(() => ({
   shellMock: vi.fn<(props: CapturedShellProps) => void>(),
+  shellInterfaceLocale: { current: 'en' },
 }));
 vi.mock('@codaco/interview', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@codaco/interview')>();
@@ -162,17 +213,29 @@ vi.mock('@codaco/interview', async (importOriginal) => {
     ...actual,
     Shell: (props: CapturedShellProps) => {
       shellMock(props);
-      // A queued confirmation retains its original node. Deliberately give
-      // the package a different locale so this tests the host subscription,
-      // not accidental inheritance of the host catalog through Shell.
+      // A queued confirmation retains its original node. The provider stands
+      // in for the Shell's own one, which carries the interview's interface
+      // language rather than Interviewer's.
       const [queuedDescription] = useState(props.finishConfirmationDescription);
       return (
         <AppI18nProvider
-          locale="en"
+          locale={shellInterfaceLocale.current}
           locales={interviewerProductionLocales}
           manageDocument={false}
         >
-          <div data-testid="shell-mounted">{queuedDescription}</div>
+          <div data-testid="shell-mounted">
+            {queuedDescription}
+            {props.completedActions?.map((action, index) => (
+              <button
+                // eslint-disable-next-line react/no-array-index-key
+                key={index}
+                type="button"
+                onClick={action.onAction}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
         </AppI18nProvider>
       );
     },
@@ -214,6 +277,9 @@ function makeProtocol() {
     schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     importedAt: '2026-01-01T00:00:00.000Z',
     protocol: {
+      // Neither alphabetical nor default-first, so the offered order can only
+      // come from the declaration.
+      localization: { defaultLocale: 'en', locales: ['fr', 'ar', 'en'] },
       stages: [
         { id: 'stage-1' },
         { id: 'stage-2' },
@@ -264,8 +330,15 @@ function makeSyncPayload(
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
     network: { nodes: [], edges: [], ego: { _uid: 'ego-1', attributes: {} } },
+    localeOptions: [],
     ...overrides,
   };
+}
+
+const finish = { stageId: 'finish', outcome: 'completed' } as const;
+
+function finishInterview(props: CapturedShellProps) {
+  return props.onFinish('s1', finish, new AbortController().signal);
 }
 
 async function invoke(fn: () => unknown) {
@@ -277,72 +350,28 @@ async function invoke(fn: () => unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  subpath.isSubpath = false;
-  historyGuard.log = [];
+  sessionFinishedAt.current = null;
+  getSessionSchemaVersionMock.mockResolvedValue(
+    COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+  );
+  legacyInterviewer.current = { version: '8.5.0', path: '/v8/' };
+  settleLockMock.mockResolvedValue(true);
+  lockSettled.current = true;
   getSessionMock.mockResolvedValue(makeSession());
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
   getAuthorizedInterviewIdMock.mockReturnValue(null);
-  takeEntryUnlockGraceMock.mockReturnValue(false);
   useSearchMock.mockReturnValue('');
   useRouteMock.mockReturnValue([true, { sessionId: 's1' }]);
+  shellInterfaceLocale.current = 'en';
   refreshStepUpContextIdentities();
 });
 
 describe('InterviewRoute enter gate', () => {
-  it('passes the negotiated device locale to Shell and persists menu choices without reloading the interview', async () => {
+  it("asks the interview for the browser languages rather than Interviewer's own language", async () => {
     const languages = vi
       .spyOn(navigator, 'languages', 'get')
-      .mockReturnValue(['en-GB']);
-    localStorage.removeItem(LOCALE_PREFERENCE_KEY);
-    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
-    try {
-      render(
-        <InterviewerI18nProvider>
-          <InterviewRoute sessionId="s1" />
-        </InterviewerI18nProvider>,
-      );
-      const shell = await screen.findByTestId('shell-mounted');
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      const originalPayload = lastShellProps().payload;
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      const reads = getSessionMock.mock.calls.length;
-
-      act(() => lastShellProps().onLocaleChange('es'));
-      expect(lastShellProps().requestedLocale).toBe('es');
-      expect(lastShellProps().localePreference).toBe('es');
-      expect(shell).toHaveTextContent(
-        'Al finalizar, se cierra esta entrevista.',
-      );
-      expect(shell).toHaveTextContent(
-        'la persona responsable de la investigación puede volver a marcarla como sin finalizar',
-      );
-      expect(document.documentElement).toHaveAttribute('lang', 'es');
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
-      expect(lastShellProps().payload).toBe(originalPayload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-      expect(updateSessionMock).not.toHaveBeenCalled();
-      expect(requireFreshUnlockMock).not.toHaveBeenCalled();
-
-      act(() => lastShellProps().onLocaleChange(null));
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBeNull();
-      expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      expect(lastShellProps().payload).toBe(originalPayload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-    } finally {
-      languages.mockRestore();
-      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
-    }
-  });
-
-  it('initializes the menu with the saved explicit preference and can return directly to Automatic', async () => {
-    const languages = vi
-      .spyOn(navigator, 'languages', 'get')
-      .mockReturnValue(['en-GB']);
+      .mockReturnValue(['fr-CA', 'en-GB']);
     localStorage.setItem(LOCALE_PREFERENCE_KEY, 'es');
     getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
     try {
@@ -351,27 +380,72 @@ describe('InterviewRoute enter gate', () => {
           <InterviewRoute sessionId="s1" />
         </InterviewerI18nProvider>,
       );
-      const shell = await screen.findByTestId('shell-mounted');
-      expect(lastShellProps().requestedLocale).toBe('es');
-      expect(lastShellProps().localePreference).toBe('es');
-      expect(shell).toHaveTextContent(
-        'Al finalizar, se cierra esta entrevista.',
-      );
-      const payload = lastShellProps().payload;
-      const reads = getSessionMock.mock.calls.length;
-      act(() => lastShellProps().onLocaleChange(null));
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBeNull();
-      expect(lastShellProps().payload).toBe(payload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-      expect(updateSessionMock).not.toHaveBeenCalled();
-      expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+      await screen.findByTestId('shell-mounted');
+      expect(lastShellProps().requestedLocales).toEqual(['fr-CA', 'en-GB']);
     } finally {
       languages.mockRestore();
       localStorage.removeItem(LOCALE_PREFERENCE_KEY);
     }
+  });
+
+  it("words the finish confirmation in the interview's interface language", async () => {
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'en');
+    shellInterfaceLocale.current = 'es';
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    try {
+      render(
+        <InterviewerI18nProvider>
+          <InterviewRoute sessionId="s1" />
+        </InterviewerI18nProvider>,
+      );
+      const shell = await screen.findByTestId('shell-mounted');
+      expect(shell).toHaveTextContent(
+        'Al finalizar, se cierra esta entrevista.',
+      );
+      expect(shell).not.toHaveTextContent('Finishing ends this interview.');
+    } finally {
+      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+    }
+  });
+
+  it('offers every protocol language and hands the interview no stored language', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    const { session } = lastShellProps().payload;
+    expect(session).not.toHaveProperty('localePreference');
+    expect(session).not.toHaveProperty('locale');
+    expect(session.localeOptions.map(({ locale }) => locale)).toEqual([
+      'fr',
+      'ar',
+      'en',
+    ]);
+    expect(session.localeOptions).toEqual(
+      ['fr', 'ar', 'en'].map((locale) => getLocaleMetadata(locale)),
+    );
+  });
+
+  it('rejects answers the session could not store', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const cause = new Error('IndexedDB write failed');
+    updateSessionMock.mockRejectedValueOnce(cause);
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await lastShellProps()
+        .onSync('s1', makeSyncPayload(), { immediate: true, unloading: false })
+        .then(
+          () => 'resolved',
+          (error: unknown) => error,
+        );
+    });
+
+    expect(updateSessionMock).toHaveBeenCalledTimes(1);
+    expect(outcome).toBe(cause);
   });
 
   it('navigates home when the enter gate is cancelled', async () => {
@@ -448,22 +522,6 @@ describe('InterviewRoute enter gate', () => {
     expect(requireFreshUnlockMock).not.toHaveBeenCalled();
   });
 
-  it('skips the enter gate while a recent unlock stands in for it', async () => {
-    getSettingsMock.mockResolvedValue({
-      requireUnlockOnEnter: true,
-      requireUnlockOnExit: false,
-      requireUnlockOnExport: false,
-    });
-    takeEntryUnlockGraceMock.mockReturnValue(true);
-
-    render(<InterviewRoute sessionId="s1" />);
-
-    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
-    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
-    expect(takeEntryUnlockGraceMock).toHaveBeenCalledWith('s1');
-    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
-  });
-
   it('does not authorize entry when unmounted mid-load', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: false,
@@ -490,6 +548,284 @@ describe('InterviewRoute enter gate', () => {
 
     expect(setAuthorizedInterviewIdMock).not.toHaveBeenCalledWith('s1');
   });
+});
+
+describe('InterviewRoute schema 8 interview', () => {
+  const SCHEMA_8 = 8;
+
+  beforeEach(() => {
+    getSessionSchemaVersionMock.mockResolvedValue(SCHEMA_8);
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: true,
+      requireUnlockOnExit: true,
+      allowStageNavigation: false,
+    });
+  });
+
+  it('hosts it in a frame at /v8/interview/<id> after the same enter gate, without decrypting it', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+
+    const frame = await screen.findByTitle('Interview');
+    expect(frame).toHaveAttribute('src', '/v8/interview/s1');
+    expect(lastFrameProps()).toMatchObject({
+      src: '/v8/interview/s1',
+      enterAuthorized: true,
+    });
+    expect(settleLockMock).toHaveBeenCalledTimes(1);
+    // The one unlock, here; Interviewer 8 is told it was satisfied.
+    expect(requireFreshUnlockMock).toHaveBeenCalledTimes(1);
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(getProtocolByHashMock).not.toHaveBeenCalled();
+    // Home focuses this protocol's card when the interview ends.
+    expect(updateSettingsMock).toHaveBeenCalledWith({
+      lastActiveSessionId: 's1',
+      lastActiveProtocolHash: 'h1',
+    });
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(exitToHomeSpy).not.toHaveBeenCalled();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the search, so a review stays a review', async () => {
+    useSearchMock.mockReturnValue('mode=review');
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTitle('Interview')).toHaveAttribute(
+      'src',
+      '/v8/interview/s1?mode=review',
+    );
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves the last-active protocol alone for a finished interview', async () => {
+    sessionFinishedAt.current = '2026-01-02T00:00:00.000Z';
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await screen.findByTitle('Interview');
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it('asks nothing when the entry was already authorized, as by the lock screen on a reload', async () => {
+    getAuthorizedInterviewIdMock.mockReturnValue('s1');
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await screen.findByTitle('Interview');
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(lastFrameProps().enterAuthorized).toBe(true);
+  });
+
+  it('says the enter step was not needed when unlock-on-enter is off', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await screen.findByTitle('Interview');
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(lastFrameProps().enterAuthorized).toBe(false);
+  });
+
+  it('takes choosing the lock at set-up as the enter step', async () => {
+    lockSettled.current = false;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await waitFor(() =>
+      expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1'),
+    );
+    expect(settleLockMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes home, hosting nothing, when the enter step-up is declined', async () => {
+    requireFreshUnlockMock.mockResolvedValue({ ok: false });
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
+    expect(frameMock).not.toHaveBeenCalled();
+  });
+
+  it('sets up the lock first, and goes home instead when set-up is left', async () => {
+    settleLockMock.mockResolvedValue(false);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
+    expect(settleLockMock).toHaveBeenCalledTimes(1);
+    expect(frameMock).not.toHaveBeenCalled();
+    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(getSessionMock).not.toHaveBeenCalled();
+  });
+
+  it('hosts only after the lock is settled', async () => {
+    let settle: (settled: boolean) => void = () => undefined;
+    settleLockMock.mockReturnValue(
+      new Promise<boolean>((resolve) => {
+        settle = resolve;
+      }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+    await waitFor(() => expect(settleLockMock).toHaveBeenCalled());
+    expect(frameMock).not.toHaveBeenCalled();
+
+    await act(async () => settle(true));
+    expect(await screen.findByTitle('Interview')).toBeInTheDocument();
+  });
+
+  it('goes home, through the history pin, when Interviewer 8 closes', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+    setAuthorizedInterviewIdMock.mockClear();
+
+    await act(async () => lastFrameProps().onClosed());
+
+    expect(screen.queryByTitle('Interview')).not.toBeInTheDocument();
+    expect(exitToHomeSpy).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    expect(lockMock).not.toHaveBeenCalled();
+  });
+
+  it('locks, and goes home, when the frame is lost without closing', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+
+    await act(async () => lastFrameProps().onLost());
+
+    expect(screen.queryByTitle('Interview')).not.toBeInTheDocument();
+    expect(lockMock).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+    // Over whatever the departed frame left above this route's pin.
+    expect(exitToHomeSpy).toHaveBeenCalledWith(expect.any(Function), {
+      stepOverFrameEntries: true,
+    });
+  });
+
+  it('locks when the route leaves the interview while the frame is still up', async () => {
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+    expect(lockMock).not.toHaveBeenCalled();
+
+    // Back past the frame, as when Interviewer 8's own pin has gone.
+    useRouteMock.mockReturnValue([false, null]);
+    rerender(<InterviewRoute sessionId="s1" />);
+
+    await waitFor(() => expect(lockMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not lock when the route leaves after Interviewer 8 closed', async () => {
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+    await act(async () => lastFrameProps().onClosed());
+
+    useRouteMock.mockReturnValue([false, null]);
+    rerender(<InterviewRoute sessionId="s1" />);
+
+    expect(lockMock).not.toHaveBeenCalled();
+  });
+
+  it('explains, without locking, when Interviewer 8 could not be loaded into the frame', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTitle('Interview');
+
+    await act(async () => lastFrameProps().onUnavailable());
+
+    expect(screen.queryByTitle('Interview')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /interview unavailable/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /has not finished downloading all data required for fully offline/,
+      ),
+    ).toBeInTheDocument();
+    expect(lockMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('explains, without opening it, when this build has no Interviewer 8', async () => {
+    legacyInterviewer.current = null;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', { name: /interview unavailable/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/older version of the Network Canvas protocol schema/i),
+    ).toBeInTheDocument();
+    expect(settleLockMock).not.toHaveBeenCalled();
+    expect(frameMock).not.toHaveBeenCalled();
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  it('explains a schema below 8, which no Interviewer here runs', async () => {
+    getSessionSchemaVersionMock.mockResolvedValue(7);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', { name: /interview unavailable/i }),
+    ).toBeInTheDocument();
+    expect(settleLockMock).not.toHaveBeenCalled();
+    expect(frameMock).not.toHaveBeenCalled();
+  });
+
+  it('runs a schema 9 interview here, after its own enter gate', async () => {
+    getSessionSchemaVersionMock.mockResolvedValue(
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(requireFreshUnlockMock).toHaveBeenCalledTimes(1);
+    expect(settleLockMock).not.toHaveBeenCalled();
+    expect(frameMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the missing screen for an interview that is not there', async () => {
+    getSessionSchemaVersionMock.mockResolvedValue(undefined);
+    getSessionMock.mockResolvedValue(undefined);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', { name: /interview not found/i }),
+    ).toBeInTheDocument();
+    expect(frameMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('InterviewRoute development tools', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    { build: 'development', DEV: true },
+    { build: 'production', DEV: false },
+  ])(
+    'connects Redux DevTools and the logger only in a development build ($build)',
+    async ({ DEV }) => {
+      vi.stubEnv('DEV', DEV);
+      getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+
+      render(<InterviewRoute sessionId="s1" />);
+      await screen.findByTestId('shell-mounted');
+
+      expect(lastShellProps().flags).toEqual({ isDevelopment: DEV });
+    },
+  );
 });
 
 describe('InterviewRoute exit gate', () => {
@@ -524,8 +860,6 @@ describe('InterviewRoute exit gate', () => {
       expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
     );
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
-    // Whoever enters next unlocks as usual.
-    expect(endEntryUnlockGraceMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -581,17 +915,92 @@ describe('InterviewRoute finish flow', () => {
     });
   });
 
-  it('shows the completion screen after finishing', async () => {
+  it('records the finish stage and outcome, and leaves the completed state to the Shell', async () => {
     render(<InterviewRoute sessionId="s1" />);
     await screen.findByTestId('shell-mounted');
 
+    const finishing = new AbortController();
     await act(async () => {
-      await lastShellProps().onFinish('s1');
+      await lastShellProps().onFinish(
+        's1',
+        { stageId: 'finish-ineligible', outcome: 'ineligible' },
+        finishing.signal,
+      );
     });
 
-    expect(markSessionFinishedMock).toHaveBeenCalledWith('s1');
-    expect(await screen.findByText('Interview complete')).toBeInTheDocument();
-    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    // The signal goes with the write, which checks it again before it
+    // commits (sessions.finishRace.test.ts).
+    expect(markSessionFinishedMock).toHaveBeenCalledWith(
+      's1',
+      { stageId: 'finish-ineligible', outcome: 'ineligible' },
+      finishing.signal,
+    );
+    // The Shell shows the completed state in place: the route neither
+    // navigates nor replaces it, and offers Exit there.
+    expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(lastShellProps().completedActions).toHaveLength(1);
+  });
+
+  it('writes no finish once the finish has been abandoned', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const abandoned = new AbortController();
+    abandoned.abort();
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await lastShellProps()
+        .onFinish(
+          's1',
+          { stageId: 'finish-ineligible', outcome: 'ineligible' },
+          abandoned.signal,
+        )
+        .then(
+          () => 'resolved',
+          (error: unknown) => error,
+        );
+    });
+
+    // Rejected, so the Shell does not show a completed state, and nothing is
+    // stored that it would then not be showing.
+    expect(outcome).toMatchObject({ name: 'AbortError' });
+    expect(markSessionFinishedMock).not.toHaveBeenCalled();
+  });
+
+  it("offers Exit on the completed state in the interview's interface language", async () => {
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'en');
+    shellInterfaceLocale.current = 'es';
+    try {
+      render(
+        <InterviewerI18nProvider>
+          <InterviewRoute sessionId="s1" />
+        </InterviewerI18nProvider>,
+      );
+      await screen.findByTestId('shell-mounted');
+
+      expect(screen.getByRole('button', { name: 'Salir' })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Exit' }),
+      ).not.toBeInTheDocument();
+    } finally {
+      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+    }
+  });
+
+  it('exits home from the completed state', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    await act(async () => {
+      await finishInterview(lastShellProps());
+    });
+
+    await invoke(() => screen.getByRole('button', { name: 'Exit' }).click());
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
   });
 
   it('never writes finishedAt from a sync', async () => {
@@ -618,9 +1027,8 @@ describe('InterviewRoute finish flow', () => {
     const { onFinish, onSync } = lastShellProps();
 
     await act(async () => {
-      await onFinish('s1');
+      await onFinish('s1', finish, new AbortController().signal);
     });
-    await screen.findByText('Interview complete');
 
     updateSessionMock.mockClear();
     // A sync landing after finish still carries finishTime: null (the engine
@@ -637,7 +1045,48 @@ describe('InterviewRoute finish flow', () => {
     }
   });
 
-  it('opens an already-finished session in read-only review mode', async () => {
+  it('opens a finished session in its completed state, with Exit', async () => {
+    getSessionMock.mockResolvedValue(
+      makeSession({
+        currentStep: 4,
+        finishedAt: '2026-01-02T00:00:00.000Z',
+        finishStageId: 'finish-ineligible',
+        finishOutcome: 'ineligible',
+      }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    const props = lastShellProps();
+    expect(props.reviewMode).toBe(false);
+    expect(props.payload.session.finishTime).toBe('2026-01-02T00:00:00.000Z');
+    expect(props.payload.session.finishStageId).toBe('finish-ineligible');
+    expect(props.disableAnalytics).toBe(true);
+    expect(screen.queryByText('Read-only review')).not.toBeInTheDocument();
+
+    await invoke(() => screen.getByRole('button', { name: 'Exit' }).click());
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+  });
+
+  it('hands the Shell no finish stage for a session finished before they were recorded', async () => {
+    getSessionMock.mockResolvedValue(
+      makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    expect(lastShellProps().payload.session.finishStageId).toBeNull();
+    expect(lastShellProps().reviewMode).toBe(false);
+  });
+
+  it('opens a finished session as a read-only review when review is asked for', async () => {
+    useSearchMock.mockReturnValue('mode=review');
     getSessionMock.mockResolvedValue(
       makeSession({
         currentStep: 4,
@@ -660,7 +1109,11 @@ describe('InterviewRoute finish flow', () => {
     expect(screen.getByTestId('shell-mounted')).toHaveTextContent(
       'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
     );
-    expect(screen.queryByText('Interview complete')).not.toBeInTheDocument();
+    // A review shows the stages; there is no completed state to act on.
+    expect(lastShellProps().completedActions).toBeUndefined();
+    expect(
+      screen.queryByRole('button', { name: 'Exit' }),
+    ).not.toBeInTheDocument();
   });
 
   it('preserves the finish step for an ordinary unfinished session', async () => {
@@ -704,11 +1157,60 @@ describe('InterviewRoute finish flow', () => {
       lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
     });
 
-    expect(updateSessionMock).toHaveBeenCalledWith('s1', {
+    expect(updateSessionMock).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({
+        currentStep: 1,
+        progress: 50,
+        resumeStageOverrideIndex: undefined,
+      }),
+    );
+  });
+
+  // Every write carries the session's whole state, so a step change never
+  // puts back an older network than the last sync handed to storage.
+  it('writes the whole state on a step change and a sync', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+    const stored = makeSession();
+
+    act(() => {
+      lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
+    });
+    expect(updateSessionMock).toHaveBeenLastCalledWith('s1', {
+      network: stored.network,
+      stageMetadata: undefined,
       currentStep: 1,
       progress: 50,
       resumeStageOverrideIndex: undefined,
     });
+
+    const answered = {
+      ...stored.network,
+      nodes: [{ _uid: 'n1', type: 'person', attributes: {} }],
+    } as SessionPayload['network'];
+    await act(async () => {
+      await lastShellProps().onSync(
+        's1',
+        makeSyncPayload({ network: answered }),
+        { immediate: true, unloading: false },
+      );
+    });
+    await waitFor(() =>
+      expect(updateSessionMock).toHaveBeenLastCalledWith(
+        's1',
+        expect.objectContaining({ network: answered, currentStep: 1 }),
+      ),
+    );
+
+    act(() => {
+      lastShellProps().onStepChange(2, { progress: 75, totalSteps: 4 });
+    });
+    expect(updateSessionMock).toHaveBeenLastCalledWith(
+      's1',
+      expect.objectContaining({ network: answered, currentStep: 2 }),
+    );
   });
 
   it('honours explicit review intent when the stored session is unfinished', async () => {
@@ -724,7 +1226,7 @@ describe('InterviewRoute finish flow', () => {
         unloading: false,
       });
       onStepChange(2, { progress: 75, totalSteps: 4 });
-      await onFinish('s1');
+      await onFinish('s1', finish, new AbortController().signal);
     });
 
     expect(lastShellProps().reviewMode).toBe(true);
@@ -733,28 +1235,35 @@ describe('InterviewRoute finish flow', () => {
     expect(updateSettingsMock).not.toHaveBeenCalled();
   });
 
-  it('suppresses every session write while reviewing a finished session', async () => {
-    getSessionMock.mockResolvedValue(
-      makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
-    );
+  it.each([
+    ['reviewing', 'mode=review'],
+    ['showing the completed state of', ''],
+  ])(
+    'suppresses every session write while %s a finished session',
+    async (_, search) => {
+      useSearchMock.mockReturnValue(search);
+      getSessionMock.mockResolvedValue(
+        makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
+      );
 
-    render(<InterviewRoute sessionId="s1" />);
-    await screen.findByTestId('shell-mounted');
-    const { onFinish, onStepChange, onSync } = lastShellProps();
+      render(<InterviewRoute sessionId="s1" />);
+      await screen.findByTestId('shell-mounted');
+      const { onFinish, onStepChange, onSync } = lastShellProps();
 
-    await act(async () => {
-      await onSync('s1', makeSyncPayload(), {
-        immediate: true,
-        unloading: false,
+      await act(async () => {
+        await onSync('s1', makeSyncPayload(), {
+          immediate: true,
+          unloading: false,
+        });
+        onStepChange(2, { progress: 75, totalSteps: 4 });
+        await onFinish('s1', finish, new AbortController().signal);
       });
-      onStepChange(2, { progress: 75, totalSteps: 4 });
-      await onFinish('s1');
-    });
 
-    expect(updateSessionMock).not.toHaveBeenCalled();
-    expect(markSessionFinishedMock).not.toHaveBeenCalled();
-    expect(updateSettingsMock).not.toHaveBeenCalled();
-  });
+      expect(updateSessionMock).not.toHaveBeenCalled();
+      expect(markSessionFinishedMock).not.toHaveBeenCalled();
+      expect(updateSettingsMock).not.toHaveBeenCalled();
+    },
+  );
 
   it('clears authorization when returning home from the missing screen', async () => {
     getProtocolByHashMock.mockResolvedValue(null);
@@ -820,7 +1329,7 @@ describe('InterviewRoute finish flow', () => {
     expect(shellMock).not.toHaveBeenCalled();
   });
 
-  it('applies the exit gate from the completion screen', async () => {
+  it('applies the exit gate from the completed state', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: false,
       requireUnlockOnExit: true,
@@ -830,16 +1339,16 @@ describe('InterviewRoute finish flow', () => {
     await screen.findByTestId('shell-mounted');
 
     await act(async () => {
-      await lastShellProps().onFinish('s1');
+      await finishInterview(lastShellProps());
     });
-    await screen.findByText('Interview complete');
 
     requireFreshUnlockMock.mockResolvedValue({
       ok: false,
       reason: 'cancelled',
     });
-    await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
+    await invoke(() => screen.getByRole('button', { name: 'Exit' }).click());
 
+    expect(requireFreshUnlockMock).toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
   });
 });
@@ -897,6 +1406,65 @@ describe('InterviewRoute session change', () => {
     ).toBeInTheDocument();
     expect(shellMock).not.toHaveBeenCalled();
   });
+
+  it("keeps a write the previous interview makes after the next one loads out of the next one's state", async () => {
+    const previousNetwork = {
+      nodes: [{ _uid: 'from-s1', type: 'person', attributes: {} }],
+      edges: [],
+      ego: { _uid: 'ego-1', attributes: {} },
+    };
+    const nextNetwork = {
+      nodes: [{ _uid: 'from-s2', type: 'person', attributes: {} }],
+      edges: [],
+      ego: { _uid: 'ego-2', attributes: {} },
+    };
+    getSessionMock.mockImplementation((id: string) =>
+      Promise.resolve(
+        id === 's1'
+          ? makeSession()
+          : makeSession({ id: 's2', protocolHash: 'h2', network: nextNetwork }),
+      ),
+    );
+    getProtocolByHashMock.mockImplementation((hash: string) =>
+      Promise.resolve({ ...makeProtocol(), hash }),
+    );
+
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const previousShell = lastShellProps();
+    act(() => {
+      previousShell.onStepChange(2, { progress: 50, totalSteps: 4 });
+    });
+
+    useRouteMock.mockReturnValue([true, { sessionId: 's2' }]);
+    rerender(<InterviewRoute sessionId="s2" />);
+    await waitFor(() => {
+      expect(lastShellProps().payload.session.id).toBe('s2');
+    });
+    const nextShell = lastShellProps();
+    updateSessionMock.mockClear();
+
+    // The previous interview's handler writes once the next one has loaded:
+    // a write that was queued behind another, or its Shell's teardown flush.
+    await act(async () => {
+      await previousShell.onSync(
+        's1',
+        makeSyncPayload({ network: previousNetwork }),
+        { immediate: true, unloading: false },
+      );
+    });
+    act(() => {
+      nextShell.onStepChange(1, { progress: 25, totalSteps: 4 });
+    });
+
+    expect(updateSessionMock.mock.calls).toEqual([
+      [
+        's1',
+        expect.objectContaining({ network: previousNetwork, currentStep: 2 }),
+      ],
+      ['s2', expect.objectContaining({ network: nextNetwork, currentStep: 1 })],
+    ]);
+  });
 });
 
 describe('InterviewRoute analytics wiring', () => {
@@ -949,170 +1517,5 @@ describe('InterviewRoute analytics wiring', () => {
 
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(lastShellProps().disableAnalytics).toBe(true);
-  });
-});
-
-describe('InterviewRoute in Interviewer 8 inside Interviewer 9', () => {
-  const ungated = {
-    requireUnlockOnEnter: false,
-    requireUnlockOnExit: false,
-    requireUnlockOnExport: false,
-  };
-
-  beforeEach(() => {
-    subpath.isSubpath = true;
-    getSettingsMock.mockResolvedValue(ungated);
-  });
-
-  const expectReturnedToInterviewer9 = async () => {
-    await waitFor(() =>
-      expect(subpath.returnToInterviewer9).toHaveBeenCalledTimes(1),
-    );
-    expect(navigateMock).not.toHaveBeenCalled();
-    // Not through the route's history guard: the close pops the guard entry
-    // itself, within a bounded wait (interviewer9Navigation.ts).
-    expect(historyGuard.log).toEqual(['returned to Interviewer 9']);
-  };
-
-  it('returns to Interviewer 9 from the exit button', async () => {
-    render(<InterviewRoute sessionId="s1" />);
-    await screen.findByTestId('shell-mounted');
-
-    await invoke(lastShellProps().onExit);
-
-    await expectReturnedToInterviewer9();
-    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
-    expect(endEntryUnlockGraceMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns to Interviewer 9 from the completion screen', async () => {
-    render(<InterviewRoute sessionId="s1" />);
-    await screen.findByTestId('shell-mounted');
-    await act(async () => {
-      await lastShellProps().onFinish('s1');
-    });
-
-    await invoke(() => screen.getByTestId('interview-complete-exit').click());
-
-    await expectReturnedToInterviewer9();
-  });
-
-  it('stays in the interview while the exit unlock is declined', async () => {
-    getSettingsMock.mockResolvedValue({
-      ...ungated,
-      requireUnlockOnExit: true,
-    });
-    render(<InterviewRoute sessionId="s1" />);
-    await screen.findByTestId('shell-mounted');
-    requireFreshUnlockMock.mockResolvedValue({
-      ok: false,
-      reason: 'cancelled',
-    });
-
-    await invoke(lastShellProps().onExit);
-
-    expect(subpath.returnToInterviewer9).not.toHaveBeenCalled();
-    expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
-  });
-
-  it('returns to Interviewer 9 when the enter unlock is declined', async () => {
-    getSettingsMock.mockResolvedValue({
-      ...ungated,
-      requireUnlockOnEnter: true,
-    });
-    requireFreshUnlockMock.mockResolvedValue({
-      ok: false,
-      reason: 'cancelled',
-    });
-
-    render(<InterviewRoute sessionId="s1" />);
-
-    await expectReturnedToInterviewer9();
-    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
-  });
-
-  it.each([
-    ['no such session', () => getSessionMock.mockResolvedValue(undefined)],
-    [
-      'no such protocol',
-      () => getProtocolByHashMock.mockResolvedValue(undefined),
-    ],
-    [
-      'a schema 9 protocol',
-      () =>
-        getProtocolByHashMock.mockResolvedValue({
-          ...makeProtocol(),
-          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1,
-        }),
-    ],
-    [
-      'an older schema’s protocol',
-      () =>
-        getProtocolByHashMock.mockResolvedValue({
-          ...makeProtocol(),
-          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1,
-        }),
-    ],
-  ])(
-    'returns to Interviewer 9 at once for %s, without a screen of its own',
-    async (_, arrange) => {
-      arrange();
-      render(<InterviewRoute sessionId="s1" />);
-
-      await expectReturnedToInterviewer9();
-      expect(setAuthorizedInterviewIdMock).toHaveBeenLastCalledWith(null);
-      expect(screen.queryByRole('heading')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
-    },
-  );
-
-  it('returns to Interviewer 9 at once for an interview whose data cannot be read, and reports it', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const cause = new Error('unreadable');
-    getSessionMock.mockRejectedValue(cause);
-    render(<InterviewRoute sessionId="s1" />);
-
-    await expectReturnedToInterviewer9();
-    expect(setAuthorizedInterviewIdMock).toHaveBeenLastCalledWith(null);
-    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
-    expect(analyticsContext.captureException).toHaveBeenCalledWith(cause, {
-      feature: 'interview-load',
-    });
-  });
-
-  it('writes nothing but the session: not the last-opened interview', async () => {
-    render(<InterviewRoute sessionId="s1" />);
-    await screen.findByTestId('shell-mounted');
-
-    await act(async () => {
-      lastShellProps().onStepChange(1, { progress: 50, totalSteps: 3 });
-    });
-
-    expect(updateSessionMock).toHaveBeenCalledWith(
-      's1',
-      expect.objectContaining({ currentStep: 1 }),
-    );
-    expect(updateSettingsMock).not.toHaveBeenCalled();
-  });
-
-  it('leaves recording the last-opened interview to the root build', async () => {
-    subpath.isSubpath = false;
-    render(<InterviewRoute sessionId="s1" />);
-    await screen.findByTestId('shell-mounted');
-
-    await waitFor(() =>
-      expect(updateSettingsMock).toHaveBeenCalledWith(
-        expect.objectContaining({ lastActiveSessionId: 's1' }),
-      ),
-    );
-  });
-
-  it('opens an interview for review, as Interviewer 9’s review link asks', async () => {
-    useSearchMock.mockReturnValue('mode=review');
-
-    render(<InterviewRoute sessionId="s1" />);
-    await screen.findByTestId('shell-mounted');
-
-    expect(lastShellProps().reviewMode).toBe(true);
   });
 });

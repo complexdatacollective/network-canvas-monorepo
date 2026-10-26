@@ -3,7 +3,12 @@ import { createServer } from 'node:http';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Layer, Tracer } from 'effect';
-import { HttpRouter, HttpServer, HttpServerResponse } from 'effect/http';
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse,
+} from 'effect/http';
 import * as NetAddress from 'effect/net/NetAddress';
 
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
@@ -34,6 +39,11 @@ const requestHeaderAttributes = (
       disableListenLog: true,
     }).pipe(
       Layer.provide(redaction),
+      // Server spans capture no headers unless a filter opts in; capture all,
+      // so what is recorded is decided by the redaction list alone.
+      Layer.provide(
+        Layer.succeed(HttpMiddleware.TracerHeaderFilter)(() => true),
+      ),
       Layer.provideMerge(
         NodeHttpServer.layer(createServer, { port: 0, host: '127.0.0.1' }),
       ),

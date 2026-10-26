@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
-import prototype from '@codaco/protocols/documentation/pedigree-collaboration/queer-perceived-family/protocol.json';
+import prototype from '@codaco/protocols/e2e/perceived-family/protocol.json';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';

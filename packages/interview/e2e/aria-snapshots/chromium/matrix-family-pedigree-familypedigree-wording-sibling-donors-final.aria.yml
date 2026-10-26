@@ -1,0 +1,24 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your sibling":
+    - heading "Add your sibling" [level=2]
+    - button "Close"
+    - text: Your donors or surrogate in common - matrix check
+    - group "Your donors or surrogate in common - matrix check":
+      - checkbox "Dee"
+      - text: Dee
+      - checkbox "Don"
+      - text: Don
+      - checkbox "Gail"
+      - text: Gail
+    - text: To the parents they share, are they… Required
+    - radiogroup "To the parents they share, are they…":
+      - radio "A biological child"
+      - text: A biological child
+      - radio "An adopted child"
+      - text: An adopted child
+    - button "Cancel"
+    - button "Back"
+    - button "Save"

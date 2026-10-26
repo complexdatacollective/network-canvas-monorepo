@@ -27,14 +27,12 @@ export function useSynchronousSearch<T extends Record<string, unknown>>({
       })),
     [items, keyExtractor],
   );
-  const fuseKeys = useMemo(
-    () => filterKeys.map((key) => (Array.isArray(key) ? key.join('.') : key)),
-    [filterKeys],
-  );
   const fuse = useMemo(
     () =>
       new Fuse(searchableItems, {
-        keys: fuseKeys,
+        // Path arrays stay arrays: joining them with '.' would split a segment
+        // that itself contains a dot (a variable named `a.b`) into two.
+        keys: filterKeys,
         includeScore: true,
         threshold: 0.35,
         distance: 100,
@@ -43,7 +41,7 @@ export function useSynchronousSearch<T extends Record<string, unknown>>({
         findAllMatches: true,
         ...fuseOptions,
       }),
-    [fuseKeys, fuseOptions, searchableItems],
+    [filterKeys, fuseOptions, searchableItems],
   );
 
   const search = useCallback(

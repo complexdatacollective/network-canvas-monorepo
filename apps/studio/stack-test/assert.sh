@@ -141,7 +141,7 @@ contains '/rpc says Not Found' '"title":"Not Found"' "$BODY"
 
 rpc status null
 equals 'POST /rpc is served' 200 "$STATUS"
-contains 'POST /rpc answers ndjson' 'application/ndjson' "$CONTENT_TYPE"
+contains 'POST /rpc answers ndjson' 'application/x-ndjson' "$CONTENT_TYPE"
 equals 'the rpc plane serves a public procedure' Success "$RPC_VERDICT"
 
 RPC_ROUTE=/rpc/protocol-builder
@@ -222,6 +222,7 @@ contains 'setup signed the browser in' '"signedIn":true' "$RPC_EXIT"
 rpc me null -b "$COOKIE_JAR"
 equals "the owner's session is accepted by \`me\`" Success "$RPC_VERDICT"
 contains '`me` is the owner' "$OWNER_EMAIL" "$RPC_EXIT"
+contains 'setup made the owner the owner of a first team' '"role":"owner"' "$RPC_EXIT"
 
 RPC_ROUTE=/rpc/protocol-builder
 rpc ListSections '{"protocolId":"00000000-0000-4000-8000-000000000000"}' \
@@ -659,7 +660,7 @@ const { PROTOCOL_ID, COOKIE, ORIGIN, TAB, AFTER } = process.env;
 setTimeout(() => { console.log("timed out"); process.exit(2); }, 30000);
 const response = await fetch("http://127.0.0.1:3000/rpc/protocol-builder", {
   method: "POST",
-  headers: { "content-type": "application/ndjson", origin: ORIGIN, "sec-fetch-site": "same-origin", cookie: COOKIE, "x-studio-client-session": TAB },
+  headers: { "content-type": "application/x-ndjson", origin: ORIGIN, "sec-fetch-site": "same-origin", cookie: COOKIE, "x-studio-client-session": TAB },
   body: JSON.stringify({ _tag: "Request", id: "1", tag: "WatchProtocol", payload: { protocolId: PROTOCOL_ID }, headers: [] }) + "\n",
 });
 if (!response.ok || !response.body) { console.log("status " + response.status); process.exit(3); }
@@ -705,7 +706,7 @@ const find = (value, key) => {
 const call = async (tag, payload) => {
   const response = await fetch("http://127.0.0.1:3000/rpc/protocol-builder", {
     method: "POST",
-    headers: { "content-type": "application/ndjson", origin: ORIGIN, "sec-fetch-site": "same-origin", cookie: COOKIE, "x-studio-client-session": TAB },
+    headers: { "content-type": "application/x-ndjson", origin: ORIGIN, "sec-fetch-site": "same-origin", cookie: COOKIE, "x-studio-client-session": TAB },
     body: JSON.stringify({ _tag: "Request", id: "1", tag, payload, headers: [] }) + "\n",
   });
   const text = await response.text();

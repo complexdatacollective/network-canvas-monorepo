@@ -126,6 +126,7 @@ describe('principal resolution', () => {
         { teamId: 'team-a', role: 'owner' },
         { teamId: 'team-b', role: 'admin,member' },
       ],
+      canCreateTeam: true,
     });
   });
 
@@ -160,7 +161,7 @@ describe('principal resolution', () => {
       const response = await stack.request('/rpc', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/ndjson',
+          'Content-Type': 'application/x-ndjson',
           'sec-fetch-site': 'same-origin',
           'cookie': 'studio.session_token=opaque',
           'user-agent': 'The Real Agent',
@@ -257,7 +258,7 @@ describe('principal resolution', () => {
       const response = await stack.request('/rpc', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/ndjson',
+          'Content-Type': 'application/x-ndjson',
           'sec-fetch-site': 'same-origin',
           'cookie': 'studio.session_token=opaque',
           'authorization': 'Bearer real-token',
@@ -294,7 +295,7 @@ describe('principal resolution', () => {
       const response = await stack.request('/rpc', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/ndjson',
+          'Content-Type': 'application/x-ndjson',
           'sec-fetch-site': 'same-origin',
         },
         body: `${JSON.stringify({

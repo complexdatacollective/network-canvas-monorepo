@@ -183,13 +183,14 @@ describe('the name generator editor', () => {
   it('asks its questions in the order a researcher answers them', async () => {
     const harness = mountFixture();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(7));
+    await waitFor(() => expect(harness.outline()).toHaveLength(8));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Node setup',
       'Form configuration',
       'Prompt collection',
       'Side panels',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ]);
@@ -250,13 +251,17 @@ describe('the name generator editor', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
-      label: 'Close friends',
+      label: { 'en-US': 'Close friends' },
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add a person',
-        fields: [{ variable: 'name', prompt: 'What is their name?' }],
+        title: { 'en-US': 'Add a person' },
+        fields: [
+          { variable: 'name', prompt: { 'en-US': 'What is their name?' } },
+        ],
       },
-      prompts: [{ text: 'Who are the people you are closest to?' }],
+      prompts: [
+        { text: { 'en-US': 'Who are the people you are closest to?' } },
+      ],
     });
     // A stage the interface has no authored defaults for: everything it holds
     // was authored just now.

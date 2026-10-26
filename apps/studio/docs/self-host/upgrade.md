@@ -9,6 +9,10 @@ Run these from the directory holding `docker-compose.yml` and `.env`. Nothing
 here needs a checkout of the source, Node, pnpm or any tool but Docker: every
 command is a command of the images you are deploying.
 
+[The upgrade script](#the-upgrade-script) runs the same sequence for you and
+puts the previous images back when an upgrade fails before it has changed the
+database. It takes no backup: take yours before you run it.
+
 ## Before you pull new images
 
 A release can change what Studio asks of the services you run yourself, or of
@@ -20,14 +24,16 @@ two more things worth knowing before you start.
 list of API servers from a config of its own, which
 [Running more than one API](./run.md#running-more-than-one-api) builds on.
 With the older file a second replica starts but gets no traffic, and nothing
-reports it. Keep your `.env` and `secrets/` as they are:
+reports it. Keep your `.env` and `secrets/` as they are, and download the
+file from the release you are upgrading to, replacing `<version>`:
 
 ```bash
-curl -O https://raw.githubusercontent.com/complexdatacollective/network-canvas-monorepo/main/apps/studio/docker-compose.yml
+curl -O https://raw.githubusercontent.com/complexdatacollective/network-canvas-monorepo/studio@<version>/apps/studio/docker-compose.yml
 ```
 
 If you had changed your copy of the file, make the same changes to the new
-one.
+one. Changes kept in `docker-compose.override.yml` instead survive every
+download.
 
 **Let the object store delete and list.** A release that stages files in the
 object store needs the access key (or, on Azure, the identity) to be able to
@@ -96,7 +102,8 @@ history it makes step 5 take longer, and the window with it.
 ## The sequence
 
 Put the new image digests in `.env` (`STUDIO_API_IMAGE` and
-`STUDIO_WEB_IMAGE`) first, then:
+`STUDIO_WEB_IMAGE`) first — the release's notes give both lines, and
+[pinning the images](./run.md#2-fill-in-env) says how to check them — then:
 
 <!-- upgrade-sequence start -->
 
@@ -296,6 +303,97 @@ or the schema changes. It stays open while only the migration lock is held —
 a `migrate` with nothing to apply holds it for milliseconds on every deploy —
 because a write it sends then runs before or after the migration's
 transaction, never inside a half-applied one.
+
+## The upgrade script
+
+`upgrade.sh` runs [the sequence](#the-sequence) above, except the backup,
+and waits where it says to wait. Its step 4 is `up -d --remove-orphans` with
+no service list, so a changed Traefik, Postgres or Garage service is
+recreated too, and a container the compose file no longer names is removed.
+Download it beside `docker-compose.yml`, from the release you are upgrading
+to:
+
+```bash
+curl -O https://raw.githubusercontent.com/complexdatacollective/network-canvas-monorepo/studio@<version>/apps/studio/scripts/upgrade.sh
+chmod +x upgrade.sh
+```
+
+**It takes no backup.** Take one yourself first, as
+[Back up and restore](./backup.md) describes. That backup is taken while the
+instance is still open, so it lacks whatever users write between the backup
+and the script closing the instance. When you need a backup that holds every
+write, run the sequence by hand, which takes it in step 2 with nothing
+running.
+
+Then give it the release's two images, each pinned by digest:
+
+```bash
+./upgrade.sh \
+  ghcr.io/complexdatacollective/studio-api@sha256:<digest> \
+  ghcr.io/complexdatacollective/studio-web@sha256:<digest>
+```
+
+It refuses a reference that is not pinned by digest. It writes both into
+`.env`, then runs the sequence.
+
+Give it the release's `docker-compose.yml` with `--compose <file>` and it
+installs that file too, in the same step as `.env`, after checking that
+Compose accepts it with your `.env` and `docker-compose.override.yml`. Your
+current file is kept as `docker-compose.yml.previous`. A copy edited in place
+is replaced, so keep local changes in `docker-compose.override.yml`. It waits up to 60 seconds for every API replica to name
+maintenance mode, and up to two minutes after `migrate` for each to report
+its schema ok. A replica that has not by then is recreated with `up -d`, as
+step 6 says, and given two minutes more. Last, it waits for every replica to
+report maintenance mode off with no readiness check failing. It asks each replica from inside its own
+container, as step 6 does, so it needs no hostname and nothing but Bash and
+Compose.
+
+Run it from the directory holding `.env`, or name that directory with
+`--dir`. It runs Compose as `docker compose` with no `-f`. Set `COMPOSE` to
+run it another way, for a Compose installed as a binary of its own or to pass
+the same `-f` flags as everywhere else:
+
+```bash
+COMPOSE="$HOME/.docker/cli-plugins/docker-compose" ./upgrade.sh …
+COMPOSE="docker compose -f docker-compose.yml -f docker-compose.override.yml" ./upgrade.sh …
+```
+
+It is written for the stack `docker-compose.yml` defines, Traefik included.
+If you replaced the proxy or changed how services start, run the sequence by
+hand instead.
+
+`./upgrade.sh --help` lists the variables that change how long it waits.
+
+Its exit code says how it ended, and so does its last line,
+`[studio-upgrade] result=<result> exit=<code>`. Every line it prints starts
+with `[studio-upgrade]`, and each step it begins is a `step=<name>` line, so a
+log of a failed run names the step that failed.
+
+| Exit | Result            | What it left                                                                                                                                                                                                                                                                                                                                                           |
+| ---- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | `upgraded`        | The new images serve, every replica reports ready, and maintenance mode is off.                                                                                                                                                                                                                                                                                        |
+| 2    | `not-started`     | Nothing changed: an argument was wrong, `.env` was missing or did not set both images once, or `STUDIO_API_IMAGE` or `STUDIO_WEB_IMAGE` was set in the shell, where it would override `.env`.                                                                                                                                                                          |
+| 3    | `rolled-back`     | A step failed before `migrate` changed the database, or `migrate` refused. The previous images are back in `.env` and running, every replica reports its schema ok, and maintenance mode is off.                                                                                                                                                                       |
+| 4    | `rollback-failed` | A step failed before `migrate` changed the database, and putting the previous images back did not bring every replica back with its schema ok and maintenance mode off. `.env` names the previous images; maintenance mode may still be on.                                                                                                                            |
+| 5    | `fix-forward`     | `migrate` changed the database, and a later step failed. The new images stay in `.env` and maintenance mode is on. The previous images refuse a database `migrate` has moved forward ([Rollback](#rollback) says why), so the script does not put them back: finish the upgrade by hand from step 6, or deploy a newer release, or roll back with the backup you took. |
+
+After a 4 or a 5, look at the instance before running the script again.
+
+The rollback is the one [Rollback](#rollback) allows without a backup: the
+previous digests back in `.env` (and the previous `docker-compose.yml`, when
+`--compose` replaced it) and `up -d --remove-orphans`, then `maintenance off`.
+It puts back Studio's images, compose file and schema, not what a recreated
+Postgres, Garage or Traefik rewrote in its own volume when it started. It is
+safe only because nothing reached the database: `migrate` applies every
+migration in one transaction, so one that fails or refuses leaves the database
+as it was. The script does not take that on trust. It counts the rollback done
+only when every replica of the previous release reports its schema ok, so a
+`migrate` that changed the database and still exited non-zero ends in 4, not 3.
+
+Studio's release test runs the script against a real instance: once with a
+web image that cannot be pulled, which must roll back, once to a release with
+a migration, which must upgrade, and once back to the release before, whose
+`migrate` refuses the newer history, which must roll back again.
 
 ## When `migrate` refuses
 

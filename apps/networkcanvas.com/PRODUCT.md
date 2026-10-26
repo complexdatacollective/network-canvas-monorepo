@@ -20,13 +20,13 @@ The project combines a visual protocol-authoring workflow with participant-centr
 
 ## Operating Context
 
-Researchers create and validate protocols in Architect, collect data in Interviewer or Fresco, consult task-focused documentation, and reuse published protocols as working examples. Current browser apps use Schema 8; Classic apps remain available for Schema 7 studies in maintenance mode.
+Researchers create and validate protocols in Architect, collect data in Interviewer or Fresco, consult task-focused documentation, and reuse published protocols as working examples. Current browser apps use Schema 9; Classic apps remain available for Schema 7 studies in maintenance mode.
 
 ## Capabilities and Constraints
 
 - The website is a statically exported, localized Next.js site with `en-US`, `en-GB`, `es`, `zh-Hans`, `zh-Hant`, `de`, `nl`, `pt-BR`, `it`, and `fr` routes.
 - Research content and downloadable artifacts must be evidence-backed and must not rely on unsupported claims.
-- Protocol migrations from Schema 7 to Schema 8 are one-way, so guidance must distinguish current and Classic applications accurately.
+- Protocol migrations from Schema 7 to later schemas are one-way, so guidance must distinguish current and Classic applications accurately.
 - Gallery protocol and codebook downloads are versioned static files shipped with the website.
 
 ## Brand Commitments

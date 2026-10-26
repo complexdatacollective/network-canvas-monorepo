@@ -99,7 +99,7 @@ export default function ThemeSwitcher({
           onValueChange={(value) => {
             if (isThemeSwitcherTheme(value)) onThemeChange(value);
           }}
-          className="flex flex-col gap-1"
+          className="flex flex-col"
         >
           {themeOptions.map(({ id, icon: OptionIcon }) => (
             <DropdownMenuRadioItem

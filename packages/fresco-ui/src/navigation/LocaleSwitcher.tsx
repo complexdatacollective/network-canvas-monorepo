@@ -241,17 +241,29 @@ export default function LocaleSwitcher({
       listRef.current?.focus();
     }
   };
-  useEffect(() => {
+  // Followed while rendering: each change of the host's state, or of whether
+  // a choice is awaiting its outcome, shows that state afresh. Null until the
+  // first render, which shows the state the switcher mounts with.
+  const [shownFor, setShownFor] = useState<{
+    saveState: LocaleSwitcherSaveState;
+    awaiting: boolean;
+  } | null>(null);
+  if (
+    shownFor === null ||
+    shownFor.saveState !== saveState ||
+    shownFor.awaiting !== awaiting
+  ) {
+    setShownFor({ saveState, awaiting });
     if (saveState === 'idle') {
       setNotice(null);
-      return;
+    } else {
+      setNotice((current) => ({
+        state: saveState,
+        key: (current?.key ?? 0) + 1,
+      }));
+      if (saveState !== 'saving' && awaiting) setAwaiting(false);
     }
-    setNotice((current) => ({
-      state: saveState,
-      key: (current?.key ?? 0) + 1,
-    }));
-    if (saveState !== 'saving') setAwaiting(false);
-  }, [saveState, awaiting]);
+  }
   useEffect(() => {
     if (notice?.state !== 'saved') return;
     const timer = setTimeout(() => setNotice(null), SAVED_NOTICE_MS);
@@ -430,7 +442,7 @@ export default function LocaleSwitcher({
               ref={listRef}
               className="max-h-96 overflow-hidden has-data-empty:hidden"
               render={
-                <ScrollArea viewportClassName="flex flex-col gap-1 px-2 pb-2" />
+                <ScrollArea viewportClassName="flex flex-col px-2 pb-2" />
               }
             >
               {(item: LocaleItem) => (

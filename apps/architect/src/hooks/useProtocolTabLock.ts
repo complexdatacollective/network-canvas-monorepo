@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useLocation } from 'wouter';
+import { navigate } from 'wouter/use-browser-location';
 
 import {
   hasOpenNestedEditor,
@@ -17,7 +18,6 @@ import {
 } from '~/ducks/modules/app';
 import { restoreActiveProtocolFromLibrary } from '~/ducks/restoreActiveProtocol';
 import { getProtocol } from '~/selectors/protocol';
-import { navigateApp } from '~/utils/appBase';
 import {
   createProtocolTabLock,
   type ProtocolTabLock,
@@ -91,7 +91,7 @@ export const useProtocolTabLock = (
   const closeEditorAndReclaim = useCallback(() => {
     // Leaving the editor is what discards its draft: the document lives in that
     // form and nowhere else, so unmounting the route is the whole of it.
-    navigateApp('/protocol', { replace: true });
+    navigate('/protocol', { replace: true });
     void finishReclaim();
   }, [finishReclaim]);
 

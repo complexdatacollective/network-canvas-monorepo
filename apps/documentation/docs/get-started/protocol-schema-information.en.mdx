@@ -2,15 +2,16 @@
 title: Protocol Schema Information
 wip: false
 navOrder: 3
+date: 22nd October 2026
 ---
 
 ## Summary
 
 This article will explain the concept of "protocol schemas", including what they are, why we need them, and how to work with schema version requirements within our apps.
 
-Although every effort is made to maintain compatibility with new schema versions, any features implemented that require a schema update will be unavailable to you until you migrate your protocol. We _strongly_ encourage you to update your protocol files wherever possible, so that you are able to use the newest Network Canvas features.
+Current releases of Architect, Fresco, and Interviewer are backwards compatible. All three open protocols made for earlier schema versions without upgrading them, and Architect can also edit them. Features introduced by a newer schema version become available to a protocol only once it has been upgraded to that version, so upgrading is worthwhile when you want one of those features, but it is never required. Only Architect migrates a protocol to schema 9, and only when you choose to. Fresco and Interviewer run each protocol on the schema it was made for, apart from schema 7 protocols, which they migrate to schema 8 automatically (see [Migrating a protocol](#migrating-a-protocol)).
 
-The current, latest protocol schema version is **8**. Schema 8 is supported by **Architect**, **Fresco**, and **Interviewer**. It is **not** supported by **Architect Classic** or **Interviewer Classic**, which support schema 7 and earlier. See [Schema version 8](#schema-version-8) below for details.
+The current, latest protocol schema version is **9**. Schema 9 is supported by current releases of **Architect**, **Fresco**, and **Interviewer**. It is **not** supported by **Architect Classic** or **Interviewer Classic**, which support schema 7 and earlier, or by releases of Fresco and Interviewer made before schema 9 was introduced. See [Schema version 9](#schema-version-9) and [Schema version 8](#schema-version-8) below for details.
 
 <TipBox danger>
 
@@ -30,33 +31,37 @@ We need to "version" Network Canvas protocol schemas so that we can add or chang
 
 We also adopted schemas in an effort to ensure stability and consistency within the functioning of the software. If a protocol is valid according to its schema, it should function without issues.
 
-Our priority when implementing schema versioning has been to not burden the end user, either through creating "maintenance work" (for example by requiring older protocols to be updated manually), or by disrupting your workflow (for example by preventing existing protocols from functioning). For this reason, Architect, Interviewer, and Fresco all automatically update your protocols to the latest schema version when you import or open them.
+Our priority when implementing schema versioning has been to not burden the end user, either through creating "maintenance work" (for example by requiring older protocols to be updated manually), or by disrupting your workflow (for example by preventing existing protocols from functioning). For this reason, Fresco and Interviewer keep running schema 8 protocols exactly as they were designed, and migrate schema 7 protocols from the Classic apps to schema 8 without asking. Moving a protocol to schema 9 changes what participants see, so it happens only when you choose it in Architect.
 
 ## What it means for you
 
-When you update Interviewer or Architect, you may encounter messages when using protocols that were authored in prior versions of the apps.
-
-### Within Interviewer
-
-In Interviewer, you may see a blue light bulb icon, or a red robot icon, on your protocol card. Where a new schema is backward-compatible with a prior version you will see a blue light bulb, and Interviewer will continue to support installing and running protocols of that version without any issues. This means that if you are happy with your protocol file **you do not need to take any action**. Your protocol will continue to function as before, albeit without access to new functionality implemented with the new schema version (see the [schema versions table](/en/get-started/protocol-schema-information#compatibility-table) below for details on this).
-
-If you wish to update the protocol file to the new schema version, follow the instructions provided below under [migrating a protocol](#migrating-a-protocol).
-
-If your protocol is no longer compatible with the version of Interviewer that you have installed, you will see a red robot icon, and will no longer be able to start an interview. Please see the section below on [handling obsolete protocols](#handling-obsolete-protocols) for further assistance.
+Updating Architect, Fresco, or Interviewer does not stop your existing protocols from working. Each app tells you when a protocol was made for an earlier schema version, and what it does with that protocol is described below.
 
 ### Within Architect
 
-In Architect, you may see a prompt that a protocol must be migrated to a newer version before it can be opened (see below).
+When you open a schema 7 or schema 8 protocol in Architect, it asks how you want to open it. You can upgrade it to schema 9, or keep editing it as schema 8 in the previous version of Architect, which is built in. See [migrating a protocol](#migrating-a-protocol) below for what each choice does.
 
-![](/assets/img/protocol-schema/architect-migrate.png)
+Schema 8 protocols you keep editing appear in your protocol library alongside your schema 9 protocols, marked with a **Schema 8** badge. Their menu offers **Open in Architect 8**, to continue editing without upgrading, and **Upgrade to schema 9**. Architect saves the previous version on your device in the background, so it works offline as well.
 
-If you wish to update their protocol file to the new schema version, follow the instructions provided below under [migrating a protocol](#migrating-a-protocol).
+If you would like to keep editing a schema 7 protocol as schema 7, keep it in **Architect Classic**. For older schema versions, see the [GitHub releases page](https://github.com/complexdatacollective/Architect/releases) for an archive of past Architect Classic versions, and consult the [compatibility table](#compatibility-table) for information about which version you need.
 
-If you would like to continue editing this protocol without migrating it to the latest version, keep it in **Architect Classic**, which works with schema 7. (Architect, the browser app, always runs the latest version and will migrate the protocol to schema 8.) For older schema versions, see the [GitHub releases page](https://github.com/complexdatacollective/Architect/releases) for an archive of past Architect Classic versions, and consult the [compatibility table](#compatibility-table) for information about which version you need.
+### Within Fresco and Interviewer
 
-## Handling obsolete protocols
+Fresco and Interviewer import schema 8 protocols as they are, and run their interviews in the schema 8 interview built into each app, so participants see exactly what the protocol was designed to show. You do not need to take any action. Interviewer shows **Schema 8 · older version** on the protocol card, and Fresco shows a **Schema 8** badge beside the protocol's name in the protocols table. You collect, review, and export their interviews in the same way as for a schema 9 protocol. In Interviewer, the **Ready for offline** status covers every protocol on the device, whatever its schema version.
 
-Although we aim to always make schema changes that are backward-compatible, this can be unavoidable if we need to substantially revise a feature. If a new schema version is implemented that is not backward-compatible, the user interface in Interviewer will mark the protocol as "obsolete" and will no longer allow new interview sessions to be started. Although this is obviously undesirable, **all existing session data will continue to be exportable from a protocol in this state**. Review the section below to understand your options in this scenario.
+A schema 7 protocol is migrated to schema 8 automatically when you import it, and then runs as schema 8.
+
+### Within Interviewer Classic
+
+In Interviewer Classic, you may see a blue light bulb icon, or a red robot icon, on your protocol card. Where a new schema is backward-compatible with a prior version you will see a blue light bulb, and Interviewer will continue to support installing and running protocols of that version without any issues. This means that if you are happy with your protocol file **you do not need to take any action**. Your protocol will continue to function as before, albeit without access to new functionality implemented with the new schema version (see the [schema versions table](/en/get-started/protocol-schema-information#compatibility-table) below for details on this).
+
+If you wish to update the protocol file to the new schema version, follow the instructions provided below under [migrating a protocol](#migrating-a-protocol).
+
+If your protocol is no longer compatible with the version of Interviewer Classic that you have installed, you will see a red robot icon, and will no longer be able to start an interview. Please see the section below on [handling obsolete protocols in Interviewer Classic](#handling-obsolete-protocols-in-interviewer-classic) for further assistance.
+
+## Handling obsolete protocols in Interviewer Classic
+
+Although we aim to always make schema changes that are backward-compatible, this can be unavoidable if we need to substantially revise a feature. If a new schema version is implemented that is not backward-compatible, the user interface in Interviewer Classic will mark the protocol as "obsolete" and will no longer allow new interview sessions to be started. Although this is obviously undesirable, **all existing session data will continue to be exportable from a protocol in this state**. Review the section below to understand your options in this scenario.
 
 Although obsolete protocols will still be able to be migrated to the latest schema version by Architect, in some cases manual intervention or updating may be required. For example, if we add required properties to the protocol that cannot be derived from existing properties, you may need to create these yourself. Please contact us if you have encountered an issue, or have specific concerns about this.
 
@@ -64,35 +69,100 @@ Although obsolete protocols will still be able to be migrated to the latest sche
 
 If your protocol is marked as obsolete, and you wish to continue collecting data using it, you have two options:
 
-1. Migrate the protocol to a later version, which is compatible with your version of Interviewer. See [migrating a protocol](#migrating-a-protocol) below for this.
-2. Downgrade an older version of Interviewer, by uninstalling your current version, and downloading the version you require from our [GitHub releases page](https://github.com/complexdatacollective/Interviewer/releases). As per the warning at the start of this article, downgrading is not possible on iOS or Android platforms. If you have mistakenly upgraded your Interviewer version on these platforms causing your protocol to become obsolete, your only choice is to migrate your protocol to the latest schema version and to redeploy it.
+1. Migrate the protocol to a later version, which is compatible with your version of Interviewer Classic. See [migrating a protocol](#migrating-a-protocol) below for this.
+2. Install an older version of Interviewer Classic, by uninstalling your current version, and downloading the version you require from our [GitHub releases page](https://github.com/complexdatacollective/Interviewer/releases). As per the warning at the start of this article, downgrading is not possible on iOS or Android platforms. If you have mistakenly upgraded your Interviewer version on these platforms causing your protocol to become obsolete, your only choice is to migrate your protocol to the latest schema version and to redeploy it.
 
 ## Migrating a protocol
 
-Migrating a protocol happens within Architect, Fresco, and Interviewer, and is automatic. If you are migrating because you are moving from the Classic apps to the current generation, [Migrating from the Classic Apps](/en/get-started/migrating-from-classic) walks through that whole transition — including what happens to your collected data. How migration works depends on which app you use:
+If you are migrating because you are moving from the Classic apps to the current generation, [Migrating from the Classic Apps](/en/get-started/migrating-from-classic) walks through that whole transition — including what happens to your collected data. How migration works depends on which app you use:
 
-**In Architect (the browser app), Fresco, and Interviewer**, migration is automatic and requires no setup — these apps always run the latest version. When you open or import a protocol built on an older schema, it is upgraded to the current schema in place. In Architect, the upgraded protocol is saved to your browser library; **Download** a `.netcanvas` copy if you want a backup or need to move it to another app.
+**In Architect (the browser app)**, migrating to schema 9 is your choice. When you open a schema 7 or schema 8 protocol, Architect lists the changes an upgrade would make and offers two ways forward:
+
+- **Upgrade to schema 9** creates an upgraded copy of the protocol and opens it. Your original protocol is not changed. The copy is saved to your browser library; **Download** a `.netcanvas` copy to run it in Fresco or Interviewer.
+- **Keep editing as schema 8** opens the protocol, without upgrading it to schema 9, in Architect 8, the previous version of Architect, which is built in. A schema 7 protocol is migrated to schema 8 when you do this.
+
+Architect is the only app that migrates a protocol to schema 9.
+
+**In Fresco and Interviewer**, a protocol is never migrated to schema 9. A schema 8 protocol stays schema 8, and its interviews run in the schema 8 interview built into the app, exactly as the protocol was designed. To use schema 9 features, upgrade the protocol in Architect and import the upgraded copy. It is a separate protocol, so interviews you have already collected stay with the schema 8 original.
+
+A schema 7 protocol is the one exception. Fresco and Interviewer migrate it to schema 8 automatically when you import it, and then run it as schema 8. This is how protocols made in the Classic apps move to Fresco and Interviewer: Architect Classic only makes schema 7 protocols, and earlier releases of Fresco and Interviewer migrated them the same way. The migration doesn't change the protocol file you imported.
 
 **In Architect Classic**, migration works on files you manage yourself:
 
 1. Ensure you are on the latest version of Architect Classic. When opening the app with an active internet connection, it will check for updates automatically, and notify you if any are found. Alternatively, you can manually update it by visiting our download page and installing the latest version for your platform.
 2. Once you are running the latest version, open the protocol file that you wish to migrate.
 3. Architect Classic will inform you that the protocol file can be upgraded, which happens by creating a copy (so that your original file is preserved). If you choose to continue, you will be prompted for a location to save your upgraded protocol.
+
+   ![Architect Classic offering to create an upgraded copy of a protocol](/assets/img/protocol-schema/architect-migrate.png)
+
 4. Architect Classic will automatically append "(schema version X)" to the filename, which may help you to keep track of the different versions of your protocol, and to differentiate them within Interviewer.
+
+## Schema version 9
+
+Schema version 9 is the current, latest protocol schema version. It lets you write a protocol in more than one language, so that participants can take the interview in their own language. It also lets you name variables in any language, and use spaces and punctuation in their names, and makes encrypted attributes a standard feature.
+
+- **Architect** 9.0 and later supports schema 9. When you open a schema 7 or schema 8 protocol, it offers to upgrade it to schema 9 or to keep editing it as schema 8.
+- **Fresco** 5.0 and later and **Interviewer** 9.0 and later support schema 9. They also keep running schema 8 protocols as schema 8, and never upgrade a protocol to schema 9.
+- Earlier releases of **Fresco** (4.x) and **Interviewer** (8.x) support schemas 7 and 8 only, and can't open a schema 9 protocol.
+- **Architect Classic** and **Interviewer Classic** support schema 7 and earlier.
+
+Every new protocol you create in Architect is schema 9, and so is every upgraded copy. A protocol you keep editing as schema 8 stays schema 8.
+
+<TipBox danger>
+
+Before you run a schema 9 protocol, make sure the app you run it in has been updated. If your team runs its own Fresco server, update it before you upload the protocol. If you use Interviewer on several devices, update it on every device. An app released before schema 9 refuses to open a schema 9 protocol, so you can't start interviews with it there.
+
+</TipBox>
+
+### What's new in schema 9
+
+- **Variable names in any language.** Variable names can now use letters from any language, as well as spaces and punctuation: `género`, `关系类型` and `contact frequency (per week)` are all valid. A name still can't be empty, start or end with a space, or contain tabs, line breaks or other control characters. See [What a name can contain](/en/design-protocols/key-concepts/variables#what-a-name-can-contain).
+- **The same freedom for type names and option values.** Architect now accepts the same characters in the names of node types and edge types, and in the values of categorical and ordinal options.
+- **Protocols in more than one language.** A protocol now lists the languages it is written in, and one of them is its default language. Every text participants see, such as stage names, prompts, form fields, response options and Information screens, can have a translation in each of these languages, and needs one in at least one of them. When a text has no translation in the participant's language, they see the best available one instead: the text in another language their browser lists, or else in the default language, or else in any language that has it. The languages have no order. See [Translating Your Protocol](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
+- **Codebook names only.** Node types, edge types and attributes have only a name, which your exported data uses and participants never see. Where participants do see an edge type, the stage gives it a label of its own, which can be translated: each edge type a [Narrative](/en/design-protocols/interface-documentation/narrative) preset draws, and each edge type a [Network Composer](/en/design-protocols/interface-documentation/network-composer) stage lets participants draw.
+- **Labels for highlighted Narrative attributes.** Each attribute a [Narrative](/en/design-protocols/interface-documentation/narrative) preset highlights has its own label, which participants see in the preset switcher and which can be translated.
+- **Labels for Network Composer fields.** Every field of a [Network Composer](/en/design-protocols/interface-documentation/network-composer) form needs a label, which participants see and which can be translated.
+- **Piped text.** Prompts, form questions and other text participants read can show values the interview fills in: the participant's answers, the label and answers of the node or edge a question is about, and today's date. Every value that can be missing needs a version of the text for when it is missing, and every translation must show the values its default-language text shows. See [Piped Text](/en/design-protocols/piped-text).
+- **New "[Language Chooser](/en/design-protocols/interface-documentation/language-chooser)" interface.** A screen where participants choose which of the protocol's languages the rest of the interview is shown in.
+- **The interview's shared words belong to your protocol.** Text that a participant used to see only in Network Canvas's own languages is now text in your protocol, so you can reword it and translate it. Text that belongs to one kind of stage, such as the Finish Screen's button, the notices of a Name Generator, the map messages of a Geospatial stage, the tooltips of the canvas tools, and the words of a Family Pedigree, is a setting of that stage. Text shared across stages, such as Back, Continue, validation messages and the passphrase words, is the protocol's interview text. Network Canvas fills in starting wording in the languages it has wording for. A few built-in words that repeated or added nothing, such as headings that restated the screen they were on, were removed. See [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+- **New "[Finish Screen](/en/design-protocols/interface-documentation/finish-screen)" interface.** The screen that ends the interview is now a stage at the end of every protocol, with closing and finished text you write and can translate. Participants either confirm that they are finished, or the interview finishes as soon as they reach it. It also records how the interview ended (completed, ineligible, or ended early). A protocol can end with several Finish Screens, such as a separate ending for participants who are not eligible, and can't have another kind of stage after them.
+- **Instructions go in Information stages.** The Per Alter Form, Per Alter Edge Form, Dyad Census and Tie-Strength Census no longer have an introduction panel. To explain one of these tasks to participants, place an [Information](/en/design-protocols/interface-documentation/information) stage just before it. The Ego Form keeps its introduction panel, shown above its questions.
+- **How the interview ended in exported data.** Each exported interview records its outcome, taken from the Finish Screen it ended at. See [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended).
+- **Encrypted attributes are no longer experimental.** The [Anonymisation interface](/en/design-protocols/interface-documentation/anonymisation) is always available when you add a stage in Architect, and an attribute you mark as encrypted in an Anonymisation stage is always encrypted during interviews. Protocols keep their `experiments` setting, which lets new features be released within a schema version, but encrypted attributes are no longer one of them. Schema 9 has no experiments to turn on yet, so Architect no longer has an Experimental Features page.
+
+In the protocol file, each translation is stored as an [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) message, so curly braces and some apostrophes are escaped. You never see this escaping: Architect shows and saves your text exactly as you type it, and participants see it the same way. If you edit a protocol file by hand, a translation must be plain text written in this format. A placeholder such as `{name}` is allowed only in two places: in text that can show [piped values](/en/design-protocols/piped-text), for a value the stage's `dynamicValues` names, and in the [words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies), which must keep the placeholders of their starting wording.
+
+Alongside schema 9, Architect refuses names and option values that would give two variables the same column in your exported data. See [Names that would clash in exported data](/en/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data).
+
+Migrating a protocol from schema 8 to schema 9 keeps all of its content, and existing variable names are kept exactly as they are. Migration also:
+
+- records all the text participants see as English (the language code `en`), because older protocols don't record which language they are written in. This becomes the protocol's only language, and its default. If the protocol is written in another language, open it in Architect to say which language it really is (see [Changing the language your text is recorded as](/en/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as)).
+- gives every edge type a Narrative preset draws, and every edge type a Network Composer stage lets participants draw, a label, which starts as the edge type's name.
+- gives every attribute a Narrative preset highlights a label, which starts as the attribute's name.
+- gives every Network Composer field that has no label one, which starts as the attribute's name.
+- gives the protocol the stage wording and the interview text it needs, which start as the wording the interview has always shown, recorded as English (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+- adds one [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) stage at the end, because every schema 9 protocol must end with one. The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its closing and finished text and translate them like the rest of your protocol. Participants confirm that they are finished, as they always have. Its closing text starts with the text the interview has always shown there, and its finished text with "Interview Finished" and "Thank you for participating!", both recorded as English. Its outcome is **Completed**. The stage's id is `finish`, or `finish-2` and so on if another stage already has that id.
+- moves the introduction panel of each Per Alter Form, Per Alter Edge Form, Dyad Census and Tie-Strength Census to an [Information](/en/design-protocols/interface-documentation/information) stage just before its stage, with the panel's title and text. The new stage has the same skip logic, so it is skipped whenever its stage is, and skip logic that jumped to the stage now jumps to the new Information stage. An Ego Form keeps its introduction panel.
+- moves each Anonymisation stage's title to the start of its explanation, as a heading, so the stage has one text to edit and translate. Participants see the same screen as before.
+
+Migration removes the **Encrypted Attributes** experiment from the protocol's `experiments` setting, because encrypted attributes no longer need it. What happens to the attributes marked as encrypted depends on whether it was turned on:
+
+- If the **Encrypted Attributes** experiment was turned on, the attributes marked as encrypted stay marked, and answers are encrypted during interviews. Interviews already collected with the schema 8 protocol stay with it, and keep the answers the experimental version protected. See [Answers protected by the experimental version](/en/design-protocols/interface-documentation/anonymisation#answers-protected-by-the-experimental-version).
+- If the experiment was turned off, any attribute marked as encrypted is unmarked, so it keeps being collected without encryption, as it was before. To encrypt it, mark it again in an Anonymisation stage.
 
 ## Schema version 8
 
-Schema version 8 is the current, latest protocol schema version. Support for it depends on which apps you use:
+Support for schema 8 depends on which apps you use:
 
-- **Architect**, **Fresco**, and **Interviewer** support schema 8, and can migrate all prior schema versions.
+- **Architect**, **Fresco**, and **Interviewer** support schema 8. In current releases, Architect can keep editing a schema 8 protocol as schema 8 or upgrade it to schema 9, and Fresco and Interviewer run it as schema 8.
 - **Architect Classic** and **Interviewer Classic** support schema 7 and earlier.
 
 This has two practical consequences:
 
-1. To create or edit a schema 8 protocol, you must use **Architect**. Architect Classic cannot create, open, or migrate protocols to schema 8.
+1. Architect Classic cannot create, open, or migrate protocols to schema 8. Use **Architect** instead.
 2. A schema 8 protocol can only be run in **Fresco** or **Interviewer**. The older **Interviewer Classic** desktop and tablet apps cannot run schema 8 protocols, and will mark them as incompatible/unsupported.
 
-Both Fresco and Interviewer accept schema 7 and schema 8 protocols (anything older is rejected), so your existing protocols continue to work without a manual migration step. When Fresco or Interviewer imports a schema 7 `.netcanvas` file, it automatically upgrades it to schema 8 in place.
+Both Fresco and Interviewer accept schema 7 and schema 8 protocols, so your existing protocols continue to work without a manual migration step. A schema 8 protocol runs as schema 8. A schema 7 protocol is migrated to schema 8 automatically when you import it, and runs as schema 8, so protocols made in the Classic apps work without first opening them in Architect.
 
 <TipBox danger>
 
@@ -105,20 +175,20 @@ If you open a schema 8 protocol in Architect Classic, or attempt to install one 
 Schema version 8 introduces several new interfaces and authoring features:
 
 - **New "Geospatial" interface.** Allows the participant to select a location on a map based on a GeoJSON shapefile.
-- **New experimental "Anonymisation" interface.** Allows the participant to encrypt sensitive or identifiable information so that it cannot be read by the researcher. This is not enabled by default — contact the team for details.
+- **New experimental "Anonymisation" interface.** Allows the participant to encrypt sensitive or identifiable information so that it cannot be read by the researcher. In schema 8 it must be switched on for each protocol, using an experiment setting. Schema 9 [releases it](#whats-new-in-schema-9). Answers protected by the experimental version stay readable in their interviews, which stay with the schema 8 protocol when you upgrade it.
 - **New "One-to-many dyad census" interface.** Allows the participant to link multiple alters at a time.
 - **New "Family pedigree" interface.** A pedigree-building interface designed for genetic disease monitoring, with configurable node and edge types, relationship variables, and optional disease/condition nomination prompts.
 - **New "[Network Composer](/en/design-protocols/interface-documentation/network-composer)" interface.** A free-form, single-screen network builder for creating alters, drawing ties of several types, and recording attribute data, designed to be driven by a researcher or interviewer.
 - **New "[Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree)" interface.** Displays a family pedigree built in a Family Pedigree stage using standard pedigree notation, overlaying inheritance information for one or more conditions.
 - **New form-field validation options:** `greaterThanVariable` and `lessThanVariable`.
 - **New `location` variable type.** Stores the geospatial area a participant selects on the Geospatial interface; it has no input control of its own and is created when you configure a Geospatial stage.
-- **New per-variable `encrypted` flag.** Marks a variable's values for on-device encryption; it is set via the experimental Anonymisation interface rather than the general variable editor.
+- **New per-variable `encrypted` flag.** Marks a variable's values for on-device encryption; it is set in the Anonymisation interface rather than the general variable editor.
 - **New comparator options for skip logic and filters:** "contains" and "does not contain".
-- **Targeted skip-logic destinations.** When a stage is hidden, the interview can continue at the next available stage, jump to a selected later stage, or route to the interview finish screen. Destinations must point forward.
+- **Targeted skip-logic destinations.** When a stage is hidden, the interview can continue at the next available stage, jump to a selected later stage, or route to the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) that ends the interview. Destinations must point forward.
 - **Multi-selection support** for the "includes"/"excludes" comparators on ordinal and categorical variables.
 - **Configurable default and variable-driven node shapes.** Choose circle, square, or diamond as a node type's default, or [map its shape from a node variable](/en/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape). The previous `iconVariant` property was renamed to `icon`.
 - **Optional "hint" property on form fields** (a markdown string shown as extra guidance to participants), plus a `showValidationHints` option to automatically display hints derived from validation rules.
-- **New top-level `experiments` field on protocols.** A JSON channel (default `{}`) that carries protocol-level experiment/feature toggles consumed by the interview engine, allowing opt-in interview behaviors to be introduced without further schema changes.
+- **New top-level `experiments` field on protocols.** A JSON channel (default `{}`) that carries protocol-level experiment/feature toggles consumed by the interview engine, allowing opt-in interview behaviors to be introduced without further schema changes. Schema 9 keeps this field, but encrypted attributes are no longer one of its experiments.
 - **Various cleanup:** removed the deprecated, unused `displayVariable` property and the unused `options` property on boolean Toggle variables; filter rule entity naming was standardized; and a `name` property is now required on the protocol.
 
 <TipBox>
@@ -133,16 +203,17 @@ The table below shows, at a glance, the current and previous generations of Netw
 
 <AppCompatibilityTable></AppCompatibilityTable>
 
-For the full history, consult the table below for information about which schema versions are supported by each released version of the Network Canvas software. Note that schema 8 is no longer tied to specific Architect Classic / Interviewer Classic version numbers — it is supported by the Architect and Fresco web apps and by Interviewer.
+For the full history, consult the table below for information about which schema versions are supported by each released version of the Network Canvas software. Note that schemas 8 and 9 are no longer tied to specific Architect Classic / Interviewer Classic version numbers — they are supported by the Architect and Fresco web apps and by Interviewer.
 
-| Schema Version | Features                                                                                                                                                                                                                                                                                                                                                         | Architect Versions                | Interviewer Versions     |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------ |
-| 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, Family pedigree, Network Composer, and Narrative Pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation, "contains"/"does not contain" comparators, and targeted skip-logic destinations. Configurable default and variable-driven node shapes, and form-field hints. | Architect                         | Fresco 4.0+, Interviewer |
-| 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                                                                                                                                                                                                                                        | 6.4.0                             | \> 6.3.0                 |
-| 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                                                                                                                                                                                                                                   | 6.3.0, 6.3.1                      | \> 6.2.0                 |
-| 5              | Supports "tie-strength census" interface. Adds "unique", "same as", and "different from" validation options. Adds the interview script section.                                                                                                                                                                                                                  | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0                 |
-| 4              | Initial stable release schema. Introduces stricter variable naming requirements.                                                                                                                                                                                                                                                                                 | 6.0.0, 6.0.1, 6.0.2, 6.0.3        | \> 6.0.0                 |
-| 1.0.0          | Obsolete alpha schema.                                                                                                                                                                                                                                                                                                                                           |                                   |                          |
+| Schema Version | Features                                                                                                                                                                                                                                                                                                                                                                        | Architect Versions                | Interviewer Versions          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ----------------------------- |
+| 9              | Variable names in any language, including spaces and punctuation. Protocols in more than one language, with a default language and translations of participant-facing text. New Language Chooser interface. Translatable labels for the edge types participants see. A redesigned Family Pedigree interface, which the Narrative Pedigree reads. Encrypted attributes released. | Architect 9.0+                    | Fresco 5.0+, Interviewer 9.0+ |
+| 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, Family pedigree, Network Composer, and Narrative Pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation, "contains"/"does not contain" comparators, and targeted skip-logic destinations. Configurable default and variable-driven node shapes, and form-field hints.                | Architect                         | Fresco 4.0+, Interviewer      |
+| 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                                                                                                                                                                                                                                                       | 6.4.0                             | \> 6.3.0                      |
+| 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                                                                                                                                                                                                                                                  | 6.3.0, 6.3.1                      | \> 6.2.0                      |
+| 5              | Supports "tie-strength census" interface. Adds "unique", "same as", and "different from" validation options. Adds the interview script section.                                                                                                                                                                                                                                 | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0                      |
+| 4              | Initial stable release schema. Introduces stricter variable naming requirements.                                                                                                                                                                                                                                                                                                | 6.0.0, 6.0.1, 6.0.2, 6.0.3        | \> 6.0.0                      |
+| 1.0.0          | Obsolete alpha schema.                                                                                                                                                                                                                                                                                                                                                          |                                   |                               |
 
 ## Technical implementation of schema migration
 

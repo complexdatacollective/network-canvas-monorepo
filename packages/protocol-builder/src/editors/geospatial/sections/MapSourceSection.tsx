@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ComponentType, type ReactNode } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -24,9 +24,7 @@ import {
 } from './mapOptionsFields.ts';
 
 /** The picker takes an open prop bag from the field wrapper. */
-const ResourcePicker = AssetPickerField as ComponentType<
-  Record<string, unknown>
->;
+const ResourcePicker = AssetPickerField;
 
 const PROPERTY_MISSING = createMessageError(
   geospatialMessages.propertyMissingRefusal,

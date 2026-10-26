@@ -1,0 +1,216 @@
+{
+  "dekB64": "AzcEQ0FlxIucr3/XUJzf5xseI1F/GCpuLc8zR2Md92U=",
+  "plaintext": {
+    "sessionWithMetadata": {
+      "id": "session-a",
+      "protocolHash": "fixture-hash",
+      "protocolName": "Fixture Study",
+      "caseId": "case-a",
+      "startedAt": "2026-05-01T10:00:00.000Z",
+      "lastUpdatedAt": "2026-05-01T10:30:00.000Z",
+      "finishedAt": null,
+      "exportedAt": null,
+      "currentStep": 2,
+      "progress": 50,
+      "network": {
+        "ego": {
+          "_uid": "ego-1",
+          "attributes": {
+            "mood": "calm"
+          }
+        },
+        "nodes": [
+          {
+            "_uid": "n-1",
+            "type": "person",
+            "stageId": "ng",
+            "promptIDs": ["p1"],
+            "attributes": {
+              "name": "Ada"
+            }
+          }
+        ],
+        "edges": []
+      },
+      "stageMetadata": {
+        "2": {
+          "automaticLayout": true
+        }
+      }
+    },
+    "sessionWithoutMetadata": {
+      "id": "session-b",
+      "protocolHash": "fixture-hash",
+      "protocolName": "Fixture Study",
+      "caseId": "case-b",
+      "startedAt": "2026-05-02T10:00:00.000Z",
+      "lastUpdatedAt": "2026-05-02T10:30:00.000Z",
+      "finishedAt": "2026-05-02T10:30:00.000Z",
+      "exportedAt": null,
+      "currentStep": 0,
+      "network": {
+        "ego": {
+          "_uid": "ego-1",
+          "attributes": {
+            "mood": "calm"
+          }
+        },
+        "nodes": [
+          {
+            "_uid": "n-1",
+            "type": "person",
+            "stageId": "ng",
+            "promptIDs": ["p1"],
+            "attributes": {
+              "name": "Ada"
+            }
+          }
+        ],
+        "edges": []
+      }
+    },
+    "protocol": {
+      "id": "fixture-hash",
+      "hash": "fixture-hash",
+      "name": "Fixture Study",
+      "schemaVersion": 8,
+      "importedAt": "2026-05-01T09:00:00.000Z",
+      "description": "Made by main",
+      "codebook": {
+        "node": {
+          "person": {
+            "name": "Person",
+            "color": "node-color-seq-1",
+            "variables": {}
+          }
+        },
+        "edge": {},
+        "ego": {}
+      },
+      "protocol": {
+        "schemaVersion": 8,
+        "name": "Fixture Study",
+        "description": "Made by main",
+        "codebook": {
+          "node": {
+            "person": {
+              "name": "Person",
+              "color": "node-color-seq-1",
+              "variables": {}
+            }
+          },
+          "edge": {},
+          "ego": {}
+        },
+        "stages": []
+      }
+    },
+    "stringAsset": {
+      "id": "fixture-hash::key",
+      "protocolHash": "fixture-hash",
+      "assetId": "key",
+      "name": "Map key",
+      "type": "apikey",
+      "data": "fixture-secret"
+    },
+    "blobAsset": {
+      "id": "fixture-hash::image",
+      "protocolHash": "fixture-hash",
+      "assetId": "image",
+      "name": "Background",
+      "type": "image",
+      "data": {
+        "mime": "image/png",
+        "bytes": [137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]
+      }
+    }
+  },
+  "encrypted": {
+    "sessionWithMetadata": {
+      "id": "session-a",
+      "protocolHash": "fixture-hash",
+      "protocolName": "Fixture Study",
+      "caseId": "case-a",
+      "startedAt": "2026-05-01T10:00:00.000Z",
+      "lastUpdatedAt": "2026-05-01T10:30:00.000Z",
+      "finishedAt": null,
+      "exportedAt": null,
+      "currentStep": 2,
+      "progress": 50,
+      "_enc": {
+        "network": {
+          "iv": "fIw5FjSOcRUW81RA",
+          "ct": "8nL+bxGtbvJu3FnixnWflJVPg1MzQF+D9JH9X+AkwX8L9r9Z9uphL4uOX9bbxCysQd8hftumZ+ggt1NpvkaXmSH5o/9CNujO0QtgPD6OEn+UGCaxVWGMsBuFpERwWJOqXNPAEjaSl8ucrTMhj2DbchmNXFUnnWXIFmStgNTdyiHupKcYSeFRFRQhr44OMhPYHTeKw05FLLN+xBUeWDyF231NNQRcs1vb+65/FgRN8j9UgnD7/S0D"
+        },
+        "stageMetadata": {
+          "iv": "7533hqOAYIleGHxs",
+          "ct": "2uN0ReUyi5iYK//iMO6j1zskmpjAzMBk36J5jjBz9ERqDRM7sjhMOnGPRmhBXA=="
+        }
+      }
+    },
+    "sessionWithoutMetadata": {
+      "id": "session-b",
+      "protocolHash": "fixture-hash",
+      "protocolName": "Fixture Study",
+      "caseId": "case-b",
+      "startedAt": "2026-05-02T10:00:00.000Z",
+      "lastUpdatedAt": "2026-05-02T10:30:00.000Z",
+      "finishedAt": "2026-05-02T10:30:00.000Z",
+      "exportedAt": null,
+      "currentStep": 0,
+      "_enc": {
+        "network": {
+          "iv": "aiiU5QzOe8S+D4bx",
+          "ct": "cAzWoDqezY4GnAhul8SbFlEQ0IebGvF734SzhqyKApBYVDDYp26HZtPzK7OwGR5bLLQ5QHIEWfDVa/P3mpeyfG67Y/OTllp4pFcp3V+ds71lf5xRQKttwYciOYjwqroJHxvgvdPWTslDXcAxzd3j2w0aVp6xUrfeOuq4ANUVeeuMHfSMDh651JpZHnkmIx8012/sHXc3oyW5bdOQuCCYamvs70KxWbNg5VMKKPSxAkK3iQd69kSS"
+        }
+      }
+    },
+    "protocol": {
+      "id": "fixture-hash",
+      "hash": "fixture-hash",
+      "name": "Fixture Study",
+      "schemaVersion": 8,
+      "importedAt": "2026-05-01T09:00:00.000Z",
+      "description": "Made by main",
+      "_enc": {
+        "protocol": {
+          "iv": "5ZI8x6n6Fl2lrRaK",
+          "ct": "mupfCC9PamV7bV5oY+H40bC6Em+k7JRZ+HgtglFY9s+KKMRISSoKgYZbvszA2pl3nanDohRyDqF8r5d8mAVSsY75v5PeQMLryG0iWvgKSIybBxb4ME1469Gt4/bZ+fvNwRHms15vYUDD1W3ibQQs/tiEwQqqlRatSajSRz5FfhEgz7ldINGTt0AXhG3KFCredSZindCHWVLNblocg6105d7kscaK4YgrM/7OW7AR5EwcGuzFBHEpDqtt3VTgi5vwVy9WNDae73yl5abmqH+Vu/A="
+        },
+        "codebook": {
+          "iv": "GnsLQgus9pWNjdzt",
+          "ct": "F1HjbNJEIg/Z3dYOATLaM8kMRXkuyfD834nwrHwFFh1QWu5WkU1Mu7YuQmKjuBfhM85meEdaitMxWfOV7K9oVYBmZY6dKDrfqmWuZEXRfnVdE0LTJjEZLQTzYTXB03RDh85kntBAoOdEIQ1wrcSJw7oC"
+        }
+      }
+    },
+    "stringAsset": {
+      "id": "fixture-hash::key",
+      "protocolHash": "fixture-hash",
+      "assetId": "key",
+      "name": "Map key",
+      "type": "apikey",
+      "_enc": {
+        "data": {
+          "kind": "string",
+          "iv": "yAaV8gCz69vLpr43",
+          "ct": "YE5eIOr0N4GRjD4Ie+ui0+kC43AsxO5yeF3lMpON"
+        }
+      }
+    },
+    "blobAsset": {
+      "id": "fixture-hash::image",
+      "protocolHash": "fixture-hash",
+      "assetId": "image",
+      "name": "Background",
+      "type": "image",
+      "_enc": {
+        "data": {
+          "kind": "blob",
+          "mime": "image/png",
+          "iv": "eTmfmEYBSuhVvhRi",
+          "ct": "vd9pl19RUJDp/2l8n9rv+OiXxDAd9fWj85AR"
+        }
+      }
+    }
+  }
+}

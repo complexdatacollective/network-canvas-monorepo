@@ -94,7 +94,7 @@ describe('a response that is not a refusal', () => {
             requestId: postedRequestId(init),
             exit: { _tag: 'Success', value: INSTANCE_STATUS },
           })}\n`,
-          { status: 200, headers: { 'content-type': 'application/ndjson' } },
+          { status: 200, headers: { 'content-type': 'application/x-ndjson' } },
         ),
       ),
     );
@@ -241,6 +241,23 @@ describe('a refusal on the HTTP plane', () => {
       kind: 'rateLimited',
       retryAfterSeconds: 1,
     });
+  });
+
+  it('reads a Retry-After given as an HTTP date', async () => {
+    // An HTTP date carries whole seconds, so the wait is 89 or 90 depending
+    // on where in the current second the header is read.
+    const inNinetySeconds = new Date(Date.now() + 90_000).toUTCString();
+    answer(() =>
+      problemResponse(
+        429,
+        { title: 'Too Many Requests' },
+        { 'retry-after': inNinetySeconds },
+      ),
+    );
+
+    const error = await failureOfStatusCall();
+
+    expect([89, 90]).toContain(retryAfterSeconds(error));
   });
 
   it('still reports a status it has no name for', async () => {

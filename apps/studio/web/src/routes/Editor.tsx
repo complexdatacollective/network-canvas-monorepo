@@ -18,7 +18,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { makeRpcAdapter } from '@codaco/effect-query/adapter';
 import type { RpcAdapter } from '@codaco/effect-query/types';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
@@ -44,7 +44,10 @@ import {
   useProtocolReading,
   type ProtocolReading,
 } from '@codaco/protocol-builder/state/protocolContext';
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  findTimelineStructureProblems,
+} from '@codaco/protocol-validation';
 import {
   StageId,
   type DraftId,
@@ -86,6 +89,27 @@ type DraftAddress = {
   protocolId: ProtocolId;
   draftId: DraftId;
 };
+
+/**
+ * Whether moving one screen adds a problem to the timeline's structure — a
+ * screen after the finish stage, or the interview ending anywhere else — which
+ * the server refuses, as Architect does. Only problems a move ADDS count, so a
+ * protocol already in such a shape can still be reordered into a better one.
+ */
+function moveAddsTimelineProblems(
+  stages: readonly StageSummary[],
+  fromIndex: number,
+  toIndex: number,
+): boolean {
+  const proposed = [...stages];
+  const [moved] = proposed.splice(fromIndex, 1);
+  if (moved === undefined) return true;
+  proposed.splice(toIndex, 0, moved);
+  return (
+    findTimelineStructureProblems(proposed).length >
+    findTimelineStructureProblems(stages).length
+  );
+}
 
 type Selection =
   | { kind: 'stage'; stageId: string }
@@ -961,6 +985,11 @@ function EditorWorkspace({
                                 )}
                                 disabled={
                                   index === 0 ||
+                                  moveAddsTimelineProblems(
+                                    stages,
+                                    index,
+                                    index - 1,
+                                  ) ||
                                   moveStage.isPending ||
                                   moveStage.isError ||
                                   reconcilingMove
@@ -980,6 +1009,11 @@ function EditorWorkspace({
                                 )}
                                 disabled={
                                   index === stages.length - 1 ||
+                                  moveAddsTimelineProblems(
+                                    stages,
+                                    index,
+                                    index + 1,
+                                  ) ||
                                   moveStage.isPending ||
                                   moveStage.isError ||
                                   reconcilingMove

@@ -3,10 +3,10 @@
     - heading "Prompt two" [level=2]
   - button "Category Yes, 2 items":
     - heading "Yes" [level=4]
-    - paragraph: Alice and 1 other
+    - paragraph: Alice +1
   - button "Category No, 0 items":
     - heading "No" [level=4]
-  - button "Expand drawer" [disabled]: 0 unplaced
+  - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"
     - button "Previous Step"

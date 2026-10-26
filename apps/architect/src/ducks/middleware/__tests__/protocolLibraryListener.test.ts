@@ -24,13 +24,13 @@ import { rootReducer } from '../../modules/root';
 import { protocolCommitAccepted } from '../../protocolCommit';
 import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
 
-const makeProtocol = (name: string): CurrentProtocol =>
-  ({
-    name,
-    schemaVersion: 8,
-    stages: [],
-    codebook: {},
-  }) as CurrentProtocol;
+const makeProtocol = (name: string): CurrentProtocol => ({
+  name,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  codebook: {},
+});
 
 const makeStore = () =>
   configureStore({

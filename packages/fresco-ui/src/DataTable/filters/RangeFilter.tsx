@@ -5,7 +5,7 @@ import { useCallback } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button from '../../Button';
+import { Button } from '../../Button';
 import { formatFilterNumber } from './formatFilterNumber';
 import { type RangeFilterConfig, type RangeFilterValue } from './types';
 

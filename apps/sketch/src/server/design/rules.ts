@@ -1,6 +1,28 @@
 // Single-answer rules shared by analyse.ts and compile.ts: slugs, option values,
 // attribute -> variable mapping and condition resolution. Pure functions only.
+import {
+  DYNAMIC_VALUE_MARKER,
+  escapeMessageText,
+} from '@codaco/protocol-validation';
+
 import type { AttributeKind, DesignAttribute, Operator } from './schema.ts';
+
+/** Sketch writes every protocol in English, its one language. */
+export const SKETCH_LOCALE = 'en';
+export const SKETCH_LOCALIZATION = {
+  defaultLocale: SKETCH_LOCALE,
+  locales: [SKETCH_LOCALE],
+};
+
+/**
+ * Participant-facing text as schema 9 holds it: one translation per language.
+ * Schema 9 reads text as a message, so braces the models wrote are escaped to
+ * show as written, and the character schema 9 reserves for dynamic values is
+ * dropped.
+ */
+export const localized = (text: string) => ({
+  [SKETCH_LOCALE]: escapeMessageText(text.replaceAll(DYNAMIC_VALUE_MARKER, '')),
+});
 
 export type Severity = 'adjusted' | 'degraded' | 'note';
 export type DesignIssue = {
@@ -14,6 +36,19 @@ export type DesignIssue = {
 export type NAttribute = Omit<DesignAttribute, 'kind'> & {
   builtin?: 'name' | 'layout' | 'other' | 'location' | 'consent' | 'tag';
   kind: AttributeKind | 'location';
+};
+
+/** The parts of an attribute that resolveCondition reads. */
+export type ConditionTarget = Pick<
+  NAttribute,
+  'kind' | 'options' | 'optionScores'
+>;
+
+/** The built-in name every node has: free text, so conditions on it compare words. */
+export const NAME_CONDITION_TARGET: ConditionTarget = {
+  kind: 'text',
+  options: [],
+  optionScores: [],
 };
 
 export const slug = (s: string): string => {
@@ -72,8 +107,17 @@ const optionValues = (
 
 type Json = Record<string, unknown>;
 
+/** Options as a codebook holds them, with localized labels. */
+const codebookOptions = (
+  a: Pick<NAttribute, 'kind' | 'options' | 'optionScores'>,
+) =>
+  optionValues(a).map(({ label, value }) => ({
+    label: localized(label),
+    value,
+  }));
+
 /**
- * Attribute -> schema-8 variable (without the record key).
+ * Attribute -> schema 9 variable (without the record key).
  * `askedInForm` decides Boolean (with options) vs Toggle for yes_no.
  */
 export const variableFor = (
@@ -105,8 +149,8 @@ export const variableFor = (
           type: 'boolean',
           component: 'Boolean',
           options: [
-            { label: yes, value: true },
-            { label: no, value: false, negative: true },
+            { label: localized(yes), value: true },
+            { label: localized(no), value: false, negative: true },
           ],
         });
       } else Object.assign(v, { type: 'boolean', component: 'Toggle' });
@@ -116,7 +160,7 @@ export const variableFor = (
         type: 'categorical',
         component:
           a.options.length <= 5 ? 'ToggleButtonGroup' : 'CheckboxGroup',
-        options: optionValues(a),
+        options: codebookOptions(a),
       });
       validation.maxSelected = 1;
       break;
@@ -124,7 +168,7 @@ export const variableFor = (
       Object.assign(v, {
         type: 'categorical',
         component: 'CheckboxGroup',
-        options: optionValues(a),
+        options: codebookOptions(a),
       });
       break;
     case 'ordered': {
@@ -135,7 +179,7 @@ export const variableFor = (
       Object.assign(v, {
         type: 'ordinal',
         component: likert ? 'LikertScale' : 'RadioGroup',
-        options: optionValues(a),
+        options: codebookOptions(a),
       });
       break;
     }
@@ -144,8 +188,8 @@ export const variableFor = (
         type: 'scalar',
         component: 'VisualAnalogScale',
         parameters: {
-          minLabel: a.options[0] ?? 'Low',
-          maxLabel: a.options[1] ?? 'High',
+          minLabel: localized(a.options[0] ?? 'Low'),
+          maxLabel: localized(a.options[1] ?? 'High'),
         },
       });
       break;
@@ -178,7 +222,7 @@ export const variableFor = (
   return v;
 };
 
-/** A condition resolved to schema-8 semantics, still keyed by design ids. */
+/** A condition resolved to schema 9 semantics, still keyed by design ids. */
 export type ResolvedRule = {
   entity: 'ego' | 'node' | 'edge';
   typeId: string; // '' for ego
@@ -195,7 +239,7 @@ const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export const resolveCondition = (
   entity: 'ego' | 'node' | 'edge',
   typeId: string,
-  a: NAttribute | undefined,
+  a: ConditionTarget | undefined,
   attributeId: string,
   operator: Operator,
   rawValue: string,

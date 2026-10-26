@@ -1,12 +1,18 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { cleanup, render, screen } from '@testing-library/react';
+import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Panel as PanelType } from '@codaco/protocol-validation';
+import type { Panel as PanelType, Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
+
+import type { usePassphrase } from '../../../Anonymisation/usePassphrase';
+
+type Passphrase = ReturnType<typeof usePassphrase>;
 
 const externalDataMock = vi.fn();
 
@@ -39,21 +45,23 @@ vi.mock('../../../../selectors/protocol', () => ({
   getCodebookVariablesForSubjectType: 'getCodebookVariablesForSubjectType',
 }));
 
-const passphraseState: {
-  passphrase: string | null;
-  passphraseInvalid: boolean;
-  isEnabled: boolean;
-} = { passphrase: null, passphraseInvalid: false, isEnabled: true };
+const passphraseState = { unlocked: false };
 const requirePassphrase = vi.fn();
 
-vi.mock('../../../Anonymisation/usePassphrase', () => ({
-  usePassphrase: () => ({
-    passphrase: passphraseState.passphrase,
-    passphraseInvalid: passphraseState.passphraseInvalid,
-    isEnabled: passphraseState.isEnabled,
-    requirePassphrase,
-  }),
-}));
+vi.mock('../../../Anonymisation/usePassphrase', async () => {
+  const { runtimeMessages } = await import('../../../../i18n/runtimeMessages');
+  return {
+    usePassphrase: (): Passphrase => ({
+      unlocked: passphraseState.unlocked,
+      passphraseChosen: true,
+      lockedNotice: runtimeMessages.protectedAnswersLocked,
+      unlock: vi.fn<Passphrase['unlock']>(),
+      submitPassphrase: vi.fn<Passphrase['submitPassphrase']>(),
+      requirePassphrase,
+      showPassphrasePrompter: false,
+    }),
+  };
+});
 
 vi.mock('../../../../selectors/name-generator', () => ({
   getPanelNodes: () => panelNodesSelector,
@@ -82,11 +90,13 @@ vi.mock('../ExternalNodeItem', () => ({
   default: () => <div data-testid="external-node-item" />,
 }));
 
+import { StageDynamicValues } from '../../../../dynamicValues/DynamicValueScope';
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import NodePanel from '../NodePanel';
 
 const externalPanelConfig: PanelType = {
   id: 'panel-1',
-  title: 'External Panel',
+  title: { en: 'External Panel' },
   dataSource: 'asset-1',
 };
 
@@ -98,16 +108,18 @@ const makeNode = (id: string): NcNode => ({
 
 const renderPanel = (disableDragging = false) =>
   render(
-    <NodePanel
-      panelConfig={externalPanelConfig}
-      disableDragging={disableDragging}
-      accepts={[]}
-      panelNumber={0}
-      minimize={false}
-      onDrop={vi.fn()}
-      onUpdate={vi.fn()}
-      id="panel-1"
-    />,
+    <TestProtocolLocalization>
+      <NodePanel
+        panelConfig={externalPanelConfig}
+        disableDragging={disableDragging}
+        accepts={[]}
+        panelNumber={0}
+        minimize={false}
+        onDrop={vi.fn()}
+        onUpdate={vi.fn()}
+        id="panel-1"
+      />
+    </TestProtocolLocalization>,
   );
 
 describe('NodePanel external-data status handling', () => {
@@ -132,7 +144,7 @@ describe('NodePanel external-data status handling', () => {
 
     renderPanel();
 
-    expect(screen.getByText('Loading...')).toBeTruthy();
+    expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.queryByTestId('node-list')).toBeNull();
   });
 
@@ -144,7 +156,7 @@ describe('NodePanel external-data status handling', () => {
 
     renderPanel();
 
-    expect(screen.getByText('Loading...')).toBeTruthy();
+    expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.queryByTestId('node-list')).toBeNull();
   });
 
@@ -159,7 +171,7 @@ describe('NodePanel external-data status handling', () => {
     expect(screen.getByText(/External data could not be loaded/i)).toBeTruthy();
     expect(screen.queryByTestId('node-list')).toBeNull();
     // Error UI must be visibly distinct from a successfully-loaded empty panel.
-    expect(screen.queryByText('Loading...')).toBeNull();
+    expect(screen.queryByText('Loading…')).toBeNull();
   });
 
   it('renders the node list once external data has loaded successfully', () => {
@@ -174,7 +186,7 @@ describe('NodePanel external-data status handling', () => {
 
     const list = screen.getByTestId('node-list');
     expect(list.textContent).toBe('2');
-    expect(screen.queryByText('Loading...')).toBeNull();
+    expect(screen.queryByText('Loading…')).toBeNull();
     expect(screen.queryByText(/External data could not be loaded/i)).toBeNull();
   });
 });
@@ -234,9 +246,7 @@ describe('NodePanel external data with encrypted values', () => {
     cleanup();
     vi.clearAllMocks();
     delete stageVariables.name;
-    passphraseState.passphrase = null;
-    passphraseState.passphraseInvalid = false;
-    passphraseState.isEnabled = true;
+    passphraseState.unlocked = false;
   });
 
   it('asks for the passphrase and holds the rows back until one is entered', () => {
@@ -247,32 +257,76 @@ describe('NodePanel external data with encrypted values', () => {
     expect(screen.getByText(/enter your passphrase/i)).toBeTruthy();
   });
 
-  it('holds the rows back while the passphrase is not working', () => {
-    passphraseState.passphrase = 'secret';
-    passphraseState.passphraseInvalid = true;
-
-    renderPanel();
-
-    expect(requirePassphrase).toHaveBeenCalled();
-    expect(screen.queryByTestId('node-list')).toBeNull();
-    expect(screen.getByText(/enter your passphrase/i)).toBeTruthy();
-  });
-
   it('offers the rows once the passphrase has been entered', () => {
-    passphraseState.passphrase = 'secret';
+    passphraseState.unlocked = true;
 
     renderPanel();
 
     expect(requirePassphrase).not.toHaveBeenCalled();
     expect(screen.getByTestId('node-list').textContent).toBe('1');
   });
+});
 
-  it('offers the rows without a passphrase while the experiment is off', () => {
-    passphraseState.isEnabled = false;
+describe('NodePanel title with a dynamic value', () => {
+  beforeEach(() => {
+    externalDataMock.mockReturnValue({
+      externalData: [],
+      status: { state: 'ready' },
+    });
+    panelNodesSelector.mockReturnValue([]);
+  });
 
-    renderPanel();
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
 
-    expect(requirePassphrase).not.toHaveBeenCalled();
-    expect(screen.getByTestId('node-list').textContent).toBe('1');
+  it('marks the value out, isolates it and announces it', () => {
+    const store = configureStore({
+      reducer: {
+        protocol: () => ({
+          codebook: {
+            ego: { variables: { name: { name: 'name', type: 'text' } } },
+          },
+        }),
+        session: () => ({
+          network: { ego: { [entityAttributesProperty]: { name: 'Ada' } } },
+        }),
+      },
+    });
+    const stage = {
+      id: 'stage',
+      type: 'NameGenerator',
+      dynamicValues: { name: { path: 'ego.name' } },
+    } as unknown as Stage;
+
+    render(
+      <Provider store={store}>
+        <TestProtocolLocalization>
+          <StageDynamicValues stage={stage}>
+            <NodePanel
+              panelConfig={{
+                ...externalPanelConfig,
+                title: {
+                  en: '{name, select, missing {People} other {People {name} knows}}',
+                },
+              }}
+              disableDragging={false}
+              accepts={[]}
+              panelNumber={0}
+              minimize={false}
+              onDrop={vi.fn()}
+              onUpdate={vi.fn()}
+              id="panel-1"
+            />
+          </StageDynamicValues>
+        </TestProtocolLocalization>
+      </Provider>,
+    );
+
+    const heading = screen.getByRole('heading', { level: 3 });
+    expect(heading).toHaveAccessibleName('People Dynamic value: Ada knows');
+    const value = heading.querySelector('[data-dynamic-value] bdi');
+    expect(value?.textContent).toBe('Ada');
   });
 });

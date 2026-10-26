@@ -5,6 +5,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Node, {
+  NodeColors,
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
@@ -23,6 +24,9 @@ const messages = defineMessages({
 
 const isNodeShape = (value: unknown): value is NodeShape =>
   value === 'circle' || value === 'square' || value === 'diamond';
+
+const isNodeColor = (value: string): value is NodeColorSequence =>
+  NodeColors.some((color) => color === value);
 
 export type ShapePickerFieldProps = CreateFormFieldProps<
   NodeShape,
@@ -95,7 +99,8 @@ export default function ShapePickerField({
       onBlur={onBlur}
       onFocus={onFocus}
       className={cx(
-        'flex flex-wrap gap-3 rounded border-2',
+        'flex gap-3 rounded border-2',
+        small ? 'flex-nowrap' : 'flex-wrap',
         !small && 'bg-input text-input-contrast p-4',
         ariaInvalid === true && 'border-destructive',
         disabled && 'opacity-50',
@@ -106,6 +111,7 @@ export default function ShapePickerField({
         <Radio.Root
           key={shape.value}
           value={shape.value}
+          aria-disabled={readOnly || undefined}
           nativeButton
           render={(
             // `Node`'s own `onDragStart`/`onDragEnd` are pointer-gesture props
@@ -122,7 +128,7 @@ export default function ShapePickerField({
                 value1: shape.label,
               })}
               shape={shape.value}
-              color={nodeColor as NodeColorSequence}
+              color={isNodeColor(nodeColor) ? nodeColor : 'node-color-seq-1'}
               size={small ? 'xs' : 'sm'}
               selected={state.checked}
             />

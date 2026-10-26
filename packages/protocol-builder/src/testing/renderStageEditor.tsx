@@ -35,8 +35,9 @@ import {
   saveStageMessages,
 } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
-import { getInterfaceTemplate } from '../interfaces/templates.ts';
+import { newStageFields } from '../interfaces/templates.ts';
 import { protocolBuilderCatalogLoaders } from '../locales/catalogs.ts';
+import type { ProtocolLocalization } from '../localization/localizedText.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
@@ -67,6 +68,7 @@ import { readMessage } from './i18n.ts';
 import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
+  fixtureLocalization,
   fixtureProtocolSections,
   type FixtureStageId,
   loadFixtureStage,
@@ -190,8 +192,12 @@ export type SeededStage = Readonly<{
   type: StageType;
   /** Everything but `id` and `type`, which the section owns. */
   fields: SectionDoc;
-  /** Set only for a stage the protocol does not hold yet. */
-  creation?: StageCreation;
+  /**
+   * Set only for a stage the protocol does not hold yet, with the fields the
+   * call gave: all the harness hands the editor, which seeds the rest itself
+   * as it does for a host.
+   */
+  creation?: StageCreation & Readonly<{ fields: SectionDoc }>;
 }>;
 
 /** A save the protocol took, and the stage document it now holds. */
@@ -513,6 +519,12 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     /** Open the stage as a spectator. */
     readOnly?: boolean;
     /**
+     * The languages the protocol declares, in place of the fixture's own. The
+     * fixture's copy stays as it is, so a language added here starts with no
+     * translations.
+     */
+    localization?: ProtocolLocalization;
+    /**
      * Read the editor in this language.
      *
      * Left out, NO provider is mounted at all, `useAppIntl()` falls back to a
@@ -662,7 +674,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   };
 
   const host = createInMemoryHost({
-    sections: seededSections(seeded, assetManifest),
+    sections: seededSections(seeded, assetManifest, options.localization),
     assetContent: fixtureAssetContentFor(assetManifest, options.assetBytes),
     principal: HARNESS_PRINCIPAL,
   });
@@ -694,7 +706,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       : {
           stageType: seeded.type,
           position: seeded.creation.position,
-          fields: seeded.fields,
+          fields: seeded.creation.fields,
         };
 
   const view = render(
@@ -969,10 +981,9 @@ function asAResearcherActs(keyboard: HarnessUser): HarnessUser {
     get: (target, property, receiver) => {
       const value: unknown = Reflect.get(target, property, receiver);
       if (typeof value !== 'function') return value;
-      const action = value as (...args: unknown[]) => unknown;
       return async (...args: unknown[]) => {
         await settled();
-        const outcome: unknown = await action.apply(target, args);
+        const outcome: unknown = await Reflect.apply(value, target, args);
         await settled();
         return outcome;
       };
@@ -1100,9 +1111,11 @@ function NamedEditorUnderTest<T extends StageType>({
 }>) {
   const { identity } = useStageEdit();
   if (identity === undefined) return null;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `T` is the stage type the caller named for both the editor and the stage, so the stage's runtime type is that literal
+  const stageType = identity.type as T;
   return (
     <Editor
-      stageType={identity.type as T}
+      stageType={stageType}
       {...(actions === undefined ? {} : { actions })}
       {...(header === undefined ? {} : { header })}
     />
@@ -1125,10 +1138,15 @@ function seedFrom<T extends StageType>(
     return {
       id: 'stage-under-test',
       type,
-      // What a host opens a create session with: the interface's own authored
-      // defaults, not a blank document and not a schema default.
-      fields: { ...getInterfaceTemplate(type), ...fields },
-      creation: { position },
+      // What the editor opens a create session with: the interface's own
+      // authored defaults and the wording supplied in the protocol's
+      // languages, not a blank document and not a schema default. The editor
+      // seeds these itself; they are written here only to compare a save to.
+      fields: {
+        ...newStageFields(type, options.localization ?? fixtureLocalization()),
+        ...fields,
+      },
+      creation: { position, fields: { ...fields } },
     };
   }
   if (options.stage !== undefined) {
@@ -1171,9 +1189,14 @@ function codebookSections(
 function seededSections(
   seeded: SeededStage,
   assetManifest: Readonly<Record<string, unknown>>,
+  localization: ProtocolLocalization | undefined,
 ): Record<string, SectionDoc> {
   const base = fixtureProtocolSections();
   const sections: Record<string, SectionDoc> = { ...base };
+  if (localization !== undefined) {
+    const settings = sectionId({ kind: 'settings' });
+    sections[settings] = { ...base[settings], localization };
+  }
   if (seeded.creation === undefined) {
     sections[sectionId({ kind: 'stage', stageId: seeded.id })] = {
       id: seeded.id,

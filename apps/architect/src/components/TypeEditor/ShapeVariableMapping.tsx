@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import { createContext, useContext, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -13,10 +14,6 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import {
-  getMarkdownLabelText,
-  RenderMarkdown,
-} from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type {
@@ -27,6 +24,8 @@ import type {
 } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import { getLocalization } from '~/selectors/protocol';
+import { localizedText } from '~/utils/localizedText';
 
 import type {
   DiscreteShapeMapEntry,
@@ -331,6 +330,7 @@ const ShapeMappingEditor = ({
   defaultShape,
 }: ShapeMappingEditorProps) => {
   const intl = useAppIntl();
+  const localization = useSelector(getLocalization);
   const dynamic = (value ?? EMPTY_MAPPING) as ShapeMappingDraft;
 
   const variableOptions = Object.entries(variables ?? {})
@@ -402,15 +402,16 @@ const ShapeMappingEditor = ({
     value: DiscreteShapeMapEntry['value'];
   }> => {
     if (!selectedVar) return [];
-    if (selectedVar.type === 'boolean') {
-      return (
-        selectedVar.options ?? [
-          { label: intl.formatMessage(messages.true), value: true },
-          { label: intl.formatMessage(messages.false), value: false },
-        ]
-      );
+    if (selectedVar.type === 'boolean' && !selectedVar.options) {
+      return [
+        { label: intl.formatMessage(messages.true), value: true },
+        { label: intl.formatMessage(messages.false), value: false },
+      ];
     }
-    return selectedVar.options ?? [];
+    return (selectedVar.options ?? []).map((option) => ({
+      label: localizedText(option.label, localization),
+      value: option.value,
+    }));
   };
 
   const getShapeForValue = (
@@ -443,14 +444,12 @@ const ShapeMappingEditor = ({
           </Heading>
           {getDiscreteOptions().map((option) => (
             <div key={String(option.value)} className={ITEM_ROW_CLASSES}>
-              <RenderMarkdown render={<span className="flex-1 text-sm" />}>
-                {option.label}
-              </RenderMarkdown>
+              <span className="flex-1 text-sm">{option.label}</span>
               <ShapePickerControl
                 small
                 nodeColor={nodeColor}
                 aria-label={intl.formatMessage(messages.shapeFor, {
-                  value1: getMarkdownLabelText(option.label),
+                  value1: option.label,
                 })}
                 value={getShapeForValue(option.value)}
                 onChange={(shape) => {

@@ -1,10 +1,13 @@
 import { QueryClient, replaceEqualDeep } from '@tanstack/react-query';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 function sequenceOf(value: unknown): bigint | undefined {
-  if (typeof value !== 'object' || value === null) return undefined;
-  const revision = (value as Record<string, unknown>).revision;
-  if (typeof revision !== 'object' || revision === null) return undefined;
-  const sequence = (revision as Record<string, unknown>).sequence;
+  if (!isRecord(value)) return undefined;
+  const revision = value.revision;
+  if (!isRecord(revision)) return undefined;
+  const sequence = revision.sequence;
   return typeof sequence === 'bigint' ? sequence : undefined;
 }
 

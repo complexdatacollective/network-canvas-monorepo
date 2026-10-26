@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';

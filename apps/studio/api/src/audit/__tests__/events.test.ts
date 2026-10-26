@@ -34,6 +34,7 @@ describe('audit event registry', () => {
       'security.denied_attempts.rate_limited@1',
       'study.created@1',
       'study.creation_denied@1',
+      'team.created@1',
       'team.invitation.acceptance_denied@1',
       'team.invitation.acceptance_failed@1',
       'team.invitation.accepted@1',
@@ -215,8 +216,8 @@ describe('audit event registry', () => {
   });
 
   it('holds every bound the zod schemas carried', () => {
-    const withDetails = <Key extends AuditEventKey>(
-      key: Key,
+    const withDetails = (
+      key: AuditEventKey,
       details: Record<string, unknown>,
     ) => {
       const fixture = AUDIT_EVENT_REGISTRY[key].fixture;

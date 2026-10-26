@@ -95,7 +95,7 @@ export default function SourcePedigreePickerField({
   onFocus,
   className,
   disabled = false,
-  readOnly: readOnlyProp = false,
+  'readOnly': readOnlyProp = false,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,

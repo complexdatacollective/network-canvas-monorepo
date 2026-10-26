@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
+import Icon from '@codaco/fresco-ui/Icon';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Panel as PanelType } from '@codaco/protocol-validation';
@@ -17,8 +19,10 @@ import {
 import Loading from '../../../components/Loading';
 import NodeList from '../../../components/NodeList';
 import Panel from '../../../components/Panel';
+import { DynamicTextParts } from '../../../dynamicValues/DynamicText';
 import useExternalData from '../../../hooks/useExternalData';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import { getPanelNodes } from '../../../selectors/name-generator';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getStageSubject } from '../../../selectors/session';
@@ -55,6 +59,9 @@ function NodePanel(props: NodePanelProps) {
   } = props;
 
   const stageSubject = useStageSelector(getStageSubject);
+  const { text: title, parts: titleParts } = useLocalizedString(
+    panelConfig.title,
+  );
 
   const { externalData, status } = useExternalData(
     panelConfig.dataSource,
@@ -66,20 +73,15 @@ function NodePanel(props: NodePanelProps) {
   const nodes = useStageSelector(getPanelNodes(panelConfig, externalData));
 
   // Adding a person from external data stores its values, and those of
-  // encrypted variables can only be stored once a working passphrase is in
-  // force.
+  // encrypted variables can only be stored once the interview's passphrase
+  // has been entered.
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
-  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
-    usePassphrase();
+  const { unlocked, requirePassphrase } = usePassphrase();
   const needsPassphrase =
     isExternalData &&
-    (!passphrase || passphraseInvalid) &&
+    !unlocked &&
     nodes.some((node) =>
-      writesEncryptedValue(
-        node[entityAttributesProperty],
-        stageVariables,
-        isEnabled,
-      ),
+      writesEncryptedValue(node[entityAttributesProperty], stageVariables),
     );
 
   useEffect(() => {
@@ -143,7 +145,13 @@ function NodePanel(props: NodePanelProps) {
 
   return (
     <Panel
-      title={panelConfig.title}
+      title={
+        titleParts === undefined ? (
+          title
+        ) : (
+          <DynamicTextParts parts={titleParts} />
+        )
+      }
       panelNumber={panelNumber}
       minimize={minimize}
       testId="node-panel"
@@ -156,15 +164,16 @@ function NodePanel(props: NodePanelProps) {
       {isExternalData &&
       (status.state === 'idle' || status.state === 'loading') ? (
         <div className="flex flex-1 items-center justify-center">
-          <Loading message={intl.formatMessage(interfaceMessages.loading)} />
+          <Loading message={intl.formatMessage(commonMessages.loading)} />
         </div>
       ) : isExternalData && status.state === 'error' ? (
-        <div className="flex flex-1 flex-col items-center justify-center">
-          <Heading level="h4">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2">
+          <Icon name="warning" />
+          <Heading level="h4" className="sr-only">
             <AppMessage message={interfaceMessages.errorHeading} />
           </Heading>
           <Paragraph>
-            <AppMessage message={interfaceMessages.externalDataUnavailable} />
+            <AppMessage message={interfaceMessages.externalDataError} />
           </Paragraph>
         </div>
       ) : needsPassphrase ? (
@@ -179,7 +188,7 @@ function NodePanel(props: NodePanelProps) {
           acceptsFilter={acceptsFilter}
           nodeSize="sm"
           animationKey={animationKey}
-          announcedName={panelConfig.title}
+          announcedName={title}
           disabledKeys={disabledKeys}
           renderItem={isExternalData ? renderItem : undefined}
         />

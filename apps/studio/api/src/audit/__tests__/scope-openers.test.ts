@@ -262,14 +262,18 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       why: 'the hand-run re-keying command: each re-seal batch (ciphertext only, no plaintext changes), and the read-only postcondition',
     },
   [`${SERVER}/src/setup/commands.ts › setup.complete › UntenantedScope.open`]: {
-    count: 2,
-    why: 'reading and claiming the installation row, which belongs to no team and so to no team’s audit log',
+    count: 1,
+    why: 'reading the installation row, which belongs to no team and so to no team’s audit log; the claim itself happens inside the first team’s creation',
   },
   [`${SERVER}/src/team/commands.ts › team.acceptInvitation › UntenantedScope.open`]:
     {
       count: 1,
       why: 'finding which team an invitation names, read-only, before the audited transaction on that team opens',
     },
+  [`${SERVER}/src/team/commands.ts › team.createOwned › TenantScope.open`]: {
+    count: 1,
+    why: 'creating a team, for `team.create` and for first-run setup: the caller’s precondition and the team row are written before the audited transaction on it can lock it, and in the same transaction, so a refused or failed creation leaves nothing',
+  },
   [`${SERVER}/src/rpc/handlers/account.ts › UntenantedScope.open`]: {
     count: 1,
     why: 'a user’s own locale preference: personal, no tenant, deliberately unaudited (localization design §5.2)',

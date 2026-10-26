@@ -17,7 +17,6 @@ describe('resolveGenerationConfig', () => {
       sociogramLayoutRange: { min: 0.1, max: 0.9 },
       censusEdgeProbability: { min: 0.4, max: 0.6 },
       networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
-      familyPedigreeNodeCount: { min: 4, max: 10 },
       inProgressClearRatio: 0.5,
     };
 

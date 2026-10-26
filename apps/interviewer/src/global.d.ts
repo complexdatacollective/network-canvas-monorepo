@@ -10,6 +10,9 @@ declare global {
   // apps/interviewer/package.json `version`). Renderer-only.
   const __APP_VERSION__: string;
   const __PWA_BUILD_ID__: string;
+  // The Interviewer 8 this build serves at `/v8/`, or null when it bundles
+  // none (dev, tests, Storybook). Read through `getBundledLegacyInterviewer`.
+  const __INTERVIEWER_V8__: { version: string; path: '/v8/' } | null;
 
   type WireAsset = {
     id: string;

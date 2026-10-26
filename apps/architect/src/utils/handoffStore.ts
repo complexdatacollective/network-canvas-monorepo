@@ -1,105 +1,107 @@
-import Dexie, { type EntityTable } from 'dexie';
+import { Dexie, type EntityTable } from 'dexie';
 
-// The same-origin hand-off between Architect 8 (served at /v8/) and Architect
-// 9 (served at /). A navigation cannot carry a file, so the app handing one
-// over stages it here, then navigates to the other app with the record's key
-// in the URL; the other app takes the record (reading and deleting it in one
-// transaction) and opens the file through its normal open path.
+import { databaseExists } from './databaseExists';
+
+// Passes a file from this app to Architect 8 on this origin.
 //
-// This is a contract shared with Architect 9's copy of this file, on another
-// branch: the database name, the store schema and the record fields must stay
-// identical on both sides, and `handoffStore.contract.test.ts` pins them.
+// Architect 8 is served at `/v8/` beside this app, as the protocol editor
+// alone: every protocol is opened here, and only ever goes one way. When the
+// researcher keeps editing a schema 8 file as schema 8, this app stages it
+// here, then navigates to `/v8/?import=<key>`. Architect 8 takes the record
+// and opens the file through its own normal open path.
+//
+// SHARED CONTRACT. Architect 8 (on main) declares this database too, and both
+// sides must declare exactly the same schema: a mismatch makes Dexie bump the
+// database's version on every open, from both sides. The names below are
+// pinned by a contract test on each side; change them on both or neither.
 
 export const HANDOFF_DB_NAME = 'ArchitectHandoffDB';
-export const HANDOFF_DB_VERSION = 1;
-export const HANDOFF_STORES = { handoffs: 'key, createdAt' } as const;
 
-/** Records older than this are deleted when either app starts. */
+export const HANDOFF_DB_SCHEMA = { handoffs: 'key, createdAt' } as const;
+
+/** How long an untaken record is kept before startup clean-up removes it. */
 export const HANDOFF_TTL_MS = 60 * 60 * 1000;
 
-/** The major version of the app this build is, as a hand-off target. */
-const THIS_ARCHITECT_MAJOR = 8;
-
-export type HandoffTargetMajor = 8 | 9;
-
 export type HandoffRecord = {
-  /** `crypto.randomUUID()`. */
+  /** `crypto.randomUUID()`; also what goes in the URL. */
   key: string;
   kind: 'import';
-  /** The app that must consume it. */
-  targetMajor: HandoffTargetMajor;
+  /**
+   * The Architect major that must consume the record. Part of the shared
+   * contract; this app only ever stages records for Architect 8.
+   */
+  targetMajor: 8 | 9;
   fileName: string;
   file: Blob;
   /** Epoch milliseconds. */
   createdAt: number;
 };
 
-type HandoffDatabase = Dexie & {
+type HandoffDb = Dexie & {
   handoffs: EntityTable<HandoffRecord, 'key'>;
 };
 
-// Opened lazily: most sessions never hand anything over, and a startup that
-// only prunes should not fail because IndexedDB is unavailable.
-let database: HandoffDatabase | null = null;
+let handoffDb: HandoffDb | null = null;
 
-const getDatabase = (): HandoffDatabase => {
-  if (database) return database;
-  const db = new Dexie(HANDOFF_DB_NAME) as HandoffDatabase;
-  db.version(HANDOFF_DB_VERSION).stores(HANDOFF_STORES);
-  database = db;
-  return db;
+// Created on first use, not at import: an app that never hands anything off
+// should not create the database.
+const getHandoffDb = (): HandoffDb => {
+  if (!handoffDb) {
+    const db = new Dexie(HANDOFF_DB_NAME) as HandoffDb;
+    db.version(1).stores(HANDOFF_DB_SCHEMA);
+    handoffDb = db;
+  }
+  return handoffDb;
 };
 
-/** Stage a file for the app `targetMajor`; resolves with the record's key. */
-export const writeHandoff = async ({
+/**
+ * Stage `file` for another Architect major, returning the key to put in the
+ * URL. The caller navigates only after this resolves, so the record is durable
+ * before this page goes away.
+ */
+export const stageHandoff = async ({
   targetMajor,
-  fileName,
   file,
-  now = Date.now(),
+  fileName,
 }: {
-  targetMajor: HandoffTargetMajor;
-  fileName: string;
+  targetMajor: HandoffRecord['targetMajor'];
   file: Blob;
-  now?: number;
+  fileName: string;
 }): Promise<string> => {
   const key = crypto.randomUUID();
-  const record: HandoffRecord = {
+  await getHandoffDb().handoffs.add({
     key,
     kind: 'import',
     targetMajor,
     fileName,
     file,
-    createdAt: now,
-  };
-  await getDatabase().handoffs.add(record);
+    createdAt: Date.now(),
+  });
   return key;
 };
 
 /**
- * Take the record staged for this app under `key`: read and delete it in one
- * transaction, so a second consumer (a reload, another tab) finds nothing.
- *
- * Resolves `null` when there is no such record, or when it was staged for the
- * other app — that record is left for its owner, and expires with the rest.
+ * Withdraw a record this app staged and then did not navigate for (the
+ * researcher cancelled). Best left to the startup prune if it fails.
  */
-export const takeHandoff = async (
-  key: string,
-  targetMajor: HandoffTargetMajor = THIS_ARCHITECT_MAJOR,
-): Promise<HandoffRecord | null> => {
-  const db = getDatabase();
-  return db.transaction('rw', db.handoffs, async () => {
-    const record = await db.handoffs.get(key);
-    if (record?.kind !== 'import' || record.targetMajor !== targetMajor) {
-      return null;
-    }
-    await db.handoffs.delete(key);
-    return record;
-  });
+export const discardHandoff = async (key: string): Promise<void> => {
+  await getHandoffDb().handoffs.delete(key);
 };
 
-/** Delete every record older than the TTL, whichever app it was for. */
-export const pruneStaleHandoffs = async (now = Date.now()): Promise<number> =>
-  getDatabase()
+/**
+ * Remove records older than `HANDOFF_TTL_MS`, for either major. Run at startup:
+ * a record is only ever left behind when the navigation that should have
+ * consumed it never happened.
+ */
+export const pruneExpiredHandoffs = async (
+  now: number = Date.now(),
+): Promise<void> => {
+  // Nothing to prune — and nothing to create — until some app has staged a
+  // record. A browser that cannot list its databases just opens it: both
+  // majors declare the same schema, so creating it is harmless.
+  if ((await databaseExists(HANDOFF_DB_NAME)) === false) return;
+  await getHandoffDb()
     .handoffs.where('createdAt')
     .below(now - HANDOFF_TTL_MS)
     .delete();
+};

@@ -86,6 +86,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   defaultSortType,
   onSortChange,
   sortRules,
+  sortLocale,
   // Filter props
   filterQuery,
   filterExecution,
@@ -138,6 +139,7 @@ function CollectionContent<T extends Record<string, unknown>>({
     defaultSortType,
     onSortChange,
     sortRules,
+    sortLocale,
   });
 
   // Use filter state hook for filtering (only if filterKeys is provided)
@@ -208,6 +210,7 @@ function CollectionContent<T extends Record<string, unknown>>({
     // Consumer bundlers replace this flag, so the check is dropped from
     // production builds.
     if (import.meta.env.DEV && !scrollable && virtualized) {
+      // oxlint-disable-next-line no-console -- dev-only warning for a misconfigured prop, dead-code-eliminated from production builds by the DEV guard above
       console.warn(
         'Collection: `virtualized` needs a scroll container to measure against and is ignored when `scrollable` is false.',
       );
@@ -374,6 +377,7 @@ export function Collection<T extends Record<string, unknown>>({
   defaultSortType,
   onSortChange,
   sortRules,
+  sortLocale,
   // Filter props
   filterQuery,
   filterExecution,
@@ -387,6 +391,7 @@ export function Collection<T extends Record<string, unknown>>({
   children,
 }: CollectionProps<T>) {
   const intl = useAppIntl();
+  const resolvedSortLocale = sortLocale ?? intl.locale;
 
   const disabledKeysSet = useMemo(
     () => (disabledKeys ? new Set(disabledKeys) : undefined),
@@ -416,6 +421,9 @@ export function Collection<T extends Record<string, unknown>>({
           defaultSortType,
           sortRules,
         }),
+        // Text is ordered in the language the host says it is in, else the
+        // interface language, rather than whichever the runtime defaults to.
+        sortLocale: resolvedSortLocale,
         disabledKeys: disabledKeysSet,
         selectionMode,
         selectedKeys: selectedKeysSet ?? defaultSelectedKeysSet,
@@ -464,6 +472,7 @@ export function Collection<T extends Record<string, unknown>>({
         defaultSortType={defaultSortType}
         onSortChange={onSortChange}
         sortRules={sortRules}
+        sortLocale={resolvedSortLocale}
         // Filter props
         filterQuery={filterQuery}
         filterExecution={filterExecution}

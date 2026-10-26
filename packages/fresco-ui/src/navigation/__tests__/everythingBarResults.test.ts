@@ -256,3 +256,61 @@ describe('useEverythingBarResults session isolation', () => {
     expect(rowLabels(result.current.sections)).toEqual([]);
   });
 });
+
+describe('useEverythingBarResults groups a provider has been seen to serve', () => {
+  it('places a provider that declares no groups by the groups it last served', async () => {
+    const pages: Array<(page: EverythingBarSearchPage) => void> = [];
+    const provider: EverythingBarProvider = {
+      id: 'entities',
+      local: false,
+      persistence: 'never',
+      search: () =>
+        new Promise<EverythingBarSearchPage>((resolve) => {
+          pages.push(resolve);
+        }),
+    };
+    const { result, rerender } = renderHook(
+      ({ query }: { query: string }) =>
+        useEverythingBarResults({
+          providers: [provider],
+          open: true,
+          query,
+          recents: [],
+          debounceMs: 0,
+        }),
+      { initialProps: { query: 'panel' } },
+    );
+
+    // Before it has served anything, its pending row has no group to go to.
+    await waitFor(() => expect(pages).toHaveLength(1));
+    expect(result.current.sections.map((section) => section.id)).toEqual([
+      'other',
+    ]);
+
+    await act(async () => {
+      pages[0]?.({
+        items: [
+          {
+            id: 'study:st_42',
+            group: 'go-to',
+            label: 'Community Recovery Panel 2027',
+            rank: { tier: 0 },
+            activate: { kind: 'navigate', href: '/study/st_42' },
+          },
+        ],
+      });
+    });
+
+    // Searching again clears its results, and its pending row goes where its
+    // results went last time.
+    rerender({ query: 'recovery' });
+    await waitFor(() => expect(pages).toHaveLength(2));
+    const goTo = result.current.sections.find(
+      (section) => section.id === 'go-to',
+    );
+    expect(goTo?.rows.map((row) => row.kind)).toEqual(['pending']);
+    expect(
+      result.current.sections.some((section) => section.id === 'other'),
+    ).toBe(false);
+  });
+});

@@ -1,0 +1,13 @@
+- main:
+  - status:
+    - 'heading "Who does Dynamic value: Alice know?" [level=2]'
+  - button "Alice"
+  - listbox "Target nodes":
+    - option "Carol"
+    - option "Bob"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

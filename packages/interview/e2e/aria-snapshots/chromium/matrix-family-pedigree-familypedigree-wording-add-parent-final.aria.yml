@@ -1,0 +1,40 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your parent":
+    - heading "Add your parent" [level=2]
+    - button "Close"
+    - text: Kind of new parent - matrix check Required
+    - radiogroup "Kind of new parent - matrix check":
+      - radio "Biological parent"
+      - text: Biological parent
+      - radio "Adoptive parent"
+      - text: Adoptive parent
+      - radio "Step or social parent" [checked]
+      - text: Step or social parent
+      - radio "Egg or sperm donor"
+      - text: Egg or sperm donor
+      - radio "Surrogate"
+      - text: Surrogate
+    - text: Did the new parent carry them - matrix check
+    - radiogroup "Did the new parent carry them - matrix check":
+      - radio "Yes"
+      - radio "No" [checked]
+    - text: Partner of a parent - matrix check
+    - radiogroup "Partner of a parent - matrix check":
+      - radio "Julie"
+      - text: Julie
+      - radio "Rob"
+      - text: Rob
+      - radio "No"
+      - text: "No"
+    - text: Also parent of these - matrix check
+    - group "Also parent of these - matrix check":
+      - checkbox "Bea" [checked]
+      - text: Bea
+      - checkbox "Bo" [checked]
+      - text: Bo
+    - button "Cancel"
+    - button "Back"
+    - button "Save"

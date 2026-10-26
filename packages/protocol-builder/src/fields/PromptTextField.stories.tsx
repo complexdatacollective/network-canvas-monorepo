@@ -8,8 +8,11 @@ import EdgeTypeSection from '../editors/dyad-census/sections/EdgeTypeSection.tsx
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import { PromptTextField, PromptTextPreview } from './PromptTextField.tsx';
 
-/** The question the fixture's Dyad Census asks, as the protocol holds it. */
-const WRITTEN = 'Do these **two people** know each other?';
+/**
+ * The question the fixture's Dyad Census asks, as the protocol holds it: one
+ * translation, in the fixture's only language.
+ */
+const WRITTEN = { 'en-US': 'Do these **two people** know each other?' };
 
 /** What this prompt shows the participant is refused when it is nothing. */
 const REFUSAL =
@@ -24,10 +27,11 @@ function DyadCensusGuidance() {
   return (
     <Alert variant="info" className="mb-6">
       <AlertDescription>
-        The participant sees two people side by side and answers yes or no, so
-        write the question about the pair in front of them — “these two people”
-        rather than a name — and phrase it so that yes and no are both sensible
-        answers.
+        The participant sees two nodes side by side and answers yes or no, so
+        write the question about that pair and phrase it so that yes and no are
+        both sensible answers. To show the two nodes’ labels in the question,
+        insert “First node: label” and “Second node: label” with the syringe
+        button in the toolbar.
       </AlertDescription>
     </Alert>
   );

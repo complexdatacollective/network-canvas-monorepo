@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import SuperJSON from 'superjson';
+import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
@@ -73,10 +73,6 @@ function buildInterview(args: StoryArgs) {
     label: 'Rate Relationships',
     initialNodes: { count: args.initialNodeCount },
     subject: { entity: 'node', type: nt.id },
-    introductionPanel: {
-      title: 'Rate Your Relationships',
-      text: 'In this stage, you will be shown pairs of people from your network. For each pair, please indicate the strength of their relationship.',
-    },
   });
 
   // Add prompts

@@ -6,23 +6,30 @@
 // offline language switch, or the first offline opening of the menu.
 // Chunks loaded on demand (each UI language, the bundled sample protocol, the
 // synthetic data generator and its faker dependency) must stay out of the
-// initial load.
-//
-// Base-aware: INTERVIEWER_BASE_PATH (resolved exactly as vite.renderer.config.ts
-// resolves it) selects the root build or the /v8/ build Interviewer 9 serves
-// from its own deploy, and every path and cache name probed below derives
-// from it, so a sub-path build is held to the same worker contract.
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+// initial load. The Development protocol, offered only in `vite dev`, must not
+// be in the build at all.
+import { readdirSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  appCachePrefix,
-  resolveAppBasePath,
-} from '../../../scripts/buildtime/app-base-path.mjs';
+import { loadEnv } from 'vite';
+
+import { assertNoDevelopmentProtocol } from '../../../scripts/buildtime/assert-no-development-protocol.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
-import { findShippedProtocols } from '../../../scripts/buildtime/find-shipped-protocols.mjs';
+import {
+  assertAnchoredRoute,
+  assertLegacyAppOutput,
+  assertLegacyRedirects,
+  assertLegacyRouteExclusions,
+  assertLegacySameOriginFraming,
+  findLegacyPrecacheEntries,
+  routeMatcherAt,
+} from '../../../scripts/buildtime/legacy-app-assertions.ts';
+import {
+  legacyApp,
+  loadLegacyAppV8,
+} from '../../../scripts/buildtime/legacy-app.ts';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -35,62 +42,37 @@ const fail = (msg) => {
   process.exit(1);
 };
 
-// `/` for the root build; `/v8/` for Interviewer 8 inside Interviewer 9's
-// deploy.
-const base = resolveAppBasePath(process.env, 'INTERVIEWER_BASE_PATH');
-const isSubpath = base !== '/';
-const cachePrefix = appCachePrefix('interviewer', base);
-const atBase = (absolutePath) => `${base}${absolutePath.slice(1)}`;
-const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+// Interviewer 8 is served at /v8/ from this deploy (dist/v8, see
+// scripts/buildtime/legacy-app.ts), so its stable entry points and hashed
+// assets are held to the same contract as this app's, whether or not this
+// build bundles it, and its deep links must reach its own shell. This app
+// hosts its interview in a same-origin frame, so /v8/ may be framed by this
+// origin and no other.
+const legacyInterviewer = legacyApp('interviewer');
+try {
+  const headers = readFileSync(path.join(dist, '_headers'), 'utf8');
+  assertPwaCacheHeaders({
+    additionalStablePaths: ['/interviewer-icon.png'],
+    nestedBases: ['/v8/'],
+    text: headers,
+  });
+  assertLegacySameOriginFraming(headers);
+  assertLegacyRedirects(
+    legacyInterviewer,
+    readFileSync(path.join(dist, '_redirects'), 'utf8'),
+  );
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
 
-const packageJson = JSON.parse(
-  readFileSync(path.join(appRoot, 'package.json'), 'utf8'),
-);
-
-if (isSubpath) {
-  // The hosting deploy owns these rules (build.mjs removes the copies):
-  // Netlify reads them only at the publish root.
-  for (const file of ['_headers', '_redirects']) {
-    if (existsSync(path.join(dist, file))) {
-      fail(`a ${base} build must not ship dist/${file}`);
-    }
-  }
-  // What Interviewer 9's bundler validates before it extracts a tarball into
-  // its own dist/v8 (build.mjs writes it; the release packer rewrites the
-  // tag and commit from the release it packs).
-  let distInfo;
-  try {
-    distInfo = JSON.parse(
-      readFileSync(path.join(dist, 'dist-info.json'), 'utf8'),
-    );
-  } catch {
-    fail(`a ${base} build must write a valid dist/dist-info.json`);
-  }
-  if (
-    distInfo.tag !== `@codaco/interviewer@${packageJson.version}` ||
-    distInfo.version !== packageJson.version ||
-    distInfo.base !== base ||
-    distInfo.cachePrefix !== cachePrefix ||
-    !(distInfo.commit === null || /^[0-9a-f]{40}$/.test(distInfo.commit))
-  ) {
-    fail(
-      `dist/dist-info.json does not describe this ${base} build: ${JSON.stringify(distInfo)}`,
-    );
-  }
-} else {
-  try {
-    assertPwaCacheHeaders({
-      additionalStablePaths: ['/interviewer-icon.png'],
-      text: readFileSync(path.join(dist, '_headers'), 'utf8'),
-    });
-  } catch (error) {
-    fail(error instanceof Error ? error.message : String(error));
-  }
-  // The root dist is deployed as it stands; a stamp describing a sub-path
-  // build would only mislead whoever reads it.
-  if (existsSync(path.join(dist, 'dist-info.json'))) {
-    fail('the root build must not ship dist/dist-info.json');
-  }
+// The Development protocol is installable only in `vite dev` (Home.tsx and
+// useProtocolImport.ts), so none of it — its JSON or its media, a 23MB video
+// among them — belongs in a production build, not even as a chunk nothing
+// fetches: everything in dist is deployed.
+try {
+  assertNoDevelopmentProtocol(dist);
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 const swPath = path.join(dist, 'sw.js');
@@ -101,7 +83,10 @@ try {
   fail('missing dist/sw.js');
 }
 
-const expectedPrecachePrefixStart = `${cachePrefix}${packageJson.version}-`;
+const packageJson = JSON.parse(
+  readFileSync(path.join(appRoot, 'package.json'), 'utf8'),
+);
+const expectedPrecachePrefixStart = `interviewer-${packageJson.version}-`;
 const precachePrefix = sw.match(
   /setCacheNameDetails\(\{prefix:"([^"]+)"\}\)/,
 )?.[1];
@@ -154,22 +139,28 @@ if (
 ) {
   fail('cache reclaimer does not recheck worker ownership and pending updates');
 }
-// The root build shares its origin with Interviewer 8 at /v8/ once Interviewer
-// 9 hosts it, and 'interviewer-v8-' caches also start with 'interviewer-'. Its
-// reclaimer must leave those caches and /v8/ windows alone; a sub-path build
-// hosts no nested app.
-const expectedForeignCachePrefixes = isSubpath ? [] : ['interviewer-v8-'];
-const expectedForeignScopePaths = isSubpath ? [] : ['/v8/'];
+// This build shares its origin with Interviewer 8 at /v8/, whose
+// 'interviewer-v8-' caches also start with 'interviewer-'. Its reclaimer must
+// leave those caches and /v8/ windows alone.
+const expectedForeignCachePrefixes = [legacyInterviewer.cachePrefix];
 if (
   !reclamationWorker.includes(
     `const foreignCachePrefixes = ${JSON.stringify(expectedForeignCachePrefixes)};`,
   ) ||
   !reclamationWorker.includes(
-    `const foreignScopePaths = ${JSON.stringify(expectedForeignScopePaths)};`,
-  )
+    `const foreignScopePaths = ${JSON.stringify(['/v8/'])};`,
+  ) ||
+  !reclamationWorker.includes('!isForeignCacheName(cacheName)') ||
+  !reclamationWorker.includes('!isForeignScopePath(clientUrl.pathname)')
 ) {
   fail(
-    `cache reclaimer must treat exactly ${JSON.stringify(expectedForeignCachePrefixes)} caches and ${JSON.stringify(expectedForeignScopePaths)} windows as another app's`,
+    'cache reclaimer does not leave the nested Interviewer 8 caches and windows alone',
+  );
+}
+const legacyPrecacheEntries = findLegacyPrecacheEntries(sw);
+if (legacyPrecacheEntries.length > 0) {
+  fail(
+    `Interviewer 8 is in this app's precache: ${legacyPrecacheEntries.join(', ')}`,
   );
 }
 for (const f of [
@@ -181,50 +172,6 @@ for (const f of [
     readFileSync(path.join(dist, f));
   } catch {
     fail(`missing dist/${f}`);
-  }
-}
-
-let manifest;
-try {
-  manifest = JSON.parse(
-    readFileSync(path.join(dist, 'manifest.webmanifest'), 'utf8'),
-  );
-} catch {
-  fail('dist/manifest.webmanifest is not valid JSON');
-}
-if (manifest.start_url !== base || manifest.scope !== base) {
-  fail(
-    `manifest start_url and scope must be ${base}; found ${manifest.start_url} and ${manifest.scope}`,
-  );
-}
-if (isSubpath) {
-  // Opened inside Interviewer 9's window, never installed on its own: it must
-  // be told apart from Interviewer 9 wherever the OS lists it, and must not
-  // compete with it for .netcanvas launches.
-  const expectedName = `Interviewer ${packageJson.version.split('.')[0]}`;
-  if (manifest.name !== expectedName || manifest.short_name !== expectedName) {
-    fail(`a ${base} build's manifest must be named ${expectedName}`);
-  }
-  if (manifest.id !== base) {
-    fail(`a ${base} build's manifest id must be ${base}`);
-  }
-  // Browsers offer to install only an app that asks for its own window.
-  if (manifest.display !== 'browser') {
-    fail(
-      `a ${base} build's manifest display must be browser, so it is never offered for installation; found ${manifest.display}`,
-    );
-  }
-  if ('file_handlers' in manifest || 'launch_handler' in manifest) {
-    fail(`a ${base} build must not register as a .netcanvas file handler`);
-  }
-} else {
-  if (manifest.display !== 'standalone') {
-    fail(
-      `the root build must stay installable in its own window; manifest display is ${manifest.display}`,
-    );
-  }
-  if (manifest.file_handlers?.[0]?.action !== '/') {
-    fail('the root build no longer opens launched .netcanvas files');
   }
 }
 
@@ -253,41 +200,36 @@ if (stagePreviewAssets.length === 0) {
   fail('no 4:3 stage-preview assets found');
 }
 
-// Interviewer 9 installs a sub-path build's worker in the background, so its
-// first visit may be offline: every font must be precached there. The root
-// build leaves them to its runtime cache, and the hashed header mark too
-// (Home's, which a sub-path build does not ship).
-const offlineFirstVisitAssets = assetFiles
+// Fonts are left to the runtime cache. The hashed header mark (Home's and
+// onboarding's) is precached: the installing page is not controlled by the
+// worker, so the runtime cache never sees it before the first offline launch.
+const fontAssets = assetFiles
   .filter((f) => f.endsWith('.woff2'))
   .map((f) => `assets/${f}`);
-if (offlineFirstVisitAssets.length === 0) {
+if (fontAssets.length === 0) {
   fail('no .woff2 fonts emitted to dist/assets');
 }
 const headerMarks = assetFiles.filter((f) => /^NC-Flat-.+\.png$/.test(f));
-if (!isSubpath && headerMarks.length === 0) {
+if (headerMarks.length === 0) {
   fail('no hashed header mark (assets/NC-Flat-*.png) emitted');
 }
 
 const manifestUrls = new Set(
   [...sw.matchAll(/\{url:"([^"]+)",revision:/g)].map((m) => m[1]),
 );
-if (isSubpath) {
-  const missing = offlineFirstVisitAssets.filter(
-    (url) => !manifestUrls.has(url),
+const precachedFonts = fontAssets.filter((url) => manifestUrls.has(url));
+if (precachedFonts.length > 0) {
+  fail(
+    `the build precaches runtime-cached fonts: ${precachedFonts.join(', ')}`,
   );
-  if (missing.length > 0) {
-    fail(
-      `a ${base} build must precache its fonts; missing: ${missing.join(', ')}`,
-    );
-  }
-} else {
-  const added = [
-    ...offlineFirstVisitAssets,
-    ...headerMarks.map((f) => `assets/${f}`),
-  ].filter((url) => manifestUrls.has(url));
-  if (added.length > 0) {
-    fail(`the root build precaches runtime-cached assets: ${added.join(', ')}`);
-  }
+}
+const missingMarks = headerMarks
+  .map((f) => `assets/${f}`)
+  .filter((url) => !manifestUrls.has(url));
+if (missingMarks.length > 0) {
+  fail(
+    `the header mark is not precached, so it breaks on the first offline launch: ${missingMarks.join(', ')}`,
+  );
 }
 
 const missingStagePreviewAssets = stagePreviewAssets.filter(
@@ -307,6 +249,25 @@ const strayMaps = (await readdir(dist, { recursive: true })).filter((f) =>
 );
 if (strayMaps.length > 0) {
   fail(`source map(s) left in dist: ${strayMaps.join(', ')}`);
+}
+
+// dist/v8 holds exactly the pinned Interviewer 8 (or nothing), under the
+// cache prefix the reclaimer was checked above to leave alone. The recursive
+// source-map check above covers it too.
+const legacyInterviewerV8 = loadLegacyAppV8(
+  legacyInterviewer,
+  appRoot,
+  loadEnv('production', appRoot, ''),
+);
+try {
+  assertLegacyAppOutput({
+    app: legacyInterviewer,
+    dist,
+    resolution: legacyInterviewerV8,
+    foreignCachePrefixes: expectedForeignCachePrefixes,
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 const critical = jsAssets.filter(
@@ -329,29 +290,10 @@ if (excluded.length > 0) {
 // The initial load: the scripts index.html loads or preloads, plus every chunk
 // they import statically. Dynamic `import()` targets are not followed.
 const indexHtml = readFileSync(path.join(dist, 'index.html'), 'utf8');
-// index.html must load its bundles from under the base: a root `/assets/`
-// reference in a sub-path build would load the hosting app's files.
-const htmlAssetRefs = [
-  ...indexHtml.matchAll(/(?:src|href)="([^"]*\/assets\/[^"]+)"/g),
-].map((match) => match[1]);
-if (htmlAssetRefs.length === 0) {
-  fail('dist/index.html references no bundled assets');
-}
-const offBaseAssetRefs = htmlAssetRefs.filter(
-  (ref) => !ref.startsWith(atBase('/assets/')),
-);
-if (offBaseAssetRefs.length > 0) {
-  fail(
-    `dist/index.html loads assets from outside ${base}: ${offBaseAssetRefs.join(', ')}`,
-  );
-}
 const initialLoad = new Set(
   [
     ...indexHtml.matchAll(
-      new RegExp(
-        `<(?:script[^>]*\\bsrc|link[^>]*\\bhref)="${escapeRegExp(atBase('/assets/'))}([^"]+\\.js)"`,
-        'g',
-      ),
+      /<(?:script[^>]*\bsrc|link[^>]*\bhref)="\/assets\/([^"]+\.js)"/g,
     ),
   ].map((m) => m[1]),
 );
@@ -379,9 +321,7 @@ if (
 // Modules the app loads on demand to keep them out of the initial load. Each
 // must stay its own chunk (a static import anywhere folds it into the entry,
 // and the chunk disappears) outside the initial load, and must be precached
-// exactly when the feature it serves has to work offline. Both serve Home (the
-// sample card, Settings' synthetic data), so a sub-path build, which has no
-// Home, must ship neither.
+// exactly when the feature it serves has to work offline.
 const deferredChunks = [
   {
     prefix: 'bundledSampleProtocol-',
@@ -396,14 +336,6 @@ const deferredChunks = [
 ];
 for (const { prefix, purpose, precache } of deferredChunks) {
   const matches = jsAssets.filter((f) => f.startsWith(prefix));
-  if (isSubpath) {
-    if (matches.length > 0) {
-      fail(
-        `a ${base} build has no Home, so must not ship ${matches.join(', ')} for ${purpose}`,
-      );
-    }
-    continue;
-  }
   if (matches.length !== 1) {
     fail(
       `expected one on-demand ${prefix}*.js chunk for ${purpose}, found ${matches.length}`,
@@ -422,73 +354,6 @@ for (const { prefix, purpose, precache } of deferredChunks) {
   }
 }
 
-// Interviewer 8 inside Interviewer 9 is the interview alone: Home (the
-// protocol deck), the data view, Settings, onboarding and the not-found page
-// are replaced before they load (vite.config.ts), so none of their code may
-// reach a sub-path build. Their message ids mark them: every message is
-// defined, id and all, in the module that shows it. The root build must carry
-// every one, or the marker has stopped matching and the check would pass
-// vacuously. Catalog chunks are left out: they hold every message by design.
-const SCREEN_MESSAGE_PREFIXES = [
-  'home',
-  'protocolDeck',
-  'topActionBar',
-  'dataView',
-  'settingsDialog',
-  'onboardingScreen',
-  'notFound',
-];
-const screenMarker = (prefix) => new RegExp(`["'\`]interviewer\\.${prefix}\\.`);
-const codeChunks = jsAssets
-  .filter((f) => !/^(?:interview-)?locale-/.test(f))
-  .map((f) => ({
-    file: f,
-    source: readFileSync(path.join(assetsDir, f), 'utf8'),
-  }));
-for (const prefix of SCREEN_MESSAGE_PREFIXES) {
-  const shipping = codeChunks
-    .filter(({ source }) => screenMarker(prefix).test(source))
-    .map(({ file }) => file);
-  if (isSubpath && shipping.length > 0) {
-    fail(
-      `a ${base} build ships Interviewer 8's own ${prefix} screen (${shipping.join(', ')}); vite.config.ts must leave it out`,
-    );
-  }
-  if (!isSubpath && shipping.length === 0) {
-    fail(
-      `no chunk carries the interviewer.${prefix}.* messages; update the screen markers`,
-    );
-  }
-}
-
-// The dev-only Development protocol is installed only from a dev build (its
-// import is guarded by `import.meta.env.DEV` in useProtocolImport.ts), so a
-// production build must carry neither it nor its media (a 23 MB video among
-// it), not even in a chunk nothing requests.
-const developmentChunks = jsAssets.filter((f) =>
-  f.startsWith('bundledDevelopmentProtocol-'),
-);
-if (developmentChunks.length > 0) {
-  fail(
-    `a production build must not emit the dev-only ${developmentChunks.join(', ')}`,
-  );
-}
-let shippedDevelopment = [];
-try {
-  shippedDevelopment = await findShippedProtocols({
-    dist,
-    protocolsRoot: path.resolve(appRoot, '../../packages/protocols'),
-    protocolDirs: ['development'],
-  });
-} catch (error) {
-  fail(error instanceof Error ? error.message : String(error));
-}
-if (shippedDevelopment.length > 0) {
-  fail(
-    `a production build must not ship the Development protocol or its media: ${shippedDevelopment.join(', ')}`,
-  );
-}
-
 // Faker should reach the bundle only through the synthetic generator chunk.
 // Its core module carries this deprecation-warning prefix. Finding it in the
 // initial load means something imports the generator statically, or that
@@ -499,14 +364,7 @@ const FAKER_MARKER = '[@faker-js/faker]: ';
 const fakerChunks = jsAssets.filter((f) =>
   readFileSync(path.join(assetsDir, f), 'utf8').includes(FAKER_MARKER),
 );
-// A sub-path build has no Settings, so no synthetic data generator, and no
-// Faker at all.
-if (isSubpath && fakerChunks.length > 0) {
-  fail(
-    `a ${base} build has no synthetic data generator, but ships @faker-js/faker (${fakerChunks.join(', ')})`,
-  );
-}
-if (!isSubpath && fakerChunks.length === 0) {
+if (fakerChunks.length === 0) {
   fail(`no chunk contains the faker marker ${FAKER_MARKER}; update it`);
 }
 const fakerInInitialLoad = fakerChunks.filter((f) => initialLoad.has(f));
@@ -576,14 +434,8 @@ if (staticLocaleImporters.length > 0) {
   );
 }
 
-const interviewPath = atBase('/interview/');
 const interviewRouteMatches = [
-  ...sw.matchAll(
-    new RegExp(
-      `!?[$\\w]+\\.pathname\\.startsWith\\("${escapeRegExp(interviewPath)}"\\)`,
-      'g',
-    ),
-  ),
+  ...sw.matchAll(/!?[$\w]+\.pathname\.startsWith\("\/interview\/"\)/g),
 ];
 const interviewCacheRoute = interviewRouteMatches.find(
   (match) => !match[0].startsWith('!'),
@@ -592,10 +444,10 @@ const freshShellRoute = interviewRouteMatches.find((match) =>
   match[0].startsWith('!'),
 );
 if (!interviewCacheRoute) {
-  fail(`missing ${interviewPath} precached-shell navigation route`);
+  fail('missing /interview/ precached-shell navigation route');
 }
 if (!freshShellRoute) {
-  fail(`fresh-shell navigation route does not exclude ${interviewPath}`);
+  fail('fresh-shell navigation route does not exclude /interview/');
 }
 if (
   interviewCacheRoute.index === undefined ||
@@ -621,11 +473,11 @@ const interviewRoute = sw.slice(
   freshShellRoute.index,
 );
 const assetHandoffRouteIndex = sw.indexOf(
-  `pathname.startsWith("${atBase('/assets/')}")`,
+  'pathname.startsWith("/assets/")',
   freshShellRoute.index,
 );
 const imagesRouteIndex = sw.indexOf(
-  `cacheName:"${cachePrefix}images"`,
+  'cacheName:"interviewer-images"',
   freshShellRoute.index,
 );
 if (imagesRouteIndex === -1) {
@@ -638,7 +490,7 @@ if (
   fail('missing exact-hash asset handoff route after navigation routes');
 }
 const imagesRouteEnd = sw.indexOf(
-  `cacheName:"${cachePrefix}fonts"`,
+  'cacheName:"interviewer-fonts"',
   imagesRouteIndex,
 );
 const imagesRouteSource = sw.slice(
@@ -656,11 +508,35 @@ for (const stableIconPath of [
   '/maskable-icon-512x512.png',
   '/interviewer-icon.png',
 ]) {
-  if (!imagesRouteSource.includes(`"${atBase(stableIconPath)}"`)) {
+  if (!imagesRouteSource.includes(`"${stableIconPath}"`)) {
     fail(
       `interviewer image-cache route includes stable icon ${stableIconPath}`,
     );
   }
+}
+// Interviewer 8 at /v8/ has its own worker: nothing of it may be answered or
+// cached here. The navigation and asset routes that match only /interview/
+// and /assets/ cannot see it; the rest exclude it by name.
+try {
+  assertLegacyRouteExclusions({
+    app: legacyInterviewer,
+    freshShell: routeMatcherAt(sw, freshShellRoute.index),
+    image: routeMatcherAt(sw, imagesRouteIndex),
+    font: routeMatcherAt(sw, imagesRouteEnd),
+    sameOriginRoutes: ['image', 'font'],
+  });
+  assertAnchoredRoute({
+    description: 'the /interview/ precached-shell navigation route',
+    source: routeMatcherAt(sw, interviewCacheRoute.index),
+    prefix: '/interview/',
+  });
+  assertAnchoredRoute({
+    description: 'the exact-hash asset handoff route',
+    source: routeMatcherAt(sw, assetHandoffRouteIndex),
+    prefix: '/assets/',
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 const freshShellRouteSource = sw.slice(
   freshShellRoute.index,
@@ -673,9 +549,7 @@ const assetHandoffRouteSource = sw.slice(
 if (!/\.CacheOnly\(\{/.test(interviewRoute)) {
   fail('/interview/ navigation does not force the active cached shell');
 }
-if (
-  !interviewRoute.includes(`cacheName:"${cachePrefix}interview-navigation"`)
-) {
+if (!interviewRoute.includes('cacheName:"interviewer-interview-navigation"')) {
   fail('/interview/ cache-only route does not use its shared empty cache');
 }
 if (interviewRoute.includes(`${precachePrefix}-interview-navigation`)) {
@@ -715,7 +589,7 @@ if (
   fail('navigation fallback searches retained precaches globally');
 }
 if (
-  !assetHandoffRouteSource.includes(`"${atBase('/assets/')}"`) ||
+  !/\/assets\//.test(assetHandoffRouteSource) ||
   !/js\|css/.test(assetHandoffRouteSource) ||
   !/4x3/.test(assetHandoffRouteSource) ||
   !/webp/.test(assetHandoffRouteSource) ||
@@ -731,20 +605,7 @@ if (
 if (/index\.html/.test(assetHandoffRouteSource)) {
   fail('exact-hash asset handoff must not search retained HTML shells');
 }
-// The worker of a sub-path build only ever controls pages under its base, so
-// a root path left in its route source is a matcher that can never fire.
-if (isSubpath) {
-  const routeSource = sw.slice(interviewCacheRoute.index);
-  const rootPaths = [...routeSource.matchAll(/"(\/(?!\/)[^"]*)"/g)]
-    .map((match) => match[1])
-    .filter((literal) => !literal.startsWith(base));
-  if (rootPaths.length > 0) {
-    fail(
-      `worker routes still match root paths outside ${base}: ${[...new Set(rootPaths)].join(', ')}`,
-    );
-  }
-}
 
 console.log(
-  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${isSubpath ? `${offlineFirstVisitAssets.length} font files precached; no Home, data view, Settings, onboarding, sample or faker shipped` : `${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`}`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );

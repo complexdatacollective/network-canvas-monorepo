@@ -171,16 +171,16 @@ standalone SVG:
 - `line` → `<line x1 y1 x2 y2>` in %, `stroke`, `stroke-width`,
   `vector-effect="non-scaling-stroke"`, plus `marker-start`/`marker-end`
   referencing a single shared `<marker id="arrow" markerUnits="userSpaceOnUse"
-orient="auto-start-reverse">` def (emitted once, only when any line uses
+  orient="auto-start-reverse">` def (emitted once, only when any line uses
   arrows), following the #1018 sample-protocol pattern. The marker path `fill`
   uses that line's stroke colour; when multiple arrow colours are in use emit one
   marker def per distinct colour (`arrow`, `arrow-2`, …).
 - `polygon` → **nested-svg stretch pattern** (percentages are invalid inside
   `points`): `<svg x="0" y="0" width="100%" height="100%" viewBox="0 0 100 100"
-preserveAspectRatio="none"><polygon points="…" …/></svg>` where points are
+  preserveAspectRatio="none"><polygon points="…" …/></svg>` where points are
   normalized × 100. The inner `viewBox` does not give the _root_ an intrinsic
   ratio, so the document remains edge-to-edge responsive; `vector-effect:
-non-scaling-stroke` keeps polygon strokes uniform under the non-uniform scale.
+  non-scaling-stroke` keeps polygon strokes uniform under the non-uniform scale.
 - `text` → `<text x y fill text-anchor>` with
   `style="font-family: system-ui, sans-serif; font-size: clamp(<min>px, <vmin>vmin, <max>px); font-weight: <w>"`,
   `opacity` (omit when 1). Multi-line: one `<tspan x="<x%>" dy="…">` per line —
@@ -317,7 +317,7 @@ a comment). Slices:
   hidden when `zonesVisible` off (pills for concentric same-centre shapes sit
   at the top inner edge so nested rings don't stack their pills).
 - Pointer interactions (pointer capture, 5px drag threshold, `touchAction:
-'none'` — the `useCanvasDrag` idiom): draw by drag (rect/ellipse/line),
+  'none'` — the `useCanvasDrag` idiom): draw by drag (rect/ellipse/line),
   polygon by click-to-add-vertex + double-click/Enter to close, Escape cancels,
   text tool click places then opens the inline text editor. Select tool: click
   selects topmost hit, drag moves, handles resize (rect/ellipse corners; line

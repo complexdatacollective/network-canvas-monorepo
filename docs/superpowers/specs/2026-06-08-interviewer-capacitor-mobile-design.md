@@ -120,7 +120,7 @@ calls are gated by `Capacitor.isNativePlatform()`.
 
 - `capacitor.config.ts` (modelled on v7): `appId: 'org.codaco.NetworkCanvasInterviewer6'`,
   `appName: 'Network Canvas Interviewer'`, `webDir: 'dist-web'`, `server.androidScheme:
-'https'`, optional `server.url` from `CAP_DEV_SERVER_URL` (cleartext) for device
+  'https'`, optional `server.url` from `CAP_DEV_SERVER_URL` (cleartext) for device
   live-reload, `ios.contentInset: 'always'`.
 - Plugins (Capacitor 8.x): `@capacitor/core`, `@capacitor/ios`, `@capacitor/android`,
   `@capacitor/filesystem`, `@capacitor/share`, `@capacitor/app`, `@capacitor/device`,

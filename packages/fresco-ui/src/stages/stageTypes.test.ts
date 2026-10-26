@@ -13,7 +13,7 @@ describe('STAGE_TYPE_COLORS', () => {
   it('gives every stage type a distinct palette colour', () => {
     const colors = Object.values(STAGE_TYPE_COLORS);
 
-    expect(colors).toHaveLength(19);
+    expect(colors).toHaveLength(21);
     expect(new Set(colors).size).toBe(colors.length);
     for (const color of colors) {
       expect(paletteColorStyles).toHaveProperty(color);
@@ -28,7 +28,7 @@ describe('STAGE_TYPE_COLORS', () => {
     }
     const shared = [...byBase.values()]
       .filter((stages) => stages.length > 1)
-      .map((stages) => stages.sort());
+      .map((stages) => stages.toSorted());
 
     expect(shared).toEqual([
       ['NameGenerator', 'NameGeneratorRoster'],

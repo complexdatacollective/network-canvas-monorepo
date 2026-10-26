@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test';
  * Playwright's Linux WebKit renders `backdrop-filter` in software, and
  * recomputes each blur on EVERY rendering update that invalidates it: the
  * ModalBackdrop's full-viewport blur while any dialog is open, and floating
- * frosted panels (e.g. the pedigree checklist) whenever the canvas behind
+ * frosted panels whenever the canvas behind
  * them animates (measured 150ms-2.2s per frame under CI load). Playwright's
  * actionability checks poll element stability once per rAF frame and click
  * dispatch waits on the same rendering pipeline, so each affected click

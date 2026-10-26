@@ -1,9 +1,13 @@
 import { Effect, Layer, Queue } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SessionProcessingError } from '@codaco/network-exporters/errors';
 import type { ExportEvent } from '@codaco/network-exporters/events';
 import type { ExportOptions } from '@codaco/network-exporters/options';
-import type { ExportReturn } from '@codaco/network-exporters/output';
+import type {
+  ExportReturn,
+  ExportWarning,
+} from '@codaco/network-exporters/output';
 import {
   type ExportStreamEvent,
   parseExportEventBuffer,
@@ -17,9 +21,13 @@ vi.mock('~/lib/auth/guards', () => ({
   requireApiAuth: () => Promise.resolve(),
 }));
 
-const interviewCount = vi.fn(() => Promise.resolve(1));
+// Each interview of the request, with its protocol's schema version.
+let storedInterviews: { id: string; protocol: { schemaVersion: number } }[] =
+  [];
 vi.mock('~/lib/db', () => ({
-  prisma: { interview: { count: () => interviewCount() } },
+  prisma: {
+    interview: { findMany: () => Promise.resolve(storedInterviews) },
+  },
 }));
 
 vi.mock('~/lib/posthog-server', () => ({
@@ -33,6 +41,12 @@ vi.mock('~/lib/export/InterviewRepository', () => ({
 vi.mock('~/lib/export/ProtocolRepository', () => ({
   PrismaProtocolRepository: Layer.empty,
 }));
+vi.mock('~/lib/schema-8/export/InterviewRepository', () => ({
+  LegacyPrismaInterviewRepository: Layer.empty,
+}));
+vi.mock('~/lib/schema-8/export/ProtocolRepository', () => ({
+  LegacyPrismaProtocolRepository: Layer.empty,
+}));
 
 const afterCallbacks: (() => unknown)[] = [];
 vi.mock('next/server', () => ({
@@ -43,22 +57,43 @@ const emptyExportReturn: ExportReturn = {
   status: 'success',
   successfulExports: [],
   failedExports: [],
+  warnings: [],
   output: {},
 };
 
+let exportReturn: ExportReturn = emptyExportReturn;
 let offerBeforeCompleting: ExportEvent[] = [];
+
+// The interviews each exporter was asked for.
+let exportedByCurrent: string[][] = [];
+let exportedByLegacy: string[][] = [];
+let legacyFailedExports: ExportReturn['failedExports'] = [];
 
 vi.mock('@codaco/network-exporters/pipeline', () => ({
   exportPipeline: (
-    _interviewIds: string[],
+    interviewIds: string[],
     _exportOptions: ExportOptions,
     queue: Queue.Enqueue<ExportEvent>,
   ) =>
     Effect.gen(function* () {
+      exportedByCurrent.push(interviewIds);
       for (const event of offerBeforeCompleting) {
         yield* Queue.offer(queue, event);
       }
-      return emptyExportReturn;
+      return exportReturn;
+    }),
+}));
+
+vi.mock('fresco-schema-8/network-exporters/pipeline', () => ({
+  exportPipeline: (interviewIds: string[]) =>
+    Effect.sync(() => {
+      exportedByLegacy.push(interviewIds);
+      return {
+        status: 'success',
+        successfulExports: [],
+        failedExports: legacyFailedExports,
+        output: {},
+      };
     }),
 }));
 
@@ -74,10 +109,10 @@ const exportOptions: ExportOptions = {
   },
 };
 
-function batchRequest() {
+function batchRequest(interviewIds = ['interview-1']) {
   return new Request('http://localhost/api/export-interviews/batch', {
     method: 'POST',
-    body: JSON.stringify({ interviewIds: ['interview-1'], exportOptions }),
+    body: JSON.stringify({ interviewIds, exportOptions }),
   });
 }
 
@@ -105,6 +140,11 @@ async function readAllEvents(
 beforeEach(() => {
   afterCallbacks.length = 0;
   offerBeforeCompleting = [];
+  exportReturn = emptyExportReturn;
+  storedInterviews = [{ id: 'interview-1', protocol: { schemaVersion: 9 } }];
+  exportedByCurrent = [];
+  exportedByLegacy = [];
+  legacyFailedExports = [];
 });
 
 describe('POST /api/export-interviews/batch', () => {
@@ -115,7 +155,9 @@ describe('POST /api/export-interviews/batch', () => {
 
     const events = await readAllEvents(response.body!);
 
-    expect(events).toEqual([{ type: 'complete', failedSessionIds: [] }]);
+    expect(events).toEqual([
+      { type: 'complete', failedSessionIds: [], warnings: [] },
+    ]);
     expect(afterCallbacks).toHaveLength(1);
   }, 10_000);
 
@@ -131,7 +173,73 @@ describe('POST /api/export-interviews/batch', () => {
 
     expect(events).toEqual([
       ...offerBeforeCompleting,
-      { type: 'complete', failedSessionIds: [] },
+      { type: 'complete', failedSessionIds: [], warnings: [] },
     ]);
   }, 10_000);
+
+  it('carries the pipeline warnings in the complete event', async () => {
+    const warning: ExportWarning = {
+      kind: 'xml-illegal-characters',
+      sessionId: 'interview-1',
+      caseId: 'P-7',
+      variables: ['Nickname'],
+      caseIdChanged: false,
+    };
+    exportReturn = { ...emptyExportReturn, warnings: [warning] };
+
+    const response = await POST(batchRequest());
+    const events = await readAllEvents(response.body!);
+
+    expect(events).toEqual([
+      { type: 'complete', failedSessionIds: [], warnings: [warning] },
+    ]);
+  }, 10_000);
+
+  it('exports schema 8 interviews with the schema 8 exporter, into the same stream', async () => {
+    storedInterviews = [
+      { id: 'current-1', protocol: { schemaVersion: 9 } },
+      { id: 'legacy-1', protocol: { schemaVersion: 8 } },
+      { id: 'legacy-2', protocol: { schemaVersion: 8 } },
+    ];
+    legacyFailedExports = [
+      {
+        kind: 'session-processing',
+        sessionId: 'legacy-2',
+        error: new SessionProcessingError({
+          cause: new Error('unreadable'),
+          stage: 'format',
+          sessionId: 'legacy-2',
+        }),
+      },
+    ];
+
+    const response = await POST(
+      batchRequest(['current-1', 'legacy-1', 'legacy-2']),
+    );
+    const events = await readAllEvents(response.body!);
+
+    expect(exportedByCurrent).toEqual([['current-1']]);
+    expect(exportedByLegacy).toEqual([['legacy-1', 'legacy-2']]);
+    expect(events).toEqual([
+      { type: 'complete', failedSessionIds: ['legacy-2'], warnings: [] },
+    ]);
+  }, 10_000);
+
+  it('runs only the exporter a batch needs', async () => {
+    storedInterviews = [{ id: 'legacy-1', protocol: { schemaVersion: 8 } }];
+
+    const response = await POST(batchRequest(['legacy-1']));
+    await readAllEvents(response.body!);
+
+    expect(exportedByCurrent).toEqual([]);
+    expect(exportedByLegacy).toEqual([['legacy-1']]);
+  }, 10_000);
+
+  it('refuses a batch naming an interview that does not exist', async () => {
+    storedInterviews = [];
+
+    const response = await POST(batchRequest(['missing']));
+
+    expect(response.status).toBe(404);
+  });
 });

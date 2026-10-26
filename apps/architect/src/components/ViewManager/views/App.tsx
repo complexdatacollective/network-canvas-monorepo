@@ -4,7 +4,6 @@ import { useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { useToast } from '@codaco/fresco-ui/Toast';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
@@ -13,17 +12,13 @@ import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
 import ProtocolLockBanner from '~/components/ProtocolLockBanner';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
+import { openNetcanvasFile } from '~/components/protocolOpenFlow';
 import ProtocolValidationDialogReporter from '~/components/ProtocolValidationDialogReporter';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { useAppDispatch } from '~/ducks/hooks';
-import {
-  openLibraryProtocol,
-  openLocalNetcanvas,
-} from '~/ducks/modules/userActions/userActions';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { resetRunOnce } from '~/hooks/useRunOnce';
-import { IS_SUBPATH_BUILD } from '~/utils/appBase';
 import {
   subscribeAutosaveFailures,
   takeAutosaveFailures,
@@ -34,17 +29,10 @@ import {
   takeLaunchFiles,
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
-import { trackLaunchActivity } from '~/utils/launchActivity';
-import {
-  subscribeProtocolUpgrades,
-  takeProtocolUpgrades,
-} from '~/utils/protocolUpgradeQueue';
-import { reportError } from '~/utils/reportError';
 import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
-import { takeUrlOpenRequest } from '~/utils/urlLaunchRequest';
 const messages = defineMessages({
   couldNotOpenFile: {
     id: 'architect.viewManager.views.app.couldNotOpenFile',
@@ -68,18 +56,6 @@ const messages = defineMessages({
     defaultMessage: 'Autosave failed',
     description: 'The title text in components / ViewManager / views / App.',
   },
-  protocolUpdated: {
-    id: 'architect.viewManager.views.app.protocolUpdated',
-    defaultMessage: 'Protocol updated',
-    description: 'The title text in components / ViewManager / views / App.',
-  },
-  wasMadeWithAn: {
-    id: 'architect.viewManager.views.app.wasMadeWithAn',
-    defaultMessage:
-      '"{name}" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.',
-    description:
-      'The description text in components / ViewManager / views / App.',
-  },
 });
 const finalMessages = defineMessages({
   storageFailure: {
@@ -97,27 +73,25 @@ const FileLaunchFailureReporter = () => {
     const reportFailures = () => {
       const failures = takeLaunchReadFailures();
       for (const failedCount of failures) {
-        void trackLaunchActivity(
-          openDialog({
-            type: 'acknowledge',
-            intent: 'destructive',
-            title: createElement(AppMessage, {
-              message: messages.couldNotOpenFile,
-            }),
-            description: createElement(AppMessage, {
-              message: messages.launchedCouldNotBeRead,
-              values: {
-                failedCount: failedCount,
-              },
-            }),
-            actions: {
-              primary: {
-                label: createElement(AppMessage, { message: messages.oK }),
-                value: true,
-              },
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'destructive',
+          title: createElement(AppMessage, {
+            message: messages.couldNotOpenFile,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.launchedCouldNotBeRead,
+            values: {
+              failedCount: failedCount,
             },
           }),
-        );
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
+        });
       }
     };
 
@@ -164,49 +138,16 @@ const StartupProtocolFailureReporter = () => {
   useEffect(() => {
     const reportFailures = () => {
       for (const refusal of takeStartupProtocolFailures()) {
-        void trackLaunchActivity(
-          showProtocolOpenResultDialog({
-            result: refusal,
-            openDialog,
-          }),
-        );
+        void showProtocolOpenResultDialog({
+          result: refusal,
+          openDialog,
+        });
       }
     };
 
     reportFailures();
     return subscribeStartupProtocolFailures(reportFailures);
   }, [openDialog]);
-
-  return null;
-};
-
-/**
- * Announces a protocol that was brought up to date while being opened.
- *
- * A toast, not a dialog: nothing went wrong and there is nothing to decide —
- * the protocol opened, and this only explains why the copy in the library is
- * no longer byte-identical to the one the researcher last saved. The other
- * reporters here interrupt because they describe work that did NOT happen.
- */
-const ProtocolUpgradeToaster = () => {
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const announceUpgrades = () => {
-      for (const { name } of takeProtocolUpgrades()) {
-        toast({
-          variant: 'info',
-          title: <AppMessage message={messages.protocolUpdated} />,
-          description: (
-            <AppMessage message={messages.wasMadeWithAn} values={{ name }} />
-          ),
-        });
-      }
-    };
-
-    announceUpgrades();
-    return subscribeProtocolUpgrades(announceUpgrades);
-  }, [toast]);
 
   return null;
 };
@@ -219,51 +160,11 @@ const LaunchedProtocolOpener = () => {
     const openLaunchedProtocols = () => {
       const [file] = takeLaunchFiles();
       if (!file) return;
-
-      const open = async (migrationApproved = false): Promise<void> => {
-        const result = await dispatch(
-          openLocalNetcanvas({ file, migrationApproved }),
-        ).unwrap();
-        await showProtocolOpenResultDialog({
-          result,
-          openDialog,
-          onApproveMigration: migrationApproved ? undefined : () => open(true),
-        });
-      };
-      // Through every dialog it raises, so the tab is not sent elsewhere while
-      // the researcher is still deciding.
-      void trackLaunchActivity(open());
+      void openNetcanvasFile({ file, dispatch, openDialog });
     };
 
     openLaunchedProtocols();
     return subscribeLaunchFiles(openLaunchedProtocols);
-  }, [dispatch, openDialog]);
-
-  return null;
-};
-
-/**
- * Opens the library protocol named by `?open=` (Architect 9 sending a schema 8
- * protocol back here), exactly as the library's Open does — including its
- * dialog when the row is missing or cannot be opened.
- */
-const UrlProtocolOpener = () => {
-  const dispatch = useAppDispatch();
-  const { openDialog } = useDialog();
-
-  useEffect(() => {
-    const protocolId = takeUrlOpenRequest();
-    if (!protocolId) return;
-    void trackLaunchActivity(
-      (async () => {
-        const result = await dispatch(
-          openLibraryProtocol({ id: protocolId }),
-        ).unwrap();
-        await showProtocolOpenResultDialog({ result, openDialog });
-      })().catch((error: unknown) => {
-        reportError(error, { operation: 'urlProtocolOpen' });
-      }),
-    );
   }, [dispatch, openDialog]);
 
   return null;
@@ -295,11 +196,7 @@ const AppContents = () => {
       <FileLaunchFailureReporter />
       <AutosaveFailureReporter />
       <StartupProtocolFailureReporter />
-      <ProtocolUpgradeToaster />
       <LaunchedProtocolOpener />
-      {/* Architect 8 served inside Architect 9 only: Architect 9 opens its
-          protocols here through the URL. */}
-      {IS_SUBPATH_BUILD && <UrlProtocolOpener />}
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be
           open over the Codebook or Resources just as easily, and that is

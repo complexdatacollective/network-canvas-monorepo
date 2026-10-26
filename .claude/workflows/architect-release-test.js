@@ -348,6 +348,11 @@ protocol-design PWA. Target deployment: ${target}
 - read_page lists only elements inside the viewport, so off-screen controls
   look absent. Reach them with computer { action: "scroll_to", ref } —
   coordinate scrolling times out while the pane is hidden.
+- Never let a download reach this pane: on the desktop app it opens a native
+  "Save as…" dialog no tool can answer, which stays on the person's screen.
+  Before any action that downloads a file, install the download hook from
+  scripts/release-test/PANE_DOWNLOADS.md with javascript_tool (again after
+  any navigation or reload); it records the file and cancels the download.
 - Editing-key presses (End, Home, cmd+a) are unreliable in this pane. Set
   field values with form_input, or click precisely and type.
 - Interact through the accessibility tree: read_page (filter interactive),
@@ -409,6 +414,77 @@ protocol-design PWA. Target deployment: ${target}
 - Your final output is consumed by a script; return only the structured data.
 `;
 
+// The schema 8 protocol the upgrade check opens. Small enough to travel inline,
+// and shaped to show what the 8 to 9 migration does: the Ego Form keeps its
+// introduction panel, and the interview gains its finish stage.
+const legacyProtocol = (name) => ({
+  name,
+  description: 'Schema 8 protocol opened by the Architect release test.',
+  schemaVersion: 8,
+  codebook: {
+    ego: {
+      variables: {
+        ego_name: { name: 'ego_name', type: 'text', component: 'Text' },
+      },
+    },
+  },
+  stages: [
+    {
+      id: 'welcome',
+      type: 'Information',
+      label: 'Welcome',
+      title: 'Welcome',
+      items: [
+        { id: 'welcome-text', type: 'text', content: 'Legacy welcome text.' },
+      ],
+    },
+    {
+      id: 'about-you',
+      type: 'EgoForm',
+      label: 'About you',
+      introductionPanel: {
+        title: 'Legacy introduction',
+        text: 'Legacy introduction text.',
+      },
+      form: {
+        fields: [{ variable: 'ego_name', prompt: 'What is your name?' }],
+      },
+    },
+  ],
+});
+
+// The Browser pane cannot answer a native file chooser, so the upgrade check
+// hands Architect its schema 8 protocol the way the chooser would: a
+// .netcanvas (a zip holding protocol.json, written uncompressed here) set as
+// the start screen's file input's files, followed by the input's change event.
+// The page's CSP allows nothing else to fetch a file from, and a zip library
+// is not reachable from page scripts, so the archive is built inline.
+const legacyUpgradeScript = (name) =>
+  [
+    '(async () => {',
+    `  const text = ${JSON.stringify(JSON.stringify(legacyProtocol(name)))};`,
+    '  const enc = new TextEncoder();',
+    "  const data = enc.encode(text), fname = enc.encode('protocol.json');",
+    '  let crc = ~0;',
+    '  for (const b of data) { crc ^= b; for (let k = 0; k < 8; k++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1)); }',
+    '  crc = ~crc >>> 0;',
+    '  const local = new DataView(new ArrayBuffer(30)), central = new DataView(new ArrayBuffer(46)), end = new DataView(new ArrayBuffer(22));',
+    '  local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint32(14, crc, true); local.setUint32(18, data.length, true); local.setUint32(22, data.length, true); local.setUint16(26, fname.length, true);',
+    '  central.setUint32(0, 0x02014b50, true); central.setUint16(4, 20, true); central.setUint16(6, 20, true); central.setUint32(16, crc, true); central.setUint32(20, data.length, true); central.setUint32(24, data.length, true); central.setUint16(28, fname.length, true);',
+    '  end.setUint32(0, 0x06054b50, true); end.setUint16(8, 1, true); end.setUint16(10, 1, true); end.setUint32(12, 46 + fname.length, true); end.setUint32(16, 30 + fname.length + data.length, true);',
+    `  const file = new File([local, fname, data, central, fname, end], ${JSON.stringify(`${name}.netcanvas`)}, { type: 'application/octet-stream' });`,
+    "  const input = document.querySelector('input[type=file]');",
+    "  if (!input) return 'no file input on this page';",
+    '  const transfer = new DataTransfer();',
+    '  transfer.items.add(file);',
+    '  input.files = transfer.files;',
+    "  input.dispatchEvent(new Event('change', { bubbles: true }));",
+    "  return 'dispatched ' + file.size + ' bytes';",
+    '})()',
+  ].join('\n');
+
+// A slice's checklist is text, or a function of the name its protocols take
+// when a check has to write that name into something it hands the app.
 const SLICES = [
   {
     key: 'protocol-lifecycle',
@@ -427,14 +503,14 @@ const SLICES = [
 4. "reopen": Open your protocol again from its card (card menu > Open) and
    confirm the editor shows it. Return to the start screen.
 5. "export": Open your protocol in the editor and trigger the toolbar's
-   "Download" button. Pass requires POSITIVE success evidence — absence of
-   errors is not enough, because a handler that silently does nothing also
-   produces no errors. The button transitions to a "Downloaded" success
-   state only after the export actually completes: require that transition
-   (or equivalently instrument the download mechanism via javascript_tool —
-   e.g. wrap URL.createObjectURL before clicking — and observe it fire).
-   This pane can never observe the saved file itself; do not mark blocked
-   for that — reserve blocked for the Download control being unreachable.
+   "Download" button, with the download hook installed first. Pass requires
+   POSITIVE success evidence — absence of errors is not enough, because a
+   handler that silently does nothing also produces no errors. Require both
+   the button's transition to its "Downloaded" success state (it reaches it
+   only after the export completes) and a captured download named
+   "*.netcanvas" whose blob is non-empty and starts with "PK" (a zip). The
+   file never reaches disk in this pane; do not mark blocked for that —
+   reserve blocked for the Download control being unreachable.
 6. "delete": Delete your protocol from the start screen and confirm its card
    disappears.`,
   },
@@ -449,19 +525,24 @@ const SLICES = [
       'cleanup',
     ],
     checklist: `
+Every new protocol starts with one finish stage, "Finish Interview", which
+ends the interview and always stays last on the timeline; the counts below
+include it.
 1. "add-information-stage": Create your protocol, then use "Add new stage" to
    open the interface picker. Confirm it lists multiple stage types, choose
    "Information", give the stage a name and one content item with recognizable
-   text, and save. Confirm the stage appears in the "Protocol stages" timeline.
+   text, and save. Confirm the stage appears in the "Protocol stages" timeline,
+   above "Finish Interview".
 2. "edit-stage": Reopen the stage with its "Edit stage" control, change the
    stage name, save, and confirm the timeline shows the new name.
 3. "add-name-generator": Add a second stage of a Name Generator type (quick
    add if offered). Follow the editor's prompts — create a node type (e.g.
    "Person") and a prompt if required — save, and confirm the timeline now
-   shows both stages in order.
+   shows the Information stage, the name generator and "Finish Interview", in
+   that order.
 4. "delete-stage": Delete the Information stage via its "Delete stage" control
-   (confirming any dialog) and confirm the timeline shows only the remaining
-   stage.
+   (confirming any dialog) and confirm the timeline shows only the name
+   generator and "Finish Interview".
 5. "cleanup": Delete your protocol from the start screen.`,
   },
   {
@@ -511,6 +592,302 @@ const SLICES = [
    your content item present, Preview and save/cancel controls interactive.
 5. "cleanup": Save or discard the stage as appropriate, then delete your
    protocol from the start screen.`,
+  },
+  {
+    key: 'localization',
+    tag: 'languages',
+    expected: [
+      'create',
+      'add-language',
+      'translate',
+      'chooser-note',
+      'language-chooser',
+      'cleanup',
+    ],
+    checklist: `
+1. "create": Create your protocol, keeping the languages the creation dialog
+   offers. Open the "Languages" page through its link in the project
+   navigation and confirm the "Protocol languages" list shows exactly one
+   language, marked "Default", and that there is no "Open translation table"
+   link (with one language there is nothing to translate into). Then go
+   back to the stages, open "Finish Interview", replace its "Stage name"
+   (the field arrives filled with "Finish Interview"; select all of it
+   first) with "The end", and save ("Finished Editing"). Confirm the
+   timeline shows "The end". Return to the "Languages" page.
+2. "add-language": Press "Add languages". In the "Add languages" dialog open
+   the "Languages" box, choose "French (fr)" (if French is already listed,
+   choose "Spanish (es)" instead and use Spanish wherever French appears
+   below), close the list, and press the dialog's own "Add languages" button.
+   Confirm the dialog closes and the list gains a French row that is not
+   marked "Default", shows "Missing translations" and an "N of M strings
+   translated" count with N exactly one below M (note N and M), and that an
+   "Open translation table" link now appears. Adding a language writes the
+   app's built-in wording in that language (the finish stage's closing and
+   finished text, for example), so only the stage name you wrote is
+   missing.
+3. "translate": Activate "Open translation table" and confirm a dialog named
+   "Translation table" opens. Set its "Translations to show" select to
+   "Missing French" and confirm it lists exactly one row: stage 1 ("The
+   end")'s "Stage name", with "The end" in the default language's column
+   and no French.
+   Click its French cell and type "La fin" (do not press Enter), then press
+   the dialog's "Save". Confirm the dialog closes and the French row now
+   reads "M of M strings translated" with no "Missing translations". Reopen
+   the table, filter to "Missing French" again, confirm no row is listed,
+   and close it with "Cancel".
+4. "chooser-note": Go back to the stage timeline ("Return to Stages", or the
+   protocol's stage list). Confirm a note titled "Participants can’t choose a
+   language" is shown, saying the protocol "has more than one language but no
+   Language Chooser stage". Do NOT dismiss it: dismissal is remembered for the
+   protocol and would hide the outcome of the next check.
+5. "language-chooser": Use "Add new stage", search the interface picker for
+   "Language" and choose "Language Chooser". Confirm the stage editor shows a
+   "Languages" region listing both of the protocol's languages. Name the stage
+   "Choose a language" and save it ("Finished Editing"). Confirm the timeline
+   shows "Choose a language" above "The end" and that the
+   "Participants can’t choose a language" note is gone.
+6. "cleanup": Delete your protocol from the start screen.`,
+  },
+  {
+    key: 'dynamic-values',
+    tag: 'values',
+    expected: [
+      'seed',
+      'insert-menu',
+      'versions',
+      'pill',
+      'persist',
+      'preview',
+      'cleanup',
+    ],
+    checklist: `
+Stage text can show values the interview fills in ("piped text"). Each text
+field that can hold them has an insert button in its toolbar (a syringe icon)
+whose accessible name and tooltip is "Inject piped text from interview
+metadata or a network attribute". It works on the field holding the caret, so
+click into the field first.
+1. "seed": Create your protocol. Open the "Codebook" page through its link in
+   the project navigation. In the "Ego attributes" section press "Add
+   attribute"; in the "Create New Attribute" dialog set "Attribute name" to
+   "nickname", choose "Text" in the "Attribute type" box, and press "Save and
+   Close". Confirm "nickname" is listed under the ego attributes, then return
+   to the stages.
+2. "insert-menu": Use "Add new stage" and choose "Information". Name the stage
+   "Values". Click into the "Page heading" field, type "Hello " (with the
+   trailing space), then press the field's insert button. Confirm a searchable
+   menu opens (its search box is named "Search") holding a group "Ego
+   Attributes" that lists "nickname" and a group "Interview Attributes" that
+   lists "Today’s date", and that it has NO "Contextual Attributes" group (an
+   Information stage shows no node, so offering one would be a defect).
+   Choose "nickname".
+3. "versions": A nickname can be unanswered, so it arrives as versions of the
+   text rather than a bare value. Confirm two text boxes named "If known" and
+   "If not known" appear where it was inserted. Click into "If not known" and
+   type "there". Click outside the field (e.g. into "Stage name") and confirm
+   the versions fold into a single pill in the heading reading "nickname".
+   Click the pill and confirm "If known" and "If not known" open again, with
+   "there" kept.
+4. "pill": Press "Create new content item", choose "Text", click into its
+   "Content" field, type "Today is " and use that field's insert button to
+   insert "Today’s date". Confirm it shows among the words as a pill reading
+   "Today’s date" — not as braces, a raw code or an empty gap — then press
+   "Add". Save the stage ("Finished Editing") and confirm the timeline lists
+   "Values".
+5. "persist": Reopen "Values" with its "Edit stage" control. Confirm the page
+   heading still holds "Hello " followed by the "nickname" pill (whose "If not
+   known" version still reads "there"), that the text item still contains the
+   "Today’s date" pill, and that the editor's "Stage sections" outline reports
+   no section with a problem. Stay in the editor.
+6. "preview": Activate the editor's "Preview" button. The preview is a popup
+   the pane usually refuses. Pass if EITHER (a) a preview window opens (find
+   it with tabs_context) and it shows the heading "Hello there" (a preview
+   has no nickname, so the "If not known" version shows) and today's date
+   after "Today is" — fail if either shows a placeholder, braces, the word
+   "nickname" or nothing; close the window — OR (b) the popup is refused and
+   the app answers with its "Preview popup blocked" guidance dialog: pass,
+   say in details that the filled-in values could not be observed here (the
+   interview's own E2E suite covers how they render), and dismiss it. Fail if
+   Preview does neither.
+7. "cleanup": Leave the editor (discarding nothing you need), then delete your
+   protocol from the start screen.`,
+  },
+  {
+    key: 'finish-stages',
+    tag: 'finish',
+    expected: [
+      'create',
+      'finish-modes',
+      'second-finish',
+      'finish-order',
+      'finish-delete',
+      'cleanup',
+    ],
+    checklist: `
+Finish stages ("Finish Screen" in the interface picker) end the interview. A
+protocol may have several (say, one for participants screened out), they stay
+together at the end of the timeline, and the protocol always keeps at least
+one. Reordering on the timeline from the keyboard: give a stage's "Edit stage
+…" button focus (Tab to it, or call .focus() on it with javascript_tool —
+focus only, never a synthetic reorder) and press ArrowUp or ArrowDown with
+computer { action: "key" }. Refusal dialogs close with their "OK" button.
+1. "create": Create your protocol and confirm its timeline already holds
+   exactly one stage, "Finish Interview".
+2. "finish-modes": Open "Finish Interview". Confirm the section "How
+   participants finish" offers "Participants confirm" (selected) and "Finish
+   automatically", and that the "Closing screen" section's "Closing text"
+   begins with a Heading 1: its first line is an h1 element (read the
+   editor's DOM with javascript_tool, or the "Heading 1" toolbar button shows
+   active with the caret on it). Choose "Finish automatically" and confirm the
+   "Closing screen" section disappears while "Finished screen" remains. Save,
+   reopen the stage, and confirm "Finish automatically" is still selected and
+   "Closing screen" still absent. Leave the editor.
+3. "second-finish": Use "Add new stage" and choose "Finish Screen". Confirm
+   the new stage's "Closing text" already holds wording that begins with a
+   Heading 1. Name it "Screened out", choose "Ineligible" under "Outcome",
+   and save. Confirm the timeline reads "Finish Interview", "Screened out", in
+   that order — a new finish stage goes after the existing ones.
+4. "finish-order": Add an "Information" stage named "Before finish" with a
+   page heading and one text item, and save it. Confirm the timeline reads
+   "Before finish", "Finish Interview", "Screened out" — the app never places
+   another kind of stage after a finish stage. Focus "Screened out" and press
+   ArrowUp: confirm it swaps with "Finish Interview" with no dialog (finish
+   stages may change places among themselves). Then focus the now uppermost
+   finish stage, "Screened out", and press ArrowUp again: confirm a "Cannot
+   move stage" dialog saying "Stages that end the interview have to stay
+   together at the end of the protocol." Press "OK" and confirm the order is
+   still "Before finish", "Screened out", "Finish Interview".
+5. "finish-delete": Delete "Screened out" with its "Delete stage" control,
+   confirming the dialog, and confirm it leaves the timeline. Then try to
+   delete "Finish Interview": confirm its "Delete stage" control is
+   unavailable before you press it — aria-disabled="true", with an
+   accessible description (aria-describedby; it also shows as a tooltip)
+   saying at least one stage of this kind is required to allow the
+   interview to end. Press it anyway and confirm nothing opens and
+   "Finish Interview" is still on the timeline.
+6. "cleanup": Delete your protocol from the start screen.`,
+  },
+  {
+    key: 'bins-and-encryption',
+    tag: 'bins',
+    expected: [
+      'seed',
+      'bin-stage',
+      'bin-persist',
+      'encrypt',
+      'encrypt-summary',
+      'cleanup',
+    ],
+    checklist: `
+Attributes are chosen or created through an attribute picker: its "Select
+attribute" button opens a window with a search box ("Find or create an
+attribute"); typing a new name offers a row "Create new attribute called
+“<name>”." that creates it. A node type is created from the stage's "Node
+type" chips with "Create new node type" (a dialog asking for "Node type name",
+saved with "Save entity"); confirm any "Choose the node type" prompt.
+1. "seed": Create your protocol. Use "Add new stage" and choose "Name
+   Generator (quick add)". Name it "People", create the node type "person",
+   create the quick-add attribute "name" through the picker, and add one prompt
+   ("Create new prompt", "Prompt text" "Name someone you know", "Add"). Save
+   and confirm the timeline lists "People".
+2. "bin-stage": Add a "Categorical Bin" stage named "Sort people" for the
+   node type "person". Press "Create new prompt", set "Prompt text" to "How do
+   you know them?", and in the prompt's "Attribute" picker create
+   "relationship": the create row opens a "Create a new attribute" dialog
+   where you press "Create new option" twice and fill "Option 1 label"
+   "Family" / "Option 1 value" "family" and "Option 2 label" "Friends" /
+   "Option 2 value" "friends", then press "Create attribute"; then "Add" the
+   prompt. In the "Placing nodes" section choose "Tap to place" under
+   "Interaction mode" and switch on "Require every node to be placed".
+   Confirm a "Nodes not yet placed" text field appears, already holding
+   wording Network Canvas supplies. Confirm the "Stage sections" outline
+   reports no problem, then save.
+3. "bin-persist": Reopen "Sort people" and confirm "Tap to place" is still the
+   selected interaction mode, "Require every node to be placed" is still on,
+   and "Nodes not yet placed" still holds its wording. Leave the editor without
+   changing anything.
+4. "encrypt": Use "Add new stage" and confirm "Anonymisation Interface" is
+   offered with no experiment, flag or setting to enable first (fail if one is
+   demanded). Choose it and name the stage "Passphrase". In "Task
+   explanation" confirm there is a single "Explanation" text field and no
+   separate title field. Click into "Explanation", press its toolbar's
+   "Heading 1", type "Protecting your privacy", press Enter, and type "Choose
+   a passphrase to continue." In "Encrypted attributes" find "person", switch
+   it on (its switch reads "Enable encryption for attributes belonging to this
+   node type."), and tick "name". Save, reopen "Passphrase", and confirm
+   "name" is still ticked and the explanation's first line is still a
+   Heading 1. Leave the editor.
+5. "encrypt-summary": Open the "Summary" page through its link in the project
+   navigation (never by typing the route) and confirm the "Passphrase" stage's
+   entry says "The following attributes will be encrypted using the
+   participant's passphrase:" and lists "name". Return to the stages.
+6. "cleanup": Delete your protocol from the start screen.`,
+  },
+  {
+    key: 'templates-and-upgrade',
+    tag: 'upgrade',
+    expected: [
+      'open-template',
+      'family-pedigree',
+      'narrative-pedigree',
+      'no-intro-panels',
+      'schema8-upgrade',
+      'cleanup',
+    ],
+    checklist: (name) => `
+This slice opens two protocols: a template, named exactly "${name}", and an
+upgraded schema 8 protocol, which arrives already named "${name} legacy"
+(it begins with your name, so it is yours too).
+Before schema 9, form and census stages opened with an introduction panel
+(its editor section is titled "Task introduction", with "Title" and
+"Introduction text" fields). An Ego Form keeps it; on the Per Alter Form,
+Per Alter Edge Form, Dyad Census and Tie-Strength Census those panels are
+now Information stages.
+1. "open-template": On the start screen open the "Templates" tab and open the
+   template "Colored Eco-Genetic Relationship Map (CEGRM)" from its card (or
+   its card menu > Open). It asks for a name first: enter "${name}" exactly
+   and confirm. Confirm the editor opens under that name with 16 stages on the
+   timeline, including "Family pedigree", "How the condition runs in the
+   family", and ending with the two finish stages "Finish Interview" and "Not
+   Taking Part".
+2. "family-pedigree": Open "Family pedigree". Confirm the "Stage sections"
+   outline lists "Participant wording" (with "Prompt", "Person attributes" and
+   "Relationships") and reports no section with a problem. In "Participant
+   wording" expand "Drawing the family" and confirm its fields hold wording.
+   Append " (RT)" to the "Prompt text", save, reopen the stage, and confirm
+   the prompt ends with "(RT)". Leave the editor.
+3. "narrative-pedigree": Open "How the condition runs in the family" and
+   confirm its "Source stage" box names "Family pedigree"; leave without
+   saving. Then try to delete "Family pedigree" with its "Delete stage"
+   control: confirm a "Cannot delete stage" dialog refuses (another stage
+   reads this pedigree), press "OK", and confirm the timeline still has 16
+   stages.
+4. "no-intro-panels": Open the Ego Form "About you" and confirm it has a
+   "Task introduction" section whose "Title" reads "A little about you" and
+   no "Form title" field; leave without saving. Then, for each of "Per Alter Form", "Per Alter Edge Form", "Dyad
+   Census" and "Tie-Strength Census": use "Add new stage", choose it, confirm
+   its "Stage sections" outline and page have no introduction section, and
+   leave without saving ("Cancel", discarding if asked). Confirm the timeline
+   still has 16 stages afterwards.
+5. "schema8-upgrade": Return to the start screen. A schema 8 protocol is
+   opened by handing its file to the start screen's file input — the stand-in
+   for the file chooser this pane cannot operate, and the only page script
+   this check permits. Run exactly this with javascript_tool in your tab and
+   confirm it returns "dispatched … bytes":
+\`\`\`js
+${legacyUpgradeScript(`${name} legacy`)}
+\`\`\`
+   Confirm an "Upgrade to continue" dialog appears, saying the protocol uses
+   schema version 8 and can be upgraded to schema version 9, and listing what
+   the migration will do, including that introduction panels are replaced by
+   Information stages. Press "Create upgraded copy". Confirm the editor opens
+   "${name} legacy" with exactly these stages in order: "Welcome", "About
+   you" (an Ego Form whose "Task introduction" has the title "Legacy
+   introduction" and the text "Legacy introduction text."), and "Finish
+   Interview". Fail if no dialog follows a dispatched file, if the upgrade
+   reports an error, or if the stages differ; blocked only if the script
+   cannot run or the start screen has no file input.
+6. "cleanup": Delete both protocols whose names begin with "${name}" from the
+   start screen.`,
   },
 ];
 
@@ -573,7 +950,23 @@ the tab, and wait for the app to settle. All five checks apply to this
 post-purge load; where a console or network log cannot be scoped to it,
 re-read after the reload (reload once more into a clean read if you cannot
 tell whether an entry predates the purge).
-## Your checklist
+${
+  target.startsWith('http:')
+    ? `## A plain-http target
+The Browser pane refuses every service-worker registration on a plain-http
+origin such as a local vite preview: it never requests the script, and logs
+"An unknown error occurred when fetching the script." for each attempt. That
+says nothing about the build, so for this target judge "service-worker" in
+the Playwright browser instead. Load its tools with ONE ToolSearch call:
+"select:mcp__plugin_playwright_playwright__browser_navigate,mcp__plugin_playwright_playwright__browser_evaluate,mcp__plugin_playwright_playwright__browser_console_messages"
+Navigate it to the target, purge that profile's stale worker the same way
+((await navigator.serviceWorker.getRegistration())?.unregister(), then
+navigate to the target again), await navigator.serviceWorker.ready, and
+report its active script URL. In "console", dismiss that one error as this pane
+limitation, and take the console verdict from the Playwright load too.
+`
+    : ''
+}## Your checklist
 1. "load": Confirm the Architect start screen renders — the create-protocol
    button ("Create a new protocol") and the protocol list area are visible.
    Not just a paint: the controls must be in the accessibility tree.
@@ -669,6 +1062,10 @@ recreating the canonical sample protocol through Architect's own UI.
   types key by key and appends. Rich-text editors need slowly: true, with
   Enter between paragraphs; their markdown shortcuts (**bold**, "* ", "1. ")
   work while typing.
+- A new stage's "Stage name" arrives filled with a default name, and while
+  that default is untouched, choosing a node type renames the stage after
+  it. Setting the field to text equal to the default does not count as an
+  edit, so choose the node type first and type the stage name after it.
 - Radio inputs sit under labels that intercept clicks: click the label text,
   and add exact: true where names overlap ("No" also matches "Node").
 - To upload a file, click the control that opens the native file chooser; the
@@ -746,7 +1143,7 @@ ${sampleSourceNote}
    its copy under <dir>/upload, and which stages use it.
 5. stages: one entry per stage, in protocol order (index from 1), with its
    label, interface type and a buildPlan: an end-user-level description of
-   everything that stage configures — title, introduction panel, prompts and
+   everything that stage configures — title, prompts and
    their text, subject, variables each prompt reads or writes, forms and their
    fields, panels and data sources, backgrounds, layout, behaviours, sort and
    search options, filter and skip logic, content items with the assets they
@@ -760,6 +1157,10 @@ ${sampleSourceNote}
    weight: 1 for an Information stage, 2 for a stage that reuses existing
    codebook entries, 3 for one that introduces new codebook entries or has
    several prompts.
+   A new protocol already ends with one finish stage ("Finish Interview"), so
+   say in the first FinishSession stage's buildPlan that it is built by
+   editing that existing stage, and in any later one's that it is added as a
+   new "Finish Screen" stage.
 Return only the structured data.`;
 
 const setupPrompt = (analysis, protocolName) => `${pwOps('setup')}
@@ -770,8 +1171,12 @@ Run directory: ${analysis.workDir}
    worker serving an older build, so first evaluate
    (await navigator.serviceWorker.getRegistration())?.unregister(), reload,
    and wait for the start screen.
-2. Create a new protocol named exactly "${protocolName}", and give it the
-   specification's protocol description through the editor.
+2. Create a new protocol named exactly "${protocolName}". In the creation
+   dialog, set its languages and default language to those the
+   specification's "localization" declares (read it from
+   ${analysis.canonicalPath}): every text a person writes is stored under
+   those languages. Then give it the specification's protocol description
+   through the editor.
 3. Add every asset below to the protocol's resource library through the UI,
    uploading each file through the file chooser, and give each the name
    listed (rename it in the app if the app names it differently). Confirm
@@ -804,9 +1209,18 @@ ${analysis.codebookPlan}
 Progress so far:
 ${progress}
 
+Finish stages ("Finish Screen" stages, type FinishSession) end the interview
+and stay together at the end of the timeline: the protocol was created with
+one, "Finish Interview", already in place; Architect inserts every other kind
+of stage before the first finish stage, and a new finish stage after the
+existing ones. Build the specification's first FinishSession stage by editing
+that existing stage — never add a second copy of it — and each later one as a
+new "Finish Screen" stage.
+
 1. Open the protocol and check the timeline holds the stages reported as
-   built above. If it does not, record that in tooling_notes and continue.
-2. Add each stage below at the end of the timeline, in order, configuring
+   built above, followed by the finish stage(s). If it does not, record that
+   in tooling_notes and continue.
+2. Add each stage below in order after the stages already built, configuring
    everything its plan describes through the stage editor, and save it.
    Reopen each saved stage once to confirm your settings persisted.
 ${batch.map((s) => `\n### Stage ${s.index}: "${s.label}" (${s.type})\n${s.buildPlan}`).join('\n')}
@@ -1402,8 +1816,12 @@ if (!siteUp) {
 } else {
   for (const slice of selected) {
     log(`Running slice: ${slice.key}`);
+    const checklist =
+      typeof slice.checklist === 'function'
+        ? slice.checklist(`RT ${slice.tag} ${runTag}`)
+        : slice.checklist;
     const result = await agent(
-      `${ops(slice.tag)}\n## Your checklist${slice.checklist}`,
+      `${ops(slice.tag)}\n## Your checklist${checklist}`,
       {
         label: slice.key,
         schema: CHECKS_SCHEMA,
@@ -1553,6 +1971,15 @@ The audited export the report names is still on disk; inspect it. For an
 protocol, download it, unzip it under .playwright-mcp/, and run
 node .agents/skills/architect-release-test/scripts/check-built-protocol.mjs <that directory>.`
       : ops('verify', verifyName);
+  // The checklist the failure came from, so the verifier repeats the flow as
+  // it was specified — some checks hand the app something the report alone
+  // cannot reconstruct, such as the upgrade check's schema 8 file.
+  const failedSlice = SLICES.find((s) => s.key === f.slice);
+  const sliceChecklist = !failedSlice
+    ? ''
+    : typeof failedSlice.checklist === 'function'
+      ? failedSlice.checklist(verifyName)
+      : failedSlice.checklist;
   const verdict = await agent(
     `${verifyOps}
 ## Your task
@@ -1563,7 +1990,14 @@ UI. Perform the flow yourself, carefully, in a fresh tab with your own
 
 Reported failure (check "${f.name}" in slice "${f.slice}"):
 ${f.details}
-
+${
+  sliceChecklist
+    ? `
+The checklist that check came from, for reference. Repeat only what
+reproducing "${f.name}" needs, in your own "${verifyName}" protocol:${sliceChecklist}
+`
+    : ''
+}
 A clean success on your retry does NOT by itself refute the report —
 intermittent breakage is still breakage. Set confirmed=false ONLY if you can
 identify the specific operator error or harness artifact in the reported

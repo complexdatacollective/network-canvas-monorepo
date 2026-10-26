@@ -66,8 +66,13 @@ import {
 } from '../protocol/commands.ts';
 import {
   advanceDraftManifest,
+  changesFinishStage,
+  creationIndex,
   fenceDraftLeases,
+  isLastFinishStage,
+  loadStageTypes,
   lockDraftHead,
+  timelineStageOf,
   type DraftStructureError,
   type HeadState,
 } from '../protocol/draft-structure.ts';
@@ -924,6 +929,37 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
           events: [],
         });
       }
+      // A protocol always ends at a finish stage, so a stage is never
+      // rewritten into one or out of one: the first could cut off the stages
+      // after it, the second leave the interview no ending. A further ending
+      // is created as a finish stage instead.
+      if (parseSectionId(sectionId).kind === 'stage') {
+        const current = yield* headSection(session, sectionId);
+        if (
+          changesFinishStage(
+            timelineStageOf(
+              current === undefined
+                ? undefined
+                : Redacted.value(current.document),
+            ),
+            timelineStageOf(document),
+          )
+        ) {
+          return unchanged<Published<SubmitOutcome | undefined>>({
+            outcome: {
+              status: 'invalidShape',
+              issues: [
+                {
+                  path: ['type'],
+                  message:
+                    'A stage cannot be changed into a finish stage, or a finish stage into another kind of stage.',
+                },
+              ],
+            },
+            events: [],
+          });
+        }
+      }
       const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
         [sectionId, document],
       ]);
@@ -1107,10 +1143,17 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
           );
         }
         const stages = stageList(Redacted.value(order.document));
-        const at =
+        const types = yield* loadStageTypes(teamId, head, stages);
+        // Never put where no participant could reach it: a stage that is not
+        // a finish stage goes before the first finish stage, and a finish
+        // stage — a further ending — at or after it (`creationIndex`).
+        const at = creationIndex(
+          types,
+          timelineStageOf(created),
           input.position === undefined
             ? stages.length
-            : Math.min(input.position, stages.length);
+            : Math.min(input.position, stages.length),
+        );
         stages.splice(at, 0, id);
         writes.set(STAGE_ORDER, { ...Redacted.value(order.document), stages });
       }
@@ -1293,9 +1336,30 @@ export function deleteStage(session: ProtocolBuilderSession, stageId: string) {
           new Error(`draft ${session.draftId} has no stageOrder section`),
         );
       }
-      const stages = stageList(Redacted.value(order.document)).filter(
-        (entry) => entry !== stageId,
-      );
+      const listed = stageList(Redacted.value(order.document));
+      // The interview has to end at a finish stage, so the last one stays.
+      // The contract has no refusal of its own for that, and the stage order
+      // naming the stage is the reference this host will not take out, so it
+      // is the one the refusal names.
+      if (
+        isLastFinishStage(
+          listed,
+          yield* loadStageTypes(session.access.teamId, head, listed),
+          stageId,
+        )
+      ) {
+        return {
+          writes: new Map<ProtocolSectionId, SectionDoc | undefined>(),
+          owned: new Set<ProtocolSectionId>(),
+          remaining: [
+            {
+              sectionId: STAGE_ORDER,
+              path: ['stages', listed.indexOf(stageId)],
+            },
+          ],
+        };
+      }
+      const stages = listed.filter((entry) => entry !== stageId);
       return {
         writes: new Map<ProtocolSectionId, SectionDoc | undefined>([
           [target, undefined],

@@ -1,5 +1,11 @@
 # fresco
 
+## 4.3.2
+
+### Bug fixes
+
+- Usage statistics now count each interview start and each protocol install once. Before, both were counted twice. The protocol-install event also no longer includes the protocol's file name.
+
 ## 4.3.1
 
 ### Interview changes
@@ -89,7 +95,7 @@ These improvements to the interview are shared with Interviewer and Architect's 
     re-declaring one.
   - `Fiber.RuntimeFiber` collapsed into `Fiber.Fiber` in Effect 4, so the sink
     handle that `makeZipOutput` carries is typed `Fiber.Fiber<OutputResult,
-OutputError>`.
+    OutputError>`.
 
   Error classes are unchanged: they remain `Data.TaggedError`, so nothing in the
   package's public types pulls in Effect Schema.

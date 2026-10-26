@@ -506,7 +506,7 @@ test('only what existed before is compared, and every loss or change is a differ
   const found = differences(before, after).map(({ kind, table, column }) =>
     [kind, table, column].filter(Boolean).join(' '),
   );
-  assert.deepEqual(found.sort(), [
+  assert.deepEqual(found.toSorted(), [
     'row-added public.created_filled',
     'row-added public.protocols',
     'row-lost public.protocols',
@@ -517,7 +517,10 @@ test('only what existed before is compared, and every loss or change is a differ
     exported({ 'public.protocols': [{ id: 'p1', name: 'One', note: 'x' }] }),
     exported({ 'public.protocols': [{ id: 'p1', name: 'Uno' }] }),
   ).map(({ kind, column }) => `${kind} ${column}`);
-  assert.deepEqual(changed.sort(), ['column-lost note', 'value-changed name']);
+  assert.deepEqual(changed.toSorted(), [
+    'column-lost note',
+    'value-changed name',
+  ]);
 });
 
 test('every mask names its reason and the run that showed the change', () => {
@@ -593,7 +596,7 @@ test('the masks cover their own rows and nothing beside them', () => {
         ({ kind, table, column, key }) =>
           `${kind} ${table} ${column ?? key[0]}${column ? ` ${key[0]}` : ''}`,
       )
-      .sort(),
+      .toSorted(),
     [
       'row-added studio_jobs.jobs early',
       'row-added studio_jobs.jobs forged',
@@ -618,20 +621,17 @@ test('the masks cover their own rows and nothing beside them', () => {
 
 // ── The previous release, and the fail-closed lane ────────────────────────
 
-test('the previous release is the newest @codaco/studio-api@x.y.z tag, and nothing else counts', () => {
+test('the previous release is the newest studio@x.y.z tag, and nothing else counts', () => {
   assert.equal(newestVersion([]), null);
   assert.equal(
-    newestVersion([
-      '@codaco/studio-api@0.9.9',
-      '@codaco/studio-api@0.10.0',
-      '@codaco/studio-api@0.2.0',
-    ]),
+    newestVersion(['studio@0.9.9', 'studio@0.10.0', 'studio@0.2.0']),
     '0.10.0',
   );
-  // A prerelease, another package's tag and a bare version are not releases.
+  // A prerelease, a package's own tag and a bare version are not releases.
   assert.equal(
     newestVersion([
-      '@codaco/studio-api@2.0.0-rc.1',
+      'studio@2.0.0-rc.1',
+      '@codaco/studio-api@3.0.0',
       '@codaco/studio-web@3.0.0',
       '9.9.9',
       'studio-api@4.0.0',
@@ -639,18 +639,15 @@ test('the previous release is the newest @codaco/studio-api@x.y.z tag, and nothi
     null,
   );
 
-  const none = decide(['@codaco/studio-web@1.0.0']);
+  const none = decide(['@codaco/studio-api@1.0.0']);
   assert.equal(none.status, 'none');
   assert.equal(none.tag, null);
   assert.match(none.detail, /no migration-era Studio release/);
 
-  const published = decide([
-    '@codaco/studio-api@1.2.0',
-    '@codaco/studio-api@1.10.0',
-  ]);
+  const published = decide(['studio@1.2.0', 'studio@1.10.0']);
   assert.equal(published.status, 'published');
   assert.equal(published.newest, '1.10.0');
-  assert.equal(published.tag, '@codaco/studio-api@1.10.0');
+  assert.equal(published.tag, 'studio@1.10.0');
   assert.match(
     published.detail,
     /ghcr\.io\/complexdatacollective\/studio-api:1\.10\.0/,
@@ -701,15 +698,12 @@ test('previous-release.mjs answers from the repository tags without asking any r
   assert.equal(none.status, 'none');
   assert.equal(
     laneVerdict({ release: none, runs: [{ run: 'A', ok: true }] }).runC,
-    'not applicable: no migration-era release is published (no @codaco/studio-api@<x.y.z> tag), so there is no published upgrade path to test',
+    'not applicable: no migration-era release is published (no studio@<x.y.z> tag), so there is no published upgrade path to test',
   );
 
-  const published = previousReleaseIn([
-    '@codaco/studio-api@1.0.0',
-    '@codaco/studio-api@1.1.0',
-  ]);
+  const published = previousReleaseIn(['studio@1.0.0', 'studio@1.1.0']);
   assert.equal(published.status, 'published');
-  assert.equal(published.tag, '@codaco/studio-api@1.1.0');
+  assert.equal(published.tag, 'studio@1.1.0');
 });
 
 test('a published release adds run C, and the lane fails without it', () => {

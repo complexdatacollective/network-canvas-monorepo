@@ -5,7 +5,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 
-import { withoutAbsentValues } from '../../../../form/absentValues.ts';
+import { withoutAbsentEntries } from '../../../../form/absentValues.ts';
 import {
   RowDialog,
   RowList,
@@ -18,6 +18,8 @@ import {
 import BuilderSection from '../../../../sections/BuilderSection.tsx';
 import { useStageSubject } from '../../../../sections/useStageSubject.ts';
 import {
+  collapseNarrativePreset,
+  expandNarrativePreset,
   NarrativePresetFields,
   NarrativePresetPreview,
 } from './NarrativePresetFields.tsx';
@@ -60,7 +62,8 @@ export default function NarrativePresetsSection() {
       editTitle: messages.presetsEditTitle,
       formId: 'narrative-preset-editor',
       name: PRESETS_FIELD,
-      normalize: (row) => withoutAbsentValues(row) as RowValues,
+      expand: expandNarrativePreset,
+      normalize: (row) => withoutAbsentEntries(collapseNarrativePreset(row)),
     }),
     [],
   );

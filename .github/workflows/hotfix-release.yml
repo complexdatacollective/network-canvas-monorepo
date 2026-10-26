@@ -253,7 +253,37 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          # An Architect tree that bundles Architect 8 at /v8/ (it carries the
+          # pin file) must not release without it, exactly as in the normal
+          # lane. A tree from before Architect 9 has no pin and nothing to
+          # bundle; this lane ships only the newest line, so that is a hotfix
+          # released before 9.0.
+          ARCHITECT_REQUIRE_LEGACY_V8: ${{ inputs.app == 'architect' && hashFiles('apps/architect/legacy-architect.json') != '' && 'true' || '' }}
+          # The same for an Interviewer tree that bundles Interviewer 8.
+          INTERVIEWER_REQUIRE_LEGACY_V8: ${{ inputs.app == 'interviewer' && hashFiles('apps/interviewer/legacy-interviewer.json') != '' && 'true' || '' }}
         run: pnpm exec turbo run build --filter="@codaco/$APP"
+
+      # Checked outside the turbo cache too, before the tag is claimed or
+      # anything deployed.
+      - name: Check Architect 8 is bundled
+        if: inputs.app == 'architect' && hashFiles('apps/architect/legacy-architect.json') != ''
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/architect/dist/v8/$file" ]]; then
+              echo "::error::apps/architect/dist/v8/$file is missing; production must serve Architect 8 at /v8/." >&2
+              exit 1
+            fi
+          done
+
+      - name: Check Interviewer 8 is bundled
+        if: inputs.app == 'interviewer' && hashFiles('apps/interviewer/legacy-interviewer.json') != ''
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/interviewer/dist/v8/$file" ]]; then
+              echo "::error::apps/interviewer/dist/v8/$file is missing; production must serve Interviewer 8 at /v8/." >&2
+              exit 1
+            fi
+          done
 
       # Fresco's image is built by its own repository from the mirrored tree;
       # what this job builds is the workspace dependency closure, so the

@@ -1,5 +1,11 @@
 # @codaco/interviewer
 
+## 8.5.1
+
+### Bug fixes
+
+- The Network Canvas logo on the home and welcome screens now shows the first time you open Interviewer offline after installing it. Before, it could appear as a broken image until you had opened the app online again.
+
 ## 8.5.0
 
 ### New features
@@ -76,7 +82,7 @@ These improvements to the interview are shared with Architect's Preview and Fres
     re-declaring one.
   - `Fiber.RuntimeFiber` collapsed into `Fiber.Fiber` in Effect 4, so the sink
     handle that `makeZipOutput` carries is typed `Fiber.Fiber<OutputResult,
-OutputError>`.
+    OutputError>`.
 
   Error classes are unchanged: they remain `Data.TaggedError`, so nothing in the
   package's public types pulls in Effect Schema.

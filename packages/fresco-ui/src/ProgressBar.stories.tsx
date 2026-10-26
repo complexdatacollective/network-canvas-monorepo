@@ -52,6 +52,15 @@ const meta: Meta<typeof ProgressBar> = {
         type: { summary: 'string' },
       },
     },
+    tone: {
+      control: 'select',
+      options: ['neutral', 'info'],
+      description: 'How an unfinished bar is drawn',
+      table: {
+        type: { summary: "'neutral' | 'info'" },
+        defaultValue: { summary: "'neutral'" },
+      },
+    },
   },
   args: {
     orientation: 'vertical',
@@ -285,6 +294,29 @@ export const HorizontalVariants: Story = {
           <ProgressBar orientation="horizontal" indeterminate label="Loading" />
         </div>
       </div>
+    </div>
+  ),
+};
+
+export const InfoTone: Story = {
+  render: () => (
+    <div className="flex flex-col gap-8">
+      {[0, 40, 100].map((percent) => (
+        <div key={percent} className="flex flex-col gap-2">
+          <Heading level="h3" margin="none" className="text-sm">
+            {percent}% (info tone)
+          </Heading>
+          <div className="w-96">
+            <ProgressBar
+              orientation="horizontal"
+              percentProgress={percent}
+              nudge={false}
+              tone="info"
+              label={`${percent}% progress`}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   ),
 };

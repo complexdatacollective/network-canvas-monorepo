@@ -1,7 +1,7 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useIdleTimer } from '../idle';
+import { holdIdleLock, useIdleTimer } from '../idle';
 
 const TIMEOUT = 10_000;
 
@@ -74,6 +74,22 @@ describe('useIdleTimer', () => {
     expect(onIdle).toHaveBeenCalledTimes(1);
   });
 
+  it('calls the latest onIdle, without restarting the countdown when it changes', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = renderHook(
+      ({ onIdle }: { onIdle: () => void }) =>
+        useIdleTimer({ timeoutMs: TIMEOUT, enabled: true, onIdle }),
+      { initialProps: { onIdle: first } },
+    );
+
+    advance(TIMEOUT - 100);
+    rerender({ onIdle: second });
+    advance(100);
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
   it('does nothing while enabled is false', () => {
     const onIdle = vi.fn();
     renderHook(() =>
@@ -112,6 +128,40 @@ describe('useIdleTimer', () => {
     advance(4_000 - 1);
     expect(onIdle).not.toHaveBeenCalled();
     advance(1); // reaches the original deadline, not a fresh full window
+    expect(onIdle).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fire while held, and counts from zero once every hold is released', () => {
+    const onIdle = vi.fn();
+    renderHook(() =>
+      useIdleTimer({ timeoutMs: TIMEOUT, enabled: true, onIdle }),
+    );
+
+    advance(TIMEOUT - 1_000);
+    let releaseFirst: () => void = () => undefined;
+    let releaseSecond: () => void = () => undefined;
+    act(() => {
+      releaseFirst = holdIdleLock();
+      releaseSecond = holdIdleLock();
+    });
+    advance(TIMEOUT * 5);
+    // Coming back to a visible tab while held does not fire it either.
+    setHidden(true);
+    setHidden(false);
+    expect(onIdle).not.toHaveBeenCalled();
+
+    act(() => {
+      releaseFirst();
+      // A second call of the same release changes nothing.
+      releaseFirst();
+    });
+    advance(TIMEOUT * 2);
+    expect(onIdle).not.toHaveBeenCalled();
+
+    act(() => releaseSecond());
+    advance(TIMEOUT - 1);
+    expect(onIdle).not.toHaveBeenCalled();
+    advance(1);
     expect(onIdle).toHaveBeenCalledTimes(1);
   });
 });

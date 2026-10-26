@@ -120,7 +120,6 @@ jobs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
       studio: ${{ steps.flags.outputs.studio }}
-      studio_upgrade: ${{ steps.flags.outputs.studio_upgrade }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -134,9 +133,6 @@ jobs:
           # detection (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
           EVENT_ACTION: ${{ github.event.action }}
-          # The Studio release PR always runs the upgrade lane (#1901). Only a
-          # PR into main is that release PR.
-          HEAD_REF: ${{ github.base_ref == 'main' && github.head_ref || '' }}
         run: |
           # Determine the comparison base — the commit range whose diff decides
           # which conditional jobs run. We DON'T use turbo-ignore because it
@@ -232,12 +228,12 @@ jobs:
           # earlier run's verdict (carry-forward-statuses republishes check
           # runs; it does not feed `quality`), so a push-to-push flag would let
           # an unrelated push after a failing run skip the job and pass the
-          # gate. The flags are `studio` (studio-stack) and `studio_upgrade`
-          # (studio-upgrade); ci-workflow.test.mjs fails if `quality` comes to
-          # require a job on any other detect output. The E2E suites and the
-          # `--affected` test jobs are scoped from the PR base the same way.
+          # gate. The flag is `studio` (studio-stack); ci-workflow.test.mjs
+          # fails if `quality` comes to require a job on any other detect
+          # output. The E2E suites and the `--affected` test jobs are scoped
+          # from the PR base the same way.
           #
-          # This workflow defines both jobs, so it is an input of both, diffed
+          # This workflow defines the job, so it is one of its inputs, diffed
           # over the same range: WORKFLOW_CHANGED above is push to push and
           # cannot stand in for it.
           gate_base="$PREV"
@@ -284,27 +280,6 @@ jobs:
             echo "Studio stack inputs changed in ${gate_base:-(no base)}..$CURR."
           fi
 
-          # The Studio upgrade lane, for the `studio-upgrade` job (#1901): an
-          # upgrade from the candidate to a code-only release and to a release
-          # carrying a migration, run through the self-host guide's own
-          # commands. The lane tests the api image and the generator that
-          # builds the next release's migration, so everything that selects
-          # the stack selects it: the studio-api package and its dependency
-          # closure, the stack's own files and this workflow. A hand-kept list
-          # of "upgrade-path" files inside the package missed the keyring
-          # check, the fingerprint sync and the schema applier in turn. On top
-          # of that, the lane's own inputs that no package graph sees: the
-          # lane itself and the maintenance page its observer reads, served by
-          # studio-web. Every Studio release PR selects it too.
-          studio_upgrade=false
-          if [[ "$studio" == "true" || "$HEAD_REF" == "changeset-release/studio" ]] \
-            || ! git diff --quiet "$gate_base" "$CURR" -- \
-              apps/studio/release-test \
-              apps/studio/web/public/maintenance.html; then
-            studio_upgrade=true
-            echo "Studio upgrade inputs changed in ${gate_base:-(no base)}..$CURR."
-          fi
-
           # Either public site can contain inbound links to routes owned by the
           # other. Crawl both paired previews whenever either site changes so a
           # removed route cannot escape the link check on the unchanged peer.
@@ -316,7 +291,6 @@ jobs:
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
           echo "studio=$studio" >> "$GITHUB_OUTPUT"
-          echo "studio_upgrade=$studio_upgrade" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether E2E must run for this ref. Feature PRs select the
   # suites whose subject package or workspace dependency closure changed.
@@ -910,6 +884,14 @@ jobs:
         id: studio-schema-docs
         continue-on-error: true
         run: pnpm --filter @codaco/studio-api check:schema-docs
+      # A Studio release is named by studio-api's version, so a release PR
+      # that moves another Studio package without it would merge and never
+      # be published (apps-release-studio). Trivially true on a feature PR,
+      # which moves no version.
+      - name: Check every moved Studio package moves studio-api too
+        id: studio-release
+        continue-on-error: true
+        run: node scripts/release/studio-release.mjs check
       - name: Check changed public package versions are unoccupied on npm
         id: npm_versions
         continue-on-error: true
@@ -947,33 +929,6 @@ jobs:
           pnpm --filter=@codaco/architect build
           pnpm --filter=@codaco/interviewer build
           pnpm --filter=@codaco/studio-web build
-      # Architect 8 ships inside Architect 9's deploy as a /v8/ sub-path build,
-      # made from a released tag only after that release is already in
-      # production. Build it here too, so a change that breaks the sub-path
-      # build (or its worker, manifest and asset assertions in
-      # apps/architect/scripts/assert-pwa-build.mjs) fails before merge rather
-      # than after the tag exists. No PostHog credentials: the release-time
-      # sub-path build uploads no source maps either. It replaces the root
-      # build's dist, which nothing after this step reads.
-      - name: Build Architect under its /v8/ sub-path
-        id: architect_subpath_build
-        continue-on-error: true
-        env:
-          ARCHITECT_BASE_PATH: /v8/
-        run: pnpm --filter=@codaco/architect build
-      # Interviewer 8 ships the same way, inside Interviewer 9's deploy at /v8/,
-      # built from a released tag by the sub-path dist workflow. Build it here
-      # for the same reason: build.mjs drops the hosting rules and writes
-      # dist-info.json, and apps/interviewer/scripts/assert-pwa-build.mjs then
-      # holds the /v8/ worker, manifest and asset shape. No PostHog
-      # credentials, as above; it replaces the root build's dist, which
-      # nothing after this step reads.
-      - name: Build Interviewer under its /v8/ sub-path
-        id: interviewer_subpath_build
-        continue-on-error: true
-        env:
-          INTERVIEWER_BASE_PATH: /v8/
-        run: pnpm --filter=@codaco/interviewer build
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
       # Builder has no Chromatic project by design, and the build step above
@@ -1002,11 +957,10 @@ jobs:
           HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
           DIALOG_EXITS_OUTCOME: ${{ steps.dialog-exits.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
+          STUDIO_RELEASE_OUTCOME: ${{ steps.studio-release.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
-          ARCHITECT_SUBPATH_BUILD_OUTCOME: ${{ steps.architect_subpath_build.outcome }}
-          INTERVIEWER_SUBPATH_BUILD_OUTCOME: ${{ steps.interviewer_subpath_build.outcome }}
           PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
@@ -1019,11 +973,10 @@ jobs:
             "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
             "dialog-exits=$DIALOG_EXITS_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
+            "studio-release=$STUDIO_RELEASE_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
-            "architect-subpath-build=$ARCHITECT_SUBPATH_BUILD_OUTCOME" \
-            "interviewer-subpath-build=$INTERVIEWER_SUBPATH_BUILD_OUTCOME" \
             "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
@@ -1395,27 +1348,25 @@ jobs:
   # lane fails if the instance served anything between `maintenance on` and
   # `maintenance off`, or if the data after differs from the data before.
   #
-  # Selected by detect's `studio_upgrade` flag, judged on the whole pull
-  # request: every Studio release PR, any change the studio flag sees (what
-  # the api image is built from), and the lane's own inputs outside the
-  # package graph. Never on `merge_group` or `push`, like `studio-stack`.
+  # Runs only on main, once merging the Studio release PR has authorised a
+  # release: exactly when `apps-release-studio` would publish
+  # (apps-release-detect's `studio_released`). Never on a pull request.
+  # `apps-release-studio` needs it, so a release whose upgrade fails publishes
+  # nothing. Re-running the failed run retries it; once a first release is
+  # tagged, so does any later push to main while the version is untagged.
   studio-upgrade:
-    needs: detect
-    if: >-
-      github.event_name != 'merge_group'
-      && github.event_name != 'push'
-      && !(github.event_name == 'workflow_dispatch'
-      && inputs.interview_e2e_benchmark == true)
-      && needs.detect.outputs.studio_upgrade == 'true'
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.studio_released == 'true'
     runs-on: ubuntu-latest
-    # Two image builds (the candidate pair, then the migration-bearing api)
-    # and two upgrade cycles of about a minute each. The cache below keeps the
+    # Two image builds (the candidate pair, then the migration-bearing api),
+    # two upgrade cycles of about a minute each, and run B's three runs of
+    # scripts/upgrade.sh, under a minute together. The cache below keeps the
     # builds warm after the first run.
     timeout-minutes: 40
     permissions:
       contents: read
-      # Run C. The previous release is the newest `@codaco/studio-api@<x.y.z>`
-      # git tag (previous-release.mjs); with none, GHCR is never asked. With
+      # Run C. The previous release is the newest `studio@<x.y.z>` git tag
+      # (previous-release.mjs); with none, GHCR is never asked. With
       # one, run.sh logs in to ghcr.io with this job's token and pulls that
       # release's images, and any failure fails the job.
       packages: read
@@ -1957,7 +1908,6 @@ jobs:
       - test-studio-server
       - studio-stack
       - studio-egress
-      - studio-upgrade
       - test-storybook
       - detect
       - e2e-policy
@@ -1982,8 +1932,6 @@ jobs:
           STUDIO_STACK_REQUIRED: ${{ needs.detect.outputs.studio }}
           STUDIO_STACK_RESULT: ${{ needs.studio-stack.result }}
           STUDIO_EGRESS_RESULT: ${{ needs.studio-egress.result }}
-          STUDIO_UPGRADE_REQUIRED: ${{ needs.detect.outputs.studio_upgrade }}
-          STUDIO_UPGRADE_RESULT: ${{ needs.studio-upgrade.result }}
           E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
           E2E_INTERVIEW_REQUIRED: ${{ needs.e2e-policy.outputs.interview }}
           E2E_INTERVIEWER_REQUIRED: ${{ needs.e2e-policy.outputs.interviewer }}
@@ -2061,17 +2009,6 @@ jobs:
             echo "studio-egress passed"
           else
             echo "studio-egress is not required for this event (result: $STUDIO_EGRESS_RESULT)"
-          fi
-
-          # The Studio upgrade lane (#1901), keyed on its flag the same way.
-          if [[ "$STUDIO_UPGRADE_REQUIRED" == "true" ]]; then
-            if [[ "$STUDIO_UPGRADE_RESULT" != "success" ]]; then
-              echo "::error::quality gate failed — studio-upgrade concluded '$STUDIO_UPGRADE_RESULT'"
-              exit 1
-            fi
-            echo "studio-upgrade passed"
-          else
-            echo "studio-upgrade is not required for this event (result: $STUDIO_UPGRADE_RESULT)"
           fi
 
           if [[ "$E2E_POLICY_RESULT" != "success" ]]; then
@@ -2730,6 +2667,9 @@ jobs:
       # with a spec's own page.evaluate/addStyleTag calls and surfaces as a
       # spurious action failure (the suite's run.sh explains this at length).
       VITE_DISABLE_ANALYTICS: 'true'
+      # The suite builds without the pinned Interviewer 8, as the pixel lane
+      # does (its run.sh says why).
+      INTERVIEWER_SKIP_LEGACY_V8: 'true'
       # Makes a stray pixel capture throw here rather than silently
       # comparing container-rasterised baselines against this runner's fonts
       # (see the suite's capture helper).
@@ -2773,35 +2713,12 @@ jobs:
         run: pnpm exec turbo run build --filter=@codaco/interviewer
       - name: Run functional E2E tests
         run: pnpm --filter @codaco/interviewer run test:e2e:native
-      # Interviewer 8 as Interviewer 9 bundles it, served at /v8/: the
-      # sub-path suite (e2e/subpath-specs/) needs its own build, which
-      # replaces dist/, so it runs after the root specs. `!cancelled()` rather
-      # than the default success(), so a root failure does not hide a
-      # sub-path one.
-      - name: Build the /v8/ sub-path app under test
-        if: ${{ !cancelled() }}
-        env:
-          INTERVIEWER_BASE_PATH: /v8/
-        run: pnpm exec turbo run build --filter=@codaco/interviewer
-      - name: Run the /v8/ sub-path E2E tests
-        if: ${{ !cancelled() }}
-        run: pnpm --filter @codaco/interviewer run test:e2e:subpath:native
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: interviewer-playwright-report-native
           path: apps/interviewer/e2e/playwright-report/
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Upload the /v8/ sub-path report
-        # Named outside the `*playwright-report*` pattern the PR report job
-        # merges, whose per-job layout has no place for a second suite.
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: interviewer-subpath-e2e-report
-          path: apps/interviewer/e2e/playwright-report-subpath/
           if-no-files-found: warn
           retention-days: 14
 
@@ -2887,6 +2804,9 @@ jobs:
       # Motion and Base UI animation bookkeeping are both disabled before the
       # application mounts.
       VITE_DISABLE_ANIMATIONS: 'true'
+      # The suite builds without the pinned Architect 8, as the pixel lane
+      # does (its run.sh says why).
+      ARCHITECT_SKIP_LEGACY_V8: 'true'
       # Makes a stray pixel capture throw here rather than silently
       # comparing container-rasterised baselines against this runner's fonts
       # (see the suite's capture helper).
@@ -2941,19 +2861,6 @@ jobs:
         # as calling `playwright test --shard=1/2` directly), so `--shard`
         # reaches Playwright without needing the `exec playwright` form.
         run: pnpm --filter @codaco/architect run test:e2e:native --shard=${{ matrix.shard }}
-      # Architect 8 as Architect 9 bundles it, served at /v8/: the sub-path
-      # suite (e2e/subpath-specs/) needs its own build, which replaces dist/,
-      # so it runs after the root specs and on one shard only. `!cancelled()`
-      # rather than the default success(), so a root failure does not hide a
-      # sub-path one.
-      - name: Build the /v8/ sub-path app under test
-        if: ${{ !cancelled() && matrix.shard == '2/2' }}
-        env:
-          ARCHITECT_BASE_PATH: /v8/
-        run: pnpm exec turbo run build --filter=@codaco/architect
-      - name: Run the /v8/ sub-path E2E tests
-        if: ${{ !cancelled() && matrix.shard == '2/2' }}
-        run: pnpm --filter @codaco/architect run test:e2e:subpath:native
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -2963,16 +2870,6 @@ jobs:
           # shards' uploads would collide and only one report would survive.
           name: playwright-report-architect-native-${{ strategy.job-index }}
           path: apps/architect/e2e/playwright-report/
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Upload the /v8/ sub-path report
-        # Named outside the `*playwright-report*` pattern the PR report job
-        # merges, whose per-job layout has no place for a second suite.
-        if: ${{ always() && matrix.shard == '2/2' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: architect-subpath-e2e-report
-          path: apps/architect/e2e/playwright-report-subpath/
           if-no-files-found: warn
           retention-days: 14
 
@@ -3730,6 +3627,8 @@ jobs:
       fresco_version: ${{ steps.fresco.outputs.version }}
       interviewer_released: ${{ steps.interviewer.outputs.released }}
       interviewer_version: ${{ steps.interviewer.outputs.version }}
+      studio_released: ${{ steps.studio.outputs.released }}
+      studio_version: ${{ steps.studio.outputs.version }}
       website_released: ${{ steps.website.outputs.released }}
       website_version: ${{ steps.website.outputs.version }}
     steps:
@@ -3771,6 +3670,12 @@ jobs:
           PKG_NAME: '@codaco/interviewer'
           RELEASE_CHANNEL: stable-tagged
         run: bash .github/scripts/detect-app-release.sh
+      # Named by @codaco/studio-api's version and tagged `studio@<version>`,
+      # which detect-app-release.sh cannot express; studio-release.mjs also
+      # keeps the lane from releasing the untagged version main held before
+      # the lane existed.
+      - id: studio
+        run: node scripts/release/studio-release.mjs plan
       - id: website
         env:
           PKG_JSON: apps/networkcanvas.com/package.json
@@ -3855,7 +3760,22 @@ jobs:
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
           VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
           VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+          # Production serves Architect 8 at /v8/ beside this release, from the
+          # tarball apps/architect/legacy-architect.json pins. The build fails
+          # rather than deploy without it (see apps/architect/RELEASING.md).
+          ARCHITECT_REQUIRE_LEGACY_V8: 'true'
         run: pnpm exec turbo run build --filter=@codaco/architect
+      # Checked outside the turbo cache too: whatever dist the build step left,
+      # production must not go out without Architect 8 in it.
+      - name: Check Architect 8 is bundled
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/architect/dist/v8/$file" ]]; then
+              echo "::error::apps/architect/dist/v8/$file is missing; production must serve Architect 8 at /v8/." >&2
+              exit 1
+            fi
+          done
       # After the turbo-cached build so a cache-restored dist still gets THIS
       # deployment's commit (GITHUB_SHA), matching netlify.toml's dev lane.
       - name: Stamp deployed commit
@@ -3982,7 +3902,22 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          # Production serves Interviewer 8 at /v8/ beside this release, from
+          # the tarball apps/interviewer/legacy-interviewer.json pins. The build
+          # fails rather than deploy without it (see apps/interviewer/RELEASING.md).
+          INTERVIEWER_REQUIRE_LEGACY_V8: 'true'
         run: pnpm exec turbo run build --filter=@codaco/interviewer
+      # Checked outside the turbo cache too: whatever dist the build step left,
+      # production must not go out without Interviewer 8 in it.
+      - name: Check Interviewer 8 is bundled
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/interviewer/dist/v8/$file" ]]; then
+              echo "::error::apps/interviewer/dist/v8/$file is missing; production must serve Interviewer 8 at /v8/." >&2
+              exit 1
+            fi
+          done
       - name: Deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
         env:
@@ -4176,6 +4111,13 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
+      # `needs: release` orders the publish before the mirror, but npm keeps
+      # serving the previous package document for a while after a publish: the
+      # 4.3.1 mirror's lockfile install, two seconds after the release job,
+      # found no @codaco/interview 11.0.0 and failed.
+      - name: Wait for npm to serve this release's packages
+        if: steps.guard.outputs.skip != 'true'
+        run: node scripts/release/wait-for-npm-versions.mjs --app apps/fresco
       - name: Mirror source to the Fresco repository
         id: mirror
         if: steps.guard.outputs.skip != 'true'
@@ -4228,6 +4170,302 @@ jobs:
           body_path: ${{ runner.temp }}/fresco-notes.md
           prerelease: false
           make_latest: 'false'
+
+  # Publishes a Studio release: both images to GHCR, signed with keyless
+  # cosign under this workflow's identity and attested with a CycloneDX SBOM
+  # each, then the `studio@<version>` tag and a GitHub release carrying the
+  # notes, both SBOMs and studio-release.json, which names the images by
+  # digest for a deployment to pin. It deploys nothing. Every decision and
+  # document comes from scripts/release/studio-release.mjs, whose tests run on
+  # pull requests; the build itself is the one `studio-stack` runs on them.
+  apps-release-studio:
+    # The upgrade lane passes before anything is published.
+    needs: [apps-release-detect, studio-upgrade]
+    if: needs.apps-release-detect.outputs.studio_released == 'true'
+    runs-on: ubuntu-latest
+    # Both targets for two platforms, the arm64 half under QEMU.
+    timeout-minutes: 90
+    # The versionless group and the guard of the app lanes, for their reason:
+    # concurrent main runs can hold different untagged versions, and the
+    # `latest` tag and the newest release must never go backwards.
+    concurrency:
+      group: apps-release-studio
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      packages: write
+      # Keyless cosign: the signing certificate is issued for this job's
+      # OIDC token, so the identity verified below is this workflow on main.
+      id-token: write
+    env:
+      VERSION: ${{ needs.apps-release-detect.outputs.studio_version }}
+      CERT_IDENTITY: https://github.com/${{ github.workflow_ref }}
+      CERT_ISSUER: https://token.actions.githubusercontent.com
+      SBOM_REFERENCE_TYPE: https://networkcanvas.com/studio/sbom-reference/v1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-tags: true
+          # Full history: the guard checks that this tree contains the newest
+          # released commit, and the notes read each package's version at the
+          # newest release tag.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Skip if this version should not be released
+        id: guard
+        env:
+          PKG_NAME: studio
+        run: bash .github/scripts/app-release-guard.sh
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          install: false
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      # For the lockfile half of each SBOM, which reads package metadata
+      # (licences among it) from the store, and the web client's bundle
+      # inventory.
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - if: steps.guard.outputs.skip != 'true'
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - if: steps.guard.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - if: steps.guard.outputs.skip != 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Both builds pass the PostHog secrets and SOURCE_MAPS_TARGET, so the
+      # shared builder stage is one cache entry: studio-api's build uploads the
+      # web bundle's source maps (once per platform) and studio-web's reuses
+      # it. The source label is what links each GHCR package to this
+      # repository. Provenance is off because the attestation a deployment
+      # verifies is cosign's, and the index stays two platforms and nothing
+      # else.
+      - name: Build and push studio-api
+        id: api
+        if: steps.guard.outputs.skip != 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/studio/Dockerfile
+          target: studio-api
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          sbom: false
+          secrets: |
+            posthog_personal_api_key=${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+            posthog_project_id=${{ secrets.POSTHOG_PROJECT_ID }}
+          build-args: SOURCE_MAPS_TARGET=codaco-studio
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          annotations: |
+            index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            index:org.opencontainers.image.description=Network Canvas Studio server: serve, worker, migrate, maintenance and rotate-secrets
+          tags: |
+            ghcr.io/complexdatacollective/studio-api:${{ env.VERSION }}
+            ghcr.io/complexdatacollective/studio-api:${{ github.sha }}
+      - name: Build and push studio-web
+        id: web
+        if: steps.guard.outputs.skip != 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/studio/Dockerfile
+          target: studio-web
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          sbom: false
+          secrets: |
+            posthog_personal_api_key=${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+            posthog_project_id=${{ secrets.POSTHOG_PROJECT_ID }}
+          build-args: SOURCE_MAPS_TARGET=codaco-studio
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          annotations: |
+            index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            index:org.opencontainers.image.description=Network Canvas Studio web client and maintenance page, served by nginx
+          tags: |
+            ghcr.io/complexdatacollective/studio-web:${{ env.VERSION }}
+            ghcr.io/complexdatacollective/studio-web:${{ github.sha }}
+      - name: Record the image references
+        id: refs
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          {
+            echo "api=ghcr.io/complexdatacollective/studio-api@$API_DIGEST"
+            echo "web=ghcr.io/complexdatacollective/studio-web@$WEB_DIGEST"
+          } >> "$GITHUB_OUTPUT"
+      - id: syft
+        if: steps.guard.outputs.skip != 'true'
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: v1.54.1
+      # One CycloneDX document per image, from three: the pushed image scanned
+      # once per platform (the OS packages, the Node runtime, and the
+      # node_modules studio-api ships) and pnpm's lockfile view of the package
+      # built into it. The lockfile half is what lists the libraries bundled
+      # into the web client, which no image scan can see. studio-web declares
+      # them all as devDependencies, so its half is not `--prod`, and pnpm's
+      # scopes say nothing about what ships: the web document takes them from
+      # the packages a build of the same tree bundles instead.
+      - name: Generate the SBOMs
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          SYFT: ${{ steps.syft.outputs.cmd }}
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          sboms="$RUNNER_TEMP/sbom"
+          mkdir -p "$sboms"
+          # Packages only: per-file entries quadruple the document, and the
+          # attestation carries all of it.
+          export SYFT_FILE_METADATA_SELECTION=none SYFT_FILE_EXECUTABLE_SELECTION=none
+          for platform in amd64 arm64; do
+            "$SYFT" scan "registry:$API_REF" --platform "linux/$platform" -q -o "cyclonedx-json@1.6=$sboms/api-$platform.json"
+            "$SYFT" scan "registry:$WEB_REF" --platform "linux/$platform" -q -o "cyclonedx-json@1.6=$sboms/web-$platform.json"
+          done
+          pnpm sbom --sbom-format cyclonedx --sbom-spec-version 1.6 --sbom-type application \
+            --filter @codaco/studio-api --prod > "$sboms/api-lockfile.json"
+          pnpm sbom --sbom-format cyclonedx --sbom-spec-version 1.6 --sbom-type application \
+            --filter @codaco/studio-web > "$sboms/web-lockfile.json"
+          node scripts/release/studio-release.mjs bundle --out "$sboms/web-bundle.json"
+          node scripts/release/studio-release.mjs sbom --image api --version "$VERSION" --digest "$API_DIGEST" \
+            --inputs "$sboms/api-amd64.json,$sboms/api-arm64.json,$sboms/api-lockfile.json" \
+            --out "$RUNNER_TEMP/studio-api.cdx.json"
+          node scripts/release/studio-release.mjs sbom --image web --version "$VERSION" --digest "$WEB_DIGEST" \
+            --inputs "$sboms/web-amd64.json,$sboms/web-arm64.json,$sboms/web-lockfile.json" \
+            --runtime "$sboms/web-bundle.json" --out "$RUNNER_TEMP/studio-web.cdx.json"
+      - if: steps.guard.outputs.skip != 'true'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+      # `--recursive` signs each platform's manifest as well as the index, so a
+      # deployment that pins one platform's digest verifies too. The public
+      # transparency log refuses attestations over 100 KB, and each SBOM is
+      # megabytes, so each image attests the release asset's URL and digest
+      # instead of the SBOM itself.
+      - name: Sign the images and attest their SBOMs
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+        run: |
+          for image in api web; do
+            node scripts/release/studio-release.mjs sbom-reference --version "$VERSION" \
+              --repository "$GITHUB_REPOSITORY" --sbom "$RUNNER_TEMP/studio-$image.cdx.json" \
+              --out "$RUNNER_TEMP/studio-$image.sbom-reference.json"
+          done
+          cosign sign --yes --recursive "$API_REF" "$WEB_REF"
+          cosign attest --yes --type "$SBOM_REFERENCE_TYPE" --predicate "$RUNNER_TEMP/studio-api.sbom-reference.json" "$API_REF"
+          cosign attest --yes --type "$SBOM_REFERENCE_TYPE" --predicate "$RUNNER_TEMP/studio-web.sbom-reference.json" "$WEB_REF"
+      # Verified the way a deployment verifies, against this workflow's
+      # identity on main, before anything names the digests.
+      - name: Verify the signatures and attestations
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+        run: |
+          for image in api web; do
+            ref_var="${image^^}_REF"
+            ref="${!ref_var}"
+            sbom="$RUNNER_TEMP/studio-$image.cdx.json"
+            cosign verify --certificate-identity "$CERT_IDENTITY" --certificate-oidc-issuer "$CERT_ISSUER" "$ref" > /dev/null
+            attested=$(cosign verify-attestation --type "$SBOM_REFERENCE_TYPE" --certificate-identity "$CERT_IDENTITY" --certificate-oidc-issuer "$CERT_ISSUER" "$ref" \
+              | jq -r '.payload | @base64d | fromjson | .predicate.sbom.digest.sha256')
+            if ! grep -qx "$(sha256sum "$sbom" | cut -d' ' -f1)" <<< "$attested"; then
+              echo "::error::no attestation on $ref names the digest of $sbom"
+              exit 1
+            fi
+            echo "$ref: signature and SBOM attestation verified for $CERT_IDENTITY"
+          done
+      # A self-hoster pulls with no registry credentials, and so does a
+      # deployment. A GHCR package starts private and only an organization
+      # owner can make it public, so the first release stops here, untagged,
+      # until that is done; re-running this job then releases it.
+      - name: Confirm both images pull without credentials
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          for pair in "studio-api@$API_DIGEST" "studio-web@$WEB_DIGEST"; do
+            name="${pair%@*}"
+            token=$(curl -fsS "https://ghcr.io/token?scope=repository:complexdatacollective/$name:pull" | jq -r .token)
+            if ! curl -fsS -o /dev/null -I \
+              -H "Authorization: Bearer $token" \
+              -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' \
+              "https://ghcr.io/v2/complexdatacollective/$name/manifests/${pair#*@}"; then
+              echo "::error::ghcr.io/complexdatacollective/$name is not public. An organization owner must set its visibility to public (package settings, Danger Zone), then re-run this job."
+              exit 1
+            fi
+          done
+      - name: Write the release notes and studio-release.json
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          node scripts/release/studio-release.mjs notes --version "$VERSION" \
+            --repository "$REPOSITORY" --api-digest "$API_DIGEST" --web-digest "$WEB_DIGEST" \
+            --out "$RUNNER_TEMP/studio-notes.md"
+          node scripts/release/studio-release.mjs manifest --version "$VERSION" \
+            --commit "$GITHUB_SHA" --repository "$REPOSITORY" \
+            --api-digest "$API_DIGEST" --web-digest "$WEB_DIGEST" \
+            --out "$RUNNER_TEMP/studio-release.json"
+      # `gh release create` with assets creates a draft, uploads, and only
+      # then publishes, which is what creates the tag: a failed upload leaves
+      # no tag, so the next push to main releases this version again rather
+      # than leaving a release a deployment cannot read. The retry first
+      # deletes the draft a failed run left. Not marked latest: the
+      # repository's latest release belongs to the apps.
+      - name: Create the studio@${{ env.VERSION }} release
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
+            --jq ".[] | select(.draft and .tag_name == \"studio@$VERSION\") | .id" |
+            while read -r draft; do
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$draft"
+            done
+          gh release create "studio@$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Studio $VERSION" \
+            --notes-file "$RUNNER_TEMP/studio-notes.md" \
+            --latest=false \
+            "$RUNNER_TEMP/studio-release.json" \
+            "$RUNNER_TEMP/studio-api.cdx.json" \
+            "$RUNNER_TEMP/studio-web.cdx.json"
+      # Moved only once the release is published, so `latest` never names an
+      # image no release describes.
+      - name: Point latest at this release
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          API_REF: ${{ steps.refs.outputs.api }}
+          WEB_REF: ${{ steps.refs.outputs.web }}
+        run: |
+          docker buildx imagetools create -t ghcr.io/complexdatacollective/studio-api:latest "$API_REF"
+          docker buildx imagetools create -t ghcr.io/complexdatacollective/studio-web:latest "$WEB_REF"
 
   # Documentation follows the same generated-release-PR gate as the PWA apps,
   # but uses normal semver and produces only a Netlify deployment + git tag.
@@ -4763,8 +5001,8 @@ jobs:
   # Nothing here feeds `quality`, which is the only required check. A job the
   # gate requires on a detect flag therefore cannot rely on this job to keep
   # its verdict: its flag is judged on the cumulative PR diff instead, so the
-  # job re-runs on every push of a pull request that selects it (studio-stack,
-  # studio-upgrade).
+  # job re-runs on every push of a pull request that selects it
+  # (studio-stack).
   carry-forward-statuses:
     needs:
       - detect

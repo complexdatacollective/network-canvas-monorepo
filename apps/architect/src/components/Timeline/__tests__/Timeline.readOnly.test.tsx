@@ -8,7 +8,7 @@ import {
   within,
 } from '@testing-library/react';
 import type { DragControls, HTMLMotionProps, PanInfo } from 'motion/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useLayoutEffect } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -91,12 +91,15 @@ vi.mock('motion/react', async (importOriginal) => {
   };
 
   const Group = (props: GroupProps) => {
-    gesture.values = props.values;
-    gesture.moveRow = (from, to) => {
-      const next = [...props.values];
-      next.splice(to, 0, ...next.splice(from, 1));
-      props.onReorder(next);
-    };
+    const { values, onReorder } = props;
+    useLayoutEffect(() => {
+      gesture.values = values;
+      gesture.moveRow = (from, to) => {
+        const next = [...values];
+        next.splice(to, 0, ...next.splice(from, 1));
+        onReorder(next);
+      };
+    });
     return <actual.Reorder.Group {...props} />;
   };
 
@@ -319,8 +322,9 @@ describe('Timeline when another tab takes the protocol during a drag', () => {
     within(screen.getByRole('list'))
       .getAllByRole('heading', { level: 4 })
       .map((heading) => heading.textContent);
+  // The timeline shows each stage's name in the protocol's default language.
   const protocolLabels = (store: ReturnType<typeof makeStore>) =>
-    getProtocol(store.getState())?.stages.map((stage) => stage.label);
+    getProtocol(store.getState())?.stages.map((stage) => stage.label['en-US']);
   const announcements = () =>
     screen
       .queryAllByRole('status')

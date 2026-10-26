@@ -1,22 +1,31 @@
 import type { z } from 'zod';
 
-// NormalizedDesign (+ optional Wording) -> schema 8 protocol input
+// NormalizedDesign (+ optional Wording) -> schema 9 protocol input
 // (z.input<typeof CurrentProtocolSchema> in production), generated assets,
 // a stage map (compiled index -> design stage or compiler-added stage) and a
 // codebook source map. Deterministic and total on analyse() output.
-import type { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  type CurrentProtocolSchema,
+  missingSuppliedStageText,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
 import { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
 
 import type { GeneratedAsset, ProtocolSummary } from '../../shared/api.ts';
 import type { NormalizedDesign, NStage } from './analyse.ts';
+import { taskIntroductions } from './intros.ts';
 import {
   type NAttribute,
   type DesignIssue,
   graphemes,
   humanise,
+  localized,
   resolveCondition,
+  SKETCH_LOCALE,
   slug,
   type ResolvedRule,
+  SKETCH_LOCALIZATION,
   variableFor,
 } from './rules.ts';
 import type { Wording } from './schema.ts';
@@ -24,8 +33,14 @@ import { worldCountriesGeojson } from './world-countries.ts';
 
 type Json = Record<string, unknown>;
 
+/** Arrays count: setAt walks paths that index into them. */
+const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null;
+
+const hasStageType = (s: Json): s is Json & { type: string } =>
+  typeof s.type === 'string';
+
 /**
- * What compile() emits: the INPUT side of the schema 8 protocol schema (before
+ * What compile() emits: the INPUT side of the schema 9 protocol schema (before
  * zod's transforms and brands). The compiler assembles stages from plain
  * records keyed by the design, so the object is built as `Json` and asserted
  * to this type once, at the return. The type documents intent; it is not the
@@ -36,7 +51,14 @@ export type SketchProtocol = z.input<typeof CurrentProtocolSchema>;
 export type { GeneratedAsset };
 export type StageSource =
   | { designIndex: number; designId: string; kind: string }
-  | { added: 'researcher notes' | 'consent' | 'consent gate' };
+  | {
+      added:
+        | 'researcher notes'
+        | 'consent'
+        | 'consent gate'
+        | 'introduction'
+        | 'finish';
+    };
 export type CompileResult = {
   protocol: SketchProtocol;
   assets: GeneratedAsset[];
@@ -88,6 +110,37 @@ const CONSENT: NAttribute = {
   required: true,
   builtin: 'consent',
 };
+/** The built-in name every node has. */
+const nameAttribute = (question: string): NAttribute => ({
+  id: 'name',
+  label: 'Name',
+  question,
+  kind: 'text',
+  options: [],
+  optionScores: [],
+  numberRange: [],
+  required: true,
+  builtin: 'name',
+});
+/** The English of a localized string Sketch wrote. */
+const textOf = (text: unknown): string =>
+  String(isObject(text) ? text[SKETCH_LOCALE] : undefined);
+
+/** Sets `value` at `path` in `target`, creating the records on the way. */
+const setAt = (target: Json, path: readonly string[], value: unknown) => {
+  let at = target;
+  path.slice(0, -1).forEach((k) => {
+    const next = at[k];
+    if (isObject(next)) at = next;
+    else {
+      const fresh: Json = {};
+      at[k] = fresh;
+      at = fresh;
+    }
+  });
+  at[path.at(-1)!] = value;
+};
+
 const INFO_TITLES = {
   welcome: 'Welcome',
   instructions: 'Before you begin',
@@ -215,18 +268,11 @@ export const compile = (
       const scope = `node:${n.id}`;
       const tk = nodeKey.get(n.id)!;
       const vars: Json = {};
-      const nameAttr: NAttribute = {
-        id: 'name',
-        label: 'Name',
-        question: n.nameQuestion,
-        kind: 'text',
-        options: [],
-        optionScores: [],
-        numberRange: [],
-        required: true,
-        builtin: 'name',
-      };
-      vars[claim(scope, 'name', tk)] = variableFor(nameAttr, 'name', true);
+      vars[claim(scope, 'name', tk)] = variableFor(
+        nameAttribute(n.nameQuestion),
+        'name',
+        true,
+      );
       if (needsLayout.has(n.id))
         vars[claim(scope, 'layout', tk)] = { name: 'layout', type: 'layout' };
       // every declared id up front, so a generated `<id>_other` never takes one
@@ -291,12 +337,9 @@ export const compile = (
   // ---- rules ------------------------------------------------------------------------
   const attrIn = (scope: string, id: string): NAttribute | undefined => {
     if (id === 'name' && scope.startsWith('node:'))
-      return {
-        id: 'name',
-        kind: 'text',
-        options: [],
-        optionScores: [],
-      } as unknown as NAttribute;
+      return nameAttribute(
+        d.nodeTypes.find((n) => `node:${n.id}` === scope)?.nameQuestion ?? '',
+      );
     const list =
       scope === 'ego'
         ? egoList
@@ -455,9 +498,10 @@ export const compile = (
   };
   const label = (designId: string, fallback: string) =>
     graphemes(pick(W.stage.get(designId)?.label, fallback) || 'Stage', 50);
+  // Only an Ego Form has an introduction panel in schema 9.
   const intro = (designId: string, title: string, text: string) => ({
-    title: pick(W.stage.get(designId)?.title, title),
-    text: pick(W.stage.get(designId)?.text, text),
+    title: localized(pick(W.stage.get(designId)?.title, title)),
+    text: localized(pick(W.stage.get(designId)?.text, text)),
   });
   const qKey = (scope: string, id: string) =>
     scope === 'ego' ? `ego/${id}` : `${scope}/${id}`;
@@ -470,12 +514,14 @@ export const compile = (
       : W.question.get(qk);
     return {
       variable: key(scope, attrId),
-      prompt: pick(polished, a.question, a.label),
+      prompt: localized(pick(polished, a.question, a.label)),
     };
   };
   const prompt = (designId: string, i: number, draft: string) =>
-    pick(W.prompt.get(`${designId}/p${i + 1}`)?.text, draft);
+    localized(pick(W.prompt.get(`${designId}/p${i + 1}`)?.text, draft));
   const nodeSubject = (t: string) => ({ entity: 'node', type: nodeKey.get(t) });
+  const relName = (id: string) =>
+    d.relationships.find((r) => r.id === id)!.name;
   // ties created so far, with the node type they were drawn between: a map
   // shows only the ties between the people on it
   const createdRels: { ek: string; t: string }[] = [];
@@ -500,7 +546,36 @@ export const compile = (
       : -1
     : null;
   let gatePending = false;
+  const intros = taskIntroductions(d);
   const push = (stage: Json, src: StageSource) => {
+    // an Information screen before the first stage of a new kind of task,
+    // shown exactly when that stage is
+    const introFor = 'designId' in src ? intros.get(src.designId) : undefined;
+    if (introFor && 'designId' in src) {
+      intros.delete(src.designId);
+      const w = W.stage.get(`${src.designId}/intro`);
+      push(
+        {
+          id: sid(`${src.designId}_intro`),
+          type: 'Information',
+          label: localized(
+            graphemes(`${textOf(stage.label)} (introduction)`, 50),
+          ),
+          ...(stage.skipLogic
+            ? { skipLogic: structuredClone(stage.skipLogic) }
+            : {}),
+          title: localized(pick(w?.title, introFor.title)),
+          items: [
+            {
+              id: 'text',
+              type: 'text',
+              content: localized(pick(w?.text, introFor.text)),
+            },
+          ],
+        },
+        { added: 'introduction' },
+      );
+    }
     if (gatePending) {
       const gate = {
         action: 'SKIP',
@@ -523,16 +598,18 @@ export const compile = (
         stages.push({
           id: sid('consent_given'),
           type: 'Information',
-          label: 'Consent given',
+          label: localized('Consent given'),
           skipLogic: gate,
-          title: pick(w?.title, 'Thank you'),
+          title: localized(pick(w?.title, 'Thank you')),
           items: [
             {
               id: 'text',
               type: 'text',
-              content: pick(
-                w?.text,
-                "Thank you for agreeing to take part. Let's begin.",
+              content: localized(
+                pick(
+                  w?.text,
+                  "Thank you for agreeing to take part. Let's begin.",
+                ),
               ),
             },
           ],
@@ -549,7 +626,7 @@ export const compile = (
       {
         id: sid('consent'),
         type: 'EgoForm',
-        label: label('consent', 'Consent'),
+        label: localized(label('consent', 'Consent')),
         introductionPanel: intro(
           'consent',
           'Taking part',
@@ -571,7 +648,7 @@ export const compile = (
       kind: s.kind,
     };
     const base = (id: string, type: string, lbl: string): Json => {
-      const st: Json = { id: sid(id), type, label: lbl };
+      const st: Json = { id: sid(id), type, label: localized(lbl) };
       if (s.interviewerNote) st.interviewScript = s.interviewerNote;
       const sk = skipFor(s);
       if (sk) st.skipLogic = sk;
@@ -594,8 +671,10 @@ export const compile = (
         push(
           {
             ...base(s.id, 'Information', label(s.id, humanise(s.id))),
-            title: pick(w?.title, INFO_TITLES[s.role]),
-            items: content ? [{ id: 'text', type: 'text', content }] : [],
+            title: localized(pick(w?.title, INFO_TITLES[s.role])),
+            items: content
+              ? [{ id: 'text', type: 'text', content: localized(content) }]
+              : [],
           },
           src,
         );
@@ -620,11 +699,6 @@ export const compile = (
           withFilter({
             ...base(s.id, 'AlterForm', label(s.id, humanise(s.id))),
             subject: nodeSubject(s.nodeTypeId),
-            introductionPanel: intro(
-              s.id,
-              `About the ${nt!.plural.toLowerCase()} you named`,
-              `Please answer a few questions about each of the ${nt!.plural.toLowerCase()} you named.`,
-            ),
             form: { fields: s.attributeIds.map((a) => field(scope, a)) },
           }),
           src,
@@ -636,11 +710,6 @@ export const compile = (
           {
             ...base(s.id, 'AlterEdgeForm', label(s.id, humanise(s.id))),
             subject: { entity: 'edge', type: relKey.get(r.id) },
-            introductionPanel: intro(
-              s.id,
-              'About these relationships',
-              `Please answer a few questions about each "${r.name.toLowerCase()}" relationship.`,
-            ),
             form: {
               fields: s.attributeIds.map((a) => field(`rel:${r.id}`, a)),
             },
@@ -681,13 +750,14 @@ export const compile = (
                 panels: [
                   {
                     id: 'existing',
-                    title: 'Already mentioned',
+                    title: localized('Already mentioned'),
                     dataSource: 'existing',
                   },
                 ],
               }
             : {};
-        const st = base(s.id, '', label(s.id, humanise(s.id)));
+        const stageLabel = label(s.id, humanise(s.id));
+        const st = base(s.id, '', stageLabel);
         if (s.method === 'quick_add')
           push(
             {
@@ -707,13 +777,14 @@ export const compile = (
               type: 'NameGenerator',
               ...common,
               form: {
-                title: pick(w?.title, `Add a ${n.singular.toLowerCase()}`),
+                title: localized(
+                  pick(w?.title, `Add a ${n.singular.toLowerCase()}`),
+                ),
                 fields: [
                   {
                     variable: nameKey,
-                    prompt: pick(
-                      W.question.get(`${scope}/name`),
-                      n.nameQuestion,
+                    prompt: localized(
+                      pick(W.question.get(`${scope}/name`), n.nameQuestion),
                     ),
                   },
                   ...s.attributeIds.map((a) => field(scope, a)),
@@ -758,7 +829,7 @@ export const compile = (
             source: `${assetId}.csv`,
           };
           placeholderNotes.push(
-            `**Placeholder roster.** Stage "${st.label}" picks ${n.plural.toLowerCase()} from a generated list of ${rowCount} example rows (${assetId}.csv). Replace it in Architect with your real list before fielding, keeping the column headers: ${cols.join(', ')}.`,
+            `**Placeholder roster.** Stage "${stageLabel}" picks ${n.plural.toLowerCase()} from a generated list of ${rowCount} example rows (${assetId}.csv). Replace it in Architect with your real list before fielding, keeping the column headers: ${cols.join(', ')}.`,
           );
           push(
             {
@@ -770,7 +841,7 @@ export const compile = (
                 ? {
                     cardOptions: {
                       additionalProperties: s.attributeIds.map((a) => ({
-                        label: attrIn(scope, a)!.label,
+                        label: localized(attrIn(scope, a)!.label),
                         variable: key(scope, a),
                       })),
                     },
@@ -778,7 +849,9 @@ export const compile = (
                 : {}),
               sortOptions: {
                 sortOrder: [{ property: nameKey, direction: 'asc' }],
-                sortableProperties: [{ label: 'Name', variable: nameKey }],
+                sortableProperties: [
+                  { label: localized('Name'), variable: nameKey },
+                ],
               },
               searchOptions: { fuzziness: 0.5, matchProperties: [nameKey] },
             },
@@ -870,6 +943,8 @@ export const compile = (
                       entity: 'edge',
                       type: relKey.get(e.relationshipId),
                     },
+                    // the toolbar names each relationship
+                    label: localized(relName(e.relationshipId)),
                     ...(e.attributeIds.length
                       ? {
                           form: {
@@ -894,7 +969,9 @@ export const compile = (
             subject: nodeSubject(s.nodeTypeId),
             presets: s.views.map((v, i) => ({
               id: `view${i + 1}`,
-              label: pick(W.prompt.get(`${s.id}/view${i + 1}`)?.text, v.label),
+              label: localized(
+                pick(W.prompt.get(`${s.id}/view${i + 1}`)?.text, v.label),
+              ),
               layoutVariable: key(scope, 'layout'),
               ...(v.groupByAttributeId
                 ? { groupVariable: key(scope, v.groupByAttributeId) }
@@ -902,15 +979,21 @@ export const compile = (
               ...(v.relationshipIds.length
                 ? {
                     edges: {
-                      display: v.relationshipIds.map((r) => relKey.get(r)),
+                      // the legend names each relationship shown
+                      display: v.relationshipIds.map((r) => ({
+                        type: relKey.get(r),
+                        label: localized(relName(r)),
+                      })),
                     },
                   }
                 : {}),
               ...(v.highlightAttributeIds.length
                 ? {
-                    highlight: v.highlightAttributeIds.map((h) =>
-                      key(scope, h),
-                    ),
+                    // the legend names each highlighted attribute
+                    highlight: v.highlightAttributeIds.map((h) => ({
+                      variable: key(scope, h),
+                      label: localized(attrIn(scope, h)!.label),
+                    })),
                   }
                 : {}),
             })),
@@ -951,8 +1034,8 @@ export const compile = (
             if (run.kind === 'CategoricalBin' && p.allowOther)
               Object.assign(out, {
                 otherVariable: key(scope, `${p.attributeId}#other`),
-                otherVariablePrompt: 'Please describe',
-                otherOptionLabel: 'Other',
+                otherVariablePrompt: localized('Please describe'),
+                otherOptionLabel: localized('Other'),
               });
             return out;
           });
@@ -992,10 +1075,12 @@ export const compile = (
                 `rel:${p.relationshipId}`,
                 p.strengthAttributeId,
               ),
-              negativeLabel: pick(
-                W.prompt.get(`${s.id}/p${i + 1}`)?.negativeLabel,
-                p.noTieLabel,
-                'Not connected',
+              negativeLabel: localized(
+                pick(
+                  W.prompt.get(`${s.id}/p${i + 1}`)?.negativeLabel,
+                  p.noTieLabel,
+                  'Not connected',
+                ),
               ),
             });
           return out;
@@ -1007,12 +1092,6 @@ export const compile = (
         });
         if (type === 'OneToManyDyadCensus')
           st.behaviours = { removeAfterConsideration: true };
-        else
-          st.introductionPanel = intro(
-            s.id,
-            'How are they connected?',
-            `You will now see pairs of the ${nt!.plural.toLowerCase()} you named. Answer the question for each pair.`,
-          );
         push(st, src);
         break;
       }
@@ -1087,11 +1166,32 @@ export const compile = (
   stages.unshift({
     id: sid('researcher_notes'),
     type: 'Information',
-    label: 'Researcher notes (delete before fielding)',
-    title: 'Notes for the research team',
-    items: [{ id: 'text', type: 'text', content: notes.join('\n\n') }],
+    label: localized('Researcher notes (delete before fielding)'),
+    title: localized('Notes for the research team'),
+    items: [
+      { id: 'text', type: 'text', content: localized(notes.join('\n\n')) },
+    ],
   });
   stageMap.unshift({ added: 'researcher notes' });
+
+  // Schema 9 ends every interview at a finish stage, with the closing text
+  // Network Canvas supplies.
+  stages.push(
+    createDefaultFinishSessionStage({
+      id: sid('finish'),
+      localization: SKETCH_LOCALIZATION,
+    }),
+  );
+  stageMap.push({ added: 'finish' });
+
+  // The wording Network Canvas supplies for each stage's own controls and
+  // notices, as Architect writes it into a new stage.
+  for (const stage of stages.filter(hasStageType))
+    for (const { path, value } of missingSuppliedStageText(
+      stage,
+      SKETCH_LOCALIZATION,
+    ))
+      setAt(stage, path, value);
 
   const protocol: Json = {
     name: graphemes(
@@ -1104,8 +1204,9 @@ export const compile = (
       100,
     ),
     description: pick(wording?.protocolDescription, d.summary),
-    schemaVersion: 8,
+    schemaVersion: 9,
     lastModified: (opts.now ?? new Date()).toISOString(),
+    localization: SKETCH_LOCALIZATION,
     codebook,
     ...(Object.keys(assetManifest).length ? { assetManifest } : {}),
     stages,
@@ -1114,7 +1215,7 @@ export const compile = (
     name: String(protocol.name),
     stageCount: stages.length,
     stages: stages.map((st) => ({
-      label: String(st.label),
+      label: textOf(st.label),
       type: String(st.type),
     })),
     nodeTypes: d.nodeTypes.map((n) => n.singular),
@@ -1122,8 +1223,9 @@ export const compile = (
     rosterCount: assets.filter((a) => a.mimeType === 'text/csv').length,
   };
   return {
+    // The interview's shared words for what the protocol uses.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SketchProtocol
-    protocol: protocol as SketchProtocol,
+    protocol: withInterfaceText(protocol as SketchProtocol),
     assets,
     summary,
     stageMap,

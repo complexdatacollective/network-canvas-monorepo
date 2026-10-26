@@ -134,7 +134,7 @@ export function variableReferences(
 
 /**
  * Every reference to one codebook entity type the current schema declares:
- * stage subjects, edge creation settings, filter rules, the pedigree configs,
+ * stage subjects, edge creation settings, filter rules, the pedigree's relationship type,
  * and the attributes the type owns, which stop existing with it.
  */
 export function entityTypeReferences(
@@ -220,7 +220,7 @@ function withoutReference(
 function inRemovalOrder(
   references: readonly SectionReference[],
 ): SectionReference[] {
-  return [...references].sort((a, b) => comparePaths(b.path, a.path));
+  return references.toSorted((a, b) => comparePaths(b.path, a.path));
 }
 
 function comparePaths(a: DocumentPath, b: DocumentPath): number {

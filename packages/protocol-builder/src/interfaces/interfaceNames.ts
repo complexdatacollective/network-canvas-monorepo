@@ -1,6 +1,10 @@
+import { mapValues } from 'es-toolkit';
+
 import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
+
+import { isStageType } from '../stage-types.ts';
 
 /** Researcher-facing interface names. Keys remain the protocol's stable stage types. */
 export const interfaceNameMessages = defineMessages({
@@ -52,11 +56,23 @@ export const interfaceNameMessages = defineMessages({
     description:
       'Researcher-facing interface name. Interface for locating network members on a map. Not a protocol-authored stage label.',
   },
+  FinishSession: {
+    id: 'protocolBuilder.interface.finishSession',
+    defaultMessage: 'Finish Screen',
+    description:
+      'Researcher-facing interface name. The screen that ends the interview, where the participant reads closing text and finishes the interview. Not a protocol-authored stage label.',
+  },
   Information: {
     id: 'protocolBuilder.interface.information',
     defaultMessage: 'Information',
     description:
       'Researcher-facing interface name. Interface for presenting researcher-authored information. Not a protocol-authored stage label.',
+  },
+  LanguageChooser: {
+    id: 'protocolBuilder.interface.languageChooser',
+    defaultMessage: 'Language Chooser',
+    description:
+      'Researcher-facing interface name. Interface where the participant chooses which of the protocol languages the rest of the interview is shown in. Not a protocol-authored stage label.',
   },
   NameGenerator: {
     id: 'protocolBuilder.interface.nameGenerator',
@@ -127,18 +143,16 @@ const englishIntl = createAppIntl({ locale: 'en' });
  * labels. Keep those independent of the app's presentation preference.
  * Display surfaces use interfaceDisplayName(type, intl) instead.
  */
-export const INTERFACE_NAMES = Object.fromEntries(
-  Object.entries(interfaceNameMessages).map(([type, message]) => [
-    type,
-    englishIntl.formatMessage(message),
-  ]),
-) as Record<StageType, string>;
+export const INTERFACE_NAMES: Record<StageType, string> = mapValues(
+  interfaceNameMessages,
+  (message) => englishIntl.formatMessage(message),
+);
 
 /** A localized researcher-facing name; undefined for unknown future stage types. */
 export const interfaceDisplayName = (
   stageType: string,
   intl: IntlShape = englishIntl,
 ): string | undefined =>
-  Object.hasOwn(interfaceNameMessages, stageType)
-    ? intl.formatMessage(interfaceNameMessages[stageType as StageType])
+  isStageType(stageType)
+    ? intl.formatMessage(interfaceNameMessages[stageType])
     : undefined;

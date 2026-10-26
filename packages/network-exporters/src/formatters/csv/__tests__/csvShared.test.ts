@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
-import { sanitizeCellValue } from '../csvShared';
+import { csvHeaderCell, sanitizeCellValue } from '../csvShared';
+
+describe('csvHeaderCell', () => {
+  it.each(['=total', '+1', '-score', '@handle'])(
+    'guards the header %s like an answer',
+    (header) => {
+      expect(csvHeaderCell(header)).toBe(`'${header}`);
+    },
+  );
+
+  it('writes any other header as named', () => {
+    expect(csvHeaderCell('close friend')).toBe('close friend');
+    expect(csvHeaderCell('友人')).toBe('友人');
+  });
+
+  it('quotes a header that CSV needs quoted', () => {
+    expect(csvHeaderCell('=a,b')).toBe(`"'=a,b"`);
+    expect(csvHeaderCell('say "hi"')).toBe('"say ""hi"""');
+    expect(csvHeaderCell('\rline')).toBe(`"'\rline"`);
+  });
+});
 
 describe('sanitizeCellValue', () => {
   describe('formula injection neutralization', () => {
@@ -56,6 +76,22 @@ describe('sanitizeCellValue', () => {
       expect(sanitizeCellValue(false)).toBe(false);
       expect(sanitizeCellValue(null)).toBeNull();
       expect(sanitizeCellValue(undefined)).toBeUndefined();
+    });
+
+    it('writes a bigint as its decimal digits', () => {
+      expect(sanitizeCellValue(12345678901234567890n)).toBe(
+        '12345678901234567890',
+      );
+    });
+
+    it.each([
+      ['function', () => 'source'],
+      ['symbol', Symbol('cell')],
+    ])('refuses a %s rather than writing it into a cell', (kind, value) => {
+      expect(() => sanitizeCellValue(value)).toThrow(TypeError);
+      expect(() => sanitizeCellValue(value)).toThrow(
+        `Cannot write a ${kind} value to a CSV cell`,
+      );
     });
   });
 });

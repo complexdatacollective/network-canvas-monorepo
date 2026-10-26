@@ -5,13 +5,11 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react';
 
-import { AppMessage } from '@codaco/app-i18n/react';
-
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import type {
   AssetRequestHandler,
   FinishHandler,
@@ -51,8 +49,10 @@ export function ContractProvider({
   // useAssetUrl consumer to refetch on every render.
   const onFinishRef = useRef(onFinish);
   const onRequestAssetRef = useRef(onRequestAsset);
-  onFinishRef.current = onFinish;
-  onRequestAssetRef.current = onRequestAsset;
+  useLayoutEffect(() => {
+    onFinishRef.current = onFinish;
+    onRequestAssetRef.current = onRequestAsset;
+  });
 
   const stableOnFinish = useCallback<FinishHandler>(
     (...args) => onFinishRef.current(...args),
@@ -73,9 +73,7 @@ export function ContractProvider({
         isE2E: flags?.isE2E ?? false,
         isDevelopment: flags?.isDevelopment ?? false,
       },
-      finishConfirmationDescription: finishConfirmationDescription ?? (
-        <AppMessage message={messages.finishConfirmationDescription} />
-      ),
+      finishConfirmationDescription,
     }),
     [
       stableOnFinish,

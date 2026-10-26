@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  type LocalizedString,
   type SkipLogic,
   type SkipLogicDestination,
   type Stage,
   stageSchema,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   NcNetworkSchema,
@@ -18,6 +20,8 @@ import {
 import { generateNetwork } from '../generateNetwork.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
+
+const en = (text: string): LocalizedString => ({ 'en-US': text });
 
 type ZodLiteralDef = { _zod: { def: { values: string[] } } };
 type ZodOptionShape = { shape: { type: ZodLiteralDef } };
@@ -43,7 +47,10 @@ function makeCodebook(overrides?: Partial<Codebook>): Codebook {
       'node-type-1': {
         color: 'node-color-seq-1',
         variables: {
-          'var-name': { name: 'Name', type: 'text' },
+          'var-name': {
+            name: 'Name',
+            type: 'text',
+          },
         },
       },
     },
@@ -60,10 +67,16 @@ function makeCodebook(overrides?: Partial<Codebook>): Codebook {
 function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
   return {
     id: 'stage-ng',
-    label: 'Name Generator',
+    label: en('Name Generator'),
     type: 'NameGenerator',
+    minNodesNotice: en(
+      '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    ),
+    maxNodesNotice: en(
+      'You have completed this task. Click the next arrow to continue.',
+    ),
     subject: { entity: 'node', type: 'node-type-1' },
-    prompts: [{ id: 'prompt-ng', text: 'Add people' }],
+    prompts: [{ id: 'prompt-ng', text: en('Add people') }],
     behaviours: { minNodes: 5, maxNodes: 8 },
     ...overrides,
   } as Stage;
@@ -72,11 +85,18 @@ function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
 function makeRosterStage(overrides?: Record<string, unknown>): Stage {
   return {
     id: 'stage-ngr',
-    label: 'Roster',
+    label: en('Roster'),
     type: 'NameGeneratorRoster',
+    allAddedNotice: en('There is nothing left to add from this list.'),
+    minNodesNotice: en(
+      '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    ),
+    maxNodesNotice: en(
+      'You have completed this task. Click the next arrow to continue.',
+    ),
     subject: { entity: 'node', type: 'node-type-1' },
     dataSource: 'roster-asset',
-    prompts: [{ id: 'prompt-ngr', text: 'Pick people' }],
+    prompts: [{ id: 'prompt-ngr', text: en('Pick people') }],
     behaviours: { minNodes: 1, maxNodes: 8 },
     ...overrides,
   } as Stage;
@@ -122,12 +142,20 @@ function stripUnstableIds(network: { nodes: NcNode[]; edges: unknown[] }) {
 function makeDyadCensusStage(overrides?: Record<string, unknown>): Stage {
   return {
     id: 'stage-dc',
-    label: 'Dyad Census',
+    label: en('Dyad Census'),
     type: 'DyadCensus',
     subject: { entity: 'node', type: 'node-type-1' },
     prompts: [
-      { id: 'prompt-dc-1', text: 'Pair 1', createEdge: 'edge-type-1' },
-      { id: 'prompt-dc-2', text: 'Pair 2', createEdge: 'edge-type-1' },
+      {
+        id: 'prompt-dc-1',
+        text: en('Pair 1'),
+        createEdge: 'edge-type-1',
+      },
+      {
+        id: 'prompt-dc-2',
+        text: en('Pair 2'),
+        createEdge: 'edge-type-1',
+      },
     ],
     ...overrides,
   } as Stage;
@@ -138,11 +166,15 @@ function makeTieStrengthCensusStage(
 ): Stage {
   return {
     id: 'stage-tsc',
-    label: 'Tie Strength',
+    label: en('Tie Strength'),
     type: 'TieStrengthCensus',
     subject: { entity: 'node', type: 'node-type-1' },
     prompts: [
-      { id: 'prompt-tsc', text: 'Strength', createEdge: 'edge-type-1' },
+      {
+        id: 'prompt-tsc',
+        text: en('Strength'),
+        createEdge: 'edge-type-1',
+      },
     ],
     ...overrides,
   } as Stage;
@@ -151,22 +183,23 @@ function makeTieStrengthCensusStage(
 function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
   return {
     id: 'stage-fp',
-    label: 'Family',
+    label: en('Family'),
     type: 'FamilyPedigree',
-    nodeConfig: {
-      type: 'node-type-1',
-      nodeLabelVariable: 'var-name',
-      egoVariable: 'var-ego',
-      biologicalSexVariable: 'var-sex',
-      relationshipVariable: 'var-rel',
+    wording: familyPedigreeWordingIn(),
+    subject: { entity: 'node', type: 'node-type-1' },
+    prompt: en('Tell us about your family'),
+    nodeConfiguration: {
+      nameAttribute: 'var-name',
+      genderIdentity: { attribute: 'var-gender', terms: [] },
+      sexAssignedAtBirthAttribute: 'var-sex',
+      egoAttribute: 'var-ego',
     },
-    edgeConfig: {
+    edgeConfiguration: {
       type: 'edge-type-1',
-      relationshipTypeVariable: 'var-rel-type',
-      isActiveVariable: 'var-active',
-      isGestationalCarrierVariable: 'var-gestational',
+      kindAttribute: 'var-kind',
+      gestationalCarrierAttribute: 'var-gestational',
+      currentPartnerAttribute: 'var-partner',
     },
-    censusPrompt: 'Tell us about your family',
     ...overrides,
   } as unknown as Stage;
 }
@@ -174,9 +207,9 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
 function makeInformationStage(id: string, skipLogic?: SkipLogic): Stage {
   return {
     id,
-    label: id,
+    label: en(id),
     type: 'Information',
-    title: id,
+    title: en(id),
     items: [],
     skipLogic,
   } as Stage;
@@ -217,13 +250,18 @@ function makeHiddenSkipLogic(
 function makeSkipRoutingCodebook(): Codebook {
   const nodeDefinition: NonNullable<Codebook['node']>[string] = {
     color: 'node-color-seq-1',
-    variables: { 'var-name': { name: 'Name', type: 'text' } },
+    variables: {
+      'var-name': { name: 'Name', type: 'text' },
+    },
   };
 
   return makeCodebook({
     ego: {
       variables: {
-        consent: { name: 'Consent', type: 'boolean' },
+        consent: {
+          name: 'Consent',
+          type: 'boolean',
+        },
       },
     },
     node: {
@@ -251,8 +289,14 @@ describe('generateNetwork', () => {
         'node-type-1': {
           color: 'node-color-seq-1',
           variables: {
-            'var-name': { name: 'Name', type: 'text' },
-            'var-nickname': { name: 'Nickname', type: 'text' },
+            'var-name': {
+              name: 'Name',
+              type: 'text',
+            },
+            'var-nickname': {
+              name: 'Nickname',
+              type: 'text',
+            },
           },
         },
       },
@@ -279,8 +323,14 @@ describe('generateNetwork', () => {
         'node-type-1': {
           color: 'node-color-seq-1',
           variables: {
-            'var-name': { name: 'Name', type: 'text' },
-            'highlighted': { name: 'Highlighted', type: 'boolean' },
+            'var-name': {
+              name: 'Name',
+              type: 'text',
+            },
+            'highlighted': {
+              name: 'Highlighted',
+              type: 'boolean',
+            },
           },
         },
       },
@@ -456,121 +506,19 @@ describe('generateNetwork', () => {
   });
 
   describe('FamilyPedigree stage', () => {
-    it('should use nodeConfig.type for node types, not a hardcoded fallback', () => {
+    it('adds no people or relationships, since the participant draws them', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.nodes.length).toBeGreaterThan(0);
-
-      for (const node of network.nodes) {
-        expect(node.type).toBe('node-type-1');
-      }
-    });
-
-    it('should use edgeConfig.type for edge types', () => {
-      const codebook = makeCodebook();
-      const stages = [makeFamilyPedigreeStage()];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.edges.length).toBeGreaterThan(0);
-
-      for (const edge of network.edges) {
-        expect(edge.type).toBe('edge-type-1');
-      }
-    });
-
-    it('should only produce node types that exist in the codebook', () => {
-      const codebook = makeCodebook();
-      const stages = [makeFamilyPedigreeStage()];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      const codebookNodeTypes = new Set(Object.keys(codebook.node ?? {}));
-
-      for (const node of network.nodes) {
-        expect(codebookNodeTypes.has(node.type)).toBe(true);
-      }
-    });
-
-    it('should generate the configured label for family members but not ego', () => {
-      const codebook = makeCodebook();
-      const stages = [makeFamilyPedigreeStage()];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      for (const node of network.nodes) {
-        const attrs = node[entityAttributesProperty];
-        if (attrs['var-ego'] === true) {
-          expect(attrs).not.toHaveProperty('var-name');
-        } else {
-          expect(attrs).toHaveProperty('var-name');
-        }
-      }
-    });
-
-    it('should not create nodes when nodeConfig is missing', () => {
-      const codebook = makeCodebook();
-      const stages = [
-        makeFamilyPedigreeStage({
-          nodeConfig: undefined,
-          edgeConfig: undefined,
-        }),
-      ];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.nodes.length).toBe(0);
-      expect(network.edges.length).toBe(0);
-    });
-
-    it('marks exactly one node as ego, and false on every other node', () => {
-      const codebook = makeCodebook({
-        node: {
-          'node-type-1': {
-            color: 'node-color-seq-1',
-            variables: {
-              'var-name': { name: 'Name', type: 'text' },
-              'var-ego': { name: 'Is ego', type: 'boolean' },
-            },
-          },
-        },
+      const { network, stageMetadata } = generateNetwork({
+        codebook,
+        stages,
+        seed: 42,
       });
-      const stages = [makeFamilyPedigreeStage()];
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.nodes.length).toBeGreaterThan(1);
-
-      const egoNodes = network.nodes.filter(
-        (node) => node[entityAttributesProperty]['var-ego'] === true,
-      );
-      expect(egoNodes).toHaveLength(1);
-      expect(egoNodes[0]).toBe(network.nodes[0]);
-
-      for (const node of network.nodes.slice(1)) {
-        expect(node[entityAttributesProperty]['var-ego']).toBe(false);
-      }
-    });
-
-    it('does not throw and skips ego marking when nodeConfig has no egoVariable', () => {
-      const codebook = makeCodebook();
-      const stages = [
-        makeFamilyPedigreeStage({
-          nodeConfig: {
-            type: 'node-type-1',
-            nodeLabelVariable: 'var-name',
-            biologicalSexVariable: 'var-sex',
-            relationshipVariable: 'var-rel',
-          },
-        }),
-      ];
-
-      expect(() =>
-        generateNetwork({ codebook, stages, seed: 42 }),
-      ).not.toThrow();
+      expect(network.nodes).toHaveLength(0);
+      expect(network.edges).toHaveLength(0);
+      expect(stageMetadata).toBeNull();
     });
   });
 
@@ -580,10 +528,16 @@ describe('generateNetwork', () => {
       const stages: Stage[] = [
         {
           id: 'stage-ng',
-          label: 'Name Generator',
+          label: en('Name Generator'),
           type: 'NameGenerator',
+          minNodesNotice: en(
+            '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+          ),
+          maxNodesNotice: en(
+            'You have completed this task. Click the next arrow to continue.',
+          ),
           subject: { entity: 'node', type: 'node-type-1' },
-          prompts: [{ id: 'prompt-1', text: 'Add people' }],
+          prompts: [{ id: 'prompt-1', text: en('Add people') }],
           behaviours: { minNodes: 2, maxNodes: 5 },
         } as Stage,
         makeFamilyPedigreeStage(),
@@ -625,21 +579,6 @@ describe('generateNetwork', () => {
   });
 
   describe('stageMetadata schema compliance', () => {
-    it('FamilyPedigree writes isNetworkCommitted keyed by stage step', () => {
-      const codebook = makeCodebook();
-      const stages = [makeFamilyPedigreeStage()];
-
-      const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(stageMetadata?.[0]).toEqual(
-        expect.objectContaining({
-          isNetworkCommitted: true,
-          edgeIdVersion: 1,
-        }),
-      );
-      expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
-    });
-
     it('DyadCensus writes [promptIndex, fromId, toId, answer] tuples keyed by stage step', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage(), makeDyadCensusStage()];
@@ -718,9 +657,7 @@ describe('generateNetwork', () => {
 
       const result = StageMetadataSchema.safeParse(stageMetadata);
       expect(result.success).toBe(true);
-      expect(stageMetadata?.[2]).toEqual(
-        expect.objectContaining({ isNetworkCommitted: true }),
-      );
+      expect(stageMetadata?.[2]).toBeUndefined();
     });
   });
 
@@ -731,25 +668,31 @@ describe('generateNetwork', () => {
           'node-type-1': {
             color: 'node-color-seq-1',
             variables: {
-              'var-name': { name: 'Name', type: 'text' },
+              'var-name': {
+                name: 'Name',
+                type: 'text',
+              },
               'var-ordinal': {
                 name: 'Closeness',
                 type: 'ordinal',
                 options: [
-                  { label: 'Low', value: 1 },
-                  { label: 'Mid', value: 2 },
-                  { label: 'High', value: 3 },
+                  { label: en('Low'), value: 1 },
+                  { label: en('Mid'), value: 2 },
+                  { label: en('High'), value: 3 },
                 ],
               },
               'var-cat': {
                 name: 'Group',
                 type: 'categorical',
                 options: [
-                  { label: 'A', value: 'a' },
-                  { label: 'B', value: 'b' },
+                  { label: en('A'), value: 'a' },
+                  { label: en('B'), value: 'b' },
                 ],
               },
-              'var-other': { name: 'Other group', type: 'text' },
+              'var-other': {
+                name: 'Other group',
+                type: 'text',
+              },
             },
           },
         },
@@ -759,11 +702,15 @@ describe('generateNetwork', () => {
     function makeOrdinalBinStage(): Stage {
       return {
         id: 'stage-ob',
-        label: 'Ordinal Bin',
+        label: en('Ordinal Bin'),
         type: 'OrdinalBin',
         subject: { entity: 'node', type: 'node-type-1' },
         prompts: [
-          { id: 'prompt-ob', text: 'How close?', variable: 'var-ordinal' },
+          {
+            id: 'prompt-ob',
+            text: en('How close?'),
+            variable: 'var-ordinal',
+          },
         ],
       } as Stage;
     }
@@ -771,13 +718,13 @@ describe('generateNetwork', () => {
     function makeCategoricalBinStage(): Stage {
       return {
         id: 'stage-cb',
-        label: 'Categorical Bin',
+        label: en('Categorical Bin'),
         type: 'CategoricalBin',
         subject: { entity: 'node', type: 'node-type-1' },
         prompts: [
           {
             id: 'prompt-cb',
-            text: 'Which group?',
+            text: en('Which group?'),
             variable: 'var-cat',
             otherVariable: 'var-other',
           },
@@ -856,8 +803,14 @@ describe('generateNetwork', () => {
           'node-type-1': {
             color: 'node-color-seq-1',
             variables: {
-              'var-name': { name: 'Name', type: 'text' },
-              'var-layout': { name: 'Layout', type: 'layout' },
+              'var-name': {
+                name: 'Name',
+                type: 'text',
+              },
+              'var-layout': {
+                name: 'Layout',
+                type: 'layout',
+              },
             },
           },
         },
@@ -866,13 +819,13 @@ describe('generateNetwork', () => {
         makeNameGeneratorStage(),
         {
           id: 'stage-soc',
-          label: 'Sociogram',
+          label: en('Sociogram'),
           type: 'Sociogram',
           subject: { entity: 'node', type: 'node-type-1' },
           prompts: [
             {
               id: 'prompt-soc',
-              text: 'Place people',
+              text: en('Place people'),
               layout: { layoutVariable: 'var-layout' },
             },
           ],
@@ -1340,21 +1293,6 @@ describe('generateNetwork', () => {
           // whichever branch runs has something to work with.
           subject: { entity: 'node', type: 'node-type-1' },
           prompts: [{ id: 'prompt-1', text: 'Test prompt' }],
-          // FamilyPedigree-specific
-          nodeConfig: {
-            type: 'node-type-1',
-            nodeLabelVariable: 'var-name',
-            egoVariable: 'var-ego',
-            biologicalSexVariable: 'var-sex',
-            relationshipVariable: 'var-rel',
-          },
-          edgeConfig: {
-            type: 'edge-type-1',
-            relationshipTypeVariable: 'var-rel-type',
-            isActiveVariable: 'var-active',
-            isGestationalCarrierVariable: 'var-gestational',
-          },
-          censusPrompt: 'Test',
         } as unknown as Stage;
 
         expect(
@@ -1420,7 +1358,10 @@ describe('generateNetwork', () => {
           'edge-type-1': {
             color: 'edge-color-seq-1',
             variables: {
-              'var-strength': { name: 'Strength', type: 'text' },
+              'var-strength': {
+                name: 'Strength',
+                type: 'text',
+              },
             },
           },
         },
@@ -1469,6 +1410,12 @@ describe('generateNetwork', () => {
         id: 'stage-ng-draft',
         label: 'Name Generator',
         type: 'NameGenerator',
+        minNodesNotice: en(
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+        ),
+        maxNodesNotice: en(
+          'You have completed this task. Click the next arrow to continue.',
+        ),
         prompts: [{ id: 'prompt-ng', text: 'Add people' }],
         behaviours: { minNodes: 5, maxNodes: 8 },
       } as unknown as Stage;
@@ -1553,7 +1500,143 @@ describe('generateNetwork', () => {
       });
 
       expect(droppedOut).toBe(false);
-      expect(currentStep).toBe(stages.length);
+      expect(currentStep).toBe(stages.length - 1);
+    });
+
+    it('rests a completed interview on its finish stage, not one past it', () => {
+      const finish = {
+        id: 'finish',
+        type: 'FinishSession' as const,
+        mode: 'confirmation' as const,
+        label: en('Finish'),
+        content: en('# All done\n\nThank you.'),
+        finishedContent: en(
+          '# Interview Finished\n\nThank you for participating!',
+        ),
+        finishLabel: en('Finish'),
+        finishConfirmation: en('Finish this interview?'),
+        finishFailed: en('The interview could not be finished.'),
+        outcome: 'completed' as const,
+      };
+      const stages = [
+        makeTypedNameGeneratorStage('ng-1', 'node-type-1'),
+        makeTypedNameGeneratorStage('ng-2', 'node-type-1'),
+        finish,
+      ];
+
+      const { droppedOut, currentStep } = generateNetwork({
+        codebook: makeCodebook(),
+        stages,
+        seed: 42,
+      });
+
+      expect(droppedOut).toBe(false);
+      expect(currentStep).toBe(2);
+      expect(stages[currentStep]).toBe(finish);
+    });
+
+    describe('with several finish stages', () => {
+      const makeFinish = (
+        id: string,
+        outcome: 'completed' | 'ineligible',
+      ): Stage =>
+        ({
+          id,
+          type: 'FinishSession',
+          mode: 'automatic',
+          label: en(id),
+          content: en(''),
+          finishedContent: en('# Interview Finished'),
+          finishLabel: en('Finish'),
+          finishConfirmation: en('Finish this interview?'),
+          finishFailed: en('The interview could not be finished.'),
+          outcome,
+        }) as Stage;
+
+      it('finishes on an automatic ending rather than dropping out there', () => {
+        const stages = [makeFinish('end-completed', 'completed')];
+
+        const { droppedOut, currentStep } = generateNetwork({
+          codebook: makeCodebook(),
+          stages,
+          seed: 42,
+          simulateDropOut: true,
+          config: { dropOutFactor: 100 },
+        });
+
+        expect(droppedOut).toBe(false);
+        expect(currentStep).toBe(0);
+      });
+
+      it('drops out on the way to an ending regardless of the alternative endings after it', () => {
+        const route = [
+          makeTypedNameGeneratorStage('ng-1', 'node-type-1'),
+          makeTypedNameGeneratorStage('ng-2', 'node-type-1'),
+          makeTypedNameGeneratorStage('ng-3', 'node-type-1'),
+          makeFinish('end-completed', 'completed'),
+        ];
+        const outcomes = (stages: Stage[]) =>
+          Array.from({ length: 30 }, (_, seed) => {
+            const { droppedOut, currentStep } = generateNetwork({
+              codebook: makeCodebook(),
+              stages,
+              seed,
+              simulateDropOut: true,
+              config: { dropOutFactor: 0.6 },
+            });
+            return `${droppedOut}:${currentStep}`;
+          });
+
+        const alone = outcomes(route);
+        expect(alone.some((outcome) => outcome.startsWith('true'))).toBe(true);
+        expect(
+          outcomes([
+            ...route,
+            makeFinish('end-ineligible', 'ineligible'),
+            makeFinish('end-declined', 'ineligible'),
+            makeFinish('end-withdrawn', 'ineligible'),
+          ]),
+        ).toEqual(alone);
+      });
+
+      it('stops at the first finish stage it reaches', () => {
+        const stages = [
+          makeTypedNameGeneratorStage('ng-1', 'node-type-1'),
+          makeFinish('end-completed', 'completed'),
+          makeFinish('end-ineligible', 'ineligible'),
+        ];
+
+        const { droppedOut, currentStep } = generateNetwork({
+          codebook: makeCodebook(),
+          stages,
+          seed: 42,
+        });
+
+        expect(droppedOut).toBe(false);
+        expect(stages[currentStep]?.id).toBe('end-completed');
+      });
+
+      it('ends at a later finish stage a skip destination names', () => {
+        const stages = [
+          makeInformationStage(
+            'screener',
+            makeHiddenSkipLogic({ type: 'stage', stageId: 'end-ineligible' }),
+          ),
+          makeTypedNameGeneratorStage('ng-1', 'destination'),
+          makeFinish('end-completed', 'completed'),
+          makeFinish('end-ineligible', 'ineligible'),
+        ];
+
+        const { network, currentStep } = generateNetwork({
+          codebook: makeSkipRoutingCodebook(),
+          stages,
+          seed: 42,
+          respectSkipLogicAndFiltering: true,
+        });
+
+        expect(stages[currentStep]?.id).toBe('end-ineligible');
+        expect(network.nodes).toHaveLength(0);
+      });
     });
 
     it('a large dropOutFactor forces an early drop-out', () => {
@@ -1571,17 +1654,6 @@ describe('generateNetwork', () => {
 
       expect(droppedOut).toBe(true);
       expect(currentStep).toBe(0);
-    });
-
-    it('the family-specific node budget caps optional branches', () => {
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [makeFamilyPedigreeStage()],
-        seed: 42,
-        familyPedigree: { scenario: 'none', maxNodes: 7 },
-      });
-
-      expect(network.nodes).toHaveLength(7);
     });
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, type ReactNode, useContext, useRef } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from 'zustand';
 
@@ -16,11 +16,10 @@ type DndStoreProviderProps = {
 };
 
 export const DndStoreProvider = ({ children }: DndStoreProviderProps) => {
-  const storeRef = useRef<DndStoreApi | null>(null);
-  storeRef.current ??= createDndStore();
+  const [store] = useState(createDndStore);
 
   return (
-    <DndStoreContext.Provider value={storeRef.current}>
+    <DndStoreContext.Provider value={store}>
       {children}
       <DragPreview />
     </DndStoreContext.Provider>

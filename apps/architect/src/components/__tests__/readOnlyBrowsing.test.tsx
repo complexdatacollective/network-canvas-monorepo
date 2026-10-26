@@ -2,10 +2,11 @@ import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import type { ByRoleMatcher } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 
+import { loadProtocolRoutes } from '~/components/protocolRoutesLoader';
 import Routes from '~/components/Routes';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import {
@@ -49,6 +50,8 @@ const ALLOWED: readonly AllowedControl[] = [
   { role: 'button', name: /^open menu$/i },
   { role: 'combobox', name: /^interface language:/i },
   { role: 'button', name: /^download$/i },
+  // Sends the saved copy, as Download does; it writes nothing here.
+  { role: 'button', name: /^send to interviewer$/i },
   { role: 'button', name: /^print$/i },
   { role: 'button', name: /^return to stages$/i },
   {
@@ -71,8 +74,6 @@ const ALLOWED: readonly AllowedControl[] = [
   },
   { role: 'button', name: /^preview ./i },
   { role: 'button', name: /^download ./i },
-  // Experiments.
-  { role: 'button', name: /^go back$/i },
   // Stage editor: move between sections, close it, preview the stage.
   {
     role: 'button',
@@ -81,6 +82,8 @@ const ALLOWED: readonly AllowedControl[] = [
   },
   { role: 'button', name: /^cancel$/i },
   { role: 'button', name: /^preview settings$/i },
+  // Which of the protocol's languages the editor shows: a view, not an edit.
+  { role: 'button', name: /^editing language/i },
 ];
 
 const ACTION_ROLES: readonly ByRoleMatcher[] = [
@@ -210,7 +213,6 @@ const PAGE_ROUTES: readonly NamedRoute[] = [
   ['Codebook', '/protocol/codebook'],
   ['Resources', '/protocol/assets'],
   ['Summary', '/protocol/summary'],
-  ['Experiments', '/protocol/experiments'],
 ];
 
 const EDITABLE_ROUTES: readonly NamedRoute[] = [
@@ -219,6 +221,13 @@ const EDITABLE_ROUTES: readonly NamedRoute[] = [
 ];
 
 describe('browsing a protocol another tab holds', () => {
+  // Routes loads the editor routes on demand. Load them up front, as the app
+  // does once its start screen is up, so no test's wait includes compiling the
+  // whole editor.
+  beforeAll(async () => {
+    await loadProtocolRoutes();
+  }, 60_000);
+
   it.each(PAGE_ROUTES)(
     'offers nothing that edits on the %s page',
     async (_page, path) => {

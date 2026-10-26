@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppIntl, formatMessageError } from '@codaco/app-i18n/messages';
 import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
 import { POST } from '~/app/api/generate-test-interviews/route';
+import { Prisma } from '~/lib/db/generated/client';
 import {
   syntheticGenerationEventSchema,
   syntheticGenerationFailureSchema,
@@ -14,6 +15,8 @@ const {
   requireApiAuth,
   findProtocol,
   createInterview,
+  findInterviews,
+  updateInterview,
   generateNetwork,
   addEvent,
   captureException,
@@ -21,6 +24,9 @@ const {
   requireApiAuth: vi.fn(),
   findProtocol: vi.fn(),
   createInterview: vi.fn(),
+  findInterviews: vi.fn(),
+  updateInterview:
+    vi.fn<(args: { data: Record<string, unknown> }) => unknown>(),
   generateNetwork: vi.fn(),
   addEvent: vi.fn(),
   captureException: vi.fn(),
@@ -40,7 +46,11 @@ vi.mock('~/lib/activityFeed', () => ({ addEvent }));
 vi.mock('~/lib/db', () => ({
   prisma: {
     protocol: { findUnique: findProtocol },
-    interview: { create: createInterview },
+    interview: {
+      create: createInterview,
+      findMany: findInterviews,
+      update: updateInterview,
+    },
   },
 }));
 vi.mock('@codaco/protocol-utilities', async (importOriginal) => ({
@@ -69,7 +79,12 @@ const intl = (locale: string) =>
 beforeEach(() => {
   vi.resetAllMocks();
   requireApiAuth.mockResolvedValue({ user: { username: 'Researcher' } });
-  findProtocol.mockResolvedValue({ name: 'Fixture', stages: [], codebook: {} });
+  findProtocol.mockResolvedValue({
+    name: 'Fixture',
+    stages: [],
+    codebook: {},
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  });
   createInterview.mockResolvedValue({ id: 'created-interview-1' });
   generateNetwork.mockReturnValue({
     network: {},
@@ -130,6 +145,7 @@ describe('synthetic generation failure transport', () => {
       name: 'Fixture',
       stages: [{ id: 'stage-1', type: 'NotAnInterface' }],
       codebook: {},
+      localization: { defaultLocale: 'en', locales: ['en'] },
     });
     const response = await POST(request());
     expect(response.status).toBe(500);
@@ -197,5 +213,157 @@ describe('synthetic generation failure transport', () => {
     expect(stream).toContain(`"message":${JSON.stringify(error.message)}`);
     expect(createInterview).toHaveBeenCalledOnce();
     expect(addEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('the finish recorded for generated interviews', () => {
+  const finishStage = {
+    id: 'end-ineligible',
+    type: 'FinishSession',
+    mode: 'confirmation',
+    label: { en: 'Finish' },
+    content: { en: '# Finish\n\nThank you.' },
+    finishedContent: {
+      en: '# Interview Finished\n\nThank you for participating!',
+    },
+    finishLabel: { en: 'Finish' },
+    finishConfirmation: { en: 'Finish this interview?' },
+    finishFailed: { en: 'The interview could not be finished.' },
+    outcome: 'ineligible',
+  };
+  // Stored as a valid schema 9 design, which the route parses before it
+  // generates anything.
+  const protocolWithFinish = {
+    name: 'Fixture',
+    codebook: {},
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    stages: [
+      {
+        id: 'info',
+        type: 'Information',
+        label: { en: 'Info' },
+        title: { en: 'Info' },
+        items: [],
+      },
+      finishStage,
+      // A later ending, which the generated routes below never reach.
+      { ...finishStage, id: 'end-completed', outcome: 'completed' },
+    ],
+  };
+
+  it('records the finish stage the interview reached, and its outcome, on a completed interview, and none on one that dropped out', async () => {
+    findProtocol.mockResolvedValue(protocolWithFinish);
+    generateNetwork
+      .mockReturnValueOnce({ network: {}, currentStep: 1, droppedOut: false })
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true });
+
+    await (await POST(request())).text();
+
+    const [completed, droppedOut] = createInterview.mock.calls.map(
+      ([args]) => (args as { data: Record<string, unknown> }).data,
+    );
+    expect(completed).toMatchObject({
+      finishStageId: 'end-ineligible',
+      finishOutcome: 'ineligible',
+    });
+    expect(completed?.finishTime).toBeInstanceOf(Date);
+    expect(droppedOut?.finishTime).toBeNull();
+    expect(droppedOut).not.toHaveProperty('finishStageId');
+    expect(droppedOut).not.toHaveProperty('finishOutcome');
+  });
+
+  it('records them when an interview that dropped out is completed to meet the minimum', async () => {
+    findProtocol.mockResolvedValue(protocolWithFinish);
+    generateNetwork
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true })
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true })
+      .mockReturnValue({ network: {}, currentStep: 1, droppedOut: false });
+    findInterviews.mockResolvedValue([
+      { id: 'created-interview-1', startTime: new Date() },
+    ]);
+
+    await (
+      await POST(
+        request(
+          JSON.stringify({
+            protocolId: 'protocol-1',
+            count: 2,
+            simulateDropOut: true,
+          }),
+        ),
+      )
+    ).text();
+
+    expect(updateInterview).toHaveBeenCalledOnce();
+    expect(updateInterview.mock.calls[0]?.[0]).toMatchObject({
+      where: { id: 'created-interview-1' },
+      data: {
+        finishStageId: 'end-ineligible',
+        finishOutcome: 'ineligible',
+      },
+    });
+  });
+});
+
+describe('the stage metadata of an interview completed to meet the minimum', () => {
+  const dropOutRequest = () =>
+    request(
+      JSON.stringify({
+        protocolId: 'protocol-1',
+        count: 2,
+        simulateDropOut: true,
+      }),
+    );
+
+  beforeEach(() => {
+    findInterviews.mockResolvedValue([
+      { id: 'created-interview-1', startTime: new Date() },
+    ]);
+  });
+
+  it('clears the metadata of the network it replaces when the new one has none', async () => {
+    const droppedOut = {
+      network: {},
+      stageMetadata: { 'census-stage': [['node-a', 'node-b', true]] },
+      currentStep: 0,
+      droppedOut: true,
+    };
+    generateNetwork
+      .mockReturnValueOnce(droppedOut)
+      .mockReturnValueOnce(droppedOut)
+      .mockReturnValue({
+        network: {},
+        stageMetadata: null,
+        currentStep: 0,
+        droppedOut: false,
+      });
+
+    await (await POST(dropOutRequest())).text();
+
+    expect(updateInterview).toHaveBeenCalledOnce();
+    // By identity: DbNull has no fields of its own, so a structural match
+    // would also accept a missing value.
+    expect(updateInterview.mock.calls[0]?.[0].data.stageMetadata).toBe(
+      Prisma.DbNull,
+    );
+  });
+
+  it('stores the new network’s metadata when it has some', async () => {
+    const stageMetadata = { 'census-stage': [['node-c', 'node-d', true]] };
+    generateNetwork
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true })
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true })
+      .mockReturnValue({
+        network: {},
+        stageMetadata,
+        currentStep: 0,
+        droppedOut: false,
+      });
+
+    await (await POST(dropOutRequest())).text();
+
+    expect(updateInterview.mock.calls[0]?.[0]).toMatchObject({
+      data: { stageMetadata },
+    });
   });
 });

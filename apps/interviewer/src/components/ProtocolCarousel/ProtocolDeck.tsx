@@ -1,15 +1,23 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
-import type {
-  ProtocolWithCounts,
-  StoredSession,
-  StoredSessionLite,
+import {
+  isSchema8Protocol,
+  type ProtocolWithCounts,
+  type StoredSession,
+  type StoredSessionLite,
 } from '~/lib/db/types';
 import type { PendingImport } from '~/lib/protocol/useProtocolImport';
 
@@ -19,7 +27,7 @@ import {
   type DeckCarouselSlide,
 } from './DeckCarousel';
 import { buildDeck, type DeckEntry, entryKey } from './deckEntries';
-import { DeckSlotCard } from './DeckSlotCard';
+import { DeckSlotCard, type Schema8CardActions } from './DeckSlotCard';
 import { ImportTriggerCard } from './ImportTriggerCard';
 import { useDeckKeyboard } from './useDeckKeyboard';
 
@@ -97,6 +105,8 @@ type ProtocolDeckProps = {
   onInstallSample?: () => void;
   onDismissSample?: () => void;
   onInstallDevelopment?: () => void;
+  // What a schema 8 protocol's card offers beyond any protocol card's.
+  schema8?: Schema8CardActions;
   // When set, swipe/keyboard navigation is locked and the matching protocol
   // card is isolated above a modal backdrop with the case-ID form.
   newSessionProtocolHash?: string | null;
@@ -132,6 +142,87 @@ const chevronRowVariants = {
 
 type DeckSlide = DeckCarouselSlide & { entry: DeckEntry };
 
+type ActiveSlot = { index: number; key: string | null };
+
+// Everything about the slots that placing the active card reads: each slot's
+// key and kind, and an installed protocol's name and import time.
+function slotsSignature(slides: DeckSlide[]): string {
+  return JSON.stringify(
+    slides.map(({ key, entry }) =>
+      entry.kind === 'protocol'
+        ? [key, entry.kind, entry.protocol.name, entry.protocol.importedAt]
+        : [key, entry.kind],
+    ),
+  );
+}
+
+// The slot at `index`, reusing `active` when it is already that slot.
+function slotAt(
+  slides: DeckSlide[],
+  index: number,
+  active: ActiveSlot,
+): ActiveSlot {
+  const key = slides[index]?.key ?? null;
+  return active.index === index && active.key === key ? active : { index, key };
+}
+
+/**
+ * Where the active card goes when the deck's slots change from `prevSlides`
+ * to `slides`. Returns `active` itself when it stays put.
+ */
+function relocateActiveSlot(
+  slides: DeckSlide[],
+  prevSlides: DeckSlide[],
+  active: ActiveSlot,
+): ActiveSlot {
+  const prevPendingKeys = new Set(
+    prevSlides.filter((s) => s.entry.kind === 'pending').map((s) => s.key),
+  );
+  // A slot that just turned pending is a user-started import: travel to
+  // its card. The import hook holds the heavy work back long enough
+  // (IMPORT_START_DELAY_MS) for this travel to play out jank-free. For
+  // the sample card (installable only while active) the slot is already
+  // centred, so this is a no-op.
+  let newPendingIndex = -1;
+  slides.forEach((slide, index) => {
+    if (slide.entry.kind === 'pending' && !prevPendingKeys.has(slide.key)) {
+      newPendingIndex = index;
+    }
+  });
+  if (newPendingIndex >= 0) {
+    return slotAt(slides, newPendingIndex, active);
+  }
+  // Keep the active card stable across slot changes; if the active slot
+  // itself vanished, the right neighbour inherits its index (clamped for
+  // removal of the last slot). The travel animates via the carousel's
+  // position spring, in lockstep with the slides' index springs.
+  const { key } = active;
+  let located = key === null ? -1 : slides.findIndex((s) => s.key === key);
+  // A pending import (keyed `slot:<label>`) that just completed is replaced
+  // by its installed protocol, keyed `hash:<hash>` — a different key. Match
+  // that protocol by name so the freshly-installed card stays centred
+  // instead of the deck jumping to a neighbour. Same-name/different-hash
+  // protocols are supported, so prefer the most recently imported match —
+  // the one the just-completed import produced.
+  if (located < 0 && key?.startsWith('slot:')) {
+    const name = key.slice('slot:'.length);
+    let newestImportedAt = '';
+    slides.forEach((s, index) => {
+      if (s.entry.kind === 'protocol' && s.entry.protocol.name === name) {
+        if (located < 0 || s.entry.protocol.importedAt > newestImportedAt) {
+          located = index;
+          newestImportedAt = s.entry.protocol.importedAt;
+        }
+      }
+    });
+  }
+  const next =
+    located >= 0
+      ? located
+      : Math.max(0, Math.min(active.index, slides.length - 1));
+  return slotAt(slides, next, active);
+}
+
 export function ProtocolDeck({
   protocols,
   sessions,
@@ -145,6 +236,7 @@ export function ProtocolDeck({
   onInstallSample = () => {},
   onDismissSample = () => {},
   onInstallDevelopment = () => {},
+  schema8,
   newSessionProtocolHash,
   onCancelNewSession,
   onSessionCreated,
@@ -153,7 +245,6 @@ export function ProtocolDeck({
   const newSessionActive = Boolean(newSessionProtocolHash);
   const sectionRef = useRef<HTMLElement | null>(null);
   const carouselRef = useRef<DeckCarouselHandle | null>(null);
-  const didInitialScroll = useRef(false);
   const [sectionHeight, setSectionHeight] = useState(0);
   const handleDrop = useCallback(
     (files: File[], fileRejections: readonly FileRejection[]) => {
@@ -249,7 +340,11 @@ export function ProtocolDeck({
           entry,
           onActivate:
             entry.kind === 'protocol'
-              ? () => onStartInterview(entry.protocol.hash)
+              ? // A schema 8 interview runs in the bundled Interviewer 8; a
+                // build without it starts none (the card says why).
+                isSchema8Protocol(entry.protocol) && !schema8?.interviewer
+                ? undefined
+                : () => onStartInterview(entry.protocol.hash)
               : entry.kind === 'sample'
                 ? onInstallSample
                 : entry.kind === 'development'
@@ -265,6 +360,7 @@ export function ProtocolDeck({
                   ? (sessionCounts.get(entry.protocol.hash) ?? 0)
                   : 0
               }
+              schema8={schema8}
               onDeleteProtocol={onDeleteProtocol}
               onDismissSample={onDismissSample}
               onInstallSample={onInstallSample}
@@ -289,118 +385,92 @@ export function ProtocolDeck({
       onDeleteProtocol,
       onCancelNewSession,
       onSessionCreated,
+      schema8,
     ],
   );
 
-  const [activeIndex, setActiveIndexState] = useState(0);
-  // The slot key the user last chose, so the active card stays the same
-  // card (not the same index) when entries are added/removed and indexes
-  // shift.
-  const activeSlotKeyRef = useRef<string | null>(null);
+  // The active card: its index, and the slot key the user last chose, so the
+  // active card stays the same card (not the same index) when entries are
+  // added/removed and indexes shift.
+  const [active, setActive] = useState<ActiveSlot>({ index: 0, key: null });
+  const activeIndex = active.index;
 
-  // All user navigation flows through here so activeSlotKeyRef tracks the
-  // user's choice.
+  // All user navigation flows through here so the key tracks the user's
+  // choice.
   const setActiveIndex = useCallback(
     (index: number) => {
-      setActiveIndexState(index);
-      activeSlotKeyRef.current = slides[index]?.key ?? null;
+      setActive({ index, key: slides[index]?.key ?? null });
     },
     [slides],
   );
 
-  // `isDragGlobal` is react-dropzone's window-level drag session, not something
-  // this component can observe from a handler it owns, so an effect is the
-  // right tool: it reacts to a drag entering the window from outside the app.
-  useEffect(() => {
-    // File names are not reliably exposed until drop, so global drag state
-    // selects the target card while its dropzone remains the validation boundary.
-    if (!isDragGlobal || newSessionActive) return;
+  // The slots and deep link the active card was last placed against (null
+  // before the first render places it), so a change to either is noticed
+  // while rendering and the active card follows in the same render. Slots
+  // are compared by what placing reads from them, not by the array's
+  // identity, which changes on renders that move no slot.
+  const signature = slotsSignature(slides);
+  const [placedFor, setPlacedFor] = useState<{
+    slides: DeckSlide[];
+    signature: string;
+    initialProtocolHash: string | undefined;
+  } | null>(null);
+  // The one-time deep link, once the requested protocol is in the deck.
+  const [initialJump, setInitialJump] = useState<{ index: number } | null>(
+    null,
+  );
+
+  let nextActive = active;
+  // `isDragGlobal` is react-dropzone's window-level drag session: a drag
+  // entering the window from outside the app selects the import card. File
+  // names are not reliably exposed until drop, so global drag state selects
+  // the target card while its dropzone remains the validation boundary.
+  if (isDragGlobal && !newSessionActive) {
     const importIndex = slides.findIndex(
       (slide) => slide.entry.kind === 'import',
     );
-    if (importIndex >= 0 && importIndex !== activeIndex) {
-      setActiveIndex(importIndex);
+    if (importIndex >= 0 && importIndex !== nextActive.index) {
+      nextActive = slotAt(slides, importIndex, nextActive);
     }
-  }, [activeIndex, isDragGlobal, newSessionActive, setActiveIndex, slides]);
-
-  // Slot keys that were pending in the last committed deck, so a slot that
-  // just TURNED pending (a user-started import) can be detected below.
-  const prevPendingKeysRef = useRef<ReadonlySet<string>>(new Set());
-
-  useEffect(() => {
-    const prevPendingKeys = prevPendingKeysRef.current;
-    prevPendingKeysRef.current = new Set(
-      slides.filter((s) => s.entry.kind === 'pending').map((s) => s.key),
-    );
+  }
+  if (
+    placedFor === null ||
+    placedFor.signature !== signature ||
+    placedFor.initialProtocolHash !== initialProtocolHash
+  ) {
+    setPlacedFor({ slides, signature, initialProtocolHash });
     // One-time deep link once the requested protocol is in the deck
-    // (protocols load async). jumpTo is a no-op before the carousel mounts;
-    // in that case the carousel initialises its position at activeIndex.
-    if (!didInitialScroll.current && initialProtocolHash) {
-      const idx = slides.findIndex(
-        (s) =>
-          s.entry.kind === 'protocol' &&
-          s.entry.protocol.hash === initialProtocolHash,
+    // (protocols load async).
+    const deepLinkIndex =
+      initialJump === null && initialProtocolHash
+        ? slides.findIndex(
+            (s) =>
+              s.entry.kind === 'protocol' &&
+              s.entry.protocol.hash === initialProtocolHash,
+          )
+        : -1;
+    if (deepLinkIndex >= 0) {
+      setInitialJump({ index: deepLinkIndex });
+      nextActive = slotAt(slides, deepLinkIndex, nextActive);
+    } else {
+      nextActive = relocateActiveSlot(
+        slides,
+        placedFor?.slides ?? [],
+        nextActive,
       );
-      if (idx >= 0) {
-        didInitialScroll.current = true;
-        // The index must be moved in lockstep with the carousel's imperative
-        // handle, which can only be driven after commit — so this state update
-        // belongs with it in the effect rather than during render.
-        carouselRef.current?.jumpTo(idx);
-        setActiveIndexState(idx);
-        activeSlotKeyRef.current = slides[idx]?.key ?? null;
-        return;
-      }
     }
-    // A slot that just turned pending is a user-started import: travel to
-    // its card. The import hook holds the heavy work back long enough
-    // (IMPORT_START_DELAY_MS) for this travel to play out jank-free. For
-    // the sample card (installable only while active) the slot is already
-    // centred, so this is a no-op.
-    let newPendingIndex = -1;
-    slides.forEach((slide, index) => {
-      if (slide.entry.kind === 'pending' && !prevPendingKeys.has(slide.key)) {
-        newPendingIndex = index;
-      }
-    });
-    if (newPendingIndex >= 0) {
-      setActiveIndexState(newPendingIndex);
-      activeSlotKeyRef.current = slides[newPendingIndex]?.key ?? null;
-      return;
-    }
-    // Keep the active card stable across slot changes; if the active slot
-    // itself vanished, the right neighbour inherits its index (clamped for
-    // removal of the last slot). The travel animates via the carousel's
-    // position spring, in lockstep with the slides' index springs.
-    setActiveIndexState((current) => {
-      const key = activeSlotKeyRef.current;
-      let located = key === null ? -1 : slides.findIndex((s) => s.key === key);
-      // A pending import (keyed `slot:<label>`) that just completed is replaced
-      // by its installed protocol, keyed `hash:<hash>` — a different key. Match
-      // that protocol by name so the freshly-installed card stays centred
-      // instead of the deck jumping to a neighbour. Same-name/different-hash
-      // protocols are supported, so prefer the most recently imported match —
-      // the one the just-completed import produced.
-      if (located < 0 && key?.startsWith('slot:')) {
-        const name = key.slice('slot:'.length);
-        let newestImportedAt = '';
-        slides.forEach((s, index) => {
-          if (s.entry.kind === 'protocol' && s.entry.protocol.name === name) {
-            if (located < 0 || s.entry.protocol.importedAt > newestImportedAt) {
-              located = index;
-              newestImportedAt = s.entry.protocol.importedAt;
-            }
-          }
-        });
-      }
-      const next =
-        located >= 0
-          ? located
-          : Math.max(0, Math.min(current, slides.length - 1));
-      activeSlotKeyRef.current = slides[next]?.key ?? null;
-      return next;
-    });
-  }, [slides, initialProtocolHash]);
+  }
+  if (nextActive !== active) setActive(nextActive);
+
+  // The deep link lands on its card rather than travelling there, so the
+  // carousel's position must jump with the index, through its imperative
+  // handle, which can only be driven after commit. A layout effect runs
+  // before the carousel's own travel effect, which then finds the deck
+  // already at the new index. jumpTo is a no-op before the carousel mounts;
+  // in that case the carousel initialises its position at activeIndex.
+  useLayoutEffect(() => {
+    if (initialJump) carouselRef.current?.jumpTo(initialJump.index);
+  }, [initialJump]);
 
   // Observe the section (not the outer container) so cardHeight tracks the
   // space actually available to the carousel. Freeze the last resting size

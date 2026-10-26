@@ -10,8 +10,6 @@ import {
 import { isEqual } from 'es-toolkit';
 import { v4 as uuid } from 'uuid';
 
-import { currentAppPath } from '~/utils/appBase';
-
 // Types
 export type Locus = {
   id: string;
@@ -31,6 +29,17 @@ type TimelineState<T = unknown> = {
   future: T[];
   futureTimeline: Locus[];
 };
+
+/**
+ * What the undo/redo cases may find: state persisted before undo/redo existed
+ * lacks `future` and `futureTimeline`, so those cases default them on read.
+ * Everything that reads the slice otherwise sees the strict `TimelineState`.
+ */
+type PersistedTimelineState<T = unknown> = Omit<
+  TimelineState<T>,
+  'future' | 'futureTimeline'
+> &
+  Partial<Pick<TimelineState<T>, 'future' | 'futureTimeline'>>;
 
 /**
  * The fields the undo/redo guards read, widened to `unknown` so both the
@@ -75,10 +84,10 @@ type TimelineOptions = {
 const defaultOptions: Required<TimelineOptions> = {
   limit: 1000,
   exclude: () => false,
-  // App-relative, so a recorded page matches the routes it is compared with
-  // under a sub-path build too.
   getPath: () =>
-    typeof window !== 'undefined' && window.location ? currentAppPath() : '',
+    typeof window !== 'undefined' && window.location
+      ? window.location.pathname
+      : '',
 };
 
 export const timelineActions = {
@@ -113,13 +122,14 @@ const createTimelineReducer = <T>(
     extraReducers: (builder) => {
       builder
         .addCase(timelineActions.undo, (state) => {
+          const stored: Draft<PersistedTimelineState<T>> = state;
           const {
             past,
             present,
             timeline,
             future = [],
             futureTimeline = [],
-          } = state;
+          } = stored;
 
           if (!canUndo(state)) {
             return;
@@ -185,13 +195,14 @@ const createTimelineReducer = <T>(
           },
         )
         .addCase(timelineActions.redo, (state) => {
+          const stored: Draft<PersistedTimelineState<T>> = state;
           const {
             future = [],
             futureTimeline = [],
             present,
             past,
             timeline,
-          } = state;
+          } = stored;
 
           if (!canRedo(state)) {
             return;

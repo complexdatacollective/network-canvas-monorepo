@@ -1,13 +1,20 @@
 'use client';
 
-import { debounce } from 'es-toolkit';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { debounce, type DebouncedFunction } from 'es-toolkit';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useShallow } from 'zustand/shallow';
 
 import { useCollectionStore, useCollectionStoreApi } from '../contexts';
 import { FilterManager } from '../filtering/FilterManager';
 import type { FilterProps, FilterState } from '../filtering/types';
-import type { KeyExtractor } from '../types';
+import type { Key, KeyExtractor } from '../types';
 import { useSearchWorker } from './useSearchWorker';
 import { useSynchronousSearch } from './useSynchronousSearch';
 
@@ -15,6 +22,43 @@ type UseFilterStateOptions<T> = FilterProps & {
   items: T[];
   keyExtractor: KeyExtractor<T>;
 };
+
+type FilterResultsChange = (matchingKeys: Set<Key>, matchCount: number) => void;
+
+/**
+ * What the filter's handlers call when they run: the latest callback props and
+ * search, and the debounced search scheduler. The FilterManager is rebuilt on
+ * every filter state change and the handlers it holds outlive the render that
+ * created them, so they read these when called, never during render. The
+ * hook's effects keep it current.
+ */
+class FilterCallTargets {
+  onFilterChange: ((query: string) => void) | undefined;
+  onFilterResultsChange: FilterResultsChange | undefined;
+  performSearch: (query: string) => Promise<void> = () => Promise.resolve();
+  private debouncedSearch: DebouncedFunction<(query: string) => void> | null =
+    null;
+
+  update(values: {
+    onFilterChange: ((query: string) => void) | undefined;
+    onFilterResultsChange: FilterResultsChange | undefined;
+    performSearch: (query: string) => Promise<void>;
+  }) {
+    this.onFilterChange = values.onFilterChange;
+    this.onFilterResultsChange = values.onFilterResultsChange;
+    this.performSearch = values.performSearch;
+  }
+
+  setDebouncedSearch(
+    debouncedSearch: DebouncedFunction<(query: string) => void> | null,
+  ) {
+    this.debouncedSearch = debouncedSearch;
+  }
+
+  scheduleSearch(query: string) {
+    this.debouncedSearch?.(query);
+  }
+}
 
 /**
  * Hook to manage filter state within a collection.
@@ -48,10 +92,7 @@ export function useFilterState<T extends Record<string, unknown>>(
 
   // Track if we're in controlled mode
   const isControlled = controlledFilterQuery !== undefined;
-  const onFilterChangeRef = useRef(onFilterChange);
-  onFilterChangeRef.current = onFilterChange;
-  const onFilterResultsChangeRef = useRef(onFilterResultsChange);
-  onFilterResultsChangeRef.current = onFilterResultsChange;
+  const [callTargets] = useState(() => new FilterCallTargets());
 
   // Initialize the search worker (always called, but with empty items if disabled)
   const workerSearch = useSearchWorker({
@@ -148,7 +189,7 @@ export function useFilterState<T extends Record<string, unknown>>(
 
         // Notify callback if provided
         if (!isEmptyQuery) {
-          onFilterResultsChangeRef.current?.(
+          callTargets.onFilterResultsChange?.(
             result.matchingKeys,
             result.matchCount,
           );
@@ -157,24 +198,38 @@ export function useFilterState<T extends Record<string, unknown>>(
         store.updateFilterState({ filterIsFiltering: false });
       }
     },
-    [storeApi, search, isReady, filterMinQueryLength, isFilteringEnabled],
+    [
+      storeApi,
+      search,
+      isReady,
+      filterMinQueryLength,
+      isFilteringEnabled,
+      callTargets,
+    ],
   );
 
-  // Create debounced search function
-  const debouncedSearchRef = useRef<ReturnType<typeof debounce> | null>(null);
-  const performSearchRef = useRef(performSearch);
-  performSearchRef.current = performSearch;
+  // Keep the handlers' call targets on the latest props and search. Declared
+  // before every effect that schedules a search.
+  useLayoutEffect(() => {
+    callTargets.update({
+      onFilterChange,
+      onFilterResultsChange,
+      performSearch,
+    });
+  });
 
+  // Create debounced search function
   useEffect(() => {
-    debouncedSearchRef.current = debounce(
-      (query: string) => performSearchRef.current(query),
+    const debouncedSearch = debounce(
+      (query: string) => void callTargets.performSearch(query),
       filterDebounceMs,
     );
+    callTargets.setDebouncedSearch(debouncedSearch);
 
     return () => {
-      debouncedSearchRef.current?.cancel();
+      debouncedSearch.cancel();
     };
-  }, [filterDebounceMs]);
+  }, [callTargets, filterDebounceMs]);
 
   // Create setState function for FilterManager
   const setState = useCallback(
@@ -186,7 +241,7 @@ export function useFilterState<T extends Record<string, unknown>>(
       if (isControlled) {
         // In controlled mode, only call onChange, don't update state directly
         if ('filterQuery' in updates && updates.filterQuery !== undefined) {
-          onFilterChangeRef.current?.(updates.filterQuery);
+          callTargets.onFilterChange?.(updates.filterQuery);
         }
         // Don't update state in controlled mode - let parent manage it
       } else {
@@ -195,18 +250,18 @@ export function useFilterState<T extends Record<string, unknown>>(
 
         // If query changed, trigger debounced search
         if ('filterQuery' in updates && updates.filterQuery !== undefined) {
-          debouncedSearchRef.current?.(updates.filterQuery);
+          callTargets.scheduleSearch(updates.filterQuery);
         }
       }
     },
-    [storeApi, isControlled, isFilteringEnabled],
+    [storeApi, isControlled, isFilteringEnabled, callTargets],
   );
 
   // Trigger search when controlled query changes
   useEffect(() => {
     if (!isFilteringEnabled) return;
     if (isControlled && isReady) {
-      debouncedSearchRef.current?.(controlledFilterQuery ?? '');
+      callTargets.scheduleSearch(controlledFilterQuery ?? '');
     }
   }, [
     isControlled,
@@ -214,6 +269,7 @@ export function useFilterState<T extends Record<string, unknown>>(
     isReady,
     isFilteringEnabled,
     search,
+    callTargets,
   ]);
 
   // Trigger the initial uncontrolled search when the index becomes ready, and
@@ -224,21 +280,30 @@ export function useFilterState<T extends Record<string, unknown>>(
       const store = storeApi.getState();
       const currentQuery = store.filterQuery;
       if (currentQuery) {
-        debouncedSearchRef.current?.(currentQuery);
+        callTargets.scheduleSearch(currentQuery);
       }
     }
-  }, [isReady, storeApi, isFilteringEnabled, isControlled, search]);
+  }, [
+    isReady,
+    storeApi,
+    isFilteringEnabled,
+    isControlled,
+    search,
+    callTargets,
+  ]);
 
-  // Create FilterManager (or return default state if disabled)
+  // Create FilterManager (or return default state if disabled). Its callbacks
+  // call through to the props that are current when they run.
   const filterManager = useMemo(() => {
     if (!isFilteringEnabled) {
       return null;
     }
     return new FilterManager(filterState, setState, {
-      onFilterChange: onFilterChangeRef.current,
-      onFilterResultsChange: onFilterResultsChangeRef.current,
+      onFilterChange: (query) => callTargets.onFilterChange?.(query),
+      onFilterResultsChange: (matchingKeys, matchCount) =>
+        callTargets.onFilterResultsChange?.(matchingKeys, matchCount),
     });
-  }, [filterState, setState, isFilteringEnabled]);
+  }, [filterState, setState, isFilteringEnabled, callTargets]);
 
   return filterManager;
 }

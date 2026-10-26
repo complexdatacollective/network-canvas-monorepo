@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import { DEFAULT_SKIP_TARGET_ID } from '@codaco/fresco-ui/layout/AppFrame';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
@@ -9,7 +9,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useInsideAreaMain } from './AreaMain.tsx';
 
-const CENTRED = 'flex h-full items-center justify-center p-4';
+const CENTRED = 'flex min-h-full items-center justify-center p-4';
 
 /**
  * The landmark this screen contributes, which depends on where the router put

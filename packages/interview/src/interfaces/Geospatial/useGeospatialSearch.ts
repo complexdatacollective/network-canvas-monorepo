@@ -6,11 +6,17 @@ import type { Map as MapboxMap } from 'mapbox-gl/esm';
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+import { useProtocolLocale } from '../../localization/ProtocolLocalizationProvider';
+import { getSearchLanguage } from './mapboxLanguage';
 
 // Zoom level when flying to a selected location
 const FLY_TO_ZOOM = 14;
@@ -91,16 +97,26 @@ export const useGeospatialSearch = ({
   const [initialSessionToken] = useState(() => crypto.randomUUID());
   const sessionTokenRef = useRef(initialSessionToken);
 
+  // Suggestions follow the protocol language the participant is reading, else
+  // the interface language, else English (Search Box's own default). Search
+  // Box takes the language per call, so it is sent with every request rather
+  // than set once on the client, which would default every call to English.
+  const { locale: protocolLocale } = useProtocolLocale();
+  const { locale: interfaceLocale } = useAppIntl();
+  const language = getSearchLanguage(protocolLocale, interfaceLocale);
+
   // Use the hook from @mapbox/search-js-react
   const searchBox = useSearchBoxCore({
     accessToken: accessToken ?? '',
   });
 
+  // Read by requests that settle after the render they started in.
   const searchBoxRef = useRef(searchBox);
-  searchBoxRef.current = searchBox;
-
   const onSearchPerformedRef = useRef(onSearchPerformed);
-  onSearchPerformedRef.current = onSearchPerformed;
+  useLayoutEffect(() => {
+    searchBoxRef.current = searchBox;
+    onSearchPerformedRef.current = onSearchPerformed;
+  });
 
   const proximityOption = useMemo(
     () => (proximity ? { lng: proximity[0], lat: proximity[1] } : undefined),
@@ -118,11 +134,22 @@ export const useGeospatialSearch = ({
    */
   const searchGenerationRef = useRef(0);
 
-  // Create debounced fetch function
-  const fetchSuggestions = useMemo(() => {
-    if (!accessToken) return null;
+  // The debounced fetch for the current token, proximity and language. Built
+  // in a layout effect, which also cancels it once a new one replaces it (a
+  // new accessToken, proximityOption or language) or the hook unmounts, so a
+  // stale debounce timer never updates state with old results. A layout
+  // effect, so the old instance is retired in the same synchronous block as
+  // the commit that replaces it: a timer that fired before a passive cleanup
+  // would read the bumped generation as current and run an old-language
+  // request over the re-ask. Null while there is no access token.
+  type FetchSuggestions = ReturnType<
+    typeof debounce<(value: string) => Promise<void>>
+  >;
+  const fetchSuggestionsRef = useRef<FetchSuggestions | null>(null);
+  useLayoutEffect(() => {
+    if (!accessToken) return undefined;
 
-    return debounce(async (value: string) => {
+    const fetchSuggestions = debounce(async (value: string) => {
       if (!value.trim()) {
         setSuggestions([]);
         setSearchFailed(false);
@@ -139,6 +166,7 @@ export const useGeospatialSearch = ({
         const response = await searchBoxRef.current.suggest(value, {
           sessionToken: sessionTokenRef.current,
           proximity: proximityOption,
+          language,
         });
         if (isStale()) return;
         setSuggestions(response.suggestions);
@@ -158,10 +186,15 @@ export const useGeospatialSearch = ({
         }
       }
     }, 300);
-  }, [accessToken, proximityOption]);
+    fetchSuggestionsRef.current = fetchSuggestions;
 
-  const fetchSuggestionsRef = useRef(fetchSuggestions);
-  fetchSuggestionsRef.current = fetchSuggestions;
+    return () => {
+      fetchSuggestions.cancel();
+      if (fetchSuggestionsRef.current === fetchSuggestions) {
+        fetchSuggestionsRef.current = null;
+      }
+    };
+  }, [accessToken, proximityOption, language]);
 
   /**
    * The imperative half of a reset: cancel a debounce that has not fired,
@@ -181,6 +214,20 @@ export const useGeospatialSearch = ({
     setSearchFailed(false);
     setIsLoading(false);
   }, [retireSearch]);
+
+  // Suggestions already on screen are in the previous language: drop them, and
+  // retire any request still on its way, as `resetKey` does. The query stays,
+  // and is asked again in the new language below.
+  // This block stays above the `resetKey` one: when a node change and a
+  // language change land in the same render, the reset's writes are queued
+  // last and win, so the new node starts with no query and nothing loading.
+  const [appliedLanguage, setAppliedLanguage] = useState(language);
+  if (appliedLanguage !== language) {
+    setAppliedLanguage(language);
+    setSuggestions([]);
+    setSearchFailed(false);
+    setIsLoading(query.trim() !== '');
+  }
 
   // Clear state when resetKey changes. The state half is compared during
   // render, so the new node is never painted with the previous node's query
@@ -202,35 +249,37 @@ export const useGeospatialSearch = ({
   // passive effect is scheduled on a later task, and a `suggest()` resolving
   // in that gap would still read the old generation as current and repopulate
   // the new node's panel with the previous node's results — the exact race
-  // the generation counter exists to close.
+  // the generation counter exists to close. Declared after the effect that
+  // builds the fetch, so on a language change it runs once the new instance
+  // is in place (the old one is cancelled by that effect's cleanup).
   useLayoutEffect(() => {
     retireSearch();
-  }, [resetKey, retireSearch]);
+  }, [resetKey, language, retireSearch]);
 
-  // Cancel pending debounced fetch when fetchSuggestions changes (new instance
-  // created because accessToken/proximityOption changed) or on unmount.
-  // This prevents a stale debounce timer from updating state with old results.
+  // Ask again, in the new language, for the query already typed. The first
+  // value seen is the language the hook mounted with, which needs no re-ask.
+  const askAgain = useEffectEvent(() => {
+    if (query.trim()) fetchSuggestionsRef.current?.(query);
+  });
+  const askedLanguageRef = useRef(language);
   useEffect(() => {
-    return () => {
-      fetchSuggestions?.cancel();
-    };
-  }, [fetchSuggestions]);
+    if (askedLanguageRef.current === language) return;
+    askedLanguageRef.current = language;
+    askAgain();
+  }, [language]);
 
-  const handleQueryChange = useCallback(
-    (value: string | undefined) => {
-      const safeValue = value ?? '';
-      setQuery(safeValue);
-      if (safeValue.trim()) {
-        setIsLoading(true);
-        fetchSuggestions?.(safeValue);
-      } else {
-        setSuggestions([]);
-        setSearchFailed(false);
-        setIsLoading(false);
-      }
-    },
-    [fetchSuggestions],
-  );
+  const handleQueryChange = useCallback((value: string | undefined) => {
+    const safeValue = value ?? '';
+    setQuery(safeValue);
+    if (safeValue.trim()) {
+      setIsLoading(true);
+      fetchSuggestionsRef.current?.(safeValue);
+    } else {
+      setSuggestions([]);
+      setSearchFailed(false);
+      setIsLoading(false);
+    }
+  }, []);
 
   /**
    * Retrieve coordinates and fly to the location, reporting whether the camera
@@ -259,6 +308,7 @@ export const useGeospatialSearch = ({
       try {
         const result = await searchBoxRef.current.retrieve(suggestion, {
           sessionToken: spentToken,
+          language,
         });
         const feature = result.features[0];
         if (feature?.geometry.type !== 'Point') return 'unavailable';
@@ -276,7 +326,7 @@ export const useGeospatialSearch = ({
         }
       }
     },
-    [map, accessToken],
+    [map, accessToken, language],
   );
 
   const clear = reset;

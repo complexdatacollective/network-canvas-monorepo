@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import {
   getUsesRetiredMapboxToken,
   getUsesTestingMapboxToken,
@@ -65,7 +65,7 @@ const TestingMapboxTokenAlert = () => {
 
   if (usesRetiredToken) {
     return (
-      <Alert variant="destructive" className="mx-auto mb-10 max-w-3xl">
+      <Alert variant="destructive">
         <AlertTitle>
           {intl.formatMessage(messages.revokedMapboxTestingToken)}
         </AlertTitle>
@@ -91,7 +91,7 @@ const TestingMapboxTokenAlert = () => {
   }
 
   return (
-    <Alert variant="warning" className="mx-auto mb-10 max-w-3xl">
+    <Alert variant="warning">
       <AlertTitle>
         {intl.formatMessage(messages.usingATestingMapboxToken)}
       </AlertTitle>

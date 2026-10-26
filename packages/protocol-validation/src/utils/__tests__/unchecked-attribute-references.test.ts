@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Protocol } from '../../schemas/index.ts';
 import { collectEntityAttributeReferences } from '../collectEntityAttributeReferences.ts';
+import { localized } from '../test-utils.ts';
 import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences.ts';
 
 /**
@@ -24,7 +25,10 @@ const codebook = {
       variables: {
         [NAME]: { name: 'name', type: 'text' },
         [AGE]: { name: 'age', type: 'number' },
-        [ROSTER_ONLY]: { name: 'abbreviated_name', type: 'text' },
+        [ROSTER_ONLY]: {
+          name: 'abbreviated_name',
+          type: 'text',
+        },
       },
     },
   },
@@ -33,19 +37,25 @@ const codebook = {
 const subject = { entity: 'node', type: 'person' };
 
 const withStages = (stages: unknown[]) =>
-  ({ schemaVersion: 8, name: 'p', codebook, stages }) as unknown as Protocol<8>;
+  ({
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    name: 'p',
+    codebook,
+    stages,
+  }) as unknown as Protocol<9>;
 
 const ordinalBinWithSort = (property: string) =>
   withStages([
     {
       id: 's1',
       type: 'OrdinalBin',
-      label: 'Bin',
+      label: localized('Bin'),
       subject,
       prompts: [
         {
           id: 'p1',
-          text: 'prompt',
+          text: localized('prompt'),
           variable: AGE,
           color: 'ord-color-seq-1',
           binSortOrder: [{ property, direction: 'asc' }],
@@ -59,18 +69,19 @@ const rosterStage = (matchProperty: string) =>
     {
       id: 's1',
       type: 'NameGeneratorRoster',
-      label: 'Roster',
+      allAddedNotice: localized('There is nothing left to add from this list.'),
+      label: localized('Roster'),
       subject,
       dataSource: 'roster_data',
       cardOptions: {
-        additionalProperties: [{ label: 'Age', variable: AGE }],
+        additionalProperties: [{ label: localized('Age'), variable: AGE }],
       },
       sortOptions: {
         sortOrder: [{ property: NAME, direction: 'asc' }],
-        sortableProperties: [{ label: 'Name', variable: NAME }],
+        sortableProperties: [{ label: localized('Name'), variable: NAME }],
       },
       searchOptions: { fuzziness: 0.4, matchProperties: [matchProperty] },
-      prompts: [{ id: 'p1', text: 'prompt' }],
+      prompts: [{ id: 'p1', text: localized('prompt') }],
       behaviours: {},
     },
   ]);
@@ -183,12 +194,12 @@ describe('checked references are unaffected', () => {
       {
         id: 's1',
         type: 'OrdinalBin',
-        label: 'Bin',
+        label: localized('Bin'),
         subject,
         prompts: [
           {
             id: 'p1',
-            text: 'prompt',
+            text: localized('prompt'),
             variable: 'a-stale-id',
             color: 'ord-color-seq-1',
             binSortOrder: [{ property: 'another-stale-id', direction: 'asc' }],

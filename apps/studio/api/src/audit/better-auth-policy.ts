@@ -19,8 +19,7 @@ export const BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES = {
     path: '/api/auth/organization/create',
     disposition: 'blocked',
     audit: { kind: 'required' },
-    reason:
-      'Team creation remains blocked until Studio owns its audited command.',
+    reason: 'Studio owns team creation through team.create.',
   },
   'POST /api/auth/organization/update': {
     method: 'POST',

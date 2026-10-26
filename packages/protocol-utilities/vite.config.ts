@@ -35,7 +35,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    appI18n({ build: 'library' }),
+    appI18n(),
     dts({
       insertTypesEntry: true,
     }),

@@ -18,6 +18,8 @@ function Control({
   placeholder?: string;
   disabled?: boolean;
   characterLimit?: number;
+  lang?: string;
+  dir?: 'ltr' | 'rtl';
 }>) {
   const [value, setValue] = useState(initialValue);
 
@@ -92,4 +94,9 @@ export const APasteWithLineBreaks: Story = {
 
     await expect(box).toHaveValue('Who you turn to when things are hard');
   },
+};
+
+/** A name in a right-to-left language runs, and wraps, from the right. */
+export const ARightToLeftName: Story = {
+  args: { initialValue: 'الأشخاص المقربون', lang: 'ar', dir: 'rtl' },
 };

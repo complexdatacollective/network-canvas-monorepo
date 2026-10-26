@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 
-import Button from './Button';
+import { Button } from './Button';
 import ComboboxField from './form/fields/Combobox/Combobox';
 import type { ComboboxOption } from './form/fields/Combobox/shared';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
@@ -293,9 +293,9 @@ export const ArrowAlignment: Story = {
         ];
       });
 
-      expect([...new Set(measurements.map(({ side }) => side))].sort()).toEqual(
-        [...ARROW_SIDES].sort(),
-      );
+      expect(
+        [...new Set(measurements.map(({ side }) => side))].toSorted(),
+      ).toEqual(ARROW_SIDES.toSorted());
       // Negated, so a NaN fails instead of filtering itself out.
       expect(
         measurements.filter(({ offBy }) => !(Math.abs(offBy) <= 0.1)),

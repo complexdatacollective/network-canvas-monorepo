@@ -20,7 +20,7 @@ describe('the worked example (first-year friendships and drinking)', () => {
     expect(result.retry).toBe(false);
   });
 
-  it('compiles with wording to the golden schema 8 protocol, which validates', async () => {
+  it('compiles with wording to the golden schema 9 protocol, which validates', async () => {
     const result = await buildProtocol(design, friendshipWording, {
       now: NOW,
     });
@@ -35,17 +35,23 @@ describe('the worked example (first-year friendships and drinking)', () => {
         "Information",
         "EgoForm",
         "EgoForm",
+        "Information",
         "NameGeneratorQuickAdd",
+        "Information",
         "AlterForm",
+        "Information",
         "OrdinalBin",
         "CategoricalBin",
+        "Information",
         "Sociogram",
+        "Information",
         "OrdinalBin",
         "EgoForm",
         "EgoForm",
         "EgoForm",
         "Narrative",
         "Information",
+        "FinishSession",
       ]
     `);
   });

@@ -13,11 +13,25 @@ type Item = Record<string, unknown>;
 
 /**
  * Creating a collator that is reused by string comparison is significantly faster
- * than using `localeCompare` directly.
+ * than using `localeCompare` directly. One collator is kept per locale, because
+ * constructing one is the expensive part and a sort is rebuilt on every change
+ * to the rules, the filter or the items.
+ *
+ * `undefined` asks for the runtime's own locale, which is what a caller that
+ * does not know the reader's language gets.
  *
  * See: https://stackoverflow.com/a/52369951/1497330
  */
-const collator = new Intl.Collator();
+const collators = new Map<string | undefined, Intl.Collator>();
+
+const collatorFor = (locale: string | undefined): Intl.Collator => {
+  let collator = collators.get(locale);
+  if (collator === undefined) {
+    collator = new Intl.Collator(locale);
+    collators.set(locale, collator);
+  }
+  return collator;
+};
 
 /**
  * Maps a `_createdIndex` index value to all items in an array.
@@ -83,10 +97,7 @@ const chain =
 /**
  * Get the value from an item at the given property path.
  */
-const getValue = <T extends Item>(
-  item: T,
-  property: string | string[],
-): unknown => {
+const getValue = (item: Item, property: string | string[]): unknown => {
   return get(item, property, null);
 };
 
@@ -98,6 +109,7 @@ const stringFunction =
   <T extends Item>(
     property: string | string[],
     direction: SortDirection,
+    collator: Intl.Collator,
   ): SortFn<T> =>
   (a: T, b: T) => {
     const firstValue = getValue(a, property) as string | null;
@@ -321,6 +333,7 @@ const categoricalFunction =
  */
 const getSortFunction = <T extends Item>(
   rule: SortRule,
+  collator: Intl.Collator,
 ): SortFn<T & { _createdIndex?: number }> => {
   const { property, direction = 'asc', type, hierarchy = [] } = rule;
 
@@ -333,7 +346,7 @@ const getSortFunction = <T extends Item>(
 
   switch (type) {
     case 'string':
-      return stringFunction(property, direction);
+      return stringFunction(property, direction, collator);
     case 'number':
       return numberFunction(property, direction);
     case 'date':
@@ -346,7 +359,7 @@ const getSortFunction = <T extends Item>(
       return categoricalFunction(property, direction, hierarchy);
     default:
       // Default to string comparison
-      return stringFunction(property, direction);
+      return stringFunction(property, direction, collator);
   }
 };
 
@@ -355,6 +368,9 @@ const getSortFunction = <T extends Item>(
  * of sort rules.
  *
  * @param sortRules - Array of sort rules to apply in order
+ * @param prefixFns - Comparators applied before the rules
+ * @param locale - The language string values are ordered in. Left out, the
+ *   runtime's own locale decides.
  * @returns A function that takes items and returns sorted items
  *
  * @example
@@ -385,8 +401,12 @@ const getSortFunction = <T extends Item>(
 const createCollectionSorter = <T extends Item = Item>(
   sortRules: SortRule[] = [],
   prefixFns: SortFn<T & { _createdIndex?: number }>[] = [],
+  locale?: string,
 ) => {
-  const sortFunctions = sortRules.map(getSortFunction<T>);
+  const collator = collatorFor(locale);
+  const sortFunctions = sortRules.map((rule) =>
+    getSortFunction<T>(rule, collator),
+  );
   const allFns = [...prefixFns, ...sortFunctions];
 
   if (allFns.length === 0) {

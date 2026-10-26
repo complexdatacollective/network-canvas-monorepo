@@ -6,7 +6,7 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
@@ -17,6 +17,7 @@ import { ExternalLink } from '~/components/ExternalLink';
 import { APP_VERSION } from '~/lib/appVersion';
 import { saveAction, type SaveAction } from '~/lib/files/download';
 
+import { ExportWarningAlerts } from './ExportWarnings';
 import type { ExportFlow } from './useSessionMutations';
 
 /** Every phase that has a dialog to show — anything but `idle`. */
@@ -419,6 +420,7 @@ export function ExportDialog({
             })}
           </Alert>
         )}
+        <ExportWarningAlerts warnings={shown.warnings} />
       </>
     );
   }

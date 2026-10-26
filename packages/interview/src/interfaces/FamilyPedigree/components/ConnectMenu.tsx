@@ -1,0 +1,525 @@
+'use client';
+
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@codaco/fresco-ui/DropdownMenu';
+import {
+  getMarkdownLabelText,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
+
+import { useContentFormat } from '../../../localization/useContentFormat';
+import { messages } from '../messages';
+import {
+  availableParentChoices,
+  canConnectPartners,
+  type Connection,
+  type Family,
+  type ParentChoice,
+  type ParentChoiceBlock,
+  parentChoiceOptions,
+  parentConnectionBlock,
+  REPLACED_PARENT_KINDS,
+} from '../model';
+import type { OwnedOptionLabels } from '../options';
+import { type PedigreeWords, usePedigreeWords } from '../pedigreeWords';
+import {
+  carrierRecordedReason,
+  carrierReplacedReason,
+  geneticParentReason,
+  geneticParentReplacedReason,
+  joinReasons,
+  type Reason,
+} from './unavailableReasons';
+
+export type ConnectPair = { firstId: string; secondId: string };
+
+/** A parent of any kind but a surrogate, who always carried, recorded as
+ * having carried the pregnancy. */
+const carriesBeyondKind = (choice: ParentChoice) =>
+  choice.parentKind !== 'surrogate' && choice.carriedPregnancy;
+
+const choiceId = (choice: ParentChoice) =>
+  carriesBeyondKind(choice)
+    ? `${choice.parentKind}-carrier`
+    : choice.parentKind;
+
+type ConnectMenuProps = {
+  /** The two people being connected, in the order they were selected. */
+  pair: ConnectPair | null;
+  family: Family;
+  displayName: (personId: string) => string;
+  /** The codebook's labels for the kinds of parent. */
+  parentKindLabels: OwnedOptionLabels['parentKind'];
+  /** The codebook's labels for sex assigned at birth, for the reasons a
+   * genetic kind of parent is unavailable. */
+  sexLabels: OwnedOptionLabels['sexAssignedAtBirth'];
+  /** The second person's symbol, which the menu opens beside and returns
+   * focus to. */
+  anchor: HTMLElement | null;
+  /** Called with the chosen relationship. */
+  onConnect: (connection: Connection) => void;
+  onClose: () => void;
+};
+
+type ParentAndChild = { parentId: string; childId: string };
+
+/** A genetic kind of parent chosen in the second step, and the biological
+ * parent it takes the place of, whose relationship to the child the third
+ * step asks. */
+type ReplacingChoice = { option: ParentChoice; replacedId: string };
+
+/**
+ * A menu item's label, with the reason it is unavailable shown beneath it
+ * when it is. The reason is the item's description (`aria-describedby` to
+ * `reasonId`), not part of its name.
+ */
+function ItemText({
+  label,
+  reason,
+  reasonId,
+}: {
+  label: ReactNode;
+  reason: string | undefined;
+  reasonId: string;
+}) {
+  return (
+    <span className="flex flex-col items-start">
+      <span>{label}</span>
+      {reason !== undefined && (
+        <span id={reasonId} aria-hidden className="text-sm">
+          {reason}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * The words the connect menu uses: for a pair as partners, for one as the
+ * other's parent, and for each kind of parent. The participant comes first
+ * in a pair, as "you and …".
+ */
+function connectionWords(
+  { wording, text }: PedigreeWords,
+  intl: IntlShape,
+  family: Family,
+  displayName: (personId: string) => string,
+  parentKindLabels: OwnedOptionLabels['parentKind'],
+) {
+  const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
+  // Every kind is offered by the codebook's label; a parent who carried the
+  // pregnancy is its own choice, qualifying that label.
+  const parentChoiceLabel = (choice: ParentChoice) =>
+    carriesBeyondKind(choice)
+      ? text(wording.parentKindCarrier, {
+          parentKind: parentKindLabels[choice.parentKind],
+        })
+      : parentKindLabels[choice.parentKind];
+  const parentLabel = ({ parentId, childId }: ParentAndChild) =>
+    text(wording.connectParent, {
+      parentIsYou: isYou(parentId) ? 'true' : 'false',
+      childIsYou: isYou(childId) ? 'true' : 'false',
+      parent: displayName(parentId),
+      child: displayName(childId),
+    });
+  const inOrder = (a: string, b: string) => (isYou(b) ? [b, a] : [a, b]);
+  const pairArgs = (a: string, b: string) => {
+    const [first = a, second = b] = inOrder(a, b);
+    return {
+      firstIsYou: isYou(first) ? 'true' : 'false',
+      first: displayName(first),
+      second: displayName(second),
+    };
+  };
+  const partnersLabel = (a: string, b: string, current: boolean) =>
+    text(wording.connectPartners, {
+      ...pairArgs(a, b),
+      current: current ? 'true' : 'false',
+    });
+  return {
+    isYou,
+    inOrder,
+    pairArgs,
+    parentChoiceLabel,
+    parentLabel,
+    partnersLabel,
+    /** A connection made, as the menu option chosen for it, announced as
+     * plain text. */
+    describe: (connection: Connection) =>
+      connection.kind === 'partner'
+        ? partnersLabel(
+            connection.firstId,
+            connection.secondId,
+            connection.current,
+          )
+        : intl.formatMessage(messages.connectedParentAnnouncement, {
+            relationship: parentLabel(connection),
+            kind: getMarkdownLabelText(parentChoiceLabel(connection)),
+          }),
+  };
+}
+
+/**
+ * How a connection just made is announced: as the menu option chosen for
+ * it, in the words people have now that it is made, which may differ from
+ * the menu's when it changes how someone unnamed is related to the
+ * participant.
+ */
+export function describeConnection(
+  connection: Connection,
+  words: PedigreeWords,
+  intl: IntlShape,
+  family: Family,
+  displayName: (personId: string) => string,
+  parentKindLabels: OwnedOptionLabels['parentKind'],
+) {
+  return connectionWords(
+    words,
+    intl,
+    family,
+    displayName,
+    parentKindLabels,
+  ).describe(connection);
+}
+
+/**
+ * Asks how two people the participant has selected are related: as partners,
+ * or one as the other's parent — and then what kind of parent, as a second
+ * step in the same menu rather than a submenu, which a touch screen cannot
+ * hover to open. Choices that would contradict the family already recorded
+ * are unavailable, except where the newest answer wins: a choice that
+ * replaces who carried the child, or a genetic kind that takes the place of
+ * a biological parent, says so under it, and for the latter a third step
+ * asks how the participant would define that parent's relationship to the
+ * child instead.
+ */
+export default function ConnectMenu({
+  pair,
+  family,
+  displayName,
+  parentKindLabels,
+  sexLabels,
+  anchor,
+  onConnect,
+  onClose,
+}: ConnectMenuProps) {
+  const words = usePedigreeWords();
+  const { wording, text } = words;
+  const intl = useAppIntl();
+  const contentFormat = useContentFormat();
+  const reasonIdPrefix = useId();
+  const connection = connectionWords(
+    words,
+    intl,
+    family,
+    displayName,
+    parentKindLabels,
+  );
+  // The parent and child chosen in the first step, for the current pair.
+  const [choice, setChoice] = useState<{
+    pair: ConnectPair;
+    parent: ParentAndChild;
+    replacing?: ReplacingChoice;
+  } | null>(null);
+  const current = choice && choice.pair === pair ? choice : null;
+  const parentChoice = current ? current.parent : null;
+  const replacing = current?.replacing;
+
+  // Moving between the steps replaces every item, so focus moves to the
+  // first item of the new step.
+  const firstItemRef = useRef<HTMLDivElement>(null);
+  const stepKey = parentChoice
+    ? `${parentChoice.parentId}${replacing ? '-replacing' : ''}`
+    : 'relationship';
+  const previousStep = useRef(stepKey);
+  useEffect(() => {
+    if (previousStep.current !== stepKey) firstItemRef.current?.focus();
+    previousStep.current = stepKey;
+  }, [stepKey]);
+
+  const content = (() => {
+    if (!pair) return null;
+    const { isYou, parentLabel, parentChoiceLabel } = connection;
+
+    if (parentChoice && replacing) {
+      const { replacedId } = replacing;
+      return (
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            {text(wording.parentLinkKindLabel, {
+              parentIsYou: isYou(replacedId) ? 'true' : 'false',
+              personIsYou: isYou(parentChoice.childId) ? 'true' : 'false',
+              parent: displayName(replacedId),
+              child: displayName(parentChoice.childId),
+            })}
+          </DropdownMenuLabel>
+          {REPLACED_PARENT_KINDS.map((kind, index) => (
+            <DropdownMenuItem
+              key={kind}
+              ref={index === 0 ? firstItemRef : undefined}
+              data-testid={`pedigree-connect-replaced-${kind}`}
+              onClick={() =>
+                onConnect({
+                  kind: 'parent',
+                  ...parentChoice,
+                  ...replacing.option,
+                  replaced: { parentId: replacedId, kind },
+                })
+              }
+            >
+              <RenderMarkdown>{parentKindLabels[kind]}</RenderMarkdown>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            closeOnClick={false}
+            onClick={() => setChoice({ pair, parent: parentChoice })}
+          >
+            {intl.formatMessage(commonMessages.back)}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      );
+    }
+
+    if (parentChoice) {
+      const label = parentLabel(parentChoice);
+      // A choice that would contradict the family is unavailable, with the
+      // reason shown under it, and describing it. The reason names the
+      // choice it disables, and why: who carried the child, for a choice
+      // that would record a second carrier, or the genetic parents already
+      // recorded, for a genetic kind.
+      const reasonContext = {
+        words,
+        family,
+        displayName,
+        sexLabels,
+        formatList: contentFormat.formatList,
+      };
+      // What a choice that is available replaces is said under it in the
+      // same way: whoever was recorded as carrying the child, and the
+      // biological parent a genetic kind takes the place of.
+      const reasonFor = (
+        option: ParentChoice,
+        kindLabel: string,
+        {
+          unavailable,
+          replacesCarrier,
+          replacesParent,
+        }: {
+          unavailable?: ParentChoiceBlock;
+          replacesCarrier?: { carrierId: string; childId: string };
+          replacesParent?: string;
+        },
+      ) => {
+        const answer = {
+          value: choiceId(option),
+          label: getMarkdownLabelText(kindLabel),
+        };
+        const answers = [answer];
+        const reasons: (Reason | undefined)[] = unavailable
+          ? [
+              unavailable.rule === 'carrierRecorded'
+                ? carrierRecordedReason(
+                    unavailable.childId,
+                    unavailable.carrierId,
+                    answers,
+                  )
+                : geneticParentReason(unavailable, answers),
+            ]
+          : [
+              replacesParent === undefined
+                ? undefined
+                : geneticParentReplacedReason(
+                    parentChoice.childId,
+                    replacesParent,
+                    answer,
+                  ),
+              replacesCarrier &&
+                carrierReplacedReason(
+                  replacesCarrier.childId,
+                  replacesCarrier.carrierId,
+                  answer,
+                ),
+            ];
+        return joinReasons(reasonContext, reasons);
+      };
+      return (
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{label}</DropdownMenuLabel>
+          {parentChoiceOptions(
+            family,
+            parentChoice.parentId,
+            parentChoice.childId,
+          ).map((each, index) => {
+            const { choice: option, unavailable, replacesParent } = each;
+            const kindLabel = parentChoiceLabel(option);
+            const id = choiceId(option);
+            const reason = reasonFor(option, kindLabel, each);
+            const reasonId = `${reasonIdPrefix}-kind-${id}`;
+            return (
+              <DropdownMenuItem
+                key={id}
+                ref={index === 0 ? firstItemRef : undefined}
+                disabled={unavailable !== undefined}
+                aria-describedby={reason === undefined ? undefined : reasonId}
+                data-testid={`pedigree-connect-kind-${id}`}
+                // A genetic kind that takes a biological parent's place
+                // asks next how that parent is related to the child.
+                closeOnClick={replacesParent === undefined}
+                onClick={() =>
+                  replacesParent === undefined
+                    ? onConnect({ kind: 'parent', ...parentChoice, ...option })
+                    : setChoice({
+                        pair,
+                        parent: parentChoice,
+                        replacing: { option, replacedId: replacesParent },
+                      })
+                }
+              >
+                <ItemText
+                  label={<RenderMarkdown>{kindLabel}</RenderMarkdown>}
+                  reason={reason}
+                  reasonId={reasonId}
+                />
+              </DropdownMenuItem>
+            );
+          })}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            closeOnClick={false}
+            onClick={() => setChoice(null)}
+          >
+            {intl.formatMessage(commonMessages.back)}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      );
+    }
+
+    // The participant comes first in the wording, as "you and …".
+    const [first = pair.firstId, second = pair.secondId] = connection.inOrder(
+      pair.firstId,
+      pair.secondId,
+    );
+    const pairArgs = connection.pairArgs(first, second);
+    const partners = connection.partnersLabel(first, second, true);
+    const formerPartners = connection.partnersLabel(first, second, false);
+    // The canvas never offers a pair already connected (the second person
+    // is unavailable while the first is chosen), so these stay a guard
+    // rather than a choice with a reason to give.
+    const canPartner = canConnectPartners(family, first, second);
+    // The would-be child is already the would-be parent's ancestor.
+    const ancestorReason = ({ parentId, childId }: ParentAndChild) =>
+      text(wording.unavailableAncestor, {
+        who: isYou(parentId)
+          ? 'parentIsYou'
+          : isYou(childId)
+            ? 'childIsYou'
+            : 'other',
+        parent: displayName(parentId),
+        child: displayName(childId),
+      });
+    const parentOption = (parent: ParentAndChild) => {
+      const unavailable =
+        availableParentChoices(family, parent.parentId, parent.childId)
+          .length === 0;
+      // Said under the choice when the would-be parent descends from the
+      // child; a pair already connected is never offered.
+      const reason =
+        unavailable &&
+        parentConnectionBlock(family, parent.parentId, parent.childId) ===
+          'descendant'
+          ? ancestorReason(parent)
+          : undefined;
+      const reasonId = `${reasonIdPrefix}-parent-${parent.parentId}`;
+      return (
+        <DropdownMenuItem
+          key={parent.parentId}
+          closeOnClick={false}
+          disabled={unavailable}
+          aria-describedby={reason === undefined ? undefined : reasonId}
+          data-testid={`pedigree-connect-parent-${parent.parentId}`}
+          onClick={() => setChoice({ pair, parent })}
+        >
+          <ItemText
+            label={parentLabel(parent)}
+            reason={reason}
+            reasonId={reasonId}
+          />
+        </DropdownMenuItem>
+      );
+    };
+
+    return (
+      <DropdownMenuGroup>
+        <DropdownMenuLabel>
+          {text(wording.connectQuestion, pairArgs)}
+        </DropdownMenuLabel>
+        <DropdownMenuItem
+          ref={firstItemRef}
+          disabled={!canPartner}
+          data-testid="pedigree-connect-partners"
+          onClick={() =>
+            onConnect({
+              kind: 'partner',
+              firstId: first,
+              secondId: second,
+              current: true,
+            })
+          }
+        >
+          {partners}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canPartner}
+          data-testid="pedigree-connect-former-partners"
+          onClick={() =>
+            onConnect({
+              kind: 'partner',
+              firstId: first,
+              secondId: second,
+              current: false,
+            })
+          }
+        >
+          {formerPartners}
+        </DropdownMenuItem>
+        {parentOption({ parentId: first, childId: second })}
+        {parentOption({ parentId: second, childId: first })}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onClose}>
+          {intl.formatMessage(commonMessages.cancel)}
+        </DropdownMenuItem>
+      </DropdownMenuGroup>
+    );
+  })();
+
+  return (
+    <DropdownMenu
+      open={pair !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DropdownMenuContent
+        anchor={anchor}
+        side="right"
+        align="center"
+        finalFocus={() => anchor}
+        data-testid="pedigree-connect-menu"
+      >
+        {content}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

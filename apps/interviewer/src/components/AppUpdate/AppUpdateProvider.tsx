@@ -12,8 +12,8 @@ import { installServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/serviceW
 import useAppUpdate, {
   type UseAppUpdateResult,
 } from '@codaco/fresco-ui/appUpdate/useAppUpdate';
-import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { APP_VERSION } from '~/lib/appVersion';
+import { refreshAppOffline } from '~/lib/pwa/appOffline';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
 
@@ -31,17 +31,6 @@ export function useAppUpdateContext(): AppUpdateContextValue {
   return value;
 }
 
-// Interviewer 8 inside Interviewer 9's deploy has no update UX of its own. Its
-// updates only ever arrive with an Interviewer 9 deploy, and the update and
-// release-notes keys in localStorage are shared with Interviewer 9 on the same
-// origin, so the pill stays a plain version label. A waiting /v8/ worker is
-// still activated by the next fresh navigation (main.tsx).
-const SUBPATH_UPDATE: AppUpdateContextValue = {
-  status: 'idle',
-  releaseNotes: null,
-  install: () => false,
-};
-
 // Owns service-worker registration (so the app stays installable/offline) and
 // the update state, exposing it to the version pill via context. Replaces the
 // old PwaUpdateBanner.
@@ -55,6 +44,8 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   } = useRegisterSW({
     onRegisteredSW: (_swScriptUrl, swRegistration) => {
       setRegistration(swRegistration);
+      // Whether the app is ready offline follows this worker's install.
+      void refreshAppOffline();
     },
     // The shared install action is the sole reload owner. vite-plugin-pwa's
     // default callback reloads as soon as the new worker takes control, which
@@ -83,33 +74,6 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(intervalId);
   }, [registration]);
 
-  if (IS_SUBPATH_BUILD) {
-    return (
-      <AppUpdateContext.Provider value={SUBPATH_UPDATE}>
-        {children}
-      </AppUpdateContext.Provider>
-    );
-  }
-
-  return (
-    <AppUpdateStateProvider
-      registration={registration}
-      needRefresh={needRefresh}
-    >
-      {children}
-    </AppUpdateStateProvider>
-  );
-}
-
-function AppUpdateStateProvider({
-  registration,
-  needRefresh,
-  children,
-}: {
-  registration: ServiceWorkerRegistration | undefined;
-  needRefresh: boolean;
-  children: ReactNode;
-}) {
   const installUpdate = useCallback(
     () => installServiceWorkerUpdate({ registration }),
     [registration],

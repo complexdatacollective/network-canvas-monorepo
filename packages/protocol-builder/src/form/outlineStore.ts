@@ -144,8 +144,8 @@ function labelText(label: Element | null): string {
   let text = '';
   for (const node of label.childNodes) {
     if (
-      node.nodeType === Node.ELEMENT_NODE &&
-      (node as Element).getAttribute('aria-hidden') === 'true'
+      node instanceof Element &&
+      node.getAttribute('aria-hidden') === 'true'
     ) {
       continue;
     }
@@ -300,6 +300,16 @@ export class SectionOutlineStore {
     this.getSnapshot();
     return this.cachedUnattributed;
   };
+
+  /**
+   * What the schema last found wrong with the stage, by path, whether or not
+   * a field on screen answers for it: what a part of a section that mounts
+   * its fields only while it is open reads to open itself over a problem
+   * inside it. Kept by identity until the problems change, for
+   * `useSyncExternalStore`.
+   */
+  getValidationIssues = (): readonly SectionValidationIssue[] =>
+    this.validationIssues;
 
   registerSection(
     section: Readonly<{ id: string; title: string }>,

@@ -5,7 +5,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { exportStageMessages } from '@codaco/network-exporters/messages';
 
