@@ -74,6 +74,22 @@ describe('useIdleTimer', () => {
     expect(onIdle).toHaveBeenCalledTimes(1);
   });
 
+  it('calls the latest onIdle, without restarting the countdown when it changes', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = renderHook(
+      ({ onIdle }: { onIdle: () => void }) =>
+        useIdleTimer({ timeoutMs: TIMEOUT, enabled: true, onIdle }),
+      { initialProps: { onIdle: first } },
+    );
+
+    advance(TIMEOUT - 100);
+    rerender({ onIdle: second });
+    advance(100);
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
   it('does nothing while enabled is false', () => {
     const onIdle = vi.fn();
     renderHook(() =>

@@ -4,7 +4,6 @@ import {
   useEffect,
   useEffectEvent,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useLocation, useRoute, useSearch } from 'wouter';
@@ -223,7 +222,7 @@ type LoadState =
       initialStageOverrideIndex?: number;
     };
 
-// What this route writes for one interview: see `writeStatesRef`.
+// What this route writes for one interview: see `writeStates`.
 type SessionWriteState = {
   synced: Pick<StoredSession, 'network' | 'stageMetadata'>;
   currentStep: number;
@@ -308,7 +307,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // one slot that write would be made against the next interview's protocol
   // and step, and would leave the previous interview's network for the next
   // interview's step change to write into it.
-  const writeStatesRef = useRef(new Map<string, SessionWriteState>());
+  //
+  // One map for the life of the route, read and written only by the load,
+  // sync and step handlers — nothing renders from it.
+  const [writeStates] = useState(() => new Map<string, SessionWriteState>());
 
   // A history-back (browser button or a swipe gesture the CSS/wheel guards
   // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
@@ -594,7 +596,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           ? (lastAvailableStage ?? 0)
           : session.currentStep;
       setCurrentStep(initialStep);
-      writeStatesRef.current.set(sessionId, {
+      writeStates.set(sessionId, {
         synced: {
           network: session.network,
           stageMetadata: session.stageMetadata,
@@ -639,6 +641,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     setAuthorizedInterviewId,
     reviewRequested,
     isLiveRoute,
+    writeStates,
   ]);
 
   const reviewMode = state.kind === 'ready' && state.reviewMode;
@@ -678,7 +681,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             `Sync for interview ${id} reached the handler for ${ownerId}`,
           );
         }
-        const writeState = writeStatesRef.current.get(id);
+        const writeState = writeStates.get(id);
         if (!writeState) {
           throw new Error(`Sync for interview ${id} arrived before it loaded`);
         }
@@ -694,7 +697,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       },
       { waitMs: SYNC_BATCH_MS },
     );
-  }, [sessionId]);
+  }, [sessionId, writeStates]);
 
   // Once this resolves the Shell shows its completed state in place; the
   // route stays where it is. The finish confirmation cannot be dismissed while
@@ -725,7 +728,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const handleStepChange = useCallback<StepChangeHandler>(
     (step, meta) => {
       setCurrentStep(step);
-      const writeState = writeStatesRef.current.get(sessionId);
+      const writeState = writeStates.get(sessionId);
       if (!writeState) return;
       writeState.currentStep = step;
       if (readOnly) return;
@@ -738,7 +741,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         resumeStageOverrideIndex: undefined,
       });
     },
-    [readOnly, sessionId],
+    [readOnly, sessionId, writeStates],
   );
 
   if (state.kind === 'hosted') {

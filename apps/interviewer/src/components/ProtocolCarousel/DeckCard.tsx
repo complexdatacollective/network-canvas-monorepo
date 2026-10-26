@@ -8,7 +8,6 @@ import {
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   isValidElement,
-  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -354,7 +353,7 @@ function useCardTextBudget({
     headingRef,
     schemaRef,
     descriptionRef,
-    ...budget,
+    budget,
   };
 }
 
@@ -480,16 +479,17 @@ export function DeckCard(props: DeckCardProps) {
   const footerKey = isValidElement(footer) ? (footer.key ?? 'footer') : null;
   const renderedFooterKey = isActive && footer != null ? footerKey : null;
 
-  const budget = useCardTextBudget({
-    name: protocol.name,
-    description: protocol.description,
-    schemaVersion: showSchema ? schemaVersion : undefined,
-    loading,
-    hideControls,
-    hideMetadata,
-    hideDescription,
-    footerKey: renderedFooterKey,
-  });
+  const { columnRef, headingRef, schemaRef, descriptionRef, budget } =
+    useCardTextBudget({
+      name: protocol.name,
+      description: protocol.description,
+      schemaVersion: showSchema ? schemaVersion : undefined,
+      loading,
+      hideControls,
+      hideMetadata,
+      hideDescription,
+      footerKey: renderedFooterKey,
+    });
 
   const showDescription =
     !hideDescription &&
@@ -499,14 +499,20 @@ export function DeckCard(props: DeckCardProps) {
     (protocol.description == null ||
       budget.descriptionLines === null ||
       budget.descriptionLines > 0);
-  const committedFooterKeyRef = useRef<string | null>(renderedFooterKey);
-  const isFooterSwap =
-    renderedFooterKey !== null &&
-    committedFooterKeyRef.current !== null &&
-    committedFooterKeyRef.current !== renderedFooterKey;
-  useEffect(() => {
-    committedFooterKeyRef.current = renderedFooterKey;
+  // Whether the footer now showing replaced another one, worked out on the
+  // render its key changes and kept until it changes again; only its entry
+  // reads it.
+  const [footerEntry, setFooterEntry] = useState({
+    key: renderedFooterKey,
+    isSwap: false,
   });
+  if (footerEntry.key !== renderedFooterKey) {
+    setFooterEntry({
+      key: renderedFooterKey,
+      isSwap: renderedFooterKey !== null && footerEntry.key !== null,
+    });
+  }
+  const isFooterSwap = footerEntry.isSwap;
 
   return (
     <LayoutGroup id={id}>
@@ -534,7 +540,7 @@ export function DeckCard(props: DeckCardProps) {
         <AnimatePresence mode="popLayout" initial={false}>
           <div
             key="content"
-            ref={budget.columnRef}
+            ref={columnRef}
             // Gap scales with the card (24px at the 720px maximum) so small
             // cards spend their height on content, not fixed 24px seams.
             className="relative z-10 flex size-full flex-col justify-between gap-[max(12px,3.3cqi)] p-[6cqi]"
@@ -634,7 +640,7 @@ export function DeckCard(props: DeckCardProps) {
             >
               {showSchema && schemaVersion !== undefined && (
                 <motion.span
-                  ref={budget.schemaRef}
+                  ref={schemaRef}
                   layout="position"
                   transition={REGION_TRANSITION}
                   data-testid="deck-card-schema"
@@ -662,7 +668,7 @@ export function DeckCard(props: DeckCardProps) {
               )}
               {protocol.name ? (
                 <MotionHeading
-                  ref={budget.headingRef}
+                  ref={headingRef}
                   level="h2"
                   title={protocol.name}
                   className={cx(
@@ -732,7 +738,7 @@ export function DeckCard(props: DeckCardProps) {
                 >
                   {protocol.description ? (
                     <span
-                      ref={budget.descriptionRef}
+                      ref={descriptionRef}
                       className="text-[max(12px,3.5cqi)] leading-tight text-current/80"
                       style={{
                         display: '-webkit-box',

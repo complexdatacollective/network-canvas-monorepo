@@ -535,6 +535,39 @@ describe('AuthenticationDialog', () => {
     );
   });
 
+  it('starts a reopened dialog on the main pane, not on the recovery pane it closed on', async () => {
+    useAuthMock.mockReturnValue({ ...authValue, mode: 'biometric' });
+    const user = userEvent.setup();
+    const dialog = (open: boolean) => (
+      <AuthenticationDialog
+        open={open}
+        title="Welcome back"
+        description="Authenticate to continue."
+        allowRecovery
+      />
+    );
+    const { rerender } = render(dialog(true));
+
+    await user.click(
+      screen.getByRole('button', { name: 'Recover with passphrase' }),
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Recover with passphrase' }),
+    ).toBeInTheDocument();
+
+    rerender(dialog(false));
+    rerender(dialog(true));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Recover with passphrase' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Welcome back' }),
+    ).toBeInTheDocument();
+  });
+
   it('clears a recovery passphrase after returning to the main dialog', async () => {
     useAuthMock.mockReturnValue({ ...authValue, mode: 'biometric' });
     const user = userEvent.setup();
