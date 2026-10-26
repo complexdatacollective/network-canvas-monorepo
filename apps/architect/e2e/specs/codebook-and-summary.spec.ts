@@ -4,9 +4,9 @@ import { readProtocolJson } from '../helpers/read-store.js';
 import { assertBaselinesCommitted, makeCapture } from '../helpers/visual.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
-// The summary cover prints "Document Created: <now>" from `new Date()` at
-// render time (Cover.tsx), and falls back to `DateTime.now()` when the
-// protocol has no lastModified — both would differ on every run (and can
+// The summary cover prints "Document Created: <now>" from the time it
+// mounted (Cover.tsx), and falls back to that same time when the protocol
+// has no lastModified — both would differ on every run (and can
 // even change line wrapping, shifting the whole page). Pin the page clock
 // so the visual baselines are deterministic. setFixedTime only fakes Date;
 // asynchronous validation and persistence continue normally.

@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef } from 'react';
+import { createElement, useEffect, useLayoutEffect, useRef } from 'react';
 import { useStore } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 import { useLocation } from 'wouter';
@@ -123,7 +123,8 @@ const StageDraftConflictDialog = ({
 
   // Everything the ask needs, read at the moment it is used. Depending on these
   // directly would restart the effect whenever one changed identity, which
-  // means a second dialog stacked on the first.
+  // means a second dialog stacked on the first. Refreshed in a layout effect,
+  // which runs before the passive effect below reads it.
   const latest = useRef({
     closeDialog,
     dispatch,
@@ -133,15 +134,17 @@ const StageDraftConflictDialog = ({
     setLocation,
     stageId,
   });
-  latest.current = {
-    closeDialog,
-    dispatch,
-    insertAtIndex,
-    openDialog,
-    reduxStore,
-    setLocation,
-    stageId,
-  };
+  useLayoutEffect(() => {
+    latest.current = {
+      closeDialog,
+      dispatch,
+      insertAtIndex,
+      openDialog,
+      reduxStore,
+      setLocation,
+      stageId,
+    };
+  });
 
   const openDialogId = useRef<string | null>(null);
 

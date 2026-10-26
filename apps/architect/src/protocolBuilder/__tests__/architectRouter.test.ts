@@ -114,7 +114,7 @@ type OpenProtocol = Readonly<{
 const runtimes: { dispose: () => Promise<void> }[] = [];
 
 const clientOf = (store: ArchitectStore): TestClient => {
-  const { adapter, runtime } = createArchitectClient(store, () => OTHER_TAB);
+  const { adapter, runtime } = createArchitectClient(store, OTHER_TAB);
   runtimes.push(runtime);
   return { call: adapter.rpcCall, runtime };
 };

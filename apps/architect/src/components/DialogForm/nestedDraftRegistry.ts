@@ -1,4 +1,9 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 
 /**
  * The seam every guard that could destroy unsaved work consults for editors
@@ -137,11 +142,14 @@ const registerNestedDraft = (isDirty: DirtyPredicate): (() => void) => {
  * `isDirty` is read through a ref, so a caller may pass a fresh closure every
  * render without churning the registration — and the predicate is always
  * evaluated at ASK time, never sampled, so it reflects the editor's live state
- * when a guard runs.
+ * when a guard runs. The ref is refreshed in a layout effect after every
+ * commit, so a guard never sees a closure older than the committed render.
  */
 export const useNestedDraft = (active: boolean, isDirty: DirtyPredicate) => {
   const isDirtyRef = useRef(isDirty);
-  isDirtyRef.current = isDirty;
+  useLayoutEffect(() => {
+    isDirtyRef.current = isDirty;
+  });
 
   useEffect(() => {
     if (!active) return undefined;

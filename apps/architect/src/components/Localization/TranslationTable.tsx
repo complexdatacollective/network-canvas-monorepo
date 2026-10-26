@@ -485,8 +485,12 @@ const TranslationTable = ({
   const refusedCommit = useRefusedNestedCommit();
   const { isSubmitting } = useFormMeta();
   // The refused save waiting for its first invalid cell to be on screen.
-  const [unfocusedErrors, setUnfocusedErrors] =
-    useState<FlattenedErrors | null>(null);
+  // Each refusal is its own object, so a repeated refusal with the same errors
+  // still asks for focus; the layout effect below handles each request once.
+  const [unfocusedErrors, setUnfocusedErrors] = useState<{
+    errors: FlattenedErrors;
+  } | null>(null);
+  const focusedErrors = useRef<typeof unfocusedErrors>(null);
 
   // A cell Save refused is brought into view, whatever hid it, before it is
   // given focus: its row is kept past the search and filter, and its
@@ -508,13 +512,14 @@ const TranslationTable = ({
         return next;
       });
     }
-    setUnfocusedErrors(errors);
+    setUnfocusedErrors({ errors });
   };
 
   useLayoutEffect(() => {
     if (unfocusedErrors === null) return;
-    focusFirstError(unfocusedErrors, tableRef.current, formScope);
-    setUnfocusedErrors(null);
+    if (focusedErrors.current === unfocusedErrors) return;
+    focusedErrors.current = unfocusedErrors;
+    focusFirstError(unfocusedErrors.errors, tableRef.current, formScope);
   }, [unfocusedErrors, formScope]);
 
   const { formProps, formErrors } = useForm({
@@ -674,7 +679,16 @@ const TranslationTable = ({
   };
 
   const tableStyle: TableStyle = { '--translation-columns': visible.length };
-  let rowIndex = -1;
+  // Rows are numbered across groups, so arrow keys move between them; each
+  // group's numbering starts where the previous group's ended.
+  const numberedGroups: ((typeof shownGroups)[number] & {
+    firstRow: number;
+  })[] = [];
+  let nextRow = 0;
+  for (const group of shownGroups) {
+    numberedGroups.push({ ...group, firstRow: nextRow });
+    nextRow += group.rows.length;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -916,7 +930,7 @@ const TranslationTable = ({
             </tr>
           </tbody>
         )}
-        {shownGroups.map((group, groupIndex) => {
+        {numberedGroups.map((group, groupIndex) => {
           const groupId = `${baseId}-group-${groupIndex}`;
           return (
             <tbody
@@ -938,9 +952,8 @@ const TranslationTable = ({
                   </div>
                 </th>
               </tr>
-              {group.rows.map((row) => {
-                rowIndex += 1;
-                const currentRow = rowIndex;
+              {group.rows.map((row, rowPosition) => {
+                const currentRow = group.firstRow + rowPosition;
                 const rowId = `${groupId}-row-${currentRow}`;
                 return (
                   <tr

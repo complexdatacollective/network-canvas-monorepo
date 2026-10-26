@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { useContext, type ReactNode } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -414,6 +414,56 @@ describe('a field the stage editor renders itself', () => {
 
     expect(row()).toHaveTextContent(MESSAGE);
     expect(row().querySelector('a')).toBeNull();
+  });
+
+  it('names a field that has come onto the page by the next open', async () => {
+    // The page is read again on every open: a field inside a section the
+    // researcher expanded after the panel first opened is found then.
+    function CollapsedSection() {
+      const [expanded, setExpanded] = useState(false);
+      return expanded ? (
+        <Field<typeof ListControl>
+          name={FIELD}
+          label="Prompts"
+          component={ListControl}
+        />
+      ) : (
+        <button type="button" onClick={() => setExpanded(true)}>
+          Expand the section
+        </button>
+      );
+    }
+    const view = renderStageForm({
+      children: (
+        <>
+          <CollapsedSection />
+          <IssuesHarness />
+        </>
+      ),
+    });
+    act(() => {
+      view
+        .getStoreApi()
+        .getState()
+        .setErrors({ formErrors: [], fieldErrors: { [FIELD]: [MESSAGE] } });
+      view.reportRefusedSubmit();
+    });
+    await screen.findAllByTestId('issue');
+    expect(row().querySelector('a')).toBeNull();
+
+    const trigger = screen.getByRole('button', { name: 'Issues (1)' });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() =>
+      expect(trigger).toHaveAttribute('aria-expanded', 'false'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Expand the section' }));
+    fireEvent.click(trigger);
+    await screen.findAllByTestId('issue');
+
+    expect(row()).toHaveTextContent(`Prompts - ${MESSAGE}`);
+    const href = row().querySelector('a')?.getAttribute('href');
+    expect(href).toBeDefined();
+    expect(document.querySelector(href!)).not.toBeNull();
   });
 });
 
