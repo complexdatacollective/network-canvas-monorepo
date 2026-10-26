@@ -5,9 +5,9 @@ import { join } from 'node:path';
 import matter from 'gray-matter';
 
 import {
-  type Locale,
   locales,
   type SidebarLocaleDefinition,
+  toLocale,
   type TSideBar,
 } from '~/app/types';
 
@@ -21,6 +21,12 @@ import {
   set,
   sortDirectoryListing,
 } from './helper_functions';
+
+// A locale starts with no sections; each is added as its directory is visited
+// below, and the docs folder holds a directory for every section.
+const emptyLocaleDefinition = (): SidebarLocaleDefinition =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- placeholder filled with every section by generateSidebarData before the file is written
+  ({}) as SidebarLocaleDefinition;
 
 /**
  * Generate sidebar data based on docs and locales.
@@ -37,10 +43,7 @@ function generateSidebarData() {
   );
 
   // Set up initial structure for sidebar data.
-  const sidebarData: TSideBar = locales.reduce((acc, locale) => {
-    acc[locale] = {} as SidebarLocaleDefinition;
-    return acc;
-  }, {} as TSideBar);
+  const sidebarData: TSideBar = { en: emptyLocaleDefinition() };
 
   const sortedFiles = sortDirectoryListing(files);
 
@@ -52,12 +55,9 @@ function generateSidebarData() {
 
     if (file.isDirectory()) {
       const metadata = getMetaDataForDirectory(join(parentPath, file.name));
-      const currentLocales = Object.keys(sidebarData);
 
       if (metadata.type === 'section') {
-        for (const l of currentLocales) {
-          const locale = l as Locale;
-
+        for (const locale of locales) {
           sidebarData[locale] = {
             ...sidebarData[locale],
             [file.name]: createSectionEntry(file, locale, metadata, parentPath),
@@ -72,8 +72,7 @@ function generateSidebarData() {
         const nestedPath = getNestedPath(parentPath);
 
         // Insert folder entry for each locale in the nested path
-        for (const l of currentLocales) {
-          const locale = l as Locale;
+        for (const locale of locales) {
           set(
             sidebarData[locale],
             [...nestedPath, file.name],
@@ -91,13 +90,14 @@ function generateSidebarData() {
     }
 
     // Determine locale based on file name (format is `index.en.mdx` or `index.en.md`)
-    const locale = file.name.split('.')[1] as Locale | undefined;
+    const localeSegment = file.name.split('.')[1];
+    const locale = toLocale(localeSegment);
 
     // If there's no locale, or the locale isn't included in the type, ignore it.
-    if (!(locale && locales.includes(locale as Locale))) {
+    if (!locale) {
       // oxlint-disable-next-line no-console -- Logging missing locale
       console.warn(
-        `File ${file.name} is missing a locale or has a locale not defined in Locale. Locale is ${locale}. Skipping.`,
+        `File ${file.name} is missing a locale or has a locale not defined in Locale. Locale is ${localeSegment}. Skipping.`,
       );
       continue;
     }

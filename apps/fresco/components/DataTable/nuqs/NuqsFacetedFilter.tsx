@@ -73,7 +73,10 @@ export default function NuqsFacetedFilter<T extends string>({
       emptyMessage={emptyMessage}
       value={selected ?? []}
       onChange={(newValues) => {
-        const next = (newValues as T[] | undefined) ?? [];
+        // The options are all drawn from `values`, so this keeps every value.
+        const next = (newValues ?? []).filter((value): value is T =>
+          values.some((allowed) => allowed === value),
+        );
         void setSelected(next.length > 0 ? next : null);
       }}
       showSelectAll

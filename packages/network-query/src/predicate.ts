@@ -196,14 +196,16 @@ const predicate =
       case operators.NOT_EXISTS:
         return isNil(value);
       case countOperators.COUNT_ANY:
-        return (value as number) > 0;
+        // `>` coerces a non-number operand with ToNumber; `Number()` applies the
+        // same conversion, so every input keeps its existing result.
+        return Number(value) > 0;
       case countOperators.COUNT_NONE:
         return value === 0;
       case operators.OPTIONS_GREATER_THAN: {
-        return optionsLength(value) > (variableValue as number);
+        return optionsLength(value) > Number(variableValue);
       }
       case operators.OPTIONS_LESS_THAN: {
-        return optionsLength(value) < (variableValue as number);
+        return optionsLength(value) < Number(variableValue);
       }
       case operators.OPTIONS_EQUALS: {
         return optionsLength(value) === variableValue;

@@ -74,6 +74,7 @@ function exportedCodebook(
   if (protocol.schemaVersion !== 8) return protocol.codebook;
   // The two codebook types differ only in fields the exporter never reads.
   const codebook: unknown = protocol.codebook;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the schema 8 and current codebook types differ only in fields the exporter never reads
   return codebook as ProtocolExportInput['codebook'];
 }
 

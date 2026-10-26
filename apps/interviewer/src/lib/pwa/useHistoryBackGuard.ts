@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef } from 'react';
 
 // The pinned entry is tagged so we can tell ours apart from a normal history
 // entry — both on the popstate re-push and when the gated exit unwinds it.
-type SentinelState = { ncBackGuard?: boolean } | null;
-
 function isSentinel(state: unknown): boolean {
-  return (state as SentinelState)?.ncBackGuard === true;
+  return (
+    typeof state === 'object' &&
+    state !== null &&
+    'ncBackGuard' in state &&
+    state.ncBackGuard === true
+  );
 }
 
 // Pin the history while a sensitive screen (an interview) is mounted so a

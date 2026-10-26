@@ -43,10 +43,7 @@ const WIZARD_METHODS: WizardSelectedMethod[] = [
 ];
 
 function asSelectedMethod(v: unknown): WizardSelectedMethod | null {
-  if (typeof v === 'string' && WIZARD_METHODS.some((m) => m === v)) {
-    return v as WizardSelectedMethod;
-  }
-  return null;
+  return WIZARD_METHODS.find((m) => m === v) ?? null;
 }
 
 export default function Step3Configure({

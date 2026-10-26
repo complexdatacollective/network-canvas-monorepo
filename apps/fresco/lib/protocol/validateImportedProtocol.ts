@@ -53,5 +53,15 @@ export async function validateImportedProtocol(
     };
   }
 
-  return { success: true, protocol: validationResult.data as CurrentProtocol };
+  // Validation keeps the version it was given, so this narrows the result to the
+  // current schema's protocol.
+  if (validationResult.data.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+    return {
+      success: false,
+      error: 'unsupported-version',
+      version: validationResult.data.schemaVersion,
+    };
+  }
+
+  return { success: true, protocol: validationResult.data };
 }

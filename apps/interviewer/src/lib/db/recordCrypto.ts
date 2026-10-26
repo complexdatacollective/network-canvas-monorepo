@@ -444,6 +444,7 @@ export async function decryptProtocol(
   >(row);
   // The row's plaintext `schemaVersion` names the document it holds, as it
   // did when the row was written; the document is not re-validated on read.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the row's schemaVersion pairs with the document that encryptProtocol wrote beside it, a correlation the union type cannot express
   return { ...rest, ...document } as StoredProtocol;
 }
 

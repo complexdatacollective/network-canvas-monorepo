@@ -698,6 +698,10 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       noContainer
       series="accent"
       ref={ref}
+      // Motion 14.6 makes every Reorder.Item a tab stop for its own
+      // grab-and-move keys. Items reorder through their drag handle, so the
+      // item itself stays out of the tab order.
+      tabIndex={undefined}
       value={item}
       dragListener={false}
       dragControls={dragControls}

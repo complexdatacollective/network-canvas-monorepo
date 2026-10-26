@@ -419,7 +419,9 @@ async function readUpdateText(
       const source = await readFile(join(contentDirectory, filename), 'utf8');
       return { filename, source };
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      const missing =
+        error instanceof Error && 'code' in error && error.code === 'ENOENT';
+      if (!missing) throw error;
     }
   }
   throw new Error(`updates/${updateId}.${locale}.md: missing translation`);

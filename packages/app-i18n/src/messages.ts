@@ -108,6 +108,7 @@ export function createAppIntl(options: {
       // Catalog values are ICU strings in dev/tests and pre-parsed AST in
       // production builds; react-intl accepts both, but its option type only
       // names the string form.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- react-intl accepts the pre-parsed AST form at run time; only its option type is narrower
       messages: (options.messages ?? {}) as Record<string, string>,
       onError: makeOnError(options.onError),
     },

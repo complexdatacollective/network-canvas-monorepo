@@ -35,11 +35,14 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture, {
   type InterfacePictureProps,
 } from '@codaco/interface-images/InterfacePicture';
-import type {
-  SidebarFolder,
-  SidebarPage,
-  SidebarSection,
-  TSideBar,
+import {
+  type SidebarFolder,
+  type SidebarPage,
+  type SidebarSection,
+  SideBarSchema,
+  toLocale,
+  toSection,
+  type TSideBar,
 } from '~/app/types';
 import AppCompatibilityTable from '~/components/customComponents/AppCompatibilityTable';
 import { AppOnly } from '~/components/customComponents/AppOnly';
@@ -82,7 +85,7 @@ import { getCompatibility } from '~/lib/interfaceCompatibility';
 import { DOCS_PATH, get } from './helper_functions';
 import processPreTags from './processPreTags';
 import processYamlMatter from './processYamlMatter';
-import { type HeadingNode, headingTree } from './tableOfContents';
+import { headingTree } from './tableOfContents';
 import unwrapBlockComponents from './unwrapBlockComponents';
 
 const getSidebar = (): Partial<TSideBar> => {
@@ -91,7 +94,7 @@ const getSidebar = (): Partial<TSideBar> => {
     return {};
   }
   const sidebarContent = readFileSync(sidebarPath, 'utf-8');
-  return JSON.parse(sidebarContent) as TSideBar;
+  return SideBarSchema.parse(JSON.parse(sidebarContent));
 };
 
 const FrontmatterSchema = z.object({
@@ -143,7 +146,12 @@ export const getDocsForRouteSegment = ({
   section: string;
 }) => {
   const sidebar = getSidebar();
-  const sidebarData = get(sidebar, [locale, section], null) as SidebarSection;
+  const sidebarLocale = toLocale(locale);
+  const sidebarSection = toSection(section);
+  const sidebarData =
+    sidebarLocale && sidebarSection
+      ? sidebar[sidebarLocale]?.[sidebarSection]
+      : undefined;
 
   if (!sidebarData) {
     // oxlint-disable-next-line no-console -- Logging missing sidebar data
@@ -211,14 +219,12 @@ const getSourceFile = (
   pathSegment?: string[],
 ) => {
   const sidebar = getSidebar();
-  const sectionSourceFile = get(
-    sidebar,
-    [locale, section, 'sourceFile'],
-    null,
-  ) as string;
+  const sectionSourceFile = get(sidebar, [locale, section, 'sourceFile'], null);
 
   if (!pathSegment)
-    return join(process.cwd(), 'docs', stripDocsPrefix(sectionSourceFile));
+    return typeof sectionSourceFile === 'string'
+      ? join(process.cwd(), 'docs', stripDocsPrefix(sectionSourceFile))
+      : null;
 
   const pathSegmentWithChildren = pathSegment.flatMap((segment, index) => {
     if (index === 0) {
@@ -232,9 +238,9 @@ const getSourceFile = (
     sidebar,
     [locale, section, 'children', ...pathSegmentWithChildren, 'sourceFile'],
     null,
-  ) as string | null;
+  );
 
-  if (!folderSourceFile) return null;
+  if (typeof folderSourceFile !== 'string' || !folderSourceFile) return null;
 
   return join(process.cwd(), 'docs', stripDocsPrefix(folderSourceFile));
 };
@@ -444,7 +450,7 @@ export async function getDocumentForPath({
 
   return {
     frontmatter: validatedFrontmatter,
-    headings: result.data.headings as HeadingNode[],
+    headings: result.data.headings ?? [],
     component: result.result,
   };
 }

@@ -58,14 +58,12 @@ async function activityTypeGroups(
 }
 
 export async function fetchActivities(
-  rawSearchParams: unknown,
+  searchParams: SearchParams,
   locale: string,
 ) {
   'use cache';
   cacheLife('max');
   safeCacheTag('activityFeed');
-
-  const searchParams = rawSearchParams as SearchParams;
 
   const { page, perPage, sort, sortField, q, type } = searchParams;
 

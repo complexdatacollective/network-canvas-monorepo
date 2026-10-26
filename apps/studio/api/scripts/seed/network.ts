@@ -71,6 +71,7 @@ function withSeededIds(generated: GeneratedInterview): GeneratedInterview {
     UUID_PATTERN,
     (match) => replacements.get(match) ?? match,
   );
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the text is this function's own serialization of a GeneratedInterview with UUID strings swapped for UUID strings, so it parses back to the same shape
   return JSON.parse(rewritten) as GeneratedInterview;
 }
 

@@ -113,7 +113,7 @@ const SEQUENCE = [
   'run --rm --no-deps api maintenance on',
   'stop api api-b worker',
   'pull',
-  'up -d web api api-b worker',
+  'up -d --remove-orphans',
   'run --rm migrate',
   'run --rm --no-deps api maintenance off',
 ];
@@ -133,7 +133,7 @@ function assertRolledBack(r, failedStep) {
   assert.equal(r.maintenance, 'off', 'the instance is open again');
   assert.deepEqual(r.images, { 'api': OLD_API, 'api-b': OLD_API });
   assert.deepEqual(r.calls.slice(-2), [
-    'up -d web api api-b worker',
+    'up -d --remove-orphans',
     'run --rm --no-deps api maintenance off',
   ]);
 }
@@ -274,6 +274,83 @@ test('does not report success while a replica fails another readiness check', ()
   assert.equal(r.status, 5, r.output);
   assert.match(r.output, /failed step=reopen-wait after migrate/);
   assert.equal(r.maintenance, 'on');
+});
+
+const OLD_COMPOSE =
+  'services:\n  traefik:\n  web:\n  api:\n  worker:\n  postgres:\n  migrate:\n';
+const NEW_COMPOSE =
+  'services:\n  traefik:\n  web:\n  api:\n  api-b:\n  worker:\n  postgres:\n  garage:\n  migrate:\n';
+
+function composeStack() {
+  const s = stack();
+  writeFileSync(join(s.dir, 'docker-compose.yml'), OLD_COMPOSE);
+  s.release = join(s.state, 'release-compose.yml');
+  writeFileSync(s.release, NEW_COMPOSE);
+  s.args = ['--dir', s.dir, '--compose', s.release, NEW_API, NEW_WEB];
+  return s;
+}
+
+test('installs the release’s compose file and reads the API replicas from it', () => {
+  const s = composeStack();
+  const r = upgrade(s, { args: s.args });
+  assert.equal(r.status, 0, r.output);
+  assert.equal(
+    r.calls[0],
+    `-f ${s.release} --project-directory . config --services`,
+  );
+  assert.ok(r.calls.includes('stop api api-b worker'), r.calls.join('\n'));
+  assert.ok(r.calls.includes('up -d --remove-orphans'));
+  assert.equal(
+    readFileSync(join(s.dir, 'docker-compose.yml'), 'utf8'),
+    NEW_COMPOSE,
+  );
+  assert.equal(
+    readFileSync(join(s.dir, 'docker-compose.yml.previous'), 'utf8'),
+    OLD_COMPOSE,
+  );
+  assert.deepEqual(r.images, { 'api': NEW_API, 'api-b': NEW_API });
+});
+
+test('puts the previous compose file back when it rolls back', () => {
+  const s = composeStack();
+  rmSync(join(s.state, 'image-api-b'));
+  const r = upgrade(s, { args: s.args, env: { STUB_FAIL: 'migrate' } });
+  assert.equal(r.status, 3, r.output);
+  assert.match(r.output, /restored docker-compose\.yml/);
+  assert.equal(r.env, ENV_FILE);
+  assert.equal(r.maintenance, 'off');
+  assert.equal(r.images.api, OLD_API);
+  assert.deepEqual(r.calls.slice(-3), [
+    'config --services',
+    'up -d --remove-orphans',
+    'run --rm --no-deps api maintenance off',
+  ]);
+  assert.equal(
+    readFileSync(join(s.dir, 'docker-compose.yml'), 'utf8'),
+    OLD_COMPOSE,
+  );
+});
+
+test('refuses, changing nothing, when the release’s compose file is missing', () => {
+  const s = composeStack();
+  const r = upgrade(s, {
+    args: [
+      '--dir',
+      s.dir,
+      '--compose',
+      join(s.state, 'absent.yml'),
+      NEW_API,
+      NEW_WEB,
+    ],
+  });
+  assert.equal(r.status, 2, r.output);
+  assert.match(r.output, /no such compose file/);
+  assert.equal(
+    readFileSync(join(s.dir, 'docker-compose.yml'), 'utf8'),
+    OLD_COMPOSE,
+  );
+  assert.equal(r.env, ENV_FILE);
+  assert.deepEqual(r.calls, []);
 });
 
 test('refuses, changing nothing, when the arguments or the stack are wrong', () => {

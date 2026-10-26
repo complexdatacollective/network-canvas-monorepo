@@ -59,9 +59,7 @@ export default async function MainLayout(props: MainLayoutProps) {
   let messages: { default: Messages };
 
   try {
-    messages = (await import(`../../messages/${locale}.json`)) as {
-      default: Messages;
-    };
+    messages = await import(`../../messages/${locale}.json`);
   } catch (_e) {
     notFound();
   }
