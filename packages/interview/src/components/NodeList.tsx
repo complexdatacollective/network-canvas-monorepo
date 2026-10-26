@@ -57,6 +57,10 @@ type NodeListProps = Omit<CollectionProps<NcNode>, InternalCollectionProps> & {
 
 const EXIT_DURATION = 0.2;
 
+// The default for a list given no items: one array for every render, so the
+// items passed through while rendering stay equal to those shown.
+const NO_ITEMS: NcNode[] = [];
+
 const NodeList = memo(
   ({
     // NodeList-specific props
@@ -70,7 +74,7 @@ const NodeList = memo(
     nodeSize = 'md',
     testId,
     // Collection props with NodeList defaults
-    items = [],
+    items = NO_ITEMS,
     id,
     className,
     animate = true,

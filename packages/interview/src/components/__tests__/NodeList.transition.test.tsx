@@ -77,7 +77,11 @@ const carol = person('carol');
 
 const store = createEncryptionStore([alice, bob, carol]);
 
-const list = (items: NcNode[], animationKey?: string) => (
+const list = (
+  items: NcNode[] | undefined,
+  animationKey?: string,
+  announcedName = 'People',
+) => (
   <Provider store={store}>
     <TestProtocolLocalization>
       <InterviewI18nProvider requestedLocale="en">
@@ -88,7 +92,7 @@ const list = (items: NcNode[], animationKey?: string) => (
                 id="people"
                 items={items}
                 animationKey={animationKey}
-                announcedName="People"
+                announcedName={announcedName}
               />
             </motion.div>
           </DndStoreProvider>
@@ -144,5 +148,12 @@ describe('NodeList prompt transitions', () => {
 
     await finishExits();
     await waitFor(() => expect(shown()).toEqual(['bob', 'carol']));
+  });
+
+  it('settles on an empty list when given no items and rendered again', async () => {
+    const view = render(list(undefined));
+    view.rerender(list(undefined, undefined, 'Everyone'));
+
+    await waitFor(() => expect(shown()).toEqual([]));
   });
 });
