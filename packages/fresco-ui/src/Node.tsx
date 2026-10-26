@@ -583,10 +583,19 @@ export default function Node(props: UINodeProps) {
   }
 
   // Whether the ring was showing when the effect below last ran, so it
-  // animates only on the transitions in and out of showing. Read and written
-  // by that effect alone. Starts false, so a node that mounts selected or
-  // highlighted springs its ring in.
+  // animates only on the transitions in and out of showing. Starts false, so
+  // a node that mounts selected or highlighted springs its ring in.
   const wasActiveRef = useRef(false);
+  // Unmounting stops the scope's animations (Motion's `useAnimate` does so in
+  // its own cleanup), so the ring is forgotten too: a node mounted again, as
+  // StrictMode and Activity do, springs it in afresh instead of leaving it
+  // stopped where it was.
+  useEffect(
+    () => () => {
+      wasActiveRef.current = false;
+    },
+    [],
+  );
 
   // Box-shadow animation for selected and highlighted states
   useEffect(() => {
