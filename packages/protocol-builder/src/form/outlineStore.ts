@@ -144,8 +144,8 @@ function labelText(label: Element | null): string {
   let text = '';
   for (const node of label.childNodes) {
     if (
-      node.nodeType === Node.ELEMENT_NODE &&
-      (node as Element).getAttribute('aria-hidden') === 'true'
+      node instanceof Element &&
+      node.getAttribute('aria-hidden') === 'true'
     ) {
       continue;
     }

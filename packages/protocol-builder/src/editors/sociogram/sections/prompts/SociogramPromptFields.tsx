@@ -71,9 +71,7 @@ const ALLOW_HIGHLIGHTING_FIELD = 'highlight.allowHighlighting';
 const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
 >;
-const EntityTypePicker = EntityTypePickerField as ComponentType<
-  Record<string, unknown>
->;
+const EntityTypePicker = EntityTypePickerField;
 
 /**
  * What tapping a node does.

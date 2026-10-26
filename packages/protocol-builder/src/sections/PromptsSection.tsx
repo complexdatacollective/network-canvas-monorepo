@@ -6,7 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 
-import { withoutAbsentValues } from '../form/absentValues.ts';
+import { withoutAbsentCollapsed } from '../form/absentValues.ts';
 import OptionalRowList from '../form/arrayFields/OptionalRowList.tsx';
 import {
   RowDialog,
@@ -309,9 +309,10 @@ export default function PromptsSection({
       // gives: it decides what each key becomes, and an emptied one has to be
       // able to clear it.
       normalize: (row) =>
-        withoutAbsentValues(
+        withoutAbsentCollapsed(
           collapseRow === undefined ? row : collapseRow(row),
-        ) as RowValues,
+          row,
+        ),
     }),
     [
       PromptEditor,

@@ -21,11 +21,11 @@ type MarkdownNode = {
   value?: string;
   children?: MarkdownNode[];
   depth?: number;
-  ordered?: boolean;
-  start?: number;
+  ordered?: boolean | null;
+  start?: number | null;
   url?: string;
   title?: string | null;
-  alt?: string;
+  alt?: string | null;
 };
 
 const EMPTY_DOCUMENT: RichTextContent = {
@@ -290,9 +290,9 @@ export const markdownToRichTextContent = (
     return cloneEmptyDocument();
   }
 
-  const root = unified()
+  const root: MarkdownNode = unified()
     .use(markdown)
-    .parse(escapeAngleBracket(value)) as unknown as MarkdownNode;
+    .parse(escapeAngleBracket(value));
 
   if (inline) {
     return inlineDocumentFromMarkdown(root, links);

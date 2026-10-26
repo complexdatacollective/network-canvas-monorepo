@@ -1,4 +1,4 @@
-import { type ComponentType, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { defineMessage, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -33,9 +33,7 @@ import {
  * The picker takes an open prop bag from the field wrapper, as every resource
  * field in the package does; `kind` is what says which resources it offers.
  */
-const ResourcePicker = AssetPickerField as ComponentType<
-  Record<string, unknown>
->;
+const ResourcePicker = AssetPickerField;
 
 /**
  * What the item dialog says under its title.

@@ -128,6 +128,7 @@ class PinnedDateTimeFormat extends OriginalDateTimeFormat {
 // unknown as typeof Worker` below — `Intl.DateTimeFormat`'s type includes a
 // call-without-`new` signature that ES classes can't express directly.
 Intl.DateTimeFormat =
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test stub: tests only construct it with `new`
   PinnedDateTimeFormat as unknown as typeof Intl.DateTimeFormat;
 
 // Mock offsetWidth and offsetHeight on HTMLElement for immediate container width detection

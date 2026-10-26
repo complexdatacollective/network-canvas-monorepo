@@ -36,6 +36,7 @@ export async function getAppSetting<Key extends AppSetting>(
     rawValue ?? undefined,
   );
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- parsed by shape[key], so it is Key's type; TypeScript widens a generic key's lookup to the union
   return parsedValue as z.infer<typeof appSettingPreprocessedSchema>[Key];
 }
 

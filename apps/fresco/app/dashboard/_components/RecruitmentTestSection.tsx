@@ -85,10 +85,14 @@ export default function RecruitmentTestSection({
     !selectedProtocol || (!allowAnonymousRecruitment && !selectedParticipant);
 
   const getInterviewURL = (): Route => {
+    // Typed routes can't check a template literal; /onboard/[protocolId] is a
+    // route handler that takes the identifier as a query parameter.
     if (!selectedParticipant) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- /onboard/[protocolId] is a route; see above
       return `/onboard/${selectedProtocol?.id}` as Route;
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- /onboard/[protocolId] is a route; see above
     return `/onboard/${selectedProtocol?.id}/?participantIdentifier=${encodeURIComponent(
       selectedParticipant.identifier,
     )}` as Route;

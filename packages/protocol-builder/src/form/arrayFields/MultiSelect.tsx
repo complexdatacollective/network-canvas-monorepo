@@ -69,6 +69,10 @@ const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center gap-2 px-5';
 const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
 const MULTI_SELECT_OPTION_CLASSES = 'flex flex-1 items-start ml-5 first:ml-0';
 
+// The input and the select are swapped in one `UnconnectedField` call, and a
+// union of the two cannot satisfy both prop shapes (the select requires
+// `options`), so both are erased to an open prop bag.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the one call site passes `options` exactly when it picks the select, which is the only prop shape the select needs
 const FrescoNativeSelectField = NativeSelectField as ComponentType<
   Record<string, unknown>
 >;

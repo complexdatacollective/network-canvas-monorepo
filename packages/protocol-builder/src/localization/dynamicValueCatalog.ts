@@ -89,8 +89,12 @@ const isOptionValue = (value: unknown): value is string | number | boolean =>
   typeof value === 'number' ||
   typeof value === 'boolean';
 
+// `variable.type` is whatever a stored protocol holds, so ask the set as a set of
+// anything: a value that is not a cased type is simply not in it.
+const casedTypes: ReadonlySet<unknown> = CASED_VARIABLE_TYPES;
+
 const optionsOf = (variable: Record<string, unknown>): DynamicValueOption[] => {
-  if (!CASED_VARIABLE_TYPES.has(variable.type as never)) return [];
+  if (!casedTypes.has(variable.type)) return [];
   const options = Array.isArray(variable.options) ? variable.options : [];
   const listed = options.flatMap((option: unknown) =>
     isRecord(option) && isOptionValue(option.value)
@@ -116,20 +120,22 @@ const optionsOf = (variable: Record<string, unknown>): DynamicValueOption[] => {
 export const dynamicValueChoices = (
   context: DynamicValueSiteContext,
 ): DynamicValueChoice[] => {
-  const intrinsics = (
-    Object.keys(INTRINSIC_DYNAMIC_VALUES) as IntrinsicDynamicValue[]
-  ).map((name): DynamicValueChoice => ({
-    path: name,
-    kind: 'intrinsic',
-    role: undefined,
-    variableId: name,
-    variableName: undefined,
-    variableType: INTRINSIC_DYNAMIC_VALUES[name].type,
-    optional: INTRINSIC_DYNAMIC_VALUES[name].optional,
-    numeric: false,
-    options: [],
-    unshowable: undefined,
-  }));
+  const intrinsics =
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the keys of a const object are exactly IntrinsicDynamicValue, which is defined as keyof it
+    (Object.keys(INTRINSIC_DYNAMIC_VALUES) as IntrinsicDynamicValue[]).map(
+      (name): DynamicValueChoice => ({
+        path: name,
+        kind: 'intrinsic',
+        role: undefined,
+        variableId: name,
+        variableName: undefined,
+        variableType: INTRINSIC_DYNAMIC_VALUES[name].type,
+        optional: INTRINSIC_DYNAMIC_VALUES[name].optional,
+        numeric: false,
+        options: [],
+        unshowable: undefined,
+      }),
+    );
   const labelOf = (role: DynamicValueRole): DynamicValueChoice[] => {
     if (!isLabelledDynamicValueRole(role)) return [];
     const path = dynamicValueLabelPathFor(role);
@@ -248,6 +254,9 @@ const unique = (base: string, taken: (name: string) => boolean): string => {
   }
 };
 
+const isIntrinsicName = (id: string): id is IntrinsicDynamicValue =>
+  Object.hasOwn(INTRINSIC_NAMES, id);
+
 /**
  * The argument name a new binding for `choice` gets: the attribute's name as
  * an identifier, so a translator reads `{partnerName}`, prefixed for the
@@ -261,7 +270,9 @@ const nameFor = (
 ): string => {
   if (choice.role === undefined) {
     return unique(
-      INTRINSIC_NAMES[choice.variableId as IntrinsicDynamicValue],
+      isIntrinsicName(choice.variableId)
+        ? INTRINSIC_NAMES[choice.variableId]
+        : identifierFrom(choice.variableId) || 'value',
       taken,
     );
   }

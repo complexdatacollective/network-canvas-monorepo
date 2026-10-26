@@ -1,6 +1,10 @@
+import { mapValues } from 'es-toolkit';
+
 import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
+
+import { isStageType } from '../stage-types.ts';
 
 /** Researcher-facing interface names. Keys remain the protocol's stable stage types. */
 export const interfaceNameMessages = defineMessages({
@@ -139,18 +143,16 @@ const englishIntl = createAppIntl({ locale: 'en' });
  * labels. Keep those independent of the app's presentation preference.
  * Display surfaces use interfaceDisplayName(type, intl) instead.
  */
-export const INTERFACE_NAMES = Object.fromEntries(
-  Object.entries(interfaceNameMessages).map(([type, message]) => [
-    type,
-    englishIntl.formatMessage(message),
-  ]),
-) as Record<StageType, string>;
+export const INTERFACE_NAMES: Record<StageType, string> = mapValues(
+  interfaceNameMessages,
+  (message) => englishIntl.formatMessage(message),
+);
 
 /** A localized researcher-facing name; undefined for unknown future stage types. */
 export const interfaceDisplayName = (
   stageType: string,
   intl: IntlShape = englishIntl,
 ): string | undefined =>
-  Object.hasOwn(interfaceNameMessages, stageType)
-    ? intl.formatMessage(interfaceNameMessages[stageType as StageType])
+  isStageType(stageType)
+    ? intl.formatMessage(interfaceNameMessages[stageType])
     : undefined;

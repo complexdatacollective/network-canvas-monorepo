@@ -56,6 +56,7 @@ export function defineStageEditor<T extends StageType>(
   // The key is a type parameter, which a computed property widens to a string
   // index signature — so the exact interface this editor claims, the fact the
   // registry's coverage checks are built on, has to be said here.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the object has exactly the one key `stageType` (a T), holding an editor for T; TS can only widen a computed generic key to a string index
   return { [stageType]: StageEditorFromSections } as Record<
     T,
     StageEditorComponent<T>

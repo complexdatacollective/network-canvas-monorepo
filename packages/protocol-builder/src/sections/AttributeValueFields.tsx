@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 import { normalizeCodebookName } from '@codaco/shared-consts';
@@ -92,7 +93,7 @@ const isOptionList = (value: unknown): value is OptionValue[] =>
 export function useDraftThatFollowsTheAttribute(
   draftField: string,
   binding: string,
-  seeded: unknown,
+  seeded: FieldValue,
   known: boolean,
 ): void {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
@@ -110,7 +111,7 @@ export function useDraftThatFollowsTheAttribute(
     // `undefined` for an attribute that holds no list, which clears the park
     // as well as the control: absence is what "this attribute offers no
     // answers" is spelled as everywhere else here.
-    setFieldValue(draftField, seeded as never);
+    setFieldValue(draftField, seeded);
   }, [binding, known, draftField, seeded, setFieldValue]);
 }
 

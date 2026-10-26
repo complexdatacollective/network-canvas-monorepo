@@ -506,11 +506,9 @@ export function useOrphanedColumnChoices(
 /** The column each row of a list field currently names. */
 function chosenColumns(allValues: unknown): string[] {
   if (!Array.isArray(allValues)) return [];
-  return allValues.flatMap((row) =>
-    typeof row === 'object' &&
-    row !== null &&
-    typeof Reflect.get(row, 'variable') === 'string'
-      ? [Reflect.get(row, 'variable') as string]
-      : [],
-  );
+  return allValues.flatMap((row) => {
+    if (typeof row !== 'object' || row === null) return [];
+    const variable: unknown = Reflect.get(row, 'variable');
+    return typeof variable === 'string' ? [variable] : [];
+  });
 }

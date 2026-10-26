@@ -120,6 +120,9 @@ export function expandNarrativePreset(row: RowValues): RowValues {
   return expanded;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /**
  * The preset as the protocol holds it: one highlight per ticked attribute and
  * one drawn edge type per ticked type, in tick order, each carrying its legend
@@ -141,12 +144,12 @@ export function collapseNarrativePreset(row: RowValues): RowValues {
       ? preset
       : { ...preset, [HIGHLIGHT_FIELD]: highlight };
   const edges = preset.edges;
-  if (typeof edges !== 'object' || edges === null) return withHighlight;
+  if (!isRecord(edges)) return withHighlight;
   const display = (asNestedIdList(edges, 'display') ?? []).map((type) => ({
     type,
     label: labelIn(edgeLabels, type),
   }));
-  const { display: _display, ...otherEdges } = edges as Record<string, unknown>;
+  const { display: _display, ...otherEdges } = edges;
   const nextEdges =
     display.length === 0 ? otherEdges : { ...otherEdges, display };
   const { edges: _edges, ...withoutEdges } = withHighlight;

@@ -76,6 +76,9 @@ const VARIABLE_TYPE_LABELS = defineMessages({
   },
 });
 
+const hasLabel = (type: string): type is keyof typeof VARIABLE_TYPE_LABELS =>
+  Object.hasOwn(VARIABLE_TYPE_LABELS, type);
+
 /**
  * What one kind of attribute is called, for a surface naming the type a
  * variable already has rather than offering the list.
@@ -86,9 +89,7 @@ const VARIABLE_TYPE_LABELS = defineMessages({
 export const variableTypeLabel = (
   type: string | undefined,
 ): MessageDescriptor | undefined =>
-  type !== undefined && type in VARIABLE_TYPE_LABELS
-    ? VARIABLE_TYPE_LABELS[type as keyof typeof VARIABLE_TYPE_LABELS]
-    : undefined;
+  type !== undefined && hasLabel(type) ? VARIABLE_TYPE_LABELS[type] : undefined;
 
 /**
  * The theme colour each kind of attribute is marked in, so a badge naming a
@@ -112,12 +113,15 @@ export const VARIABLE_TYPE_BADGE_COLORS = {
   location: 'slate-blue-dark',
 } as const satisfies Record<VariableType, BadgeColor>;
 
+const hasBadgeColor = (
+  type: string,
+): type is keyof typeof VARIABLE_TYPE_BADGE_COLORS =>
+  Object.hasOwn(VARIABLE_TYPE_BADGE_COLORS, type);
+
 /** The colour a badge naming `type` is drawn in. */
 export const variableTypeBadgeColor = (type: string | undefined): BadgeColor =>
-  type !== undefined && type in VARIABLE_TYPE_BADGE_COLORS
-    ? VARIABLE_TYPE_BADGE_COLORS[
-        type as keyof typeof VARIABLE_TYPE_BADGE_COLORS
-      ]
+  type !== undefined && hasBadgeColor(type)
+    ? VARIABLE_TYPE_BADGE_COLORS[type]
     : 'charcoal';
 
 /**
