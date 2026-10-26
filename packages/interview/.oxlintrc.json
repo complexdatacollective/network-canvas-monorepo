@@ -7,12 +7,6 @@
     }
   },
   "rules": {
-    // React Compiler rules this package has not adopted yet (#1643). Held at
-    // "warn" until its remaining sites are fixed; then this block goes.
-    "react/immutability": "warn",
-    "react/refs": "warn",
-    "react/set-state-in-effect": "warn",
-    "react/use-memo": "warn",
     "formatjs/enforce-description": "error",
     "formatjs/enforce-default-message": "error",
     "formatjs/no-invalid-icu": "error",

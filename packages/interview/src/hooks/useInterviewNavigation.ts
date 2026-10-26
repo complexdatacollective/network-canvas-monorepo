@@ -5,6 +5,7 @@ import {
   type ElementType,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -74,7 +75,9 @@ export default function useInterviewNavigation(
     commitDisplayedStep,
   } = useCurrentStep();
   const currentStepRef = useRef(currentStep);
-  currentStepRef.current = currentStep;
+  useLayoutEffect(() => {
+    currentStepRef.current = currentStep;
+  });
 
   const [forceNavigationDisabled, setForceNavigationDisabled] = useState(false);
   const [beforeNextHandlerCount, setBeforeNextHandlerCount] = useState(0);

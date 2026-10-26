@@ -713,13 +713,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The person the family's single tab stop returns to.
   const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
   // On a first visit — the participant alone on the canvas — the add menu is
-  // showing around them from the outset.
-  const initialFocusChecked = useRef(false);
-  useEffect(() => {
-    if (!family.egoId || initialFocusChecked.current) return;
-    initialFocusChecked.current = true;
+  // showing around them from the outset. Checked once, in the render that
+  // first has the participant.
+  const [initialFocusChecked, setInitialFocusChecked] = useState(false);
+  if (family.egoId && !initialFocusChecked) {
+    setInitialFocusChecked(true);
     if (family.people.length === 1) setFocusedId(family.egoId);
-  }, [family.egoId, family.people.length]);
+  }
 
   const [panel, setPanel] = useState<PanelState>(null);
   // "Yes — I'll add them" to whether someone has siblings or children is not
@@ -728,11 +728,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [saidYes, setSaidYes] = useState<
     ReadonlyMap<string, Partial<Record<'siblings' | 'children', boolean>>>
   >(new Map());
-  // A relative to add once the saved answers are in the family.
-  const [addNext, setAddNext] = useState<{
-    relation: Relation;
-    personId: string;
-  } | null>(null);
   // The person whose details are open, or who is being added.
   const selectedId = !panel?.open
     ? null
@@ -821,11 +816,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   );
   const announcement = spoken.promptId === prompt.id ? spoken.text : '';
 
+  // Each person's symbol element, as handlers and effects read it, and as
+  // rendering reads it (the connect tool's line and menu are drawn from the
+  // people they join).
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
-  const setNodeRef = useCallback(
-    (personId: string) => (element: HTMLButtonElement | null) => {
+  const [nodeElements, setNodeElements] = useState<
+    ReadonlyMap<string, HTMLButtonElement>
+  >(() => new Map());
+  const registerNode = useCallback(
+    (personId: string, element: HTMLButtonElement | null) => {
       if (element) nodeRefs.current.set(personId, element);
       else nodeRefs.current.delete(personId);
+      setNodeElements((current) => {
+        if (
+          element ? current.get(personId) === element : !current.has(personId)
+        ) {
+          return current;
+        }
+        const next = new Map(current);
+        if (element) next.set(personId, element);
+        else next.delete(personId);
+        return next;
+      });
     },
     [],
   );
@@ -1031,48 +1043,40 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   ]);
 
   // Announce an addition once the new person is in the family, so they can be
-  // described by how they are related when they have no name.
+  // described by how they are related when they have no name. Checked during
+  // render, so it is said with the render that shows them.
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
-  useEffect(() => {
-    if (!justAddedId || !family.byId.has(justAddedId)) return;
+  if (justAddedId && family.byId.has(justAddedId)) {
+    setJustAddedId(null);
     setAnnouncement(
       intl.formatMessage(messages.addedAnnouncement, {
         name: displayName(justAddedId),
       }),
     );
-    setJustAddedId(null);
-  }, [justAddedId, family.byId, displayName, intl, setAnnouncement]);
+  }
 
   // Announce a connection once it is in the family, in the words people have
   // now, which it may have changed for someone unnamed.
   const [justConnected, setJustConnected] = useState<Connection | null>(null);
-  useEffect(() => {
-    if (!justConnected) return;
+  if (justConnected) {
     const [a, b] =
       justConnected.kind === 'partner'
         ? [justConnected.firstId, justConnected.secondId]
         : [justConnected.parentId, justConnected.childId];
-    if (!areConnected(family, a, b)) return;
-    setAnnouncement(
-      describeConnection(
-        justConnected,
-        words,
-        intl,
-        family,
-        displayName,
-        optionLabels.parentKind,
-      ),
-    );
-    setJustConnected(null);
-  }, [
-    justConnected,
-    family,
-    displayName,
-    words,
-    intl,
-    optionLabels,
-    setAnnouncement,
-  ]);
+    if (areConnected(family, a, b)) {
+      setJustConnected(null);
+      setAnnouncement(
+        describeConnection(
+          justConnected,
+          words,
+          intl,
+          family,
+          displayName,
+          optionLabels.parentKind,
+        ),
+      );
+    }
+  }
 
   const links: PedigreeLink[] = useMemo(() => pedigreeLinksOf(shown), [shown]);
   const nodeIds = useMemo(
@@ -1230,14 +1234,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     },
     [panZoom, clearInsets],
   );
+  // Waits for the opening framing: the menu can show from the first render,
+  // before the stage is framed, and is brought into view only once the
+  // family is. Run after every commit (the check against the menu last
+  // revealed keeps it to an opening or a move), so in the commit that frames
+  // the stage it runs after the framing effect, which is declared above.
   useEffect(() => {
+    if (!fitted.current) return;
     const id = menuFromFocus ? menuPersonId : null;
     if (id === revealedMenuId.current) return;
     revealedMenuId.current = id;
     const element = id ? nodeRefs.current.get(id) : undefined;
     if (!id || !element) return;
     reveal(element);
-  }, [menuFromFocus, menuPersonId, reveal]);
+  });
 
   // Anything that could write what the study encrypts waits for the
   // passphrase, and asks for it instead, saying why.
@@ -1273,14 +1283,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (menuPerson) openAddPanel(relation, menuPerson);
   };
 
-  // The relative to add next, once the family holds the answers just saved.
-  useEffect(() => {
-    if (!addNext) return;
-    setAddNext(null);
-    const person = family.byId.get(addNext.personId);
-    if (person) openAddPanel(addNext.relation, person);
-  });
-
   // How far the family is from what the researcher requires (or recommends)
   // before the participant continues.
   const completeness = stage.completeness;
@@ -1299,20 +1301,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [trackerOpen, setTrackerOpen] = useState(false);
 
   // Reaching a nomination prompt puts away whatever was under way in
-  // building the family.
+  // building the family, in the render that reaches it. Seeded `false`, so a
+  // stage that opens on a nomination prompt puts it away too.
   const nominating = nomination !== undefined;
-  useEffect(() => {
-    if (!nominating) return;
-    setDraft(null);
-    setPanel((current) => (current ? { ...current, open: false } : null));
-    setTool('pointer');
-    setLinkingId(null);
-    setChosenPair(null);
-    setConnectNotice(null);
-    setHoveredId(null);
-    setFocusedId(null);
-    setTrackerOpen(false);
-  }, [nominating]);
+  const [wasNominating, setWasNominating] = useState(false);
+  if (nominating !== wasNominating) {
+    setWasNominating(nominating);
+    if (nominating) {
+      setDraft(null);
+      setPanel((current) => (current ? { ...current, open: false } : null));
+      setTool('pointer');
+      setLinkingId(null);
+      setChosenPair(null);
+      setConnectNotice(null);
+      setHoveredId(null);
+      setFocusedId(null);
+      setTrackerOpen(false);
+    }
+  }
 
   // A complete checklist tells the interview the stage is ready, which marks
   // the Next button.
@@ -2258,13 +2264,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
       setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
       // Said to have the siblings or children the list asked for, the
-      // participant goes on to adding one.
+      // participant goes on to adding one, to the person as the family now
+      // stores them, with the answers just saved.
       const then = panel.then;
       if (
         then &&
         answers[then === 'sibling' ? 'siblings' : 'children'] === 'yes'
       ) {
-        setAddNext({ relation: then, personId: mode.person.id });
+        const person = latestFamily().byId.get(mode.person.id);
+        if (person) openAddPanel(then, person);
       }
       return { success: true };
     }
@@ -2729,7 +2737,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The preview line runs from the first person selected to the second once
   // chosen, or else to the person the mouse or keyboard focus is on.
   const connectorFrom = linkingId
-    ? (nodeRefs.current.get(linkingId) ?? null)
+    ? (nodeElements.get(linkingId) ?? null)
     : null;
   // Once the first person is chosen, the people the tool cannot pair them
   // with are unavailable: connecting, anyone already related to them, twins
@@ -2756,7 +2764,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     [hoveredId, focusedId].find(isConnectTarget) ??
     null;
   const connectorTo = connectorTargetId
-    ? (nodeRefs.current.get(connectorTargetId) ?? null)
+    ? (nodeElements.get(connectorTargetId) ?? null)
     : null;
 
   return (
@@ -2879,7 +2887,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     onPointerDown={(event) => {
                       lastPointerType.current = event.pointerType;
                     }}
-                    nodeRef={setNodeRef(personId)}
+                    onNodeElement={registerNode}
                   >
                     {hasMenu && (
                       <AddRelativeMenu
@@ -3101,9 +3109,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           parentKindLabels={optionLabels.parentKind}
           sexLabels={optionLabels.sexAssignedAtBirth}
           anchor={
-            chosenPair
-              ? (nodeRefs.current.get(chosenPair.secondId) ?? null)
-              : null
+            chosenPair ? (nodeElements.get(chosenPair.secondId) ?? null) : null
           }
           onConnect={(connection) => void handleConnect(connection)}
           onClose={endConnecting}

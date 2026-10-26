@@ -2,7 +2,7 @@
 
 import { findIndex } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useState } from 'react';
 
 import Pips from '@codaco/fresco-ui/Pips';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -38,21 +38,23 @@ const Prompts = ({
   id,
   onExitComplete,
 }: PromptsProps) => {
-  const prevPromptRef = useRef<number>(undefined);
-
   const currentIndex = findIndex(
     prompts,
     (prompt) => prompt.id === currentPromptId,
   );
 
-  useEffect(() => {
-    prevPromptRef.current = currentIndex;
-  }, [currentPromptId, currentIndex]);
-
-  const backwards = useMemo(
-    () => currentIndex < (prevPromptRef.current ?? 0),
-    [currentIndex],
-  );
+  // Whether the latest change of prompt went back to an earlier one, compared
+  // against the prompt shown before it, and held until the prompt changes
+  // again.
+  const [direction, setDirection] = useState(() => ({
+    index: currentIndex,
+    backwards: currentIndex < 0,
+  }));
+  let { backwards } = direction;
+  if (direction.index !== currentIndex) {
+    backwards = currentIndex < direction.index;
+    setDirection({ index: currentIndex, backwards });
+  }
 
   const promptsClasses = cx(
     'text-surface-contrast flex w-full flex-col items-center leading-tight font-normal text-balance',

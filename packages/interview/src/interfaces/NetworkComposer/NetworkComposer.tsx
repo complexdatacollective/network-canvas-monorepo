@@ -91,6 +91,17 @@ type DrawerEditor = {
 
 const NO_ATTRIBUTES: DrawerEditor['attributes'] = {};
 
+const sameEditor = (a: DrawerEditor, b: DrawerEditor) =>
+  a.kind === b.kind &&
+  a.entityId === b.entityId &&
+  a.title === b.title &&
+  a.form === b.form &&
+  a.subject.entity === b.subject.entity &&
+  a.subject.type === b.subject.type &&
+  a.attributes === b.attributes &&
+  a.unavailable === b.unavailable &&
+  a.passphraseStatus === b.passphraseStatus;
+
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const intl = useAppIntl();
   const { stage } = stageProps;
@@ -242,14 +253,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     if (writesEncrypted) requirePassphrase();
   }, [writesEncrypted, requirePassphrase]);
 
-  const canvasStoreRef = useRef(createCanvasStore());
-  const canvasStore = canvasStoreRef.current;
-
-  const composerStoreRef = useRef(createComposerStore());
-  const composerStore = composerStoreRef.current;
-
-  const undoStoreRef = useRef(createUndoStore());
-  const undoStore = undoStoreRef.current;
+  const [canvasStore] = useState(() => createCanvasStore());
+  const [composerStore] = useState(() => createComposerStore());
+  const [undoStore] = useState(() => createUndoStore());
 
   const actions = useComposerActions({
     subjectType: stage.subject.type,
@@ -685,12 +691,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   })();
 
   // Retain the last editor so its contents stay rendered through the drawer's
-  // slide-out animation after the selection clears.
-  const lastEditorRef = useRef(currentEditor);
-  useEffect(() => {
-    if (currentEditor !== null) lastEditorRef.current = currentEditor;
-  }, [currentEditor]);
-  const editor = currentEditor ?? lastEditorRef.current;
+  // slide-out animation after the selection clears. It is rebuilt on every
+  // render, so it is retained again only when it shows something different.
+  const [lastEditor, setLastEditor] = useState(currentEditor);
+  if (
+    currentEditor !== null &&
+    (lastEditor === null || !sameEditor(lastEditor, currentEditor))
+  ) {
+    setLastEditor(currentEditor);
+  }
+  const editor = currentEditor ?? lastEditor;
 
   return (
     // tabIndex makes the div focusable so keydown events reach it.

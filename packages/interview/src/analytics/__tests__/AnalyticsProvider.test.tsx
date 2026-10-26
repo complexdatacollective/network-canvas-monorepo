@@ -166,7 +166,7 @@ describe('AnalyticsProvider', () => {
     expect(second).not.toBe('interview-43');
   });
 
-  // The session's entity-id mapping is held here, in a ref, rather than inside
+  // The session's entity-id mapping is held here, in state, rather than inside
   // the tracker: the tracker is rebuilt whenever its super properties change,
   // and a mapping the tracker owned would renumber a live interview's nodes
   // mid-session, splitting one node's events in two.

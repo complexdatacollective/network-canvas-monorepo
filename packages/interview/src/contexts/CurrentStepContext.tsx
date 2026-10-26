@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -84,7 +85,9 @@ export function CurrentStepProvider({
   // Anchor onStepChange in a ref so the returned setCurrentStep is stable
   // across host re-renders that pass an inline arrow.
   const onStepChangeRef = useRef(onStepChange);
-  onStepChangeRef.current = onStepChange;
+  useLayoutEffect(() => {
+    onStepChangeRef.current = onStepChange;
+  });
 
   const setCurrentStep = useCallback(
     (step: number, meta: StepChangeMeta) => {
@@ -102,7 +105,9 @@ export function CurrentStepProvider({
   // `commitDisplayedStep` reads the live value (it's called from an
   // AnimatePresence callback that may close over a stale value).
   const currentStepRef = useRef(currentStep);
-  currentStepRef.current = currentStep;
+  useLayoutEffect(() => {
+    currentStepRef.current = currentStep;
+  });
 
   const commitDisplayedStep = useCallback(() => {
     setDisplayedStep(currentStepRef.current);

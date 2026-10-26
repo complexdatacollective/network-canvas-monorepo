@@ -25,6 +25,14 @@ type UIState = {
    * `localization/localePreferenceStorage`).
    */
   localePreference: LocaleTag | null;
+  /**
+   * The preference read back from the tab's sessionStorage when the interview
+   * mounted, until the preference changes to another language: the interview
+   * opens in it rather than changing to it (see `InterviewI18nProvider`).
+   * Once the participant (or the host) moves on, a change back to that
+   * language is a change like any other, made with the interview on screen.
+   */
+  restoredLocalePreference: LocaleTag | null;
 };
 
 const initialState: UIState = {
@@ -32,6 +40,7 @@ const initialState: UIState = {
   encryptionKeyId: null,
   showPassphrasePrompter: false,
   localePreference: null,
+  restoredLocalePreference: null,
 };
 
 /** A passphrase was turned away because it does not open the interview. */
@@ -56,7 +65,21 @@ const uiSlice = createSlice({
     setLocalePreference: (state, action: PayloadAction<LocaleTag>) =>
       state.localePreference === action.payload
         ? state
-        : { ...state, localePreference: action.payload },
+        : {
+            ...state,
+            localePreference: action.payload,
+            restoredLocalePreference: null,
+          },
+    // What the tab's sessionStorage held for this interview when it mounted,
+    // or `null` when it held nothing the protocol still declares.
+    localePreferenceRestored: (
+      state,
+      action: PayloadAction<LocaleTag | null>,
+    ) => ({
+      ...state,
+      localePreference: action.payload ?? state.localePreference,
+      restoredLocalePreference: action.payload,
+    }),
   },
   extraReducers: (builder) => {
     // Reset showPassphrasePrompter when the stage transitions
@@ -70,6 +93,7 @@ const uiSlice = createSlice({
     getEncryptionKeyId: (state) => state.encryptionKeyId,
     showPassphrasePrompter: (state) => state.showPassphrasePrompter,
     getLocalePreference: (state) => state.localePreference,
+    getRestoredLocalePreference: (state) => state.restoredLocalePreference,
   },
 });
 
@@ -82,6 +106,7 @@ export const {
   encryptionUnlocked,
   setShowPassphrasePrompter,
   setLocalePreference,
+  localePreferenceRestored,
 } = uiSlice.actions;
 
 // Export the selectors
@@ -90,4 +115,5 @@ export const {
   getEncryptionKeyId,
   showPassphrasePrompter,
   getLocalePreference,
+  getRestoredLocalePreference,
 } = uiSlice.selectors;

@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -48,8 +49,10 @@ export function ContractProvider({
   // useAssetUrl consumer to refetch on every render.
   const onFinishRef = useRef(onFinish);
   const onRequestAssetRef = useRef(onRequestAsset);
-  onFinishRef.current = onFinish;
-  onRequestAssetRef.current = onRequestAsset;
+  useLayoutEffect(() => {
+    onFinishRef.current = onFinish;
+    onRequestAssetRef.current = onRequestAsset;
+  });
 
   const stableOnFinish = useCallback<FinishHandler>(
     (...args) => onFinishRef.current(...args),

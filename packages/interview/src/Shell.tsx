@@ -11,6 +11,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -55,6 +56,7 @@ import type {
   InterviewerFlags,
   InterviewPayload,
   StepChangeHandler,
+  StepChangeMeta,
   SyncHandler,
 } from './contract/types';
 import { StageDynamicValues } from './dynamicValues/DynamicValueScope';
@@ -82,7 +84,12 @@ import {
   getProtocolLocalization,
   getStages,
 } from './store/modules/protocol';
-import { getLocalePreference, setLocalePreference } from './store/modules/ui';
+import {
+  getLocalePreference,
+  getRestoredLocalePreference,
+  localePreferenceRestored,
+  setLocalePreference,
+} from './store/modules/ui';
 import { store, useAppDispatch, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
 import { WritesInFlightProvider } from './store/WritesInFlightContext';
@@ -516,30 +523,25 @@ function InterviewLocalization({
   // change once the interview is on screen. The interface provider is told
   // the choice was restored, so when its language still has to load it shows
   // the loading screen until it has, rather than show the protocol's text in
-  // the restored language beside built-in text in the one it mounted in.
-  const [restoredPreference, setRestoredPreference] = useState<string | null>(
-    null,
-  );
+  // the restored language beside built-in text in the one it mounted in. The
+  // store holds the restored choice beside the preference, and forgets it once
+  // the preference moves on (see `localePreferenceRestored`).
+  const restoredPreference = useSelector(getRestoredLocalePreference);
   useLayoutEffect(() => {
-    const stored = readStoredLocalePreference(
-      interviewId,
-      localization.locales,
+    dispatch(
+      localePreferenceRestored(
+        readStoredLocalePreference(interviewId, localization.locales),
+      ),
     );
-    setRestoredPreference(stored);
-    if (stored !== null) dispatch(setLocalePreference(stored));
   }, [dispatch, interviewId, localization.locales]);
-  // Once the participant (or the host) moves on, a change back to that
-  // language is a change like any other, made with the interview on screen.
-  if (restoredPreference !== null && localePreference !== restoredPreference) {
-    setRestoredPreference(null);
-  }
 
-  const onLocalePreferenceChangeRef = useRef(onLocalePreferenceChange);
-  onLocalePreferenceChangeRef.current = onLocalePreferenceChange;
+  const reportLocalePreference = useEffectEvent((locale: string) => {
+    onLocalePreferenceChange?.(locale);
+  });
   useEffect(() => {
     if (localePreference === null) return;
     storeLocalePreference(interviewId, localePreference);
-    onLocalePreferenceChangeRef.current?.(localePreference);
+    reportLocalePreference(localePreference);
   }, [interviewId, localePreference]);
 
   // A language the host states replaces the held preference in the store, as
@@ -788,31 +790,47 @@ const Shell = ({
   onTextScaleChange,
   initialStageOverrideIndex,
 }: ShellProps) => {
-  // Anchor onSync in a ref so the store factory receives a stable callback
+  // The store factory receives a stable forwarder rather than onSync itself
   // (the sync middleware closes over it once at store creation). Hosts
   // commonly pass an inline arrow, which would otherwise force the store to
-  // be recreated on every host re-render.
-  const onSyncRef = useRef(onSync);
-  onSyncRef.current = onSync;
-  const stableOnSync = useCallback<SyncHandler>(
-    (...args) => onSyncRef.current(...args),
-    [],
-  );
+  // be recreated on every host re-render. The forwarder owns the host's
+  // current handler and is told each new one after render.
+  const [syncForwarder] = useState(() => {
+    let current = onSync;
+    const forward: SyncHandler = (...args) => current(...args);
+    return {
+      forward,
+      setCurrent: (next: SyncHandler) => {
+        current = next;
+      },
+    };
+  });
+  useLayoutEffect(() => {
+    syncForwarder.setCurrent(onSync);
+  });
+  const stableOnSync = syncForwarder.forward;
 
   // Tracker holder. The AnalyticsProvider mounts asynchronously (dynamic
   // import of posthog-js) so we cannot pass the tracker directly into the
   // store factory. Instead we hand the listener middleware a stable forwarder
   // that delegates to whatever tracker is currently resolved. The middleware
-  // keeps a static reference; AnalyticsProvider mutates trackerRef as the
-  // resolution completes.
-  const trackerRef = useRef<Tracker>(NULL_TRACKER);
-  const trackerHolder: Tracker = useMemo(
-    () => ({
-      track: (e, ...p) => trackerRef.current.track(e, ...p),
-      captureException: (err, p) => trackerRef.current.captureException(err, p),
-    }),
-    [],
-  );
+  // keeps a static reference; AnalyticsProvider reports each tracker it
+  // resolves through onTrackerChange, which retargets the forwarder.
+  const [trackerForwarder] = useState(() => {
+    let current: Tracker = NULL_TRACKER;
+    const tracker: Tracker = {
+      track: (e, ...p) => current.track(e, ...p),
+      captureException: (err, p) => current.captureException(err, p),
+    };
+    return {
+      tracker,
+      setCurrent: (next: Tracker) => {
+        current = next;
+      },
+    };
+  });
+  const trackerHolder = trackerForwarder.tracker;
+  const onTrackerChange = trackerForwarder.setCurrent;
 
   const reduxStore = useMemo(
     () =>
@@ -879,10 +897,6 @@ const Shell = ({
     };
   }, [reduxStore, flags?.isE2E]);
 
-  const onTrackerChange = useCallback((next: Tracker) => {
-    trackerRef.current = next;
-  }, []);
-
   // A finished interview reopened to be changed would finish again at once
   // on an automatic finish stage, which also cannot be left backwards, so it
   // enters at the last stage before the interview ended instead. With no such
@@ -917,13 +931,16 @@ const Shell = ({
   // moving on from the stage entered instead would ask it for the step it
   // already has, and nothing would change. It is told where the interview
   // re-entered, once.
-  const onStepChangeRef = useRef(onStepChange);
-  onStepChangeRef.current = onStepChange;
+  const reportReentryStep = useEffectEvent(
+    (step: number, meta: StepChangeMeta) => {
+      onStepChange?.(step, meta);
+    },
+  );
   useEffect(() => {
     if (automaticReentryStep === undefined || automaticReentryStep === null) {
       return;
     }
-    onStepChangeRef.current?.(
+    reportReentryStep(
       automaticReentryStep,
       getInterviewProgress(payload.protocol.stages, automaticReentryStep),
     );
