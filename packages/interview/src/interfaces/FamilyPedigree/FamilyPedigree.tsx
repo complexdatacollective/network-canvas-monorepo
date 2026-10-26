@@ -1234,14 +1234,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     },
     [panZoom, clearInsets],
   );
+  // Waits for the opening framing: the menu can show from the first render,
+  // before the stage is framed, and is brought into view only once the
+  // family is. Run after every commit (the check against the menu last
+  // revealed keeps it to an opening or a move), so in the commit that frames
+  // the stage it runs after the framing effect, which is declared above.
   useEffect(() => {
+    if (!fitted.current) return;
     const id = menuFromFocus ? menuPersonId : null;
     if (id === revealedMenuId.current) return;
     revealedMenuId.current = id;
     const element = id ? nodeRefs.current.get(id) : undefined;
     if (!id || !element) return;
     reveal(element);
-  }, [menuFromFocus, menuPersonId, reveal]);
+  });
 
   // Anything that could write what the study encrypts waits for the
   // passphrase, and asks for it instead, saying why.
