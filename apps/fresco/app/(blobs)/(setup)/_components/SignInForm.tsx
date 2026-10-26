@@ -291,8 +291,7 @@ export const SignInForm = () => {
   };
 
   const handleTwoFactorSubmit: FormSubmitHandler = async (data) => {
-    const values = data as Record<string, string>;
-    const code = values.code;
+    const code = typeof data.code === 'string' ? data.code : undefined;
     if (!code) {
       return {
         success: false,
@@ -357,9 +356,10 @@ export const SignInForm = () => {
   };
 
   const handleRecoveryLogin: FormSubmitHandler = async (data) => {
-    const values = data as Record<string, string>;
-    const username = values.username;
-    const recoveryCode = values.recoveryCode;
+    const username =
+      typeof data.username === 'string' ? data.username : undefined;
+    const recoveryCode =
+      typeof data.recoveryCode === 'string' ? data.recoveryCode : undefined;
 
     if (!username || !recoveryCode) {
       return {

@@ -271,7 +271,7 @@ function canon(value: unknown): string | undefined {
     return `[${items.join(',')}]`;
   }
   if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
+    const entries = Object.entries(value)
       .map(([k, v]) => [k, canon(v)] as const)
       .filter(
         (entry): entry is readonly [string, string] => entry[1] !== undefined,

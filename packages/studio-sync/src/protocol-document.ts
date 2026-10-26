@@ -112,6 +112,8 @@ function isLocalizationDeclaration(
   value: unknown,
 ): value is { defaultLocale: string; locales: string[] } {
   if (typeof value !== 'object' || value === null) return false;
-  const { defaultLocale, locales } = value as Record<string, unknown>;
-  return typeof defaultLocale === 'string' && isStringArray(locales);
+  if (!('defaultLocale' in value) || !('locales' in value)) return false;
+  return (
+    typeof value.defaultLocale === 'string' && isStringArray(value.locales)
+  );
 }

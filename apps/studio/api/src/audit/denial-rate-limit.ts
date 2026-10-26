@@ -137,13 +137,16 @@ export function parseDenialWindowKey(
     ? key.slice(0, -CLAIMED_SUFFIX.length)
     : key;
   const parts = rest.slice(prefix.length + 1).split(':');
-  if (parts.length !== 4) return null;
-  const [teamId, actorId, operation, windowStart] = parts as [
-    string,
-    string,
-    string,
-    string,
-  ];
+  const [teamId, actorId, operation, windowStart, ...extra] = parts;
+  if (
+    teamId === undefined ||
+    actorId === undefined ||
+    operation === undefined ||
+    windowStart === undefined ||
+    extra.length > 0
+  ) {
+    return null;
+  }
   const start = Number(windowStart);
   if (!Number.isSafeInteger(start)) return null;
   try {

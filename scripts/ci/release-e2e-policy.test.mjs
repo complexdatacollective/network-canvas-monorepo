@@ -725,12 +725,56 @@ test('unit-only and unrelated nested-workspace changes select no E2E suites', ()
     'scripts/buildtime/vitest-animation-setup.test.mjs',
     'apps/studio/web/vitest.config.ts',
     'apps/studio/web/src/main.tsx',
+    'apps/studio/docker-compose.yml',
+    'apps/studio/Dockerfile',
+    'apps/studio/scripts/upgrade.sh',
+    'apps/studio/release-test/run.sh',
     'apps/architect/vitest.config.ts',
   ]) {
     assert.deepEqual(
       affectedSuitesForPaths([changedPath], REPO_ROOT),
       expected,
       `${changedPath} must not select an unrelated E2E suite`,
+    );
+  }
+});
+
+test('a nested group directory belongs to the packages inside it', () => {
+  const packages = new Map([
+    ['@codaco/interview', { dir: 'packages/interview', workspaceDeps: [] }],
+    [
+      '@codaco/interviewer',
+      { dir: 'apps/interviewer', workspaceDeps: ['@codaco/interviewer-shell'] },
+    ],
+    [
+      '@codaco/interviewer-shell',
+      { dir: 'apps/suite/shell', workspaceDeps: [] },
+    ],
+    ['@codaco/studio-api', { dir: 'apps/studio/api', workspaceDeps: [] }],
+  ]);
+  const relevance = relevanceDirsForSubject('@codaco/interviewer', packages);
+
+  assert.equal(
+    diffIrrelevantToSuite(
+      ['apps/studio/docker-compose.yml', 'apps/studio/scripts/upgrade.sh'],
+      relevance,
+      packages,
+    ),
+    true,
+  );
+  assert.equal(
+    diffIrrelevantToSuite(
+      ['apps/suite/docker-compose.yml'],
+      relevance,
+      packages,
+    ),
+    false,
+  );
+  for (const unrecognised of ['apps/loose.json', 'apps/other/file.sh']) {
+    assert.equal(
+      diffIrrelevantToSuite([unrecognised], relevance, packages),
+      false,
+      `${unrecognised} must be relevant`,
     );
   }
 });

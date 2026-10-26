@@ -2,11 +2,13 @@
 # Upgrades a running Network Canvas Studio stack to new images, by the sequence
 # in docs/self-host/upgrade.md, and rolls back when the database is unchanged.
 #
-#   upgrade.sh [--dir <stack-dir>] <api-image> <web-image>
+#   upgrade.sh [--dir <stack-dir>] [--compose <file>] <api-image> <web-image>
 #
 # Run it from the directory holding docker-compose.yml and .env, or name that
 # directory with --dir. Both images must be pinned by digest
-# (ghcr.io/complexdatacollective/studio-api@sha256:<64 hex>).
+# (ghcr.io/complexdatacollective/studio-api@sha256:<64 hex>). --compose names
+# the release's docker-compose.yml; it replaces the stack's, which is kept as
+# docker-compose.yml.previous and put back if the upgrade rolls back.
 #
 # IT TAKES NO BACKUP. Take your own before running it (docs/self-host/backup.md).
 #
@@ -22,8 +24,10 @@
 #   0  upgraded        the new images serve, maintenance mode is off
 #   2  not-started     bad arguments or stack directory; nothing was changed
 #   3  rolled-back     failed before migrate changed the database (or migrate
-#                      refused); the previous images are back in .env and serve,
-#                      maintenance mode is off
+#                      refused); the previous images (and compose file) are back
+#                      and serve, maintenance mode is off. Data that Postgres,
+#                      Garage or Traefik rewrote in their own volumes on start
+#                      is not put back
 #   4  rollback-failed failed before migrate, and the rollback did not bring the
 #                      previous images back ready; needs a human
 #   5  fix-forward     migrate changed the database, then a later step failed;
@@ -58,6 +62,7 @@ refuse() {
 }
 
 STACK_DIR="."
+NEW_COMPOSE=''
 ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -72,6 +77,15 @@ while [ $# -gt 0 ]; do
       ;;
     --dir=*)
       STACK_DIR="${1#--dir=}"
+      shift
+      ;;
+    --compose)
+      [ $# -ge 2 ] || refuse '--compose needs a file'
+      NEW_COMPOSE="$2"
+      shift 2
+      ;;
+    --compose=*)
+      NEW_COMPOSE="${1#--compose=}"
       shift
       ;;
     -*) refuse "unknown option $1 (see --help)" ;;
@@ -93,8 +107,14 @@ MAINTENANCE_TIMEOUT="${STUDIO_UPGRADE_MAINTENANCE_TIMEOUT:-60}"
 SCHEMA_TIMEOUT="${STUDIO_UPGRADE_SCHEMA_TIMEOUT:-120}"
 POLL_INTERVAL="${STUDIO_UPGRADE_POLL_INTERVAL:-1}"
 
+if [ -n "$NEW_COMPOSE" ]; then
+  [ -f "$NEW_COMPOSE" ] || refuse "no such compose file: $NEW_COMPOSE"
+  NEW_COMPOSE="$(cd "$(dirname "$NEW_COMPOSE")" && pwd)/$(basename "$NEW_COMPOSE")"
+fi
+
 cd "$STACK_DIR" 2> /dev/null || refuse "no such directory: $STACK_DIR"
 [ -f .env ] || refuse "no .env in $(pwd)"
+[ -z "$NEW_COMPOSE" ] || [ -f docker-compose.yml ] || refuse "no docker-compose.yml in $(pwd) to replace"
 if [ -n "${STUDIO_API_IMAGE+set}" ] || [ -n "${STUDIO_WEB_IMAGE+set}" ]; then
   refuse 'STUDIO_API_IMAGE or STUDIO_WEB_IMAGE is set in the environment, which would override .env; unset it'
 fi
@@ -111,7 +131,14 @@ OLD_WEB_LINE="$(env_line STUDIO_WEB_IMAGE)" || refuse '.env must set STUDIO_WEB_
 read -r -a COMPOSE_CMD <<< "${COMPOSE:-docker compose}"
 compose() { "${COMPOSE_CMD[@]}" "$@" < /dev/null; }
 
-SERVICES="$(compose config --services)" || refuse "'${COMPOSE_CMD[*]} config --services' failed in $(pwd)"
+if [ -n "$NEW_COMPOSE" ]; then
+  NEW_FILES=(-f "$NEW_COMPOSE")
+  [ -f docker-compose.override.yml ] && NEW_FILES+=(-f docker-compose.override.yml)
+  SERVICES="$(compose "${NEW_FILES[@]}" --project-directory . config --services)" \
+    || refuse "the new compose file does not validate against this stack: $NEW_COMPOSE"
+else
+  SERVICES="$(compose config --services)" || refuse "'${COMPOSE_CMD[*]} config --services' failed in $(pwd)"
+fi
 read -r -a APIS <<< "$(grep '^api' <<< "$SERVICES" | tr '\n' ' ')"
 [ "${#APIS[@]}" -gt 0 ] || refuse 'the stack has no API service (no service name starts with "api")'
 
@@ -126,6 +153,18 @@ write_images() { # api-line web-line
   local code=$?
   rm -f "$tmp"
   return "$code"
+}
+
+COMPOSE_SAVED=''
+install_compose() {
+  [ -n "$NEW_COMPOSE" ] || return 0
+  cp docker-compose.yml docker-compose.yml.previous || return 1
+  COMPOSE_SAVED=1
+  cp "$NEW_COMPOSE" docker-compose.yml
+}
+
+write_env() {
+  write_images "STUDIO_API_IMAGE=$NEW_API" "STUDIO_WEB_IMAGE=$NEW_WEB" && install_compose
 }
 
 replica_checks() { # service
@@ -177,7 +216,15 @@ roll_back() {
   }
   log "restored $OLD_API_LINE"
   log "restored $OLD_WEB_LINE"
-  if compose up -d web "${APIS[@]}" worker \
+  if [ -n "$COMPOSE_SAVED" ]; then
+    cp docker-compose.yml.previous docker-compose.yml || {
+      log 'rollback could not restore docker-compose.yml; copy docker-compose.yml.previous over it yourself' >&2
+      finish 4
+    }
+    log 'restored docker-compose.yml'
+    read -r -a APIS <<< "$(compose config --services | grep '^api' | tr '\n' ' ')"
+  fi
+  if compose up -d --remove-orphans \
     && compose run --rm --no-deps api maintenance off \
     && replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK" "$MAINTENANCE_OFF"; then
     log 'rolled back: the previous images serve and maintenance mode is off'
@@ -200,12 +247,12 @@ log "to: STUDIO_WEB_IMAGE=$NEW_WEB"
 log "api replicas: ${APIS[*]}"
 log 'this script takes no backup'
 
-step env write_images "STUDIO_API_IMAGE=$NEW_API" "STUDIO_WEB_IMAGE=$NEW_WEB" || roll_back
+step env write_env || roll_back
 step maintenance-on compose run --rm --no-deps api maintenance on || roll_back
 step maintenance-wait replicas_report "$MAINTENANCE_TIMEOUT" "$MAINTENANCE_ON" || roll_back
 step stop compose stop "${APIS[@]}" worker || roll_back
 step pull compose pull || roll_back
-step up compose up -d web "${APIS[@]}" worker || roll_back
+step up compose up -d --remove-orphans || roll_back
 step migrate compose run --rm migrate || roll_back
 
 if ! step schema-wait replicas_report "$SCHEMA_TIMEOUT" "$SCHEMA_OK"; then

@@ -9,7 +9,7 @@ import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 import {
   StudyName,
-  type StudyParticipationMode,
+  StudyParticipationMode,
 } from '@codaco/studio-contract/schema/study';
 import type { SectionValidationFailedError } from '@codaco/studio-sync/section-validation';
 
@@ -62,6 +62,12 @@ type InsertedStudy =
   | { created: false }
   | { created: true; participationMode: StudyParticipationMode };
 
+// The column is plain text with a CHECK constraint; decode it to the contract's
+// literal union rather than asserting it, as `store.ts` does for reads.
+const decodeParticipationMode = Schema.decodeUnknownSync(
+  StudyParticipationMode,
+);
+
 const canCreateStudies = (member: LockedMember): boolean =>
   roleGrantsTeamAdministration(member.role);
 
@@ -108,8 +114,7 @@ const insertStudy: (input: {
   if (insertedRow !== undefined) {
     return {
       created: true,
-      participationMode:
-        insertedRow.participationMode as StudyParticipationMode,
+      participationMode: decodeParticipationMode(insertedRow.participationMode),
     } satisfies InsertedStudy as InsertedStudy;
   }
 

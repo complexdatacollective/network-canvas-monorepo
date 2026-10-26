@@ -597,6 +597,9 @@ export type EnvironmentVariables = typeof EnvironmentSchema.Type;
 
 export type VariableName = keyof EnvironmentVariables;
 
+const isVariableName = (name: string): name is VariableName =>
+  Object.hasOwn(EnvironmentSchema.fields, name);
+
 /** One variable's documentation, read back out of its annotations. */
 export type EnvironmentVariableDoc = VariableDoc & { name: VariableName };
 
@@ -632,9 +635,13 @@ function annotation(
  */
 export function describeEnvironment(): EnvironmentVariableDoc[] {
   return EnvironmentSchema.ast.propertySignatures.map((property) => {
-    const name = String(property.name) as VariableName;
+    const name = String(property.name);
+    if (!isVariableName(name)) {
+      throw new Error(`${name} is not a field of the environment schema`);
+    }
     const annotations = annotationsOf(property.type);
-    const group = annotation(annotations, GroupAnnotationKey);
+    const groupName = annotation(annotations, GroupAnnotationKey);
+    const group = GROUPS.find((candidate) => candidate === groupName);
     const summary = annotation(annotations, 'description');
     const deployment = annotation(annotations, DeploymentAnnotationKey);
     if (!group || !summary || !deployment) {
@@ -645,7 +652,7 @@ export function describeEnvironment(): EnvironmentVariableDoc[] {
     const example = annotation(annotations, ExampleAnnotationKey);
     return {
       name,
-      group: group as Group,
+      group,
       summary,
       deployment,
       ...(example === undefined ? {} : { example }),

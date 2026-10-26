@@ -97,9 +97,18 @@ type SeededSchedule = {
 /** How far past its anchor a schedule is resolved for each participant. */
 const RESOLUTION_HORIZON_DAYS = 400;
 
+/** The year, month and day of a `YYYY-MM-DD` string. */
+function dateParts(date: string): [number, number, number] {
+  const [y, m, d, ...extra] = date.split('-').map(Number);
+  if (y === undefined || m === undefined || d === undefined || extra.length) {
+    throw new Error(`expected a YYYY-MM-DD date, got ${date}`);
+  }
+  return [y, m, d];
+}
+
 /** `YYYY-MM-DD` plus `days`, in calendar arithmetic. */
 function shiftLocalDate(date: string, days: number): string {
-  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const [y, m, d] = dateParts(date);
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
@@ -109,16 +118,12 @@ function shiftLocalDate(date: string, days: number): string {
  * where the first guess lands an hour off.
  */
 function instantFor(date: string, minute: number, timeZone: string): Date {
-  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const [y, m, d] = dateParts(date);
   const wanted = Date.UTC(y, m - 1, d) / 60_000 + minute;
   let instant = new Date(wanted * 60_000);
   for (let pass = 0; pass < 2; pass++) {
     const local = localParts(instant, timeZone);
-    const [ly, lm, ld] = local.date.split('-').map(Number) as [
-      number,
-      number,
-      number,
-    ];
+    const [ly, lm, ld] = dateParts(local.date);
     const got = Date.UTC(ly, lm - 1, ld) / 60_000 + local.minute;
     instant = new Date(instant.getTime() + (wanted - got) * 60_000);
   }

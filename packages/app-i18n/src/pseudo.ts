@@ -177,6 +177,7 @@ export function createPseudoIntl(options: {
   // react-intl 11+ overloads formatMessage per argument contract, which no
   // longer types an implementation's parameters contextually; these are the
   // untyped overload's, the one every curated descriptor resolves to.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- FormatMessage is an overload set that no single implementation signature satisfies; this one serves its untyped overload
   const formatMessage = ((
     descriptor: MessageDescriptor,
     values?: Parameters<FormatMessage>[1],

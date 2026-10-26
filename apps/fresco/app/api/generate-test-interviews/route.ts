@@ -16,12 +16,20 @@ import { syntheticGenerationMessages } from '~/i18n/syntheticGenerationMessages'
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { prisma } from '~/lib/db';
+import { Prisma } from '~/lib/db/generated/client';
 import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { parseLegacyStoredProtocol } from '~/lib/schema-8/storedProtocol';
 import { isLegacySchemaVersion } from '~/lib/schema-8/version';
 import { getSyntheticGenerationFailure } from '~/lib/syntheticGenerationFailure';
 import { generateSyntheticInterviewsSchema } from '~/schemas/synthetic-interviews';
+
+// A generator reports "no metadata" as null, but Prisma takes a Json column's
+// null as Prisma.JsonNull or Prisma.DbNull, not a bare null. Omitting the
+// field on create stores a database null.
+const toStoredMetadata = (
+  stageMetadata: Record<string, unknown> | null,
+): object | undefined => stageMetadata ?? undefined;
 
 export async function POST(request: Request) {
   let username: string;
@@ -201,7 +209,7 @@ export async function POST(request: Request) {
               finishTime,
               ...(isCompleted ? finishAt(currentStep) : {}),
               isSynthetic: true,
-              stageMetadata: stageMetadata as object | undefined,
+              stageMetadata: toStoredMetadata(stageMetadata),
               participant: {
                 create: {
                   identifier: participantIdentifier,
@@ -245,7 +253,10 @@ export async function POST(request: Request) {
                 data: {
                   network: network as object,
                   currentStep,
-                  stageMetadata: stageMetadata as object | undefined,
+                  // Omitting the field would keep the replaced network's
+                  // metadata, so a regeneration without any clears it.
+                  stageMetadata:
+                    toStoredMetadata(stageMetadata) ?? Prisma.DbNull,
                   finishTime: new Date(
                     interview.startTime.getTime() +
                       Math.floor(Math.random() * 1800000) +

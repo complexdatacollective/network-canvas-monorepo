@@ -262,6 +262,18 @@ describe('ArrayField', () => {
     expect(nestedSurface.classList).toContain('[--surface-depth:1]');
   });
 
+  it('keeps each item out of the tab order', () => {
+    renderField({
+      value: [{ id: 'one', label: 'one' }],
+      itemComponent: NestedSurfaceItem,
+    });
+
+    // Motion's Reorder.Item is a tab stop by default; items reorder through
+    // their drag handle instead.
+    const item = screen.getByTestId('nested-surface').closest('li');
+    expect(item).not.toHaveAttribute('tabindex');
+  });
+
   it('keeps draft additions out of onChange until they are saved', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

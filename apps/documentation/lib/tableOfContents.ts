@@ -11,6 +11,15 @@ export type HeadingNode = {
   children: HeadingNode[];
 };
 
+// Lets the heading tree be stored on, and read back from, a processed file's
+// `data` without a cast.
+declare module 'vfile' {
+  // oxlint-disable-next-line typescript/consistent-type-definitions -- module augmentation merges only into an interface
+  interface DataMap {
+    headings: HeadingNode[];
+  }
+}
+
 export function headingTree(): (node: Root, file: VFile) => void {
   return (node, file) => {
     file.data.headings = getHeadingsForTree(node);

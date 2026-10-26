@@ -3,6 +3,22 @@ set -u
 state="$STUB_STATE"
 [ "${1:-}" = compose ] && shift
 echo "$*" >> "$state/calls.log"
+files=()
+while :; do
+  case "${1:-}" in
+    -f) files+=("$2"); shift 2 ;;
+    --project-directory) shift 2 ;;
+    *) break ;;
+  esac
+done
+services() {
+  local file="${files[0]:-docker-compose.yml}"
+  if [ -f "$file" ]; then
+    sed -n 's/^  \([a-z0-9-]*\):$/\1/p' "$file"
+  else
+    printf '%s\n' traefik web api api-b worker postgres garage migrate
+  fi
+}
 env_image() { sed -n "s/^STUDIO_API_IMAGE=//p" .env; }
 schema_of() { [ "$1" = "$STUB_NEW_API" ] && echo new || echo old; }
 should_fail() {
@@ -16,7 +32,7 @@ should_fail() {
   return 1
 }
 case "$1" in
-  config) printf '%s\n' traefik web api api-b worker postgres garage migrate ;;
+  config) services ;;
   run)
     if [ "$*" = 'run --rm migrate' ]; then
       should_fail migrate && { echo 'migrate refused' >&2; exit 1; }
@@ -39,7 +55,17 @@ case "$1" in
   pull) should_fail pull && exit 1 ;;
   up)
     should_fail up && exit 1
-    shift 2
+    shift
+    targets=()
+    for arg in "$@"; do [ "${arg#-}" = "$arg" ] && targets+=("$arg"); done
+    [ "${#targets[@]}" -gt 0 ] || read -r -a targets <<< "$(services | grep -v '^migrate$' | tr '\n' ' ')"
+    if [ "${*#*--remove-orphans}" != "$*" ]; then
+      for running in "$state"/image-*; do
+        service="${running##*/image-}"
+        case " ${targets[*]} " in *" $service "*) ;; *) touch "$state/stopped-$service" ;; esac
+      done
+    fi
+    set -- "${targets[@]}"
     for service in "$@"; do
       rm -f "$state/stopped-$service"
       case "$service" in api*) env_image > "$state/image-$service" ;; esac
