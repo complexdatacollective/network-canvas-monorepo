@@ -1,6 +1,5 @@
 ---
 '@codaco/fresco-ui': minor
-'@codaco/architect': patch
 '@codaco/interviewer': patch
 'fresco': patch
 ---
