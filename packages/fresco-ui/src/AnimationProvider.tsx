@@ -69,7 +69,9 @@ export function AnimationProvider({
   // that shares its `layoutId` still crossfades in, at an opacity an a11y
   // check reads as failed contrast.
   if (animationsDisabled) {
+    // oxlint-disable-next-line react/immutability -- must be set while rendering, before descendants mount (see above); an effect runs too late
     globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
+    // oxlint-disable-next-line react/immutability -- must be set while rendering, before descendants mount (see above); an effect runs too late
     MotionGlobalConfig.skipAnimations = true;
   }
 

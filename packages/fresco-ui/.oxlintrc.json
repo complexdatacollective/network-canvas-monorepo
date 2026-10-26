@@ -7,11 +7,6 @@
     }
   },
   "rules": {
-    // React Compiler rules this package has not adopted yet (#1643). Held at
-    // "warn" until its remaining sites are fixed; then this block goes. The
-    // one site left is AnimationProvider's render-time write of the global
-    // animation flags.
-    "react/immutability": "warn",
     // Descriptor hygiene for the ~200 `frescoUi.*` messages this package
     // owns. These five are the root config's set, repeated here because an
     // override in the root cannot match into a package that declares its own
