@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
 import JSZip from 'jszip';
+import { z } from 'zod';
 
 /**
  * Bundles the schema-9 `@codaco/sample-protocol` package (the same protocol
@@ -31,9 +32,9 @@ async function generate() {
   const protocolJson = readFileSync(protocolJsonPath, 'utf8');
 
   // Use the protocol's own lastModified so the zip is reproducible across builds.
-  const { lastModified } = JSON.parse(protocolJson) as {
-    lastModified?: string;
-  };
+  const { lastModified } = z
+    .object({ lastModified: z.string().optional() })
+    .parse(JSON.parse(protocolJson));
   const date = lastModified ? new Date(lastModified) : new Date(0);
 
   const zip = new JSZip();

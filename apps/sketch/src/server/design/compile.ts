@@ -33,6 +33,12 @@ import { worldCountriesGeojson } from './world-countries.ts';
 
 type Json = Record<string, unknown>;
 
+/** Arrays count: setAt walks paths that index into them. */
+const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null;
+
+const hasStageType = (s: Json): s is Json & { type: string } =>
+  typeof s.type === 'string';
+
 /**
  * What compile() emits: the INPUT side of the schema 9 protocol schema (before
  * zod's transforms and brands). The compiler assembles stages from plain
@@ -104,16 +110,33 @@ const CONSENT: NAttribute = {
   required: true,
   builtin: 'consent',
 };
+/** The built-in name every node has. */
+const nameAttribute = (question: string): NAttribute => ({
+  id: 'name',
+  label: 'Name',
+  question,
+  kind: 'text',
+  options: [],
+  optionScores: [],
+  numberRange: [],
+  required: true,
+  builtin: 'name',
+});
 /** The English of a localized string Sketch wrote. */
 const textOf = (text: unknown): string =>
-  String((text as Record<string, string>)[SKETCH_LOCALE]);
+  String(isObject(text) ? text[SKETCH_LOCALE] : undefined);
 
 /** Sets `value` at `path` in `target`, creating the records on the way. */
 const setAt = (target: Json, path: readonly string[], value: unknown) => {
   let at = target;
   path.slice(0, -1).forEach((k) => {
-    if (typeof at[k] !== 'object' || at[k] === null) at[k] = {};
-    at = at[k] as Json;
+    const next = at[k];
+    if (isObject(next)) at = next;
+    else {
+      const fresh: Json = {};
+      at[k] = fresh;
+      at = fresh;
+    }
   });
   at[path.at(-1)!] = value;
 };
@@ -245,18 +268,11 @@ export const compile = (
       const scope = `node:${n.id}`;
       const tk = nodeKey.get(n.id)!;
       const vars: Json = {};
-      const nameAttr: NAttribute = {
-        id: 'name',
-        label: 'Name',
-        question: n.nameQuestion,
-        kind: 'text',
-        options: [],
-        optionScores: [],
-        numberRange: [],
-        required: true,
-        builtin: 'name',
-      };
-      vars[claim(scope, 'name', tk)] = variableFor(nameAttr, 'name', true);
+      vars[claim(scope, 'name', tk)] = variableFor(
+        nameAttribute(n.nameQuestion),
+        'name',
+        true,
+      );
       if (needsLayout.has(n.id))
         vars[claim(scope, 'layout', tk)] = { name: 'layout', type: 'layout' };
       // every declared id up front, so a generated `<id>_other` never takes one
@@ -321,12 +337,9 @@ export const compile = (
   // ---- rules ------------------------------------------------------------------------
   const attrIn = (scope: string, id: string): NAttribute | undefined => {
     if (id === 'name' && scope.startsWith('node:'))
-      return {
-        id: 'name',
-        kind: 'text',
-        options: [],
-        optionScores: [],
-      } as unknown as NAttribute;
+      return nameAttribute(
+        d.nodeTypes.find((n) => `node:${n.id}` === scope)?.nameQuestion ?? '',
+      );
     const list =
       scope === 'ego'
         ? egoList
@@ -1173,9 +1186,9 @@ export const compile = (
 
   // The wording Network Canvas supplies for each stage's own controls and
   // notices, as Architect writes it into a new stage.
-  for (const stage of stages)
+  for (const stage of stages.filter(hasStageType))
     for (const { path, value } of missingSuppliedStageText(
-      stage as { type: string },
+      stage,
       SKETCH_LOCALIZATION,
     ))
       setAt(stage, path, value);

@@ -27,10 +27,6 @@ export function ensureError(value: unknown): Error {
 
   if (value instanceof Error) return value;
 
-  // Test if value inherits from Error
-  if (Object.prototype.isPrototypeOf.call(Error, value))
-    return value as Error & typeof value;
-
   // Rebuild a real Error from an Error-shaped object rather than stringifying
   // it. Stringifying put the whole object — including its stack trace — inside
   // the new Error's `message`, which callers show to the user. The stack is

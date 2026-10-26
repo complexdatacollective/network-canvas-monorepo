@@ -392,6 +392,7 @@ export function AppIntlOverlay({
 }: Readonly<{ override: AppMessageOverride; children: ReactNode }>) {
   const parent = useAppIntl();
   const intl = useMemo((): IntlShape => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- FormatMessage is an overload set that no single implementation signature satisfies; the one here serves its untyped overload
     const formatMessage = ((
       message: MessageDescriptor,
       values?: Parameters<IntlShape['formatMessage']>[1],

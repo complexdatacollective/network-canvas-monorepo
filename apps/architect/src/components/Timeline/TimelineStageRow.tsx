@@ -262,6 +262,10 @@ const TimelineStageRow = ({
       // context and registers its own measured box, so it neither needs nor
       // notices being one element further down the DOM.
       as="div"
+      // Motion 14.6 makes every Reorder.Item a tab stop for its own
+      // grab-and-move keys. The open control already reorders with the arrow
+      // keys, so the row stays out of the tab order.
+      tabIndex={undefined}
       value={stage}
       layoutId={`timeline-stage-${stage.id}`}
       className={cx(timelineRowGrid, 'group relative cursor-pointer p-4')}

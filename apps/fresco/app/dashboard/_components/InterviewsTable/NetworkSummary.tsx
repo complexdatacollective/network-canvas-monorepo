@@ -2,7 +2,7 @@
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
+import Node, { NodeColors } from '@codaco/fresco-ui/Node';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { GetInterviewsQuery } from '~/queries/interviews';
 
@@ -23,19 +23,23 @@ const messages = defineMessages({
 });
 
 // TODO: Move to shared-consts or protocol-validation
-type EdgeColorSequence =
-  | 'edge-color-seq-1'
-  | 'edge-color-seq-2'
-  | 'edge-color-seq-3'
-  | 'edge-color-seq-4'
-  | 'edge-color-seq-5'
-  | 'edge-color-seq-6'
-  | 'edge-color-seq-7'
-  | 'edge-color-seq-8'
-  | 'edge-color-seq-9';
+const EdgeColors = [
+  'edge-color-seq-1',
+  'edge-color-seq-2',
+  'edge-color-seq-3',
+  'edge-color-seq-4',
+  'edge-color-seq-5',
+  'edge-color-seq-6',
+  'edge-color-seq-7',
+  'edge-color-seq-8',
+  'edge-color-seq-9',
+] as const;
+
+type EdgeColorSequence = (typeof EdgeColors)[number];
 
 type EdgeSummaryProps = {
-  color: EdgeColorSequence;
+  // A colour outside the palette leaves the icon uncoloured.
+  color: EdgeColorSequence | undefined;
   count: number;
   typeName: string;
 };
@@ -130,7 +134,7 @@ const NetworkSummary = ({
       <div className="flex flex-col items-center" key={nodeType}>
         <Node
           size="xxs"
-          color={color as NodeColorSequence}
+          color={NodeColors.find((nodeColor) => nodeColor === color)}
           label={intl.formatNumber(count)}
         />
         <span className="pt-1 text-xs">{name}</span>
@@ -145,7 +149,7 @@ const NetworkSummary = ({
       return (
         <EdgeSummary
           key={edgeType}
-          color={color as EdgeColorSequence}
+          color={EdgeColors.find((candidate) => candidate === color)}
           count={count}
           typeName={name}
         />

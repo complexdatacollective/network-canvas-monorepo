@@ -40,7 +40,11 @@ export function sanitizeCellValue(
   if (typeof value === 'number' || typeof value === 'boolean') {
     return value;
   }
-  return `${value as bigint}`;
+  if (typeof value === 'bigint') {
+    return `${value}`;
+  }
+  // Only symbols and functions reach here; neither is valid cell data.
+  throw new TypeError(`Cannot write a ${typeof value} value to a CSV cell`);
 }
 
 const encoder = new TextEncoder();

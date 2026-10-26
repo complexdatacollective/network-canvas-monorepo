@@ -235,8 +235,15 @@ export async function setUploadThingToken(rawData: unknown) {
   // Verify the token is structurally valid (base64 JSON with expected fields)
   try {
     const decoded = Buffer.from(token, 'base64').toString('utf-8');
-    const data = JSON.parse(decoded) as Record<string, unknown>;
-    if (!data.apiKey || !data.appId) {
+    const data: unknown = JSON.parse(decoded);
+    const hasRequiredFields =
+      typeof data === 'object' &&
+      data !== null &&
+      'apiKey' in data &&
+      'appId' in data &&
+      !!data.apiKey &&
+      !!data.appId;
+    if (!hasRequiredFields) {
       return {
         success: false as const,
         fieldErrors: {

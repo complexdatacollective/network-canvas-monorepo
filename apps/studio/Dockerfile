@@ -43,7 +43,7 @@
 #   docker build -f apps/studio/Dockerfile --target studio-web -t studio-web .
 
 FROM node:24-slim AS base
-RUN npm install --global pnpm@11.20.0
+RUN npm install --global pnpm@11.28.6
 
 # Prune the monorepo to the subset the two Studio deployables need. turbo runs
 # at the exact version the root package.json pins, so the prune reads
@@ -57,6 +57,10 @@ RUN pnpm dlx "turbo@$(node -p "require('./package.json').devDependencies.turbo")
 # production-only deployment of the server (package.json + prod node_modules).
 FROM base AS builder
 WORKDIR /repo
+# The source-map upload is a Rust binary that reads the system's CA store,
+# which node:24-slim does not ship.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 # No .git in the build context; skip the root husky prepare script.
 ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .

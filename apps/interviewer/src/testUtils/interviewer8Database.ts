@@ -130,6 +130,7 @@ const decryptField = async (
   JSON.parse(new TextDecoder().decode(await decryptBytes(field, key, aad)));
 
 const encOf = (row: Row): Record<string, EncryptedField> | undefined =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test helper: rows come from this file's own encrypt functions, whose `_enc` is a record of {iv, ct} fields
   row._enc as Record<string, EncryptedField> | undefined;
 
 /** Main's `decryptSession`, minus its zod parses. */
@@ -175,6 +176,7 @@ export async function interviewer8DecryptAsset(
   key: CryptoKey,
 ): Promise<Row> {
   const { _enc: _ignored, ...rest } = row;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test helper: asset rows come from this file's own encryptor, whose `_enc` is {data: EncryptedAsset}
   const enc = row._enc as { data?: EncryptedAsset } | undefined;
   if (!enc) return rest;
   if (!enc.data) throw new Error('No encrypted data');

@@ -37,6 +37,7 @@ export class SecretsCipher extends Context.Service<
   static readonly layerAbsent: Layer.Layer<SecretsCipher> = Layer.succeed(
     SecretsCipher,
   )(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the empty target is never read: the `get` trap throws for every property
     new Proxy({} as SecretsCipherApi, {
       get: (_target, property) => {
         throw new Error(

@@ -23,6 +23,7 @@ import Step2MethodPicker from './SetupWizard/Step2MethodPicker';
 import Step3Configure from './SetupWizard/Step3Configure';
 import Step4Behavior from './SetupWizard/Step4Behavior';
 import Step5Analytics from './SetupWizard/Step5Analytics';
+import { asBehavior, isWizardSelectedMethod } from './SetupWizard/wizardData';
 
 const messages = defineMessages({
   setupCouldNotBeOpened: {
@@ -235,12 +236,20 @@ export type SetupWizardData = {
   analyticsEnabled?: boolean;
 };
 
-const DEFAULT_BEHAVIOR: SetupWizardData['behavior'] = {
-  idleTimeoutMinutes: 15,
-  requireUnlockOnEnter: true,
-  requireUnlockOnExit: false,
-  requireUnlockOnExport: false,
-};
+function readSetupWizardData(result: object): SetupWizardData {
+  const fields: Record<string, unknown> = { ...result };
+  return {
+    selectedMethod: isWizardSelectedMethod(fields.selectedMethod)
+      ? fields.selectedMethod
+      : null,
+    enrolmentCommitted: fields.enrolmentCommitted === true,
+    behavior: asBehavior(fields.behavior),
+    analyticsEnabled:
+      typeof fields.analyticsEnabled === 'boolean'
+        ? fields.analyticsEnabled
+        : undefined,
+  };
+}
 
 // If a previous step committed enrolment (e.g. the user configured a PIN,
 // then went back), revoke it before falling back to mode: none.
@@ -485,12 +494,12 @@ export function useSetupWizard({
           await enrolWithoutSecurity();
         }
       } else {
-        const data = result as SetupWizardData;
+        const data = readSetupWizardData(result);
         if (data.selectedMethod === 'none') {
           // Step3Configure is skipped for 'none', so no step enrolled a vault.
           await enrolWithoutSecurity();
         }
-        const behavior = data.behavior ?? DEFAULT_BEHAVIOR;
+        const { behavior } = data;
         await updateSettings({
           idleTimeoutMinutes: behavior.idleTimeoutMinutes,
           requireUnlockOnEnter: behavior.requireUnlockOnEnter,

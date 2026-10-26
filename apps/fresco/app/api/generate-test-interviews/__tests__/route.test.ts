@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppIntl, formatMessageError } from '@codaco/app-i18n/messages';
 import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
 import { POST } from '~/app/api/generate-test-interviews/route';
+import { Prisma } from '~/lib/db/generated/client';
 import {
   syntheticGenerationEventSchema,
   syntheticGenerationFailureSchema,
@@ -24,7 +25,8 @@ const {
   findProtocol: vi.fn(),
   createInterview: vi.fn(),
   findInterviews: vi.fn(),
-  updateInterview: vi.fn(),
+  updateInterview:
+    vi.fn<(args: { data: Record<string, unknown> }) => unknown>(),
   generateNetwork: vi.fn(),
   addEvent: vi.fn(),
   captureException: vi.fn(),
@@ -299,6 +301,69 @@ describe('the finish recorded for generated interviews', () => {
         finishStageId: 'end-ineligible',
         finishOutcome: 'ineligible',
       },
+    });
+  });
+});
+
+describe('the stage metadata of an interview completed to meet the minimum', () => {
+  const dropOutRequest = () =>
+    request(
+      JSON.stringify({
+        protocolId: 'protocol-1',
+        count: 2,
+        simulateDropOut: true,
+      }),
+    );
+
+  beforeEach(() => {
+    findInterviews.mockResolvedValue([
+      { id: 'created-interview-1', startTime: new Date() },
+    ]);
+  });
+
+  it('clears the metadata of the network it replaces when the new one has none', async () => {
+    const droppedOut = {
+      network: {},
+      stageMetadata: { 'census-stage': [['node-a', 'node-b', true]] },
+      currentStep: 0,
+      droppedOut: true,
+    };
+    generateNetwork
+      .mockReturnValueOnce(droppedOut)
+      .mockReturnValueOnce(droppedOut)
+      .mockReturnValue({
+        network: {},
+        stageMetadata: null,
+        currentStep: 0,
+        droppedOut: false,
+      });
+
+    await (await POST(dropOutRequest())).text();
+
+    expect(updateInterview).toHaveBeenCalledOnce();
+    // By identity: DbNull has no fields of its own, so a structural match
+    // would also accept a missing value.
+    expect(updateInterview.mock.calls[0]?.[0].data.stageMetadata).toBe(
+      Prisma.DbNull,
+    );
+  });
+
+  it('stores the new network’s metadata when it has some', async () => {
+    const stageMetadata = { 'census-stage': [['node-c', 'node-d', true]] };
+    generateNetwork
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true })
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true })
+      .mockReturnValue({
+        network: {},
+        stageMetadata,
+        currentStep: 0,
+        droppedOut: false,
+      });
+
+    await (await POST(dropOutRequest())).text();
+
+    expect(updateInterview.mock.calls[0]?.[0]).toMatchObject({
+      data: { stageMetadata },
     });
   });
 });

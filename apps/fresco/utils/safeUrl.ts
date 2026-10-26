@@ -15,7 +15,8 @@ function parseIpv4(host: string): number[] | null {
 function isPrivateIpv4(host: string): boolean {
   const parts = parseIpv4(host);
   if (!parts) return false;
-  const [a, b] = parts as [number, number, number, number];
+  const [a, b] = parts;
+  if (a === undefined || b === undefined) return false;
   if (a === 0 || a === 127) return true; // unspecified / loopback
   if (a === 10) return true; // private
   if (a === 172 && b >= 16 && b <= 31) return true; // private

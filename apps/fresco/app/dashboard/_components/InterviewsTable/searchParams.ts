@@ -48,9 +48,23 @@ export const searchParamsParsers = {
   network: parseNetwork,
 };
 
-export const searchParamsUrlKeys = Object.fromEntries(
-  Object.keys(searchParamsParsers).map((k) => [k, `${INTERVIEWS_PREFIX}_${k}`]),
-) as Record<keyof typeof searchParamsParsers, string>;
+// Spelled out so the compiler checks it names every parser.
+export const searchParamsUrlKeys: Record<
+  keyof typeof searchParamsParsers,
+  string
+> = {
+  page: `${INTERVIEWS_PREFIX}_page`,
+  perPage: `${INTERVIEWS_PREFIX}_perPage`,
+  sort: `${INTERVIEWS_PREFIX}_sort`,
+  sortField: `${INTERVIEWS_PREFIX}_sortField`,
+  q: `${INTERVIEWS_PREFIX}_q`,
+  protocol: `${INTERVIEWS_PREFIX}_protocol`,
+  started: `${INTERVIEWS_PREFIX}_started`,
+  updated: `${INTERVIEWS_PREFIX}_updated`,
+  progress: `${INTERVIEWS_PREFIX}_progress`,
+  exported: `${INTERVIEWS_PREFIX}_exported`,
+  network: `${INTERVIEWS_PREFIX}_network`,
+};
 
 export const searchParamsCache = createSearchParamsCache(searchParamsParsers, {
   urlKeys: searchParamsUrlKeys,
