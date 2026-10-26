@@ -83,8 +83,8 @@ const codebook = {
           name: 'Team',
           type: 'categorical',
           options: [
-            { value: 'red', label: 'Team Red' },
-            { value: 'blue', label: 'Team Blue' },
+            { value: 'red', label: '**Team Red**' },
+            { value: 'blue', label: '_Team Blue_' },
           ],
         },
       },
@@ -358,6 +358,28 @@ describe('NetworkComposer — select-mode lasso', () => {
       name: /group membership for selected people/i,
     });
     expect(within(membershipGroup).getAllByRole('button')).toHaveLength(2);
+    expect(
+      within(membershipGroup).getByRole('button', { name: 'Team Red' }),
+    ).toBeInTheDocument();
+    expect(
+      within(membershipGroup).getByRole('button', { name: 'Team Blue' }),
+    ).toBeInTheDocument();
+  }, 15_000);
+
+  it('names each group in the Groups picker by its label as read', async () => {
+    const store = makeStore();
+    renderInterface(store);
+
+    await screen.findByRole('button', { name: /alice/i });
+    fireEvent.click(screen.getByRole('button', { name: /groups/i }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Team Red' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Team Blue' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Team Red').tagName).toBe('STRONG');
   }, 15_000);
 
   it('pressing a group toggle writes the value to every selected node', async () => {

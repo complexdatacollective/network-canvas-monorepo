@@ -11,6 +11,7 @@ import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
 import type { ActivationSource } from '@codaco/fresco-ui/Node';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
@@ -767,7 +768,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
                           : undefined
                       }
                     >
-                      {option.label}
+                      <RenderMarkdown>{option.label}</RenderMarkdown>
                     </Toggle>
                   ))}
                 </ToggleGroup>

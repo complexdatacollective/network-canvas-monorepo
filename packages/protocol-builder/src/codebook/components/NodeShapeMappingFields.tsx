@@ -10,6 +10,10 @@ import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import {
+  getMarkdownLabelText,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
+import {
   headingTagBelow,
   useEnclosingHeadingLevel,
 } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
@@ -427,12 +431,16 @@ export default function NodeShapeMappingFields({
               {groupHeading(intl.formatMessage(messages.shapeForEachValue))}
               {answers.map((answer) => (
                 <div key={JSON.stringify(answer.value)} className={ROW_CLASSES}>
-                  <span className="min-w-0 flex-1 text-sm">{answer.label}</span>
+                  <RenderMarkdown
+                    render={<span className="min-w-0 flex-1 text-sm" />}
+                  >
+                    {answer.label}
+                  </RenderMarkdown>
                   <div className="w-48 shrink-0">
                     <UnconnectedField
                       name={`shape-for-${String(answer.value)}`}
                       label={intl.formatMessage(messages.shapeForValue, {
-                        value1: answer.label,
+                        value1: getMarkdownLabelText(answer.label),
                       })}
                       labelHidden
                       component={ShapePickerField}

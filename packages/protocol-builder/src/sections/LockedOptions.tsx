@@ -1,6 +1,7 @@
 import { Lock } from 'lucide-react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
 import type { LockedOptionList } from '../codebook/variableRoles.ts';
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
@@ -47,7 +48,9 @@ export default function LockedOptions({
         <tbody>
           {options.map((option) => (
             <tr key={String(option.value)}>
-              <td className="py-1">{option.label}</td>
+              <td className="py-1">
+                <RenderMarkdown>{option.label}</RenderMarkdown>
+              </td>
               <td className="font-monospace py-1">{String(option.value)}</td>
             </tr>
           ))}

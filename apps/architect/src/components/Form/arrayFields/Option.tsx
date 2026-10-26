@@ -20,6 +20,7 @@ import {
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import OptionLabelField from '@codaco/protocol-builder/fields/OptionLabelField';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
@@ -242,9 +243,11 @@ const Option = ({
         )}
         <div className="min-w-0 flex-1 truncate">
           <span className={!hasLabel ? 'text-current/50 italic' : undefined}>
-            {hasLabel
-              ? item.label
-              : intl.formatMessage(messages.untitledOption)}
+            {hasLabel ? (
+              <RenderMarkdown>{item.label}</RenderMarkdown>
+            ) : (
+              intl.formatMessage(messages.untitledOption)
+            )}
           </span>
           {/* Decorative separation of authored label and value. */}
           <span className="text-current/50" aria-hidden>

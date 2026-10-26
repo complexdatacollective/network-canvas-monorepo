@@ -7,7 +7,7 @@ import { useMemo, useRef, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { RenderMarkdown } from '../../RenderMarkdown';
+import { getMarkdownLabelText, RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
   sliderControlVariants,
@@ -254,8 +254,9 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={() =>
-                  currentOption?.label ??
-                  intl.formatMessage(messages.noSelection)
+                  currentOption
+                    ? getMarkdownLabelText(currentOption.label)
+                    : intl.formatMessage(messages.noSelection)
                 }
               >
                 <motion.div

@@ -140,6 +140,17 @@ describe('Options', () => {
     expect(screen.getByText('Untitled option')).toBeInTheDocument();
   });
 
+  it('shows a collapsed label formatted, not as its markdown', () => {
+    setup([
+      { label: '**Sometimes**', value: 1 },
+      { label: 'Fewer than 3 &lt;3', value: 2 },
+    ]);
+
+    expect(screen.getByText('Sometimes').tagName).toBe('STRONG');
+    expect(screen.getByText('Fewer than 3 <3')).toBeInTheDocument();
+    expect(screen.queryByText(/\*\*|&lt;/)).not.toBeInTheDocument();
+  });
+
   it('keeps the indexed data-field-name paths E2E specs target', async () => {
     const { container } = setup([
       ...TWO_VALID_OPTIONS,

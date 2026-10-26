@@ -3,7 +3,7 @@
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox';
 import { AnimatePresence, motion } from 'motion/react';
 
-import { RenderMarkdown } from '../../RenderMarkdown';
+import { getMarkdownLabelText, RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
   groupSpacingVariants,
@@ -205,7 +205,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
               }
             }}
             disabled={isOptionDisabled}
-            aria-label={option.label}
+            aria-label={getMarkdownLabelText(option.label)}
             aria-readonly={readOnly || undefined}
             nativeButton
             render={
