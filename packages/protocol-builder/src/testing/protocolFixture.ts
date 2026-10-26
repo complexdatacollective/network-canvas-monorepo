@@ -275,13 +275,8 @@ export function fixtureAssetContentFor(
     if (!isRecord(entry)) continue;
     const source = entry.source;
     if (typeof source !== 'string') continue;
-    const text = extra[source];
-    const bytes =
-      text === undefined
-        ? fixtureAssetContent(source)
-        : new TextEncoder().encode(text);
     content[source] = new Blob(
-      [(bytes ?? new TextEncoder().encode('{}')) as BlobPart],
+      [extra[source] ?? FIXTURE_ASSET_CONTENT[source] ?? '{}'],
       { type: 'application/json' },
     );
   }

@@ -10,6 +10,7 @@ import {
 
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import {
+  type DynamicValueBinding,
   type DynamicValues,
   type DynamicValueSite,
   type DynamicValueSiteContext,
@@ -35,6 +36,34 @@ const DYNAMIC_VALUES_PATH = 'dynamicValues';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isCaseValue = (value: unknown): value is string | number | boolean =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean';
+
+const isBinding = (value: unknown): value is DynamicValueBinding =>
+  isRecord(value) &&
+  typeof value.path === 'string' &&
+  (value.cases === undefined ||
+    (isRecord(value.cases) && Object.values(value.cases).every(isCaseValue)));
+
+/**
+ * The bindings the stage holds at `dynamicValues` that a reader can take
+ * `.path` and `.cases` from. Their names and paths are not judged here (the
+ * stage's own validation does that). An entry not shaped like a binding is
+ * left out on its own, so the others are still read, and written back, when
+ * one is malformed.
+ */
+export const usableBindings = (value: unknown): DynamicValues =>
+  isRecord(value)
+    ? Object.fromEntries(
+        Object.entries(value).filter(
+          (entry): entry is [string, DynamicValueBinding] =>
+            isBinding(entry[1]),
+        ),
+      )
+    : {};
 
 const segment = (key: string): string | number =>
   /^\d+$/.test(key) ? Number(key) : key;
@@ -127,8 +156,7 @@ export function useDynamicValueSite(
   const listRootValue = useStageValue(listRoot);
 
   const bindings = useMemo(
-    (): DynamicValues =>
-      isRecord(rawBindings) ? (rawBindings as DynamicValues) : {},
+    (): DynamicValues => usableBindings(rawBindings),
     [rawBindings],
   );
 
@@ -148,7 +176,7 @@ export function useDynamicValueSite(
       for (const key of listPath.slice(1)) {
         list =
           isRecord(list) || Array.isArray(list)
-            ? (list as Record<string | number, unknown>)[key]
+            ? Reflect.get(list, key)
             : undefined;
       }
       const fields = Array.isArray(list) ? [...list] : [];
@@ -224,7 +252,7 @@ export function useStageDynamicValues(): Pick<
         codebook,
         stage: { type: identity.type, subject, behaviours },
       }),
-      bindings: isRecord(rawBindings) ? (rawBindings as DynamicValues) : {},
+      bindings: usableBindings(rawBindings),
     }),
     [identity.type, subject, behaviours, codebook, rawBindings],
   );
@@ -318,6 +346,7 @@ export function withoutUnusedBindings<
     ]);
   }
   if (!changed) return stage;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `text` is `stage` minus its bindings, so with them rebuilt it keeps T's shape
   return (
     kept.length === 0
       ? text

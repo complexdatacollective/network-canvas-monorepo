@@ -202,6 +202,25 @@ export const asRuleSetValue = (value: unknown): RuleSetValue | undefined => {
 const isRuleRow = (value: unknown): value is RuleDraft =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * Whether a stored value is a rule set as it stands: a record whose `rules`, if
+ * it has any, are rows, and whose `join`, if it has one, is a string.
+ *
+ * `asRuleSetValue` reads a rule set but builds a new one, dropping whatever
+ * else the record holds; this asks the question of the value itself, for a
+ * caller that must hand the stored value on unchanged.
+ */
+export const isRuleSetValue = (value: unknown): value is RuleSetValue => {
+  const record = asRuleSetRecord(value);
+  if (record === undefined) return false;
+  const rules = Reflect.get(record, 'rules');
+  const join = Reflect.get(record, 'join');
+  return (
+    (rules === undefined || (Array.isArray(rules) && rules.every(isRuleRow))) &&
+    (join === undefined || typeof join === 'string')
+  );
+};
+
 export const ruleSetRules = (value: unknown): readonly RuleDraft[] =>
   asRuleSetValue(value)?.rules ?? [];
 

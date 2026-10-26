@@ -267,6 +267,7 @@ export async function insertProtocol(input: ProtocolInsert) {
         // protocol-validation v11.7 brands variable-reference fields
         // (EntityAttributeReference); the brand is compile-time-only, so erase
         // it at the Prisma JSON boundary.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated stages are plain JSON; only the compile-time brand differs
         stages: protocol.stages as Prisma.InputJsonValue,
         codebook: protocol.codebook,
         ...(legacy

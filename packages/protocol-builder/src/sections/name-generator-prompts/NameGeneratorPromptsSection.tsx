@@ -129,22 +129,22 @@ const WRITE_THE_QUESTION = createMessageError(
   nameGeneratorPromptMessages.textRequired,
 );
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const asAttributes = (value: unknown): AttributeValue[] =>
   Array.isArray(value)
-    ? value.flatMap((row) =>
-        typeof row === 'object' && row !== null
-          ? [
-              {
-                ...(typeof Reflect.get(row, 'variable') === 'string'
-                  ? { variable: Reflect.get(row, 'variable') as string }
-                  : {}),
-                ...(typeof Reflect.get(row, 'value') === 'boolean'
-                  ? { value: Reflect.get(row, 'value') as boolean }
-                  : {}),
-              },
-            ]
-          : [],
-      )
+    ? value.flatMap((row): AttributeValue[] => {
+        if (typeof row !== 'object' || row === null) return [];
+        const variable: unknown = Reflect.get(row, 'variable');
+        const answer: unknown = Reflect.get(row, 'value');
+        return [
+          {
+            ...(typeof variable === 'string' ? { variable } : {}),
+            ...(typeof answer === 'boolean' ? { value: answer } : {}),
+          },
+        ];
+      })
     : NO_ATTRIBUTES;
 
 /**
@@ -385,13 +385,10 @@ function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
  * stripped of absent values.
  */
 const collapseNameGeneratorPrompt = (row: unknown): unknown => {
-  if (typeof row !== 'object' || row === null) return row;
-  const attributes = Reflect.get(row, 'additionalAttributes');
+  if (!isRecord(row)) return row;
+  const attributes = row.additionalAttributes;
   if (!Array.isArray(attributes) || attributes.length > 0) return row;
-  const { additionalAttributes: _empty, ...rest } = row as Record<
-    string,
-    unknown
-  >;
+  const { additionalAttributes: _empty, ...rest } = row;
   return rest;
 };
 

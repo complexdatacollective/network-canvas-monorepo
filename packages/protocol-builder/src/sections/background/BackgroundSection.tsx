@@ -1,5 +1,4 @@
 import {
-  type ComponentType,
   forwardRef,
   type ReactNode,
   useCallback,
@@ -36,9 +35,7 @@ const IMAGE_FIELD = 'background.image';
  * The picker takes an open prop bag from the field wrapper, as every resource
  * field in the package does; `kind` is what says which resources it offers.
  */
-const ResourcePicker = AssetPickerField as ComponentType<
-  Record<string, unknown>
->;
+const ResourcePicker = AssetPickerField;
 
 /**
  * The two backgrounds a canvas can have, and they are mutually exclusive: the

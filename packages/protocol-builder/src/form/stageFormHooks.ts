@@ -458,8 +458,8 @@ export function answeredPart(value: unknown): unknown {
   }
   // `isUnanswered` already ruled out null, so anything left of object type is
   // a real container.
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
+  if (typeof value === 'object' && value !== null) {
+    const entries = Object.entries(value)
       .map(([key, inner]) => [key, answeredPart(inner)] as const)
       .filter(([, inner]) => inner !== undefined);
     return entries.length === 0 ? undefined : Object.fromEntries(entries);

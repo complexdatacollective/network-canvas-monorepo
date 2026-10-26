@@ -5,6 +5,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Node, {
+  NodeColors,
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
@@ -23,6 +24,9 @@ const messages = defineMessages({
 
 const isNodeShape = (value: unknown): value is NodeShape =>
   value === 'circle' || value === 'square' || value === 'diamond';
+
+const isNodeColor = (value: string): value is NodeColorSequence =>
+  NodeColors.some((color) => color === value);
 
 export type ShapePickerFieldProps = CreateFormFieldProps<
   NodeShape,
@@ -124,7 +128,7 @@ export default function ShapePickerField({
                 value1: shape.label,
               })}
               shape={shape.value}
-              color={nodeColor as NodeColorSequence}
+              color={isNodeColor(nodeColor) ? nodeColor : 'node-color-seq-1'}
               size={small ? 'xs' : 'sm'}
               selected={state.checked}
             />

@@ -981,10 +981,9 @@ function asAResearcherActs(keyboard: HarnessUser): HarnessUser {
     get: (target, property, receiver) => {
       const value: unknown = Reflect.get(target, property, receiver);
       if (typeof value !== 'function') return value;
-      const action = value as (...args: unknown[]) => unknown;
       return async (...args: unknown[]) => {
         await settled();
-        const outcome: unknown = await action.apply(target, args);
+        const outcome: unknown = await Reflect.apply(value, target, args);
         await settled();
         return outcome;
       };
@@ -1112,9 +1111,11 @@ function NamedEditorUnderTest<T extends StageType>({
 }>) {
   const { identity } = useStageEdit();
   if (identity === undefined) return null;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `T` is the stage type the caller named for both the editor and the stage, so the stage's runtime type is that literal
+  const stageType = identity.type as T;
   return (
     <Editor
-      stageType={identity.type as T}
+      stageType={stageType}
       {...(actions === undefined ? {} : { actions })}
       {...(header === undefined ? {} : { header })}
     />

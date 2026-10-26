@@ -7,6 +7,7 @@ import {
   type NodeDefinition,
   type NodeShape,
   type VariableType,
+  VariableTypes,
 } from '@codaco/protocol-validation';
 
 import { asLocalizedString } from '../localization/localizedText.ts';
@@ -162,6 +163,9 @@ const readOptions = (
   return options.length === 0 ? undefined : options;
 };
 
+const isVariableType = (value: unknown): value is VariableType =>
+  typeof value === 'string' && Object.hasOwn(VariableTypes, value);
+
 const readNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 
@@ -180,7 +184,7 @@ export const shapeMappingVariables = (
     Object.entries(variables).flatMap(([id, variable]) => {
       if (!isRecord(variable)) return [];
       const { name, type } = variable;
-      if (typeof name !== 'string' || typeof type !== 'string') return [];
+      if (typeof name !== 'string' || !isVariableType(type)) return [];
       const validation = isRecord(variable.validation)
         ? variable.validation
         : {};
@@ -192,7 +196,7 @@ export const shapeMappingVariables = (
           id,
           {
             name,
-            type: type as VariableType,
+            type,
             ...(options === undefined ? {} : { options }),
             validation: {
               ...(minValue === undefined ? {} : { minValue }),

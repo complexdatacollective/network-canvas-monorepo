@@ -1,12 +1,5 @@
 import { Redacted } from 'effect';
-import {
-  type ComponentType,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -14,6 +7,7 @@ import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
@@ -24,7 +18,7 @@ import AssetPickerField from '../../fields/AssetPickerField.tsx';
 import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { FilterRuleSetField } from '../../fields/RuleSetField.tsx';
-import { withoutAbsentValues } from '../../form/absentValues.ts';
+import { withoutAbsentEntries } from '../../form/absentValues.ts';
 import {
   RowDialog,
   RowList,
@@ -47,11 +41,11 @@ import type {
   ResourceKind,
 } from '../../resources/types.ts';
 import {
+  isRuleSetValue,
   ruleSetAllowsEncryptedAttributes,
   ruleSetRules,
   ruleSetTargets,
   ruleSetValidationMessage,
-  type RuleSetValue,
   type RuleSetVariant,
 } from '../../rules/ruleSet.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -357,9 +351,7 @@ const INCOMPLETE_PANEL = createMessageError(nodePanelsMessages.incompletePanel);
  */
 const TOO_MANY_PANELS = createMessageError(nodePanelsMessages.tooManyPanels);
 
-const ResourcePicker = AssetPickerField as ComponentType<
-  Record<string, unknown>
->;
+const ResourcePicker = AssetPickerField;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -563,7 +555,7 @@ const PANEL_ROWS: RowListConfig = {
   editTitle: nodePanelsMessages.editTitle,
   formId: 'panel-editor',
   name: PANELS,
-  normalize: (row) => withoutAbsentValues(row) as RowValues,
+  normalize: (row) => withoutAbsentEntries(row),
 };
 
 /**
@@ -671,7 +663,7 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
           label={intl.formatMessage(nodePanelsMessages.filterRulesLabel)}
           hint={intl.formatMessage(nodePanelsMessages.filterRulesHint)}
           variant={panelVariant}
-          initialValue={item.filter as RuleSetValue | undefined}
+          initialValue={isRuleSetValue(item.filter) ? item.filter : undefined}
           {...filterValidation}
         />
       </Section>
@@ -738,7 +730,7 @@ function usePanelFilterCapability(committed: unknown) {
       }
       // Absent rather than an empty rule set: the schema has no way to say
       // "filtered by nothing", and an empty one is refused.
-      state?.setFieldValue('filter', undefined as never);
+      state?.setFieldValue('filter', undefined);
       return true;
     },
     [confirm, intl, storeApi],
@@ -795,7 +787,7 @@ function useUnanswerableRulesClearedWithSource(dataSource: string): void {
       const confirmed = await confirm(unanswerableRulesConfirm(intl));
       if (abandoned) return;
       if (confirmed === true) {
-        storeApi.getState().setFieldValue('filter', remaining as never);
+        storeApi.getState().setFieldValue('filter', remaining);
         return;
       }
       // The source goes back, and `previous` with it, so putting it back does
@@ -819,7 +811,7 @@ function useUnanswerableRulesClearedWithSource(dataSource: string): void {
  * rules may be about is also what decides which of the ones it holds have to
  * go, so the two can never disagree.
  */
-function withoutUnanswerableRules(filter: unknown): unknown {
+function withoutUnanswerableRules(filter: FieldValue): FieldValue {
   if (!isRecord(filter)) return filter;
   const answerable = new Set<string>(ruleSetTargets('externalDataPanel'));
   const rules = ruleSetRules(filter);
