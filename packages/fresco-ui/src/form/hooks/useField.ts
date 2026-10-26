@@ -9,6 +9,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -217,11 +218,12 @@ const NO_FIELD_ELEMENTS: FieldElements = {};
  * the content does not.
  */
 function useStableByValue<T>(value: T): T {
-  const ref = useRef(value);
-  if (ref.current !== value && !isEqual(ref.current, value)) {
-    ref.current = value;
+  const [stable, setStable] = useState(() => value);
+  if (stable !== value && !isEqual(stable, value)) {
+    setStable(() => value);
+    return value;
   }
-  return ref.current;
+  return stable;
 }
 
 export function useField(config: UseFieldConfig): UseFieldResult {

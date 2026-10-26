@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react';
+import { useEffect } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { CollectionProvider } from '../CollectionProvider';
@@ -14,15 +15,20 @@ const ITEMS: Item[] = [
   { id: 'b', name: 'Beta' },
 ];
 
+type StoreCapture = { current: CollectionStoreApi<unknown> | null };
+
 function Probe({
   disabledKeys,
-  storeRef,
+  onStore,
 }: {
   disabledKeys?: Key[];
-  storeRef: { current: CollectionStoreApi<unknown> | null };
+  onStore: (store: CollectionStoreApi<unknown>) => void;
 }) {
   useSelectionState({ selectionMode: 'multiple', disabledKeys });
-  storeRef.current = useCollectionStoreApi();
+  const storeApi = useCollectionStoreApi();
+  useEffect(() => {
+    onStore(storeApi);
+  }, [onStore, storeApi]);
   return null;
 }
 
@@ -31,7 +37,7 @@ function Harness({
   storeRef,
 }: {
   disabledKeys?: Key[];
-  storeRef: { current: CollectionStoreApi<unknown> | null };
+  storeRef: StoreCapture;
 }) {
   return (
     <CollectionProvider
@@ -39,16 +45,19 @@ function Harness({
       keyExtractor={(item) => item.id}
       textValueExtractor={(item) => item.name}
     >
-      <Probe disabledKeys={disabledKeys} storeRef={storeRef} />
+      <Probe
+        disabledKeys={disabledKeys}
+        onStore={(store) => {
+          storeRef.current = store;
+        }}
+      />
     </CollectionProvider>
   );
 }
 
 describe('useSelectionState disabledKeys sync', () => {
   it('clears the store set when the prop becomes undefined', () => {
-    const storeRef: { current: CollectionStoreApi<unknown> | null } = {
-      current: null,
-    };
+    const storeRef: StoreCapture = { current: null };
     const { rerender } = render(
       <Harness disabledKeys={['a']} storeRef={storeRef} />,
     );

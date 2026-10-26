@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
@@ -65,8 +65,9 @@ function DropTargetExample({
   style?: React.CSSProperties;
   minHeight?: number;
 }) {
+  const dropId = useId();
   const { dropProps, isOver, willAccept, isDragging } = useDropTarget({
-    id: `drop-${Math.random().toString(36).slice(2, 11)}`,
+    id: `drop-${dropId}`,
     accepts,
     announcedName: name ?? 'Drop Target',
     onDrop,

@@ -169,7 +169,6 @@
     "./hooks/useFitText": "./src/hooks/useFitText.ts",
     "./hooks/useHasHydrated": "./src/hooks/useHasHydrated.ts",
     "./hooks/useNodeInteractions": "./src/hooks/useNodeInteractions.ts",
-    "./hooks/usePrevious": "./src/hooks/usePrevious.ts",
     "./hooks/useResizablePanel": "./src/hooks/useResizablePanel.ts",
     "./hooks/useSafeAnimate": "./src/hooks/useSafeAnimate.ts",
     "./hooks/useSafeLocalStorage": "./src/hooks/useSafeLocalStorage.tsx",
@@ -822,10 +821,6 @@
       "./hooks/useNodeInteractions": {
         "types": "./dist/hooks/useNodeInteractions.d.ts",
         "default": "./dist/hooks/useNodeInteractions.js"
-      },
-      "./hooks/usePrevious": {
-        "types": "./dist/hooks/usePrevious.d.ts",
-        "default": "./dist/hooks/usePrevious.js"
       },
       "./hooks/useResizablePanel": {
         "types": "./dist/hooks/useResizablePanel.d.ts",

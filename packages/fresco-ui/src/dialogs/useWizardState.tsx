@@ -1,7 +1,14 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -122,20 +129,31 @@ export default function useWizardState({
 
   const beforeNextRef = useRef<BeforeNextHandler | null>(null);
   const prevStepRef = useRef(stepIndex);
+  // The accumulated data as event handlers must see it: `setStepData` and
+  // `goToStep` merge into it eagerly, ahead of their state updates, and each
+  // commit re-syncs it from the authoritative state.
   const dataRef = useRef(data);
-  dataRef.current = data;
+  useLayoutEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const currentStep = dialog.steps[stepIndex];
   const totalSteps = dialog.steps.length;
 
+  // Which data decides a step's `skip` is the caller's: rendering reads the
+  // committed state, and event handlers read `dataRef`, which also holds what
+  // was staged earlier in the same task.
   const findNextUnskipped = useCallback(
-    (from: number, dir: 'forward' | 'backward'): number | null => {
+    (
+      from: number,
+      dir: 'forward' | 'backward',
+      stepData: Record<string, unknown>,
+    ): number | null => {
       const delta = dir === 'forward' ? 1 : -1;
       let candidate = from + delta;
       while (candidate >= 0 && candidate < totalSteps) {
         const step = dialog.steps[candidate];
-        if (!step?.skip?.({ data: dataRef.current, getFieldValue }))
-          return candidate;
+        if (!step?.skip?.({ data: stepData, getFieldValue })) return candidate;
         candidate += delta;
       }
       return null;
@@ -143,8 +161,8 @@ export default function useWizardState({
     [dialog.steps, totalSteps, getFieldValue],
   );
 
-  const isFirstActive = findNextUnskipped(stepIndex, 'backward') === null;
-  const isLastActive = findNextUnskipped(stepIndex, 'forward') === null;
+  const isFirstActive = findNextUnskipped(stepIndex, 'backward', data) === null;
+  const isLastActive = findNextUnskipped(stepIndex, 'forward', data) === null;
 
   const showProgress =
     dialog.progress !== undefined ? dialog.progress !== null : true;
@@ -192,7 +210,7 @@ export default function useWizardState({
       // a beforeNext handler may have staged data via setStepData in this
       // same tick, and a non-functional replacement computed from the ref
       // would clobber that queued update. The ref is merged eagerly too so
-      // same-tick readers stay consistent; the next render re-syncs it from
+      // same-tick readers stay consistent; the next commit re-syncs it from
       // the authoritative state.
       const stepValues = getFormValues();
       dataRef.current = mergeStepValues(dataRef.current, stepValues);
@@ -241,7 +259,7 @@ export default function useWizardState({
       setIsNextLoading(false);
     }
 
-    const next = findNextUnskipped(stepIndex, 'forward');
+    const next = findNextUnskipped(stepIndex, 'forward', dataRef.current);
     if (next === null) {
       // dataRef is kept fresh by setStepData's eager merge, so data staged by
       // a beforeNext handler in this same tick is included here.
@@ -270,7 +288,7 @@ export default function useWizardState({
 
   const handleBack = useCallback(() => {
     if (isNextLoadingRef.current) return;
-    const prev = findNextUnskipped(stepIndex, 'backward');
+    const prev = findNextUnskipped(stepIndex, 'backward', dataRef.current);
     if (prev !== null) goToStep(prev);
   }, [goToStep, stepIndex, findNextUnskipped]);
 
@@ -283,7 +301,7 @@ export default function useWizardState({
     // Eagerly reflect the patch in the ref so same-tick readers see it — a
     // beforeNext handler staging data immediately before goToStep folds or
     // the finish path resolves must not lose it to the not-yet-committed
-    // state update. The next render re-syncs the ref from state.
+    // state update. The next commit re-syncs the ref from state.
     dataRef.current = { ...dataRef.current, ...stepData };
     setData((prev) => ({ ...prev, ...stepData }));
   }, []);

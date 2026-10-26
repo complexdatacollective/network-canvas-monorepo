@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { writeCachedNotes } from '../releaseNotes';
 import useAppUpdate, { FRESH_LOAD_AUTO_APPLY_MS } from '../useAppUpdate';
 
 const okEmptyList = { ok: true, json: async () => [] };
@@ -228,5 +229,88 @@ describe('release-notes state', () => {
     // must settle to null so the dialog can show its "unavailable" copy.
     resolveFetch({ ok: false, json: async () => [] });
     await waitFor(() => expect(result.current.releaseNotes).toBeNull());
+  });
+
+  it('shows the cached notes for the version just updated to, without fetching', async () => {
+    localStorage.setItem('nc:lastLaunchedVersion:architect', '1.0.0');
+    writeCachedNotes('architect', { version: '2.0.0', body: 'cached two' });
+    const fetchMock = vi.fn().mockResolvedValue(okEmptyList);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'architect',
+        currentVersion: '2.0.0',
+        needRefresh: false,
+        installUpdate: vi.fn().mockResolvedValue(true),
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('updated'));
+    expect(result.current.releaseNotes).toEqual({
+      version: '2.0.0',
+      body: 'cached two',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('loads the notes for the version just updated to by its tag when none are cached', async () => {
+    localStorage.setItem('nc:lastLaunchedVersion:architect', '1.0.0');
+    writeCachedNotes('architect', { version: '1.0.0', body: 'cached one' });
+    let resolveFetch: (value: {
+      ok: boolean;
+      json: () => Promise<unknown>;
+    }) => void = () => {};
+    const fetchMock = vi.fn().mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'architect',
+        currentVersion: '2.0.0',
+        needRefresh: false,
+        installUpdate: vi.fn().mockResolvedValue(true),
+      }),
+    );
+
+    // The cached notes describe the version before the update, so they give
+    // way to a loading state while the running version's notes are fetched.
+    await waitFor(() => expect(result.current.releaseNotes).toBe('loading'));
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('releases/tags/');
+
+    resolveFetch({ ok: true, json: async () => ({ body: 'fetched two' }) });
+    await waitFor(() =>
+      expect(result.current.releaseNotes).toEqual({
+        version: '2.0.0',
+        body: 'fetched two',
+      }),
+    );
+  });
+
+  it('keeps showing notes it already holds while an available update fetches newer ones', () => {
+    writeCachedNotes('architect', { version: '2.0.0', body: 'cached two' });
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
+
+    const { result, rerender } = renderHook(
+      ({ needRefresh }) =>
+        useAppUpdate({
+          app: 'architect',
+          currentVersion: '2.0.0',
+          needRefresh,
+          installUpdate: vi.fn().mockResolvedValue(true),
+        }),
+      { initialProps: { needRefresh: false } },
+    );
+    rerender({ needRefresh: true });
+
+    expect(result.current.status).toBe('available');
+    expect(result.current.releaseNotes).toEqual({
+      version: '2.0.0',
+      body: 'cached two',
+    });
   });
 });

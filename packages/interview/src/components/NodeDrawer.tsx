@@ -7,7 +7,6 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
-import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
 import NodeDropAnimation from '@codaco/fresco-ui/NodeDropAnimation';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -103,16 +102,20 @@ export default function NodeDrawer({
   const isExpandedEffective = isExpanded || isOver;
   const dropZoneId = dropTarget ? dropProps['data-zone-id'] : undefined;
 
-  // Collapse when emptied, expand when nodes arrive
-  const prevHasNodes = usePrevious(hasNodes);
+  // Collapse when emptied, expand when nodes arrive. Whether the drawer had
+  // nodes is as this effect last saw it, read and written by the effect alone,
+  // so a re-run for another reason (a new `onExpandedChange`) changes nothing.
+  const hadNodesRef = useRef<boolean | undefined>(undefined);
   useEffect(() => {
-    if (prevHasNodes === undefined) return;
-    if (prevHasNodes && !hasNodes) {
+    const hadNodes = hadNodesRef.current;
+    hadNodesRef.current = hasNodes;
+    if (hadNodes === undefined) return;
+    if (hadNodes && !hasNodes) {
       setIsExpanded(false);
-    } else if (!prevHasNodes && hasNodes) {
+    } else if (!hadNodes && hasNodes) {
       setIsExpanded(true);
     }
-  }, [hasNodes, prevHasNodes, setIsExpanded]);
+  }, [hasNodes, setIsExpanded]);
 
   // A newly selected person is the one being placed, so it must be visible:
   // reopen the drawer if the participant had collapsed it, and scroll the row
@@ -139,27 +142,30 @@ export default function NodeDrawer({
     selectedNodeId === undefined
       ? undefined
       : `${selectionKey ?? ''}:${selectedNodeId}`;
-  const prevSelection = usePrevious(selection);
+  // The selection as this effect last saw it, read and written by the effect
+  // alone: only a change of selection reveals, not a re-run for another
+  // reason. Starts undefined, so a drawer that mounts with a selection in it
+  // reveals that person.
+  const seenSelectionRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (selection === prevSelection) return;
+    const seenSelection = seenSelectionRef.current;
+    seenSelectionRef.current = selection;
+    if (selection === seenSelection) return;
     if (!selectionIsInDrawer) return;
     setIsExpanded(true);
-    // A frame later, once the selected state has rendered. Not cancelled on
-    // re-run: the effect re-runs on the next render, when the previous
-    // selection catches up, and the scroll must still happen.
+    // A frame later, once the selected state has rendered.
     requestAnimationFrame(revealSelected);
-  }, [
-    selection,
-    prevSelection,
-    selectionIsInDrawer,
-    setIsExpanded,
-    revealSelected,
-  ]);
+  }, [selection, selectionIsInDrawer, setIsExpanded, revealSelected]);
 
   const [isLayoutAnimating, setIsLayoutAnimating] = useState(false);
-  const prevNodeCountRef = usePrevious(nodes.length);
+  // The node count the layout animation last started for. Undefined at first,
+  // so a drawer that mounts with nodes animates them in.
+  const [animatedNodeCount, setAnimatedNodeCount] = useState<
+    number | undefined
+  >(undefined);
 
-  if (nodes.length !== prevNodeCountRef) {
+  if (nodes.length !== animatedNodeCount) {
+    setAnimatedNodeCount(nodes.length);
     if (nodes.length > 0 && !isLayoutAnimating) {
       setIsLayoutAnimating(true);
     }

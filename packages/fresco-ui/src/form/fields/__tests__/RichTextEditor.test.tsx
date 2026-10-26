@@ -1215,6 +1215,91 @@ describe('undo and redo of values and versions', () => {
   });
 });
 
+describe('the insert menu opened by typing in a version', () => {
+  const VERSIONED_GREETING: JSONContent = {
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Hello' },
+          {
+            type: 'versions',
+            attrs: {
+              label: 'Depending on the name',
+              meta: { argument: 'name' },
+              versions: [
+                { key: 'missing', label: 'If not known', content: [] },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+  function Host() {
+    const [value, setValue] = useState<JSONContent | undefined>(
+      VERSIONED_GREETING,
+    );
+    return (
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        insertMenu={{
+          label: 'Insert a value',
+          trigger: '{',
+          items: [
+            {
+              id: 'name',
+              label: 'Name',
+              content: { type: 'token', attrs: { id: 'name' } },
+            },
+          ],
+        }}
+        changeMode="input"
+        value={value}
+        onChange={setValue}
+      />
+    );
+  }
+
+  it('hands the caret back to the version, not to where an earlier pick went', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(<Host />);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    // An item picked into the line: the menu hands the caret to the line.
+    await user.click(editor);
+    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    await user.click(await screen.findByRole('option', { name: /Name/ }));
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+    );
+    await waitFor(() => expect(editor).toHaveFocus());
+
+    // Opened again by typing its trigger in a version, and dismissed: the
+    // caret goes back to the version it was typed in.
+    await user.click(
+      await screen.findByRole('button', { name: 'Depending on the name' }),
+    );
+    const version = await screen.findByRole('textbox', {
+      name: 'If not known',
+    });
+    await user.click(version);
+    await user.keyboard('{{');
+    await screen.findByRole('combobox', { name: 'Search' });
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(version).toHaveFocus());
+  });
+});
+
 describe('a version edited in a field that reports on blur', () => {
   it('reports the edit when the caret leaves the field', async () => {
     const onChange = vi.fn();

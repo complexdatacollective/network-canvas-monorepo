@@ -25,8 +25,12 @@ export const formMessages = defineMessages({
 
 export function useForm(config: FormConfig) {
   const registeredRef = useRef(false);
-  const configRef = useRef(config); // Config is static, so this avoids needing to specify it in effect deps
-  configRef.current = config;
+  // Config is static, so this avoids needing to specify it in effect deps.
+  // Updated in a layout effect declared before every effect that reads it.
+  const configRef = useRef(config);
+  useLayoutEffect(() => {
+    configRef.current = config;
+  });
   // Store errors are always an object (never null)
   const errorsRef = useRef<FlattenedErrors>({
     formErrors: [],

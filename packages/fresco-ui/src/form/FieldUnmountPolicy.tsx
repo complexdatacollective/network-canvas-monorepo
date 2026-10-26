@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 type FieldUnmountPolicyProviderProps = {
-  discardOnUnmount: RefObject<boolean>;
+  discardOnUnmountRef: RefObject<boolean>;
   children?: ReactNode;
 };
 
@@ -25,13 +25,13 @@ const FieldUnmountPolicyContext = createContext<ShouldDiscardOnUnmount | null>(
  * can distinguish collapsing from an ordinary parent unmount.
  */
 export function FieldUnmountPolicyProvider({
-  discardOnUnmount,
+  discardOnUnmountRef,
   children,
 }: FieldUnmountPolicyProviderProps) {
   const parentShouldDiscard = useContext(FieldUnmountPolicyContext);
   const shouldDiscard = useCallback(
-    () => discardOnUnmount.current || (parentShouldDiscard?.() ?? false),
-    [discardOnUnmount, parentShouldDiscard],
+    () => discardOnUnmountRef.current || (parentShouldDiscard?.() ?? false),
+    [discardOnUnmountRef, parentShouldDiscard],
   );
 
   return (

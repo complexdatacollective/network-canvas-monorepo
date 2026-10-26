@@ -279,6 +279,12 @@ function detectPlatform(): 'mac' | 'other' {
  * The `⌘K` binding is deliberately not bound here: an app's shortcut registry
  * owns every binding, and drives this component through `open`.
  */
+/** The live region before anything has been announced, and after a close. */
+const NOTHING_ANNOUNCED: { generation: number | null; text: string } = {
+  generation: null,
+  text: '',
+};
+
 export default function EverythingBar({
   providers,
   labels,
@@ -296,11 +302,14 @@ export default function EverythingBar({
 }: EverythingBarProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [announcement, setAnnouncement] = useState('');
+  // What the live region says, and the result generation it was said for.
+  const [announced, setAnnounced] = useState<{
+    generation: number | null;
+    text: string;
+  }>(NOTHING_ANNOUNCED);
   const [detectedPlatform] = useState(detectPlatform);
   const baseId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const announcedGenerationRef = useRef<number | null>(null);
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   const open = openProp ?? uncontrolledOpen;
@@ -342,20 +351,21 @@ export default function EverythingBar({
   // One announcement per settled query, not one per arriving provider.
   //
   // The external system here is the screen reader: what it says is decided by
-  // the live region's text CHANGING, so this cannot be derived during render.
-  // Deriving it would empty the region on every unsettled frame and announce
-  // the same count twice; the effect is what keeps one query to one utterance.
-  useEffect(() => {
-    if (!open) {
-      announcedGenerationRef.current = null;
-      setAnnouncement('');
-      return;
-    }
-    if (results.isEmptyQuery || !settled) return;
-    if (announcedGenerationRef.current === generation) return;
-    announcedGenerationRef.current = generation;
-    setAnnouncement(labels.resultCount(resultCount));
-  }, [generation, labels, open, resultCount, results.isEmptyQuery, settled]);
+  // the live region's text CHANGING, so this cannot be derived from the
+  // current results alone. Deriving it would empty the region on every
+  // unsettled frame and announce the same count twice. It is held in state,
+  // with the generation it was made for, and changed while rendering only
+  // when a new generation settles — one query, one utterance.
+  if (!open) {
+    if (announced !== NOTHING_ANNOUNCED) setAnnounced(NOTHING_ANNOUNCED);
+  } else if (
+    !results.isEmptyQuery &&
+    settled &&
+    announced.generation !== generation
+  ) {
+    setAnnounced({ generation, text: labels.resultCount(resultCount) });
+  }
+  const announcement = announced.text;
 
   useEffect(() => {
     if (!open || highlightKey === null) return;
