@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "颜色",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "请选择分箱使用的渐变色。",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "颜色渐变",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "此界面最多支持五个分箱。超出后，分箱将难以阅读，也难以放置节点，从而影响数据质量。",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "此界面最多支持六个分箱。超出后，分箱将难以阅读，也难以放置节点，从而影响数据质量。",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "输入您的提示…",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "选择其值作为分箱显示的有序属性。",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "此类型尚无有序属性。请创建一个以确定量表内容。",

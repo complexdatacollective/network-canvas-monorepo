@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Kleur",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "Kies het kleurverloop waarin de vakken worden ingekleurd.",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Kleurverloop",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Deze interface is ontworpen voor maximaal vijf vakken. Daarboven worden de vakken moeilijk leesbaar en is het lastig om er iets in te plaatsen, wat ten koste gaat van de gegevenskwaliteit.",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Deze interface is ontworpen voor maximaal zes vakken. Daarboven worden de vakken moeilijk leesbaar en is het lastig om er iets in te plaatsen, wat ten koste gaat van de gegevenskwaliteit.",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "Voer je prompt in…",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "Kies het ordinale attribuut waarvan de waarden als vakken worden getoond.",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "Dit type heeft nog geen ordinale attributen. Maak er een aan om te bepalen wat de schaal is.",

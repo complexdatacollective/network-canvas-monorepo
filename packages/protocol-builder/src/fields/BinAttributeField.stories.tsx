@@ -189,7 +189,7 @@ export const AnAttributeNothingOffers: Story = {
  * More values than this interface can draw at once.
  *
  * Counted from the CODEBOOK rather than from the prompt, because the values
- * belong to the attribute: a collaborator adding a sixth one makes this stage
+ * belong to the attribute: a collaborator adding a seventh one makes this stage
  * unreadable without touching the stage. A warning rather than a refusal —
  * the protocol is valid, and how many bins a screen can carry is a judgement
  * about the interview rather than a rule about the document.
@@ -210,12 +210,13 @@ export const MoreBinsThanFit: Story = {
             name: 'contactFreq',
             type: 'ordinal',
             options: [
-              { label: { 'en-US': 'Daily' }, value: 6 },
-              { label: { 'en-US': 'Weekly' }, value: 5 },
-              { label: { 'en-US': 'Monthly' }, value: 4 },
-              { label: { 'en-US': 'Every few months' }, value: 3 },
-              { label: { 'en-US': 'Once a year' }, value: 2 },
-              { label: { 'en-US': 'Less than once a year' }, value: 1 },
+              { label: { 'en-US': 'Daily' }, value: 7 },
+              { label: { 'en-US': 'Weekly' }, value: 6 },
+              { label: { 'en-US': 'Monthly' }, value: 5 },
+              { label: { 'en-US': 'Every few months' }, value: 4 },
+              { label: { 'en-US': 'Once a year' }, value: 3 },
+              { label: { 'en-US': 'Less than once a year' }, value: 2 },
+              { label: { 'en-US': 'Never' }, value: 1 },
             ],
           },
         },
