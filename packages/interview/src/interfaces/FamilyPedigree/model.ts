@@ -676,7 +676,10 @@ export function siblingTie(
   return { half: !sameSet(aParents, bParents), adoptive: true };
 }
 
-export type MissingDetail = 'sexAssignedAtBirth' | { variable: string };
+export type MissingDetail =
+  | 'sexAssignedAtBirth'
+  | 'genderIdentity'
+  | { variable: string };
 
 const isEmpty = (value: VariableValue | undefined) =>
   value === undefined ||
@@ -686,21 +689,23 @@ const isEmpty = (value: VariableValue | undefined) =>
 
 /**
  * The required details not yet given for a person: sex assigned at birth,
- * then every researcher field whose attribute the codebook marks required.
- * A name and gender identity are never missing here. Anyone left unnamed is
- * given a label from how they are related to the participant when the
- * participant leaves the stage. Gender identity, where the stage asks it, is
- * required in the person's form, which offers "Don't know"; someone the
- * participant has not opened, such as a stand-in, takes kinship words from
- * sex assigned at birth.
+ * gender identity where the stage asks it (`asksGenderIdentity`), then every
+ * researcher field whose attribute the codebook marks required. Both
+ * questions offer "Don't know". A name is never missing: anyone left unnamed
+ * is given a label from how they are related to the participant when the
+ * participant leaves the stage.
  */
 export function missingDetailsFor(
   person: Person,
   requiredFormVariables: readonly string[],
+  asksGenderIdentity = false,
 ): MissingDetail[] {
   const missing: MissingDetail[] = [];
   if (person.sexAssignedAtBirth === undefined) {
     missing.push('sexAssignedAtBirth');
+  }
+  if (asksGenderIdentity && person.genderIdentity === undefined) {
+    missing.push('genderIdentity');
   }
   for (const variable of requiredFormVariables) {
     if (isEmpty(readOwnProperty(person.attributes, variable))) {

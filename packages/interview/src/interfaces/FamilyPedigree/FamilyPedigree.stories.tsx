@@ -4398,11 +4398,26 @@ export const RecordingAnswersKeepsTheFamily: Story = {
         name: 'I have no biological children',
       }),
     );
+    // The stand-in's sex follows from the gamete they gave, but their gender
+    // identity is required, so it is answered from the checklist.
+    await userEvent.click(
+      await body.findByRole('button', {
+        name: /^Some details are missing for/,
+      }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
+    const standIn = within(panelOf(canvasElement) as HTMLElement);
+    await userEvent.click(
+      within(
+        await standIn.findByRole('radiogroup', { name: /^Gender identity/ }),
+      ).getByRole('radio', { name: 'Don’t know' }),
+    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await expectFamilyInSession();
 
     // Leaving and coming back changes none of it, and the parent is still
-    // drawn. The family is complete: the stand-in's sex follows from the
-    // gamete they gave, and gender identity is never a missing detail.
+    // drawn. The family is complete.
     await leaveForPeopleList(canvasElement);
     await expect(await canvas.findByText('Egg parent')).toBeInTheDocument();
     await expectFamilyInSession();

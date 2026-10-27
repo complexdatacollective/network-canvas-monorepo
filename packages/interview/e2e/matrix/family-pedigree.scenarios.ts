@@ -1296,8 +1296,8 @@ function genderIdentityTerms(): ScenarioDefinition {
  * Both biological parents are required. The participant starts alone and
  * undescribed: Next is held back, opening the list of what is still needed,
  * and pressing it again does not get through. Each item leads to where it is
- * resolved — adding a parent, or the participant's own details (the
- * stand-in added for the other parent has nothing missing) — and once the
+ * resolved — adding a parent, the stand-in added for the other parent's
+ * gender identity, or the participant's own details — and once the
  * list is empty the ring says so and Next moves on.
  */
 function completenessParentsRequired(): ScenarioDefinition {
@@ -1354,15 +1354,14 @@ function completenessParentsRequired(): ScenarioDefinition {
 
       // Her addition adds an unnamed stand-in for the other biological
       // parent (the stand-in rule). Their sex at birth follows from the
-      // gamete they gave, and gender identity is never a missing detail, so
-      // the list does not ask about them.
+      // gamete they gave, but their gender identity is a required detail,
+      // so the list asks about them, and leads to their details.
       await trackerRing(page).click();
-      await expect(
-        trackerList(page).getByRole('button', {
+      await trackerList(page)
+        .getByRole('button', {
           name: 'Some details are missing for “Biological father”',
-        }),
-      ).toHaveCount(0);
-      await member(page, 'Biological father').click();
+        })
+        .click();
       await describe(page, { gender: 'Man', sex: 'Male' });
       await submitPanel(page, 'Save');
       await expect(member(page, 'Father')).toBeVisible();

@@ -51,7 +51,7 @@ describe('evaluateCompleteness', () => {
 
   // Josh, 27 Oct 2026: the list names each person whose details are
   // missing, and once none are, says so as one item done.
-  it('lists missing details person by person, and all given as one', () => {
+  test('lists missing details person by person, and all given as one', () => {
     const withStandIn = readFamily(
       [ego, person('mum'), person('standIn')],
       [link('mum', 'ego', 'biological'), link('standIn', 'ego', 'biological')],
