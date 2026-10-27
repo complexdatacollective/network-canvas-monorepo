@@ -42,10 +42,6 @@ type Variable = {
   usage: UsageItem[];
   usageString?: string;
 };
-type VariablesComponentProps = {
-  variables: Variable[];
-  entity: string;
-};
 type EgoTypeProps = {
   variables?: Record<string, Variable>;
   search?: string;
@@ -70,8 +66,6 @@ const EgoType = ({
     }
     return true;
   });
-  const VariablesTyped =
-    Variables as unknown as React.ComponentType<VariablesComponentProps>;
   return (
     <div className="py-5">
       <div className="flex justify-end">
@@ -85,7 +79,7 @@ const EgoType = ({
         </Button>
       </div>
       {filteredVariables.length > 0 ? (
-        <VariablesTyped variables={filteredVariables} entity="ego" />
+        <Variables variables={filteredVariables} entity="ego" />
       ) : (
         <Paragraph emphasis="muted" className="mt-5">
           {variableArray.length === 0

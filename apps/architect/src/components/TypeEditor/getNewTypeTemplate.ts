@@ -7,7 +7,7 @@ const getNewTypeTemplate = ({
   entity,
 }: {
   protocol: CurrentProtocol;
-  entity: 'node' | 'edge';
+  entity: 'node' | 'edge' | 'ego';
 }) => ({
   ...(entity === 'node' && { icon: 'add-a-person' }),
   ...(entity === 'node' && { shape: { default: 'circle' } }),

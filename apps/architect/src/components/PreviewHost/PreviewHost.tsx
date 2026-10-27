@@ -248,6 +248,7 @@ export function PreviewHost() {
     loadInterviewCatalog(browserLanguages, statedLocale).catch(() => undefined);
   }, [browserLanguages, statedLocale]);
   useEffect(() => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- lib.dom types window.opener as any; it is a WindowProxy or null, possibly cross-origin, so instanceof Window cannot check it
     const opener = window.opener as Window | null;
     if (!opener) return;
     const expectedOrigin = window.location.origin;

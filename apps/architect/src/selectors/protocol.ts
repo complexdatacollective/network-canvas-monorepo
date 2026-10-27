@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { find, findIndex, reduce } from 'es-toolkit/compat';
+import { find, findIndex } from 'es-toolkit/compat';
 
 import type { Asset } from '@codaco/protocol-validation';
 import { canRedo, canUndo } from '~/ducks/middleware/timeline';
@@ -119,16 +119,10 @@ const networkTypes = new Set(['network', 'async:network']);
 export const getNetworkAssets = createSelector(
   getAssetManifest,
   (assetManifest) =>
-    reduce(
-      assetManifest,
-      (memo, asset, name) => {
-        if (!networkTypes.has(asset.type)) {
-          return memo;
-        }
-
-        return { ...memo, [name]: asset };
-      },
-      {},
+    Object.fromEntries(
+      Object.entries(assetManifest).filter(([, asset]) =>
+        networkTypes.has(asset.type),
+      ),
     ),
 );
 

@@ -6,7 +6,7 @@ const getPalette = (category: string) => {
       ? COLOR_PALETTE_BY_ENTITY.edge
       : COLOR_PALETTE_BY_ENTITY.node;
 
-  const size = COLOR_PALETTES[name as keyof typeof COLOR_PALETTES];
+  const size = COLOR_PALETTES[name];
 
   return { name, size };
 };

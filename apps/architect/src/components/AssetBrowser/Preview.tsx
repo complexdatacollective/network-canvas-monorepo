@@ -126,6 +126,7 @@ const Preview = ({
     </Dialog>
   );
 };
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- compose() types the chain as a plain function; withAssetPath and withAssetMeta together supply every prop Preview takes beyond PreviewOwnProps (assetPath, meta)
 export default compose(
   withAssetMeta,
   withAssetPath,

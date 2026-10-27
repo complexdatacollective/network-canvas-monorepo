@@ -231,12 +231,11 @@ const tagMessages = defineMessages({
   },
 });
 
+const isTag = (tag: string): tag is Tag => Object.hasOwn(tagMessages, tag);
+
 export const interfaceTagLabel = (tag: string, intl: IntlShape): string => {
-  const descriptor: MessageDescriptor | undefined = Object.hasOwn(
-    tagMessages,
-    tag,
-  )
-    ? tagMessages[tag as Tag]
+  const descriptor: MessageDescriptor | undefined = isTag(tag)
+    ? tagMessages[tag]
     : undefined;
   return descriptor ? intl.formatMessage(descriptor) : tag;
 };

@@ -302,6 +302,7 @@ export const importAssetAsync = createAsyncThunk<
       // and type, `getUnresolvedAssetIds` counted the resource as resolved
       // because a row existed, and the GC retained it because the id was still
       // referenced: a protocol that previews and exports the wrong file.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- getSupportedAssetType returns a key of SUPPORTED_EXTENSION_TYPE_MAP, which es-toolkit's findKey types as string; those keys are exactly the supported AssetTypes
       const assetType = getSupportedAssetType(file.name) as AssetType | false;
 
       if (!assetType) {

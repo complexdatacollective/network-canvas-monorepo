@@ -52,9 +52,13 @@ export const loadTemplateAssets = async (
   templateId: string,
   protocol: CurrentProtocol,
 ): Promise<ExtractedAsset[]> => {
-  const entries = Object.values(
+  const entries: ManifestEntry[] = Object.entries(
     protocol.assetManifest ?? {},
-  ) as ManifestEntry[];
+  ).map(([key, entry]) => ({
+    id: entry.id ?? key,
+    name: entry.name,
+    source: 'source' in entry ? entry.source : undefined,
+  }));
 
   return Promise.all(
     entries

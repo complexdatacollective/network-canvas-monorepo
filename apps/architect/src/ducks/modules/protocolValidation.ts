@@ -20,19 +20,23 @@ const initialState: ProtocolValidationState = {
 };
 
 // Async thunk for protocol validation
-export const validateProtocolAsync = createAsyncThunk(
-  'protocolValidation/validate',
-  async (protocol: CurrentProtocol, { rejectWithValue }) => {
-    try {
-      const result = await validateProtocol(protocol, { draft: true });
-      return { result, protocol };
-    } catch (error) {
-      return rejectWithValue(
-        error instanceof Error ? error.message : 'Validation failed',
-      );
-    }
+export const validateProtocolAsync = createAsyncThunk<
+  {
+    result: Awaited<ReturnType<typeof validateProtocol>>;
+    protocol: CurrentProtocol;
   },
-);
+  CurrentProtocol,
+  { rejectValue: string }
+>('protocolValidation/validate', async (protocol, { rejectWithValue }) => {
+  try {
+    const result = await validateProtocol(protocol, { draft: true });
+    return { result, protocol };
+  } catch (error) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : 'Validation failed',
+    );
+  }
+});
 
 const protocolValidationSlice = createSlice({
   name: 'protocolValidation',
@@ -58,7 +62,7 @@ const protocolValidationSlice = createSlice({
       })
       .addCase(validateProtocolAsync.rejected, (state, action) => {
         state.isValidating = false;
-        state.validationError = action.payload as string;
+        state.validationError = action.payload ?? null;
         state.validationResult = null;
       });
   },

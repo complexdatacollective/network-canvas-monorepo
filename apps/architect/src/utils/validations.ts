@@ -177,6 +177,23 @@ const hasValue = (value: ValidationValue) => {
   return !isNil(value);
 };
 
+// How long a value is, when it has a length to speak of: text or a list.
+const lengthOf = (value: unknown): number | undefined =>
+  typeof value === 'string' || Array.isArray(value) ? value.length : undefined;
+
+// `left < right` as JavaScript reads it: two texts (such as ISO dates) in
+// alphabetical order, anything else as numbers.
+const isBefore = (left: unknown, right: unknown): boolean =>
+  typeof left === 'string' && typeof right === 'string'
+    ? left < right
+    : Number(left) < Number(right);
+
+// `left <= right`, read the same way.
+const isBeforeOrSame = (left: unknown, right: unknown): boolean =>
+  typeof left === 'string' && typeof right === 'string'
+    ? left <= right
+    : Number(left) <= Number(right);
+
 // Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
 // spelling of the same text are the same answer to a participant, so they are
 // the same value here too. See `@codaco/shared-consts`' `canonical-text`.
@@ -245,7 +262,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
   const positiveNumber =
     (_: unknown, message: ValidationMessage): Validator =>
     (value) =>
-      value && Math.sign(value as number) === -1
+      value && Math.sign(Number(value)) === -1
         ? messageWithDefault(
             message,
             intl.formatMessage(messages.numberMustBePositive),
@@ -254,27 +271,33 @@ export function createValidations(intl: IntlShape = defaultIntl) {
 
   const maxLength =
     (max: number, message: ValidationMessage): Validator =>
-    (value) =>
-      !isNull(value) && !isUndefined(value) && (value as string).length > max
+    (value) => {
+      const length = lengthOf(value);
+      return length !== undefined && length > max
         ? messageWithDefault(
             message,
             intl.formatMessage(messages.mustBeMaxCharactersOr, { max: max }),
           )
         : undefined;
+    };
   const minLength =
     (min: number, message: ValidationMessage): Validator =>
-    (value) =>
-      isNull(value) || isUndefined(value) || (value as string).length < min
+    (value) => {
+      const length = lengthOf(value);
+      return isNull(value) ||
+        isUndefined(value) ||
+        (length !== undefined && length < min)
         ? messageWithDefault(
             message,
             intl.formatMessage(messages.mustBeMinCharactersOr, { min: min }),
           )
         : undefined;
+    };
 
   const minValue =
     (min: number, message: ValidationMessage): Validator =>
     (value) =>
-      !isNull(value) && (value as number) < min
+      !isNull(value) && Number(value) < min
         ? messageWithDefault(
             message,
             intl.formatMessage(messages.mustBeAtLeastMin, { min: min }),
@@ -283,7 +306,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
   const maxValue =
     (max: number, message: ValidationMessage): Validator =>
     (value) =>
-      value && (value as number) > max
+      value && Number(value) > max
         ? messageWithDefault(
             message,
             intl.formatMessage(messages.mustBeLessThanMax, { max: max }),
@@ -416,7 +439,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
       if (!hasValue(otherValue)) {
         return undefined;
       }
-      if ((value as number) <= (otherValue as number)) {
+      if (isBeforeOrSame(value, otherValue)) {
         return messageWithDefault(
           message,
           intl.formatMessage(messages.mustBeGreaterThanThe),
@@ -442,7 +465,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
       if (!hasValue(otherValue)) {
         return undefined;
       }
-      if ((value as number) < (otherValue as number)) {
+      if (isBefore(value, otherValue)) {
         return messageWithDefault(
           message,
           intl.formatMessage(messages.mustBeGreaterThanOr),
@@ -495,7 +518,13 @@ export function createValidations(intl: IntlShape = defaultIntl) {
     (_: unknown, message: ValidationMessage): Validator =>
     (value) => {
       try {
-        const regexp = new RegExp(value as string);
+        const regexp = new RegExp(
+          value instanceof RegExp || typeof value === 'string'
+            ? value
+            : value === undefined
+              ? ''
+              : String(value),
+        );
         if (isRegExp(regexp)) {
           return undefined;
         }
@@ -534,10 +563,11 @@ export function createValidations(intl: IntlShape = defaultIntl) {
   };
 }
 
-type ValidationOption = {
-  value: unknown;
-  message: string;
-};
+const isValidationName = (
+  validations: ReturnType<typeof createValidations>,
+  name: string,
+): name is keyof ReturnType<typeof createValidations> =>
+  Object.hasOwn(validations, name);
 
 export const getValidations = (
   validationOptions: Record<string, unknown> = {},
@@ -545,24 +575,23 @@ export const getValidations = (
 ): Validator[] =>
   map(toPairs(validationOptions), ([type, options]: [string, unknown]) => {
     if (typeof options === 'function') {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a function supplied as a validation option is a custom validator; a function's signature cannot be checked at runtime
       return options as Validator;
     }
-    const hasCustomMessage =
+    const args =
       options !== null &&
       typeof options === 'object' &&
       !Array.isArray(options) &&
-      'message' in options;
-    const args = hasCustomMessage
-      ? [
-          (options as ValidationOption).value,
-          (options as ValidationOption).message,
-        ]
-      : [options];
+      'message' in options
+        ? [
+            'value' in options ? options.value : undefined,
+            typeof options.message === 'string' ? options.message : undefined,
+          ]
+        : [options];
     const validations = createValidations(intl);
-    if (Object.hasOwn(validations, type)) {
-      const factory = validations[
-        type as keyof typeof validations
-      ] as ValidationFactory;
+    if (isValidationName(validations, type)) {
+      const factory: ValidationFactory = validations[type];
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- each factory takes its own argument types, which a validation configuration supplies under the factory's name; no static link exists between a name and its arguments
       return factory(...(args as never[]));
     }
     return () => intl.formatMessage(messages.unknownRule, { rule: type });

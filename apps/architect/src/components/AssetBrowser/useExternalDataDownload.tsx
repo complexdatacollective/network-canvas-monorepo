@@ -41,7 +41,8 @@ const useExternalDataDownload = () => {
 
   const getAssetInfo = useCallback(
     (id: string) => {
-      const source = get(assetManifest, [id, 'source'], '') as string;
+      const asset = assetManifest[id];
+      const source = asset && 'source' in asset ? asset.source : '';
       const meta = get(assetManifest, id, {
         name: intl.formatMessage(assetMetadataMessages.interviewNetwork),
       }) as { name: string };

@@ -10,12 +10,24 @@ import { SummaryMessage, SummaryText } from '../SummaryText';
 import SectionFrame from './SectionFrame';
 import { stageMessageArguments } from './stageMessageArguments';
 
+/** Where a stage holds a setting of its wording. */
+export type StageWordingKey =
+  | 'minNodesNotice'
+  | 'maxNodesNotice'
+  | 'quickAddHint'
+  | 'allAddedNotice'
+  | 'offlineNotice'
+  | 'mapUnavailable'
+  | 'outsideAreasLabel'
+  | 'searchFailed'
+  | 'unplacedNodesNotice';
+
 /** A setting's label, and where the stage holds its wording. */
-type WordingSetting = readonly [MessageDescriptor, string];
+type WordingSetting = readonly [MessageDescriptor, StageWordingKey];
 
 type StageWordingProps = {
   type: string;
-  configuration: Readonly<Record<string, unknown>>;
+  configuration: Readonly<Partial<Record<StageWordingKey, LocalizedString>>>;
 };
 
 /** The label each wording setting is shown under, in the order it is shown. */
@@ -40,7 +52,7 @@ const StageWording = ({ type, configuration }: StageWordingProps) => {
   const intl = useAppIntl();
   const declarations = stageMessageArguments({ ...configuration, type });
   const rows = STAGE_WORDING_SETTINGS.flatMap(([label, key]) => {
-    const value = configuration[key] as LocalizedString | undefined;
+    const value = configuration[key];
     if (value === undefined) return [];
     const declaration = declarations.get(key);
     return [

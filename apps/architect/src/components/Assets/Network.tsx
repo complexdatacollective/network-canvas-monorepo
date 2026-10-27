@@ -69,11 +69,10 @@ const Network = ({
     const result = networkReader(assetName, assetId);
     if (result) {
       void (async () => {
-        const networkData: unknown = await result;
+        const data = await result;
         if (cancelled) {
           return;
         }
-        const data = networkData as Partial<NetworkType> | undefined;
         setLoaded({
           assetId,
           assetName,

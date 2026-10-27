@@ -76,7 +76,7 @@ const FORM_ID = 'entity-type-dialog';
 
 type EntityTypeDialogProps = {
   show: boolean;
-  entity?: string;
+  entity?: 'node' | 'edge' | 'ego';
   type?: string;
   onClose: (newTypeId?: string) => void;
   finalFocus?: DialogFormProps['finalFocus'];
@@ -102,7 +102,7 @@ const EntityTypeDialog = ({
     }
     const defaultValue = getNewTypeTemplate({
       protocol,
-      entity: entity as 'node' | 'edge',
+      entity,
     });
     const value = type
       ? get(protocol, ['codebook', entity, type]) || defaultValue
@@ -141,7 +141,7 @@ const EntityTypeDialog = ({
         if (isNew) {
           const result = await dispatch(
             createTypeAsync({
-              entity: entity as 'node' | 'edge' | 'ego',
+              entity,
               configuration,
             }),
           ).unwrap();
@@ -149,7 +149,7 @@ const EntityTypeDialog = ({
         } else if (type) {
           await dispatch(
             updateTypeAsync({
-              entity: entity as 'node' | 'edge' | 'ego',
+              entity,
               type,
               configuration,
             }),

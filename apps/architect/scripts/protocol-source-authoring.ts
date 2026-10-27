@@ -171,6 +171,7 @@ const parseRequest = (value: unknown): SourceSaveRequest => {
       kind: value.sourceRef.kind,
       id: value.sourceRef.id,
     },
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- only checked to be an object here; the save handler validates it with validateProtocol before writing anything
     protocol: value.protocol as CurrentProtocol,
     assets,
   };
