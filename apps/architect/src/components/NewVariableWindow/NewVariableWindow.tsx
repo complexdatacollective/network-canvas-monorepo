@@ -141,6 +141,11 @@ const FORM_ID = 'create-new-variable';
  */
 export type LockedVariableOptions = readonly VariableOption[];
 
+/** The values a new variable's form starts from; `options` seeds its option list. */
+type InitialVariableValues = Record<string, unknown> & {
+  options?: readonly OptionValue[];
+};
+
 /** Stable empty list: `initialValue` is a register-effect dependency. */
 const NO_OPTIONS: OptionValue[] = [];
 
@@ -150,7 +155,7 @@ type NewVariableFieldsProps = {
   entity: Entity;
   existingVariables: Variable[];
   variableTypeOptions: FormattedConfig<typeof VARIABLE_OPTIONS>;
-  initialValues: Record<string, unknown>;
+  initialValues: InitialVariableValues;
   typeLocked: boolean;
   lockedOptions: LockedVariableOptions | null;
 };
@@ -169,7 +174,7 @@ const NewVariableFields = ({
     return typeof value === 'string' ? value : undefined;
   });
   const initialOptions = Array.isArray(initialValues.options)
-    ? (initialValues.options as OptionValue[])
+    ? initialValues.options
     : NO_OPTIONS;
   const existingVariableNames = existingVariables.map(({ name }) => name);
 
@@ -289,7 +294,7 @@ type NewVariableWindowProps = {
   allowVariableTypes?: string[] | null;
   onComplete: (variable: string) => void;
   onCancel: () => void;
-  initialValues?: Record<string, unknown> | null;
+  initialValues?: InitialVariableValues | null;
   /** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
   lockedOptions?: LockedVariableOptions | null;
 };
@@ -351,6 +356,7 @@ export default function NewVariableWindow({
           createVariableAsync({
             entity,
             type,
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the form's field values; createVariableAsync requires the name and type, and the protocol validation that follows every codebook change checks the rest
             configuration: withReadOnly as Partial<Variable>,
           }),
         ).unwrap();

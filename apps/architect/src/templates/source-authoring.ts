@@ -81,6 +81,32 @@ const collectSourceAssets = async (
   return assets;
 };
 
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string');
+
+const isSourceSaveResponse = (value: unknown): value is SourceSaveResponse => {
+  if (typeof value !== 'object' || value === null) return false;
+  if ('ok' in value && value.ok === true) {
+    return (
+      'writtenProtocolPath' in value &&
+      typeof value.writtenProtocolPath === 'string' &&
+      'writtenAssets' in value &&
+      isStringArray(value.writtenAssets) &&
+      'removedAssets' in value &&
+      isStringArray(value.removedAssets)
+    );
+  }
+  return (
+    'ok' in value &&
+    value.ok === false &&
+    'error' in value &&
+    typeof value.error === 'string' &&
+    (!('issues' in value) ||
+      value.issues === undefined ||
+      isStringArray(value.issues))
+  );
+};
+
 export const saveProtocolSource = async ({
   sourceRef,
   protocol,
@@ -105,7 +131,10 @@ export const saveProtocolSource = async ({
     body: JSON.stringify(request),
   });
 
-  const body = (await response.json()) as SourceSaveResponse;
+  const body: unknown = await response.json();
+  if (!isSourceSaveResponse(body)) {
+    return { ok: false, error: 'Source save failed.' };
+  }
   if (!response.ok && body.ok) {
     return { ok: false, error: 'Source save failed.' };
   }

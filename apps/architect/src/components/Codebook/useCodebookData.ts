@@ -47,12 +47,12 @@ const useEntityProcessors = () => {
 
   // Memoize selector creation to avoid recreating on every render
   const getNodeWithUsage = useMemo(
-    () => makeGetEntityWithUsage(nodeIndex, { entity: 'node' }, intl),
+    () => makeGetEntityWithUsage(nodeIndex, { entity: 'node' as const }, intl),
     [nodeIndex, intl],
   );
 
   const getEdgeWithUsage = useMemo(
-    () => makeGetEntityWithUsage(edgeIndex, { entity: 'edge' }, intl),
+    () => makeGetEntityWithUsage(edgeIndex, { entity: 'edge' as const }, intl),
     [edgeIndex, intl],
   );
 
@@ -65,20 +65,20 @@ const useEntityProcessors = () => {
 
 const processEntityEntries = (
   entries: [string, unknown][],
-  processor: (value: unknown, id: string) => unknown,
+  processor: (value: unknown, id: string) => Omit<EntityWithUsage, 'name'>,
   getName: (value: unknown, id: string) => string,
 ): EntityWithUsage[] => {
   return entries.map(([id, value]) => ({
-    ...(processor(value, id) as EntityWithUsage),
+    ...processor(value, id),
     name: getName(value, id),
   }));
 };
 
 const processNetworkAssets = (
-  networkAssets: Record<string, unknown>,
+  networkAssets: Record<string, Asset>,
 ): AssetWithId[] => {
   return Object.entries(networkAssets).map(([id, asset]) => ({
-    ...(asset as Asset),
+    ...asset,
     id,
   }));
 };

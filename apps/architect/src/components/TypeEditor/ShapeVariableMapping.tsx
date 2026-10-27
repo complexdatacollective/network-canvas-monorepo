@@ -14,6 +14,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import type { NodeColorSequence } from '@codaco/fresco-ui/Node';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type {
@@ -218,7 +219,7 @@ const ITEM_ROW_CLASSES =
 // through context rather than being closed over in the render.
 type ThresholdItemContextValue = {
   config: ThresholdInputConfig;
-  nodeColor?: string;
+  nodeColor?: NodeColorSequence;
 };
 
 const ThresholdItemContext = createContext<ThresholdItemContextValue>({
@@ -311,7 +312,7 @@ type ShapeMappingEditorProps = CreateFormFieldProps<
   'div',
   {
     variables?: Record<string, ShapeMappingVariable>;
-    nodeColor?: string;
+    nodeColor?: NodeColorSequence;
     defaultShape?: NodeShape;
   }
 >;
@@ -546,7 +547,7 @@ type ShapeVariableMappingProps = {
   variables?: Record<string, ShapeMappingVariable>;
   /** The committed mapping, seeding the field when one is already configured. */
   initialMapping?: ShapeMappingDraft;
-  nodeColor?: string;
+  nodeColor?: NodeColorSequence;
   defaultShape?: NodeShape;
 };
 

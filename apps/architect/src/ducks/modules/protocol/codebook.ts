@@ -52,7 +52,6 @@ import { v4 as uuid } from 'uuid';
 
 import {
   type Codebook,
-  type EdgeColor,
   type EdgeDefinition,
   type EntityDefinition,
   type Variable,
@@ -227,7 +226,7 @@ export const createEdgeAsync = createAppAsyncThunk(
     };
 
     if (color) {
-      payload.configuration.color = color as EdgeColor;
+      payload.configuration.color = color;
     }
 
     dispatch(codebookSlice.actions.createType(payload));
@@ -260,6 +259,7 @@ export const createVariableAsync = createAppAsyncThunk(
     }
 
     const state = getState();
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- name and type are required above; the rest is the variable editor's configuration, which the protocol validation following every codebook change checks
     const safeConfiguration = prune({
       ...configuration,
       name,
@@ -428,11 +428,11 @@ const getStateWithUpdatedType = (
   }
 
   const entityConfiguration =
-    entity === 'ego'
+    entity === 'ego' || type === undefined
       ? configuration
       : {
           ...state[entity],
-          [type as string]: configuration,
+          [type]: configuration,
         };
 
   return {
@@ -453,31 +453,27 @@ const getStateWithUpdatedVariable = (
     throw Error('Type must be specified for non ego nodes');
   }
 
-  const entityPath = entity === 'ego' ? [entity] : [entity, type as string];
+  const existingTypeConfig =
+    entity === 'ego' || type === undefined ? state.ego : state[entity]?.[type];
+  const typeConfiguration: Partial<EntityDefinition> = existingTypeConfig ?? {};
 
-  const existingVariable = get(state, [...entityPath, 'variables', variable]);
-  const preservedProperties =
-    existingVariable && typeof existingVariable === 'object'
-      ? omit(existingVariable as Partial<Variable>, replaceProperties)
-      : {};
-  const variableConfiguration = withNormalizedOptionValues({
-    ...preservedProperties,
-    ...configuration,
-  } as Variable);
+  const existingVariables = existingTypeConfig?.variables;
+  const existingVariable = existingVariables?.[variable];
+  const preservedProperties = existingVariable
+    ? omit(existingVariable, replaceProperties)
+    : {};
+  const variableConfiguration = withNormalizedOptionValues(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the committed variable minus the replaced properties, overlaid with the update, is a complete Variable; TypeScript cannot see that through the Partial spreads
+    {
+      ...preservedProperties,
+      ...configuration,
+    } as Variable,
+  );
 
-  const existingVariables = get(state, [...entityPath, 'variables']);
   const newVariables: Record<string, Variable> = {
-    ...(existingVariables && typeof existingVariables === 'object'
-      ? (existingVariables as Record<string, Variable>)
-      : {}),
+    ...existingVariables,
     [variable]: variableConfiguration,
   };
-
-  const existingTypeConfig = get(state, entityPath);
-  const typeConfiguration =
-    existingTypeConfig && typeof existingTypeConfig === 'object'
-      ? (existingTypeConfig as Partial<EntityDefinition>)
-      : {};
 
   return getStateWithUpdatedType(state, entity, type, {
     ...typeConfiguration,

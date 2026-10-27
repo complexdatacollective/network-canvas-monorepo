@@ -19,7 +19,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
-import type { VariableType } from '@codaco/protocol-validation';
 import { normalizeCodebookName } from '@codaco/shared-consts';
 import {
   getVariableTypeLabel,
@@ -98,7 +97,12 @@ const finalMessages = defineMessages({
 export type VariablePillProps = {
   className?: string;
   label: string;
-  type: VariableType;
+  /**
+   * The variable's type. The pill falls back to a neutral look for a type it
+   * does not know, such as the empty type of a variable missing from the
+   * codebook.
+   */
+  type: string;
   /**
    * Swaps the static type-coloured border for the orbiting gradient. For the
    * attribute picker's held value only, never for a pill that is merely listed.
@@ -171,7 +175,7 @@ const getResolvedMaximumWidth = (
   return Math.max(currentWidth, numericMaxWidth);
 };
 
-const getVariablePillStyle = (type: VariableType): VariablePillStyle => {
+const getVariablePillStyle = (type: string): VariablePillStyle => {
   const accentColor = getRawColorToken(getColorForType(type));
   return {
     '--variable-pill-accent': `oklch(var(--${accentColor}))`,
@@ -211,7 +215,7 @@ function VariablePillContents({
 }: {
   children: React.ReactNode;
   fill?: boolean;
-  type: VariableType;
+  type: string;
 }) {
   const intl = useAppIntl();
   const icon = useMemo(() => getIconForType(type), [type]);

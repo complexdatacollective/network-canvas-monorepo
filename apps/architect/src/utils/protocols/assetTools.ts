@@ -16,26 +16,27 @@ import { getAssetById, MissingAssetDataError } from '~/utils/assetUtils';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
 import { RosterCharacterError } from '~/utils/protocols/rosterCharacterError';
 
-type ReaderFunc = (...args: string[]) => Promise<unknown>;
-type ExtensionConfig = Record<string, ReaderFunc>;
+type ReaderFunc<Result> = (...args: string[]) => Promise<Result>;
 
 type CodedError = {
   code?: string;
 } & Error;
 
 const withExtensionSwitch =
+  <Result>(configuration: Record<string, ReaderFunc<Result>>) =>
   (
-    configuration: ExtensionConfig,
-    fallback: ReaderFunc = () => Promise.resolve(),
-  ) =>
-  (filePathOrUrl: string, ...rest: string[]) => {
+    filePathOrUrl: string,
+    ...rest: string[]
+  ): Promise<Result | undefined> | null => {
     if (!filePathOrUrl) {
       return null;
     }
     const extension = filePathOrUrl.split('.').pop()?.toLowerCase() || '';
 
-    const f = get(configuration, [extension], fallback);
-    return f(...rest);
+    const f = Object.hasOwn(configuration, extension)
+      ? configuration[extension]
+      : undefined;
+    return f ? f(...rest) : Promise.resolve(undefined);
   };
 
 const readJsonNetwork = async (assetId: string): Promise<Network> => {
@@ -45,11 +46,9 @@ const readJsonNetwork = async (assetId: string): Promise<Network> => {
     throw new MissingAssetDataError(assetId);
   }
 
-  if (typeof asset.data === 'string') {
-    return JSON.parse(asset.data) as Network;
-  }
-
-  const text = await asset.data.text();
+  const text =
+    typeof asset.data === 'string' ? asset.data : await asset.data.text();
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the researcher's own network file; its shape is checked when the asset is imported (validateNetwork reads its attribute names) and a malformed file fails there
   return JSON.parse(text) as Network;
 };
 
@@ -103,7 +102,7 @@ export const getNetworkVariables = async (assetId: string) => {
     throw new MissingAssetDataError(assetId);
   }
 
-  const network = (await networkReader(asset.name, assetId)) as Network | null;
+  const network = await networkReader(asset.name, assetId);
 
   if (!network) {
     return null;
@@ -153,6 +152,7 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
   if (extension === 'json') {
     const text = await file.text();
     await refuseUnsupportedCharacters(text, 'json');
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the researcher's file; the empty check, getVariableNamesFromNetwork and validateNames below read its nodes and edges, and a malformed file fails there
     network = JSON.parse(text) as Network;
   } else if (extension === 'csv') {
     const text = await file.text();
@@ -163,8 +163,9 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
   }
 
   if (
-    get(network, 'nodes', []).length === 0 &&
-    get(network, 'edges', []).length === 0
+    network === undefined ||
+    (get(network, 'nodes', []).length === 0 &&
+      get(network, 'edges', []).length === 0)
   ) {
     // Coded so the message survives to the researcher: an uncoded import
     // failure is replaced with generic copy (see getImportAssetErrorInfo in
@@ -176,7 +177,7 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
     throw error;
   }
 
-  const variableNames = getVariableNamesFromNetwork(network as Network);
+  const variableNames = getVariableNamesFromNetwork(network);
 
   // Checked before validateNames, which reports these too, so they carry
   // their own code and researcher-facing message.
@@ -219,6 +220,28 @@ export const validateAsset = async (file: File): Promise<ValidationResult> => {
   return { duplicateCount: 0 };
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The properties of each feature in a GeoJSON file's text. A feature with no
+ * properties (GeoJSON allows that) contributes nothing, and a file with no
+ * features contributes no rows.
+ */
+export const readGeoJsonFeatureProperties = (
+  text: string,
+): Record<string, unknown>[] => {
+  const geoJson: unknown = JSON.parse(text);
+  if (!isRecord(geoJson) || !Array.isArray(geoJson.features)) {
+    return [];
+  }
+  return geoJson.features.flatMap((feature: unknown) =>
+    isRecord(feature) && isRecord(feature.properties)
+      ? [feature.properties]
+      : [],
+  );
+};
+
 export const getGeoJsonVariables = async (assetId: string) => {
   const asset = await getAssetById(assetId);
 
@@ -231,16 +254,11 @@ export const getGeoJsonVariables = async (assetId: string) => {
   }
 
   const text = await asset.data.text();
-  const geoJson = JSON.parse(text) as {
-    features?: { properties?: Record<string, unknown> }[];
-  };
 
   const keys = new Set<string>();
-  for (const feature of geoJson?.features ?? []) {
-    if (feature?.properties) {
-      for (const key of Object.keys(feature.properties)) {
-        keys.add(key);
-      }
+  for (const properties of readGeoJsonFeatureProperties(text)) {
+    for (const key of Object.keys(properties)) {
+      keys.add(key);
     }
   }
 

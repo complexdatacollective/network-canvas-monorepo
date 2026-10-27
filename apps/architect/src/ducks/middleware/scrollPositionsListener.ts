@@ -13,6 +13,7 @@ export const scrollPositionsListenerMiddleware = createListenerMiddleware();
 
 type AppStartListening = TypedStartListening<RootState, AppDispatch>;
 const startAppListening =
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Redux Toolkit's documented typed-listener pattern: createListenerMiddleware cannot name RootState and AppDispatch itself, as the store's types are built from this middleware
   scrollPositionsListenerMiddleware.startListening as AppStartListening;
 
 startAppListening({

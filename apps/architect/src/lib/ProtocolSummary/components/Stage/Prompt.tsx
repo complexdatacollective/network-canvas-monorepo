@@ -147,6 +147,21 @@ const SortOrder = ({ rules }: SortOrderProps) => {
   return <UnorderedList>{result}</UnorderedList>;
 };
 
+const isSortOrderRules = (value: unknown): value is SortOrderProps['rules'] =>
+  Array.isArray(value) &&
+  value.every(
+    (rule) =>
+      typeof rule === 'object' &&
+      rule !== null &&
+      'property' in rule &&
+      typeof rule.property === 'string' &&
+      'direction' in rule &&
+      typeof rule.direction === 'string',
+  );
+
+const renderSortOrder = (rules: unknown) =>
+  isSortOrderRules(rules) ? <SortOrder rules={rules} /> : null;
+
 const attributes: Array<
   [string, MessageDescriptor, (val: unknown) => ReactNode]
 > = [
@@ -190,21 +205,9 @@ const attributes: Array<
     (id: unknown) => <Variable id={String(id)} />,
   ],
   ['negativeLabel', extraMessages.negativeOptionLabel, renderLocalizedText],
-  [
-    'sortOrder',
-    extraMessages.sortbyproperty,
-    (rules: unknown) => <SortOrder rules={rules as SortOrderProps['rules']} />,
-  ],
-  [
-    'binSortOrder',
-    extraMessages.binsortorder,
-    (rules: unknown) => <SortOrder rules={rules as SortOrderProps['rules']} />,
-  ],
-  [
-    'bucketSortOrder',
-    extraMessages.bucketsortorder,
-    (rules: unknown) => <SortOrder rules={rules as SortOrderProps['rules']} />,
-  ],
+  ['sortOrder', extraMessages.sortbyproperty, renderSortOrder],
+  ['binSortOrder', extraMessages.binsortorder, renderSortOrder],
+  ['bucketSortOrder', extraMessages.bucketsortorder, renderSortOrder],
   [
     'otherVariable',
     extraMessages.otherattribute,

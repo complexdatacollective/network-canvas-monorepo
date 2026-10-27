@@ -1,4 +1,3 @@
-import { has } from 'es-toolkit/compat';
 import {
   createElement,
   type ReactNode,
@@ -217,14 +216,10 @@ const ValidationErrorContent = ({
 // same extensions the drop zone accepts, rather than keeping a second copy of
 // the map that could disagree with it.
 export const getAccepts = (type?: string): string[] => {
-  if (!type || !has(SUPPORTED_EXTENSION_TYPE_MAP, type)) {
-    return Object.values(SUPPORTED_EXTENSION_TYPE_MAP).flat();
-  }
-  const extensionKey = type as keyof typeof SUPPORTED_EXTENSION_TYPE_MAP;
-  const extensions = SUPPORTED_EXTENSION_TYPE_MAP[extensionKey];
-  return Array.isArray(extensions)
-    ? extensions
-    : Array.from(extensions as Iterable<string>);
+  const match = Object.entries(SUPPORTED_EXTENSION_TYPE_MAP).find(
+    ([extensionType]) => extensionType === type,
+  );
+  return match ? match[1] : Object.values(SUPPORTED_EXTENSION_TYPE_MAP).flat();
 };
 const AutoFileDrop = ({
   type,

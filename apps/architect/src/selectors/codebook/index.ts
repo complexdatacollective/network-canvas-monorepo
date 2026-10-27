@@ -77,6 +77,7 @@ const getVariablesForSubjectSelector = createSelector(
     const path = subject.type
       ? [subject.entity, subject.type, 'variables']
       : [subject.entity, 'variables'];
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- get() with a computed path is untyped; the path names an entity's `variables` record, or falls back to EMPTY_VARIABLES
     return get(codebook, path, EMPTY_VARIABLES) as Variables;
   },
 );
