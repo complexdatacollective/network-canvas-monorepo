@@ -414,6 +414,7 @@ export default function LocaleSwitcher({
                     // not line up with InputField's own prop types but are the
                     // right thing at runtime (same cast as ComboboxField).
                     const inputFieldProps =
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Base UI's input render props are native input props that InputField accepts at runtime; only the declared types differ
                       renderProps as unknown as ComponentPropsWithRef<
                         typeof InputField
                       >;

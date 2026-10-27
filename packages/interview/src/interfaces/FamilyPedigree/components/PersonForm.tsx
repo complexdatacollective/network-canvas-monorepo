@@ -320,6 +320,11 @@ type PersonFormProps = {
 
 const asString = (value: FieldValue | undefined) =>
   typeof value === 'string' ? value : undefined;
+/** The one of `kinds` the answer names, if it names one. */
+const asKind = <Kind extends string>(
+  kinds: readonly Kind[],
+  value: FieldValue | undefined,
+): Kind | undefined => kinds.find((kind) => kind === asString(value));
 const asBoolean = (value: FieldValue | undefined) =>
   typeof value === 'boolean' ? value : undefined;
 const asOption = (value: FieldValue | undefined) =>
@@ -1017,9 +1022,7 @@ function readLinkUpdates(
     }
   }
   const kindOf = (link: FamilyLink) =>
-    (asString(values[linkField(link, 'kind')]) as
-      | PedigreeParentKind
-      | undefined) ?? link.kind;
+    asKind(PARENT_KINDS, values[linkField(link, 'kind')]) ?? link.kind;
   const asked = links.parents.filter((link) => !skipped.has(link.id));
   // A surrogate carried them, so none of their other parents did.
   const surrogate = asked.find((link) => kindOf(link) === 'surrogate');
@@ -2123,8 +2126,7 @@ function readRequest(
       return {
         relation,
         parentKind:
-          (asString(values[ROLE.parentKind]) as PedigreeParentKind) ??
-          'biological',
+          asKind(PARENT_KINDS, values[ROLE.parentKind]) ?? 'biological',
         // Not answered records nothing, told apart from "No".
         carriedPregnancy: asBoolean(values[ROLE.carriedPregnancy]),
         partnerId: partnered,
@@ -2145,8 +2147,7 @@ function readRequest(
     case 'child': {
       const otherParent = asString(values[ROLE.otherParent]);
       const childKind =
-        (asString(values[ROLE.childKind]) as PedigreeParentKind | undefined) ??
-        'biological';
+        asKind(CHILD_KINDS, values[ROLE.childKind]) ?? 'biological';
       // The answers about the other parent are theirs (`aboutPerson`).
       const otherPersonId =
         otherParent && otherParent !== NONE && otherParent !== UNKNOWN
@@ -2274,10 +2275,7 @@ function readSiblingRequest(
       placeholders === 'eggParent' || placeholders === 'spermParent'
         ? placeholders
         : undefined,
-    parentKind:
-      (asString(values[ROLE.siblingKind]) as
-        | (typeof SIBLING_KINDS)[number]
-        | undefined) ?? 'biological',
+    parentKind: asKind(SIBLING_KINDS, values[ROLE.siblingKind]) ?? 'biological',
     biologicalParentIds: [
       ROLE.siblingBiologicalParent,
       ROLE.siblingOtherBiologicalParent,

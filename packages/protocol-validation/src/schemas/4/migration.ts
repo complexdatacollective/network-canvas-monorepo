@@ -40,6 +40,16 @@ type Stage = {
   panels?: { filter?: Filter; [key: string]: unknown }[];
   [key: string]: unknown;
 };
+// The parts of a version 3 document this step reads.
+type V3Document = {
+  codebook: {
+    node?: TypesRecord;
+    edge?: TypesRecord;
+    ego?: TypeEntry;
+    [key: string]: unknown;
+  };
+  stages: Stage[];
+};
 // Old option value to new, per attribute, keyed by `ruleScope`.
 type OptionValueRenames = Map<string, Map<unknown, unknown>>;
 
@@ -132,12 +142,13 @@ const migrateVariable = (
   variableId: string,
   takenNames: string[] = [],
 ): VariableRecord[string] =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- setProps only overwrites keys the variable already holds, with its name and options migrated here
   setProps(
     {
       options: migrateOptionValues(rule, variable.options),
       name: getSafeValue(variable.name, rule, takenNames, variableId),
     },
-    variable as unknown as Record<string, unknown>,
+    variable,
   ) as unknown as VariableRecord[string];
 
 // Built from entries rather than by assignment: assigning a `__proto__` id to
@@ -170,12 +181,13 @@ const migrateType = (
   typeId?: string,
   takenNames: string[] = [],
 ): TypeEntry =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- setProps only overwrites keys the type already holds, with its name and variables migrated here
   setProps(
     {
       name: getSafeValue(type.name, rule, takenNames, typeId),
       variables: migrateVariables(rule, type.variables),
     },
-    type as unknown as Record<string, unknown>,
+    type,
   ) as unknown as TypeEntry;
 
 const migrateTypes = (rule: NameRule, types: TypesRecord = {}): TypesRecord =>
@@ -322,11 +334,11 @@ const migrationV3toV4 = createMigration({
   notes,
   migrate: (doc, _dependencies, targetVersion) => {
     const rule = nameRuleFor(targetVersion);
-    const codebook = doc.codebook as Record<string, unknown>;
-    const stages = doc.stages as Stage[];
-    const nodeTypes = codebook.node as TypesRecord | undefined;
-    const edgeTypes = codebook.edge as TypesRecord | undefined;
-    const egoType = codebook.ego as TypeEntry | undefined;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a version 3 document has a codebook object and a stages array; a malformed one throws below and is reported as a failed step, as it always has
+    const { codebook, stages } = doc as unknown as V3Document;
+    const nodeTypes = codebook.node;
+    const edgeTypes = codebook.edge;
+    const egoType = codebook.ego;
 
     const migratedNodeTypes = migrateTypes(rule, nodeTypes);
     const migratedEdgeTypes = migrateTypes(rule, edgeTypes);

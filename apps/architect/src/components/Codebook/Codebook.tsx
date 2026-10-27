@@ -19,7 +19,7 @@ import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { getCodebook } from '~/selectors/protocol';
 
 import EgoType from './EgoType';
-import EntityType from './EntityType';
+import EntityType, { type Entity } from './EntityType';
 import ExternalEntity from './ExternalEntity';
 import { useCodebookData } from './useCodebookData';
 const messages = defineMessages({
@@ -100,7 +100,7 @@ const messages = defineMessages({
 });
 
 type CodebookProps = {
-  onEditEntity?: (entity: string, type?: string) => void;
+  onEditEntity?: (entity: Entity, type?: string) => void;
 };
 
 const CodebookSearchObserver = ({

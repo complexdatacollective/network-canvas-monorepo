@@ -679,9 +679,10 @@ export const createFormStore = (
     // `getFormValues` assembles its output out of `FieldValue` leaves, and a
     // caller's document is declared as a map of them, so every node within
     // either is itself a `FieldValue`.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    if (beneathAMountedField)
+    if (beneathAMountedField) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every node of getFormValues' output is a FieldValue leaf or a map of them, so the node read at this path is a FieldValue
       return readObjectPath(formValues, fieldPath) as FieldValue;
+    }
     const document = storeOptions.getInitialValues?.();
     if (document === undefined) return undefined;
     return documentWithFieldsInside(

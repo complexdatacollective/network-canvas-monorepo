@@ -182,6 +182,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   };
 
   const handleDrop = (metadata?: Record<string, unknown>) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dropped node, set by the Node drag source (fresco-ui types it as a record)
     if (metadata) void place(metadata as NcNode);
   };
 
@@ -239,9 +240,8 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
           ? (event) => {
               // A tap on a person here chooses them instead.
               if (
-                (event.target as Element).closest(
-                  '[data-collection-item], button',
-                )
+                event.target instanceof Element &&
+                event.target.closest('[data-collection-item], button')
               ) {
                 return;
               }
@@ -251,6 +251,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
       }
       data-select-mode={select ? true : undefined}
       style={
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- @types/react does not type custom properties
         {
           '--blend-percent': `${100 - blendPercent}%`,
         } as React.CSSProperties

@@ -318,15 +318,14 @@ export function useDropTarget(
             dropOccurredRef.current = true;
 
             // Handle focus behavior after drop
+            const droppedItemId = draggedItem.metadata?.id;
             if (
               focusBehaviorOnDrop === 'follow-item' &&
-              draggedItem.metadata?.id
+              typeof droppedItemId === 'string' &&
+              droppedItemId
             ) {
               // Focus the dropped item in this (target) zone
-              requestFocus(
-                dropIdRef.current,
-                draggedItem.metadata.id as string,
-              );
+              requestFocus(dropIdRef.current, droppedItemId);
             } else if (focusBehaviorOnDrop === 'stay-in-source') {
               // Focus should stay in the source zone
               const sourceZoneId = draggedItem._sourceZone;
@@ -366,13 +365,11 @@ export function useDropTarget(
       updateBoundsThrottled.cancel();
 
       // Clean up scroll listeners
-      const element = elementRef.current;
-      const elementWithCleanup = element as HTMLElement & {
-        __dndCleanup?: () => void;
-      };
-      if (element && elementWithCleanup.__dndCleanup) {
-        elementWithCleanup.__dndCleanup();
-        delete elementWithCleanup.__dndCleanup;
+      const element: (HTMLElement & { __dndCleanup?: () => void }) | null =
+        elementRef.current;
+      if (element?.__dndCleanup) {
+        element.__dndCleanup();
+        delete element.__dndCleanup;
       }
     };
   }, [unregisterDropTarget, updateBoundsThrottled]);

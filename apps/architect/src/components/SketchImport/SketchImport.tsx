@@ -86,6 +86,7 @@ export default function SketchImport() {
   const [, setLocation] = useLocation();
   // Read once: the opener cannot appear later, and reading it on every render
   // would let a re-render race the effect below.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- lib.dom types window.opener as any; it is a WindowProxy or null, possibly cross-origin, so instanceof Window cannot check it
   const [opener] = useState(() => window.opener as Window | null);
   const [state, setState] = useState<ImportState>('waiting');
   const headingRef = useRef<HTMLHeadingElement>(null);

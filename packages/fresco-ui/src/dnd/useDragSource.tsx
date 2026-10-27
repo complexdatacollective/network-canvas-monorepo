@@ -161,6 +161,7 @@ export function useDragSource(
       const rect = element.getBoundingClientRect();
       const computedStyle = window.getComputedStyle(element);
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- cloneNode returns Node; deep-cloning an HTMLElement yields an HTMLElement
       const clonedElement = element.cloneNode(true) as HTMLElement;
       clonedElement.style.pointerEvents = 'none';
 
@@ -357,6 +358,7 @@ export function useDragSource(
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (disabled || e.button !== 0) return;
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handler is attached to the draggable HTMLElement; React types currentTarget as Element
       const element = e.currentTarget as HTMLElement;
       // A second finger landing while the first still holds the element is
       // not a new gesture.
@@ -543,9 +545,11 @@ export function useDragSource(
       if (isCtrlD || isAltSpace) {
         e.preventDefault();
         e.stopPropagation();
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handler is attached to the draggable HTMLElement; React types currentTarget as Element
         startKeyboardDrag(e.currentTarget as HTMLElement);
       } else if (e.key === 'Enter') {
         // Trigger click for selection - role="button" elements need this
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handler is attached to the draggable HTMLElement; React types currentTarget as Element
         (e.currentTarget as HTMLElement).click();
       }
     },

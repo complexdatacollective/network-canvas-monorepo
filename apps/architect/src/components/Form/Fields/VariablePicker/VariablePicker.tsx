@@ -7,7 +7,6 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
-import type { VariableType } from '@codaco/protocol-validation';
 import { ConnectedVariablePill, VariablePill } from '~/components/VariablePill';
 import { cx } from '~/utils/cva';
 
@@ -179,7 +178,7 @@ export const VariablePickerControl = ({
     const selectedLabel = get(selectedOption, 'label', null);
     const selectedValue = get(selectedOption, 'value', null);
     const finalLabel = selectedLabel || selectedValue || '';
-    const variableType = (selectedOption.type ?? 'text') as VariableType;
+    const variableType = selectedOption.type ?? 'text';
 
     return <VariablePill label={finalLabel} type={variableType} />;
   };

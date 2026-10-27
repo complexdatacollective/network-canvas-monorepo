@@ -45,7 +45,9 @@ const withCreatedIndex = <T extends Item>(items: T[]) =>
  */
 const withoutCreatedIndex = <T extends Item>(
   items: (T & { _createdIndex?: number })[],
-) => items.map(({ _createdIndex: _, ...originalItem }) => originalItem as T);
+) =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the rest of `T & { _createdIndex?: number }` without `_createdIndex` is `T`, which TypeScript cannot derive for a generic
+  items.map(({ _createdIndex: _, ...originalItem }) => originalItem as T);
 
 type PropertyGetter<T extends Item> = (item: T) => unknown;
 
@@ -112,14 +114,14 @@ const stringFunction =
     collator: Intl.Collator,
   ): SortFn<T> =>
   (a: T, b: T) => {
-    const firstValue = getValue(a, property) as string | null;
-    const secondValue = getValue(b, property) as string | null;
+    const firstValue = getValue(a, property);
+    const secondValue = getValue(b, property);
 
-    if (firstValue === null || typeof firstValue !== 'string') {
+    if (typeof firstValue !== 'string') {
       return 1;
     }
 
-    if (secondValue === null || typeof secondValue !== 'string') {
+    if (typeof secondValue !== 'string') {
       return -1;
     }
 
@@ -163,6 +165,13 @@ const numberFunction =
   };
 
 /**
+ * Milliseconds since the epoch for a value read as a date. `Date.parse` reads
+ * its argument as text, so this is what it always parsed; a missing value, or
+ * anything that is not a date, is NaN and sorts last.
+ */
+const parseDate = (value: unknown): number => Date.parse(String(value ?? ''));
+
+/**
  * Date comparison sort function.
  */
 const dateFunction =
@@ -171,11 +180,8 @@ const dateFunction =
     direction: SortDirection,
   ): SortFn<T> =>
   (a: T, b: T) => {
-    const firstValueString = getValue(a, property) as string | null;
-    const secondValueString = getValue(b, property) as string | null;
-
-    const firstValueDate = Date.parse(firstValueString ?? '');
-    const secondValueDate = Date.parse(secondValueString ?? '');
+    const firstValueDate = parseDate(getValue(a, property));
+    const secondValueDate = parseDate(getValue(b, property));
 
     if (Number.isNaN(firstValueDate)) {
       return 1;

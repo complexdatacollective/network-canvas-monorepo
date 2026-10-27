@@ -12,6 +12,7 @@ const sameRoles = <T>(
 ) => {
   const roles = new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})]);
   return [...roles].every(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- both records are keyed only by DynamicValueRole, which Object.keys types as string
     (role) => a?.[role as DynamicValueRole] === b?.[role as DynamicValueRole],
   );
 };

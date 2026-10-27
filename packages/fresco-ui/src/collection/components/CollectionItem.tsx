@@ -59,6 +59,8 @@ function CollectionItemComponent<T>({
     'role'?: string;
     'aria-label'?: string;
     'onKeyDown'?: React.KeyboardEventHandler<HTMLElement>;
+    'onPointerDown'?: React.PointerEventHandler;
+    'onPointerMove'?: React.PointerEventHandler;
     [key: string]: unknown;
   };
   // These DnD props are intentionally unused - Collection overrides them
@@ -154,12 +156,8 @@ function CollectionItemComponent<T>({
         'onFocus': itemProps.onFocus,
         'onClick': itemProps.onClick,
         'onKeyDown': composedOnKeyDown,
-        'onPointerDown': dndDragProps.onPointerDown as
-          | React.PointerEventHandler
-          | undefined,
-        'onPointerMove': dndDragProps.onPointerMove as
-          | React.PointerEventHandler
-          | undefined,
+        'onPointerDown': dndDragProps.onPointerDown,
+        'onPointerMove': dndDragProps.onPointerMove,
         'id': itemId,
         ...dndDragProps,
       };
@@ -171,6 +169,7 @@ function CollectionItemComponent<T>({
   );
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- memo() erases the component's generic parameter; this is the same component with it restored
 export const CollectionItem = memo(
   CollectionItemComponent,
 ) as typeof CollectionItemComponent;

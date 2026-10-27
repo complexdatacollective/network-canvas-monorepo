@@ -46,9 +46,11 @@ type _ManagedPropertyKeysAreExhaustive = AssertNever<
 export const stripManagedProperties = <T extends Record<string, unknown>>(
   item: Partial<WithItemProperties<T>> | undefined,
 ): T => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an empty object is the T with no fields set; T is generic, so TypeScript cannot show {} satisfies it
   if (!item) return {} as T;
   const value: Record<string, unknown> = { ...item };
   for (const key of MANAGED_PROPERTY_KEYS) delete value[key];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- item minus the managed keys is the consumer's T; deleting keys from a Record cannot be tracked in the type
   return value as T;
 };
 

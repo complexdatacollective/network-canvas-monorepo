@@ -746,6 +746,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
 }
 
 // Generic forwardRef wrapper that preserves the generic type parameter
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- forwardRef erases the generic parameter; this is the same component with its signature restated
 const ArrayFieldItemWrapper = forwardRef(ArrayFieldItemWrapperInner) as <
   T extends Record<string, unknown>,
 >(
@@ -1341,6 +1342,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
               // already sees an opened list.
               setOpenedByResearcher(true);
               if (immediateAdd) {
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- itemTemplate seeds a new row as a Partial<T>, which the consumer's own item type completes
                 addItem(itemTemplate() as T);
                 announce(
                   intl.formatMessage(messages.addedItem, {
@@ -1350,6 +1352,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 );
                 return;
               }
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- itemTemplate seeds a new row as a Partial<T>, which the consumer's own item type completes
               startAdding(itemTemplate() as T);
             }}
             icon={<PlusIcon />}

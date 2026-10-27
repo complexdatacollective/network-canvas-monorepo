@@ -19,12 +19,14 @@ const {
   minLength,
   minSelected,
   minValue,
+  positiveNumber,
   required,
   requiredAcceptsNull,
   requiredAcceptsZero,
   uniqueArrayAttribute,
   uniqueArrayName,
   uniqueByList,
+  validRegExp,
 } = createValidations();
 
 describe('Validations', () => {
@@ -677,6 +679,45 @@ describe('Validations', () => {
 
     it('ignores non-string values', () => {
       expect(subject(5)).toBe(undefined);
+    });
+  });
+
+  describe('values that are not text or numbers', () => {
+    it('measures the length of a list as it does text', () => {
+      expect(maxLength(2, 'Too long')([1, 2, 3])).toBe('Too long');
+      expect(maxLength(3, 'Too long')([1, 2, 3])).toBeUndefined();
+      expect(minLength(2, 'Too short')([1])).toBe('Too short');
+      expect(minLength(1, 'Too short')([1])).toBeUndefined();
+    });
+
+    it('does not measure a value with no length', () => {
+      expect(maxLength(2, 'Too long')(12345)).toBeUndefined();
+      expect(minLength(2, 'Too short')(1)).toBeUndefined();
+    });
+
+    it('reads numbers written as text as the numbers they spell', () => {
+      expect(minValue(5, 'Too small')('3')).toBe('Too small');
+      expect(minValue(5, 'Too small')('7')).toBeUndefined();
+      expect(maxValue(5, 'Too big')('7')).toBe('Too big');
+      expect(maxValue(5, 'Too big')('3')).toBeUndefined();
+      expect(positiveNumber(true, 'Negative')('-3')).toBe('Negative');
+      expect(positiveNumber(true, 'Negative')('3')).toBeUndefined();
+    });
+  });
+
+  describe('validRegExp()', () => {
+    const subject = validRegExp(true, 'Not valid');
+
+    it('accepts a pattern that compiles', () => {
+      expect(subject('^[a-z]+$')).toBeUndefined();
+    });
+
+    it('refuses a pattern that does not compile', () => {
+      expect(subject('[')).toBe('Not valid');
+    });
+
+    it('treats a missing pattern as the empty pattern', () => {
+      expect(subject(undefined)).toBeUndefined();
     });
   });
 

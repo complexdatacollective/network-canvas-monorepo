@@ -89,10 +89,13 @@ export type Reason = { answers: readonly UnavailableAnswer[] } & (
 const isYou = (context: ReasonContext, personId: string) =>
   context.family.byId.get(personId)?.isEgo === true;
 
-const sexLabel = (context: ReasonContext, sex: string) =>
-  getMarkdownLabelText(
-    context.sexLabels[sex as PedigreeSexAssignedAtBirth] ?? sex,
-  );
+const sexLabel = (context: ReasonContext, sex: string) => {
+  // Widened so that a sex the interface does not name is looked up and found
+  // missing, rather than assumed to be one it does.
+  const labels: Readonly<Record<string, string | undefined>> =
+    context.sexLabels;
+  return getMarkdownLabelText(labels[sex] ?? sex);
+};
 
 /** People or answers named together in a sentence, joined as the language
  * of the stage's words joins a list. */

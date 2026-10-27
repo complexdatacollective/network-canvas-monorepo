@@ -13,6 +13,7 @@ import {
   inputControlVariants,
   stateVariants,
 } from '../../styles/controlVariants';
+import { type CSSVariablesStyle } from '../../utils/cssVariables';
 import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
@@ -224,6 +225,10 @@ export function resolveSwatchColor(value: string): string {
   return `var(--${sequence}${value.slice(prefix.length)})`;
 }
 
+const swatchStyle = (value: string): CSSVariablesStyle => ({
+  '--swatch-color': resolveSwatchColor(value),
+});
+
 export type ColorSwatchOption = {
   /**
    * The value stored when this swatch is chosen, and the colour the swatch
@@ -426,11 +431,7 @@ export default function ColorPickerField({
                     'outline-selected outline-4 outline-offset-2',
                   readOnly && 'pointer-events-none',
                 )}
-                style={
-                  {
-                    '--swatch-color': resolveSwatchColor(option.value),
-                  } as React.CSSProperties
-                }
+                style={swatchStyle(option.value)}
               />
             )}
           />

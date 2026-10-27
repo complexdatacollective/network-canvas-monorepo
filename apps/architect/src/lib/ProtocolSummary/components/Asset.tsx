@@ -43,8 +43,11 @@ const Asset = ({ id, size = null }: AssetProps) => {
     maximumFractionDigits: 2,
   });
   const metaDataListener = useRef((event: Event) => {
-    const target = event.target as HTMLVideoElement | HTMLAudioElement;
-    if (target && Number.isFinite(target.duration)) {
+    const target = event.target;
+    if (
+      target instanceof HTMLMediaElement &&
+      Number.isFinite(target.duration)
+    ) {
       setDuration(target.duration);
     }
   });

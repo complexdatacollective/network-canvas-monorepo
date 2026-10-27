@@ -167,7 +167,12 @@ const toSessionDocument = (
     return 'The session stage position is not a whole number.';
   }
   return structuredClone({
-    network: network as SessionDocument['network'],
+    network: {
+      ...network,
+      nodes: network.nodes,
+      edges: network.edges,
+      ego: network.ego,
+    },
     stageMetadata: isRecord(stageMetadata) ? stageMetadata : {},
     currentStep,
   });

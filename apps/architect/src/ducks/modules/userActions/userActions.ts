@@ -390,6 +390,7 @@ export const openLocalNetcanvas = createAppAsyncThunk(
 
       // Handle migration if needed
       const migrationResult = handleProtocolMigration({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- parsed from the file's protocol.json; handleProtocolMigration reads its schemaVersion and migrates an older one, then validateProtocol checks the result
         protocol: protocol as CurrentProtocol,
         name: protocolName,
         approved: migrationApproved,

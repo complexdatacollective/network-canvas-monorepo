@@ -327,6 +327,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
 
 SurfaceComponent.displayName = 'Surface';
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- forwardRef erases the polymorphic `as` generic; this restates the component's own signature with it
 const Surface = SurfaceComponent as <T extends ElementType = 'div'>(
   props: SurfaceProps<T> & { ref?: React.Ref<HTMLElement> },
 ) => React.ReactElement | null;

@@ -37,7 +37,8 @@ export function motionSafeProps<T extends object>(
   for (const key in props) {
     if (key === 'hidden') continue;
     if ((COLLIDING_KEYS as readonly string[]).includes(key)) continue;
-    result[key] = (props as Record<string, unknown>)[key];
+    result[key] = props[key];
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `result` holds every key of props except the omitted ones, which a mapped Omit over a generic T cannot be shown to equal
   return result as Omit<T, CollidingKey | 'hidden'>;
 }

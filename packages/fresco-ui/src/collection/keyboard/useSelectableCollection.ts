@@ -291,7 +291,10 @@ export function useSelectableCollection(
 
       // Only handle focus if it's entering the collection from outside
       // (not when focus moves between items within the collection)
-      if (ref?.current?.contains(e.relatedTarget as Node)) {
+      if (
+        e.relatedTarget instanceof Node &&
+        ref?.current?.contains(e.relatedTarget)
+      ) {
         return;
       }
 
@@ -323,7 +326,10 @@ export function useSelectableCollection(
       // into the list unprompted.
       //
       // Only handle blur if focus is leaving the collection entirely
-      if (ref?.current?.contains(e.relatedTarget as Node)) {
+      if (
+        e.relatedTarget instanceof Node &&
+        ref?.current?.contains(e.relatedTarget)
+      ) {
         return;
       }
 

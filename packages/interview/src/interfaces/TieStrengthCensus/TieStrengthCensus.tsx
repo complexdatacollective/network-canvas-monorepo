@@ -1,6 +1,5 @@
 'use client';
 
-import { get } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   type ComponentProps,
@@ -182,17 +181,14 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const pairs = useStageSelector(getNodePairs);
   const hasPairs = pairs.length > 0;
 
-  const edgeVariableOptions = (
-    edgeVariable
-      ? get(codebook, [
-          'edge',
-          createEdge,
-          'variables',
-          edgeVariable,
-          'options',
-        ])
-      : []
-  ) as VariableOptions;
+  const edgeVariableDefinition = edgeVariable
+    ? codebook.edge?.[createEdge]?.variables?.[edgeVariable]
+    : undefined;
+  const edgeVariableOptions: VariableOptions =
+    edgeVariableDefinition?.type === 'ordinal' ||
+    edgeVariableDefinition?.type === 'categorical'
+      ? edgeVariableDefinition.options
+      : [];
 
   // Collision-free decline sentinel: must never equal a real option value, so a
   // legitimate option valued e.g. '__none__' is treated as data, not decline.

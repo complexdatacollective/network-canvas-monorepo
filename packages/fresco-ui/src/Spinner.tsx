@@ -4,6 +4,7 @@ import { motion, useAnimationControls } from 'motion/react';
 import { useEffect, useRef } from 'react';
 
 import { useShouldSkipAnimations } from './hooks/useSafeAnimate';
+import { type CSSVariablesStyle } from './utils/cssVariables';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const ANIMATION_DURATION = 1.8;
@@ -115,8 +116,8 @@ export default function Spinner({
   playOnMount = false,
   className,
 }: SpinnerProps) {
-  const customSizeStyle = customSize
-    ? ({ '--circle-size': customSize } as React.CSSProperties)
+  const customSizeStyle: CSSVariablesStyle | undefined = customSize
+    ? { '--circle-size': customSize }
     : undefined;
 
   const shouldLoop = animationMode === 'infinite';

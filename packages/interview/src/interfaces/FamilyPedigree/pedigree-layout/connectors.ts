@@ -177,6 +177,7 @@ export function routePedigree(
   // none given, every couple the layout seats together, as above).
   const recordedPartners: PartnerConnection[] = partnerPairs
     ? [...partnerPairs].map((pairKey) => {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every pair key is built as "a,b" from two person indexes (pedigreeAdapter)
         const [a, b] = pairKey.split(',').map(Number) as [number, number];
         return { partnerIndex1: a, partnerIndex2: b, isActive: true };
       })
@@ -1160,7 +1161,8 @@ export function routePedigree(
     if (descent && top) {
       return { x: top.x1, y: top.y1, stem: descent.parentLink };
     }
-    const [a, b] = pairKey.split(',').map(Number) as [number, number];
+    const [a, b] = pairKey.split(',').map(Number);
+    if (a === undefined || b === undefined) return undefined;
     const [at, bt] = [placeOf.get(a), placeOf.get(b)];
     if (!at || !bt || at.layer !== bt.layer) return undefined;
     const sideBySide =
@@ -1365,6 +1367,7 @@ export function routePedigree(
     );
   };
   const plans = [...linesTo.values()].flatMap((conn) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a line's owner is one person or a couple, so it names one or two parents
     const [first, second] = conn.owner.parents as [number, number?];
     const singly = (person: number) => {
       const at = nodeLocation.get(person)!;

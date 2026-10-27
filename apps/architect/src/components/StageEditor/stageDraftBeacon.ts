@@ -128,7 +128,7 @@ function prune(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
 
   const result: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+  for (const [key, entry] of Object.entries(value)) {
     if (entry === undefined) continue;
     const pruned = prune(entry);
     if (

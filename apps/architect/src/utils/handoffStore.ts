@@ -47,6 +47,7 @@ let handoffDb: HandoffDb | null = null;
 // should not create the database.
 const getHandoffDb = (): HandoffDb => {
   if (!handoffDb) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Dexie's documented TypeScript pattern: the tables are added at runtime by version().stores(), so the instance is typed with them
     const db = new Dexie(HANDOFF_DB_NAME) as HandoffDb;
     db.version(1).stores(HANDOFF_DB_SCHEMA);
     handoffDb = db;
