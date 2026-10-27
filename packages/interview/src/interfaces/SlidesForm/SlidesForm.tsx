@@ -1,5 +1,11 @@
 'use client';
-import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+} from 'motion/react';
 import {
   forwardRef,
   type ReactNode,
@@ -34,6 +40,7 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
   entityPrimaryKeyProperty,
@@ -83,7 +90,70 @@ type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
   ) => Promise<FormSubmissionResult>;
   moveForward: () => void | Promise<void>;
   renderHeader: (item: T) => ReactNode;
+  /**
+   * Where the header sits relative to the form. `start` puts it beside the
+   * form, on the reading-start side, while the slide is wider than it is
+   * tall, and above the form otherwise.
+   */
+  headerPlacement?: HeaderPlacement;
 };
+
+type HeaderPlacement = 'top' | 'start';
+
+// The slide is the size container, so the placement follows the space the
+// stage actually has rather than the viewport. A flex row follows the
+// document direction, so `start` is the left in LTR and the right in RTL.
+const slideContainerClasses = (placement: HeaderPlacement) =>
+  cx(placement === 'start' && '@container-size');
+
+// Beside the form, the slide is a three-column grid whose outer columns
+// share what is left over equally, so the form stays centred and the header
+// sits against its start edge. When the header no longer fits in its share,
+// the first column keeps the header's width and the form moves along.
+const slideBodyClasses = (placement: HeaderPlacement) =>
+  cx(
+    'my-auto flex w-full flex-col items-center',
+    placement === 'start'
+      ? 'gap-2 [@container_(aspect-ratio>1)]:grid [@container_(aspect-ratio>1)]:grid-cols-[1fr_minmax(auto,42rem)_1fr] [@container_(aspect-ratio>1)]:gap-x-5'
+      : 'gap-4',
+  );
+
+// Above the form, the column itself sticks to the top of the scroll area.
+// It is the form's previous sibling, which is where QuestionFlow looks for a
+// stuck header that a question must not be scrolled in under.
+//
+// Beside the form, the column is static and runs the form's full height,
+// with the header centred in it; the header inside sticks to the middle of
+// the visible area while a long form scrolls past. Setting both `top` and
+// `bottom` to 50% over-constrains the sticky box, so the browser holds its
+// top edge on the midline; the translate then centres it there. Being
+// nested, it is not taken for a header above the questions.
+const headerColumnClasses = (placement: HeaderPlacement) =>
+  cx(
+    'sticky top-0 z-10 shrink-0',
+    placement === 'start' &&
+      '[@container_(aspect-ratio>1)]:static [@container_(aspect-ratio>1)]:flex [@container_(aspect-ratio>1)]:flex-col [@container_(aspect-ratio>1)]:justify-center [@container_(aspect-ratio>1)]:self-stretch [@container_(aspect-ratio>1)]:justify-self-end',
+  );
+
+const headerStickyClasses = (placement: HeaderPlacement) =>
+  cx(
+    placement === 'start' &&
+      '[@container_(aspect-ratio>1)]:sticky [@container_(aspect-ratio>1)]:top-1/2 [@container_(aspect-ratio>1)]:bottom-1/2 [@container_(aspect-ratio>1)]:z-10 [@container_(aspect-ratio>1)]:-translate-y-1/2',
+  );
+
+// Above the form, the header shrinks as the form scrolls under it. Beside
+// the form there is room for it, so it keeps its size.
+const headerScaleClasses = (placement: HeaderPlacement) =>
+  cx(
+    'flex origin-top scale-(--header-scale) justify-center',
+    placement === 'start' && '[@container_(aspect-ratio>1)]:scale-100',
+  );
+
+const protectedHeaderClasses = (placement: HeaderPlacement) =>
+  cx(
+    'flex shrink-0 justify-center',
+    placement === 'start' && '[@container_(aspect-ratio>1)]:justify-self-end',
+  );
 
 const slideTransition = {
   type: 'spring' as const,
@@ -116,6 +186,7 @@ type SlideContentProps = {
   form: TitlelessForm;
   subject: Subject;
   header: ReactNode;
+  headerPlacement: HeaderPlacement;
   submitButton: ReactNode;
   onUpdate: SlidesFormProps['updateItem'];
   onReadyChange: (ready: boolean) => void;
@@ -138,6 +209,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       form,
       subject,
       header,
+      headerPlacement,
       submitButton,
       onUpdate,
       onReadyChange,
@@ -199,6 +271,12 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const { scrollY } = useScroll({ container: scrollAreaRef });
     const headerScale = useTransform(scrollY, [0, 150], [1, 0.75]);
+    // Handed to CSS as a variable, so the layout can decide whether the
+    // header shrinks at all.
+    const headerScaleRef = useRef<HTMLDivElement>(null);
+    useMotionValueEvent(headerScale, 'change', (scale) => {
+      headerScaleRef.current?.style.setProperty('--header-scale', `${scale}`);
+    });
     const { hasScrolledToBottom, sentinelRef } =
       useScrolledToBottom(scrollAreaRef);
 
@@ -248,20 +326,19 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     return (
       <ScrollArea
         ref={scrollAreaRef}
-        className="size-full"
+        className={cx('size-full', slideContainerClasses(headerPlacement))}
         viewportClassName="flex flex-col gap-4 items-center size-full p-4"
       >
-        <div className="my-auto flex w-full flex-col items-center gap-4">
-          <div className="sticky top-0 z-10 shrink-0">
-            <motion.div
-              className="flex justify-center"
-              style={{
-                scale: headerScale,
-                transformOrigin: 'top center',
-              }}
-            >
-              {header}
-            </motion.div>
+        <div className={slideBodyClasses(headerPlacement)}>
+          <div className={headerColumnClasses(headerPlacement)}>
+            <div className={headerStickyClasses(headerPlacement)}>
+              <div
+                ref={headerScaleRef}
+                className={headerScaleClasses(headerPlacement)}
+              >
+                {header}
+              </div>
+            </div>
           </div>
           <Surface
             noContainer
@@ -296,10 +373,14 @@ const ProtectedSlide = forwardRef<
   SlideHandle,
   {
     header: ReactNode;
+    headerPlacement: HeaderPlacement;
     reason: 'pending' | 'locked';
     onReadyChange: (ready: boolean) => void;
   }
->(function ProtectedSlide({ header, reason, onReadyChange }, ref) {
+>(function ProtectedSlide(
+  { header, headerPlacement, reason, onReadyChange },
+  ref,
+) {
   const noticeRef = useRef<HTMLDivElement>(null);
   const { lockedNotice } = usePassphrase();
 
@@ -317,9 +398,14 @@ const ProtectedSlide = forwardRef<
   }));
 
   return (
-    <div className="flex size-full flex-col items-center gap-4 overflow-y-auto p-4">
-      <div className="my-auto flex w-full flex-col items-center gap-4">
-        <div className="flex shrink-0 justify-center">{header}</div>
+    <div
+      className={cx(
+        'flex size-full flex-col items-center gap-4 overflow-y-auto p-4',
+        slideContainerClasses(headerPlacement),
+      )}
+    >
+      <div className={slideBodyClasses(headerPlacement)}>
+        <div className={protectedHeaderClasses(headerPlacement)}>{header}</div>
         {reason !== 'pending' && (
           <Alert
             ref={noticeRef}
@@ -358,6 +444,7 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
         <ProtectedSlide
           ref={ref}
           header={props.header}
+          headerPlacement={props.headerPlacement}
           reason="pending"
           onReadyChange={props.onReadyChange}
         />
@@ -369,6 +456,7 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
         <ProtectedSlide
           ref={ref}
           header={props.header}
+          headerPlacement={props.headerPlacement}
           reason="locked"
           onReadyChange={props.onReadyChange}
         />
@@ -394,6 +482,7 @@ export default function SlidesForm({
   updateItem,
   moveForward,
   renderHeader,
+  headerPlacement = 'top',
   form,
   form_kind,
 }: SlidesFormProps & SlidesFormAnalyticsProps) {
@@ -593,6 +682,7 @@ export default function SlidesForm({
             form={form}
             subject={subject}
             header={renderHeader(currentItem)}
+            headerPlacement={headerPlacement}
             onUpdate={updateItem}
             onReadyChange={setSlideReady}
             onComplete={() => moveOn(activeIndex)}
