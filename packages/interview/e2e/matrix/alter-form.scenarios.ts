@@ -10,7 +10,7 @@ import { SlidesFormFixture } from '../fixtures/slides-form-fixture.js';
 import type { InterfaceScenarios } from './types.js';
 
 const HEADER_SELECTOR =
-  '[data-stage-section="form"] .sticky.top-0 button[aria-label]';
+  '[data-stage-section="form"] [data-slide-header] button[aria-label]';
 
 export const alterFormScenarios: InterfaceScenarios = {
   interfaceType: 'AlterForm',

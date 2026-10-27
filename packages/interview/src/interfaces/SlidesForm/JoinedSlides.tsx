@@ -546,6 +546,7 @@ export default function JoinedSlides({
         >
           <motion.div
             ref={pinRef}
+            data-slide-header
             className={cx(
               'tablet-portrait:size-32 relative size-28 shrink-0 origin-top',
               landscape && 'sticky top-1/2 bottom-1/2 z-10 -translate-y-1/2',

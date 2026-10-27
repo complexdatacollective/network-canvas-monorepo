@@ -13,7 +13,7 @@ import type { InterfaceScenarios } from './types.js';
 // violation here. These scenarios read the endpoints via nth(0)/nth(1) directly
 // and drive advancement/backwards navigation with the label-aware helpers below.
 const HEADER_SELECTOR =
-  '[data-stage-section="form"] .sticky.top-0 button[aria-label]';
+  '[data-stage-section="form"] [data-slide-header] button[aria-label]';
 
 /** Current edge slide's "from" endpoint label (header button nth 0). */
 function edgeFromLabel(page: Page): Promise<string | null> {
@@ -1260,7 +1260,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           /outline-node-2/,
         );
         const connector = page
-          .locator('[data-stage-section="form"] .sticky.top-0 .w-32')
+          .locator('[data-stage-section="form"] [data-slide-header] .w-32')
           .first();
         await expect(connector).toBeVisible();
         const edgeColor = await connector.evaluate((el) =>

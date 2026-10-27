@@ -292,7 +292,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
         viewportClassName="flex flex-col gap-4 items-center size-full p-4"
       >
         <div className="my-auto flex w-full flex-col items-center gap-4">
-          <div className="sticky top-0 z-10 shrink-0">
+          <div data-slide-header className="sticky top-0 z-10 shrink-0">
             <motion.div
               className="flex justify-center"
               style={{
