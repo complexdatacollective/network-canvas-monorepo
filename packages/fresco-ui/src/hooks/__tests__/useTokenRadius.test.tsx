@@ -16,7 +16,13 @@ const stubClassRadius = (classRadius: string) =>
       }) as CSSStyleDeclaration,
   );
 
-function Probe({ inlineRadius }: { inlineRadius?: string }) {
+function Probe({
+  inlineRadius,
+  className = 'rounded-full',
+}: {
+  inlineRadius?: string;
+  className?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const radius = useTokenRadius(ref);
 
@@ -24,7 +30,7 @@ function Probe({ inlineRadius }: { inlineRadius?: string }) {
     <div
       ref={ref}
       data-testid="probe"
-      className="rounded-full"
+      className={className}
       style={{ borderRadius: inlineRadius ?? radius }}
     >
       {radius === undefined ? 'none' : String(radius)}
@@ -51,6 +57,24 @@ describe('useTokenRadius', () => {
 
     expect(screen.getByTestId('probe')).toHaveTextContent('14');
     expect(screen.getByTestId('probe').style.borderRadius).toBe('50% 20%');
+  });
+
+  it('reads again when the class changes on an element that keeps its size', () => {
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(
+      (element) =>
+        ({
+          borderTopLeftRadius:
+            (element as HTMLElement).style.borderTopLeftRadius ||
+            (element.classList.contains('rounded-sm') ? '14px' : '9999px'),
+        }) as CSSStyleDeclaration,
+    );
+    const { rerender } = render(<Probe className="rounded-full" />);
+    expect(screen.getByTestId('probe')).toHaveTextContent('9999');
+
+    rerender(<Probe className="rounded-sm" />);
+
+    expect(screen.getByTestId('probe')).toHaveTextContent('14');
+    expect(screen.getByTestId('probe').style.borderRadius).toBe('14px');
   });
 
   it('gives nothing for a radius that is not in pixels', () => {
