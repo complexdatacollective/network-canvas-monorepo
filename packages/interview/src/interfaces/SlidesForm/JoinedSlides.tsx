@@ -173,6 +173,8 @@ const answersVariants: Variants = {
 type Frame = {
   /** The stage is wider than it is tall: the person sits beside the form. */
   landscape: boolean;
+  /** The form is taller than the stage, so it scrolls. */
+  overflows: boolean;
   rtl: boolean;
   /** The person's width, in px. */
   size: number;
@@ -184,25 +186,30 @@ type Frame = {
  */
 function useFrame(
   scrollAreaRef: RefObject<HTMLElement | null>,
+  bodyRef: RefObject<HTMLElement | null>,
   pinRef: RefObject<HTMLElement | null>,
 ) {
   const [frame, setFrame] = useState<Frame>({
     landscape: true,
+    overflows: false,
     rtl: false,
     size: 0,
   });
   useLayoutEffect(() => {
     const viewport = scrollAreaRef.current;
+    const body = bodyRef.current;
     const pin = pinRef.current;
-    if (!viewport || !pin) return undefined;
+    if (!viewport || !body || !pin) return undefined;
     const measure = () => {
       const next = {
         landscape: viewport.clientWidth > viewport.clientHeight,
+        overflows: viewport.scrollHeight > viewport.clientHeight + 1,
         rtl: getComputedStyle(viewport).direction === 'rtl',
         size: pin.offsetWidth,
       };
       setFrame((known) =>
         known.landscape === next.landscape &&
+        known.overflows === next.overflows &&
         known.rtl === next.rtl &&
         known.size === next.size
           ? known
@@ -212,9 +219,10 @@ function useFrame(
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(viewport);
+    observer.observe(body);
     observer.observe(pin);
     return () => observer.disconnect();
-  }, [scrollAreaRef, pinRef]);
+  }, [scrollAreaRef, bodyRef, pinRef]);
   return frame;
 }
 
@@ -367,7 +375,7 @@ type JoinedSlidesProps = {
     scrollAreaRef: RefObject<HTMLElement | null>,
     live: boolean,
   ) => ReactNode;
-  /** The change to the person shown has got far enough to be answered. */
+  /** The person shown, first or changed to, can now be answered. */
   onSettled: () => void;
 };
 
@@ -377,10 +385,11 @@ type JoinedSlidesProps = {
  * the answers change.
  *
  * While the stage is wider than it is tall the person sits beside the form,
- * on the reading-start side, in the middle of the stage's height; otherwise
- * above it, in the middle of its width. The person stays in view as the
- * form scrolls, and moves along the edge they are joined to, in the
- * direction of the Next button.
+ * on the reading-start side, in the middle of the form's height (of the
+ * stage's, while the form is too tall to fit); otherwise above it, in the
+ * middle of its width. The person stays in view as the form scrolls, and
+ * moves along the edge they are joined to, in the direction of the Next
+ * button.
  */
 export default function JoinedSlides({
   index,
@@ -391,7 +400,16 @@ export default function JoinedSlides({
 }: JoinedSlidesProps) {
   const scrollAreaRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
-  const { landscape, rtl, size } = useFrame(scrollAreaRef, pinRef);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const { landscape, overflows, rtl, size } = useFrame(
+    scrollAreaRef,
+    bodyRef,
+    pinRef,
+  );
+  // Beside a form that scrolls, the person holds the middle of the stage
+  // (within the form's height) rather than of the form.
+  const holdMiddle = landscape && overflows;
+  const middle = `calc(50% - ${size / 2}px)`;
 
   // Skipped outright by automated hosts; reduced to fades for people who ask
   // for less motion.
@@ -408,8 +426,11 @@ export default function JoinedSlides({
     reduced,
   };
 
-  // The answers for a new person can be given once they start to appear.
-  const [liveIndex, setLiveIndex] = useState(index);
+  // The answers for a person can be given once they start to appear, the
+  // first person's included.
+  const [liveIndex, setLiveIndex] = useState<number | null>(
+    skip || reduced ? index : null,
+  );
   const live = liveIndex === index;
   const settled = useRef(onSettled);
   useLayoutEffect(() => {
@@ -427,16 +448,28 @@ export default function JoinedSlides({
   const neck = useTransform(() => neckPath(join.get(), shape.get()));
 
   useEffect(() => {
-    if (skip || reduced) return undefined;
-    const { grab } = MOTION;
+    if (skip || reduced) {
+      settled.current();
+      return undefined;
+    }
+    const { grab, answersIn } = MOTION;
+    const first = index;
     join.set(0);
     const controls = animate(join, 1, {
       delay: arrival(grab.delay, true),
       duration: grab.duration,
       ease: grab.ease,
     });
+    const timer = window.setTimeout(
+      () => {
+        setLiveIndex((known) => known ?? first);
+        settled.current();
+      },
+      arrival(answersIn.delay, true) * 1000,
+    );
     return () => {
       controls.stop();
+      window.clearTimeout(timer);
       join.set(1);
     };
     // Once, as the form appears.
@@ -521,6 +554,7 @@ export default function JoinedSlides({
       viewportClassName="flex flex-col items-center size-full p-4"
     >
       <div
+        ref={bodyRef}
         className={cx(
           'my-auto w-full',
           // Beside the form, the outer columns share the leftover width, so
@@ -549,9 +583,13 @@ export default function JoinedSlides({
             data-slide-header
             className={cx(
               'tablet-portrait:size-32 relative size-28 shrink-0 origin-top',
-              landscape && 'sticky top-1/2 bottom-1/2 z-10 -translate-y-1/2',
+              holdMiddle && 'sticky z-10',
             )}
-            style={{ scale: landscape ? 1 : shrink }}
+            style={{
+              scale: landscape ? 1 : shrink,
+              top: holdMiddle ? middle : undefined,
+              bottom: holdMiddle ? middle : undefined,
+            }}
           >
             <motion.svg
               aria-hidden
@@ -566,7 +604,9 @@ export default function JoinedSlides({
             <AnimatePresence custom={change}>
               <motion.div
                 key={index}
-                className="absolute inset-0 flex items-center justify-center"
+                // The column lets presses through to the form; the person
+                // takes them, to reveal a name too long to show in full.
+                className="pointer-events-auto absolute inset-0 flex items-center justify-center"
                 custom={change}
                 variants={personVariants}
                 initial="enter"

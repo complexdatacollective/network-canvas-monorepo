@@ -487,10 +487,10 @@ export default function SlidesForm({
   // on by itself (or the other way round) would otherwise save and pass the
   // slide after it too.
   const navigating = useRef(false);
-  // With the header joined to the form, the change from one item to the
-  // next runs on its own timeline; Next and Back wait for it to reach the
-  // point where the new answers can be given.
-  const changing = useRef(false);
+  // With the header joined to the form, the arrival of the first item and
+  // each change from one item to the next run on their own timeline; Next
+  // and Back wait for it to reach the point where the answers can be given.
+  const changing = useRef(headerPlacement === 'start');
   const movingOnByItself = useRef(false);
   // The slide a completed form moved on to, which takes the focus: the
   // answer that had it left with the slide before.

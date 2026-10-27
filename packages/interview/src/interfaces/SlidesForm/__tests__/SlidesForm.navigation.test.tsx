@@ -6,8 +6,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { MotionGlobalConfig } from 'motion/react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
@@ -810,7 +811,11 @@ describe('SlidesForm moving on from a complete form', () => {
     fields: [{ variable: 'closeness' as never, prompt: { en: 'How close?' } }],
   };
 
-  function renderClosenessSlides(nodes: NcNode[], saveTakes = 0) {
+  function renderClosenessSlides(
+    nodes: NcNode[],
+    saveTakes = 0,
+    headerPlacement: 'top' | 'start' = 'top',
+  ) {
     const store = configureStore({
       reducer: { session, protocol, ui },
       preloadedState: {
@@ -892,6 +897,7 @@ describe('SlidesForm moving on from a complete form', () => {
                 {item[entityPrimaryKeyProperty]}
               </span>
             )}
+            headerPlacement={headerPlacement}
             form_kind="alter"
           />
         </StageMetadataProvider>
@@ -979,5 +985,45 @@ describe('SlidesForm moving on from a complete form', () => {
 
     expect(screen.getByTestId('slide-header')).toHaveTextContent('person-1');
     expect(updateItem).not.toHaveBeenCalled();
+  });
+
+  it('waits for the first person to arrive before Next moves on', async () => {
+    // Joined to the form, the first person's answers appear 400 ms in. Tests
+    // skip animation, which makes the arrival instant.
+    const skipped = MotionGlobalConfig.skipAnimations;
+    MotionGlobalConfig.skipAnimations = false;
+    onTestFinished(() => {
+      MotionGlobalConfig.skipAnimations = skipped;
+    });
+    const { updateItem, onStepChange, next } = renderClosenessSlides(
+      [
+        {
+          ...unanswered('person-1'),
+          [entityAttributesProperty]: { closeness: 1 },
+        },
+        unanswered('person-2'),
+      ],
+      0,
+      'start',
+    );
+
+    await act(async () => {
+      await next();
+    });
+    expect(screen.getAllByTestId('slide-header').at(-1)).toHaveTextContent(
+      'person-1',
+    );
+    expect(updateItem).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      await next();
+    });
+    await waitFor(() =>
+      expect(screen.getAllByTestId('slide-header').at(-1)).toHaveTextContent(
+        'person-2',
+      ),
+    );
+    expect(onStepChange).not.toHaveBeenCalled();
   });
 });
