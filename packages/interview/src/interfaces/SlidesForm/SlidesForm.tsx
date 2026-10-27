@@ -1,14 +1,9 @@
 'use client';
-import {
-  AnimatePresence,
-  motion,
-  useMotionValueEvent,
-  useScroll,
-  useTransform,
-} from 'motion/react';
+import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
 import {
   forwardRef,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useEffect,
@@ -40,7 +35,6 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
   entityPrimaryKeyProperty,
@@ -71,6 +65,7 @@ import discardChangesDialog, {
   failedCheckReason,
 } from '../discardChangesDialog';
 import { interfaceMessages } from '../messages';
+import JoinedSlides from './JoinedSlides';
 
 type SlidesFormAnalyticsProps = {
   form_kind: FormKind;
@@ -91,69 +86,14 @@ type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
   moveForward: () => void | Promise<void>;
   renderHeader: (item: T) => ReactNode;
   /**
-   * Where the header sits relative to the form. `start` puts it beside the
-   * form, on the reading-start side, while the slide is wider than it is
-   * tall, and above the form otherwise.
+   * Where the header sits. `top` (the default) shows it above the form, and
+   * each item slides in as a whole. `start` joins it to the form, beside it
+   * on the reading-start side when the stage is wider than it is tall, and
+   * moves the header and the answers separately from one item to the next
+   * (see JoinedSlides).
    */
-  headerPlacement?: HeaderPlacement;
+  headerPlacement?: 'top' | 'start';
 };
-
-type HeaderPlacement = 'top' | 'start';
-
-// The slide is the size container, so the placement follows the space the
-// stage actually has rather than the viewport. A flex row follows the
-// document direction, so `start` is the left in LTR and the right in RTL.
-const slideContainerClasses = (placement: HeaderPlacement) =>
-  cx(placement === 'start' && '@container-size');
-
-// Beside the form, the slide is a three-column grid whose outer columns
-// share what is left over equally, so the form stays centred and the header
-// sits against its start edge. When the header no longer fits in its share,
-// the first column keeps the header's width and the form moves along.
-const slideBodyClasses = (placement: HeaderPlacement) =>
-  cx(
-    'my-auto flex w-full flex-col items-center',
-    placement === 'start'
-      ? 'gap-2 [@container_(aspect-ratio>1)]:grid [@container_(aspect-ratio>1)]:grid-cols-[1fr_minmax(auto,42rem)_1fr] [@container_(aspect-ratio>1)]:gap-x-5'
-      : 'gap-4',
-  );
-
-// Above the form, the column itself sticks to the top of the scroll area.
-// It is the form's previous sibling, which is where QuestionFlow looks for a
-// stuck header that a question must not be scrolled in under.
-//
-// Beside the form, the column is static and runs the form's full height,
-// with the header centred in it; the header inside sticks to the middle of
-// the visible area while a long form scrolls past. Setting both `top` and
-// `bottom` to 50% over-constrains the sticky box, so the browser holds its
-// top edge on the midline; the translate then centres it there. Being
-// nested, it is not taken for a header above the questions.
-const headerColumnClasses = (placement: HeaderPlacement) =>
-  cx(
-    'sticky top-0 z-10 shrink-0',
-    placement === 'start' &&
-      '[@container_(aspect-ratio>1)]:static [@container_(aspect-ratio>1)]:flex [@container_(aspect-ratio>1)]:flex-col [@container_(aspect-ratio>1)]:justify-center [@container_(aspect-ratio>1)]:self-stretch [@container_(aspect-ratio>1)]:justify-self-end',
-  );
-
-const headerStickyClasses = (placement: HeaderPlacement) =>
-  cx(
-    placement === 'start' &&
-      '[@container_(aspect-ratio>1)]:sticky [@container_(aspect-ratio>1)]:top-1/2 [@container_(aspect-ratio>1)]:bottom-1/2 [@container_(aspect-ratio>1)]:z-10 [@container_(aspect-ratio>1)]:-translate-y-1/2',
-  );
-
-// Above the form, the header shrinks as the form scrolls under it. Beside
-// the form there is room for it, so it keeps its size.
-const headerScaleClasses = (placement: HeaderPlacement) =>
-  cx(
-    'flex origin-top scale-(--header-scale) justify-center',
-    placement === 'start' && '[@container_(aspect-ratio>1)]:scale-100',
-  );
-
-const protectedHeaderClasses = (placement: HeaderPlacement) =>
-  cx(
-    'flex shrink-0 justify-center',
-    placement === 'start' && '[@container_(aspect-ratio>1)]:justify-self-end',
-  );
 
 const slideTransition = {
   type: 'spring' as const,
@@ -186,7 +126,6 @@ type SlideContentProps = {
   form: TitlelessForm;
   subject: Subject;
   header: ReactNode;
-  headerPlacement: HeaderPlacement;
   submitButton: ReactNode;
   onUpdate: SlidesFormProps['updateItem'];
   onReadyChange: (ready: boolean) => void;
@@ -195,6 +134,12 @@ type SlideContentProps = {
   /** The slide was reached by the one before it moving on by itself. */
   focusFirst: boolean;
   form_kind: FormKind;
+  /**
+   * Given when the slide's answers are laid out inside JoinedSlides, which
+   * owns the scroll area, the header and the card. The slide then renders
+   * the form alone, and reads how far it has been scrolled from here.
+   */
+  scrollAreaRef?: RefObject<HTMLElement | null>;
 };
 
 type SlideFormProps = SlideContentProps & {
@@ -209,13 +154,13 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       form,
       subject,
       header,
-      headerPlacement,
       submitButton,
       onUpdate,
       onReadyChange,
       onComplete,
       focusFirst,
       form_kind,
+      scrollAreaRef: joinedScrollAreaRef,
       initialValues,
       unavailableVariables,
     },
@@ -268,15 +213,10 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       formErrorsRef.current = formErrors;
     }, [formErrors]);
 
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const ownScrollAreaRef = useRef<HTMLElement>(null);
+    const scrollAreaRef = joinedScrollAreaRef ?? ownScrollAreaRef;
     const { scrollY } = useScroll({ container: scrollAreaRef });
     const headerScale = useTransform(scrollY, [0, 150], [1, 0.75]);
-    // Handed to CSS as a variable, so the layout can decide whether the
-    // header shrinks at all.
-    const headerScaleRef = useRef<HTMLDivElement>(null);
-    useMotionValueEvent(headerScale, 'change', (scale) => {
-      headerScaleRef.current?.style.setProperty('--header-scale', `${scale}`);
-    });
     const { hasScrolledToBottom, sentinelRef } =
       useScrolledToBottom(scrollAreaRef);
 
@@ -323,22 +263,45 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
         ),
     }));
 
+    const answers = (
+      <FormWithoutProvider
+        onSubmit={handleSubmit}
+        className="[&_.form-field-container]:break-inside-avoid"
+      >
+        {/* Wrap fields so the last field's :last-child match isn't broken by the hidden submit button. */}
+        <QuestionFlow onComplete={onComplete} focusFirst={focusFirst}>
+          {fieldComponents}
+        </QuestionFlow>
+        {submitButton}
+      </FormWithoutProvider>
+    );
+
+    if (joinedScrollAreaRef) {
+      return (
+        <>
+          {answers}
+          <div ref={sentinelRef} aria-hidden />
+        </>
+      );
+    }
+
     return (
       <ScrollArea
-        ref={scrollAreaRef}
-        className={cx('size-full', slideContainerClasses(headerPlacement))}
+        ref={ownScrollAreaRef}
+        className="size-full"
         viewportClassName="flex flex-col gap-4 items-center size-full p-4"
       >
-        <div className={slideBodyClasses(headerPlacement)}>
-          <div className={headerColumnClasses(headerPlacement)}>
-            <div className={headerStickyClasses(headerPlacement)}>
-              <div
-                ref={headerScaleRef}
-                className={headerScaleClasses(headerPlacement)}
-              >
-                {header}
-              </div>
-            </div>
+        <div className="my-auto flex w-full flex-col items-center gap-4">
+          <div className="sticky top-0 z-10 shrink-0">
+            <motion.div
+              className="flex justify-center"
+              style={{
+                scale: headerScale,
+                transformOrigin: 'top center',
+              }}
+            >
+              {header}
+            </motion.div>
           </div>
           <Surface
             noContainer
@@ -346,16 +309,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
             spacing="lg"
             shadow="lg"
           >
-            <FormWithoutProvider
-              onSubmit={handleSubmit}
-              className="[&_.form-field-container]:break-inside-avoid"
-            >
-              {/* Wrap fields so the last field's :last-child match isn't broken by the hidden submit button. */}
-              <QuestionFlow onComplete={onComplete} focusFirst={focusFirst}>
-                {fieldComponents}
-              </QuestionFlow>
-              {submitButton}
-            </FormWithoutProvider>
+            {answers}
           </Surface>
         </div>
         <div ref={sentinelRef} aria-hidden />
@@ -373,14 +327,12 @@ const ProtectedSlide = forwardRef<
   SlideHandle,
   {
     header: ReactNode;
-    headerPlacement: HeaderPlacement;
     reason: 'pending' | 'locked';
     onReadyChange: (ready: boolean) => void;
+    /** Inside JoinedSlides, which shows the header and the card. */
+    joined: boolean;
   }
->(function ProtectedSlide(
-  { header, headerPlacement, reason, onReadyChange },
-  ref,
-) {
+>(function ProtectedSlide({ header, reason, onReadyChange, joined }, ref) {
   const noticeRef = useRef<HTMLDivElement>(null);
   const { lockedNotice } = usePassphrase();
 
@@ -397,27 +349,26 @@ const ProtectedSlide = forwardRef<
     getFieldErrors: () => [],
   }));
 
-  return (
-    <div
-      className={cx(
-        'flex size-full flex-col items-center gap-4 overflow-y-auto p-4',
-        slideContainerClasses(headerPlacement),
-      )}
+  const notice = reason !== 'pending' && (
+    <Alert
+      ref={noticeRef}
+      tabIndex={-1}
+      variant="info"
+      className="tablet-portrait:min-w-lg focusable max-w-2xl"
     >
-      <div className={slideBodyClasses(headerPlacement)}>
-        <div className={protectedHeaderClasses(headerPlacement)}>{header}</div>
-        {reason !== 'pending' && (
-          <Alert
-            ref={noticeRef}
-            tabIndex={-1}
-            variant="info"
-            className="tablet-portrait:min-w-lg focusable max-w-2xl"
-          >
-            <AlertDescription>
-              <AppMessage message={lockedNotice} />
-            </AlertDescription>
-          </Alert>
-        )}
+      <AlertDescription>
+        <AppMessage message={lockedNotice} />
+      </AlertDescription>
+    </Alert>
+  );
+
+  if (joined) return notice || null;
+
+  return (
+    <div className="flex size-full flex-col items-center gap-4 overflow-y-auto p-4">
+      <div className="my-auto flex w-full flex-col items-center gap-4">
+        <div className="flex shrink-0 justify-center">{header}</div>
+        {notice}
       </div>
     </div>
   );
@@ -444,7 +395,7 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
         <ProtectedSlide
           ref={ref}
           header={props.header}
-          headerPlacement={props.headerPlacement}
+          joined={props.scrollAreaRef !== undefined}
           reason="pending"
           onReadyChange={props.onReadyChange}
         />
@@ -456,7 +407,7 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
         <ProtectedSlide
           ref={ref}
           header={props.header}
-          headerPlacement={props.headerPlacement}
+          joined={props.scrollAreaRef !== undefined}
           reason="locked"
           onReadyChange={props.onReadyChange}
         />
@@ -477,7 +428,7 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
 );
 
 export default function SlidesForm({
-  items,
+  items = [],
   subject,
   updateItem,
   moveForward,
@@ -536,6 +487,10 @@ export default function SlidesForm({
   // on by itself (or the other way round) would otherwise save and pass the
   // slide after it too.
   const navigating = useRef(false);
+  // With the header joined to the form, the change from one item to the
+  // next runs on its own timeline; Next and Back wait for it to reach the
+  // point where the new answers can be given.
+  const changing = useRef(false);
   const movingOnByItself = useRef(false);
   // The slide a completed form moved on to, which takes the focus: the
   // answer that had it left with the slide before.
@@ -548,7 +503,8 @@ export default function SlidesForm({
 
   const moveOn = (index: number) => {
     // A slide still leaving after Next was pressed does not move on again.
-    if (navigating.current || index !== shownIndex.current) return;
+    if (navigating.current || changing.current || index !== shownIndex.current)
+      return;
     movingOnByItself.current = true;
     void Promise.resolve(moveForward()).finally(() => {
       movingOnByItself.current = false;
@@ -556,7 +512,7 @@ export default function SlidesForm({
   };
 
   const beforeNext: BeforeNextFunction = async (direction, intent) => {
-    if (navigating.current) return false;
+    if (navigating.current || changing.current) return false;
     navigating.current = true;
     try {
       return await moveSlides(direction, intent);
@@ -621,6 +577,7 @@ export default function SlidesForm({
       }
 
       setFocusedSlide(null);
+      changing.current = headerPlacement === 'start';
       setActiveIndex((prev) => prev - 1);
       return false;
     }
@@ -645,6 +602,7 @@ export default function SlidesForm({
     }
 
     setFocusedSlide(movingOnByItself.current ? activeIndex + 1 : null);
+    changing.current = headerPlacement === 'start';
     setActiveIndex((prev) => prev + 1);
     return false;
   };
@@ -662,6 +620,63 @@ export default function SlidesForm({
     return null;
   }
 
+  const renderSlide = (
+    index: number,
+    joined?: {
+      scrollAreaRef: RefObject<HTMLElement | null>;
+      live: boolean;
+    },
+  ) => {
+    const item = items[index];
+    if (!item) return null;
+    return (
+      <SlideContent
+        ref={slideCallbackRef}
+        item={item}
+        form={form}
+        subject={subject}
+        header={renderHeader(item)}
+        onUpdate={updateItem}
+        onReadyChange={setSlideReady}
+        onComplete={() => moveOn(index)}
+        // Joined, the answers take the focus once they can be given.
+        focusFirst={focusedSlide === index && (joined?.live ?? true)}
+        submitButton={
+          <button
+            type="submit"
+            key="submit"
+            aria-label={intl.formatMessage(interfaceMessages.submit)}
+            hidden
+            onClick={handleEnterSubmit}
+          />
+        }
+        form_kind={form_kind}
+        scrollAreaRef={joined?.scrollAreaRef}
+      />
+    );
+  };
+
+  if (headerPlacement === 'start') {
+    return (
+      <div className="flex w-full flex-auto overflow-hidden">
+        <JoinedSlides
+          index={activeIndex}
+          direction={pendingDirection}
+          renderPerson={(index) => {
+            const item = items[index];
+            return item ? renderHeader(item) : null;
+          }}
+          renderAnswers={(index, scrollAreaRef, live) =>
+            renderSlide(index, { scrollAreaRef, live })
+          }
+          onSettled={() => {
+            changing.current = false;
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex w-full flex-auto overflow-hidden">
       <AnimatePresence mode="popLayout">
@@ -676,28 +691,7 @@ export default function SlidesForm({
           }}
           transition={slideTransition}
         >
-          <SlideContent
-            ref={slideCallbackRef}
-            item={currentItem}
-            form={form}
-            subject={subject}
-            header={renderHeader(currentItem)}
-            headerPlacement={headerPlacement}
-            onUpdate={updateItem}
-            onReadyChange={setSlideReady}
-            onComplete={() => moveOn(activeIndex)}
-            focusFirst={focusedSlide === activeIndex}
-            submitButton={
-              <button
-                type="submit"
-                key="submit"
-                aria-label={intl.formatMessage(interfaceMessages.submit)}
-                hidden
-                onClick={handleEnterSubmit}
-              />
-            }
-            form_kind={form_kind}
-          />
+          {renderSlide(activeIndex)}
         </motion.div>
       </AnimatePresence>
     </div>
