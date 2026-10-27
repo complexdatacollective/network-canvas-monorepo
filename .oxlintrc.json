@@ -49,6 +49,7 @@
         "ignoreRestSiblings": true
       }
     ],
+    "typescript/consistent-return": "error",
     "typescript/no-explicit-any": "warn",
     "typescript/no-non-null-assertion": "off",
     "typescript/no-unnecessary-type-assertion": "off",
@@ -67,6 +68,7 @@
     "typescript/restrict-template-expressions": "warn",
     "typescript/no-implied-eval": "warn",
     "typescript/no-base-to-string": "warn",
+    "unicorn/consistent-function-scoping": "error",
     "unicorn/no-thenable": "warn",
     "unicorn/require-post-message-target-origin": "off",
 
@@ -153,6 +155,18 @@
         "**/e2e/**"
       ],
       "rules": { "typescript/no-floating-promises": "off" }
+    },
+    {
+      // The Studio server is written as Effect generators, which end a
+      // failing path with `return yield* new SomeError()` (Effect's own
+      // guidance, so TypeScript knows execution stops there) and let the
+      // success path fall off the end. consistent-return reads that as a
+      // function returning a value on one path and nothing on another, and
+      // the only rewrites it accepts return the last effect's value or add
+      // dead code. TypeScript still checks every path of a function with a
+      // declared return type.
+      "files": ["apps/studio/api/**"],
+      "rules": { "typescript/consistent-return": "off" }
     },
     {
       // Message-descriptor hygiene, wherever descriptors are authored. A
