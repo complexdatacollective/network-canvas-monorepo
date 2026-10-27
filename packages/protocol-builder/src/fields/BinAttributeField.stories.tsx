@@ -19,7 +19,7 @@ const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
 const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 /** What an Ordinal Bin can draw before the bins stop being readable. */
-const ORDINAL_BIN_LIMIT = 5;
+const ORDINAL_BIN_LIMIT = 6;
 
 /**
  * Where an Ordinal Bin prompt keeps the attribute whose ordered values are the
@@ -62,7 +62,7 @@ function TheScale({ committed }: Readonly<{ committed: string | undefined }>) {
       requiredMessage={REFUSAL}
       createLabel="Create a new attribute"
       optionLimit={ORDINAL_BIN_LIMIT}
-      optionLimitDescription="This interface is designed for up to five bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality."
+      optionLimitDescription="This interface is designed for up to six bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality."
     />
   );
 }
