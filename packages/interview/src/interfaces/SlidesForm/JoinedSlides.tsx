@@ -20,7 +20,10 @@ import {
 } from 'react';
 
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
-import Surface from '@codaco/fresco-ui/layout/Surface';
+import Surface, {
+  useSurfaceDepth,
+  useSurfaceSeries,
+} from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -252,6 +255,27 @@ const joinShape = (size: number, landscape: boolean): JoinShape => {
 const NO_NECK = 'M0 0';
 
 /**
+ * The join takes the card's colour, which comes from how deeply the card is
+ * nested among Surfaces, by the same levels Surface uses.
+ */
+const JOIN_FILL = {
+  default: [
+    'fill-surface',
+    'fill-surface-1',
+    'fill-surface-2',
+    'fill-surface-3',
+    'fill-surface-4',
+  ],
+  accent: [
+    'fill-surface-accent',
+    'fill-surface-accent-1',
+    'fill-surface-accent-2',
+    'fill-surface-accent-3',
+    'fill-surface-accent-4',
+  ],
+} as const;
+
+/**
  * The neck between the disc and the card's edge, centred on the person with
  * the card's edge across +x at `reach`. Each side is a fillet: an arc
  * touching both the disc and the edge, whose radius is found from the
@@ -400,6 +424,11 @@ export default function JoinedSlides({
 }: JoinedSlidesProps) {
   const scrollAreaRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
+  // The card below is rendered at this depth and series.
+  const surfaceDepth = useSurfaceDepth();
+  const surfaceSeries = useSurfaceSeries();
+  const joinFill =
+    JOIN_FILL[surfaceSeries][Math.min(Math.max(surfaceDepth, 0), 4)];
   const bodyRef = useRef<HTMLDivElement>(null);
   const { landscape, overflows, rtl, size } = useFrame(
     scrollAreaRef,
@@ -582,8 +611,10 @@ export default function JoinedSlides({
             ref={pinRef}
             data-slide-header
             className={cx(
-              'tablet-portrait:size-32 relative size-28 shrink-0 origin-top',
-              holdMiddle && 'sticky z-10',
+              // Above the card, so the join covers the card's shadow where
+              // they meet.
+              'tablet-portrait:size-32 relative z-10 size-28 shrink-0 origin-top',
+              holdMiddle && 'sticky',
             )}
             style={{
               scale: landscape ? 1 : shrink,
@@ -593,7 +624,10 @@ export default function JoinedSlides({
           >
             <motion.svg
               aria-hidden
-              className="fill-surface absolute inset-0 size-full overflow-visible"
+              className={cx(
+                'absolute inset-0 size-full overflow-visible',
+                joinFill,
+              )}
               style={{ opacity: landscape ? 1 : joinFade }}
             >
               <g transform={`translate(${size / 2} ${size / 2}) ${facing}`}>
