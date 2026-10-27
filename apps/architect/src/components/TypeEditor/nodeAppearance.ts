@@ -3,11 +3,10 @@ import {
   NodeColors,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-
-const NODE_SHAPES: readonly NodeShape[] = ['circle', 'square', 'diamond'];
+import { NodeShapes } from '@codaco/protocol-validation';
 
 export const isNodeShape = (value: unknown): value is NodeShape =>
-  NODE_SHAPES.some((shape) => shape === value);
+  NodeShapes.some((shape) => shape === value);
 
 export const isNodeColorSequence = (
   value: unknown,
