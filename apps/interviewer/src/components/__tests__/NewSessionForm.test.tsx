@@ -15,8 +15,6 @@ const createSession = vi.fn();
 const getSettings = vi.fn();
 const requireFreshUnlock = vi.fn();
 const setAuthorizedInterviewId = vi.fn();
-const settleLock = vi.fn<() => Promise<boolean>>();
-let lockSettled = true;
 let online = true;
 let bundledInterviewer8: { version: string; path: '/v8/' } | null = null;
 let interviewer8Offline: 'not-bundled' | 'checking' | 'ready' | 'not-ready' =
@@ -34,12 +32,6 @@ vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
 vi.mock('~/lib/db/api', () => ({
   createSession: (...args: unknown[]) => createSession(...args),
   getSettings: () => getSettings(),
-}));
-vi.mock('../useSettleLockForInterviewer8', () => ({
-  useSettleLockForInterviewer8: () => ({
-    settled: lockSettled,
-    settleLock: () => settleLock(),
-  }),
 }));
 vi.mock('~/lib/legacyInterviewer', async (importOriginal) => ({
   ...(await importOriginal<typeof import('~/lib/legacyInterviewer')>()),
@@ -196,9 +188,7 @@ describe('NewSessionForm for a schema 8 protocol', () => {
     interviewer8Offline = 'ready';
     getSettings.mockResolvedValue({ requireUnlockOnEnter: true });
     createSession.mockResolvedValue(session);
-    settleLock.mockResolvedValue(true);
     requireFreshUnlock.mockResolvedValue({ ok: true });
-    lockSettled = true;
   });
 
   it('runs the same enter step-up as any interview, once, and authorizes the entry', async () => {
@@ -216,7 +206,6 @@ describe('NewSessionForm for a schema 8 protocol', () => {
     await user.click(screen.getByRole('button', { name: 'Start interview' }));
 
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(session));
-    expect(settleLock).toHaveBeenCalledTimes(1);
     // The one unlock: the interview route passes it on to Interviewer 8.
     expect(requireFreshUnlock).toHaveBeenCalledTimes(1);
     expect(setAuthorizedInterviewId).toHaveBeenCalledWith(session.id);
@@ -237,39 +226,6 @@ describe('NewSessionForm for a schema 8 protocol', () => {
     await user.click(screen.getByRole('button', { name: 'Start interview' }));
 
     await waitFor(() => expect(requireFreshUnlock).toHaveBeenCalledTimes(1));
-    expect(createSession).not.toHaveBeenCalled();
-  });
-
-  it('takes choosing the lock at set-up as the enter step, asking nothing more', async () => {
-    lockSettled = false;
-    const onCreated = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <NewSessionForm
-        protocol={makeSchema8Protocol([])}
-        onCreated={onCreated}
-        onCancel={vi.fn()}
-      />,
-    );
-
-    await user.type(screen.getByLabelText(/Case ID/), 'P01');
-    await user.click(screen.getByRole('button', { name: 'Start interview' }));
-
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(session));
-    expect(settleLock).toHaveBeenCalledTimes(1);
-    expect(requireFreshUnlock).not.toHaveBeenCalled();
-    expect(setAuthorizedInterviewId).toHaveBeenCalledWith(session.id);
-  });
-
-  it('creates nothing when the researcher leaves lock set-up', async () => {
-    settleLock.mockResolvedValue(false);
-    const user = userEvent.setup();
-    render(<Harness protocol={makeSchema8Protocol([])} />);
-
-    await user.type(screen.getByLabelText(/Case ID/), 'P01');
-    await user.click(screen.getByRole('button', { name: 'Start interview' }));
-
-    await waitFor(() => expect(settleLock).toHaveBeenCalledTimes(1));
     expect(createSession).not.toHaveBeenCalled();
   });
 
