@@ -21,6 +21,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useMergeRefs } from 'react-best-merge-refs';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import {
@@ -653,6 +654,13 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   ref: Ref<HTMLLIElement>,
 ) {
   const dragControls = useDragControls();
+  // A row morphs into the dialog that edits it through its `layoutId`. Motion
+  // mixes the two ends' radii and leaves the row with the result, so the row
+  // must hold its `rounded-*` value as a number as well, or the morph runs
+  // from (and settles on) square corners.
+  const itemRef = useRef<HTMLLIElement>(null);
+  const itemRadius = useTokenRadius(itemRef);
+  const itemRefs = useMergeRefs({ itemRef, ref });
   // A removed row stays mounted for as long as its exit animation runs. It is
   // not part of the list any more: leaving it in the accessibility tree and in
   // the tab ring means "the row at this index", "the last row" and every query
@@ -699,7 +707,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       as={Reorder.Item}
       noContainer
       series="accent"
-      ref={ref}
+      ref={itemRefs}
+      style={{ borderRadius: itemRadius }}
       // Motion 14.6 makes every Reorder.Item a tab stop for its own
       // grab-and-move keys. Items reorder through their drag handle, so the
       // item itself stays out of the tab order.
