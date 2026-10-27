@@ -44,8 +44,6 @@ type PersonNodeProps = {
   /** They are shown unavailable but stay reachable (a nomination prompt
    * that cannot apply to them): they are drawn as disabled. */
   unavailable?: boolean;
-  /** Their add menu is showing (focus or the mouse is on them). */
-  menuOpen: boolean;
   /** One of the two people being connected with the connect tool. */
   linking: boolean;
   /** Adopted: drawn within brackets, as pedigree nomenclature has it. */
@@ -84,7 +82,6 @@ export default function PersonNode({
   selected,
   disabled = false,
   unavailable,
-  menuOpen,
   linking,
   adopted,
   reproductiveRoles = [],
@@ -124,11 +121,7 @@ export default function PersonNode({
 
   return (
     <div
-      className={cx(
-        'relative flex size-full items-center justify-center',
-        // Lift the person whose add menu is showing above their neighbours.
-        menuOpen && 'z-10',
-      )}
+      className="relative flex size-full items-center justify-center"
       data-testid="pedigree-person"
       data-person-id={person.id}
       onFocus={onFocus}

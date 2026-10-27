@@ -80,6 +80,10 @@ type PedigreeViewportProps = {
   onClick?: MouseEventHandler<HTMLDivElement>;
   /** Drawn over the canvas, outside the panned and zoomed content. */
   overlay?: ReactNode;
+  /** Drawn after the family, outside the panned and zoomed content: what
+   * is placed here comes after the family in focus order, and can be
+   * lifted over everything else on the stage. */
+  foreground?: ReactNode;
   /** The family tree (a `PedigreeLayout`). */
   children: ReactNode;
 };
@@ -101,15 +105,18 @@ export function PedigreeViewport({
   onBlur,
   onClick,
   overlay,
+  foreground,
   children,
 }: PedigreeViewportProps) {
   const intl = useAppIntl();
 
-  // Focus inside the family is kept in view as it zooms.
+  // Focus inside the family, or in what is drawn over it, is kept in view
+  // as it zooms.
   const focusOf = (target: EventTarget): ZoomFocus | undefined => {
     if (
       !(target instanceof HTMLElement) ||
-      !contentRef.current?.contains(target)
+      target === viewportRef.current ||
+      !viewportRef.current?.contains(target)
     ) {
       return undefined;
     }
@@ -145,6 +152,7 @@ export function PedigreeViewport({
       >
         {children}
       </motion.div>
+      {foreground}
     </div>
   );
 }

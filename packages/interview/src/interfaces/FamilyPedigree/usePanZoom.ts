@@ -260,11 +260,13 @@ export type PanZoom = {
    * viewport, inside the given insets, at the zoom that fits it there: as
    * large as fits, up to a fifth larger than its natural size, and no less than the least zoom. An
    * element too large to fit even then is still centred, and runs past the
-   * edges. The view it heads for. */
+   * edges. Without `zoomIn`, it zooms out to fit but never in: an element
+   * that already fits stays at the zoom it is headed for. The view it heads
+   * for. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,
-    options?: { animated?: boolean },
+    options?: { animated?: boolean; zoomIn?: boolean },
   ) => View | undefined;
   /** Keeps an element where it is on screen across a change of layout,
    * given where it was in the content before the change. */
@@ -599,7 +601,7 @@ export function usePanZoom({
   );
 
   const fitToView = useCallback<PanZoom['fitToView']>(
-    (element, insets, { animated = true } = {}) => {
+    (element, insets, { animated = true, zoomIn = true } = {}) => {
       const viewport = viewportRef.current;
       if (!viewport) return undefined;
       const width = element.offsetWidth;
@@ -612,7 +614,12 @@ export function usePanZoom({
       const nextScale = clamp(
         Math.min(availableWidth / width, availableHeight / height),
         MIN_SCALE,
-        FIT_MAX_SCALE,
+        zoomIn
+          ? FIT_MAX_SCALE
+          : Math.min(
+              FIT_MAX_SCALE,
+              (destination.current ?? { scale: scale.get() }).scale,
+            ),
       );
       return moveTo(
         insets.left + availableWidth / 2 - centre.x * nextScale,
@@ -621,7 +628,7 @@ export function usePanZoom({
         animated,
       );
     },
-    [viewportRef, contentPositionOf, moveTo],
+    [viewportRef, contentPositionOf, moveTo, scale],
   );
 
   const holdInPlace = useCallback<PanZoom['holdInPlace']>(

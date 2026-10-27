@@ -122,6 +122,12 @@ export const messages = defineMessages({
     description:
       'Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1.',
   },
+  trackerItemDone: {
+    id: 'interview.familyPedigree.trackerItemDone',
+    defaultMessage: 'Done:',
+    description:
+      'Read out by screen readers before an item in the family tree’s progress list that is already done, which is shown ticked and struck through. The item follows, for example “Add your parents”.',
+  },
   addedAnnouncement: {
     id: 'interview.familyPedigree.addedAnnouncement',
     defaultMessage: '{name} added to your family.',

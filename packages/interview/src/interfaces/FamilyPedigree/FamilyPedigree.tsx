@@ -218,12 +218,29 @@ type PanelState = {
   then?: 'sibling' | 'child';
 } | null;
 
+/** How long the mouse rests on someone before their add menu opens. */
+const HOVER_OPEN_DELAY = 200;
+
+/** A person in the family, or the add menu drawn over the canvas for them. */
+const PERSON_OR_MENU = '[data-testid="pedigree-person"], [data-add-menu]';
+
+/** The person an element in the family, or in their add menu, belongs to. */
+const personIdAt = (target: Element) => {
+  const holder = target.closest<HTMLElement>(PERSON_OR_MENU);
+  return holder?.dataset.personId ?? holder?.dataset.addMenu;
+};
+
 /** The buttons of the add menu shown around a person's symbol, if any. */
-const menuItemsOf = (symbol: HTMLElement) => [
-  ...(symbol
-    .closest('[data-testid="pedigree-person"]')
-    ?.querySelectorAll<HTMLElement>('[data-add-menu-item]') ?? []),
-];
+const menuItemsOf = (symbol: HTMLElement) => {
+  const personId = personIdAt(symbol);
+  return [
+    ...symbol.ownerDocument.querySelectorAll<HTMLElement>('[data-add-menu]'),
+  ]
+    .filter((menu) => menu.dataset.addMenu === personId)
+    .flatMap((menu) => [
+      ...menu.querySelectorAll<HTMLElement>('[data-add-menu-item]'),
+    ]);
+};
 
 /** The attributes recording a link. Whether a parent carried the
  * pregnancy is left unrecorded while not known, told apart from "No". */
@@ -750,6 +767,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [stepNavigation, setStepNavigation] = useState<HTMLElement | null>(
     null,
   );
+  // Where a person's add menu is drawn, over everything else on the stage.
+  const [menuLayer, setMenuLayer] = useState<HTMLDivElement | null>(null);
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
   // How far in from each edge of the canvas the prompt and the toolbar leave
@@ -771,27 +790,33 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family in the middle of the canvas, clear of the prompt above
-  // and the toolbar below, as large as it fits, up to a fifth larger than
-  // its natural size, and out no further than the zoom buttons go: a family
-  // too large even for that is still centred, and the rest of it is reached
-  // by panning. This is the view the stage opens on, and the view it goes
-  // back to whenever the participant asks for it, moves to another prompt,
-  // or finishes adding or editing someone; where they had dragged or zoomed
-  // it to is not kept. Until they move it again, it keeps the family framed
-  // as the layout changes (`framedView`).
+  // and the toolbar below, and out no further than the zoom buttons go: a
+  // family too large even for that is still centred, and the rest of it is
+  // reached by panning. This is the view the stage opens on, and the view it
+  // goes back to whenever the participant asks for it, moves to another
+  // prompt, or finishes adding or editing someone; where they had dragged it
+  // to is not kept. Until they move it again, it keeps the family framed as
+  // the layout changes (`framedView`). Framed by itself, the family is only
+  // ever zoomed out, to fit: zooming in is left to the participant, so a
+  // family they zoomed in on, or that grew smaller, is not enlarged for them.
+  // Asked for (Show the whole family), it is as large as fits, up to a fifth
+  // larger than its natural size.
   const framedView = useRef<View | null>(null);
   const showWholeFamily = useCallback(
-    ({ animated = true }: { animated?: boolean } = {}) => {
+    ({
+      animated = true,
+      zoomIn = false,
+    }: { animated?: boolean; zoomIn?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
       framedView.current =
-        panZoom.fitToView(layout, clearInsets(), { animated }) ?? null;
+        panZoom.fitToView(layout, clearInsets(), { animated, zoomIn }) ?? null;
     },
     [panZoom, clearInsets],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
-    onShowWholeFamily: () => showWholeFamily(),
+    onShowWholeFamily: () => showWholeFamily({ zoomIn: true }),
   });
 
   // No menu while the panel is open: it would offer to add to someone else
@@ -1166,10 +1191,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // The person selected moves to the middle of the part of the screen the
   // side panel leaves uncovered, clear of the prompt and the toolbar, with
-  // the person the panel was opened from beside them, the family zooming
-  // out if the two do not both fit. Someone being added, and the panel
+  // their partners and children, and the person the panel was opened from,
+  // around them: what is centred is the box holding them all, the family
+  // zooming out if they do not all fit. Someone being added, and the panel
   // itself, are drawn a moment after the panel opens, so this waits for
-  // both.
+  // both. The family as drawn is read when the panel opens, so answering
+  // its questions does not move the view.
+  const closeFamilyOf = useEffectEvent((personId: string) =>
+    shown.links.flatMap((link) => {
+      if (link.kind === 'partner') {
+        if (link.source === personId) return [link.target];
+        if (link.target === personId) return [link.source];
+        return [];
+      }
+      return link.source === personId ? [link.target] : [];
+    }),
+  );
   const panelAnchorId = !panel?.open
     ? null
     : panel.mode.kind === 'add'
@@ -1187,21 +1224,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         return;
       }
       if (!element) return;
-      const anchor = panelAnchorId
-        ? nodeRefs.current.get(panelAnchorId)
-        : undefined;
+      const closeFamily = [panelAnchorId, ...closeFamilyOf(selectedId)]
+        .map((id) => (id ? nodeRefs.current.get(id) : undefined))
+        .filter(
+          (other): other is HTMLButtonElement =>
+            other !== undefined && other !== element,
+        );
       // A panel as wide as the screen leaves nothing beside it, so the
       // person is centred on the whole canvas.
       const visibleRight = window.innerWidth - (drawer?.offsetWidth ?? 0);
       const canvasLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
-      panZoom.centreOn(
-        anchor && anchor !== element ? [element, anchor] : element,
-        {
-          visibleRight:
-            visibleRight - canvasLeft > 160 ? visibleRight : undefined,
-          insets: clearInsets(),
-        },
-      );
+      panZoom.centreOn([element, ...new Set(closeFamily)], {
+        visibleRight:
+          visibleRight - canvasLeft > 160 ? visibleRight : undefined,
+        insets: clearInsets(),
+      });
     };
     frame = requestAnimationFrame(centre);
     return () => cancelAnimationFrame(frame);
@@ -1654,10 +1691,26 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
   };
 
-  // The mouse shows a person's menu while it is over them. Leaving waits a
-  // moment, so the pointer can cross the gap between the person and a button.
+  // The mouse shows a person's menu while it is over them. Coming to rest on
+  // someone waits a moment, so the pointer crossing the family on its way
+  // elsewhere does not open menus as it goes; once a menu shows, moving to
+  // someone else moves it at once. Leaving waits a moment too, so the
+  // pointer can cross the gap between the person and a button.
+  const hoverEnterTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const pendingHoverId = useRef<string | null>(null);
   const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(hoverLeaveTimer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(hoverEnterTimer.current);
+      clearTimeout(hoverLeaveTimer.current);
+    },
+    [],
+  );
+  const cancelHoverEnter = () => {
+    clearTimeout(hoverEnterTimer.current);
+    hoverEnterTimer.current = undefined;
+    pendingHoverId.current = null;
+  };
   const cancelHoverLeave = () => {
     clearTimeout(hoverLeaveTimer.current);
     hoverLeaveTimer.current = undefined;
@@ -1668,10 +1721,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   ) => {
     if (event.pointerType !== 'mouse') return;
     cancelHoverLeave();
-    setHoveredId(personId);
+    // The connector line, and a menu already showing (for the mouse, the
+    // keyboard or a first visit), follow at once.
+    if (tool !== 'pointer' || menuPersonId !== null) {
+      cancelHoverEnter();
+      setHoveredId(personId);
+      return;
+    }
+    if (pendingHoverId.current === personId) return;
+    cancelHoverEnter();
+    pendingHoverId.current = personId;
+    hoverEnterTimer.current = setTimeout(() => {
+      hoverEnterTimer.current = undefined;
+      pendingHoverId.current = null;
+      setHoveredId(personId);
+    }, HOVER_OPEN_DELAY);
   };
   const handlePersonPointerLeave = (event: React.PointerEvent) => {
     if (event.pointerType !== 'mouse') return;
+    cancelHoverEnter();
     cancelHoverLeave();
     // The connector line lets go of a person at once; the add menu waits.
     if (tool !== 'pointer') setHoveredId(null);
@@ -1692,15 +1760,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // A drag (the canvas panned, a button held) is not hovering.
     if (event.pointerType !== 'mouse' || event.buttons !== 0) return;
     const over =
-      event.target instanceof Element
-        ? event.target
-            .closest('[data-testid="pedigree-person"]')
-            ?.getAttribute('data-person-id')
-        : undefined;
+      event.target instanceof Element ? personIdAt(event.target) : undefined;
     if (over) {
       if (over !== hoveredId || hoverLeaveTimer.current !== undefined) {
         handlePersonPointerEnter(over, event);
       }
+    } else if (pendingHoverId.current !== null) {
+      cancelHoverEnter();
     } else if (hoveredId !== null && hoverLeaveTimer.current === undefined) {
       handlePersonPointerLeave(event);
     }
@@ -1783,7 +1849,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (
       target instanceof Element &&
       currentTarget.contains(target) &&
-      !target.closest('[data-testid="pedigree-person"]')
+      !target.closest(PERSON_OR_MENU)
     ) {
       setFocusedId(null);
       setHoveredId(null);
@@ -2796,11 +2862,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             // Zooming from the keyboard keeps the person focused, and their
             // add menu, in the clear part of the canvas.
             zoomFocus={(target) => {
-              const person = target.closest<HTMLElement>(
-                '[data-testid="pedigree-person"]',
-              );
-              const element = person?.dataset.personId
-                ? nodeRefs.current.get(person.dataset.personId)
+              const personId = personIdAt(target);
+              const element = personId
+                ? nodeRefs.current.get(personId)
                 : undefined;
               return element
                 ? {
@@ -2809,6 +2873,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   }
                 : undefined;
             }}
+            foreground={
+              <div
+                ref={setMenuLayer}
+                className="pointer-events-none absolute inset-0 z-30"
+              />
+            }
             overlay={
               connectorFrom &&
               tool === 'connect' && (
@@ -2859,7 +2929,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       tool !== 'pointer' &&
                       (personId === linkingId || personId === connectorTargetId)
                     }
-                    menuOpen={hasMenu}
                     // The person being added has not been asked yet.
                     hasMissingDetails={
                       !nomination &&
@@ -2891,6 +2960,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   >
                     {hasMenu && (
                       <AddRelativeMenu
+                        personId={personId}
+                        layer={menuLayer}
+                        anchor={
+                          nodeElements
+                            .get(personId)
+                            ?.closest<HTMLElement>(
+                              '[data-testid="pedigree-person"]',
+                            ) ?? null
+                        }
                         isYou={person.isEgo}
                         name={displayName(personId)}
                         onAdd={openAdd}
