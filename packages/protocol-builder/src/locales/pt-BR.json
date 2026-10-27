@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Cor",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "Escolha o gradiente que dá cor aos compartimentos.",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Gradiente de cores",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Esta interface foi projetada para até cinco compartimentos. Acima disso, os compartimentos ficam difíceis de ler e de acertar ao soltar os nós, o que prejudica a qualidade dos dados.",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Esta interface foi projetada para até seis compartimentos. Acima disso, os compartimentos ficam difíceis de ler e de acertar ao soltar os nós, o que prejudica a qualidade dos dados.",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "Digite sua pergunta...",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "Escolha o atributo ordinal cujos valores são exibidos como compartimentos.",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "Este tipo ainda não tem atributos ordinais. Crie um para definir qual é a escala.",

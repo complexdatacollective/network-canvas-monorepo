@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "顏色",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "請選擇分箱所使用的顏色漸層。",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "顏色漸層",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "此介面的設計最多容納 5 個分箱。超過此數量後，分箱會難以閱讀，也不易將節點放入，進而影響資料品質。",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "此介面的設計最多容納 6 個分箱。超過此數量後，分箱會難以閱讀，也不易將節點放入，進而影響資料品質。",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "輸入提示…",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "選擇要以其值顯示為分箱的順序屬性。",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "此類型尚無順序屬性。請建立一個順序屬性來定義量表。",
