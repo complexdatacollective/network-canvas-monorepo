@@ -97,8 +97,8 @@ const chain =
 const stringFunction =
   ({ property, direction }: ProcessedSortRule, collator: Intl.Collator) =>
   (a: Item, b: Item) => {
-    const firstValue = get(a, property, null) as string | null;
-    const secondValue = get(b, property, null) as string | null;
+    const firstValue: unknown = get(a, property, null);
+    const secondValue: unknown = get(b, property, null);
 
     if (firstValue === null || typeof firstValue !== 'string') {
       return 1;
@@ -118,15 +118,15 @@ const stringFunction =
 /* The selected option values of a stored categorical attribute, or an empty
  * array when nothing is selected. Categorical attributes are stored as arrays
  * of selected option values. */
-const toCategoricalValues = (value: unknown): (string | number | boolean)[] =>
-  Array.isArray(value) ? (value as (string | number | boolean)[]) : [];
+const toCategoricalValues = (value: unknown): unknown[] =>
+  Array.isArray(value) ? value : [];
 
 /* The best (lowest) hierarchy index across a node's full selection set. A value
  * not in the hierarchy contributes Infinity so it sinks below ranked values
  * without making the whole set unranked. Returns Infinity for an empty set. */
 const bestHierarchyIndex = (
-  values: (string | number | boolean)[],
-  hierarchy: (string | number | boolean)[],
+  values: readonly unknown[],
+  hierarchy: readonly unknown[],
 ) =>
   values.reduce<number>((best, value) => {
     const index = hierarchy.indexOf(value);
@@ -171,16 +171,8 @@ const categoricalFunction =
 const hierarchyFunction =
   ({ property, direction = 'desc', hierarchy = [] }: ProcessedSortRule) =>
   (a: Item, b: Item) => {
-    const firstValue = get(a, property, null) as
-      | string
-      | number
-      | boolean
-      | null;
-    const secondValue = get(b, property, null) as
-      | string
-      | number
-      | boolean
-      | null;
+    const firstValue: unknown = get(a, property, null);
+    const secondValue: unknown = get(b, property, null);
     // Explicit null/undefined check (not a falsy guard) so option values of 0
     // or false sort by their hierarchy index rather than being treated as
     // missing and forced to the end.
@@ -191,8 +183,11 @@ const hierarchyFunction =
       return -1;
     }
 
-    const firstIndex = hierarchy.indexOf(firstValue);
-    const secondIndex = hierarchy.indexOf(secondValue);
+    // Widened so that any stored value can be looked up: one that is not in
+    // the hierarchy is simply not found.
+    const ranked: readonly unknown[] = hierarchy;
+    const firstIndex = ranked.indexOf(firstValue);
+    const secondIndex = ranked.indexOf(secondValue);
 
     // If the value is not in the hierarchy, it is sorted to the end of the list
     if (firstIndex === -1) {
@@ -225,13 +220,10 @@ const hierarchyFunction =
 const dateFunction =
   ({ property, direction }: ProcessedSortRule) =>
   (a: Item, b: Item) => {
-    const firstValueString = get(a, property, null) as string | null;
-    const secondValueString = get(b, property, null) as string | null;
-
-    // @ts-expect-error We handle null values in the next line
-    const firstValueDate = Date.parse(firstValueString);
-    // @ts-expect-error We handle null values in the next line
-    const secondValueDate = Date.parse(secondValueString);
+    // `Date.parse` reads its argument as text, so a missing or non-text value
+    // is read as the text it converts to, which is not a date.
+    const firstValueDate = Date.parse(String(get(a, property, null)));
+    const secondValueDate = Date.parse(String(get(b, property, null)));
 
     if (Number.isNaN(firstValueDate)) {
       return 1;
@@ -334,6 +326,7 @@ const createSorter = <T extends Item = Item>(
     getSortFunction(rule, collator),
   );
   return (items: T[]) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the sort only reorders; stripping `_createdIndex` returns the same items, typed as records by the spread
     withoutCreatedIndex(
       withCreatedIndex(items).toSorted(chain(...sortFunctions)),
     ) as T[];

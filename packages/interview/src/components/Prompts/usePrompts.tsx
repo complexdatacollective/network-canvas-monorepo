@@ -75,6 +75,7 @@ export const usePrompts = <
     setPrompt((promptIndex - 1 + prompts.length) % prompts.length);
   };
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an empty prompt stands in for a missing one, and callers only read the fields every prompt has
   const prompt = (prompts[promptIndex] ?? {
     id: '',
     text: '',

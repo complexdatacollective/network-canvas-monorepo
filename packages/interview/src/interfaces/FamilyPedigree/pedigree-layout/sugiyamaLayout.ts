@@ -384,7 +384,8 @@ function partnershipChain(
   const partnersOf = new Map<number, number[]>(nodes.map((n) => [n, []]));
   for (const couple of couples) {
     if (couple.length !== 2) return null;
-    const [a, b] = couple as [number, number];
+    const [a, b] = couple;
+    if (a === undefined || b === undefined) return null;
     if (!partnersOf.has(a) || !partnersOf.has(b)) continue;
     partnersOf.get(a)!.push(b);
     partnersOf.get(b)!.push(a);

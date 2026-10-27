@@ -4,6 +4,7 @@ import type { ProtocolPayload } from '../../contract/types';
 
 type ProtocolState = ProtocolPayload;
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- empty placeholder until a protocol loads; nothing reads the slice before then
 const initialState = {} as ProtocolState;
 
 const protocolSlice = createSlice({

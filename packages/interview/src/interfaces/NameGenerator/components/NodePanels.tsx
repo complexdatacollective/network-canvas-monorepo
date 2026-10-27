@@ -40,6 +40,7 @@ function NodePanels(props: NodePanelsProps) {
   const { disableAddNew, onOpenChange, animationKey } = props;
   const isDragging = useDndStore((state: DndStore) => state.isDragging);
   const dragItem = useDndStore((state: DndStore) => state.dragItem);
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged node plus its itemType, set by the Node drag source (fresco-ui types it as a record)
   const meta = dragItem?.metadata as NcNode & { itemType: string };
 
   const panels = useStageSelector(getPanelConfiguration);
@@ -59,6 +60,7 @@ function NodePanels(props: NodePanelsProps) {
 
   const createDropHandler = useCallback(
     (dataSource: string) => (metadata?: Record<string, unknown>) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dropped node, set by the Node drag source (fresco-ui types it as a record)
       const droppedNode = metadata as NcNode | undefined;
       if (!droppedNode) return;
 

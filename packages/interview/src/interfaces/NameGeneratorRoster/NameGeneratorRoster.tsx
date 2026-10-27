@@ -282,6 +282,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const [adding, setAdding] = useState<ReadonlySet<string>>(() => new Set());
 
   const handleAddNode = async (metadata?: Record<string, unknown>) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged roster item, set by this component's drag source (fresco-ui types it as a record)
     const meta = metadata as UseItemElement | undefined;
     if (!meta) return;
 
@@ -327,8 +328,8 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   const handleRemoveNode = useCallback(
     (metadata: Record<string, unknown>) => {
-      const uid = metadata[entityPrimaryKeyProperty] as string | undefined;
-      if (uid) {
+      const uid = metadata[entityPrimaryKeyProperty];
+      if (typeof uid === 'string' && uid) {
         dispatch(deleteNode(uid));
       }
     },
@@ -402,6 +403,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     getItemAnnouncedName: (key) =>
       filteredItems.find((i) => i.id === String(key))?.props.label,
     renderPreview: (_key, metadata) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged roster item, set by this component's drag source (fresco-ui types it as a record)
       const item = metadata as UseItemElement | undefined;
       if (!item?.props?.label) return null;
       return (
@@ -428,9 +430,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   // re-renders when acceptance actually toggles.
   const willAcceptDrop = useDndStore(
     (state: DndStore) =>
-      state.isDragging &&
-      (state.dragItem?.metadata as { itemType?: string })?.itemType ===
-        'ADDED_NODES',
+      state.isDragging && state.dragItem?.metadata?.itemType === 'ADDED_NODES',
   );
   const sourceDropTargetId = `${sourceCollectionId}-container`;
 

@@ -141,6 +141,31 @@ describe('Types', () => {
     ]);
   });
 
+  it('puts missing and non-date values after the dates', () => {
+    const mockItems = [
+      { id: 'missing' },
+      { id: 'text', birthdate: 'not a date' },
+      { id: 'late', birthdate: '1990-01-01' },
+      { id: 'early', birthdate: '1970-01-01' },
+    ];
+
+    const ascending = createSorter([
+      { property: 'birthdate', type: 'date', direction: 'asc' },
+    ])(mockItems);
+    expect(ascending.slice(0, 2).map((item) => item.id)).toEqual([
+      'early',
+      'late',
+    ]);
+
+    const descending = createSorter([
+      { property: 'birthdate', type: 'date', direction: 'desc' },
+    ])(mockItems);
+    expect(descending.slice(0, 2).map((item) => item.id)).toEqual([
+      'late',
+      'early',
+    ]);
+  });
+
   it('orders boolean values', () => {
     const mockItems = [
       {

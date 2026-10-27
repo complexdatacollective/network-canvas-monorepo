@@ -22,8 +22,16 @@ const heldTextById = (
   interfaceText: InterfaceText | undefined,
 ): ReadonlyMap<string, LocalizedString> => {
   const held = new Map<string, LocalizedString>();
+  // Widened so that the catalog's group names, which are plain text, can look
+  // up their group.
+  const groups: Readonly<
+    Record<
+      string,
+      Readonly<Record<string, LocalizedString | undefined>> | undefined
+    >
+  > = interfaceText ?? {};
   for (const { group, key, id } of INTERFACE_TEXT_MESSAGES) {
-    const value = interfaceText?.[group as keyof InterfaceText]?.[key];
+    const value = groups[group]?.[key];
     if (value !== undefined) held.set(id, value);
   }
   return held;

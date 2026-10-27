@@ -150,6 +150,7 @@ const actionTypes = {
   updateEgo: 'NETWORK/UPDATE_EGO' as const,
 };
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- empty placeholder until a session loads; nothing reads the slice before then
 const initialState = {} as SessionState;
 
 /**

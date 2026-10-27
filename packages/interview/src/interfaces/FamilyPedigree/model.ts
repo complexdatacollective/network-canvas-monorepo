@@ -2354,12 +2354,13 @@ function keepWithinGeneticLimit(
   const plannedSex = new Map(
     people.map((planned) => {
       const value = readOwnProperty(planned.details, sexAttribute);
-      return [planned.id, Array.isArray(value) ? value[0] : value] as const;
+      const sex = Array.isArray(value) ? value[0] : value;
+      return [planned.id, typeof sex === 'string' ? sex : undefined] as const;
     }),
   );
   const sexOf = (id: string) =>
     plannedSex.has(id)
-      ? (plannedSex.get(id) as string | undefined)
+      ? plannedSex.get(id)
       : family.byId.get(id)?.sexAssignedAtBirth;
   const geneticSexes = new Map<string, (string | undefined)[]>();
   const sexesOf = (childId: string) => {

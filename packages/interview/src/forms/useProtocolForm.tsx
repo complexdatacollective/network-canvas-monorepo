@@ -188,6 +188,7 @@ export default function useProtocolForm({
 }) {
   const stageValidationContext = useStageSelector(getValidationContext);
   const baseValidationContext =
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stage without a subject (Information) has a null stageSubject, which ValidationContext does not allow; the form's own subject replaces it below whenever fields name one
     stageValidationContext as ValidationContext | null;
 
   // Callers routinely pass `subject` as an inline literal, so key on its

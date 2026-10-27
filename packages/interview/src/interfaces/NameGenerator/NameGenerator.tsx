@@ -192,6 +192,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
    * Adds prompt attributes to existing nodes, or adds new nodes to the network.
    */
   const handleDropNode = async (metadata?: Record<string, unknown>) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dropped node, set by the Node drag source (fresco-ui types it as a record)
     const node = metadata as NcNode | undefined;
     if (!node) return;
 

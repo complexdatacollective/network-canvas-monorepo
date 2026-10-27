@@ -32,6 +32,19 @@ const getCodebookVariable = (
 ) => getOwn(codebookDefinition?.variables, variableId);
 
 /**
+ * What a roster column holds: a codebook variable type, or a column of the
+ * exporter's own making, which belongs to a layout (`layout_x`, `layout_y`) or
+ * categorical (`categorical_option`) variable. `''` is a column whose data
+ * does not say.
+ */
+type ColumnType =
+  | VariableType
+  | `${VariableType}_x`
+  | `${VariableType}_y`
+  | `${VariableType}_option`
+  | '';
+
+/**
  * Try to determine the type of an attribute based on data across all nodes
  * in a nodeList. This is a best effort approach, and may not be accurate.
  *
@@ -45,7 +58,7 @@ const deriveAttributeTypeFromData = (
   attributeKey: string,
   nodeList: NcNode[],
 ) =>
-  nodeList.reduce((previousType, node) => {
+  nodeList.reduce<VariableType | ''>((previousType, node) => {
     const currentValue = getOwn(node[entityAttributesProperty], attributeKey);
 
     // if the value is null or undefined, defer to the previous type
@@ -53,7 +66,7 @@ const deriveAttributeTypeFromData = (
       return previousType;
     }
 
-    let currentType = '';
+    let currentType: VariableType | '' = '';
 
     // If the value can be parsed as a number, set the type to number
     if (!Number.isNaN(toNumber(currentValue))) {
@@ -78,7 +91,7 @@ const deriveAttributeTypeFromData = (
     ) {
       return VariableTypes.text;
     }
-    return currentType as VariableType;
+    return currentType;
   }, '');
 
 const getAttributeTypes = (
@@ -86,8 +99,8 @@ const getAttributeTypes = (
   nodeList: NcNode[],
   protocolCodebook: Codebook,
   stageSubject: StageSubject,
-): Record<string, VariableType> => {
-  return uniqueAttributeKeys.reduce(
+): Record<string, ColumnType> => {
+  return uniqueAttributeKeys.reduce<Record<string, ColumnType>>(
     (acc, attributeKey) => {
       const codebookDefinition = getCodebookDefinition(
         protocolCodebook,
@@ -117,27 +130,24 @@ const getAttributeTypes = (
           if (option === '_x' || option === '_y') {
             return {
               ...acc,
-              [attributeKey]: `${optionCodebookType}${option}` as VariableType,
+              [attributeKey]: `${optionCodebookType}${option}`,
             };
           }
           return {
             ...acc,
-            [attributeKey]: `${optionCodebookType}_option` as VariableType,
+            [attributeKey]: `${optionCodebookType}_option`,
           };
         }
       }
 
-      const derivedType = deriveAttributeTypeFromData(
-        attributeKey,
-        nodeList,
-      ) as VariableType;
+      const derivedType = deriveAttributeTypeFromData(attributeKey, nodeList);
 
       return {
         ...acc,
         [attributeKey]: derivedType,
       };
     },
-    {} as Record<string, VariableType>,
+    {},
   );
 };
 
@@ -233,8 +243,10 @@ const resolveOptionAnswer = (
     !Array.isArray(value) ||
     (variable?.type !== 'categorical' && variable?.type !== 'ordinal')
   ) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an answer is returned as read, or as the codebook's own option value for it; the roster's JSON is not checked against AttributeValue
     return resolveCategoricalOption(variable, value) as AttributeValue;
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- each item is returned as read, or as the codebook's own option value for it; the roster's JSON is not checked against AttributeValue
   return [
     ...new Set(value.map((item) => resolveCategoricalOption(variable, item))),
   ] as AttributeValue;
@@ -244,7 +256,7 @@ const getNodeListUsingTypes = (
   nodeList: NcNode[],
   protocolCodebook: Codebook,
   stageSubject: StageSubject,
-  derivedAttributeTypes: Record<string, string>,
+  derivedAttributeTypes: Record<string, ColumnType>,
 ) =>
   nodeList.map((node) => {
     const codebookDefinition = getCodebookDefinition(
@@ -263,19 +275,18 @@ const getNodeListUsingTypes = (
           return consolidatedAttributes;
         }
 
-        let codebookType = getCodebookVariable(
+        const codebookType = getCodebookVariable(
           codebookDefinition,
           attributeKey,
         )?.type;
 
-        if (!Object.values(VariableTypes).includes(codebookType!)) {
-          codebookType = getOwn(
-            derivedAttributeTypes,
-            attributeKey,
-          ) as VariableType;
-        }
+        const columnType =
+          codebookType !== undefined &&
+          Object.values(VariableTypes).includes(codebookType)
+            ? codebookType
+            : getOwn(derivedAttributeTypes, attributeKey);
 
-        switch (codebookType) {
+        switch (columnType) {
           case VariableTypes.boolean: {
             return {
               ...consolidatedAttributes,
@@ -295,7 +306,7 @@ const getNodeListUsingTypes = (
           case VariableTypes.layout: {
             let value: unknown;
             try {
-              value = JSON.parse(attributeValue as string);
+              value = JSON.parse(String(attributeValue));
             } catch {
               value = attributeValue;
             }
@@ -313,6 +324,7 @@ const getNodeListUsingTypes = (
             return {
               ...consolidatedAttributes,
               [uuid]: {
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- holds the coordinate set by this variable's other column, if that came first; the accumulator needs a full position, and the pair is complete once both columns are read
                 ...(consolidatedAttributes[uuid] as { x: number; y: number }),
                 x: Number(attributeValue),
               },
@@ -323,6 +335,7 @@ const getNodeListUsingTypes = (
             return {
               ...consolidatedAttributes,
               [uuid]: {
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- holds the coordinate set by this variable's other column, if that came first; the accumulator needs a full position, and the pair is complete once both columns are read
                 ...(consolidatedAttributes[uuid] as { x: number; y: number }),
                 y: Number(attributeValue),
               },
@@ -341,6 +354,7 @@ const getNodeListUsingTypes = (
               const chosen: unknown[] = Array.isArray(previous) ? previous : [];
               return {
                 ...consolidatedAttributes,
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the chosen options are the codebook's own option values (string, number or boolean), or option text kept as read
                 [uuid]: (chosen.includes(option)
                   ? chosen
                   : [...chosen, option]) as AttributeValue,
