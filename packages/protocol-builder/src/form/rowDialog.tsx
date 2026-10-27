@@ -518,7 +518,6 @@ export function RowDialog({
       {...(session.layoutId === undefined
         ? {}
         : { layoutId: session.layoutId })}
-      style={{ borderRadius: 'var(--radius)' }}
       {...(Aside === undefined
         ? {}
         : {

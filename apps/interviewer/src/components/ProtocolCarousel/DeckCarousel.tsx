@@ -20,7 +20,6 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 
-import { CARD_RADIUS_PX } from './cardStyles';
 import {
   DECK_PERSPECTIVE_PX,
   SLOT_TO_CARD_RATIO,
@@ -369,8 +368,7 @@ function DeckSlide({
         <motion.div
           aria-hidden
           data-testid={isolated ? 'protocol-deck-inactive-backdrop' : undefined}
-          className="bg-overlay publish-colors pointer-events-none absolute inset-0 z-50 backdrop-blur-xs"
-          style={{ borderRadius: CARD_RADIUS_PX }}
+          className="bg-overlay publish-colors pointer-events-none absolute inset-0 z-50 rounded backdrop-blur-xs"
           initial={false}
           animate={{ opacity: isolated ? 1 : 0 }}
           transition={{ duration: 0.25 }}

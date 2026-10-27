@@ -172,6 +172,7 @@
     "./hooks/useResizablePanel": "./src/hooks/useResizablePanel.ts",
     "./hooks/useSafeAnimate": "./src/hooks/useSafeAnimate.ts",
     "./hooks/useSafeLocalStorage": "./src/hooks/useSafeLocalStorage.tsx",
+    "./hooks/useTokenRadius": "./src/hooks/useTokenRadius.ts",
     "./layout/AppArea": "./src/layout/AppArea.tsx",
     "./layout/AppFrame": "./src/layout/AppFrame.tsx",
     "./layout/ResponsiveContainer": "./src/layout/ResponsiveContainer.tsx",
@@ -833,6 +834,10 @@
       "./hooks/useSafeLocalStorage": {
         "types": "./dist/hooks/useSafeLocalStorage.d.ts",
         "default": "./dist/hooks/useSafeLocalStorage.js"
+      },
+      "./hooks/useTokenRadius": {
+        "types": "./dist/hooks/useTokenRadius.d.ts",
+        "default": "./dist/hooks/useTokenRadius.js"
       },
       "./layout/AppArea": {
         "types": "./dist/layout/AppArea.d.ts",

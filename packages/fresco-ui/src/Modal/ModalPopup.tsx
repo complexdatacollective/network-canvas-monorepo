@@ -18,6 +18,7 @@ import {
 } from 'react';
 
 import { useSafeAnimate } from '../hooks/useSafeAnimate';
+import useTokenRadius from '../hooks/useTokenRadius';
 import {
   holdsFocus,
   isUsableFinalFocusTarget,
@@ -117,6 +118,10 @@ export default function ModalPopup({
     : {};
 
   const [scope, animate] = useSafeAnimate();
+  // A shared-element morph resizes the popup out of its trigger, and Motion
+  // keeps the corners true through that only for a numeric radius, so the
+  // popup's `rounded-*` class is also handed to `style`.
+  const tokenRadius = useTokenRadius(scope);
 
   const [isPresent, safeToRemove] = usePresence(!usesDeclarativeAnimation);
 
@@ -262,7 +267,7 @@ export default function ModalPopup({
           className={className}
           {...props}
           {...animation}
-          style={style}
+          style={hasLayoutId ? { borderRadius: tokenRadius, ...style } : style}
         />
       }
     >
