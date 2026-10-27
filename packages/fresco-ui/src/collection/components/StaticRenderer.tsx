@@ -105,6 +105,7 @@ function StaticRendererComponent<T>({
   );
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- memo() erases the component's generic parameter; this is the same component with it restored
 export const StaticRenderer = memo(
   StaticRendererComponent,
 ) as typeof StaticRendererComponent;

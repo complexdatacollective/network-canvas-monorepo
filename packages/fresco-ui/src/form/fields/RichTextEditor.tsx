@@ -81,6 +81,7 @@ import { useEnclosingHeadingLevel } from '../../typography/EnclosingHeadingLevel
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
+import { isRecord } from '../../utils/isRecord';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
@@ -314,12 +315,14 @@ const placedTokenIds = (doc: ProseMirrorNode): string => {
   // A version's text is held in its element's attributes, as JSON.
   const collect = (content: unknown) => {
     if (!Array.isArray(content)) return;
-    for (const node of content as JSONContent[]) {
-      if (node.type === TOKEN_NODE && typeof node.attrs?.id === 'string') {
-        ids.add(node.attrs.id);
+    for (const node of content) {
+      if (!isRecord(node)) continue;
+      const attrs = isRecord(node.attrs) ? node.attrs : undefined;
+      if (node.type === TOKEN_NODE && typeof attrs?.id === 'string') {
+        ids.add(attrs.id);
       }
       collect(node.content);
-      collectVersions(node.attrs?.versions);
+      collectVersions(attrs?.versions);
     }
   };
   const collectVersions = (versions: unknown) => {
@@ -664,9 +667,12 @@ const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
   const parsed = createNodeFromContent(flattened, schema, { slice: false });
 
   // A fragment only comes back from that reader's own empty-content fallback.
-  return isProseMirrorFragment(parsed)
-    ? flattened
-    : (parsed.toJSON() as JSONContent);
+  if (isProseMirrorFragment(parsed)) return flattened;
+
+  // ProseMirror types `toJSON()` as `any`; a node's JSON is the JSONContent
+  // shape by construction.
+  const json: JSONContent = parsed.toJSON();
+  return json;
 };
 
 export type { RichTextInsertMenu, RichTextInsertMenuItem };
@@ -677,6 +683,11 @@ export type {
 export { VERSIONS_NODE };
 
 const swallowKeystroke = () => true;
+
+// `Array.isArray` does not narrow a `readonly` array out of a union.
+const isContentList = (
+  content: JSONContent | readonly JSONContent[],
+): content is readonly JSONContent[] => Array.isArray(content);
 
 /**
  * The two ways a second line reaches a document the schema alone cannot
@@ -720,7 +731,9 @@ const SingleLineInput = Extension.create({
           // round trip is safe in this direction: a pasted slice was parsed
           // with this schema, so everything in it can be read back.
           transformPasted: (slice: Slice) => {
-            const pasted = slice.content.toJSON() as JSONContent[] | null;
+            // ProseMirror types `toJSON()` as `any`; a fragment's JSON is a
+            // list of JSONContent nodes, or null when it is empty.
+            const pasted: JSONContent[] | null = slice.content.toJSON();
             const nodes = oneLineContentOf(pasted, schema).map((node) =>
               schema.nodeFromJSON(node),
             );
@@ -1307,6 +1320,7 @@ export default function RichTextEditorField({
   );
   const tokens = useMemo(
     (): readonly RichTextEditorToken[] =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tokensKey is the JSON.stringify of the normalised tokens built just above, so it parses back to that same shape
       JSON.parse(tokensKey) as RichTextEditorToken[],
     [tokensKey],
   );
@@ -1843,9 +1857,9 @@ export default function RichTextEditorField({
 
   const insertItem = (item: RichTextInsertMenuItem) => {
     if (item.disabled === true) return;
-    const content = Array.isArray(item.content)
-      ? [...(item.content as readonly JSONContent[])]
-      : (item.content as JSONContent);
+    const content = isContentList(item.content)
+      ? [...item.content]
+      : item.content;
     if (triggered !== null && !triggered.editor.isDestroyed) {
       const { editor: into, position } = triggered;
       // The trigger the menu was opened by is replaced, if it is still there.

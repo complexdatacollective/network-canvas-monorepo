@@ -1315,6 +1315,7 @@ export const validations = {
   custom,
 };
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys of the const `validations` object returns exactly its keys
 export const validationPropKeys = Object.keys(
   validations,
 ) as (keyof typeof validations)[];

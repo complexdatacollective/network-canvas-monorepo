@@ -69,16 +69,18 @@ export function useSafeAnimate<T extends Element = HTMLDivElement>() {
       flatten: voidFn,
     };
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the noop stands in for Motion's overloaded animate function and returns a handle with the members callers use, which the overloads cannot be checked against
     return ((...args: Parameters<AnimateFn<T>>) => {
       const [elementOrSelector, keyframes] = args;
 
       if (
-        elementOrSelector instanceof Element &&
+        (elementOrSelector instanceof HTMLElement ||
+          elementOrSelector instanceof SVGElement) &&
         keyframes &&
         typeof keyframes === 'object' &&
         !Array.isArray(keyframes)
       ) {
-        const el = elementOrSelector as HTMLElement;
+        const el = elementOrSelector;
         for (const [prop, value] of Object.entries(keyframes)) {
           const finalValue = Array.isArray(value)
             ? value[value.length - 1]

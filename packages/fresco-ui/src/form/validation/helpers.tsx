@@ -15,12 +15,7 @@ import type {
   ValidationContext,
   ValidationResult,
 } from '../store/types';
-import {
-  type ValidationFunction,
-  type ValidationParameter,
-  validationPropKeys,
-  validations,
-} from './functions';
+import { validations } from './functions';
 
 let defaultHelperIntl: IntlShape | undefined;
 
@@ -61,6 +56,7 @@ export async function validateFieldValue<T extends z.ZodMiniType>(
       ? await validation(formValues)
       : validation;
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the validation is a ZodMiniType of the caller's T, but the compiler only sees the base type, so it cannot tie the parse result back to ValidationResult<T>
   return (await schema.safeParseAsync(value)) as ValidationResult<T>;
 }
 
@@ -119,6 +115,58 @@ export function messageRuleValidation(
   };
 }
 
+type ValidationName = keyof typeof validations;
+
+const isValidationName = (key: string): key is ValidationName =>
+  Object.hasOwn(validations, key);
+
+/**
+ * The validation context a field's props carry. `props` is the untyped bag of
+ * everything a field was given, but `validationContext` is declared as a
+ * `ValidationContext` on every route that fills it in.
+ */
+const validationContextOf = (
+  props: Record<string, unknown>,
+): ValidationContext | undefined =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the field props that fill this bag declare validationContext as ValidationContext | undefined; only the bag itself is untyped
+  props.validationContext as ValidationContext | undefined;
+
+/**
+ * The `custom` validations a field's props carry, as the list `Field` accepts
+ * them in either a single or array form.
+ */
+const customValidationsOf = (
+  props: Record<string, unknown>,
+): CustomFieldValidation[] => {
+  if (!('custom' in props) || !props.custom) return [];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the field props that fill this bag declare custom as CustomFieldValidation | CustomFieldValidation[]; only the bag itself is untyped
+  const custom = props.custom as
+    | CustomFieldValidation
+    | CustomFieldValidation[];
+  return Array.isArray(custom) ? custom : [custom];
+};
+
+/**
+ * Builds the schema for one built-in validation from its prop value.
+ */
+const buildValidation = (
+  name: ValidationName,
+  parameter: unknown,
+  formValues: Record<string, FieldValue>,
+  context: ValidationContext | undefined,
+  intl: IntlShape | undefined,
+  valueLocale: string | undefined,
+) => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- each factory is declared for its own parameter type, and a field's props are keyed by validation name, so the value under `name` is the one that factory documents
+  const factory = validations[name] as (
+    parameter: unknown,
+    context?: ValidationContext,
+    intl?: IntlShape,
+    valueLocale?: string,
+  ) => (formValues: Record<string, FieldValue>) => z.ZodMiniType;
+  return factory(parameter, context, intl, valueLocale)(formValues);
+};
+
 /**
  * Helper function that parses component props and converts them into a validation
  * using functions from ~/components/ui/form/validation/index.ts.
@@ -130,9 +178,7 @@ export function makeValidationFunction(
   intl?: IntlShape,
   valueLocale?: string,
 ) {
-  const validationContext = props.validationContext as
-    | ValidationContext
-    | undefined;
+  const validationContext = validationContextOf(props);
 
   return (formValues: Record<string, FieldValue>) =>
     z.unknown().check(
@@ -164,25 +210,23 @@ export function makeValidationFunction(
         }
 
         // Handle built-in validations from the validations object
-        const validationEntries = Object.entries(props).filter(
-          ([key]) =>
-            key in validations &&
-            key !== 'validationContext' &&
-            key !== 'custom',
+        const validationEntries = Object.entries(props).flatMap(
+          ([key, parameter]) =>
+            isValidationName(key) && key !== 'custom'
+              ? [[key, parameter] as const]
+              : [],
         );
 
         for (const [validationName, parameter] of validationEntries) {
           try {
-            const validationFnFactory = validations[
-              validationName as keyof typeof validations
-            ] as ValidationFunction<ValidationParameter>;
-
-            const validationFn = validationFnFactory(
-              parameter as ValidationParameter,
+            const validationFn = buildValidation(
+              validationName,
+              parameter,
+              formValues,
               context,
               intl,
               valueLocale,
-            )(formValues);
+            );
 
             const result = await validationFn.safeParseAsync(fieldValue);
 
@@ -208,40 +252,34 @@ export function makeValidationFunction(
         }
 
         // Handle custom validations (single or array)
-        if ('custom' in props && props.custom) {
-          const customValidations = Array.isArray(props.custom)
-            ? (props.custom as CustomFieldValidation[])
-            : [props.custom as CustomFieldValidation];
+        for (const { schema } of customValidationsOf(props)) {
+          try {
+            // Resolve schema if it's a function
+            const resolvedSchema =
+              typeof schema === 'function'
+                ? await schema(formValues, context)
+                : schema;
 
-          for (const { schema } of customValidations) {
-            try {
-              // Resolve schema if it's a function
-              const resolvedSchema =
-                typeof schema === 'function'
-                  ? await schema(formValues, context)
-                  : schema;
+            const result = await resolvedSchema.safeParseAsync(fieldValue);
 
-              const result = await resolvedSchema.safeParseAsync(fieldValue);
-
-              if (!result.success && result.error) {
-                result.error.issues.forEach((issue) => {
-                  ctx.addIssue({
-                    code: 'custom',
-                    message: issue.message,
-                    path: [...issue.path],
-                  });
+            if (!result.success && result.error) {
+              result.error.issues.forEach((issue) => {
+                ctx.addIssue({
+                  code: 'custom',
+                  message: issue.message,
+                  path: [...issue.path],
                 });
-              }
-            } catch (error) {
-              // eslint-disable-next-line no-console
-              console.log('custom validation error', error);
-              ctx.addIssue({
-                code: 'custom',
-                message: helperIntl(intl).formatMessage(
-                  commonMessages.genericError,
-                ),
               });
             }
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.log('custom validation error', error);
+            ctx.addIssue({
+              code: 'custom',
+              message: helperIntl(intl).formatMessage(
+                commonMessages.genericError,
+              ),
+            });
           }
         }
       }),
@@ -259,13 +297,12 @@ export function makeValidationHints(
   intl?: IntlShape,
   valueLocale?: string,
 ) {
-  const validationContext = props.validationContext as
-    | ValidationContext
-    | undefined;
+  const validationContext = validationContextOf(props);
 
-  const validationEntries = Object.entries(props).filter(
-    ([key]) =>
-      key in validations && key !== 'validationContext' && key !== 'custom',
+  const validationEntries = Object.entries(props).flatMap(([key, parameter]) =>
+    isValidationName(key) && key !== 'custom'
+      ? [[key, parameter] as const]
+      : [],
   );
 
   const hints: string[] = [];
@@ -277,24 +314,15 @@ export function makeValidationHints(
     }
 
     try {
-      const validationFnFactory = validations[
-        validationName as keyof typeof validations
-      ] as ValidationFunction<
-        string | number | boolean | { regex: string; hint: string }
-      >;
-
-      // Call the factory with the parameter to get the validation function
       // Pass empty object as formValues since we just need metadata
-      const validationFn = validationFnFactory(
-        parameter as
-          | string
-          | number
-          | boolean
-          | { regex: string; hint: string },
+      const validationFn = buildValidation(
+        validationName,
+        parameter,
+        {},
         validationContext,
         intl,
         valueLocale,
-      )({});
+      );
 
       // Extract hint from the schema's metadata via global registry
       const meta = z.globalRegistry.get(validationFn);
@@ -310,19 +338,13 @@ export function makeValidationHints(
   }
 
   // Handle custom validation hints
-  if ('custom' in props && props.custom) {
-    const customValidations = Array.isArray(props.custom)
-      ? (props.custom as CustomFieldValidation[])
-      : [props.custom as CustomFieldValidation];
-
-    for (const { hint } of customValidations) {
-      // A rule with nothing to promise up front contributes no bullet — an
-      // absent or empty hint would otherwise render as an empty list item, and
-      // a field whose only rule is such a one would grow a list holding
-      // nothing at all.
-      if (hint) {
-        hints.push(hint);
-      }
+  for (const { hint } of customValidationsOf(props)) {
+    // A rule with nothing to promise up front contributes no bullet — an
+    // absent or empty hint would otherwise render as an empty list item, and
+    // a field whose only rule is such a one would grow a list holding
+    // nothing at all.
+    if (hint) {
+      hints.push(hint);
     }
   }
 
@@ -351,10 +373,7 @@ export function filterValidationProps(
 ): Record<string, unknown> {
   const filtered: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(props)) {
-    const isValidationKey = validationPropKeys.includes(
-      key as keyof typeof validations,
-    );
-    if (!isValidationKey || DUAL_USE_VALIDATION_KEYS.has(key)) {
+    if (!isValidationName(key) || DUAL_USE_VALIDATION_KEYS.has(key)) {
       filtered[key] = value;
     }
   }
