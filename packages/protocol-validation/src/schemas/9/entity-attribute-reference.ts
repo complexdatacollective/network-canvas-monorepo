@@ -147,6 +147,7 @@ export type EntityAttributeReference = z.infer<
 
 export const asEntityAttributeReference = (
   id: string,
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the one place that mints the EntityAttributeReference brand from a plain id
 ): EntityAttributeReference => id as EntityAttributeReference;
 
 export const getEntityAttributeReferenceDescriptor = (
@@ -154,5 +155,6 @@ export const getEntityAttributeReferenceDescriptor = (
 ): EntityAttributeReferenceDescriptor | undefined => {
   const meta = schema.meta();
   const descriptor = meta?.[ENTITY_ATTRIBUTE_REFERENCE];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod metadata is untyped; this key is written only by entityAttributeReference() above, always with an EntityAttributeReferenceDescriptor
   return descriptor as EntityAttributeReferenceDescriptor | undefined;
 };

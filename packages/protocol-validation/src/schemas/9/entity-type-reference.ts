@@ -27,5 +27,6 @@ export const getEntityTypeReferenceDescriptor = (
 ): EntityTypeReferenceDescriptor | undefined => {
   const meta = schema.meta();
   const descriptor = meta?.[ENTITY_TYPE_REFERENCE];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod metadata is untyped; this key is written only by entityTypeReference() above, always with an EntityTypeReferenceDescriptor
   return descriptor as EntityTypeReferenceDescriptor | undefined;
 };
