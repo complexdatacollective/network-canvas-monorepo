@@ -78,7 +78,7 @@ const valueAt = (value: unknown, path: readonly string[]): unknown =>
   path.reduce<unknown>(
     (current, key) =>
       typeof current === 'object' && current !== null
-        ? (current as Readonly<Record<string, unknown>>)[key]
+        ? Reflect.get(current, key)
         : undefined,
     value,
   );
@@ -125,15 +125,17 @@ export const suppliedStageTextAfterLanguageChange = (
   settingsOf(stage.type).flatMap((setting) => {
     const current = valueAt(stage, setting.path);
     if (typeof current !== 'object' || current === null) return [];
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a supplied setting's path holds a language-to-text map in a stage; an entry that is not text never equals the supplied wording below
+    const held = current as LocalizedString;
     const { defaultLocale } = change.before;
-    const text = (current as LocalizedString)[defaultLocale];
+    const text = held[defaultLocale];
     if (text === undefined || text !== writtenIn(setting, defaultLocale, true))
       return [];
     return [
       {
         path: setting.path,
         value: suppliedTextAfterLanguageChange(
-          current as LocalizedString,
+          held,
           (locale, isDefault) => writtenIn(setting, locale, isDefault),
           change,
         ),

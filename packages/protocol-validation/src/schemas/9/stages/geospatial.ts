@@ -42,6 +42,7 @@ const mapboxStyleOptions = [
 ];
 
 const styleOptions = z.enum(
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mapboxStyleOptions is a fixed non-empty list, which z.enum needs typed as a tuple
   mapboxStyleOptions.map((option) => option.value) as [string, ...string[]],
 );
 

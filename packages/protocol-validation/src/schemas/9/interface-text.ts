@@ -361,6 +361,7 @@ const INTERFACE_TEXT_GROUPS = {
 
 type GroupName = keyof typeof INTERFACE_TEXT_GROUPS;
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keys of the `as const` INTERFACE_TEXT_GROUPS table, so exactly GroupName
 const GROUP_NAMES = Object.keys(INTERFACE_TEXT_GROUPS) as GroupName[];
 
 const entrySchema = (entry: InterfaceTextEntry) =>

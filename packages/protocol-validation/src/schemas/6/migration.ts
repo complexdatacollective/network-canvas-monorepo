@@ -13,6 +13,7 @@ const migrationV5toV6 = createMigration({
 `,
   migrate: (doc) => {
     const protocol = doc as Record<string, unknown>;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a version 5 document's stages are an array of stage objects; a malformed one throws here and is reported as a failed step, as it always has
     const stages = (protocol.stages as Array<Record<string, unknown>>) ?? [];
 
     const migratedStages = stages.map((stage) => {

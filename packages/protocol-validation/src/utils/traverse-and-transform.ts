@@ -1,5 +1,8 @@
 type PathSegment = string | { arrayKey: true } | { wildcardKey: true };
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 /**
  * Parse a path string like "stages[].panels[].filter" into segments
  * Supports wildcard notation with * to match all keys in an object
@@ -53,14 +56,13 @@ function traverseAndApply(
 
   if (typeof currentSegment === 'object' && 'wildcardKey' in currentSegment) {
     // Process all keys in the object
-    if (typeof obj !== 'object' || obj === null) {
+    if (!isObject(obj)) {
       return obj;
     }
 
-    const objAsRecord = obj as Record<string, unknown>;
     const result: Record<string, unknown> = {};
 
-    for (const [key, value] of Object.entries(objAsRecord)) {
+    for (const [key, value] of Object.entries(obj)) {
       result[key] = traverseAndApply(value, restSegments, fn);
     }
 
@@ -68,24 +70,18 @@ function traverseAndApply(
   }
 
   // Process object property
-  if (typeof obj !== 'object' || obj === null) {
+  if (!isObject(obj)) {
     return obj;
   }
 
-  const objAsRecord = obj as Record<string, unknown>;
-
-  if (typeof currentSegment !== 'string' || !(currentSegment in objAsRecord)) {
+  if (typeof currentSegment !== 'string' || !(currentSegment in obj)) {
     return obj;
   }
 
   // Create a new object with the modified property
   return {
-    ...objAsRecord,
-    [currentSegment]: traverseAndApply(
-      objAsRecord[currentSegment],
-      restSegments,
-      fn,
-    ),
+    ...obj,
+    [currentSegment]: traverseAndApply(obj[currentSegment], restSegments, fn),
   };
 }
 
@@ -128,6 +124,7 @@ export function traverseAndTransform<T>(
         result = fn(result);
       } else {
         const segments = parsePath(path);
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- traverseAndApply rebuilds the same shape with fn (V to V) applied at the matched paths, so the result is still a T
         result = traverseAndApply(result, segments, fn) as T;
       }
     }

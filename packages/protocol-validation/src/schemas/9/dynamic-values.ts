@@ -120,6 +120,7 @@ export type ParsedDynamicValuePath =
       variableId: string;
     }>;
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- entries of a Record<DynamicValueRole, string> with every role present, so every key is a DynamicValueRole
 const ROLE_PREFIX_ENTRIES = Object.entries(DYNAMIC_VALUE_ROLE_PREFIXES) as [
   DynamicValueRole,
   string,

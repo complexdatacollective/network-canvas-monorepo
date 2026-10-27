@@ -42,10 +42,11 @@ export type ValidationContradiction = {
 // All reads are defensive: the analyser runs inside Zod refinement (typed,
 // parsed input) and inside the v7→v8 migration (raw, partially-migrated
 // input), so nothing here may assume a well-formed variable.
+const isUnknownRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const asRecord = (value: unknown): UnknownRecord | null =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as UnknownRecord)
-    : null;
+  isUnknownRecord(value) ? value : null;
 
 const validationOf = (variable: unknown): UnknownRecord =>
   asRecord(asRecord(variable)?.validation) ?? {};

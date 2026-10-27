@@ -532,7 +532,9 @@ export const requiredArgumentsOf = (
       const counts =
         category === undefined
           ? undefined
-          : pluralCountExamples(locale).get(category as PluralCategory);
+          : isPluralCategory(category)
+            ? pluralCountExamples(locale).get(category)
+            : undefined;
       if (counts?.length === 1) return [];
     }
     return [name];

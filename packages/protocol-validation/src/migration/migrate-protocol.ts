@@ -45,7 +45,12 @@ type ValidatedSchemaVersion = VersionedProtocol['schemaVersion'];
 export function detectSchemaVersion(document: unknown): SchemaVersion {
   let coerced: unknown;
   try {
-    const rawVersion = (document as { schemaVersion?: unknown })?.schemaVersion;
+    const rawVersion =
+      typeof document === 'object' &&
+      document !== null &&
+      'schemaVersion' in document
+        ? document.schemaVersion
+        : undefined;
 
     // Handle v1 string schemaVersion ("1" -> 1)
     coerced = typeof rawVersion === 'string' ? Number(rawVersion) : rawVersion;
@@ -96,20 +101,25 @@ function migrateAndValidate(
 
   // Ensure schemaVersion is numeric before passing to migration chain
   const normalizedDocument = {
-    ...(document as Record<string, unknown>),
+    ...(typeof document === 'object' && document !== null ? document : {}),
     schemaVersion: detectedVersion,
   };
+
+  // Documents at version 7 and later were validated above; older ones have no
+  // schema, and their steps read them defensively.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the version is the document's own, which migrations of every version accept
+  const startDocument = normalizedDocument as ProtocolDocument<SchemaVersion>;
 
   // Perform migration
   const { document: migrated, sessionSteps } = recordSessionSteps
     ? protocolMigrations.migrateWithSessionSteps(
-        normalizedDocument as ProtocolDocument<SchemaVersion>,
+        startDocument,
         targetVersion,
         dependencies,
       )
     : {
         document: protocolMigrations.migrate(
-          normalizedDocument as ProtocolDocument<SchemaVersion>,
+          startDocument,
           targetVersion,
           dependencies,
         ),

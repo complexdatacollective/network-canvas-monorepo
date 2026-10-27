@@ -39,6 +39,7 @@ type SuppliedOptionLabels = Readonly<{
 const englishLabels = <Value extends string>(
   options: readonly { value: Value; label: string }[],
 ) =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- one entry per option, keyed by its value, so the keys are exactly Value
   Object.fromEntries(
     options.map(({ value, label }) => [value, label]),
   ) as Record<Value, string>;
@@ -286,7 +287,8 @@ type LabelledOption = Readonly<{ value: unknown; label?: unknown }>;
 
 const labelOf = (option: LabelledOption): LocalizedString =>
   typeof option.label === 'object' && option.label !== null
-    ? (option.label as LocalizedString)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an object-valued label is a language-to-text map; callers only compare its entries with supplied text
+      (option.label as LocalizedString)
     : {};
 
 /**

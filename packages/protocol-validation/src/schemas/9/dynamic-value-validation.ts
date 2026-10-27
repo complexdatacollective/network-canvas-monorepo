@@ -82,7 +82,8 @@ const variablesOf = (
   return Object.fromEntries(
     Object.entries(variables).flatMap(([id, variable]) =>
       isRecord(variable) && typeof variable.type === 'string'
-        ? [[id, variable as DynamicValueVariable]]
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the codebook is raw here; only a record with a string `type` is kept, and the rest of a variable is read defensively
+          [[id, variable as DynamicValueVariable]]
         : [],
     ),
   );
@@ -319,6 +320,7 @@ export const findDynamicValueProblems = (
     }
     const stage = protocol.stages[stageIndex];
     if (!isRecord(stage)) continue;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stage is raw here; its dynamicValues are shaped by DynamicValuesSchema and each binding is checked before use
     const bindings = (
       isRecord(stage.dynamicValues) ? stage.dynamicValues : {}
     ) as DynamicValues;

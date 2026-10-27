@@ -140,27 +140,27 @@ export const defaultFinishSessionFields = (
 };
 
 /** The finish stage's settings whose wording Network Canvas supplies. */
-const FINISH_SESSION_SETTINGS = [
-  'finishLabel',
-  'finishConfirmation',
-  'finishFailed',
-] as const;
-
-type FinishSessionSetting = (typeof FINISH_SESSION_SETTINGS)[number];
+type FinishSessionSetting =
+  | 'finishLabel'
+  | 'finishConfirmation'
+  | 'finishFailed';
 
 const suppliedFinishSessionSettings = (
   localization: LocalizationDeclaration,
 ): Record<FinishSessionSetting, LocalizedString> => {
   const texts = suppliedStageText('FinishSession', localization);
-  const settings: Partial<Record<FinishSessionSetting, LocalizedString>> = {};
-  for (const setting of FINISH_SESSION_SETTINGS) {
+  const wordingOf = (setting: FinishSessionSetting): LocalizedString => {
     const value = texts.find(({ path }) => path[0] === setting)?.value;
     if (value === undefined) {
       throw new Error(`Network Canvas supplies no wording for ${setting}.`);
     }
-    settings[setting] = value;
-  }
-  return settings as Record<FinishSessionSetting, LocalizedString>;
+    return value;
+  };
+  return {
+    finishLabel: wordingOf('finishLabel'),
+    finishConfirmation: wordingOf('finishConfirmation'),
+    finishFailed: wordingOf('finishFailed'),
+  };
 };
 
 /**

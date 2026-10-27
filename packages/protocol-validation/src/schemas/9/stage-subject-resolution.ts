@@ -50,6 +50,7 @@ export const getStageSubjectResolution = (
 ): StageSubjectResolution | undefined => {
   const meta = schema.meta();
   const resolution = meta?.[STAGE_SUBJECT_RESOLUTION];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod metadata is untyped; this key is written only by withStageSubjectResolution() above, always with a StageSubjectResolution
   return resolution as StageSubjectResolution | undefined;
 };
 
