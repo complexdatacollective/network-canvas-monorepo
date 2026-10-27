@@ -1,8 +1,20 @@
 export type AppId = 'architect' | 'interviewer';
 
+import { isRecord } from '../utils/isRecord';
+
 export type ReleaseNotes = { version: string; body: string };
 
 type GitHubRelease = { tag_name: string; body: string | null };
+
+// Only the fields this module reads are checked; the rest of the release
+// payload is none of its business.
+const toGitHubRelease = (value: unknown): GitHubRelease | null => {
+  if (!isRecord(value) || typeof value.tag_name !== 'string') return null;
+  return {
+    tag_name: value.tag_name,
+    body: typeof value.body === 'string' ? value.body : null,
+  };
+};
 
 const REPO = 'complexdatacollective/network-canvas-monorepo';
 
@@ -135,10 +147,16 @@ export async function fetchLatestReleaseNotes(
       // A missing page could hold the newest release, and notes picked from
       // the rest would describe the wrong version: show none instead.
       if (!res.ok) return null;
-      const batch = (await res.json()) as GitHubRelease[];
-      releases.push(...batch);
+      const batch: unknown = await res.json();
+      // Anything but a list is a response this code cannot read; show no notes
+      // rather than guess, as for a failed request.
+      if (!Array.isArray(batch)) return null;
+      for (const entry of batch) {
+        const release = toGitHubRelease(entry);
+        if (release) releases.push(release);
+      }
       if (batch.length < RELEASES_PER_PAGE) break;
-      if (batch.some((release) => isCandidate(app, release, runningMajor))) {
+      if (releases.some((release) => isCandidate(app, release, runningMajor))) {
         break;
       }
     }
@@ -159,8 +177,12 @@ export async function fetchReleaseNotesForVersion(
       { headers: { Accept: 'application/vnd.github+json' } },
     );
     if (!res.ok) return null;
-    const release = (await res.json()) as GitHubRelease;
-    return { version, body: release.body ?? '' };
+    const release: unknown = await res.json();
+    if (!isRecord(release)) return null;
+    return {
+      version,
+      body: typeof release.body === 'string' ? release.body : '',
+    };
   } catch {
     return null;
   }
@@ -170,8 +192,12 @@ export function readCachedNotes(app: AppId): ReleaseNotes | null {
   try {
     const raw = localStorage.getItem(cacheKey(app));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<ReleaseNotes>;
-    if (typeof parsed.version === 'string' && typeof parsed.body === 'string') {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      isRecord(parsed) &&
+      typeof parsed.version === 'string' &&
+      typeof parsed.body === 'string'
+    ) {
       return { version: parsed.version, body: parsed.body };
     }
     return null;

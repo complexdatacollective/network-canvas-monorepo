@@ -5,6 +5,15 @@ import type { Variable } from '@codaco/protocol-validation';
 
 import type { FieldValue } from '../../store/types';
 
+// Dates arrive as ISO strings, or occasionally as timestamps or Date objects;
+// anything else is not a date and compares as an invalid one (NaN).
+const toTime = (value: unknown): number =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  value instanceof Date
+    ? new Date(value).valueOf()
+    : Number.NaN;
+
 export default function compareVariables(
   value1: unknown,
   value2: FieldValue | null,
@@ -39,9 +48,7 @@ export default function compareVariables(
 
   // check for dates
   if (type === 'datetime') {
-    const date1 = new Date(value1 as string);
-    const date2 = new Date(value2 as string);
-    return date1.valueOf() - date2.valueOf();
+    return toTime(value1) - toTime(value2);
   }
 
   // check for numbers (could be number, ordinal, scalar, etc)

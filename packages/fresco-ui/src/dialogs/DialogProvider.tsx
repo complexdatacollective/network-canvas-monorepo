@@ -526,6 +526,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           flushSync(() =>
             setDialogs((prevDialogs) => [
               ...prevDialogs,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- spreading the generic D over the state fields yields exactly DialogState (AnyDialog plus these fields), which TypeScript cannot distribute across the AnyDialog union
               {
                 onConfirmHandler: null,
                 ...dialogProps,

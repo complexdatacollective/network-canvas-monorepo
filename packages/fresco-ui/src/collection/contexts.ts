@@ -34,6 +34,7 @@ export function useCollectionStore<T, R>(
     );
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the context holds the store at an erased item type; the caller names the T its Provider was created with
   return useStore(store as CollectionStoreApi<T>, selector);
 }
 
@@ -50,6 +51,7 @@ export function useCollectionStoreApi<T>(): CollectionStoreApi<T> {
     );
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the context holds the store at an erased item type; the caller names the T its Provider was created with
   return store as CollectionStoreApi<T>;
 }
 

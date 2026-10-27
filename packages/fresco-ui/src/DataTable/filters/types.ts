@@ -1,3 +1,4 @@
+import { isRecord } from '../../utils/isRecord';
 import { type Option } from '../types';
 
 type RangePreset = {
@@ -87,3 +88,34 @@ export type FilterValue =
   | BooleanFilterValue
   | FacetedFilterValue
   | OperatorFilterValue;
+
+// TanStack stores column filter values as `unknown`; these guards recover the
+// shape each filter component writes. A value of another shape is treated as
+// "no filter" rather than being handed to a component that cannot read it.
+export const isRangeFilterValue = (value: unknown): value is RangeFilterValue =>
+  isRecord(value) &&
+  typeof value.min === 'number' &&
+  typeof value.max === 'number';
+
+export const isDateFilterValue = (value: unknown): value is DateFilterValue =>
+  isRecord(value) &&
+  typeof value.from === 'string' &&
+  typeof value.to === 'string';
+
+export const isFacetedFilterValue = (
+  value: unknown,
+): value is FacetedFilterValue =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string');
+
+export const isOperatorFilterValue = (
+  value: unknown,
+): value is OperatorFilterValue =>
+  isRecord(value) && Array.isArray(value.conditions);
+
+export const isFilterValue = (value: unknown): value is FilterValue =>
+  typeof value === 'string' ||
+  typeof value === 'boolean' ||
+  isRangeFilterValue(value) ||
+  isDateFilterValue(value) ||
+  isFacetedFilterValue(value) ||
+  isOperatorFilterValue(value);

@@ -268,6 +268,7 @@ export default function IconPicker({
               placeholder={intl.formatMessage(messages.searchIcons)}
               render={({ onChange: renderOnChange, ...renderProps }) => {
                 const inputFieldProps =
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Base UI's input render props are native input props that InputField accepts at runtime; only the declared types differ
                   renderProps as unknown as ComponentPropsWithRef<
                     typeof InputField
                   >;

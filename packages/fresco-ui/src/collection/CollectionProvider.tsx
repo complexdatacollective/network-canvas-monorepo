@@ -64,6 +64,7 @@ export function CollectionProvider<T>({
 
   return (
     <CollectionStoreContext.Provider
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the context type erases the item type so one context serves every Provider<T>
       value={store as CollectionStoreApi<unknown>}
     >
       {children}

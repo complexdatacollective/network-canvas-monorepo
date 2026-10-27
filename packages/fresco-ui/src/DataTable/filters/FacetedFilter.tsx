@@ -82,14 +82,13 @@ export default function FacetedFilter({
   );
 
   const handleValueChange = (
-    newValue: unknown[] | null,
+    newValue: ComboboxOption[] | null,
     _event: Combobox.Root.ChangeEventDetails,
   ) => {
     if (newValue === null || newValue.length === 0) {
       onChange(undefined);
     } else {
-      const typedValue = newValue as ComboboxOption[];
-      onChange(typedValue.map((opt) => String(opt.value)));
+      onChange(newValue.map((opt) => String(opt.value)));
     }
   };
 
@@ -114,6 +113,7 @@ export default function FacetedFilter({
           placeholder={intl.formatMessage(messages.searchPlaceholder)}
           render={({ onChange: renderOnChange, ...rest }) => {
             const inputFieldProps =
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Base UI's input render props are native input props, which InputField accepts; only the declared types differ
               rest as unknown as React.ComponentPropsWithRef<typeof InputField>;
             return (
               <InputField

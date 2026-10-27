@@ -108,15 +108,25 @@ type PopoverTriggerProps = ComponentProps<typeof BasePopover.Trigger> & {
   asChild?: boolean;
 };
 
+const isRecordLike = (
+  value: unknown,
+): value is { displayName?: unknown; name?: unknown } =>
+  (typeof value === 'object' || typeof value === 'function') && value !== null;
+
 function isButtonElement(element: React.ReactElement): boolean {
   if (typeof element.type === 'string') {
     return element.type === 'button';
   }
+  // Exotic components (memo, forwardRef) are objects at runtime, so read the
+  // name properties defensively rather than trusting the declared type.
+  const type: unknown = element.type;
+  const displayName =
+    isRecordLike(type) && typeof type.displayName === 'string'
+      ? type.displayName
+      : undefined;
   const name =
-    (element.type as { displayName?: string }).displayName ??
-    (element.type as { name?: string }).name ??
-    '';
-  return /button/i.test(name);
+    isRecordLike(type) && typeof type.name === 'string' ? type.name : '';
+  return /button/i.test(displayName ?? name);
 }
 
 function PopoverTrigger({

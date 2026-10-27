@@ -323,6 +323,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                   // incompatible with InputField's types (e.g. value, onBlur,
                   // aria-required differ) but semantically correct at runtime.
                   const inputFieldProps =
+                    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Base UI's input render props are native input props that InputField accepts at runtime; only the declared types differ
                     renderProps as unknown as React.ComponentPropsWithRef<
                       typeof InputField
                     >;

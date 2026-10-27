@@ -355,7 +355,9 @@ export const focusFirstError = (
     focusableElement.focus({ preventScroll: true });
   }
 
-  const scroller = scrollParent(scrollTarget) as unknown as HTMLElement;
+  const scroller = scrollParent(scrollTarget);
+  // Only an element from another realm (an iframe's) has no scroll parent.
+  if (!scroller) return;
   const scrollStart = scroller.scrollTop;
   const scrollerOffset = Number.parseInt(
     scroller.getBoundingClientRect().top.toString(),

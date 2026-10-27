@@ -68,6 +68,7 @@ type BadgeAppearance = NonNullable<BadgeVariantProps['appearance']>;
 type BadgeSize = NonNullable<BadgeVariantProps['size']>;
 type BadgeColor = PaletteColor;
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keys of the const paletteColorStyles object are exactly PaletteColor
 const BADGE_COLORS = Object.keys(paletteColorStyles) as readonly BadgeColor[];
 
 type BadgeStyle = React.CSSProperties & {

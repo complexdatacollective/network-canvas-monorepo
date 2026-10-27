@@ -70,6 +70,7 @@ export default function Field<C extends ValidFieldComponent>({
   // ValidFieldComponent only encodes the minimum required by Field — the
   // concrete component declared by the consumer accepts these merged props
   // because FieldProps is built from React.ComponentProps<C>.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- C is a generic component type, so TypeScript cannot see that these merged props are the ones its ComponentProps<C> accepts
   const mergedProps = {
     id,
     name,

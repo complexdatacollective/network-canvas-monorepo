@@ -124,6 +124,17 @@ describe('notes cache', () => {
   it('returns null when nothing is cached', () => {
     expect(readCachedNotes('architect')).toBeNull();
   });
+
+  it.each([
+    ['null', 'null'],
+    ['a number', '12'],
+    ['a version without a body', JSON.stringify({ version: '1.0.0' })],
+    ['a non-string body', JSON.stringify({ version: '1.0.0', body: 7 })],
+    ['text that is not JSON', '{oops'],
+  ])('returns null for a cache entry holding %s', (_label, raw) => {
+    localStorage.setItem('nc:updateNotes:architect', raw);
+    expect(readCachedNotes('architect')).toBeNull();
+  });
 });
 
 describe('fetchLatestReleaseNotes', () => {
@@ -234,6 +245,36 @@ describe('fetchLatestReleaseNotes', () => {
     vi.stubGlobal('fetch', always);
     await expect(fetchLatestReleaseNotes('architect')).resolves.toBeNull();
     expect(always).toHaveBeenCalledTimes(3);
+  });
+
+  it('skips list entries that are not releases', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => [
+          null,
+          42,
+          { body: 'no tag' },
+          { tag_name: '@codaco/architect@8.0.0', body: 'arch notes' },
+        ],
+      }),
+    );
+    await expect(fetchLatestReleaseNotes('architect')).resolves.toEqual({
+      version: '8.0.0',
+      body: 'arch notes',
+    });
+  });
+
+  it('resolves null when the list endpoint answers with something other than a list', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ message: 'rate limited' }),
+      }),
+    );
+    await expect(fetchLatestReleaseNotes('architect')).resolves.toBeNull();
   });
 
   it('resolves null on a non-ok response', async () => {
