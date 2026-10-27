@@ -1,7 +1,14 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { type Ref, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -97,11 +104,47 @@ function ProgressRing({ fraction }: { fraction: number }) {
   );
 }
 
+/** A tick for what is done, a bullet for what is not, each the width of
+ * the tick so the text lines up. */
+function ItemMark({ done }: { done: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className="flex w-4 shrink-0 translate-y-0.5 justify-center self-start"
+    >
+      {done ? (
+        <Check className="text-success size-4 stroke-[3px]" />
+      ) : (
+        <span className="mt-1.5 size-1.5 rounded-full bg-current" />
+      )}
+    </span>
+  );
+}
+
+/** The words of an item done, struck through, with `prefix` read out
+ * before them. */
+function DoneText({
+  prefix,
+  children,
+}: {
+  prefix: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="line-through opacity-70">
+      <span className="sr-only">{prefix}</span>
+      {children}
+    </span>
+  );
+}
+
 /**
  * Progress towards the family the researcher requires, as a ring in the
  * stage's toolbar. Hovering or focusing it shows, in a popover, the list of
  * everything asked about the family: what is done, ticked and struck
- * through, and what is still needed, which leads to it. Clicking the ring,
+ * through, and what is still needed, which leads to it. People's details
+ * are listed one by one while missing, and as one item once all are given.
+ * Clicking the ring,
  * or pressing Next before the family is complete, pins the list open. Once
  * complete, the ring is a tick, and the list shows everything done.
  */
@@ -295,23 +338,9 @@ function CompletenessTracker({
                     key={`${item.kind}:${item.personId}`}
                     className="flex items-baseline gap-2"
                   >
-                    {/* A tick for what is done, a bullet for what is not,
-                        each the width of the tick so the text lines up. */}
-                    <span
-                      aria-hidden
-                      className="flex w-4 shrink-0 translate-y-0.5 justify-center self-start"
-                    >
-                      {done ? (
-                        <Check className="text-success size-4 stroke-[3px]" />
-                      ) : (
-                        <span className="mt-1.5 size-1.5 rounded-full bg-current" />
-                      )}
-                    </span>
+                    <ItemMark done={done} />
                     {done ? (
-                      <span className="line-through opacity-70">
-                        <span className="sr-only">{donePrefix}</span>
-                        {itemText}
-                      </span>
+                      <DoneText prefix={donePrefix}>{itemText}</DoneText>
                     ) : (
                       <div className="flex flex-col items-start gap-2">
                         <button
@@ -337,6 +366,14 @@ function CompletenessTracker({
                   </li>
                 );
               })}
+              {progress.allDetailsGiven && (
+                <li className="flex items-baseline gap-2">
+                  <ItemMark done />
+                  <DoneText prefix={donePrefix}>
+                    {intl.formatMessage(messages.trackerAllDetailsDone)}
+                  </DoneText>
+                </li>
+              )}
             </ul>
             {completeness.enforcement === 'recommended' && (
               <p className="text-sm opacity-80">{recommendedNote}</p>

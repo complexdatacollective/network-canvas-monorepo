@@ -29,6 +29,7 @@
   "interview.familyPedigree.skipStep": "Salta",
   "interview.familyPedigree.toolGroupLabel": "Cosa succede quando fai clic su una persona",
   "interview.familyPedigree.toolsLabel": "Strumenti dell’albero genealogico",
+  "interview.familyPedigree.trackerAllDetailsDone": "Aggiungi le informazioni obbligatorie per tutti i familiari",
   "interview.familyPedigree.trackerItemDone": "Completato:",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Il tuo albero genealogico contiene tutto il necessario} other {Albero genealogico completo al {percent, number, percent}}}. Mostra cosa manca ancora.",
   "interview.familyPedigree.undoDescription": "Annulla l’ultima modifica al tuo albero genealogico.",

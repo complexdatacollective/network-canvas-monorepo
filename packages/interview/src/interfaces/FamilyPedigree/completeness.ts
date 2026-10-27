@@ -49,8 +49,12 @@ export type CompletenessProgress = {
   /** What is still needed, about people already in the family. */
   items: CompletenessItem[];
   /** Everything asked about people already in the family, needed or done,
-   * in the order the list shows it: `items`, with what is done among them. */
+   * in the order the list shows it: `items`, with what is done among them.
+   * A person's details are in it only while some are missing. */
   checklist: { item: CompletenessItem; done: boolean }[];
+  /** Everyone in the family has the details required of them: the list
+   * shows that as one item done, after the rest. */
+  allDetailsGiven: boolean;
   /** Steps towards completion taken, and in total. */
   done: number;
   total: number;
@@ -182,7 +186,16 @@ export function evaluateCompleteness(
   let done = 0;
   let total = 0;
   const egoId = family.egoId;
-  if (!egoId) return { items: [], checklist: [], done, total, asked };
+  if (!egoId) {
+    return {
+      items: [],
+      checklist: [],
+      allDetailsGiven: false,
+      done,
+      total,
+      asked,
+    };
+  }
 
   const answered = (
     personId: string,
@@ -278,19 +291,23 @@ export function evaluateCompleteness(
   const people = family.people.toSorted(
     (a, b) => Number(b.isEgo) - Number(a.isEgo),
   );
+  let allDetailsGiven = true;
   for (const person of people) {
     total += 1;
-    const given = !hasMissingDetails(person);
-    if (given) done += 1;
-    checklist.push({
-      item: { kind: 'details', personId: person.id },
-      done: given,
-    });
+    if (hasMissingDetails(person)) {
+      allDetailsGiven = false;
+      checklist.push({
+        item: { kind: 'details', personId: person.id },
+        done: false,
+      });
+    } else {
+      done += 1;
+    }
   }
   const items = checklist
     .filter((entry) => !entry.done)
     .map((entry) => entry.item);
-  return { items, checklist, done, total, asked };
+  return { items, checklist, allDetailsGiven, done, total, asked };
 }
 
 /** The answers that stand in for siblings or children not recorded. */

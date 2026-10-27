@@ -7,7 +7,7 @@
     - button "Close"
     - text: What do you call them? A nickname will do.
     - textbox "What do you call them?"
-    - text: Gender identity
+    - text: Gender identity Required
     - radiogroup "Gender identity":
       - radio "Woman"
       - text: Woman

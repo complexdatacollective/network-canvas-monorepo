@@ -283,6 +283,21 @@ const answerWhoCarriedIfAsked = async (
   if (queryWhoCarried()) await answerWhoCarried(user);
 };
 
+/** Answers whether a new parent carried the pregnancy, recording nothing,
+ * while it is asked: it is required, with "Don’t know" among its answers. */
+const answerParentCarriedIfAsked = async (
+  user: ReturnType<typeof userEvent.setup>,
+) => {
+  const question = screen.queryByRole('radiogroup', {
+    name: /^(Did this parent carry the pregnancy|Was this parent pregnant)/,
+  });
+  if (question) {
+    await user.click(
+      within(question).getByRole('radio', { name: 'Don’t know' }),
+    );
+  }
+};
+
 describe('the person form', () => {
   it('refuses to save when a researcher answer cannot be stored, saving none of it', async () => {
     const reject = vi
@@ -374,7 +389,9 @@ describe('the person form', () => {
     expect(screen.queryByRole('radio', { name: 'Female' })).toBeNull();
   });
 
-  it('saves without a gender identity, which a participant may not know', async () => {
+  // Josh, 27 Oct 2026: required where the stage asks it. The researcher's
+  // options may include a refusal, which counts as an answer.
+  it('requires a gender identity where the stage asks it', async () => {
     const { onSubmit, user } = renderPersonForm('dad', {
       nodes: [person('dad', { sex: ['male'] })],
       genderIdentityOptions: [
@@ -382,12 +399,21 @@ describe('the person form', () => {
         { value: 'man', label: 'Man' },
       ],
     });
-    expect(screen.getByRole('radio', { name: 'Man' })).not.toBeChecked();
+    const man = screen.getByRole('radio', { name: 'Man' });
+    expect(man).not.toBeChecked();
     await save(user);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('radiogroup', { name: /^Gender identity/ }),
+      ).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
 
+    await user.click(man);
+    await save(user);
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     const [result] = onSubmit.mock.calls[0] ?? [];
-    expect(result?.set).not.toHaveProperty('gender');
+    expect(result?.set).toHaveProperty('gender', ['man']);
   });
 
   it('leaves a name of only spaces unnamed', async () => {
@@ -891,6 +917,7 @@ describe('an answer that cannot be chosen', () => {
         .map((radio) => radio.getAttribute('aria-label') ?? radio.textContent),
     ).toHaveLength(2);
     // It must be answered: nothing is assumed about them.
+    await answerParentCarriedIfAsked(user);
     await save(user);
     await waitFor(() =>
       expect(replaced).toHaveAttribute('aria-invalid', 'true'),
@@ -1013,9 +1040,9 @@ describe('a parent of any kind who carried the pregnancy', () => {
     });
   });
 
-  // Decided gap (9 Oct 2026): not answered records nothing, told apart
-  // from "No".
-  it('records nothing about carrying for a new parent when the question is left unanswered', async () => {
+  // Josh, 27 Oct 2026: the question is required, with "Don't know" as an
+  // answer that records nothing, told apart from "No".
+  it('records nothing about carrying for a new parent whose answer is “Don’t know”', async () => {
     const { onSubmit, user } = renderPersonForm('ego', {
       nodes: [person('ego', { isEgo: true, sex: ['male'] })],
       adding: 'parent',
@@ -1023,6 +1050,13 @@ describe('a parent of any kind who carried the pregnancy', () => {
     await user.click(screen.getByRole('radio', { name: 'Female' }));
     await user.click(
       screen.getByRole('radio', { name: 'Step or social parent' }),
+    );
+    const question = screen.getByRole('radiogroup', {
+      name: /^Did this parent carry the pregnancy\?/,
+    });
+    expect(question).toBeRequired();
+    await user.click(
+      within(question).getByRole('radio', { name: 'Don’t know' }),
     );
     await save(user);
 
@@ -3522,6 +3556,7 @@ describe('an answer about a particular person', () => {
     // answered.
     expectUnanswered(together('mum'));
     await choose(user, together('mum'), 'Yes');
+    await answerParentCarriedIfAsked(user);
     await save(user);
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
@@ -3554,6 +3589,7 @@ describe('an answer about a particular person', () => {
       }),
       'dad',
     );
+    await answerParentCarriedIfAsked(user);
     await save(user);
     expect(onSubmit).not.toHaveBeenCalled();
     await choose(
@@ -3632,6 +3668,7 @@ describe('whether a new partnership is current', () => {
       const question = await together(asked);
       expect(question).toBeRequired();
       await user.click(within(question).getByRole('radio', { name: 'Yes' }));
+      await answerParentCarriedIfAsked(user);
       await save(user);
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
       expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({

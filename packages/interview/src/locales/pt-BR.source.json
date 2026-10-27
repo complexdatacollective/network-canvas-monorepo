@@ -29,6 +29,7 @@
   "interview.familyPedigree.skipStep": "Skip",
   "interview.familyPedigree.toolGroupLabel": "What clicking a person does",
   "interview.familyPedigree.toolsLabel": "Family tree tools",
+  "interview.familyPedigree.trackerAllDetailsDone": "Add required details for all family members",
   "interview.familyPedigree.trackerItemDone": "Done:",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",
   "interview.familyPedigree.undoDescription": "Undo your last change to your family tree.",

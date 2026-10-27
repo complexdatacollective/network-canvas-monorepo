@@ -179,8 +179,10 @@ export default function AddRelativeMenu({
                   }}
                   className={cx(
                     'pointer-events-auto size-18 max-w-none shrink-0 rounded-full p-0 whitespace-nowrap',
-                    // Set apart from the family and the canvas beneath them.
-                    'elevation-high',
+                    // Set apart from the family and the canvas beneath them
+                    // by a soft, wide shadow, the same at rest, on hover and
+                    // when pressed.
+                    'shadow-[0_2px_10px_oklch(from_var(--background)_0.05_c_h/0.35),0_10px_40px_oklch(from_var(--background)_0.05_c_h/0.5)]!',
                     // No Button colour fills with one colour and hovers to
                     // another: the text colour at rest, primary on hover. The
                     // fill changes at once, so the hover does not read as lag.

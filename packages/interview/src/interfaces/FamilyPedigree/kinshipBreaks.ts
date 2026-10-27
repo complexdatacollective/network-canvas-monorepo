@@ -1,11 +1,15 @@
 /**
- * Where a long kinship word may break inside a person's symbol, for every
- * language the stage's kinship words come in. This is the only place those
- * break points are set: the words themselves, as the stage or a protocol
- * holds them, carry none, and any they do carry are ignored. So a word
- * breaks at the same place however the label came to be written: in a
- * protocol saved before break points existed, in wording a researcher
- * edited, or wherever else the word appears in the label.
+ * Where a long kinship word may break inside a person's symbol, for the
+ * languages the stage's own kinship words come in. The stage's wording in
+ * those languages carries no break points of its own; these are its break
+ * points, so a word breaks at the same place however the label came to be
+ * written: in a protocol saved before break points existed, or wherever
+ * else the word appears in the label.
+ *
+ * Wording a researcher writes, in any language, may carry its own: a word
+ * written with soft hyphens breaks only where they are, and the table is
+ * not used for it. That is how a language with no entry here gets break
+ * points.
  *
  * Each word is written in lower case with `|` at each place it may break,
  * at a boundary a reader recognises ("grand|mother", not "grandmo|ther").
@@ -183,15 +187,16 @@ const breakPointsFor = (locale: string) =>
   breakPointsByLanguage.get(locale.split('-')[0] ?? locale);
 
 /**
- * A kinship word, or a label built from them, with soft hyphens at each
- * place `BREAKS` sets for its language and nowhere else. A soft hyphen is
- * invisible unless the word does break there, and then it draws a hyphen.
+ * A kinship word, or a label built from them, with soft hyphens where it may
+ * break: where a word of it already has them, there alone, and otherwise
+ * at each place `BREAKS` sets for its language. A soft hyphen is invisible
+ * unless the word does break there, and then it draws a hyphen.
  */
 export function withKinshipBreaks(text: string, locale: string): string {
-  const plain = text.replaceAll(SOFT_HYPHEN, '');
   const breaks = breakPointsFor(locale);
-  if (!breaks) return plain;
-  return plain.replace(/\p{L}+/gu, (word) => {
+  if (!breaks) return text;
+  return text.replace(/\p{L}[\p{L}\u00AD]*/gu, (word) => {
+    if (word.includes(SOFT_HYPHEN)) return word;
     const lower = word.toLocaleLowerCase(locale);
     // A word whose lower case is not letter for letter is left whole.
     const at = lower.length === word.length ? breaks.get(lower) : undefined;

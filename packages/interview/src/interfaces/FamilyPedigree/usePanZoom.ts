@@ -14,9 +14,10 @@ import { type RefObject, useCallback, useMemo, useRef, useState } from 'react';
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.5;
 // The most a fit (Show the whole family, and every reset of the view) zooms
-// in, well below what the participant can zoom in to themselves: a small
-// family is shown a fifth larger than its natural size, no larger.
-const FIT_MAX_SCALE = 1.2;
+// in: people are never drawn larger than their natural size unless the
+// participant zooms in themselves. A small family is shown at its natural
+// size, and a large one zoomed out as far as it must be to fit.
+const FIT_MAX_SCALE = 1;
 // How much of the family stays on screen, at least, however far it is
 // dragged away.
 const KEEP_VISIBLE = 120;
@@ -258,16 +259,13 @@ export type PanZoom = {
   zoomBy: (exponent: number, focus?: ZoomFocus) => void;
   /** Puts the middle of an element of the content in the middle of the
    * viewport, inside the given insets, at the zoom that fits it there: as
-   * large as fits, up to a fifth larger than its natural size, and no less than the least zoom. An
-   * element too large to fit even then is still centred, and runs past the
-   * edges. Without `zoomIn`, it zooms in no further than the zoom the
-   * participant last chose, or the last fit that could zoom in: it zooms out
-   * as far as it must to fit, and never closer than the participant had it.
-   * The view it heads for. */
+   * large as fits, up to its natural size, and no less than the least zoom.
+   * An element too large to fit even then is still centred, and runs past
+   * the edges. The view it heads for. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,
-    options?: { animated?: boolean; zoomIn?: boolean },
+    options?: { animated?: boolean },
   ) => View | undefined;
   /** Keeps an element where it is on screen across a change of layout,
    * given where it was in the content before the change. */
@@ -394,19 +392,12 @@ export function usePanZoom({
     [stopAnimating, clampPan, reduceMotion, x, y, scale],
   );
 
-  // The zoom the participant last chose (wheel, pinch, the zoom buttons or
-  // keys) or asked for (a fit that may zoom in): the most a fit that only
-  // zooms out goes back up to.
-  const chosenScale = useRef<number | null>(null);
-
   // Zooms so the content point under (clientX, clientY) stays under it.
-  // Only the participant zooms this way.
   const zoomAt = useCallback(
     (nextScale: number, clientX: number, clientY: number, animated = false) => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       const bounded = clamp(nextScale, MIN_SCALE, MAX_SCALE);
-      chosenScale.current = bounded;
       const box = viewport.getBoundingClientRect();
       const pointX = clientX - box.left;
       const pointY = clientY - box.top;
@@ -609,7 +600,7 @@ export function usePanZoom({
   );
 
   const fitToView = useCallback<PanZoom['fitToView']>(
-    (element, insets, { animated = true, zoomIn = true } = {}) => {
+    (element, insets, { animated = true } = {}) => {
       const viewport = viewportRef.current;
       if (!viewport) return undefined;
       const width = element.offsetWidth;
@@ -622,11 +613,8 @@ export function usePanZoom({
       const nextScale = clamp(
         Math.min(availableWidth / width, availableHeight / height),
         MIN_SCALE,
-        zoomIn
-          ? FIT_MAX_SCALE
-          : Math.min(FIT_MAX_SCALE, chosenScale.current ?? FIT_MAX_SCALE),
+        FIT_MAX_SCALE,
       );
-      if (zoomIn) chosenScale.current = nextScale;
       return moveTo(
         insets.left + availableWidth / 2 - centre.x * nextScale,
         insets.top + availableHeight / 2 - centre.y * nextScale,

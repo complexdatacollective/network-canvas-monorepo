@@ -162,6 +162,13 @@ async function addMother(canvasElement: HTMLElement, childId: string) {
     name: /^What kind of parent are they\?/,
   });
   await userEvent.click(within(kind).getAllByRole('radio')[0] as HTMLElement);
+  // Whether they carried the pregnancy is required: not known, here.
+  const carried = await body.findByRole('radiogroup', {
+    name: /^Did this parent carry the pregnancy\?/,
+  });
+  await userEvent.click(
+    within(carried).getByRole('radio', { name: 'Don’t know' }),
+  );
   await userEvent.click(await body.findByRole('button', { name: 'Save' }));
   await waitFor(() =>
     expect(
@@ -1360,10 +1367,10 @@ export const MovingBetweenPromptsShowsTheWholeFamily: Story = {
 };
 
 /**
- * A small family is shown as large as the canvas allows, larger than its
- * natural size, but no more than a fifth larger.
+ * A small family, which would fit larger, is shown at its natural size:
+ * the canvas never draws people larger than that by itself.
  */
-export const ASmallFamilyFillsTheCanvas: Story = {
+export const ASmallFamilyIsNotEnlarged: Story = {
   render: () => <CanvasStory family={threePeople} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -1371,8 +1378,7 @@ export const ASmallFamilyFillsTheCanvas: Story = {
     await settled(canvasElement);
     const symbol = personSymbol(canvasElement, 'ego');
     const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
-    await expect(scale, 'zoomed in past natural size').toBeGreaterThan(1.01);
-    await expect(scale, 'no more than a fifth larger').toBeLessThan(1.201);
+    await expect(scale, 'at its natural size').toBeCloseTo(1, 2);
   },
 };
 

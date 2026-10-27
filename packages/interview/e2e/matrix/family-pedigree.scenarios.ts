@@ -281,12 +281,19 @@ async function describe(
   const unanswered = async (group: Locator) =>
     (await group.getByRole('radio', { checked: true }).count()) === 0;
   let firstAnswer = await unanswered(sex);
-  if (details.gender !== undefined) {
-    const gender = form.getByRole('radiogroup', { name: /^Gender identity/ });
+  // Gender identity is required where the stage asks it: a scenario that
+  // names none answers that it is not known.
+  const gender = form.getByRole('radiogroup', { name: /^Gender identity/ });
+  if (details.gender !== undefined || (await gender.isVisible())) {
     if (await unanswered(gender)) firstAnswer = true;
-    await gender
-      .getByRole('radio', { name: details.gender, exact: true })
-      .click();
+    if (details.gender !== undefined || (await unanswered(gender))) {
+      await gender
+        .getByRole('radio', {
+          name: details.gender ?? 'Don’t know',
+          exact: true,
+        })
+        .click();
+    }
   }
   await sex.getByRole('radio', { name: details.sex, exact: true }).click();
   if (stepped) {
@@ -364,6 +371,20 @@ async function shareParentsAsBiological(
   if (!options.leaveCarrierUnanswered) await answerCarrierUnknown(page);
 }
 
+/**
+ * Answers whether a new parent carried the pregnancy with "Don’t know",
+ * which records nothing, while it is shown and unanswered: it is required.
+ * A scenario that relies on the answer chooses it itself.
+ */
+async function answerCarriedUnknownIfAsked(page: Page): Promise<void> {
+  const group = panel(page).getByRole('radiogroup', {
+    name: /^(Did this parent carry the pregnancy|Was this parent pregnant)/,
+  });
+  if (!(await group.isVisible())) return;
+  if ((await group.getByRole('radio', { checked: true }).count()) > 0) return;
+  await group.getByRole('radio', { name: 'Don’t know', exact: true }).click();
+}
+
 /** Moves a new person's panel on to its next group of questions. */
 async function nextStep(page: Page) {
   await panel(page)
@@ -377,8 +398,10 @@ async function nextStep(page: Page) {
  */
 async function submitPanel(page: Page, button: 'Save') {
   const save = panel(page).getByRole('button', { name: button, exact: true });
+  await answerCarriedUnknownIfAsked(page);
   for (let step = 0; step < 5 && !(await save.isVisible()); step++) {
     await nextStep(page);
+    await answerCarriedUnknownIfAsked(page);
   }
   await save.click();
   await expect(panel(page)).toHaveCount(0);
@@ -442,6 +465,11 @@ const trackerList = (page: Page): Locator =>
   page.getByRole('region', {
     name: /Show what’s still needed/,
   });
+
+/** The items of the tracker's list still needed: each leads to what it asks
+ * for, while an item done is shown ticked, with nothing to press. */
+const neededItems = (list: Locator): Locator =>
+  list.getByRole('listitem').filter({ has: list.page().getByRole('button') });
 
 // --- The stage's own words ---------------------------------------------------
 
@@ -1058,6 +1086,14 @@ function keyboardFirstVisit(): ScenarioDefinition {
         .getByRole('radio', { name: 'Biological parent', exact: true })
         .focus();
       await page.keyboard.press('Space');
+      // Whether she carried the pregnancy is required.
+      await panel(page)
+        .getByRole('radiogroup', {
+          name: /^Did this parent carry the pregnancy\?/,
+        })
+        .getByRole('radio', { name: 'Don’t know', exact: true })
+        .focus();
+      await page.keyboard.press('Space');
       await panel(page)
         .getByRole('button', { name: 'Save', exact: true })
         .focus();
@@ -1541,7 +1577,7 @@ function completenessGrandparentsRequired(): ScenarioDefinition {
     run: async (ctx) => {
       const { page, interview } = ctx;
       await trackerRing(page).click();
-      const items = trackerList(page).getByRole('listitem');
+      const items = neededItems(trackerList(page));
       for (const name of ['Julie', 'Rob']) {
         await expect(
           trackerList(page).getByRole('button', {
@@ -1654,12 +1690,12 @@ function extendedScope(
         await expect(
           list.getByRole('button', { name: cousinsItem }),
         ).toBeVisible();
-        await expect(list.getByRole('listitem')).toHaveCount(3);
+        await expect(neededItems(list)).toHaveCount(3);
       } else {
         await expect(
           list.getByRole('button', { name: cousinsItem }),
         ).toHaveCount(0);
-        await expect(list.getByRole('listitem')).toHaveCount(2);
+        await expect(neededItems(list)).toHaveCount(2);
       }
     },
   };

@@ -984,6 +984,19 @@ const chooseFirstParentKind = async (scope: ReturnType<typeof within>) => {
   await userEvent.click(within(kind).getAllByRole('radio')[0] as HTMLElement);
 };
 
+/** Whether a new parent carried the pregnancy, answered "Don’t know" while
+ * it is asked: it is required. */
+const answerCarriedIfAsked = async (scope: ReturnType<typeof within>) => {
+  const carried = scope.queryByRole('radiogroup', {
+    name: /^(Did this parent carry the pregnancy|Was this parent pregnant)/,
+  });
+  if (carried) {
+    await userEvent.click(
+      within(carried).getByRole('radio', { name: 'Don’t know' }),
+    );
+  }
+};
+
 /** The add-a-sibling form's required questions, answered as a full
  * biological sibling: every parent offered is shared (or, for someone with
  * no parent recorded, both of the parents given them), and they are the
@@ -1318,6 +1331,7 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
     await expect(partnerAnswer()).toBe('No');
 
     await chooseKind('Biological parent');
+    await answerCarriedIfAsked(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() => expect(idInSession('Mei')).toBeDefined());
@@ -1457,6 +1471,10 @@ export const AddingSomeoneMovesThroughTheQuestions: Story = {
     await expect(name).toHaveValue('Rosa');
     await userEvent.click(
       await body.findByRole('button', { name: 'Continue' }),
+    );
+    // It is required, so is answered before going on.
+    await userEvent.click(
+      await within(carried).findByRole('radio', { name: 'Don’t know' }),
     );
     await userEvent.click(
       await body.findByRole('button', { name: 'Continue' }),
@@ -3972,6 +3990,7 @@ export const NameAttributeNamedProto: Story = {
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
     await chooseFirstParentKind(body);
+    await answerCarriedIfAsked(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 

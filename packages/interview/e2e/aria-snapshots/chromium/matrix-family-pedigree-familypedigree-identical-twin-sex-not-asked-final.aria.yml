@@ -7,7 +7,7 @@
     - button "Close"
     - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
     - textbox "Name (optional)": Ben
-    - text: Gender identity
+    - text: Gender identity Required
     - radiogroup "Gender identity":
       - radio "Woman"
       - text: Woman

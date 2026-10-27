@@ -29,6 +29,7 @@
   "interview.familyPedigree.skipStep": "Omitir",
   "interview.familyPedigree.toolGroupLabel": "Qué ocurre al hacer clic en una persona",
   "interview.familyPedigree.toolsLabel": "Herramientas del árbol familiar",
+  "interview.familyPedigree.trackerAllDetailsDone": "Añade los datos obligatorios de todos los miembros de la familia",
   "interview.familyPedigree.trackerItemDone": "Completado:",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Tu árbol familiar tiene todo lo necesario} other {Árbol familiar completado al {percent, number, percent}}}. Mostrar lo que falta.",
   "interview.familyPedigree.undoDescription": "Deshaz el último cambio que hiciste en tu árbol familiar.",

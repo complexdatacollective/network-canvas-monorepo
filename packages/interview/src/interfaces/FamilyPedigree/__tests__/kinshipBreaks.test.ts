@@ -14,11 +14,19 @@ describe('withKinshipBreaks', () => {
     );
   });
 
-  test('ignores break points the wording carries, so every label breaks alike', () => {
-    expect(shown(withKinshipBreaks('Biologi­cal father', 'en'))).toBe(
-      'Bio|logical father',
+  test('keeps the break points a word of the wording carries, and sets none of its own there', () => {
+    expect(
+      shown(withKinshipBreaks('Biolo\u00ADgical grand\u00ADfather', 'en')),
+    ).toBe('Biolo|gical grand|father');
+    // Only the word that carries them: the others still get the table's.
+    expect(shown(withKinshipBreaks('Biological grand\u00ADfather', 'en'))).toBe(
+      'Bio|logical grand|father',
     );
-    expect(shown(withKinshipBreaks('Grand­son', 'en'))).toBe('Grandson');
+  });
+
+  test('keeps the break points of wording in a language with none of its own', () => {
+    expect(shown(withKinshipBreaks('Nagy\u00ADanya', 'hu'))).toBe('Nagy|anya');
+    expect(withKinshipBreaks('Nagyanya', 'hu')).toBe('Nagyanya');
   });
 
   test('uses the base language for a regional tag, and none for a language without breaks', () => {
@@ -28,6 +36,6 @@ describe('withKinshipBreaks', () => {
     expect(shown(withKinshipBreaks('Biological father', 'en-GB'))).toBe(
       'Bio|logical father',
     );
-    expect(withKinshipBreaks('生­父', 'zh-Hans')).toBe('生父');
+    expect(withKinshipBreaks('生父', 'zh-Hans')).toBe('生父');
   });
 });

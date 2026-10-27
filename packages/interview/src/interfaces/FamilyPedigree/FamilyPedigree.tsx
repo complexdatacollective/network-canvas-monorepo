@@ -790,33 +790,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family in the middle of the canvas, clear of the prompt above
-  // and the toolbar below, and out no further than the zoom buttons go: a
-  // family too large even for that is still centred, and the rest of it is
-  // reached by panning. This is the view the stage opens on, and the view it
-  // goes back to whenever the participant asks for it, moves to another
-  // prompt, or finishes adding or editing someone; where they had dragged it
-  // to is not kept. Until they move it again, it keeps the family framed as
-  // the layout changes (`framedView`). Opening the stage, and asking for it
-  // (Show the whole family), the family is as large as fits, up to a fifth
-  // larger than its natural size. Framed by itself, it is zoomed out as far
-  // as it must be to fit, and never closer than the participant last had
-  // it: zooming in is left to them.
+  // and the toolbar below, as large as it fits up to its natural size (people
+  // are never drawn larger unless the participant zooms in), and out no
+  // further than the zoom buttons go: a family too large even for that is
+  // still centred, and the rest of it is reached by panning. This is the
+  // view the stage opens on, and the view it goes back to whenever the
+  // participant asks for it, moves to another prompt, or finishes adding or
+  // editing someone; where they had dragged or zoomed it to is not kept.
+  // Until they move it again, it keeps the family framed as the layout
+  // changes (`framedView`).
   const framedView = useRef<View | null>(null);
   const showWholeFamily = useCallback(
-    ({
-      animated = true,
-      zoomIn = false,
-    }: { animated?: boolean; zoomIn?: boolean } = {}) => {
+    ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
       framedView.current =
-        panZoom.fitToView(layout, clearInsets(), { animated, zoomIn }) ?? null;
+        panZoom.fitToView(layout, clearInsets(), { animated }) ?? null;
     },
     [panZoom, clearInsets],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
-    onShowWholeFamily: () => showWholeFamily({ zoomIn: true }),
+    onShowWholeFamily: () => showWholeFamily(),
   });
 
   // No menu while the panel is open: it would offer to add to someone else
@@ -1135,7 +1130,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!family.egoId || nodeWidth === 0) return;
     if (!nodeRefs.current.has(family.egoId)) return;
     fitted.current = true;
-    showWholeFamily({ animated: false, zoomIn: true });
+    showWholeFamily({ animated: false });
   });
   const framedPromptId = useRef(prompt.id);
   useEffect(() => {

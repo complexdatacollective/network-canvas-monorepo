@@ -325,8 +325,6 @@ const asKind = <Kind extends string>(
   kinds: readonly Kind[],
   value: FieldValue | undefined,
 ): Kind | undefined => kinds.find((kind) => kind === asString(value));
-const asBoolean = (value: FieldValue | undefined) =>
-  typeof value === 'boolean' ? value : undefined;
 const asOption = (value: FieldValue | undefined) =>
   typeof value === 'string' || typeof value === 'number' ? value : undefined;
 const asStringArray = (value: FieldValue | undefined) =>
@@ -742,6 +740,7 @@ export default function PersonForm({
                 nameMode="opaque"
                 label={text(configuredWord(wording.genderIdentityLabel))}
                 options={genderIdentityOptions}
+                required
                 initialValue={person?.genderIdentity}
               />
             )}
@@ -1936,19 +1935,26 @@ const yesAnswer = (intl: ReturnType<typeof useAppIntl>): UnavailableAnswer => ({
 });
 
 /** The answers to whether a parent carried the pregnancy: "Yes" unavailable,
- * described by `yesUnavailable`, while someone else did. */
+ * described by `yesUnavailable`, while someone else did. "Don't know" is an
+ * answer, so the question can be required, and records nothing. */
 const carriedOptions = (
   intl: ReturnType<typeof useAppIntl>,
-  yesUnavailable: string | undefined,
+  yesUnavailable?: string,
 ) => [
   {
     label: intl.formatMessage(booleanFieldMessages.yes),
-    value: true,
+    value: 'yes',
     disabled: yesUnavailable !== undefined,
     description: yesUnavailable,
   },
-  { label: intl.formatMessage(booleanFieldMessages.no), value: false },
+  { label: intl.formatMessage(booleanFieldMessages.no), value: 'no' },
+  { label: intl.formatMessage(interfaceMessages.dontKnow), value: 'unknown' },
 ];
+
+/** Whether a parent carried the pregnancy, as answered: nothing for "Don't
+ * know", told apart from "No". */
+const asCarried = (value: FieldValue | undefined) =>
+  value === 'yes' ? true : value === 'no' ? false : undefined;
 
 /** The interface's own details about the person: name, gender identity (where
  * the stage asks) and sex assigned at birth, where given. */
@@ -2127,8 +2133,8 @@ function readRequest(
         relation,
         parentKind:
           asKind(PARENT_KINDS, values[ROLE.parentKind]) ?? 'biological',
-        // Not answered records nothing, told apart from "No".
-        carriedPregnancy: asBoolean(values[ROLE.carriedPregnancy]),
+        // "Don't know", or not asked, records nothing, told apart from "No".
+        carriedPregnancy: asCarried(values[ROLE.carriedPregnancy]),
         partnerId: partnered,
         partnershipCurrent:
           partnered === null ||
@@ -2618,7 +2624,7 @@ function ParentFields({
   const carriedChange =
     asksCarried &&
     carrierReplaced !== undefined &&
-    asBoolean(values[ROLE.carriedPregnancy]) === true
+    asCarried(values[ROLE.carriedPregnancy]) === true
       ? joinReasons(reasonContext, [
           carrierReplacedReason(
             carrierReplaced.childId,
@@ -2641,18 +2647,20 @@ function ParentFields({
     : undefined;
   const carriedUnavailableField = carriedUnavailable && (
     <Field
-      component={BooleanField}
+      component={RadioGroupField}
       name={ROLE.carriedPregnancyUnavailable}
       label={text(wording.parentCarriedLabel, { named: 'false' })}
       options={carriedOptions(intl, carriedYesReason)}
       hint={carriedYesReason}
-      initialValue={false}
+      initialValue="no"
     />
   );
   const carriedField = asksCarried && (
     <Field
-      component={BooleanField}
+      component={RadioGroupField}
       name={ROLE.carriedPregnancy}
+      options={carriedOptions(intl)}
+      required
       label={
         anchorCarrierFixed
           ? text(wording.carriedSiblingsPregnancyLabel, {

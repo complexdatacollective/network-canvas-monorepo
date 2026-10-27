@@ -31,10 +31,14 @@
       - text: Bea
       - checkbox "Bo"
       - text: Bo
-    - text: Did this parent carry Bea - matrix check
+    - text: Did this parent carry Bea - matrix check Required
     - radiogroup "Did this parent carry Bea - matrix check":
       - radio "Yes"
+      - text: "Yes"
       - radio "No"
+      - text: "No"
+      - radio "Don’t know"
+      - text: Don’t know
     - button "Cancel"
     - button "Back"
     - button "Save"

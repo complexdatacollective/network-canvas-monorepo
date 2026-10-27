@@ -687,11 +687,12 @@ const isEmpty = (value: VariableValue | undefined) =>
 /**
  * The required details not yet given for a person: sex assigned at birth,
  * then every researcher field whose attribute the codebook marks required.
- * A name and gender identity are never missing: a participant may not know
- * either. Anyone left unnamed is given a label from how they are related to
- * the participant when the participant leaves the stage, and anyone whose
- * gender identity is unanswered takes kinship words from sex assigned at
- * birth.
+ * A name and gender identity are never missing here. Anyone left unnamed is
+ * given a label from how they are related to the participant when the
+ * participant leaves the stage. Gender identity, where the stage asks it, is
+ * required in the person's form, which offers "Don't know"; someone the
+ * participant has not opened, such as a stand-in, takes kinship words from
+ * sex assigned at birth.
  */
 export function missingDetailsFor(
   person: Person,
