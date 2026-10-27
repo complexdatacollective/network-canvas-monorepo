@@ -604,15 +604,14 @@ test('changes the protocol’s languages from the language chooser stage, and th
     page.getByRole('button', { name: 'Finished Editing' }),
   ).toBeVisible();
 
-  // Going to the translation table leaves the stage, so its unsaved changes
-  // are confirmed first.
+  // Going to the translation table leaves the stage, so it asks first.
   await openTable.click();
-  const discard = page.getByRole('dialog', {
-    name: 'Discard unsaved stage changes?',
+  const saveFirst = page.getByRole('dialog', {
+    name: 'Save this stage first?',
   });
-  await expect(discard).toBeVisible();
-  await discard.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(discard).toBeHidden();
+  await expect(saveFirst).toBeVisible();
+  await saveFirst.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(saveFirst).toBeHidden();
   await expect(page).toHaveURL(/\/protocol\/stage\/choose-language$/);
   await expect(name).toHaveValue('Pick a language');
 
@@ -630,6 +629,68 @@ test('changes the protocol’s languages from the language chooser stage, and th
   );
   expect(saved.localization).toEqual({ defaultLocale: 'en', locales: ['en'] });
   expect(saved.stages[0]?.label).toEqual({ en: 'Pick a language' });
+});
+
+test('saves the language chooser stage and opens the translation table, then comes back to the stage', async ({
+  architectPage: page,
+  seed,
+}) => {
+  await seed(chooserProtocol());
+  await gotoProtocol(page);
+  await page.goto('/protocol/stage/choose-language');
+  const name = page.getByRole('textbox', { name: 'Stage name' });
+  await expect(name).toHaveValue(CHOOSER_LABEL.en);
+  await name.fill('Pick a language');
+
+  await page
+    .getByRole('region', { name: 'Languages', exact: true })
+    .getByRole('link', { name: 'Open translation table', exact: true })
+    .click();
+  const saveFirst = page.getByRole('dialog', {
+    name: 'Save this stage first?',
+  });
+  await saveFirst
+    .getByRole('button', { name: 'Save and Open Table', exact: true })
+    .click();
+
+  const table = page.getByRole('dialog', { name: 'Translation table' });
+  await expect(table).toBeVisible();
+  await expect(page).toHaveURL(/\/protocol\/localization\?table=open$/);
+  const saved = await readProtocolJson(
+    page,
+    (protocol) => protocol.stages[0]?.label.en === 'Pick a language',
+  );
+  expect(saved.stages[0]?.label.en).toBe('Pick a language');
+
+  await table.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page).toHaveURL(/\/protocol\/stage\/choose-language$/);
+  await expect(name).toHaveValue('Pick a language');
+});
+
+test('comes back to a new language chooser stage as saved, not to a new one, after the translation table', async ({
+  architectPage: page,
+  seed,
+}) => {
+  await seed(chooserProtocol());
+  await gotoProtocol(page);
+  await page.goto('/protocol/stage/new?type=LanguageChooser');
+  const name = page.getByRole('textbox', { name: 'Stage name' });
+  await name.fill('Second chooser');
+
+  await page
+    .getByRole('region', { name: 'Languages', exact: true })
+    .getByRole('link', { name: 'Open translation table', exact: true })
+    .click();
+  await page
+    .getByRole('dialog', { name: 'Save this stage first?' })
+    .getByRole('button', { name: 'Save and Open Table', exact: true })
+    .click();
+  const table = page.getByRole('dialog', { name: 'Translation table' });
+  await expect(table).toBeVisible();
+
+  await table.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page).toHaveURL(/\/protocol\/stage\/(?!new)[^/?]+$/);
+  await expect(name).toHaveValue('Second chooser');
 });
 
 /** In English and French, with only the researcher's six texts untranslated. */

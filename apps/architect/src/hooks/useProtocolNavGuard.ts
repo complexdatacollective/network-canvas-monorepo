@@ -23,7 +23,7 @@ import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 import { LEGACY_ARCHITECT_MAJOR } from '~/utils/legacyArchitect';
-const utilityMessages = defineMessages({
+export const utilityMessages = defineMessages({
   returnToStartScreen: {
     id: 'architect.utility.hooks.useProtocolNavGuard.returnToStartScreen',
     defaultMessage: 'Return to Start Screen',

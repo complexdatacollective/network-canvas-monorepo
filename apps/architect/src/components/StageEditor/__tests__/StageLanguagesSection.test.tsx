@@ -231,7 +231,7 @@ describe('the language chooser’s languages in Architect', () => {
     expect(globalThis.__architectDialogMocks.openDialog).not.toHaveBeenCalled();
   });
 
-  it('asks before leaving unsaved changes to the stage for the translation table', async () => {
+  it('asks to save or discard unsaved changes to the stage before the translation table', async () => {
     const { name } = await openEditor();
     await userEvent.clear(name);
     await userEvent.type(name, 'Pick a language');
@@ -245,7 +245,7 @@ describe('the language chooser’s languages in Architect', () => {
     await waitFor(() => expect(openDialog).toHaveBeenCalledTimes(1));
     expect(window.location.pathname).toBe('/');
 
-    openDialog.mockResolvedValueOnce(true);
+    openDialog.mockResolvedValueOnce('discard');
     await userEvent.click(
       screen.getByRole('link', { name: 'Open translation table' }),
     );

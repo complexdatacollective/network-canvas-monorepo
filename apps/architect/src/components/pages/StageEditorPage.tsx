@@ -19,7 +19,8 @@ import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-ed
 import { isStageType } from '@codaco/protocol-builder/stage-types';
 import type { StageEditTarget } from '@codaco/protocol-builder/stageEdit';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
+import { openedFromLanguagesState } from '~/components/Localization/translationTableLinks';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { architectStageEditors } from '~/components/StageEditor/architectStageEditors';
@@ -32,6 +33,10 @@ import StageEditorChrome, {
   StageEditorHeader,
 } from '~/components/StageEditor/StageEditorChrome';
 import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
+import {
+  clearSaveDestination,
+  takeSaveDestination,
+} from '~/components/StageEditor/stageSaveDestination';
 import { getActiveProtocolId, getProtocolOwnedHere } from '~/ducks/modules/app';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
@@ -315,9 +320,24 @@ const StageEditorPage = () => {
     [stageId],
   );
 
-  const handleSaved = useCallback(() => {
-    setLocation('/protocol');
-  }, [setLocation]);
+  const handleSaved = useCallback(
+    (saved: string) => {
+      const next = takeSaveDestination();
+      if (next === null) {
+        setLocation('/protocol');
+        return;
+      }
+      // Closing the translation table goes back here, so this entry names the
+      // stage as saved rather than the create flow.
+      const ref = parseSectionId(saved);
+      if (ref.kind === 'stage') {
+        setLocation(`/protocol/stage/${ref.stageId}`, { replace: true });
+      }
+      setLocation(next, { state: openedFromLanguagesState });
+    },
+    [setLocation],
+  );
+  useEffect(() => clearSaveDestination, []);
 
   // While the stale-URL redirect effect runs, and for a create with no
   // interface to create, there is nothing to edit and nothing to say: the

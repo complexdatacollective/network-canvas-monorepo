@@ -1883,6 +1883,18 @@
     "defaultMessage": "Remove {language}",
     "description": "Accessible name of the delete button at the end of a protocol language’s row, which removes that language from the protocol. language is the language name."
   },
+  "architect.localization.languageList.saveAndOpenTable": {
+    "defaultMessage": "Save and Open Table",
+    "description": "Button that saves the stage being edited and then opens the translation table."
+  },
+  "architect.localization.languageList.saveStageDescription": {
+    "defaultMessage": "The translation table is on the Languages page, so the stage editor closes. When you close the table, you come back to this stage.",
+    "description": "Explanation in the dialog shown when the researcher opens the translation table from the editor of a stage with unsaved changes."
+  },
+  "architect.localization.languageList.saveStageTitle": {
+    "defaultMessage": "Save this stage first?",
+    "description": "Title of the dialog shown when the researcher opens the translation table from the editor of a language chooser stage that has unsaved changes. The translation table is on another page, so the stage editor closes."
+  },
   "architect.localization.languageList.strandedNote": {
     "defaultMessage": "{count, plural, one {# string has a translation only in {language}. Translate it into another language before removing {language}.} other {# strings have a translation only in {language}. Translate them into another language before removing {language}.}}",
     "description": "Tooltip and accessible description of the unavailable delete button of a language, saying why it cannot be removed: some localized strings have no translation in another language."

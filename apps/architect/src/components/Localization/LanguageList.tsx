@@ -6,10 +6,11 @@ import {
   Table2,
   Trash2,
 } from 'lucide-react';
-import { type MouseEvent, useId, useMemo, useRef } from 'react';
+import { useId, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
@@ -30,7 +31,8 @@ import {
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
-import { promptDiscardDraft } from '~/hooks/useProtocolNavGuard';
+import { saveStageAndGoTo } from '~/components/StageEditor/stageSaveDestination';
+import { utilityMessages } from '~/hooks/useProtocolNavGuard';
 import {
   getLocalizationCoverage,
   type LocaleCoverage,
@@ -93,6 +95,25 @@ const messages = defineMessages({
     defaultMessage: 'Open translation table',
     description:
       'Link under the list of protocol languages to the translation table, which shows every participant-facing localized string beside its translation into each language.',
+  },
+  saveStageTitle: {
+    id: 'architect.localization.languageList.saveStageTitle',
+    defaultMessage: 'Save this stage first?',
+    description:
+      'Title of the dialog shown when the researcher opens the translation table from the editor of a language chooser stage that has unsaved changes. The translation table is on another page, so the stage editor closes.',
+  },
+  saveStageDescription: {
+    id: 'architect.localization.languageList.saveStageDescription',
+    defaultMessage:
+      'The translation table is on the Languages page, so the stage editor closes. When you close the table, you come back to this stage.',
+    description:
+      'Explanation in the dialog shown when the researcher opens the translation table from the editor of a stage with unsaved changes.',
+  },
+  saveAndOpenTable: {
+    id: 'architect.localization.languageList.saveAndOpenTable',
+    defaultMessage: 'Save and Open Table',
+    description:
+      'Button that saves the stage being edited and then opens the translation table.',
   },
   defaultBadge: {
     id: 'architect.localization.languageList.defaultBadge',
@@ -229,26 +250,42 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
 
   if (!protocol) return null;
 
-  // The translation table opens over the Languages page, so going to it from
-  // the stage editor leaves the stage, and unsaved changes to it are confirmed
-  // first, as Back confirms them. From the Languages page itself, its entry in
-  // the history says so, and closing it goes back.
-  const tableLinkState = draft === undefined ? openedFromLanguagesState : null;
-  const guardLeavingStage =
-    (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
-      if (draft === undefined || !readStageDraft().dirty) return;
-      event.preventDefault();
-      void promptDiscardDraft(openDialog, () => setLocation(href), true);
-    };
-  const tableHref = translationTableHref();
-  const openTableOn = (locale: LocaleTag) => {
-    const href = translationTableHref(undefined, locale);
-    if (draft !== undefined && readStageDraft().dirty) {
-      void promptDiscardDraft(openDialog, () => setLocation(href), true);
+  // The translation table is on the Languages page, so a stage with unsaved
+  // changes is saved or its changes discarded first. Closing the table goes
+  // back to the page it was opened from.
+  const openTable = async (href: string) => {
+    if (draft === undefined || !readStageDraft().dirty) {
+      setLocation(href, { state: openedFromLanguagesState });
       return;
     }
-    setLocation(href, { state: tableLinkState });
+    const choice = await openDialog({
+      type: 'choice',
+      title: intl.formatMessage(messages.saveStageTitle),
+      description: intl.formatMessage(messages.saveStageDescription),
+      intent: 'default',
+      actions: {
+        primary: {
+          label: intl.formatMessage(messages.saveAndOpenTable),
+          value: 'save' as const,
+        },
+        secondary: {
+          label: intl.formatMessage(utilityMessages.discardChangesAndLeave),
+          value: 'discard' as const,
+        },
+        cancel: {
+          label: intl.formatMessage(commonMessages.cancel),
+          value: null,
+        },
+      },
+    });
+    if (choice === 'save') saveStageAndGoTo(href);
+    if (choice === 'discard') {
+      setLocation(href, { state: openedFromLanguagesState });
+    }
   };
+  const tableHref = translationTableHref();
+  const openTableOn = (locale: LocaleTag) =>
+    void openTable(translationTableHref(undefined, locale));
 
   return (
     <>
@@ -294,8 +331,12 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
           <Button asChild color="primary" icon={<Table2 aria-hidden />}>
             <Link
               href={tableHref}
-              state={tableLinkState}
-              onClick={guardLeavingStage(tableHref)}
+              state={openedFromLanguagesState}
+              onClick={(event) => {
+                if (draft === undefined || !readStageDraft().dirty) return;
+                event.preventDefault();
+                void openTable(tableHref);
+              }}
             >
               {intl.formatMessage(messages.openTable)}
             </Link>
