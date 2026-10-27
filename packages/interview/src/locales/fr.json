@@ -29,6 +29,7 @@
   "interview.familyPedigree.skipStep": "Passer",
   "interview.familyPedigree.toolGroupLabel": "Effet d’un clic sur une personne",
   "interview.familyPedigree.toolsLabel": "Outils de l’arbre généalogique",
+  "interview.familyPedigree.trackerItemDone": "Terminé :",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Votre arbre généalogique contient tout ce qu’il faut} other {Arbre généalogique complet à {percent, number, percent}}}. Afficher ce qu’il reste à faire.",
   "interview.familyPedigree.undoDescription": "Annulez la dernière modification apportée à votre arbre généalogique.",
   "interview.familyPedigree.undoneAnnouncement": "Modification annulée.",

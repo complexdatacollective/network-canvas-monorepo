@@ -29,6 +29,7 @@
   "interview.familyPedigree.skipStep": "Pular",
   "interview.familyPedigree.toolGroupLabel": "O que acontece ao clicar em uma pessoa",
   "interview.familyPedigree.toolsLabel": "Ferramentas da árvore genealógica",
+  "interview.familyPedigree.trackerItemDone": "Concluído:",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Sua árvore genealógica tem tudo o que é necessário} other {Árvore genealógica {percent, number, percent} concluída}}. Mostrar o que ainda falta.",
   "interview.familyPedigree.undoDescription": "Desfaça a última alteração feita na sua árvore genealógica.",
   "interview.familyPedigree.undoneAnnouncement": "Alteração desfeita.",

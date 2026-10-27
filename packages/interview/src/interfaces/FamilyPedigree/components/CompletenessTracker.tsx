@@ -195,6 +195,8 @@ function CompletenessTracker({
   // after the stage opens; the ring starts empty rather than full.
   const fraction = progress.total === 0 ? 0 : progress.done / progress.total;
   const complete = progress.total > 0 && progress.items.length === 0;
+  // Read out before each item already done, apart from the item's words.
+  const donePrefix = `${intl.formatMessage(messages.trackerItemDone)} `;
   const progressLabel = intl.formatMessage(messages.trackerProgressLabel, {
     complete: complete ? 'true' : 'false',
     percent: fraction,
@@ -307,9 +309,7 @@ function CompletenessTracker({
                     </span>
                     {done ? (
                       <span className="line-through opacity-70">
-                        <span className="sr-only">
-                          {intl.formatMessage(messages.trackerItemDone)}
-                        </span>
+                        <span className="sr-only">{donePrefix}</span>
                         {itemText}
                       </span>
                     ) : (

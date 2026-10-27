@@ -119,6 +119,10 @@
     "defaultMessage": "Family tree tools",
     "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people."
   },
+  "interview.familyPedigree.trackerItemDone": {
+    "defaultMessage": "Done:",
+    "description": "Read out by screen readers before an item in the family tree’s progress list that is already done, which is shown ticked and struck through. The item follows, for example “Add your parents”."
+  },
   "interview.familyPedigree.trackerProgressLabel": {
     "defaultMessage": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",
     "description": "Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1."

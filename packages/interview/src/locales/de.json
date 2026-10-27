@@ -29,6 +29,7 @@
   "interview.familyPedigree.skipStep": "Überspringen",
   "interview.familyPedigree.toolGroupLabel": "Was ein Klick auf eine Person bewirkt",
   "interview.familyPedigree.toolsLabel": "Werkzeuge für den Stammbaum",
+  "interview.familyPedigree.trackerItemDone": "Erledigt:",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Ihr Stammbaum enthält alles Nötige} other {Stammbaum zu {percent, number, percent} vollständig}}. Anzeigen, was noch fehlt.",
   "interview.familyPedigree.undoDescription": "Machen Sie Ihre letzte Änderung an Ihrem Stammbaum rückgängig.",
   "interview.familyPedigree.undoneAnnouncement": "Änderung rückgängig gemacht.",

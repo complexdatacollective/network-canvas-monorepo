@@ -936,9 +936,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => distinctNames(shown, labels, contentFormat, words),
     [shown, labels, contentFormat, words],
   );
+  // Without the places a kinship word may break inside a symbol: outside
+  // one, a name wraps between words like any other text.
   const displayName = useCallback(
     (personId: string) =>
-      names.get(personId) ?? formatRelativeTerm('other', words),
+      withoutSoftHyphens(
+        names.get(personId) ?? formatRelativeTerm('other', words),
+      ),
     [names, words],
   );
 
