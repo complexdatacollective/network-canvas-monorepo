@@ -76,8 +76,7 @@ const nextFrame = () =>
 
 /** Waits for the canvas to stop moving: the same transform for five frames. */
 async function settled(canvasElement: HTMLElement) {
-  const content = within(canvasElement).getByTestId('pedigree-canvas')
-    .lastElementChild as HTMLElement;
+  const content = within(canvasElement).getByTestId('pedigree-canvas-content');
   let last = '';
   let steady = 0;
   for (let frame = 0; frame < 300 && steady < 5; frame++) {
@@ -1304,7 +1303,9 @@ export const TheStageOpensAsTheWholeFamilyButtonFramesIt: Story = {
  * across. */
 const offCentreAcross = (canvasElement: HTMLElement) => {
   const viewport = within(canvasElement).getByTestId('pedigree-canvas');
-  const family = viewport.lastElementChild?.firstElementChild;
+  const family = within(viewport).getByTestId(
+    'pedigree-canvas-content',
+  ).firstElementChild;
   if (!family) throw new Error('No family on the canvas');
   const box = boxOf(family);
   const area = boxOf(viewport);

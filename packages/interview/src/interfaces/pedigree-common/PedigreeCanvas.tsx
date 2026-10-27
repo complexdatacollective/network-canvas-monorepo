@@ -142,6 +142,7 @@ export function PedigreeViewport({
       {overlay}
       <motion.div
         ref={contentRef}
+        data-testid="pedigree-canvas-content"
         className="absolute top-0 left-0 w-max p-40"
         style={{
           x: panZoom.x,

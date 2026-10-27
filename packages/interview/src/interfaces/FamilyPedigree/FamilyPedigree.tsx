@@ -796,11 +796,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // goes back to whenever the participant asks for it, moves to another
   // prompt, or finishes adding or editing someone; where they had dragged it
   // to is not kept. Until they move it again, it keeps the family framed as
-  // the layout changes (`framedView`). Framed by itself, the family is only
-  // ever zoomed out, to fit: zooming in is left to the participant, so a
-  // family they zoomed in on, or that grew smaller, is not enlarged for them.
-  // Asked for (Show the whole family), it is as large as fits, up to a fifth
-  // larger than its natural size.
+  // the layout changes (`framedView`). Opening the stage, and asking for it
+  // (Show the whole family), the family is as large as fits, up to a fifth
+  // larger than its natural size. Framed by itself, it is zoomed out as far
+  // as it must be to fit, and never closer than the participant last had
+  // it: zooming in is left to them.
   const framedView = useRef<View | null>(null);
   const showWholeFamily = useCallback(
     ({
@@ -1135,7 +1135,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!family.egoId || nodeWidth === 0) return;
     if (!nodeRefs.current.has(family.egoId)) return;
     fitted.current = true;
-    showWholeFamily({ animated: false });
+    showWholeFamily({ animated: false, zoomIn: true });
   });
   const framedPromptId = useRef(prompt.id);
   useEffect(() => {

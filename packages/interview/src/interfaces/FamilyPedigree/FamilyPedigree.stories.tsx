@@ -1000,7 +1000,9 @@ const shareParentsAsBiologicalSibling = async (
     .findByRole(
       'group',
       { name: /^Which parents do they share/ },
-      { timeout: 500 },
+      // Long enough for the questions' group to follow the answer before
+      // it (QuestionFlow's step delay and slide).
+      { timeout: 1500 },
     )
     .catch(() => undefined);
   if (shared) {
@@ -1773,7 +1775,7 @@ export const PanAndZoom: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const viewport = canvas.getByTestId('pedigree-canvas');
-    const content = viewport.lastElementChild as HTMLElement;
+    const content = within(viewport).getByTestId('pedigree-canvas-content');
     const you = await canvas.findByRole('button', { name: /^You/ });
     const transform = () => getComputedStyle(content).transform;
 

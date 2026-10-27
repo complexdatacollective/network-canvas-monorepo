@@ -260,9 +260,10 @@ export type PanZoom = {
    * viewport, inside the given insets, at the zoom that fits it there: as
    * large as fits, up to a fifth larger than its natural size, and no less than the least zoom. An
    * element too large to fit even then is still centred, and runs past the
-   * edges. Without `zoomIn`, it zooms out to fit but never in: an element
-   * that already fits stays at the zoom it is headed for. The view it heads
-   * for. */
+   * edges. Without `zoomIn`, it zooms in no further than the zoom the
+   * participant last chose, or the last fit that could zoom in: it zooms out
+   * as far as it must to fit, and never closer than the participant had it.
+   * The view it heads for. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,
@@ -393,12 +394,19 @@ export function usePanZoom({
     [stopAnimating, clampPan, reduceMotion, x, y, scale],
   );
 
+  // The zoom the participant last chose (wheel, pinch, the zoom buttons or
+  // keys) or asked for (a fit that may zoom in): the most a fit that only
+  // zooms out goes back up to.
+  const chosenScale = useRef<number | null>(null);
+
   // Zooms so the content point under (clientX, clientY) stays under it.
+  // Only the participant zooms this way.
   const zoomAt = useCallback(
     (nextScale: number, clientX: number, clientY: number, animated = false) => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       const bounded = clamp(nextScale, MIN_SCALE, MAX_SCALE);
+      chosenScale.current = bounded;
       const box = viewport.getBoundingClientRect();
       const pointX = clientX - box.left;
       const pointY = clientY - box.top;
@@ -616,11 +624,9 @@ export function usePanZoom({
         MIN_SCALE,
         zoomIn
           ? FIT_MAX_SCALE
-          : Math.min(
-              FIT_MAX_SCALE,
-              (destination.current ?? { scale: scale.get() }).scale,
-            ),
+          : Math.min(FIT_MAX_SCALE, chosenScale.current ?? FIT_MAX_SCALE),
       );
+      if (zoomIn) chosenScale.current = nextScale;
       return moveTo(
         insets.left + availableWidth / 2 - centre.x * nextScale,
         insets.top + availableHeight / 2 - centre.y * nextScale,
@@ -628,7 +634,7 @@ export function usePanZoom({
         animated,
       );
     },
-    [viewportRef, contentPositionOf, moveTo, scale],
+    [viewportRef, contentPositionOf, moveTo],
   );
 
   const holdInPlace = useCallback<PanZoom['holdInPlace']>(

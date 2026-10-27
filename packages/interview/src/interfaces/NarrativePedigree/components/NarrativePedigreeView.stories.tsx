@@ -231,9 +231,7 @@ type Story = StoryObj<typeof NarrativePedigreeView>;
 /** The canvas's panned and zoomed content. */
 const contentOf = (canvasElement: HTMLElement) => {
   const viewport = within(canvasElement).getByTestId('pedigree-canvas');
-  const content = viewport.lastElementChild;
-  if (!(content instanceof HTMLElement)) throw new Error('No canvas content');
-  return content;
+  return within(viewport).getByTestId('pedigree-canvas-content');
 };
 const scaleOf = (content: HTMLElement) =>
   new DOMMatrix(getComputedStyle(content).transform).a;
