@@ -34,6 +34,7 @@ import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
 import { useKeyboardReorder } from '../../../dnd/useKeyboardReorder';
+import useTokenRadius from '../../../hooks/useTokenRadius';
 import Surface from '../../../layout/Surface';
 import {
   controlVariants,
@@ -1217,6 +1218,10 @@ export default function ArrayField<T extends Record<string, unknown>>({
     (firstRenderedRows !== null && firstRenderedRows !== items);
 
   const id = useId();
+  // The list resizes as rows come and go; Motion keeps its corners true only
+  // for a numeric radius, so its `rounded-*` class's value goes to `style`.
+  const groupRef = useRef<HTMLUListElement>(null);
+  const groupRadius = useTokenRadius(groupRef);
   const isAtCapacity =
     maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
   const effectiveSortable = sortable && !isInteractionDisabled;
@@ -1264,7 +1269,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
           className={arrayFieldVariants({
             state: getInputState(inputStateProps),
           })}
-          style={{ borderRadius: 28 }}
+          ref={groupRef}
+          style={{ borderRadius: groupRadius }}
           role="list"
           layout
           // `role="list"` allows neither `aria-readonly` nor `aria-required`,

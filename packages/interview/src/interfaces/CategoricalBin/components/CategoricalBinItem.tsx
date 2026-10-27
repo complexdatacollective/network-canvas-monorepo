@@ -13,6 +13,7 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
+import useTokenRadius from '@codaco/fresco-ui/hooks/useTokenRadius';
 import {
   getMarkdownLabelText,
   RenderMarkdown,
@@ -180,6 +181,11 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   } = usePrompts<CategoricalBinPrompts>();
   const stageId = useStageSelector(getCurrentStageId);
   const binRef = useRef<HTMLDivElement>(null);
+  // The expanded panel grows out of the circle through its `layoutId`, and
+  // Motion keeps its corners true only for a numeric radius, so the panel's
+  // `rounded-sm` is passed to `style` too. (The circle's `50%` is already a
+  // value Motion can correct.)
+  const panelRadius = useTokenRadius(binRef);
   const contentRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const summaryTextRef = useRef<HTMLParagraphElement>(null);
@@ -241,7 +247,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
 
   if (isExpanded) {
     const panelClasses = cx(
-      'catbin-expanded z-10 flex flex-col overflow-hidden border-4 transition-colors',
+      'catbin-expanded z-10 flex flex-col overflow-hidden rounded-sm border-4 transition-colors',
       catColor && 'border-(--cat-color)',
       !catColor && 'border-outline',
       isOver &&
@@ -285,7 +291,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         layout
         layoutId={layoutId}
         className={panelClasses}
-        style={{ ...colorStyle, borderRadius: 16 }}
+        style={{ ...colorStyle, borderRadius: panelRadius }}
         onClick={(e) => e.stopPropagation()}
         transition={springTransition}
         variants={binItemVariants}

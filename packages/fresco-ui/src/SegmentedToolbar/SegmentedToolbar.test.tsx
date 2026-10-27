@@ -136,13 +136,9 @@ describe('SegmentedToolbar — composition', () => {
     );
   });
 
-  it.each([
-    ['sm', '26px'],
-    ['md', '30px'],
-    ['lg', '38px'],
-  ] as const)(
-    'publishes the %s surface radius as a numeric style for Motion scale correction',
-    (size, radius) => {
+  it.each(['sm', 'md', 'lg'] as const)(
+    'rounds the %s surface with the same token as its segments',
+    (size) => {
       render(
         <SegmentedToolbar aria-label={`${size} tools`} size={size}>
           <ToolbarButton>Save</ToolbarButton>
@@ -152,7 +148,10 @@ describe('SegmentedToolbar — composition', () => {
       expect(
         screen.getByRole('toolbar', { name: `${size} tools` }).parentElement
           ?.parentElement,
-      ).toHaveStyle({ borderRadius: radius });
+      ).toHaveClass('rounded-full');
+      expect(screen.getByRole('button', { name: 'Save' })).toHaveClass(
+        'rounded-full',
+      );
     },
   );
 
