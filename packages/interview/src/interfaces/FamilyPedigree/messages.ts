@@ -128,11 +128,11 @@ export const messages = defineMessages({
     description:
       'Read out by screen readers before an item in the family tree’s progress list that is already done, which is shown ticked and struck through. The item follows, for example “Add your parents”.',
   },
-  trackerAllDetailsDone: {
-    id: 'interview.familyPedigree.trackerAllDetailsDone',
+  trackerAllDetails: {
+    id: 'interview.familyPedigree.trackerAllDetails',
     defaultMessage: 'Add required details for all family members',
     description:
-      'An item in the family tree’s progress list, shown ticked and struck through once every person in the family has the details the researcher requires (such as sex assigned at birth). While some are missing, the list instead names each person whose details are missing.',
+      'An item at the end of the family tree’s progress list, read by the participant, standing for the details the researcher requires of every person in the family (such as sex assigned at birth). It is shown while nobody already in the family is missing any, as a plain item while other relatives still have to be added, and ticked and struck through once nothing else is needed. While some are missing, the list instead names each person whose details are missing.',
   },
   addedAnnouncement: {
     id: 'interview.familyPedigree.addedAnnouncement',

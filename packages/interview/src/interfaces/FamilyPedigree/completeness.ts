@@ -52,9 +52,12 @@ export type CompletenessProgress = {
    * in the order the list shows it: `items`, with what is done among them.
    * A person's details are in it only while some are missing. */
   checklist: { item: CompletenessItem; done: boolean }[];
-  /** Everyone in the family has the details required of them: the list
-   * shows that as one item done, after the rest. */
-  allDetailsGiven: boolean;
+  /** The one item, after the rest, that stands for everyone's required
+   * details while nobody already in the family is missing any: done only
+   * once nothing else is needed either, since anyone still to be added
+   * will need theirs. Absent while someone's details are missing, when the
+   * list names each of them instead. */
+  allDetails?: { done: boolean };
   /** Steps towards completion taken, and in total. */
   done: number;
   total: number;
@@ -190,7 +193,6 @@ export function evaluateCompleteness(
     return {
       items: [],
       checklist: [],
-      allDetailsGiven: false,
       done,
       total,
       asked,
@@ -307,7 +309,14 @@ export function evaluateCompleteness(
   const items = checklist
     .filter((entry) => !entry.done)
     .map((entry) => entry.item);
-  return { items, checklist, allDetailsGiven, done, total, asked };
+  return {
+    items,
+    checklist,
+    ...(allDetailsGiven ? { allDetails: { done: items.length === 0 } } : {}),
+    done,
+    total,
+    asked,
+  };
 }
 
 /** The answers that stand in for siblings or children not recorded. */

@@ -143,7 +143,8 @@ function DoneText({
  * stage's toolbar. Hovering or focusing it shows, in a popover, the list of
  * everything asked about the family: what is done, ticked and struck
  * through, and what is still needed, which leads to it. People's details
- * are listed one by one while missing, and as one item once all are given.
+ * are listed one by one while missing, and as one item once all are given,
+ * ticked once nothing else is needed either.
  * Clicking the ring,
  * or pressing Next before the family is complete, pins the list open. Once
  * complete, the ring is a tick, and the list shows everything done.
@@ -366,12 +367,20 @@ function CompletenessTracker({
                   </li>
                 );
               })}
-              {progress.allDetailsGiven && (
+              {progress.allDetails && (
                 <li className="flex items-baseline gap-2">
-                  <ItemMark done />
-                  <DoneText prefix={donePrefix}>
-                    {intl.formatMessage(messages.trackerAllDetailsDone)}
-                  </DoneText>
+                  <ItemMark done={progress.allDetails.done} />
+                  {progress.allDetails.done ? (
+                    <DoneText prefix={donePrefix}>
+                      {intl.formatMessage(messages.trackerAllDetails)}
+                    </DoneText>
+                  ) : (
+                    // Nothing to lead to yet: the people it waits on are
+                    // the ones the items above add.
+                    <span>
+                      {intl.formatMessage(messages.trackerAllDetails)}
+                    </span>
+                  )}
                 </li>
               )}
             </ul>

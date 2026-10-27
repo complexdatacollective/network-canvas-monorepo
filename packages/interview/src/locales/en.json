@@ -119,9 +119,9 @@
     "defaultMessage": "Family tree tools",
     "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people."
   },
-  "interview.familyPedigree.trackerAllDetailsDone": {
+  "interview.familyPedigree.trackerAllDetails": {
     "defaultMessage": "Add required details for all family members",
-    "description": "An item in the family tree’s progress list, shown ticked and struck through once every person in the family has the details the researcher requires (such as sex assigned at birth). While some are missing, the list instead names each person whose details are missing."
+    "description": "An item at the end of the family tree’s progress list, read by the participant, standing for the details the researcher requires of every person in the family (such as sex assigned at birth). It is shown while nobody already in the family is missing any, as a plain item while other relatives still have to be added, and ticked and struck through once nothing else is needed. While some are missing, the list instead names each person whose details are missing."
   },
   "interview.familyPedigree.trackerItemDone": {
     "defaultMessage": "Done:",

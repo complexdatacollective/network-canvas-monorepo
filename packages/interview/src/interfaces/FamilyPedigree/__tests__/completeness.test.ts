@@ -70,13 +70,25 @@ describe('evaluateCompleteness', () => {
     ).toEqual([
       { item: { kind: 'details', personId: 'standIn' }, done: false },
     ]);
-    expect(missing.allDetailsGiven).toBe(false);
+    expect(missing.allDetails).toBeUndefined();
 
     const given = evaluateCompleteness(withStandIn, 'parents', noneMissing);
     expect(given.checklist.some(({ item }) => item.kind === 'details')).toBe(
       false,
     );
-    expect(given.allDetailsGiven).toBe(true);
+    expect(given.allDetails).toEqual({ done: true });
+  });
+
+  // Josh, 27 Oct 2026: it is not done while relatives are still to be
+  // added, who will need their details too.
+  test('all details given is not done while anyone is still to be added', () => {
+    const alone = evaluateCompleteness(
+      family([ego], []),
+      'parents',
+      noneMissing,
+    );
+    expect(alone.items).toEqual([{ kind: 'parents', personId: 'ego' }]);
+    expect(alone.allDetails).toEqual({ done: false });
   });
 
   test('parents: a gamete donor counts, a carrier or adoptive parent does not', () => {
