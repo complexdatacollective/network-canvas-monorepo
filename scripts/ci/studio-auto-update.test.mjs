@@ -261,12 +261,21 @@ test('verifies, records a deployment and upgrades to the newest published Studio
   );
   assert.deepEqual(JSON.parse(created.split(' ').slice(2).join(' ')), {
     ref: COMMIT,
-    environment: 'staging',
+    environment: 'studio-staging',
     auto_merge: false,
     required_contexts: [],
     description: 'Studio 0.4.0',
   });
   assert.deepEqual(r.statuses, ['in_progress', 'success']);
+  assert.ok(
+    r.requests
+      .filter((line) => line.startsWith(`POST ${API}/deployments/42/statuses`))
+      .every(
+        (line) =>
+          JSON.parse(line.split(' ').slice(2).join(' ')).environment_url ===
+          'https://studio.example.org',
+      ),
+  );
   assert.equal(r.halted, null);
 });
 
