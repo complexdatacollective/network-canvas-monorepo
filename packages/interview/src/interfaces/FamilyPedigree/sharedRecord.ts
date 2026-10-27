@@ -137,6 +137,7 @@ export function sharedRecordWrites(
   sharing: FamilySharing,
   patch: Partial<SharedFamilyRecord>,
 ): { step: number; metadata: NonNullable<StageMetadata[string]> }[] {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the patch is typed Partial<SharedFamilyRecord>, so its keys are that record's keys
   const keys = (Object.keys(patch) as (keyof SharedFamilyRecord)[]).filter(
     (key) => patch[key] !== undefined,
   );

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+  type VariableValue,
+} from '@codaco/shared-consts';
+
 import { edgeInsetForNode, FALLBACK_NODE_RADIUS } from '../layoutGeometry';
 import { createCanvasStore } from '../useCanvasStore';
 
@@ -63,5 +70,54 @@ describe('useCanvasStore boundary clamp', () => {
     const before = store.getState().positions;
     store.getState().setNodeRadius(FALLBACK_NODE_RADIUS);
     expect(store.getState().positions).toBe(before);
+  });
+});
+
+describe('useCanvasStore syncFromNodes', () => {
+  const nodeWith = (id: string, layout: VariableValue | undefined): NcNode => ({
+    [entityPrimaryKeyProperty]: id,
+    [entityAttributesProperty]: layout === undefined ? {} : { layout },
+    type: 'person',
+    promptIDs: [],
+    stageId: '',
+  });
+
+  it('places only the nodes whose layout value is a position', () => {
+    const store = createCanvasStore();
+    store.getState().setCanvasDimensions(DIMS);
+    store.getState().syncFromNodes(
+      [
+        nodeWith('placed', { x: 0.5, y: 0.5 }),
+        nodeWith('text', 'x'),
+        nodeWith('list', [0.5, 0.5]),
+        nodeWith('number', 0.5),
+        nodeWith('half', { x: 0.5 } as unknown as VariableValue),
+        nodeWith('wrong-type', {
+          x: '0.5',
+          y: 0.5,
+        } as unknown as VariableValue),
+        nodeWith('none', undefined),
+      ],
+      'layout',
+    );
+
+    expect([...store.getState().positions.keys()]).toEqual(['placed']);
+  });
+
+  it('adds a position for a new node only when its layout value is a position', () => {
+    const store = createCanvasStore();
+    store.getState().setCanvasDimensions(DIMS);
+    store
+      .getState()
+      .syncNewFromNodes(
+        [
+          nodeWith('placed', { x: 0.5, y: 0.5 }),
+          nodeWith('text', 'x'),
+          nodeWith('half', { x: 0.5 } as unknown as VariableValue),
+        ],
+        'layout',
+      );
+
+    expect([...store.getState().positions.keys()]).toEqual(['placed']);
   });
 });

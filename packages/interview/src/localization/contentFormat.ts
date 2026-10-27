@@ -86,6 +86,7 @@ function createContentFormat(locale: string): ContentFormat {
     // binary expansion of the double.
     formatNumber: (value) =>
       (isExponentMagnitude(value) ? scientific : number).format(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- String of a number is numeric text, which format() reads as an exact decimal
         String(value) as `${number}`,
       ),
     formatCoordinate: (value) => coordinate.format(value),

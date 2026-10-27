@@ -653,7 +653,8 @@ export const useMapbox = ({
       const feature = e.features[0];
 
       const selected: string | null = feature?.properties
-        ? (feature.properties[targetFeatureProperty] as string)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- GeoJSON property values are typed any; the selectable layer's features all carry this text property (it is also their promoteId)
+          (feature.properties[targetFeatureProperty] as string)
         : null;
 
       if (selected !== null) {

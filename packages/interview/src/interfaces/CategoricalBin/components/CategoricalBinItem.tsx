@@ -199,6 +199,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   });
 
   const handleDrop = async (metadata?: DragMetadata) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged node, set by the Node drag source (fresco-ui types it as a record)
     const node = metadata as NcNode;
     const committed = await onDropNode(node);
     if (committed) celebrate();
@@ -236,7 +237,8 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   );
 
   const colorStyle = catColor
-    ? ({ '--cat-color': catColor } as React.CSSProperties)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- @types/react does not type custom properties
+      ({ '--cat-color': catColor } as React.CSSProperties)
     : {};
 
   if (isExpanded) {

@@ -135,8 +135,8 @@ export default function Canvas({
 
   const handleDrop = useCallback(
     (metadata?: Record<string, unknown>) => {
-      if (!metadata?.nodeId) return;
-      const nodeId = metadata.nodeId as string;
+      const nodeId = metadata?.nodeId;
+      if (typeof nodeId !== 'string' || !nodeId) return;
 
       let position = { x: 0.5, y: 0.5 };
       const canvas = canvasRef.current;

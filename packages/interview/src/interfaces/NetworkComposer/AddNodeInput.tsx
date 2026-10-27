@@ -165,7 +165,9 @@ function AddNodeField({
         name={targetVariable}
         {...fieldProps}
         ref={inputRef}
-        value={fieldProps.value as string}
+        value={
+          typeof fieldProps.value === 'string' ? fieldProps.value : undefined
+        }
         onChange={fieldProps.onChange}
         onKeyDown={handleKeyDown}
       />

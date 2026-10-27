@@ -85,18 +85,17 @@ export const useVariableLabels = (
   fields: readonly AuthoredField[],
 ): Readonly<Record<string, string>> => {
   const resolve = useResolveLocalizedString();
-  const contentKey = JSON.stringify(
-    fields.map((field): VariableCaption => {
-      const caption = field.label ?? field.prompt;
-      return {
-        variable: field.variable,
-        label: caption === undefined ? '' : resolve(caption).text,
-      };
-    }),
-  );
+  const captions = fields.map((field): VariableCaption => {
+    const caption = field.label ?? field.prompt;
+    return {
+      variable: field.variable,
+      label: caption === undefined ? '' : resolve(caption).text,
+    };
+  });
+  const contentKey = JSON.stringify(captions);
 
   return useMemo<Readonly<Record<string, string>>>(
-    () => buildVariableLabels(JSON.parse(contentKey) as VariableCaption[]),
+    () => buildVariableLabels(captions),
     // Deliberately keyed on the serialised content alone: including `fields`
     // would restore the unstable identity this exists to avoid.
     // eslint-disable-next-line react-hooks/exhaustive-deps

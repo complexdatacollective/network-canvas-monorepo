@@ -10,6 +10,8 @@ import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import type { CanvasStoreApi } from './useCanvasStore';
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 type EdgeLayerProps = {
   edges: NcEdge[];
   store: CanvasStoreApi;
@@ -32,7 +34,6 @@ export default function EdgeLayer({
     const svg = svgRef.current;
     if (!svg) return;
 
-    const svgNS = svg.namespaceURI;
     const clickListeners: Array<() => void> = [];
 
     // Create one visual line per edge, plus a transparent wider hit line when
@@ -50,7 +51,7 @@ export default function EdgeLayer({
       // Codebook stores 'edge-color-seq-N', CSS variable is '--edge-N'
       const n = /\d+$/.exec(colorToken)?.[0] ?? '1';
 
-      const visual = document.createElementNS(svgNS, 'line') as SVGLineElement;
+      const visual = document.createElementNS(SVG_NS, 'line');
       visual.setAttribute('stroke', `var(--edge-${n})`);
       visual.setAttribute('stroke-width', '6');
       visual.setAttribute('stroke-linecap', 'round');
@@ -70,7 +71,7 @@ export default function EdgeLayer({
 
       if (onEdgeSelect) {
         // Transparent wider line above the visual to widen the click hit area.
-        const hit = document.createElementNS(svgNS, 'line') as SVGLineElement;
+        const hit = document.createElementNS(SVG_NS, 'line');
         hit.setAttribute('stroke', 'transparent');
         hit.setAttribute('stroke-width', '20');
         hit.setAttribute('stroke-linecap', 'round');

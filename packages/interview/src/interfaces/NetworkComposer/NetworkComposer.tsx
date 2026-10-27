@@ -442,11 +442,12 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
       const inFormField =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT';
+        target instanceof Element &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT');
 
       const isUndo =
         (e.metaKey || e.ctrlKey) &&

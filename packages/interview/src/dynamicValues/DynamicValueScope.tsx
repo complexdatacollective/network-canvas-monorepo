@@ -129,6 +129,7 @@ const withRoles = <T,>(
 ): Readonly<Partial<Record<DynamicValueRole, T>>> => {
   if (given === undefined) return values;
   const merged: Partial<Record<DynamicValueRole, T>> = { ...values };
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RoleValues is keyed only by DynamicValueRole, which Object.entries types as string
   for (const [role, value] of Object.entries(given) as [
     DynamicValueRole,
     T | undefined,

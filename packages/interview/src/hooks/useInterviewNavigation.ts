@@ -106,7 +106,8 @@ export default function useInterviewNavigation(
   // Selectors
   const stage = useStageSelector(getCurrentStage);
   const CurrentInterface = stage
-    ? (getInterface(stage.type) as ElementType<CurrentInterfaceProps>)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- getInterface returns the component for this stage's own type, each typed with its own stage's props; the stage type picks the component, which TypeScript cannot follow through the switch
+      (getInterface(stage.type) as ElementType<CurrentInterfaceProps>)
     : null;
 
   // The interview never moves forward from a finish stage: it ends there,
