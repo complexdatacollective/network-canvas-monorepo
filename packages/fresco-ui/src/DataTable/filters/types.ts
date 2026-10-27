@@ -107,10 +107,28 @@ export const isFacetedFilterValue = (
 ): value is FacetedFilterValue =>
   Array.isArray(value) && value.every((item) => typeof item === 'string');
 
+const CONDITION_OPERATORS: readonly OperatorCondition['operator'][] = [
+  'eq',
+  'gt',
+  'lt',
+  'gte',
+  'lte',
+];
+
+const isOperatorCondition = (value: unknown): value is OperatorCondition =>
+  isRecord(value) &&
+  typeof value.entityType === 'string' &&
+  typeof value.entityLabel === 'string' &&
+  (value.entityKind === 'nodes' || value.entityKind === 'edges') &&
+  CONDITION_OPERATORS.some((operator) => operator === value.operator) &&
+  typeof value.value === 'number';
+
 export const isOperatorFilterValue = (
   value: unknown,
 ): value is OperatorFilterValue =>
-  isRecord(value) && Array.isArray(value.conditions);
+  isRecord(value) &&
+  Array.isArray(value.conditions) &&
+  value.conditions.every(isOperatorCondition);
 
 export const isFilterValue = (value: unknown): value is FilterValue =>
   typeof value === 'string' ||

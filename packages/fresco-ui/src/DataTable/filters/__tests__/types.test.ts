@@ -8,6 +8,14 @@ import {
   isRangeFilterValue,
 } from '../types';
 
+const condition = {
+  entityType: 'person',
+  entityLabel: 'Person',
+  entityKind: 'nodes',
+  operator: 'gt',
+  value: 2,
+};
+
 describe('filter value guards', () => {
   it('accepts the value each filter writes', () => {
     expect(isRangeFilterValue({ min: 1, max: 5 })).toBe(true);
@@ -16,6 +24,23 @@ describe('filter value guards', () => {
     );
     expect(isFacetedFilterValue(['a', 'b'])).toBe(true);
     expect(isOperatorFilterValue({ conditions: [] })).toBe(true);
+    expect(isOperatorFilterValue({ conditions: [condition] })).toBe(true);
+  });
+
+  it('rejects conditions the operator filter cannot read', () => {
+    for (const malformed of [
+      null,
+      {},
+      'nodes:person:gt:2',
+      { ...condition, entityKind: 'people' },
+      { ...condition, operator: 'neq' },
+      { ...condition, value: '2' },
+      { ...condition, entityLabel: undefined },
+    ]) {
+      expect(
+        isOperatorFilterValue({ conditions: [condition, malformed] }),
+      ).toBe(false);
+    }
   });
 
   it('rejects a value another filter wrote', () => {
