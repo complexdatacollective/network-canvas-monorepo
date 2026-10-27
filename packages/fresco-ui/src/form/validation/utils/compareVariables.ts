@@ -5,14 +5,11 @@ import type { Variable } from '@codaco/protocol-validation';
 
 import type { FieldValue } from '../../store/types';
 
-// Dates arrive as ISO strings, or occasionally as timestamps or Date objects;
-// anything else is not a date and compares as an invalid one (NaN).
+// The Date constructor converts any value it is given (a boolean to a number,
+// an array to its text), so every value is handed to it as it is.
 const toTime = (value: unknown): number =>
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  value instanceof Date
-    ? new Date(value).valueOf()
-    : Number.NaN;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the Date constructor converts any value; this keeps the comparison it has always made
+  new Date(value as string).valueOf();
 
 export default function compareVariables(
   value1: unknown,

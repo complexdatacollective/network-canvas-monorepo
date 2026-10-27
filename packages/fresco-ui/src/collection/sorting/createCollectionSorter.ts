@@ -165,14 +165,11 @@ const numberFunction =
   };
 
 /**
- * Milliseconds since the epoch for a date string or Date; NaN for anything else
- * (including a missing value), which sorts last.
+ * Milliseconds since the epoch for a value read as a date. `Date.parse` reads
+ * its argument as text, so this is what it always parsed; a missing value, or
+ * anything that is not a date, is NaN and sorts last.
  */
-const parseDate = (value: unknown): number => {
-  if (typeof value === 'string') return Date.parse(value);
-  if (value instanceof Date) return value.getTime();
-  return Number.NaN;
-};
+const parseDate = (value: unknown): number => Date.parse(String(value ?? ''));
 
 /**
  * Date comparison sort function.
