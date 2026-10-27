@@ -132,6 +132,12 @@ const otherColumnOf = (
         origin: conflict.otherOrigin,
         writtenColumn: conflict.writtenColumn,
       };
+    default: {
+      const unhandled: never = conflict;
+      throw new Error('Unhandled export column conflict', {
+        cause: unhandled,
+      });
+    }
   }
 };
 
@@ -171,6 +177,10 @@ const exportColumnConflictMessage = (
         written ? messages.nameColumnWritten : messages.nameColumn,
         values,
       );
+    default: {
+      const unhandled: never = origin;
+      throw new Error('Unhandled export column origin', { cause: unhandled });
+    }
   }
 };
 

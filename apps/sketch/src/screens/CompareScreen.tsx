@@ -272,6 +272,9 @@ const RunCard = ({
   );
 };
 
+const running = (run: JobRun) =>
+  run.jobId !== null && !isJobFinished(run.job) ? run.jobId : null;
+
 export const CompareScreen = ({
   description,
   seed = null,
@@ -325,8 +328,6 @@ export const CompareScreen = ({
     resumeJobId: resumeIds.openai ?? null,
   });
 
-  const running = (run: JobRun) =>
-    run.jobId !== null && !isJobFinished(run.job) ? run.jobId : null;
   const runningAnthropic = running(anthropicLive);
   const runningOpenai = running(openaiLive);
   // While either side runs, both sides' jobs are kept, so coming back

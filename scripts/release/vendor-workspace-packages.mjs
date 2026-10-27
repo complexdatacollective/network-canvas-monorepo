@@ -654,6 +654,8 @@ export function overrideSelector(name, vendoredVersion, keptVersion) {
   return `${name}@>=${releaseLineFloor(vendoredVersion)}-0`;
 }
 
+const release = (key) => /^(@?[^@]+)@(\d+\.\d+\.\d+[^(]*)/.exec(key);
+
 // The `@codaco` edges inside the bundled schema 8 interview's stack, as the
 // lockfile that resolved it records them: for every release the stack
 // reaches beneath `fresco-schema-8`, each `@codaco` dependency and the exact
@@ -663,7 +665,6 @@ export function overrideSelector(name, vendoredVersion, keptVersion) {
 // the app's, so these edges must be held where they are, by name.
 export function schema8StackEdges(lockfile) {
   const { snapshots } = lockfileEdges(lockfile);
-  const release = (key) => /^(@?[^@]+)@(\d+\.\d+\.\d+[^(]*)/.exec(key);
   const edges = new Map();
   const queue = [...snapshots.keys()].filter((key) =>
     key.startsWith('fresco-schema-8@'),

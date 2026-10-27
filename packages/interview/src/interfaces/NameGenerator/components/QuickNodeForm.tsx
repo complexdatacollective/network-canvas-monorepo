@@ -64,7 +64,7 @@ function TrackSubmissions({ added }: { added: RefObject<boolean> }) {
   const trackWrite = useTrackWrite();
 
   useEffect(() => {
-    if (!storeApi) return;
+    if (!storeApi) return undefined;
     let settle: ((stored: boolean) => void) | undefined;
     const unsubscribe = storeApi.subscribe((state, previous) => {
       if (state.isSubmitting === previous.isSubmitting) return;

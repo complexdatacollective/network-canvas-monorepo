@@ -274,6 +274,13 @@ const check = (id, pass, detail) => ({
   detail,
 });
 
+const urlOf = (event) => String(propertiesOf(event).$current_url ?? '');
+
+const after = (event, from) => {
+  const timestamp = String(event.timestamp ?? '');
+  return !from || !timestamp || timestamp >= from;
+};
+
 /**
  * The analytics lane's verdict on what an enabled deployment sent.
  *
@@ -350,7 +357,6 @@ export function evaluateAnalyticsContract({
     ),
   );
 
-  const urlOf = (event) => String(propertiesOf(event).$current_url ?? '');
   const dashboardEvents = events.filter((event) =>
     /\/dashboard/.test(urlOf(event)),
   );
@@ -498,10 +504,6 @@ export function evaluateAnalyticsContract({
   );
 
   // --- a damaged file is an answer about the file, not a fault -------------
-  const after = (event, from) => {
-    const timestamp = String(event.timestamp ?? '');
-    return !from || !timestamp || timestamp >= from;
-  };
   const importFailures = named('ProtocolImportFailed').filter((event) =>
     after(event, damagedImportFrom),
   );

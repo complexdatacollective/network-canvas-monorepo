@@ -63,6 +63,11 @@ export type SaveOutcome =
 
 type SaveProgress = { attempts: number; stageIndex: number };
 
+type Saved = {
+  readonly stored: bigint;
+  readonly applied: boolean;
+};
+
 type ParticipantHandlers = {
   readonly onSync: SyncHandler;
   readonly onFinish: FinishHandler;
@@ -73,6 +78,21 @@ type ParticipantHandlers = {
 
 const wait = (seconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, seconds * 1000));
+
+const noticeOf = (error: unknown): ParticipantNoticeKind | undefined => {
+  const kind = noticeFor(error, 'session');
+  return kind === 'rateLimited' ? undefined : kind;
+};
+
+const deliverUnloading = async (
+  payload: SyncPayload,
+  progress: SaveProgress,
+): Promise<Saved> => {
+  progress.attempts += 1;
+  progress.stageIndex = payload.stageIndex;
+  const result = await participantUnloadingSync(payload);
+  return { stored: BigInt(result.revision), applied: result.applied };
+};
 
 export function createParticipantHandlers({
   holderEpoch,
@@ -104,11 +124,6 @@ export function createParticipantHandlers({
     onNotice(kind);
   };
 
-  const noticeOf = (error: unknown): ParticipantNoticeKind | undefined => {
-    const kind = noticeFor(error, 'session');
-    return kind === 'rateLimited' ? undefined : kind;
-  };
-
   const payloadFor = (snapshot: SessionSnapshot): SyncPayload => {
     issued += 1n;
     const stageIndex = getCurrentStep();
@@ -120,11 +135,6 @@ export function createParticipantHandlers({
       network: Redacted.make(snapshot.network),
       stageMetadata: Redacted.make(snapshot.stageMetadata ?? {}),
     };
-  };
-
-  type Saved = {
-    readonly stored: bigint;
-    readonly applied: boolean;
   };
 
   const deliver = async (
@@ -151,16 +161,6 @@ export function createParticipantHandlers({
         if (stopped) throw error;
       }
     }
-  };
-
-  const deliverUnloading = async (
-    payload: SyncPayload,
-    progress: SaveProgress,
-  ): Promise<Saved> => {
-    progress.attempts += 1;
-    progress.stageIndex = payload.stageIndex;
-    const result = await participantUnloadingSync(payload);
-    return { stored: BigInt(result.revision), applied: result.applied };
   };
 
   // A save the server did not apply found a write at or past its number. That

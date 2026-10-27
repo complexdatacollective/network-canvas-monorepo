@@ -141,6 +141,51 @@ const onTheWire = (entry: LoggedProtocolEvent): ProtocolEvent =>
     ? entry.event
     : { ...entry.event, cursor: entry.cursor };
 
+const assetsDocument = (session: ProtocolBuilderSession) =>
+  Effect.map(
+    command(
+      session.protocolId,
+      readSection(session, makeSectionId({ kind: 'assets' })),
+    ),
+    (assets) => (assets === undefined ? {} : Redacted.value(assets.document)),
+  );
+
+const inspectWithCommittedKey = (
+  session: ProtocolBuilderSession,
+  resourceId: string,
+) =>
+  command(
+    session.protocolId,
+    TenantScope.open(
+      session.access,
+      Effect.gen(function* () {
+        yield* requireProtocol(session.access, session.protocolId);
+        const assets = yield* headSection(
+          session,
+          makeSectionId({ kind: 'assets' }),
+        );
+        const outcome = committedInspection(
+          assets === undefined ? {} : Redacted.value(assets.document),
+          resourceId,
+        );
+        if (outcome.status !== 'ok') return outcome;
+        if (outcome.data.descriptor.kind !== 'apikey') return outcome;
+        if (outcome.data.value !== undefined) return outcome;
+        const value = yield* openAssetKey(session.cipher, {
+          teamId: session.access.teamId,
+          protocolId: session.protocolId,
+          assetId: resourceId,
+        });
+        if (value === undefined) return outcome;
+        const inspected: ResourceOutcome<Inspection> = {
+          status: 'ok',
+          data: { ...outcome.data, value },
+        };
+        return inspected;
+      }).pipe(provideCaller(session.principal)),
+    ),
+  );
+
 /**
  * A write is uninterruptible from its command on: once the command has
  * committed, the lease and promotion bookkeeping must follow.
@@ -185,16 +230,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         scope,
       ).pipe(Effect.asVoid);
 
-    const assetsDocument = (session: ProtocolBuilderSession) =>
-      Effect.map(
-        command(
-          session.protocolId,
-          readSection(session, makeSectionId({ kind: 'assets' })),
-        ),
-        (assets) =>
-          assets === undefined ? {} : Redacted.value(assets.document),
-      );
-
     /**
      * Runs only once the tab is known to have no live socket on any replica:
      * colleagues see its locks go at once, and its staging follows on its own
@@ -209,42 +244,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           yield* events.presenceChanged(session);
           yield* Effect.forkIn(staged.releaseOwner(session), scope);
         });
-
-    const inspectWithCommittedKey = (
-      session: ProtocolBuilderSession,
-      resourceId: string,
-    ) =>
-      command(
-        session.protocolId,
-        TenantScope.open(
-          session.access,
-          Effect.gen(function* () {
-            yield* requireProtocol(session.access, session.protocolId);
-            const assets = yield* headSection(
-              session,
-              makeSectionId({ kind: 'assets' }),
-            );
-            const outcome = committedInspection(
-              assets === undefined ? {} : Redacted.value(assets.document),
-              resourceId,
-            );
-            if (outcome.status !== 'ok') return outcome;
-            if (outcome.data.descriptor.kind !== 'apikey') return outcome;
-            if (outcome.data.value !== undefined) return outcome;
-            const value = yield* openAssetKey(session.cipher, {
-              teamId: session.access.teamId,
-              protocolId: session.protocolId,
-              assetId: resourceId,
-            });
-            if (value === undefined) return outcome;
-            const inspected: ResourceOutcome<Inspection> = {
-              status: 'ok',
-              data: { ...outcome.data, value },
-            };
-            return inspected;
-          }).pipe(provideCaller(session.principal)),
-        ),
-      );
 
     return ProtocolBuilderGroup.of({
       AcquireLock: Effect.fn('protocolBuilder.AcquireLock')(function* ({

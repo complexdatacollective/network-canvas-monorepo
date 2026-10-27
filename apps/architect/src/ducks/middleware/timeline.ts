@@ -173,17 +173,17 @@ const createTimelineReducer = <T>(
 
             // If point in timeline cannot be found do nothing
             if (locusIndex === -1) {
-              return;
+              return undefined;
             }
 
             // no events in timeline yet
             if (timeline.length === 1) {
-              return;
+              return undefined;
             }
 
             // the last point in the timeline is the present
             if (locusIndex === timeline.length - 1) {
-              return;
+              return undefined;
             }
 
             const newPresent = past[locusIndex];
@@ -193,6 +193,7 @@ const createTimelineReducer = <T>(
               present: newPresent,
               timeline: timeline.slice(0, locusIndex + 1),
             });
+            return undefined;
           },
         )
         .addCase(timelineActions.redo, (state) => {
@@ -321,7 +322,7 @@ const createTimelineReducer = <T>(
               future: [],
               futureTimeline: [],
             });
-            return;
+            return undefined;
           }
 
           // If this is setActiveProtocol, reset the timeline (loading a new
@@ -364,7 +365,7 @@ const createTimelineReducer = <T>(
               future: [],
               futureTimeline: [],
             });
-            return;
+            return undefined;
           }
 
           // If newPresent matches the old one, don't treat as a new point in
@@ -414,7 +415,7 @@ const createTimelineReducer = <T>(
               present: newPresent ?? null,
               timeline,
             });
-            return;
+            return undefined;
           }
 
           // clear future when making a new change
@@ -433,6 +434,7 @@ const createTimelineReducer = <T>(
             present: newPresent ?? null,
             timeline: newTimeline,
           });
+          return undefined;
         });
     },
   });

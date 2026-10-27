@@ -304,7 +304,7 @@ export function useLocaleCatalog(
   const failures = current.count;
 
   useEffect(() => {
-    if (ready !== undefined) return;
+    if (ready !== undefined) return undefined;
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const retry = () => {

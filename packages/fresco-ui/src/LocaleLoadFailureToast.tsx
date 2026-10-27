@@ -89,7 +89,7 @@ export default function LocaleLoadFailureToast({
   const dismiss = useEffectEvent((id: string) => close(id));
 
   useEffect(() => {
-    if (failure === undefined) return;
+    if (failure === undefined) return undefined;
     const id = show(failure);
     return () => dismiss(id);
   }, [failure]);

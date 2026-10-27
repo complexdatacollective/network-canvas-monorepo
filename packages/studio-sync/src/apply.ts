@@ -243,6 +243,10 @@ export function applyCommand(doc: SectionDoc, command: Command): SectionDoc {
       list.splice(command.to, 0, item);
       return writeAt(doc, command.key, list);
     }
+    default: {
+      const unhandled: never = command;
+      throw new ApplyError('Unhandled command', { cause: unhandled });
+    }
   }
 }
 

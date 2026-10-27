@@ -413,6 +413,8 @@ function stepTerm(
     case 'partner':
       return step.current ? 'partner' : 'formerPartner';
   }
+  const unhandled: never = step;
+  throw new Error('Unhandled step', { cause: unhandled });
 }
 
 // Kinship beyond the immediate family follows descent: a step through a
@@ -449,6 +451,10 @@ const isStepOrInLawStep = (
       return true;
     case 'partner':
       return step.current;
+    default: {
+      const unhandled: never = step;
+      throw new Error('Unhandled step', { cause: unhandled });
+    }
   }
 };
 
@@ -879,5 +885,9 @@ export function formatPersonLabel(
     }
     case 'unconnected':
       return formatRelativeTerm('other', words);
+    default: {
+      const unhandled: never = label;
+      throw new Error('Unhandled person label', { cause: unhandled });
+    }
   }
 }

@@ -69,19 +69,19 @@ export function useNodeLabel(node: NcNode | undefined) {
   useEffect(() => {
     if (source?.status === 'unreadable') {
       reportUnreadable(source.reason);
-      return;
+      return undefined;
     }
-    if (!encrypted) return;
+    if (!encrypted) return undefined;
 
     if (!scope) {
       requirePassphrase();
-      return;
+      return undefined;
     }
 
     const cached = readCachedOutcome(scope, encrypted);
     if (cached) {
       if (!cached.readable) reportUnreadable('decryption-failed');
-      return;
+      return undefined;
     }
 
     let current = true;

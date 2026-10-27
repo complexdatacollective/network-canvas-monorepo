@@ -187,6 +187,10 @@ const originIdentity = (origin: ExportColumnOrigin) => {
       return [origin.kind, typeof origin.value, String(origin.value)];
     case 'layout':
       return [origin.kind, origin.axis];
+    default: {
+      const unhandled: never = origin;
+      throw new Error('Unhandled export column origin', { cause: unhandled });
+    }
   }
 };
 
@@ -204,6 +208,10 @@ const preferredVariableKeyId = async (
       );
     case 'layout':
       return layoutColumn('graphml', variableId, origin.axis);
+    default: {
+      const unhandled: never = origin;
+      throw new Error('Unhandled export column origin', { cause: unhandled });
+    }
   }
 };
 

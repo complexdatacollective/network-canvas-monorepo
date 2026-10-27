@@ -107,6 +107,9 @@ test('teardown reports previews still copied from the one being removed', () => 
   assert.deepEqual(plan.children, [child]);
 });
 
+const respond = (status, body) =>
+  new Response(body === undefined ? null : JSON.stringify(body), { status });
+
 /**
  * A fake of the slice of the Neon and Netlify APIs the script uses, recording
  * every request so a test can assert what was sent and in what order.
@@ -115,9 +118,6 @@ function fakeApis({ branches, env = {} }) {
   const calls = [];
   const state = { branches: [...branches], env: structuredClone(env) };
   let nextId = 0;
-
-  const respond = (status, body) =>
-    new Response(body === undefined ? null : JSON.stringify(body), { status });
 
   async function fetchImpl(url, { method = 'GET', body } = {}) {
     const { pathname, searchParams } = new URL(url);

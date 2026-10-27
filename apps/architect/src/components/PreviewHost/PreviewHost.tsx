@@ -250,7 +250,7 @@ export function PreviewHost() {
   useEffect(() => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- lib.dom types window.opener as any; it is a WindowProxy or null, possibly cross-origin, so instanceof Window cannot check it
     const opener = window.opener as Window | null;
-    if (!opener) return;
+    if (!opener) return undefined;
     const expectedOrigin = window.location.origin;
     let received = false;
     let cancelled = false;

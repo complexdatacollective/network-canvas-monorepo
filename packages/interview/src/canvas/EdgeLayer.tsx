@@ -32,7 +32,7 @@ export default function EdgeLayer({
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) return undefined;
 
     const clickListeners: Array<() => void> = [];
 

@@ -215,6 +215,8 @@ export const Default: Story = {
             value: textValue,
             onChange: (v: string | undefined) => setTextValue(v ?? ''),
           };
+        default:
+          return undefined;
       }
     })();
 

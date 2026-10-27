@@ -55,15 +55,14 @@ function getOverallStatus(checks: HealthCheck[]): HealthStatus {
   return 'healthy';
 }
 
+const STATUS_CODES: Record<HealthStatus, number> = {
+  healthy: 200,
+  degraded: 200, // Still operational
+  unhealthy: 503, // Service Unavailable
+};
+
 function getStatusCode(status: HealthStatus): number {
-  switch (status) {
-    case 'healthy':
-      return 200;
-    case 'degraded':
-      return 200; // Still operational
-    case 'unhealthy':
-      return 503; // Service Unavailable
-  }
+  return STATUS_CODES[status];
 }
 
 export function GET(_request: NextRequest): NextResponse {

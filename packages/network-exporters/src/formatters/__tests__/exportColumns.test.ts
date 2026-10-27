@@ -45,6 +45,10 @@ const entityVariables = (entity: ExportColumnEntity) => {
       return Object.values(namesCodebook.edge).map(
         ({ variables }) => variables,
       );
+    default: {
+      const unhandled: never = entity;
+      throw new Error('Unhandled export column entity', { cause: unhandled });
+    }
   }
 };
 

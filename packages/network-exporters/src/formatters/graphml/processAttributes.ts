@@ -38,6 +38,10 @@ const layoutDatum = (
       return (x * globalOptions.screenLayoutWidth).toFixed(2);
     case 'screenSpaceY':
       return ((1.0 - y) * globalOptions.screenLayoutHeight).toFixed(2);
+    default: {
+      const unhandled: never = axis;
+      throw new Error('Unhandled layout axis', { cause: unhandled });
+    }
   }
 };
 

@@ -182,6 +182,10 @@ const formatWarningItem = (intl: IntlShape, warning: ExportWarning): string => {
           renamedTo: warning.renamedTo,
         },
       );
+    default: {
+      const unhandled: never = warning;
+      throw new Error('Unhandled export warning', { cause: unhandled });
+    }
   }
 };
 

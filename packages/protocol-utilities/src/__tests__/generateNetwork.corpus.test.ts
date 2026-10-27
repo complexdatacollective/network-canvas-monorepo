@@ -517,6 +517,10 @@ function oracleDomain(variable: CorpusVariable): VariableValue[] {
       return [...(variable.options ?? [])];
     case 'boolean':
       return [false, true];
+    default: {
+      const unhandled: never = variable.type;
+      throw new Error('Unhandled corpus variable type', { cause: unhandled });
+    }
   }
 }
 

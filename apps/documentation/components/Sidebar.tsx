@@ -79,7 +79,7 @@ function processSourceFile(
   locale: Locale,
   sourceFile?: string,
 ) {
-  if (!sourceFile) return;
+  if (!sourceFile) return undefined;
   // We can't use path.sep because the webpack node shim always returns '/'.
   // Because this might be running on Windows, we need to use a regex to split
   // by either / or \.

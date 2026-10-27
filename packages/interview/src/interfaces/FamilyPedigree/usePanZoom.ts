@@ -129,6 +129,33 @@ const unionOf = (boxes: readonly Box[]): Box =>
     bottom: Math.max(union.bottom, box.bottom),
   }));
 
+const shiftOnAxis = (
+  start: number,
+  end: number,
+  firstStart: number,
+  firstEnd: number,
+  areaStart: number,
+  areaEnd: number,
+  kept: readonly (readonly (readonly [number, number])[])[],
+) => {
+  // Everything, when it fits; otherwise the focused element.
+  const [from, to] =
+    end - start <= areaEnd - areaStart ? [start, end] : [firstStart, firstEnd];
+  const wanted =
+    from < areaStart ? areaStart - from : to > areaEnd ? areaEnd - to : 0;
+  // The shifts that leave everything kept inside the area.
+  for (const boxes of kept) {
+    let least = Number.NEGATIVE_INFINITY;
+    let most = Number.POSITIVE_INFINITY;
+    for (const [keptStart, keptEnd] of boxes) {
+      least = Math.max(least, areaStart - keptStart);
+      most = Math.min(most, areaEnd - keptEnd);
+    }
+    if (least <= most) return clamp(wanted, least, most);
+  }
+  return wanted;
+};
+
 /**
  * How far to move the view, in viewport pixels, to bring `targets` (boxes
  * in viewport pixels) inside `area`: all of them when they fit, or else the
@@ -150,36 +177,8 @@ export function shiftIntoArea({
   const [first] = targets;
   if (!first) return { x: 0, y: 0 };
   const all = unionOf(targets);
-  const axis = (
-    start: number,
-    end: number,
-    firstStart: number,
-    firstEnd: number,
-    areaStart: number,
-    areaEnd: number,
-    kept: readonly (readonly (readonly [number, number])[])[],
-  ) => {
-    // Everything, when it fits; otherwise the focused element.
-    const [from, to] =
-      end - start <= areaEnd - areaStart
-        ? [start, end]
-        : [firstStart, firstEnd];
-    const wanted =
-      from < areaStart ? areaStart - from : to > areaEnd ? areaEnd - to : 0;
-    // The shifts that leave everything kept inside the area.
-    for (const boxes of kept) {
-      let least = Number.NEGATIVE_INFINITY;
-      let most = Number.POSITIVE_INFINITY;
-      for (const [keptStart, keptEnd] of boxes) {
-        least = Math.max(least, areaStart - keptStart);
-        most = Math.min(most, areaEnd - keptEnd);
-      }
-      if (least <= most) return clamp(wanted, least, most);
-    }
-    return wanted;
-  };
   return {
-    x: axis(
+    x: shiftOnAxis(
       all.left,
       all.right,
       first.left,
@@ -188,7 +187,7 @@ export function shiftIntoArea({
       area.right,
       keep.map((boxes) => boxes.map((box) => [box.left, box.right] as const)),
     ),
-    y: axis(
+    y: shiftOnAxis(
       all.top,
       all.bottom,
       first.top,
@@ -554,12 +553,12 @@ export function usePanZoom({
       const headed = destination.current ?? now;
       // Each element where it will be once the view gets where it is headed.
       const ratio = headed.scale / now.scale;
+      const atX = (client: number) =>
+        headed.x + (client - box.left - now.x) * ratio;
+      const atY = (client: number) =>
+        headed.y + (client - box.top - now.y) * ratio;
       const placedAt = (element: HTMLElement): Box => {
         const shown = element.getBoundingClientRect();
-        const atX = (client: number) =>
-          headed.x + (client - box.left - now.x) * ratio;
-        const atY = (client: number) =>
-          headed.y + (client - box.top - now.y) * ratio;
         return {
           left: atX(shown.left),
           right: atX(shown.right),
@@ -672,14 +671,15 @@ export function usePanZoom({
   );
 }
 
+const limitOf = (value: number) =>
+  value <= MIN_SCALE + 0.001
+    ? 'min'
+    : value >= MAX_SCALE - 0.001
+      ? 'max'
+      : null;
+
 /** Whether the zoom is at either end of its range, for the zoom buttons. */
 export function useZoomLimits(scale: MotionValue<number>) {
-  const limitOf = (value: number) =>
-    value <= MIN_SCALE + 0.001
-      ? 'min'
-      : value >= MAX_SCALE - 0.001
-        ? 'max'
-        : null;
   const [limit, setLimit] = useState(() => limitOf(scale.get()));
   useMotionValueEvent(scale, 'change', (value) => setLimit(limitOf(value)));
   return { atMin: limit === 'min', atMax: limit === 'max' };

@@ -51,15 +51,15 @@ const messages = defineMessages({
   },
 });
 
+// Utility function to check for non-whitespace characters
+const hasNonWhitespaceCharacters = (input: string | undefined) =>
+  input && input.length > 0;
+
 export function createParticipantSchemas(
   formatMessage: (message: MessageDescriptor) => string = createAppIntl({
     locale: 'en',
   }).formatMessage,
 ) {
-  // Utility function to check for non-whitespace characters
-  const hasNonWhitespaceCharacters = (input: string | undefined) =>
-    input && input.length > 0;
-
   const participantIdentifierSchema = z
     .string({ error: formatMessage(messages.validation1) })
     .check(z.minLength(1, formatMessage(messages.validation1)))

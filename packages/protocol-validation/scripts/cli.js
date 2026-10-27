@@ -13,24 +13,24 @@ import {
   validateProtocol,
 } from '../dist/index.js';
 
+/**
+ * @param {string} msg
+ * @returns
+ */
+const error = (_msg) => {};
+
+/**
+ * @param {string} msg
+ * @returns
+ */
+const success = (_msg) => {};
+
 async function main() {
   const [, , filePath] = process.argv;
 
   if (!filePath) {
     process.exit(1);
   }
-
-  /**
-   * @param {string} msg
-   * @returns
-   */
-  const error = (_msg) => {};
-
-  /**
-   * @param {string} msg
-   * @returns
-   */
-  const success = (_msg) => {};
 
   const absolutePath = path.resolve(filePath);
 

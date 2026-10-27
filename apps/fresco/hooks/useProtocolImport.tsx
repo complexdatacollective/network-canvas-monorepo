@@ -159,6 +159,12 @@ function getValidationErrorMessage(
       });
     case 'validation-failed':
       return createMessageError(messages.validationFailed);
+    default: {
+      const unhandled: never = validationError;
+      throw new Error('Unhandled protocol validation error', {
+        cause: unhandled,
+      });
+    }
   }
 }
 

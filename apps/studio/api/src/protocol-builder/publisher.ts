@@ -151,6 +151,11 @@ type Ask = {
   readonly next: bigint | undefined;
 };
 
+const wantOf = (asked: Ask) => ({
+  draftId: asked.relay.draftId,
+  next: asked.next,
+});
+
 export class ProtocolEvents extends Context.Service<
   ProtocolEvents,
   {
@@ -499,10 +504,6 @@ export class ProtocolEvents extends Context.Service<
             const [first] = asks;
             if (first === undefined) return;
             const access = first.relay.access;
-            const wantOf = (asked: Ask) => ({
-              draftId: asked.relay.draftId,
-              next: asked.next,
-            });
             const polled = yield* Effect.exit(
               withDatabase(pollRelays(access, asks.map(wantOf))),
             );

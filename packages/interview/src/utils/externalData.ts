@@ -410,13 +410,14 @@ const withTypeReplacement = (
   );
 };
 
+const fileExtension = (fileName: string) => fileName.split('.').pop();
+
 export const getVariableTypeReplacements = (
   sourceFile: string,
   uuidData: NcNode[],
   protocolCodebook: Codebook,
   stageSubject: StageSubject,
 ) => {
-  const fileExtension = (fileName: string) => fileName.split('.').pop();
   const fileType = fileExtension(sourceFile) === 'csv' ? 'csv' : 'json';
   if (fileType === 'csv') {
     return withTypeReplacement(uuidData, protocolCodebook, stageSubject);

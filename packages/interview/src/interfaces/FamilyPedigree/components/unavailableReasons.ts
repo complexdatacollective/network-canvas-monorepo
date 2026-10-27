@@ -208,6 +208,10 @@ export const sexConflictReason = (
         sex,
         answers: [sexAnswer(context, sex)],
       };
+    default: {
+      const unhandled: never = conflict;
+      throw new Error('Unhandled sex conflict', { cause: unhandled });
+    }
   }
 };
 
@@ -356,6 +360,10 @@ function formatReason(
         second: displayName(second),
         sex: sexLabel(context, reason.sex),
       });
+    }
+    default: {
+      const unhandled: never = reason;
+      throw new Error('Unhandled reason', { cause: unhandled });
     }
   }
 }

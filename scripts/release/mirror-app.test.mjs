@@ -527,6 +527,9 @@ test('the mirror’s own catalog entries include the vendored Vitest config’s'
   assert.ok(!entries.includes('effect'), 'effect is not catalog-backed');
 });
 
+const overrideLine = (yaml) =>
+  yaml.match(/^\s+'effect@3\.17\.7':\s*'([^']*)'\s*$/m)?.[1];
+
 // `@uploadthing/shared@7.1.10` pins `effect: 3.17.7` exactly and is written
 // against the Effect 3 API. The root catalog's `effect` entry is on Effect 4,
 // so neither generator may resolve that override from it: the workspace's
@@ -540,9 +543,6 @@ test('the UploadThing Effect 3 override never takes the catalog’s Effect versi
     catalog.effect.startsWith('4.'),
     `this test is only meaningful while the catalog is on Effect 4, not ${catalog.effect}`,
   );
-
-  const overrideLine = (yaml) =>
-    yaml.match(/^\s+'effect@3\.17\.7':\s*'([^']*)'\s*$/m)?.[1];
 
   const generated = overrideLine(frescoWorkspaceYaml());
   assert.ok(generated, 'the generated Fresco policy carries the override');

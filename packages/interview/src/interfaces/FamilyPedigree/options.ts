@@ -32,6 +32,9 @@ const labelsOf = (
   return labels;
 };
 
+const label = (labels: Record<string, string>, value: string) =>
+  labels[value] ?? value;
+
 /**
  * The labels the codebook gives the stage's sex assigned at birth and
  * relationship kind attributes, in the interview's language. Validation keeps
@@ -53,8 +56,6 @@ export const ownedOptionLabels = (
     codebook.edge?.[config.relationshipType]?.variables?.[config.kindAttribute],
     resolve,
   );
-  const label = (labels: Record<string, string>, value: string) =>
-    labels[value] ?? value;
   return {
     sexAssignedAtBirth: {
       female: label(sex, 'female'),
@@ -90,5 +91,9 @@ export const childKindWording = (
       return wording.childKindDonor;
     case 'surrogate':
       return wording.childKindSurrogate;
+    default: {
+      const unhandled: never = kind;
+      throw new Error('Unhandled parent kind', { cause: unhandled });
+    }
   }
 };

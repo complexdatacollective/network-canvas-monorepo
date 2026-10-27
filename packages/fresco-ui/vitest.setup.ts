@@ -152,10 +152,11 @@ if (typeof document.elementFromPoint !== 'function') {
 // ---------------------------------------------------------------------------
 // jsdom doesn't implement Element.scrollTo — polyfill as a no-op so code
 // that calls scrollTo after navigation/resets doesn't throw under tests.
+function scrollTo() {
+  // no-op
+}
 if (typeof Element.prototype.scrollTo !== 'function') {
-  Element.prototype.scrollTo = function scrollTo() {
-    // no-op
-  };
+  Element.prototype.scrollTo = scrollTo;
 }
 
 // ---------------------------------------------------------------------------

@@ -193,6 +193,9 @@ export const resolveFieldErrorTarget = (
   return findOperableControl(container) ?? makeContainerFocusable(container);
 };
 
+const inDocument = () =>
+  Array.from(document.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR));
+
 /**
  * Every field container one form may claim: what its markup contains, plus
  * what carries its store's identity wherever it was drawn. De-duplicated,
@@ -203,11 +206,6 @@ const fieldCandidates = (
   root: ParentNode | null | undefined,
   formId: string | undefined,
 ): HTMLElement[] => {
-  const inDocument = () =>
-    Array.from(
-      document.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR),
-    );
-
   if (!root && formId === undefined) return inDocument();
 
   const found = new Set<HTMLElement>();
