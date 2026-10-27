@@ -39,7 +39,8 @@ cron, hourly. Each run:
 | `fix-forward` (5)     | `error`           | halt       |
 
 The deployments show on the repository's Deployments page under the
-`staging` environment. Set `STUDIO_AUTO_UPDATE_ENVIRONMENT` to record them
+`studio-staging` environment, linked to `https://` plus the `STUDIO_HOSTNAME`
+in `.env`. Set `STUDIO_AUTO_UPDATE_ENVIRONMENT` to record them
 under another name.
 
 Like `upgrade.sh`, it takes no backup, and it is written for the stack
