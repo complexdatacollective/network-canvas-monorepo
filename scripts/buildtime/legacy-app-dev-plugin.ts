@@ -110,6 +110,10 @@ const fileInside = (root: string, relativePath: string): string | null => {
  * Vite's own middleware, so none of the older major's files is transformed and
  * a deep link under /v8/ gets the older major's shell, not this app's. With no
  * `legacyRoot` it does nothing.
+ *
+ * Its service worker is the one file it refuses. The older major registers it
+ * even when framed, and once installed it would outlive the dev server and go
+ * on answering /v8/ from its precache after the pin changes.
  */
 export const createLegacyAppDevPlugin = (
   app: LegacyApp,
@@ -122,6 +126,11 @@ export const createLegacyAppDevPlugin = (
     server.middlewares.use((req, res, next) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') return next();
       const url = new URL(req.url ?? '/', 'http://dev.invalid');
+      if (url.pathname === `/${LEGACY_APP_DIST_DIR}/sw.js`) {
+        res.statusCode = 404;
+        res.end();
+        return;
+      }
       const route = legacyAppPreviewRoute(
         url.pathname,
         (relativePath) => fileInside(legacyRoot, relativePath) !== null,

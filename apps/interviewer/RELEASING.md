@@ -387,8 +387,10 @@ the tarball (from the same sources, in the same order) into
 starts, and `scripts/buildtime/legacy-app-dev-plugin.ts` serves that directory
 ahead of Vite's own middleware. When it cannot obtain the tarball (offline on
 the first run), or with `INTERVIEWER_SKIP_LEGACY_V8=true`, it logs why and
-runs without Interviewer 8, as such a build does. The dev server registers no
-service worker, so Interviewer 8's is never installed there.
+runs without Interviewer 8, as such a build does. It answers `/v8/sw.js`
+with 404: Interviewer 8 registers its worker even when framed, and an
+installed one would outlive the dev server and keep serving its precache after
+the pin changes.
 
 **The release guard.** The production builds in `apps-release-interviewer`
 and the hotfix lane set `INTERVIEWER_REQUIRE_LEGACY_V8=true`, which fails the

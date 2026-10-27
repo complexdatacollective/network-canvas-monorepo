@@ -116,6 +116,21 @@ describe('createLegacyAppDevPlugin', () => {
     }
   });
 
+  it('refuses the older major’s service worker, so none outlives the dev server', async () => {
+    const origin = await serve(
+      legacyRootWith({
+        'index.html': '<p>Interviewer 8</p>',
+        'sw.js': 'self.skipWaiting();',
+      }),
+    );
+
+    for (const method of ['GET', 'HEAD']) {
+      const response = await fetch(`${origin}/v8/sw.js?x=1`, { method });
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe('');
+    }
+  });
+
   it('leaves every other address to this app', async () => {
     const origin = await serve(
       legacyRootWith({ 'index.html': '<p>Interviewer 8</p>' }),
