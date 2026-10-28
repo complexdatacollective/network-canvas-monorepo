@@ -94,7 +94,7 @@ const NestedDraftReclaimDialog = () => {
   const openDialogId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!pending) return;
+    if (!pending) return undefined;
     let cancelled = false;
 
     const ask = async () => {

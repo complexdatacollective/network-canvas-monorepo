@@ -31,6 +31,27 @@ const toStoredMetadata = (
   stageMetadata: Record<string, unknown> | null,
 ): object | undefined => stageMetadata ?? undefined;
 
+// Generating from an empty stand-in would fill the deployment with
+// interviews that hold nothing, so refuse before creating any.
+const unreadable = (error: unknown) => {
+  after(async () => {
+    await captureException(error, {
+      context: 'synthetic.protocol.unreadable',
+    });
+    await flushPostHog();
+  });
+
+  return Response.json(
+    {
+      error: createMessageError(syntheticGenerationMessages.unreadableProtocol),
+      diagnostic: 'Protocol could not be read',
+    },
+    {
+      status: 500,
+    },
+  );
+};
+
 export async function POST(request: Request) {
   let username: string;
   try {
@@ -95,29 +116,6 @@ export async function POST(request: Request) {
       },
     );
   }
-
-  // Generating from an empty stand-in would fill the deployment with
-  // interviews that hold nothing, so refuse before creating any.
-  const unreadable = (error: unknown) => {
-    after(async () => {
-      await captureException(error, {
-        context: 'synthetic.protocol.unreadable',
-      });
-      await flushPostHog();
-    });
-
-    return Response.json(
-      {
-        error: createMessageError(
-          syntheticGenerationMessages.unreadableProtocol,
-        ),
-        diagnostic: 'Protocol could not be read',
-      },
-      {
-        status: 500,
-      },
-    );
-  };
 
   // A schema 8 protocol is generated for by the generator released with
   // schema 8, so its interviews hold what the schema 8 interview would write.

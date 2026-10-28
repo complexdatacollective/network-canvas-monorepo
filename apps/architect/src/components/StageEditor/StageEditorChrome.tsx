@@ -209,7 +209,7 @@ function StageDraftPublisher() {
   const editing = access === 'editing';
 
   useEffect(() => {
-    if (committedFields === undefined) return;
+    if (committedFields === undefined) return undefined;
     const publish = () => {
       const draft = liveDraft();
       publishStageDraft(
@@ -427,7 +427,7 @@ function PreviewValidity({
   useEffect(() => {
     if (stage === undefined) {
       onSettled(false);
-      return;
+      return undefined;
     }
     let cancelled = false;
     // Debounced, so a protocol is not validated on every keystroke; the button

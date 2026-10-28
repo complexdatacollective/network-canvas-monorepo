@@ -379,6 +379,8 @@ function defaultIsWorkspaceDir(root, readPackage) {
   };
 }
 
+const sorted = (set) => [...set].toSorted((a, b) => a.localeCompare(b));
+
 // Maps changed files to workspace packages. `seeds` is every named package
 // that contains a change (turbo filters seeded from them reach dependents
 // even when the seed lacks the task itself); `packages` is the subset that
@@ -410,7 +412,6 @@ export function packagesForFiles(
     seeds.add(manifest.name);
     if (manifest.scripts?.[script]) names.add(manifest.name);
   }
-  const sorted = (set) => [...set].toSorted((a, b) => a.localeCompare(b));
   return { packages: sorted(names), seeds: sorted(seeds), all };
 }
 
@@ -1087,12 +1088,13 @@ const GIT_GLOBAL_VALUE_OPTIONS = new Set([
   '--config-env',
 ]);
 
+const resolveDir = (from, target) =>
+  from ? path.resolve(from, target.replace(/^['"]|['"]$/g, '')) : null;
+
 export function classifyGateCommand(command, { cwd, root, packageDir } = {}) {
   if (!command) return null;
   const inPackage = (dir) =>
     Boolean(dir && root && (packageDir ?? isPackageDir)(dir, root));
-  const resolveDir = (from, target) =>
-    from ? path.resolve(from, target.replace(/^['"]|['"]$/g, '')) : null;
   let currentDir = cwd ?? root ?? null;
   let exported = false;
   // A backslash-newline continues the same command line.

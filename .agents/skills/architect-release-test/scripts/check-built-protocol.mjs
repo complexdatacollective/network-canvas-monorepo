@@ -58,6 +58,7 @@ const TYPE_EXTENSIONS = {
   geojson: ['geojson'],
 };
 
+const byText = (a, b) => a.localeCompare(b);
 const isRecord = (value) =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -146,7 +147,6 @@ export function checkBuiltProtocol(built, readAsset) {
     const colors = Object.values(types).map((entry) =>
       isRecord(entry) && typeof entry.color === 'string' ? entry.color : null,
     );
-    const byText = (a, b) => a.localeCompare(b);
     const actual = colors.map(String).toSorted(byText);
     const expected = colors
       .map((_, index) => `${entity}-color-seq-${index + 1}`)

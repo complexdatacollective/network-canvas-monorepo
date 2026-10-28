@@ -297,6 +297,10 @@ export const getRuleFunction = ({
     case 'ego':
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- egoRule returns a filter runner
       return createRule('ego', options, egoRule) as FilterRuleRunner;
+    default: {
+      const unhandled: never = type;
+      throw new Error('Unhandled filter rule type', { cause: unhandled });
+    }
   }
 };
 
@@ -312,5 +316,9 @@ export const getSingleRuleFunction = ({
       return createRule('edge', options, singleEdgeRule);
     case 'ego':
       return createRule('ego', options, egoRule);
+    default: {
+      const unhandled: never = type;
+      throw new Error('Unhandled filter rule type', { cause: unhandled });
+    }
   }
 };

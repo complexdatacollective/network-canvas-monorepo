@@ -46,7 +46,7 @@ export function useHistoryBackGuard(
   const armedRef = useRef(false);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) return undefined;
     const url = window.location.href;
     // Reuse an existing sentinel (e.g. left by a lock/unlock remount of the same
     // route) instead of stacking another.

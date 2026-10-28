@@ -287,6 +287,10 @@ const originKey = (origin: ExportColumnOrigin): string => {
       return `option:${typeof origin.value}:${String(origin.value)}`;
     case 'layout':
       return `layout:${origin.axis}`;
+    default: {
+      const unhandled: never = origin;
+      throw new Error('Unhandled export column origin', { cause: unhandled });
+    }
   }
 };
 

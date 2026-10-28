@@ -1,5 +1,13 @@
 import { isRecord } from '../../../utils/isRecord';
 
+const isPrimitive = (val: unknown): val is string | number | boolean =>
+  typeof val === 'string' ||
+  typeof val === 'number' ||
+  typeof val === 'boolean';
+
+const keyFor = (val: string | number | boolean): string =>
+  `${typeof val}:${String(val)}`;
+
 /**
  * Compares two FieldValue types to determine if they match.
  * Handles various types including primitives, arrays, objects, coordinates, and null/undefined.
@@ -40,16 +48,8 @@ export default function isMatchingValue(
     // order-insensitive but count-sensitive (['x','y'] === ['y','x'] but
     // ['x','x'] !== ['x','y']). Arrays of objects (e.g. coordinates) keep the
     // index-by-index comparison since their order is significant.
-    const isPrimitive = (val: unknown): val is string | number | boolean =>
-      typeof val === 'string' ||
-      typeof val === 'number' ||
-      typeof val === 'boolean';
-
     if (submittedValue.every(isPrimitive) && existingValue.every(isPrimitive)) {
       const counts = new Map<string, number>();
-      const keyFor = (val: string | number | boolean): string =>
-        `${typeof val}:${String(val)}`;
-
       for (const val of submittedValue) {
         counts.set(keyFor(val), (counts.get(keyFor(val)) ?? 0) + 1);
       }

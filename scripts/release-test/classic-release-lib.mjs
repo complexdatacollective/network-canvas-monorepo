@@ -211,21 +211,23 @@ export async function launchElectron({ executablePath, userDataDir }) {
     timeout: 60_000,
   });
   await app.evaluate(({ app: electronApp, BrowserWindow }) => {
-    const unthrottle = (w) => w.webContents.setBackgroundThrottling(false);
-    BrowserWindow.getAllWindows().forEach(unthrottle);
-    electronApp.on('browser-window-created', (_, w) => unthrottle(w));
+    for (const w of BrowserWindow.getAllWindows()) {
+      w.webContents.setBackgroundThrottling(false);
+    }
+    electronApp.on('browser-window-created', (_, w) =>
+      w.webContents.setBackgroundThrottling(false),
+    );
   });
   await app.evaluate(({ dialog }) => {
     const queues = { open: [], save: [], message: [] };
     const log = [];
     globalThis.__rtDialogs = { queues, log };
     // Each dialog function takes an optional BrowserWindow before options.
-    const optionsOf = (args) => args[args.length - 1] ?? {};
     dialog.showOpenDialog = async (...args) => {
       const filePath = queues.open.shift();
       log.push({
         kind: 'open',
-        title: optionsOf(args).title ?? null,
+        title: args.at(-1)?.title ?? null,
         filePath,
       });
       return filePath
@@ -233,7 +235,7 @@ export async function launchElectron({ executablePath, userDataDir }) {
         : { canceled: true, filePaths: [] };
     };
     dialog.showSaveDialog = async (...args) => {
-      const options = optionsOf(args);
+      const options = args.at(-1) ?? {};
       const filePath = queues.save.shift();
       log.push({
         kind: 'save',
@@ -244,7 +246,7 @@ export async function launchElectron({ executablePath, userDataDir }) {
       return filePath ? { canceled: false, filePath } : { canceled: true };
     };
     dialog.showMessageBox = async (...args) => {
-      const options = optionsOf(args);
+      const options = args.at(-1) ?? {};
       const response = queues.message.length ? queues.message.shift() : 0;
       log.push({
         kind: 'message',

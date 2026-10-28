@@ -728,7 +728,7 @@ export default function NarrativePedigreeView({
   // The document lays out the whole family at natural size, whatever part of
   // it the canvas is showing.
   useEffect(() => {
-    if (!isCapturing) return;
+    if (!isCapturing) return undefined;
     let cancelled = false;
     const frame = requestAnimationFrame(() => {
       const element = snapshotRef.current;

@@ -48,6 +48,12 @@ const APP_ROUTES = {
 
 const APPS = Object.keys(APP_ROUTES);
 
+// Drops the clause that excludes /v8/ from an image or font route.
+const withoutV8Exclusion = (route) =>
+  route
+    .replace('&&!s.pathname.startsWith("/v8/")', '')
+    .replace('!s.pathname.startsWith("/v8/")&&', '');
+
 describe('findLegacyPrecacheEntries', () => {
   it('finds the older major’s files in this app’s precache manifest', () => {
     const sw =
@@ -93,12 +99,6 @@ describe.each(APPS)('%s routes', (name) => {
       ...routes(freshShell, images, fonts),
       sameOriginRoutes,
     });
-
-  // Drops the clause that excludes /v8/ from an image or font route.
-  const withoutV8Exclusion = (route) =>
-    route
-      .replace('&&!s.pathname.startsWith("/v8/")', '')
-      .replace('!s.pathname.startsWith("/v8/")&&', '');
 
   describe('routeMatcherAt', () => {
     it('cuts out one route’s matcher function', () => {
@@ -178,11 +178,12 @@ describe.each(APPS)('%s routes', (name) => {
   });
 });
 
+const check = (source, prefix = '/interview/') =>
+  assertAnchoredRoute({ description: 'the route', source, prefix });
+
 describe('assertAnchoredRoute', () => {
   const INTERVIEW =
     'e.registerRoute(({request:e,sameOrigin:s,url:t})=>s&&"navigate"===e.mode&&t.pathname.startsWith("/interview/"),new e.CacheOnly({})';
-  const check = (source, prefix = '/interview/') =>
-    assertAnchoredRoute({ description: 'the route', source, prefix });
 
   it('accepts a matcher that only takes paths under its prefix', () => {
     expect(() => check(INTERVIEW)).not.toThrow();
@@ -206,9 +207,9 @@ describe('assertAnchoredRoute', () => {
 describe.each(APPS)('%s hosting and output', (name) => {
   const app = legacyApp(name);
 
-  describe('assertLegacyRedirects', () => {
-    const redirects = (text) => assertLegacyRedirects(app, text);
+  const redirects = (text) => assertLegacyRedirects(app, text);
 
+  describe('assertLegacyRedirects', () => {
     it(`accepts the committed apps/${name}/public/_redirects`, () => {
       const committed = readFileSync(
         join(repositoryRoot, 'apps', name, 'public/_redirects'),

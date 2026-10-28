@@ -68,6 +68,10 @@ function relativesFor(
       return primaryParentsOf(family, personId);
     case 'siblingOf':
       return siblingsOf(family, personId);
+    default: {
+      const unhandled: never = qualifier;
+      throw new Error('Unhandled qualifier', { cause: unhandled });
+    }
   }
 }
 

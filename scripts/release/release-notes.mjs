@@ -51,6 +51,16 @@ export function notesFromDedicatedChangeset(pkgName, version, changesetDir) {
   return '';
 }
 
+const rank = (semver) => semver.split('.').map(Number);
+
+const newer = (a, b) => {
+  const [left, right] = [rank(a), rank(b)];
+  for (let i = 0; i < 3; i += 1) {
+    if (left[i] !== right[i]) return left[i] > right[i];
+  }
+  return false;
+};
+
 // Every stable version in the changelog above `since` and up to `version`,
 // newest first. A release run can be dropped while pending on its app's
 // concurrency group (see apps-release-<app> in ci-and-release.yml), and the
@@ -63,14 +73,6 @@ export function versionsSince(appDir, version, since) {
   const found = [...readFileSync(changelogPath, 'utf8').matchAll(stable)].map(
     (match) => match[1],
   );
-  const rank = (semver) => semver.split('.').map(Number);
-  const newer = (a, b) => {
-    const [left, right] = [rank(a), rank(b)];
-    for (let i = 0; i < 3; i += 1) {
-      if (left[i] !== right[i]) return left[i] > right[i];
-    }
-    return false;
-  };
   return found.filter(
     (candidate) =>
       !newer(candidate, version) &&

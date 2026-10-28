@@ -256,7 +256,7 @@ export default function QuickAddField({
     // Typing resets the timer.
     if (!checked || submissionCount > 0) {
       setShowTooltip(false);
-      return;
+      return undefined;
     }
 
     setShowTooltip(false);

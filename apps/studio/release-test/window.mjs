@@ -132,6 +132,9 @@ const isMaintenance = (state) => (step) =>
   /\bmaintenance\s+(on|off)\b/.exec(step.command ?? '')?.[1] === state;
 const isMigrate = (step) => /\brun\s+--rm\s+migrate\b/.test(step.command ?? '');
 const isStop = (step) => /\bdocker\s+compose\s+stop\b/.test(step.command ?? '');
+const paged = (tick) =>
+  tick.probeStatus === '503' &&
+  (tick.probeKind === 'page' || tick.probeKind === 'problem-maintenance');
 
 function tally(ticks) {
   const count = (key) =>
@@ -236,9 +239,6 @@ export function analyseWindow(ticks, steps) {
   const replacingWeb = steps.filter((step) =>
     /\bup\s+-d\b.*\bweb\b/.test(step.command ?? ''),
   );
-  const paged = (tick) =>
-    tick.probeStatus === '503' &&
-    (tick.probeKind === 'page' || tick.probeKind === 'problem-maintenance');
   const pagelessWhileWebIsReplaced = (tick) =>
     WEB_REPLACEMENT_STATUSES.has(tick.probeStatus) &&
     tick.probeKind === 'other' &&

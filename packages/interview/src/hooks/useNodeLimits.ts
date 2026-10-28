@@ -72,7 +72,7 @@ function useNodeLimits({
         closeToast(maxToastRef.current);
         maxToastRef.current = null;
       }
-      return;
+      return undefined;
     }
 
     // Defer toast creation so StrictMode's cleanup (clearTimeout) cancels

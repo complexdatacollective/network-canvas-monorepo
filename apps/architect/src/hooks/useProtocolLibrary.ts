@@ -83,7 +83,7 @@ export function useProtocolLibrary(): {
   }, [legacySubscription]);
 
   useEffect(() => {
-    if (legacyFound) return;
+    if (legacyFound) return undefined;
     let active = true;
     const recheck = () => {
       if (document.visibilityState === 'hidden') return;

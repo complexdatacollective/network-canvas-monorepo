@@ -27,6 +27,13 @@ const { LANES, STORAGE, lane } =
 const interpolated = (value) =>
   /^\$\{(\w+)(?::\?[^}]*)?\}$/.exec(String(value))?.[1] ?? value;
 
+const sources = (env) =>
+  Object.fromEntries(
+    Object.entries(env).map(([key, value]) => [key, interpolated(value)]),
+  );
+
+const withoutPublicUrl = ({ S3_PUBLIC_URL: _, ...env }) => env;
+
 test('the release-test Garage runs the production image, command and configuration', () => {
   const [prodGarage, testGarage] = [prod, releaseTest].map(
     (c) => c.services.garage,
@@ -37,10 +44,6 @@ test('the release-test Garage runs the production image, command and configurati
   assert.deepEqual(testGarage.configs, prodGarage.configs);
   assert.deepEqual(testGarage.volumes, prodGarage.volumes);
   assert.deepEqual(testGarage.healthcheck, prodGarage.healthcheck);
-  const sources = (env) =>
-    Object.fromEntries(
-      Object.entries(env).map(([key, value]) => [key, interpolated(value)]),
-    );
   assert.deepEqual(
     sources(testGarage.environment),
     sources(prodGarage.environment),
@@ -159,7 +162,6 @@ test('the app is configured for its storage as production does', () => {
   ]);
   assert.equal(prodEnv.S3_PUBLIC_URL, 'https://${FRESCO_DOMAIN}');
   assert.equal(testEnv.S3_PUBLIC_URL, 'http://localhost:${STORAGE_PORT:-9310}');
-  const withoutPublicUrl = ({ S3_PUBLIC_URL: _, ...env }) => env;
   assert.deepEqual(withoutPublicUrl(testEnv), withoutPublicUrl(prodEnv));
 
   const garage = prod.services.garage.environment;

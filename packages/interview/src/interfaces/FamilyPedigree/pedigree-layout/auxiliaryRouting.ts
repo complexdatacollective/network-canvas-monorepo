@@ -952,6 +952,22 @@ function hashOf(x1: number, y1: number, x2: number, y2: number): number {
   return hash & 0x3fffffff;
 }
 
+const boxOfSegment = (s: LineSegment): Box => ({
+  left: Math.min(s.x1, s.x2),
+  right: Math.max(s.x1, s.x2),
+  top: Math.min(s.y1, s.y2),
+  bottom: Math.max(s.y1, s.y2),
+});
+
+const insideAny = (symbols: Symbol[], p: Point) =>
+  symbols.some(
+    (symbol) =>
+      p.x > symbol.left &&
+      p.x < symbol.right &&
+      p.y > symbol.top &&
+      p.y < symbol.bottom,
+  );
+
 /**
  * What is wrong with a line's courses among the lines already drawn, for
  * one line at a time: the scene does not change while its courses are
@@ -995,12 +1011,6 @@ function courseCoster(
         end.kind === 'join' &&
         end.points.some((p) => distanceToSegment(p, piece) < ON),
     );
-  const boxOfSegment = (s: LineSegment): Box => ({
-    left: Math.min(s.x1, s.x2),
-    right: Math.max(s.x1, s.x2),
-    top: Math.min(s.y1, s.y2),
-    bottom: Math.max(s.y1, s.y2),
-  });
   // Only what lies near a piece can add to its cost.
   const reach = 0.3 * Math.max(boxw, boxh);
   const nearBox = (area: Box) => (r: Box) =>
@@ -1008,14 +1018,6 @@ function courseCoster(
     r.left <= area.right + reach &&
     r.bottom >= area.top - reach &&
     r.top <= area.bottom + reach;
-  const insideAny = (symbols: Symbol[], p: Point) =>
-    symbols.some(
-      (symbol) =>
-        p.x > symbol.left &&
-        p.x < symbol.right &&
-        p.y > symbol.top &&
-        p.y < symbol.bottom,
-    );
   const insideOf = (p: Point, person: number | undefined) =>
     ends.some(
       (symbol) =>
@@ -1776,6 +1778,13 @@ function joinedCourse(
   ];
 }
 
+const offeredBefore = (a: number[], b: number[]) => {
+  for (let k = 0; k < a.length; k++) {
+    if (a[k] !== b[k]) return a[k]! < b[k]!;
+  }
+  return false;
+};
+
 /**
  * The best courses for two co-parents' lines that join: of the courses of
  * either one's line that come straight down from their symbol and run
@@ -1800,19 +1809,13 @@ function pairOptions(
   // first), cheapest alone first, in the order they were offered.
   type Pair = Course & { cost: number; offered: number[] };
   const best: Pair[] = [];
-  const before = (a: number[], b: number[]) => {
-    for (let k = 0; k < a.length; k++) {
-      if (a[k] !== b[k]) return a[k]! < b[k]!;
-    }
-    return false;
-  };
   const take = (pair: Pair) => {
     const last = best.length >= limit ? best[limit - 1] : undefined;
     if (
       last &&
       !(
         pair.cost < last.cost ||
-        (pair.cost === last.cost && before(pair.offered, last.offered))
+        (pair.cost === last.cost && offeredBefore(pair.offered, last.offered))
       )
     ) {
       return;
@@ -1820,7 +1823,7 @@ function pairOptions(
     const at = best.findIndex(
       (kept) =>
         kept.cost > pair.cost ||
-        (kept.cost === pair.cost && before(pair.offered, kept.offered)),
+        (kept.cost === pair.cost && offeredBefore(pair.offered, kept.offered)),
     );
     best.splice(at < 0 ? best.length : at, 0, pair);
     best.length = Math.min(best.length, limit);

@@ -272,6 +272,10 @@ function prepareTree(inputDir, workDir) {
   return { normalizedDir, names: names.toSorted((a, b) => a.localeCompare(b)) };
 }
 
+function read(side, name) {
+  return readFileSync(join(side.normalizedDir, name), 'utf8');
+}
+
 function main() {
   const positional = [];
   let outFile;
@@ -306,8 +310,6 @@ function main() {
   };
 
   const shared = baseline.names.filter((n) => currentSet.has(n));
-  const read = (side, name) =>
-    readFileSync(join(side.normalizedDir, name), 'utf8');
   for (const name of shared) {
     const reconciled = name.endsWith('.json')
       ? reconcileInterviewJson(read(baseline, name), read(current, name))

@@ -91,7 +91,7 @@ export function useSearchWorker<T extends Record<string, unknown>>({
     // While disabled the index is never built, and the cleanup below resets
     // readiness whenever the worker is torn down, so `isReady` is already
     // false here.
-    if (!enabled) return;
+    if (!enabled) return undefined;
 
     const worker = createSearchWorker();
 
@@ -113,7 +113,7 @@ export function useSearchWorker<T extends Record<string, unknown>>({
 
   // Initialize/update index when items change
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     let cancelled = false;
 
     const initIndex = async () => {

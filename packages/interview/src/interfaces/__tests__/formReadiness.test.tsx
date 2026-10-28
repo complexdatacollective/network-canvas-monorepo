@@ -109,6 +109,10 @@ const stageFor = (kind: Kind) => {
         introductionPanel: { title: { en: 'About you' } },
         form,
       };
+    default: {
+      const unhandled: never = kind;
+      throw new Error('Unhandled kind', { cause: unhandled });
+    }
   }
 };
 

@@ -282,6 +282,15 @@ const planAddition = (
     sexAttribute: config.sexAssignedAtBirthAttribute,
   });
 
+/** Whether keeping the stand-in rule changes anything. */
+const changesAnything = (changes: StandInChanges) =>
+  changes.people.length > 0 ||
+  changes.links.length > 0 ||
+  changes.updatedPeople.length > 0 ||
+  changes.changedTwins.length > 0 ||
+  changes.removedLinkIds.length > 0 ||
+  changes.removedPersonIds.length > 0;
+
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
   const contentFormat = useContentFormat();
@@ -880,7 +889,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Opened a moment after the stage loads, once the toolbar is in, so the
   // participant sees the rest of the interface first.
   useEffect(() => {
-    if (!askFramingOnLoad.current) return;
+    if (!askFramingOnLoad.current) return undefined;
     const timer = setTimeout(() => {
       if (askFramingOnLoad.current) setFramingOpen(true);
     }, FRAMING_OPEN_DELAY);
@@ -1218,7 +1227,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ? panel.mode.anchor.id
       : panel.mode.person.id;
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) return undefined;
     let frame = 0;
     let framesLeft = 30;
     const centre = () => {
@@ -2031,15 +2040,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ),
     );
 
-  // Whether keeping the stand-in rule changes anything.
-  const changesAnything = (changes: StandInChanges) =>
-    changes.people.length > 0 ||
-    changes.links.length > 0 ||
-    changes.updatedPeople.length > 0 ||
-    changes.changedTwins.length > 0 ||
-    changes.removedLinkIds.length > 0 ||
-    changes.removedPersonIds.length > 0;
-
   // Writes what keeping the stand-in rule changes, stopping at the first
   // write the session refuses, which it resolves to. Stand-ins are taken
   // away only once every other change is stored, so a refusal leaves no one
@@ -2460,9 +2460,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setAnnouncement('');
   };
 
+  const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
+
   // Two people in a sentence, the participant first, as "you and …".
   const pairArgs = (a: string, b: string) => {
-    const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
     const [first, second] = isYou(b) ? [b, a] : [a, b];
     return {
       firstIsYou: isYou(first) ? 'true' : 'false',

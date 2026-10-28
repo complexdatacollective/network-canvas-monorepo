@@ -138,6 +138,10 @@ type ToggleButtonGroupProps = CreateFormFieldProps<
 > &
   VariantProps<typeof toggleButtonGroupComposedVariants>;
 
+const getCatColorIndex = (index: number) => {
+  return CAT_COLOR_INDEXES[index % 10] ?? 1;
+};
+
 export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
   const {
     id,
@@ -169,10 +173,6 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
   const isControlled = value !== undefined;
   const suppliedValues = isControlled ? value : (defaultValue ?? []);
   const currentValues = Array.isArray(suppliedValues) ? suppliedValues : [];
-
-  const getCatColorIndex = (index: number) => {
-    return CAT_COLOR_INDEXES[index % 10] ?? 1;
-  };
 
   return (
     <fieldset

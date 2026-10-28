@@ -53,13 +53,13 @@ const useCanvas = (
     const canvas = canvasRef.current;
 
     if (!canvas) {
-      return;
+      return undefined;
     }
 
     const context = canvas.getContext('2d');
 
     if (!context) {
-      return;
+      return undefined;
     }
 
     let requestAnimationId: number | null = null;

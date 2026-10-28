@@ -218,6 +218,10 @@ function resultsReducer(
         awaiting,
       };
     }
+    default: {
+      const unhandled: never = action;
+      throw new Error('Unhandled results action', { cause: unhandled });
+    }
   }
 }
 

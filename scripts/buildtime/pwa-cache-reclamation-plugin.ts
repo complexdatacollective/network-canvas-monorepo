@@ -36,6 +36,7 @@ export async function matchRetainedPwaAsset({
 }: {
   request: Request;
 }): Promise<Response> {
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- Workbox serializes this function into the worker, so the guard cannot live at module scope
   const isCacheStorageMatcher = (
     candidate: unknown,
   ): candidate is CacheStorageMatcher =>

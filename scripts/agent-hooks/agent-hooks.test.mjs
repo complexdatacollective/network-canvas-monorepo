@@ -53,6 +53,14 @@ const repoRoot = path.resolve(
   '..',
 );
 
+const isPackagesOrWorkersDir = (dir) =>
+  /^\/repo\/(packages|workers)\/[^/]+$/.test(dir);
+const isPackagesChildDir = (dir) => /^\/repo\/packages\/[^/]+$/.test(dir);
+const isInterviewDir = (dir) => dir === '/repo/packages/interview';
+const readNoPackage = () => null;
+const insideAppsOrPackages = (dir) => /\/(apps|packages)\/[^/]+/.test(dir);
+const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
+
 test('extracts the edited path from Claude Code Edit/Write/MultiEdit/NotebookEdit events', () => {
   const root = '/repo';
   assert.deepEqual(
@@ -196,8 +204,6 @@ test('maps changed files to workspace packages with a typecheck script', () => {
     },
   };
   const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
-  const isWorkspaceDir = (dir) =>
-    /^\/repo\/(packages|workers)\/[^/]+$/.test(dir);
   const result = packagesForFiles(
     [
       '/repo/packages/interview/src/deep/nested/File.tsx',
@@ -206,7 +212,7 @@ test('maps changed files to workspace packages with a typecheck script', () => {
       '/repo/docs/guide.md',
     ],
     '/repo',
-    { readPackage, isWorkspaceDir },
+    { readPackage, isWorkspaceDir: isPackagesOrWorkersDir },
   );
   assert.deepEqual(result, {
     packages: ['@codaco/interview'],
@@ -231,20 +237,22 @@ test('the script option selects packages by a different manifest script', () => 
     },
   };
   const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
-  const isWorkspaceDir = (dir) => /^\/repo\/packages\/[^/]+$/.test(dir);
   const files = [
     '/repo/packages/a/src/x.ts',
     '/repo/packages/b/src/y.ts',
     '/repo/packages/c/src/z.ts',
   ];
   assert.deepEqual(
-    packagesForFiles(files, '/repo', { readPackage, isWorkspaceDir }).packages,
+    packagesForFiles(files, '/repo', {
+      readPackage,
+      isWorkspaceDir: isPackagesChildDir,
+    }).packages,
     ['a', 'b'],
   );
   assert.deepEqual(
     packagesForFiles(files, '/repo', {
       readPackage,
-      isWorkspaceDir,
+      isWorkspaceDir: isPackagesChildDir,
       script: 'test',
     }).packages,
     ['a', 'c'],
@@ -252,21 +260,21 @@ test('the script option selects packages by a different manifest script', () => 
 });
 
 test('a change to shared TypeScript configuration selects every package', () => {
-  const readPackage = () => null;
   for (const file of [
     '/repo/pnpm-lock.yaml',
     '/repo/package.json',
     '/repo/turbo.json',
   ]) {
     assert.equal(
-      packagesForFiles([file], '/repo', { readPackage }).all,
+      packagesForFiles([file], '/repo', { readPackage: readNoPackage }).all,
       true,
       file,
     );
   }
   assert.equal(
-    packagesForFiles(['/repo/apps/x/package.json'], '/repo', { readPackage })
-      .all,
+    packagesForFiles(['/repo/apps/x/package.json'], '/repo', {
+      readPackage: readNoPackage,
+    }).all,
     false,
   );
 });
@@ -483,8 +491,7 @@ test('option values are not counted as formatter or linter file targets', () => 
 });
 
 test('gate commands run from inside a workspace package are package-scoped', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+/.test(dir);
-  const options = { root: '/repo', packageDir };
+  const options = { root: '/repo', packageDir: insideAppsOrPackages };
   assert.equal(
     classifyGateCommand('cd apps/interviewer && pnpm typecheck', options),
     null,
@@ -572,17 +579,16 @@ test('nested manifests that are not workspace packages are climbed past', () => 
     },
   };
   const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
-  const isWorkspaceDir = (dir) => dir === '/repo/packages/interview';
   const found = packageForFile(
     '/repo/packages/interview/e2e/specs/x.spec.ts',
     '/repo',
-    { readPackage, isWorkspaceDir },
+    { readPackage, isWorkspaceDir: isInterviewDir },
   );
   assert.equal(found?.manifest.name, '@codaco/interview');
   const result = packagesForFiles(
     ['/repo/packages/interview/e2e/specs/x.spec.ts'],
     '/repo',
-    { readPackage, isWorkspaceDir },
+    { readPackage, isWorkspaceDir: isInterviewDir },
   );
   assert.deepEqual(result.seeds, ['@codaco/interview']);
 });
@@ -815,7 +821,6 @@ test('ensureKnipInputs reports the generated inputs present in this tree', () =>
 });
 
 test('pnpm directory options decide whether a gate run is package-scoped', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   const options = { root: '/repo', packageDir };
   assert.equal(
     classifyGateCommand('pnpm -C . lint', options)?.kind,
@@ -880,7 +885,6 @@ test('quoted separators do not start a new command segment', () => {
 });
 
 test('subshells, brace groups, shell -c scripts and wrappers are classified', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   const options = { root: '/repo', packageDir };
   for (const refused of [
     '(pnpm lint)',
@@ -953,7 +957,6 @@ test('updateState fails fast instead of spinning when the lock cannot be created
 });
 
 test('pnpm scope flags count only before the script name; -w returns to the root', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   const options = { root: '/repo', packageDir };
   assert.equal(
     classifyGateCommand('pnpm lint --filter foo')?.kind,
@@ -1033,7 +1036,6 @@ test('backslash line continuations are joined before classification', () => {
 });
 
 test('root-wide filter selectors from the repository root are whole-tree runs', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   const options = { root: '/repo', packageDir, cwd: '/repo' };
   assert.equal(
     classifyGateCommand('pnpm --filter . typecheck', options)?.kind,
@@ -1101,7 +1103,6 @@ test('only single-package filter selectors scope a run from the repository root'
     true,
     'inside a package `.` is that package',
   );
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   assert.equal(
     classifyGateCommand('pnpm --filter "./**" typecheck', {
       root: '/repo',

@@ -65,7 +65,7 @@ export function useIdleTimer({
   const running = enabled && !held;
 
   useEffect(() => {
-    if (!running) return;
+    if (!running) return undefined;
     let idleTimer: number | undefined;
     let lastActivityAt = Date.now();
 

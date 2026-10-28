@@ -109,7 +109,7 @@ export default function Canvas({
   // Track canvas dimensions so the store can compute boundary margins
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return undefined;
 
     const observer = new ResizeObserver(([entry]) => {
       if (!entry) return;

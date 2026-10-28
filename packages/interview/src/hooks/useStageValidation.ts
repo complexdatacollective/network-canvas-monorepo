@@ -77,7 +77,7 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
 
   // Register the keyed beforeNext handler
   useEffect(() => {
-    if (!hasConstraints) return;
+    if (!hasConstraints) return undefined;
 
     const handler = (direction: Direction, intent: NavigationIntent) => {
       if (intent === 'jump') {

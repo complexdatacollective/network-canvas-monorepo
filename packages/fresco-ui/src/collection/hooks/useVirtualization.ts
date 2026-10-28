@@ -80,7 +80,7 @@ export function useVirtualization({
   const scrollTopRef = useRef(0);
 
   useEffect(() => {
-    if (!scrollElement) return;
+    if (!scrollElement) return undefined;
 
     // Throttle scroll updates to animation frames to prevent excessive re-renders
     const updateScrollTop = rafThrottle(() => {
@@ -105,7 +105,7 @@ export function useVirtualization({
 
   // Track viewport height with ResizeObserver
   useLayoutEffect(() => {
-    if (!scrollElement) return;
+    if (!scrollElement) return undefined;
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {

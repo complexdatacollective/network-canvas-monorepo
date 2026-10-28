@@ -84,7 +84,7 @@ function VirtualizedRendererComponent<T>({
 
   // Track container width with ResizeObserver (batched to RAF for performance)
   useLayoutEffect(() => {
-    if (!scrollElement) return;
+    if (!scrollElement) return undefined;
 
     let rafId: number | null = null;
     let pendingWidth: number | null = null;

@@ -361,6 +361,7 @@ export default function NewVariableWindow({
           }),
         ).unwrap();
         onComplete(result.variable);
+        return undefined;
       } catch (error) {
         // Keep the dialog open and say why, rather than closing on a failure.
         return {

@@ -61,6 +61,25 @@ type HeadingInputProps = {
   'aria-describedby'?: string;
 };
 
+const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  // An IME sends Enter to commit the candidate the researcher is choosing.
+  // Intercepting it would submit a name that is still being composed.
+  if (event.nativeEvent.isComposing || event.key !== 'Enter') {
+    return;
+  }
+
+  event.preventDefault();
+
+  // CLICKED rather than `requestSubmit()`ed: "Finished Editing" carries an
+  // `onClick` that reopens the Issues panel on a repeat failed attempt, when
+  // neither `submitFailed` nor the error set changes and the auto-open
+  // effect does not re-fire.
+  const owner = event.currentTarget.form;
+  if (owner) {
+    findDefaultSubmitButton(owner)?.click();
+  }
+};
+
 /**
  * The stage's name, rendered at the size of the page's own heading. The label
  * and the refusal beneath it are drawn by `fields/StageNameField` around this,
@@ -96,25 +115,6 @@ const StageNameInput = ({
     // the string here spends cap characters the finished name had room for —
     // an indented 51-character paste normalising to 45 came back cut at 44.
     onChange?.(event.target.value.replace(/[\r\n]/g, ' '));
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    // An IME sends Enter to commit the candidate the researcher is choosing.
-    // Intercepting it would submit a name that is still being composed.
-    if (event.nativeEvent.isComposing || event.key !== 'Enter') {
-      return;
-    }
-
-    event.preventDefault();
-
-    // CLICKED rather than `requestSubmit()`ed: "Finished Editing" carries an
-    // `onClick` that reopens the Issues panel on a repeat failed attempt, when
-    // neither `submitFailed` nor the error set changes and the auto-open
-    // effect does not re-fire.
-    const owner = event.currentTarget.form;
-    if (owner) {
-      findDefaultSubmitButton(owner)?.click();
-    }
   };
 
   const handleBlur = (_event: FocusEvent<HTMLTextAreaElement>) => {

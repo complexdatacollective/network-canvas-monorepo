@@ -84,5 +84,9 @@ export const partitionByType = (
         partitionEntityId: edgeType,
       }));
     }
+    default: {
+      const unhandled: never = format;
+      throw new Error('Unhandled export format', { cause: unhandled });
+    }
   }
 };

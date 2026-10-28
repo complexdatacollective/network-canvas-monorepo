@@ -147,7 +147,7 @@ export function ProtocolPreview({
   }, []);
 
   useEffect(() => {
-    if (!wave) return;
+    if (!wave) return undefined;
     let cancelled = false;
     installRef.current = null;
 

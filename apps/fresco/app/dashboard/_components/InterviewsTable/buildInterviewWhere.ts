@@ -11,19 +11,16 @@ function parseRange(raw: string | null): { lo: string; hi: string } | null {
   return { lo, hi };
 }
 
+const OPERATOR_SQL: Record<NetworkCondition['operator'], Prisma.Sql> = {
+  eq: Prisma.raw('='),
+  gt: Prisma.raw('>'),
+  lt: Prisma.raw('<'),
+  gte: Prisma.raw('>='),
+  lte: Prisma.raw('<='),
+};
+
 function operatorSql(op: NetworkCondition['operator']): Prisma.Sql {
-  switch (op) {
-    case 'eq':
-      return Prisma.raw('=');
-    case 'gt':
-      return Prisma.raw('>');
-    case 'lt':
-      return Prisma.raw('<');
-    case 'gte':
-      return Prisma.raw('>=');
-    case 'lte':
-      return Prisma.raw('<=');
-  }
+  return OPERATOR_SQL[op];
 }
 
 /**

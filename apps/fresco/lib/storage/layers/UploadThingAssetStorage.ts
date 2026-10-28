@@ -20,7 +20,7 @@ export const UploadThingAssetStorage = Layer.succeed(AssetStorage, {
 
   deleteAssets: (keys) =>
     Effect.gen(function* () {
-      if (keys.length === 0) return;
+      if (keys.length === 0) return undefined;
 
       const utapi = yield* Effect.tryPromise({
         try: () => getUTApi(),
@@ -48,5 +48,7 @@ export const UploadThingAssetStorage = Layer.succeed(AssetStorage, {
           }),
         );
       }
+
+      return undefined;
     }),
 });

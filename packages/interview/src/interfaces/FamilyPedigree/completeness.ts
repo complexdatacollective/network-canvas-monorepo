@@ -149,6 +149,10 @@ function requirementsFor(
     case 'coParent':
     case 'none':
       return {};
+    default: {
+      const unhandled: never = role;
+      throw new Error('Unhandled role', { cause: unhandled });
+    }
   }
 }
 

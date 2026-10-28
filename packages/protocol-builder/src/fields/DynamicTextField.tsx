@@ -1204,6 +1204,10 @@ export const messageWithValueNames = (
             return plural === undefined ? '#' : `[${nameOf(plural)}]`;
           case 'switch':
             return `[${nameOf(node.argument)}]`;
+          default: {
+            const unhandled: never = node;
+            throw new Error('Unhandled message node', { cause: unhandled });
+          }
         }
       })
       .join('');

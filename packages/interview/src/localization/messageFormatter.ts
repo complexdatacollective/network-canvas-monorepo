@@ -25,26 +25,26 @@ export type LocalizedMessageFormatter = (
 const joined = (formatted: string | readonly unknown[]): string =>
   typeof formatted === 'string' ? formatted : formatted.join('');
 
+const cacheFor = <Value>(
+  caches: Map<LocaleTag, Map<string, Value>>,
+  locale: LocaleTag,
+): Map<string, Value> => {
+  let cache = caches.get(locale);
+  if (cache === undefined) {
+    cache = new Map();
+    caches.set(locale, cache);
+  }
+  return cache;
+};
+
+// Tags stay literal text, matching how protocol validation parses the
+// message: markdown fields legitimately contain `<br>` and similar.
+const parse = (locale: LocaleTag, message: string) =>
+  new IntlMessageFormat(message, locale, undefined, { ignoreTag: true });
+
 export function createLocalizedMessageFormatter(): LocalizedMessageFormatter {
   const texts = new Map<LocaleTag, Map<string, string>>();
   const parsed = new Map<LocaleTag, Map<string, IntlMessageFormat>>();
-
-  const cacheFor = <Value>(
-    caches: Map<LocaleTag, Map<string, Value>>,
-    locale: LocaleTag,
-  ): Map<string, Value> => {
-    let cache = caches.get(locale);
-    if (cache === undefined) {
-      cache = new Map();
-      caches.set(locale, cache);
-    }
-    return cache;
-  };
-
-  // Tags stay literal text, matching how protocol validation parses the
-  // message: markdown fields legitimately contain `<br>` and similar.
-  const parse = (locale: LocaleTag, message: string) =>
-    new IntlMessageFormat(message, locale, undefined, { ignoreTag: true });
 
   return (heldIn, message, values) => {
     // Network Canvas's English wording, held under a language it supplies no

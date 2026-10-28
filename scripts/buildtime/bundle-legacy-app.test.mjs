@@ -25,6 +25,11 @@ import { legacyApp } from './legacy-app.ts';
 // Every app that serves its older major at /v8/.
 const APPS = ['architect', 'interviewer'];
 
+const okResponse = (bytes) =>
+  new Response(new Uint8Array(bytes), { status: 200 });
+
+const byName = (a, b) => a.localeCompare(b);
+
 describe.each(APPS)('bundleLegacyApp for %s', (name) => {
   const app = legacyApp(name);
   const fixturePin = (sha) => appFixturePin(app, sha);
@@ -46,9 +51,6 @@ describe.each(APPS)('bundleLegacyApp for %s', (name) => {
     writeFiles(source, files);
     return packTarball(source, tarball, extraTarArgs);
   };
-
-  const okResponse = (bytes) =>
-    new Response(new Uint8Array(bytes), { status: 200 });
 
   const run = (options = {}) =>
     bundleLegacyApp({
@@ -91,7 +93,6 @@ describe.each(APPS)('bundleLegacyApp for %s', (name) => {
   it('installs a local tarball into dist/v8 without its hosting files or maps', async () => {
     await expect(run()).resolves.toBe(join(dist, 'v8'));
 
-    const byName = (a, b) => a.localeCompare(b);
     const installed = readdirSync(join(dist, 'v8'), { recursive: true })
       .map(String)
       .toSorted(byName);

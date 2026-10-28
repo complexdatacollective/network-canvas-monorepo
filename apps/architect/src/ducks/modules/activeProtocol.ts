@@ -187,6 +187,7 @@ const activeProtocolSlice = createSlice({
           state.codebook = newCodebook;
         }
       }
+      return undefined;
     });
   },
 });

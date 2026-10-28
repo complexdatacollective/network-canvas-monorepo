@@ -253,6 +253,8 @@ function columnsByTable(snapshot: Snapshot): Map<string, Map<string, Entity>> {
   return tables;
 }
 
+const notNull = (entity: Entity) => Reflect.get(entity, 'notNull') === true;
+
 /**
  * Columns (`schema.table.column`) that become NOT NULL over rows a deployed
  * database may already hold, with nothing in the delta to fill them. The
@@ -278,7 +280,6 @@ export function unfilledColumns(prev: Snapshot, cur: Snapshot): string[] {
   const was = columnsByTable(prev);
   const now = columnsByTable(cur);
   const removedTables = [...was.keys()].filter((table) => !now.has(table));
-  const notNull = (entity: Entity) => Reflect.get(entity, 'notNull') === true;
 
   // Whether `column`, read as a column of `source` in the previous snapshot,
   // can reach the new constraint with a row it never filled.
@@ -517,6 +518,9 @@ function sameNames(left: readonly string[], right: readonly string[]): boolean {
   return isDeepStrictEqual(left.toSorted(), right.toSorted());
 }
 
+const identifier = (value: string | undefined) =>
+  `"?${(value ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?`;
+
 /**
  * Whether a delta statement adds `schema.table.column` NOT NULL without a
  * default, or sets it NOT NULL: either fails on a populated table before the
@@ -524,8 +528,6 @@ function sameNames(left: readonly string[], right: readonly string[]): boolean {
  */
 function setsNotNullUnfilled(delta: string, column: string): boolean {
   const [, table, name] = column.split('.');
-  const identifier = (value: string | undefined) =>
-    `"?${(value ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?`;
   const onTable = new RegExp(
     `\\bALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?(?:"?\\w+"?\\.)?${identifier(table)}(?=[\\s;]|$)`,
     'i',

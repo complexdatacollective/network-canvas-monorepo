@@ -116,6 +116,8 @@ const slug = (s) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
+const squash = (t) => t.replace(/\s+/g, '').toLowerCase();
+
 let app;
 try {
   const binary = args.binary
@@ -559,7 +561,6 @@ async function walk(driver, page, pageErrors) {
         // Read the saved file itself: a blank or truncated PDF passes any
         // check made against the summary window.
         const pages = await pdfText(fs.readFileSync(pdf));
-        const squash = (t) => t.replace(/\s+/g, '').toLowerCase();
         const text = squash(pages.join(' '));
         const missing = ['Protocol Summary', 'RT renamed stage'].filter(
           (want) => !text.includes(squash(want)),

@@ -153,9 +153,9 @@ function AutoPersist({
     // Skip the initial mount: nothing has been edited yet.
     if (isInitial.current) {
       isInitial.current = false;
-      return;
+      return undefined;
     }
-    if (!isDirty) return;
+    if (!isDirty) return undefined;
 
     const handle = setTimeout(() => {
       pendingSaveRef.current = null;

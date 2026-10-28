@@ -208,6 +208,36 @@ const storedFamily = (interviewId) =>
 const same = (value, expected) =>
   JSON.stringify(value) === JSON.stringify(expected);
 
+const verdict = (id, problems, success) =>
+  check(
+    id,
+    problems.length === 0,
+    problems.length ? problems.join('; ') : success,
+  );
+
+// The stored schema and the ids of the stored stages, in order.
+const stored = (id) =>
+  id
+    ? {
+        schema: psql(
+          `select "schemaVersion" from "Protocol" where id = ${sqlText(id)};`,
+        ),
+        stages: JSON.parse(
+          psql(
+            `select coalesce(json_agg(stage->>'id' order by position), '[]') from "Protocol", jsonb_array_elements(stages::jsonb) with ordinality as entry(stage, position) where id = ${sqlText(id)};`,
+          ) || '[]',
+        ),
+      }
+    : { schema: '', stages: [] };
+
+const listing = (badges) =>
+  badges === null ? 'not listed' : `badged ${JSON.stringify(badges)}`;
+
+// A flag as recorded; one nobody set may be blank or left out, but never
+// true.
+const flag = (value) =>
+  typeof value === 'boolean' ? String(value) : anythingBut('true');
+
 /** The one relationship of `family` from one person to another, if just one. */
 const relationshipBetween = (family, from, to) => {
   const found = family.relationships.filter(
@@ -449,12 +479,6 @@ function upgraded() {
   const before = JSON.parse(readFileSync(BEFORE, 'utf8'));
   const after = readDatabase();
   writeFileSync(AFTER, JSON.stringify(after, null, 2));
-  const verdict = (id, problems, success) =>
-    check(
-      id,
-      problems.length === 0,
-      problems.length ? problems.join('; ') : success,
-    );
   checks.push(
     verdict(
       'migration-protocols-kept-at-schema-8',
@@ -791,10 +815,6 @@ async function resume() {
               [`${FAMILY.gamete}_egg`]: anythingBut('true'),
               [`${FAMILY.gamete}_sperm`]: anythingBut('true'),
             };
-      // A flag as recorded; one nobody set may be blank or left out, but
-      // never true.
-      const flag = (value) =>
-        typeof value === 'boolean' ? String(value) : anythingBut('true');
       const people = Object.entries(family.people);
       const problems = [
         ...nodeAnswerProblems(
@@ -858,20 +878,6 @@ async function resume() {
     const text = (await dialog.textContent().catch(() => '')) ?? '';
     return text.trim().slice(0, 160) || '(a dialog with no text)';
   };
-  // The stored schema and the ids of the stored stages, in order.
-  const stored = (id) =>
-    id
-      ? {
-          schema: psql(
-            `select "schemaVersion" from "Protocol" where id = ${sqlText(id)};`,
-          ),
-          stages: JSON.parse(
-            psql(
-              `select coalesce(json_agg(stage->>'id' order by position), '[]') from "Protocol", jsonb_array_elements(stages::jsonb) with ordinality as entry(stage, position) where id = ${sqlText(id)};`,
-            ) || '[]',
-          ),
-        }
-      : { schema: '', stages: [] };
   // The schema badges a protocol's row in the protocols table carries, or
   // null when the table has no row for it: an absent row carries no badge
   // either, and must not read as a protocol that needs none.
@@ -887,8 +893,6 @@ async function resume() {
     return listed ? row.getByText(/^Schema \d+$/).allTextContents() : null;
   };
 
-  const listing = (badges) =>
-    badges === null ? 'not listed' : `badged ${JSON.stringify(badges)}`;
   const badge = `Schema ${KEPT_SCHEMA}`;
 
   checks.push(

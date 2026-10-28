@@ -84,6 +84,8 @@ const DEFAULT_FALLBACK = 'rgb(226, 33, 91)';
 export const resolveProtocolThemeVariable = (color: ColorReference): string =>
   PROTOCOL_TO_THEME_VAR[color];
 
+const hex = (v: number) => v.toString(16).padStart(2, '0');
+
 /**
  * Converts any CSS color (including oklch) to hex format for Mapbox compatibility.
  * Uses a cached Canvas 2D context which always serializes colors to hex.
@@ -115,7 +117,6 @@ const convertCssColorToHex = (() => {
 
     if (a === 0) return DEFAULT_FALLBACK;
 
-    const hex = (v: number) => v.toString(16).padStart(2, '0');
     return `#${hex(r!)}${hex(g!)}${hex(b!)}`;
   };
 })();
@@ -292,8 +293,8 @@ export const useMapbox = ({
   }, []);
 
   useEffect(() => {
-    if (!mapContainerRef.current || !center || !accessToken) return;
-    if (dataSourceAssetId && !dataSourceUrl) return;
+    if (!mapContainerRef.current || !center || !accessToken) return undefined;
+    if (dataSourceAssetId && !dataSourceUrl) return undefined;
 
     // Records progress on the build these inputs began, and on no other.
     const update = (progress: Partial<MapBuildProgress>) =>
@@ -327,7 +328,7 @@ export const useMapbox = ({
       const error = err instanceof Error ? err : new Error(String(err));
       captureException(error, { feature: 'geospatial-map-init' });
       update({ error });
-      return;
+      return undefined;
     }
 
     // Expose the current map instance to e2e tests. The data-map-idle
@@ -632,10 +633,10 @@ export const useMapbox = ({
 
   // handle selections
   useEffect(() => {
-    if (!isMapLoaded) return;
+    if (!isMapLoaded) return undefined;
 
     const mapInstance = mapRef.current;
-    if (!mapInstance) return;
+    if (!mapInstance) return undefined;
 
     const handleOutsideSelectableAreas = (e: MapMouseEvent) => {
       // check if e.point is in a selectable area

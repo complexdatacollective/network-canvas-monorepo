@@ -130,6 +130,10 @@ export const describePlace = (
         href: null,
         variableNames: () => undefined,
       };
+    default: {
+      const unhandled: never = place;
+      throw new Error('Unhandled translation place', { cause: unhandled });
+    }
   }
 };
 

@@ -38,6 +38,12 @@ const sharedTextLayout =
 
 type WrappingTextFieldProps = CreateFormFieldProps<string, 'textarea'>;
 
+const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  // An IME sends Enter to commit the candidate being chosen.
+  if (event.nativeEvent.isComposing || event.key !== 'Enter') return;
+  event.preventDefault();
+};
+
 /**
  * Plain text that is one paragraph, in a control that looks like a one-line
  * `InputField` while it fits and grows to show every line once it does not, so
@@ -57,12 +63,6 @@ export default function WrappingTextField({
 }: WrappingTextFieldProps) {
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     onChange?.(event.target.value.replace(/\r\n|[\r\n]/g, ' '));
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    // An IME sends Enter to commit the candidate being chosen.
-    if (event.nativeEvent.isComposing || event.key !== 'Enter') return;
-    event.preventDefault();
   };
 
   const text = value ?? '';
