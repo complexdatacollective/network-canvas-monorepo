@@ -24,7 +24,9 @@ type PartStyle = ChangeStyle & {
 
 const personVariants: Variants = {
   enter: ({ reduced }: PartStyle) =>
-    reduced ? { opacity: 0 } : { scale: MOTION.personScale, opacity: 0 },
+    reduced
+      ? { opacity: 0 }
+      : { y: -MOTION.shift, scale: MOTION.personScale, opacity: 0 },
   rest: ({ first, reduced, step }: PartStyle) => {
     if (reduced) {
       return {
@@ -41,6 +43,7 @@ const personVariants: Variants = {
       first,
     );
     return {
+      y: 0,
       scale: 1,
       opacity: 1,
       transition: {
@@ -60,13 +63,7 @@ const personVariants: Variants = {
       };
     }
     const { scale, ...transition } = MOTION.personOut;
-    // At once behind anyone moving to their place.
-    return {
-      scale,
-      opacity: 0,
-      zIndex: 0,
-      transition: { ...transition, zIndex: { duration: 0 } },
-    };
+    return { scale, opacity: 0, transition };
   },
 };
 
@@ -107,45 +104,52 @@ type JoinedPairProps = {
 /**
  * The header of a JoinedSlides form about connections: two people and the
  * connection between them, in reading order. Each part comes and goes on its
- * own, so a person in both one pair and the next stays and moves to their
- * place in it while the rest of the pair changes around them.
+ * own, so a person in the same place in one pair and the next stays while the
+ * rest of the pair changes around them. A person who changes place leaves and
+ * arrives like anyone else: moving across, they would seem to be the other
+ * person taking their place.
  */
 export default function JoinedPair({ from, to, connection }: JoinedPairProps) {
   const change = useHeaderChange();
-  const people = [from, to].filter((person) => person !== null);
-
-  // Who was shown before this pair, to number only those arriving.
-  const ids = people.map((person) => person.id);
-  const [pairs, setPairs] = useState({ now: ids, before: [] as string[] });
+  // Who was shown where before this pair, to number only those arriving.
+  const ids = [from, to].map((person, place) =>
+    person ? `${place}:${person.id}` : null,
+  );
+  const [pairs, setPairs] = useState({
+    now: ids,
+    before: [] as (string | null)[],
+  });
   if (pairs.now.join(' ') !== ids.join(' ')) {
     setPairs({ now: ids, before: pairs.now });
   }
-  const arriving = ids.filter((id) => !pairs.before.includes(id));
-
-  const person = (part: Part) => (
-    <motion.div
-      key={part.id}
-      // Above the connection, which reaches under their edge.
-      className="relative z-1"
-      // With reduced motion, Motion moves them to their place at once.
-      layout="position"
-      custom={{ ...change, step: Math.max(0, arriving.indexOf(part.id)) }}
-      variants={personVariants}
-      initial="enter"
-      animate="rest"
-      exit="leave"
-      transition={{ layout: { type: 'spring', ...MOTION.pair.move } }}
-    >
-      {part.content}
-    </motion.div>
+  const arriving = ids.filter(
+    (id) => id !== null && !pairs.before.includes(id),
   );
 
+  const person = (part: Part, place: number) => {
+    const id = `${place}:${part.id}`;
+    return (
+      <motion.div
+        key={id}
+        // Above the connection, which reaches under their edge.
+        className="relative z-1"
+        custom={{ ...change, step: Math.max(0, arriving.indexOf(id)) }}
+        variants={personVariants}
+        initial="enter"
+        animate="rest"
+        exit="leave"
+      >
+        {part.content}
+      </motion.div>
+    );
+  };
+
   return (
-    // Those leaving are taken out of the row, so the people staying can move
-    // to their place as soon as they go.
+    // Those leaving are taken out of the row, so those arriving take their
+    // place in it as they go.
     <div className="relative flex items-center">
       <AnimatePresence mode="popLayout" custom={change}>
-        {from && person(from)}
+        {from && person(from, 0)}
         <motion.div
           key={connection.id}
           className="ltr:origin-left rtl:origin-right"
@@ -157,7 +161,7 @@ export default function JoinedPair({ from, to, connection }: JoinedPairProps) {
         >
           {connection.content}
         </motion.div>
-        {to && person(to)}
+        {to && person(to, 1)}
       </AnimatePresence>
     </div>
   );

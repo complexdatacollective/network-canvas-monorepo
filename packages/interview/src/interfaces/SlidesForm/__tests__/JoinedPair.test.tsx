@@ -14,10 +14,12 @@ beforeAll(() => {
   vi.stubGlobal('ResizeObserver', StubResizeObserver);
 });
 
-// Connections in a chain, each sharing a person with the next.
+// Each connection shares a person with the next: Alex in the same place,
+// then Rosalind in the other.
 const connections = [
   { id: 'alex-sam', from: 'Alex', to: 'Sam' },
-  { id: 'sam-rosalind', from: 'Sam', to: 'Rosalind' },
+  { id: 'alex-rosalind', from: 'Alex', to: 'Rosalind' },
+  { id: 'rosalind-sam', from: 'Rosalind', to: 'Sam' },
 ];
 
 const part = (name: string) => ({ id: name, content: <span>{name}</span> });
@@ -46,26 +48,26 @@ function Pairs({ index }: { index: number }) {
 }
 
 describe('JoinedPair', () => {
-  it('keeps a person who is in both pairs, and replaces the one who is not', async () => {
+  it('keeps a person in the same place in both pairs, and replaces the other', async () => {
     const { rerender } = render(<Pairs index={0} />);
-    const sam = screen.getByText('Sam');
     const alex = screen.getByText('Alex');
+    const sam = screen.getByText('Sam');
 
     rerender(<Pairs index={1} />);
 
-    await waitFor(() => expect(alex).not.toBeInTheDocument());
-    expect(screen.getByText('Sam')).toBe(sam);
+    await waitFor(() => expect(sam).not.toBeInTheDocument());
+    expect(screen.getByText('Alex')).toBe(alex);
     expect(screen.getByText('Rosalind')).toBeInTheDocument();
   });
 
-  it('shows the people in reading order', async () => {
-    const { rerender } = render(<Pairs index={0} />);
-    rerender(<Pairs index={1} />);
+  it('replaces a person who changes place, in reading order', async () => {
+    const { rerender } = render(<Pairs index={1} />);
+    const rosalind = screen.getByText('Rosalind');
 
-    await waitFor(() =>
-      expect(screen.queryByText('Alex')).not.toBeInTheDocument(),
-    );
+    rerender(<Pairs index={2} />);
+
+    await waitFor(() => expect(rosalind).not.toBeInTheDocument());
     const header = document.querySelector('[data-slide-header]');
-    expect(header?.textContent).toBe('SamRosalind');
+    expect(header?.textContent).toBe('RosalindSam');
   });
 });

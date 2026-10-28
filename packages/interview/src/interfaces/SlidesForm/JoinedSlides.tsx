@@ -53,13 +53,11 @@ export const MOTION = {
   resize: { duration: 0.4, ease: [0.65, 0, 0.35, 1] },
   /** A person arriving starts at this size. */
   personScale: 0.7,
-  /** A person leaving shrinks to `scale` where they are as they fade. */
-  personOut: {
-    scale: 0.5,
-    delay: 0.2,
-    duration: 0.22,
-    ease: [0.55, 0, 1, 0.45],
-  },
+  /**
+   * A person leaving shrinks to `scale` where they are as they fade, as a
+   * node leaving a node list does.
+   */
+  personOut: { scale: 0.6, delay: 0.2, duration: 0.2 },
   personIn: {
     delay: 0.34,
     stiffness: 320,
@@ -77,16 +75,15 @@ export const MOTION = {
   },
   /**
    * Two people and the connection between them change part by part. The
-   * connection lets go as the join does, and the people it joined shrink away
-   * where they are, unless they are in the next pair too: then they move to
-   * their place in it. Those arriving come in one after the other, `step`
-   * apart, and once they are in place the connection is drawn from the first
-   * to the second. The join takes hold of the pair `late` after it would take
-   * hold of one person, and their answers appear that much later too.
+   * connection is taken back first, then the people it joined shrink away
+   * where they are, unless the next pair has them in the same place: they
+   * stay. Those arriving drop in from above, `step` apart, and once they are
+   * in place the connection is drawn from the first to the second. The join
+   * takes hold of the pair `late` after it would take hold of one person, and
+   * their answers appear that much later too.
    */
   pair: {
-    connectionOut: { delay: 0.06, duration: 0.16, ease: [0.4, 0, 1, 1] },
-    move: { delay: 0.24, stiffness: 320, damping: 32 },
+    connectionOut: { duration: 0.16, ease: [0.4, 0, 1, 1] },
     step: 0.1,
     connect: { delay: 0.5, duration: 0.22, ease: [0.65, 0, 0.35, 1] },
     late: 0.2,
