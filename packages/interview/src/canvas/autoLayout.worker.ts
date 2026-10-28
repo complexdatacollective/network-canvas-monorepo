@@ -290,6 +290,11 @@ const makeLinkForce = () =>
 
 const registerForces = (sim: Simulation<SimNode, undefined>) => {
   const linked = linkedIndices();
+  // Until the first link exists nobody goes to the ring and the composition
+  // stays round, so people with no ties yet form one central cluster.
+  const anyLinks = linked.size > 0;
+  const isolated = (node: SimNode, index: number) =>
+    anyLinks && isIsolated(node, index, linked);
   if (options.charge !== 0) {
     // Guard against an empty seed so the divisor is never 0.
     const nodeCount = Math.max(sim.nodes().length, 1);
@@ -356,16 +361,18 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   // Horizontal positioning toward a target across the sim width (center by
   // default), keeping the layout centred. Inert unless a positive
   // strength and a resolvable target (sim width) are both supplied.
-  // On a non-square canvas the horizontal pull is divided by aspect² so the
-  // composition takes the canvas shape instead of a circle.
+  // Once there are links, the horizontal pull on a non-square canvas is
+  // divided by aspect² so the composition takes the canvas shape.
   if (options.biasXStrength > 0 && options.simWidth > 0) {
     const aspect =
       options.simHeight > 0 ? options.simWidth / options.simHeight : 1;
-    const strength = options.biasXStrength / (aspect * aspect);
+    const strength = anyLinks
+      ? options.biasXStrength / (aspect * aspect)
+      : options.biasXStrength;
     sim.force(
       'biasX',
       forceX<SimNode>(options.simWidth * options.biasXFraction).strength(
-        (node, index) => (isIsolated(node, index, linked) ? 0 : strength),
+        (node, index) => (isolated(node, index) ? 0 : strength),
       ),
     );
   } else {
@@ -378,8 +385,7 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
     sim.force(
       'biasY',
       forceY<SimNode>(options.simHeight * options.biasYFraction).strength(
-        (node, index) =>
-          isIsolated(node, index, linked) ? 0 : options.biasYStrength,
+        (node, index) => (isolated(node, index) ? 0 : options.biasYStrength),
       ),
     );
   } else {
@@ -389,7 +395,7 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   if (ring) {
     sim.force('ring', (alpha: number) => {
       sim.nodes().forEach((node, index) => {
-        if (!isIsolated(node, index, linked)) return;
+        if (!isolated(node, index)) return;
         if (node.x == null || node.y == null) return;
         const dx = node.x - ring.cx;
         const dy = node.y - ring.cy;

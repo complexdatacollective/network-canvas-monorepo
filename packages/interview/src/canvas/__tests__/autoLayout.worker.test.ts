@@ -306,6 +306,31 @@ describe('autoLayout worker', () => {
     expect(capturedSim!.force('anchorY')).toBeTruthy();
   });
 
+  it('keeps people round and central until the first link exists', () => {
+    const SIM_WIDTH = 1600 / HEIGHT;
+    const nodes: SimNode[] = Array.from({ length: 8 }, (_, i) => ({
+      nodeId: `n${i}`,
+      x: 0.2 + i * 0.15,
+      y: 0.5,
+    }));
+    handleMessage({
+      type: 'initialize',
+      nodes,
+      options: { simWidth: SIM_WIDTH, simHeight: 1, boundsInset: 0.08 },
+    });
+
+    const sim = capturedSim!;
+    const biasX = sim.force('biasX') as ForceX<SimNode>;
+    const biasY = sim.force('biasY') as ForceY<SimNode>;
+    expect(biasX.strength()(sim.nodes()[0]!, 0, sim.nodes())).toBe(0.13);
+    expect(biasY.strength()(sim.nodes()[0]!, 0, sim.nodes())).toBe(0.13);
+
+    handleMessage({ type: 'update_links', links: [{ source: 0, target: 1 }] });
+    // With a link, an unlinked node leaves the centre for the ring.
+    const linkedBiasY = sim.force('biasY') as ForceY<SimNode>;
+    expect(linkedBiasY.strength()(sim.nodes()[5]!, 5, sim.nodes())).toBe(0);
+  });
+
   it('ignores a repeated start once the layout has settled', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });
