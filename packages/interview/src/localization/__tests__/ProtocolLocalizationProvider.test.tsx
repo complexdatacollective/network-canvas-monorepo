@@ -2,11 +2,15 @@ import { render } from '@testing-library/react';
 import type { ComponentProps, ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { getLocaleMetadata } from '@codaco/protocol-validation';
+import {
+  getLocaleMetadata,
+  suppliedStageText,
+} from '@codaco/protocol-validation';
 
 import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
+  localizedMessageParts,
   ProtocolLocalizationProvider,
   useLocalizedString,
   useProtocolLocale,
@@ -299,5 +303,61 @@ describe('useLocalizedString', () => {
       selectedLocale: 'ar',
       matchedBy: 'requested',
     });
+  });
+});
+
+describe('localizedMessageParts', () => {
+  const shown = (parts: ReturnType<typeof localizedMessageParts>) =>
+    parts.map((part) => (typeof part === 'string' ? part : part.text)).join('');
+
+  // A Japanese protocol holds the English minimum notice Network Canvas
+  // supplies, having no Japanese wording for it. By Japanese plural rules
+  // every count is "other", which would read "1 items".
+  it('chooses the plural of Network Canvas’s English wording by English rules, whatever language holds it', () => {
+    const [notice] = suppliedStageText('NameGenerator', {
+      defaultLocale: 'ja',
+      locales: ['ja'],
+    }).filter(({ path }) => path[0] === 'minNodesNotice');
+    const english = notice?.value.ja;
+    if (english === undefined) throw new Error('No minimum notice');
+
+    expect(shown(localizedMessageParts(english, 'ja', { count: 1 }))).toBe(
+      'You must create at least 1 item before you can continue.',
+    );
+  });
+
+  it('joins a list in Network Canvas’s English wording with English words, whatever language holds it', () => {
+    const [notice] = suppliedStageText('FamilyPedigree', {
+      defaultLocale: 'ja',
+      locales: ['ja'],
+    }).filter(({ path }) => path[1] === 'standInPlaceTaken');
+    const english = notice?.value.ja;
+    if (english === undefined) throw new Error('No hint with a list');
+
+    expect(
+      shown(
+        localizedMessageParts(english, 'ja', {
+          anchorIsYou: 'true',
+          count: 2,
+          names: ['Ava', 'Ben'],
+        }),
+      ),
+    ).toBe(
+      'Ava and Ben have the same unnamed parent as you, so this person becomes their parent too.',
+    );
+  });
+
+  it('chooses the plural of a researcher’s message by the rules of the language holding it', () => {
+    expect(
+      shown(
+        localizedMessageParts(
+          '{count, plural, one {# item} other {# items}}',
+          'ja',
+          {
+            count: 1,
+          },
+        ),
+      ),
+    ).toBe('1 items');
   });
 });

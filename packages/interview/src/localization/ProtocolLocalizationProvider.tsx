@@ -17,6 +17,7 @@ import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   dynamicMessageParts,
   type DynamicValueState,
+  isSuppliedEnglishMessage,
   type LocaleMetadata,
   type LocaleTag,
   type LocalizationDeclaration,
@@ -365,16 +366,20 @@ export type LocalizedMessagePartValues = Readonly<
 >;
 
 /**
- * A message written in `locale`, with each value it shows kept apart from
+ * A message held in `heldIn`, with each value it shows kept apart from
  * its words, so that it can be marked out as a value the interview filled
  * in. A select or plural is decided by the value it is on; a number a plural
  * shows is written as the language writes numbers, among the words.
  */
 export const localizedMessageParts = (
   message: string,
-  locale: LocaleTag,
+  heldIn: LocaleTag,
   values: LocalizedMessagePartValues,
 ): readonly DynamicTextPart[] => {
+  // Network Canvas's English wording, held under a language it supplies no
+  // wording in, still chooses its plural and joins its lists by English rules
+  // (as `createLocalizedMessageFormatter` does).
+  const locale = isSuppliedEnglishMessage(message) ? 'en' : heldIn;
   const stateOf = (name: string): DynamicValueState => {
     const shown = values[name];
     if (shown === undefined) return { missing: true };
@@ -383,7 +388,7 @@ export const localizedMessageParts = (
       ? { missing: false, case: shown }
       : { missing: false };
   };
-  const numbers = new Intl.NumberFormat(locale);
+  const { formatNumber } = contentFormatFor(locale);
   const lists = new Intl.ListFormat(locale, {
     type: 'conjunction',
     style: 'long',
@@ -392,7 +397,7 @@ export const localizedMessageParts = (
     (part): DynamicTextPart[] => {
       if (typeof part === 'string') return [part];
       const shown = values[part.argument];
-      if (typeof shown === 'number') return [numbers.format(shown)];
+      if (typeof shown === 'number') return [formatNumber(shown)];
       if (shown === undefined || typeof shown === 'string') {
         return [{ name: part.argument, text: shown ?? '' }];
       }

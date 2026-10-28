@@ -77,9 +77,18 @@ export const joinPiped = (
   );
 };
 
-/** Shows a piped text as piped text is shown, values marked out. */
+/**
+ * Shows a piped text as piped text is shown, values marked out. The parts sit
+ * in one span, so a flex container such as a button lays the sentence out as
+ * one item rather than putting its gap between a value and its words.
+ */
 export const showPiped = (piped: DynamicText | undefined): ReactNode =>
-  piped && createElement(DynamicTextParts, { parts: piped.parts });
+  piped &&
+  createElement(
+    'span',
+    null,
+    createElement(DynamicTextParts, { parts: piped.parts }),
+  );
 
 /**
  * The words a Family Pedigree stage shows, as the stage holds them, and how
