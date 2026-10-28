@@ -608,8 +608,9 @@ include it.
 1. "create": Create your protocol, keeping the languages the creation dialog
    offers. Open the "Languages" page through its link in the project
    navigation and confirm the "Protocol languages" list shows exactly one
-   language, marked "Default", and that there is no "Open translation table"
-   link (with one language there is nothing to translate into). Then go
+   language, marked "Default", and that an "Open translation table" link is
+   offered (it is there with one language too: the table is where the
+   protocol's own words for the interview are edited). Then go
    back to the stages, open "Finish Interview", replace its "Stage name"
    (the field arrives filled with "Finish Interview"; select all of it
    first) with "The end", and save ("Finished Editing"). Confirm the
@@ -620,8 +621,8 @@ include it.
    below), close the list, and press the dialog's own "Add languages" button.
    Confirm the dialog closes and the list gains a French row that is not
    marked "Default", shows "Missing translations" and an "N of M strings
-   translated" count with N exactly one below M (note N and M), and that an
-   "Open translation table" link now appears. Adding a language writes the
+   translated" count with N exactly one below M (note N and M), and that the
+   "Open translation table" link is still offered. Adding a language writes the
    app's built-in wording in that language (the finish stage's closing and
    finished text, for example), so only the stage name you wrote is
    missing.
@@ -876,10 +877,15 @@ now Information stages.
 \`\`\`js
 ${legacyUpgradeScript(`${name} legacy`)}
 \`\`\`
-   Confirm an "Upgrade to continue" dialog appears, saying the protocol uses
-   schema version 8 and can be upgraded to schema version 9, and listing what
-   the migration will do, including that introduction panels are replaced by
-   Information stages. Press "Create upgraded copy". Confirm the editor opens
+   Confirm a dialog titled "How do you want to open this protocol?" appears,
+   saying the protocol uses an older version of the Network Canvas protocol
+   schema and that upgrading creates an upgraded copy while the original is
+   not changed. It offers "Upgrade to schema 9", "Keep editing as schema 8"
+   (this build bundles Architect 8) and "Cancel", and under "Changes in
+   schema version 9:" lists what the upgrade will do, including that the
+   introduction panels of stages other than the Ego Form move to new
+   Information stages. Press "Upgrade to schema 9" (never "Keep editing as
+   schema 8", which leaves for Architect 8). Confirm the editor opens
    "${name} legacy" with exactly these stages in order: "Welcome", "About
    you" (an Ego Form whose "Task introduction" has the title "Legacy
    introduction" and the text "Legacy introduction text."), and "Finish
@@ -1270,9 +1276,11 @@ Run directory: ${analysis.workDir} (write your files under it)
    your own inspection of the editor); "non-user-facing" only for data a user
    never sets through the UI (say why); otherwise "unclear". Explain each
    attribution in reasoning. Report every canonical stage exactly once, by
-   its canonical index, and nothing else: fidelity "match" only when it has
-   no discrepancies, "divergent" only with the discrepancies that make it so,
-   "missing" when the built protocol lacks it. A built stage with no
+   its canonical index, and nothing else, listing all of its discrepancies:
+   fidelity "match" when every discrepancy it has (if any) is
+   "non-user-facing", such as a setting stored as false in one file and left
+   out of the other; "divergent" when at least one is not; "missing" when the
+   built protocol lacks it. A built stage with no
    canonical counterpart is a protocol discrepancy, not a stage entry.
 Builders' log:
 ${buildLog}
@@ -1337,6 +1345,10 @@ const describeBuild = (stageStatus) =>
 
 const isRepairable = (d) => ['driver', 'unclear'].includes(d.attribution);
 
+// Whether an audited stage lists a discrepancy a user could see.
+const userFacing = (stage) =>
+  stage.discrepancies.some((d) => d.attribution !== 'non-user-facing');
+
 // Everything the audit found missing, or divergent in ways not attributed to
 // the app — stage, codebook, resource or protocol settings alike — as one
 // repair worklist line per item.
@@ -1361,8 +1373,9 @@ const repairWorklist = (comparison) => [
 
 // The final audit is evidence only when it is a complete, self-consistent
 // account of the build: exactly one entry for each planned stage and none
-// beside them, counts that agree with the plan, every non-match explained by
-// a discrepancy a user could see, and the generated-field invariants checked.
+// beside them, counts that agree with the plan, a stage marked divergent
+// exactly when it has a discrepancy a user could see, and the generated-field
+// invariants checked.
 // Returns the reasons it falls short, or an empty list.
 const auditGaps = (analysis, comparison) => {
   const gaps = [];
@@ -1397,16 +1410,26 @@ const auditGaps = (analysis, comparison) => {
         .join(', ')}`,
     );
   }
+  // The auditor's rule for fidelity, checked both ways: a stage is "match"
+  // exactly when every discrepancy it lists is non-user-facing.
   const unexplained = comparison.stages.filter(
-    (c) =>
-      c.fidelity === 'divergent' &&
-      !c.discrepancies.some((d) => d.attribution !== 'non-user-facing'),
+    (c) => c.fidelity === 'divergent' && !userFacing(c),
   );
   if (unexplained.length) {
     gaps.push(
       `the audit marks ${unexplained
         .map((c) => `stage ${c.index} "${c.label}"`)
         .join(', ')} divergent without a user-facing discrepancy`,
+    );
+  }
+  const overlooked = comparison.stages.filter(
+    (c) => c.fidelity === 'match' && userFacing(c),
+  );
+  if (overlooked.length) {
+    gaps.push(
+      `the audit marks ${overlooked
+        .map((c) => `stage ${c.index} "${c.label}"`)
+        .join(', ')} a match despite a user-facing discrepancy`,
     );
   }
   if (!comparison.invariantsChecked) {
