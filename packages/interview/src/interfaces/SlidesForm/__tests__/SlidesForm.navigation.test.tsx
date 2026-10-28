@@ -966,6 +966,10 @@ describe('SlidesForm moving on from a complete form', () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
 
+    // The person moved on from is still leaving for a few frames.
+    await waitFor(() =>
+      expect(screen.getAllByTestId('slide-header')).toHaveLength(1),
+    );
     expect(screen.getByTestId('slide-header')).toHaveTextContent('person-2');
     expect(updateItem).toHaveBeenCalledTimes(1);
     expect(onStepChange).not.toHaveBeenCalled();
