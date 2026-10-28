@@ -707,131 +707,76 @@ export const familyPedigreeMessages = defineMessages({
   completenessClearDescription: {
     id: 'protocolBuilder.pedigree.completenessClearDescription',
     defaultMessage:
-      'The relatives, the enforcement, the relatives-not-recorded attribute and the wording of the list will be removed from this stage, and participants will be able to continue with any family they have drawn.',
+      'The relatives to record, the choice for when the family is incomplete, the relatives-not-recorded attribute and the checklist wording will be removed from this stage, and participants will be able to continue with any family they have drawn.',
     description:
       'Body of the confirmation shown before the completeness requirement is switched off, saying what is lost.',
   },
   trackerTextTitle: {
     id: 'protocolBuilder.pedigree.trackerTextTitle',
-    defaultMessage: 'What the list says',
+    defaultMessage: 'Completeness checklist',
     description:
-      'Heading of the group of boxes holding the words of the list showing participants what is still needed in their family, and of the side panel’s questions about brothers, sisters and children.',
-  },
-  trackerTextDescription: {
-    id: 'protocolBuilder.pedigree.trackerTextDescription',
-    defaultMessage:
-      'The words participants read in the list of what is still needed, and in the side panel’s questions about brothers, sisters and children. They start with wording Network Canvas supplies, which you can change. Each can read differently when it is about the participant and when it is about someone else.',
-    description:
-      'Description of the list-wording group. The wording starts with supplied text in each of the protocol’s languages that Network Canvas has it in.',
+      'Heading of a group in the participant wording section, shown only when the stage has a completeness requirement. It holds the words of the checklist that shows participants who and what is still missing from their family, and the side panel’s questions about brothers, sisters and children.',
   },
   trackerParentsLabel: {
     id: 'protocolBuilder.pedigree.trackerParentsLabel',
-    defaultMessage: 'Missing parents',
+    defaultMessage: 'Missing parents item',
     description:
-      'Label of the box holding the list item that asks for a person’s missing parents.',
-  },
-  trackerParentsHint: {
-    id: 'protocolBuilder.pedigree.trackerParentsHint',
-    defaultMessage:
-      'Asks for the parents of a person who has none recorded. It can show their name.',
-    description: 'Guidance under the missing-parents list item box.',
+      'Label of the box holding the checklist item that asks for a person’s missing parents.',
   },
   trackerSiblingsLabel: {
     id: 'protocolBuilder.pedigree.trackerSiblingsLabel',
-    defaultMessage: 'Brothers and sisters',
+    defaultMessage: 'Brothers and sisters item',
     description:
-      'Label of the box holding the list item that asks for a person’s brothers and sisters.',
-  },
-  trackerSiblingsHint: {
-    id: 'protocolBuilder.pedigree.trackerSiblingsHint',
-    defaultMessage:
-      'Asks for a person’s brothers and sisters, or for an answer that they have none.',
-    description: 'Guidance under the brothers-and-sisters list item box.',
+      'Label of the box holding the checklist item that asks for a person’s brothers and sisters, or for an answer that they have none.',
   },
   trackerNoSiblingsLabel: {
     id: 'protocolBuilder.pedigree.trackerNoSiblingsLabel',
-    defaultMessage: 'No brothers or sisters',
+    defaultMessage: 'No brothers or sisters button',
     description:
-      'Label of the box holding the words of the button that answers that a person has no brothers or sisters.',
-  },
-  trackerNoSiblingsHint: {
-    id: 'protocolBuilder.pedigree.trackerNoSiblingsHint',
-    defaultMessage:
-      'The button under that item that answers that the person has none.',
-    description:
-      'Guidance under the no-brothers-or-sisters button box. “That item” is the brothers-and-sisters list item above it.',
+      'Label of the box holding the words of the button, under the brothers-and-sisters checklist item, that answers that a person has no brothers or sisters.',
   },
   trackerSiblingsQuestionLabel: {
     id: 'protocolBuilder.pedigree.trackerSiblingsQuestionLabel',
-    defaultMessage: 'Question about brothers and sisters',
+    defaultMessage: 'Brothers and sisters question in the side panel',
     description:
-      'Label of the box holding the question the side panel asks about a person’s brothers and sisters.',
-  },
-  trackerSiblingsQuestionHint: {
-    id: 'protocolBuilder.pedigree.trackerSiblingsQuestionHint',
-    defaultMessage:
-      'Asked in the side panel while a person’s brothers and sisters are still needed.',
-    description: 'Guidance under the brothers-and-sisters question box.',
+      'Label of the box holding the question the side panel asks about a person’s brothers and sisters while they are still needed. The side panel is where the participant describes a family member.',
   },
   trackerChildrenLabel: {
     id: 'protocolBuilder.pedigree.trackerChildrenLabel',
-    defaultMessage: 'Children',
+    defaultMessage: 'Children item',
     description:
-      'Label of the box holding the list item that asks for a person’s children.',
-  },
-  trackerChildrenHint: {
-    id: 'protocolBuilder.pedigree.trackerChildrenHint',
-    defaultMessage:
-      'Asks for a person’s children, or for an answer that they have none.',
-    description: 'Guidance under the children list item box.',
+      'Label of the box holding the checklist item that asks for a person’s children, or for an answer that they have none.',
   },
   trackerNoChildrenLabel: {
     id: 'protocolBuilder.pedigree.trackerNoChildrenLabel',
-    defaultMessage: 'No children',
+    defaultMessage: 'No children button',
     description:
-      'Label of the box holding the words of the button that answers that a person has no children.',
-  },
-  trackerNoChildrenHint: {
-    id: 'protocolBuilder.pedigree.trackerNoChildrenHint',
-    defaultMessage:
-      'The button under that item that answers that the person has none.',
-    description:
-      'Guidance under the no-children button box. “That item” is the children list item above it.',
+      'Label of the box holding the words of the button, under the children checklist item, that answers that a person has no children.',
   },
   trackerChildrenQuestionLabel: {
     id: 'protocolBuilder.pedigree.trackerChildrenQuestionLabel',
-    defaultMessage: 'Question about children',
+    defaultMessage: 'Children question in the side panel',
     description:
-      'Label of the box holding the question the side panel asks about a person’s children.',
-  },
-  trackerChildrenQuestionHint: {
-    id: 'protocolBuilder.pedigree.trackerChildrenQuestionHint',
-    defaultMessage:
-      'Asked in the side panel while a person’s children are still needed.',
-    description: 'Guidance under the children question box.',
+      'Label of the box holding the question the side panel asks about a person’s children while they are still needed. The side panel is where the participant describes a family member.',
   },
   trackerDetailsLabel: {
     id: 'protocolBuilder.pedigree.trackerDetailsLabel',
-    defaultMessage: 'Missing details',
+    defaultMessage: 'Missing details item',
     description:
-      'Label of the box holding the list item that asks for details still missing about a person, such as their sex assigned at birth.',
-  },
-  trackerDetailsHint: {
-    id: 'protocolBuilder.pedigree.trackerDetailsHint',
-    defaultMessage: 'Asks for details still missing about a person.',
-    description: 'Guidance under the missing-details list item box.',
+      'Label of the box holding the checklist item that says details are still missing about a person, such as their sex assigned at birth.',
   },
   trackerRecommendedNoteLabel: {
     id: 'protocolBuilder.pedigree.trackerRecommendedNoteLabel',
-    defaultMessage: 'Note under a recommended list',
+    defaultMessage: 'Note about continuing anyway',
     description:
-      'Label of the box holding the note shown under the list when participants may continue without completing it.',
+      'Label of the box holding the note that tells participants they may continue without completing the checklist.',
   },
   trackerRecommendedNoteHint: {
     id: 'protocolBuilder.pedigree.trackerRecommendedNoteHint',
     defaultMessage:
-      'Shown under the list when participants may continue without completing it.',
-    description: 'Guidance under the recommended-list note box.',
+      'Shown under the checklist when completeness is recommended, not required.',
+    description:
+      'Guidance under the continuing-anyway note box. Recommended and Required are the two choices, made earlier in the editor, for whether participants may continue with an incomplete family.',
   },
   completenessClearConfirm: {
     id: 'protocolBuilder.pedigree.completenessClearConfirm',

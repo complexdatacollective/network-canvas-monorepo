@@ -54,19 +54,6 @@ export const NAME_FIELD_PATHS = Object.freeze({
   hint: 'nodeConfiguration.nameField.hint',
 });
 
-/** Where the stage keeps the words of its list of what is still needed. */
-export const TRACKER_TEXT_PATHS = Object.freeze({
-  parentsItem: 'completeness.itemText.parents.listItem',
-  siblingsItem: 'completeness.itemText.siblings.listItem',
-  siblingsNone: 'completeness.itemText.siblings.noneButton',
-  siblingsQuestion: 'completeness.itemText.siblings.question',
-  childrenItem: 'completeness.itemText.children.listItem',
-  childrenNone: 'completeness.itemText.children.noneButton',
-  childrenQuestion: 'completeness.itemText.children.question',
-  detailsItem: 'completeness.itemText.details.listItem',
-  recommendedNote: 'completeness.recommendedNote',
-});
-
 const PERSON_FORM_FIELDS_PATH = 'form.fields';
 
 /** Where the stage keeps its questions about the whole family. */

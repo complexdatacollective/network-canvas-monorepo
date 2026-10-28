@@ -41,7 +41,9 @@ export function shimMarkdownEditorMeasurement(): void {
  */
 export async function openWordingGroup(
   harness: Readonly<{ user: UserEvent }>,
-  name: (typeof PARTICIPANT_WORDING_GROUP_TITLES)[number] = 'Drawing the family',
+  name:
+    | (typeof PARTICIPANT_WORDING_GROUP_TITLES)[number]
+    | typeof CHECKLIST_WORDING_GROUP_TITLE = 'Drawing the family',
 ): Promise<void> {
   const trigger = await screen.findByRole('button', { name });
   await harness.user.click(trigger);
@@ -54,3 +56,9 @@ export const PARTICIPANT_WORDING_GROUP_TITLES = [
   'Connecting people',
   'Adding a family member',
 ] as const;
+
+/**
+ * The group of the participant wording holding the checklist's words, on
+ * screen only while the stage has a completeness requirement.
+ */
+export const CHECKLIST_WORDING_GROUP_TITLE = 'Completeness checklist';

@@ -1,6 +1,7 @@
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   type MessageArguments,
+  PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from '@codaco/protocol-validation';
 
@@ -10,10 +11,13 @@ import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
  * A setting the stage holds only while its configuration is on. The schema
  * requires it then, so the editor shows it then and no other time.
  */
-export type WordingGate = 'choosesFraming' | 'asksGenderIdentity';
+export type WordingGate =
+  | 'choosesFraming'
+  | 'asksGenderIdentity'
+  | 'checksCompleteness';
 
 type WordingSetting = Readonly<{
-  /** The setting's key under the stage's `wording`. */
+  /** The setting's dotted path under its group's `root`. */
   key: string;
   label: MessageDescriptor;
   /** Set for a setting whose text takes values, such as a name. */
@@ -28,17 +32,27 @@ export type WordingGroup = Readonly<{
   /** Names the group among the open ones. */
   id: string;
   title: MessageDescriptor;
+  /** Where the group's settings sit in the stage. */
+  root: 'wording' | 'completeness';
+  /** Set for a group the stage holds only while its configuration is on. */
+  gate?: WordingGate;
   settings: readonly WordingSetting[];
 }>;
+
+/** The stage path of one of a group's settings. */
+export const settingPath = (group: WordingGroup, setting: WordingSetting) =>
+  `${group.root}.${setting.key}`;
 
 /**
  * The words in the order a participant meets them: first the canvas they
  * draw on, then the connections they make, then the side panel for each
- * family member they add.
+ * family member they add, and last the checklist of what is still needed,
+ * which only a stage with a completeness requirement shows.
  */
 export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
   {
     id: 'drawing',
+    root: 'wording',
     title: messages.wordingDrawingTitle,
     settings: [
       { key: 'pointerTool', label: messages.wordingPointerTool },
@@ -89,6 +103,7 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
   },
   {
     id: 'connecting',
+    root: 'wording',
     title: messages.wordingConnectingTitle,
     settings: [
       {
@@ -155,6 +170,7 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
   },
   {
     id: 'adding',
+    root: 'wording',
     title: messages.wordingAddingTitle,
     settings: [
       {
@@ -370,6 +386,60 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         key: 'sexChangeClearsCoParentSex',
         label: messages.wordingSexChangeClearsCoParentSex,
         arguments: PEDIGREE_WORDING_ARGUMENTS.sexChangeClearsCoParentSex,
+      },
+    ],
+  },
+  {
+    id: 'checklist',
+    title: messages.trackerTextTitle,
+    root: 'completeness',
+    gate: 'checksCompleteness',
+    settings: [
+      {
+        key: 'itemText.parents.listItem',
+        label: messages.trackerParentsLabel,
+        arguments: PEDIGREE_PERSON_ARGUMENTS,
+      },
+      {
+        key: 'itemText.siblings.listItem',
+        label: messages.trackerSiblingsLabel,
+        arguments: PEDIGREE_PERSON_ARGUMENTS,
+      },
+      {
+        key: 'itemText.siblings.noneButton',
+        label: messages.trackerNoSiblingsLabel,
+        arguments: PEDIGREE_PERSON_ARGUMENTS,
+      },
+      {
+        key: 'itemText.siblings.question',
+        label: messages.trackerSiblingsQuestionLabel,
+        arguments: PEDIGREE_PERSON_ARGUMENTS,
+      },
+      {
+        key: 'itemText.children.listItem',
+        label: messages.trackerChildrenLabel,
+        arguments: PEDIGREE_PERSON_ARGUMENTS,
+      },
+      {
+        key: 'itemText.children.noneButton',
+        label: messages.trackerNoChildrenLabel,
+        arguments: PEDIGREE_PERSON_ARGUMENTS,
+      },
+      {
+        key: 'itemText.children.question',
+        label: messages.trackerChildrenQuestionLabel,
+        arguments: PEDIGREE_PERSON_ARGUMENTS,
+      },
+      {
+        key: 'itemText.details.listItem',
+        label: messages.trackerDetailsLabel,
+        arguments: PEDIGREE_PERSON_ARGUMENTS,
+      },
+      {
+        key: 'recommendedNote',
+        label: messages.trackerRecommendedNoteLabel,
+        hint: messages.trackerRecommendedNoteHint,
+        wraps: true,
       },
     ],
   },

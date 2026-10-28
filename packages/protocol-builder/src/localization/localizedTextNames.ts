@@ -382,15 +382,6 @@ const PEDIGREE_PEOPLE: Step = [
   0,
   words(familyPedigreeMessages.nodeConfigurationTitle),
 ];
-const PEDIGREE_COMPLETENESS: Step = [
-  0,
-  words(familyPedigreeMessages.completenessTitle),
-];
-/** The wording of the list, which `completeness` holds beside its settings. */
-const PEDIGREE_TRACKER_TEXT: Step = [
-  1,
-  words(familyPedigreeMessages.trackerTextTitle),
-];
 const PEDIGREE_PERSON_FIELD: Step = [
   3,
   attributeOr(messages.fieldPosition, stageSubject),
@@ -412,6 +403,14 @@ const PEDIGREE_WORDING_CONNECTING: Step = [
 const PEDIGREE_WORDING_ADDING: Step = [
   1,
   words(familyPedigreeMessages.wordingAddingTitle),
+];
+/**
+ * The checklist's words, which `completeness` holds beside its settings and
+ * the Participant wording section shows.
+ */
+const PEDIGREE_WORDING_CHECKLIST: Step = [
+  1,
+  words(familyPedigreeMessages.trackerTextTitle),
 ];
 
 const composerEdgeSubject: SubjectOf = ({ place, at }) =>
@@ -692,15 +691,15 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ).map(([path, label]) =>
       rule(
         `completeness.itemText.${path}`,
-        PEDIGREE_COMPLETENESS,
-        PEDIGREE_TRACKER_TEXT,
+        PEDIGREE_WORDING,
+        PEDIGREE_WORDING_CHECKLIST,
         [4, words(label)],
       ),
     ),
     rule(
       'completeness.recommendedNote',
-      PEDIGREE_COMPLETENESS,
-      PEDIGREE_TRACKER_TEXT,
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CHECKLIST,
       [2, words(familyPedigreeMessages.trackerRecommendedNoteLabel)],
     ),
     rule('wording.pointerTool', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
