@@ -29,6 +29,7 @@ import type {
   FormSubmissionResult,
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import useSelectOnFocus from '@codaco/fresco-ui/hooks/useSelectOnFocus';
 import {
   type LocaleTag,
   sortByLanguageName,
@@ -270,6 +271,12 @@ const NewProtocolDialog = ({
     nameLengthValidation.setIntl(intl);
   }, [nameLengthValidation, intl]);
 
+  // A template's name is a proposal: selected, so typing replaces it rather
+  // than landing inside it.
+  const selectProposedName = useSelectOnFocus<HTMLInputElement>(
+    (control) => initialName !== '' && control.value === initialName,
+  );
+
   const handleOpenChange = useCallback(
     (newOpen: boolean) => onOpenChange(newOpen),
     [onOpenChange],
@@ -345,6 +352,7 @@ const NewProtocolDialog = ({
             custom={nameLengthValidation.custom}
             dir="auto"
             autoFocus
+            {...selectProposedName}
           />
           {submission.chooseLanguages && (
             <>
