@@ -82,15 +82,14 @@ export const MOTION = {
    * where they are, unless the next pair has them in the same place: they
    * stay. Those arriving drop in from above, `step` apart, and once they are
    * in place the connection is drawn from the first to the second. The join
-   * rises to meet the pair as they arrive, slower and heavier than for one
-   * person, and their answers appear `late` after one person's would.
+   * rises to meet the pair as the second lands, slower and heavier than for
+   * one person, and starting late enough not to show before they are there.
    */
   pair: {
     connectionOut: { duration: 0.16, ease: [0.4, 0, 1, 1] },
     step: 0.1,
     connect: { delay: 0.5, duration: 0.22, ease: [0.65, 0, 0.35, 1] },
-    grab: { delay: 0.42, stiffness: 170, damping: 19, mass: 1.6 },
-    late: 0.2,
+    grab: { delay: 0.54, stiffness: 170, damping: 19, mass: 1.6 },
   },
   /**
    * The first person arrives on the same timeline, with nothing to clear
@@ -136,8 +135,6 @@ export type ChangeStyle = {
   along: number;
   axis: 'x' | 'y';
   reduced: boolean;
-  /** How much later than for one person the answers appear, in seconds. */
-  late: number;
 };
 
 /** How the join takes hold of who arrives, from the start of the change. */
@@ -438,8 +435,8 @@ function Answers({ children, live, change, skip }: AnswersProps) {
     // Counted from when these answers appear: with the form for the first
     // person, otherwise once the answers before have left.
     const start = change.first
-      ? arrival(answersIn.delay + change.late, true)
-      : answersIn.delay + change.late - answersOut.duration;
+      ? arrival(answersIn.delay, true)
+      : answersIn.delay - answersOut.duration;
     const controls = animate(
       targets,
       { opacity: [0, 1], y: [lift * change.forward, 0] },
@@ -550,7 +547,6 @@ export default function JoinedSlides({
   const reduced = useShouldSkipAnimations() && !skip;
 
   const forward = direction === 'backwards' ? -1 : 1;
-  const late = header === 'pair' ? MOTION.pair.late : 0;
   const change: ChangeStyle = {
     first: direction === null,
     forward,
@@ -558,7 +554,6 @@ export default function JoinedSlides({
     along: forward * (!beside && rtl ? -1 : 1),
     axis: beside ? 'y' : 'x',
     reduced,
-    late,
   };
 
   // The answers for a person can be given once they start to appear, the
@@ -602,7 +597,7 @@ export default function JoinedSlides({
         setLiveIndex((known) => known ?? first);
         settled.current();
       },
-      arrival(answersIn.delay + late, true) * 1000,
+      arrival(answersIn.delay, true) * 1000,
     );
     return () => {
       controls.stop();
@@ -726,7 +721,7 @@ export default function JoinedSlides({
           }).stop,
         );
       }
-      timers.push(window.setTimeout(finish, (answersIn.delay + late) * 1000));
+      timers.push(window.setTimeout(finish, answersIn.delay * 1000));
     }
     return () => {
       for (const timer of timers) window.clearTimeout(timer);
@@ -735,7 +730,7 @@ export default function JoinedSlides({
       join.set(1);
       cardHeight.set('auto');
     };
-  }, [index, skip, reduced, header, late, join, cardHeight]);
+  }, [index, skip, reduced, header, join, cardHeight]);
 
   // The join is drawn towards +x, then turned to face the card.
   const facing = beside ? (rtl ? 'scale(-1 1)' : '') : 'rotate(90)';
