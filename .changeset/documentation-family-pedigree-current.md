@@ -9,8 +9,8 @@ symbol to symbol and cross without hops, and how a child adopted into a family
 shares the sibling line. The page explains how the view is framed and reset,
 how the add menu opens, that a new person is described one group of questions
 at a time with Skip, Continue, Back and Save, and which questions each kind of
-relative is asked: adoptive parents and adopted children are not asked who
-carried the pregnancy, the twin question waits until a sibling shares whoever
+relative is asked: adoptive parents are not asked who carried the pregnancy,
+nor are adopted children unless the other parent is their biological parent, the twin question waits until a sibling shares whoever
 carried the person, and the person panel asks "Who carried the pregnancy?"
 once. It says that gender identity, where asked, must be answered and counts
 as a missing detail, describes the progress list, and explains that names in
