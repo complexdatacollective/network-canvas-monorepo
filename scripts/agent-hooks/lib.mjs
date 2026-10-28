@@ -722,54 +722,92 @@ function processAlive(pid) {
   }
 }
 
+// The lock as it stands now, or null when it has vanished. A lock is stale
+// when its owner has exited, when it outlives `staleMs` (pid reuse, a wedged
+// run), or when it has no owner record well after creation (the owner died
+// between creating the directory and recording itself).
+function lockState(lock, staleMs) {
+  const owner = lockOwner(lock);
+  let created;
+  try {
+    created = owner?.started ?? statSync(lock).mtimeMs;
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+  const age = Date.now() - created;
+  return {
+    stale: owner ? !processAlive(owner.pid) || age > staleMs : age > 10_000,
+    token: owner?.token ?? null,
+  };
+}
+
+// Two waiters can both judge the same lock stale; if each then removed it,
+// the slower one could delete the lock the faster one had just acquired. So
+// removal happens under a short-lived guard, and only while the lock still
+// carries the owner that was judged stale. The guard is held for
+// milliseconds, so one left behind by a dead reclaimer is cleared by age.
+// Filesystem errors other than a vanished path propagate rather than retry.
+export function reclaimStaleLock(lock, observedToken, staleMs) {
+  const guard = `${lock}.reclaim`;
+  try {
+    mkdirSync(guard);
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    try {
+      if (Date.now() - statSync(guard).mtimeMs > 10_000) {
+        rmSync(guard, { recursive: true, force: true });
+      }
+    } catch (statError) {
+      if (statError.code !== 'ENOENT') throw statError;
+    }
+    return false;
+  }
+  try {
+    const current = lockState(lock, staleMs);
+    if (!current?.stale || current.token !== observedToken) return false;
+    rmSync(lock, { recursive: true, force: true });
+    return true;
+  } finally {
+    rmSync(guard, { recursive: true, force: true });
+  }
+}
+
 // Unlike updateState's short-lived lock, this one is held for a whole
-// typecheck, so age alone cannot mark it stale: a lock is reclaimed when its
-// owner has exited, when it outlives `staleMs` (pid reuse, a wedged run), or
-// when it has no owner record well after creation (the owner died between
-// creating the directory and recording itself). Returns a release function,
-// or null when the lock was not acquired within `waitMs`.
+// typecheck, so age alone cannot mark it stale (see lockState). Returns a
+// release function, or null when the lock was not acquired within `waitMs`.
 export function acquireLock(
   lock,
   { waitMs, staleMs = 15 * 60_000, pollMs = 250 } = {},
 ) {
   const deadline = Date.now() + waitMs;
   const token = `${process.pid}-${Date.now()}-${Math.random()}`;
+  const release = () => {
+    if (lockOwner(lock)?.token !== token) return;
+    rmSync(lock, { recursive: true, force: true });
+  };
   for (;;) {
+    let created = false;
     try {
       mkdirSync(lock);
+      created = true;
       writeFileSync(
         path.join(lock, 'owner.json'),
         JSON.stringify({ pid: process.pid, token, started: Date.now() }),
       );
-      return () => {
-        if (lockOwner(lock)?.token !== token) return;
-        try {
-          rmSync(lock, { recursive: true, force: true });
-        } catch {
-          // Already gone.
-        }
-      };
+      return release;
     } catch (error) {
+      if (created) {
+        rmSync(lock, { recursive: true, force: true });
+        throw error;
+      }
       if (error.code !== 'EEXIST') throw error;
     }
-    let stale = false;
-    try {
-      const owner = lockOwner(lock);
-      const age = Date.now() - (owner?.started ?? statSync(lock).mtimeMs);
-      stale = owner
-        ? !processAlive(owner.pid) || age > staleMs
-        : age > 10_000;
-    } catch {
-      continue;
-    }
-    if (stale) {
-      try {
-        rmSync(lock, { recursive: true, force: true });
-      } catch {
-        // Another waiter reclaimed it first.
-      }
-      continue;
-    }
+    const state = lockState(lock, staleMs);
+    // A vanished or reclaimed lock is free: try again at once. Anything else
+    // waits, and every wait honours the deadline.
+    if (state === null) continue;
+    if (state.stale && reclaimStaleLock(lock, state.token, staleMs)) continue;
     if (Date.now() >= deadline) return null;
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, pollMs);
   }

@@ -37,6 +37,7 @@ import {
   parsePorcelainZ,
   parseTypecheckOutput,
   previousPackageNames,
+  reclaimStaleLock,
   resolveRepoRoot,
   splitSegments,
   typecheckLockPath,
@@ -1216,5 +1217,45 @@ test('every worktree of a checkout shares one typecheck lock', () => {
     typecheckLockPath(main),
     path.join(main, '.git', 'agent-hooks', 'typecheck.lock'),
   );
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('a stale judgement does not reclaim a lock that changed owner since', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const child = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+  const owner = (pid, token) =>
+    writeFileSync(
+      path.join(lock, 'owner.json'),
+      JSON.stringify({ pid, token, started: Date.now() }),
+    );
+  mkdirSync(lock);
+  // Another waiter reclaimed the dead owner's lock and acquired it; this
+  // waiter's earlier judgement named the dead owner, so it must not remove
+  // the new one.
+  owner(process.pid, 'fresh');
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), false);
+  assert.equal(
+    JSON.parse(readFileSync(path.join(lock, 'owner.json'), 'utf8')).token,
+    'fresh',
+  );
+  // While the dead owner still holds it, the same judgement reclaims it.
+  owner(child.pid, 'dead');
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), true);
+  assert.equal(acquireLock(lock, { waitMs: 0 }) !== null, true);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('a reclaim already in progress is left to its owner', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const child = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+  mkdirSync(lock);
+  writeFileSync(
+    path.join(lock, 'owner.json'),
+    JSON.stringify({ pid: child.pid, token: 'dead', started: Date.now() }),
+  );
+  mkdirSync(`${lock}.reclaim`);
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), false);
   rmSync(dir, { recursive: true, force: true });
 });

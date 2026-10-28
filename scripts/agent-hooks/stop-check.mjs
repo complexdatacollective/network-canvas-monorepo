@@ -88,9 +88,13 @@ if (!all && seeds.length === 0) {
     `--concurrency=${TYPECHECK_CONCURRENCY}`,
   ];
   if (!all) for (const name of seeds) args.push(`--filter=...${name}`);
-  const release = acquireLock(typecheckLockPath(root), {
-    waitMs: LOCK_WAIT_MS,
-  });
+  let release = null;
+  let lockError = null;
+  try {
+    release = acquireLock(typecheckLockPath(root), { waitMs: LOCK_WAIT_MS });
+  } catch (error) {
+    lockError = error;
+  }
   const result = release
     ? run(turbo, args, {
         cwd: root,
@@ -103,12 +107,18 @@ if (!all && seeds.length === 0) {
       })
     : null;
   release?.();
-  if (!result) {
-    // Not a problem in the agent's changes, so it does not block the stop;
-    // `checked` stays false, so the next turn end checks this state again.
-    notices.push(
-      `Typecheck skipped: another worktree's typecheck held the lock for ${LOCK_WAIT_MS / 1000} s.`,
+  if (lockError) {
+    problems.push(
+      `Typecheck could not run: the typecheck lock failed (${lockError.message}).`,
     );
+  } else if (!result) {
+    const skipped = `Typecheck skipped: another worktree's typecheck held the lock for ${LOCK_WAIT_MS / 1000} s.`;
+    // At a turn end this is not a problem in the agent's changes, so it does
+    // not block the stop; `checked` stays false, so the next turn end checks
+    // this state again. `agent:check` is asked for a verdict, so there an
+    // unchecked typecheck is a failure, never an OK.
+    if (manual) problems.push(skipped);
+    else notices.push(skipped);
   } else if (result.error) {
     problems.push(`Typecheck did not finish: ${result.error.message}`);
   } else {
