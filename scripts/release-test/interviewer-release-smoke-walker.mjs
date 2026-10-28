@@ -187,11 +187,15 @@ try {
     // failures are the condition under test, not findings; the same class
     // while ONLINE is reportable. App-level errors still surface offline —
     // they are never "Failed to load resource" lines.
+    // Chrome's own service worker update check, which the offline-boot
+    // reload triggers and which cannot fetch sw.js without a network, logs
+    // the same class of failure; the app catches its update() rejections.
     if (
       deliberatelyOffline &&
-      /Failed to load resource: net::ERR_(INTERNET_DISCONNECTED|FAILED)/.test(
+      (/Failed to load resource: net::ERR_(INTERNET_DISCONNECTED|FAILED)/.test(
         text,
-      )
+      ) ||
+        /An unknown error occurred when fetching the script\./.test(text))
     )
       return;
     consoleErrors.push(text.trim());
@@ -831,14 +835,18 @@ try {
     .getByRole('radio', { name: 'Woman', exact: true })
     .click();
   await sexGroup.getByRole('radio', { name: 'Female', exact: true }).click();
+  // Answering sex at birth moves the panel on to the parent's own questions
+  // (the matrix describe() helper), which first ask what kind of parent this
+  // is; only a biological parent is asked whether they carried the pregnancy.
+  await expect(sexGroup).toBeHidden();
+  await panel
+    .getByRole('radiogroup', { name: /^What kind of parent/ })
+    .getByRole('radio', { name: 'Biological parent', exact: true })
+    .click();
   const carried = panel
     .getByRole('radiogroup', { name: /^Did this parent carry the pregnancy\?/ })
     .getByRole('radio', { name: 'Yes', exact: true });
   const save = panel.getByRole('button', { name: 'Save', exact: true });
-  // A new person is described a group of questions at a time: answering sex
-  // at birth moves the panel on to the parent's own questions (the matrix
-  // describe() helper), which ask whether this parent carried the pregnancy.
-  await expect(sexGroup).toBeHidden();
   await expect(carried).toBeVisible();
   await carried.click();
   await expect(carried).toBeChecked();
