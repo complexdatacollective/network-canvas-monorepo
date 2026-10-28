@@ -353,6 +353,13 @@ export function useAutoLayout({
     // worker's cohesion force can bucket nodes.
     const currentNodes = nodesRef.current;
     const { positions } = store.getState();
+    const previousIds = seededIdsRef.current;
+    const nodesChanged =
+      previousIds.size > 0 &&
+      (previousIds.size !== currentNodes.length ||
+        currentNodes.some(
+          (node) => !previousIds.has(node[entityPrimaryKeyProperty]),
+        ));
     const simNodes: SimNode[] = currentNodes.map((node) => {
       const nodeId = node[entityPrimaryKeyProperty];
       const pos = positions.get(nodeId);
@@ -363,7 +370,7 @@ export function useAutoLayout({
         y: sim.y,
         placed:
           pos !== undefined &&
-          (seededIdsRef.current.size === 0 || seededIdsRef.current.has(nodeId)),
+          (previousIds.size === 0 || previousIds.has(nodeId)),
         groupKeys: getGroupKeys(node, groupVariable),
       };
     });
@@ -388,6 +395,7 @@ export function useAutoLayout({
       nodes: simNodes,
       links: simLinks,
       paused: runMode === 'continuous' && !simulationEnabled,
+      incremental: nodesChanged,
       options: {
         collideRadius,
         boundsInset,

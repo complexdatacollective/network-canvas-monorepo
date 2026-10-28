@@ -294,6 +294,18 @@ describe('autoLayout worker', () => {
     expect(capturedSim!.force('anchorY')).toBeTruthy();
   });
 
+  it('settles anchored after the node set changes', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS).slice(1),
+      incremental: true,
+    });
+    handleMessage({ type: 'start' });
+
+    expect(capturedSim!.force('anchorX')).toBeTruthy();
+    expect(capturedSim!.force('anchorY')).toBeTruthy();
+  });
+
   it('ignores a repeated start once the layout has settled', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });

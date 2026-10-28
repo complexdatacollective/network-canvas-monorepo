@@ -607,6 +607,8 @@ type InitializeMessage = {
   options?: Partial<AutoLayoutRuntimeOptions>;
   // A worker replaced while the user has the layout paused stays paused.
   paused?: boolean;
+  // The node set changed since the previous initialize (an add or a delete).
+  incremental?: boolean;
 };
 
 type StopMessage = { type: 'stop' };
@@ -633,8 +635,8 @@ type Message =
   | UpdateNodeMessage;
 
 let needsLayout = false;
-// A link change made while paused, resumed as an anchored re-settle.
-let pendingLinkChange = false;
+// A change to the nodes or links, settled anchored rather than from scratch.
+let incrementalChange = false;
 
 const createSimulation = (nodes: SimNode[]) => {
   const sim = forceSimulation(nodes);
@@ -667,7 +669,7 @@ const createSimulation = (nodes: SimNode[]) => {
 const finish = () => {
   running = false;
   needsLayout = false;
-  pendingLinkChange = false;
+  incrementalChange = false;
   for (const node of simulation.nodes()) node.placed = true;
   postMessage({ type: 'end', nodes: simulation.nodes() });
 };
@@ -728,7 +730,7 @@ export function handleMessage(data: Message) {
       running = false;
       paused = data.paused ?? false;
       needsLayout = true;
-      pendingLinkChange = false;
+      incrementalChange = data.incremental ?? false;
       break;
     }
     case 'start': {
@@ -742,7 +744,7 @@ export function handleMessage(data: Message) {
       const unplaced = nodes.filter((node) => node.placed === false).length;
       if (nodes.length > 0 && unplaced === nodes.length) {
         layoutFromScratch();
-      } else if (unplaced > 0 || pendingLinkChange) {
+      } else if (unplaced > 0 || incrementalChange) {
         setAnchors(simulation, true);
         runToEnd(REHEAT_ALPHA);
       } else {
@@ -780,7 +782,7 @@ export function handleMessage(data: Message) {
       // A sim the user paused stays paused until they resume.
       if (paused) {
         needsLayout = true;
-        pendingLinkChange = true;
+        incrementalChange = true;
       } else {
         setAnchors(simulation, true);
         runToEnd(REHEAT_ALPHA);
