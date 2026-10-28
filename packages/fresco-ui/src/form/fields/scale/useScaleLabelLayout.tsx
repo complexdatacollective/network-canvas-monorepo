@@ -9,12 +9,11 @@ import {
   useState,
 } from 'react';
 
+import OptionLabel from '../../../OptionLabel';
 import {
   type PresentationalText,
-  presentationalTextProps,
   presentationalTextValue,
 } from '../../../PresentationalText';
-import { RenderMarkdown } from '../../../RenderMarkdown';
 import { controlLabelVariants } from '../../../styles/controlVariants';
 import { cx } from '../../../utils/cva';
 import {
@@ -170,17 +169,17 @@ export function useScaleLabelLayout({
       </div>
       {labels.map((label, i) => (
         <Fragment key={`${i}-${presentationalTextValue(label)}`}>
-          <span
-            ref={(el) => {
-              minRefs.current[i] = el;
-            }}
-            className={cx(probeClass, ROTATED_LABEL_WRAP_CLASS)}
-            // Measured under the label's own language, as it is shown: script
-            // and language pick the font and the line-break opportunities.
-            {...presentationalTextProps(label)}
-          >
-            <RenderMarkdown>{presentationalTextValue(label)}</RenderMarkdown>
-          </span>
+          <OptionLabel
+            label={label}
+            render={
+              <span
+                ref={(el) => {
+                  minRefs.current[i] = el;
+                }}
+                className={cx(probeClass, ROTATED_LABEL_WRAP_CLASS)}
+              />
+            }
+          />
         </Fragment>
       ))}
       <div ref={sentinelRef} className="h-4 w-4" />

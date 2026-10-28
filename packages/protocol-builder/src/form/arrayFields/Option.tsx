@@ -22,6 +22,7 @@ import {
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type {
   LocalizedString,
@@ -282,9 +283,10 @@ export default function Option({
         )}
         <div className="min-w-0 flex-1 truncate">
           {hasLabel ? (
-            <span lang={label.lang} dir={label.dir}>
-              {label.text}
-            </span>
+            <OptionLabel
+              label={label.text}
+              render={<span lang={label.lang} dir={label.dir} />}
+            />
           ) : (
             <span className="text-current/50 italic">
               {intl.formatMessage(messages.untitled)}
