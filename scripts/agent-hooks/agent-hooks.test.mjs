@@ -1186,19 +1186,20 @@ test('releasing a lock that was reclaimed by another owner leaves it alone', () 
   rmSync(dir, { recursive: true, force: true });
 });
 
+const gitIn = (args, cwd) => {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+};
+
 test('every worktree of a checkout shares one typecheck lock', () => {
   const dir = realpathSync(
     mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-')),
   );
   const main = path.join(dir, 'main');
   const other = path.join(dir, 'other');
-  const sh = (args, cwd) => {
-    const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
-    assert.equal(result.status, 0, result.stderr);
-  };
   mkdirSync(main);
-  sh(['init', '-q'], main);
-  sh(
+  gitIn(['init', '-q'], main);
+  gitIn(
     [
       '-c',
       'user.name=t',
@@ -1212,7 +1213,7 @@ test('every worktree of a checkout shares one typecheck lock', () => {
     ],
     main,
   );
-  sh(['worktree', 'add', '-q', other], main);
+  gitIn(['worktree', 'add', '-q', other], main);
   assert.equal(typecheckLockPath(main), typecheckLockPath(other));
   assert.equal(
     typecheckLockPath(main),
