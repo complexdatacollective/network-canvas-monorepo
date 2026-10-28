@@ -82,7 +82,7 @@ export function useCollectionSetup<T>(
   // the ResizeObserver to disconnect/reconnect on every width change.
   useEffect(() => {
     const element = containerRef?.current;
-    if (!element) return;
+    if (!element) return undefined;
 
     // Get initial width immediately
     const initialWidth = element.offsetWidth;

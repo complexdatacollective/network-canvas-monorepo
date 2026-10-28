@@ -70,7 +70,7 @@ export const useJobRun = (
   }>({ request: null, run: EMPTY });
 
   useEffect(() => {
-    if (!request) return;
+    if (!request) return undefined;
     const setRun = (update: (current: JobRun) => JobRun) =>
       setState((current) => ({
         request,

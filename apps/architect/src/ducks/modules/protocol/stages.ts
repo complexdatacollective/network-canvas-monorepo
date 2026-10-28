@@ -235,11 +235,11 @@ const stagesSlice = createSlice({
         const { stageId } = action.payload;
 
         if (isStageReferencedAsSkipDestination(state, stageId)) {
-          return;
+          return undefined;
         }
 
         if (isLastFinishStage(state, stageId)) {
-          return;
+          return undefined;
         }
 
         return state.filter((stage) => stage.id !== stageId);

@@ -278,7 +278,7 @@ const EncryptionBackground = ({
     // Chromatic gets the deterministic seed above and no animation loop, so
     // every snapshot of this background is the same picture.
     if (isChromatic()) {
-      return;
+      return undefined;
     }
 
     const updateStreams = (currentTime: number) => {

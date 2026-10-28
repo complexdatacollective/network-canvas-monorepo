@@ -76,6 +76,10 @@ function schemaFor(id: string): z.ZodType {
       return EgoDefinitionSchema;
     case 'assets':
       return AssetsSectionSchema;
+    default: {
+      const unhandled: never = ref;
+      throw new Error('Unhandled section kind', { cause: unhandled });
+    }
   }
 }
 

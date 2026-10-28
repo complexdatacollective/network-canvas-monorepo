@@ -89,7 +89,7 @@ export function AnalyticsProvider({
   useEffect(() => {
     if (disableAnalytics) {
       onTrackerChange?.(NULL_TRACKER);
-      return;
+      return undefined;
     }
     let cancelled = false;
     void (async () => {

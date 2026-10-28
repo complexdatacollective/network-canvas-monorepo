@@ -245,16 +245,16 @@ export function contentHash(bytes: Uint8Array): string {
 
 const FALLBACK_MEDIA_TYPE = 'application/octet-stream';
 
-export function fromBackend(backend: ObjectBackend): ObjectStore['Service'] {
-  const request = <A>(
-    operation: ObjectStoreError['operation'],
-    send: (signal: AbortSignal) => Promise<A>,
-  ): Effect.Effect<A, ObjectStoreError> =>
-    Effect.tryPromise({
-      try: send,
-      catch: (cause) => new ObjectStoreError({ operation, cause }),
-    });
+const request = <A>(
+  operation: ObjectStoreError['operation'],
+  send: (signal: AbortSignal) => Promise<A>,
+): Effect.Effect<A, ObjectStoreError> =>
+  Effect.tryPromise({
+    try: send,
+    catch: (cause) => new ObjectStoreError({ operation, cause }),
+  });
 
+export function fromBackend(backend: ObjectBackend): ObjectStore['Service'] {
   const unlessAbsent = <A>(
     operation: ObjectStoreError['operation'],
     send: (signal: AbortSignal) => Promise<A>,

@@ -26,7 +26,7 @@ export function useAssetUrl(assetId: string | undefined): AssetUrlState {
 
   useEffect(() => {
     if (!assetId) {
-      return;
+      return undefined;
     }
 
     let cancelled = false;

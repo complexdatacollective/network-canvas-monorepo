@@ -123,7 +123,7 @@ export default function ConvexHullLayer({
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) return undefined;
 
     // Clean up previous elements
     for (const el of elementsRef.current) {

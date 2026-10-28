@@ -144,6 +144,10 @@ export function nodeVariablesWrittenOnCreation(
     case 'Sociogram':
     case 'TieStrengthCensus':
       return new Set();
+    default: {
+      const unhandled: never = stage;
+      throw new Error('Unhandled stage type', { cause: unhandled });
+    }
   }
 }
 
@@ -199,6 +203,10 @@ function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
     case 'OneToManyDyadCensus':
     case 'TieStrengthCensus':
       return new Set();
+    default: {
+      const unhandled: never = stage;
+      throw new Error('Unhandled stage type', { cause: unhandled });
+    }
   }
 }
 

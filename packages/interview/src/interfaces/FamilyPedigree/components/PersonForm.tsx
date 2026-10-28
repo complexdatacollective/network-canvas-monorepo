@@ -2211,6 +2211,10 @@ function readRequest(
     }
     case 'sibling':
       return readSiblingRequest(values);
+    default: {
+      const unhandled: never = relation;
+      throw new Error('Unhandled relation', { cause: unhandled });
+    }
   }
 }
 
@@ -2362,6 +2366,10 @@ function RelationshipFields({
           framing={framing}
         />
       );
+    default: {
+      const unhandled: never = relation;
+      throw new Error('Unhandled relation', { cause: unhandled });
+    }
   }
 }
 

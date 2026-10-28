@@ -138,6 +138,12 @@ const rosterCharacterText = ({
         message: errorMessages.charactersInLine,
         values: { line: problem.line, character: problem.character, others },
       };
+    default: {
+      const unhandled: never = problem;
+      throw new Error('Unhandled roster character problem', {
+        cause: unhandled,
+      });
+    }
   }
 };
 

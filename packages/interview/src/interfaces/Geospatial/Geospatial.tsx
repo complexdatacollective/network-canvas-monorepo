@@ -307,8 +307,8 @@ export default function GeospatialInterface({
   const [stubFeatureId, setStubFeatureId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!useStub) return;
-    if (!dataSourceUrl) return;
+    if (!useStub) return undefined;
+    if (!dataSourceUrl) return undefined;
     let cancelled = false;
     void (async () => {
       try {

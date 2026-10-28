@@ -223,6 +223,13 @@ function refactorAnswer(outcome: RefactorOutcome) {
   return Effect.succeed(outcome);
 }
 
+// Staging belongs to an edit in a session: the edit says which of a
+// researcher's open editors imported the file, the session says whose.
+const scopeOf = (principal: HostPrincipal, editId: string): EditScope => ({
+  sessionId: principal.sessionId,
+  editId,
+});
+
 function buildHandlers(
   protocolId: string,
   store: InMemoryProtocolStore,
@@ -241,13 +248,6 @@ function buildHandlers(
     store.has(id)
       ? Effect.void
       : Effect.fail(new SectionNotFound({ sectionId: id }));
-  // Staging belongs to an edit in a session: the edit says which of a
-  // researcher's open editors imported the file, the session says whose.
-  const scopeOf = (principal: HostPrincipal, editId: string): EditScope => ({
-    sessionId: principal.sessionId,
-    editId,
-  });
-
   return ProtocolBuilderGroup.of({
     AcquireLock: Effect.fnUntraced(function* (input) {
       yield* inProtocol(input);

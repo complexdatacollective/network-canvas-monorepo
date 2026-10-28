@@ -91,28 +91,25 @@ vi.mock('~/lib/pwa/useHistoryBackGuard', () => ({
 
 // Interviewer 8 as a build bundles it (or not). The address itself is the
 // real one.
-const { legacyInterviewer, settleLockMock, lockSettled, lockMock, frameMock } =
-  vi.hoisted(() => ({
-    legacyInterviewer: {
-      current: { version: '8.5.0', path: '/v8/' } as {
-        version: string;
-        path: '/v8/';
-      } | null,
-    },
-    settleLockMock: vi.fn<() => Promise<boolean>>(),
-    lockSettled: { current: true },
-    lockMock: vi.fn(() => Promise.resolve()),
-    frameMock:
-      vi.fn<
-        (props: {
-          src: string;
-          enterAuthorized: boolean;
-          onClosed: () => void;
-          onLost: () => void;
-          onUnavailable: () => void;
-        }) => void
-      >(),
-  }));
+const { legacyInterviewer, lockMock, frameMock } = vi.hoisted(() => ({
+  legacyInterviewer: {
+    current: { version: '8.5.0', path: '/v8/' } as {
+      version: string;
+      path: '/v8/';
+    } | null,
+  },
+  lockMock: vi.fn(() => Promise.resolve()),
+  frameMock:
+    vi.fn<
+      (props: {
+        src: string;
+        enterAuthorized: boolean;
+        onClosed: () => void;
+        onLost: () => void;
+        onUnavailable: () => void;
+      }) => void
+    >(),
+}));
 vi.mock('~/lib/legacyInterviewer', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('~/lib/legacyInterviewer')>();
@@ -121,12 +118,6 @@ vi.mock('~/lib/legacyInterviewer', async (importOriginal) => {
     getBundledLegacyInterviewer: () => legacyInterviewer.current,
   };
 });
-vi.mock('~/components/useSettleLockForInterviewer8', () => ({
-  useSettleLockForInterviewer8: () => ({
-    settled: lockSettled.current,
-    settleLock: () => settleLockMock(),
-  }),
-}));
 vi.mock('~/lib/auth/AuthContext', () => ({
   useAuth: () => ({ lock: lockMock }),
 }));
@@ -355,8 +346,6 @@ beforeEach(() => {
     COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
   );
   legacyInterviewer.current = { version: '8.5.0', path: '/v8/' };
-  settleLockMock.mockResolvedValue(true);
-  lockSettled.current = true;
   getSessionMock.mockResolvedValue(makeSession());
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
@@ -571,7 +560,6 @@ describe('InterviewRoute schema 8 interview', () => {
       src: '/v8/interview/s1',
       enterAuthorized: true,
     });
-    expect(settleLockMock).toHaveBeenCalledTimes(1);
     // The one unlock, here; Interviewer 8 is told it was satisfied.
     expect(requireFreshUnlockMock).toHaveBeenCalledTimes(1);
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
@@ -628,17 +616,6 @@ describe('InterviewRoute schema 8 interview', () => {
     expect(lastFrameProps().enterAuthorized).toBe(false);
   });
 
-  it('takes choosing the lock at set-up as the enter step', async () => {
-    lockSettled.current = false;
-
-    render(<InterviewRoute sessionId="s1" />);
-
-    await waitFor(() =>
-      expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1'),
-    );
-    expect(settleLockMock).toHaveBeenCalledTimes(1);
-  });
-
   it('goes home, hosting nothing, when the enter step-up is declined', async () => {
     requireFreshUnlockMock.mockResolvedValue({ ok: false });
 
@@ -648,36 +625,6 @@ describe('InterviewRoute schema 8 interview', () => {
       expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
     );
     expect(frameMock).not.toHaveBeenCalled();
-  });
-
-  it('sets up the lock first, and goes home instead when set-up is left', async () => {
-    settleLockMock.mockResolvedValue(false);
-
-    render(<InterviewRoute sessionId="s1" />);
-
-    await waitFor(() =>
-      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
-    );
-    expect(settleLockMock).toHaveBeenCalledTimes(1);
-    expect(frameMock).not.toHaveBeenCalled();
-    expect(requireFreshUnlockMock).not.toHaveBeenCalled();
-    expect(getSessionMock).not.toHaveBeenCalled();
-  });
-
-  it('hosts only after the lock is settled', async () => {
-    let settle: (settled: boolean) => void = () => undefined;
-    settleLockMock.mockReturnValue(
-      new Promise<boolean>((resolve) => {
-        settle = resolve;
-      }),
-    );
-
-    render(<InterviewRoute sessionId="s1" />);
-    await waitFor(() => expect(settleLockMock).toHaveBeenCalled());
-    expect(frameMock).not.toHaveBeenCalled();
-
-    await act(async () => settle(true));
-    expect(await screen.findByTitle('Interview')).toBeInTheDocument();
   });
 
   it('goes home, through the history pin, when Interviewer 8 closes', async () => {
@@ -762,7 +709,6 @@ describe('InterviewRoute schema 8 interview', () => {
     expect(
       screen.getByText(/older version of the Network Canvas protocol schema/i),
     ).toBeInTheDocument();
-    expect(settleLockMock).not.toHaveBeenCalled();
     expect(frameMock).not.toHaveBeenCalled();
     expect(getSessionMock).not.toHaveBeenCalled();
     expect(shellMock).not.toHaveBeenCalled();
@@ -776,7 +722,6 @@ describe('InterviewRoute schema 8 interview', () => {
     expect(
       await screen.findByRole('heading', { name: /interview unavailable/i }),
     ).toBeInTheDocument();
-    expect(settleLockMock).not.toHaveBeenCalled();
     expect(frameMock).not.toHaveBeenCalled();
   });
 
@@ -789,7 +734,6 @@ describe('InterviewRoute schema 8 interview', () => {
 
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(requireFreshUnlockMock).toHaveBeenCalledTimes(1);
-    expect(settleLockMock).not.toHaveBeenCalled();
     expect(frameMock).not.toHaveBeenCalled();
   });
 

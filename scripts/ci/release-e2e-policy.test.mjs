@@ -1397,6 +1397,12 @@ test('equivalence reuse fails closed when a jobs listing is truncated', async ()
   );
 });
 
+const api = (run) =>
+  fakeActionsApi({
+    runs: [run],
+    jobsByRun: { [run.id]: INTERVIEWER_LANE_SUCCESS_JOBS },
+  });
+
 test('equivalence reuse ignores runs of pull requests into other bases', async () => {
   const none = { interview: false, interviewer: false, architect: false };
   const { cwd, validatedSha } = initReleaseBranchRepo();
@@ -1406,11 +1412,6 @@ test('equivalence reuse ignores runs of pull requests into other bases', async (
     'irrelevant\n',
     'refresh',
   );
-  const api = (run) =>
-    fakeActionsApi({
-      runs: [run],
-      jobsByRun: { [run.id]: INTERVIEWER_LANE_SUCCESS_JOBS },
-    });
 
   // The same release branch also backs a pull request into schema-9, and that
   // run is green. It lists both pull requests, as GitHub does, and says

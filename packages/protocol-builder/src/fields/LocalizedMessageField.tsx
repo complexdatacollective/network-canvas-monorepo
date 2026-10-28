@@ -333,6 +333,9 @@ function messageVersions(
   };
 }
 
+const named = (label: string | undefined, argument: string) =>
+  label === undefined || label.trim() === '' ? argument : label;
+
 /**
  * What a localized message's editor and summary call its arguments, its
  * switches and their versions: a select argument by its name and each case
@@ -345,8 +348,6 @@ const messageNaming = (
   intl: IntlShape,
   { switchLabels, caseLabels, placeholderLabels }: MessageArgumentLabels,
 ) => {
-  const named = (label: string | undefined, argument: string) =>
-    label === undefined || label.trim() === '' ? argument : label;
   const valueLabel = (argument: string) =>
     declaration[argument]?.kind === 'select'
       ? named(switchLabels[argument], argument)

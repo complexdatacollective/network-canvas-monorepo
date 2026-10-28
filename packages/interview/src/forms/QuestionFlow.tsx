@@ -418,7 +418,7 @@ export default function QuestionFlow({
   // The steps change as answers bring questions in or take them away, and
   // the step button's label with every answer.
   useEffect(() => {
-    if (!root || !stepped) return;
+    if (!root || !stepped) return undefined;
     let frame = 0;
     const schedule = () => {
       cancelAnimationFrame(frame);
@@ -513,7 +513,7 @@ export default function QuestionFlow({
   // A chosen option moves the form on, once the answer has rendered along
   // with any question it brings in.
   useEffect(() => {
-    if (!root) return;
+    if (!root) return undefined;
     const onClick = (event: MouseEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -592,7 +592,7 @@ export default function QuestionFlow({
   );
 
   useEffect(() => {
-    if (!root || !focusFirst) return;
+    if (!root || !focusFirst) return undefined;
     // Once the fields have registered their answers with the form.
     const frame = requestAnimationFrame(() => {
       const field =

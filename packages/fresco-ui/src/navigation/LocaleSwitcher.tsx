@@ -265,7 +265,7 @@ export default function LocaleSwitcher({
     }
   }
   useEffect(() => {
-    if (notice?.state !== 'saved') return;
+    if (notice?.state !== 'saved') return undefined;
     const timer = setTimeout(() => setNotice(null), SAVED_NOTICE_MS);
     return () => clearTimeout(timer);
   }, [notice]);

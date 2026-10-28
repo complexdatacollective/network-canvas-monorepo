@@ -158,6 +158,11 @@ export default function Setup() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  const failure = (message: MessageDescriptor) => ({
+    success: false as const,
+    formErrors: [intl.formatMessage(message)],
+  });
+
   return (
     // Every route in §5.2 renders exactly one `<main id="main-content">`
     // (§11.2), and a focused screen has no area layout to own that landmark.
@@ -172,10 +177,6 @@ export default function Setup() {
         <Paragraph>{intl.formatMessage(messages.intro)}</Paragraph>
         <Form
           onSubmit={async (values) => {
-            const failure = (message: MessageDescriptor) => ({
-              success: false as const,
-              formErrors: [intl.formatMessage(message)],
-            });
             let completed: SuccessOf<StudioRpcsType, 'setup.complete'>;
             try {
               completed = await rpcCall('setup.complete', {

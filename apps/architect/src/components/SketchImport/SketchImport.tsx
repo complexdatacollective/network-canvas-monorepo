@@ -95,7 +95,7 @@ export default function SketchImport() {
   const settled = useRef(false);
 
   useEffect(() => {
-    if (!opener || settled.current) return;
+    if (!opener || settled.current) return undefined;
     let intervalId: ReturnType<typeof setInterval> | undefined;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 

@@ -44,7 +44,6 @@ import {
 } from '@codaco/protocol-validation';
 import { Interviewer8Frame } from '~/components/Interviewer8Frame';
 import { offlineMessages } from '~/components/offlineMessages';
-import { useSettleLockForInterviewer8 } from '~/components/useSettleLockForInterviewer8';
 import { interviewerLocales } from '~/i18n/locales';
 import { browserLanguages } from '~/i18n/preference';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -338,14 +337,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   //
   // The way in is the one a schema 9 interview takes, so the researcher
   // unlocks once, here, and Interviewer 8 never shows its own lock screen on
-  // the way in: the lock is set up first when the device has none (only this
-  // app can set it up, and leaving set-up goes home), then this route's own
-  // enter step-up when requireUnlockOnEnter is set. The frame is then handed
-  // this app's key and told whether that step was satisfied.
+  // the way in: this route's own enter step-up runs when requireUnlockOnEnter
+  // is set. The frame is then handed this app's key (none on a device with no
+  // lock, where both apps keep rows in plaintext) and told whether that step
+  // was satisfied.
   //
-  // An effect event, not a load-effect dependency: settling the lock changes
-  // the auth state it reads, and re-running the load must not follow from it.
-  const { settled: lockSettled, settleLock } = useSettleLockForInterviewer8();
+  // An effect event, not a load-effect dependency: re-running the load would
+  // re-host an interview already in progress.
   const hostInInterviewer8 = useEffectEvent(
     async (
       header: { protocolHash: string; finishedAt: string | null },
@@ -353,18 +351,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     ): Promise<boolean> => {
       const interviewer = getBundledLegacyInterviewer();
       if (!interviewer) return false;
-      const settingUp = !lockSettled;
-      const settled = await settleLock();
-      // Choosing the lock just now was a fresh authentication: it stands in
-      // for the enter step. Recorded before the active check, because set-up
-      // changes the auth state and re-runs this load, and that run must not
-      // ask again.
-      if (settled && settingUp) setAuthorizedInterviewId(sessionId);
-      if (!isActive()) return true;
-      if (!settled) {
-        goHome();
-        return true;
-      }
       const settings = await getSettings();
       if (!isActive()) return true;
       const alreadyAuthorized = getAuthorizedInterviewId() === sessionId;

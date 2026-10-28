@@ -180,6 +180,11 @@ const MigrationNotes = ({
   return <Markdown label={formatMigrationNotes(version, notes, intl)} />;
 };
 
+const renderDocumentationLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.protocolSchema}>{chunks}</ExternalLink>
+);
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 export const showProtocolOpenResultDialog = async ({
   result,
   openDialog,
@@ -224,12 +229,6 @@ export const showProtocolOpenResultDialog = async ({
     // schema 8 itself when it opens them.
     const offerKeep =
       onKeepLegacy !== undefined && getBundledLegacyArchitect() !== null;
-    const renderDocumentationLink = (chunks: ReactNode[]) => (
-      <ExternalLink href={documentationLinks.protocolSchema}>
-        {chunks}
-      </ExternalLink>
-    );
-    const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
     const choice = await openDialog({
       type: 'choice',
       // Not a warning: upgrading makes a copy and changes nothing, so the

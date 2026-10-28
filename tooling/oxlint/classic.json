@@ -15,9 +15,11 @@
     "import/no-cycle": "off",
     "import/no-duplicates": "off",
     "promise/no-callback-in-promise": "off",
+    "unicorn/consistent-function-scoping": "off",
     "unicorn/no-thenable": "off",
 
     "typescript/await-thenable": "off",
+    "typescript/consistent-return": "off",
     "typescript/consistent-type-imports": "off",
     "typescript/no-base-to-string": "off",
     "typescript/no-explicit-any": "off",

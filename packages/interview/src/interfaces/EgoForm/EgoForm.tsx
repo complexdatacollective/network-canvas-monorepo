@@ -94,7 +94,7 @@ const EgoFormInner = (props: EgoFormProps) => {
   // Once the user has scrolled to the bottom, permanently hide the nudge.
   useEffect(() => {
     setNudgeVisible(false);
-    if (hasScrolledToBottom) return;
+    if (hasScrolledToBottom) return undefined;
     const timer = setTimeout(() => setNudgeVisible(true), 15000);
     return () => clearTimeout(timer);
   }, [fields, hasScrolledToBottom, interactionCount]);

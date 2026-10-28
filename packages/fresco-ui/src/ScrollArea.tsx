@@ -218,7 +218,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
     // (validation error lists, faceted filters) scroll like any other.
     useEffect(() => {
       const viewport = viewportRef.current;
-      if (!viewport) return;
+      if (!viewport) return undefined;
 
       // Initial update
       updateScrollVariables();

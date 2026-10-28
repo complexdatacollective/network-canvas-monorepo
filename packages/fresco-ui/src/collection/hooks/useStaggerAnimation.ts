@@ -85,5 +85,16 @@ export function useStaggerAnimation(
     void runAnimation();
   }, [animate, enabled, itemCount, animationKey]);
 
+  // useAnimate stops the scope's animations when the mount ends, so the
+  // entrance has not played for the next mount. StrictMode ends and restarts
+  // every new mount, which would otherwise leave the items on the first
+  // keyframe, invisible.
+  useEffect(
+    () => () => {
+      hasAnimatedRef.current = false;
+    },
+    [],
+  );
+
   return scope;
 }

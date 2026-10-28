@@ -8,11 +8,13 @@ export type StoreRehydrationGate = {
 
 const STORE_REHYDRATION_TIMEOUT_MS = 2_000;
 
+const ignoreResult = (): void => {};
+
 export const createStoreRehydrationGate = (
   timeoutMs = STORE_REHYDRATION_TIMEOUT_MS,
 ): StoreRehydrationGate => {
   let result: StoreRehydrationResult | null = null;
-  let resolvePromise: (result: StoreRehydrationResult) => void = () => {};
+  let resolvePromise: (result: StoreRehydrationResult) => void = ignoreResult;
   const promise = new Promise<StoreRehydrationResult>((resolve) => {
     resolvePromise = resolve;
   });

@@ -33,6 +33,10 @@ const isEmptyValue = (value: VariableValue | undefined): boolean =>
   value === '' ||
   (Array.isArray(value) && value.length === 0);
 
+// A dash stands for "no value". Its words are for screen readers only and
+// come from DataCard, where they can be rendered beside the glyph.
+const empty = () => '—';
+
 /**
  * A roster value as text for the participant. Words (yes, no, an empty value)
  * are in the interface language; numbers, coordinates and lists follow the
@@ -43,10 +47,6 @@ const formatValue = (
   intl: IntlShape,
   format: ContentFormat,
 ): string => {
-  // A dash stands for "no value". Its words are for screen readers only and
-  // come from DataCard, where they can be rendered beside the glyph.
-  const empty = () => '—';
-
   if (value === null || value === undefined || value === '') return empty();
 
   if (typeof value === 'boolean')

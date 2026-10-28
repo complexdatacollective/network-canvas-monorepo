@@ -28,5 +28,9 @@ export function getFormatter(format: ExportFormat): FormatterBytes {
       return egoListBytes;
     case 'adjacencyMatrix':
       return adjacencyMatrixBytes;
+    default: {
+      const unhandled: never = format;
+      throw new Error('Unhandled export format', { cause: unhandled });
+    }
   }
 }

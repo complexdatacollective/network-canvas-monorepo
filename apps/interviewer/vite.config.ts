@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import {
+  createLegacyAppDevPlugin,
+  prepareLegacyAppForDev,
+} from '../../scripts/buildtime/legacy-app-dev-plugin.ts';
 import { createLegacyAppPreviewPlugin } from '../../scripts/buildtime/legacy-app-preview-plugin.ts';
 import {
   legacyApp,
@@ -62,16 +66,32 @@ const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 // pins a build of it (see scripts/buildtime/legacy-app.ts).
 const legacyInterviewer = legacyApp('interviewer');
 
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(async ({ command, mode, isPreview }) => {
   // Whether this build bundles Interviewer 8 at /v8/: the same decision
   // scripts/build.mjs acts on after Vite, so the app offers Interviewer 8
   // exactly when dist/v8 will hold it (see `src/lib/legacyInterviewer.ts`).
-  // The dev server serves no /v8/, so it never does.
+  //
+  // The dev server serves the same pinned build from a cache of its own
+  // (legacy-app-dev-plugin.ts), so schema 8 interviews run in development
+  // too. Storybook and vitest load this config to serve, and run without it.
+  const env = loadEnv(mode, here, '');
+  const resolution =
+    command === 'build' ||
+    (!isPreview && !process.env.STORYBOOK && !process.env.VITEST)
+      ? loadLegacyAppV8(legacyInterviewer, here, env)
+      : null;
+  const devLegacyRoot =
+    command === 'serve' && resolution
+      ? await prepareLegacyAppForDev({
+          app: legacyInterviewer,
+          appRoot: here,
+          resolution,
+          env,
+        })
+      : null;
   const legacyInterviewerV8 =
-    command === 'build'
-      ? legacyAppDefine(
-          loadLegacyAppV8(legacyInterviewer, here, loadEnv(mode, here, '')),
-        )
+    resolution && (command === 'build' || devLegacyRoot !== null)
+      ? legacyAppDefine(resolution)
       : null;
   return mergeConfig(createRendererConfig({ outDir: 'dist', port: 5180 }), {
     define: {
@@ -81,6 +101,8 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       // `vite preview` serves /v8/ from dist/v8 as Netlify would (e2e).
       createLegacyAppPreviewPlugin(legacyInterviewer),
+      // `vite dev` serves it from the pinned build it prepared above.
+      createLegacyAppDevPlugin(legacyInterviewer, devLegacyRoot),
       // Interviewer 8 is served at /v8/ beside this app with its own worker
       // and 'interviewer-v8-' caches, which 'interviewer-' would otherwise
       // match: this worker must neither reclaim them nor ask /v8/ windows for

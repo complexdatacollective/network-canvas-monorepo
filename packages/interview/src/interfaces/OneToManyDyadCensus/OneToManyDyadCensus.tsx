@@ -163,7 +163,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   // Fallback: restore overflow after animation duration in case
   // onLayoutAnimationComplete doesn't fire (e.g. no layout change).
   useEffect(() => {
-    if (!isTransitioning) return;
+    if (!isTransitioning) return undefined;
     const timer = setTimeout(() => setIsTransitioning(false), 800);
     return () => clearTimeout(timer);
   }, [isTransitioning]);

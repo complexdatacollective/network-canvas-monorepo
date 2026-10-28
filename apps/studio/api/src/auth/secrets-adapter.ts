@@ -185,22 +185,22 @@ function sealedCreateData<D extends object>(
   return sealed;
 }
 
+/**
+ * Both bulk paths fail closed for the same reason: a token is sealed under
+ * the identity of the single row that holds it, so there is no one value
+ * that can be written across a set of rows. better-auth's only bulk write to
+ * `account` is `updatePassword`, which touches `password` alone.
+ */
+const refuseBulk = (): never => {
+  throw new Error(
+    `Studio refuses a bulk write to ${ACCOUNT_MODEL} OAuth tokens: each row seals its tokens under its own identity, so no single value can be written across rows.`,
+  );
+};
+
 function wrapOperations(
   inner: DBTransactionAdapter,
   cipher: SecretsCipherApi,
 ): Operations {
-  /**
-   * Both bulk paths fail closed for the same reason: a token is sealed under
-   * the identity of the single row that holds it, so there is no one value
-   * that can be written across a set of rows. better-auth's only bulk write to
-   * `account` is `updatePassword`, which touches `password` alone.
-   */
-  const refuseBulk = (): never => {
-    throw new Error(
-      `Studio refuses a bulk write to ${ACCOUNT_MODEL} OAuth tokens: each row seals its tokens under its own identity, so no single value can be written across rows.`,
-    );
-  };
-
   return {
     // `create` is the one method whose result type better-auth lets a caller
     // pick separately from the row type, and inference cannot carry that

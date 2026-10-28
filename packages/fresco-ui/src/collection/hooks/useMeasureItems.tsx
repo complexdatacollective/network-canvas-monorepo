@@ -230,7 +230,7 @@ export function useMeasureItems<T>({
   // baseline and miss the change.
   useLayoutEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || skip || measurementInfo.mode === 'none') return;
+    if (!sentinel || skip || measurementInfo.mode === 'none') return undefined;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];

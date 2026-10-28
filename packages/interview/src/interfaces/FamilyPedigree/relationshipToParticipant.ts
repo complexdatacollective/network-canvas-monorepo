@@ -135,6 +135,10 @@ function oneStepRelationship(step: Step): PedigreeRelationshipToParticipant {
       return step.half ? 'halfSibling' : 'sibling';
     case 'partner':
       return step.current ? 'partner' : 'formerPartner';
+    default: {
+      const unhandled: never = step;
+      throw new Error('Unhandled step', { cause: unhandled });
+    }
   }
 }
 

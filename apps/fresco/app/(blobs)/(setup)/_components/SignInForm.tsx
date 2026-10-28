@@ -240,7 +240,7 @@ export const SignInForm = () => {
 
   useEffect(() => {
     if (retryAfter === null || retryAfter <= 0) {
-      return;
+      return undefined;
     }
 
     const interval = setInterval(() => {

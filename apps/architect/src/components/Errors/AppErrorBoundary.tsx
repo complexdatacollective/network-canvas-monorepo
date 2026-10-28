@@ -81,7 +81,7 @@ function ErrorContents({
     architectLocales.find(({ locale }) => locale === intl.locale)?.direction ??
     'ltr';
   useLayoutEffect(() => {
-    if (!manageDocumentLocale) return;
+    if (!manageDocumentLocale) return undefined;
     // If provider initialization fails after bootstrap selected Spanish, its
     // optional English recovery must have the right document language,
     // including portaled controls. Inner recovery leaves ownership with the

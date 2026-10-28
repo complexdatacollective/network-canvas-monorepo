@@ -854,6 +854,9 @@ export type PlannedTwin = {
   zygosity: TwinZygosity;
 };
 
+const isPlanned = (linkId: string) =>
+  linkId.startsWith(plannedLinkId(0).slice(0, -1));
+
 /**
  * Everything to create when adding a relative: the new person, any unnamed
  * placeholder people the relationship needs (a sibling of someone without
@@ -1193,8 +1196,6 @@ export function planAddRelative({
     sexAttribute,
     family,
   );
-  const isPlanned = (linkId: string) =>
-    linkId.startsWith(plannedLinkId(0).slice(0, -1));
   const plan: AdditionPlan = {
     people: [
       ...people.filter(
@@ -1424,6 +1425,9 @@ function zygosityThrough(ab: TwinZygosity, bc: TwinZygosity): TwinZygosity {
   return ab === 'fraternal' || bc === 'fraternal' ? 'fraternal' : 'unknown';
 }
 
+const bornTo = (kind: FamilyLinkKind) =>
+  kind === 'biological' || kind === 'donor' || kind === 'surrogate';
+
 /**
  * Whether one of two siblings was adopted by a parent they share and the
  * other was born to them: someone adopted by a family was born to someone
@@ -1432,8 +1436,6 @@ function zygosityThrough(ab: TwinZygosity, bc: TwinZygosity): TwinZygosity {
  * of, since a step-parent's tie says nothing about the other's birth.
  */
 export function adoptedApart(family: Family, a: string, b: string): boolean {
-  const bornTo = (kind: FamilyLinkKind) =>
-    kind === 'biological' || kind === 'donor' || kind === 'surrogate';
   const kindsFrom = (personId: string) =>
     new Map(
       parentLinksOf(family, personId).map((link) => [link.source, link.kind]),

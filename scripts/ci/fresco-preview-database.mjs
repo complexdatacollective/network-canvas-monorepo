@@ -180,6 +180,9 @@ export function createNeon({ apiKey, projectId, fetchImpl = fetch, sleep }) {
   };
 }
 
+const isBranchValue = (gitBranch) => (value) =>
+  value.context === 'branch' && value.context_parameter === gitBranch;
+
 export function createNetlify({ token, siteId, fetchImpl = fetch }) {
   const call = (url, options) => request(fetchImpl, url, { token, ...options });
   let accountId;
@@ -187,8 +190,6 @@ export function createNetlify({ token, siteId, fetchImpl = fetch }) {
     accountId ??= (await call(`${NETLIFY_API}/sites/${siteId}`)).account_id;
     return `${NETLIFY_API}/accounts/${accountId}/env${suffix}?site_id=${siteId}`;
   };
-  const isBranchValue = (gitBranch) => (value) =>
-    value.context === 'branch' && value.context_parameter === gitBranch;
 
   return {
     /** Returns true when the stored value changed. */
@@ -532,6 +533,9 @@ function requiredEnv(name) {
   return value;
 }
 
+const logToConsole = (line) => console.log(line);
+const maskInLog = (secret) => console.log(`::add-mask::${secret}`);
+
 async function runCli() {
   const [command, ...args] = process.argv.slice(2);
   const neon = createNeon({
@@ -546,8 +550,6 @@ async function runCli() {
     token: requiredEnv('GITHUB_TOKEN'),
     repository: requiredEnv('GITHUB_REPOSITORY'),
   });
-  const log = (line) => console.log(line);
-  const mask = (secret) => console.log(`::add-mask::${secret}`);
   const pr = {
     number: Number(option(args, '--pr')),
     head: option(args, '--head'),
@@ -566,8 +568,8 @@ async function runCli() {
       netlify,
       github,
       isAffected: async (baseSha, headSha) => turboIsAffected(baseSha, headSha),
-      log,
-      mask,
+      log: logToConsole,
+      mask: maskInLog,
     });
     summary =
       {
@@ -583,7 +585,7 @@ async function runCli() {
       netlify,
       head: pr.head,
       otherPullRequests: await github.otherOpenPullRequests(pr.head, pr.number),
-      log,
+      log: logToConsole,
     });
     summary = result.deleted
       ? `Deleted preview database \`${result.name}\`.`

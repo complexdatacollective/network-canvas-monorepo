@@ -1,6 +1,11 @@
 'use client';
 
-import { type ComponentProps, type ComponentType, type ReactNode } from 'react';
+import {
+  type ComponentProps,
+  type ComponentType,
+  createElement,
+  type ReactNode,
+} from 'react';
 
 import useHasHydrated from '../hooks/useHasHydrated';
 
@@ -24,10 +29,6 @@ export const withNoSSRWrapper = <P extends object>(
 ): React.FC<ComponentProps<ComponentType<P>>> => {
   const WithNoSSRWrapper: React.FC<ComponentProps<ComponentType<P>>> = (
     props,
-  ) => (
-    <NoSSRWrapper>
-      <WrappedComponent {...props} />
-    </NoSSRWrapper>
-  );
+  ) => <NoSSRWrapper>{createElement(WrappedComponent, props)}</NoSSRWrapper>;
   return WithNoSSRWrapper;
 };

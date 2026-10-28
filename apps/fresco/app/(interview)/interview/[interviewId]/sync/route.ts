@@ -63,6 +63,21 @@ const frozenResponse = (syncRevision: number) =>
     syncRevision,
   });
 
+// An upgrade restarts the server but not the browsers already showing an
+// interview, and an upgrade that migrates or normalizes a protocol rewrites
+// its stored interviews too. A tab opened before it still holds the
+// interview as it was, and every write replaces the stored network and stage
+// metadata wholesale, so its next write would undo that rewrite. Every such
+// upgrade gives the protocol a new hash, including one that leaves its schema
+// version as it was, so the page's protocol hash is what identifies the tab:
+// a write without one, or with a hash the protocol no longer has, is
+// refused. Reloading the page starts it from the rewritten interview.
+const staleTab = () =>
+  NextResponse.json(
+    { error: 'Interview was upgraded since this page loaded' },
+    { status: 409 },
+  );
+
 /**
  * Handle post requests from the client to store the current interview state.
  */
@@ -78,21 +93,6 @@ const routeHandler = async (
   } catch (error) {
     return invalidRequest(error);
   }
-
-  // An upgrade restarts the server but not the browsers already showing an
-  // interview, and an upgrade that migrates or normalizes a protocol rewrites
-  // its stored interviews too. A tab opened before it still holds the
-  // interview as it was, and every write replaces the stored network and stage
-  // metadata wholesale, so its next write would undo that rewrite. Every such
-  // upgrade gives the protocol a new hash, including one that leaves its schema
-  // version as it was, so the page's protocol hash is what identifies the tab:
-  // a write without one, or with a hash the protocol no longer has, is
-  // refused. Reloading the page starts it from the rewritten interview.
-  const staleTab = () =>
-    NextResponse.json(
-      { error: 'Interview was upgraded since this page loaded' },
-      { status: 409 },
-    );
 
   const stored = await prisma.interview.findUnique({
     where: { id: interviewId },

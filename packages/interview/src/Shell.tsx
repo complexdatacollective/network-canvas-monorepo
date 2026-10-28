@@ -888,7 +888,7 @@ const Shell = ({
   // inspect the network/session state directly instead of waiting for a sync
   // round-trip. Mirrors the pattern used by `__e2eMap` in Geospatial.
   useEffect(() => {
-    if (!flags?.isE2E || typeof window === 'undefined') return;
+    if (!flags?.isE2E || typeof window === 'undefined') return undefined;
     window.__interviewStore = reduxStore;
     return () => {
       if (window.__interviewStore === reduxStore) {

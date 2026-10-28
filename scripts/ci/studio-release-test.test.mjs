@@ -531,13 +531,14 @@ test('every mask names its reason and the run that showed the change', () => {
   }
 });
 
+const schedule = (name, nextRunAt) => ({
+  id: name,
+  name,
+  queue: name,
+  next_run_at: nextRunAt,
+});
+
 test('the masks cover their own rows and nothing beside them', () => {
-  const schedule = (name, nextRunAt) => ({
-    id: name,
-    name,
-    queue: name,
-    next_run_at: nextRunAt,
-  });
   const before = exported({
     'studio_jobs.jobs': [],
     'studio_jobs.job_schedules': [
@@ -706,6 +707,8 @@ test('previous-release.mjs answers from the repository tags without asking any r
   assert.equal(published.tag, 'studio@1.1.0');
 });
 
+const passed = (run) => ({ run, ok: true });
+
 test('a published release adds run C, and the lane fails without it', () => {
   const none = { status: 'none', newest: null };
   const published = { status: 'published', newest: '1.0.0' };
@@ -713,7 +716,6 @@ test('a published release adds run C, and the lane fails without it', () => {
   assert.deepEqual(requiredRuns(['A', 'B'], published), ['A', 'B', 'C']);
   assert.deepEqual(requiredRuns(['C'], published), ['C']);
 
-  const passed = (run) => ({ run, ok: true });
   assert.equal(
     laneVerdict({ release: none, runs: [passed('A'), passed('B')] }).ok,
     true,

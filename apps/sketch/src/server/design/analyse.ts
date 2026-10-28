@@ -85,6 +85,13 @@ const deepTrim = <T>(v: T): T =>
 export const needsRetry = (issues: DesignIssue[]) =>
   issues.some((i) => i.severity === 'degraded');
 
+const describeScope = (scope: string) =>
+  scope === 'ego'
+    ? 'egoAttributes'
+    : scope.startsWith('node:')
+      ? `node type "${scope.slice(5)}"`
+      : `relationship "${scope.slice(4)}"`;
+
 export const analyse = (
   raw: StudyDesign,
 ): {
@@ -475,12 +482,6 @@ export const analyse = (
       : scope.startsWith('node:')
         ? (nodeType(scope.slice(5))?.attributes ?? [])
         : (rel(scope.slice(4))?.attributes ?? []);
-  const describeScope = (scope: string) =>
-    scope === 'ego'
-      ? 'egoAttributes'
-      : scope.startsWith('node:')
-        ? `node type "${scope.slice(5)}"`
-        : `relationship "${scope.slice(4)}"`;
   const elsewhere = (id: string, scope: string) => {
     const scopes = [
       'ego',

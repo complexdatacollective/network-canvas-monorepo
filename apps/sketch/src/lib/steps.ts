@@ -14,7 +14,10 @@ export const STEP_TITLES: Record<StepId, string> = {
 };
 
 // Who does each step, for the chip on its row.
-export const stepWho = (id: StepId, labels: JobModels | null): string => {
+export const stepWho = (
+  id: StepId,
+  labels: JobModels | null,
+): string | undefined => {
   switch (id) {
     case 'read':
       return 'Sketch';
@@ -26,6 +29,8 @@ export const stepWho = (id: StepId, labels: JobModels | null): string => {
       return 'Compiler';
     case 'validate':
       return 'Protocol validation';
+    default:
+      return undefined;
   }
 };
 

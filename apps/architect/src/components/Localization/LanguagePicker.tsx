@@ -106,7 +106,7 @@ export const FittedNames = ({ names }: { names: readonly string[] }) => {
   useLayoutEffect(() => {
     const box = boxRef.current;
     const measure = measureRef.current;
-    if (!box || !measure) return;
+    if (!box || !measure) return undefined;
     const fit = () => {
       const width = box.clientWidth;
       // At least one name is shown; if even that is too long it truncates.
