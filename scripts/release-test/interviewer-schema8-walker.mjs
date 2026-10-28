@@ -751,12 +751,23 @@ try {
     v8.getByRole('heading', { name: 'Who are the people you know?' }),
   ).toBeVisible({ timeout: 30_000 });
   await expect(nodes.getByRole('option')).toHaveCount(1);
+  await expect(nodes.getByRole('option', { name: '🔒' })).toBeVisible();
+  await shot('offline-reload');
+  // What was stored offline must still be readable: the walk's passphrase
+  // decrypts the person's name, as on the online resume.
+  await v8.getByRole('button', { name: 'Enter your Passphrase' }).click();
+  await passDialog
+    .getByRole('textbox', { name: 'Passphrase' })
+    .fill(PASSPHRASE);
+  await passDialog.getByRole('button', { name: 'Submit passphrase' }).click();
+  await expect(
+    nodes.getByRole('option', { name: OFFLINE_PERSON }),
+  ).toBeVisible();
   record(
     'offline-reload',
     true,
-    'offline reload reopened Name people with its one person kept',
+    `offline reload reopened Name people with its one person kept, and the walk's passphrase decrypted the name "${OFFLINE_PERSON}"`,
   );
-  await shot('offline-reload');
 
   await exitFromInterviewer8();
   record('offline-exit', true, "Interviewer 8's exit returned Home offline");
@@ -774,13 +785,21 @@ try {
   const offlinePeople = (offlineSession?.network?.nodes ?? []).filter(
     (n) => n.type === 'person',
   );
+  const offlineSecure = offlinePeople[0]?._secureAttributes?.name;
+  const offlinePlaintext = JSON.stringify(
+    offlineSession?.network ?? null,
+  ).includes(OFFLINE_PERSON);
   record(
     'offline-data-row',
     offlineSession?.finishedAt === null &&
       offlineSession?.network?.ego?.attributes?.ego_name === EGO_NAME &&
       offlinePeople.length === 1 &&
-      isBytes(offlinePeople[0].attributes?.name),
-    `${OFFLINE_CASE} listed in progress with Resume while offline; stored ego=${JSON.stringify(offlineSession?.network?.ego?.attributes?.ego_name ?? null)} people=${offlinePeople.length} finishedAt=${JSON.stringify(offlineSession?.finishedAt ?? null)}`,
+      isBytes(offlinePeople[0].attributes?.name) &&
+      isBytes(offlineSecure?.iv) &&
+      offlineSecure.iv.length === 12 &&
+      isBytes(offlineSecure?.salt) &&
+      !offlinePlaintext,
+    `${OFFLINE_CASE} listed in progress with Resume while offline; stored ego=${JSON.stringify(offlineSession?.network?.ego?.attributes?.ego_name ?? null)} people=${offlinePeople.length} iv=${offlineSecure?.iv?.length ?? 'none'} salt=${offlineSecure?.salt?.length ?? 'none'} plaintextNameStored=${offlinePlaintext} finishedAt=${JSON.stringify(offlineSession?.finishedAt ?? null)}`,
   );
   await shot('offline-data-row');
 
