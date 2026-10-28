@@ -21,7 +21,10 @@ function appI18nNextLoader(this: LoaderContext, code: string): string {
   if (this.resourcePath.endsWith('.json')) {
     return `export default ${compileCatalog(code, this.resourcePath) ?? code};`;
   }
-  return transform(code, this.resourcePath, { ast: true })?.code ?? code;
+  return (
+    transform(code, this.resourcePath, { ast: true, preserveWhitespace: true })
+      ?.code ?? code
+  );
 }
 
 export default appI18nNextLoader;

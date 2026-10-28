@@ -576,12 +576,12 @@
     "description": "Title of the panel for a connection between two people or other items on the canvas, shown when the task gives that kind of connection no name of its own."
   },
   "interview.runtime.copied": {
-    "defaultMessage": "Copied!",
-    "description": "Confirmation that interview diagnostic information was copied."
+    "defaultMessage": "Copied",
+    "description": "Label the button under the interview error message changes to for a moment once it has copied the debug information, and the screen-reader announcement that the copy happened. Past tense of the Copy button label."
   },
-  "interview.runtime.copyDebugInfo": {
-    "defaultMessage": "Copy Debug Info",
-    "description": "Button that copies interview error details for the study organizer."
+  "interview.runtime.copy": {
+    "defaultMessage": "Copy",
+    "description": "Label of the button under the interview error message that copies the debug information the participant can send to the study organizer. The message above it calls this “the button below”."
   },
   "interview.runtime.deleteBin": {
     "defaultMessage": "Delete bin",
@@ -668,8 +668,8 @@
     "description": "Fallback accessible name for the second item when its name is missing."
   },
   "interview.runtime.taskErrorDescription": {
-    "defaultMessage": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
-    "description": "Recovery instructions when an interview screen cannot be displayed, whether from a crash or a lost connection. The copy button is shown below this text."
+    "defaultMessage": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
+    "description": "Recovery instructions when an interview screen cannot be displayed, whether from a crash or a lost connection, written in markdown: a heading line starting with “# ” and three paragraphs separated by blank lines. Keep the markdown. The copy button is shown below this text."
   },
   "interview.runtime.unnamed": {
     "defaultMessage": "Unnamed",

@@ -51,6 +51,27 @@ const sources: TranslationSources = Object.fromEntries(
 const pick = (ids: readonly string[]): TranslationSources =>
   Object.fromEntries(ids.map((id) => [id, sources[id] ?? '']));
 
+describe('extractMessages', () => {
+  // As the build transform keeps them: a markdown message's blank lines are
+  // its paragraphs, and translators must see them to keep them.
+  it('keeps the blank lines in a markdown message', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-extract-'));
+    const file = join(dir, 'messages.ts');
+    writeFileSync(
+      file,
+      `import { defineMessages } from '@codaco/app-i18n/messages';
+      export const messages = defineMessages({ help: {
+        id: 'example.help', defaultMessage: '# Heading\\n\\nParagraph.',
+        description: 'Markdown help text.'
+      }});`,
+    );
+    const catalog = await extractMessages([file]);
+    expect(catalog['example.help']?.defaultMessage).toBe(
+      '# Heading\n\nParagraph.',
+    );
+  });
+});
+
 describe('messageTokens', () => {
   it('collects argument, tag, and plural tokens, including nested ones', () => {
     expect(

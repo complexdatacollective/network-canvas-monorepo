@@ -152,3 +152,37 @@ describe('the catalog transform', () => {
     );
   });
 });
+
+describe('the message transform', () => {
+  // A markdown message's blank lines are its paragraphs; collapsing them
+  // would run the heading and paragraphs together.
+  it('keeps the blank lines in a markdown message', () => {
+    const plugin = appI18n().find(
+      (entry) =>
+        typeof entry === 'object' &&
+        entry !== null &&
+        'name' in entry &&
+        entry.name === 'formatjs',
+    );
+    const hook =
+      typeof plugin === 'object' && plugin !== null && 'transform' in plugin
+        ? plugin.transform
+        : undefined;
+    const handler =
+      typeof hook === 'object' && hook !== null && 'handler' in hook
+        ? hook.handler
+        : hook;
+    if (typeof handler !== 'function') {
+      throw new Error('formatjs plugin has no transform hook');
+    }
+    const code = `import { defineMessages } from '@codaco/app-i18n/messages';
+      export const messages = defineMessages({ help: {
+        id: 'example.help', defaultMessage: '# Heading\\n\\nParagraph.',
+        description: 'Markdown help text.'
+      }});`;
+    const result = (
+      handler as (code: string, id: string) => { code: string } | undefined
+    )(code, '/app/src/Example.ts');
+    expect(result?.code).toContain('# Heading\\n\\nParagraph.');
+  });
+});

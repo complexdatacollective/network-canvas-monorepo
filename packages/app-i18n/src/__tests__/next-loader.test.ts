@@ -57,6 +57,19 @@ describe('the Next message compiler', () => {
     expect(compiled).not.toContain('{count, plural');
   });
 
+  // A markdown message's blank lines are its paragraphs; collapsing them
+  // would run the heading and paragraphs together.
+  it('keeps the blank lines in a markdown message', () => {
+    const code = `import { defineMessages } from '@codaco/app-i18n/messages';
+      export const messages = defineMessages({ help: {
+        id: 'example.help', defaultMessage: '# Heading\\n\\nParagraph.',
+        description: 'Markdown help text.'
+      }});`;
+    expect(run(code, '/app/src/Example.ts')).toContain(
+      '# Heading\\n\\nParagraph.',
+    );
+  });
+
   it('retains TSX for Next to compile and leaves non-message source alone', () => {
     const code =
       'export default function Example() { return <div>{123}</div>; }';
