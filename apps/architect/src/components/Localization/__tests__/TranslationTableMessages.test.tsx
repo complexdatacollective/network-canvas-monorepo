@@ -78,7 +78,7 @@ const leaveCell = async (
 };
 
 const cellName = (language: string) =>
-  new RegExp(`Brothers and sisters ${language}$`);
+  new RegExp(`Brothers and sisters item ${language}$`);
 
 /** The cell of the list item, in `language`'s column, before it has focus. */
 const messageCell = (language: string) =>
