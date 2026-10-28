@@ -149,10 +149,16 @@ export async function readCreatedSection(
   deps: ChannelDeps,
   sectionId: ProtocolSectionId,
 ): Promise<void> {
-  const options = deps.adapter.rpcQuery('GetSection', {
-    protocolId: deps.protocolId,
-    sectionId,
-  });
+  // Asked whatever the browser says about the network: a host in the tab
+  // answers offline, and a read paused until the network returns would hold
+  // the create that awaits it open for as long.
+  const options = {
+    ...deps.adapter.rpcQuery('GetSection', {
+      protocolId: deps.protocolId,
+      sectionId,
+    }),
+    networkMode: 'always',
+  } as const;
   try {
     await deps.queryClient.ensureQueryData(options);
   } catch {

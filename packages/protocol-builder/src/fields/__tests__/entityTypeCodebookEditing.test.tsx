@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { onlineManager } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -143,52 +144,64 @@ describe('making and changing a codebook type from the control that names it', (
    * on that answer alone showed the new id as a type "no longer in the
    * codebook" until the revision caught up. Holding every revision back is
    * that window, kept open for as long as the test needs to look at it.
+   *
+   * And offline as well as online: Architect's host is in the tab, so a
+   * create succeeds with the network down, and the read that follows it must
+   * not wait for the network to come back.
    */
-  it('names the new type on the stage before its revision has arrived', async () => {
-    let holding = false;
-    const heldBack: unknown[] = [];
-    const harness = renderStageEditor({
-      ...pedigreeOnAProtocolWithNoNodeTypes(),
-      adapter: (host) => ({
-        ...host.adapter,
-        rpcStream: (tag, payload, onChunk, signal) =>
-          host.adapter.rpcStream(
-            tag,
-            payload,
-            (chunk) => {
-              if (holding) heldBack.push(chunk);
-              else onChunk(chunk);
-            },
-            signal,
-          ),
-      }),
-    });
-    await harness.opened();
-    clearNodeTypes(harness);
+  it.each([
+    { connection: 'online', online: true },
+    { connection: 'offline', online: false },
+  ])(
+    'names the new type on the stage before its revision has arrived ($connection)',
+    async ({ online }) => {
+      onTestFinished(() => onlineManager.setOnline(true));
+      let holding = false;
+      const heldBack: unknown[] = [];
+      const harness = renderStageEditor({
+        ...pedigreeOnAProtocolWithNoNodeTypes(),
+        adapter: (host) => ({
+          ...host.adapter,
+          rpcStream: (tag, payload, onChunk, signal) =>
+            host.adapter.rpcStream(
+              tag,
+              payload,
+              (chunk) => {
+                if (holding) heldBack.push(chunk);
+                else onChunk(chunk);
+              },
+              signal,
+            ),
+        }),
+      });
+      await harness.opened();
+      clearNodeTypes(harness);
 
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new node type' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Node type name' }),
-      'relative',
-    );
-    holding = true;
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save entity' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Choose the node type' }),
-    );
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Create new node type' }),
+      );
+      await harness.user.type(
+        await screen.findByRole('textbox', { name: 'Node type name' }),
+        'relative',
+      );
+      holding = true;
+      onlineManager.setOnline(online);
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Save entity' }),
+      );
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Choose the node type' }),
+      );
 
-    expect(
-      await screen.findByRole('radio', { name: 'relative' }),
-    ).toBeChecked();
-    expect(heldBack).not.toHaveLength(0);
-    expect(
-      screen.queryByText(/no longer in the codebook/),
-    ).not.toBeInTheDocument();
-  });
+      expect(
+        await screen.findByRole('radio', { name: 'relative' }),
+      ).toBeChecked();
+      expect(heldBack).not.toHaveLength(0);
+      expect(
+        screen.queryByText(/no longer in the codebook/),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   /**
    * The dialog is closed by being turned off, not by being taken away.
