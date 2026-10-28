@@ -131,6 +131,37 @@ function applyEvent(deps: ChannelDeps, event: ProtocolEvent): void {
   }
 }
 
+/**
+ * Reads a section this client has just created into the cache, rather than
+ * waiting for the channel to deliver it.
+ *
+ * The create's answer and the revision it published travel separately, and
+ * the answer usually wins: a caller that points the stage at the new section
+ * as soon as it is answered would otherwise render a reference to a section
+ * the cache has never heard of — a picker shows a type created a moment ago as
+ * "no longer in the codebook" until the event catches up.
+ *
+ * `ensureQueryData` does not ask again when the event has already arrived.
+ * Best effort: a read that fails leaves the channel to deliver the section, and
+ * a section deleted while it was being read is not put back into the list.
+ */
+export async function readCreatedSection(
+  deps: ChannelDeps,
+  sectionId: ProtocolSectionId,
+): Promise<void> {
+  const options = deps.adapter.rpcQuery('GetSection', {
+    protocolId: deps.protocolId,
+    sectionId,
+  });
+  try {
+    await deps.queryClient.ensureQueryData(options);
+  } catch {
+    return;
+  }
+  if (deps.queryClient.getQueryData(options.queryKey) === undefined) return;
+  updateSectionList(deps, sectionId, 'present');
+}
+
 function updateSectionList(
   deps: ChannelDeps,
   sectionId: ProtocolSectionId,

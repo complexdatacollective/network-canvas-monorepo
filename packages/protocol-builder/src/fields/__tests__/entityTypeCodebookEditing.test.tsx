@@ -136,6 +136,61 @@ describe('making and changing a codebook type from the control that names it', (
   });
 
   /**
+   * The new type is shown by its name from the moment the stage holds it.
+   *
+   * The create's answer and the revision it published reach the editor
+   * separately, and in Architect the answer arrives first. Selecting the type
+   * on that answer alone showed the new id as a type "no longer in the
+   * codebook" until the revision caught up. Holding every revision back is
+   * that window, kept open for as long as the test needs to look at it.
+   */
+  it('names the new type on the stage before its revision has arrived', async () => {
+    let holding = false;
+    const heldBack: unknown[] = [];
+    const harness = renderStageEditor({
+      ...pedigreeOnAProtocolWithNoNodeTypes(),
+      adapter: (host) => ({
+        ...host.adapter,
+        rpcStream: (tag, payload, onChunk, signal) =>
+          host.adapter.rpcStream(
+            tag,
+            payload,
+            (chunk) => {
+              if (holding) heldBack.push(chunk);
+              else onChunk(chunk);
+            },
+            signal,
+          ),
+      }),
+    });
+    await harness.opened();
+    clearNodeTypes(harness);
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new node type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'relative',
+    );
+    holding = true;
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Choose the node type' }),
+    );
+
+    expect(
+      await screen.findByRole('radio', { name: 'relative' }),
+    ).toBeChecked();
+    expect(heldBack).not.toHaveLength(0);
+    expect(
+      screen.queryByText(/no longer in the codebook/),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
    * The dialog is closed by being turned off, not by being taken away.
    *
    * Both of these dialogs used to be rendered only while there was a session

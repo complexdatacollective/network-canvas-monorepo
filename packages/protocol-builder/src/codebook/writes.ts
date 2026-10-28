@@ -1,3 +1,4 @@
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Redacted } from 'effect';
 import { useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
@@ -11,6 +12,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { attempt, type Refusal } from '../state/attempt.ts';
+import { readCreatedSection } from '../state/channel.ts';
 import {
   useProtocolBuilderContext,
   type ProtocolBuilderAdapter,
@@ -47,6 +49,13 @@ import {
  * researcher added one.
  */
 const nextRequestId = (): string => uuid();
+
+/** What a create needs to read the section it made into the cache. */
+type CreateDeps = Readonly<{
+  adapter: ProtocolBuilderAdapter;
+  queryClient: QueryClient;
+  protocolId: string;
+}>;
 
 /**
  * What became of a codebook change the researcher asked for.
@@ -190,6 +199,7 @@ export function useCodebookSectionWrite(): (
   next: (authoritativeDocument: SectionDoc) => SectionDoc,
 ) => Promise<CodebookWriteOutcome> {
   const { adapter, protocolId } = useProtocolBuilderContext();
+  const queryClient = useQueryClient();
   // The participant's own section is CREATED by the first attribute, and a
   // create is the one write here a retry can be recognised as.
   const egoKey = useKeptRequestId();
@@ -212,7 +222,11 @@ export function useCodebookSectionWrite(): (
           subject.entity === 'ego' &&
           acquired.refusal?._tag === 'SectionNotFound'
         ) {
-          return createEgoCodebook(adapter, protocolId, egoKey, next);
+          return createEgoCodebook(
+            { adapter, queryClient, protocolId },
+            egoKey,
+            next,
+          );
         }
         if (acquired.refusal === undefined) {
           // An acquire with no refusal on it never reached an answer: the
@@ -260,7 +274,7 @@ export function useCodebookSectionWrite(): (
         await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
       }
     },
-    [adapter, egoKey, protocolId],
+    [adapter, egoKey, protocolId, queryClient],
   );
 }
 
@@ -275,8 +289,7 @@ export function useCodebookSectionWrite(): (
  * overwritten.
  */
 async function createEgoCodebook(
-  adapter: ProtocolBuilderAdapter,
-  protocolId: string,
+  deps: CreateDeps,
   egoKey: KeptRequestId,
   next: (authoritativeDocument: SectionDoc) => SectionDoc,
 ): Promise<CodebookWriteOutcome> {
@@ -286,6 +299,7 @@ async function createEgoCodebook(
   } catch (error: unknown) {
     return builderRefusal(error);
   }
+  const { adapter, protocolId } = deps;
   const requestId = egoKey.forAsk(contentHash(document));
   const created = await attempt(adapter, 'Create', {
     protocolId,
@@ -297,6 +311,7 @@ async function createEgoCodebook(
     egoKey.settled(requestId);
   }
   if (created.isSuccess) {
+    await readCreatedSection(deps, created.data.sectionId);
     return { status: 'applied', sectionId: created.data.sectionId };
   }
   const { refusal } = created;
@@ -323,6 +338,7 @@ export function useCreateCodebookEntity(): (
   document: SectionDoc,
 ) => Promise<CodebookWriteOutcome> {
   const { adapter, protocolId } = useProtocolBuilderContext();
+  const queryClient = useQueryClient();
   const createKey = useKeptRequestId();
 
   return useCallback(
@@ -346,6 +362,12 @@ export function useCreateCodebookEntity(): (
         createKey.settled(requestId);
       }
       if (created.isSuccess) {
+        // Read in before the caller is answered: what it does next is point
+        // the stage at the new type.
+        await readCreatedSection(
+          { adapter, queryClient, protocolId },
+          created.data.sectionId,
+        );
         return { status: 'applied', sectionId: created.data.sectionId };
       }
       const { refusal } = created;
@@ -357,7 +379,7 @@ export function useCreateCodebookEntity(): (
       }
       return refused(protocolRefusal(refusal));
     },
-    [adapter, createKey, protocolId],
+    [adapter, createKey, protocolId, queryClient],
   );
 }
 
