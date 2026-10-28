@@ -118,6 +118,7 @@ function makeAgent(journeyResults, verifyResults = {}, evidenceResult) {
       if (evidenceResult !== undefined) return evidenceResult;
       return {
         fingerprint: PREFLIGHT.fingerprint,
+        commit: PREFLIGHT.commit,
         entries: [
           ...Object.keys(journeyResults).map((k) => ({
             journey: k,
@@ -518,6 +519,7 @@ test('evidence must exist on disk with per-check identity', async () => {
       {},
       {
         fingerprint: PREFLIGHT.fingerprint,
+        commit: PREFLIGHT.commit,
         entries: [
           {
             journey: 'protocol-management',
@@ -694,6 +696,7 @@ test('agent-controlled artifactsDir never reaches the verifier prompt', async ()
     if (o.label === 'verify:evidence')
       return {
         fingerprint: PREFLIGHT.fingerprint,
+        commit: PREFLIGHT.commit,
         entries: [
           {
             journey: 'pwa-offline',
@@ -751,6 +754,30 @@ test('a mid-run redeploy caps the run below certification', async () => {
   const res = await run(withDrift, { expectedVersion: '9.9.9' });
   assert.equal(res.verdict, 'INCOMPLETE');
   assert.ok(res.certificationGaps.some((a) => a.includes('changed mid-run')));
+});
+
+test('a pinned commit that stops being live caps the run below certification', async () => {
+  const jr = Object.fromEntries(
+    Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
+  );
+  const agentImpl = makeAgent(jr);
+  // Same assets (turbo cache), later commit: the fingerprint cannot see it.
+  const withNewCommit = async (prompt, opts) => {
+    const r = await agentImpl(prompt, opts);
+    if (opts.label === 'verify:evidence')
+      return { ...r, commit: 'e'.repeat(40) };
+    return r;
+  };
+  const res = await run(withNewCommit, PINS);
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(
+    res.certificationGaps.some((a) =>
+      a.includes('no longer serves the pinned commit'),
+    ),
+  );
+  // An unpinned run binds no commit, so a moved commit alone is no gap.
+  const unpinned = await run(withNewCommit, undefined);
+  assert.equal(unpinned.verdict, 'PASS');
 });
 
 const badFingerprintAgent = async (p, o) =>
@@ -962,6 +989,7 @@ test('an evidence-free verifier cannot dismiss failures', async () => {
   const bare = await run(
     makeAgent(jr, vr, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1025,6 +1053,7 @@ test('every certification gap caps the verdict', async () => {
 
 const conductOfflineEvidence = (checkpointNumbers) => ({
   fingerprint: PREFLIGHT.fingerprint,
+  commit: PREFLIGHT.commit,
   entries: [
     {
       journey: 'conduct-offline',
@@ -1124,6 +1153,7 @@ test('dismissals bind to per-failure verifier captures', async () => {
   const res = await run(
     makeAgent(jr, vr, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1318,6 +1348,7 @@ test('unevidenced severity downgrades keep the reported severity', async () => {
   const bare = await run(
     makeAgent(jr, vr, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1368,6 +1399,7 @@ test('an internally inconsistent audit entry cannot evidence a dismissal', async
   const res = await run(
     makeAgent(jr, vr, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1425,6 +1457,7 @@ test('an internally inconsistent audit entry cannot evidence a dismissal', async
   const impossible = await run(
     makeAgent(jr2, vr2, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1455,6 +1488,7 @@ const pm = (opts) => ({
 test('structured skip codes gate schema-skew to hotfix runs', async () => {
   const evidence = {
     fingerprint: PREFLIGHT.fingerprint,
+    commit: PREFLIGHT.commit,
     entries: [
       {
         journey: 'protocol-management',

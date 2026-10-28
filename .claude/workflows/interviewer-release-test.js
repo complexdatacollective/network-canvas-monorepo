@@ -278,8 +278,13 @@ const VERIFY_SCHEMA = {
 
 const EVIDENCE_SCHEMA = {
   type: 'object',
-  required: ['entries', 'fingerprint'],
+  required: ['entries', 'fingerprint', 'commit'],
   properties: {
+    commit: {
+      type: 'string',
+      description:
+        'The "commit" field of the deployment\'s /build-info.json re-read NOW, or "unknown"',
+    },
     fingerprint: {
       type: 'string',
       description:
@@ -1368,6 +1373,9 @@ if (evidenceClaims.length) {
 Then re-compute the deployment fingerprint and report it as fingerprint:
 { curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u; curl -s ${url}/manifest.webmanifest; curl -s ${url}/sw.js; } | shasum -a 256 | cut -c1-16
 
+Then re-read the deployed commit, bypassing every cache, and report its "commit" field as commit (or "unknown" if the file is missing or not JSON with a string commit):
+curl -s -H 'Cache-Control: no-cache' ${url}/build-info.json
+
 ENTRIES (JSON):
 ${JSON.stringify(evidenceClaims, null, 2)}
 
@@ -1390,6 +1398,11 @@ Return one entry per input with the journey name copied verbatim.`,
 // (same URL, possibly same version) invalidates every journey's evidence.
 const deployChanged =
   evidence && evidence.fingerprint !== preflight.fingerprint;
+// A commit-pinned run also needs the pinned commit still live: a redeploy of
+// a later commit whose turbo-restored assets are byte-identical keeps the
+// fingerprint but no longer serves what the run certifies.
+const commitChanged =
+  evidence && expectedCommit && evidence.commit !== expectedCommit;
 
 // ---------------------------------------------------------------------------
 // Synthesis (deterministic, in code)
@@ -1728,6 +1741,11 @@ if (auditFailed) {
 if (deployChanged) {
   certificationGaps.push(
     `the deployment changed mid-run (fingerprint ${preflight.fingerprint} at preflight, ${evidence.fingerprint} at the end) — the journeys may describe a build that is no longer live; re-run against the current deployment`,
+  );
+}
+if (commitChanged) {
+  certificationGaps.push(
+    `the deployment no longer serves the pinned commit (${expectedCommit} at preflight, ${evidence.commit} at the end) — re-run pinned to the current deployment`,
   );
 }
 // ANY unadjudicated failure makes the run incomplete (unless it already
