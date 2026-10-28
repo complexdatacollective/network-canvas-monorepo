@@ -198,6 +198,7 @@
         "$TURBO_ROOT$/scripts/buildtime/assert-pwa-cache-headers.mjs",
         "$TURBO_ROOT$/scripts/buildtime/bundle-legacy-app.mjs",
         "$TURBO_ROOT$/scripts/buildtime/legacy-app-assertions.ts",
+        "$TURBO_ROOT$/scripts/buildtime/legacy-app-dev-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/legacy-app-preview-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/legacy-app.ts",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
@@ -656,6 +657,8 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
+        "$TURBO_ROOT$/scripts/buildtime/bundle-legacy-app.mjs",
+        "$TURBO_ROOT$/scripts/buildtime/legacy-app-dev-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/legacy-app-preview-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/legacy-app.ts",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
@@ -769,6 +772,8 @@
         "$TURBO_ROOT$/packages/protocols/sample/**",
         // Imported by the Vite config chain the tests load, and by the
         // service worker test itself.
+        "$TURBO_ROOT$/scripts/buildtime/bundle-legacy-app.mjs",
+        "$TURBO_ROOT$/scripts/buildtime/legacy-app-dev-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/legacy-app-preview-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/legacy-app.ts",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",

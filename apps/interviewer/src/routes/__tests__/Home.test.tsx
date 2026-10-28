@@ -85,13 +85,6 @@ vi.mock('~/components/ResumePill', async (importOriginal) => ({
   ResumePill: () => <div>Resume last interview</div>,
 }));
 
-vi.mock('~/components/useSettleLockForInterviewer8', () => ({
-  useSettleLockForInterviewer8: () => ({
-    settled: true,
-    settleLock: () => Promise.resolve(true),
-  }),
-}));
-
 vi.mock('~/components/SettingsDialog', () => ({
   SettingsDialog: () => null,
 }));
