@@ -25,8 +25,8 @@ let targetLayout = {
   width: 200,
 };
 
-vi.mock('motion/react', () => ({
-  useReducedMotion: () => motionPreferences.shouldReduce,
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionPreferences.shouldReduce,
 }));
 
 vi.mock('@codaco/art', () => ({

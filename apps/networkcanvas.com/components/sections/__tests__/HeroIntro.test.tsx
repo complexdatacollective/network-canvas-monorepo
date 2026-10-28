@@ -73,7 +73,10 @@ function expectControlledMotionRoots(container: HTMLElement) {
 vi.mock('motion/react', () => ({
   motion: { div: MotionDiv },
   useAnimationControls: () => animationControls,
-  useReducedMotion: () => motionPreference.reduced,
+}));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionPreference.reduced,
 }));
 
 vi.mock('@codaco/art', () => ({

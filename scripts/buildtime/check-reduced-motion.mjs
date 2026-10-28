@@ -58,14 +58,16 @@ const repoRoot = (cwd) =>
 
 /**
  * Block, line and HTML comments go before matching, so prose that discusses the
- * query is not an offender. `//` counts as a comment only where it does not
- * follow a `:` or a quote, so a URL inside a string cannot truncate the code
- * after it.
+ * query is not an offender. Comments are blanked rather than removed, keeping
+ * their line breaks, so the line numbers reported afterwards are the file's
+ * own. `//` counts as a comment only where it does not follow a `:` or a quote,
+ * so a URL inside a string cannot truncate the code after it.
  */
+const blank = (comment) => comment.replace(/[^\n]/g, ' ');
 const stripComments = (text) =>
   text
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/<!--[\s\S]*?-->/g, blank)
+    .replace(/\/\*[\s\S]*?\*\//g, blank)
     .replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
 
 /** The text of the `{ … }` block that opens at or after `from`, or null. */

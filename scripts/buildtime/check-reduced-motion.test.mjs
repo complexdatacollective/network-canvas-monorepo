@@ -93,6 +93,15 @@ test('accepts a media query that defers to the provider attribute', () => {
   );
 });
 
+test('reports the true line after multi-line comments', () => {
+  assert.deepEqual(
+    directReads(
+      '/*\n * one\n */\n<!--\n two\n-->\nmatchMedia("(prefers-reduced-motion: reduce)");\n',
+    ),
+    [7],
+  );
+});
+
 test('ignores prose in comments, and skips tests and the classic apps', () => {
   assert.deepEqual(
     directReads(
