@@ -430,6 +430,7 @@ export function useAutoLayout({
     return () => {
       animationRef.current?.stop();
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      setIsRunning(false);
       worker.terminate();
       workerRef.current = null;
     };
