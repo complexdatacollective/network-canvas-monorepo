@@ -1160,6 +1160,11 @@ ${sampleSourceNote}
    which codebook entries
    already exist from earlier stages and which this stage introduces. Do not
    describe internal ids or JSON keys; describe what a person sets.
+   A setting the file leaves out takes the app's default, which is not
+   always off: say to leave that control as the editor presents it, never
+   that it is off or empty. A concentric-circles background without a skew
+   setting, for example, is skewed, and its "Skew circle sizes" switch
+   shows on.
    weight: 1 for an Information stage, 2 for a stage that reuses existing
    codebook entries, 3 for one that introduces new codebook entries or has
    several prompts.
@@ -1258,6 +1263,15 @@ Run directory: ${analysis.workDir} (write your files under it)
    stage order, types and labels; every stage setting; codebook entries and
    variable types, options and validation; asset names, types and file
    contents (hash them). The protocol's name differs by design.
+   Compare what each setting means, not how it is stored: a setting one
+   file leaves out means the app's default, and that default is not always
+   off. A concentric-circles background without skewedTowardCenter is drawn
+   skewed (the interview's ConcentricCircles defaults skewed to true), so
+   skewedTowardCenter false against an absent one is a real difference,
+   even where the rings happen to look alike. When unsure what an absent
+   setting means, find its default in packages/interview/src or
+   packages/protocol-validation/src/schemas at ${sampleRef} rather than
+   assuming off.
    canonicalStageCount and builtStageCount are your own counts.
 4. The comparison ignores generated fields by construction, so check them on
    their own: run
@@ -1278,8 +1292,8 @@ Run directory: ${analysis.workDir} (write your files under it)
    attribution in reasoning. Report every canonical stage exactly once, by
    its canonical index, and nothing else, listing all of its discrepancies:
    fidelity "match" when every discrepancy it has (if any) is
-   "non-user-facing", such as a setting stored as false in one file and left
-   out of the other; "divergent" when at least one is not; "missing" when the
+   "non-user-facing", such as a setting stored with its default value in
+   one file and left out of the other; "divergent" when at least one is not; "missing" when the
    built protocol lacks it. A built stage with no
    canonical counterpart is a protocol discrepancy, not a stage entry.
 Builders' log:
