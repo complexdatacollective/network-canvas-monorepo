@@ -4,8 +4,7 @@ import { Check, ClipboardCopy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { IconButton } from '@codaco/fresco-ui/Button';
-import { cx } from '@codaco/fresco-ui/utils/cva';
+import Button from '@codaco/fresco-ui/Button';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 
@@ -44,15 +43,28 @@ export default function CopyDebugInfoButton({
     );
   };
 
+  // The label switches to "Copied" for sighted participants; the status
+  // region says the same to a screen reader, which does not reliably
+  // announce a change to the focused button's own text.
   return (
-    <IconButton
-      onClick={copyDebugInfoToClipboard}
-      className={cx(className)}
-      color="primary"
-      icon={copied ? <Check /> : <ClipboardCopy />}
-      aria-label={intl.formatMessage(
-        copied ? messages.copied : messages.copyDebugInfo,
-      )}
-    />
+    <>
+      <Button
+        onClick={copyDebugInfoToClipboard}
+        className={className}
+        color="primary"
+        icon={
+          copied ? (
+            <Check aria-hidden="true" />
+          ) : (
+            <ClipboardCopy aria-hidden="true" />
+          )
+        }
+      >
+        {intl.formatMessage(copied ? messages.copied : messages.copy)}
+      </Button>
+      <span role="status" className="sr-only">
+        {copied ? intl.formatMessage(messages.copied) : null}
+      </span>
+    </>
   );
 }

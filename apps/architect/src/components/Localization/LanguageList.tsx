@@ -290,17 +290,18 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
         })}
       </ul>
       <div className="mt-6 flex flex-wrap gap-3">
-        {locales.length > 1 && (
-          <Button asChild color="primary" icon={<Table2 aria-hidden />}>
-            <Link
-              href={tableHref}
-              state={tableLinkState}
-              onClick={guardLeavingStage(tableHref)}
-            >
-              {intl.formatMessage(messages.openTable)}
-            </Link>
-          </Button>
-        )}
+        {/* Shown with a single language too: the table is where the
+            protocol's own words for the interface, such as its error
+            message, are edited. */}
+        <Button asChild color="primary" icon={<Table2 aria-hidden />}>
+          <Link
+            href={tableHref}
+            state={tableLinkState}
+            onClick={guardLeavingStage(tableHref)}
+          >
+            {intl.formatMessage(messages.openTable)}
+          </Link>
+        </Button>
         <Button
           ref={addButtonRef}
           icon={<Plus aria-hidden />}

@@ -1,9 +1,13 @@
 import { Toast } from '@base-ui/react/toast';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { AppIntlOverlay } from '@codaco/app-i18n/react';
+import { loadCatalog } from '@codaco/app-i18n/locales';
+import { AppI18nProvider, AppIntlOverlay } from '@codaco/app-i18n/react';
+
+import { interviewLocales } from '../../i18n/locales';
+import { interviewCatalogLoaders } from '../../locales/catalogs';
 
 let online = true;
 vi.mock('../../hooks/useOnline', () => ({
@@ -26,6 +30,10 @@ function renderWithToastProvider(ui: ReactNode) {
 }
 
 describe('StageErrorBoundary', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows the same description when a stage crashes while online', () => {
     online = true;
     renderWithToastProvider(
@@ -99,9 +107,7 @@ describe('StageErrorBoundary', () => {
 
     expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
 
-    const copyButton = screen.getByRole('button', {
-      name: /copy debug info/i,
-    });
+    const copyButton = screen.getByRole('button', { name: 'Copy' });
     expect(copyButton).toBeTruthy();
 
     expect(() => fireEvent.click(copyButton)).not.toThrow();
@@ -111,4 +117,67 @@ describe('StageErrorBoundary', () => {
     });
     expect(writeText.mock.calls[0]?.[0]).toContain('WebGL init failed');
   });
+
+  it('labels the copy button "Copy", then "Copied" for a moment once it has copied', async () => {
+    online = true;
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(
+      <StageErrorBoundary>
+        <Boom />
+      </StageErrorBoundary>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Copy' });
+    expect(screen.getByRole('status').textContent).toBe('');
+
+    fireEvent.click(button);
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    expect(button.textContent).toBe('Copied');
+    // Announced, not only shown: the focused button's own text change is not
+    // reliably read out.
+    expect(screen.getByRole('status').textContent).toBe('Copied');
+
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+
+    expect(button.textContent).toBe('Copy');
+    expect(screen.getByRole('status').textContent).toBe('');
+  });
+
+  // The message is markdown: a heading and three paragraphs, in every
+  // language the interview ships.
+  it.each(interviewLocales.map(({ locale }) => locale))(
+    'renders the message as a heading and paragraphs in %s',
+    async (locale) => {
+      online = true;
+      const messages =
+        locale === 'en'
+          ? {}
+          : await loadCatalog(locale, interviewCatalogLoaders);
+      const { container } = render(
+        <AppI18nProvider
+          locale={locale}
+          locales={interviewLocales}
+          messages={messages}
+          manageDocument={false}
+        >
+          <StageErrorBoundary>
+            <Boom />
+          </StageErrorBoundary>
+        </AppI18nProvider>,
+      );
+
+      const heading = screen.getByRole('heading', { level: 1 });
+      expect(heading.textContent?.trim()).not.toBe('');
+      expect(heading.textContent).not.toContain('#');
+      const paragraphs = [...container.querySelectorAll('p')];
+      expect(paragraphs).toHaveLength(3);
+      for (const paragraph of paragraphs) {
+        expect(paragraph.textContent?.trim()).not.toBe('');
+      }
+    },
+  );
 });

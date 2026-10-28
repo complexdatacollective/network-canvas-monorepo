@@ -20,15 +20,15 @@ export const runtimeMessages = defineMessages({
   },
   copied: {
     id: 'interview.runtime.copied',
-    defaultMessage: 'Copied!',
+    defaultMessage: 'Copied',
     description:
-      'Confirmation that interview diagnostic information was copied.',
+      'Label the button under the interview error message changes to for a moment once it has copied the debug information, and the screen-reader announcement that the copy happened. Past tense of the Copy button label.',
   },
-  copyDebugInfo: {
-    id: 'interview.runtime.copyDebugInfo',
-    defaultMessage: 'Copy Debug Info',
+  copy: {
+    id: 'interview.runtime.copy',
+    defaultMessage: 'Copy',
     description:
-      'Button that copies interview error details for the study organizer.',
+      'Label of the button under the interview error message that copies the debug information the participant can send to the study organizer. The message above it calls this “the button below”.',
   },
   canvas: {
     id: 'interview.runtime.canvas',
@@ -165,10 +165,13 @@ export const runtimeMessages = defineMessages({
   },
   taskErrorDescription: {
     id: 'interview.runtime.taskErrorDescription',
+    // Markdown: the blank lines separate the heading and paragraphs.
+    /* oxlint-disable formatjs/no-multiple-whitespaces */
     defaultMessage:
-      'There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.',
+      '# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.',
+    /* oxlint-enable formatjs/no-multiple-whitespaces */
     description:
-      'Recovery instructions when an interview screen cannot be displayed, whether from a crash or a lost connection. The copy button is shown below this text.',
+      'Recovery instructions when an interview screen cannot be displayed, whether from a crash or a lost connection, written in markdown: a heading line starting with “# ” and three paragraphs separated by blank lines. Keep the markdown. The copy button is shown below this text.',
   },
   hiddenByAnswers: {
     id: 'interview.runtime.hiddenByAnswers',

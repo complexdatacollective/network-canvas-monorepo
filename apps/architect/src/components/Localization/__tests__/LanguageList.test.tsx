@@ -375,7 +375,9 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers the translation table and a choice of default only once there are two languages', () => {
+  // The table is where the protocol's own words for the interface, such as
+  // its error message, are edited, so one language is enough to need it.
+  it('offers the translation table with one language, and a choice of default only once there are two', () => {
     renderLanguageList({
       ...trilingual,
       localization: { defaultLocale: 'en', locales: ['en'] },
@@ -383,8 +385,8 @@ describe('LanguageList', () => {
     });
 
     expect(
-      screen.queryByRole('link', { name: 'Open translation table' }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('link', { name: 'Open translation table' }),
+    ).toHaveAttribute('href', '/protocol/localization?table=open');
     expect(
       screen.queryByRole('combobox', { name: 'Default language' }),
     ).not.toBeInTheDocument();

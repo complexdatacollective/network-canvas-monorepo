@@ -44,7 +44,10 @@ const catalogsPlugin = () => ({
  */
 export function appI18n(): PluginOption[] {
   return [
-    formatjs({ ast: true }) as PluginOption,
+    // Whitespace is the author's: a markdown message's blank lines are its
+    // paragraphs. `formatjs/no-multiple-whitespaces` keeps stray runs out of
+    // every other message.
+    formatjs({ ast: true, preserveWhitespace: true }) as PluginOption,
     catalogsPlugin() as PluginOption,
   ];
 }

@@ -172,6 +172,9 @@ export async function extractMessages(
       const seen = new Set<string>();
       const raw = await extract([file], {
         extractSourceLocation: false,
+        // As the build transform does (`appI18n()`), so translators see the
+        // message the app shows, blank lines between paragraphs included.
+        preserveWhitespace: true,
         throws: true,
         onMsgExtracted: (_path, messages) => {
           for (const { id } of messages) {

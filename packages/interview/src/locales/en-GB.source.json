@@ -2,5 +2,5 @@
   "interview.interfaces.recenterMap": "Recenter Map",
   "interview.navigation.exitFailed": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.",
   "interview.runtime.connection": "Connection",
-  "interview.runtime.taskErrorDescription": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+  "interview.runtime.taskErrorDescription": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
 }

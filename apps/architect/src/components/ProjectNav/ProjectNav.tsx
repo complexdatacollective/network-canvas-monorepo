@@ -70,7 +70,7 @@ const configMessages = defineMessages({
 const messages = defineMessages({
   warning: {
     id: 'architect.presentation.warning',
-    defaultMessage: ' ({warning})',
+    defaultMessage: '({warning})',
     description:
       'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
   },
