@@ -342,4 +342,97 @@ describe('useScrolledToBottom', () => {
     const b = renderHook(() => useScrolledToBottom({ current: short }));
     expect(b.result.current.hasScrolledToBottom).toBe(false);
   });
+
+  test('does not latch while paused, though the content seems to fit', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    // A card still resizing shows only part of its content, which fits.
+    const root = makeScrollRoot({
+      scrollTop: 0,
+      clientHeight: 720,
+      scrollHeight: 500,
+    });
+    const rootRef = { current: root };
+
+    const { result, rerender } = renderHook(
+      ({ paused }) => useScrolledToBottom(rootRef, { paused }),
+      { initialProps: { paused: true } },
+    );
+    act(() => {
+      result.current.sentinelRef(document.createElement('div'));
+    });
+    act(() => {
+      latest()?.callback(
+        [{ isIntersecting: true }] as IntersectionObserverEntry[],
+        latest() as unknown as IntersectionObserver,
+      );
+      root.dispatchEvent(new Event('scroll'));
+    });
+    expect(result.current.hasScrolledToBottom).toBe(false);
+
+    // At its full height the content overflows.
+    Object.defineProperty(root, 'scrollHeight', {
+      value: 1931,
+      configurable: true,
+    });
+    rerender({ paused: false });
+    expect(result.current.hasScrolledToBottom).toBe(false);
+
+    act(() => {
+      root.scrollTop = 1211;
+      root.dispatchEvent(new Event('scroll'));
+    });
+    expect(result.current.hasScrolledToBottom).toBe(true);
+  });
+
+  test('measures afresh once unpaused', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    const root = makeScrollRoot({
+      scrollTop: 0,
+      clientHeight: 720,
+      scrollHeight: 500,
+    });
+    const rootRef = { current: root };
+
+    const { result, rerender } = renderHook(
+      ({ paused }) => useScrolledToBottom(rootRef, { paused }),
+      { initialProps: { paused: true } },
+    );
+    act(() => {
+      result.current.sentinelRef(document.createElement('div'));
+    });
+    expect(result.current.hasScrolledToBottom).toBe(false);
+
+    rerender({ paused: false });
+    expect(result.current.hasScrolledToBottom).toBe(true);
+  });
+
+  test('keeps a latched state when paused', () => {
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    const root = makeScrollRoot({
+      scrollTop: 0,
+      clientHeight: 720,
+      scrollHeight: 500,
+    });
+    const rootRef = { current: root };
+
+    const { result, rerender } = renderHook(
+      ({ paused }) => useScrolledToBottom(rootRef, { paused }),
+      { initialProps: { paused: false } },
+    );
+    const sentinelRef = result.current.sentinelRef;
+    act(() => {
+      sentinelRef(document.createElement('div'));
+    });
+    expect(result.current.hasScrolledToBottom).toBe(true);
+
+    rerender({ paused: true });
+    expect(result.current.sentinelRef).toBe(sentinelRef);
+    expect(result.current.hasScrolledToBottom).toBe(true);
+  });
 });

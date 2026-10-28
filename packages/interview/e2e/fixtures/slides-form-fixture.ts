@@ -1,7 +1,7 @@
 import { type Locator, type Page } from '@playwright/test';
 
 const HEADER_SELECTOR =
-  '[data-stage-section="form"] .sticky.top-0 button[aria-label]';
+  '[data-stage-section="form"] [data-slide-header] button[aria-label]';
 
 /**
  * Fixture for SlidesForm-based stages (AlterForm, AlterEdgeForm).
@@ -29,8 +29,8 @@ export class SlidesFormFixture {
   /**
    * The current slide's header node locator. AlterForm's renderHeader renders
    * a ConnectedNode -> fresco-ui UINode (a `<button aria-label={label}>`)
-   * inside SlidesForm's sticky header wrapper (the
-   * `<div className="sticky top-0 z-10 shrink-0">` around `{header}`).
+   * inside the element SlidesForm marks `data-slide-header`, wherever the
+   * header is placed.
    * AlterEdgeForm's renderHeader returns null, so this resolves to zero
    * elements on edge-subject slides.
    */

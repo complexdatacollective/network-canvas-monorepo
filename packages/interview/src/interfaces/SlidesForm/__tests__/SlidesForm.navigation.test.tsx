@@ -6,8 +6,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { MotionConfig, MotionGlobalConfig } from 'motion/react';
+import { useState } from 'react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
@@ -810,7 +812,11 @@ describe('SlidesForm moving on from a complete form', () => {
     fields: [{ variable: 'closeness' as never, prompt: { en: 'How close?' } }],
   };
 
-  function renderClosenessSlides(nodes: NcNode[], saveTakes = 0) {
+  function renderClosenessSlides(
+    nodes: NcNode[],
+    saveTakes = 0,
+    headerPlacement: 'top' | 'start' = 'top',
+  ) {
     const store = configureStore({
       reducer: { session, protocol, ui },
       preloadedState: {
@@ -875,26 +881,32 @@ describe('SlidesForm moving on from a complete form', () => {
     );
     const onStepChange = vi.fn();
     let next: (() => Promise<void>) | undefined;
+    let reduceMotion: ((reduce: boolean) => void) | undefined;
 
     function Harness() {
       const navigation = useInterviewNavigation(0);
       next = navigation.moveForward;
+      const [reduced, setReduced] = useState(false);
+      reduceMotion = setReduced;
       return (
-        <StageMetadataProvider value={navigation.registerBeforeNext}>
-          <SlidesForm
-            form={closenessForm}
-            items={nodes}
-            subject={{ entity: 'node', type: 'person' }}
-            updateItem={updateItem}
-            moveForward={navigation.moveForward}
-            renderHeader={(item) => (
-              <span data-testid="slide-header">
-                {item[entityPrimaryKeyProperty]}
-              </span>
-            )}
-            form_kind="alter"
-          />
-        </StageMetadataProvider>
+        <MotionConfig reducedMotion={reduced ? 'always' : 'never'}>
+          <StageMetadataProvider value={navigation.registerBeforeNext}>
+            <SlidesForm
+              form={closenessForm}
+              items={nodes}
+              subject={{ entity: 'node', type: 'person' }}
+              updateItem={updateItem}
+              moveForward={navigation.moveForward}
+              renderHeader={(item) => (
+                <span data-testid="slide-header">
+                  {item[entityPrimaryKeyProperty]}
+                </span>
+              )}
+              headerPlacement={headerPlacement}
+              form_kind="alter"
+            />
+          </StageMetadataProvider>
+        </MotionConfig>
       );
     }
 
@@ -910,7 +922,12 @@ describe('SlidesForm moving on from a complete form', () => {
       </TestProtocolLocalization>,
     );
 
-    return { updateItem, onStepChange, next: () => next?.() };
+    return {
+      updateItem,
+      onStepChange,
+      next: () => next?.(),
+      reduceMotion: (reduce: boolean) => reduceMotion?.(reduce),
+    };
   }
 
   const unanswered = (id: string): NcNode => ({
@@ -979,5 +996,88 @@ describe('SlidesForm moving on from a complete form', () => {
 
     expect(screen.getByTestId('slide-header')).toHaveTextContent('person-1');
     expect(updateItem).not.toHaveBeenCalled();
+  });
+
+  it('waits for the first person to arrive before Next moves on', async () => {
+    // Joined to the form, the first person's answers appear 400 ms in. Tests
+    // skip animation, which makes the arrival instant.
+    const skipped = MotionGlobalConfig.skipAnimations;
+    MotionGlobalConfig.skipAnimations = false;
+    onTestFinished(() => {
+      MotionGlobalConfig.skipAnimations = skipped;
+    });
+    const { updateItem, onStepChange, next } = renderClosenessSlides(
+      [
+        {
+          ...unanswered('person-1'),
+          [entityAttributesProperty]: { closeness: 1 },
+        },
+        unanswered('person-2'),
+      ],
+      0,
+      'start',
+    );
+
+    await act(async () => {
+      await next();
+    });
+    expect(screen.getAllByTestId('slide-header').at(-1)).toHaveTextContent(
+      'person-1',
+    );
+    expect(updateItem).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      await next();
+    });
+    await waitFor(() =>
+      expect(screen.getAllByTestId('slide-header').at(-1)).toHaveTextContent(
+        'person-2',
+      ),
+    );
+    expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('settles a move between people when reduced motion is switched during it', async () => {
+    const skipped = MotionGlobalConfig.skipAnimations;
+    MotionGlobalConfig.skipAnimations = false;
+    onTestFinished(() => {
+      MotionGlobalConfig.skipAnimations = skipped;
+    });
+    const { onStepChange, next, reduceMotion } = renderClosenessSlides(
+      [
+        {
+          ...unanswered('person-1'),
+          [entityAttributesProperty]: { closeness: 1 },
+        },
+        {
+          ...unanswered('person-2'),
+          [entityAttributesProperty]: { closeness: 1 },
+        },
+      ],
+      0,
+      'start',
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      await next();
+    });
+    // Partway to the second person.
+    act(() => reduceMotion(true));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    });
+
+    expect(screen.getAllByTestId('slide-header').at(-1)).toHaveTextContent(
+      'person-2',
+    );
+    expect(
+      screen.getByRole('radio', { name: 'Very close' }).closest('[inert]'),
+    ).toBeNull();
+    await act(async () => {
+      await next();
+    });
+    expect(onStepChange).toHaveBeenCalled();
   });
 });

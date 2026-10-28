@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -32,7 +33,44 @@ type StoryArgs = {
   fieldCount: number;
 };
 
-function buildInterview(args: StoryArgs) {
+const PEOPLE = [
+  'Alex',
+  'Sam',
+  'Rosalind',
+  'Jordan',
+  'Priya',
+  'Mateo',
+  'Keiko',
+  'Tomás',
+  'Amara',
+];
+
+/**
+ * Seeds the people the connections join on the form's own stage, so that no
+ * stage before it has to create them.
+ */
+function addPeople(
+  si: SyntheticInterview,
+  stageId: string,
+  nodeTypeId: string,
+  count: number,
+) {
+  const name = si.addVariableToNodeType(nodeTypeId, {
+    name: 'name',
+    type: 'text',
+  });
+  PEOPLE.slice(0, count).forEach((person, index) => {
+    si.addManualNode(stageId, nodeTypeId, `person-${index}`, {
+      [name.id]: person,
+    });
+  });
+}
+
+/**
+ * `pairs` names who each connection joins, by their place in PEOPLE; by
+ * default each person is joined to the next.
+ */
+function buildInterview(args: StoryArgs, pairs?: [number, number][]) {
   const si = new SyntheticInterview();
 
   const nt = si.addNodeType({ name: 'Person' });
@@ -43,24 +81,19 @@ function buildInterview(args: StoryArgs) {
     text: 'Before the main stage.',
   });
 
-  // NameGenerator creates the nodes that edges will connect
-  si.addStage('NameGenerator', {
-    label: 'Name Generator',
-    initialNodes: { count: args.edgeCount + 1 },
-    subject: { entity: 'node', type: nt.id },
-  });
-
-  // Create consecutive edge pairs: [0,1], [1,2], [2,3], ...
-  const pairs: [number, number][] = Array.from(
-    { length: args.edgeCount },
-    (_, i) => [i, i + 1],
-  );
-  si.addEdges(pairs, et.id);
-
   const stage = si.addStage('AlterEdgeForm', {
     label: 'Alter Edge Form',
     subject: { entity: 'edge', type: et.id },
   });
+
+  const joined =
+    pairs ??
+    Array.from({ length: args.edgeCount }, (_, i): [number, number] => [
+      i,
+      i + 1,
+    ]);
+  addPeople(si, stage.id, nt.id, Math.max(0, ...joined.flat()) + 1);
+  si.addEdges(joined, et.id);
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
   for (let i = 0; i < fieldCount; i++) {
@@ -79,14 +112,17 @@ function buildInterview(args: StoryArgs) {
   return si;
 }
 
-const AlterEdgeFormStoryWrapper = (args: StoryArgs) => {
+const AlterEdgeFormStoryWrapper = ({
+  pairs,
+  ...args
+}: StoryArgs & { pairs?: [number, number][] }) => {
   const configKey = JSON.stringify(args);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const interview = useMemo(() => buildInterview(args), [configKey]);
+  const interview = useMemo(() => buildInterview(args, pairs), [configKey]);
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 2 })),
+      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
     [interview],
   );
 
@@ -132,6 +168,45 @@ export const ManyEdges: Story = {
   render: (args) => <AlterEdgeFormStoryWrapper {...args} />,
 };
 
+/**
+ * One person stays in their place from one connection to the next: Alex,
+ * first, from Alex and Sam to Alex and Rosalind; then Rosalind, second, on to
+ * Jordan and Rosalind. Last, Priya and Mateo replace both.
+ */
+export const SharedPeople: Story = {
+  render: (args) => (
+    <AlterEdgeFormStoryWrapper
+      {...args}
+      pairs={[
+        [0, 1],
+        [0, 2],
+        [3, 2],
+        [4, 5],
+      ]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const shown = (name: string) =>
+      within(
+        canvasElement.querySelector<HTMLElement>('[data-slide-header]')!,
+      ).getByText(name);
+    const next = () => userEvent.click(canvas.getByTestId('next-button'));
+
+    await canvas.findByText('Sam', {}, { timeout: 10_000 });
+    const alex = shown('Alex');
+    await next();
+    await waitFor(() => expect(shown('Rosalind')).toBeInTheDocument());
+    // The person who stays is the same, not shown again.
+    await expect(shown('Alex')).toBe(alex);
+
+    const rosalind = shown('Rosalind');
+    await next();
+    await waitFor(() => expect(shown('Jordan')).toBeInTheDocument());
+    await expect(shown('Rosalind')).toBe(rosalind);
+  },
+};
+
 export const NoEdges: Story = {
   args: {
     edgeCount: 0,
@@ -146,6 +221,107 @@ export const ManyFields: Story = {
   render: (args) => <AlterEdgeFormStoryWrapper {...args} />,
 };
 
+/**
+ * Two connections whose questions name the people they join: the first
+ * person, the second, and both. The text is given by locale so that its
+ * message syntax is kept, as a protocol writes it.
+ */
+function buildPipedNamesInterview() {
+  const si = new SyntheticInterview();
+  const nt = si.addNodeType({ name: 'Person' });
+  const et = si.addEdgeType({ name: 'Friendship' });
+
+  si.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
+
+  const stage = si.addStage('AlterEdgeForm', {
+    label: 'Alter Edge Form (Piped names)',
+    subject: { entity: 'edge', type: et.id },
+  });
+
+  addPeople(si, stage.id, nt.id, 3);
+  si.addEdges(
+    [
+      [0, 1],
+      [1, 2],
+    ],
+    et.id,
+  );
+  stage.stageEntry.dynamicValues = {
+    first: { path: 'edge.from.$label' },
+    second: { path: 'edge.to.$label' },
+  };
+  stage.addFormField({
+    component: 'Number',
+    prompt: { 'en-US': 'How many years has {first} known {second}?' },
+  });
+  stage.addFormField({
+    component: 'Boolean',
+    prompt: { 'en-US': 'Would {second} call {first} a close friend?' },
+  });
+  stage.addFormField({
+    component: 'TextArea',
+    prompt: { 'en-US': 'How did {first} and {second} meet?' },
+    hint: { 'en-US': 'Tell it as {first} would.' },
+  });
+
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return si;
+}
+
+const PipedNamesWrapper = () => {
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(
+        buildPipedNamesInterview().getInterviewPayload({ currentStep: 1 }),
+      ),
+    [],
+  );
+  return (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+};
+
+/**
+ * The questions name the first and the second person the connection joins,
+ * in either order, and both together.
+ */
+export const PipedNames: Story = {
+  render: () => <PipedNamesWrapper />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const years = await canvas.findByRole(
+      'spinbutton',
+      { name: /How many years has/ },
+      { timeout: 10_000 },
+    );
+    // The first question names the first person, then the second, each
+    // piped in from the people the header shows, in that order.
+    const header = canvasElement.querySelector('[data-slide-header]');
+    const named = [
+      ...(years
+        .closest('[data-field-name]')
+        ?.querySelectorAll('[data-dynamic-value]') ?? []),
+    ].map((value) => value.querySelector('bdi')?.textContent?.trim() ?? '');
+    await expect(named).toHaveLength(2);
+    const [first, second] = named as [string, string];
+    const shown = header?.textContent ?? '';
+    await expect(shown.indexOf(first)).toBeGreaterThanOrEqual(0);
+    await expect(shown.indexOf(second)).toBeGreaterThan(shown.indexOf(first));
+    await expect(
+      canvas.getByRole('textbox', { name: /How did .* meet/ }),
+    ).toHaveAccessibleDescription(expect.stringContaining(first));
+  },
+};
+
 function buildValidatedInterview() {
   const si = new SyntheticInterview();
   const nt = si.addNodeType({ name: 'Person' });
@@ -156,12 +332,12 @@ function buildValidatedInterview() {
     text: 'Before the main stage.',
   });
 
-  si.addStage('NameGenerator', {
-    label: 'Name Generator',
-    initialNodes: { count: 3 },
-    subject: { entity: 'node', type: nt.id },
+  const stage = si.addStage('AlterEdgeForm', {
+    label: 'Alter Edge Form (Validated)',
+    subject: { entity: 'edge', type: et.id },
   });
 
+  addPeople(si, stage.id, nt.id, 3);
   si.addEdges(
     [
       [0, 1],
@@ -169,11 +345,6 @@ function buildValidatedInterview() {
     ],
     et.id,
   );
-
-  const stage = si.addStage('AlterEdgeForm', {
-    label: 'Alter Edge Form (Validated)',
-    subject: { entity: 'edge', type: et.id },
-  });
 
   stage.addFormField({
     component: 'RadioGroup',
@@ -208,7 +379,7 @@ const WithValidationWrapper = () => {
   const interview = useMemo(() => buildValidatedInterview(), []);
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 2 })),
+      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
     [interview],
   );
 
