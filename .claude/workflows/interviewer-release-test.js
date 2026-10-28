@@ -11,7 +11,13 @@
 //   Workflow({ name: 'interviewer-release-test-workflow' })
 // The workflow name deliberately differs from the skill name — a skill and a
 // workflow sharing one name is undefined behaviour in Claude Code.
-// Override the target:       args: { url: 'https://deploy-preview-…netlify.app' }
+// Certify a release:          args: { expectedVersion: '<version>',
+//                                    expectedCommit: '<40-hex sha>' }
+//                            (the version and commit the target deployment
+//                            serves — for the default target, origin/main's)
+// Override the target:       args: { url: 'https://<deploy-id>--…netlify.app' }
+//                            (a hotfix branch's deployment; the developer site
+//                            only ever serves main)
 // Run a subset of journeys:  args: { journeys: ['data-export', 'pwa-offline'] }
 // Hotfix certification:      args: { hotfix: true } (permits the newer-schema
 //                            dev-protocol pair-skip; on main-line candidates
@@ -95,10 +101,14 @@ const canonicalOrigin = (u) =>
     .replace(/\/+$/, '')
     .replace(/:0*443$/, '');
 const url = canonicalOrigin((args && args.url) || DEFAULT_URL);
-// When certifying a release, pass the exact version the release will ship —
-// preflight fails unless the deployment serves it, so a stale deploy (an
-// older tree still live at the same URL) can never be certified.
+// When certifying a release, pin the exact version and commit the target
+// deployment builds — preflight fails unless the deployment serves both. The
+// version alone cannot tell main's commits apart between releases; the commit
+// (from the deployment's /build-info.json, stamped by
+// scripts/release/write-build-info.mjs) is what keeps a stale deploy (an
+// older tree still live at the same URL) from being certified.
 const expectedVersion = (args && args.expectedVersion) || null;
+const expectedCommit = (args && args.expectedCommit) || null;
 // Hotfix runs certify a tree cut from an OLDER release line: only there is
 // a newer-schema rejection of the latest development protocol expected.
 if (args && args.hotfix !== undefined && typeof args.hotfix !== 'boolean')
@@ -119,6 +129,10 @@ if (
 )
   throw new Error(
     'args.expectedVersion must be a semver version (a placeholder like "unknown" would match a preflight that could not read the deployed version)',
+  );
+if (expectedCommit && !/^[0-9a-f]{40}$/.test(expectedCommit))
+  throw new Error(
+    'args.expectedCommit must be a full 40-character lowercase commit SHA (a placeholder like "unknown" would match a preflight that could not read the deployed commit)',
   );
 
 // ---------------------------------------------------------------------------
@@ -173,9 +187,22 @@ const FAILURE = {
 
 const PREFLIGHT_SCHEMA = {
   type: 'object',
-  required: ['ok', 'workDir', 'repoRoot', 'version', 'fingerprint', 'failures'],
+  required: [
+    'ok',
+    'workDir',
+    'repoRoot',
+    'version',
+    'commit',
+    'fingerprint',
+    'failures',
+  ],
   properties: {
     ok: { type: 'boolean' },
+    commit: {
+      type: 'string',
+      description:
+        'The "commit" field of the deployment\'s /build-info.json, or "unknown"',
+    },
     fingerprint: {
       type: 'string',
       description:
@@ -251,8 +278,13 @@ const VERIFY_SCHEMA = {
 
 const EVIDENCE_SCHEMA = {
   type: 'object',
-  required: ['entries', 'fingerprint'],
+  required: ['entries', 'fingerprint', 'commit'],
   properties: {
+    commit: {
+      type: 'string',
+      description:
+        'The "commit" field of the deployment\'s /build-info.json re-read NOW, or "unknown"',
+    },
     fingerprint: {
       type: 'string',
       description:
@@ -1052,19 +1084,17 @@ if (requested) {
 if (!selected.length) throw new Error('No valid journeys selected');
 // A subset run is diagnostic, never release-certifying.
 const partial = selected.length !== journeyDefs.length;
-// A run certifies a release only when it is full-coverage, pinned to the
-// candidate's version, AND aimed at an explicitly supplied candidate URL —
-// the default developer site is a diagnostic target, never a candidate.
-const explicitTarget =
-  Boolean(args && args.url) && url !== canonicalOrigin(DEFAULT_URL);
-const certifying = !partial && Boolean(expectedVersion) && explicitTarget;
+// A run certifies a release only when it is full-coverage and pinned to the
+// version AND commit the target deployment builds. The developer site is the
+// normal target: it is fronted by the same Cloudflare configuration as
+// production, which a bare Netlify deployment skips.
+const certifying =
+  !partial && Boolean(expectedVersion) && Boolean(expectedCommit);
 const nonCertifyingReason = partial
   ? 'partial run'
-  : !expectedVersion
+  : !expectedVersion || !expectedCommit
     ? 'unpinned run'
-    : !explicitTarget
-      ? 'developer site is not a candidate deployment'
-      : null;
+    : null;
 
 const preflight = await agent(
   `You are the preflight check of the Interviewer release smoke test against ${url}.
@@ -1082,6 +1112,10 @@ Do, in order:
 4. HTTP checks with curl: "/" returns 200 and HTML; /manifest.webmanifest
    returns 200 and valid JSON with name "Network Canvas Interviewer";
    /sw.js returns 200 and JavaScript.
+   Read the deployed commit, bypassing every cache:
+   curl -s -H 'Cache-Control: no-cache' ${url}/build-info.json
+   Report its "commit" field as commit, or "unknown" if the file is missing
+   or not JSON with a string commit.
 5. Tooling: verify headless Playwright chromium can launch by running a tiny
    node script that resolves @playwright/test via
    createRequire('<repoRoot>/apps/interviewer/package.json'), launches
@@ -1100,6 +1134,10 @@ Do, in order:
     expectedVersion
       ? `this run certifies version ${expectedVersion} — if the served version from step 4 is not exactly "${expectedVersion}", record that as a failure (the deployment is stale or wrong).`
       : 'no expected version was supplied for this run; just report the served version.'
+  }${
+    expectedCommit
+      ? ` This run also certifies commit ${expectedCommit} — if the commit from step 4 is not exactly "${expectedCommit}", record that as a failure (the deployment is stale or wrong).`
+      : ''
   }
 7. ok=true only if every step above succeeded; otherwise ok=false with each
    problem in failures.`,
@@ -1117,6 +1155,8 @@ Do, in order:
 // the workDir shape are enforced HERE in code, never by agent self-report.
 const versionMismatch =
   preflight && expectedVersion && preflight.version !== expectedVersion;
+const commitMismatch =
+  preflight && expectedCommit && preflight.commit !== expectedCommit;
 const workDirInvalid =
   preflight &&
   !(
@@ -1132,6 +1172,7 @@ if (
   !preflight.ok ||
   preflight.failures.length ||
   versionMismatch ||
+  commitMismatch ||
   workDirInvalid ||
   repoRootInvalid ||
   fingerprintInvalid
@@ -1142,6 +1183,11 @@ if (
         ...(versionMismatch
           ? [
               `deployment serves version ${preflight.version}, but this run certifies ${expectedVersion} — stale or wrong deploy`,
+            ]
+          : []),
+        ...(commitMismatch
+          ? [
+              `deployment serves commit ${preflight.commit}, but this run certifies ${expectedCommit} — stale or wrong deploy`,
             ]
           : []),
         ...(workDirInvalid
@@ -1177,7 +1223,7 @@ if (
   };
 }
 log(
-  `Preflight OK — deployed version ${preflight.version}, work dir ${preflight.workDir}`,
+  `Preflight OK — deployed version ${preflight.version} at commit ${preflight.commit}, work dir ${preflight.workDir}`,
 );
 
 // Canonicalize before ANY comparison or interpolation: macOS $TMPDIR ends in
@@ -1327,6 +1373,9 @@ if (evidenceClaims.length) {
 Then re-compute the deployment fingerprint and report it as fingerprint:
 { curl -s ${url}/ | grep -oE 'assets/[A-Za-z0-9_.-]+\\.(js|css)' | sort -u; curl -s ${url}/manifest.webmanifest; curl -s ${url}/sw.js; } | shasum -a 256 | cut -c1-16
 
+Then re-read the deployed commit, bypassing every cache, and report its "commit" field as commit (or "unknown" if the file is missing or not JSON with a string commit):
+curl -s -H 'Cache-Control: no-cache' ${url}/build-info.json
+
 ENTRIES (JSON):
 ${JSON.stringify(evidenceClaims, null, 2)}
 
@@ -1349,6 +1398,11 @@ Return one entry per input with the journey name copied verbatim.`,
 // (same URL, possibly same version) invalidates every journey's evidence.
 const deployChanged =
   evidence && evidence.fingerprint !== preflight.fingerprint;
+// A commit-pinned run also needs the pinned commit still live: a redeploy of
+// a later commit whose turbo-restored assets are byte-identical keeps the
+// fingerprint but no longer serves what the run certifies.
+const commitChanged =
+  evidence && expectedCommit && evidence.commit !== expectedCommit;
 
 // ---------------------------------------------------------------------------
 // Synthesis (deterministic, in code)
@@ -1689,6 +1743,11 @@ if (deployChanged) {
     `the deployment changed mid-run (fingerprint ${preflight.fingerprint} at preflight, ${evidence.fingerprint} at the end) — the journeys may describe a build that is no longer live; re-run against the current deployment`,
   );
 }
+if (commitChanged) {
+  certificationGaps.push(
+    `the deployment no longer serves the pinned commit (${expectedCommit} at preflight, ${evidence.commit} at the end) — re-run pinned to the current deployment`,
+  );
+}
 // ANY unadjudicated failure makes the run incomplete (unless it already
 // blocks): a dead verifier and a schema-valid empty/partial verdict list
 // are the same failure to adjudicate, and neither may quietly certify.
@@ -1719,14 +1778,16 @@ lines.push(
   `# Interviewer release smoke test — ${verdict}${certifying ? '' : ` (${nonCertifyingReason} — not release-certifying)`}`,
 );
 lines.push('');
-lines.push(`Target: ${url} (version ${preflight.version})`);
+lines.push(
+  `Target: ${url} (version ${preflight.version}, commit ${preflight.commit})`,
+);
 if (partial)
   lines.push(
     `Coverage: partial — only ${selected.map((j) => j.key).join(', ')} ran. A subset run never certifies a release; run the full suite to certify.`,
   );
 if (!partial && !certifying)
   lines.push(
-    `Coverage: full, but this run is not release-certifying (${nonCertifyingReason}). Pass both url (the candidate deployment) and expectedVersion (the version its tree ships) to certify.`,
+    `Coverage: full, but this run is not release-certifying (${nonCertifyingReason}). Pass both expectedVersion and expectedCommit (the version and commit the target deployment builds) to certify.`,
   );
 lines.push(
   `Journeys: ${journeys.length} run${deadJourneys.length ? `, ${deadJourneys.length} did not report (${deadJourneys.join(', ')})` : ''}${inconsistentJourneys.length ? `, ${inconsistentJourneys.length} inconsistent (${inconsistentJourneys.join(', ')})` : ''}. Checks: ${checkCounts.pass} passed, ${checkCounts.fail} failed, ${checkCounts.skipped} skipped.`,
@@ -1777,6 +1838,7 @@ return {
   certifying,
   url,
   version: preflight.version,
+  commit: preflight.commit,
   workDir: preflight.workDir,
   journeys,
   confirmedFailures,

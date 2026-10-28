@@ -176,7 +176,6 @@ jobs:
           sparse-checkout: |
             .github/scripts
             scripts
-            apps/architect/scripts
             apps/fresco/.github/workflows
           persist-credentials: false
 
@@ -378,17 +377,17 @@ jobs:
             -f ref="refs/tags/$TAG" \
             -f sha="$SHA"
 
-      # Architect deployments expose their source commit at /build-info.json
-      # (apps/architect/scripts/write-build-info.mjs; the release-test workflow
-      # verifies it). Run MAIN's copy of the script — a hotfix branch cut from
-      # an older tag may predate it — pointed at the hotfix tree's dist, and
-      # pass the hotfix source commit explicitly: GITHUB_SHA here is the main
-      # commit this workflow ran from, not the deployed code.
+      # Architect and Interviewer deployments expose their source commit at
+      # /build-info.json (scripts/release/write-build-info.mjs; the release-test
+      # workflows verify it). Run MAIN's copy of the script — a hotfix branch
+      # cut from an older tag may predate it — pointed at the hotfix tree's
+      # dist, and pass the hotfix source commit explicitly: GITHUB_SHA here is
+      # the main commit this workflow ran from, not the deployed code.
       - name: Stamp deployed commit
-        if: inputs.app == 'architect'
+        if: inputs.app != 'fresco'
         env:
           COMMIT_REF: ${{ steps.commit.outputs.sha }}
-        run: node .hotfix-lane/apps/architect/scripts/write-build-info.mjs apps/architect/dist
+        run: node .hotfix-lane/scripts/release/write-build-info.mjs "apps/$APP/dist"
 
       - name: Deploy ${{ inputs.app }} to production
         if: inputs.app != 'fresco'

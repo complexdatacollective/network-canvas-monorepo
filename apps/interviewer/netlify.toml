@@ -1,5 +1,9 @@
 [build]
-command = "pnpm exec turbo run build --filter=@codaco/interviewer"
+# scripts/release/write-build-info.mjs stamps dist/build-info.json with the
+# deployed commit (the release-test workflow pins it) AFTER the turbo-cached
+# build: baked into the build it would survive cache restoration and describe
+# whichever commit originally built the artifact.
+command = "pnpm exec turbo run build --filter=@codaco/interviewer && node scripts/release/write-build-info.mjs apps/interviewer/dist"
 publish = "apps/interviewer/dist"
 
 [build.environment]

@@ -3786,7 +3786,7 @@ jobs:
       # deployment's commit (GITHUB_SHA), matching netlify.toml's dev lane.
       - name: Stamp deployed commit
         if: steps.guard.outputs.skip != 'true'
-        run: node apps/architect/scripts/write-build-info.mjs
+        run: node scripts/release/write-build-info.mjs apps/architect/dist
       - name: Deploy architect to production
         if: steps.guard.outputs.skip != 'true'
         env:
@@ -3924,6 +3924,11 @@ jobs:
               exit 1
             fi
           done
+      # After the turbo-cached build so a cache-restored dist still gets THIS
+      # deployment's commit (GITHUB_SHA), matching netlify.toml's dev lane.
+      - name: Stamp deployed commit
+        if: steps.guard.outputs.skip != 'true'
+        run: node scripts/release/write-build-info.mjs apps/interviewer/dist
       - name: Deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
         env:

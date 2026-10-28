@@ -1646,15 +1646,15 @@ test('the app sub-path dist lane builds a released tag without a write token', (
     ({ name }) => name === 'Check out the packing tooling',
   );
   assert.match(tooling.with['sparse-checkout'], /^scripts\/buildtime$/m);
-  // Only Architect has a build-info stamp; Interviewer's build writes its
-  // own dist-info.json.
+  // Only Architect's sub-path tarball carries a build-info stamp;
+  // Interviewer's sub-path build writes its own dist-info.json.
   const stamp = build.steps.find(
     ({ name }) => name === 'Stamp the built commit',
   );
   assert.equal(stamp.if, "inputs.app == 'architect'");
   assert.match(
     stamp.run,
-    /node \.dist-tooling\/apps\/architect\/scripts\/write-build-info\.mjs/,
+    /node \.dist-tooling\/scripts\/release\/write-build-info\.mjs/,
   );
 
   assert.deepEqual(publish.permissions, { contents: 'write' });

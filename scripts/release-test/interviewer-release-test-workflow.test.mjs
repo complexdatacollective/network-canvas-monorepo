@@ -76,9 +76,11 @@ const PREFLIGHT = {
   workDir: '/tmp/x',
   repoRoot: '/tmp/r',
   version: '9.9.9',
+  commit: 'c'.repeat(40),
   failures: [],
   notes: '',
 };
+const PINS = { expectedVersion: '9.9.9', expectedCommit: 'c'.repeat(40) };
 
 const EXPECTED_CHECKS = {
   'protocol-management': 9,
@@ -116,6 +118,7 @@ function makeAgent(journeyResults, verifyResults = {}, evidenceResult) {
       if (evidenceResult !== undefined) return evidenceResult;
       return {
         fingerprint: PREFLIGHT.fingerprint,
+        commit: PREFLIGHT.commit,
         entries: [
           ...Object.keys(journeyResults).map((k) => ({
             journey: k,
@@ -415,6 +418,18 @@ test('preflight invariants are enforced in code, not agent self-report', async (
   assert.equal(staleDeploy.verdict, 'BLOCKED');
   assert.ok(staleDeploy.summaryMarkdown.includes('stale or wrong'));
 
+  const staleCommit = await run(makeAgent({}), {
+    journeys: ['pwa-offline'],
+    ...PINS,
+    expectedCommit: 'd'.repeat(40),
+  });
+  assert.equal(staleCommit.verdict, 'BLOCKED');
+  assert.ok(
+    staleCommit.summaryMarkdown.includes(
+      `serves commit ${'c'.repeat(40)}, but this run certifies ${'d'.repeat(40)}`,
+    ),
+  );
+
   assert.equal(
     (await run(emptyWorkDir, { journeys: ['pwa-offline'] })).verdict,
     'BLOCKED',
@@ -504,6 +519,7 @@ test('evidence must exist on disk with per-check identity', async () => {
       {},
       {
         fingerprint: PREFLIGHT.fingerprint,
+        commit: PREFLIGHT.commit,
         entries: [
           {
             journey: 'protocol-management',
@@ -623,7 +639,7 @@ test('verifier-discovered defects surface; attribution cannot be hijacked', asyn
   );
 });
 
-test('only full pinned runs certify', async () => {
+test('only full runs pinned to version and commit certify', async () => {
   const jr = Object.fromEntries(
     Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
   );
@@ -634,32 +650,38 @@ test('only full pinned runs certify', async () => {
     unpinned.summaryMarkdown.includes('unpinned run — not release-certifying'),
   );
 
-  const pinnedDefaultTarget = await run(makeAgent(jr), {
-    expectedVersion: '9.9.9',
-  });
-  assert.equal(pinnedDefaultTarget.verdict, 'PASS');
-  assert.equal(pinnedDefaultTarget.certifying, false);
+  const versionOnly = await run(makeAgent(jr), { expectedVersion: '9.9.9' });
+  assert.equal(versionOnly.verdict, 'PASS');
+  assert.equal(versionOnly.certifying, false);
   assert.ok(
-    pinnedDefaultTarget.summaryMarkdown.includes('not a candidate deployment'),
+    versionOnly.summaryMarkdown.includes(
+      'unpinned run — not release-certifying',
+    ),
   );
+  const commitOnly = await run(makeAgent(jr), {
+    expectedCommit: PINS.expectedCommit,
+  });
+  assert.equal(commitOnly.certifying, false);
+
+  // The developer site is the certifying target, by default or named.
+  const pinnedDefaultTarget = await run(makeAgent(jr), PINS);
+  assert.equal(pinnedDefaultTarget.verdict, 'PASS');
+  assert.equal(pinnedDefaultTarget.certifying, true);
+  assert.equal(pinnedDefaultTarget.commit, PINS.expectedCommit);
   const pinnedDevOrigin = await run(makeAgent(jr), {
     url: 'https://interviewer.networkcanvas.dev',
-    expectedVersion: '9.9.9',
+    ...PINS,
   });
-  assert.equal(pinnedDevOrigin.certifying, false);
-  assert.ok(
-    pinnedDevOrigin.summaryMarkdown.includes('not a candidate deployment'),
-  );
-  const pinned = await run(makeAgent(jr), {
-    url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
-    expectedVersion: '9.9.9',
+  assert.equal(pinnedDevOrigin.certifying, true);
+  // A hotfix branch's own deployment certifies on the same pins.
+  const pinnedOther = await run(makeAgent(jr), {
+    url: 'https://abc123--interviewer-pwa-dev.netlify.app',
+    ...PINS,
   });
-  assert.equal(pinned.verdict, 'PASS');
-  assert.equal(pinned.certifying, true);
+  assert.equal(pinnedOther.certifying, true);
 
   const subset = await run(makeAgent(jr), {
-    url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
-    expectedVersion: '9.9.9',
+    ...PINS,
     journeys: ['pwa-offline'],
   });
   assert.equal(subset.certifying, false);
@@ -674,6 +696,7 @@ test('agent-controlled artifactsDir never reaches the verifier prompt', async ()
     if (o.label === 'verify:evidence')
       return {
         fingerprint: PREFLIGHT.fingerprint,
+        commit: PREFLIGHT.commit,
         entries: [
           {
             journey: 'pwa-offline',
@@ -731,6 +754,30 @@ test('a mid-run redeploy caps the run below certification', async () => {
   const res = await run(withDrift, { expectedVersion: '9.9.9' });
   assert.equal(res.verdict, 'INCOMPLETE');
   assert.ok(res.certificationGaps.some((a) => a.includes('changed mid-run')));
+});
+
+test('a pinned commit that stops being live caps the run below certification', async () => {
+  const jr = Object.fromEntries(
+    Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
+  );
+  const agentImpl = makeAgent(jr);
+  // Same assets (turbo cache), later commit: the fingerprint cannot see it.
+  const withNewCommit = async (prompt, opts) => {
+    const r = await agentImpl(prompt, opts);
+    if (opts.label === 'verify:evidence')
+      return { ...r, commit: 'e'.repeat(40) };
+    return r;
+  };
+  const res = await run(withNewCommit, PINS);
+  assert.equal(res.verdict, 'INCOMPLETE');
+  assert.ok(
+    res.certificationGaps.some((a) =>
+      a.includes('no longer serves the pinned commit'),
+    ),
+  );
+  // An unpinned run binds no commit, so a moved commit alone is no gap.
+  const unpinned = await run(withNewCommit, undefined);
+  assert.equal(unpinned.verdict, 'PASS');
 });
 
 const badFingerprintAgent = async (p, o) =>
@@ -812,6 +859,13 @@ test('hostile url and version args are rejected before interpolation', async () 
     }),
     /semver version/,
   );
+  for (const expectedCommit of ['unknown', 'C'.repeat(40), 'abc1234']) {
+    await assert.rejects(
+      run(makeAgent({}), { expectedCommit, journeys: ['pwa-offline'] }),
+      /40-character lowercase commit SHA/,
+      expectedCommit,
+    );
+  }
   const ok = await run(makeAgent({ 'pwa-offline': journey('pwa-offline') }), {
     url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
     journeys: ['pwa-offline'],
@@ -935,6 +989,7 @@ test('an evidence-free verifier cannot dismiss failures', async () => {
   const bare = await run(
     makeAgent(jr, vr, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -998,6 +1053,7 @@ test('every certification gap caps the verdict', async () => {
 
 const conductOfflineEvidence = (checkpointNumbers) => ({
   fingerprint: PREFLIGHT.fingerprint,
+  commit: PREFLIGHT.commit,
   entries: [
     {
       journey: 'conduct-offline',
@@ -1097,6 +1153,7 @@ test('dismissals bind to per-failure verifier captures', async () => {
   const res = await run(
     makeAgent(jr, vr, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1259,23 +1316,6 @@ test('a zero failure id is unbindable, never a discovery', async () => {
   assert.ok(res.certificationGaps.some((a) => a.includes('unbindable')));
 });
 
-test('cosmetic developer-origin variants never certify', async () => {
-  const jr = Object.fromEntries(
-    Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
-  );
-  for (const variant of [
-    'https://interviewer.networkcanvas.dev:443',
-    'https://interviewer.networkcanvas.dev:0443',
-    'https://INTERVIEWER.networkcanvas.dev',
-  ]) {
-    const res = await run(makeAgent(jr), {
-      url: variant,
-      expectedVersion: '9.9.9',
-    });
-    assert.equal(res.certifying, false, variant);
-  }
-});
-
 test('unevidenced severity downgrades keep the reported severity', async () => {
   const jr = {
     'pwa-offline': journey('pwa-offline', {
@@ -1308,6 +1348,7 @@ test('unevidenced severity downgrades keep the reported severity', async () => {
   const bare = await run(
     makeAgent(jr, vr, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1358,6 +1399,7 @@ test('an internally inconsistent audit entry cannot evidence a dismissal', async
   const res = await run(
     makeAgent(jr, vr, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1415,6 +1457,7 @@ test('an internally inconsistent audit entry cannot evidence a dismissal', async
   const impossible = await run(
     makeAgent(jr2, vr2, {
       fingerprint: PREFLIGHT.fingerprint,
+      commit: PREFLIGHT.commit,
       entries: [
         {
           journey: 'pwa-offline',
@@ -1445,6 +1488,7 @@ const pm = (opts) => ({
 test('structured skip codes gate schema-skew to hotfix runs', async () => {
   const evidence = {
     fingerprint: PREFLIGHT.fingerprint,
+    commit: PREFLIGHT.commit,
     entries: [
       {
         journey: 'protocol-management',
