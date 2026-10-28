@@ -60,6 +60,10 @@ const isInterviewDir = (dir) => dir === '/repo/packages/interview';
 const readNoPackage = () => null;
 const insideAppsOrPackages = (dir) => /\/(apps|packages)\/[^/]+/.test(dir);
 const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
+const runGit = (args, cwd) => {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+};
 
 test('extracts the edited path from Claude Code Edit/Write/MultiEdit/NotebookEdit events', () => {
   const root = '/repo';
@@ -1192,13 +1196,9 @@ test('every worktree of a checkout shares one typecheck lock', () => {
   );
   const main = path.join(dir, 'main');
   const other = path.join(dir, 'other');
-  const sh = (args, cwd) => {
-    const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
-    assert.equal(result.status, 0, result.stderr);
-  };
   mkdirSync(main);
-  sh(['init', '-q'], main);
-  sh(
+  runGit(['init', '-q'], main);
+  runGit(
     [
       '-c',
       'user.name=t',
@@ -1212,7 +1212,7 @@ test('every worktree of a checkout shares one typecheck lock', () => {
     ],
     main,
   );
-  sh(['worktree', 'add', '-q', other], main);
+  runGit(['worktree', 'add', '-q', other], main);
   assert.equal(typecheckLockPath(main), typecheckLockPath(other));
   assert.equal(
     typecheckLockPath(main),
