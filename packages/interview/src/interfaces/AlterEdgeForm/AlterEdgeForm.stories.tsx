@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -66,7 +66,11 @@ function addPeople(
   });
 }
 
-function buildInterview(args: StoryArgs) {
+/**
+ * `pairs` names who each connection joins, by their place in PEOPLE; by
+ * default each person is joined to the next.
+ */
+function buildInterview(args: StoryArgs, pairs?: [number, number][]) {
   const si = new SyntheticInterview();
 
   const nt = si.addNodeType({ name: 'Person' });
@@ -82,13 +86,14 @@ function buildInterview(args: StoryArgs) {
     subject: { entity: 'edge', type: et.id },
   });
 
-  addPeople(si, stage.id, nt.id, args.edgeCount + 1);
-  // Create consecutive edge pairs: [0,1], [1,2], [2,3], ...
-  const pairs: [number, number][] = Array.from(
-    { length: args.edgeCount },
-    (_, i) => [i, i + 1],
-  );
-  si.addEdges(pairs, et.id);
+  const joined =
+    pairs ??
+    Array.from({ length: args.edgeCount }, (_, i): [number, number] => [
+      i,
+      i + 1,
+    ]);
+  addPeople(si, stage.id, nt.id, Math.max(0, ...joined.flat()) + 1);
+  si.addEdges(joined, et.id);
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
   for (let i = 0; i < fieldCount; i++) {
@@ -107,11 +112,14 @@ function buildInterview(args: StoryArgs) {
   return si;
 }
 
-const AlterEdgeFormStoryWrapper = (args: StoryArgs) => {
+const AlterEdgeFormStoryWrapper = ({
+  pairs,
+  ...args
+}: StoryArgs & { pairs?: [number, number][] }) => {
   const configKey = JSON.stringify(args);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const interview = useMemo(() => buildInterview(args), [configKey]);
+  const interview = useMemo(() => buildInterview(args, pairs), [configKey]);
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
@@ -158,6 +166,45 @@ export const ManyEdges: Story = {
     edgeCount: 6,
   },
   render: (args) => <AlterEdgeFormStoryWrapper {...args} />,
+};
+
+/**
+ * One person stays in their place from one connection to the next: Alex,
+ * first, from Alex and Sam to Alex and Rosalind; then Rosalind, second, on to
+ * Jordan and Rosalind. Last, Priya and Mateo replace both.
+ */
+export const SharedPeople: Story = {
+  render: (args) => (
+    <AlterEdgeFormStoryWrapper
+      {...args}
+      pairs={[
+        [0, 1],
+        [0, 2],
+        [3, 2],
+        [4, 5],
+      ]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const shown = (name: string) =>
+      within(
+        canvasElement.querySelector<HTMLElement>('[data-slide-header]')!,
+      ).getByText(name);
+    const next = () => userEvent.click(canvas.getByTestId('next-button'));
+
+    await canvas.findByText('Sam', {}, { timeout: 10_000 });
+    const alex = shown('Alex');
+    await next();
+    await waitFor(() => expect(shown('Rosalind')).toBeInTheDocument());
+    // The person who stays is the same, not shown again.
+    await expect(shown('Alex')).toBe(alex);
+
+    const rosalind = shown('Rosalind');
+    await next();
+    await waitFor(() => expect(shown('Jordan')).toBeInTheDocument());
+    await expect(shown('Rosalind')).toBe(rosalind);
+  },
 };
 
 export const NoEdges: Story = {
