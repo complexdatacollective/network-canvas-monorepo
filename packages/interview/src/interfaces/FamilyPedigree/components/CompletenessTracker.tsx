@@ -293,7 +293,11 @@ function CompletenessTracker({
       }
       contentProps={{
         side: 'top',
-        className: 'w-96 max-w-[calc(100vw-2rem)]',
+        // Bounded by the space Base UI finds for it, with the list as the
+        // part that scrolls: a large family's list, done items and all, can
+        // be taller than the screen.
+        className:
+          'flex w-96 max-w-[calc(100vw-2rem)] max-h-(--available-height) flex-col',
         ref: popupRef,
         // Focus stays where it is when the list opens from hover or focus.
         initialFocus: () => {
@@ -311,14 +315,14 @@ function CompletenessTracker({
         onBlur: blur,
       }}
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex min-h-0 flex-col gap-3">
         {progress.checklist.length > 0 && (
           <div
             ref={listRef}
             role="region"
             aria-label={progressLabel}
             tabIndex={-1}
-            className="flex flex-col gap-3 outline-none"
+            className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain outline-none"
           >
             <ul className="flex flex-col gap-2">
               {progress.checklist.map(({ item, done }) => {
