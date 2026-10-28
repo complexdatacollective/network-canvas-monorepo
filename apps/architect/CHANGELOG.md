@@ -1,5 +1,11 @@
 # @codaco/architect
 
+## 8.5.2
+
+### Bug fixes
+
+- Older protocols that would not open with an "Unrecognized key: parameters" error now open. This happened when an attribute's type or input control had been changed in Architect Classic, which left behind settings the new attribute type cannot use. Opening the protocol now removes those settings and lists the change in the upgrade notes.
+
 ## 8.5.1
 
 ### Bug fixes
