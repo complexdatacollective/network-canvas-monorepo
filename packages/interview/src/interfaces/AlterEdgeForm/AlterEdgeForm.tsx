@@ -28,6 +28,16 @@ import { edgeColorMap } from '../../utils/edgeColorMap';
 import JoinedPair from '../SlidesForm/JoinedPair';
 import SlidesForm from '../SlidesForm/SlidesForm';
 
+const person = (node: NcNode | undefined) =>
+  node
+    ? {
+        id: node[entityPrimaryKeyProperty],
+        content: (
+          <Node nodeId={node[entityPrimaryKeyProperty]} type={node.type} />
+        ),
+      }
+    : null;
+
 function EdgeHeader({ item }: { item: NcEdge }) {
   const getEdgeColor = useMemo(() => makeGetEdgeColor(), []);
   const edgeColor = useStageSelector(getEdgeColor);
@@ -35,16 +45,6 @@ function EdgeHeader({ item }: { item: NcEdge }) {
 
   const fromNode = find(nodes, [entityPrimaryKeyProperty, item.from]);
   const toNode = find(nodes, [entityPrimaryKeyProperty, item.to]);
-
-  const person = (node: NcNode | undefined) =>
-    node
-      ? {
-          id: node[entityPrimaryKeyProperty],
-          content: (
-            <Node nodeId={node[entityPrimaryKeyProperty]} type={node.type} />
-          ),
-        }
-      : null;
 
   return (
     <JoinedPair
