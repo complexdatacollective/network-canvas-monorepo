@@ -258,6 +258,30 @@ describe('autoLayout worker', () => {
     expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
   });
 
+  it('stays paused when initialized paused, until started', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      paused: true,
+    });
+    handleMessage({ type: 'update_links', links: [{ source: 0, target: 3 }] });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.5, fy: 0.7 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: null, fy: null },
+    });
+
+    expect(posted.some((m) => m.type === 'end')).toBe(false);
+
+    handleMessage({ type: 'start' });
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
   it('ignores a repeated start once the layout has settled', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });

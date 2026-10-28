@@ -387,6 +387,7 @@ export function useAutoLayout({
       type: 'initialize',
       nodes: simNodes,
       links: simLinks,
+      paused: runMode === 'continuous' && !simulationEnabled,
       options: {
         collideRadius,
         boundsInset,

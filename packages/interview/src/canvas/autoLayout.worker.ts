@@ -605,6 +605,8 @@ type InitializeMessage = {
   nodes: SimNode[];
   links?: SimLink[];
   options?: Partial<AutoLayoutRuntimeOptions>;
+  // A worker replaced while the user has the layout paused stays paused.
+  paused?: boolean;
 };
 
 type StopMessage = { type: 'stop' };
@@ -721,7 +723,7 @@ export function handleMessage(data: Message) {
       seedUnplaced(data.nodes);
       simulation = createSimulation(data.nodes);
       running = false;
-      paused = false;
+      paused = data.paused ?? false;
       needsLayout = true;
       break;
     }
