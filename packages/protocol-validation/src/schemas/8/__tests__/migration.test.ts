@@ -6354,7 +6354,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = V8OutputSchema.safeParse(migratedRaw);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -6408,7 +6408,7 @@ describe('Migration V7 to V8', () => {
         },
         stages: [],
       } as unknown as Protocol<7>;
-      const parsed = V8OutputSchema.safeParse(
+      const parsed = ProtocolSchemaV8.safeParse(
         migrationV7toV8.migrate(v7Protocol, { name: 'Test Protocol' }),
       );
       expect(parsed.success).toBe(true);
@@ -6424,8 +6424,8 @@ describe('Migration V7 to V8', () => {
         parameters: { minLabel: 'Low', maxLabel: 'High', anchor: '2020-01-01' },
       });
       expect(migrated).toHaveProperty('parameters', {
-        minLabel: en('Low'),
-        maxLabel: en('High'),
+        minLabel: 'Low',
+        maxLabel: 'High',
       });
     });
 
@@ -6435,7 +6435,7 @@ describe('Migration V7 to V8', () => {
         component: 'VisualAnalogScale',
         parameters: { minLabel: 0, maxLabel: 'High' },
       });
-      expect(migrated).toHaveProperty('parameters', { maxLabel: en('High') });
+      expect(migrated).toHaveProperty('parameters', { maxLabel: 'High' });
     });
 
     it.each([['full'], [[]], [null]])(
