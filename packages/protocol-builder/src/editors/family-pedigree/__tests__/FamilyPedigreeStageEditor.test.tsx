@@ -1731,6 +1731,21 @@ describe('the participant wording', () => {
     });
     await harness.opened();
     await openWordingGroup(harness, CHECKLIST_WORDING_GROUP_TITLE);
+    // The supplied document already holds every setting, so the round trip
+    // alone would not notice a setting with no field.
+    for (const name of [
+      'Missing parents item',
+      'Brothers and sisters item',
+      'No brothers or sisters button',
+      'Brothers and sisters question in the side panel',
+      'Children item',
+      'No children button',
+      'Children question in the side panel',
+      'Missing details item',
+      'Note about continuing anyway',
+    ]) {
+      expect(await screen.findByRole('textbox', { name })).toBeVisible();
+    }
 
     await harness.roundTrip({ unowned: ['wording'] });
   });
