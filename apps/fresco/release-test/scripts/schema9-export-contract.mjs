@@ -37,6 +37,10 @@ const GRAPH_START_TAG = /<graph\b(?:[^>"]|"[^"]*")*>/g;
 const attributeOf = (tag, name) =>
   new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
 
+const recordOutcome = (readings, session, outcome) => {
+  (readings[session] ??= []).push(outcome);
+};
+
 /**
  * Every outcome each format records, in the order it records them, keyed by
  * the session id the export gives the interview. An interview a format
@@ -46,9 +50,6 @@ const attributeOf = (tag, name) =>
 function outcomeReadings(files) {
   const csv = {};
   const graphml = {};
-  const record = (readings, session, outcome) => {
-    (readings[session] ??= []).push(outcome);
-  };
   for (const { name, text } of files) {
     if (/\.csv$/i.test(name)) {
       const lines = text.split(/\r?\n/).filter((line) => line !== '');
@@ -58,18 +59,30 @@ function outcomeReadings(files) {
       if (outcome === -1 || session === -1) continue;
       for (const line of lines.slice(1)) {
         const cells = splitCsvRow(line);
-        record(csv, cells[session], cells[outcome] ?? '');
+        recordOutcome(csv, cells[session], cells[outcome] ?? '');
       }
     } else if (/\.graphml$/i.test(name)) {
       for (const tag of text.match(GRAPH_START_TAG) ?? []) {
         const session = attributeOf(tag, 'nc:sessionUUID');
         if (session !== undefined)
-          record(graphml, session, attributeOf(tag, 'nc:finishOutcome') ?? '');
+          recordOutcome(
+            graphml,
+            session,
+            attributeOf(tag, 'nc:finishOutcome') ?? '',
+          );
       }
     }
   }
   return { csv, graphml };
 }
+
+const last = (byFormat) =>
+  Object.fromEntries(
+    Object.entries(byFormat).map(([session, outcomes]) => [
+      session,
+      outcomes.at(-1),
+    ]),
+  );
 
 /**
  * Where each exported interview ended, as each format records it, keyed by
@@ -83,13 +96,6 @@ function outcomeReadings(files) {
  */
 export function finishOutcomesByFormat(files) {
   const readings = outcomeReadings(files);
-  const last = (byFormat) =>
-    Object.fromEntries(
-      Object.entries(byFormat).map(([session, outcomes]) => [
-        session,
-        outcomes.at(-1),
-      ]),
-    );
   return { csv: last(readings.csv), graphml: last(readings.graphml) };
 }
 

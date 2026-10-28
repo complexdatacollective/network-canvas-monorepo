@@ -17,9 +17,9 @@ export default function RevealWhenChosen({
 
   useEffect(() => {
     const anchor = marker.current;
-    if (anchor === null || chosenIn === undefined) return;
+    if (anchor === null || chosenIn === undefined) return undefined;
     const choice = controlChosenIn(anchor, chosenIn);
-    if (choice === null) return;
+    if (choice === null) return undefined;
     const frame = requestAnimationFrame(() => {
       const revealed = anchor.nextElementSibling;
       if (revealed !== null) revealBelow(choice, revealed);

@@ -32,9 +32,7 @@ export const InMarkdown: Story = {
   render: () => <DynamicMarkdown parts={greeting} />,
   play: async ({ canvas }) => {
     await expect(canvas.getByText('joining').tagName).toBe('STRONG');
-    await expect(
-      canvas.getByText('Dynamic value: Ada', { exact: false }),
-    ).toBeInTheDocument();
+    await expect(canvas.getByText('Ada', { exact: false })).toBeInTheDocument();
   },
 };
 

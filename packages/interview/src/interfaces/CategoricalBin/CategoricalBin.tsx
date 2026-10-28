@@ -242,7 +242,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   // Collapse expanded bin on document-level click or Escape press, so the wrapping
   // container doesn't need an interactive role.
   useEffect(() => {
-    if (expandedBinIndex === null) return;
+    if (expandedBinIndex === null) return undefined;
     const collapse = () => setExpandedBinIndex(null);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') collapse();

@@ -770,15 +770,17 @@ function useUnanswerableRulesClearedWithSource(dataSource: string): void {
   useEffect(() => {
     const wasUsingInterview = previous.current === INTERVIEW_NETWORK;
     previous.current = dataSource;
-    if (!wasUsingInterview || dataSource === INTERVIEW_NETWORK) return;
-    if (storeApi === undefined) return;
+    if (!wasUsingInterview || dataSource === INTERVIEW_NETWORK) {
+      return undefined;
+    }
+    if (storeApi === undefined) return undefined;
 
     const state = storeApi.getState();
     const filter = state.hasValue('filter')
       ? state.getValue('filter')
       : undefined;
     const remaining = withoutUnanswerableRules(filter);
-    if (remaining === filter) return;
+    if (remaining === filter) return undefined;
 
     // Read afresh inside the answer: the dialog is open for as long as the
     // researcher takes, and the row's store is live behind it.

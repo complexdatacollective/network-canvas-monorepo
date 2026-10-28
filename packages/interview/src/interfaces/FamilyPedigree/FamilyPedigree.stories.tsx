@@ -917,7 +917,7 @@ export const ConnectingAChildWithdrawsHerNewSiblingsAnswers: Story = {
     await userEvent.click(person('dad'));
     await userEvent.click(person('kim'));
     await userEvent.click(
-      await page.findByRole('menuitem', { name: '“Tom” is a parent of “Kim”' }),
+      await page.findByRole('menuitem', { name: 'Tom is a parent of Kim' }),
     );
     await userEvent.click(
       await page.findByRole('menuitem', { name: 'Biological parent' }),
@@ -955,7 +955,7 @@ export const RedescribingAParentWithdrawsNewSiblingsAnswers: Story = {
     await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
     const panel = within(panelOf(canvasElement) as HTMLElement);
     const tom = await panel.findByRole('radiogroup', {
-      name: 'How would you define “Tom”’s relationship to “Kim”?',
+      name: 'What kind of parent is Tom to Kim?',
     });
     await userEvent.click(
       within(tom).getByRole('radio', { name: 'Biological parent' }),
@@ -984,6 +984,19 @@ const chooseFirstParentKind = async (scope: ReturnType<typeof within>) => {
   await userEvent.click(within(kind).getAllByRole('radio')[0] as HTMLElement);
 };
 
+/** Whether a new parent carried the pregnancy, answered "Don’t know" while
+ * it is asked: it is required. */
+const answerCarriedIfAsked = async (scope: ReturnType<typeof within>) => {
+  const carried = scope.queryByRole('radiogroup', {
+    name: /^(Did this parent carry the pregnancy|Was this parent pregnant)/,
+  });
+  if (carried) {
+    await userEvent.click(
+      within(carried).getByRole('radio', { name: 'Don’t know' }),
+    );
+  }
+};
+
 /** The add-a-sibling form's required questions, answered as a full
  * biological sibling: every parent offered is shared (or, for someone with
  * no parent recorded, both of the parents given them), and they are the
@@ -1000,7 +1013,9 @@ const shareParentsAsBiologicalSibling = async (
     .findByRole(
       'group',
       { name: /^Which parents do they share/ },
-      { timeout: 500 },
+      // Long enough for the questions' group to follow the answer before
+      // it (QuestionFlow's step delay and slide).
+      { timeout: 1500 },
     )
     .catch(() => undefined);
   if (shared) {
@@ -1316,6 +1331,7 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
     await expect(partnerAnswer()).toBe('No');
 
     await chooseKind('Biological parent');
+    await answerCarriedIfAsked(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() => expect(idInSession('Mei')).toBeDefined());
@@ -1456,6 +1472,10 @@ export const AddingSomeoneMovesThroughTheQuestions: Story = {
     await userEvent.click(
       await body.findByRole('button', { name: 'Continue' }),
     );
+    // It is required, so is answered before going on.
+    await userEvent.click(
+      await within(carried).findByRole('radio', { name: 'Don’t know' }),
+    );
     await userEvent.click(
       await body.findByRole('button', { name: 'Continue' }),
     );
@@ -1549,7 +1569,7 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
     const sam = within(alsoParentOf).getByRole('checkbox', { name: 'Sam' });
     const carriedSam = () =>
       body.queryByRole('radiogroup', {
-        name: /^Was this parent pregnant with “Sam”\?/,
+        name: /^Was this parent pregnant with Sam\?/,
       });
     // Not asked about Jun, whose carrier is recorded.
     await expect(
@@ -1773,7 +1793,7 @@ export const PanAndZoom: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const viewport = canvas.getByTestId('pedigree-canvas');
-    const content = viewport.lastElementChild as HTMLElement;
+    const content = within(viewport).getByTestId('pedigree-canvas-content');
     const you = await canvas.findByRole('button', { name: /^You/ });
     const transform = () => getComputedStyle(content).transform;
 
@@ -2054,13 +2074,13 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
     await waitFor(
       () =>
         expect(list()?.textContent?.replaceAll('\u00AD', '')).toContain(
-          'Some details are missing for “Mia’s biological father”',
+          'Some details are missing for Mia’s biological father',
         ),
       { timeout: 5000 },
     );
     // Mia is never asked for a biological parent: the stand-in is one.
     await expect(
-      body.queryByRole('button', { name: /biological parents? for “Mia”/ }),
+      body.queryByRole('button', { name: /biological parents? for Mia/ }),
     ).toBeNull();
     await expect(canvas.getByTestId('pedigree-canvas')).toBeInTheDocument();
   },
@@ -2366,14 +2386,14 @@ export const ConnectingExistingPeople: Story = {
     );
     await userEvent.click(person('ego'));
     await userEvent.click(
-      await page.findByRole('menuitem', { name: '“Tom” is your parent' }),
+      await page.findByRole('menuitem', { name: 'Tom is your parent' }),
     );
     await userEvent.click(
       await page.findByRole('menuitem', { name: 'Biological parent' }),
     );
     await waitFor(() =>
       expect(
-        canvas.getByText('“Tom” is your parent (Biological parent)'),
+        canvas.getByText('Tom is your parent (Biological parent)'),
       ).toBeInTheDocument(),
     );
 
@@ -2396,16 +2416,14 @@ export const ConnectingExistingPeople: Story = {
     );
     await userEvent.click(person('mum'));
     const dialog = await page.findByRole('dialog', {
-      name: 'Remove the connection between “Tom” and “Rachel”?',
+      name: 'Remove the connection between Tom and Rachel?',
     });
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Delete' }),
     );
     await waitFor(() =>
       expect(
-        canvas.getByText(
-          'The connection between “Tom” and “Rachel” was removed.',
-        ),
+        canvas.getByText('The connection between Tom and Rachel was removed.'),
       ).toBeInTheDocument(),
     );
     await expect(person('mum')).toBeInTheDocument();
@@ -2422,12 +2440,12 @@ export const ConnectingExistingPeople: Story = {
     await userEvent.click(person('mum'));
     await userEvent.click(
       await page.findByRole('menuitem', {
-        name: '“Tom” and “Rachel” were partners',
+        name: 'Tom and Rachel were partners',
       }),
     );
     await waitFor(() =>
       expect(
-        canvas.getByText('“Tom” and “Rachel” were partners'),
+        canvas.getByText('Tom and Rachel were partners'),
       ).toBeInTheDocument(),
     );
   },
@@ -3970,6 +3988,7 @@ export const NameAttributeNamedProto: Story = {
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
     await chooseFirstParentKind(body);
+    await answerCarriedIfAsked(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
@@ -4377,11 +4396,26 @@ export const RecordingAnswersKeepsTheFamily: Story = {
         name: 'I have no biological children',
       }),
     );
+    // The stand-in's sex follows from the gamete they gave, but their gender
+    // identity is required, so it is answered from the checklist.
+    await userEvent.click(
+      await body.findByRole('button', {
+        name: /^Some details are missing for/,
+      }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
+    const standIn = within(panelOf(canvasElement) as HTMLElement);
+    await userEvent.click(
+      within(
+        await standIn.findByRole('radiogroup', { name: /^Gender identity/ }),
+      ).getByRole('radio', { name: 'Don’t know' }),
+    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await expectFamilyInSession();
 
     // Leaving and coming back changes none of it, and the parent is still
-    // drawn. The family is complete: the stand-in's sex follows from the
-    // gamete they gave, and gender identity is never a missing detail.
+    // drawn. The family is complete.
     await leaveForPeopleList(canvasElement);
     await expect(await canvas.findByText('Egg parent')).toBeInTheDocument();
     await expectFamilyInSession();

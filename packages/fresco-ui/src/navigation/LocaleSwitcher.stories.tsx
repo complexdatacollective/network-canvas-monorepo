@@ -576,7 +576,7 @@ function PinnedStatus({
 }) {
   const [state, setState] = useState<LocaleSwitcherSaveState>(saveState);
   useEffect(() => {
-    if (saveState !== 'saved') return;
+    if (saveState !== 'saved') return undefined;
     const interval = setInterval(() => {
       setState('idle');
       setTimeout(() => setState('saved'), 50);

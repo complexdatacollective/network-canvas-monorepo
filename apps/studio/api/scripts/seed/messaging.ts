@@ -462,6 +462,12 @@ function outcomeFor(index: number): DeliveryOutcome {
   return 'pending';
 }
 
+// When each opted out: a delivery enqueued before that moment went out
+// normally, and only the ones after it are suppressed, so the outbox and
+// the suppression list tell one story in time.
+const optOutMoment = (participant: SeedParticipant) =>
+  shiftDays(participant.enrolledAt, 20);
+
 /**
  * The send outbox, its provider callbacks, and the suppression list they agree
  * with: every delivery to an opted-out address is suppressed, and every
@@ -474,11 +480,6 @@ const seedDeliveries = Effect.fnUntraced(function* (
   occurrences: SeededOccurrence[],
 ) {
   const optedOut = study.participants.slice(0, 2);
-  // When each opted out: a delivery enqueued before that moment went out
-  // normally, and only the ones after it are suppressed, so the outbox and
-  // the suppression list tell one story in time.
-  const optOutMoment = (participant: SeedParticipant) =>
-    shiftDays(participant.enrolledAt, 20);
   // Keyed by the normalised address, which is what the suppression list and
   // the outbox join on — not by participant id, so a seeded opt-out suppresses
   // the way a real one does.

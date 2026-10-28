@@ -49,6 +49,48 @@ describe('evaluateCompleteness', () => {
     ).toEqual([{ kind: 'details', personId: 'standIn' }]);
   });
 
+  // Josh, 27 Oct 2026: the list names each person whose details are
+  // missing, and once none are, says so as one item done.
+  test('lists missing details person by person, and all given as one', () => {
+    const withStandIn = readFamily(
+      [ego, person('mum'), person('standIn')],
+      [link('mum', 'ego', 'biological'), link('standIn', 'ego', 'biological')],
+      config,
+      {},
+      new Map(),
+      new Set(['standIn']),
+    );
+    const missing = evaluateCompleteness(
+      withStandIn,
+      'parents',
+      (p) => p.id === 'standIn',
+    );
+    expect(
+      missing.checklist.filter(({ item }) => item.kind === 'details'),
+    ).toEqual([
+      { item: { kind: 'details', personId: 'standIn' }, done: false },
+    ]);
+    expect(missing.allDetails).toBeUndefined();
+
+    const given = evaluateCompleteness(withStandIn, 'parents', noneMissing);
+    expect(given.checklist.some(({ item }) => item.kind === 'details')).toBe(
+      false,
+    );
+    expect(given.allDetails).toEqual({ done: true });
+  });
+
+  // Josh, 27 Oct 2026: it is not done while relatives are still to be
+  // added, who will need their details too.
+  test('all details given is not done while anyone is still to be added', () => {
+    const alone = evaluateCompleteness(
+      family([ego], []),
+      'parents',
+      noneMissing,
+    );
+    expect(alone.items).toEqual([{ kind: 'parents', personId: 'ego' }]);
+    expect(alone.allDetails).toEqual({ done: false });
+  });
+
   test('parents: a gamete donor counts, a carrier or adoptive parent does not', () => {
     const donorConceived = family(
       [ego, person('mum'), person('donor'), person('carrier'), person('adopt')],

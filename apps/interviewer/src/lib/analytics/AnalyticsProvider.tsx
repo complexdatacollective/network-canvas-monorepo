@@ -124,7 +124,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   // network contact with the relay. Re-runs on a lock/unlock cycle are
   // idempotent.
   useEffect(() => {
-    if (kind !== 'unlocked') return;
+    if (kind !== 'unlocked') return undefined;
     let active = true;
     const revisionAtStart = preferenceRevisionRef.current;
     pendingReportsRef.current = [];

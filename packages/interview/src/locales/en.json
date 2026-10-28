@@ -20,11 +20,11 @@
     "description": "Accessible name for the area showing the family members the participant has added, drawn as a family tree."
   },
   "interview.familyPedigree.childrenAnsweredAnnouncement": {
-    "defaultMessage": "{isYou, select, true {Recorded that you have no biological children.} other {Recorded that “{name}” has no biological children.}}",
+    "defaultMessage": "{isYou, select, true {Recorded that you have no biological children.} other {Recorded that {name} has no biological children.}}",
     "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no children. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.connectHintLinking": {
-    "defaultMessage": "{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to “{name}”.}}",
+    "defaultMessage": "{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to {name}.}}",
     "description": "Read out to screen reader users, not shown, once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.connectToolDescription": {
@@ -33,10 +33,10 @@
   },
   "interview.familyPedigree.connectedParentAnnouncement": {
     "defaultMessage": "{relationship} ({kind})",
-    "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent)."
+    "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example Julie is a parent of Rob); kind is the kind of parent chosen (for example Adoptive parent)."
   },
   "interview.familyPedigree.disconnectHintLinking": {
-    "defaultMessage": "{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from “{name}”.}}",
+    "defaultMessage": "{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from {name}.}}",
     "description": "Read out to screen reader users, not shown, once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.disconnectToolDescription": {
@@ -44,7 +44,7 @@
     "description": "Tooltip text, under the heading “Disconnect” (or the stage’s own name for it), of the family tree toolbar tool that removes a relationship line: the participant selects one person, then someone they are connected to, and confirms. Read by participants."
   },
   "interview.familyPedigree.disconnectedAnnouncement": {
-    "defaultMessage": "{firstIsYou, select, true {The connection between you and “{second}” was removed.} other {The connection between “{first}” and “{second}” was removed.}}",
+    "defaultMessage": "{firstIsYou, select, true {The connection between you and {second} was removed.} other {The connection between {first} and {second} was removed.}}",
     "description": "Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant."
   },
   "interview.familyPedigree.framingChosenAnnouncement": {
@@ -104,7 +104,7 @@
     "description": "Tooltip text, under the heading “Show the whole family”, of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Read by participants."
   },
   "interview.familyPedigree.siblingsAnsweredAnnouncement": {
-    "defaultMessage": "{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}",
+    "defaultMessage": "{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that {name} has no biological brothers or sisters.}}",
     "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.skipStep": {
@@ -118,6 +118,14 @@
   "interview.familyPedigree.toolsLabel": {
     "defaultMessage": "Family tree tools",
     "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people."
+  },
+  "interview.familyPedigree.trackerAllDetails": {
+    "defaultMessage": "Add required details for all family members",
+    "description": "An item at the end of the family tree’s progress list, read by the participant, standing for the details the researcher requires of every person in the family (such as sex assigned at birth). It is shown while nobody already in the family is missing any, as a plain item while other relatives still have to be added, and ticked and struck through once nothing else is needed. While some are missing, the list instead names each person whose details are missing."
+  },
+  "interview.familyPedigree.trackerItemDone": {
+    "defaultMessage": "Done:",
+    "description": "Read out by screen readers before an item in the family tree’s progress list that is already done, which is shown ticked and struck through. The item follows, for example “Add your parents”."
   },
   "interview.familyPedigree.trackerProgressLabel": {
     "defaultMessage": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",
@@ -594,10 +602,6 @@
   "interview.runtime.dropToRemove": {
     "defaultMessage": "Drop here to remove",
     "description": "Hint shown on the tray when dropping an item removes its position."
-  },
-  "interview.runtime.dynamicValue": {
-    "defaultMessage": "Dynamic value: {value}",
-    "description": "Read by screen readers in place of a value the interview fills into the study's own text, such as a name the participant gave earlier. {value} is that value, exactly as shown."
   },
   "interview.runtime.expandDrawer": {
     "defaultMessage": "Expand drawer",

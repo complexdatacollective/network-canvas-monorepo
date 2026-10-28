@@ -62,6 +62,7 @@ import { pedigreeLinksOf } from '../../FamilyPedigree/pedigreeLinks';
 import {
   type PedigreeWords,
   useKinshipLocale,
+  usePedigreePiped,
   usePedigreeText,
 } from '../../FamilyPedigree/pedigreeWords';
 import { usePanZoom } from '../../FamilyPedigree/usePanZoom';
@@ -242,6 +243,7 @@ export default function NarrativePedigreeView({
   // passphrase) by how they are related to the participant, in the source
   // stage's words. Soft hyphens let long kinship words break inside a symbol.
   const pedigreeText = usePedigreeText();
+  const pedigreePiped = usePedigreePiped();
   const kinshipLocale = useKinshipLocale(sourceStage?.wording);
   const sourceWords = useMemo<PedigreeWords | null>(
     () =>
@@ -249,10 +251,11 @@ export default function NarrativePedigreeView({
         ? {
             wording: sourceStage.wording,
             text: pedigreeText,
+            piped: pedigreePiped,
             locale: kinshipLocale,
           }
         : null,
-    [sourceStage, pedigreeText, kinshipLocale],
+    [sourceStage, pedigreeText, pedigreePiped, kinshipLocale],
   );
   const labels = useMemo(
     () =>
@@ -725,7 +728,7 @@ export default function NarrativePedigreeView({
   // The document lays out the whole family at natural size, whatever part of
   // it the canvas is showing.
   useEffect(() => {
-    if (!isCapturing) return;
+    if (!isCapturing) return undefined;
     let cancelled = false;
     const frame = requestAnimationFrame(() => {
       const element = snapshotRef.current;

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -143,6 +143,135 @@ export const ManyFields: Story = {
   },
 };
 
+/**
+ * Three people, the middle one family. The questions name each person and
+ * are worded at greater length for family, so the form is taller for them.
+ * The text is given by locale so that its message syntax is kept, as a
+ * protocol writes it.
+ */
+function buildWordedPerPersonInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({ name: 'name', type: 'text' });
+  const family = person.addVariable({ name: 'family', type: 'boolean' });
+  const closeness = person.addVariable({
+    name: 'closeness',
+    type: 'ordinal',
+    component: 'LikertScale',
+    options: [
+      { label: 'Not at all close', value: 1 },
+      { label: 'Not very close', value: 2 },
+      { label: 'Somewhat close', value: 3 },
+      { label: 'Very close', value: 4 },
+      { label: 'Extremely close', value: 5 },
+    ],
+  });
+
+  interview.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
+
+  const stage = interview.addStage('AlterForm', {
+    label: 'Alter Form (Worded per person)',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.stageEntry.dynamicValues = {
+    name: { path: `node.${name.id}` },
+    family: { path: `node.${family.id}`, cases: { yes: true } },
+  };
+  stage.addFormField({
+    component: 'Number',
+    prompt: { 'en-US': 'How old is {name}?' },
+  });
+  stage.addFormField({
+    variable: closeness.id,
+    component: 'LikertScale',
+    prompt: {
+      'en-US':
+        '{family, select, yes {{name} is part of your family. Leaving aside any sense of duty you feel because you are related, how close do you feel to {name} today?} other {How close are you to {name}?}}',
+    },
+  });
+  stage.addFormField({
+    component: 'TextArea',
+    prompt: {
+      'en-US':
+        '{family, select, yes {Tell us about the place {name} has in your family.} other {How did you meet {name}?}}',
+    },
+    hint: {
+      'en-US':
+        '{family, select, yes {Family ties can be complicated. Mention anything you think matters: history you share, caring for one another, living apart, or disagreements. Write as much or as little as you like.} other {A sentence is enough.}}',
+    },
+  });
+
+  interview.addManualNode(stage.id, person.id, 'alex', {
+    [name.id]: 'Alex',
+    [family.id]: false,
+  });
+  interview.addManualNode(stage.id, person.id, 'rosalind', {
+    [name.id]: 'Rosalind',
+    [family.id]: true,
+  });
+  interview.addManualNode(stage.id, person.id, 'sam', {
+    [name.id]: 'Sam',
+    [family.id]: false,
+  });
+
+  interview.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return interview;
+}
+
+const WordedPerPersonWrapper = () => {
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(
+        buildWordedPerPersonInterview().getInterviewPayload({
+          currentStep: 1,
+        }),
+      ),
+    [],
+  );
+  return (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+};
+
+/**
+ * The questions are piped with each person's name, and worded at greater
+ * length for family. Moving between people, the form eases to the next
+ * person's height before their questions appear.
+ */
+export const WordedPerPerson: Story = {
+  render: () => <WordedPerPersonWrapper />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole(
+        'spinbutton',
+        { name: /How old is .*Alex/ },
+        { timeout: 10_000 },
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByText('A sentence is enough.', { exact: false }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await expect(
+      await canvas.findByRole('spinbutton', { name: /How old is .*Rosalind/ }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByText(/Family ties can be complicated/),
+    ).toBeInTheDocument();
+  },
+};
+
 function buildValidatedInterview() {
   const interview = new SyntheticInterview();
   const nodeType = interview.addNodeType({ name: 'Person' });
@@ -237,6 +366,173 @@ export const WithValidation: Story = {
     await expect(
       await canvas.findByRole('textbox', { name: /Notes \(required/ }),
     ).toHaveValue('ab');
+  },
+};
+
+/**
+ * Two people whose answers all start empty, so choosing an option moves the
+ * form on to the next question.
+ */
+function buildUnansweredInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({ name: 'name', type: 'text' });
+
+  interview.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
+
+  const stage = interview.addStage('AlterForm', {
+    label: 'Alter Form (Unanswered)',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.addFormField({ component: 'Text', prompt: 'Nickname' });
+  stage.addFormField({ component: 'Number', prompt: 'Age' });
+  stage.addFormField({
+    component: 'TextArea',
+    prompt: 'Describe your relationship.',
+  });
+  stage.addFormField({
+    component: 'RadioGroup',
+    prompt: 'How close are you to this person?',
+  });
+  stage.addFormField({
+    component: 'RadioGroup',
+    prompt: 'How often do you talk?',
+  });
+  stage.addFormField({
+    component: 'CheckboxGroup',
+    prompt: 'In what contexts do you interact?',
+  });
+  // Enough below the second choice that the form can scroll it to the top.
+  stage.addFormField({ component: 'TextArea', prompt: 'Anything else?' });
+  stage.addFormField({
+    component: 'CheckboxGroup',
+    prompt: 'Which of these do you share?',
+  });
+  interview.addManualNode(stage.id, person.id, 'alice', {
+    [name.id]: 'Alice',
+  });
+  interview.addManualNode(stage.id, person.id, 'bob', { [name.id]: 'Bob' });
+
+  interview.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return interview;
+}
+
+const PortraitUnansweredWrapper = () => {
+  const interview = useMemo(() => buildUnansweredInterview(), []);
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
+    [interview],
+  );
+
+  // Taller than it is wide, so the person sits above the form and sticks to
+  // the top of it while it scrolls.
+  return (
+    <div className="flex h-[1000px] w-[720px]">
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+};
+
+const stuckAncestor = (element: Element) => {
+  for (
+    let current: Element | null = element;
+    current;
+    current = current.parentElement
+  ) {
+    if (getComputedStyle(current).position === 'sticky') return current;
+  }
+  throw new Error('No sticky ancestor');
+};
+
+const scrollingAncestor = (element: Element) => {
+  for (
+    let current = element.parentElement;
+    current;
+    current = current.parentElement
+  ) {
+    const { overflowY } = getComputedStyle(current);
+    if (overflowY === 'auto' || overflowY === 'scroll') return current;
+  }
+  throw new Error('No scrolling ancestor');
+};
+
+export const PortraitAutoScroll: Story = {
+  render: () => <PortraitUnansweredWrapper />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'In a stage taller than it is wide the person sits above the form and stays at the top as it scrolls. Choosing an option brings the next unanswered question into view below the person, not underneath them.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const close = await canvas.findByRole(
+      'radiogroup',
+      { name: /How close are you/ },
+      { timeout: 10_000 },
+    );
+    await waitFor(
+      () =>
+        expect(
+          canvasElement.querySelector('[data-stage-ready="true"]'),
+        ).not.toBeNull(),
+      { timeout: 5_000 },
+    );
+    const next = canvas.getByRole('radiogroup', {
+      name: /How often do you talk/,
+    });
+    const form = canvasElement.querySelector('[data-stage-section="form"]');
+    if (!form) throw new Error('No form section');
+    const header = stuckAncestor(
+      within(form as HTMLElement).getByText('Alice'),
+    );
+    // Searched from the question as a whole, as QuestionFlow does: a group
+    // of options can scroll on its own.
+    const field = next.closest('[data-field-name]');
+    if (!field) throw new Error('No field around the question');
+    const scroller = scrollingAncestor(field);
+
+    // The next question does not all show, so answering moves the form.
+    await expect(next.getBoundingClientRect().bottom).toBeGreaterThan(
+      scroller.getBoundingClientRect().bottom,
+    );
+
+    await userEvent.click(within(close).getAllByRole('radio')[0]!);
+
+    // Focusing the option can move the form a little at once; the move to
+    // the next question follows, smoothly. Wait for it to reach the top of
+    // the form and come to rest before measuring.
+    await waitFor(
+      () =>
+        expect(next.getBoundingClientRect().top).toBeLessThan(
+          header.getBoundingClientRect().bottom + 80,
+        ),
+      { timeout: 5_000 },
+    );
+    let previous = -1;
+    await waitFor(
+      () => {
+        const settled = scroller.scrollTop === previous;
+        previous = scroller.scrollTop;
+        expect(settled).toBe(true);
+      },
+      { timeout: 5_000, interval: 150 },
+    );
+
+    const headerBottom = header.getBoundingClientRect().bottom;
+    const nextTop = next.getBoundingClientRect().top;
+    await expect(nextTop).toBeGreaterThanOrEqual(headerBottom);
+    await expect(nextTop).toBeLessThan(headerBottom + 80);
   },
 };
 

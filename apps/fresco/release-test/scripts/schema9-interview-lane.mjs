@@ -219,6 +219,7 @@ try {
   const page = await newPage(visitor);
   recordDiagnosticsTo(page, outDir);
   const main = () => page.getByRole('main');
+  const person = (name) => main().getByRole('button', { name, exact: true });
   const step = () => settledStep(page);
 
   // --- language ----------------------------------------------------------
@@ -444,8 +445,6 @@ try {
 
   checks.push(
     await attempt('schema9-bin-tap-to-place', async () => {
-      const person = (name) =>
-        main().getByRole('button', { name, exact: true });
       const first = TRANSCRIPT.people[0];
       const second = TRANSCRIPT.people[1];
       const initiallySelected =

@@ -565,6 +565,14 @@ const baselineContradictions = (
   return contradictions;
 };
 
+// `MessageErrorValues` allows more shapes than a LIST item does, so the
+// name is typed as what the list takes: the researcher's own word, or a
+// reference to a descriptor the reader's own locale resolves.
+type NameValue = string | Readonly<{ messageError: string }>;
+const unnamed = (): NameValue => ({
+  messageError: createMessageError(messages.thisAttribute),
+});
+
 /**
  * What a contradiction between rules says to the researcher who caused it.
  *
@@ -592,13 +600,6 @@ const describeDraftContradiction = (
   // field so far. Everything else is named from the codebook.
   const draftId =
     draft.currentVariableId || draftVariableId(draft.allVariables);
-  // `MessageErrorValues` allows more shapes than a LIST item does, so the
-  // name is typed as what the list takes: the researcher's own word, or a
-  // reference to a descriptor the reader's own locale resolves.
-  type NameValue = string | Readonly<{ messageError: string }>;
-  const unnamed = (): NameValue => ({
-    messageError: createMessageError(messages.thisAttribute),
-  });
   const nameOf = (id: string): NameValue => {
     if (id === draftId && !Object.hasOwn(draft.allVariables, draftId)) {
       const authored = draft.draftVariableName;

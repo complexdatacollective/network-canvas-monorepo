@@ -119,6 +119,19 @@ function snapshotAttributes(
   );
 }
 
+// Categorical group membership is stored as an array of string values (a node
+// can belong to several groups of the same variable). Normalise any prior
+// value (array / scalar / null) into that shape.
+function normalizeGroupValues(raw: unknown): string[] {
+  if (raw == null) return [];
+  return (Array.isArray(raw) ? raw : [raw])
+    .filter(
+      (value): value is string | number =>
+        typeof value === 'string' || typeof value === 'number',
+    )
+    .map(String);
+}
+
 export function useComposerActions({
   subjectType,
   quickAdd,
@@ -488,19 +501,6 @@ export function useComposerActions({
         },
       };
     });
-  }
-
-  // Categorical group membership is stored as an array of string values (a node
-  // can belong to several groups of the same variable). Normalise any prior
-  // value (array / scalar / null) into that shape.
-  function normalizeGroupValues(raw: unknown): string[] {
-    if (raw == null) return [];
-    return (Array.isArray(raw) ? raw : [raw])
-      .filter(
-        (value): value is string | number =>
-          typeof value === 'string' || typeof value === 'number',
-      )
-      .map(String);
   }
 
   type GroupValuesSnapshot = {

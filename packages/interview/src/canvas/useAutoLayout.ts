@@ -224,11 +224,11 @@ export function useAutoLayout({
   }, [store, nodeRadius]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     // Defer until the canvas has been measured: seeding against a 0-size canvas
     // would map every node to the origin. The dims subscription re-runs this
     // effect once real dimensions arrive (and again on each resize).
-    if (!hasUsableDimensions(dimensions)) return;
+    if (!hasUsableDimensions(dimensions)) return undefined;
 
     const dims = dimensions;
     // nodeRadius is 0 until the off-screen measurement lands; fall back to the

@@ -183,6 +183,34 @@ export type GeneticGraph = {
   nodeIds: () => string[];
 };
 
+function propagate(
+  seedIds: string[],
+  step: (id: string) => string[],
+  visited: Set<string> = new Set<string>(),
+): Set<string> {
+  const queue = [...seedIds];
+
+  for (const seed of seedIds) {
+    visited.add(seed);
+  }
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined) {
+      break;
+    }
+    const nexts = step(current);
+    for (const next of nexts) {
+      if (!visited.has(next)) {
+        visited.add(next);
+        queue.push(next);
+      }
+    }
+  }
+
+  return visited;
+}
+
 /**
  * Builds an annotated genetic graph from the family.
  *
@@ -276,34 +304,6 @@ export function buildGeneticGraph(
 
   function mitochondrialChildrenOf(id: string): string[] {
     return mitoChildMap.get(id) ?? [];
-  }
-
-  function propagate(
-    seedIds: string[],
-    step: (id: string) => string[],
-    visited: Set<string> = new Set<string>(),
-  ): Set<string> {
-    const queue = [...seedIds];
-
-    for (const seed of seedIds) {
-      visited.add(seed);
-    }
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (current === undefined) {
-        break;
-      }
-      const nexts = step(current);
-      for (const next of nexts) {
-        if (!visited.has(next)) {
-          visited.add(next);
-          queue.push(next);
-        }
-      }
-    }
-
-    return visited;
   }
 
   function descendants(id: string): Set<string> {

@@ -91,6 +91,14 @@ function listOf(where: CleanedWhere): ReadonlyArray<unknown> {
   return where.value;
 }
 
+const refuseJoin = (join: unknown): void => {
+  if (join !== undefined) {
+    throw new BetterAuthError(
+      "Studio's auth adapter does not implement joins; `advanced.database.joins` must stay unset so better-auth resolves them itself.",
+    );
+  }
+};
+
 /**
  * An empty list is a constant rather than a bound array: `in ()` is a syntax
  * error, and the driver cannot infer a type for an empty array parameter.
@@ -194,14 +202,6 @@ const customAdapter =
                 sql`${sql(columnOf(table, getFieldName({ model: table.name, field })))}`,
             ),
           );
-
-    const refuseJoin = (join: unknown): void => {
-      if (join !== undefined) {
-        throw new BetterAuthError(
-          "Studio's auth adapter does not implement joins; `advanced.database.joins` must stay unset so better-auth resolves them itself.",
-        );
-      }
-    };
 
     return {
       create: async ({ model, data }) => {

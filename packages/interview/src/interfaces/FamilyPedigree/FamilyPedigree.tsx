@@ -51,6 +51,7 @@ import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import type { LabelNode } from '../../dynamicValues/FormDynamicValues';
+import type { DynamicText } from '../../dynamicValues/resolveDynamicText';
 import {
   writeFailureMessage,
   writeSubmissionResult,
@@ -182,7 +183,11 @@ import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { pedigreeLinksOf } from './pedigreeLinks';
-import { PedigreeWordsProvider, usePedigreeWordsOf } from './pedigreeWords';
+import {
+  PedigreeWordsProvider,
+  showPiped,
+  usePedigreeWordsOf,
+} from './pedigreeWords';
 import { relationshipWrites } from './relationshipToParticipant';
 import { reproductiveRolesOf } from './reproductiveRoles';
 import {
@@ -219,12 +224,29 @@ type PanelState = {
   then?: 'sibling' | 'child';
 } | null;
 
+/** How long the mouse rests on someone before their add menu opens. */
+const HOVER_OPEN_DELAY = 200;
+
+/** A person in the family, or the add menu drawn over the canvas for them. */
+const PERSON_OR_MENU = '[data-testid="pedigree-person"], [data-add-menu]';
+
+/** The person an element in the family, or in their add menu, belongs to. */
+const personIdAt = (target: Element) => {
+  const holder = target.closest<HTMLElement>(PERSON_OR_MENU);
+  return holder?.dataset.personId ?? holder?.dataset.addMenu;
+};
+
 /** The buttons of the add menu shown around a person's symbol, if any. */
-const menuItemsOf = (symbol: HTMLElement) => [
-  ...(symbol
-    .closest('[data-testid="pedigree-person"]')
-    ?.querySelectorAll<HTMLElement>('[data-add-menu-item]') ?? []),
-];
+const menuItemsOf = (symbol: HTMLElement) => {
+  const personId = personIdAt(symbol);
+  return [
+    ...symbol.ownerDocument.querySelectorAll<HTMLElement>('[data-add-menu]'),
+  ]
+    .filter((menu) => menu.dataset.addMenu === personId)
+    .flatMap((menu) => [
+      ...menu.querySelectorAll<HTMLElement>('[data-add-menu-item]'),
+    ]);
+};
 
 /** The attributes recording a link. Whether a parent carried the
  * pregnancy is left unrecorded while not known, told apart from "No". */
@@ -260,11 +282,20 @@ const planAddition = (
     sexAttribute: config.sexAssignedAtBirthAttribute,
   });
 
+/** Whether keeping the stand-in rule changes anything. */
+const changesAnything = (changes: StandInChanges) =>
+  changes.people.length > 0 ||
+  changes.links.length > 0 ||
+  changes.updatedPeople.length > 0 ||
+  changes.changedTwins.length > 0 ||
+  changes.removedLinkIds.length > 0 ||
+  changes.removedPersonIds.length > 0;
+
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
   const contentFormat = useContentFormat();
   const words = usePedigreeWordsOf(stage.wording);
-  const { wording, text } = words;
+  const { wording, text, piped } = words;
   const dispatch = useAppDispatch();
   const { currentStep, displayedStep } = useCurrentStep();
   const store = useStore<RootState>();
@@ -744,13 +775,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [chosenPair, setChosenPair] = useState<ConnectPair | null>(null);
   // Why the last selection was refused, shown in place of the instruction.
-  const [connectNotice, setConnectNotice] = useState<string | null>(null);
+  const [connectNotice, setConnectNotice] = useState<DynamicText | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const [stepNavigation, setStepNavigation] = useState<HTMLElement | null>(
     null,
   );
+  // Where a person's add menu is drawn, over everything else on the stage.
+  const [menuLayer, setMenuLayer] = useState<HTMLDivElement | null>(null);
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
   // How far in from each edge of the canvas the prompt and the toolbar leave
@@ -772,14 +805,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family in the middle of the canvas, clear of the prompt above
-  // and the toolbar below, as large as it fits, up to a fifth larger than
-  // its natural size, and out no further than the zoom buttons go: a family
-  // too large even for that is still centred, and the rest of it is reached
-  // by panning. This is the view the stage opens on, and the view it goes
-  // back to whenever the participant asks for it, moves to another prompt,
-  // or finishes adding or editing someone; where they had dragged or zoomed
-  // it to is not kept. Until they move it again, it keeps the family framed
-  // as the layout changes (`framedView`).
+  // and the toolbar below, as large as it fits up to its natural size (people
+  // are never drawn larger unless the participant zooms in), and out no
+  // further than the zoom buttons go: a family too large even for that is
+  // still centred, and the rest of it is reached by panning. This is the
+  // view the stage opens on, and the view it goes back to whenever the
+  // participant asks for it, moves to another prompt, or finishes adding or
+  // editing someone; where they had dragged or zoomed it to is not kept.
+  // Until they move it again, it keeps the family framed as the layout
+  // changes (`framedView`).
   const framedView = useRef<View | null>(null);
   const showWholeFamily = useCallback(
     ({ animated = true }: { animated?: boolean } = {}) => {
@@ -855,7 +889,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Opened a moment after the stage loads, once the toolbar is in, so the
   // participant sees the rest of the interface first.
   useEffect(() => {
-    if (!askFramingOnLoad.current) return;
+    if (!askFramingOnLoad.current) return undefined;
     const timer = setTimeout(() => {
       if (askFramingOnLoad.current) setFramingOpen(true);
     }, FRAMING_OPEN_DELAY);
@@ -912,9 +946,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => distinctNames(shown, labels, contentFormat, words),
     [shown, labels, contentFormat, words],
   );
+  // Without the places a kinship word may break inside a symbol: outside
+  // one, a name wraps between words like any other text.
   const displayName = useCallback(
     (personId: string) =>
-      names.get(personId) ?? formatRelativeTerm('other', words),
+      withoutSoftHyphens(
+        names.get(personId) ?? formatRelativeTerm('other', words),
+      ),
     [names, words],
   );
 
@@ -1167,17 +1205,29 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // The person selected moves to the middle of the part of the screen the
   // side panel leaves uncovered, clear of the prompt and the toolbar, with
-  // the person the panel was opened from beside them, the family zooming
-  // out if the two do not both fit. Someone being added, and the panel
+  // their partners and children, and the person the panel was opened from,
+  // around them: what is centred is the box holding them all, the family
+  // zooming out if they do not all fit. Someone being added, and the panel
   // itself, are drawn a moment after the panel opens, so this waits for
-  // both.
+  // both. The family as drawn is read when the panel opens, so answering
+  // its questions does not move the view.
+  const closeFamilyOf = useEffectEvent((personId: string) =>
+    shown.links.flatMap((link) => {
+      if (link.kind === 'partner') {
+        if (link.source === personId) return [link.target];
+        if (link.target === personId) return [link.source];
+        return [];
+      }
+      return link.source === personId ? [link.target] : [];
+    }),
+  );
   const panelAnchorId = !panel?.open
     ? null
     : panel.mode.kind === 'add'
       ? panel.mode.anchor.id
       : panel.mode.person.id;
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) return undefined;
     let frame = 0;
     let framesLeft = 30;
     const centre = () => {
@@ -1188,21 +1238,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         return;
       }
       if (!element) return;
-      const anchor = panelAnchorId
-        ? nodeRefs.current.get(panelAnchorId)
-        : undefined;
+      const closeFamily = [panelAnchorId, ...closeFamilyOf(selectedId)]
+        .map((id) => (id ? nodeRefs.current.get(id) : undefined))
+        .filter(
+          (other): other is HTMLButtonElement =>
+            other !== undefined && other !== element,
+        );
       // A panel as wide as the screen leaves nothing beside it, so the
       // person is centred on the whole canvas.
       const visibleRight = window.innerWidth - (drawer?.offsetWidth ?? 0);
       const canvasLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
-      panZoom.centreOn(
-        anchor && anchor !== element ? [element, anchor] : element,
-        {
-          visibleRight:
-            visibleRight - canvasLeft > 160 ? visibleRight : undefined,
-          insets: clearInsets(),
-        },
-      );
+      panZoom.centreOn([element, ...new Set(closeFamily)], {
+        visibleRight:
+          visibleRight - canvasLeft > 160 ? visibleRight : undefined,
+        insets: clearInsets(),
+      });
     };
     frame = requestAnimationFrame(centre);
     return () => cancelAnimationFrame(frame);
@@ -1294,7 +1344,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             family,
             completeness.scope,
             (person) =>
-              missingDetailsFor(person, requiredFormVariables).length > 0,
+              missingDetailsFor(
+                person,
+                requiredFormVariables,
+                config.genderIdentity !== undefined,
+              ).length > 0,
           )
         : null,
     [family, completeness, requiredFormVariables, config],
@@ -1655,10 +1709,26 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
   };
 
-  // The mouse shows a person's menu while it is over them. Leaving waits a
-  // moment, so the pointer can cross the gap between the person and a button.
+  // The mouse shows a person's menu while it is over them. Coming to rest on
+  // someone waits a moment, so the pointer crossing the family on its way
+  // elsewhere does not open menus as it goes; once a menu shows, moving to
+  // someone else moves it at once. Leaving waits a moment too, so the
+  // pointer can cross the gap between the person and a button.
+  const hoverEnterTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const pendingHoverId = useRef<string | null>(null);
   const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(hoverLeaveTimer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(hoverEnterTimer.current);
+      clearTimeout(hoverLeaveTimer.current);
+    },
+    [],
+  );
+  const cancelHoverEnter = () => {
+    clearTimeout(hoverEnterTimer.current);
+    hoverEnterTimer.current = undefined;
+    pendingHoverId.current = null;
+  };
   const cancelHoverLeave = () => {
     clearTimeout(hoverLeaveTimer.current);
     hoverLeaveTimer.current = undefined;
@@ -1669,10 +1739,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   ) => {
     if (event.pointerType !== 'mouse') return;
     cancelHoverLeave();
-    setHoveredId(personId);
+    // The connector line, and a menu already showing (for the mouse, the
+    // keyboard or a first visit), follow at once.
+    if (tool !== 'pointer' || menuPersonId !== null) {
+      cancelHoverEnter();
+      setHoveredId(personId);
+      return;
+    }
+    if (pendingHoverId.current === personId) return;
+    cancelHoverEnter();
+    pendingHoverId.current = personId;
+    hoverEnterTimer.current = setTimeout(() => {
+      hoverEnterTimer.current = undefined;
+      pendingHoverId.current = null;
+      setHoveredId(personId);
+    }, HOVER_OPEN_DELAY);
   };
   const handlePersonPointerLeave = (event: React.PointerEvent) => {
     if (event.pointerType !== 'mouse') return;
+    cancelHoverEnter();
     cancelHoverLeave();
     // The connector line lets go of a person at once; the add menu waits.
     if (tool !== 'pointer') setHoveredId(null);
@@ -1693,15 +1778,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // A drag (the canvas panned, a button held) is not hovering.
     if (event.pointerType !== 'mouse' || event.buttons !== 0) return;
     const over =
-      event.target instanceof Element
-        ? event.target
-            .closest('[data-testid="pedigree-person"]')
-            ?.getAttribute('data-person-id')
-        : undefined;
+      event.target instanceof Element ? personIdAt(event.target) : undefined;
     if (over) {
       if (over !== hoveredId || hoverLeaveTimer.current !== undefined) {
         handlePersonPointerEnter(over, event);
       }
+    } else if (pendingHoverId.current !== null) {
+      cancelHoverEnter();
     } else if (hoveredId !== null && hoverLeaveTimer.current === undefined) {
       handlePersonPointerLeave(event);
     }
@@ -1784,7 +1867,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (
       target instanceof Element &&
       currentTarget.contains(target) &&
-      !target.closest('[data-testid="pedigree-person"]')
+      !target.closest(PERSON_OR_MENU)
     ) {
       setFocusedId(null);
       setHoveredId(null);
@@ -1956,15 +2039,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         family,
       ),
     );
-
-  // Whether keeping the stand-in rule changes anything.
-  const changesAnything = (changes: StandInChanges) =>
-    changes.people.length > 0 ||
-    changes.links.length > 0 ||
-    changes.updatedPeople.length > 0 ||
-    changes.changedTwins.length > 0 ||
-    changes.removedLinkIds.length > 0 ||
-    changes.removedPersonIds.length > 0;
 
   // Writes what keeping the stand-in rule changes, stopping at the first
   // write the session refuses, which it resolves to. Stand-ins are taken
@@ -2386,9 +2460,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setAnnouncement('');
   };
 
+  const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
+
   // Two people in a sentence, the participant first, as "you and …".
   const pairArgs = (a: string, b: string) => {
-    const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
     const [first, second] = isYou(b) ? [b, a] : [a, b];
     return {
       firstIsYou: isYou(first) ? 'true' : 'false',
@@ -2397,10 +2472,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     };
   };
 
-  // People named together, joined as the language of the wording they are
-  // named in joins a list.
+  // People named together, as a list each of whose names is a value.
   const listOfNames = (ids: readonly string[]) =>
-    contentFormat.formatList(ids.map((id) => displayName(id)));
+    ids.map((id) => displayName(id));
 
   // Why a change made in the panel is refused, as a form error, when it
   // would leave someone outside the participant's family
@@ -2413,10 +2487,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     );
     return cutOff.length === 0
       ? undefined
-      : text(wording.changeWouldCutOff, {
+      : piped(wording.changeWouldCutOff, {
           count: cutOff.length,
           names: listOfNames(cutOff),
-        });
+        }).text;
   };
 
   // The links between two people, in either direction.
@@ -2429,9 +2503,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       )
       .map((link) => link.id);
 
-  const refuse = (notice: string) => {
+  const refuse = (notice: DynamicText) => {
     setConnectNotice(notice);
-    setAnnouncement(notice);
+    setAnnouncement(notice.text);
   };
 
   const handlePairSelect = (personId: string) => {
@@ -2478,11 +2552,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       if (cutOff.length > 0) {
         refuse(
           standInId === undefined
-            ? text(wording.disconnectWouldCutOff, {
+            ? piped(wording.disconnectWouldCutOff, {
                 count: cutOff.length,
                 names: listOfNames(cutOff),
               })
-            : text(wording.disconnectStandIn, {
+            : piped(wording.disconnectStandIn, {
                 childIsYou: family.byId.get(childId)?.isEgo ? 'true' : 'false',
                 child: displayName(childId),
                 standIn: displayName(standInId),
@@ -2576,7 +2650,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     );
     if (cutOff.length > 0) {
       refuse(
-        text(wording.changeWouldCutOff, {
+        piped(wording.changeWouldCutOff, {
           count: cutOff.length,
           names: listOfNames(cutOff),
         }),
@@ -2605,7 +2679,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const args = pairArgs(firstId, secondId);
     let removed = false;
     await confirm({
-      title: text(wording.disconnectConfirmTitle, args),
+      title: showPiped(piped(wording.disconnectConfirmTitle, args)),
       description: text(wording.disconnectConfirmDescription),
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
@@ -2653,12 +2727,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     closePanel();
     let removed = false;
     await confirm({
-      title: text(wording.removeConfirmTitle, { name }),
-      description: text(wording.removeConfirmDescription, {
-        hasOthers: cutOffIds.length === 0 ? 'false' : 'true',
-        count: cutOffIds.length,
-        names: listOfNames(cutOffIds),
-      }),
+      title: showPiped(piped(wording.removeConfirmTitle, { name })),
+      description: showPiped(
+        piped(wording.removeConfirmDescription, {
+          hasOthers: cutOffIds.length === 0 ? 'false' : 'true',
+          count: cutOffIds.length,
+          names: listOfNames(cutOffIds),
+        }),
+      ),
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
       // The dialog was opened from the person removed: once they are gone,
@@ -2714,14 +2790,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   };
 
   const panelTitle = (() => {
-    if (!panel) return '';
+    if (!panel) return undefined;
     const { mode } = panel;
     const subject = mode.kind === 'add' ? mode.anchor : mode.person;
-    return text(wording.panelTitle, {
-      relation: mode.kind === 'edit' ? 'edit' : mode.relation,
-      isYou: subject.isEgo ? 'true' : 'false',
-      name: displayName(subject.id),
-    });
+    return showPiped(
+      piped(wording.panelTitle, {
+        relation: mode.kind === 'edit' ? 'edit' : mode.relation,
+        isYou: subject.isEgo ? 'true' : 'false',
+        name: displayName(subject.id),
+      }),
+    );
   })();
 
   const editedPerson = panel?.mode.kind === 'edit' ? panel.mode.person : null;
@@ -2797,11 +2875,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             // Zooming from the keyboard keeps the person focused, and their
             // add menu, in the clear part of the canvas.
             zoomFocus={(target) => {
-              const person = target.closest<HTMLElement>(
-                '[data-testid="pedigree-person"]',
-              );
-              const element = person?.dataset.personId
-                ? nodeRefs.current.get(person.dataset.personId)
+              const personId = personIdAt(target);
+              const element = personId
+                ? nodeRefs.current.get(personId)
                 : undefined;
               return element
                 ? {
@@ -2810,6 +2886,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   }
                 : undefined;
             }}
+            foreground={
+              <div
+                ref={setMenuLayer}
+                className="pointer-events-none absolute inset-0 z-30"
+              />
+            }
             overlay={
               connectorFrom &&
               tool === 'connect' && (
@@ -2860,13 +2942,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       tool !== 'pointer' &&
                       (personId === linkingId || personId === connectorTargetId)
                     }
-                    menuOpen={hasMenu}
                     // The person being added has not been asked yet.
                     hasMissingDetails={
                       !nomination &&
                       family.byId.has(personId) &&
-                      missingDetailsFor(person, requiredFormVariables).length >
-                        0
+                      missingDetailsFor(
+                        person,
+                        requiredFormVariables,
+                        config.genderIdentity !== undefined,
+                      ).length > 0
                     }
                     adopted={shown.links.some(
                       (link) =>
@@ -2892,6 +2976,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   >
                     {hasMenu && (
                       <AddRelativeMenu
+                        personId={personId}
+                        layer={menuLayer}
+                        anchor={
+                          nodeElements
+                            .get(personId)
+                            ?.closest<HTMLElement>(
+                              '[data-testid="pedigree-person"]',
+                            ) ?? null
+                        }
                         isYou={person.isEgo}
                         name={displayName(personId)}
                         onAdd={openAdd}
@@ -2933,7 +3026,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 className="text-sm opacity-80"
                 data-testid="pedigree-connect-hint"
               >
-                {connectNotice ??
+                {showPiped(connectNotice ?? undefined) ??
                   text(
                     tool === 'connect'
                       ? wording.connectHint

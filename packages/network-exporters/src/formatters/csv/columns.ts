@@ -80,6 +80,10 @@ const layoutCell = (
       return x !== undefined && y !== undefined
         ? ((1.0 - y) * globalOptions.screenLayoutHeight).toFixed(2)
         : undefined;
+    default: {
+      const unhandled: never = axis;
+      throw new Error('Unhandled layout axis', { cause: unhandled });
+    }
   }
 };
 
@@ -114,6 +118,10 @@ const variableCell =
             : undefined;
         }
         return layoutCell(data, origin.axis, exportOptions);
+      default: {
+        const unhandled: never = origin;
+        throw new Error('Unhandled export column origin', { cause: unhandled });
+      }
     }
   };
 

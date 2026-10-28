@@ -288,6 +288,8 @@ function AssetItem({
     case 'geojson':
     case 'apikey':
       return <ItemFallback />;
+    default:
+      return null;
   }
 }
 
@@ -322,5 +324,7 @@ export default function ContentItem({
       );
     case 'asset':
       return <AssetItem item={item} isE2E={isE2E} />;
+    default:
+      return null;
   }
 }

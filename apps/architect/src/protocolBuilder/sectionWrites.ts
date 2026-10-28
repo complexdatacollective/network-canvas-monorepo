@@ -276,6 +276,10 @@ export function submitSection(
       return submitStageOrder(store, document);
     case 'assets':
       return submitAssets(store, document);
+    default: {
+      const unhandled: never = ref;
+      throw new Error('Unhandled section kind', { cause: unhandled });
+    }
   }
 }
 

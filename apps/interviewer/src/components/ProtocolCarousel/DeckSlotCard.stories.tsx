@@ -145,6 +145,10 @@ function entryForKind(
           progress,
         },
       };
+    default: {
+      const unhandled: never = kind;
+      throw new Error('Unhandled story kind', { cause: unhandled });
+    }
   }
 }
 

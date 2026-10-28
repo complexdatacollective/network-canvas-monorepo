@@ -36,8 +36,6 @@ const context: ReasonContext = {
     unknown: 'Don’t know',
     preferNotToSay: 'Prefer not to say',
   },
-  formatList: (items) =>
-    new Intl.ListFormat('en', { type: 'conjunction' }).format(items),
 };
 
 const surrogateCarried = (childId: string) =>
@@ -57,12 +55,13 @@ const carried = (childId: string) =>
 describe('joinReasons', () => {
   test('says a reason about several children once, naming them together', () => {
     expect(
-      joinReasons(context, [surrogateCarried('ava'), surrogateCarried('ben')]),
+      joinReasons(context, [surrogateCarried('ava'), surrogateCarried('ben')])
+        ?.text,
     ).toBe(
-      '“Male” is unavailable because you are recorded as having carried Ava and Ben, and nobody recorded as “Male” at birth can carry a pregnancy. To choose it, first change how you are connected to Ava and Ben.',
+      'Male is unavailable because you are recorded as having carried Ava and Ben, and nobody recorded as Male at birth can carry a pregnancy. To choose it, first change how you are connected to Ava and Ben.',
     );
-    expect(joinReasons(context, [carried('ava'), carried('ben')])).toBe(
-      'You are recorded as having carried Ava and Ben, and nobody recorded as “Male” at birth can carry a pregnancy. If you save, you will no longer be recorded as having carried Ava and Ben.',
+    expect(joinReasons(context, [carried('ava'), carried('ben')])?.text).toBe(
+      'You are recorded as having carried Ava and Ben, and nobody recorded as Male at birth can carry a pregnancy. If you save, you will no longer be recorded as having carried Ava and Ben.',
     );
   });
 
@@ -79,9 +78,9 @@ describe('joinReasons', () => {
         sameSexAs('ava'),
         sameSexAs('ego'),
         sameSexAs('ben'),
-      ]),
+      ])?.text,
     ).toBe(
-      'This person and “Mum” are both your genetic parents, and “Mum” is also recorded as “Female” at birth. Nobody has two genetic parents of the same sex at birth, so if you save, the sex at birth of “Mum” will be cleared for you to answer again.',
+      'This person and Mum are both your genetic parents, and Mum is also recorded as Female at birth. Nobody has two genetic parents of the same sex at birth, so if you save, the sex at birth of Mum will be cleared for you to answer again.',
     );
   });
 
@@ -89,8 +88,8 @@ describe('joinReasons', () => {
     const surrogate = carrierRecordedReason('ego', 'mum', [
       { value: 'surrogate', label: 'Surrogate' },
     ]);
-    expect(joinReasons(context, [surrogate, surrogate, undefined])).toBe(
-      '“Surrogate” is unavailable because “Mum” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Mum” is connected to you.',
+    expect(joinReasons(context, [surrogate, surrogate, undefined])?.text).toBe(
+      'Surrogate is unavailable because Mum is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how Mum is connected to you.',
     );
     expect(joinReasons(context, [undefined, false])).toBeUndefined();
   });
@@ -102,7 +101,23 @@ describe('joinReasons', () => {
           { value: 'surrogate', label: 'Surrogate' },
           { value: 'true', label: 'Yes' },
         ]),
-      ]),
+      ])?.text,
     ).toMatch(/^Surrogate and Yes are unavailable because/);
+  });
+
+  test('marks out each name and answer it shows, but not the words joining them', () => {
+    const parts = joinReasons(context, [
+      surrogateCarried('ava'),
+      surrogateCarried('ben'),
+    ])?.parts;
+    expect(parts?.slice(0, 2)).toEqual([
+      { name: 'sex', text: 'Male' },
+      ' is unavailable because you are recorded as having carried ',
+    ]);
+    expect(parts?.slice(2, 5)).toEqual([
+      { name: 'children', text: 'Ava' },
+      ' and ',
+      { name: 'children', text: 'Ben' },
+    ]);
   });
 });

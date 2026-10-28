@@ -48,6 +48,16 @@ export const recommendationsCover = (
 export type CompletenessProgress = {
   /** What is still needed, about people already in the family. */
   items: CompletenessItem[];
+  /** Everything asked about people already in the family, needed or done,
+   * in the order the list shows it: `items`, with what is done among them.
+   * A person's details are in it only while some are missing. */
+  checklist: { item: CompletenessItem; done: boolean }[];
+  /** The one item, after the rest, that stands for everyone's required
+   * details while nobody already in the family is missing any: done only
+   * once nothing else is needed either, since anyone still to be added
+   * will need theirs. Absent while someone's details are missing, when the
+   * list names each of them instead. */
+  allDetails?: { done: boolean };
   /** Steps towards completion taken, and in total. */
   done: number;
   total: number;
@@ -139,6 +149,10 @@ function requirementsFor(
     case 'coParent':
     case 'none':
       return {};
+    default: {
+      const unhandled: never = role;
+      throw new Error('Unhandled role', { cause: unhandled });
+    }
   }
 }
 
@@ -170,12 +184,24 @@ export function evaluateCompleteness(
 ): CompletenessProgress {
   // Each with how far its person is from the participant, to list the
   // nearest first.
-  const found: { item: CompletenessItem; distance: number }[] = [];
+  const found: {
+    item: CompletenessItem;
+    distance: number;
+    done: boolean;
+  }[] = [];
   const asked = new Set<string>();
   let done = 0;
   let total = 0;
   const egoId = family.egoId;
-  if (!egoId) return { items: [], done, total, asked };
+  if (!egoId) {
+    return {
+      items: [],
+      checklist: [],
+      done,
+      total,
+      asked,
+    };
+  }
 
   const answered = (
     personId: string,
@@ -214,8 +240,12 @@ export function evaluateCompleteness(
       }
       // Someone with one biological parent is given a stand-in for the other
       // (`planStandIns`), whose details are asked for in their own right.
-      if (personId && parents.length === 0) {
-        found.push({ item: { kind: 'parents', personId }, distance });
+      if (personId) {
+        found.push({
+          item: { kind: 'parents', personId },
+          distance,
+          done: parents.length > 0,
+        });
       }
     }
 
@@ -229,11 +259,9 @@ export function evaluateCompleteness(
       total += 1;
       if (!personId) return;
       asked.add(`${kind}:${personId}`);
-      if (relatives.length > 0 || answered(personId, none, unknown)) {
-        done += 1;
-      } else {
-        found.push({ item: { kind, personId }, distance });
-      }
+      const given = relatives.length > 0 || answered(personId, none, unknown);
+      if (given) done += 1;
+      found.push({ item: { kind, personId }, distance, done: given });
       for (const relativeId of relatives) {
         visit(relativeId, relativeRole, distance + 1);
       }
@@ -260,24 +288,39 @@ export function evaluateCompleteness(
   };
 
   visit(egoId, 'ego', 0);
-  const items = found
+  const checklist = found
     .toSorted((a, b) => a.distance - b.distance)
-    .map(({ item }) => item);
+    .map(({ item, done: isDone }) => ({ item, done: isDone }));
 
   // Everyone in the family needs their required details, the participant
   // first.
   const people = family.people.toSorted(
     (a, b) => Number(b.isEgo) - Number(a.isEgo),
   );
+  let allDetailsGiven = true;
   for (const person of people) {
     total += 1;
     if (hasMissingDetails(person)) {
-      items.push({ kind: 'details', personId: person.id });
+      allDetailsGiven = false;
+      checklist.push({
+        item: { kind: 'details', personId: person.id },
+        done: false,
+      });
     } else {
       done += 1;
     }
   }
-  return { items, done, total, asked };
+  const items = checklist
+    .filter((entry) => !entry.done)
+    .map((entry) => entry.item);
+  return {
+    items,
+    checklist,
+    ...(allDetailsGiven ? { allDetails: { done: items.length === 0 } } : {}),
+    done,
+    total,
+    asked,
+  };
 }
 
 /** The answers that stand in for siblings or children not recorded. */

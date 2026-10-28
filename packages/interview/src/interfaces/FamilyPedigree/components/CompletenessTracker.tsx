@@ -1,7 +1,14 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { type Ref, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -13,14 +20,12 @@ import {
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { FamilyPedigreeStageDefinition } from '@codaco/protocol-validation';
 
-import {
-  useLocalizedString,
-  useResolveLocalizedMessage,
-} from '../../../localization/ProtocolLocalizationProvider';
+import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../../localization/useContentFormat';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
+import { showPiped, usePedigreePiped } from '../pedigreeWords';
 
 /** The stage's completeness setting: its enforcement and its wording. */
 type TrackerCompleteness = Pick<
@@ -97,12 +102,50 @@ function ProgressRing({ fraction }: { fraction: number }) {
   );
 }
 
+/** A tick for what is done, a bullet for what is not, each the width of
+ * the tick so the text lines up. */
+function ItemMark({ done }: { done: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className="flex w-4 shrink-0 translate-y-0.5 justify-center self-start"
+    >
+      {done ? (
+        <Check className="text-success size-4 stroke-[3px]" />
+      ) : (
+        <span className="mt-1.5 size-1.5 rounded-full bg-current" />
+      )}
+    </span>
+  );
+}
+
+/** The words of an item done, struck through, with `prefix` read out
+ * before them. */
+function DoneText({
+  prefix,
+  children,
+}: {
+  prefix: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="line-through opacity-70">
+      <span className="sr-only">{prefix}</span>
+      {children}
+    </span>
+  );
+}
+
 /**
  * Progress towards the family the researcher requires, as a ring in the
- * stage's toolbar. Hovering or focusing it shows a short list of what is
- * still needed in a popover; clicking it, or pressing Next before the family
- * is complete, pins the list open. Once complete, the ring is a tick and
- * there is no list.
+ * stage's toolbar. Hovering or focusing it shows, in a popover, the list of
+ * everything asked about the family: what is done, ticked and struck
+ * through, and what is still needed, which leads to it. People's details
+ * are listed one by one while missing, and as one item once all are given,
+ * ticked once nothing else is needed either.
+ * Clicking the ring,
+ * or pressing Next before the family is complete, pins the list open. Once
+ * complete, the ring is a tick, and the list shows everything done.
  */
 function CompletenessTracker({
   progress,
@@ -116,7 +159,7 @@ function CompletenessTracker({
   ref,
 }: CompletenessTrackerProps) {
   const intl = useAppIntl();
-  const resolveMessage = useResolveLocalizedMessage();
+  const piped = usePedigreePiped();
   const { text: recommendedNote } = useLocalizedString(
     completeness.recommendedNote,
   );
@@ -194,6 +237,8 @@ function CompletenessTracker({
   // after the stage opens; the ring starts empty rather than full.
   const fraction = progress.total === 0 ? 0 : progress.done / progress.total;
   const complete = progress.total > 0 && progress.items.length === 0;
+  // Read out before each item already done, apart from the item's words.
+  const donePrefix = `${intl.formatMessage(messages.trackerItemDone)} `;
   const progressLabel = intl.formatMessage(messages.trackerProgressLabel, {
     complete: complete ? 'true' : 'false',
     percent: fraction,
@@ -210,10 +255,8 @@ function CompletenessTracker({
   return (
     <ToolbarPopover
       ref={ref}
-      open={expanded && !complete}
+      open={expanded && progress.checklist.length > 0}
       onOpenChange={(next, details) => {
-        // Complete, there is no list to pin open.
-        if (complete) return;
         // A press on the ring while the list shows only from hover or focus
         // pins it, rather than closing it.
         if (next || (details.reason === 'trigger-press' && !open)) {
@@ -248,7 +291,11 @@ function CompletenessTracker({
       }
       contentProps={{
         side: 'top',
-        className: 'w-96 max-w-[calc(100vw-2rem)]',
+        // Bounded by the space Base UI finds for it, with the list as the
+        // part that scrolls: a large family's list, done items and all, can
+        // be taller than the screen.
+        className:
+          'flex w-96 max-w-[calc(100vw-2rem)] max-h-(--available-height) flex-col',
         ref: popupRef,
         // Focus stays where it is when the list opens from hover or focus.
         initialFocus: () => {
@@ -266,17 +313,17 @@ function CompletenessTracker({
         onBlur: blur,
       }}
     >
-      <div className="flex flex-col gap-3">
-        {!complete && (
+      <div className="flex min-h-0 flex-col gap-3">
+        {progress.checklist.length > 0 && (
           <div
             ref={listRef}
             role="region"
             aria-label={progressLabel}
             tabIndex={-1}
-            className="flex flex-col gap-3 outline-none"
+            className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain outline-none"
           >
             <ul className="flex flex-col gap-2">
-              {progress.items.map((item) => {
+              {progress.checklist.map(({ item, done }) => {
                 const values = {
                   isYou: family.byId.get(item.personId)?.isEgo
                     ? 'true'
@@ -284,8 +331,9 @@ function CompletenessTracker({
                   name: displayName(item.personId),
                 };
                 const wording = completeness.itemText[item.kind];
+                const itemText = showPiped(piped(wording.listItem, values));
                 const noneAnswer =
-                  onItemAnswer && 'noneButton' in wording
+                  !done && onItemAnswer && 'noneButton' in wording
                     ? wording.noneButton
                     : null;
                 return (
@@ -293,33 +341,50 @@ function CompletenessTracker({
                     key={`${item.kind}:${item.personId}`}
                     className="flex items-baseline gap-2"
                   >
-                    <span
-                      aria-hidden
-                      className="size-1.5 shrink-0 -translate-y-0.5 rounded-full bg-current"
-                    />
-                    <div className="flex flex-col items-start gap-2">
-                      <button
-                        type="button"
-                        className="focusable text-left underline-offset-4 hover:underline"
-                        onClick={() => {
-                          // The list is put away for what it leads to, the
-                          // person's panel, which it would otherwise cover.
-                          setSuppressed(true);
-                          onOpenChange(false);
-                          onItemSelect(item);
-                        }}
-                      >
-                        {resolveMessage(wording.listItem, values).text}
-                      </button>
-                      {noneAnswer && (
-                        <Button size="sm" onClick={() => answer(item)}>
-                          {resolveMessage(noneAnswer, values).text}
-                        </Button>
-                      )}
-                    </div>
+                    <ItemMark done={done} />
+                    {done ? (
+                      <DoneText prefix={donePrefix}>{itemText}</DoneText>
+                    ) : (
+                      <div className="flex flex-col items-start gap-2">
+                        <button
+                          type="button"
+                          className="focusable cursor-pointer text-left underline-offset-4 hover:underline"
+                          onClick={() => {
+                            // The list is put away for what it leads to, the
+                            // person's panel, which it would otherwise cover.
+                            setSuppressed(true);
+                            onOpenChange(false);
+                            onItemSelect(item);
+                          }}
+                        >
+                          {itemText}
+                        </button>
+                        {noneAnswer && (
+                          <Button size="sm" onClick={() => answer(item)}>
+                            {showPiped(piped(noneAnswer, values))}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
+              {progress.allDetails && (
+                <li className="flex items-baseline gap-2">
+                  <ItemMark done={progress.allDetails.done} />
+                  {progress.allDetails.done ? (
+                    <DoneText prefix={donePrefix}>
+                      {intl.formatMessage(messages.trackerAllDetails)}
+                    </DoneText>
+                  ) : (
+                    // Nothing to lead to yet: the people it waits on are
+                    // the ones the items above add.
+                    <span>
+                      {intl.formatMessage(messages.trackerAllDetails)}
+                    </span>
+                  )}
+                </li>
+              )}
             </ul>
             {completeness.enforcement === 'recommended' && (
               <p className="text-sm opacity-80">{recommendedNote}</p>

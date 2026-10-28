@@ -1,8 +1,9 @@
 // The previous Interviewer major, served beside this app on the same origin.
 //
-// A build that bundles Interviewer 8 copies it into `dist/v8/` and says so
-// through the `__INTERVIEWER_V8__` define; any other build (dev, tests,
-// Storybook, a build made before Interviewer 8.5.0 was pinned) has no `/v8/`
+// A build that bundles Interviewer 8 copies it into `dist/v8/` (the dev server
+// serves the same pinned build) and says so through the `__INTERVIEWER_V8__`
+// define; anything else (tests, Storybook, a dev server that could not obtain
+// it, a build made before Interviewer 8.5.0 was pinned) has no `/v8/`
 // to go to: the SPA fallback would serve this app's own shell there, which has
 // no route for it, and the frame would show a blank page. So the interview
 // route asks `getBundledLegacyInterviewer` before it hosts a schema 8

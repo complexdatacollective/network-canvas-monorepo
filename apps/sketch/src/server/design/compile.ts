@@ -148,6 +148,12 @@ const INFO_TITLES = {
   closing: 'Thank you',
 } as const;
 
+const pick = (...xs: (string | undefined)[]) =>
+  xs.find((x) => x && x.trim())?.trim() ?? '';
+
+const qKey = (scope: string, id: string) =>
+  scope === 'ego' ? `ego/${id}` : `${scope}/${id}`;
+
 export const compile = (
   d: NormalizedDesign,
   wording: Wording | undefined,
@@ -166,8 +172,6 @@ export const compile = (
       (wording?.questions ?? []).map((q) => [q.questionKey, q.text]),
     ),
   };
-  const pick = (...xs: (string | undefined)[]) =>
-    xs.find((x) => x && x.trim())?.trim() ?? '';
   const instruments = new Set(d.instrumentAttributes);
 
   // ---- codebook -------------------------------------------------------------------
@@ -503,8 +507,6 @@ export const compile = (
     title: localized(pick(W.stage.get(designId)?.title, title)),
     text: localized(pick(W.stage.get(designId)?.text, text)),
   });
-  const qKey = (scope: string, id: string) =>
-    scope === 'ego' ? `ego/${id}` : `${scope}/${id}`;
   const field = (scope: string, attrId: string) => {
     const a = attrIn(scope, attrId)!;
     const qk = a.builtin === 'consent' ? 'consent' : qKey(scope, attrId);

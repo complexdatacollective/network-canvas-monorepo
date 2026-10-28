@@ -81,24 +81,18 @@ const rowsFor = (dump: DatabaseDump | null, store: string, hash: string) =>
   rowsOf(dump, store).filter((row) => row.protocolHash === hash);
 
 /**
- * Interviewer 8 only unlocks the shared lock and sends a device that has none
- * set up straight back, so in a browser tab with no lock (these tests' state)
- * every way into it opens set-up here first. Choose to use no lock.
+ * In a browser tab with no lock (these tests' state) both Interviewers keep
+ * rows in plaintext, so every way into Interviewer 8 hosts it at once: set-up
+ * opens only when the app is installed, never on the way into an interview.
  */
 const setUpWizard = (page: Page) =>
   page.getByRole('dialog', { name: 'Setting up your device' });
 
-const chooseNoLock = async (page: Page) => {
-  await expect(setUpWizard(page)).toBeVisible();
-  await page.getByTestId('wizard-next').click(); // intro → securing data
-  await page.getByTestId('wizard-next').click(); // → method
-  await page.locator('[data-value="none"]').click();
-  await page
-    .getByRole('dialog', { name: 'Continue without security?' })
-    .getByRole('button', { name: 'Continue without security' })
-    .click();
-  await page.getByTestId('wizard-next').click(); // → analytics
-  await page.getByTestId('wizard-next').click(); // Finish
+const expectStillWithoutLock = async (page: Page) => {
+  await expect(setUpWizard(page)).toHaveCount(0);
+  expect(
+    await page.evaluate(() => localStorage.getItem('interviewer:vault')),
+  ).toBeNull();
 };
 
 // PINs are 8 digits.
@@ -280,15 +274,15 @@ test('starting an interview writes Interviewer 8’s session row and hosts it at
   await openOnInterviewer8Device(page);
 
   await startFromLegacyCard(page, 'started-here');
-  await chooseNoLock(page);
 
   await expect(page).toHaveURL(new RegExp(`/interview/(${UUID})$`));
   const [, id] =
     new URL(page.url()).pathname.match(new RegExp(`^/interview/(${UUID})$`)) ??
     [];
   await expectHosted(page, `/v8/interview/${id}`);
-  // No lock: no key to hand over.
+  // No lock: no key to hand over, and none was set up on the way in.
   expect((await settledReply(page)).map((reply) => reply.key)).toEqual([null]);
+  await expectStillWithoutLock(page);
 
   // The row Interviewer 8 will run, in its own format: the fields its
   // createSession writes, unencrypted on a device with no lock.
@@ -314,39 +308,27 @@ test('starting an interview writes Interviewer 8’s session row and hosts it at
   expect(started).not.toHaveProperty('_enc');
 });
 
-test('with no lock set up, leaving set-up keeps the researcher here and starts nothing', async ({
-  page,
-}) => {
-  const before = await openOnInterviewer8Device(page);
-
-  await startFromLegacyCard(page, 'not-started');
-  await expect(setUpWizard(page)).toBeVisible();
-  await setUpWizard(page).getByRole('button', { name: 'Exit setup' }).click();
-  await page
-    .getByRole('dialog', { name: 'Exit setup?' })
-    .getByRole('button', { name: 'Exit setup' })
-    .click();
-
-  await expect(setUpWizard(page)).toBeHidden();
-  await expect(page).toHaveURL('/');
-  await expect(legacyCard(page)).toBeVisible();
-  expect(
-    await page.evaluate(() => localStorage.getItem('interviewer:vault')),
-  ).toBeNull();
-  expect(rowsOf(await dumpDatabase(page), 'sessions')).toEqual(
-    rowsOf(before, 'sessions'),
-  );
-});
-
 test('resuming a schema 8 interview hosts it at /v8/interview/<id>', async ({
   page,
 }) => {
   await openOnInterviewer8Device(page);
   await resumeFromDataView(page);
-  await chooseNoLock(page);
 
   await expect(page).toHaveURL(`/interview/${LEGACY_SESSION_ID}`);
   await expectHosted(page, `/v8/interview/${LEGACY_SESSION_ID}`);
+  await expectStillWithoutLock(page);
+});
+
+test('the resume pill hosts the last schema 8 interview, with no set-up on a device with no lock', async ({
+  page,
+}) => {
+  await openOnInterviewer8Device(page);
+
+  await page.getByRole('button', { name: /Resume last interview/ }).click();
+
+  await expect(page).toHaveURL(`/interview/${LEGACY_SESSION_ID}`);
+  await expectHosted(page, `/v8/interview/${LEGACY_SESSION_ID}`);
+  await expectStillWithoutLock(page);
 });
 
 test('reviewing a finished schema 8 interview hosts /v8/interview/<id>?mode=review', async ({
@@ -359,7 +341,6 @@ test('reviewing a finished schema 8 interview hosts /v8/interview/<id>?mode=revi
   // Marking unfinished is not offered for a schema 8 interview.
   await expect(page.getByTestId('data-mark-unfinished')).toHaveCount(0);
   await page.getByTestId('data-review').click();
-  await chooseNoLock(page);
 
   await expect(page).toHaveURL(
     `/interview/${LEGACY_FINISHED_SESSION_ID}?mode=review`,
@@ -619,7 +600,6 @@ test('closing goes home with the interview’s history entry replaced, so Back d
 }) => {
   await openOnInterviewer8Device(page);
   await resumeFromDataView(page);
-  await chooseNoLock(page);
   await expectHosted(page, `/v8/interview/${LEGACY_SESSION_ID}`);
 
   await hostedFrame(page)

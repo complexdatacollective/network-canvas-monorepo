@@ -506,6 +506,7 @@ export function RowDialog({
         if ('refused' in outcome) return outcome.refused;
 
         onSave(normalize ? normalize(outcome.row) : outcome.row);
+        return undefined;
       }}
       /**
        * A row hides its own controls while it is being edited, so the Edit

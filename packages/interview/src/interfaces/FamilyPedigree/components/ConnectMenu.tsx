@@ -18,7 +18,7 @@ import {
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 
-import { useContentFormat } from '../../../localization/useContentFormat';
+import type { DynamicText } from '../../../dynamicValues/resolveDynamicText';
 import { messages } from '../messages';
 import {
   availableParentChoices,
@@ -32,7 +32,11 @@ import {
   REPLACED_PARENT_KINDS,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
-import { type PedigreeWords, usePedigreeWords } from '../pedigreeWords';
+import {
+  type PedigreeWords,
+  showPiped,
+  usePedigreeWords,
+} from '../pedigreeWords';
 import {
   carrierRecordedReason,
   carrierReplacedReason,
@@ -90,7 +94,7 @@ function ItemText({
   reasonId,
 }: {
   label: ReactNode;
-  reason: string | undefined;
+  reason: DynamicText | undefined;
   reasonId: string;
 }) {
   return (
@@ -98,7 +102,7 @@ function ItemText({
       <span>{label}</span>
       {reason !== undefined && (
         <span id={reasonId} aria-hidden className="text-sm">
-          {reason}
+          {showPiped(reason)}
         </span>
       )}
     </span>
@@ -111,7 +115,7 @@ function ItemText({
  * in a pair, as "you and …".
  */
 function connectionWords(
-  { wording, text }: PedigreeWords,
+  { wording, text, piped }: PedigreeWords,
   intl: IntlShape,
   family: Family,
   displayName: (personId: string) => string,
@@ -127,7 +131,7 @@ function connectionWords(
         })
       : parentKindLabels[choice.parentKind];
   const parentLabel = ({ parentId, childId }: ParentAndChild) =>
-    text(wording.connectParent, {
+    piped(wording.connectParent, {
       parentIsYou: isYou(parentId) ? 'true' : 'false',
       childIsYou: isYou(childId) ? 'true' : 'false',
       parent: displayName(parentId),
@@ -143,7 +147,7 @@ function connectionWords(
     };
   };
   const partnersLabel = (a: string, b: string, current: boolean) =>
-    text(wording.connectPartners, {
+    piped(wording.connectPartners, {
       ...pairArgs(a, b),
       current: current ? 'true' : 'false',
     });
@@ -162,9 +166,9 @@ function connectionWords(
             connection.firstId,
             connection.secondId,
             connection.current,
-          )
+          ).text
         : intl.formatMessage(messages.connectedParentAnnouncement, {
-            relationship: parentLabel(connection),
+            relationship: parentLabel(connection).text,
             kind: getMarkdownLabelText(parentChoiceLabel(connection)),
           }),
   };
@@ -201,8 +205,7 @@ export function describeConnection(
  * are unavailable, except where the newest answer wins: a choice that
  * replaces who carried the child, or a genetic kind that takes the place of
  * a biological parent, says so under it, and for the latter a third step
- * asks how the participant would define that parent's relationship to the
- * child instead.
+ * asks what kind of parent they are to the child instead.
  */
 export default function ConnectMenu({
   pair,
@@ -215,9 +218,8 @@ export default function ConnectMenu({
   onClose,
 }: ConnectMenuProps) {
   const words = usePedigreeWords();
-  const { wording, text } = words;
+  const { wording, piped } = words;
   const intl = useAppIntl();
-  const contentFormat = useContentFormat();
   const reasonIdPrefix = useId();
   const connection = connectionWords(
     words,
@@ -257,12 +259,14 @@ export default function ConnectMenu({
       return (
         <DropdownMenuGroup>
           <DropdownMenuLabel>
-            {text(wording.parentLinkKindLabel, {
-              parentIsYou: isYou(replacedId) ? 'true' : 'false',
-              personIsYou: isYou(parentChoice.childId) ? 'true' : 'false',
-              parent: displayName(replacedId),
-              child: displayName(parentChoice.childId),
-            })}
+            {showPiped(
+              piped(wording.parentLinkKindLabel, {
+                parentIsYou: isYou(replacedId) ? 'true' : 'false',
+                personIsYou: isYou(parentChoice.childId) ? 'true' : 'false',
+                parent: displayName(replacedId),
+                child: displayName(parentChoice.childId),
+              }),
+            )}
           </DropdownMenuLabel>
           {REPLACED_PARENT_KINDS.map((kind, index) => (
             <DropdownMenuItem
@@ -304,7 +308,6 @@ export default function ConnectMenu({
         family,
         displayName,
         sexLabels,
-        formatList: contentFormat.formatList,
       };
       // What a choice that is available replaces is said under it in the
       // same way: whoever was recorded as carrying the child, and the
@@ -356,7 +359,7 @@ export default function ConnectMenu({
       };
       return (
         <DropdownMenuGroup>
-          <DropdownMenuLabel>{label}</DropdownMenuLabel>
+          <DropdownMenuLabel>{showPiped(label)}</DropdownMenuLabel>
           {parentChoiceOptions(
             family,
             parentChoice.parentId,
@@ -420,7 +423,7 @@ export default function ConnectMenu({
     const canPartner = canConnectPartners(family, first, second);
     // The would-be child is already the would-be parent's ancestor.
     const ancestorReason = ({ parentId, childId }: ParentAndChild) =>
-      text(wording.unavailableAncestor, {
+      piped(wording.unavailableAncestor, {
         who: isYou(parentId)
           ? 'parentIsYou'
           : isYou(childId)
@@ -452,7 +455,7 @@ export default function ConnectMenu({
           onClick={() => setChoice({ pair, parent })}
         >
           <ItemText
-            label={parentLabel(parent)}
+            label={showPiped(parentLabel(parent))}
             reason={reason}
             reasonId={reasonId}
           />
@@ -463,7 +466,7 @@ export default function ConnectMenu({
     return (
       <DropdownMenuGroup>
         <DropdownMenuLabel>
-          {text(wording.connectQuestion, pairArgs)}
+          {showPiped(piped(wording.connectQuestion, pairArgs))}
         </DropdownMenuLabel>
         <DropdownMenuItem
           ref={firstItemRef}
@@ -478,7 +481,7 @@ export default function ConnectMenu({
             })
           }
         >
-          {partners}
+          {showPiped(partners)}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!canPartner}
@@ -492,7 +495,7 @@ export default function ConnectMenu({
             })
           }
         >
-          {formerPartners}
+          {showPiped(formerPartners)}
         </DropdownMenuItem>
         {parentOption({ parentId: first, childId: second })}
         {parentOption({ parentId: second, childId: first })}

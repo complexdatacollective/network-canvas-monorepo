@@ -15,6 +15,9 @@ import { ContentLocaleProvider } from '@codaco/fresco-ui/form/ContentLocale';
 import { messages as booleanFieldMessages } from '@codaco/fresco-ui/form/fields/Boolean';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import {
+  dynamicMessageParts,
+  type DynamicValueState,
+  isSuppliedEnglishMessage,
   type LocaleMetadata,
   type LocaleTag,
   type LocalizationDeclaration,
@@ -350,5 +353,83 @@ export function useResolveLocalizedMessage(): (
       };
     },
     [localization, resolutionOrder, format],
+  );
+}
+
+/**
+ * The values a message's parts are made with: a value shown as it is, a
+ * number, or a list of values, shown joined as the language joins a list
+ * ("Ava, Ben and Cal"), each item a value of its own.
+ */
+export type LocalizedMessagePartValues = Readonly<
+  Record<string, string | number | readonly string[]>
+>;
+
+/**
+ * A message held in `heldIn`, with each value it shows kept apart from
+ * its words, so that it can be marked out as a value the interview filled
+ * in. A select or plural is decided by the value it is on; a number a plural
+ * shows is written as the language writes numbers, among the words.
+ */
+export const localizedMessageParts = (
+  message: string,
+  heldIn: LocaleTag,
+  values: LocalizedMessagePartValues,
+): readonly DynamicTextPart[] => {
+  // Network Canvas's English wording, held under a language it supplies no
+  // wording in, still chooses its plural and joins its lists by English rules
+  // (as `createLocalizedMessageFormatter` does).
+  const locale = isSuppliedEnglishMessage(message) ? 'en' : heldIn;
+  const stateOf = (name: string): DynamicValueState => {
+    const shown = values[name];
+    if (shown === undefined) return { missing: true };
+    if (typeof shown === 'number') return { missing: false, count: shown };
+    return typeof shown === 'string'
+      ? { missing: false, case: shown }
+      : { missing: false };
+  };
+  const { formatNumber } = contentFormatFor(locale);
+  const lists = new Intl.ListFormat(locale, {
+    type: 'conjunction',
+    style: 'long',
+  });
+  return dynamicMessageParts(message, locale, stateOf).flatMap(
+    (part): DynamicTextPart[] => {
+      if (typeof part === 'string') return [part];
+      const shown = values[part.argument];
+      if (typeof shown === 'number') return [formatNumber(shown)];
+      if (shown === undefined || typeof shown === 'string') {
+        return [{ name: part.argument, text: shown ?? '' }];
+      }
+      return lists
+        .formatToParts(shown)
+        .map((item) =>
+          item.type === 'element'
+            ? { name: part.argument, text: item.value }
+            : item.value,
+        );
+    },
+  );
+};
+
+/**
+ * `useResolveLocalizedMessage`, with each value the message shows kept apart
+ * from its words (see `localizedMessageParts`).
+ */
+export function useResolveLocalizedMessageParts(): (
+  value: LocalizedString,
+  values: LocalizedMessagePartValues,
+) => readonly DynamicTextPart[] {
+  const { localization, resolutionOrder } = useProtocolLocalizationState();
+  return useCallback(
+    (value: LocalizedString, values: LocalizedMessagePartValues) => {
+      const { text, locale } = resolveLocalizedString(
+        value,
+        localization,
+        resolutionOrder,
+      );
+      return localizedMessageParts(text, locale, values);
+    },
+    [localization, resolutionOrder],
   );
 }

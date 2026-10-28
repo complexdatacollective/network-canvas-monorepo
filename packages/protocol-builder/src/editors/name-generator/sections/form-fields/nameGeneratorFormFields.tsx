@@ -5,6 +5,24 @@ import { useStageValue } from '../../../../form/stageFormHooks.ts';
 import FormFieldsSection from '../../../../sections/form-fields/FormFieldsSection.tsx';
 import type { StageSection } from '../../../defineStageEditor.tsx';
 
+function NameGeneratorFormFields() {
+  const prompts = useStageValue('prompts');
+  // Stable across renders that did not change the prompts: a fresh array
+  // re-registers the field list's validator.
+  const draftUnvalidatedVariables = useMemo(
+    () => [...draftAdditionalAttributeVariableIds(prompts)],
+    [prompts],
+  );
+
+  return (
+    <FormFieldsSection
+      subject="node"
+      hasTitle
+      draftUnvalidatedVariables={draftUnvalidatedVariables}
+    />
+  );
+}
+
 /**
  * The form that records each person named, told what this stage's own prompts
  * already stamp.
@@ -28,20 +46,4 @@ import type { StageSection } from '../../../defineStageEditor.tsx';
  * re-renders this section alone.
  */
 export const nameGeneratorFormFields = (): StageSection =>
-  function NameGeneratorFormFields() {
-    const prompts = useStageValue('prompts');
-    // Stable across renders that did not change the prompts: a fresh array
-    // re-registers the field list's validator.
-    const draftUnvalidatedVariables = useMemo(
-      () => [...draftAdditionalAttributeVariableIds(prompts)],
-      [prompts],
-    );
-
-    return (
-      <FormFieldsSection
-        subject="node"
-        hasTitle
-        draftUnvalidatedVariables={draftUnvalidatedVariables}
-      />
-    );
-  };
+  NameGeneratorFormFields;

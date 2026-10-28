@@ -166,8 +166,12 @@ const bringIntoView = (next: Element) => {
 
 const STEP_SELECTOR = '[data-question-step]';
 
-/** How long a chosen answer shows before the next step replaces it. */
-const STEP_DELAY = 350;
+/** How long a chosen answer shows before the next step replaces it: long
+ * enough to see the answer taken before the questions slide away. */
+const STEP_DELAY = 650;
+
+/** How long a chosen answer shows before the form moves on from itself. */
+const COMPLETE_DELAY = 350;
 
 /** How far a step slides as it leaves or comes in, in pixels. */
 const STEP_SLIDE = 40;
@@ -414,7 +418,7 @@ export default function QuestionFlow({
   // The steps change as answers bring questions in or take them away, and
   // the step button's label with every answer.
   useEffect(() => {
-    if (!root || !stepped) return;
+    if (!root || !stepped) return undefined;
     let frame = 0;
     const schedule = () => {
       cancelAnimationFrame(frame);
@@ -509,7 +513,7 @@ export default function QuestionFlow({
   // A chosen option moves the form on, once the answer has rendered along
   // with any question it brings in.
   useEffect(() => {
-    if (!root) return;
+    if (!root) return undefined;
     const onClick = (event: MouseEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -571,7 +575,7 @@ export default function QuestionFlow({
             if (root.isConnected && isComplete(root, read)) {
               completed.current?.();
             }
-          }, STEP_DELAY);
+          }, COMPLETE_DELAY);
         }
       });
     };
@@ -588,7 +592,7 @@ export default function QuestionFlow({
   );
 
   useEffect(() => {
-    if (!root || !focusFirst) return;
+    if (!root || !focusFirst) return undefined;
     // Once the fields have registered their answers with the form.
     const frame = requestAnimationFrame(() => {
       const field =

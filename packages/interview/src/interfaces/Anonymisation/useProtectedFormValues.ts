@@ -147,7 +147,7 @@ export function useProtectedFormValues(
   });
 
   useEffect(() => {
-    if (!scope || !missing) return;
+    if (!scope || !missing) return undefined;
 
     let current = true;
     void Promise.all(

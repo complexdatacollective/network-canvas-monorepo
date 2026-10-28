@@ -219,7 +219,7 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
     useEffect(() => {
       if (!enabled) {
         setState(IDLE);
-        return;
+        return undefined;
       }
       setState(STREAMING);
       let live = true;

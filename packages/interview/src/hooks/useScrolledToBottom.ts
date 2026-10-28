@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 /**
  * Tracks whether a scroll container has ever been scrolled to (or already sits
@@ -27,17 +33,31 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * re-measures on its non-intersecting callbacks; it is the sole signal when no
  * `rootRef` is provided. The sentinel callback resets the latch when the
  * sentinel detaches, so a fresh DOM instance (e.g. a new slide) starts false.
+ *
+ * While `paused`, nothing is measured and the state stays as it is: the
+ * content may not be laid out at its full height yet (a card still resizing
+ * towards it), and a measurement then could latch on content that only
+ * seemed to fit. It is measured afresh once unpaused.
  */
 export function useScrolledToBottom(
   rootRef?: React.RefObject<HTMLElement | null>,
+  { paused = false }: { paused?: boolean } = {},
 ) {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Read through a ref, so that pausing does not replace the sentinel
+  // callback, which would detach the sentinel and reset the state.
+  const pausedRef = useRef(paused);
+  useLayoutEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   // Reads rootRef.current lazily: it is null while the child-first sentinel
   // callback runs, but populated by the time any of these callbacks fire.
   // 1px of slack absorbs sub-pixel scroll rounding.
   const checkAtBottom = useCallback(() => {
+    if (pausedRef.current) return;
     const root = rootRef?.current;
     if (root && root.scrollTop + root.clientHeight >= root.scrollHeight - 1) {
       setHasScrolledToBottom(true);
@@ -56,6 +76,7 @@ export function useScrolledToBottom(
 
       const observer = new IntersectionObserver(
         (entries) => {
+          if (pausedRef.current) return;
           if (entries[0]?.isIntersecting) {
             setHasScrolledToBottom(true);
           } else {
@@ -74,7 +95,7 @@ export function useScrolledToBottom(
 
   useEffect(() => {
     const root = rootRef?.current;
-    if (!root) return undefined;
+    if (!root || paused) return undefined;
 
     checkAtBottom();
     root.addEventListener('scroll', checkAtBottom, { passive: true });
@@ -90,7 +111,7 @@ export function useScrolledToBottom(
       root.removeEventListener('scroll', checkAtBottom);
       resizeObserver.disconnect();
     };
-  }, [rootRef, checkAtBottom]);
+  }, [rootRef, checkAtBottom, paused]);
 
   useEffect(() => {
     return () => {

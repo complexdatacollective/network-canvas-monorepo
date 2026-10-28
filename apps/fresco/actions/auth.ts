@@ -162,7 +162,7 @@ export async function signup(
 
   await createSessionCookie(user.id);
 
-  redirect('/setup?step=2');
+  return redirect('/setup?step=2');
 }
 
 export const login = async (data: unknown): Promise<LoginResult> => {
@@ -341,4 +341,5 @@ export async function logout() {
   cookieStore.delete(SESSION_COOKIE_NAME);
 
   revalidatePath('/');
+  return undefined;
 }

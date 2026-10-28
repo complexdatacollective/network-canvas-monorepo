@@ -380,6 +380,18 @@ must match the pin's sha256. Node's `fetch` ignores `HTTPS_PROXY` unless
 and point `INTERVIEWER_LEGACY_V8_TARBALL` at it, or set
 `INTERVIEWER_SKIP_LEGACY_V8=true` to build without Interviewer 8.
 
+**The dev server.** `pnpm dev` serves the same pinned build at `/v8/`, so
+schema 8 interviews run in development too. On start it verifies and extracts
+the tarball (from the same sources, in the same order) into
+`node_modules/.cache/interviewer-legacy/dev-<sha256>/v8`, reused on later
+starts, and `scripts/buildtime/legacy-app-dev-plugin.ts` serves that directory
+ahead of Vite's own middleware. When it cannot obtain the tarball (offline on
+the first run), or with `INTERVIEWER_SKIP_LEGACY_V8=true`, it logs why and
+runs without Interviewer 8, as such a build does. It answers `/v8/sw.js`
+with 404: Interviewer 8 registers its worker even when framed, and an
+installed one would outlive the dev server and keep serving its precache after
+the pin changes.
+
 **The release guard.** The production builds in `apps-release-interviewer`
 and the hotfix lane set `INTERVIEWER_REQUIRE_LEGACY_V8=true`, which fails the
 build while nothing is pinned (and refuses `INTERVIEWER_SKIP_LEGACY_V8`), and

@@ -76,8 +76,7 @@ const nextFrame = () =>
 
 /** Waits for the canvas to stop moving: the same transform for five frames. */
 async function settled(canvasElement: HTMLElement) {
-  const content = within(canvasElement).getByTestId('pedigree-canvas')
-    .lastElementChild as HTMLElement;
+  const content = within(canvasElement).getByTestId('pedigree-canvas-content');
   let last = '';
   let steady = 0;
   for (let frame = 0; frame < 300 && steady < 5; frame++) {
@@ -163,6 +162,13 @@ async function addMother(canvasElement: HTMLElement, childId: string) {
     name: /^What kind of parent are they\?/,
   });
   await userEvent.click(within(kind).getAllByRole('radio')[0] as HTMLElement);
+  // Whether they carried the pregnancy is required: not known, here.
+  const carried = await body.findByRole('radiogroup', {
+    name: /^Did this parent carry the pregnancy\?/,
+  });
+  await userEvent.click(
+    within(carried).getByRole('radio', { name: 'Don’t know' }),
+  );
   await userEvent.click(await body.findByRole('button', { name: 'Save' }));
   await waitFor(() =>
     expect(
@@ -1304,7 +1310,9 @@ export const TheStageOpensAsTheWholeFamilyButtonFramesIt: Story = {
  * across. */
 const offCentreAcross = (canvasElement: HTMLElement) => {
   const viewport = within(canvasElement).getByTestId('pedigree-canvas');
-  const family = viewport.lastElementChild?.firstElementChild;
+  const family = within(viewport).getByTestId(
+    'pedigree-canvas-content',
+  ).firstElementChild;
   if (!family) throw new Error('No family on the canvas');
   const box = boxOf(family);
   const area = boxOf(viewport);
@@ -1359,10 +1367,10 @@ export const MovingBetweenPromptsShowsTheWholeFamily: Story = {
 };
 
 /**
- * A small family is shown as large as the canvas allows, larger than its
- * natural size, but no more than a fifth larger.
+ * A small family, which would fit larger, is shown at its natural size:
+ * the canvas never draws people larger than that by itself.
  */
-export const ASmallFamilyFillsTheCanvas: Story = {
+export const ASmallFamilyIsNotEnlarged: Story = {
   render: () => <CanvasStory family={threePeople} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -1370,8 +1378,7 @@ export const ASmallFamilyFillsTheCanvas: Story = {
     await settled(canvasElement);
     const symbol = personSymbol(canvasElement, 'ego');
     const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
-    await expect(scale, 'zoomed in past natural size').toBeGreaterThan(1.01);
-    await expect(scale, 'no more than a fifth larger').toBeLessThan(1.201);
+    await expect(scale, 'at its natural size').toBeCloseTo(1, 2);
   },
 };
 

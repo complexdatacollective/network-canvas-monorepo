@@ -1749,13 +1749,10 @@ export const egoFormScenarios: InterfaceScenarios = {
         const name = page.getByRole('textbox', { name: 'What is your name?' });
 
         // A later question shows the earlier answer as it is typed, marked
-        // out, and announces it as a filled-in value.
+        // out, and read as part of the question.
         await name.fill('Ada');
         await expect(
-          page.getByRole('spinbutton', {
-            // Chromium puts a space after the visually hidden announcement.
-            name: /^How old are you, Dynamic value: Ada ?\?$/,
-          }),
+          page.getByRole('spinbutton', { name: 'How old are you, Ada?' }),
         ).toBeVisible();
         await expect(
           page.locator('[data-dynamic-value]', { hasText: 'Ada' }),

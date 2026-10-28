@@ -24,7 +24,7 @@ export function usePublishedBlockHeight<T extends HTMLElement = HTMLElement>(
 
   useLayoutEffect(() => {
     const target = element.current;
-    if (!target) return;
+    if (!target) return undefined;
 
     const root = document.documentElement;
     const publish = (height: number) => {

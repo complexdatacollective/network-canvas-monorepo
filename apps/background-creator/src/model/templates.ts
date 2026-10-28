@@ -125,6 +125,39 @@ export function createQuadrantsTemplate(): BackgroundDocument {
   };
 }
 
+const solidRect = (
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fill: string,
+  zoneLabel: string | null,
+): RectElement => ({
+  id: crypto.randomUUID(),
+  kind: 'rect',
+  x,
+  y,
+  width,
+  height,
+  fill,
+  fillOpacity: 1,
+  stroke: null,
+  strokeWidth: 1,
+  zoneLabel,
+});
+
+const quadrantLabel = (x: number, y: number, lines: string[]): TextElement => ({
+  id: crypto.randomUUID(),
+  kind: 'text',
+  x,
+  y,
+  lines,
+  fill: '#322f45',
+  fontSize: 'medium',
+  fontWeight: 500,
+  opacity: 0.38,
+});
+
 // Faithful model of the sample protocol's responsive political-compass asset
 // (packages/protocols/sample/assets/2946e670-3e45-11eb-ac1c-7b8de3fada93.svg).
 // The five solid fills are the zones; the 0.21–0.23 visual gutter between the
@@ -132,27 +165,6 @@ export function createQuadrantsTemplate(): BackgroundDocument {
 // editor opens with.
 export function createPoliticalCompassDocument(): BackgroundDocument {
   const ink = '#17142f';
-
-  const solidRect = (
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    fill: string,
-    zoneLabel: string | null,
-  ): RectElement => ({
-    id: crypto.randomUUID(),
-    kind: 'rect',
-    x,
-    y,
-    width,
-    height,
-    fill,
-    fillOpacity: 1,
-    stroke: null,
-    strokeWidth: 1,
-    zoneLabel,
-  });
 
   const axis = (
     x1: number,
@@ -170,22 +182,6 @@ export function createPoliticalCompassDocument(): BackgroundDocument {
     strokeWidth: 3,
     startArrow: true,
     endArrow: true,
-  });
-
-  const quadrantLabel = (
-    x: number,
-    y: number,
-    lines: string[],
-  ): TextElement => ({
-    id: crypto.randomUUID(),
-    kind: 'text',
-    x,
-    y,
-    lines,
-    fill: '#322f45',
-    fontSize: 'medium',
-    fontWeight: 500,
-    opacity: 0.38,
   });
 
   return {

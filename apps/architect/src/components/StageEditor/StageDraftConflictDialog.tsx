@@ -149,7 +149,7 @@ const StageDraftConflictDialog = ({
   const openDialogId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!stageConflictPending) return;
+    if (!stageConflictPending) return undefined;
     // `useNestedEditorOpen` reads its snapshot during render, so an editor that
     // registers in the same commit as this mount is still invisible to it when
     // this effect runs — and `ask` opens its dialog synchronously, before the
@@ -157,7 +157,7 @@ const StageDraftConflictDialog = ({
     // registry decides. Returning here is not a dead end: that re-render is
     // already scheduled, and the close that eventually resolves the editor
     // flips `stageConflictPending` back on and re-runs this.
-    if (hasOpenNestedEditor()) return;
+    if (hasOpenNestedEditor()) return undefined;
     let cancelled = false;
 
     // The protocol as it stands in this tab, with the draft applied: the

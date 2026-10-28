@@ -201,6 +201,27 @@ export const enumerateCaptureStories = async (
 const STABILITY_INTERVAL_MS = 400;
 const STABILITY_MAX_TRIES = 10;
 
+// Reads the phase of the story's render. Serialised into the page, so it must
+// not reference module scope.
+const renderPhase = () => {
+  const preview =
+    '__STORYBOOK_PREVIEW__' in window
+      ? window.__STORYBOOK_PREVIEW__
+      : undefined;
+  if (
+    typeof preview !== 'object' ||
+    preview === null ||
+    !('storyRenders' in preview) ||
+    !Array.isArray(preview.storyRenders)
+  ) {
+    return undefined;
+  }
+  const render: unknown = preview.storyRenders[0];
+  return typeof render === 'object' && render !== null && 'phase' in render
+    ? render.phase
+    : undefined;
+};
+
 /** Capture one story at one ratio. Returns a PNG master buffer. */
 export const captureStory = async (
   browser: Browser,
@@ -231,25 +252,6 @@ export const captureStory = async (
 
     // Wait for the story's render lifecycle — including any play function
     // (e.g. FamilyPedigree replays its quick-start wizard) — to finish.
-    // Serialised into the page below, so it must not reference module scope.
-    const renderPhase = () => {
-      const preview =
-        '__STORYBOOK_PREVIEW__' in window
-          ? window.__STORYBOOK_PREVIEW__
-          : undefined;
-      if (
-        typeof preview !== 'object' ||
-        preview === null ||
-        !('storyRenders' in preview) ||
-        !Array.isArray(preview.storyRenders)
-      ) {
-        return undefined;
-      }
-      const render: unknown = preview.storyRenders[0];
-      return typeof render === 'object' && render !== null && 'phase' in render
-        ? render.phase
-        : undefined;
-    };
     // Terminal phases: 'finished' (SB10; older versions used 'completed'),
     // 'errored', 'aborted'.
     await page.waitForFunction(

@@ -110,8 +110,9 @@ export async function hasPlaintextSessions(): Promise<boolean> {
   );
 }
 
+const plaintext = (row: { _enc?: unknown }) => row._enc === undefined;
+
 async function countPlaintextRows(): Promise<number> {
-  const plaintext = (row: { _enc?: unknown }) => row._enc === undefined;
   const [sessions, protocols, assets] = await Promise.all([
     db.sessions.filter(plaintext).count(),
     db.protocols.filter(plaintext).count(),

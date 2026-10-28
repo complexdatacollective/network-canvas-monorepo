@@ -1196,6 +1196,30 @@ test('a build input that moved beneath an unchanged direct edge is vendored agai
   });
 });
 
+const movedEdgeGraph = (toolHelper, otherHelper) =>
+  lock({
+    devImporters: { 'packages/ui': { tool: '1.0.0', other: '1.0.0' } },
+    snapshots: {
+      'tool@1.0.0': { helper: toolHelper },
+      'other@1.0.0': { helper: otherHelper },
+      'helper@1.0.0': {},
+      'helper@1.0.1': {},
+    },
+  });
+
+const aliasGraph = (oldVersion) =>
+  lock({
+    devImporters: {
+      'packages/ui': { typescript: '@typescript/typescript6@6.0.2' },
+    },
+    snapshots: {
+      "'@typescript/typescript6@6.0.2'": {
+        "'@typescript/old'": `typescript@${oldVersion}`,
+      },
+      [`typescript@${oldVersion}`]: {},
+    },
+  });
+
 // An npm alias records the real package in the edge's value — the compiler
 // is reached as `typescript: '@typescript/typescript6@6.0.2'`, and its own
 // `'@typescript/old': typescript@6.0.3` — so the walk must continue under the
@@ -1206,27 +1230,17 @@ test('a build input that moved beneath an unchanged direct edge is vendored agai
 test('an edge moving between two snapshots that stay reachable is a change', () => {
   inWorkspace(() => {
     const closure = collectClosure(wsPackages, 'apps/app');
-    const graph = (toolHelper, otherHelper) =>
-      lock({
-        devImporters: { 'packages/ui': { tool: '1.0.0', other: '1.0.0' } },
-        snapshots: {
-          'tool@1.0.0': { helper: toolHelper },
-          'other@1.0.0': { helper: otherHelper },
-          'helper@1.0.0': {},
-          'helper@1.0.1': {},
-        },
-      });
     assert.deepEqual(
       packagesChangedSince('app@4.0.0', closure, wsPackages, {
-        refLock: graph('1.0.0', '1.0.1'),
-        headLock: graph('1.0.1', '1.0.0'),
+        refLock: movedEdgeGraph('1.0.0', '1.0.1'),
+        headLock: movedEdgeGraph('1.0.1', '1.0.0'),
       }),
       ['@x/ui'],
     );
     assert.deepEqual(
       packagesChangedSince('app@4.0.0', closure, wsPackages, {
-        refLock: graph('1.0.0', '1.0.1'),
-        headLock: graph('1.0.0', '1.0.1'),
+        refLock: movedEdgeGraph('1.0.0', '1.0.1'),
+        headLock: movedEdgeGraph('1.0.0', '1.0.1'),
       }),
       [],
     );
@@ -1236,29 +1250,17 @@ test('an edge moving between two snapshots that stay reachable is a change', () 
 test('the walk follows npm aliases to the snapshot they name', () => {
   inWorkspace(() => {
     const closure = collectClosure(wsPackages, 'apps/app');
-    const graph = (oldVersion) =>
-      lock({
-        devImporters: {
-          'packages/ui': { typescript: '@typescript/typescript6@6.0.2' },
-        },
-        snapshots: {
-          "'@typescript/typescript6@6.0.2'": {
-            "'@typescript/old'": `typescript@${oldVersion}`,
-          },
-          [`typescript@${oldVersion}`]: {},
-        },
-      });
     assert.deepEqual(
       packagesChangedSince('app@4.0.0', closure, wsPackages, {
-        refLock: graph('6.0.3'),
-        headLock: graph('6.0.4'),
+        refLock: aliasGraph('6.0.3'),
+        headLock: aliasGraph('6.0.4'),
       }),
       ['@x/ui'],
     );
     assert.deepEqual(
       packagesChangedSince('app@4.0.0', closure, wsPackages, {
-        refLock: graph('6.0.3'),
-        headLock: graph('6.0.3'),
+        refLock: aliasGraph('6.0.3'),
+        headLock: aliasGraph('6.0.3'),
       }),
       [],
     );

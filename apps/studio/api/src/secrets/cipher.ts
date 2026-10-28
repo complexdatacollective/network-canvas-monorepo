@@ -158,6 +158,28 @@ export function parseOAuthTokenKeyId(stored: string): string | undefined {
   return isKeyId(keyId) ? keyId : undefined;
 }
 
+function webhookIdentity(identity: WebhookSecretIdentity): string[] {
+  return ['webhook', identity.teamId, identity.subscriptionId];
+}
+
+function assetKeyIdentity(identity: AssetKeyIdentity): string[] {
+  return ['asset-key', identity.teamId, identity.protocolId, identity.assetId];
+}
+
+function stagedSecretIdentity(identity: StagedSecretIdentity): string[] {
+  return [
+    'staged-secret',
+    identity.teamId,
+    identity.draftId,
+    identity.owner,
+    identity.resourceId,
+  ];
+}
+
+function oauthIdentity(identity: OAuthTokenIdentity): string[] {
+  return ['oauth', identity.providerId, identity.accountId, identity.column];
+}
+
 export function createSecretsCipher(
   keyring: KeyringApi,
   options: { random?: SecretRandom } = {},
@@ -171,33 +193,6 @@ export function createSecretsCipher(
     plaintext: Redacted.Redacted,
   ): SealedSecret {
     return sealSecret(keyring, identity, plaintext, random);
-  }
-
-  function webhookIdentity(identity: WebhookSecretIdentity): string[] {
-    return ['webhook', identity.teamId, identity.subscriptionId];
-  }
-
-  function assetKeyIdentity(identity: AssetKeyIdentity): string[] {
-    return [
-      'asset-key',
-      identity.teamId,
-      identity.protocolId,
-      identity.assetId,
-    ];
-  }
-
-  function stagedSecretIdentity(identity: StagedSecretIdentity): string[] {
-    return [
-      'staged-secret',
-      identity.teamId,
-      identity.draftId,
-      identity.owner,
-      identity.resourceId,
-    ];
-  }
-
-  function oauthIdentity(identity: OAuthTokenIdentity): string[] {
-    return ['oauth', identity.providerId, identity.accountId, identity.column];
   }
 
   function sealOAuthToken(

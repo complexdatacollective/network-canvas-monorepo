@@ -205,9 +205,9 @@ export default function Spinner({
 
   // Handle automatic animation modes (infinite, once, controlled)
   useEffect(() => {
-    if (shouldReduceMotion) return;
+    if (shouldReduceMotion) return undefined;
     // Skip if playOnMount will handle the initial animation and mode is 'once'
-    if (playOnMount && animationMode === 'once') return;
+    if (playOnMount && animationMode === 'once') return undefined;
 
     let isMounted = true;
 

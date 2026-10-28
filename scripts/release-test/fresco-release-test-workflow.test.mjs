@@ -433,16 +433,17 @@ test('a check with an unrecognised status counts as nothing', async () => {
   );
 });
 
+const keysOf = (name) => {
+  const start = source.indexOf(`const ${name} = {`);
+  return source
+    .slice(start, source.indexOf('\n};', start))
+    .split('\n')
+    .map((line) => /^ {2}(\w+):/.exec(line)?.[1])
+    .filter(Boolean)
+    .toSorted((a, b) => a.localeCompare(b));
+};
+
 test('every accounted area declares an expected check count', () => {
-  const keysOf = (name) => {
-    const start = source.indexOf(`const ${name} = {`);
-    return source
-      .slice(start, source.indexOf('\n};', start))
-      .split('\n')
-      .map((line) => /^ {2}(\w+):/.exec(line)?.[1])
-      .filter(Boolean)
-      .toSorted((a, b) => a.localeCompare(b));
-  };
   const areas = keysOf('areaResults');
   assert.ok(areas.length > 0, 'failed to read areaResults');
   assert.deepEqual(
@@ -3462,6 +3463,8 @@ test("the sink reader outlasts the sink's identification timeout", async () => {
   );
 });
 
+const logLine = (o) => JSON.stringify(o);
+
 // The reader's accounting, tested directly on synthetic logs. This is the
 // whole oracle — probeConnections is the positive control, analyticsConnections
 // is the verdict — so it is exercised without a stack rather than only through
@@ -3469,13 +3472,12 @@ test("the sink reader outlasts the sink's identification timeout", async () => {
 test('the log tally counts anything unidentified as egress', async () => {
   const { tally } =
     await import('../../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
-  const line = (o) => JSON.stringify(o);
   const clean = [
-    line({ kind: 'listening', ports: [443, 80] }),
-    line({ kind: 'accepted', seq: 1, port: 443 }),
-    line({ kind: 'probe', seq: 1, port: 443, nonce: 'n1' }),
-    line({ kind: 'accepted', seq: 2, port: 80 }),
-    line({ kind: 'probe', seq: 2, port: 80, nonce: 'n1' }),
+    logLine({ kind: 'listening', ports: [443, 80] }),
+    logLine({ kind: 'accepted', seq: 1, port: 443 }),
+    logLine({ kind: 'probe', seq: 1, port: 443, nonce: 'n1' }),
+    logLine({ kind: 'accepted', seq: 2, port: 80 }),
+    logLine({ kind: 'probe', seq: 2, port: 80, nonce: 'n1' }),
   ].join('\n');
   assert.deepEqual(tally(clean, 'n1'), {
     probeConnections: 2,
@@ -3487,17 +3489,17 @@ test('the log tally counts anything unidentified as egress', async () => {
   // The race this exists for: accepted, not yet classified. The sink holds a
   // stalling connection for its whole identification timeout, so a reader that
   // waited for classification would report this as silence.
-  const pending = `${clean}\n${line({ kind: 'accepted', seq: 3, port: 443 })}`;
+  const pending = `${clean}\n${logLine({ kind: 'accepted', seq: 3, port: 443 })}`;
   assert.equal(tally(pending, 'n1').analyticsConnections, 1);
 
   // Classified egress, an unparseable line, a record with no seq, and a record
   // whose kind means nothing here — every one counts.
   for (const [what, extra] of [
-    ['classified egress', line({ kind: 'egress', seq: 3, port: 443 })],
+    ['classified egress', logLine({ kind: 'egress', seq: 3, port: 443 })],
     ['unparseable', 'not json at all'],
-    ['seq-less', line({ kind: 'egress', port: 443 })],
-    ['unknown kind', line({ kind: 'something-else', seq: 3 })],
-    ['non-integer seq', line({ kind: 'accepted', seq: '3' })],
+    ['seq-less', logLine({ kind: 'egress', port: 443 })],
+    ['unknown kind', logLine({ kind: 'something-else', seq: 3 })],
+    ['non-integer seq', logLine({ kind: 'accepted', seq: '3' })],
   ])
     assert.equal(
       tally(`${clean}\n${extra}`, 'n1').analyticsConnections,
@@ -3508,8 +3510,8 @@ test('the log tally counts anything unidentified as egress', async () => {
   // A probe from an earlier invocation of the check is neither this run's
   // control nor evidence against the build.
   const stale = [
-    line({ kind: 'accepted', seq: 9, port: 443 }),
-    line({ kind: 'probe', seq: 9, port: 443, nonce: 'older' }),
+    logLine({ kind: 'accepted', seq: 9, port: 443 }),
+    logLine({ kind: 'probe', seq: 9, port: 443, nonce: 'older' }),
   ].join('\n');
   assert.deepEqual(
     tally(`${clean}\n${stale}`, 'n1'),
@@ -3533,7 +3535,7 @@ test('the log tally counts anything unidentified as egress', async () => {
   assert.equal(tally(clean, 'n1').listeningRecords, 1);
   assert.equal(tally('', 'n1').listeningRecords, 0);
   assert.equal(
-    tally(`${clean}\n${line({ kind: 'listening', ports: [443, 80] })}`, 'n1')
+    tally(`${clean}\n${logLine({ kind: 'listening', ports: [443, 80] })}`, 'n1')
       .listeningRecords,
     2,
     'a second announcement means the sink restarted',

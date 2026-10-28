@@ -273,6 +273,14 @@ type AuxiliaryStroke = Pick<AuxiliaryConnector, 'points' | 'edgeType'> & {
   lit: boolean;
 };
 
+const isDashed = (aux: AuxiliaryConnector) =>
+  'strokeDasharray' in getAuxiliaryStyle(aux.edgeType);
+
+const pieceKey = (aux: AuxiliaryConnector, a: Point, b: Point) => {
+  const [p, q] = [pointKey(a), pointKey(b)];
+  return `${isDashed(aux) ? 'dashed' : 'solid'}|${p < q ? `${p}|${q}` : `${q}|${p}`}`;
+};
+
 /**
  * The auxiliary lines as strokes, every piece drawn once. Each line is cut
  * wherever a corner or end of any auxiliary line lies on it, so lines that
@@ -286,12 +294,6 @@ function auxiliaryStrokes(
   lineLit: boolean[],
 ): AuxiliaryStroke[] {
   const corners = lines.flatMap((aux) => aux.points);
-  const dashed = (aux: AuxiliaryConnector) =>
-    'strokeDasharray' in getAuxiliaryStyle(aux.edgeType);
-  const pieceKey = (aux: AuxiliaryConnector, a: Point, b: Point) => {
-    const [p, q] = [pointKey(a), pointKey(b)];
-    return `${dashed(aux) ? 'dashed' : 'solid'}|${p < q ? `${p}|${q}` : `${q}|${p}`}`;
-  };
   const piecesOf = lines.map((aux) =>
     aux.points.slice(1).flatMap((to, k) => {
       const from = aux.points[k]!;
@@ -927,6 +929,13 @@ function renderParentChild(
  * how far the course from them has run where it starts. */
 type DescentStroke = { points: Point[]; lit: boolean; reached: number };
 
+const samePoint = (a: Point, b: Point) =>
+  Math.abs(a.x - b.x) < EPSILON && Math.abs(a.y - b.y) < EPSILON;
+const endsOf = (s: LineSegment): [Point, Point] => [
+  { x: s.x1, y: s.y1 },
+  { x: s.x2, y: s.y2 },
+];
+
 /**
  * A line of descent's pieces as strokes. The pieces are cut wherever
  * another piece ends on them, so every junction is a point of the network;
@@ -936,18 +945,12 @@ type DescentStroke = { points: Point[]; lit: boolean; reached: number };
  * stroke runs straight through.
  */
 function descentStrokes(pieces: Shaded[]): DescentStroke[] {
-  const same = (a: Point, b: Point) =>
-    Math.abs(a.x - b.x) < EPSILON && Math.abs(a.y - b.y) < EPSILON;
-  const ends = (s: LineSegment): [Point, Point] => [
-    { x: s.x1, y: s.y1 },
-    { x: s.x2, y: s.y2 },
-  ];
-  const whole = pieces.filter(({ segment: s }) => !same(...ends(s)));
+  const whole = pieces.filter(({ segment: s }) => !samePoint(...endsOf(s)));
   const cut: { from: Point; to: Point; lit: boolean }[] = whole.flatMap(
     ({ segment, lit }) => {
-      const [from, to] = ends(segment);
+      const [from, to] = endsOf(segment);
       const at = whole
-        .flatMap((other) => ends(other.segment))
+        .flatMap((other) => endsOf(other.segment))
         .map((point) => fractionAlong(point, segment))
         .filter((t): t is number => t !== undefined && t > 1e-9 && t < 1 - 1e-9)
         .toSorted((p, q) => p - q);
@@ -969,7 +972,7 @@ function descentStrokes(pieces: Shaded[]): DescentStroke[] {
   // loose ends, along the pieces, the shortest way.
   const points: Point[] = [];
   const indexOf = (p: Point) => {
-    const found = points.findIndex((q) => same(p, q));
+    const found = points.findIndex((q) => samePoint(p, q));
     if (found >= 0) return found;
     points.push(p);
     return points.length - 1;

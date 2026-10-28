@@ -242,6 +242,12 @@ const refusalMessage = (conflict: ExportColumnConflict): MessageDescriptor => {
       return conflict.writtenColumn === undefined
         ? siblingMessages[conflict.origin.kind][conflict.siblingOrigin.kind]
         : writtenMessages[conflict.origin.kind];
+    default: {
+      const unhandled: never = conflict;
+      throw new Error('Unhandled export column conflict', {
+        cause: unhandled,
+      });
+    }
   }
 };
 

@@ -356,7 +356,7 @@ function VersionsView({
 
   useEffect(() => {
     const element = wrapperRef.current;
-    if (element === null) return;
+    if (element === null) return undefined;
     const expand = () => setFolded(false);
     const collapse = () => setFolded(true);
     element.addEventListener(EXPAND_EVENT, expand);
@@ -483,6 +483,21 @@ const selectedElement = (editor: Editor): HTMLElement | null => {
     : null;
 };
 
+// Enter or Space on a folded element opens it; on an open one, moves into its
+// first version.
+const openOrEnter = ({ editor }: { editor: Editor }) => {
+  const element = selectedElement(editor);
+  if (element === null) return false;
+  if (!element.hasAttribute('data-expanded')) {
+    element.dispatchEvent(new Event(EXPAND_EVENT));
+    return true;
+  }
+  const first = element.querySelector<HTMLElement>('[role="textbox"]');
+  if (first === null) return false;
+  first.focus();
+  return true;
+};
+
 /**
  * Versions of a piece of text, held in the line as one element. The caret
  * steps over it in the line around it, and it is selected, moved, copied and
@@ -563,21 +578,6 @@ export const VersionsNode = TiptapNode.create({
   },
 
   addKeyboardShortcuts() {
-    // Enter or Space on a folded element opens it; on an open one, moves
-    // into its first version.
-    const openOrEnter = ({ editor }: { editor: Editor }) => {
-      const element = selectedElement(editor);
-      if (element === null) return false;
-      if (!element.hasAttribute('data-expanded')) {
-        element.dispatchEvent(new Event(EXPAND_EVENT));
-        return true;
-      }
-      const first = element.querySelector<HTMLElement>('[role="textbox"]');
-      if (first === null) return false;
-      first.focus();
-      return true;
-    };
-
     return {
       Enter: openOrEnter,
       Space: openOrEnter,

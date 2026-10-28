@@ -263,6 +263,9 @@ type ShownGroup = {
 
 const NAME_SEPARATOR = ' › ';
 
+const isMissingIn = (row: ShownRow, locale: LocaleTag) =>
+  !Object.hasOwn(row.row.value, locale);
+
 const renderMuted = (chunks: ReactNode[]) => (
   <span className="text-current/70">{chunks}</span>
 );
@@ -369,7 +372,7 @@ const useGroupHeadingHeights = () => {
 
   return useCallback(
     (heading: HTMLTableCellElement | null) => {
-      if (!heading) return;
+      if (!heading) return undefined;
       observer.observe(heading);
       return () => observer.unobserve(heading);
     },
@@ -403,7 +406,7 @@ const useColumnHeadingWidths = () => {
 
   return useCallback(
     (contents: HTMLDivElement | null) => {
-      if (!contents) return;
+      if (!contents) return undefined;
       observer.observe(contents);
       return () => observer.unobserve(contents);
     },
@@ -568,8 +571,6 @@ const TranslationTable = ({
       row.name,
       ...visible.map((locale) => translationText(row.row.value, locale)),
     ].some((text) => text.toLocaleLowerCase(intl.locale).includes(needle));
-  const isMissingIn = (row: ShownRow, locale: LocaleTag) =>
-    !Object.hasOwn(row.row.value, locale);
   const passesFilter = (row: ShownRow) => {
     switch (filter.kind) {
       case 'all':
@@ -578,6 +579,10 @@ const TranslationTable = ({
         return visible.some((locale) => isMissingIn(row, locale));
       case 'language':
         return isMissingIn(row, filter.locale);
+      default: {
+        const unhandled: never = filter;
+        throw new Error('Unhandled missing filter', { cause: unhandled });
+      }
     }
   };
 

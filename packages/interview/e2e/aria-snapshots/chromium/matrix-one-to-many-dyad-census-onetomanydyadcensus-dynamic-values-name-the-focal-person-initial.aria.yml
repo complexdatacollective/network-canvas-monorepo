@@ -1,6 +1,6 @@
 - main:
   - status:
-    - 'heading "Who does Dynamic value: Carol know?" [level=2]'
+    - 'heading "Who does Carol know?" [level=2]'
   - button "Carol"
   - listbox "Target nodes":
     - option "Alice"

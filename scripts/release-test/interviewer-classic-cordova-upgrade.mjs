@@ -160,10 +160,13 @@ const bundleIdOf = async (appPath) =>
     ])
   ).stdout.trim();
 
+async function simctl(...a) {
+  return (
+    await execFile('xcrun', ['simctl', ...a], { maxBuffer: 64 * 1024 * 1024 })
+  ).stdout;
+}
+
 async function iosPlatform() {
-  const simctl = async (...a) =>
-    (await execFile('xcrun', ['simctl', ...a], { maxBuffer: 64 * 1024 * 1024 }))
-      .stdout;
   const booted = JSON.parse(await simctl('list', 'devices', 'booted', '-j'));
   const udid = args.device ?? Object.values(booted.devices).flat()[0]?.udid;
   if (!udid)
