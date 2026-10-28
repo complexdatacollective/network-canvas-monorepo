@@ -41,7 +41,10 @@ import type { Direction } from '../../types';
 export const MOTION = {
   /** How far a person arriving travels along the edge they join, in px. */
   shift: 56,
-  /** How far answers rise or settle as they go and come, in px. */
+  /**
+   * How far answers travel as they come and go, in px: moving on, they rise
+   * into place and sink back out; going back, the other way round.
+   */
   lift: 12,
   answersOut: { duration: 0.18, ease: [0.4, 0, 1, 1] },
   release: { delay: 0.06, duration: 0.22, ease: [0.65, 0, 0.35, 1] },
@@ -79,13 +82,14 @@ export const MOTION = {
    * where they are, unless the next pair has them in the same place: they
    * stay. Those arriving drop in from above, `step` apart, and once they are
    * in place the connection is drawn from the first to the second. The join
-   * takes hold of the pair `late` after it would take hold of one person, and
-   * their answers appear that much later too.
+   * rises to meet the pair as they arrive, slower and heavier than for one
+   * person, and their answers appear `late` after one person's would.
    */
   pair: {
     connectionOut: { duration: 0.16, ease: [0.4, 0, 1, 1] },
     step: 0.1,
     connect: { delay: 0.5, duration: 0.22, ease: [0.65, 0, 0.35, 1] },
+    grab: { delay: 0.42, stiffness: 170, damping: 19, mass: 1.6 },
     late: 0.2,
   },
   /**
@@ -132,12 +136,15 @@ export type ChangeStyle = {
   along: number;
   axis: 'x' | 'y';
   reduced: boolean;
-  /**
-   * How much later than for one person the join takes hold and the answers
-   * appear, in seconds.
-   */
+  /** How much later than for one person the answers appear, in seconds. */
   late: number;
 };
+
+/** How the join takes hold of who arrives, from the start of the change. */
+const grabFor = (header: JoinedSlidesProps['header']) =>
+  header === 'pair'
+    ? { type: 'spring' as const, ...MOTION.pair.grab }
+    : MOTION.grab;
 
 /** When part of a person's arrival starts, in seconds. */
 export const arrival = (delay: number, first: boolean) =>
@@ -200,7 +207,7 @@ const answersVariants: Variants = {
       ? { opacity: 0, transition: { duration: REDUCED.out, ease: 'linear' } }
       : {
           opacity: 0,
-          y: -MOTION.lift * forward,
+          y: MOTION.lift * forward,
           transition: MOTION.answersOut,
         },
 };
@@ -582,13 +589,13 @@ export default function JoinedSlides({
       settled.current();
       return undefined;
     }
-    const { grab, answersIn } = MOTION;
+    const { answersIn } = MOTION;
+    const { delay, ...grab } = grabFor(header);
     const first = index;
     join.set(0);
     const controls = animate(join, 1, {
-      delay: arrival(grab.delay + late, true),
-      duration: grab.duration,
-      ease: grab.ease,
+      ...grab,
+      delay: arrival(delay, true),
     });
     const timer = window.setTimeout(
       () => {
@@ -693,20 +700,20 @@ export default function JoinedSlides({
       );
       timers.push(window.setTimeout(finish, REDUCED.out * 1000));
     } else {
-      const { release, grab, scrollToTop, answersIn } = MOTION;
-      const end = grab.delay + late + grab.duration;
-      const at = (seconds: number) => seconds / end;
+      const { release, scrollToTop, answersIn } = MOTION;
+      const { delay, ...grab } = grabFor(header);
+      const letGo = release.delay + release.duration;
       stops.push(
-        animate(join, [1, 1, 0, 0, 1], {
-          duration: end,
-          times: [
-            0,
-            at(release.delay),
-            at(release.delay + release.duration),
-            at(grab.delay + late),
-            1,
-          ],
-          ease: ['linear', release.ease, 'linear', grab.ease],
+        animate(join, [1, 1, 0], {
+          duration: letGo,
+          times: [0, release.delay / letGo, 1],
+          ease: ['linear', release.ease],
+          // Taking hold once let go: a value runs one animation at a time.
+          onComplete: () => {
+            stops.push(
+              animate(join, 1, { ...grab, delay: delay - letGo }).stop,
+            );
+          },
         }).stop,
       );
       if (viewport && viewport.scrollTop > 0) {
@@ -728,7 +735,7 @@ export default function JoinedSlides({
       join.set(1);
       cardHeight.set('auto');
     };
-  }, [index, skip, reduced, late, join, cardHeight]);
+  }, [index, skip, reduced, header, late, join, cardHeight]);
 
   // The join is drawn towards +x, then turned to face the card.
   const facing = beside ? (rtl ? 'scale(-1 1)' : '') : 'rotate(90)';
