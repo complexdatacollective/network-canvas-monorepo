@@ -636,6 +636,34 @@ describe('a proposed name nobody has touched', () => {
     });
   });
 
+  it('is not selected while another language is being edited', async () => {
+    const user = userEvent.setup();
+    const { input } = renderEditor({
+      sections: protocolSections({
+        [sectionId({ kind: 'settings' })]: {
+          localization: ENGLISH_AND_SPANISH,
+        },
+      }),
+    });
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    await user.click(screen.getByRole('button', { name: /Editing language/ }));
+    await user.click(
+      await screen.findByRole('menuitemradio', { name: /^español/ }),
+    );
+    const spanish = screen.getByRole('textbox', { name: 'Stage name' });
+    fireEvent.change(spanish, { target: { value: 'Generador' } });
+    act(() => {
+      spanish.blur();
+    });
+
+    // The English name is still the proposal, but the Spanish one shown is
+    // the researcher's.
+    await user.click(spanish);
+    await user.keyboard('!');
+    expect(spanish).toHaveValue('Generador!');
+  });
+
   it('never stands on a stage the interview already contains', async () => {
     const { name, liveDraft, standing } = renderEditor({
       type: 'Sociogram',

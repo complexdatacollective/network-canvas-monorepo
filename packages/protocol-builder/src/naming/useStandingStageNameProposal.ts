@@ -11,10 +11,12 @@ import { LABEL, stageNameOwnership } from './stageNameInternals.ts';
 
 export type StandingStageNameProposal = Readonly<{
   /**
-   * Whether the name on the stage right now is the one this editor proposed,
-   * untouched. A question asked at the moment of calling, from an event
-   * handler or a store subscription: who wrote the name is not something the
-   * form re-renders for.
+   * Whether the name the control shows right now is the one this editor
+   * proposed, untouched. A question asked at the moment of calling, from an
+   * event handler: who wrote the name is not something the form re-renders
+   * for. Never while another language is being edited, because a proposal is
+   * only ever written in the default one: the translation shown there is the
+   * researcher's.
    */
   isStanding: () => boolean;
   /**
@@ -46,9 +48,10 @@ export type StandingStageNameProposal = Readonly<{
  */
 export function useStandingStageNameProposal(): StandingStageNameProposal {
   const { storeApi, creation } = useStageEditorForm();
-  const { localization } = useEditingLanguage();
+  const { localization, locale } = useEditingLanguage();
   const isNewStage = creation !== undefined;
   const defaultLocale = localization?.defaultLocale;
+  const editingDefault = locale === undefined || locale === defaultLocale;
 
   const standsIn = useCallback(
     (label: unknown) => {
@@ -64,8 +67,8 @@ export function useStandingStageNameProposal(): StandingStageNameProposal {
   );
 
   const isStanding = useCallback(
-    () => standsIn(storeApi.getState().getValue(LABEL)),
-    [standsIn, storeApi],
+    () => editingDefault && standsIn(storeApi.getState().getValue(LABEL)),
+    [editingDefault, standsIn, storeApi],
   );
 
   const withoutProposal = useCallback(
