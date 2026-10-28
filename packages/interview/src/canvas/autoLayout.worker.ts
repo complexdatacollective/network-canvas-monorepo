@@ -146,6 +146,7 @@ const SEED_CIRCLE_RADIUS = 0.6;
 const ANCHOR_STRENGTH = 0.08;
 const REHEAT_ALPHA = 0.3;
 const LAYOUT_ATTEMPTS = 4;
+const ATTEMPT_JITTER = 0.1;
 const MAX_TICKS = 1000;
 
 type SimNode = SimulationNodeDatum & {
@@ -675,8 +676,19 @@ const layoutFromScratch = () => {
   const seed = simulation.nodes();
   let bestScore = Infinity;
   for (let attempt = 0; attempt < LAYOUT_ATTEMPTS; attempt += 1) {
-    const candidate = createSimulation(seed.map((node) => ({ ...node })));
-    candidate.randomSource(seededRandom(attempt + 1));
+    // Each attempt after the first starts from a jittered copy of the seed so
+    // the attempts explore different arrangements.
+    const random = seededRandom(attempt + 1);
+    const jitter = () =>
+      attempt === 0 ? 0 : (random() - 0.5) * 2 * ATTEMPT_JITTER;
+    const candidate = createSimulation(
+      seed.map((node) => ({
+        ...node,
+        x: (node.x ?? 0) + jitter(),
+        y: (node.y ?? 0) + jitter(),
+      })),
+    );
+    candidate.randomSource(random);
     candidate.alpha(options.startAlpha);
     settle(candidate);
     const score = layoutScore(candidate.nodes());
@@ -749,7 +761,9 @@ export function handleMessage(data: Message) {
     case 'update_links': {
       if (!simulation) return;
 
+      const endpoints = JSON.stringify(linkEndpoints());
       links = data.links;
+      if (JSON.stringify(linkEndpoints()) === endpoints) break;
       // Which nodes are linked changes the ring and centering forces too.
       registerForces(simulation);
 

@@ -197,7 +197,13 @@ export const createCanvasStore = () =>
         currentStep,
         positions = get().positions,
       ) => {
-        for (const [nodeId, position] of positions) {
+        const { canvasDimensions, nodeRadius } = get();
+        for (const [nodeId, unclamped] of positions) {
+          const position = clampPosition(
+            unclamped,
+            canvasDimensions,
+            nodeRadius,
+          );
           void dispatch(
             updateNode({
               nodeId,

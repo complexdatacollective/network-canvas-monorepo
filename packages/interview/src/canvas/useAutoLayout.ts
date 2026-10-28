@@ -144,6 +144,9 @@ export function useAutoLayout({
   // The seeded node→index map, captured so continuous-mode link updates resolve
   // edge endpoints against the same indices the worker was initialized with.
   const nodeIndexByIdRef = useRef<Map<string, number>>(new Map());
+  // Nodes in the last seed, so a node added later is laid out as new even when
+  // its host gave it a starting position.
+  const seededIdsRef = useRef<Set<string>>(new Set());
   const [isRunning, setIsRunning] = useState(false);
   const [simulationEnabled, setSimulationEnabled] = useState(true);
 
@@ -234,7 +237,10 @@ export function useAutoLayout({
   }, [store, nodeRadius]);
 
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled) {
+      seededIdsRef.current = new Set();
+      return undefined;
+    }
     // Defer until the canvas has been measured: seeding against a 0-size canvas
     // would map every node to the origin. The dims subscription re-runs this
     // effect once real dimensions arrive (and again on each resize).
@@ -345,7 +351,9 @@ export function useAutoLayout({
         nodeId,
         x: sim.x,
         y: sim.y,
-        placed: pos !== undefined,
+        placed:
+          pos !== undefined &&
+          (seededIdsRef.current.size === 0 || seededIdsRef.current.has(nodeId)),
         groupKeys: getGroupKeys(node, groupVariable),
       };
     });
@@ -356,6 +364,7 @@ export function useAutoLayout({
       simNodes.map((simNode, index) => [simNode.nodeId, index]),
     );
     nodeIndexByIdRef.current = indexById;
+    seededIdsRef.current = new Set(indexById.keys());
     const simLinks: SimLink[] = [];
     for (const edge of edgesRef.current) {
       const source = indexById.get(edge[edgeSourceProperty]);

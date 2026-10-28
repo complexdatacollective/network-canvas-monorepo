@@ -240,6 +240,22 @@ describe('autoLayout worker', () => {
     expect(maxSpeed).toBeLessThan(0.01);
   });
 
+  it('does not lay out again when update_links repeats the current links', () => {
+    const links: SimLink[] = [{ source: 0, target: 1 }];
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      links: links.map((link) => ({ ...link })),
+    });
+    handleMessage({ type: 'start' });
+    handleMessage({
+      type: 'update_links',
+      links: links.map((link) => ({ ...link })),
+    });
+
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
   it('ignores a repeated start once the layout has settled', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });
