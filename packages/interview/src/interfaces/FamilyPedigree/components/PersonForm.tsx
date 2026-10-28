@@ -23,6 +23,7 @@ import type {
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FamilyPedigreeWording,
@@ -1689,7 +1690,10 @@ function ExistingRelationshipFields({
               );
         const sex = sexOf(link.source);
         const kindAnswers = (kinds: readonly PedigreeParentKind[]) =>
-          kinds.map((value) => ({ value, label: parentKindLabels[value] }));
+          kinds.map((value) => ({
+            value,
+            label: optionLabelText(parentKindLabels[value]),
+          }));
         const kindReasons = [
           geneticBlock &&
             geneticParentReason(
@@ -1716,7 +1720,7 @@ function ExistingRelationshipFields({
             isGeneticKind(kind) &&
             geneticParentReplacedReason(person.id, replaces, {
               value: kind,
-              label: parentKindLabels[kind],
+              label: optionLabelText(parentKindLabels[kind]),
             }),
         ];
         return (
@@ -2519,7 +2523,10 @@ function ParentFields({
       : carrierRecordedReason(record.childId, record.carrierId, answers);
   };
   const kindAnswers = (kinds: readonly PedigreeParentKind[]) =>
-    kinds.map((value) => ({ value, label: parentKindLabels[value] }));
+    kinds.map((value) => ({
+      value,
+      label: optionLabelText(parentKindLabels[value]),
+    }));
   const kindReasons = [
     !kindPossible('biological') &&
       geneticReason(anchor.id, kindAnswers(PARENT_KINDS.filter(isGeneticKind))),
@@ -2544,7 +2551,10 @@ function ParentFields({
   const chosenAnswer =
     chosenParentKind === undefined
       ? undefined
-      : { value: chosenParentKind, label: parentKindLabels[chosenParentKind] };
+      : {
+          value: chosenParentKind,
+          label: optionLabelText(parentKindLabels[chosenParentKind]),
+        };
   const kindChanges = chosenAnswer && [
     isGeneticKind(chosenAnswer.value) &&
       givingWay !== undefined &&

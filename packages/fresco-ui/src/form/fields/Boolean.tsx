@@ -7,12 +7,12 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button } from '../../Button';
+import OptionLabel from '../../OptionLabel';
 import {
   type PresentationalText,
   presentationalTextProps,
   presentationalTextValue,
 } from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
   groupSpacingVariants,
@@ -326,14 +326,17 @@ export default function BooleanField(props: BooleanFieldProps) {
                 state={optionState}
                 negative={option.negative}
               />
-              <span
-                className={headingVariants({ level: 'label', margin: 'none' })}
-                {...presentationalTextProps(option.label)}
-              >
-                <RenderMarkdown>
-                  {presentationalTextValue(option.label)}
-                </RenderMarkdown>
-              </span>
+              <OptionLabel
+                label={option.label}
+                render={
+                  <span
+                    className={headingVariants({
+                      level: 'label',
+                      margin: 'none',
+                    })}
+                  />
+                }
+              />
             </motion.button>
           );
         })}

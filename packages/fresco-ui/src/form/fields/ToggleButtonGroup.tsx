@@ -3,12 +3,11 @@
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox';
 import { AnimatePresence, motion } from 'motion/react';
 
+import OptionLabel, { optionLabelText } from '../../OptionLabel';
 import {
   type PresentationalText,
   presentationalTextProps,
-  presentationalTextValue,
 } from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
   groupSpacingVariants,
@@ -215,7 +214,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
             // On the button rather than the text span: the accessible name
             // comes from `aria-label`, which takes the element's own language.
             {...presentationalTextProps(option.label)}
-            aria-label={presentationalTextValue(option.label)}
+            aria-label={optionLabelText(option.label)}
             aria-readonly={readOnly || undefined}
             nativeButton
             render={
@@ -245,11 +244,12 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
                 />
               )}
             </AnimatePresence>
-            <span className="relative z-10 line-clamp-3 max-w-full overflow-hidden leading-tight text-balance">
-              <RenderMarkdown>
-                {presentationalTextValue(option.label)}
-              </RenderMarkdown>
-            </span>
+            <OptionLabel
+              label={option.label}
+              render={
+                <span className="relative z-10 line-clamp-3 max-w-full overflow-hidden leading-tight text-balance" />
+              }
+            />
           </BaseCheckbox.Root>
         );
       })}

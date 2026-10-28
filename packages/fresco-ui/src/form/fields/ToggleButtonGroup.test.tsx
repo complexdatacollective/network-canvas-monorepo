@@ -60,3 +60,27 @@ describe('ToggleButtonGroup readOnly', () => {
     expect(button.className).not.toContain('pointer-events-none');
   });
 });
+
+describe('ToggleButtonGroup option labels', () => {
+  it('names each option by its label as read, not by its markdown', () => {
+    render(
+      <ToggleButtonGroupField
+        name="options"
+        options={[
+          { value: 'in_person', label: '**In person**' },
+          { value: 'call', label: 'Phone &amp; video' },
+        ]}
+        value={[]}
+        onChange={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByRole('checkbox', { name: 'In person' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Phone & video' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('In person').tagName).toBe('STRONG');
+  });
+});

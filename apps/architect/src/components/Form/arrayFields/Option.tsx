@@ -21,6 +21,7 @@ import {
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import OptionLabelField from '@codaco/protocol-builder/fields/OptionLabelField';
 import type { LocaleTag, VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
@@ -255,11 +256,13 @@ const Option = ({
           />
         )}
         <div className="min-w-0 flex-1 truncate">
-          <span className={!hasLabel ? 'text-current/50 italic' : undefined}>
-            {hasLabel
-              ? localizedText(item.label, localization)
-              : intl.formatMessage(messages.untitledOption)}
-          </span>
+          {hasLabel ? (
+            <OptionLabel label={localizedText(item.label, localization)} />
+          ) : (
+            <span className="text-current/50 italic">
+              {intl.formatMessage(messages.untitledOption)}
+            </span>
+          )}
           {/* Decorative separation of authored label and value. */}
           <span className="text-current/50" aria-hidden>
             {OPTION_VALUE_SEPARATOR}
