@@ -654,16 +654,19 @@ const playbackFrames = (frames: number[][]) => {
   }
   const total = travelled.at(-1) ?? 0;
   if (total === 0) return [];
+  // A single early tick can cover several samples' worth of movement, so
+  // samples are interpolated between ticks rather than snapped to one.
   const sampled: number[][] = [];
-  let f = 0;
+  let f = 1;
   for (let step = 0; step <= PLAYBACK_FRAMES; step += 1) {
-    while (
-      f < kept.length - 1 &&
-      travelled[f]! < (total * step) / PLAYBACK_FRAMES
-    ) {
-      f += 1;
-    }
-    sampled.push(kept[f]!);
+    const target = (total * step) / PLAYBACK_FRAMES;
+    while (f < kept.length - 1 && travelled[f]! < target) f += 1;
+    const [before, after] = [kept[f - 1]!, kept[f]!];
+    const span = travelled[f]! - travelled[f - 1]!;
+    const u = span > 0 ? (target - travelled[f - 1]!) / span : 1;
+    sampled.push(
+      u >= 1 ? after : before.map((v, i) => v + (after[i]! - v) * u),
+    );
   }
   return sampled;
 };

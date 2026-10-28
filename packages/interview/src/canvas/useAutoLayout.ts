@@ -363,7 +363,7 @@ export function useAutoLayout({
       // screen and the path's first frame fades out as the animation runs.
       animationRef.current = animate(0, 1, {
         duration: SETTLE_ANIMATION_SECONDS,
-        ease: 'easeOut',
+        ease: [0.33, 1, 0.68, 1],
         onUpdate: (progress) => {
           store.getState().setBatchPositions(
             entries.map(([nodeId, to]) => {
