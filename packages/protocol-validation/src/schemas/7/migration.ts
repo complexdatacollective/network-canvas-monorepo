@@ -10,6 +10,7 @@ const migrationV6toV7 = createMigration({
   notes: `- Add the ability to specify minimum and maximum numbers of named alters on name generator stages.
 - Add additional skip logic options for handling ordinal and categorical attributes.`,
   migrate: (doc) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a step builds its output without parsing it; migrateProtocol validates the result against the full schema 7
     ({
       ...doc,
       schemaVersion: 7 as const,

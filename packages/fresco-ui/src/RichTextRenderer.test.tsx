@@ -93,4 +93,34 @@ describe('RichTextRenderer', () => {
       'mailto:team@example.com',
     ]);
   });
+
+  it.each([
+    [1, 'H1'],
+    [3, 'H3'],
+    [6, 'H6'],
+    ['2', 'H2'],
+    // Not a heading level: rendered as the top-level heading, not as an
+    // element that does not exist.
+    [9, 'H1'],
+    [undefined, 'H1'],
+  ])('renders a heading of level %s as %s', (level, tagName) => {
+    const { container } = render(
+      <RichTextRenderer
+        content={{
+          type: 'doc',
+          content: [
+            {
+              type: 'heading',
+              attrs: { level },
+              content: [{ type: 'text', text: 'Title' }],
+            },
+          ],
+        }}
+      />,
+    );
+
+    const heading = container.querySelector('h1, h2, h3, h4, h5, h6, h9');
+    expect(heading?.tagName).toBe(tagName);
+    expect(heading).toHaveTextContent('Title');
+  });
 });

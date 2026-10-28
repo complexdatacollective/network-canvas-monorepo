@@ -1,9 +1,10 @@
 'use client';
 
-import { motion, useAnimationControls, useReducedMotion } from 'motion/react';
+import { motion, useAnimationControls } from 'motion/react';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
 
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { Header } from '~/components/layout/Header';
 import { HeroPageLayout } from '~/components/layout/HeroPageLayout';
 import { Hero } from '~/components/sections/Hero';
@@ -23,7 +24,7 @@ export function HeroIntro({
   newsItems,
   onEntranceStart,
 }: HeroIntroProps) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const entrance = createHeroEntrance(reduceMotion ?? true);
   const controls = useAnimationControls();
   const entranceStarted = useRef(false);

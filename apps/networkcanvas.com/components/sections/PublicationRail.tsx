@@ -1,10 +1,11 @@
 'use client';
 
-import { useMotionValueEvent, useReducedMotion, useScroll } from 'motion/react';
+import { useMotionValueEvent, useScroll } from 'motion/react';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -46,7 +47,7 @@ export function PublicationRail({
   const measurementFrameRef = useRef<number | null>(null);
   const wasFlowingRef = useRef(false);
   const lastProgressRef = useRef(0);
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const hasHydrated = useHasHydrated();
   const hasFlowingRailViewport = useSyncExternalStore(
     subscribeToFlowingRailViewport,

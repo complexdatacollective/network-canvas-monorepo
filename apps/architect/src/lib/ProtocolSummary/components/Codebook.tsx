@@ -1,7 +1,7 @@
 import { toPairs } from 'es-toolkit/compat';
 import { useContext } from 'react';
 
-import type { LocalizedString } from '@codaco/protocol-validation';
+import type { LocalizedString, Variable } from '@codaco/protocol-validation';
 
 import Entity from './Entity';
 import SummaryContext from './SummaryContext';
@@ -10,17 +10,17 @@ type NodeOrEdgeType = {
   color?: string;
   icon?: string;
   name: string;
-  label: LocalizedString;
-  variables?: Record<string, unknown>;
+  label?: LocalizedString;
+  variables?: Record<string, Variable>;
 };
 
 const Codebook = () => {
   const { protocol } = useContext(SummaryContext);
-  const codebook = protocol.codebook as {
+  const codebook: {
     node?: Record<string, NodeOrEdgeType>;
     edge?: Record<string, NodeOrEdgeType>;
-    ego?: { variables?: Record<string, unknown> };
-  };
+    ego?: { variables?: Record<string, Variable> };
+  } = protocol.codebook;
 
   const nodes = toPairs(codebook.node ?? {});
   const edges = toPairs(codebook.edge ?? {});

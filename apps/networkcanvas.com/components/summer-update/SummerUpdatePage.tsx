@@ -1,12 +1,7 @@
 'use client';
 
 import { ExternalLink } from 'lucide-react';
-import {
-  AnimatePresence,
-  LayoutGroup,
-  motion,
-  useReducedMotion,
-} from 'motion/react';
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { Fragment, type ReactNode, useState } from 'react';
@@ -16,6 +11,7 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import Definition from '@codaco/fresco-ui/Definition';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
@@ -190,7 +186,7 @@ export function SummerUpdatePage() {
     interviewer: t('features.groups.interviewer'),
     fresco: t('features.groups.fresco'),
   };
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const [selectedInterface, setSelectedInterface] = useState(0);
   const [selectedCompatibilityRow, setSelectedCompatibilityRow] = useState<
     number | null

@@ -24,7 +24,7 @@ export function buildProtocolWithStage(
   stageId: string | null,
   insertAtIndex?: number,
 ): CurrentProtocol {
-  const prunedStage = prune(stage as Record<string, unknown>) as Stage;
+  const prunedStage = prune(stage);
 
   // For new stages, generate a temp ID for validation/preview
   const stageWithId = stageId ? prunedStage : { ...prunedStage, id: uuid() };

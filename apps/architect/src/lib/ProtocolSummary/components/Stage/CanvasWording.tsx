@@ -142,10 +142,11 @@ const valueAt = (
   let current: unknown = stage;
   for (const key of path) {
     if (typeof current !== 'object' || current === null) return undefined;
-    current = (current as Record<string, unknown>)[key];
+    current = Reflect.get(current, key);
   }
   return typeof current === 'object' && current !== null
-    ? (current as LocalizedString)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the path names a localized text setting, which the schema holds as a locale-to-string record
+      (current as LocalizedString)
     : undefined;
 };
 

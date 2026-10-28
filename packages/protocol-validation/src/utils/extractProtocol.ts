@@ -52,13 +52,11 @@ const inflateEntryWithinBudget = (
     let entryBytes = 0;
     // `internalStream` is present at runtime but omitted from JSZip's published
     // types; reach it through the object without widening the entry type.
-    const stream = (
-      entry as unknown as {
-        internalStream: (
-          type: 'uint8array',
-        ) => Zip.JSZipStreamHelper<Uint8Array>;
-      }
-    ).internalStream('uint8array');
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSZip's published types omit `internalStream`, which exists at runtime on every entry
+    const zipEntry = entry as unknown as {
+      internalStream: (type: 'uint8array') => Zip.JSZipStreamHelper<Uint8Array>;
+    };
+    const stream = zipEntry.internalStream('uint8array');
 
     let aborted = false;
 
@@ -151,6 +149,7 @@ const getProtocolJsonAsObject = async (
     // package's schema validation. Written as an explicit cast because consumers
     // using `@total-typescript/ts-reset` (Fresco) type `JSON.parse` as `unknown`
     // rather than `any`, so an implicit widening does not compile there.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- callers validate the parsed object against this package's schemas; ts-reset types JSON.parse as unknown
     return JSON.parse(protocolString) as VersionedProtocol;
   } catch (cause) {
     // A `SyntaxError` names a byte offset in a file the researcher has never

@@ -106,6 +106,7 @@ export function parseSketchMessage(data: unknown): ParsedSketchMessage {
       type: 'sketch-import:payload',
       version: SKETCH_IMPORT_VERSION,
       // Shape-checked only; validated as a protocol by the import itself.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- only checked to be an object here; the import validates it with validateProtocol (migrating an older schema first) before opening it
       protocol: protocol as CurrentProtocol,
       name,
       assets,

@@ -32,6 +32,7 @@ export function createAnalyticsListenerMiddleware({
 }: AnalyticsListenerArgs) {
   const analyticsListenerMiddleware = createListenerMiddleware();
   const startAppListening =
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Redux Toolkit's documented way to type startListening for this store
     analyticsListenerMiddleware.startListening as TypedStartListening<
       RootState,
       AppDispatch

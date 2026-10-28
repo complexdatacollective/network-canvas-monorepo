@@ -133,10 +133,7 @@ export default function OperatorFilter({
     const numericValue = Number(inputValue);
     if (Number.isNaN(numericValue)) return;
 
-    const [entityKind, entityType] = selectedEntity.split('.') as [
-      string,
-      string | undefined,
-    ];
+    const [entityKind, entityType] = selectedEntity.split('.');
     if (!entityType || (entityKind !== 'nodes' && entityKind !== 'edges'))
       return;
 

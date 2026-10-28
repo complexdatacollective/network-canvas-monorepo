@@ -1,16 +1,17 @@
-import type { FieldValue } from '../../store/types';
+import { isRecord } from '../../../utils/isRecord';
 
 /**
  * Compares two FieldValue types to determine if they match.
  * Handles various types including primitives, arrays, objects, coordinates, and null/undefined.
  *
  * @param submittedValue - The value being submitted or compared
- * @param existingValue - The value to compare against
+ * @param existingValue - The value to compare against (a field value, or any
+ *   node within one, since records hold `unknown`)
  * @returns true if the values match, false otherwise
  */
 export default function isMatchingValue(
   submittedValue: unknown,
-  existingValue: FieldValue | null,
+  existingValue: unknown,
 ): boolean {
   // If both values are strictly equal, they match
   if (submittedValue === existingValue) {
@@ -91,8 +92,8 @@ export default function isMatchingValue(
 
   // Handle record objects
   if (
-    typeof submittedValue === 'object' &&
-    typeof existingValue === 'object' &&
+    isRecord(submittedValue) &&
+    isRecord(existingValue) &&
     !Array.isArray(submittedValue) &&
     !Array.isArray(existingValue)
   ) {
@@ -108,10 +109,7 @@ export default function isMatchingValue(
     return submittedKeys.every((key) => {
       return (
         key in existingValue &&
-        isMatchingValue(
-          (submittedValue as Record<string, FieldValue>)[key],
-          (existingValue as Record<string, FieldValue>)[key],
-        )
+        isMatchingValue(submittedValue[key], existingValue[key])
       );
     });
   }

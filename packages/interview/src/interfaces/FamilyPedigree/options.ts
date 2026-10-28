@@ -4,6 +4,7 @@ import type {
   LocalizedString,
   PedigreeParentKind,
   PedigreeSexAssignedAtBirth,
+  Variable,
 } from '@codaco/protocol-validation';
 
 import type { PedigreeConfig } from './model';
@@ -18,16 +19,13 @@ export type OwnedOptionLabels = Readonly<{
 }>;
 
 const labelsOf = (
-  definition: { type: string; options?: unknown } | undefined,
+  definition: Variable | undefined,
   resolve: (value: LocalizedString) => string,
 ): Record<string, string> => {
   if (definition?.type !== 'categorical' || !Array.isArray(definition.options))
     return {};
   const labels: Record<string, string> = {};
-  for (const option of definition.options as readonly {
-    value: unknown;
-    label: LocalizedString;
-  }[]) {
+  for (const option of definition.options) {
     if (typeof option.value === 'string')
       labels[option.value] = resolve(option.label);
   }

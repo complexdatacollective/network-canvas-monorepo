@@ -34,7 +34,15 @@ import FacetedFilter from './filters/FacetedFilter';
 import OperatorFilter from './filters/OperatorFilter';
 import RangeFilter from './filters/RangeFilter';
 import TextFilter from './filters/TextFilter';
-import { type FilterConfig, type FilterValue } from './filters/types';
+import {
+  type FilterConfig,
+  type FilterValue,
+  isDateFilterValue,
+  isFacetedFilterValue,
+  isFilterValue,
+  isOperatorFilterValue,
+  isRangeFilterValue,
+} from './filters/types';
 
 const stringSortFns = new Set(['text', 'textCaseSensitive']);
 
@@ -123,7 +131,8 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
   }
 
   const handleOpenFilter = () => {
-    setStagedValue(column.getFilterValue() as FilterValue | undefined);
+    const current = column.getFilterValue();
+    setStagedValue(isFilterValue(current) ? current : undefined);
     // Defer opening so the dropdown menu has time to fully close first.
     // Without this, the popover opens and immediately closes because the
     // dropdown's close handler fires after our open.
@@ -285,7 +294,7 @@ function FilterRenderer({
     case 'range':
       return (
         <RangeFilter
-          value={value as Parameters<typeof RangeFilter>[0]['value']}
+          value={isRangeFilterValue(value) ? value : undefined}
           onChange={onChange}
           config={filterConfig}
         />
@@ -293,7 +302,7 @@ function FilterRenderer({
     case 'date':
       return (
         <DateFilter
-          value={value as Parameters<typeof DateFilter>[0]['value']}
+          value={isDateFilterValue(value) ? value : undefined}
           onChange={onChange}
           config={filterConfig}
         />
@@ -301,7 +310,7 @@ function FilterRenderer({
     case 'text':
       return (
         <TextFilter
-          value={value as Parameters<typeof TextFilter>[0]['value']}
+          value={typeof value === 'string' ? value : undefined}
           onChange={onChange}
           config={filterConfig}
         />
@@ -309,7 +318,7 @@ function FilterRenderer({
     case 'boolean':
       return (
         <BooleanFilter
-          value={value as Parameters<typeof BooleanFilter>[0]['value']}
+          value={typeof value === 'boolean' ? value : undefined}
           onChange={onChange}
           config={filterConfig}
         />
@@ -317,7 +326,7 @@ function FilterRenderer({
     case 'faceted':
       return (
         <FacetedFilter
-          value={value as Parameters<typeof FacetedFilter>[0]['value']}
+          value={isFacetedFilterValue(value) ? value : undefined}
           onChange={onChange}
           config={filterConfig}
           data={data}
@@ -326,7 +335,7 @@ function FilterRenderer({
     case 'operator':
       return (
         <OperatorFilter
-          value={value as Parameters<typeof OperatorFilter>[0]['value']}
+          value={isOperatorFilterValue(value) ? value : undefined}
           onChange={onChange}
           config={filterConfig}
           data={data}

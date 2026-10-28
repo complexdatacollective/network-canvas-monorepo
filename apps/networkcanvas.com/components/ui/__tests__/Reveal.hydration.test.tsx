@@ -1,27 +1,26 @@
-import type * as MotionReact from 'motion/react';
 import type { ReactElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-const { mockUseReducedMotion } = vi.hoisted(() => ({
-  mockUseReducedMotion: vi.fn<() => boolean | null>(),
+const { mockUsePrefersReducedMotion } = vi.hoisted(() => ({
+  mockUsePrefersReducedMotion: vi.fn<() => boolean | null>(),
 }));
 
-// Partial, not wholesale: the real `motion/react` has to stay in place so the
-// `motion.div` under test still resolves `initial` into markup. Replacing the
-// whole module would reduce this to a test of the mock, and would also make
-// `useReducedMotion` incapable of returning the `null` that only the server
-// ever sees — the exact blind spot that let this class of bug through.
-vi.mock('motion/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof MotionReact>();
-  return { ...actual, useReducedMotion: mockUseReducedMotion };
-});
+// Only the preference is stubbed, so it can return the `null` that only the
+// server ever sees — the exact blind spot that let this class of bug through.
+// The real `motion/react` stays in place so the `motion.div` under test still
+// resolves `initial` into markup; replacing it would reduce this to a test of
+// the mock.
+vi.mock('@codaco/fresco-ui/reducedMotion', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@codaco/fresco-ui/reducedMotion')>()),
+  usePrefersReducedMotion: mockUsePrefersReducedMotion,
+}));
 
 const { Reveal } = await import('../Reveal');
 const { scrollDrivenRevealMotion } = await import('../scrollDrivenMotion');
 
 /**
- * `useReducedMotion()` answers `null` on the server — motion only learns the
+ * `usePrefersReducedMotion()` answers `null` on the server — motion only learns the
  * preference from `matchMedia`, which the server has no access to — and `true`
  * or `false` on the client. So nothing the server serialises may depend on it:
  * motion writes a resolved `initial` into the SSR markup as an inline style,
@@ -38,7 +37,7 @@ const { scrollDrivenRevealMotion } = await import('../scrollDrivenMotion');
  * reintroduce this.
  */
 const serverMarkupFor = (element: ReactElement, preference: boolean | null) => {
-  mockUseReducedMotion.mockReturnValue(preference);
+  mockUsePrefersReducedMotion.mockReturnValue(preference);
   return renderToString(element);
 };
 

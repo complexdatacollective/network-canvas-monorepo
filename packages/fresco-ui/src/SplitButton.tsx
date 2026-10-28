@@ -73,7 +73,7 @@ export type SplitButtonProps = Omit<ButtonProps, 'asChild' | 'popover'> &
     segment: SplitButtonSegmentProps;
   };
 
-function hasVisibleContent(children: React.ReactNode): boolean {
+function hasVisibleContent(children: unknown): boolean {
   if (
     children === undefined ||
     children === null ||
@@ -87,9 +87,9 @@ function hasVisibleContent(children: React.ReactNode): boolean {
   }
 
   if (Array.isArray(children)) {
-    // `Array.isArray` narrows to `unknown[]` under ts-reset, so re-assert the
-    // element type the recursive call expects.
-    return (children as React.ReactNode[]).some(hasVisibleContent);
+    // `Array.isArray` narrows to `unknown[]` under ts-reset, so the check takes
+    // `unknown` and each element is narrowed by the recursive call.
+    return children.some(hasVisibleContent);
   }
 
   return true;

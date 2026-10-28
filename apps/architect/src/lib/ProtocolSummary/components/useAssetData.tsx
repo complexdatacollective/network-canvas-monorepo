@@ -1,17 +1,11 @@
 import { get } from 'es-toolkit/compat';
 import { useContext, useEffect, useMemo, useState } from 'react';
 
-import type { RootState } from '~/ducks/modules/root';
 import { getAssetPath, makeGetNetworkAssetVariables } from '~/selectors/assets';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { reportError } from '~/utils/reportError';
 
 import SummaryContext from './SummaryContext';
-
-const stubState = (assetManifest: Record<string, unknown>): RootState =>
-  ({
-    activeProtocol: { present: { assetManifest } },
-  }) as unknown as RootState;
 
 type AssetData = {
   type?: string;
@@ -27,15 +21,15 @@ const useAssetData = (id: string) => {
   const [variables, setVariables] = useState<string[] | null>(null);
   const [url, setUrl] = useState<string | undefined>(undefined);
 
-  const stubbedState = useMemo(
-    () => stubState(protocol.assetManifest ?? {}),
+  const assetManifest = useMemo(
+    () => protocol.assetManifest ?? {},
     [protocol.assetManifest],
   );
   const getNetworkAssetVariables = useMemo(
-    () => makeGetNetworkAssetVariables(stubbedState),
-    [stubbedState],
+    () => makeGetNetworkAssetVariables(assetManifest),
+    [assetManifest],
   );
-  const assetPath = getAssetPath(stubbedState, id);
+  const assetPath = getAssetPath(assetManifest, id);
 
   useEffect(() => {
     if (!data || data.type !== 'network') {

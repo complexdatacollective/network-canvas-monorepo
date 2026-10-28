@@ -9,6 +9,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import ComboboxField from '../form/fields/Combobox/Combobox';
 import { type ComboboxOption } from '../form/fields/Combobox/shared';
 import { type DataTableFeatures } from './features';
+import { isFacetedFilterValue } from './filters/types';
 import { type Option } from './types';
 
 const messages = defineMessages({
@@ -48,7 +49,8 @@ export function DataTableFacetedFilter<TData extends RowData, TValue>({
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
   const intl = useAppIntl();
-  const selectedValues = (column?.getFilterValue() as string[]) ?? [];
+  const filterValue = column?.getFilterValue();
+  const selectedValues = isFacetedFilterValue(filterValue) ? filterValue : [];
   // An absent title interpolates as empty rather than as the word "undefined",
   // which is what template-literal assembly used to produce.
   const columnTitle = title ?? '';

@@ -280,10 +280,10 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // We serialize only the actual validation props (not component props like prefixComponent)
   // to create a stable dependency and avoid circular reference errors from React elements
   const validationOnlyProps: Record<string, unknown> = {};
+  const validationPropsByName: Record<string, unknown> = validationProps;
   for (const key of validationPropKeys) {
-    if (key in validationProps) {
-      validationOnlyProps[key] =
-        validationProps[key as keyof typeof validationProps];
+    if (key in validationPropsByName) {
+      validationOnlyProps[key] = validationPropsByName[key];
     }
   }
   const validationPropsJson = JSON.stringify(validationOnlyProps);

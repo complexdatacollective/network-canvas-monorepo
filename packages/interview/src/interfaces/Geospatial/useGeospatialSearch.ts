@@ -313,7 +313,8 @@ export const useGeospatialSearch = ({
         const feature = result.features[0];
         if (feature?.geometry.type !== 'Point') return 'unavailable';
 
-        const [lng, lat] = feature.geometry.coordinates as [number, number];
+        const [lng, lat] = feature.geometry.coordinates;
+        if (lng === undefined || lat === undefined) return 'unavailable';
         map.flyTo({ center: [lng, lat], zoom: FLY_TO_ZOOM });
         return 'moved';
       } catch (error) {

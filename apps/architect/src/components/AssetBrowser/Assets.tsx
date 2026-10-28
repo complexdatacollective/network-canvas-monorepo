@@ -137,7 +137,8 @@ const Assets = ({
   const unresolvedAssetIds = useUnresolvedAssetIds();
   const readOnly = useProtocolReadOnly();
   const handleDelete = disableDelete ? null : onDelete;
-  const selectedAssetType = (assetType ?? 'all') as AssetFilterValue;
+  const selectedAssetType: AssetFilterValue =
+    ASSET_TYPES.find(({ value }) => value === assetType)?.value ?? 'all';
 
   const layout = useMemo(
     () => new GridLayout<AssetType>({ minItemWidth: 280, gap: 5 }),

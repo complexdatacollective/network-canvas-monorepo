@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from '../../reducedMotion';
 import { holdsFocus } from '../../utils/finalFocus';
 import { scrollParent } from '../../utils/scrollParent';
 import type { FlattenedErrors } from '../store/types';
@@ -355,7 +356,9 @@ export const focusFirstError = (
     focusableElement.focus({ preventScroll: true });
   }
 
-  const scroller = scrollParent(scrollTarget) as unknown as HTMLElement;
+  const scroller = scrollParent(scrollTarget);
+  // Only an element from another realm (an iframe's) has no scroll parent.
+  if (!scroller) return;
   const scrollStart = scroller.scrollTop;
   const scrollerOffset = Number.parseInt(
     scroller.getBoundingClientRect().top.toString(),
@@ -368,12 +371,8 @@ export const focusFirstError = (
 
   // Subtract 200 to put more of the input in view.
   const scrollEnd = destinationOffset + scrollStart - scrollerOffset - 200;
-  const prefersReducedMotion =
-    ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')
-      .matches ?? false;
-
   scroller.scrollTo({
     top: scrollEnd,
-    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    behavior: prefersReducedMotion(ownerDocument) ? 'auto' : 'smooth',
   });
 };

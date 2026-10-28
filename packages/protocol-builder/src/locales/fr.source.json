@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Color",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "Choose the gradient the bins are shaded along.",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Color gradient",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "This interface is designed for up to five bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "This interface is designed for up to six bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "Enter your prompt...",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "Choose the ordinal attribute whose values are shown as bins.",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "This type has no ordinal attributes yet. Create one to say what the scale is.",

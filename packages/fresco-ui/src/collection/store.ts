@@ -248,8 +248,8 @@ function filterAndSort<T>(
   >[] = [];
   if (filterScores !== null && filterScores.size > 0) {
     prefixFns.push((a, b) => {
-      const scoreA = filterScores.get(keyExtractor(a as unknown as T)) ?? 1;
-      const scoreB = filterScores.get(keyExtractor(b as unknown as T)) ?? 1;
+      const scoreA = filterScores.get(keyExtractor(a)) ?? 1;
+      const scoreB = filterScores.get(keyExtractor(b)) ?? 1;
       return scoreA - scoreB;
     });
   }
@@ -260,6 +260,7 @@ function filterAndSort<T>(
       prefixFns,
       sortLocale,
     );
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the store's T is unconstrained while the sorter reads properties by path; it reorders the same items and returns them as the T they came in as
     return sorter(filtered as (T & Record<string, unknown>)[]) as T[];
   }
 

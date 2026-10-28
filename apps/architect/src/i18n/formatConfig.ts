@@ -29,6 +29,13 @@ export type FormattedConfig<T> = T extends ConfigMessage
           ? { [Key in keyof T]: FormattedConfig<T[Key]> }
           : T;
 
+const isConfigMessage = (value: object): value is ConfigMessage =>
+  'id' in value &&
+  typeof value.id === 'string' &&
+  'defaultMessage' in value &&
+  (typeof value.defaultMessage === 'string' ||
+    Array.isArray(value.defaultMessage));
+
 /**
  * Resolve explicit descriptors in presentation metadata at the render boundary.
  * Identifiers, enum values, callbacks and researcher-authored strings pass
@@ -43,16 +50,13 @@ export function formatConfig<T>(
     if (Array.isArray(value)) return value.map(visit);
     if (value === null || typeof value !== 'object' || '$$typeof' in value)
       return value;
-    if (
-      'id' in value &&
-      typeof value.id === 'string' &&
-      'defaultMessage' in value
-    ) {
-      return intl.formatMessage(value as ConfigMessage);
+    if (isConfigMessage(value)) {
+      return intl.formatMessage(value);
     }
     return Object.fromEntries(
       Object.entries(value).map(([key, entry]) => [key, visit(entry)]),
     );
   };
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- visit rebuilds config with every descriptor formatted, which is what FormattedConfig<T> says; TypeScript cannot evaluate that conditional type for a generic T
   return visit(config) as FormattedConfig<T>;
 }

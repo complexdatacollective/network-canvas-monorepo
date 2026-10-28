@@ -51,7 +51,7 @@ const BASE =
   'block max-h-(--bin-label-max,100%) w-full min-w-0 overflow-hidden text-center text-balance wrap-normal [&_strong]:font-black';
 
 const buildSteps = (
-  rungs: readonly string[],
+  rungs: readonly [string, ...string[]],
   level: 'h3' | 'h4',
 ): readonly [string, ...string[]] => {
   const rung = (className: string) =>
@@ -60,12 +60,14 @@ const buildSteps = (
       margin: 'none',
       className: `${BASE} ${className}`,
     });
+  const [top, ...lower] = rungs;
   const floor = rungs.at(-1)!;
   return [
-    ...rungs.map(rung),
+    rung(top),
+    ...lower.map(rung),
     rung(`${floor} ${HYPHENATED_BREAKS}`),
     rung(`${floor} ${EMERGENCY_BREAKS}`),
-  ] as unknown as readonly [string, ...string[]];
+  ];
 };
 
 const STEPS = {

@@ -1,7 +1,6 @@
 import { flatMap, get, reduce } from 'es-toolkit/compat';
 
 import {
-  type Codebook,
   collectEntityAttributeReferences,
   type LocalizedString,
 } from '@codaco/protocol-validation';
@@ -116,10 +115,10 @@ export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
     return stage.form.fields;
   });
 
-  const protocolEntities = [
-    ...(protocol.codebook?.node ? ['node'] : []),
-    ...(protocol.codebook?.edge ? ['edge'] : []),
-    ...(protocol.codebook?.ego ? ['ego'] : []),
+  const protocolEntities: Array<'node' | 'edge' | 'ego'> = [
+    ...(protocol.codebook?.node ? (['node'] as const) : []),
+    ...(protocol.codebook?.edge ? (['edge'] as const) : []),
+    ...(protocol.codebook?.ego ? (['ego'] as const) : []),
   ];
 
   const index = flatMap(protocolEntities, (entity) => {
@@ -129,17 +128,11 @@ export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
     }
 
     const entityConfigurations =
-      entity === 'ego'
-        ? { ego: codebook.ego }
-        : (codebook as Codebook)[entity as 'node' | 'edge'];
+      entity === 'ego' ? { ego: codebook.ego } : codebook[entity];
 
     return flatMap(entityConfigurations, (entityConfiguration, entityType) =>
       flatMap(
-        (
-          entityConfiguration as {
-            variables?: Record<string, VariableConfiguration>;
-          }
-        ).variables,
+        entityConfiguration?.variables,
         buildVariableEntry(protocol, variablePaths, fields, entity, entityType),
       ),
     );

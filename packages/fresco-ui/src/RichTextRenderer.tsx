@@ -1,12 +1,7 @@
 'use client';
 
 import type { JSONContent } from '@tiptap/react';
-import {
-  type ComponentPropsWithoutRef,
-  Fragment,
-  type JSX,
-  type ReactNode,
-} from 'react';
+import { type ComponentPropsWithoutRef, Fragment, type ReactNode } from 'react';
 
 import { NativeLink } from './NativeLink';
 import { headingVariants } from './typography/Heading';
@@ -25,6 +20,8 @@ const headingClassMap: Record<number, string> = {
   3: h3Classes,
   4: h4Classes,
 };
+
+const HEADING_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
 
 const listClasses = {
   bullet: 'ms-8 list-disc [&>li]:not-last:mb-2',
@@ -100,15 +97,16 @@ const sanitizeLinkHref = (value: string | undefined): string | undefined => {
   }
 };
 
-type TextMark = {
-  type: 'bold' | 'italic' | 'code' | 'strike' | 'underline' | 'link';
-  attrs?: {
-    href?: string;
-    target?: string | null;
-    rel?: string | null;
-    title?: string | null;
-  };
-};
+type TextMark = NonNullable<JSONContent['marks']>[number];
+
+// Mark attributes arrive untyped from the stored document: keep strings, keep
+// an explicit null (which means "omit the attribute"), and treat anything else
+// as absent.
+const stringAttr = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const nullableStringAttr = (value: unknown): string | null | undefined =>
+  value === null ? null : stringAttr(value);
 
 type RichTextRendererProps = Omit<
   ComponentPropsWithoutRef<'div'>,
@@ -141,15 +139,21 @@ function renderMarks(text: string, marks?: TextMark[]): ReactNode {
         return <u key={key}>{acc}</u>;
       case 'link': {
         const attrs = mark.attrs;
-        const href = sanitizeLinkHref(attrs?.href);
+        const href = sanitizeLinkHref(stringAttr(attrs?.href));
 
         return href ? (
           <NativeLink
             key={key}
             href={href}
-            target={linkAttributeWithDefault(attrs?.target, '_blank')}
-            rel={linkAttributeWithDefault(attrs?.rel, 'noopener noreferrer')}
-            title={attrs?.title ?? undefined}
+            target={linkAttributeWithDefault(
+              nullableStringAttr(attrs?.target),
+              '_blank',
+            )}
+            rel={linkAttributeWithDefault(
+              nullableStringAttr(attrs?.rel),
+              'noopener noreferrer',
+            )}
+            title={stringAttr(attrs?.title)}
           >
             {acc}
           </NativeLink>
@@ -181,8 +185,12 @@ function renderNode(node: JSONContent, index: number): ReactNode {
       );
 
     case 'heading': {
-      const level = (node.attrs?.level as number) ?? 1;
-      const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+      const rawLevel = Number(node.attrs?.level ?? 1);
+      const level =
+        Number.isInteger(rawLevel) && rawLevel >= 1 && rawLevel <= 6
+          ? rawLevel
+          : 1;
+      const Tag = HEADING_TAGS[level - 1] ?? 'h1';
       const className = headingClassMap[level] ?? h1Classes;
       return (
         <Tag key={key} className={className}>
@@ -218,7 +226,7 @@ function renderNode(node: JSONContent, index: number): ReactNode {
     case 'text':
       return (
         <Fragment key={key}>
-          {renderMarks(node.text ?? '', node.marks as TextMark[] | undefined)}
+          {renderMarks(node.text ?? '', node.marks)}
         </Fragment>
       );
 

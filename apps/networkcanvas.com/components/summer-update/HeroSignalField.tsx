@@ -1,9 +1,9 @@
 'use client';
 
-import { useReducedMotion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 const TARGET_SELECTOR = '[data-homepage-weave-target]';
 const COLOR_PROPERTIES = [
@@ -383,7 +383,7 @@ function resolveThemeColor(
 
 export function HeroSignalField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
 

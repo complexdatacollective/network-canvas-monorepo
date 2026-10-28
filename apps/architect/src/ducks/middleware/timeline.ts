@@ -137,6 +137,7 @@ const createTimelineReducer = <T>(
 
           const newPresent = past[past.length - 1];
           const newFuture = [
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the persisted slice stores plain T values; Immer's Draft<T> of a generic T cannot be proven assignable to T, and current() detaches the draft into one
             current<T>(present as Draft<T>),
             ...current<T[]>(future || []),
           ];
@@ -214,7 +215,8 @@ const createTimelineReducer = <T>(
 
           // Move current present to past
           const newPast = present
-            ? [...past, current<T>(present as Draft<T>)]
+            ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Draft<T> of a generic T cannot be proven assignable to T; current() detaches the draft into a plain T
+              [...past, current<T>(present as Draft<T>)]
             : past;
           const newTimeline = newLocus ? [...timeline, newLocus] : timeline;
 
@@ -233,10 +235,13 @@ const createTimelineReducer = <T>(
           // otherwise recompute via the wrapped reducer (existing behavior).
           const newPresent =
             action.payload !== undefined
-              ? (action.payload as T)
+              ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- reset's payload is the whole state slice, typed unknown by the shared action creator; T is the slice this reducer wraps
+                (action.payload as T)
               : reducer(
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Draft<T> of a generic T cannot be proven assignable to T; current() detaches the draft into a plain T
                   (state.present
-                    ? current<T>(state.present as Draft<T>)
+                    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Draft<T> of a generic T cannot be proven assignable to T; current() detaches the draft into a plain T
+                      current<T>(state.present as Draft<T>)
                     : state.present) as T,
                   {
                     type: '@@RESET',
@@ -300,8 +305,10 @@ const createTimelineReducer = <T>(
           // actually committed (see below), so excluded/no-op actions don't pay
           // for a full-protocol structuredClone.
           const presentSnapshot = present
-            ? current<T>(present as Draft<T>)
+            ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Draft<T> of a generic T cannot be proven assignable to T; current() detaches the draft into a plain T
+              current<T>(present as Draft<T>)
             : null;
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- presentSnapshot is the detached present (a plain T) or null before the first run, which the wrapped reducer treats as its initial state
           const newPresent = reducer(presentSnapshot as T, action);
 
           // This is the first run

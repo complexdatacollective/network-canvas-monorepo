@@ -91,7 +91,7 @@ const messages = defineMessages({
   },
 });
 
-type Entity = 'node' | 'edge' | 'ego';
+export type Entity = 'node' | 'edge' | 'ego';
 type UsageItem = {
   id?: string;
   label: string;
@@ -104,11 +104,6 @@ type Variable = {
   usage: UsageItem[];
   usageString?: string;
 };
-type VariablesComponentProps = {
-  variables: Variable[];
-  entity: Entity;
-  type?: string;
-};
 // Props expected by the unwrapped component
 type EntityTypeProps = {
   entity: Entity;
@@ -120,7 +115,7 @@ type EntityTypeProps = {
   inUse?: boolean;
   search?: string;
   unusedOnly?: boolean;
-  onEditEntity?: (entity: string, type?: string) => void;
+  onEditEntity?: (entity: Entity, type?: string) => void;
   variables?: Record<string, Variable>;
 };
 const EntityType = ({
@@ -142,8 +137,6 @@ const EntityType = ({
   const { confirm, openDialog } = useDialog();
   const [showAddVariable, setShowAddVariable] = useState(false);
   const variableArray = Object.values(variables);
-  const VariablesTyped =
-    Variables as unknown as React.ComponentType<VariablesComponentProps>;
   // Apply the codebook's "Show unused only" / search filters at the variable
   // level (mirroring EgoType) so a type stays visible when it itself matches
   // or merely contains matching variables.
@@ -306,7 +299,7 @@ const EntityType = ({
           </Button>
         </div>
         {filteredVariables.length > 0 && (
-          <VariablesTyped
+          <Variables
             variables={filteredVariables}
             entity={entity}
             type={type}
@@ -340,7 +333,7 @@ type OwnProps = StateProps & {
   usage: UsageItem[];
   search?: string;
   unusedOnly?: boolean;
-  onEditEntity?: (entity: string, type?: string) => void;
+  onEditEntity?: (entity: Entity, type?: string) => void;
 };
 const ConnectedEntityType = compose<
   EntityTypeProps,

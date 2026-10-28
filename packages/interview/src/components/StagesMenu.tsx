@@ -1,7 +1,7 @@
 'use client';
 
 import { EyeOff, LayoutTemplate, RouteOff } from 'lucide-react';
-import { motion, useReducedMotion, type Variants } from 'motion/react';
+import { motion, type Variants } from 'motion/react';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -10,6 +10,7 @@ import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
@@ -198,7 +199,7 @@ export default function StagesMenu({
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const availabilityMap = useSelector(getStageAvailabilityMap);
   const skipMap = useSelector(getSkipMap);
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = usePrefersReducedMotion() ?? false;
 
   const isHorizontal = orientation === 'horizontal';
 

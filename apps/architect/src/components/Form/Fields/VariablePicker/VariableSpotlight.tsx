@@ -21,7 +21,6 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { VariableType } from '@codaco/protocol-validation';
 import { normalizeCodebookName } from '@codaco/shared-consts';
 import { VariablePill } from '~/components/VariablePill';
 import type { RootState } from '~/ducks/store';
@@ -147,7 +146,7 @@ type VariableSpotlightItem =
       kind: 'variable';
       label: string;
       value: string;
-      variableType: VariableType;
+      variableType: string;
     };
 
 type VariableSpotlightProps = {
@@ -228,9 +227,12 @@ const VariableSpotlight = ({
   }, [filterTerm, options, intl]);
 
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
-  const subject = useMemo(
+  const subject = useMemo<{
+    entity: 'node' | 'edge' | 'ego';
+    type: string | undefined;
+  }>(
     () => ({
-      entity: ((entity || '') as 'node' | 'edge' | 'ego') || 'node',
+      entity: entity === 'edge' || entity === 'ego' ? entity : 'node',
       type: type || undefined,
     }),
     [entity, type],
@@ -300,7 +302,7 @@ const VariableSpotlight = ({
         kind: 'variable' as const,
         label,
         value,
-        variableType: ((optionType as VariableType) || 'text') as VariableType,
+        variableType: optionType || 'text',
       })),
     );
 

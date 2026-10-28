@@ -6,6 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { focusRouteTarget } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Codebook from '~/components/Codebook/Codebook';
 import { readCodebookLink } from '~/components/Codebook/codebookLinks';
+import type { Entity } from '~/components/Codebook/EntityType';
 import EntityTypeDialog from '~/components/Codebook/EntityTypeDialog';
 import UnusedVariablesAlert from '~/components/Codebook/UnusedVariablesAlert';
 import PageHeading from '~/components/ProjectNav/PageHeading';
@@ -27,7 +28,7 @@ const messages = defineMessages({
 });
 
 type DialogState = {
-  entity?: string;
+  entity?: Entity;
   type?: string;
 };
 
@@ -50,7 +51,7 @@ const CodebookPage = () => {
   const linkedType = linkedTypeExists ? link : undefined;
 
   const handleOpenEntityDialog = useCallback(
-    (entity: string, type?: string) => {
+    (entity: Entity, type?: string) => {
       setDialogState({ entity, type });
       setDialogOpen(true);
     },

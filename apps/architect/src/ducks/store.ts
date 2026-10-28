@@ -77,6 +77,7 @@ const store = configureStore({
       .prepend(scrollPositionsListenerMiddleware.middleware),
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- redux-remember's enhancer is typed for a plain store; RTK's enhancer tuple type here is built from the middleware above and cannot be matched to it
       rememberEnhancer(rememberDriver, rememberedKeys, {
         // Not redux-remember's default: Architect 8 at `/v8/` keeps that one,
         // and a tab moving between the two shares one sessionStorage.

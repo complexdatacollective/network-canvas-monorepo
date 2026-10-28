@@ -26,6 +26,7 @@ export const useRefusedNestedCommit = (): (() => string | null) => {
   const reduxContext = useContext(ReactReduxContext);
 
   return useCallback(() => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- react-redux's context types its store's state as any; this is the app's store, whose state is RootState
     const state = (reduxContext?.store.getState() ?? null) as RootState | null;
     if (!state) return null;
     return refusedCommitError(getProtocolLockState(state), 'nested-editor');

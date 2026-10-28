@@ -11,7 +11,8 @@
 # Environment:
 #   GITHUB_TOKEN                     a token that may create deployments on the
 #                                    repository (required)
-#   STUDIO_AUTO_UPDATE_ENVIRONMENT   the GitHub deployment environment (default staging)
+#   STUDIO_AUTO_UPDATE_ENVIRONMENT   the GitHub deployment environment
+#                                    (default studio-staging)
 #   COMPOSE                          the Compose command (default: docker compose)
 #
 # A run that ends in anything but an upgrade writes .auto-update-halted, and
@@ -23,7 +24,7 @@ REPO=complexdatacollective/network-canvas-monorepo
 API="https://api.github.com/repos/$REPO"
 IDENTITY="https://github.com/$REPO/.github/workflows/ci-and-release.yml@refs/heads/main"
 ISSUER=https://token.actions.githubusercontent.com
-ENVIRONMENT="${STUDIO_AUTO_UPDATE_ENVIRONMENT:-staging}"
+ENVIRONMENT="${STUDIO_AUTO_UPDATE_ENVIRONMENT:-studio-staging}"
 RAW="https://raw.githubusercontent.com/$REPO"
 
 log() { echo "[studio-auto-update] $*"; }
@@ -126,9 +127,10 @@ DEPLOYMENT="$(github POST /deployments "$(jq -nc --arg ref "$COMMIT" --arg env "
   '{ref: $ref, environment: $env, auto_merge: false, required_contexts: [], description: ("Studio " + $v)}')" \
   | jq -r .id)" || fail 'could not create the GitHub deployment; nothing was changed'
 
+URL="https://$(sed -n 's/^STUDIO_HOSTNAME=//p' .env)"
 status() { # state description
   github POST "/deployments/$DEPLOYMENT/statuses" \
-    "$(jq -nc --arg s "$1" --arg d "$2" '{state: $s, description: $d}')" > /dev/null \
+    "$(jq -nc --arg s "$1" --arg d "$2" --arg u "$URL" '{state: $s, description: $d, environment_url: $u}')" > /dev/null \
     || log "could not set deployment $DEPLOYMENT to $1"
 }
 

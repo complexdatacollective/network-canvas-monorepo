@@ -65,7 +65,14 @@ const withAssetUrl = <P extends WithAssetUrlProps>(
 
     const url = loaded?.id === id ? loaded.url : undefined;
 
-    return <WrappedComponent {...({ ...restProps, url } as unknown as P)} />;
+    return (
+      <WrappedComponent
+        {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- restProps is P minus url (Omit<P, 'url'>) and url is P's own optional prop; TypeScript cannot rebuild a generic P from Omit<P, K> plus K
+          ...({ ...restProps, url } as unknown as P)
+        }
+      />
+    );
   };
 
   WithAssetUrlComponent.displayName = `withAssetUrl(${WrappedComponent.displayName || WrappedComponent.name})`;

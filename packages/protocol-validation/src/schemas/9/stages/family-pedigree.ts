@@ -600,7 +600,7 @@ const WORDING_ARGUMENTS = {
 
 type WordingWithArguments = keyof typeof WORDING_ARGUMENTS;
 
-const suppliedWordingOf = (key: WordingWithArguments) => {
+const suppliedWordingOf = (key: string) => {
   const setting = FAMILY_PEDIGREE_SUPPLIED_TEXT.find(
     ({ path }) => path.length === 2 && path[0] === 'wording' && path[1] === key,
   );
@@ -615,13 +615,11 @@ const suppliedWordingOf = (key: WordingWithArguments) => {
  * (see `WORDING_ARGUMENTS`), each requiring in every translation what its
  * supplied English wording shows.
  */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- one entry per key of WORDING_ARGUMENTS, so the keys are exactly WordingWithArguments
 export const PEDIGREE_WORDING_ARGUMENTS = Object.fromEntries(
   Object.entries(WORDING_ARGUMENTS).map(([key, declaration]) => [
     key,
-    requireSuppliedPlacements(
-      declaration,
-      suppliedWordingOf(key as WordingWithArguments),
-    ),
+    requireSuppliedPlacements(declaration, suppliedWordingOf(key)),
   ]),
 ) as Readonly<Record<WordingWithArguments, MessageArguments>>;
 

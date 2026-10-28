@@ -592,7 +592,7 @@
     "description": "Heading of the group that picks the colour gradient the bins of an Ordinal Bin are shaded along."
   },
   "protocolBuilder.censusPrompts.ordinalBinLimitDescription": {
-    "defaultMessage": "This interface is designed for up to five bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.",
+    "defaultMessage": "This interface is designed for up to six bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.",
     "description": "Body of the warning shown when an Ordinal Bin prompt would draw more bins than its interview screen is designed for."
   },
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": {

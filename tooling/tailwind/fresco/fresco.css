@@ -26,6 +26,10 @@
 /* Tailwind v4 @theme block defining the Fresco design system token surface. */
 @import './theme.css';
 
+/* `motion-reduce:` / `motion-safe:` and the global reduced-motion rule, keyed
+   off the preference `AnimationProvider` resolves. */
+@import './reduced-motion.css';
+
 /* Foundational @utility / @custom-variant definitions used across packages. */
 @import './utilities.css';
 

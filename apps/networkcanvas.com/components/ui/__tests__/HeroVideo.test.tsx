@@ -8,8 +8,8 @@ import { HeroVideo } from '../HeroVideo';
 
 const motionPreference = vi.hoisted(() => ({ reduced: false }));
 
-vi.mock('motion/react', () => ({
-  useReducedMotion: () => motionPreference.reduced,
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionPreference.reduced,
 }));
 
 describe('HeroVideo', () => {

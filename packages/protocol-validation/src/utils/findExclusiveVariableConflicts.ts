@@ -16,10 +16,11 @@ import {
 
 type UnknownRecord = Record<string, unknown>;
 
+const isUnknownRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const asRecord = (value: unknown): UnknownRecord | null =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as UnknownRecord)
-    : null;
+  isUnknownRecord(value) ? value : null;
 
 export type ExclusiveVariableSlot = {
   subject: ReferenceSubject;

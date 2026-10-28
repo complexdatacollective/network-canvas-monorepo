@@ -230,6 +230,7 @@ const stageSubjectOf = (
   }
   const subject = value.subject;
   if (isRecord(subject) && typeof subject.entity === 'string') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stage's own `subject` field is typed StageSubject by its schema; only its `entity` is checked here before it is passed on
     return subject as StageSubject;
   }
   return undefined;

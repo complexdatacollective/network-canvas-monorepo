@@ -22,12 +22,7 @@ import { useFilterState } from '../hooks/useFilterState';
 import { useSortState } from '../hooks/useSortState';
 import { getInitialSortRules } from '../sorting/initialSortRules';
 import type { SortState } from '../sorting/types';
-import type {
-  CollectionProps,
-  ItemRenderer,
-  Key,
-  KeyExtractor,
-} from '../types';
+import type { CollectionProps, Key } from '../types';
 import { StaticRenderer } from './StaticRenderer';
 import { VirtualizedRenderer } from './VirtualizedRenderer';
 
@@ -154,7 +149,7 @@ function CollectionContent<T extends Record<string, unknown>>({
     filterDebounceMs,
     filterMinQueryLength,
     items,
-    keyExtractor: keyExtractor as KeyExtractor<Record<string, unknown>>,
+    keyExtractor,
   });
 
   // Reset scroll position when filter results or sort state changes
@@ -433,7 +428,7 @@ export function Collection<T extends Record<string, unknown>>({
         items={items}
         keyExtractor={keyExtractor}
         layout={layout}
-        renderItem={renderItem as ItemRenderer<Record<string, unknown>>}
+        renderItem={renderItem}
         emptyState={
           // `undefined` only, not nullish: `emptyState` is a ReactNode, and
           // `null` is how a caller says "render no empty state at all" —

@@ -1,6 +1,6 @@
 import { get } from 'es-toolkit/compat';
 import { Check, X } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -14,12 +14,12 @@ import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
-import type { VariableType } from '@codaco/protocol-validation';
 import { normalizeCodebookName } from '@codaco/shared-consts';
 import {
   getVariableTypeLabel,
@@ -98,7 +98,12 @@ const finalMessages = defineMessages({
 export type VariablePillProps = {
   className?: string;
   label: string;
-  type: VariableType;
+  /**
+   * The variable's type. The pill falls back to a neutral look for a type it
+   * does not know, such as the empty type of a variable missing from the
+   * codebook.
+   */
+  type: string;
   /**
    * Swaps the static type-coloured border for the orbiting gradient. For the
    * attribute picker's held value only, never for a pill that is merely listed.
@@ -171,7 +176,7 @@ const getResolvedMaximumWidth = (
   return Math.max(currentWidth, numericMaxWidth);
 };
 
-const getVariablePillStyle = (type: VariableType): VariablePillStyle => {
+const getVariablePillStyle = (type: string): VariablePillStyle => {
   const accentColor = getRawColorToken(getColorForType(type));
   return {
     '--variable-pill-accent': `oklch(var(--${accentColor}))`,
@@ -211,7 +216,7 @@ function VariablePillContents({
 }: {
   children: React.ReactNode;
   fill?: boolean;
-  type: VariableType;
+  type: string;
 }) {
   const intl = useAppIntl();
   const icon = useMemo(() => getIconForType(type), [type]);
@@ -265,7 +270,7 @@ export const VariablePill = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const restoreFocusRef = useRef(false);
   const closingRef = useRef(false);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const validationId = useId();
 
   const [editing, setEditing] = useState(false);

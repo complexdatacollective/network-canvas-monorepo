@@ -1,10 +1,10 @@
 'use client';
 
-import { useReducedMotion } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { PageBackground } from '@codaco/art';
 import type { NetworkWeaveConvergence } from '@codaco/art/NetworkWeaveBackground';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 // The hero video is the weave's only focal anchor. On load the weave knits
 // inward to it; then, as the hero scrolls away, the focus follows a longer path
@@ -78,7 +78,7 @@ export function HomepagePageBackground({
   target,
 }: HomepagePageBackgroundProps) {
   const layerRef = useRef<HTMLDivElement>(null);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const [background, setBackground] = useState<BackgroundState>({
     convergence: CENTER,
     intensity: HERO_INTENSITY,

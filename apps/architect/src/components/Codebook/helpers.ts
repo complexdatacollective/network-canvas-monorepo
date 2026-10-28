@@ -251,9 +251,11 @@ export const sortByLabel = (
  * @param {Record<string, unknown>} mergeProps Props to merge with the result
  * @returns {function} Function that can be used in map operations
  */
-export const makeGetEntityWithUsage = (
+export const makeGetEntityWithUsage = <
+  MergeProps extends Record<string, unknown>,
+>(
   index: Record<string, unknown>,
-  mergeProps: Record<string, unknown>,
+  mergeProps: MergeProps,
   intl: IntlShape = defaultIntl,
 ) =>
   createSelector(

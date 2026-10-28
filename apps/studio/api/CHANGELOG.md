@@ -1,5 +1,11 @@
 # @codaco/studio-api
 
+## 1.0.2
+
+### Patch Changes
+
+- An Ordinal Bin prompt in the Studio editor now warns about having too many bins only beyond six, matching the documented guidance, instead of beyond five. A six-point scale no longer raises the warning.
+
 ## 1.0.1
 
 ### Patch Changes

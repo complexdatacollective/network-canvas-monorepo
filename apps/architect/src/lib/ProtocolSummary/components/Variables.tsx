@@ -49,7 +49,7 @@ type IndexEntry = {
 };
 
 type VariablesProps = {
-  variables?: Record<string, unknown>;
+  variables?: Record<string, Variable>;
 };
 
 const Variables = ({ variables }: VariablesProps) => {
@@ -63,7 +63,7 @@ const Variables = ({ variables }: VariablesProps) => {
     });
 
   const sortedVariables = toPairs(variables).toSorted((a, b) =>
-    (a[1] as Variable).name.localeCompare((b[1] as Variable).name, intl.locale),
+    a[1].name.localeCompare(b[1].name, intl.locale),
   );
 
   return (
@@ -84,8 +84,7 @@ const Variables = ({ variables }: VariablesProps) => {
               </td>
             </tr>
           )}
-          {sortedVariables.map(([variableId, variableConfiguration]) => {
-            const config = variableConfiguration as Variable;
+          {sortedVariables.map(([variableId, config]) => {
             const { name, type } = config;
 
             const indexEntry = index.find(

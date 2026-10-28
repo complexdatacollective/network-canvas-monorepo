@@ -1445,6 +1445,7 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
 export const familyPedigreeWordingIn = (
   locales: readonly LocaleTag[] = ['en'],
 ): FamilyPedigreeWording =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keys are the wording settings named in FAMILY_PEDIGREE_SUPPLIED_TEXT, which FamilyPedigreeWording lists
   Object.fromEntries(
     FAMILY_PEDIGREE_SUPPLIED_TEXT.flatMap(({ path, message }) => {
       const [group, key] = path;

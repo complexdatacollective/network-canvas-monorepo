@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Farbe",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "Wählen Sie den Farbverlauf für die Fächer aus.",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Farbverlauf",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Diese Oberfläche ist für bis zu fünf Fächer ausgelegt. Darüber hinaus werden die Fächer schwer lesbar und schwer zu treffen, was die Datenqualität beeinträchtigt.",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Diese Oberfläche ist für bis zu sechs Fächer ausgelegt. Darüber hinaus werden die Fächer schwer lesbar und schwer zu treffen, was die Datenqualität beeinträchtigt.",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "Frage eingeben…",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "Wählen Sie das ordinale Attribut aus, dessen Werte als Fächer angezeigt werden.",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "Dieser Typ hat noch keine ordinalen Attribute. Erstellen Sie eines, um die Skala festzulegen.",

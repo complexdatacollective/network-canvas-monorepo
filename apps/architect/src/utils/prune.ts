@@ -33,12 +33,14 @@ const shouldPrune = (x: unknown) =>
 const pruneObjects = <T extends Prunable>(obj: T): T => {
   const getNextValue = (value: unknown): unknown => {
     if (isObject(value) || isArray(value)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- isObject/isArray narrow to object or any[]; the plain objects and arrays being pruned are the Prunable shapes (anything else, such as a Date, has no own pairs and prunes to empty)
       return pruneObjects(value as Prunable);
     }
 
     return value;
   };
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the reduce rebuilds obj with the same container kind (an array stays an array, an object an object) minus its empty entries, which T, a generic subtype of Prunable, cannot express
   return toPairs(obj).reduce(
     (memo: Prunable, [key, value]: [string, unknown]) => {
       const nextValue = getNextValue(value);

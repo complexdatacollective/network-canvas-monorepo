@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
+import { motion, Reorder, type Variants } from 'motion/react';
 import {
   createElement,
   useCallback,
@@ -20,6 +20,7 @@ import {
 } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   actionCreators as stageActions,
@@ -163,7 +164,7 @@ const Timeline = () => {
   const protocol = useSelector(getProtocol);
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const isFirstMount = useRunOnce('timeline-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
   const { announce } = useAccessibilityAnnouncements();

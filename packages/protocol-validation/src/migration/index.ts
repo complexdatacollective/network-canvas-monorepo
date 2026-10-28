@@ -184,6 +184,7 @@ export class MigrationChain {
         `Migration from version ${migration.from} already registered`,
       );
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the registry erases each step's version and dependency types so one map holds them all; steps are looked up by their `from`
     this.migrations.set(migration.from, migration as unknown as AnyMigration);
     return this;
   }
@@ -272,6 +273,7 @@ export class MigrationChain {
 
     if ((fromVersion as SchemaVersion) === targetVersion) {
       return {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the document is already at the target version (checked just above), but the types cannot relate From to To
         document: document as unknown as ProtocolDocument<To>,
         sessionSteps,
       };
@@ -336,6 +338,7 @@ export class MigrationChain {
                   run: (session, protocols) =>
                     migrateSession(
                       session,
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- recorded steps hold the frozen before/after documents of this same step, typed unknown only to keep RecordedSessionStep version-free
                       protocols as {
                         before: ProtocolDocument<SchemaVersion>;
                         after: ProtocolDocument<SchemaVersion>;
@@ -351,6 +354,7 @@ export class MigrationChain {
       currentVersion = migration.to;
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the loop runs until the version reaches To; the version is a runtime value the types cannot follow
     return { document: current as ProtocolDocument<To>, sessionSteps };
   }
 

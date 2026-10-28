@@ -34,6 +34,12 @@ type ColorPickerProps = CreateFormFieldProps<
   }
 >;
 
+const swatchStyle = (
+  color: ColorReference,
+): React.CSSProperties & Record<`--${string}`, string> => ({
+  '--color': resolveProtocolColor(color),
+});
+
 /**
  * A swatch and what it is called.
  *
@@ -142,11 +148,7 @@ const ColorPicker = ({
                   : 'hover:outline-2 hover:outline-offset-2',
                 readOnly && 'pointer-events-none',
               )}
-              style={
-                {
-                  '--color': resolveProtocolColor(color.value),
-                } as React.CSSProperties
-              }
+              style={swatchStyle(color.value)}
             />
           )}
         />

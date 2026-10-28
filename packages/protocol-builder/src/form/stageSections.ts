@@ -1,3 +1,5 @@
+import { prefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+
 import type {
   StageProblemsStore,
   StageSection,
@@ -165,14 +167,7 @@ export function focusStageSection(sectionId: string): void {
   // Focus alone would scroll abruptly, so the smooth journey is the
   // enhancement and arriving is the guarantee.
   section.scrollIntoView({
-    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    behavior: prefersReducedMotion(section) ? 'auto' : 'smooth',
     block: 'start',
   });
-}
-
-export function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
 }

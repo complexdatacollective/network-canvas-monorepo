@@ -30,9 +30,11 @@ export const NON_RENDERABLE_VARIABLE_TYPES = new Set<string>([
   VariableTypes.location,
 ]);
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keys of the `as const` ComponentTypes table above, so exactly its literal keys
 export const ComponentTypesKeys = Object.keys(
   ComponentTypes,
 ) as (keyof typeof ComponentTypes)[];
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keys of the `as const` VariableTypes table above, so exactly its literal keys
 export const VariableTypesKeys = Object.keys(
   VariableTypes,
 ) as (keyof typeof VariableTypes)[];
@@ -49,6 +51,7 @@ export const DATE_FORMATS = {
   year: 'yyyy',
 } as const;
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keys of the `as const` DATE_FORMATS table above, so exactly its literal keys
 export const DATE_FORMATS_KEYS = Object.keys(
   DATE_FORMATS,
 ) as (keyof typeof DATE_FORMATS)[];

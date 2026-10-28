@@ -91,7 +91,13 @@ function InterviewToastItem({
 }) {
   const intl = useAppIntl();
   const { close } = Toast.useToastManager<InterviewToastData>();
-  const variant = (toast.type ?? 'default') as ToastVariant;
+  // Only `useInterviewToast` adds toasts here, and it sets `type` to a variant.
+  const variant: ToastVariant =
+    toast.type === 'info' ||
+    toast.type === 'success' ||
+    toast.type === 'destructive'
+      ? toast.type
+      : 'default';
 
   const hasFocusedRef = useRef(false);
 

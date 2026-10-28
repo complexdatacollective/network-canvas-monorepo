@@ -17,6 +17,15 @@ import { edgeInsetForNode, FALLBACK_NODE_RADIUS } from './layoutGeometry';
 type Position = { x: number; y: number };
 type CanvasDimensions = { width: number; height: number };
 
+/** Whether a stored layout value is a position the canvas can place a node at. */
+const isPosition = (value: unknown): value is Position =>
+  typeof value === 'object' &&
+  value !== null &&
+  'x' in value &&
+  typeof value.x === 'number' &&
+  'y' in value &&
+  typeof value.y === 'number';
+
 type CanvasState = {
   positions: Map<string, Position>;
   selectedNodeId: string | null;
@@ -129,15 +138,8 @@ export const createCanvasStore = () =>
         const next = new Map<string, Position>();
         for (const node of nodes) {
           const attrs = node[entityAttributesProperty];
-          const layoutValue = attrs[layoutVariable] as
-            | Position
-            | null
-            | undefined;
-          if (
-            layoutValue &&
-            typeof layoutValue.x === 'number' &&
-            typeof layoutValue.y === 'number'
-          ) {
+          const layoutValue = attrs[layoutVariable];
+          if (isPosition(layoutValue)) {
             next.set(
               node[entityPrimaryKeyProperty],
               clampPosition(layoutValue, dims, nodeRadius),
@@ -166,15 +168,8 @@ export const createCanvasStore = () =>
             const nodeId = node[entityPrimaryKeyProperty];
             if (!next.has(nodeId)) {
               const attrs = node[entityAttributesProperty];
-              const layoutValue = attrs[layoutVariable] as
-                | Position
-                | null
-                | undefined;
-              if (
-                layoutValue &&
-                typeof layoutValue.x === 'number' &&
-                typeof layoutValue.y === 'number'
-              ) {
+              const layoutValue = attrs[layoutVariable];
+              if (isPosition(layoutValue)) {
                 next.set(
                   nodeId,
                   clampPosition(

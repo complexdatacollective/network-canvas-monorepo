@@ -272,18 +272,19 @@ type ProtocolHistoryMarker = {
   hasAppEntryBeforeProtocol: boolean;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const readProtocolHistoryMarker = (): ProtocolHistoryMarker | null => {
   const state: unknown = history.state;
-  if (typeof state !== 'object' || state === null || Array.isArray(state)) {
+  if (!isRecord(state)) {
     return null;
   }
 
-  const marker = (state as Record<string, unknown>)[PROTOCOL_HISTORY_KEY];
-  if (typeof marker !== 'object' || marker === null) return null;
+  const marker = state[PROTOCOL_HISTORY_KEY];
+  if (!isRecord(marker)) return null;
 
-  const depth = (marker as Record<string, unknown>).depth;
-  const hasAppEntryBeforeProtocol = (marker as Record<string, unknown>)
-    .hasAppEntryBeforeProtocol;
+  const { depth, hasAppEntryBeforeProtocol } = marker;
   if (
     typeof depth !== 'number' ||
     !Number.isInteger(depth) ||
@@ -316,10 +317,7 @@ export const guardState = {
 
 const tagCurrentProtocolHistoryEntry = (marker: ProtocolHistoryMarker) => {
   const state: unknown = history.state;
-  const stateRecord =
-    typeof state === 'object' && state !== null && !Array.isArray(state)
-      ? (state as Record<string, unknown>)
-      : {};
+  const stateRecord = isRecord(state) ? state : {};
 
   guardState.taggingHistory = true;
   try {

@@ -532,7 +532,10 @@ const PanelRow = ({
     // protocol because a menu item was activated would undo whatever the
     // researcher actually chose. The menu items stop propagation too; this is
     // the guard that does not depend on every future one remembering to.
-    if (!event.currentTarget.contains(event.target as Node)) return;
+    const target = event.target;
+    if (!(target instanceof Node) || !event.currentTarget.contains(target)) {
+      return;
+    }
     onOpen(captureRowFocus(event.currentTarget));
   };
   const handleKeyDown = (event: React.KeyboardEvent) => {

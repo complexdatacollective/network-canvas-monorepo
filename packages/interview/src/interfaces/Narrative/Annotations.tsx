@@ -76,7 +76,8 @@ const Annotations = forwardRef<AnnotationsHandle, AnnotationsProps>(
     const handlePointerDown = useCallback(
       (e: React.PointerEvent) => {
         if (e.button !== 0) return;
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        if (e.target instanceof Element)
+          e.target.setPointerCapture(e.pointerId);
         e.preventDefault();
 
         const point = relativeCoords(e.clientX, e.clientY);

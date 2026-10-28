@@ -67,7 +67,7 @@ const detailsWithVariableUUIDs =
 export type UseItemElement = {
   id: NcEntity[EntityPrimaryKey];
   data: NcNode;
-  props: NameGeneratorRosterProps & {
+  props: {
     label: string;
     data: ReturnType<ReturnType<typeof detailsWithVariableUUIDs>>; // used for card display only
   };
@@ -121,7 +121,7 @@ const useItems = (props: NameGeneratorRosterProps) => {
           resolveText: (value) => resolve(value).text,
         })(item),
       },
-    })) as UseItemElement[];
+    }));
   }, [
     externalData,
     getNodeLabel,

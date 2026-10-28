@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 
-import { prefersReducedMotion } from './stageSections.ts';
+import { prefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 type RevealWhenChosenProps = Readonly<{
   chosenIn?: string;
@@ -88,7 +88,7 @@ function revealBelow(choice: Element, revealed: Element): void {
   if (distance <= 0) return;
   const options: ScrollToOptions = {
     top: distance,
-    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    behavior: prefersReducedMotion(revealed) ? 'auto' : 'smooth',
   };
   if (scroller === null) view?.scrollBy(options);
   else scroller.scrollBy(options);

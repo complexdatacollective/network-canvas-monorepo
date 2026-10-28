@@ -54,6 +54,7 @@ export type LegacyProtocolChoice = {
   updatedAt: number;
 };
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Dexie's documented TypeScript pattern: the tables are added at runtime by version().stores(), so the instance is typed with them
 export const assetDb = new Dexie(PROTOCOL_DB_NAME) as Dexie & {
   assets: EntityTable<StoredAsset, 'id'>;
   protocols: EntityTable<StoredProtocolRow, 'id'>;

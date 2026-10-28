@@ -22,6 +22,7 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
     accepts: ['EXISTING_NODE', 'FAMILY_TREE_NODE'],
     announcedName: intl.formatMessage(messages.deleteBin),
     onDrop: (metadata) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged node, set by the Node drag source (fresco-ui types it as a record)
       const node = metadata as NcNode;
       if (accepts(node)) {
         dropHandler(node, metadata);
