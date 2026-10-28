@@ -201,8 +201,7 @@ export function describeConnection(
  * are unavailable, except where the newest answer wins: a choice that
  * replaces who carried the child, or a genetic kind that takes the place of
  * a biological parent, says so under it, and for the latter a third step
- * asks how the participant would define that parent's relationship to the
- * child instead.
+ * asks what kind of parent they are to the child instead.
  */
 export default function ConnectMenu({
   pair,

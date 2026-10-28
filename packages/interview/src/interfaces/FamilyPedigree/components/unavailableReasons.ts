@@ -78,8 +78,8 @@ export type Reason = { answers: readonly UnavailableAnswer[] } & (
   | {
       /** What choosing a genetic kind does (newest answer wins):
        * `replacedId` is no longer recorded as a biological parent of
-       * `childId`, and the participant is asked how they would define that
-       * parent's relationship instead. */
+       * `childId`, and the participant is asked what kind of parent they are
+       * instead. */
       rule: 'geneticParentReplaced';
       childId: string;
       replacedId: string;

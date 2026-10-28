@@ -2082,8 +2082,8 @@ function childCarrierChoices(
 /**
  * The biological parent of the anchor a new parent of a genetic kind takes
  * the place of, as the answers stand (`geneticParentGivingWay`), with the
- * question asking how the participant would define their relationship to
- * the anchor instead, named for them (`aboutPerson`) so that another parent
+ * question asking what kind of parent they are to the anchor instead,
+ * named for them (`aboutPerson`) so that another parent
  * giving way is asked afresh.
  */
 function replacedParentQuestion(
@@ -2447,8 +2447,8 @@ function ParentFields({
   // parent may already have. A stand-in gives way to a genetic parent
   // recorded in their place, and a biological parent with the same sex at
   // birth to the new one (newest answer wins, `geneticParentGivingWay`): the
-  // participant is then asked how they would define that parent's
-  // relationship to the anchor instead.
+  // participant is then asked what kind of parent they are to the anchor
+  // instead.
   const canBeGeneticParentOf = (personId: string) =>
     geneticParentsPossible([
       ...firmGeneticParentSexes(family, personId),
@@ -2678,8 +2678,8 @@ function ParentFields({
       {...carriedAnswer}
     />
   );
-  // How the participant would define the relationship to the anchor of the
-  // biological parent a genetic kind takes the place of: they are still a
+  // What kind of parent, to the anchor, the biological parent a genetic kind
+  // takes the place of is: they are still a
   // parent, of another kind, and nothing is assumed about which.
   const replacedField = chosenKind !== undefined &&
     isGeneticKind(chosenKind) &&

@@ -378,14 +378,12 @@ describe('ConnectMenu', () => {
     );
     expect(biological).not.toHaveAttribute('aria-disabled', 'true');
     expect(biological).toHaveAccessibleDescription(
-      'Choosing “Genetic parent” means “Tom” will no longer be recorded as your biological parent. You will be asked how you would define “Tom”’s relationship to you instead.',
+      'Choosing “Genetic parent” means “Tom” will no longer be recorded as your biological parent. You will be asked what kind of parent “Tom” is to you instead.',
     );
     await userEvent.click(biological);
     expect(onConnect).not.toHaveBeenCalled();
     expect(
-      await screen.findByText(
-        'How would you define “Tom”’s relationship to you?',
-      ),
+      await screen.findByText('What kind of parent is “Tom” to you?'),
     ).toBeInTheDocument();
     await userEvent.click(
       await screen.findByTestId('pedigree-connect-replaced-social'),

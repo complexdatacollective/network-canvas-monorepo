@@ -668,13 +668,13 @@
           "en-US": "What kind of parent are they?"
         },
         "parentLinkKindLabel": {
-          "en-US": "{parentIsYou, select, true {How would you define your relationship to “{child}”?} other {{personIsYou, select, true {How would you define “{parent}”’s relationship to you?} other {How would you define “{parent}”’s relationship to “{child}”?}}}}"
+          "en-US": "{parentIsYou, select, true {What kind of parent are you to “{child}”?} other {{personIsYou, select, true {What kind of parent is “{parent}” to you?} other {What kind of parent is “{parent}” to “{child}”?}}}}"
         },
         "carrierReplaced": {
           "en-US": "{who, select, carrierIsYou {Choosing “{answer}” means you will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.} childIsYou {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried you, as only one person carries a pregnancy.} other {Choosing “{answer}” means “{carrier}” will no longer be recorded as having carried “{child}”, as only one person carries a pregnancy.}}"
         },
         "geneticParentReplaced": {
-          "en-US": "{who, select, parentIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define your relationship to “{child}” instead.} childIsYou {Choosing “{answer}” means “{parent}” will no longer be recorded as your biological parent. You will be asked how you would define “{parent}”’s relationship to you instead.} other {Choosing “{answer}” means “{parent}” will no longer be recorded as a biological parent of “{child}”. You will be asked how you would define “{parent}”’s relationship to “{child}” instead.}}"
+          "en-US": "{who, select, parentIsYou {Choosing “{answer}” means you will no longer be recorded as a biological parent of “{child}”. You will be asked what kind of parent you are to “{child}” instead.} childIsYou {Choosing “{answer}” means “{parent}” will no longer be recorded as your biological parent. You will be asked what kind of parent “{parent}” is to you instead.} other {Choosing “{answer}” means “{parent}” will no longer be recorded as a biological parent of “{child}”. You will be asked what kind of parent “{parent}” is to “{child}” instead.}}"
         },
         "identicalTwinSharesParents": {
           "en-US": "{who, select, personIsYou {Choosing “{answer}” records the same biological parents and donors for you and “{twin}”.} twinIsYou {Choosing “{answer}” records the same biological parents and donors for “{name}” and you.} other {Choosing “{answer}” records the same biological parents and donors for “{name}” and “{twin}”.}}"
