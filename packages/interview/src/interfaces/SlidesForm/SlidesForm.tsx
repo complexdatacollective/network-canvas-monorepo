@@ -88,6 +88,11 @@ type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
    * it is tall, and above it otherwise (see JoinedSlides).
    */
   headerPlacement?: 'top' | 'start';
+  /**
+   * Who each item is about: one person (the default), or two people and the
+   * connection between them, shown with JoinedPair.
+   */
+  header?: 'person' | 'pair';
 };
 
 type SlideHandle = {
@@ -373,6 +378,7 @@ export default function SlidesForm({
   moveForward,
   renderHeader,
   headerPlacement = 'top',
+  header = 'person',
   form,
   form_kind,
 }: SlidesFormProps & SlidesFormAnalyticsProps) {
@@ -599,6 +605,7 @@ export default function SlidesForm({
         index={activeIndex}
         direction={pendingDirection}
         placement={headerPlacement}
+        header={header}
         renderHeader={(index) => {
           const item = items[index];
           return item ? renderHeader(item) : null;

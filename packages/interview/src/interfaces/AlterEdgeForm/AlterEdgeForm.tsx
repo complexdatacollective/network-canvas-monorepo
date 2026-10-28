@@ -25,6 +25,7 @@ import { updateEdge } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
 import { edgeColorMap } from '../../utils/edgeColorMap';
+import JoinedPair from '../SlidesForm/JoinedPair';
 import SlidesForm from '../SlidesForm/SlidesForm';
 
 function EdgeHeader({ item }: { item: NcEdge }) {
@@ -35,24 +36,32 @@ function EdgeHeader({ item }: { item: NcEdge }) {
   const fromNode = find(nodes, [entityPrimaryKeyProperty, item.from]);
   const toNode = find(nodes, [entityPrimaryKeyProperty, item.to]);
 
+  const person = (node: NcNode | undefined) =>
+    node
+      ? {
+          id: node[entityPrimaryKeyProperty],
+          content: (
+            <Node nodeId={node[entityPrimaryKeyProperty]} type={node.type} />
+          ),
+        }
+      : null;
+
   return (
-    <div className="flex shrink-0 items-center">
-      {fromNode && (
-        <Node
-          nodeId={fromNode[entityPrimaryKeyProperty]}
-          type={fromNode.type}
-        />
-      )}
-      <div
-        className={cx(
-          edgeColorMap[edgeColor],
-          'mx-[-1.5rem] h-2 w-32 bg-(--edge-color)',
-        )}
-      />
-      {toNode && (
-        <Node nodeId={toNode[entityPrimaryKeyProperty]} type={toNode.type} />
-      )}
-    </div>
+    <JoinedPair
+      from={person(fromNode)}
+      to={person(toNode)}
+      connection={{
+        id: item[entityPrimaryKeyProperty],
+        content: (
+          <div
+            className={cx(
+              edgeColorMap[edgeColor],
+              'mx-[-1.5rem] h-2 w-32 bg-(--edge-color)',
+            )}
+          />
+        ),
+      }}
+    />
   );
 }
 
@@ -115,6 +124,7 @@ const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
         form={stage.form}
         moveForward={moveForward}
         renderHeader={renderHeader}
+        header="pair"
         form_kind="alter_edge"
       />
     </motion.div>

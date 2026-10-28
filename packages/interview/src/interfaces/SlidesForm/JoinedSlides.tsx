@@ -11,8 +11,10 @@ import {
   type Variants,
 } from 'motion/react';
 import {
+  createContext,
   type ReactNode,
   type RefObject,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -36,7 +38,7 @@ import type { Direction } from '../../types';
  * answers appear once the next person has arrived and the join has taken
  * hold of them. The form is never joined to two people at once.
  */
-const MOTION = {
+export const MOTION = {
   /** How far a person arriving travels along the edge they join, in px. */
   shift: 56,
   /** How far answers rise or settle as they go and come, in px. */
@@ -74,6 +76,22 @@ const MOTION = {
     ease: [0, 0, 0.2, 1],
   },
   /**
+   * Two people and the connection between them change part by part. The
+   * connection lets go as the join does, and the people it joined shrink away
+   * where they are, unless they are in the next pair too: then they move to
+   * their place in it. Those arriving come in one after the other, `step`
+   * apart, and once they are in place the connection is drawn from the first
+   * to the second. The join takes hold of the pair `late` after it would take
+   * hold of one person, and their answers appear that much later too.
+   */
+  pair: {
+    connectionOut: { delay: 0.06, duration: 0.16, ease: [0.4, 0, 1, 1] },
+    move: { delay: 0.24, stiffness: 320, damping: 32 },
+    step: 0.1,
+    connect: { delay: 0.5, duration: 0.22, ease: [0.65, 0, 0.35, 1] },
+    late: 0.2,
+  },
+  /**
    * The first person arrives on the same timeline, with nothing to clear
    * first: everything from the person arriving on is brought forward by this
    * much, so the person starts to move 100 ms after the form appears.
@@ -106,9 +124,9 @@ const JOIN = {
  * With reduced motion nothing moves: the person and the answers fade out
  * and the next ones fade in, in place, and the join stays where it is.
  */
-const REDUCED = { out: 0.15, in: 0.15 } as const;
+export const REDUCED = { out: 0.15, in: 0.15 } as const;
 
-type ChangeStyle = {
+export type ChangeStyle = {
   /** The first person, arriving with the form. */
   first: boolean;
   /** 1 moving on, -1 going back. */
@@ -117,10 +135,15 @@ type ChangeStyle = {
   along: number;
   axis: 'x' | 'y';
   reduced: boolean;
+  /**
+   * How much later than for one person the join takes hold and the answers
+   * appear, in seconds.
+   */
+  late: number;
 };
 
 /** When part of a person's arrival starts, in seconds. */
-const arrival = (delay: number, first: boolean) =>
+export const arrival = (delay: number, first: boolean) =>
   first ? delay - MOTION.intro.lead : delay;
 
 const offset = (axis: ChangeStyle['axis'], by: number) =>
@@ -184,6 +207,17 @@ const answersVariants: Variants = {
           transition: MOTION.answersOut,
         },
 };
+
+const HeaderChange = createContext<ChangeStyle | null>(null);
+
+/** The change a pair header is part of, for it to time its parts by. */
+export function useHeaderChange() {
+  const change = useContext(HeaderChange);
+  if (!change) {
+    throw new Error('A pair header is shown only by JoinedSlides.');
+  }
+  return change;
+}
 
 type Frame = {
   /** The stage is wider than it is tall. */
@@ -400,8 +434,8 @@ function Answers({ children, live, change, skip }: AnswersProps) {
     // Counted from when these answers appear: with the form for the first
     // person, otherwise once the answers before have left.
     const start = change.first
-      ? arrival(answersIn.delay, true)
-      : answersIn.delay - answersOut.duration;
+      ? arrival(answersIn.delay + change.late, true)
+      : answersIn.delay + change.late - answersOut.duration;
     const controls = animate(
       targets,
       { opacity: [0, 1], y: [lift * change.forward, 0] },
@@ -443,7 +477,13 @@ type JoinedSlidesProps = {
    * puts it above.
    */
   placement: 'start' | 'top';
-  /** Who the item is about: a person, or the two people a connection joins. */
+  /**
+   * Who the items are about: one person each, or two people and the
+   * connection between them. A pair stays in place from one item to the next
+   * and changes part by part (see JoinedPair).
+   */
+  header: 'person' | 'pair';
+  /** Who the item is about. */
   renderHeader: (index: number) => ReactNode;
   /**
    * One person's answers, laid out without a frame of their own. `live` is
@@ -466,15 +506,17 @@ type JoinedSlidesProps = {
  *
  * Beside the form, the header sits in the middle of the form's height (of
  * the stage's, while the form is too tall to fit); above it, in the middle
- * of its width. The header stays in view as the form scrolls. The next one
- * arrives along the edge it joins, from the direction of the Next button, as
- * the last one shrinks away where it was. Below, "person" stands for the
- * header, whether it shows one person or two.
+ * of its width. The header stays in view as the form scrolls. The next
+ * person arrives along the edge they join, from the direction of the Next
+ * button, as the last one shrinks away where they were; a pair changes part
+ * by part instead (see JoinedPair). Below, "person" stands for the header,
+ * whether it shows one person or two.
  */
 export default function JoinedSlides({
   index,
   direction,
   placement,
+  header,
   renderHeader,
   renderAnswers,
   onSettled,
@@ -504,6 +546,7 @@ export default function JoinedSlides({
   const reduced = useShouldSkipAnimations() && !skip;
 
   const forward = direction === 'backwards' ? -1 : 1;
+  const late = header === 'pair' ? MOTION.pair.late : 0;
   const change: ChangeStyle = {
     first: direction === null,
     forward,
@@ -511,6 +554,7 @@ export default function JoinedSlides({
     along: forward * (!beside && rtl ? -1 : 1),
     axis: beside ? 'y' : 'x',
     reduced,
+    late,
   };
 
   // The answers for a person can be given once they start to appear, the
@@ -545,7 +589,7 @@ export default function JoinedSlides({
     const first = index;
     join.set(0);
     const controls = animate(join, 1, {
-      delay: arrival(grab.delay, true),
+      delay: arrival(grab.delay + late, true),
       duration: grab.duration,
       ease: grab.ease,
     });
@@ -554,7 +598,7 @@ export default function JoinedSlides({
         setLiveIndex((known) => known ?? first);
         settled.current();
       },
-      arrival(answersIn.delay, true) * 1000,
+      arrival(answersIn.delay + late, true) * 1000,
     );
     return () => {
       controls.stop();
@@ -653,7 +697,7 @@ export default function JoinedSlides({
       timers.push(window.setTimeout(finish, REDUCED.out * 1000));
     } else {
       const { release, grab, scrollToTop, answersIn } = MOTION;
-      const end = grab.delay + grab.duration;
+      const end = grab.delay + late + grab.duration;
       const at = (seconds: number) => seconds / end;
       stops.push(
         animate(join, [1, 1, 0, 0, 1], {
@@ -662,7 +706,7 @@ export default function JoinedSlides({
             0,
             at(release.delay),
             at(release.delay + release.duration),
-            at(grab.delay),
+            at(grab.delay + late),
             1,
           ],
           ease: ['linear', release.ease, 'linear', grab.ease],
@@ -678,7 +722,7 @@ export default function JoinedSlides({
           }).stop,
         );
       }
-      timers.push(window.setTimeout(finish, answersIn.delay * 1000));
+      timers.push(window.setTimeout(finish, (answersIn.delay + late) * 1000));
     }
     return () => {
       for (const timer of timers) window.clearTimeout(timer);
@@ -687,7 +731,7 @@ export default function JoinedSlides({
       join.set(1);
       cardHeight.set('auto');
     };
-  }, [index, skip, reduced, join, cardHeight]);
+  }, [index, skip, reduced, late, join, cardHeight]);
 
   // The join is drawn towards +x, then turned to face the card.
   const facing = beside ? (rtl ? 'scale(-1 1)' : '') : 'rotate(90)';
@@ -755,21 +799,29 @@ export default function JoinedSlides({
                 <motion.path d={neck} />
               </g>
             </motion.svg>
-            <AnimatePresence custom={change}>
-              <motion.div
-                key={index}
-                // The column lets presses through to the form; the person
-                // takes them, to reveal a name too long to show in full.
-                className="pointer-events-auto relative flex items-center justify-center [grid-area:1/1]"
-                custom={change}
-                variants={personVariants}
-                initial="enter"
-                animate="rest"
-                exit="leave"
-              >
-                {renderHeader(index)}
-              </motion.div>
-            </AnimatePresence>
+            {/* The column lets presses through to the form; the person takes
+                them, to reveal a name too long to show in full. */}
+            {header === 'pair' ? (
+              <HeaderChange.Provider value={change}>
+                <div className="pointer-events-auto relative flex items-center justify-center [grid-area:1/1]">
+                  {renderHeader(index)}
+                </div>
+              </HeaderChange.Provider>
+            ) : (
+              <AnimatePresence custom={change}>
+                <motion.div
+                  key={index}
+                  className="pointer-events-auto relative flex items-center justify-center [grid-area:1/1]"
+                  custom={change}
+                  variants={personVariants}
+                  initial="enter"
+                  animate="rest"
+                  exit="leave"
+                >
+                  {renderHeader(index)}
+                </motion.div>
+              </AnimatePresence>
+            )}
           </motion.div>
         </div>
         <Surface
