@@ -26,7 +26,6 @@ import {
   RELATIVES_NOT_RECORDED_PATH,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
-import TrackerTextSection from './TrackerTextSection.tsx';
 
 /**
  * Switching the requirement off removes the whole `completeness` object: the
@@ -66,7 +65,9 @@ const startingValue = (
  *
  * Optional like every capability: absent, the participant continues with
  * whatever family they have drawn. The scopes are cumulative, so they are
- * offered from the least to the most demanding.
+ * offered from the least to the most demanding. The words of the checklist it
+ * shows the participant are with the stage's other wording, in
+ * `ParticipantWordingSection`.
  */
 export default function CompletenessSection() {
   const intl = useAppIntl();
@@ -194,7 +195,6 @@ export default function CompletenessSection() {
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftWriterMap}
           />
-          <TrackerTextSection />
         </>
       )}
     </BuilderSection>

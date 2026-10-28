@@ -13,6 +13,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { withMissingSuppliedStageText } from '../../../stageDocument.ts';
 import {
   attributeField,
   awaitOfferedAttributes,
@@ -32,6 +33,7 @@ import { newNominationPromptId } from '../sections/NominationPromptsSection.tsx'
 import {
   familyPedigreeEditor,
   openWordingGroup,
+  CHECKLIST_WORDING_GROUP_TITLE,
   PARTICIPANT_WORDING_GROUP_TITLES,
   shimMarkdownEditorMeasurement,
 } from './editorFixtures.ts';
@@ -1127,7 +1129,38 @@ describe('the completeness requirement', () => {
     );
   });
 
-  it('starts the words of its list as Network Canvas supplies them', async () => {
+  it('shows its checklist’s words in the participant wording only while switched on', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    addFamilyMemberVariables(harness, {
+      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+    });
+    await screen.findByRole('button', { name: 'Drawing the family' });
+    expect(
+      screen.queryByRole('button', { name: CHECKLIST_WORDING_GROUP_TITLE }),
+    ).toBeNull();
+
+    await switchOn(harness);
+    await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+    await openWordingGroup(harness, CHECKLIST_WORDING_GROUP_TITLE);
+    expect(
+      await screen.findByRole('textbox', { name: 'Missing parents item' }),
+    ).toBeVisible();
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Completeness' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove the requirement' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: CHECKLIST_WORDING_GROUP_TITLE }),
+      ).toBeNull(),
+    );
+  });
+
+  it('writes the words of its checklist as Network Canvas supplies them, while their group is closed', async () => {
     const harness = openFixture();
     await harness.opened();
     addFamilyMemberVariables(harness, {
@@ -1137,8 +1170,10 @@ describe('the completeness requirement', () => {
     await switchOn(harness);
     await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
     expect(
-      await screen.findByRole('textbox', { name: 'Missing parents' }),
-    ).toBeVisible();
+      await screen.findByRole('button', {
+        name: CHECKLIST_WORDING_GROUP_TITLE,
+      }),
+    ).toHaveAttribute('aria-expanded', 'false');
 
     const request = await harness.submit();
     const supplied = Object.fromEntries(
@@ -1674,6 +1709,46 @@ describe('the participant wording', () => {
       await harness.roundTrip({ unowned: [] });
     },
   );
+
+  it('saves every setting of the completeness checklist unchanged through its field', async () => {
+    const supplied = withMissingSuppliedStageText(
+      {
+        completeness: {
+          scope: 'firstDegree',
+          enforcement: 'recommended',
+          relativesNotRecordedAttribute: 'relativesNotRecorded',
+        },
+      },
+      'FamilyPedigree',
+      { defaultLocale: 'en-US', locales: ['en-US'] },
+    );
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({ completeness: supplied.completeness }),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariables(harness, {
+      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+    });
+    await harness.opened();
+    await openWordingGroup(harness, CHECKLIST_WORDING_GROUP_TITLE);
+    // The supplied document already holds every setting, so the round trip
+    // alone would not notice a setting with no field.
+    for (const name of [
+      'Missing parents item',
+      'Brothers and sisters item',
+      'No brothers or sisters button',
+      'Brothers and sisters question in the side panel',
+      'Children item',
+      'No children button',
+      'Children question in the side panel',
+      'Missing details item',
+      'Note about continuing anyway',
+    ]) {
+      expect(await screen.findByRole('textbox', { name })).toBeVisible();
+    }
+
+    await harness.roundTrip({ unowned: ['wording'] });
+  });
 
   it('saves the stage unchanged with every group closed', async () => {
     const harness = openFixture();

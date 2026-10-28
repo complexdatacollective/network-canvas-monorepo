@@ -25,7 +25,7 @@ const parentsItem = (
   <Field<typeof LocalizedMessageField>
     name="completeness.itemText.parents.listItem"
     component={LocalizedMessageField}
-    label="Missing parents"
+    label="Missing parents item"
     hint="Asks for a person’s missing parents. It can show their name and how many parents are missing."
     arguments={PARENTS_ARGUMENTS}
     initialValue={PARENTS_ITEM}
@@ -41,13 +41,13 @@ const meta = {
     docs: {
       description: {
         component:
-          'Participant-facing text that reads differently depending on what it is about, edited as piped text is: one line, its placeholders (such as a person’s name) as pills, and a piece of text with a version for each case (about the participant, about someone else) or wording that fits a number only where the text has one, folded to a pill until it is opened. The insert menu (the syringe button, or typing `{`) offers what the setting declares; the names come from `useMessageArgumentLabels`.\n\n```tsx\n<Field\n  name="completeness.itemText.parents.listItem"\n  component={LocalizedMessageField}\n  label="Missing parents"\n  arguments={PARENTS_ARGUMENTS}\n/>\n```',
+          'Participant-facing text that reads differently depending on what it is about, edited as piped text is: one line, its placeholders (such as a person’s name) as pills, and a piece of text with a version for each case (about the participant, about someone else) or wording that fits a number only where the text has one, folded to a pill until it is opened. The insert menu (the syringe button, or typing `{`) offers what the setting declares; the names come from `useMessageArgumentLabels`.\n\n```tsx\n<Field\n  name="completeness.itemText.parents.listItem"\n  component={LocalizedMessageField}\n  label="Missing parents item"\n  arguments={PARENTS_ARGUMENTS}\n/>\n```',
       },
     },
   },
   args: {
     stageId: 'family-pedigree-1',
-    sectionTitle: 'What the list says',
+    sectionTitle: 'Completeness checklist',
     children: parentsItem,
   },
   tags: ['autodocs'],
@@ -67,7 +67,7 @@ export const SelectAndPlural: Story = {
     await awaitPassiveEffects();
 
     const line = await canvas.findByRole('textbox', {
-      name: 'Missing parents',
+      name: 'Missing parents item',
     });
     await userEvent.click(
       within(line).getByRole('button', { name: 'Participant or someone else' }),

@@ -25,6 +25,7 @@ import {
 import {
   type LocalizedString,
   type MessageArguments,
+  PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from '@codaco/protocol-validation';
 
@@ -34,7 +35,10 @@ import LocalizedMessageField, {
 import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
-import { useStageValue } from '../../../form/stageFormHooks.ts';
+import {
+  useStageHasAnyValue,
+  useStageValue,
+} from '../../../form/stageFormHooks.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import {
   startingWording,
@@ -42,13 +46,21 @@ import {
 } from '../../../sections/supplied-wording/suppliedStageWording.ts';
 import {
   PARTICIPANT_WORDING_GROUPS,
+  settingPath,
   type WordingGate,
   type WordingGroup,
 } from './participantWordingSettings.ts';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
-import { NODE_CONFIGURATION_PATHS } from './pedigreeSlots.ts';
+import {
+  COMPLETENESS_PATH,
+  NODE_CONFIGURATION_PATHS,
+} from './pedigreeSlots.ts';
 
-const fieldName = (key: string) => `wording.${key}`;
+const COMPLETENESS_FIELDS = [COMPLETENESS_PATH];
+
+/** Whether a refusal at `issuePath` is about the setting at `path`. */
+const refusesSetting = (issuePath: readonly PropertyKey[], path: string) =>
+  path.split('.').every((segment, index) => issuePath[index] === segment);
 
 const groupValue = (group: WordingGroup) => group.id;
 
@@ -65,7 +77,8 @@ const NO_GROUPS: readonly string[] = Object.freeze([]);
  * settings are still the stage's — the form holds the whole document, and a
  * field that was never mounted leaves its value as the stage holds it — and
  * a setting the stage gains while its group is closed (choosing the framing,
- * or asking gender identity) is written with Network Canvas's wording when the
+ * asking gender identity, or switching on the completeness requirement) is
+ * written with Network Canvas's wording when the
  * stage is saved (see `stageDocument`). An open group's fields start as the
  * stage holds them, or as Network Canvas supplies them, so the section waits
  * for the protocol's languages.
@@ -81,15 +94,20 @@ export default function ParticipantWordingSection() {
   const supplied = useSuppliedStageWording('FamilyPedigree');
   const framing = useStageValue('framing');
   const genderIdentity = useStageValue(NODE_CONFIGURATION_PATHS.genderIdentity);
+  const checksCompleteness = useStageHasAnyValue(COMPLETENESS_FIELDS);
   const shown: Readonly<Record<WordingGate, boolean>> = {
     choosesFraming: framing === 'participantPreference',
     asksGenderIdentity: genderIdentity !== undefined,
+    checksCompleteness,
   };
 
   const validations = useMemo(
     () =>
       new Map<MessageArguments, CustomFieldValidation>(
-        Object.values(PEDIGREE_WORDING_ARGUMENTS).map((declaration) => [
+        [
+          ...Object.values(PEDIGREE_WORDING_ARGUMENTS),
+          PEDIGREE_PERSON_ARGUMENTS,
+        ].map((declaration) => [
           declaration,
           localizedMessageValidation(declaration, intl),
         ]),
@@ -108,10 +126,10 @@ export default function ParticipantWordingSection() {
   );
   useEffect(() => {
     const refused = PARTICIPANT_WORDING_GROUPS.filter((group) =>
-      issues.some(
-        (issue) =>
-          issue.path[0] === 'wording' &&
-          group.settings.some((setting) => setting.key === issue.path[1]),
+      issues.some((issue) =>
+        group.settings.some((setting) =>
+          refusesSetting(issue.path, settingPath(group, setting)),
+        ),
       ),
     ).map(groupValue);
     if (refused.length === 0) return;
@@ -137,15 +155,18 @@ export default function ParticipantWordingSection() {
         setOpenGroups((current) => [...new Set([...current, ...opened])]);
       }
       for (const group of closing) {
-        const names = (
-          PARTICIPANT_WORDING_GROUPS.find(
-            (candidate) => groupValue(candidate) === group,
-          )?.settings ?? []
-        )
-          .map((setting) => fieldName(setting.key))
-          .filter(
-            (name) => storeApi.getState().getFieldState(name) !== undefined,
-          );
+        const closed = PARTICIPANT_WORDING_GROUPS.find(
+          (candidate) => groupValue(candidate) === group,
+        );
+        const names =
+          closed === undefined
+            ? []
+            : closed.settings
+                .map((setting) => settingPath(closed, setting))
+                .filter(
+                  (name) =>
+                    storeApi.getState().getFieldState(name) !== undefined,
+                );
         void Promise.all(
           names.map((name) => storeApi.getState().validateField(name)),
         ).then(() => {
@@ -211,7 +232,9 @@ function WordingGroups({
       onValueChange={onOpenGroupsChange}
       className="gap-6"
     >
-      {PARTICIPANT_WORDING_GROUPS.map((group) => {
+      {PARTICIPANT_WORDING_GROUPS.filter(
+        (group) => group.gate === undefined || fields.shown[group.gate],
+      ).map((group) => {
         const value = groupValue(group);
         return (
           <AccordionItem key={value} value={value}>
@@ -246,7 +269,7 @@ function WordingGroupFields({
   return group.settings
     .filter((setting) => setting.gate === undefined || shown[setting.gate])
     .map((setting) => {
-      const name = fieldName(setting.key);
+      const name = settingPath(group, setting);
       const label = intl.formatMessage(setting.label);
       const hint =
         setting.hint === undefined

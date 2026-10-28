@@ -547,11 +547,11 @@ describe('nameLocalizedText', () => {
         'noneButton',
       ]),
     ).toEqual([
-      { key: '[]', label: 'Completeness' },
-      { key: '["completeness"]', label: 'What the list says' },
+      { key: '[]', label: 'Participant wording' },
+      { key: '["completeness"]', label: 'Completeness checklist' },
       {
         key: '["completeness","itemText","siblings","noneButton"]',
-        label: 'No brothers or sisters',
+        label: 'No brothers or sisters button',
       },
     ]);
     expect(
