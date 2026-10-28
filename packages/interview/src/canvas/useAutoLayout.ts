@@ -22,8 +22,10 @@
 // before they reach the store. The collision radius derives from `nodeRadius`,
 // which the caller measures off-screen with `useNodeMeasurement` so it tracks the
 // live node size.
+import { type AnimationPlaybackControls, animate } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import {
   edgeSourceProperty,
   edgeTargetProperty,
@@ -59,8 +61,12 @@ type SimNode = {
   y: number;
   fx?: number | null;
   fy?: number | null;
+  placed: boolean;
   groupKeys?: ReturnType<typeof getGroupKeys>;
 };
+
+const SETTLE_ANIMATION_SECONDS = 0.5;
+const CANVAS_CENTRE = { x: 0.5, y: 0.5 };
 
 /** Whether a node the worker reports has an id and a place to put it. */
 const isPlacedSimNode = (node: unknown): node is SimNode =>
@@ -131,6 +137,10 @@ export function useAutoLayout({
 }: UseAutoLayoutOptions): UseAutoLayoutResult {
   const { isE2E } = useContractFlags();
   const workerRef = useRef<Worker | null>(null);
+  const animationRef = useRef<AnimationPlaybackControls | null>(null);
+  const skipAnimations = useShouldSkipAnimations();
+  const skipAnimationsRef = useRef(skipAnimations);
+  skipAnimationsRef.current = skipAnimations;
   // The seeded node→index map, captured so continuous-mode link updates resolve
   // edge endpoints against the same indices the worker was initialized with.
   const nodeIndexByIdRef = useRef<Map<string, number>>(new Map());
@@ -271,20 +281,55 @@ export function useAutoLayout({
       const entries: [string, { x: number; y: number }][] = message.nodes
         .filter(isPlacedSimNode)
         .map((n) => [n.nodeId, fromSim(n, dims)]);
-      store.getState().setBatchPositions(entries);
-      setIsRunning(msgType === 'tick');
+      animationRef.current?.stop();
+
+      if (msgType === 'tick') {
+        store.getState().setBatchPositions(entries);
+        setIsRunning(true);
+        return;
+      }
 
       // Persist on settle ONLY when persistence was constructed (persist:true +
-      // dispatch). Unreachable in the read-only (Narrative) configuration.
-      if (msgType === 'end' && persistArgs) {
+      // dispatch). Unreachable in the read-only (Narrative) configuration. The
+      // settled positions are saved before they are animated into place.
+      if (persistArgs) {
         store
           .getState()
           .syncToRedux(
             persistArgs.dispatch,
             layoutVariable,
             persistArgs.currentStep,
+            new Map(entries),
           );
       }
+
+      if (isE2E || skipAnimationsRef.current) {
+        store.getState().setBatchPositions(entries);
+        setIsRunning(false);
+        return;
+      }
+
+      const from = store.getState().positions;
+      setIsRunning(true);
+      animationRef.current = animate(0, 1, {
+        duration: SETTLE_ANIMATION_SECONDS,
+        ease: 'easeOut',
+        onUpdate: (progress) => {
+          store.getState().setBatchPositions(
+            entries.map(([nodeId, to]) => {
+              const start = from.get(nodeId) ?? CANVAS_CENTRE;
+              return [
+                nodeId,
+                {
+                  x: start.x + (to.x - start.x) * progress,
+                  y: start.y + (to.y - start.y) * progress,
+                },
+              ];
+            }),
+          );
+        },
+        onComplete: () => setIsRunning(false),
+      });
     };
 
     // Seed from the positions the store already holds, converting each
@@ -294,12 +339,13 @@ export function useAutoLayout({
     const { positions } = store.getState();
     const simNodes: SimNode[] = currentNodes.map((node) => {
       const nodeId = node[entityPrimaryKeyProperty];
-      const pos = positions.get(nodeId) ?? { x: 0.5, y: 0.5 };
-      const sim = toSim(pos, dims);
+      const pos = positions.get(nodeId);
+      const sim = toSim(pos ?? CANVAS_CENTRE, dims);
       return {
         nodeId,
         x: sim.x,
         y: sim.y,
+        placed: pos !== undefined,
         groupKeys: getGroupKeys(node, groupVariable),
       };
     });
@@ -342,6 +388,7 @@ export function useAutoLayout({
     }
 
     return () => {
+      animationRef.current?.stop();
       worker.terminate();
       workerRef.current = null;
     };

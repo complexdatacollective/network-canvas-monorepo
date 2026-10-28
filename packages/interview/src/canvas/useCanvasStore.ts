@@ -51,6 +51,7 @@ type CanvasActions = {
     dispatch: AppDispatch,
     layoutVariable: string,
     currentStep: number,
+    positions?: Map<string, Position>,
   ) => void;
 };
 
@@ -190,8 +191,12 @@ export const createCanvasStore = () =>
         set({ selectedNodeId: nodeId });
       },
 
-      syncToRedux: (dispatch, layoutVariable, currentStep) => {
-        const { positions } = get();
+      syncToRedux: (
+        dispatch,
+        layoutVariable,
+        currentStep,
+        positions = get().positions,
+      ) => {
         for (const [nodeId, position] of positions) {
           void dispatch(
             updateNode({
