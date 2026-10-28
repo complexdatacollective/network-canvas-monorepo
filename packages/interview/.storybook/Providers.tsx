@@ -4,7 +4,10 @@ import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import type { ReactNode } from 'react';
 
-import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
+import {
+  AnimationProvider,
+  type AnimationProviderProps,
+} from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { Toaster } from '@codaco/fresco-ui/Toast';
@@ -48,14 +51,26 @@ const noopFinish = () => Promise.resolve();
  *   the payload protocol; an atomic story whose protocol declares other
  *   languages wraps itself in TestProtocolLocalization with that
  *   declaration. Either shadows this one.
+ * - AnimationProvider: follows the toolbar's Motion control, so a story can
+ *   be seen with reduced motion without changing the system setting.
  *
  * Interview-specific toasts (validation errors, etc.) are rendered by
  * Shell's own internal Toast.Provider + InterviewToastViewport, so this
  * decorator only needs to provide the default toast surface.
  */
-export default function Providers({ children }: { children: ReactNode }) {
+export default function Providers({
+  children,
+  reducedMotion,
+}: {
+  children: ReactNode;
+  /** From the toolbar's Motion control. */
+  reducedMotion?: AnimationProviderProps['reducedMotion'];
+}) {
   return (
-    <AnimationProvider disableAnimationsForAutomation>
+    <AnimationProvider
+      disableAnimationsForAutomation
+      reducedMotion={reducedMotion}
+    >
       <DirectionProvider direction="ltr">
         <Toast.Provider limit={7}>
           <TooltipProvider>
