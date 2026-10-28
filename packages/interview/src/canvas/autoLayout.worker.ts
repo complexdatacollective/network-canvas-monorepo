@@ -150,6 +150,8 @@ const LAYOUT_ATTEMPTS = 4;
 const MAX_SCORED_LINKS = 1000;
 const ATTEMPT_JITTER = 0.1;
 const MAX_TICKS = 1000;
+const PLAYBACK_FRAMES = 60;
+const PLAYBACK_MAX_OVERLAP = 0.05;
 
 type SimNode = SimulationNodeDatum & {
   nodeId?: string;
@@ -593,17 +595,77 @@ const layoutScore = (nodes: SimNode[]) => {
   return crossings * 3 + throughNodes * 5 + (gap < 0.4 ? (0.4 - gap) * 10 : 0);
 };
 
+// Runs the simulation to rest, returning each tick's positions as flat
+// [x0, y0, x1, y1, ...] arrays.
 const settle = (sim: Simulation<SimNode, undefined>) => {
+  const frames: number[][] = [];
   for (let tick = 0; tick < MAX_TICKS; tick += 1) {
     sim.tick();
+    frames.push(sim.nodes().flatMap((node) => [node.x ?? 0, node.y ?? 0]));
     if (
       sim.alpha() < options.alphaMin ||
       (sim.alpha() < EARLY_STOP_ALPHA_CEILING &&
         maxNodeSpeed(sim.nodes()) < EARLY_STOP_MAX_SPEED)
     ) {
-      return;
+      break;
     }
   }
+  return frames;
+};
+
+const worstOverlap = (frame: number[]) => {
+  const diameter = (2 * options.collideRadius) / (1 + EDGE_GAP_RATIO);
+  let worst = 0;
+  for (let i = 0; i < frame.length; i += 2) {
+    for (let j = i + 2; j < frame.length; j += 2) {
+      const distance = Math.hypot(
+        frame[i]! - frame[j]!,
+        frame[i + 1]! - frame[j + 1]!,
+      );
+      worst = Math.max(worst, diameter - distance);
+    }
+  }
+  return worst / diameter;
+};
+
+// The part of a settle worth showing: from the first tick where people no
+// longer sit on top of each other, sampled at even steps of movement so the
+// barely moving tail does not take up the animation.
+const playbackFrames = (frames: number[][]) => {
+  let first = 0;
+  while (
+    first < frames.length - 1 &&
+    worstOverlap(frames[first]!) > PLAYBACK_MAX_OVERLAP
+  ) {
+    first += 1;
+  }
+  const kept = frames.slice(first);
+  const travelled = [0];
+  for (let f = 1; f < kept.length; f += 1) {
+    const [previous, current] = [kept[f - 1]!, kept[f]!];
+    let distance = 0;
+    for (let i = 0; i < current.length; i += 2) {
+      distance += Math.hypot(
+        current[i]! - previous[i]!,
+        current[i + 1]! - previous[i + 1]!,
+      );
+    }
+    travelled.push(travelled[f - 1]! + distance);
+  }
+  const total = travelled.at(-1) ?? 0;
+  if (total === 0) return [];
+  const sampled: number[][] = [];
+  let f = 0;
+  for (let step = 0; step <= PLAYBACK_FRAMES; step += 1) {
+    while (
+      f < kept.length - 1 &&
+      travelled[f]! < (total * step) / PLAYBACK_FRAMES
+    ) {
+      f += 1;
+    }
+    sampled.push(kept[f]!);
+  }
+  return sampled;
 };
 
 type InitializeMessage = {
@@ -672,19 +734,22 @@ const createSimulation = (nodes: SimNode[]) => {
   return sim;
 };
 
-const finish = () => {
+const finish = (frames: number[][]) => {
   running = false;
   needsLayout = false;
   incrementalChange = false;
   for (const node of simulation.nodes()) node.placed = true;
-  postMessage({ type: 'end', nodes: simulation.nodes() });
+  postMessage({
+    type: 'end',
+    nodes: simulation.nodes(),
+    frames: playbackFrames(frames),
+  });
 };
 
 const runToEnd = (alpha: number) => {
   simulation.stop();
   simulation.alpha(alpha);
-  settle(simulation);
-  finish();
+  finish(settle(simulation));
 };
 
 // A layout built from scratch keeps the best of several runs.
@@ -692,6 +757,7 @@ const layoutFromScratch = () => {
   const seed = simulation.nodes();
   const attempts = links.length > MAX_SCORED_LINKS ? 1 : LAYOUT_ATTEMPTS;
   let bestScore = Infinity;
+  let bestFrames: number[][] = [];
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     // Each attempt after the first starts from a jittered copy of the seed so
     // the attempts explore different arrangements.
@@ -707,14 +773,15 @@ const layoutFromScratch = () => {
     );
     candidate.randomSource(random);
     candidate.alpha(options.startAlpha);
-    settle(candidate);
+    const frames = settle(candidate);
     const score = attempts === 1 ? 0 : layoutScore(candidate.nodes());
     if (score < bestScore) {
       bestScore = score;
+      bestFrames = frames;
       simulation = candidate;
     }
   }
-  finish();
+  finish(bestFrames);
 };
 
 export function handleMessage(data: Message) {

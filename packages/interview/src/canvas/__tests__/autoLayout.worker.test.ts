@@ -395,6 +395,43 @@ describe('autoLayout worker', () => {
     }
   });
 
+  it('sends the settle as frames that start with nobody overlapping and end at rest', () => {
+    const nodes: SimNode[] = Array.from({ length: 12 }, (_, i) => ({
+      nodeId: `n${i}`,
+      x: 0.8,
+      y: 0.5,
+      placed: false,
+    }));
+    handleMessage({
+      type: 'initialize',
+      nodes,
+      links: [
+        { source: 0, target: 1 },
+        { source: 1, target: 2 },
+      ],
+      options: {
+        collideRadius: SIM_COLLIDE_RADIUS,
+        simWidth: 1.6,
+        simHeight: 1,
+      },
+    });
+    handleMessage({ type: 'start' });
+
+    const end = posted.find((m) => m.type === 'end')! as PostedMessage & {
+      frames: number[][];
+    };
+    expect(end.frames.length).toBeGreaterThan(1);
+    expect(end.frames.length).toBeLessThanOrEqual(61);
+    const asNodes = (frame: number[]) =>
+      end.nodes.map((_, i) => ({ x: frame[i * 2], y: frame[i * 2 + 1] }));
+    expect(minPairwiseDistance(asNodes(end.frames[0]!))).toBeGreaterThan(
+      (2 * 48 * 0.95) / HEIGHT,
+    );
+    expect(asNodes(end.frames.at(-1)!)).toEqual(
+      end.nodes.map(({ x, y }) => ({ x, y })),
+    );
+  });
+
   it('pins a node on update_node {fx,fy} and releases it on {fx:null,fy:null}', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
 
@@ -622,7 +659,7 @@ describe('autoLayout worker', () => {
     }
   });
 
-  it('only ever posts {type, nodes} payloads with no persistence-shaped fields', () => {
+  it('only ever posts {type, nodes} payloads, plus playback frames on end, with no persistence-shaped fields', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });
     tickManually(20);
@@ -630,7 +667,11 @@ describe('autoLayout worker', () => {
 
     expect(posted.length).toBeGreaterThan(0);
     for (const message of posted) {
-      expect(Object.keys(message).toSorted()).toEqual(['nodes', 'type']);
+      expect(Object.keys(message).toSorted()).toEqual(
+        message.type === 'end' && 'frames' in message
+          ? ['frames', 'nodes', 'type']
+          : ['nodes', 'type'],
+      );
       expect(['tick', 'end']).toContain(message.type);
       expect(Array.isArray(message.nodes)).toBe(true);
       for (const node of message.nodes) {

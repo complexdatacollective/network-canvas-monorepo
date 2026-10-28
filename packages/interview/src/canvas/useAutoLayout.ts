@@ -65,7 +65,7 @@ type SimNode = {
   groupKeys?: ReturnType<typeof getGroupKeys>;
 };
 
-const SETTLE_ANIMATION_SECONDS = 0.5;
+const SETTLE_ANIMATION_SECONDS = 1.2;
 const CANVAS_CENTRE = { x: 0.5, y: 0.5 };
 // Normalized distance below which a settled node counts as not having moved.
 const MOVED_THRESHOLD = 0.002;
@@ -292,6 +292,26 @@ export function useAutoLayout({
       const entries: [string, { x: number; y: number }][] = message.nodes
         .filter(isPlacedSimNode)
         .map((n) => [n.nodeId, fromSim(n, dims)]);
+      // The worker's recorded settle, one flat [x0, y0, x1, y1, ...] array per
+      // frame in the order of message.nodes, turned into a path per node.
+      const frames: unknown[] =
+        'frames' in message && Array.isArray(message.frames)
+          ? message.frames
+          : [];
+      const paths = new Map<string, { x: number; y: number }[]>();
+      message.nodes.forEach((node: unknown, index: number) => {
+        if (!isPlacedSimNode(node)) return;
+        const path = frames.flatMap((frame) => {
+          if (!Array.isArray(frame)) return [];
+          const [x, y] = [frame[index * 2], frame[index * 2 + 1]];
+          return typeof x === 'number' && typeof y === 'number'
+            ? [fromSim({ x, y }, dims)]
+            : [];
+        });
+        if (path.length === frames.length && path.length > 1) {
+          paths.set(node.nodeId, path);
+        }
+      });
       animationRef.current?.stop();
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
 
@@ -339,18 +359,33 @@ export function useAutoLayout({
       }
 
       setIsRunning(true);
+      // Each node follows its recorded path; the gap between where it is on
+      // screen and the path's first frame fades out as the animation runs.
       animationRef.current = animate(0, 1, {
         duration: SETTLE_ANIMATION_SECONDS,
         ease: 'easeOut',
         onUpdate: (progress) => {
           store.getState().setBatchPositions(
             entries.map(([nodeId, to]) => {
-              const start = from.get(nodeId) ?? CANVAS_CENTRE;
+              const path = paths.get(nodeId) ?? [to];
+              const step = progress * (path.length - 1);
+              const index = Math.min(path.length - 1, Math.floor(step));
+              const a = path[index]!;
+              const b = path[Math.min(path.length - 1, index + 1)]!;
+              const first = path[0]!;
+              const start = from.get(nodeId) ?? first;
+              const u = step - index;
               return [
                 nodeId,
                 {
-                  x: start.x + (to.x - start.x) * progress,
-                  y: start.y + (to.y - start.y) * progress,
+                  x:
+                    a.x +
+                    (b.x - a.x) * u +
+                    (start.x - first.x) * (1 - progress),
+                  y:
+                    a.y +
+                    (b.y - a.y) * u +
+                    (start.y - first.y) * (1 - progress),
                 },
               ];
             }),
