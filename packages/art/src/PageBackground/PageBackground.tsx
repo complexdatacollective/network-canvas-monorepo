@@ -6,7 +6,6 @@ import {
   type MotionValue,
   useMotionTemplate,
   useMotionValue,
-  useReducedMotion,
   useScroll,
   useTransform,
 } from 'motion/react';
@@ -28,6 +27,7 @@ import type {
   NetworkWeaveConvergence,
   NetworkWeaveOrientation,
 } from '@codaco/art/NetworkWeaveBackground';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 const DEFAULT_CONVERGENCE: NetworkWeaveConvergence = { x: 0.5, y: 0.6 };
 const POSITION_TOLERANCE = 0.0005;
@@ -459,7 +459,7 @@ export function PageBackground({
   targetChangeVersion?: number;
   layerRef?: Ref<HTMLDivElement>;
 }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const orientation = useResponsiveOrientation();
   const { scrollY, scrollYProgress } = useScroll();
   const scrollFlareStart = scrollFlareRange?.[0] ?? flare;

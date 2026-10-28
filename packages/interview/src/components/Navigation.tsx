@@ -11,7 +11,7 @@ import {
   LogOut,
   Settings,
 } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import {
   type ComponentProps,
   type ReactNode,
@@ -35,6 +35,7 @@ import {
 } from '@codaco/fresco-ui/Popover';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { navigationMessages as messages } from '../i18n/navigationMessages';
@@ -242,7 +243,7 @@ const Navigation = ({
         ? ChevronLeft
         : ChevronRight;
 
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
 
   const stageNavigationEnabled = !!allowStageNavigation && !!goToStage;
 

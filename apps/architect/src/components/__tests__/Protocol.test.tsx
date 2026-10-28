@@ -1,6 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
-import type * as MotionReact from 'motion/react';
 import type { ElementType, ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,7 +18,7 @@ vi.mock('~/components/Timeline', () => ({
 type MockMotionProps = Record<string, unknown> & { children?: ReactNode };
 
 vi.mock('motion/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof MotionReact>();
+  const actual = await importOriginal<typeof import('motion/react')>();
   const renderMotionElement =
     (Component: ElementType) =>
     ({ children, ...props }: MockMotionProps) => (
@@ -33,7 +32,6 @@ vi.mock('motion/react', async (importOriginal) => {
       div: renderMotionElement('div'),
     }),
     useScroll: () => ({ scrollY: { onChange: vi.fn() } }),
-    useReducedMotion: () => false,
   };
 });
 

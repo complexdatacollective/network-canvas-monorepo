@@ -124,13 +124,17 @@ const NetworkWeaveBackground = ({
       style={{ width: '100%', height: '100%', ...style, pointerEvents: 'none' }}
       xmlns="http://www.w3.org/2000/svg"
     >
+      {/* Reduced motion follows AnimationProvider: its `data-reduced-motion`
+          on the document root when it overrides the operating system,
+          otherwise the system preference. */}
       {animated && (
         <style>{`
           .${ribbonFlowClass} { animation: ${ribbonFlowKeyframes} ${ribbonAnimationDuration}s linear infinite; }
           .${tributaryFlowClass} { animation: ${tributaryFlowKeyframes} ${tributaryAnimationDuration}s linear infinite; }
           @keyframes ${ribbonFlowKeyframes} { from { offset-distance: 0%; transform: scale(0.55, 0.35); } to { offset-distance: 100%; transform: scale(1.4, 3.8); } }
           @keyframes ${tributaryFlowKeyframes} { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -159; } }
-          @media (prefers-reduced-motion: reduce) { .${ribbonFlowClass} { animation: none; visibility: hidden; } .${tributaryFlowClass} { animation: none; } }
+          :root[data-reduced-motion='always'] .${ribbonFlowClass} { animation: none; visibility: hidden; } :root[data-reduced-motion='always'] .${tributaryFlowClass} { animation: none; }
+          @media (prefers-reduced-motion: reduce) { :root:not([data-reduced-motion='never']) .${ribbonFlowClass} { animation: none; visibility: hidden; } :root:not([data-reduced-motion='never']) .${tributaryFlowClass} { animation: none; } }
         `}</style>
       )}
       <defs>

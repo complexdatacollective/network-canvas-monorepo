@@ -1,7 +1,7 @@
 'use client';
 
 import { MousePointer2, Redo2, Undo2, Unlink, Waypoints } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import {
   useCallback,
   useEffect,
@@ -24,6 +24,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   SegmentedToolbar,
   ToolbarGroup,
@@ -860,7 +861,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }, FRAMING_OPEN_DELAY);
     return () => clearTimeout(timer);
   }, [setFramingOpen]);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const framing = pedigreeFraming(framingSetting, chosenFraming);
   // A choice renames everyone shown by a label, so it is announced.
   const chooseFraming = (chosen: FramingId) => {

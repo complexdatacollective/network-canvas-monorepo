@@ -1,11 +1,11 @@
 'use client';
 
-import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { GallerySidebar } from '~/components/protocol-gallery/GallerySidebar';
@@ -68,7 +68,7 @@ export function ProtocolGallery({
   const [searchResultCount, setSearchResultCount] = useState<number | null>(
     null,
   );
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const fieldOptions = useMemo(
     () => countFacetValues(protocols, pickFields),

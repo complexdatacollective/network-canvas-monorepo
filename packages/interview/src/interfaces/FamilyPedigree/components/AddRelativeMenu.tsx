@@ -1,16 +1,12 @@
 'use client';
 
 import { Toolbar } from '@base-ui/react/toolbar';
-import {
-  type MotionValue,
-  motion,
-  useMotionValue,
-  useReducedMotion,
-} from 'motion/react';
+import { type MotionValue, motion, useMotionValue } from 'motion/react';
 import { useLayoutEffect, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionButton } from '@codaco/fresco-ui/Button';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { formatRelativeTerm } from '../kinship';
@@ -75,7 +71,7 @@ export default function AddRelativeMenu({
 }: AddRelativeMenuProps) {
   const intl = useAppIntl();
   const words = usePedigreeWords();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
 
   // How much each button is enlarged against the canvas's zoom.
   const counterScale = useMotionValue(1);

@@ -76,7 +76,31 @@
     "import/no-unassigned-import": "off",
     "import/default": "off",
 
-    "promise/no-callback-in-promise": "warn"
+    "promise/no-callback-in-promise": "warn",
+
+    // Reduced motion is decided once, by AnimationProvider (fresco-ui), which
+    // follows the operating system unless a host overrides it. Motion's own
+    // hook bypasses that decision. `scripts/buildtime/check-reduced-motion.mjs`
+    // covers what an import rule cannot see: `matchMedia` and CSS media
+    // queries. A config that sets `no-restricted-imports` for its own files
+    // replaces this list, so it repeats these entries.
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "motion/react",
+            "importNames": ["useReducedMotion"],
+            "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+          },
+          {
+            "name": "framer-motion",
+            "importNames": ["useReducedMotion"],
+            "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+          }
+        ]
+      }
+    ]
   },
   "overrides": [
     {
@@ -239,6 +263,16 @@
               {
                 "name": "process",
                 "message": "Use the `process` global here. Importing it hides `process.env` from the no-process-env rule that keeps src/env.ts the only environment boundary."
+              },
+              {
+                "name": "motion/react",
+                "importNames": ["useReducedMotion"],
+                "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+              },
+              {
+                "name": "framer-motion",
+                "importNames": ["useReducedMotion"],
+                "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
               }
             ]
           }

@@ -1,6 +1,6 @@
 import { get } from 'es-toolkit/compat';
 import { Check, X } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -14,6 +14,7 @@ import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   Tooltip,
   TooltipContent,
@@ -269,7 +270,7 @@ export const VariablePill = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const restoreFocusRef = useRef(false);
   const closingRef = useRef(false);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const validationId = useId();
 
   const [editing, setEditing] = useState(false);

@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { motion, useAnimation, useReducedMotion } from 'motion/react';
+import { motion, useAnimation } from 'motion/react';
 import * as React from 'react';
 
 import {
@@ -14,6 +14,7 @@ import InfoIcon from './icons/info.svg.react';
 import SuccessIcon from './icons/success.svg.react';
 import WarningIcon from './icons/warning.svg.react';
 import Surface from './layout/Surface';
+import { usePrefersReducedMotion } from './reducedMotion';
 import {
   headingTagBelow,
   type HeadingTag,
@@ -224,7 +225,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   ) => {
     const intl = useAppIntl();
     const animation = useAnimation();
-    const shouldReduceMotion = useReducedMotion();
+    const shouldReduceMotion = usePrefersReducedMotion();
     const IconComponent =
       icon === false ? null : (icon ?? variantIcons[variant]);
     const iconStyle = icon == null ? variantIconStyles[variant] : undefined;

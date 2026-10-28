@@ -2,7 +2,7 @@
 
 import { NavigationMenu } from '@base-ui/react/navigation-menu';
 import { ArrowUpRight, ChevronDown, Menu, X } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { Variants } from 'motion/react';
 import {
   cloneElement,
@@ -19,6 +19,7 @@ import type { SiteLocale } from '@codaco/shared-consts';
 
 import { buttonVariants, IconButton } from '../Button';
 import { usePortalContainer } from '../PortalContainer';
+import { usePrefersReducedMotion } from '../reducedMotion';
 import Spinner from '../Spinner';
 import { headingVariants } from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
@@ -430,7 +431,7 @@ function SoftwareMenu({
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
   const portalContainer = usePortalContainer();
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
 
   return (
     <NavigationMenu.Root
@@ -573,7 +574,7 @@ export default function SiteNavigation({
 }: SiteNavigationProps) {
   const [open, setOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const labels = siteNavigationMessages[locale];
   const networkCanvasRootHref =
     site === 'website' ? '/' : destinations.networkCanvas;

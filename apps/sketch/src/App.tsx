@@ -1,8 +1,10 @@
 // Sketch is one page with a small state machine: describe → generating →
 // ready (or failed), with the compare flow running two jobs side by side.
 
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
+
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 import { getConfig } from './api/client.ts';
 import { EXAMPLES } from './lib/examples.ts';
@@ -80,7 +82,7 @@ export const App = () => {
     useState<UnfinishedComparison | null>(null);
   // Once the researcher has moved between screens, each new screen takes focus.
   const [navigated, setNavigated] = useState(false);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     const controller = new AbortController();

@@ -6,7 +6,6 @@ import {
 
 const defaultIntl = createAppIntl({ locale: 'en' });
 import { Globe } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
@@ -17,6 +16,7 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import {
   PROTOCOL_NAME_MAX_LENGTH,
@@ -191,7 +191,7 @@ const ProtocolInfoCard = () => {
   const name = useSelector(getProtocolName);
   const protocol = useSelector(getProtocol);
   const description = protocol?.description ?? '';
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const isFirstMount = useRunOnce('protocol-summary-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
 

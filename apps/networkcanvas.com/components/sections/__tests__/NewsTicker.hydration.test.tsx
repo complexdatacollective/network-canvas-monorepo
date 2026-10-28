@@ -1,4 +1,3 @@
-import type * as MotionReact from 'motion/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -8,18 +7,18 @@ import { siteAppLocales } from '~/lib/i18n/appLocales';
 import { loadLocaleMessages } from '~/lib/i18n/messages';
 import type { NewsItem } from '~/lib/siteContent';
 
-const { mockUseReducedMotion } = vi.hoisted(() => ({
-  mockUseReducedMotion: vi.fn<() => boolean | null>(),
+const { mockUsePrefersReducedMotion } = vi.hoisted(() => ({
+  mockUsePrefersReducedMotion: vi.fn<() => boolean | null>(),
 }));
 
-// Partial mock on purpose. NewsTicker.test.tsx replaces the whole module with a
-// `useReducedMotion` that only ever answers a boolean — which models a client
-// and cannot represent the server, where motion answers `null`. That is the gap
-// this file closes, so the real module has to stay underneath.
-vi.mock('motion/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof MotionReact>();
-  return { ...actual, useReducedMotion: mockUseReducedMotion };
-});
+// NewsTicker.test.tsx stubs `usePrefersReducedMotion` with one that only ever
+// answers a boolean — which models a client and cannot represent the server,
+// where it answers `null`. That is the gap this file closes; the rest of the
+// module, and the real `motion/react`, stay underneath.
+vi.mock('@codaco/fresco-ui/reducedMotion', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@codaco/fresco-ui/reducedMotion')>()),
+  usePrefersReducedMotion: mockUsePrefersReducedMotion,
+}));
 
 import { NewsTicker } from '../NewsTicker';
 
@@ -29,7 +28,7 @@ const newsItems: NewsItem[] = [
 ];
 
 /**
- * `useReducedMotion()` answers `null` on the server — motion learns the
+ * `usePrefersReducedMotion()` answers `null` on the server — motion learns the
  * preference from `matchMedia`, which the server cannot read — and `true` or
  * `false` on the client. The desktop ticker chooses between two different
  * element trees (one marquee with every item twice, or a single item), so
@@ -42,7 +41,7 @@ const newsItems: NewsItem[] = [
  * writes may depend on a preference the server cannot know.
  */
 const serverMarkupFor = (preference: boolean | null) => {
-  mockUseReducedMotion.mockReturnValue(preference);
+  mockUsePrefersReducedMotion.mockReturnValue(preference);
   return renderToString(
     <NextIntlClientProvider
       locale="en-US"

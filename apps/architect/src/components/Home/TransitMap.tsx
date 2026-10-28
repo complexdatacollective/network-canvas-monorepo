@@ -1,8 +1,9 @@
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { type CSSProperties, createElement, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   stageTypeColorStyle,
   stageTypeIcon,
@@ -93,7 +94,7 @@ type WindowedStop = TimelineStop & { absoluteIndex: number };
 
 export default function TransitMap({ stops, count }: TransitMapProps) {
   const intl = useAppIntl();
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = usePrefersReducedMotion();
   // The opening bloom belongs to the stations the map mounts with. `count`
   // only ever grows, so it is still the mount's until the first new station
   // arrives; from then on only the newest station and segment enter.

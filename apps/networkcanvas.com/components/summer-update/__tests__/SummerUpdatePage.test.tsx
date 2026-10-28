@@ -190,7 +190,6 @@ vi.mock('motion/react', () => ({
     set: vi.fn(),
   }),
   useMotionValueEvent: vi.fn(),
-  useReducedMotion: () => motionPreferences.shouldReduce,
   useScroll: () => ({
     scrollYProgress: {
       get: () => 0,
@@ -199,6 +198,10 @@ vi.mock('motion/react', () => ({
   }),
   useSpring: () => 0,
   useTransform: () => 0,
+}));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionPreferences.shouldReduce,
 }));
 
 vi.mock('~/components/layout/Header', () => ({

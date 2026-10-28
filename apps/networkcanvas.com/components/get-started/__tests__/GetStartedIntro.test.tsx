@@ -72,7 +72,10 @@ vi.mock('motion/react', () => ({
     a: MotionAnchor,
   },
   useAnimationControls: () => animationControls,
-  useReducedMotion: () => motionPreference.reduced,
+}));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionPreference.reduced,
 }));
 
 vi.mock('~/components/layout/Header', () => ({

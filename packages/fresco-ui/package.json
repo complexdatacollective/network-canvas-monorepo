@@ -59,6 +59,7 @@
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./PresentationalText": "./src/PresentationalText.ts",
     "./ProgressBar": "./src/ProgressBar.tsx",
+    "./reducedMotion": "./src/reducedMotion.ts",
     "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
@@ -382,6 +383,10 @@
       "./ProgressBar": {
         "types": "./dist/ProgressBar.d.ts",
         "default": "./dist/ProgressBar.js"
+      },
+      "./reducedMotion": {
+        "types": "./dist/reducedMotion.d.ts",
+        "default": "./dist/reducedMotion.js"
       },
       "./ProtocolCard": {
         "types": "./dist/ProtocolCard.d.ts",

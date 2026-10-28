@@ -1,22 +1,21 @@
-import type * as MotionReact from 'motion/react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { frescoLocales } from '~/i18n/locales';
 
-const { mockUseReducedMotion } = vi.hoisted(() => ({
-  mockUseReducedMotion: vi.fn<() => boolean | null>(),
+const { mockUsePrefersReducedMotion } = vi.hoisted(() => ({
+  mockUsePrefersReducedMotion: vi.fn<() => boolean | null>(),
 }));
 
-// Partial, not wholesale: the real `motion/react` has to stay in place so the
-// bar still resolves `initial` into markup. Replacing the whole module would
-// reduce this to a test of the mock, and would leave `useReducedMotion` unable
-// to return the `null` that only the server ever sees.
-vi.mock('motion/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof MotionReact>();
-  return { ...actual, useReducedMotion: mockUseReducedMotion };
-});
+// Only the preference is stubbed, so it can return the `null` that only the
+// server ever sees. The real `motion/react` stays in place so the bar still
+// resolves `initial` into markup; replacing it would reduce this to a test of
+// the mock.
+vi.mock('@codaco/fresco-ui/reducedMotion', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@codaco/fresco-ui/reducedMotion')>()),
+  usePrefersReducedMotion: mockUsePrefersReducedMotion,
+}));
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard' }));
 
@@ -30,7 +29,7 @@ vi.mock('~/i18n/FrescoLocaleSwitcher', () => ({ default: () => <div /> }));
 import { NavigationBar } from '../NavigationBar';
 
 /**
- * `useReducedMotion()` answers `null` on the server and `true`/`false` on the
+ * `usePrefersReducedMotion()` answers `null` on the server and `true`/`false` on the
  * client, so nothing the server serialises may depend on it. motion resolves
  * `initial` into an inline style in the SSR markup, which made this bar a
  * hydration mismatch for any researcher who prefers reduced motion. React
@@ -45,7 +44,7 @@ import { NavigationBar } from '../NavigationBar';
  * preference-reading prop here fails this test rather than reaching production.
  */
 const serverMarkupFor = (preference: boolean | null) => {
-  mockUseReducedMotion.mockReturnValue(preference);
+  mockUsePrefersReducedMotion.mockReturnValue(preference);
   return renderToString(
     <AppI18nProvider locale="en" locales={frescoLocales}>
       <NavigationBar />

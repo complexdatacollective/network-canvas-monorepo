@@ -1,14 +1,14 @@
 'use client';
 
-import { useReducedMotion } from 'motion/react';
 import Image from 'next/image';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 const mediaClasses = 'absolute inset-0 size-full object-cover';
 
 export function HeroVideo() {
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   // The server, and the hydrating client render that has to match it, render
   // the poster <Image>; only once past hydration can we swap in the <video>.
   // A client-only mount has no server markup to agree with, so the hook is

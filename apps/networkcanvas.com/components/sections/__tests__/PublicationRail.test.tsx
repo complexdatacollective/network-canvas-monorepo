@@ -35,12 +35,15 @@ vi.mock('motion/react', () => ({
   ) => {
     motionState.scrollHandler = handler;
   },
-  useReducedMotion: () => motionState.reducedMotion,
   useScroll: () => ({
     scrollYProgress: {
       get: () => motionState.progress,
     },
   }),
+}));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionState.reducedMotion,
 }));
 
 const publications: Publication[] = [

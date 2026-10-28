@@ -2,7 +2,6 @@
 
 import {
   type MotionStyle,
-  useReducedMotion,
   useScroll,
   useSpring,
   useTransform,
@@ -10,6 +9,7 @@ import {
 import type { RefObject } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 import { heroScrollSpring } from './scrollDrivenMotion';
 
@@ -22,7 +22,7 @@ export function useHeroScrollDeparture<T extends HTMLElement>(
   target: RefObject<T | null>,
   { distance = 96, restingScale = 0.93 }: HeroScrollDepartureOptions = {},
 ): MotionStyle | undefined {
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const hasHydrated = useHasHydrated();
   const { scrollYProgress } = useScroll({
     target,
