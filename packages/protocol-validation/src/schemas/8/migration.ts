@@ -306,6 +306,28 @@ const normalizeRelativeDatePickerParameters = (
   }
 };
 
+/**
+ * Normalises a scalar variable's `parameters` in place to the record its
+ * strictObject schema member accepts: only `minLabel`/`maxLabel`, each a
+ * string. A value that is not a plain record is removed.
+ */
+const normalizeScalarParameters = (variable: Record<string, unknown>): void => {
+  if (!('parameters' in variable)) return;
+  const parameters = asRecord(variable.parameters);
+  if (!parameters || Array.isArray(parameters)) {
+    delete variable.parameters;
+    return;
+  }
+  for (const key of Object.keys(parameters)) {
+    if (
+      (key !== 'minLabel' && key !== 'maxLabel') ||
+      typeof parameters[key] !== 'string'
+    ) {
+      delete parameters[key];
+    }
+  }
+};
+
 // Raw-JSON equivalent of validation-helpers.ts's `getVariablesForSubject`,
 // used by migration steps that run on unparsed v7 input rather than a typed
 // Codebook.
@@ -423,6 +445,7 @@ const migrationV7toV8 = createMigration({
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
 - A datetime codebook attribute's RelativeDatePicker \`anchor\` must be a real date inside the native input's year range of 0001–9999, and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
 - A datetime attribute's \`parameters\` must be a plain object; a wrong-typed value (a string, number, list, or null) is removed, reverting the picker to its defaults.
+- Only scalar and datetime attributes take \`parameters\`. On an attribute of any other type, \`parameters\` is removed; it can be left over from an earlier change to the attribute's type or input control. A scalar attribute's \`parameters\` keeps only \`minLabel\` and \`maxLabel\`, and only when they are text. Any other key in a scalar attribute's \`parameters\` is removed, as is a \`parameters\` value that is not a plain object.
 - Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the attribute's type (e.g. \`minValue\` on a text attribute, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the attribute required, preserving the old implied-required behaviour. Layout attributes take no validation at all; theirs is removed.
 - An attribute's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout attributes, which have no control, have it removed.
 - Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean attribute's option entry that is not a labelled true/false choice is removed; if no entries remain the attribute falls back to the standard Yes/No choices.
@@ -1680,7 +1703,18 @@ const migrationV7toV8 = createMigration({
             const typedVariable = asRecord(variable);
             if (!typedVariable) continue;
 
-            if (typedVariable.type !== 'datetime') continue;
+            // Only scalar and datetime variables take `parameters`. Architect
+            // Classic kept the record when a variable's type or control
+            // changed, and every other v8 member is a strictObject, so a
+            // leftover record blocked the whole protocol from importing.
+            if (typedVariable.type === 'scalar') {
+              normalizeScalarParameters(typedVariable);
+              continue;
+            }
+            if (typedVariable.type !== 'datetime') {
+              delete typedVariable.parameters;
+              continue;
+            }
             // A `parameters` value that is not a plain record (a string,
             // number, array, or null from a hand-edit) fails both v8
             // parameters strictObjects outright; delete it so the picker
