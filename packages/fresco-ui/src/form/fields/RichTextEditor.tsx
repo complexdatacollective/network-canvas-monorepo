@@ -958,6 +958,12 @@ function createCustomExtensions({
         : false,
       strike: false,
       underline: false,
+      // It appends an empty paragraph whenever the text ends in anything
+      // else, so turning a last line into a heading left a blank line under
+      // it, written into the value. Enter at the end of a heading or in an
+      // empty last list item opens a paragraph, and a rule added at the end
+      // brings one with it.
+      trailingNode: false,
       ...(history !== undefined && { undoRedo: false as const }),
     }),
     CustomParagraph,
