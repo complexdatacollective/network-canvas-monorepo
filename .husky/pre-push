@@ -40,8 +40,9 @@ if [ "$pushing_main" = "1" ]; then
     exit 1
   }
 
-  # Run type checking
-  pnpm run typecheck || {
+  # Run type checking, two packages at a time (each tsc can hold a
+  # gigabyte or more)
+  pnpm run typecheck --concurrency=2 || {
     echo "Type checking failed. Please fix all type errors before pushing to main."
     exit 1
   }
