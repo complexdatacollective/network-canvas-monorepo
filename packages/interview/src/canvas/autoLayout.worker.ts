@@ -146,6 +146,8 @@ const SEED_CIRCLE_RADIUS = 0.6;
 const ANCHOR_STRENGTH = 0.08;
 const REHEAT_ALPHA = 0.3;
 const LAYOUT_ATTEMPTS = 4;
+// Above this many links scoring attempts costs too much, so one attempt is used.
+const MAX_SCORED_LINKS = 1000;
 const ATTEMPT_JITTER = 0.1;
 const MAX_TICKS = 1000;
 
@@ -555,7 +557,8 @@ const layoutScore = (nodes: SimNode[]) => {
   let throughNodes = 0;
   let closest = Infinity;
   edges.forEach(([a, b], i) => {
-    for (const [c, d] of edges.slice(i + 1)) {
+    for (let j = i + 1; j < edges.length; j += 1) {
+      const [c, d] = edges[j]!;
       if (a === c || a === d || b === c || b === d) continue;
       if (segmentsCross(nodes[a]!, nodes[b]!, nodes[c]!, nodes[d]!))
         crossings += 1;
@@ -674,8 +677,9 @@ const runToEnd = (alpha: number) => {
 // A layout built from scratch keeps the best of several runs.
 const layoutFromScratch = () => {
   const seed = simulation.nodes();
+  const attempts = links.length > MAX_SCORED_LINKS ? 1 : LAYOUT_ATTEMPTS;
   let bestScore = Infinity;
-  for (let attempt = 0; attempt < LAYOUT_ATTEMPTS; attempt += 1) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     // Each attempt after the first starts from a jittered copy of the seed so
     // the attempts explore different arrangements.
     const random = seededRandom(attempt + 1);
@@ -691,7 +695,7 @@ const layoutFromScratch = () => {
     candidate.randomSource(random);
     candidate.alpha(options.startAlpha);
     settle(candidate);
-    const score = layoutScore(candidate.nodes());
+    const score = attempts === 1 ? 0 : layoutScore(candidate.nodes());
     if (score < bestScore) {
       bestScore = score;
       simulation = candidate;
@@ -803,6 +807,8 @@ export function handleMessage(data: Message) {
         running = true;
         simulation.alpha(REHEAT_ALPHA).restart();
       } else {
+        // Anchor at the release position, not where the drag began.
+        setAnchors(simulation, true);
         runToEnd(Math.max(simulation.alpha(), REHEAT_ALPHA));
       }
       break;

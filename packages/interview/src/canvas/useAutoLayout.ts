@@ -67,6 +67,8 @@ type SimNode = {
 
 const SETTLE_ANIMATION_SECONDS = 0.5;
 const CANVAS_CENTRE = { x: 0.5, y: 0.5 };
+// Normalized distance below which a settled node counts as not having moved.
+const MOVED_THRESHOLD = 0.002;
 
 /** Whether a node the worker reports has an id and a place to put it. */
 const isPlacedSimNode = (node: unknown): node is SimNode =>
@@ -309,13 +311,21 @@ export function useAutoLayout({
           );
       }
 
-      if (isE2E || skipAnimationsRef.current) {
+      const from = store.getState().positions;
+      const moved = entries.some(([nodeId, to]) => {
+        const start = from.get(nodeId);
+        return (
+          !start ||
+          Math.abs(start.x - to.x) > MOVED_THRESHOLD ||
+          Math.abs(start.y - to.y) > MOVED_THRESHOLD
+        );
+      });
+      if (isE2E || skipAnimationsRef.current || !moved) {
         store.getState().setBatchPositions(entries);
         setIsRunning(false);
         return;
       }
 
-      const from = store.getState().positions;
       setIsRunning(true);
       animationRef.current = animate(0, 1, {
         duration: SETTLE_ANIMATION_SECONDS,

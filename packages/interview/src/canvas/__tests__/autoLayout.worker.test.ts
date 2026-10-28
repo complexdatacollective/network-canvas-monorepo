@@ -34,6 +34,8 @@ type SimNode = {
   fx?: number | null;
   fy?: number | null;
   placed?: boolean;
+  anchorX?: number;
+  anchorY?: number;
   groupKeys?: VariableOptionValue[];
 };
 type SimLink = SimulationLinkDatum<SimNode>;
@@ -326,6 +328,31 @@ describe('autoLayout worker', () => {
     expect(released?.fy).toBeNull();
     // Releasing settles the layout and reports it.
     expect(posted.at(-1)?.type).toBe('end');
+  });
+
+  it('anchors a released node where it was dropped, not where the drag began', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.5, fy: 0.7 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.9, fy: 0.3 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: null, fy: null },
+    });
+
+    const released = capturedSim!.nodes().find((n) => n.nodeId === 'a1');
+    expect(released?.anchorX).toBe(0.9);
+    expect(released?.anchorY).toBe(0.3);
   });
 
   it('emits an end message on stop', () => {
