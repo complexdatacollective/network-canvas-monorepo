@@ -26,7 +26,9 @@ const holdsWholeValue = (control: TextControl) =>
  *   mouseup that ends it, so that one mouseup is swallowed.
  * - When the control was focused some other way (`autoFocus` in a dialog, or
  *   Tab), a researcher still clicks into it before typing. That first press
- *   keeps the selection, as long as the whole value is still selected.
+ *   keeps the selection, as long as the whole value is still selected and
+ *   `shouldSelect` still holds (a name typed and then selected with Ctrl+A is
+ *   no longer a proposal).
  *
  * Either way only once: a later click into a focused control places the caret
  * as ever.
@@ -46,7 +48,8 @@ export default function useSelectOnFocus<T extends TextControl>(
       focused &&
       keepSelectionOnNextPress.current &&
       event.button === 0 &&
-      holdsWholeValue(control)
+      holdsWholeValue(control) &&
+      (shouldSelect?.(control) ?? false)
     ) {
       event.preventDefault();
     }

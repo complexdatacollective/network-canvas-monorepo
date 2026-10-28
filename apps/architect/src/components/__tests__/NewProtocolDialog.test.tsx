@@ -370,6 +370,19 @@ describe('NewProtocolDialog naming a template', () => {
     expect(nameInput().selectionEnd).toBe(7);
   });
 
+  it('places the caret in a name the researcher typed, even when it is all selected', async () => {
+    const user = userEvent.setup();
+    renderTemplateDialog();
+    await waitFor(() => expect(nameInput()).toHaveFocus());
+
+    await user.keyboard('My study');
+    nameInput().select();
+    await user.pointer({ keys: '[MouseLeft]', target: nameInput(), offset: 3 });
+
+    expect(nameInput().selectionStart).toBe(3);
+    expect(nameInput().selectionEnd).toBe(3);
+  });
+
   it('selects nothing in a blank protocol’s empty name', async () => {
     renderDialog();
 
