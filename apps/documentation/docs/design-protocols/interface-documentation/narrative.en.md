@@ -62,7 +62,8 @@ The **Words on the canvas** section of the stage editor holds the headings of th
 
 - **Attributes**, **Links** and **Groups** headings, which are there when a preset highlights attributes, shows links or groups nodes.
 - **Drawing tooltips** for enabling and disabling drawing and for freezing, unfreezing and resetting annotations, which are there when **Free-draw** is on.
-- **Layout tooltips** for pausing and resuming the automatic layout, which are there when **Automatic layout** is on.
+
+The tooltips for pausing and resuming the automatic layout are [interview text](/en/design-protocols/translating-your-protocol#interview-text), shared with the Sociogram, and are reworded and translated in the translation table under **Buttons**.
 
 </AppOnly>
 
