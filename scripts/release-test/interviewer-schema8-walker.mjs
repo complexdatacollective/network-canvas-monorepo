@@ -258,7 +258,12 @@ async function clickSettled(locator) {
 }
 
 async function expectHome() {
-  await expect(page).toHaveURL(new RegExp(`^${url}/?$`), { timeout: 20_000 });
+  // Compared as parts, never as a pattern built from the --url argument.
+  const home = new URL(url);
+  await expect(page).toHaveURL(
+    (u) => u.origin === home.origin && u.pathname === '/' && u.search === '',
+    { timeout: 20_000 },
+  );
   await expect(
     page.getByRole('button', { name: 'Start new interview' }),
   ).toBeVisible({ timeout: 20_000 });
@@ -722,6 +727,20 @@ try {
   // Reload the hosted interview itself, still offline: both apps' shells
   // come out of the precache and the session reopens where it was, its
   // person kept (locked again, since the passphrase lives only in memory).
+  // Interviewer 8's session writes are fire-and-forget, so wait for the
+  // person to be stored first — a reload that outruns the write would
+  // simply re-read the session without it (seen once in four runs).
+  await expect
+    .poll(
+      async () => {
+        const { sessions } = await readDatabase();
+        const s = sessions?.find((row) => row.id === offlineId);
+        return (s?.network?.nodes ?? []).filter((n) => n.type === 'person')
+          .length;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(1);
   await page.reload();
   await expect(frameElement()).toHaveAttribute(
     'src',
