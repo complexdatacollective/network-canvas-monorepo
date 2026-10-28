@@ -6375,6 +6375,117 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('parameters on variables that take none', () => {
+    const migrateEgoVariable = (variable: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {},
+          ego: { variables: { v: { name: 'v', ...variable } } },
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables?.v;
+    };
+
+    const options = [
+      { label: 'A', value: 1 },
+      { label: 'B', value: 2 },
+    ];
+
+    // Architect Classic kept a variable's `parameters` when its type or
+    // control changed, so a v7 variable first authored as a date or VAS can
+    // carry a record its v8 schema member does not allow.
+    it.each([
+      { type: 'text', component: 'Text' },
+      { type: 'number', component: 'Number' },
+      { type: 'boolean', component: 'Boolean' },
+      { type: 'ordinal', component: 'RadioGroup', options },
+      { type: 'categorical', component: 'CheckboxGroup', options },
+      { type: 'layout' },
+      { type: 'location' },
+    ])('removes parameters from a $type variable', (variable) => {
+      const migrated = migrateEgoVariable({
+        ...variable,
+        parameters: { type: 'full', minLabel: 'Low' },
+      });
+      expect(migrated).not.toHaveProperty('parameters');
+    });
+
+    it('removes parameters from a node variable', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                age: {
+                  name: 'age',
+                  type: 'number',
+                  parameters: { before: 10 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const parsed = V8OutputSchema.safeParse(
+        migrationV7toV8.migrate(v7Protocol, { name: 'Test Protocol' }),
+      );
+      expect(parsed.success).toBe(true);
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.age,
+      ).not.toHaveProperty('parameters');
+    });
+
+    it('keeps only the labels of a scalar parameters record', () => {
+      const migrated = migrateEgoVariable({
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        parameters: { minLabel: 'Low', maxLabel: 'High', anchor: '2020-01-01' },
+      });
+      expect(migrated).toHaveProperty('parameters', {
+        minLabel: en('Low'),
+        maxLabel: en('High'),
+      });
+    });
+
+    it('removes a scalar label that is not text', () => {
+      const migrated = migrateEgoVariable({
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        parameters: { minLabel: 0, maxLabel: 'High' },
+      });
+      expect(migrated).toHaveProperty('parameters', { maxLabel: en('High') });
+    });
+
+    it.each([['full'], [[]], [null]])(
+      'removes a wrong-typed scalar parameters record (%j)',
+      (parameters) => {
+        const migrated = migrateEgoVariable({
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+          parameters,
+        });
+        expect(migrated).not.toHaveProperty('parameters');
+      },
+    );
+  });
+
   describe('duplicate form field repair', () => {
     // Taken from `alter-form-test.netcanvas` in the private test-protocol
     // corpus — the one protocol there whose AlterForm collects a single

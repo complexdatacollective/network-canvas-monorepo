@@ -38,7 +38,9 @@ import { V8OutputSchema } from './v8-output-schema.ts';
  *   impossible calendar dates, garbage strings, finer-than-resolution bounds,
  *   inverted bounds, non-string bounds, stray keys from the other picker,
  *   invalid / small-year anchors, negative / fractional / wrong-typed
- *   offsets, wrong-typed `parameters` records, and absent records.
+ *   offsets, wrong-typed `parameters` records, and absent records;
+ * - scalar `parameters`: stray keys, non-string labels, and wrong-typed
+ *   records; and a leftover `parameters` record on every other variable type.
  *
  * ## Exclusions (out of contract, each with its evidence)
  *
@@ -1245,6 +1247,50 @@ const MUTATIONS: Mutation[] = [
     name: 'wrongTypedParametersRecord',
     apply: (protocol, rng) => {
       const ref = pick(rng, refsOfType('datetime'));
+      const value = pick(rng, ['full', 7, [] as unknown[]] as const);
+      variableAt(protocol, ref).parameters = value;
+      return `${refKey(ref)} parameters ${JSON.stringify(value)}`;
+    },
+  },
+  {
+    name: 'leftoverParameters',
+    apply: (protocol, rng) => {
+      const ref = pick(
+        rng,
+        refsOfType(
+          'text',
+          'number',
+          'boolean',
+          'ordinal',
+          'categorical',
+          'layout',
+        ),
+      );
+      const value = pick(rng, [
+        { type: 'full' },
+        { minLabel: 'Low', maxLabel: 'High' },
+        { anchor: '2020-01-01', before: 30 },
+      ] as const);
+      variableAt(protocol, ref).parameters = { ...value };
+      return `${refKey(ref)} parameters ${JSON.stringify(value)}`;
+    },
+  },
+  {
+    name: 'scalarStrayParameter',
+    apply: (protocol, rng) => {
+      const ref = pick(rng, refsOfType('scalar'));
+      const variant = pick(rng, [
+        { anchor: '2020-01-01' },
+        { type: 'full' },
+        { minLabel: 0 },
+      ] as const);
+      return setParameters(protocol, ref, { ...variant });
+    },
+  },
+  {
+    name: 'wrongTypedScalarParameters',
+    apply: (protocol, rng) => {
+      const ref = pick(rng, refsOfType('scalar'));
       const value = pick(rng, ['full', 7, [] as unknown[]] as const);
       variableAt(protocol, ref).parameters = value;
       return `${refKey(ref)} parameters ${JSON.stringify(value)}`;
