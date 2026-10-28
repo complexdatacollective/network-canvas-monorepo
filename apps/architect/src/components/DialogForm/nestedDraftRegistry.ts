@@ -28,8 +28,21 @@ type DirtyPredicate = () => boolean;
 
 const draftPredicates = new Map<symbol, DirtyPredicate>();
 
+/**
+ * The stage editor's own dialogs — a form field, a prompt, a rule — which
+ * protocol-builder draws and reports through `DialogDraftRegistrarContext`.
+ * Counted when a guard asks whether leaving would lose work, and NOT as open
+ * nested editors: they live inside the stage editor, which the cross-tab lock
+ * already treats as open, and the import surface `hasOpenNestedEditor` picks
+ * is Architect's own editors' question.
+ */
+const stageDialogPredicates = new Map<symbol, DirtyPredicate>();
+
 export const hasDirtyNestedDraft = (): boolean => {
   for (const isDirty of draftPredicates.values()) {
+    if (isDirty()) return true;
+  }
+  for (const isDirty of stageDialogPredicates.values()) {
     if (isDirty()) return true;
   }
   return false;
@@ -112,7 +125,7 @@ let listenerAttached = false;
  * the app stays eligible for the back/forward cache.
  */
 const syncBeforeUnloadListener = () => {
-  const wanted = draftPredicates.size > 0;
+  const wanted = draftPredicates.size > 0 || stageDialogPredicates.size > 0;
   if (wanted === listenerAttached) return;
 
   if (wanted) {
@@ -133,6 +146,23 @@ const registerNestedDraft = (isDirty: DirtyPredicate): (() => void) => {
     draftPredicates.delete(key);
     syncBeforeUnloadListener();
     notifyRegistrationChange();
+  };
+};
+
+/**
+ * A protocol-builder dialog's draft, for `DialogDraftRegistrarContext`.
+ * Answers with the way to forget it.
+ */
+export const registerStageDialogDraft = (
+  hasDraft: DirtyPredicate,
+): (() => void) => {
+  const key = Symbol('stage-dialog-draft');
+  stageDialogPredicates.set(key, hasDraft);
+  syncBeforeUnloadListener();
+
+  return () => {
+    stageDialogPredicates.delete(key);
+    syncBeforeUnloadListener();
   };
 };
 

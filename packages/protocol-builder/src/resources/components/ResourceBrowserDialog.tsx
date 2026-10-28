@@ -103,7 +103,7 @@ export default function ResourceBrowserDialog({
   // between the researcher and losing it — and Escape is a reflex, not a
   // decision. Routed through the same gate the package's other draft-holding
   // dialogs use, so the question is asked in one voice.
-  const requestClose = useDiscardDraftGuard({ hasDraft, onClose });
+  const requestClose = useDiscardDraftGuard({ hasDraft, onClose, open });
 
   return (
     <Dialog

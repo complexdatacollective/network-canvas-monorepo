@@ -11,6 +11,7 @@ import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import { useStageTypeInfo } from '@codaco/protocol-builder/interfaces/useStageTypeInfo';
 import { useAutoStageName } from '@codaco/protocol-builder/naming/useAutoStageName';
 import { useStageName } from '@codaco/protocol-builder/naming/useStageName';
+import { useStandingStageNameProposal } from '@codaco/protocol-builder/naming/useStandingStageNameProposal';
 import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import { STAGE_HERO_HEIGHT_VARIABLE } from '~/utils/stageHeroHeight';
 const messages = defineMessages({
@@ -57,6 +58,7 @@ export default function StageTitle({
   const { stageType, interfaceName, documentationUrl } = useStageTypeInfo();
   const { label } = useStageName();
   const { onBlur } = useAutoStageName();
+  const { isStanding } = useStandingStageNameProposal();
   // Published for the route, which starts the section list in the column
   // beside this one below this block rather than level with it.
   const hero = usePublishedBlockHeight<HTMLDivElement>(
@@ -126,7 +128,7 @@ export default function StageTitle({
             })}
           </Paragraph>
         )}
-        <StageNameField onBlur={onBlur} />
+        <StageNameField onBlur={onBlur} selectOnFocus={isStanding} />
         <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
           <Badge color="neon-coral">{interfaceName}</Badge>
           <NativeLink
