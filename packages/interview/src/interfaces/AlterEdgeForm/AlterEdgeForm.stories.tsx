@@ -33,6 +33,39 @@ type StoryArgs = {
   fieldCount: number;
 };
 
+const PEOPLE = [
+  'Alex',
+  'Sam',
+  'Rosalind',
+  'Jordan',
+  'Priya',
+  'Mateo',
+  'Keiko',
+  'Tomás',
+  'Amara',
+];
+
+/**
+ * Seeds the people the connections join on the form's own stage, so that no
+ * stage before it has to create them.
+ */
+function addPeople(
+  si: SyntheticInterview,
+  stageId: string,
+  nodeTypeId: string,
+  count: number,
+) {
+  const name = si.addVariableToNodeType(nodeTypeId, {
+    name: 'name',
+    type: 'text',
+  });
+  PEOPLE.slice(0, count).forEach((person, index) => {
+    si.addManualNode(stageId, nodeTypeId, `person-${index}`, {
+      [name.id]: person,
+    });
+  });
+}
+
 function buildInterview(args: StoryArgs) {
   const si = new SyntheticInterview();
 
@@ -44,24 +77,18 @@ function buildInterview(args: StoryArgs) {
     text: 'Before the main stage.',
   });
 
-  // NameGenerator creates the nodes that edges will connect
-  si.addStage('NameGenerator', {
-    label: 'Name Generator',
-    initialNodes: { count: args.edgeCount + 1 },
-    subject: { entity: 'node', type: nt.id },
+  const stage = si.addStage('AlterEdgeForm', {
+    label: 'Alter Edge Form',
+    subject: { entity: 'edge', type: et.id },
   });
 
+  addPeople(si, stage.id, nt.id, args.edgeCount + 1);
   // Create consecutive edge pairs: [0,1], [1,2], [2,3], ...
   const pairs: [number, number][] = Array.from(
     { length: args.edgeCount },
     (_, i) => [i, i + 1],
   );
   si.addEdges(pairs, et.id);
-
-  const stage = si.addStage('AlterEdgeForm', {
-    label: 'Alter Edge Form',
-    subject: { entity: 'edge', type: et.id },
-  });
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
   for (let i = 0; i < fieldCount; i++) {
@@ -87,7 +114,7 @@ const AlterEdgeFormStoryWrapper = (args: StoryArgs) => {
   const interview = useMemo(() => buildInterview(args), [configKey]);
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 2 })),
+      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
     [interview],
   );
 
@@ -162,12 +189,12 @@ function buildPipedNamesInterview() {
     text: 'Before the main stage.',
   });
 
-  si.addStage('NameGenerator', {
-    label: 'Name Generator',
-    initialNodes: { count: 3 },
-    subject: { entity: 'node', type: nt.id },
+  const stage = si.addStage('AlterEdgeForm', {
+    label: 'Alter Edge Form (Piped names)',
+    subject: { entity: 'edge', type: et.id },
   });
 
+  addPeople(si, stage.id, nt.id, 3);
   si.addEdges(
     [
       [0, 1],
@@ -175,11 +202,6 @@ function buildPipedNamesInterview() {
     ],
     et.id,
   );
-
-  const stage = si.addStage('AlterEdgeForm', {
-    label: 'Alter Edge Form (Piped names)',
-    subject: { entity: 'edge', type: et.id },
-  });
   stage.stageEntry.dynamicValues = {
     first: { path: 'edge.from.$label' },
     second: { path: 'edge.to.$label' },
@@ -210,7 +232,7 @@ const PipedNamesWrapper = () => {
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(
-        buildPipedNamesInterview().getInterviewPayload({ currentStep: 2 }),
+        buildPipedNamesInterview().getInterviewPayload({ currentStep: 1 }),
       ),
     [],
   );
@@ -263,12 +285,12 @@ function buildValidatedInterview() {
     text: 'Before the main stage.',
   });
 
-  si.addStage('NameGenerator', {
-    label: 'Name Generator',
-    initialNodes: { count: 3 },
-    subject: { entity: 'node', type: nt.id },
+  const stage = si.addStage('AlterEdgeForm', {
+    label: 'Alter Edge Form (Validated)',
+    subject: { entity: 'edge', type: et.id },
   });
 
+  addPeople(si, stage.id, nt.id, 3);
   si.addEdges(
     [
       [0, 1],
@@ -276,11 +298,6 @@ function buildValidatedInterview() {
     ],
     et.id,
   );
-
-  const stage = si.addStage('AlterEdgeForm', {
-    label: 'Alter Edge Form (Validated)',
-    subject: { entity: 'edge', type: et.id },
-  });
 
   stage.addFormField({
     component: 'RadioGroup',
@@ -315,7 +332,7 @@ const WithValidationWrapper = () => {
   const interview = useMemo(() => buildValidatedInterview(), []);
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 2 })),
+      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
     [interview],
   );
 
