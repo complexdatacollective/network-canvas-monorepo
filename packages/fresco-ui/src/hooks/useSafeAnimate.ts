@@ -5,21 +5,19 @@ import {
   MotionConfigContext,
   MotionGlobalConfig,
   useAnimate,
-  useReducedMotion,
 } from 'motion/react';
 import { useContext, useMemo } from 'react';
+
+import { usePrefersReducedMotion } from '../reducedMotion';
 
 type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
 
 /**
- * Returns true when Motion has been configured not to create animations.
+ * Returns true when animations are disabled or motion should be reduced.
  */
 export function useShouldSkipAnimations(): boolean {
-  const { reducedMotion, skipAnimations } = useContext(MotionConfigContext);
-  const userPrefersReducedMotion = useReducedMotion();
-  const shouldReduceMotion =
-    reducedMotion === 'always' ||
-    (reducedMotion !== 'never' && userPrefersReducedMotion);
+  const { skipAnimations } = useContext(MotionConfigContext);
+  const shouldReduceMotion = usePrefersReducedMotion();
 
   return (
     !!MotionGlobalConfig.skipAnimations ||

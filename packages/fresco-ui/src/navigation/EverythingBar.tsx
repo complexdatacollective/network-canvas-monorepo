@@ -10,7 +10,6 @@ import {
   Search,
   TriangleAlert,
 } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
 import {
   cloneElement,
   Fragment,
@@ -33,6 +32,7 @@ import Kbd from '../Kbd';
 import { MotionSurface } from '../layout/Surface';
 import Modal from '../Modal';
 import ModalPopup from '../Modal/ModalPopup';
+import { usePrefersReducedMotion } from '../reducedMotion';
 import { ScrollArea } from '../ScrollArea';
 import { cva, cx } from '../utils/cva';
 import { segmentLabel } from './everythingBarMatching';
@@ -310,7 +310,7 @@ export default function EverythingBar({
   const [detectedPlatform] = useState(detectPlatform);
   const baseId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const shouldReduceMotion = usePrefersReducedMotion() ?? false;
 
   const open = openProp ?? uncontrolledOpen;
   const resolvedPlatform = platform ?? detectedPlatform;

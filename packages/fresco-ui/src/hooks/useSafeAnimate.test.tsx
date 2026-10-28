@@ -3,6 +3,7 @@ import { MotionConfigContext, MotionGlobalConfig } from 'motion/react';
 import type { PropsWithChildren } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { AnimationProvider } from '../AnimationProvider';
 import { useShouldSkipAnimations } from './useSafeAnimate';
 
 describe('useShouldSkipAnimations', () => {
@@ -52,16 +53,7 @@ describe('useShouldSkipAnimations', () => {
     MotionGlobalConfig.skipAnimations = false;
 
     const wrapper = ({ children }: PropsWithChildren) => (
-      <MotionConfigContext.Provider
-        value={{
-          transformPagePoint: (point) => point,
-          isStatic: false,
-          reducedMotion: 'always',
-          skipAnimations: false,
-        }}
-      >
-        {children}
-      </MotionConfigContext.Provider>
+      <AnimationProvider reducedMotion="always">{children}</AnimationProvider>
     );
     const { result } = renderHook(() => useShouldSkipAnimations(), {
       wrapper,

@@ -7,9 +7,10 @@ import {
   type MotionValue,
   useMotionValue,
   useMotionValueEvent,
-  useReducedMotion,
 } from 'motion/react';
 import { type RefObject, useCallback, useMemo, useRef, useState } from 'react';
+
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.5;
@@ -309,7 +310,7 @@ export function usePanZoom({
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const scale = useMotionValue(1);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const animations = useRef<AnimationPlaybackControls[]>([]);
   // Where an animated move is headed, while it is under way.
   const destination = useRef<View | null>(null);

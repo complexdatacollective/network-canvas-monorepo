@@ -128,7 +128,7 @@ export function NavigationBar() {
         variants={containerVariants}
         // Preference-independent on purpose. motion resolves `initial` into an
         // inline style in the server markup, and the server cannot know this
-        // visitor's preference (`useReducedMotion()` answers `null` there and
+        // visitor's preference (`usePrefersReducedMotion()` answers `null` there and
         // `true`/`false` on the client), so choosing any of these props by the
         // preference would make the bar a hydration mismatch for a researcher
         // who prefers reduced motion.

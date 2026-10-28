@@ -1,11 +1,6 @@
 import { NavigationMenu } from '@base-ui/react/navigation-menu';
 import { Menu, X } from 'lucide-react';
-import {
-  LayoutGroup,
-  motion,
-  useReducedMotion,
-  type Variants,
-} from 'motion/react';
+import { LayoutGroup, motion, type Variants } from 'motion/react';
 import type React from 'react';
 import { useCallback, useId, useState } from 'react';
 import { useLocation } from 'wouter';
@@ -15,6 +10,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Brand from '~/components/Brand';
 import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import { useRunOnce } from '~/hooks/useRunOnce';
@@ -98,7 +94,7 @@ type NavShellProps = {
 
 const NavShell = ({ leading, items, end }: NavShellProps) => {
   const intl = useAppIntl();
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const isFirstMount = useRunOnce('nav-bar-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
   const [location, setLocation] = useLocation();

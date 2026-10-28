@@ -27,6 +27,16 @@
             "name": "next/cache",
             "importNames": ["cacheTag", "updateTag", "revalidateTag"],
             "message": "Use safeCacheTag, safeUpdateTag, or safeRevalidateTag from ~/lib/cache for type-safe cache tags."
+          },
+          {
+            "name": "motion/react",
+            "importNames": ["useReducedMotion"],
+            "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+          },
+          {
+            "name": "framer-motion",
+            "importNames": ["useReducedMotion"],
+            "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
           }
         ]
       }
@@ -91,6 +101,16 @@
                 "message": "Use safeCacheTag, safeUpdateTag, or safeRevalidateTag from ~/lib/cache for type-safe cache tags."
               },
               {
+                "name": "motion/react",
+                "importNames": ["useReducedMotion"],
+                "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+              },
+              {
+                "name": "framer-motion",
+                "importNames": ["useReducedMotion"],
+                "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+              },
+              {
                 "name": "zod",
                 "message": "Import from 'zod/mini' instead for smaller client bundles. Standard zod is allowed in server-only files (actions/, queries/)."
               },
@@ -116,6 +136,16 @@
                 "name": "next/cache",
                 "importNames": ["cacheTag", "updateTag", "revalidateTag"],
                 "message": "Use safeCacheTag, safeUpdateTag, or safeRevalidateTag from ~/lib/cache for type-safe cache tags."
+              },
+              {
+                "name": "motion/react",
+                "importNames": ["useReducedMotion"],
+                "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+              },
+              {
+                "name": "framer-motion",
+                "importNames": ["useReducedMotion"],
+                "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
               }
             ]
           }

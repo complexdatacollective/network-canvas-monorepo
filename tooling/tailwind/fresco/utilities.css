@@ -194,8 +194,8 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .variable-pill-effect-border {
+.variable-pill-effect-border {
+  @variant motion-safe {
     animation: variable-pill-border-orbit 3.5s linear infinite;
   }
 }
@@ -216,17 +216,6 @@
    appearance depends on being available. */
 @custom-variant ui-disabled (&:is(:disabled, [aria-disabled='true']));
 @custom-variant ui-enabled (&:not(:disabled):not([aria-disabled='true']));
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    transition-duration: 0s !important;
-    transition-delay: 0s !important;
-  }
-}
 
 /* App-scoped variants. fresco-ui components hard-code `interview:` /
    `dashboard:` prefixes (e.g. Button.tsx swaps default-color tokens via

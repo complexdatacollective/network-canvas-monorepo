@@ -1,12 +1,13 @@
 'use client';
 
 import { ArrowDownRight } from 'lucide-react';
-import { motion, useAnimationControls, useReducedMotion } from 'motion/react';
+import { motion, useAnimationControls } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
 
 import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
@@ -51,7 +52,7 @@ const startingPaths: readonly StartingPath[] = [
 // `children` is the rest of the page's main content, after the intro.
 export function GetStartedIntro({ children }: { children?: ReactNode }) {
   const t = useTranslations('GetStarted');
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const entrance = createHeroEntrance(reduceMotion ?? true);
   const controls = useAnimationControls();
   const entranceStarted = useRef(false);

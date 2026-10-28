@@ -1,6 +1,8 @@
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import type { Transition } from 'motion/react';
 import { useEffect, useState } from 'react';
+
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 // Inert metal tone the device shows before the wand "activates" it.
 const PLATINUM = '#b9bec9';
@@ -15,7 +17,7 @@ const ACTIVATION_DELAY_MS = 1600;
 // on top of currentColor fills, so the artwork follows the theme's
 // primary/accent tokens in both light and dark modes.
 export default function SetupGlyph() {
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = usePrefersReducedMotion() ?? false;
   const [activated, setActivated] = useState(reduceMotion);
 
   useEffect(() => {

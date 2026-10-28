@@ -406,7 +406,14 @@ describe('NetworkWeaveBackground', () => {
       <NetworkWeaveBackground animated={false} />,
     );
 
-    expect(animated).toContain('@media (prefers-reduced-motion: reduce)');
+    // Reduced under an `always` provider, and under the system preference
+    // unless a provider says `never`.
+    expect(animated).toContain(
+      ":root[data-reduced-motion='always'] .network-weave-ribbon-flow",
+    );
+    expect(animated).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{ :root:not\(\[data-reduced-motion='never'\]\) \.network-weave-ribbon-flow/,
+    );
     expect(animated).toContain('network-weave-ribbon-drift');
     expect(animated).toContain('network-weave-tributary-drift');
     expect(staticMarkup).not.toContain('@keyframes');

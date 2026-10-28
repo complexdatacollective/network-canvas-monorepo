@@ -19,6 +19,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { parseObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
+import { prefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 import { messages } from './messages';
 
@@ -157,11 +158,9 @@ const bringIntoView = (next: Element) => {
   const top = viewTopFor(scroller, next);
   if (box.top >= top && box.bottom <= view.bottom) return;
 
-  const reduceMotion =
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   scroller.scrollTo({
     top: scroller.scrollTop + box.top - top - LEAD_IN,
-    behavior: reduceMotion ? 'auto' : 'smooth',
+    behavior: prefersReducedMotion(scroller) ? 'auto' : 'smooth',
   });
 };
 

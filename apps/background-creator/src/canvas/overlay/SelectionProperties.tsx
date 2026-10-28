@@ -1,5 +1,5 @@
 import { SlidersHorizontal } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   type CSSProperties,
   type ReactElement,
@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { elementBounds, type StageBox } from '~/state/documentGeometry';
 import { useEditorStore } from '~/state/editorStore';
 import { PropertiesPanel } from '~/toolbar/PropertiesPanel';
@@ -87,7 +88,7 @@ export function SelectionProperties({
     }
   }, [selectedId, stageRef]);
 
-  const reduce = useReducedMotion();
+  const reduce = usePrefersReducedMotion();
   const el =
     activeTool === 'select' && selection
       ? doc.elements.find((e) => e.id === selection.id)

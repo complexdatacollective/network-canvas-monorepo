@@ -1,7 +1,6 @@
 'use client';
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
-import { useReducedMotion } from 'motion/react';
 import {
   useCallback,
   useEffect,
@@ -15,6 +14,7 @@ import {
 import CloseButton from '../CloseButton';
 import Modal from '../Modal';
 import ModalPopup from '../Modal/ModalPopup';
+import { usePrefersReducedMotion } from '../reducedMotion';
 import { headingVariants } from '../typography/Heading';
 import { cx } from '../utils/cva';
 import { focusRouteTarget, hasRouteFocusTarget } from './RouteFocus';
@@ -238,7 +238,7 @@ const NavDrawer = ({
   children,
   className,
 }: NavDrawerProps) => {
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const labelId = useId();
 
   /**

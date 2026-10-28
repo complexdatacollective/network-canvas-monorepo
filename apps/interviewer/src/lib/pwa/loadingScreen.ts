@@ -1,6 +1,7 @@
 import { commonMessages } from '@codaco/app-i18n/common';
 import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
+import { prefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 import { interviewerProductionLocales } from '../../i18n/locales';
 import { startupLocale } from '../../i18n/preference';
@@ -49,17 +50,6 @@ const FADE_DURATION_MS = 250;
 
 const LOADING_SCREEN_ID = 'app-loading';
 
-// Kept in sync with the reduced-motion `transition: none` rule in index.html:
-// when motion is reduced we skip the fade and remove synchronously so the
-// loader can't linger over the app.
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-}
-
 // Fades the loading screen out (CSS opacity transition on the `is-hidden`
 // class) then removes it from the DOM. Returns immediately if no loader is
 // present. Idempotent: the `is-hidden` guard means a second call while a fade
@@ -77,7 +67,10 @@ export function removeLoadingScreen(): void {
     loader.remove();
   };
 
-  if (prefersReducedMotion()) {
+  // Kept in sync with the reduced-motion `transition: none` rule in
+  // index.html: when motion is reduced we skip the fade and remove
+  // synchronously so the loader can't linger over the app.
+  if (prefersReducedMotion(loader)) {
     remove();
     return;
   }

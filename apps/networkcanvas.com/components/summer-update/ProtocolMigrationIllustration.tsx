@@ -1,16 +1,11 @@
 'use client';
 
-import {
-  motion,
-  useMotionValue,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from 'motion/react';
+import { motion, useMotionValue, useScroll, useTransform } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { useRef } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 type ProtocolMigrationIllustrationProps = {
   className?: string;
@@ -21,7 +16,7 @@ export function ProtocolMigrationIllustration({
 }: ProtocolMigrationIllustrationProps) {
   const t = useTranslations('SummerUpdate.compatibility.illustration');
   const containerRef = useRef<HTMLDivElement>(null);
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
   const { scrollYProgress } = useScroll({

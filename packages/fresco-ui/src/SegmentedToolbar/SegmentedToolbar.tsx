@@ -12,7 +12,6 @@ import {
   type Transition,
   useDragControls,
   useMotionValue,
-  useReducedMotion,
   type Variants,
 } from 'motion/react';
 import * as React from 'react';
@@ -30,6 +29,7 @@ import {
 import useTokenRadius from '../hooks/useTokenRadius';
 import { MotionSurface } from '../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
+import { usePrefersReducedMotion } from '../reducedMotion';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx } from '../utils/cva';
 import {
@@ -970,7 +970,7 @@ export function SegmentedToolbar({
   ...props
 }: SegmentedToolbarProps) {
   const intl = useAppIntl();
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = usePrefersReducedMotion() ?? false;
   const layoutGroupId = React.useId();
   const dragControls = useDragControls();
   // The pill's corners follow its segments' `rounded-full` at every size.

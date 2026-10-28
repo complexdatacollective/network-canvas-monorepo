@@ -16,6 +16,7 @@
     "check:dialog-exits": "node scripts/buildtime/check-dialog-exit-animations.mjs",
     "check:hydration-flag": "node scripts/buildtime/check-hydration-flag.mjs",
     "check:mapbox-tokens": "node scripts/buildtime/check-mapbox-tokens.mjs",
+    "check:reduced-motion": "node scripts/buildtime/check-reduced-motion.mjs",
     "verify:publish-exports": "node scripts/release/verify-publish-exports.mjs",
     "lint": "oxlint && oxfmt --check .",
     "lint:fix": "oxlint --fix --quiet && oxfmt .",

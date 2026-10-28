@@ -2,7 +2,7 @@
 
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
-import { AnimatePresence, useReducedMotion } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -11,6 +11,7 @@ import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
 import type { ActivationSource } from '@codaco/fresco-ui/Node';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
@@ -107,7 +108,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { stage } = stageProps;
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const resolve = useResolveLocalizedString();
   const drawConnectionText = useOptionalLocalizedText(
     stage.tooltips.drawConnection,

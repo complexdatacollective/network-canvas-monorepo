@@ -1,4 +1,6 @@
-import { motion, type Transition, useReducedMotion } from 'motion/react';
+import { motion, type Transition } from 'motion/react';
+
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 // The start page's hero: research questions are written out on a card, the
 // terms that matter flow into a sociogram as people, places and measures,
@@ -185,7 +187,7 @@ const Node = ({
 );
 
 export const HeroArt = () => {
-  const still = useReducedMotion() === true;
+  const still = usePrefersReducedMotion() === true;
   const from = <V,>(value: V) => (still ? false : value);
 
   return (

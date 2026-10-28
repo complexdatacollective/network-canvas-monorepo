@@ -3,9 +3,10 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import type { LucideIcon } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { type ReactElement, type ReactNode, useId } from 'react';
 
+import { usePrefersReducedMotion } from '../reducedMotion';
 import { cva, cx } from '../utils/cva';
 
 export type SegmentedOption<T extends string> = {
@@ -89,7 +90,7 @@ export default function SegmentedSwitcher<T extends string>({
   className,
 }: SegmentedSwitcherProps<T>) {
   const layoutId = useId();
-  const reduced = useReducedMotion();
+  const reduced = usePrefersReducedMotion();
 
   return (
     // A plain track rather than a `Surface`: Surface always paints an opaque

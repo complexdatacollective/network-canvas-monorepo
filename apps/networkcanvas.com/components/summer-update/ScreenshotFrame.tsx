@@ -1,15 +1,11 @@
 'use client';
 
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from 'motion/react';
+import { motion, useScroll, useTransform } from 'motion/react';
 import Image from 'next/image';
 import { useRef } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 export function ScreenshotFrame({
   address,
@@ -22,7 +18,7 @@ export function ScreenshotFrame({
   aspectRatio?: '4:3' | '7:5';
   src: string;
 }) {
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const frameRef = useRef<HTMLDivElement>(null);
   const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
