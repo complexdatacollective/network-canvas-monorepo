@@ -1,13 +1,6 @@
 'use client';
+import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
 import {
-  AnimatePresence,
-  motion,
-  useScroll,
-  useTransform,
-  type Variants,
-} from 'motion/react';
-import {
-  createContext,
   forwardRef,
   type ReactNode,
   type RefObject,
@@ -107,48 +100,6 @@ const slideTransition = {
   stiffness: 200,
   damping: 15,
 };
-
-/**
- * With the header above the card, a slide comes in rising and fading as one.
- * Leaving, its parts go on their own, each fading as it moves: the header
- * shrinks where it is, and the card slides away in the direction of travel.
- * The labels are the slide's own, so no motion inside the form answers them.
- */
-const slideVariants: Variants = {
-  slideEnter: { y: '35%', opacity: 0 },
-  slideRest: { y: 0, opacity: 1 },
-  slideLeave: { opacity: 1 },
-};
-
-const headerLeaveVariants: Variants = {
-  slideLeave: {
-    scale: 0.5,
-    opacity: 0,
-    transition: { duration: 0.3, ease: [0.4, 0, 1, 1] },
-  },
-};
-
-/** Which way the slides are moving, for the card of the one leaving. */
-const SlideDirectionContext = createContext<Direction | null>(null);
-
-/** The card, sliding away in the direction of travel as its slide leaves. */
-function LeavingCard({ children }: { children: ReactNode }) {
-  const direction = useContext(SlideDirectionContext);
-  return (
-    <motion.div
-      className="flex w-full shrink-0 flex-col items-center"
-      variants={{
-        slideLeave: {
-          y: direction === 'forwards' ? '-35%' : '35%',
-          opacity: 0,
-          transition: slideTransition,
-        },
-      }}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 type SlideHandle = {
   validate: () => Promise<boolean>;
@@ -358,19 +309,17 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
                 transformOrigin: 'top center',
               }}
             >
-              <motion.div variants={headerLeaveVariants}>{header}</motion.div>
+              {header}
             </motion.div>
           </div>
-          <LeavingCard>
-            <Surface
-              noContainer
-              className="tablet-portrait:min-w-lg w-full max-w-2xl shrink-0"
-              spacing="lg"
-              shadow="lg"
-            >
-              {answers}
-            </Surface>
-          </LeavingCard>
+          <Surface
+            noContainer
+            className="tablet-portrait:min-w-lg w-full max-w-2xl shrink-0"
+            spacing="lg"
+            shadow="lg"
+          >
+            {answers}
+          </Surface>
         </div>
         <div ref={sentinelRef} aria-hidden />
       </ScrollArea>
@@ -427,13 +376,8 @@ const ProtectedSlide = forwardRef<
   return (
     <div className="flex size-full flex-col items-center gap-4 overflow-y-auto p-4">
       <div className="my-auto flex w-full flex-col items-center gap-4">
-        <motion.div
-          className="flex shrink-0 justify-center"
-          variants={headerLeaveVariants}
-        >
-          {header}
-        </motion.div>
-        <LeavingCard>{notice}</LeavingCard>
+        <div className="flex shrink-0 justify-center">{header}</div>
+        {notice}
       </div>
     </div>
   );
@@ -745,21 +689,21 @@ export default function SlidesForm({
 
   return (
     <div className="flex w-full flex-auto overflow-hidden">
-      <SlideDirectionContext.Provider value={pendingDirection}>
-        <AnimatePresence mode="popLayout">
-          <motion.div
-            key={activeIndex}
-            className="relative flex min-h-0 w-full shrink grow basis-auto flex-col items-center"
-            variants={slideVariants}
-            initial="slideEnter"
-            animate="slideRest"
-            exit="slideLeave"
-            transition={slideTransition}
-          >
-            {renderSlide(activeIndex)}
-          </motion.div>
-        </AnimatePresence>
-      </SlideDirectionContext.Provider>
+      <AnimatePresence mode="popLayout">
+        <motion.div
+          key={activeIndex}
+          className="relative flex min-h-0 w-full shrink grow basis-auto flex-col items-center"
+          animate={{ y: 0, opacity: 1 }}
+          initial={{ y: '35%', opacity: 0 }}
+          exit={{
+            y: pendingDirection === 'forwards' ? '-35%' : '35%',
+            opacity: 0,
+          }}
+          transition={slideTransition}
+        >
+          {renderSlide(activeIndex)}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
