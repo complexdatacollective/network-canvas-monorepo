@@ -27,6 +27,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '../DropdownMenu';
+import useTokenRadius from '../hooks/useTokenRadius';
 import { MotionSurface } from '../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
@@ -286,7 +287,7 @@ function useToolbarContext(componentName: string): ToolbarContextValue {
 // The inner Toolbar.Root owns overflow so the rounded, layout-animated shell
 // never clips focus rings or exiting controls.
 const rootLayoutVariants = cva({
-  base: 'effect-shadow-md flex w-fit max-w-full min-w-0 items-center gap-1 p-1.5',
+  base: 'effect-shadow-md flex w-fit max-w-full min-w-0 items-center gap-1 rounded-full p-1.5',
   variants: {
     orientation: {
       horizontal: 'flex-row',
@@ -383,16 +384,6 @@ const layoutSpring: Transition = {
   stiffness: 420,
   damping: 34,
   mass: 0.7,
-};
-
-// Controls are 40/48/64px high and the surface adds 6px padding on each side.
-// Keep the animated pill radius as a numeric style so Motion can scale-correct
-// it while the surface changes size. A class-derived radius briefly distorts
-// during layout interpolation because Motion cannot preserve its geometry.
-const surfaceRadius: Record<SegmentSize, number> = {
-  sm: 26,
-  md: 30,
-  lg: 38,
 };
 
 const itemVariants: Variants = {
@@ -982,6 +973,11 @@ export function SegmentedToolbar({
   const reduceMotion = useReducedMotion() ?? false;
   const layoutGroupId = React.useId();
   const dragControls = useDragControls();
+  // The pill's corners follow its segments' `rounded-full` at every size.
+  // Motion scale-corrects only a numeric radius while the surface changes
+  // size, so the class's resolved value is handed to `style` as well.
+  const surfaceRef = React.useRef<HTMLDivElement>(null);
+  const borderRadius = useTokenRadius(surfaceRef);
   const [announcement, setAnnouncement] = React.useState('');
   const x = useMotionValue(position?.x ?? defaultPosition?.x ?? 0);
   const y = useMotionValue(position?.y ?? defaultPosition?.y ?? 0);
@@ -1118,7 +1114,8 @@ export function SegmentedToolbar({
           spacing="none"
           noContainer
           layout
-          style={{ borderRadius: surfaceRadius[size] }}
+          ref={surfaceRef}
+          style={{ borderRadius }}
           transition={surfaceTransition}
           className={cx(rootLayoutVariants({ orientation }), className)}
         >
@@ -1143,7 +1140,8 @@ export function SegmentedToolbar({
         dragMomentum={false}
         dragConstraints={dragConstraints}
         onDragEnd={() => onPositionChange?.({ x: x.get(), y: y.get() })}
-        style={{ x, y, borderRadius: surfaceRadius[size] }}
+        ref={surfaceRef}
+        style={{ x, y, borderRadius }}
         transition={surfaceTransition}
         className={cx(rootLayoutVariants({ orientation }), className)}
       >

@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { motion, MotionGlobalConfig } from 'motion/react';
-import { useState } from 'react';
+import { motion, MotionGlobalConfig, type MotionStyle } from 'motion/react';
+import { useRef, useState } from 'react';
 import { expect, fn, screen, userEvent, within } from 'storybook/test';
 
 import Modal from '.';
 import { AnimationProvider } from '../AnimationProvider';
 import { Button } from '../Button';
+import useTokenRadius from '../hooks/useTokenRadius';
 import { awaitPassiveEffects } from '../storybook-support/awaitPassiveEffects';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
@@ -356,6 +357,70 @@ const items = [
   },
 ];
 
+type MorphItem = (typeof items)[number];
+
+// Each morphing element keeps its theme radius class and hands the resolved
+// value to Motion, which scale-corrects only a numeric radius.
+function MorphImage({
+  item,
+  className,
+  style,
+}: {
+  item: MorphItem;
+  className: string;
+  style?: MotionStyle;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const borderRadius = useTokenRadius(ref);
+
+  return (
+    <motion.div
+      ref={ref}
+      layoutId={`${item.id}-image`}
+      className={cx(
+        className,
+        item.color === 'blue' && 'bg-cerulean-blue',
+        item.color === 'green' && 'bg-kiwi',
+        item.color === 'purple' && 'bg-slate-blue',
+      )}
+      style={{ ...style, borderRadius }}
+    />
+  );
+}
+
+function MorphCard({ item, onOpen }: { item: MorphItem; onOpen: () => void }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const borderRadius = useTokenRadius(ref);
+
+  return (
+    <motion.button
+      ref={ref}
+      layoutId={item.id}
+      onClick={onOpen}
+      className="bg-surface-1 text-surface-1-contrast cursor-pointer rounded p-4 text-left"
+      style={{
+        borderRadius,
+        boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
+      }}
+      whileHover={{
+        boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+        scale: 1.03,
+      }}
+    >
+      <MorphImage item={item} className="mb-3 h-24 w-full rounded-sm" />
+      <motion.h3 layoutId={`${item.id}-title`} className="font-semibold">
+        {item.title}
+      </motion.h3>
+      <motion.p
+        layoutId={`${item.id}-description`}
+        className="text-sm text-current/70"
+      >
+        {item.description}
+      </motion.p>
+    </motion.button>
+  );
+}
+
 function LayoutIdMorphExample() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedItem = items.find((item) => item.id === selectedId);
@@ -364,42 +429,11 @@ function LayoutIdMorphExample() {
     <div className="flex min-h-screen items-center justify-center p-8">
       <div className="grid grid-cols-3 gap-4">
         {items.map((item) => (
-          <motion.button
+          <MorphCard
             key={item.id}
-            layoutId={item.id}
-            onClick={() => setSelectedId(item.id)}
-            className={cx(
-              'bg-surface-1 text-surface-1-contrast cursor-pointer p-4 text-left',
-            )}
-            style={{
-              borderRadius: 28,
-              boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
-            }}
-            whileHover={{
-              boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
-              scale: 1.03,
-            }}
-          >
-            <motion.div
-              layoutId={`${item.id}-image`}
-              className={cx(
-                'mb-3 h-24 w-full',
-                item.color === 'blue' && 'bg-cerulean-blue',
-                item.color === 'green' && 'bg-kiwi',
-                item.color === 'purple' && 'bg-slate-blue',
-              )}
-              style={{ borderRadius: 14 }}
-            />
-            <motion.h3 layoutId={`${item.id}-title`} className="font-semibold">
-              {item.title}
-            </motion.h3>
-            <motion.p
-              layoutId={`${item.id}-description`}
-              className="text-sm text-current/70"
-            >
-              {item.description}
-            </motion.p>
-          </motion.button>
+            item={item}
+            onOpen={() => setSelectedId(item.id)}
+          />
         ))}
       </div>
 
@@ -408,27 +442,19 @@ function LayoutIdMorphExample() {
         onOpenChange={(open) => !open && setSelectedId(null)}
       >
         {selectedItem && (
+          // `ModalPopup` hands its own radius class to Motion for a morph.
           <ModalPopup
             key="dialog-popup"
             layoutId={selectedItem.id}
             className={cx(
               'fixed top-1/2 left-1/2 w-[500px] -translate-1/2',
-              'bg-surface-1 text-surface-1-contrast p-6',
+              'bg-surface-1 text-surface-1-contrast rounded-lg p-6',
             )}
-            style={{ borderRadius: 42 }}
           >
-            <motion.div
-              layoutId={`${selectedItem.id}-image`}
-              className={cx(
-                'mb-4 h-48 w-full',
-                selectedItem.color === 'blue' && 'bg-cerulean-blue',
-                selectedItem.color === 'green' && 'bg-kiwi',
-                selectedItem.color === 'purple' && 'bg-slate-blue',
-              )}
-              style={{
-                borderRadius: 28,
-                boxShadow: '0 10px 20px rgba(0,0,0,0.2)',
-              }}
+            <MorphImage
+              item={selectedItem}
+              className="mb-4 h-48 w-full rounded"
+              style={{ boxShadow: '0 10px 20px rgba(0,0,0,0.2)' }}
             />
             <motion.h2
               layoutId={`${selectedItem.id}-title`}

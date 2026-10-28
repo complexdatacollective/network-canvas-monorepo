@@ -476,8 +476,7 @@ const ShapeMappingEditor = ({
             noContainer
             spacing="sm"
             aria-disabled="true"
-            className={`${ITEM_ROW_CLASSES} pointer-events-none select-none`}
-            style={{ borderRadius: 14 }}
+            className={`${ITEM_ROW_CLASSES} pointer-events-none rounded-sm select-none`}
           >
             <span className="text-sm">
               {intl.formatMessage(messages.belowFirstThreshold)}

@@ -453,11 +453,16 @@
   /*
     Border radius
 
-    This is a PITA, because motion doesn't work with css variables for border
-    radius, for some reason. So, approximate pixel values are provided next to
-    each of these, based on the default radius of 1.75rem (28px).
+    Always round with these tokens (`rounded-*`), never a pixel value. The
+    pixel values beside each step are for reading only: they assume the
+    default 1.75rem base at a 16px root, and both change with the theme and
+    the viewport.
 
-    Use the pixel values in motion animations, and the variables elsewhere.
+    Motion scale-corrects a radius during a layout animation only when it holds
+    it as a number, not as a class or a `var()`. For an element with `layout`
+    or `layoutId` that changes size, keep the `rounded-*` class and pass
+    `useTokenRadius(ref)` from `@codaco/fresco-ui/hooks/useTokenRadius` to its
+    `style.borderRadius`. `ModalPopup` does this itself for a `layoutId` morph.
   */
 
   /* Responsive node sizes using clamp() for fluid scaling */

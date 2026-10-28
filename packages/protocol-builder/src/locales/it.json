@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Colore",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "Scegli la sfumatura di colore dei contenitori.",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Sfumatura di colore",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Questa interfaccia è pensata per un massimo di cinque contenitori. Oltre questo numero i contenitori diventano difficili da leggere e da usare per il trascinamento, a scapito della qualità dei dati.",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Questa interfaccia è pensata per un massimo di sei contenitori. Oltre questo numero i contenitori diventano difficili da leggere e da usare per il trascinamento, a scapito della qualità dei dati.",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "Inserisci la domanda…",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "Scegli l’attributo ordinale i cui valori vengono mostrati come contenitori.",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "Questo tipo non ha ancora attributi ordinali. Creane uno per definire la scala.",

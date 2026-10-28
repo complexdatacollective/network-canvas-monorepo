@@ -40,7 +40,7 @@ const COLOR_FIELD = 'color';
 const SCALE_TYPE = 'ordinal' as const satisfies VariableType;
 
 /** What this interface can draw at once before the bins stop being readable. */
-const BIN_LIMIT = 5;
+const BIN_LIMIT = 6;
 
 /** What only an Ordinal Bin says; the words both bins use are in `binMessages`. */
 const messages = defineMessages({
@@ -79,7 +79,7 @@ const messages = defineMessages({
   binLimitDescription: {
     id: 'protocolBuilder.censusPrompts.ordinalBinLimitDescription',
     defaultMessage:
-      'This interface is designed for up to five bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.',
+      'This interface is designed for up to six bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.',
     description:
       'Body of the warning shown when an Ordinal Bin prompt would draw more bins than its interview screen is designed for.',
   },
