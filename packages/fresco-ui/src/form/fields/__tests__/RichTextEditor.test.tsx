@@ -443,6 +443,40 @@ describe('RichTextEditorField', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  // The release test found a blank line under a last line made a heading, and
+  // it was saved with the text.
+  it('adds no empty line under a last line made a heading', async () => {
+    const onChange = vi.fn();
+    render(
+      <RichTextEditorField
+        id="explanation"
+        name="explanation"
+        aria-describedby="explanation-hint"
+        aria-label="Explanation"
+        changeMode="input"
+        value={documentWithText}
+        onChange={onChange}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Explanation' });
+    await userEvent.click(editor);
+    await userEvent.click(screen.getByRole('button', { name: 'Heading 1' }));
+
+    const heading = {
+      type: 'heading',
+      attrs: { level: 1 },
+      content: [{ type: 'text', text: 'Existing content' }],
+    };
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith({
+        type: 'doc',
+        content: [heading],
+      });
+    });
+    expect(editor.querySelectorAll('p')).toHaveLength(0);
+  });
+
   // Every form disables its fields while it submits, so an emission here made
   // submitting a form a write of whatever the editor was showing.
   it('reports no change when the host disables or re-enables it', async () => {
