@@ -466,9 +466,11 @@ const seedUnplaced = (nodes: SimNode[]) => {
   if (!ring || !nodes.some((node) => node.placed === false)) return;
 
   if (nodes.every((node) => node.placed === false)) {
-    componentOrder(nodes.length).forEach((index, position) => {
-      const angle = (2 * Math.PI * position) / nodes.length;
-      const node = nodes[index]!;
+    const positions = new Map(
+      componentOrder(nodes.length).map((index, position) => [index, position]),
+    );
+    nodes.forEach((node, index) => {
+      const angle = (2 * Math.PI * (positions.get(index) ?? 0)) / nodes.length;
       node.x =
         ring.cx +
         SEED_CIRCLE_RADIUS * (ring.cx - options.boundsInset) * Math.cos(angle);
