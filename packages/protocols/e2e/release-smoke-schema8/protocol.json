@@ -1,0 +1,119 @@
+{
+  "name": "Interviewer 8 Release Check",
+  "description": "Schema 8 protocol for the Interviewer release test's schema8-interviewer8 journey, which conducts it in the Interviewer 8 that Interviewer 9 bundles at /v8/. It stays on schema 8 and is never upgraded. It is short enough to conduct twice on every run, once online and once offline, and covers the paths Interviewer 8 shares with Interviewer 9: an image asset read from the shared database, the passphrase that encrypts names, an ego answer, and a node whose name is stored encrypted.",
+  "schemaVersion": 8,
+  "lastModified": "2026-10-28T00:00:00.000Z",
+  "experiments": {
+    "encryptedVariables": true
+  },
+  "assetManifest": {
+    "marker": {
+      "id": "marker",
+      "type": "image",
+      "name": "marker.png",
+      "source": "marker.png"
+    }
+  },
+  "codebook": {
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "encrypted": true,
+            "validation": {
+              "required": true
+            }
+          }
+        }
+      }
+    },
+    "ego": {
+      "variables": {
+        "ego_name": {
+          "name": "ego_name",
+          "type": "text",
+          "component": "Text",
+          "validation": {
+            "required": true
+          }
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "welcome",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "Welcome to the Interviewer 8 release check",
+      "items": [
+        {
+          "id": "welcome-text",
+          "type": "text",
+          "content": "This interview runs in **Interviewer 8**."
+        },
+        {
+          "id": "welcome-image",
+          "type": "asset",
+          "content": "marker",
+          "description": "Release check marker",
+          "size": "SMALL"
+        }
+      ]
+    },
+    {
+      "id": "privacy",
+      "type": "Anonymisation",
+      "label": "Privacy",
+      "explanationText": {
+        "title": "This interview uses enhanced privacy protection",
+        "body": "Enter a passphrase to encrypt the names of the people you mention."
+      },
+      "validation": {
+        "minLength": 4,
+        "maxLength": 12
+      }
+    },
+    {
+      "id": "about-you",
+      "type": "EgoForm",
+      "label": "About you",
+      "introductionPanel": {
+        "title": "About you",
+        "text": "Tell us about **you**."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_name",
+            "prompt": "What is your name?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "name-people",
+      "type": "NameGeneratorQuickAdd",
+      "label": "Name people",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "quickAdd": "name",
+      "prompts": [
+        {
+          "id": "name-people-prompt",
+          "text": "Who are the people you know?"
+        }
+      ]
+    }
+  ]
+}

@@ -40,15 +40,18 @@
 // representative journeys of the deployed app — it certifies that a release
 // candidate basically works, end to end, on real deployed bits. It is NOT
 // an exhaustive behaviour suite; per-feature coverage belongs to the app's
-// unit and Playwright e2e suites. Two journeys run committed walkers:
+// unit and Playwright e2e suites. Three journeys run committed walkers:
 // conduct-offline (scripts/release-test/interviewer-release-smoke-walker.mjs — the
 // fourteen-stage schema 9 release-smoke fixture protocol conducted ENTIRELY
 // OFFLINE;
 // interfaces are imported eagerly into one engine chunk, so broader
 // stage-type coverage adds no deployment risk coverage and belongs to the
-// e2e and Storybook suites) and security-vault
+// e2e and Storybook suites), security-vault
 // (scripts/release-test/interviewer-security-vault-walker.mjs — the full vault
-// lifecycle, cutting a ~90-minute agent-scripted journey to ~5 minutes). Documented harness limits (each has been evaluated and
+// lifecycle, cutting a ~90-minute agent-scripted journey to ~5 minutes), and
+// schema8-interviewer8 (scripts/release-test/interviewer-schema8-walker.mjs —
+// a schema 8 fixture conducted in the bundled Interviewer 8 at /v8/, online
+// and offline; the e2e suite only has a stub page there). Documented harness limits (each has been evaluated and
 // declined with reasons in PR #1471/#1502 review threads):
 // native OS dialogs (showSaveFilePicker) and OS file-handler launches do
 // not exist in headless automation; biometric/WebAuthn needs virtual-
@@ -461,6 +464,7 @@ const journeyModel = {
   'session-management': 'sonnet',
   'data-export': 'sonnet',
   'security-vault': 'sonnet',
+  'schema8-interviewer8': 'sonnet',
   'pwa-offline': 'sonnet',
   'settings-and-chrome': 'sonnet',
 };
@@ -473,6 +477,7 @@ const expectedChecks = {
   'session-management': 8,
   'data-export': 7,
   'security-vault': 10,
+  'schema8-interviewer8': 7,
   'pwa-offline': 10,
   'settings-and-chrome': 9,
 };
@@ -924,6 +929,94 @@ walker's two-digit sequence prefix, which shifts with conditional captures):
   cp ??-after-reset.png check10-reset.png
 
 Return journey="security-vault".`,
+  },
+  {
+    key: 'schema8-interviewer8',
+    prompt: (
+      ctx,
+    ) => `You are the "schema8-interviewer8" journey of the Interviewer release smoke test: a schema 8 protocol conducted in the REAL Interviewer 8 that the deployment bundles at /v8/ — imported and kept on schema 8, hosted in Interviewer 9's /interview/<id> frame for start, resume and review, finished, stored in the one shared database, exported, and conducted again entirely offline. The app's e2e suite covers this embed contract only against a stub page, so this journey is the only test of the bundled Interviewer 8 itself.
+${driving(ctx.workDir, ctx.repoRoot)}
+
+This journey is driven by the repo's canonical walker — RUN it, never
+rebuild its driving logic yourself (its interactions are maintained in step
+with the bundled Interviewer 8, and ad-hoc reimplementation is where this
+gate's past false failures came from):
+
+  cd ${ctx.repoRoot} && node scripts/release-test/interviewer-schema8-walker.mjs \\
+    --url ${url} --artifacts ${ctx.workDir}/schema8-interviewer8
+
+Give that Bash call an explicit timeout of ~9 minutes — the walker enforces
+its own 8-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png;
+waiting up to 4 minutes for the app-wide "Ready for offline" status, which
+covers Interviewer 8's files, is part of a normal run). It conducts the
+schema 8 fixture protocol (packages/protocols/e2e/release-smoke-schema8:
+an image asset, the Anonymisation passphrase, an ego form and a quick-add
+name generator whose name is encrypted) twice — once online through
+finish, review and export, once offline — and writes numbered evidence
+screenshots and result.json into the artifacts directory; the last stdout
+line is the result JSON. Exit codes: 0 all passed, 1 check failures,
+2 watchdog hang, 3 setup error — 2 and 3 are failed runs, never passes.
+
+Map the walker's result.json steps onto these CHECKS. A check passes ONLY
+when every step listed for it passed; quote the walker's step notes in each
+check's detail:
+1. Service worker, a schema 8 import kept on schema 8 (card chip and stored
+   row), and the app-wide offline status reaching "Ready for offline":
+   steps "sw-controlled", "protocol-imported", and "offline-ready".
+2. Starting an interview frames Interviewer 8 at /v8/interview/<the same
+   id>, which renders the protocol's image asset from the shared database
+   and conducts its stages: steps "start-hosts-interviewer8",
+   "asset-renders", "stage-passphrase", "stage-egoform", and
+   "stage-quickadd".
+3. Exit and resume: Interviewer 8's exit returns Home, Resume reopens the
+   same session where it was left with the encrypted name locked, a wrong
+   passphrase is refused and the walk's passphrase decrypts the name:
+   steps "exit-mid-interview", "resume-locked", "wrong-passphrase-refused",
+   and "passphrase-unlocks".
+4. Finish and persistence: Interviewer 8's finish returns Home, /data lists
+   the session at 100% with Review, and the stored session carries the
+   finish, the ego answer and the one person with the name stored only as
+   ciphertext: steps "finish", "data-row", and "persisted-payload".
+5. Review and export: Review frames Interviewer 8 read-only, and exporting
+   the session gives one GraphML file with the one person and its CSVs,
+   the ego answer present and the encrypted name exported as ENCRYPTED,
+   never in plaintext: steps "review" and "export".
+6. Offline: with the network cut (positive control), Home boots from the
+   precache, a new interview starts in Interviewer 8 with its image, its
+   stages are conducted, reloading the interview page reopens it with the
+   person kept, Interviewer 8's exit returns Home, and /data lists it in
+   progress with its answers stored: steps "offline-positive-control",
+   "offline-boot", "offline-start", "offline-passphrase",
+   "offline-egoform", "offline-quickadd", "offline-reload",
+   "offline-exit", and "offline-data-row".
+7. No non-whitelisted console error from either app across the whole walk:
+   step "console-errors".
+A failed "setup" step means the walker could not start at all — report the
+journey as failed with that note and let the verifier adjudicate.
+
+For every failed walker step, record a failure bound to its check number,
+with the walker's note and screenshot paths as evidence: import, start,
+stage, finish, persistence or offline failures are blocker (schema 8 field
+data collection is broken); review, export and console failures are major.
+A failed offline positive control means the offline condition could not be
+created — report it as this journey's failure and let the verifier
+adjudicate whether it is an app defect or harness limit. If the walker
+aborted early (a "walk" step carries the error), every check it never
+reached is a FAILED check (missing coverage), never a skip or a pass.
+
+Evidence: after the run, copy the walker's screenshots to per-check names
+in the SAME artifacts directory (keep the originals; the ??- glob matches
+the walker's two-digit sequence prefix):
+  cd ${ctx.workDir}/schema8-interviewer8 &&
+  cp ??-protocol-imported.png check1-imported.png &&
+  cp ??-interviewer8-welcome.png check2-interviewer8.png &&
+  cp ??-resumed-locked.png check3-resumed.png &&
+  cp ??-data-row.png check4-data-row.png &&
+  cp ??-exported.png check5-exported.png &&
+  cp ??-offline-reload.png check6-offline.png &&
+  cp ??-offline-data-row.png check7-final.png
+
+Return journey="schema8-interviewer8".`,
   },
   {
     key: 'pwa-offline',
