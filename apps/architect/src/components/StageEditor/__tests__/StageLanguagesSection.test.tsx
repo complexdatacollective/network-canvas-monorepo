@@ -186,9 +186,13 @@ describe('the language chooser’s languages in Architect', () => {
     expect(
       within(rowOf('French')).queryByText('Missing translations'),
     ).not.toBeInTheDocument();
+    // The translation table belongs to the Languages page.
     expect(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    ).toHaveAttribute('href', '/protocol/localization?table=open');
+      screen.queryByRole('link', { name: 'Open translation table' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^Edit .* translations$/ }),
+    ).not.toBeInTheDocument();
     // The sections the package's own editor has, besides its list.
     expect(
       screen.getByRole('heading', { name: 'Participant wording' }),
@@ -216,45 +220,6 @@ describe('the language chooser’s languages in Architect', () => {
     expect(readStageDraft().stage?.label).toEqual(LABEL);
     expect(readStageDraft().dirty).toBe(false);
     expect(finishedEditing()).not.toBeInTheDocument();
-  });
-
-  it('opens the translation table from an untouched stage without asking', async () => {
-    await openEditor();
-
-    await userEvent.click(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    );
-
-    expect(window.location.pathname + window.location.search).toBe(
-      '/protocol/localization?table=open',
-    );
-    expect(globalThis.__architectDialogMocks.openDialog).not.toHaveBeenCalled();
-  });
-
-  it('asks before leaving unsaved changes to the stage for the translation table', async () => {
-    const { name } = await openEditor();
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Pick a language');
-    await waitFor(() => expect(readStageDraft().dirty).toBe(true));
-    const { openDialog } = globalThis.__architectDialogMocks;
-
-    openDialog.mockResolvedValueOnce(false);
-    await userEvent.click(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    );
-    await waitFor(() => expect(openDialog).toHaveBeenCalledTimes(1));
-    expect(window.location.pathname).toBe('/');
-
-    openDialog.mockResolvedValueOnce(true);
-    await userEvent.click(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    );
-    await waitFor(() =>
-      expect(window.location.pathname + window.location.search).toBe(
-        '/protocol/localization?table=open',
-      ),
-    );
-    expect(openDialog).toHaveBeenCalledTimes(2);
   });
 
   it('leaves nothing to save after removing a language from an untouched stage', async () => {
