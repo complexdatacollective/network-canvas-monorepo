@@ -314,8 +314,8 @@ jobs:
           BASE_VARIABLE: ${{ needs.resolve.outputs.base_variable }}
         run: env "${BASE_VARIABLE}=${BASE}" pnpm --filter "@codaco/${APP}" build
 
-      # Architect's deploys carry a build-info.json stamp; Interviewer has
-      # none, and its sub-path build stamps dist-info.json itself. COMMIT_REF
+      # Only Architect's sub-path tarball carries a build-info.json stamp;
+      # Interviewer's sub-path build stamps dist-info.json itself. COMMIT_REF
       # must be explicit: GITHUB_SHA is the commit the workflow definition was
       # read from, not the tag being built.
       - name: Stamp the built commit
@@ -323,7 +323,7 @@ jobs:
         env:
           COMMIT_REF: ${{ needs.resolve.outputs.sha }}
         run: |
-          node .dist-tooling/apps/architect/scripts/write-build-info.mjs \
+          node .dist-tooling/scripts/release/write-build-info.mjs \
             "${GITHUB_WORKSPACE}/apps/architect/dist"
 
       # Checks the sub-path shape again from reviewed tooling, drops the

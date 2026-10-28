@@ -76,9 +76,11 @@ const PREFLIGHT = {
   workDir: '/tmp/x',
   repoRoot: '/tmp/r',
   version: '9.9.9',
+  commit: 'c'.repeat(40),
   failures: [],
   notes: '',
 };
+const PINS = { expectedVersion: '9.9.9', expectedCommit: 'c'.repeat(40) };
 
 const EXPECTED_CHECKS = {
   'protocol-management': 9,
@@ -415,6 +417,18 @@ test('preflight invariants are enforced in code, not agent self-report', async (
   assert.equal(staleDeploy.verdict, 'BLOCKED');
   assert.ok(staleDeploy.summaryMarkdown.includes('stale or wrong'));
 
+  const staleCommit = await run(makeAgent({}), {
+    journeys: ['pwa-offline'],
+    ...PINS,
+    expectedCommit: 'd'.repeat(40),
+  });
+  assert.equal(staleCommit.verdict, 'BLOCKED');
+  assert.ok(
+    staleCommit.summaryMarkdown.includes(
+      `serves commit ${'c'.repeat(40)}, but this run certifies ${'d'.repeat(40)}`,
+    ),
+  );
+
   assert.equal(
     (await run(emptyWorkDir, { journeys: ['pwa-offline'] })).verdict,
     'BLOCKED',
@@ -623,7 +637,7 @@ test('verifier-discovered defects surface; attribution cannot be hijacked', asyn
   );
 });
 
-test('only full pinned runs certify', async () => {
+test('only full runs pinned to version and commit certify', async () => {
   const jr = Object.fromEntries(
     Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
   );
@@ -634,32 +648,38 @@ test('only full pinned runs certify', async () => {
     unpinned.summaryMarkdown.includes('unpinned run — not release-certifying'),
   );
 
-  const pinnedDefaultTarget = await run(makeAgent(jr), {
-    expectedVersion: '9.9.9',
-  });
-  assert.equal(pinnedDefaultTarget.verdict, 'PASS');
-  assert.equal(pinnedDefaultTarget.certifying, false);
+  const versionOnly = await run(makeAgent(jr), { expectedVersion: '9.9.9' });
+  assert.equal(versionOnly.verdict, 'PASS');
+  assert.equal(versionOnly.certifying, false);
   assert.ok(
-    pinnedDefaultTarget.summaryMarkdown.includes('not a candidate deployment'),
+    versionOnly.summaryMarkdown.includes(
+      'unpinned run — not release-certifying',
+    ),
   );
+  const commitOnly = await run(makeAgent(jr), {
+    expectedCommit: PINS.expectedCommit,
+  });
+  assert.equal(commitOnly.certifying, false);
+
+  // The developer site is the certifying target, by default or named.
+  const pinnedDefaultTarget = await run(makeAgent(jr), PINS);
+  assert.equal(pinnedDefaultTarget.verdict, 'PASS');
+  assert.equal(pinnedDefaultTarget.certifying, true);
+  assert.equal(pinnedDefaultTarget.commit, PINS.expectedCommit);
   const pinnedDevOrigin = await run(makeAgent(jr), {
     url: 'https://interviewer.networkcanvas.dev',
-    expectedVersion: '9.9.9',
+    ...PINS,
   });
-  assert.equal(pinnedDevOrigin.certifying, false);
-  assert.ok(
-    pinnedDevOrigin.summaryMarkdown.includes('not a candidate deployment'),
-  );
-  const pinned = await run(makeAgent(jr), {
-    url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
-    expectedVersion: '9.9.9',
+  assert.equal(pinnedDevOrigin.certifying, true);
+  // A hotfix branch's own deployment certifies on the same pins.
+  const pinnedOther = await run(makeAgent(jr), {
+    url: 'https://abc123--interviewer-pwa-dev.netlify.app',
+    ...PINS,
   });
-  assert.equal(pinned.verdict, 'PASS');
-  assert.equal(pinned.certifying, true);
+  assert.equal(pinnedOther.certifying, true);
 
   const subset = await run(makeAgent(jr), {
-    url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
-    expectedVersion: '9.9.9',
+    ...PINS,
     journeys: ['pwa-offline'],
   });
   assert.equal(subset.certifying, false);
@@ -812,6 +832,13 @@ test('hostile url and version args are rejected before interpolation', async () 
     }),
     /semver version/,
   );
+  for (const expectedCommit of ['unknown', 'C'.repeat(40), 'abc1234']) {
+    await assert.rejects(
+      run(makeAgent({}), { expectedCommit, journeys: ['pwa-offline'] }),
+      /40-character lowercase commit SHA/,
+      expectedCommit,
+    );
+  }
   const ok = await run(makeAgent({ 'pwa-offline': journey('pwa-offline') }), {
     url: 'https://deploy-preview-9--interviewer-pwa-dev.netlify.app',
     journeys: ['pwa-offline'],
@@ -1257,23 +1284,6 @@ test('a zero failure id is unbindable, never a discovery', async () => {
   assert.ok(!res.confirmedFailures.some((f) => f.description === 'phantom'));
   assert.notEqual(res.verdict, 'BLOCK');
   assert.ok(res.certificationGaps.some((a) => a.includes('unbindable')));
-});
-
-test('cosmetic developer-origin variants never certify', async () => {
-  const jr = Object.fromEntries(
-    Object.keys(EXPECTED_CHECKS).map((k) => [k, journey(k)]),
-  );
-  for (const variant of [
-    'https://interviewer.networkcanvas.dev:443',
-    'https://interviewer.networkcanvas.dev:0443',
-    'https://INTERVIEWER.networkcanvas.dev',
-  ]) {
-    const res = await run(makeAgent(jr), {
-      url: variant,
-      expectedVersion: '9.9.9',
-    });
-    assert.equal(res.certifying, false, variant);
-  }
 });
 
 test('unevidenced severity downgrades keep the reported severity', async () => {

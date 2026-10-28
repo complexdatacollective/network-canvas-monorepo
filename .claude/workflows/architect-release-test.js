@@ -43,8 +43,8 @@ const expectVersion =
     : null;
 
 // Optional expected build commit (full SHA). Each deployment stamps its
-// commit into /build-info.json after the turbo-cached build (architect's
-// scripts/write-build-info.mjs): the semver cannot distinguish ordinary main
+// commit into /build-info.json after the turbo-cached build
+// (scripts/release/write-build-info.mjs): the semver cannot distinguish ordinary main
 // commits between releases, so promotion clearance pins the exact deployed
 // commit too.
 const expectCommit =

@@ -78,8 +78,9 @@ is not ready to go out, release from the previous tag instead:
 3. Push the branch and open its merge-back pull request into `main` NOW
    (step 5 merges it after release, but the PR must exist first): its
    Netlify deploy preview is the certification candidate. Run the release
-   smoke test against that preview with the hotfix's bumped version (see
-   Release smoke testing below) and proceed only on a certifying pass.
+   smoke test against that preview with the hotfix's bumped version and the
+   branch's head commit (see Release smoke testing below) and proceed only on
+   a certifying pass.
 
 4. Run the **Hotfix Release** workflow **from main**,
    with `app: interviewer` and `source_ref` set to the hotfix branch. It runs
@@ -483,16 +484,18 @@ Before approving a release, run the agent-driven release smoke test
 (Claude Code: invoke `/interviewer-release-test` — the
 `interviewer-release-test` skill, which launches the saved
 `interviewer-release-test-workflow` in `.claude/workflows/` and carries the
-launch/report/follow-up procedure). **Certification targets the release
-candidate's own deployment, not the developer site**: for a normal release
-that is the Version Packages PR's Netlify deploy preview (its tree carries
-the bumped version, so pass `args: { url: <preview>, expectedVersion:
-<bumped version> }`) — the developer site still serves `main`'s pre-bump
-version until that PR merges, so it can neither serve nor certify the
-version being shipped. Without `args`, the workflow drives
-`https://interviewer.networkcanvas.dev` — the current state of `main` —
-which is the right target for ad-hoc health checks between releases. Either
-way it runs every core user journey with headless Playwright: protocol management, a
+launch/report/follow-up procedure). **Certification targets the developer
+site, `https://interviewer.networkcanvas.dev`**, the workflow's default: it
+serves `main` through the same Cloudflare configuration as production, which
+a bare Netlify deployment skips, so edge caching, injected scripts and the
+service worker are tested as users will meet them. Pin the run to what `main`
+carries — `args: { expectedVersion: <apps/interviewer/package.json version
+on origin/main>, expectedCommit: <origin/main's SHA> }` — and the workflow
+refuses a deployment that serves anything else; the commit comes from the
+deployment's `/build-info.json`, which `scripts/release/write-build-info.mjs`
+stamps after every build. The Version Packages PR only adds the version bump
+and release notes to that tree. The run drives every core user journey with
+headless Playwright: protocol management, a
 complete interview conducted entirely offline (the committed release-smoke
 walker over the fourteen-stage, two-language schema 9 fixture protocol,
 proving the precache serves the whole engine without network and that the
@@ -508,28 +511,26 @@ of `PASS`,
 cannot reach the target or its tooling), plus a markdown summary and an
 evidence directory of screenshots.
 
-For the changeset lane the candidate is the Version Packages PR's deploy
-preview, as described above — never `main`'s developer site, which cannot
-serve the bumped version before that PR merges. A **hotfix** likewise ships
-its own tree: open the hotfix branch's pull request into `main` (the
-merge-back the hotfix procedure requires anyway) BEFORE dispatching the
-Hotfix Release workflow — its Netlify deploy preview is the candidate.
-Certify that preview via
-`args: { url: "…", expectedVersion: "<the hotfix's bumped version>",
-hotfix: true }` (the `hotfix` flag permits the documented dev-protocol
-schema-skew skip that only an older release line legitimately hits),
-then dispatch; never certify a hotfix against the developer site, and never
-dispatch production before the preview has its verdict.
+A **hotfix** is the one exception: it ships a tree the developer site never
+serves. Open the hotfix branch's pull request into `main` (the merge-back the
+hotfix procedure requires anyway) BEFORE dispatching the Hotfix Release
+workflow — its Netlify deploy preview is the candidate. Certify that preview
+via `args: { url: "…", expectedVersion: "<the hotfix's bumped version>",
+expectedCommit: "<the branch's head SHA>", hotfix: true }` (the `hotfix` flag
+permits the documented dev-protocol schema-skew skip that only an older
+release line legitimately hits), then dispatch; never dispatch production
+before the preview has its verdict. A hotfix branch cut from a tag older than
+the `/build-info.json` stamp must carry `netlify.toml`'s stamping command and
+`scripts/release/write-build-info.mjs`, or the commit pin has nothing to read.
 
 The workflow concentrates on what the Playwright E2E suite deliberately does
 not cover — the suite blocks service workers and never touches the deployed
 bits, while this gate conducts its interview offline against them. It needs a checkout of this
 monorepo with dependencies installed (it installs Playwright's chromium on
-first use). When certifying, always pass both `url` (the candidate's deploy
-preview) and `expectedVersion` (the version that preview's tree ships) so a
-stale or wrong deployment cannot produce the verdict — the binding is
-enforced in code, preflight refuses a mismatch, and a run without
-`expectedVersion` is marked `certifying: false` in its result and summary. Pass
+first use). When certifying, always pass both `expectedVersion` and
+`expectedCommit` so a stale or wrong deployment cannot produce the verdict —
+the binding is enforced in code, preflight refuses a mismatch, and a run
+without both pins is marked `certifying: false` in its result and summary. Pass
 `args: { journeys: ["data-export"] }` to re-run a
 subset. Journeys are tiered across models for token efficiency (most run on
 Sonnet; the full interview walk and all failure verifiers run on Opus);

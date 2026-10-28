@@ -123,7 +123,7 @@ builds) or an explicit `--unpinned`; if none were given, ask rather than
 guessing.
 
 Each deployment stamps its commit into `/build-info.json` after the
-turbo-cached build (`apps/architect/scripts/write-build-info.mjs`, run by
+turbo-cached build (`scripts/release/write-build-info.mjs`, run by
 netlify.toml's build command and the production release job), so the
 stamp identifies the deployment even when turbo restores the build from
 cache. Deployments from before the stamp shipped do not expose the file;

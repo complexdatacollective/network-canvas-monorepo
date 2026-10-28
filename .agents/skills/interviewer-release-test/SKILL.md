@@ -26,24 +26,17 @@ this command from Claude Code.)
 ## Launch (Claude Code)
 
 1. Collect options from the request; all are optional:
-   - `url` — target a Netlify preview instead of the dev site. Required
-     whenever certifying: the release candidate's own deployment is the
-     target — the Version Packages PR's deploy preview for a normal release
-     (the dev site serves `main`'s pre-bump version until that PR merges),
-     or a deployment of the hotfix branch for a hotfix (e.g. its PR's
-     preview). The bare dev site is for ad-hoc `main` health checks.
-     Pass the preview's immutable deploy permalink rather than its
-     `deploy-preview-<n>--` alias: every push to `main` regenerates the
-     Version Packages PR and redeploys the alias, and a redeploy during
-     the run fails the fingerprint guard (one of three certifying runs on
-     2026-09-15 was lost that way). The permalink is
+   - `url` — leave it unset: the default developer site is the
+     certification target, because it serves `main` through the same
+     Cloudflare configuration as production (edge caching, injected
+     scripts, HTTPS service-worker behaviour), which a bare Netlify
+     deployment skips. Pass a `url` only for a **hotfix**, whose tree the
+     developer site never serves: target the hotfix branch's deploy
+     preview by its immutable permalink,
      `https://<deploy-id>--interviewer-pwa-dev.netlify.app`, where the
      deploy id is the last path segment of the Netlify check run's details
      URL on the PR's head commit
-     (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`). Confirm the
-     permalink's fingerprint matches the alias before launching, and record
-     the head SHA the run certified — if the PR regenerates before it
-     merges, the certified tree is no longer the one that ships.
+     (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`).
    - `journeys` — a subset of: `protocol-management`, `conduct-offline`,
      `session-management`, `data-export`, `security-vault`, `pwa-offline`,
      `settings-and-chrome`. A subset run
@@ -51,13 +44,26 @@ this command from Claude Code.)
      it for diagnosis and iteration, then run the full suite to certify.
    - `model` — `haiku` | `sonnet` | `opus` | `fable` for preflight and the
      journeys; failure verifiers stay pinned regardless.
-   - `expectedVersion` — the exact version the targeted deployment's tree
-     ships (for a Version Packages preview, the bumped version in that PR).
-     Required when certifying, and always passed together with the matching
-     `url`: the workflow refuses in code to certify a deployment serving a
-     different version, and a run WITHOUT it returns `certifying: false`
-     with a "not release-certifying" banner — only a full-coverage, pinned
-     run certifies.
+   - `expectedVersion` and `expectedCommit` — the version and full commit
+     SHA the targeted deployment builds. Both are required to certify: the
+     workflow refuses in code a deployment serving a different version or
+     a different `/build-info.json` commit, and a run without both returns
+     `certifying: false` with a "not release-certifying" banner. For the
+     default target, unless the user supplied them or asked for an
+     unpinned run, derive them from what `main` carries:
+
+     ```bash
+     git fetch origin main --quiet && git show origin/main:apps/interviewer/package.json | jq -r .version && git rev-parse origin/main
+     ```
+
+     This also gates a Version Packages merge: that PR adds only the
+     version bump and release notes to `main`'s tree. For a hotfix
+     preview, pin the hotfix's bumped version and the branch's head SHA.
+     A custom `url` never inherits the `origin/main` pins; if none were
+     given for one, ask rather than guess. If the pins fail right after a
+     push to `main`, the developer site's Netlify deploy may simply not
+     have finished — check before treating it as breakage.
+
    - `hotfix` — pass `true` only when certifying a hotfix cut from an
      older release line: it permits the documented pair-skip when the
      newest development protocol's schema is newer than the candidate
@@ -66,7 +72,7 @@ this command from Claude Code.)
      main-line candidate that rejection is a real protocol-support
      regression and fails.
 2. Invoke the Workflow tool:
-   `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, hotfix, journeys, model } })`
+   `Workflow({ name: 'interviewer-release-test-workflow', args: { url, expectedVersion, expectedCommit, hotfix, journeys, model } })`
    (equivalently `scriptPath: '<repo-root>/.claude/workflows/interviewer-release-test.js'`).
    If the workflow file changed during the CURRENT session, invoke via
    `scriptPath` — name resolution has been observed serving a stale
@@ -80,12 +86,12 @@ this command from Claude Code.)
 
 ## Report
 
-Lead with the verdict, then render the returned `summaryMarkdown`:
+Lead with the verdict, then render the returned `summaryMarkdown`, and
+always report the served `version` and `commit`:
 
 - `PASS` / `PASS_WITH_ISSUES` — releasable ONLY when
-  `result.certifying === true` (full coverage, pinned with
-  `expectedVersion`, AND aimed at an explicitly supplied candidate `url` —
-  the default developer site never certifies); otherwise the verdict is
+  `result.certifying === true` (full coverage, pinned with both
+  `expectedVersion` and `expectedCommit`); otherwise the verdict is
   diagnostic and approving a release from it is not permitted. List verifier-confirmed minor findings
   so they can be tracked; they do not block.
 - `BLOCK` — do not release. Name each blocking failure with its
