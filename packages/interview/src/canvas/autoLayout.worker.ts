@@ -633,6 +633,8 @@ type Message =
   | UpdateNodeMessage;
 
 let needsLayout = false;
+// A link change made while paused, resumed as an anchored re-settle.
+let pendingLinkChange = false;
 
 const createSimulation = (nodes: SimNode[]) => {
   const sim = forceSimulation(nodes);
@@ -665,6 +667,7 @@ const createSimulation = (nodes: SimNode[]) => {
 const finish = () => {
   running = false;
   needsLayout = false;
+  pendingLinkChange = false;
   for (const node of simulation.nodes()) node.placed = true;
   postMessage({ type: 'end', nodes: simulation.nodes() });
 };
@@ -725,6 +728,7 @@ export function handleMessage(data: Message) {
       running = false;
       paused = data.paused ?? false;
       needsLayout = true;
+      pendingLinkChange = false;
       break;
     }
     case 'start': {
@@ -738,7 +742,7 @@ export function handleMessage(data: Message) {
       const unplaced = nodes.filter((node) => node.placed === false).length;
       if (nodes.length > 0 && unplaced === nodes.length) {
         layoutFromScratch();
-      } else if (unplaced > 0) {
+      } else if (unplaced > 0 || pendingLinkChange) {
         setAnchors(simulation, true);
         runToEnd(REHEAT_ALPHA);
       } else {
@@ -776,6 +780,7 @@ export function handleMessage(data: Message) {
       // A sim the user paused stays paused until they resume.
       if (paused) {
         needsLayout = true;
+        pendingLinkChange = true;
       } else {
         setAnchors(simulation, true);
         runToEnd(REHEAT_ALPHA);

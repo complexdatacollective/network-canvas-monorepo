@@ -282,6 +282,18 @@ describe('autoLayout worker', () => {
     expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
   });
 
+  it('resumes a link change made while paused as an anchored re-settle', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    handleMessage({ type: 'stop' });
+    handleMessage({ type: 'update_links', links: [{ source: 0, target: 3 }] });
+
+    handleMessage({ type: 'start' });
+
+    expect(capturedSim!.force('anchorX')).toBeTruthy();
+    expect(capturedSim!.force('anchorY')).toBeTruthy();
+  });
+
   it('ignores a repeated start once the layout has settled', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });
