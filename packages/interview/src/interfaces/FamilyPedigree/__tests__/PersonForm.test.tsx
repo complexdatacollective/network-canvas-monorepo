@@ -57,7 +57,7 @@ const OPTION_LABELS: OwnedOptionLabels = {
     preferNotToSay: 'Prefer not to say',
   },
   parentKind: {
-    biological: 'Biological parent',
+    biological: '**Biological** parent',
     adoptive: 'Adoptive parent',
     social: 'Step or social parent',
     donor: 'Egg or sperm donor',

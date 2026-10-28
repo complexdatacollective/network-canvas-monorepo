@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { Label } from '../../Label';
+import OptionLabel from '../../OptionLabel';
 import {
   type PresentationalText,
   presentationalTextProps,
@@ -497,14 +498,10 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
               </svg>
             )}
           </span>
-          <Label
-            className="m-0! justify-self-start"
-            {...presentationalTextProps(option.label)}
-          >
-            <RenderMarkdown>
-              {presentationalTextValue(option.label)}
-            </RenderMarkdown>
-          </Label>
+          <OptionLabel
+            label={option.label}
+            render={<Label className="m-0! justify-self-start" />}
+          />
           {option.description && (
             <span
               className={descriptionVariants({ size })}

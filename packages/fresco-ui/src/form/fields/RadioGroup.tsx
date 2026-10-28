@@ -5,13 +5,11 @@ import { RadioGroup, type RadioGroupProps } from '@base-ui/react/radio-group';
 import { motion } from 'motion/react';
 import { type ReactNode, useId } from 'react';
 
+import OptionLabel from '../../OptionLabel';
 import {
   isPresentationalText,
   type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
 } from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
   controlVariants,
@@ -101,6 +99,12 @@ export function RadioItem({
     : readOnly
       ? 'readOnly'
       : 'normal';
+  const labelClasses = cx(
+    controlLabelVariants({ size }),
+    'cursor-[inherit] transition-colors duration-200',
+    disabled && 'opacity-50',
+    labelClassName,
+  );
 
   const item = (
     <label
@@ -155,21 +159,11 @@ export function RadioItem({
           )}
         />
       </motion.div>
-      <span
-        className={cx(
-          controlLabelVariants({ size }),
-          'cursor-[inherit] transition-colors duration-200',
-          disabled && 'opacity-50',
-          labelClassName,
-        )}
-        {...presentationalTextProps(label)}
-      >
-        {isPresentationalText(label) ? (
-          <RenderMarkdown>{presentationalTextValue(label)}</RenderMarkdown>
-        ) : (
-          label
-        )}
-      </span>
+      {isPresentationalText(label) ? (
+        <OptionLabel label={label} render={<span className={labelClasses} />} />
+      ) : (
+        <span className={labelClasses}>{label}</span>
+      )}
     </label>
   );
   // Outside the label, which names the option, so the description is not

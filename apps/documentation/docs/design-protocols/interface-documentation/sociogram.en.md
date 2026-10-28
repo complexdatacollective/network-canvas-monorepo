@@ -60,9 +60,9 @@ Edge creation and attribute toggling are the two tap behaviors, and a single pro
 
 <AppOnly app="current">
 
-### Words on the canvas
+### Pause and resume tooltips
 
-The **Words on the canvas** section of the stage editor holds the tooltips of the pause and resume buttons for the automatic layout simulation. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). These are there only while **Layout Mode** is automatic, and they are removed if you switch to manual.
+The tooltips of the pause and resume buttons for the automatic layout simulation are [interview text](/en/design-protocols/translating-your-protocol#interview-text), shared with the Narrative stage, so the stage editor has no section for them. They are reworded and translated in the translation table under **Buttons**, and a protocol holds them only while a stage uses automatic layout.
 
 </AppOnly>
 
