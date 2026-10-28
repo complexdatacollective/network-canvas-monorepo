@@ -140,6 +140,12 @@ type SlideContentProps = {
    * the form alone, and reads how far it has been scrolled from here.
    */
   scrollAreaRef?: RefObject<HTMLElement | null>;
+  /**
+   * Joined, false until the answers can be given. Until then the card may
+   * not yet be as tall as the answers, so how far they have been scrolled is
+   * judged only from then.
+   */
+  live?: boolean;
 };
 
 type SlideFormProps = SlideContentProps & {
@@ -161,6 +167,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       focusFirst,
       form_kind,
       scrollAreaRef: joinedScrollAreaRef,
+      live = true,
       initialValues,
       unavailableVariables,
     },
@@ -217,8 +224,10 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     const scrollAreaRef = joinedScrollAreaRef ?? ownScrollAreaRef;
     const { scrollY } = useScroll({ container: scrollAreaRef });
     const headerScale = useTransform(scrollY, [0, 150], [1, 0.75]);
-    const { hasScrolledToBottom, sentinelRef } =
-      useScrolledToBottom(scrollAreaRef);
+    const { hasScrolledToBottom, sentinelRef } = useScrolledToBottom(
+      scrollAreaRef,
+      { paused: !live },
+    );
 
     const isReady = useFormReadyToContinue(hasScrolledToBottom);
     useEffect(() => {
@@ -652,6 +661,7 @@ export default function SlidesForm({
         }
         form_kind={form_kind}
         scrollAreaRef={joined?.scrollAreaRef}
+        live={joined?.live}
       />
     );
   };

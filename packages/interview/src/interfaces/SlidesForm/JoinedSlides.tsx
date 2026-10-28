@@ -532,12 +532,20 @@ export default function JoinedSlides({
 
     let changing = true;
     let resizing: (() => void) | undefined;
-    // Back to following the answers once the change is over and the card
-    // has finished resizing.
-    const followAnswers = () => {
-      if (!changing && !resizing) cardHeight.set('auto');
-    };
     let observer: ResizeObserver | undefined;
+    // The next person can be answered once the change is over and the card
+    // has finished resizing, when it goes back to following their answers.
+    // Until then the card may be shorter than the answers, so the form is
+    // not yet laid out as the participant will see it.
+    let finished = false;
+    const finishWhenStill = () => {
+      if (finished || changing || resizing) return;
+      finished = true;
+      observer?.disconnect();
+      cardHeight.set('auto');
+      setLiveIndex(index);
+      settled.current();
+    };
     const answers = answersRef.current;
     if (answers && !skip && !reduced) {
       cardHeight.set(answers.offsetHeight);
@@ -549,7 +557,7 @@ export default function JoinedSlides({
           ...MOTION.resize,
           onComplete: () => {
             resizing = undefined;
-            followAnswers();
+            finishWhenStill();
           },
         }).stop;
       });
@@ -558,10 +566,7 @@ export default function JoinedSlides({
 
     const finish = () => {
       changing = false;
-      observer?.disconnect();
-      followAnswers();
-      setLiveIndex(index);
-      settled.current();
+      finishWhenStill();
     };
     const viewport = scrollAreaRef.current;
     if (skip) {
