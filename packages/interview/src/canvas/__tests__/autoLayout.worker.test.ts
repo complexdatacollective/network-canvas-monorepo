@@ -294,6 +294,24 @@ describe('autoLayout worker', () => {
     expect(capturedSim!.force('anchorY')).toBeTruthy();
   });
 
+  it('resumes a drag made while paused as an anchored re-settle', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    handleMessage({ type: 'stop' });
+    const nodeId = capturedSim!.nodes()[0]!.nodeId!;
+    handleMessage({ type: 'update_node', nodeId, node: { fx: 0.2, fy: 0.2 } });
+    handleMessage({
+      type: 'update_node',
+      nodeId,
+      node: { fx: null, fy: null },
+    });
+
+    handleMessage({ type: 'start' });
+
+    expect(capturedSim!.force('anchorX')).toBeTruthy();
+    expect(capturedSim!.force('anchorY')).toBeTruthy();
+  });
+
   it('settles anchored after the node set changes', () => {
     handleMessage({
       type: 'initialize',

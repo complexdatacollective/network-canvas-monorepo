@@ -151,6 +151,9 @@ export function useAutoLayout({
   const seededIdsRef = useRef<Set<string>>(new Set());
   const [isRunning, setIsRunning] = useState(false);
   const [simulationEnabled, setSimulationEnabled] = useState(true);
+  const simulationEnabledRef = useRef(simulationEnabled);
+  simulationEnabledRef.current = simulationEnabled;
+  const frameRef = useRef<number | null>(null);
 
   // Keep refs updated so the effect can read latest values without re-running.
   const nodesRef = useRef(nodes);
@@ -290,6 +293,7 @@ export function useAutoLayout({
         .filter(isPlacedSimNode)
         .map((n) => [n.nodeId, fromSim(n, dims)]);
       animationRef.current?.stop();
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
 
       if (msgType === 'tick') {
         store.getState().setBatchPositions(entries);
@@ -320,9 +324,17 @@ export function useAutoLayout({
           Math.abs(start.y - to.y) > MOVED_THRESHOLD
         );
       });
-      if (isE2E || skipAnimationsRef.current || !moved) {
+      const paused = runMode === 'continuous' && !simulationEnabledRef.current;
+      if (isE2E || !moved || paused) {
         store.getState().setBatchPositions(entries);
         setIsRunning(false);
+        return;
+      }
+      if (skipAnimationsRef.current) {
+        store.getState().setBatchPositions(entries);
+        // Still report the run, a frame later so the start is observed.
+        setIsRunning(true);
+        frameRef.current = requestAnimationFrame(() => setIsRunning(false));
         return;
       }
 
@@ -417,6 +429,7 @@ export function useAutoLayout({
 
     return () => {
       animationRef.current?.stop();
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
       worker.terminate();
       workerRef.current = null;
     };

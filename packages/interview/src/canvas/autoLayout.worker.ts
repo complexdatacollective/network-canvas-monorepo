@@ -815,7 +815,11 @@ export function handleMessage(data: Message) {
       // spread above replaced; re-register so it resolves the new identities.
       simulation.force('link', makeLinkForce());
 
-      if (paused) break;
+      if (paused) {
+        needsLayout = true;
+        incrementalChange = true;
+        break;
+      }
       if (data.node.fx != null || data.node.fy != null) {
         // While a node is held the layout runs live around it.
         if (!running) setAnchors(simulation, true);
