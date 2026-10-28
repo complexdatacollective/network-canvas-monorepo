@@ -623,8 +623,9 @@ test('changes the protocol’s languages from the language chooser stage, and th
   await removeLanguage(page, 'French');
   await expect(stageLanguageRow(page, 'fr')).toHaveCount(0);
   await expect(name).toHaveValue('Pick a language');
-  // With one language left, there is nothing to translate into.
-  await expect(openTable).toHaveCount(0);
+  // With one language left the table stays, for the protocol's own words for
+  // the interface.
+  await expect(openTable).toBeVisible();
   await page.getByRole('button', { name: 'Finished Editing' }).click();
   await page.waitForURL(/\/protocol$/);
 
