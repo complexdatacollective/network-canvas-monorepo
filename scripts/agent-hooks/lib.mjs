@@ -688,6 +688,131 @@ export function updateState(root, mutate) {
   }
 }
 
+// Typechecks from every worktree of this checkout take turns. Each turn end
+// in each agent (and each subagent) starts one, and several tsc processes per
+// run across a fleet of sessions is enough to exhaust memory on a laptop. The
+// lock lives in the git common directory, which every worktree shares.
+export function typecheckLockPath(root) {
+  const common = git(
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    root,
+  );
+  const dir = common
+    ? path.join(common, 'agent-hooks')
+    : path.join(root, 'node_modules', '.cache', 'agent-hooks');
+  mkdirSync(dir, { recursive: true });
+  return path.join(dir, 'typecheck.lock');
+}
+
+function lockOwner(lock) {
+  try {
+    return JSON.parse(readFileSync(path.join(lock, 'owner.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: the process exists but belongs to someone else.
+    return error.code === 'EPERM';
+  }
+}
+
+// The lock as it stands now, or null when it has vanished. A lock is stale
+// when its owner has exited, when it outlives `staleMs` (pid reuse, a wedged
+// run), or when it has no owner record well after creation (the owner died
+// between creating the directory and recording itself).
+function lockState(lock, staleMs) {
+  const owner = lockOwner(lock);
+  let created;
+  try {
+    created = owner?.started ?? statSync(lock).mtimeMs;
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+  const age = Date.now() - created;
+  return {
+    stale: owner ? !processAlive(owner.pid) || age > staleMs : age > 10_000,
+    token: owner?.token ?? null,
+  };
+}
+
+// Two waiters can both judge the same lock stale; if each then removed it,
+// the slower one could delete the lock the faster one had just acquired. So
+// removal happens under a short-lived guard, and only while the lock still
+// carries the owner that was judged stale. The guard is held for
+// milliseconds, so one left behind by a dead reclaimer is cleared by age.
+// Filesystem errors other than a vanished path propagate rather than retry.
+export function reclaimStaleLock(lock, observedToken, staleMs) {
+  const guard = `${lock}.reclaim`;
+  try {
+    mkdirSync(guard);
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    try {
+      if (Date.now() - statSync(guard).mtimeMs > 10_000) {
+        rmSync(guard, { recursive: true, force: true });
+      }
+    } catch (statError) {
+      if (statError.code !== 'ENOENT') throw statError;
+    }
+    return false;
+  }
+  try {
+    const current = lockState(lock, staleMs);
+    if (!current?.stale || current.token !== observedToken) return false;
+    rmSync(lock, { recursive: true, force: true });
+    return true;
+  } finally {
+    rmSync(guard, { recursive: true, force: true });
+  }
+}
+
+// Unlike updateState's short-lived lock, this one is held for a whole
+// typecheck, so age alone cannot mark it stale (see lockState). Returns a
+// release function, or null when the lock was not acquired within `waitMs`.
+export function acquireLock(
+  lock,
+  { waitMs, staleMs = 15 * 60_000, pollMs = 250 } = {},
+) {
+  const deadline = Date.now() + waitMs;
+  const token = `${process.pid}-${Date.now()}-${Math.random()}`;
+  const release = () => {
+    if (lockOwner(lock)?.token !== token) return;
+    rmSync(lock, { recursive: true, force: true });
+  };
+  for (;;) {
+    let created = false;
+    try {
+      mkdirSync(lock);
+      created = true;
+      writeFileSync(
+        path.join(lock, 'owner.json'),
+        JSON.stringify({ pid: process.pid, token, started: Date.now() }),
+      );
+      return release;
+    } catch (error) {
+      if (created) {
+        rmSync(lock, { recursive: true, force: true });
+        throw error;
+      }
+      if (error.code !== 'EEXIST') throw error;
+    }
+    const state = lockState(lock, staleMs);
+    // A vanished or reclaimed lock is free: try again at once. Anything else
+    // waits, and every wait honours the deadline.
+    if (state === null) continue;
+    if (state.stale && reclaimStaleLock(lock, state.token, staleMs)) continue;
+    if (Date.now() >= deadline) return null;
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, pollMs);
+  }
+}
+
 // pre-push: the pushed revision is checked in place only when it is the
 // clean checked-out HEAD; otherwise it is checked out into a temporary
 // worktree so unrelated working-tree changes neither mask nor cause findings.

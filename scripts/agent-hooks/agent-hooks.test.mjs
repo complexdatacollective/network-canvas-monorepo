@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'vitest';
 
 import {
+  acquireLock,
   changeFingerprint,
   changedFiles,
   classifyGateCommand,
@@ -36,8 +37,10 @@ import {
   parsePorcelainZ,
   parseTypecheckOutput,
   previousPackageNames,
+  reclaimStaleLock,
   resolveRepoRoot,
   splitSegments,
+  typecheckLockPath,
   stripEmbeddedText,
   takeCommandStart,
   updateState,
@@ -1139,4 +1142,120 @@ test('a held lock is waited out until it turns stale rather than written past', 
     elapsed >= 9_000 && elapsed < 25_000,
     `waited for the stale lock (${elapsed} ms)`,
   );
+});
+
+test('the typecheck lock is exclusive until released', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const release = acquireLock(lock, { waitMs: 0 });
+  assert.ok(release);
+  assert.equal(acquireLock(lock, { waitMs: 300, pollMs: 50 }), null);
+  release();
+  const again = acquireLock(lock, { waitMs: 0 });
+  assert.ok(again);
+  again();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('a typecheck lock whose owner has exited is reclaimed', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const child = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+  mkdirSync(lock);
+  writeFileSync(
+    path.join(lock, 'owner.json'),
+    JSON.stringify({ pid: child.pid, token: 'dead', started: Date.now() }),
+  );
+  const release = acquireLock(lock, { waitMs: 0 });
+  assert.ok(release);
+  release();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('releasing a lock that was reclaimed by another owner leaves it alone', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const release = acquireLock(lock, { waitMs: 0 });
+  writeFileSync(
+    path.join(lock, 'owner.json'),
+    JSON.stringify({ pid: process.pid, token: 'other', started: Date.now() }),
+  );
+  release();
+  assert.equal(acquireLock(lock, { waitMs: 0 }), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('every worktree of a checkout shares one typecheck lock', () => {
+  const dir = realpathSync(
+    mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-')),
+  );
+  const main = path.join(dir, 'main');
+  const other = path.join(dir, 'other');
+  const sh = (args, cwd) => {
+    const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  mkdirSync(main);
+  sh(['init', '-q'], main);
+  sh(
+    [
+      '-c',
+      'user.name=t',
+      '-c',
+      'user.email=t@t',
+      'commit',
+      '-q',
+      '--allow-empty',
+      '-m',
+      'init',
+    ],
+    main,
+  );
+  sh(['worktree', 'add', '-q', other], main);
+  assert.equal(typecheckLockPath(main), typecheckLockPath(other));
+  assert.equal(
+    typecheckLockPath(main),
+    path.join(main, '.git', 'agent-hooks', 'typecheck.lock'),
+  );
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('a stale judgement does not reclaim a lock that changed owner since', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const child = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+  const owner = (pid, token) =>
+    writeFileSync(
+      path.join(lock, 'owner.json'),
+      JSON.stringify({ pid, token, started: Date.now() }),
+    );
+  mkdirSync(lock);
+  // Another waiter reclaimed the dead owner's lock and acquired it; this
+  // waiter's earlier judgement named the dead owner, so it must not remove
+  // the new one.
+  owner(process.pid, 'fresh');
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), false);
+  assert.equal(
+    JSON.parse(readFileSync(path.join(lock, 'owner.json'), 'utf8')).token,
+    'fresh',
+  );
+  // While the dead owner still holds it, the same judgement reclaims it.
+  owner(child.pid, 'dead');
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), true);
+  assert.equal(acquireLock(lock, { waitMs: 0 }) !== null, true);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('a reclaim already in progress is left to its owner', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const child = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+  mkdirSync(lock);
+  writeFileSync(
+    path.join(lock, 'owner.json'),
+    JSON.stringify({ pid: child.pid, token: 'dead', started: Date.now() }),
+  );
+  mkdirSync(`${lock}.reclaim`);
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), false);
+  rmSync(dir, { recursive: true, force: true });
 });
