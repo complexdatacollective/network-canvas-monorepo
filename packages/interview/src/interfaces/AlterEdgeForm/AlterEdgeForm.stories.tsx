@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -144,6 +145,112 @@ export const ManyFields: Story = {
     fieldCount: FIELD_PRESETS.length,
   },
   render: (args) => <AlterEdgeFormStoryWrapper {...args} />,
+};
+
+/**
+ * Two connections whose questions name the people they join: the first
+ * person, the second, and both. The text is given by locale so that its
+ * message syntax is kept, as a protocol writes it.
+ */
+function buildPipedNamesInterview() {
+  const si = new SyntheticInterview();
+  const nt = si.addNodeType({ name: 'Person' });
+  const et = si.addEdgeType({ name: 'Friendship' });
+
+  si.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
+
+  si.addStage('NameGenerator', {
+    label: 'Name Generator',
+    initialNodes: { count: 3 },
+    subject: { entity: 'node', type: nt.id },
+  });
+
+  si.addEdges(
+    [
+      [0, 1],
+      [1, 2],
+    ],
+    et.id,
+  );
+
+  const stage = si.addStage('AlterEdgeForm', {
+    label: 'Alter Edge Form (Piped names)',
+    subject: { entity: 'edge', type: et.id },
+  });
+  stage.stageEntry.dynamicValues = {
+    first: { path: 'edge.from.$label' },
+    second: { path: 'edge.to.$label' },
+  };
+  stage.addFormField({
+    component: 'Number',
+    prompt: { 'en-US': 'How many years has {first} known {second}?' },
+  });
+  stage.addFormField({
+    component: 'Boolean',
+    prompt: { 'en-US': 'Would {second} call {first} a close friend?' },
+  });
+  stage.addFormField({
+    component: 'TextArea',
+    prompt: { 'en-US': 'How did {first} and {second} meet?' },
+    hint: { 'en-US': 'Tell it as {first} would.' },
+  });
+
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return si;
+}
+
+const PipedNamesWrapper = () => {
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(
+        buildPipedNamesInterview().getInterviewPayload({ currentStep: 2 }),
+      ),
+    [],
+  );
+  return (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+};
+
+/**
+ * The questions name the first and the second person the connection joins,
+ * in either order, and both together.
+ */
+export const PipedNames: Story = {
+  render: () => <PipedNamesWrapper />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const years = await canvas.findByRole(
+      'spinbutton',
+      { name: /How many years has/ },
+      { timeout: 10_000 },
+    );
+    // The first question names the first person, then the second, each
+    // piped in from the people the header shows, in that order.
+    const header = canvasElement.querySelector('[data-slide-header]');
+    const named = [
+      ...(years
+        .closest('[data-field-name]')
+        ?.querySelectorAll('[data-dynamic-value]') ?? []),
+    ].map((value) => value.querySelector('bdi')?.textContent?.trim() ?? '');
+    await expect(named).toHaveLength(2);
+    const [first, second] = named as [string, string];
+    const shown = header?.textContent ?? '';
+    await expect(shown.indexOf(first)).toBeGreaterThanOrEqual(0);
+    await expect(shown.indexOf(second)).toBeGreaterThan(shown.indexOf(first));
+    await expect(
+      canvas.getByRole('textbox', { name: /How did .* meet/ }),
+    ).toHaveAccessibleDescription(expect.stringContaining(first));
+  },
 };
 
 function buildValidatedInterview() {

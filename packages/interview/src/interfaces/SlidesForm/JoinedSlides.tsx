@@ -186,13 +186,14 @@ const answersVariants: Variants = {
 };
 
 type Frame = {
-  /** The stage is wider than it is tall: the person sits beside the form. */
+  /** The stage is wider than it is tall. */
   landscape: boolean;
   /** The form is taller than the stage, so it scrolls. */
   overflows: boolean;
   rtl: boolean;
-  /** The person's width, in px. */
-  size: number;
+  /** The header's width and height, in px. */
+  width: number;
+  height: number;
 };
 
 /**
@@ -208,7 +209,8 @@ function useFrame(
     landscape: true,
     overflows: false,
     rtl: false,
-    size: 0,
+    width: 0,
+    height: 0,
   });
   useLayoutEffect(() => {
     const viewport = scrollAreaRef.current;
@@ -220,13 +222,15 @@ function useFrame(
         landscape: viewport.clientWidth > viewport.clientHeight,
         overflows: viewport.scrollHeight > viewport.clientHeight + 1,
         rtl: getComputedStyle(viewport).direction === 'rtl',
-        size: pin.offsetWidth,
+        width: pin.offsetWidth,
+        height: pin.offsetHeight,
       };
       setFrame((known) =>
         known.landscape === next.landscape &&
         known.overflows === next.overflows &&
         known.rtl === next.rtl &&
-        known.size === next.size
+        known.width === next.width &&
+        known.height === next.height
           ? known
           : next,
       );
@@ -241,25 +245,42 @@ function useFrame(
   return frame;
 }
 
+/**
+ * The join's measurements, drawn with the card's edge across +x. A header
+ * longer along the edge than it is deep (two people and the edge between
+ * them) has a disc at each end, `span` either side of its centre, and is
+ * filled between them.
+ */
 type JoinShape = {
-  /** The person's radius. */
+  /** Half the header's depth: a person's radius. */
   person: number;
   /** The disc's radius when joined. */
   radius: number;
-  /** From the person's centre to the card's edge. */
+  /** From the header's centre to the card's edge. */
   reach: number;
-  /** Half the neck's width where it is narrowest, when joined. */
+  /** From the header's centre to the centre of each end, along the edge. */
+  span: number;
+  /** Half the neck's width at each end, where it is narrowest, when joined. */
   neck: number;
 };
 
-const joinShape = (size: number, landscape: boolean): JoinShape => {
-  const radius = size / 2 + JOIN.ring;
-  const reach = size / 2 + (landscape ? JOIN.beside : JOIN.above);
+const joinShape = (
+  width: number,
+  height: number,
+  beside: boolean,
+): JoinShape => {
+  // Across the edge the header is joined to, and along it.
+  const across = beside ? width : height;
+  const along = beside ? height : width;
+  const person = across / 2;
+  const radius = person + JOIN.ring;
+  const reach = person + (beside ? JOIN.beside : JOIN.above);
   const f = JOIN.fillet;
   return {
-    person: size / 2,
+    person,
     radius,
     reach,
+    span: Math.max(0, (along - across) / 2),
     neck: Math.sqrt(Math.max(0, (radius + f) ** 2 - (reach - f) ** 2)) - f,
   };
 };
@@ -287,34 +308,49 @@ const JOIN_FILL = {
   ],
 } as const;
 
-/**
- * The neck between the disc and the card's edge, centred on the person with
- * the card's edge across +x at `reach`. Each side is a fillet: an arc
- * touching both the disc and the edge, whose radius is found from the
- * neck's width as the join lets go.
- */
 /** The disc's radius, from hidden behind the person to joined. */
 const discRadius = (held: number, { person, radius }: JoinShape) =>
   held <= 0 ? 0 : person - JOIN.hidden + (radius - person + JOIN.hidden) * held;
 
+/**
+ * The fill between the discs at the header's two ends, as deep as the discs
+ * when joined and thinning with how much of their ring shows, so it goes
+ * when they go behind the people.
+ */
+function bodyPath(held: number, shape: JoinShape) {
+  const { span, person } = shape;
+  const r = discRadius(held, shape);
+  const showing = Math.min(1, Math.max(0, (r - person) / JOIN.ring));
+  const half = r * showing;
+  if (span <= 0 || half <= 0) return NO_NECK;
+  return `M${-half} ${-span}H${half}V${span}H${-half}Z`;
+}
+
+/**
+ * The neck between the discs and the card's edge, with the card's edge
+ * across +x at `reach`. Each outer side is a fillet: an arc touching both
+ * the disc at that end and the edge, whose radius is found from the neck's
+ * width as the join lets go.
+ */
 function neckPath(held: number, shape: JoinShape) {
-  const { person, reach, neck } = shape;
+  const { person, reach, neck, span } = shape;
   const r = discRadius(held, shape);
   // How much of the ring shows beyond the person.
   const showing = (r - person) / JOIN.ring;
   const w =
     neck * Math.min(1, Math.max(0, (showing - JOIN.letGo) / (1 - JOIN.letGo)));
   if (w <= 0) return NO_NECK;
-  // A fillet of radius f centred at (reach - f, ±(w + f)) touches the edge
-  // and, at distance r + f from the centre, the disc.
+  // Around each end's centre, (0, ±span): a fillet of radius f centred at
+  // (reach - f, ±(w + f)) touches the edge and, at distance r + f from that
+  // centre, the disc.
   const b = reach + r - w;
   const c = reach ** 2 + w ** 2 - r ** 2;
   if (b ** 2 < c) return NO_NECK;
   const f = b - Math.sqrt(b ** 2 - c);
   if (f <= 0) return NO_NECK;
-  const across = w + f;
+  const across = span + w + f;
   const touchX = ((reach - f) * r) / (r + f);
-  const touchY = (across * r) / (r + f);
+  const touchY = span + ((w + f) * r) / (r + f);
   const edge = reach + JOIN.tuck;
   return [
     `M${edge} ${-across}`,
@@ -397,11 +433,18 @@ function Answers({ children, live, change, skip }: AnswersProps) {
 }
 
 type JoinedSlidesProps = {
-  /** The person shown. */
+  /** The item shown. */
   index: number;
   /** Which way the last change went; null until there has been one. */
   direction: Direction | null;
-  renderPerson: (index: number) => ReactNode;
+  /**
+   * `start` puts the header beside the form, on the reading-start side, while
+   * the stage is wider than it is tall, and above it otherwise. `top` always
+   * puts it above.
+   */
+  placement: 'start' | 'top';
+  /** Who the item is about: a person, or the two people a connection joins. */
+  renderHeader: (index: number) => ReactNode;
   /**
    * One person's answers, laid out without a frame of their own. `live` is
    * false until the answers may be answered.
@@ -416,21 +459,23 @@ type JoinedSlidesProps = {
 };
 
 /**
- * The per-person form with the person joined to it. The card stays where it
- * is as the participant moves between people; only the person, the join and
- * the answers change.
+ * A form asked of each item in turn (each person, or each connection between
+ * two people) with who it is about joined to it. The card stays where it is
+ * as the participant moves between items; only the header, the join and the
+ * answers change.
  *
- * While the stage is wider than it is tall the person sits beside the form,
- * on the reading-start side, in the middle of the form's height (of the
- * stage's, while the form is too tall to fit); otherwise above it, in the
- * middle of its width. The person stays in view as the form scrolls. The
- * next person arrives along the edge they join, from the direction of the
- * Next button, as the last one shrinks away where they were.
+ * Beside the form, the header sits in the middle of the form's height (of
+ * the stage's, while the form is too tall to fit); above it, in the middle
+ * of its width. The header stays in view as the form scrolls. The next one
+ * arrives along the edge it joins, from the direction of the Next button, as
+ * the last one shrinks away where it was. Below, "person" stands for the
+ * header, whether it shows one person or two.
  */
 export default function JoinedSlides({
   index,
   direction,
-  renderPerson,
+  placement,
+  renderHeader,
   renderAnswers,
   onSettled,
 }: JoinedSlidesProps) {
@@ -442,15 +487,16 @@ export default function JoinedSlides({
   const joinFill =
     JOIN_FILL[surfaceSeries][Math.min(Math.max(surfaceDepth, 0), 4)];
   const bodyRef = useRef<HTMLDivElement>(null);
-  const { landscape, overflows, rtl, size } = useFrame(
+  const { landscape, overflows, rtl, width, height } = useFrame(
     scrollAreaRef,
     bodyRef,
     pinRef,
   );
+  const beside = placement === 'start' && landscape;
   // Beside a form that scrolls, the person holds the middle of the stage
   // (within the form's height) rather than of the form.
-  const holdMiddle = landscape && overflows;
-  const middle = `calc(50% - ${size / 2}px)`;
+  const holdMiddle = beside && overflows;
+  const middle = `calc(50% - ${height / 2}px)`;
 
   // Skipped outright by automated hosts; reduced to fades for people who ask
   // for less motion.
@@ -462,8 +508,8 @@ export default function JoinedSlides({
     first: direction === null,
     forward,
     // Above the form, the Next side is the reading-end side.
-    along: forward * (!landscape && rtl ? -1 : 1),
-    axis: landscape ? 'y' : 'x',
+    along: forward * (!beside && rtl ? -1 : 1),
+    axis: beside ? 'y' : 'x',
     reduced,
   };
 
@@ -481,12 +527,14 @@ export default function JoinedSlides({
   // 1 while joined to a person, 0 between people. The first person is
   // joined as they arrive.
   const join = useMotionValue(skip || reduced ? 1 : 0);
-  const shape = useMotionValue(joinShape(size, landscape));
+  const shape = useMotionValue(joinShape(width, height, beside));
   useLayoutEffect(() => {
-    shape.set(joinShape(size, landscape));
-  }, [shape, size, landscape]);
+    shape.set(joinShape(width, height, beside));
+  }, [shape, width, height, beside]);
   const disc = useTransform(() => discRadius(join.get(), shape.get()));
   const neck = useTransform(() => neckPath(join.get(), shape.get()));
+  const body = useTransform(() => bodyPath(join.get(), shape.get()));
+  const { span } = joinShape(width, height, beside);
 
   useEffect(() => {
     if (skip || reduced) {
@@ -632,7 +680,7 @@ export default function JoinedSlides({
   }, [index, skip, reduced, join, cardHeight]);
 
   // The join is drawn towards +x, then turned to face the card.
-  const facing = landscape ? (rtl ? 'scale(-1 1)' : '') : 'rotate(90)';
+  const facing = beside ? (rtl ? 'scale(-1 1)' : '') : 'rotate(90)';
 
   return (
     <ScrollArea
@@ -647,7 +695,7 @@ export default function JoinedSlides({
           // Beside the form, the outer columns share the leftover width, so
           // the form stays centred with the person against its start edge.
           // When the person no longer fits in its share, the form moves along.
-          landscape
+          beside
             ? 'grid grid-cols-[1fr_minmax(auto,42rem)_1fr] gap-x-3'
             : 'flex flex-col items-center gap-2',
         )}
@@ -660,7 +708,7 @@ export default function JoinedSlides({
         <div
           className={cx(
             'pointer-events-none',
-            landscape
+            beside
               ? 'flex flex-col justify-center self-stretch justify-self-end py-7'
               : 'tablet-portrait:min-w-lg sticky top-0 z-10 flex w-full max-w-2xl justify-center',
           )}
@@ -671,11 +719,13 @@ export default function JoinedSlides({
             className={cx(
               // Above the card, so the join covers the card's shadow where
               // they meet.
-              'tablet-portrait:size-32 relative z-10 size-28 shrink-0 origin-top',
+              // People coming and going share its one cell, so it takes the
+              // size of who it shows.
+              'relative z-10 grid shrink-0 origin-top',
               holdMiddle && 'sticky',
             )}
             style={{
-              scale: landscape ? 1 : shrink,
+              scale: beside ? 1 : shrink,
               top: holdMiddle ? middle : undefined,
               bottom: holdMiddle ? middle : undefined,
             }}
@@ -686,10 +736,12 @@ export default function JoinedSlides({
                 'absolute inset-0 size-full overflow-visible',
                 joinFill,
               )}
-              style={{ opacity: landscape ? 1 : joinFade }}
+              style={{ opacity: beside ? 1 : joinFade }}
             >
-              <g transform={`translate(${size / 2} ${size / 2}) ${facing}`}>
-                <motion.circle r={disc} />
+              <g transform={`translate(${width / 2} ${height / 2}) ${facing}`}>
+                <motion.circle cy={-span} r={disc} />
+                <motion.circle cy={span} r={disc} />
+                <motion.path d={body} />
                 <motion.path d={neck} />
               </g>
             </motion.svg>
@@ -698,14 +750,14 @@ export default function JoinedSlides({
                 key={index}
                 // The column lets presses through to the form; the person
                 // takes them, to reveal a name too long to show in full.
-                className="pointer-events-auto absolute inset-0 flex items-center justify-center"
+                className="pointer-events-auto relative flex items-center justify-center [grid-area:1/1]"
                 custom={change}
                 variants={personVariants}
                 initial="enter"
                 animate="rest"
                 exit="leave"
               >
-                {renderPerson(index)}
+                {renderHeader(index)}
               </motion.div>
             </AnimatePresence>
           </motion.div>
