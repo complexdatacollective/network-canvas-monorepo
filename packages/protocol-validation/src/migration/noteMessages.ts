@@ -324,6 +324,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 8 migration approval guidance: datetimeParameterObject. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema8UnsupportedParameters: {
+    id: 'protocolValidation.migrationNotes.schema8.unsupportedParameters',
+    defaultMessage:
+      "Only scalar and datetime attributes take `parameters`. On an attribute of any other type, `parameters` is removed; it can be left over from an earlier change to the attribute's type or input control. A scalar attribute's `parameters` keeps only `minLabel` and `maxLabel`, and only when they are text. Any other key in a scalar attribute's `parameters` is removed, as is a `parameters` value that is not a plain object.",
+    description:
+      'One complete Markdown bullet in schema 8 migration approval guidance: unsupportedParameters. Scalar attributes are answered with a visual analog scale; minLabel and maxLabel are the labels at its two ends. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
   schema8UnsupportedValidation: {
     id: 'protocolValidation.migrationNotes.schema8.unsupportedValidation',
     defaultMessage:
@@ -433,6 +440,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema8DatePickerBounds,
       migrationNoteMessages.schema8RelativeDateParameters,
       migrationNoteMessages.schema8DatetimeParameterObject,
+      migrationNoteMessages.schema8UnsupportedParameters,
       migrationNoteMessages.schema8UnsupportedValidation,
       migrationNoteMessages.schema8InputControlCompatibility,
       migrationNoteMessages.schema8OptionValueTypes,
