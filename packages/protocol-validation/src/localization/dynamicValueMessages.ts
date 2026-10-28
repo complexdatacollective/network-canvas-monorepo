@@ -555,13 +555,19 @@ const flatten = (
       }
     } else if (element.type === TYPE.plural) {
       const state = stateOf(element.value);
+      const count =
+        !state.missing && state.count !== undefined ? state.count : undefined;
+      // An exact arm ("=0") is chosen before the count's category, as ICU
+      // chooses it.
+      const exact = count === undefined ? undefined : `=${count}`;
       const category =
-        !state.missing && state.count !== undefined
-          ? pluralCategoryOf(locale, state.count)
-          : 'other';
-      const own = Object.hasOwn(element.options, category)
-        ? element.options[category]
-        : undefined;
+        count === undefined ? 'other' : pluralCategoryOf(locale, count);
+      const own =
+        exact !== undefined && Object.hasOwn(element.options, exact)
+          ? element.options[exact]
+          : Object.hasOwn(element.options, category)
+            ? element.options[category]
+            : undefined;
       const option = own ?? element.options.other;
       if (own !== undefined) plurals.add(element.value);
       if (option !== undefined) {

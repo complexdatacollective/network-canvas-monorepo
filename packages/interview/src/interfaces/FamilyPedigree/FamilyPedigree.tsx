@@ -50,6 +50,7 @@ import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import type { LabelNode } from '../../dynamicValues/FormDynamicValues';
+import type { DynamicText } from '../../dynamicValues/resolveDynamicText';
 import {
   writeFailureMessage,
   writeSubmissionResult,
@@ -181,7 +182,11 @@ import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { pedigreeLinksOf } from './pedigreeLinks';
-import { PedigreeWordsProvider, usePedigreeWordsOf } from './pedigreeWords';
+import {
+  PedigreeWordsProvider,
+  showPiped,
+  usePedigreeWordsOf,
+} from './pedigreeWords';
 import { relationshipWrites } from './relationshipToParticipant';
 import { reproductiveRolesOf } from './reproductiveRoles';
 import {
@@ -280,7 +285,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
   const contentFormat = useContentFormat();
   const words = usePedigreeWordsOf(stage.wording);
-  const { wording, text } = words;
+  const { wording, text, piped } = words;
   const dispatch = useAppDispatch();
   const { currentStep, displayedStep } = useCurrentStep();
   const store = useStore<RootState>();
@@ -760,7 +765,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [chosenPair, setChosenPair] = useState<ConnectPair | null>(null);
   // Why the last selection was refused, shown in place of the instruction.
-  const [connectNotice, setConnectNotice] = useState<string | null>(null);
+  const [connectNotice, setConnectNotice] = useState<DynamicText | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -2465,10 +2470,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     };
   };
 
-  // People named together, joined as the language of the wording they are
-  // named in joins a list.
+  // People named together, as a list each of whose names is a value.
   const listOfNames = (ids: readonly string[]) =>
-    contentFormat.formatList(ids.map((id) => displayName(id)));
+    ids.map((id) => displayName(id));
 
   // Why a change made in the panel is refused, as a form error, when it
   // would leave someone outside the participant's family
@@ -2481,10 +2485,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     );
     return cutOff.length === 0
       ? undefined
-      : text(wording.changeWouldCutOff, {
+      : piped(wording.changeWouldCutOff, {
           count: cutOff.length,
           names: listOfNames(cutOff),
-        });
+        }).text;
   };
 
   // The links between two people, in either direction.
@@ -2497,9 +2501,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       )
       .map((link) => link.id);
 
-  const refuse = (notice: string) => {
+  const refuse = (notice: DynamicText) => {
     setConnectNotice(notice);
-    setAnnouncement(notice);
+    setAnnouncement(notice.text);
   };
 
   const handlePairSelect = (personId: string) => {
@@ -2546,11 +2550,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       if (cutOff.length > 0) {
         refuse(
           standInId === undefined
-            ? text(wording.disconnectWouldCutOff, {
+            ? piped(wording.disconnectWouldCutOff, {
                 count: cutOff.length,
                 names: listOfNames(cutOff),
               })
-            : text(wording.disconnectStandIn, {
+            : piped(wording.disconnectStandIn, {
                 childIsYou: family.byId.get(childId)?.isEgo ? 'true' : 'false',
                 child: displayName(childId),
                 standIn: displayName(standInId),
@@ -2644,7 +2648,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     );
     if (cutOff.length > 0) {
       refuse(
-        text(wording.changeWouldCutOff, {
+        piped(wording.changeWouldCutOff, {
           count: cutOff.length,
           names: listOfNames(cutOff),
         }),
@@ -2673,7 +2677,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const args = pairArgs(firstId, secondId);
     let removed = false;
     await confirm({
-      title: text(wording.disconnectConfirmTitle, args),
+      title: showPiped(piped(wording.disconnectConfirmTitle, args)),
       description: text(wording.disconnectConfirmDescription),
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
@@ -2721,12 +2725,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     closePanel();
     let removed = false;
     await confirm({
-      title: text(wording.removeConfirmTitle, { name }),
-      description: text(wording.removeConfirmDescription, {
-        hasOthers: cutOffIds.length === 0 ? 'false' : 'true',
-        count: cutOffIds.length,
-        names: listOfNames(cutOffIds),
-      }),
+      title: showPiped(piped(wording.removeConfirmTitle, { name })),
+      description: showPiped(
+        piped(wording.removeConfirmDescription, {
+          hasOthers: cutOffIds.length === 0 ? 'false' : 'true',
+          count: cutOffIds.length,
+          names: listOfNames(cutOffIds),
+        }),
+      ),
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
       // The dialog was opened from the person removed: once they are gone,
@@ -2782,14 +2788,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   };
 
   const panelTitle = (() => {
-    if (!panel) return '';
+    if (!panel) return undefined;
     const { mode } = panel;
     const subject = mode.kind === 'add' ? mode.anchor : mode.person;
-    return text(wording.panelTitle, {
-      relation: mode.kind === 'edit' ? 'edit' : mode.relation,
-      isYou: subject.isEgo ? 'true' : 'false',
-      name: displayName(subject.id),
-    });
+    return showPiped(
+      piped(wording.panelTitle, {
+        relation: mode.kind === 'edit' ? 'edit' : mode.relation,
+        isYou: subject.isEgo ? 'true' : 'false',
+        name: displayName(subject.id),
+      }),
+    );
   })();
 
   const editedPerson = panel?.mode.kind === 'edit' ? panel.mode.person : null;
@@ -3016,7 +3024,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 className="text-sm opacity-80"
                 data-testid="pedigree-connect-hint"
               >
-                {connectNotice ??
+                {showPiped(connectNotice ?? undefined) ??
                   text(
                     tool === 'connect'
                       ? wording.connectHint

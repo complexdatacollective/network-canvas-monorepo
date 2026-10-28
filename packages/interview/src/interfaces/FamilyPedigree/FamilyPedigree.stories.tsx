@@ -917,7 +917,7 @@ export const ConnectingAChildWithdrawsHerNewSiblingsAnswers: Story = {
     await userEvent.click(person('dad'));
     await userEvent.click(person('kim'));
     await userEvent.click(
-      await page.findByRole('menuitem', { name: '“Tom” is a parent of “Kim”' }),
+      await page.findByRole('menuitem', { name: 'Tom is a parent of Kim' }),
     );
     await userEvent.click(
       await page.findByRole('menuitem', { name: 'Biological parent' }),
@@ -955,7 +955,7 @@ export const RedescribingAParentWithdrawsNewSiblingsAnswers: Story = {
     await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
     const panel = within(panelOf(canvasElement) as HTMLElement);
     const tom = await panel.findByRole('radiogroup', {
-      name: 'What kind of parent is “Tom” to “Kim”?',
+      name: 'What kind of parent is Tom to Kim?',
     });
     await userEvent.click(
       within(tom).getByRole('radio', { name: 'Biological parent' }),
@@ -1569,7 +1569,7 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
     const sam = within(alsoParentOf).getByRole('checkbox', { name: 'Sam' });
     const carriedSam = () =>
       body.queryByRole('radiogroup', {
-        name: /^Was this parent pregnant with “Sam”\?/,
+        name: /^Was this parent pregnant with Sam\?/,
       });
     // Not asked about Jun, whose carrier is recorded.
     await expect(
@@ -2074,13 +2074,13 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
     await waitFor(
       () =>
         expect(list()?.textContent?.replaceAll('\u00AD', '')).toContain(
-          'Some details are missing for “Mia’s biological father”',
+          'Some details are missing for Mia’s biological father',
         ),
       { timeout: 5000 },
     );
     // Mia is never asked for a biological parent: the stand-in is one.
     await expect(
-      body.queryByRole('button', { name: /biological parents? for “Mia”/ }),
+      body.queryByRole('button', { name: /biological parents? for Mia/ }),
     ).toBeNull();
     await expect(canvas.getByTestId('pedigree-canvas')).toBeInTheDocument();
   },
@@ -2386,14 +2386,14 @@ export const ConnectingExistingPeople: Story = {
     );
     await userEvent.click(person('ego'));
     await userEvent.click(
-      await page.findByRole('menuitem', { name: '“Tom” is your parent' }),
+      await page.findByRole('menuitem', { name: 'Tom is your parent' }),
     );
     await userEvent.click(
       await page.findByRole('menuitem', { name: 'Biological parent' }),
     );
     await waitFor(() =>
       expect(
-        canvas.getByText('“Tom” is your parent (Biological parent)'),
+        canvas.getByText('Tom is your parent (Biological parent)'),
       ).toBeInTheDocument(),
     );
 
@@ -2416,16 +2416,14 @@ export const ConnectingExistingPeople: Story = {
     );
     await userEvent.click(person('mum'));
     const dialog = await page.findByRole('dialog', {
-      name: 'Remove the connection between “Tom” and “Rachel”?',
+      name: 'Remove the connection between Tom and Rachel?',
     });
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Delete' }),
     );
     await waitFor(() =>
       expect(
-        canvas.getByText(
-          'The connection between “Tom” and “Rachel” was removed.',
-        ),
+        canvas.getByText('The connection between Tom and Rachel was removed.'),
       ).toBeInTheDocument(),
     );
     await expect(person('mum')).toBeInTheDocument();
@@ -2442,12 +2440,12 @@ export const ConnectingExistingPeople: Story = {
     await userEvent.click(person('mum'));
     await userEvent.click(
       await page.findByRole('menuitem', {
-        name: '“Tom” and “Rachel” were partners',
+        name: 'Tom and Rachel were partners',
       }),
     );
     await waitFor(() =>
       expect(
-        canvas.getByText('“Tom” and “Rachel” were partners'),
+        canvas.getByText('Tom and Rachel were partners'),
       ).toBeInTheDocument(),
     );
   },

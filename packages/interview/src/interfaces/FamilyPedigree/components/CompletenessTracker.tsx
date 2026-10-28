@@ -20,14 +20,12 @@ import {
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { FamilyPedigreeStageDefinition } from '@codaco/protocol-validation';
 
-import {
-  useLocalizedString,
-  useResolveLocalizedMessage,
-} from '../../../localization/ProtocolLocalizationProvider';
+import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../../localization/useContentFormat';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
+import { showPiped, usePedigreePiped } from '../pedigreeWords';
 
 /** The stage's completeness setting: its enforcement and its wording. */
 type TrackerCompleteness = Pick<
@@ -161,7 +159,7 @@ function CompletenessTracker({
   ref,
 }: CompletenessTrackerProps) {
   const intl = useAppIntl();
-  const resolveMessage = useResolveLocalizedMessage();
+  const piped = usePedigreePiped();
   const { text: recommendedNote } = useLocalizedString(
     completeness.recommendedNote,
   );
@@ -333,7 +331,7 @@ function CompletenessTracker({
                   name: displayName(item.personId),
                 };
                 const wording = completeness.itemText[item.kind];
-                const itemText = resolveMessage(wording.listItem, values).text;
+                const itemText = showPiped(piped(wording.listItem, values));
                 const noneAnswer =
                   !done && onItemAnswer && 'noneButton' in wording
                     ? wording.noneButton
@@ -363,7 +361,7 @@ function CompletenessTracker({
                         </button>
                         {noneAnswer && (
                           <Button size="sm" onClick={() => answer(item)}>
-                            {resolveMessage(noneAnswer, values).text}
+                            {showPiped(piped(noneAnswer, values))}
                           </Button>
                         )}
                       </div>

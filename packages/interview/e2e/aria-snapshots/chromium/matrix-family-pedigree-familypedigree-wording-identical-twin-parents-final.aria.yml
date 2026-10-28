@@ -34,8 +34,8 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: What kind of parent is “Julie” to “Bea”?
-    - radiogroup "What kind of parent is “Julie” to “Bea”?":
+    - text: What kind of parent is Julie to Bea?
+    - radiogroup "What kind of parent is Julie to Bea?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"
@@ -46,8 +46,8 @@
       - text: Egg or sperm donor
       - radio "Surrogate"
       - text: Surrogate
-    - text: What kind of parent is “Rob” to “Bea”? “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
-    - radiogroup "What kind of parent is “Rob” to “Bea”?":
+    - text: What kind of parent is Rob to Bea? Surrogate is unavailable because Rob is recorded as Male at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+    - radiogroup "What kind of parent is Rob to Bea?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"
@@ -57,19 +57,19 @@
       - radio "Egg or sperm donor"
       - text: Egg or sperm donor
       - radio "Surrogate" [disabled]
-      - text: Surrogate “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+      - text: Surrogate Surrogate is unavailable because Rob is recorded as Male at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
     - text: Who carried the pregnancy?
     - radiogroup "Who carried the pregnancy?":
       - radio "Julie" [checked]
       - text: Julie
       - radio "Someone else, or I don’t know"
       - text: Someone else, or I don’t know
-    - text: Are any of these siblings twins with “Bea”? Include triplets and other multiple births.
-    - group "Are any of these siblings twins with “Bea”?":
+    - text: Are any of these siblings twins with Bea? Include triplets and other multiple births.
+    - group "Are any of these siblings twins with Bea?":
       - checkbox "You" [checked]
       - text: You
-    - text: Are “Bea” and you identical twins? Required
-    - radiogroup "Are “Bea” and you identical twins?":
+    - text: Are Bea and you identical twins? Required
+    - radiogroup "Are Bea and you identical twins?":
       - radio "Yes, identical" [checked]
       - text: Yes, identical
       - radio "No, fraternal (non-identical)"

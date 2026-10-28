@@ -5,7 +5,7 @@
   - dialog "Add your parent":
     - heading "Add your parent" [level=2]
     - button "Close"
-    - text: What kind of parent are they? Required “Surrogate” is unavailable because “Sue” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Sue” is connected to you.
+    - text: What kind of parent are they? Required Surrogate is unavailable because Sue is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how Sue is connected to you.
     - radiogroup "What kind of parent are they?":
       - radio "Biological parent"
       - text: Biological parent
@@ -16,7 +16,7 @@
       - radio "Egg or sperm donor"
       - text: Egg or sperm donor
       - radio "Surrogate" [disabled]
-      - text: Surrogate “Surrogate” is unavailable because “Sue” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Sue” is connected to you.
+      - text: Surrogate Surrogate is unavailable because Sue is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how Sue is connected to you.
     - text: Are they the partner of another parent?
     - radiogroup "Are they the partner of another parent?":
       - radio "Julie"

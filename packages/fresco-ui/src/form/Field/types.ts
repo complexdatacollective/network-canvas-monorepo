@@ -334,11 +334,16 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
  * Validation props are inferred based on the component's value type.
  */
 export type FieldProps<C extends ValidFieldComponent> = FieldOwnProps<C> &
+  // The field shows its own label and hint and never hands them to the
+  // control, so a control's own `label` (a Boolean's legend) does not narrow
+  // what the field can show.
   Omit<
     React.ComponentProps<C>,
     | keyof InjectedFieldProps
     | keyof FieldValueProps<FieldValue>
     | ValidationPropKey
+    | 'label'
+    | 'hint'
   > &
   ValidationPropsForValue<ExtractValue<C>> & {
     component: C;

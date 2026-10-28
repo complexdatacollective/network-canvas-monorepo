@@ -910,7 +910,7 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
       await choose(
         page,
         /^Who is the child’s biological parent\?/,
-        'Both you and “Partner”',
+        'Both you and Partner',
       );
       await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
@@ -1359,7 +1359,7 @@ function completenessParentsRequired(): ScenarioDefinition {
       await trackerRing(page).click();
       await trackerList(page)
         .getByRole('button', {
-          name: 'Some details are missing for “Biological father”',
+          name: 'Some details are missing for Biological father',
         })
         .click();
       await describe(page, { gender: 'Man', sex: 'Male' });
@@ -1580,12 +1580,12 @@ function completenessGrandparentsRequired(): ScenarioDefinition {
       for (const name of ['Julie', 'Rob']) {
         await expect(
           trackerList(page).getByRole('button', {
-            name: `Add biological parents for “${name}”`,
+            name: `Add biological parents for ${name}`,
           }),
         ).toBeVisible();
         await expect(
           trackerList(page).getByRole('button', {
-            name: `Add biological brothers and sisters for “${name}”, or say they have none`,
+            name: `Add biological brothers and sisters for ${name}, or say they have none`,
           }),
         ).toBeVisible();
       }
@@ -1665,8 +1665,7 @@ function extendedScope(
   person('leosMum', { name: 'Sam', gender: 'woman', sex: 'female' });
   relate('leosMum', 'son', 'biological', { carrier: true });
 
-  const cousinsItem =
-    'Add biological children for “May”, or say they have none';
+  const cousinsItem = 'Add biological children for May, or say they have none';
   return {
     id: `completeness-${scope === 'secondDegree' ? 'second' : 'third'}-degree-required`,
     covers: [`completeness.scope=${scope}`],
@@ -1677,12 +1676,12 @@ function extendedScope(
       const list = trackerList(page);
       await expect(
         list.getByRole('button', {
-          name: 'Add biological children for “Bea”, or say they have none',
+          name: 'Add biological children for Bea, or say they have none',
         }),
       ).toBeVisible();
       await expect(
         list.getByRole('button', {
-          name: 'Add biological children for “Leo”, or say they have none',
+          name: 'Add biological children for Leo, or say they have none',
         }),
       ).toBeVisible();
       if (scope === 'thirdDegree') {
@@ -1807,9 +1806,11 @@ function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
     seedNetwork: true,
     build: () => synth,
     run: async ({ page }) => {
-      // The value filled into the question, without the screen-reader
-      // announcement.
-      const shown = panel(page).locator('[data-dynamic-value] bdi');
+      // The value filled into the stage's own question (the panel's title
+      // and the family questions show the person's name as a value too).
+      const shown = panel(page)
+        .getByText(/^How old is /)
+        .locator('[data-dynamic-value] bdi');
       const cancel = async () => {
         await panel(page)
           .getByRole('button', { name: 'Cancel', exact: true })
@@ -1820,10 +1821,7 @@ function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
       await member(page, 'Mother').click();
       await expect(shown).toHaveText(['Mother']);
       await expect(
-        panel(page).getByRole('spinbutton', {
-          // Chromium puts a space after the visually hidden announcement.
-          name: /^How old is Dynamic value: Mother ?\?$/,
-        }),
+        panel(page).getByRole('spinbutton', { name: 'How old is Mother?' }),
       ).toBeVisible();
       await cancel();
 
@@ -2097,7 +2095,7 @@ function sexChangeGivesWay(): ScenarioDefinition {
       await expect(sexAnswer('Female')).toBeEnabled();
       await sexAnswer('Female').check();
       await expect(
-        form.getByText(/sex at birth of “Julie” will be cleared/),
+        form.getByText(/sex at birth of Julie will be cleared/),
       ).toBeVisible();
       await submitPanel(page, 'Save');
 
@@ -2172,9 +2170,7 @@ function connectAndDisconnect(): ScenarioDefinition {
         'Select a person, then select another to connect them.',
       );
       await member(page, 'You').click();
-      await page
-        .getByRole('menuitem', { name: '“Tom” is your parent' })
-        .click();
+      await page.getByRole('menuitem', { name: 'Tom is your parent' }).click();
       await page.getByRole('menuitem', { name: 'Adoptive parent' }).click();
       await expect(page.getByRole('menu')).toHaveCount(0);
       await expect
@@ -2198,7 +2194,7 @@ function connectAndDisconnect(): ScenarioDefinition {
       await tom.click();
       await rachel.click();
       const dialog = page.getByRole('dialog', {
-        name: 'Remove the connection between “Tom” and “Rachel”?',
+        name: 'Remove the connection between Tom and Rachel?',
       });
       await dialog.getByRole('button', { name: 'Delete' }).click();
       await expect(dialog).toHaveCount(0);
@@ -2212,7 +2208,7 @@ function connectAndDisconnect(): ScenarioDefinition {
       await tom.click();
       await rachel.click();
       await page
-        .getByRole('menuitem', { name: '“Tom” and “Rachel” were partners' })
+        .getByRole('menuitem', { name: 'Tom and Rachel were partners' })
         .click();
       await expect
         .poll(async () =>
@@ -2282,12 +2278,12 @@ function relationshipKindsDrawn(): ScenarioDefinition {
       await member(page, 'You').click();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /kind of parent is “Ana” to you/ })
+          .getByRole('radiogroup', { name: /kind of parent is Ana to you/ })
           .getByRole('radio', { name: 'Step or social parent', exact: true }),
       ).toBeChecked();
       await expect(
         panel(page)
-          .getByRole('radiogroup', { name: /kind of parent is “Luis” to you/ })
+          .getByRole('radiogroup', { name: /kind of parent is Luis to you/ })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();
       await panel(page)
@@ -2767,7 +2763,7 @@ function wordingConnectReasons(): ScenarioDefinition {
       await expectAbsent(
         page,
         'Adoptive parent (carried the pregnancy)',
-        '“Surrogate” is unavailable because “Sue” is recorded as having carried “Zoe”, and only one person carries a pregnancy. To choose it, first change how “Sue” is connected to “Zoe”.',
+        'Surrogate is unavailable because Sue is recorded as having carried Zoe, and only one person carries a pregnancy. To choose it, first change how Sue is connected to Zoe.',
       );
     },
   };
@@ -3616,7 +3612,7 @@ function wordingAddChild(): ScenarioDefinition {
       ).toBeVisible();
       await expect(
         form.getByRole('radiogroup', {
-          name: /^Is “Pam” the child’s biological parent\?/,
+          name: /^Is Pam the child’s biological parent\?/,
         }),
       ).toHaveCount(0);
       await expectAbsent(
@@ -3998,7 +3994,7 @@ function identicalTwinSexNotAsked(): ScenarioDefinition {
       ).toBeChecked();
       await expect(
         form.getByRole('radiogroup', {
-          name: /^Are you and “Ben” identical twins\?/,
+          name: /^Are you and Ben identical twins\?/,
         }),
       ).toHaveCount(0);
       await form.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -4007,7 +4003,7 @@ function identicalTwinSexNotAsked(): ScenarioDefinition {
       await member(page, 'Ben').click();
       await expect(
         form.getByRole('radiogroup', {
-          name: /^Are “Ben” and you identical twins\?/,
+          name: /^Are Ben and you identical twins\?/,
         }),
       ).toHaveCount(0);
     },
@@ -4041,7 +4037,7 @@ function wordingIdenticalTwinParents(): ScenarioDefinition {
       await member(page, 'You').click();
       const identical = form
         .getByRole('radiogroup', {
-          name: /^Are you and “Bea” identical twins\?/,
+          name: /^Are you and Bea identical twins\?/,
         })
         .getByRole('radio', { name: 'Yes, identical', exact: true });
       await expect(identical).toBeEnabled();
@@ -4063,7 +4059,7 @@ function wordingIdenticalTwinParents(): ScenarioDefinition {
       await expect(
         form
           .getByRole('radiogroup', {
-            name: 'What kind of parent is “Rob” to “Bea”?',
+            name: 'What kind of parent is Rob to Bea?',
           })
           .getByRole('radio', { name: 'Biological parent', exact: true }),
       ).toBeChecked();

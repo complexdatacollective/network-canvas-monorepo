@@ -196,13 +196,11 @@ describe('dynamic values in a stage’s text', () => {
     renderShell(makePayload({ name: 'Ada', nickname: 'C-17' }));
 
     const heading = await screen.findByRole('heading', { level: 1 });
-    expect(heading).toHaveAccessibleName('Welcome, Dynamic value: Ada');
+    expect(heading).toHaveAccessibleName('Welcome, Ada');
     expect(heading).toHaveTextContent('Welcome, Ada');
     expect(heading.querySelector('[data-dynamic-value]')).not.toBeNull();
     expect(screen.getByText('joining').tagName).toBe('STRONG');
-    expect(
-      screen.getAllByText('Dynamic value: C-17', { exact: false }),
-    ).not.toHaveLength(0);
+    expect(screen.getAllByText('C-17', { exact: false })).not.toHaveLength(0);
   });
 
   it('shows the version for a missing value as ordinary text', async () => {
@@ -300,7 +298,7 @@ describe('dynamic values in a stage’s text', () => {
     // The question's accessible name announces the value it shows.
     expect(
       await screen.findByRole('spinbutton', {
-        name: 'How old are you, Dynamic value: Ada?',
+        name: 'How old are you, Ada?',
       }),
     ).toBeInTheDocument();
 
@@ -313,7 +311,7 @@ describe('dynamic values in a stage’s text', () => {
     await user.type(name, 'Grace');
     expect(
       await screen.findByRole('spinbutton', {
-        name: 'How old are you, Dynamic value: Grace?',
+        name: 'How old are you, Grace?',
       }),
     ).toBeInTheDocument();
   });
@@ -349,7 +347,7 @@ describe('dynamic values in a stage’s text', () => {
     renderShell(payload);
 
     const age = await screen.findByRole('spinbutton', {
-      name: 'How old are you, Dynamic value: Ada?',
+      name: 'How old are you, Ada?',
     });
     expect(age).toBeInTheDocument();
     expect(screen.getByText('How old are you').tagName).toBe('STRONG');
@@ -402,7 +400,7 @@ describe('dynamic values in a stage’s text', () => {
     await user.type(name, 'Grace');
     await user.type(
       await screen.findByRole('spinbutton', {
-        name: 'How old are you, Dynamic value: Grace?',
+        name: 'How old are you, Grace?',
       }),
       '30',
     );

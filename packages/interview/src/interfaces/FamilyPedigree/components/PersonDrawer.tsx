@@ -18,7 +18,7 @@ type PersonDrawerProps = {
   onClosed?: () => void;
   /** Where focus returns when the panel closes. */
   returnFocus: () => HTMLElement | null;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   footer: ReactNode;
   /** The panel itself, to measure how much of the screen it covers. */

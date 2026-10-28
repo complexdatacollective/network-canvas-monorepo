@@ -2,7 +2,6 @@
 
 import { type ComponentProps, Fragment, type ReactNode, useMemo } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
   DEFAULT_MARKDOWN_REHYPE_PLUGINS,
@@ -10,7 +9,6 @@ import {
 } from '@codaco/fresco-ui/RenderMarkdown';
 import { DYNAMIC_VALUE_MARKER } from '@codaco/protocol-validation';
 
-import { runtimeMessages } from '../i18n/runtimeMessages';
 import {
   type DynamicTextPart,
   joinMarkdownParts,
@@ -21,22 +19,18 @@ import {
  * One value the interview filled into the study's text, tinted with the
  * primary colour so the participant can tell it was filled in for
  * them. The tint is mixed into the colour of the surrounding text, so it
- * stays readable on any background.
- * Screen readers hear "Dynamic value: …" instead of the bare value. The
- * value is isolated for bidirectional text, so a right-to-left name in a
- * left-to-right sentence (or the reverse) cannot reorder the words around it.
+ * stays readable on any background; screen readers read the value as part of
+ * the sentence. The value is isolated for bidirectional text, so a
+ * right-to-left name in a left-to-right sentence (or the reverse) cannot
+ * reorder the words around it.
  */
 function DynamicValue({ text }: { text: string }) {
-  const intl = useAppIntl();
   return (
     <span
       data-dynamic-value=""
       className="text-[color-mix(in_oklab,currentColor_50%,var(--primary))]"
     >
-      <bdi aria-hidden="true">{text}</bdi>
-      <span className="sr-only">
-        {intl.formatMessage(runtimeMessages.dynamicValue, { value: text })}
-      </span>
+      <bdi>{text}</bdi>
     </span>
   );
 }

@@ -44,10 +44,7 @@ import type { LabelNode } from '../../../dynamicValues/FormDynamicValues';
 import QuestionFlow from '../../../forms/QuestionFlow';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import {
-  useResolveLocalizedMessage,
-  useResolveLocalizedString,
-} from '../../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../../localization/useContentFormat';
 import {
   getValidationContext,
@@ -117,7 +114,9 @@ import {
 import { childKindWording, type OwnedOptionLabels } from '../options';
 import {
   configuredWord,
+  joinPiped,
   type PedigreeWords,
+  showPiped,
   usePedigreeWords,
 } from '../pedigreeWords';
 import { DerivedAnswersScope, useDerivedAnswer } from './derivedAnswers';
@@ -700,7 +699,6 @@ export default function PersonForm({
     family,
     displayName,
     sexLabels: optionLabels.sexAssignedAtBirth,
-    formatList: contentFormat.formatList,
   };
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
@@ -877,7 +875,7 @@ function SexAssignedAtBirthField({
       label={text(wording.sexAssignedAtBirthLabel)}
       options={options}
       required
-      hint={joinReasons(reasonContext, [...refusals, ...changes])}
+      hint={showPiped(joinReasons(reasonContext, [...refusals, ...changes]))}
       initialValue={person?.sexAssignedAtBirth}
     />
   );
@@ -893,7 +891,7 @@ function RelativesQuestions({
   displayName: (personId: string) => string;
 }) {
   const intl = useAppIntl();
-  const resolveMessage = useResolveLocalizedMessage();
+  const { piped } = usePedigreeWords();
   const values = {
     isYou: person.isEgo ? 'true' : 'false',
     name: displayName(person.id),
@@ -916,7 +914,7 @@ function RelativesQuestions({
         <Field
           component={RadioGroupField}
           name={ROLE.hasSiblings}
-          label={resolveMessage(askAbout.questions.siblings, values).text}
+          label={showPiped(piped(askAbout.questions.siblings, values))}
           options={options}
           required={askAbout.required}
           initialValue={initial('siblings')}
@@ -926,7 +924,7 @@ function RelativesQuestions({
         <Field
           component={RadioGroupField}
           name={ROLE.hasChildren}
-          label={resolveMessage(askAbout.questions.children, values).text}
+          label={showPiped(piped(askAbout.questions.children, values))}
           options={options}
           required={askAbout.required}
           initialValue={initial('children')}
@@ -1242,7 +1240,7 @@ function TwinFields({
   displayName: (personId: string) => string;
   sexAttribute: string;
 }) {
-  const { wording, text } = usePedigreeWords();
+  const { wording, text, piped } = usePedigreeWords();
   const values = useFormValue([ROLE.twins], 'opaque');
   const chosen = asStringArray(values[ROLE.twins]);
   // Twins come from one pregnancy, so a sibling is not offered as their twin
@@ -1295,10 +1293,12 @@ function TwinFields({
         component={CheckboxGroupField}
         name={ROLE.twins}
         nameMode="opaque"
-        label={text(wording.twinsLabel, {
-          isYou: isYou(person.id) ? 'true' : 'false',
-          name: displayName(person.id),
-        })}
+        label={showPiped(
+          piped(wording.twinsLabel, {
+            isYou: isYou(person.id) ? 'true' : 'false',
+            name: displayName(person.id),
+          }),
+        )}
         hint={text(wording.twinsHint)}
         options={candidates.map((id) => ({
           value: id,
@@ -1410,7 +1410,7 @@ function TwinZygosityField({
   displayName: (personId: string) => string;
   sexAttribute: string;
 }) {
-  const { wording, text } = usePedigreeWords();
+  const { wording, text, piped } = usePedigreeWords();
   const intl = useAppIntl();
   // The person's sex at birth as answered in this form.
   const answeredSex = asString(
@@ -1469,7 +1469,7 @@ function TwinZygosityField({
       component={RadioGroupField}
       name={twinZygosityField(twinId)}
       nameMode="opaque"
-      label={text(wording.twinZygosityLabel, args)}
+      label={showPiped(piped(wording.twinZygosityLabel, args))}
       options={ZYGOSITIES.map((value) => ({
         value,
         label:
@@ -1479,10 +1479,12 @@ function TwinZygosityField({
       }))}
       hint={
         outlook.parentsAligned && chosenZygosity === 'identical'
-          ? text(wording.identicalTwinSharesParents, {
-              ...args,
-              answer: text(wording.zygosityIdentical),
-            })
+          ? showPiped(
+              piped(wording.identicalTwinSharesParents, {
+                ...args,
+                answer: text(wording.zygosityIdentical),
+              }),
+            )
           : undefined
       }
       required
@@ -1519,7 +1521,7 @@ function ExistingRelationshipFields({
   sexAttribute: string;
 }) {
   const words = usePedigreeWords();
-  const { wording, text } = words;
+  const { wording, piped } = words;
   const { partnerships, parents: allParents } = existingLinksOf(
     family,
     person.id,
@@ -1655,12 +1657,14 @@ function ExistingRelationshipFields({
             component={BooleanField}
             name={linkField(link, 'current')}
             nameMode="opaque"
-            label={text(wording.stillTogetherLabel, {
-              named: 'true',
-              personIsYou: isYou(person.id),
-              partnerIsYou: isYou(partnerId),
-              partner: displayName(partnerId),
-            })}
+            label={showPiped(
+              piped(wording.stillTogetherLabel, {
+                named: 'true',
+                personIsYou: isYou(person.id),
+                partnerIsYou: isYou(partnerId),
+                partner: displayName(partnerId),
+              }),
+            )}
             initialValue={link.isCurrentPartner}
           />
         );
@@ -1805,7 +1809,7 @@ function ParentLinkFields({
   parentName: string;
   personName: string;
 }) {
-  const { wording, text } = usePedigreeWords();
+  const { wording, piped } = usePedigreeWords();
   const kindField = linkField(link, 'kind');
   const kindUnavailable = (value: string) =>
     (isGeneticKind(value) && !canBeGenetic) ||
@@ -1823,19 +1827,23 @@ function ParentLinkFields({
       component={RadioGroupField}
       name={kindField}
       nameMode="opaque"
-      label={text(wording.parentLinkKindLabel, {
-        personIsYou,
-        parentIsYou,
-        parent: parentName,
-        child: personName,
-      })}
+      label={showPiped(
+        piped(wording.parentLinkKindLabel, {
+          personIsYou,
+          parentIsYou,
+          parent: parentName,
+          child: personName,
+        }),
+      )}
       options={PARENT_KINDS.map((value) => ({
         value,
         label: parentKindLabels[value],
         disabled: kindUnavailable(value),
         description: reasonsFor(reasonContext, kindReasons, value),
       }))}
-      hint={joinReasons(reasonContext, [...kindReasons, ...kindChanges])}
+      hint={showPiped(
+        joinReasons(reasonContext, [...kindReasons, ...kindChanges]),
+      )}
       {...(givesWay ? { required: true } : {})}
       {...kindAnswer}
     />
@@ -1922,7 +1930,7 @@ function ParentCarrierField({
         })),
         { value: NONE, label: text(wording.carrierUnknown) },
       ]}
-      hint={joinReasons(reasonContext, reasons)}
+      hint={showPiped(joinReasons(reasonContext, reasons))}
       {...carrierAnswer}
     />
   );
@@ -2373,17 +2381,19 @@ function PartnershipCurrentField({
   /** Who the person being added is together with. */
   partner: string;
 }) {
-  const { wording, text } = usePedigreeWords();
+  const { wording, piped } = usePedigreeWords();
   return (
     <Field
       component={BooleanField}
       name={name}
-      label={text(wording.stillTogetherLabel, {
-        named: 'true',
-        personIsYou: 'false',
-        partnerIsYou: partnerIsYou ? 'true' : 'false',
-        partner,
-      })}
+      label={showPiped(
+        piped(wording.stillTogetherLabel, {
+          named: 'true',
+          personIsYou: 'false',
+          partnerIsYou: partnerIsYou ? 'true' : 'false',
+          partner,
+        }),
+      )}
       required
     />
   );
@@ -2405,8 +2415,7 @@ function ParentFields({
   config: PedigreeConfig;
 }) {
   const words = usePedigreeWords();
-  const { wording, text } = words;
-  const contentFormat = useContentFormat();
+  const { wording, text, piped } = words;
   const intl = useAppIntl();
   const values = useFormValue([
     ROLE.parentKind,
@@ -2567,19 +2576,17 @@ function ParentFields({
         ? geneticReason(id, answers)
         : carrierReason(id, answers);
     });
-  const siblingsHint = [
+  const siblingsHint = joinPiped([
     joinReasons(reasonContext, siblingReasons),
     takenOver.length > 0
-      ? text(wording.standInPlaceTaken, {
+      ? piped(wording.standInPlaceTaken, {
           anchorIsYou: anchor.isEgo ? 'true' : 'false',
           anchor: displayName(anchor.id),
           count: takenOver.length,
-          names: contentFormat.formatList(takenOver.map(displayName)),
+          names: takenOver.map(displayName),
         })
       : undefined,
-  ]
-    .filter((sentence) => sentence !== undefined)
-    .join(' ');
+  ]);
 
   // Answers made impossible by a later one — the new parent's sex at birth,
   // or their kind — are taken back, so the question is asked again
@@ -2650,8 +2657,8 @@ function ParentFields({
       component={RadioGroupField}
       name={ROLE.carriedPregnancyUnavailable}
       label={text(wording.parentCarriedLabel, { named: 'false' })}
-      options={carriedOptions(intl, carriedYesReason)}
-      hint={carriedYesReason}
+      options={carriedOptions(intl, carriedYesReason?.text)}
+      hint={showPiped(carriedYesReason)}
       initialValue="no"
     />
   );
@@ -2661,9 +2668,9 @@ function ParentFields({
       name={ROLE.carriedPregnancy}
       options={carriedOptions(intl)}
       required
-      label={
+      label={showPiped(
         anchorCarrierFixed
-          ? text(wording.carriedSiblingsPregnancyLabel, {
+          ? piped(wording.carriedSiblingsPregnancyLabel, {
               single: siblingsWithoutCarrier.length === 1 ? 'true' : 'false',
               count: siblingsWithoutCarrier.length,
               isYou:
@@ -2672,9 +2679,9 @@ function ParentFields({
                   : 'false',
               name: onlySibling === undefined ? '' : displayName(onlySibling),
             })
-          : text(wording.parentCarriedLabel, { named: 'false' })
-      }
-      hint={carriedChange}
+          : piped(wording.parentCarriedLabel, { named: 'false' }),
+      )}
+      hint={showPiped(carriedChange)}
       {...carriedAnswer}
     />
   );
@@ -2687,12 +2694,14 @@ function ParentFields({
       <Field
         component={RadioGroupField}
         name={aboutPerson(ROLE.replacedParentKind, givingWay)}
-        label={text(wording.parentLinkKindLabel, {
-          parentIsYou: family.byId.get(givingWay)?.isEgo ? 'true' : 'false',
-          personIsYou: anchor.isEgo ? 'true' : 'false',
-          parent: displayName(givingWay),
-          child: displayName(anchor.id),
-        })}
+        label={showPiped(
+          piped(wording.parentLinkKindLabel, {
+            parentIsYou: family.byId.get(givingWay)?.isEgo ? 'true' : 'false',
+            personIsYou: anchor.isEgo ? 'true' : 'false',
+            parent: displayName(givingWay),
+            child: displayName(anchor.id),
+          }),
+        )}
         options={REPLACED_PARENT_KINDS.map((value) => ({
           value,
           label: parentKindLabels[value],
@@ -2752,7 +2761,7 @@ function ParentFields({
           disabled: !kindPossible(value),
           description: reasonsFor(reasonContext, kindReasons, value),
         }))}
-        hint={kindHint}
+        hint={showPiped(kindHint)}
         required
         {...kindAnswer}
       />
@@ -2791,7 +2800,7 @@ function ParentFields({
             label: displayName(id),
             disabled: !siblingPossible(id) || takenOver.includes(id),
           }))}
-          hint={siblingsHint || undefined}
+          hint={showPiped(siblingsHint)}
           {...siblingsAnswer}
         />
       )}
@@ -2812,7 +2821,7 @@ function ChildFields({
   reasonContext: ReasonContext;
 }) {
   const words = usePedigreeWords();
-  const { wording, text } = words;
+  const { wording, text, piped } = words;
   const values = useFormValue([ROLE.childKind, ROLE.otherParent]);
   const choices = otherParentChoices(family, anchor.id);
   const childKind = asString(values[ROLE.childKind]);
@@ -2948,7 +2957,7 @@ function ChildFields({
             !couldCarryPregnancy(anchor.sexAssignedAtBirth),
           description: reasonsFor(reasonContext, childKindReasons, value),
         }))}
-        hint={joinReasons(reasonContext, childKindReasons)}
+        hint={showPiped(joinReasons(reasonContext, childKindReasons))}
         required
       />
       {biologicalField && otherPartner && (
@@ -2956,20 +2965,22 @@ function ChildFields({
           component={RadioGroupField}
           name={biologicalField}
           label={text(wording.biologicalParentLabel)}
-          hint={[
-            text(wording.biologicalParentHint),
-            joinReasons(reasonContext, bothReasons),
-          ]
-            .filter((sentence) => sentence !== undefined)
-            .join(' ')}
+          hint={showPiped(
+            joinPiped([
+              piped(wording.biologicalParentHint),
+              joinReasons(reasonContext, bothReasons),
+            ]),
+          )}
           options={[
             {
               value: 'both',
-              label: text(wording.biologicalParentBoth, {
-                firstIsYou: anchor.isEgo ? 'true' : 'false',
-                first: displayName(anchor.id),
-                second: displayName(otherPartner),
-              }),
+              label: showPiped(
+                piped(wording.biologicalParentBoth, {
+                  firstIsYou: anchor.isEgo ? 'true' : 'false',
+                  first: displayName(anchor.id),
+                  second: displayName(otherPartner),
+                }),
+              ),
               disabled: !bothPossible,
               description: reasonsFor(reasonContext, bothReasons, 'both'),
             },
@@ -2984,12 +2995,14 @@ function ChildFields({
         <Field
           component={BooleanField}
           name={otherBiologicalField}
-          label={text(wording.otherParentBiologicalLabel, {
-            otherIsYou: family.byId.get(raisedWithOtherParent)?.isEgo
-              ? 'true'
-              : 'false',
-            other: displayName(raisedWithOtherParent),
-          })}
+          label={showPiped(
+            piped(wording.otherParentBiologicalLabel, {
+              otherIsYou: family.byId.get(raisedWithOtherParent)?.isEgo
+                ? 'true'
+                : 'false',
+              other: displayName(raisedWithOtherParent),
+            }),
+          )}
           required
         />
       )}
@@ -3035,7 +3048,7 @@ function SiblingFields({
   framing: FramingId;
 }) {
   const words = usePedigreeWords();
-  const { wording, text } = words;
+  const { wording, text, piped } = words;
   const values = useFormValue([
     ROLE.sharedParents,
     ROLE.sharedParentCount,
@@ -3334,10 +3347,12 @@ function SiblingFields({
       <Field
         component={CheckboxGroupField}
         name={ROLE.sharedParents}
-        label={text(wording.sharedDonorsLabel, {
-          ...args,
-          hasSurrogate: surrogates.length > 0 ? 'true' : 'false',
-        })}
+        label={showPiped(
+          piped(wording.sharedDonorsLabel, {
+            ...args,
+            hasSurrogate: surrogates.length > 0 ? 'true' : 'false',
+          }),
+        )}
         options={[...donors, ...surrogates].map((id) => ({
           value: id,
           label: parentLabel(id),
@@ -3349,7 +3364,7 @@ function SiblingFields({
         <Field
           component={RadioGroupField}
           name={ROLE.sharedParentCount}
-          label={text(wording.sharedParentCountLabel, args)}
+          label={showPiped(piped(wording.sharedParentCountLabel, args))}
           hint={text(wording.placeholderParentsNote, {
             framing,
             shared: asString(values[ROLE.sharedParentCount]) ?? 'both',
@@ -3380,7 +3395,7 @@ function SiblingFields({
           <Field
             component={CheckboxGroupField}
             name={ROLE.sharedParents}
-            label={text(wording.sharedSurrogateLabel, args)}
+            label={showPiped(piped(wording.sharedSurrogateLabel, args))}
             options={surrogates.map((id) => ({
               value: id,
               label: parentLabel(id),
@@ -3393,7 +3408,7 @@ function SiblingFields({
       <Field
         component={CheckboxGroupField}
         name={ROLE.sharedParents}
-        label={text(wording.sharedParentCountLabel, args)}
+        label={showPiped(piped(wording.sharedParentCountLabel, args))}
         options={[...parents, ...donors, ...surrogates].map((id) => ({
           value: id,
           label: parentLabel(id),
@@ -3448,7 +3463,7 @@ function SiblingFields({
         <Field
           component={RadioGroupField}
           name={ROLE.twin}
-          label={text(wording.siblingTwinLabel, args)}
+          label={showPiped(piped(wording.siblingTwinLabel, args))}
           hint={text(wording.siblingTwinHint)}
           options={[
             { value: NONE, label: text(wording.siblingTwinNo) },

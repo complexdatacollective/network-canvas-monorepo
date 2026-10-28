@@ -181,7 +181,7 @@ export const messages = defineMessages({
   connectHintLinking: {
     id: 'interview.familyPedigree.connectHintLinking',
     defaultMessage:
-      '{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to “{name}”.}}',
+      '{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to {name}.}}',
     description:
       'Read out to screen reader users, not shown, once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant.',
   },
@@ -189,33 +189,33 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.connectedParentAnnouncement',
     defaultMessage: '{relationship} ({kind})',
     description:
-      'Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent).',
+      'Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example Julie is a parent of Rob); kind is the kind of parent chosen (for example Adoptive parent).',
   },
   disconnectHintLinking: {
     id: 'interview.familyPedigree.disconnectHintLinking',
     defaultMessage:
-      '{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from “{name}”.}}',
+      '{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from {name}.}}',
     description:
       'Read out to screen reader users, not shown, once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant.',
   },
   disconnectedAnnouncement: {
     id: 'interview.familyPedigree.disconnectedAnnouncement',
     defaultMessage:
-      '{firstIsYou, select, true {The connection between you and “{second}” was removed.} other {The connection between “{first}” and “{second}” was removed.}}',
+      '{firstIsYou, select, true {The connection between you and {second} was removed.} other {The connection between {first} and {second} was removed.}}',
     description:
       'Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant.',
   },
   siblingsAnsweredAnnouncement: {
     id: 'interview.familyPedigree.siblingsAnsweredAnnouncement',
     defaultMessage:
-      '{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}',
+      '{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that {name} has no biological brothers or sisters.}}',
     description:
       'Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings. name is the person’s name or how they are related to the participant.',
   },
   childrenAnsweredAnnouncement: {
     id: 'interview.familyPedigree.childrenAnsweredAnnouncement',
     defaultMessage:
-      '{isYou, select, true {Recorded that you have no biological children.} other {Recorded that “{name}” has no biological children.}}',
+      '{isYou, select, true {Recorded that you have no biological children.} other {Recorded that {name} has no biological children.}}',
     description:
       'Screen reader announcement after answering, from the list of family members still needed, that a person has no children. name is the person’s name or how they are related to the participant.',
   },

@@ -1,21 +1,20 @@
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import type { PedigreeSexAssignedAtBirth } from '@codaco/protocol-validation';
 
+import type { DynamicText } from '../../../dynamicValues/resolveDynamicText';
 import type { Family, GeneticParentBlock, SexConflict } from '../model';
-import type { PedigreeWords } from '../pedigreeWords';
+import { joinPiped, type PedigreeWords } from '../pedigreeWords';
 
 /**
  * What the sentences explaining an unavailable answer need: the stage's
- * words for them, the people's names as shown, the codebook's labels for
- * sex at birth, as text, and how lists are joined in the words' language.
+ * words for them, the people's names as shown, and the codebook's labels for
+ * sex at birth, as text.
  */
 export type ReasonContext = {
   words: PedigreeWords;
   family: Family;
   displayName: (personId: string) => string;
   sexLabels: Readonly<Record<PedigreeSexAssignedAtBirth, string>>;
-  /** Joins items as the language of the stage's words joins a list. */
-  formatList: (items: readonly string[]) => string;
 };
 
 /** An answer a reason makes unavailable: its value, and its label as
@@ -97,26 +96,16 @@ const sexLabel = (context: ReasonContext, sex: string) => {
   return getMarkdownLabelText(labels[sex] ?? sex);
 };
 
-/** People or answers named together in a sentence, joined as the language
- * of the stage's words joins a list. */
-const listed = (context: ReasonContext, items: readonly string[]) =>
-  context.formatList(items);
-
-/** The answers a reason disables, as its sentence names them. */
-const answersArgs = (context: ReasonContext, reason: Reason) => ({
-  answers: listed(
-    context,
-    reason.answers.map((answer) => answer.label),
-  ),
+/** The answers a reason disables, as its sentence names them: a list,
+ * joined as the language of the stage's words joins one. */
+const answersArgs = (reason: Reason) => ({
+  answers: reason.answers.map((answer) => answer.label),
   count: reason.answers.length,
 });
 
 /** The one answer a reason about what choosing it does names. */
-const answerArg = (context: ReasonContext, reason: Reason) =>
-  listed(
-    context,
-    reason.answers.map((answer) => answer.label),
-  );
+const answerArg = (reason: Reason) =>
+  reason.answers.map((answer) => answer.label);
 
 /** The answer that is a sex at birth. */
 const sexAnswer = (context: ReasonContext, sex: string): UnavailableAnswer => ({
@@ -217,12 +206,12 @@ function formatGeneticParent(
   context: ReasonContext,
   reason: Reason,
   block: GeneticParentBlock,
-): string {
+): DynamicText {
   const { words, displayName } = context;
   const child = displayName(block.childId);
   if (block.rule === 'sameSexGeneticParent') {
-    return words.text(words.wording.unavailableSameSexGeneticParent, {
-      ...answersArgs(context, reason),
+    return words.piped(words.wording.unavailableSameSexGeneticParent, {
+      ...answersArgs(reason),
       who: isYou(context, block.coParentId)
         ? 'coParentIsYou'
         : isYou(context, block.childId)
@@ -239,8 +228,8 @@ function formatGeneticParent(
       ? block.parentIds
       : [you, ...block.parentIds.filter((id) => id !== you)]
   ).map(displayName);
-  return words.text(words.wording.unavailableGeneticParentsFull, {
-    ...answersArgs(context, reason),
+  return words.piped(words.wording.unavailableGeneticParentsFull, {
+    ...answersArgs(reason),
     who: isYou(context, block.childId)
       ? 'childIsYou'
       : you !== undefined
@@ -260,15 +249,15 @@ function formatReason(
   context: ReasonContext,
   reason: Reason,
   childIds: readonly string[],
-): string {
+): DynamicText {
   const { words, displayName } = context;
-  const children = listed(context, childIds.map(displayName));
+  const children = childIds.map(displayName);
   const aboutYou = childIds.some((id) => isYou(context, id));
   switch (reason.rule) {
     case 'geneticParent':
       return formatGeneticParent(context, reason, reason.block);
     case 'clearsCoParentSex':
-      return words.text(words.wording.sexChangeClearsCoParentSex, {
+      return words.piped(words.wording.sexChangeClearsCoParentSex, {
         who: isYou(context, reason.personId)
           ? 'personIsYou'
           : aboutYou
@@ -281,8 +270,8 @@ function formatReason(
         sex: sexLabel(context, reason.sex),
       });
     case 'carrierRecorded':
-      return words.text(words.wording.unavailableCarrierRecorded, {
-        ...answersArgs(context, reason),
+      return words.piped(words.wording.unavailableCarrierRecorded, {
+        ...answersArgs(reason),
         who: isYou(context, reason.carrierId)
           ? 'carrierIsYou'
           : isYou(context, reason.childId)
@@ -292,8 +281,8 @@ function formatReason(
         child: displayName(reason.childId),
       });
     case 'cannotCarry':
-      return words.text(words.wording.unavailableCannotCarry, {
-        ...answersArgs(context, reason),
+      return words.piped(words.wording.unavailableCannotCarry, {
+        ...answersArgs(reason),
         who:
           reason.personId === undefined
             ? 'this'
@@ -304,7 +293,7 @@ function formatReason(
         sex: sexLabel(context, reason.sex),
       });
     case 'endsCarrying':
-      return words.text(words.wording.sexChangeEndsCarrying, {
+      return words.piped(words.wording.sexChangeEndsCarrying, {
         who: isYou(context, reason.personId)
           ? 'personIsYou'
           : aboutYou
@@ -314,7 +303,7 @@ function formatReason(
         sex: sexLabel(context, reason.sex),
       });
     case 'carried':
-      return words.text(words.wording.unavailableCarried, {
+      return words.piped(words.wording.unavailableCarried, {
         who: isYou(context, reason.personId)
           ? 'personIsYou'
           : aboutYou
@@ -324,8 +313,8 @@ function formatReason(
         sex: sexLabel(context, reason.sex),
       });
     case 'carrierReplaced':
-      return words.text(words.wording.carrierReplaced, {
-        answer: answerArg(context, reason),
+      return words.piped(words.wording.carrierReplaced, {
+        answer: answerArg(reason),
         who: isYou(context, reason.carrierId)
           ? 'carrierIsYou'
           : isYou(context, reason.childId)
@@ -335,8 +324,8 @@ function formatReason(
         child: displayName(reason.childId),
       });
     case 'geneticParentReplaced':
-      return words.text(words.wording.geneticParentReplaced, {
-        answer: answerArg(context, reason),
+      return words.piped(words.wording.geneticParentReplaced, {
+        answer: answerArg(reason),
         who: isYou(context, reason.replacedId)
           ? 'parentIsYou'
           : isYou(context, reason.childId)
@@ -349,8 +338,8 @@ function formatReason(
       const [first, second] = isYou(context, reason.secondId)
         ? [reason.secondId, reason.firstId]
         : [reason.firstId, reason.secondId];
-      return words.text(words.wording.unavailableBothSameSex, {
-        ...answersArgs(context, reason),
+      return words.piped(words.wording.unavailableBothSameSex, {
+        ...answersArgs(reason),
         firstIsYou: isYou(context, first) ? 'true' : 'false',
         first: displayName(first),
         second: displayName(second),
@@ -389,7 +378,7 @@ const mergeKey = (reason: Reason) => {
 export function joinReasons(
   context: ReasonContext,
   reasons: readonly (Reason | undefined | false)[],
-): string | undefined {
+): DynamicText | undefined {
   const groups: { reason: Reason; childIds: string[] }[] = [];
   for (const reason of reasons) {
     if (!reason) continue;
@@ -420,22 +409,22 @@ export function joinReasons(
       .filter(({ childIds }) => childIds.some((id) => isYou(context, id)))
       .map(({ reason }) => mergeKey(reason)),
   );
-  const sentences = [
-    ...new Set(
-      groups
-        .filter(
-          ({ reason, childIds }) =>
-            childIds.some((id) => isYou(context, id)) ||
-            !aboutYou.has(mergeKey(reason)),
-        )
-        .map(({ reason, childIds }) => formatReason(context, reason, childIds)),
-    ),
-  ];
-  return sentences.length > 0 ? sentences.join(' ') : undefined;
+  const sentences = new Map<string, DynamicText>();
+  for (const { reason, childIds } of groups) {
+    if (
+      !childIds.some((id) => isYou(context, id)) &&
+      aboutYou.has(mergeKey(reason))
+    ) {
+      continue;
+    }
+    const sentence = formatReason(context, reason, childIds);
+    sentences.set(sentence.text, sentence);
+  }
+  return joinPiped([...sentences.values()]);
 }
 
-/** Why an answer is unavailable, as its own description: the reasons that
- * name it. Undefined when none does. */
+/** Why an answer is unavailable, as its own description, which is text: the
+ * reasons that name it. Undefined when none does. */
 export const reasonsFor = (
   context: ReasonContext,
   reasons: readonly (Reason | undefined | false)[],
@@ -447,4 +436,4 @@ export const reasonsFor = (
       (reason) =>
         reason && reason.answers.some((answer) => answer.value === value),
     ),
-  );
+  )?.text;

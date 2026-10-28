@@ -8,7 +8,7 @@ import ConnectMenu, { describeConnection } from '../components/ConnectMenu';
 import { readFamily } from '../model';
 import { PedigreeWordsProvider } from '../pedigreeWords';
 import { config, link, person } from './fixtures';
-import { pedigreeWordsIn } from './pedigreeWords';
+import { pedigreeWordsIn, shownSentence } from './pedigreeWords';
 
 const intl = resolveInterviewIntl();
 const words = pedigreeWordsIn();
@@ -59,7 +59,7 @@ describe('ConnectMenu', () => {
 
     await userEvent.click(
       await screen.findByRole('menuitem', {
-        name: '“Julie” is a parent of “Rob”',
+        name: 'Julie is a parent of Rob',
       }),
     );
     const donor = await screen.findByTestId('pedigree-connect-kind-donor');
@@ -84,7 +84,7 @@ describe('ConnectMenu', () => {
         (id) => (id === 'julie' ? 'Julie' : 'Rob'),
         PARENT_KIND_LABELS,
       ),
-    ).toBe('“Julie” is a parent of “Rob” (Egg or sperm donor)');
+    ).toBe('Julie is a parent of Rob (Egg or sperm donor)');
   });
 
   it('announces a connection in the names people have once it is made', () => {
@@ -113,7 +113,7 @@ describe('ConnectMenu', () => {
         PARENT_KIND_LABELS,
       ),
     ).toBe(
-      '“Paternal grandmother” is a parent of “Father” (Genetic parent (carried the pregnancy))',
+      'Paternal grandmother is a parent of Father (Genetic parent (carried the pregnancy))',
     );
     expect(
       describeConnection(
@@ -124,7 +124,7 @@ describe('ConnectMenu', () => {
         (id) => names.get(id) ?? '',
         PARENT_KIND_LABELS,
       ),
-    ).toBe('“Paternal grandmother” and “Father” were partners');
+    ).toBe('Paternal grandmother and Father were partners');
   });
 
   it('says why someone cannot be connected as the parent of their own ancestor', async () => {
@@ -160,9 +160,7 @@ describe('ConnectMenu', () => {
     );
     const item = await screen.findByTestId('pedigree-connect-parent-ego');
     expect(item).toHaveAttribute('aria-disabled', 'true');
-    expect(item).toHaveAccessibleDescription(
-      /“Grandpa”.*one of your ancestors/,
-    );
+    expect(item).toHaveAccessibleDescription(/Grandpa.*one of your ancestors/);
   });
 
   // Ruling 21: one person carries a pregnancy. A choice that carries
@@ -212,7 +210,7 @@ describe('ConnectMenu', () => {
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
       expect(item).not.toHaveAttribute('aria-disabled', 'true');
       expect(item).toHaveAccessibleDescription(
-        `Choosing “${label}” means “Mum” will no longer be recorded as having carried you, as only one person carries a pregnancy.`,
+        `Choosing ${label} means Mum will no longer be recorded as having carried you, as only one person carries a pregnancy.`,
       );
     }
     expect(
@@ -263,7 +261,7 @@ describe('ConnectMenu', () => {
       ['social-carrier', 'Step or social parent (carried the pregnancy)'],
       ['surrogate', 'Surrogate'],
     ] as const) {
-      const reason = `“${label}” is unavailable because “Huda” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Huda” is connected to you.`;
+      const reason = `${label} is unavailable because Huda is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how Huda is connected to you.`;
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
       expect(item).toHaveAttribute('aria-disabled', 'true');
       expect(item).toHaveTextContent(reason);
@@ -320,7 +318,7 @@ describe('ConnectMenu', () => {
       ['biological', 'Genetic parent'],
       ['donor', 'Egg or sperm donor'],
     ] as const) {
-      const reason = `“${label}” is unavailable because you already have two genetic parents recorded, “Debra” and “Steve”. To choose it, first change how one of them is connected to you.`;
+      const reason = `${label} is unavailable because you already have two genetic parents recorded, Debra and Steve. To choose it, first change how one of them is connected to you.`;
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
       expect(item).toHaveAttribute('aria-disabled', 'true');
       expect(item).toHaveTextContent(reason);
@@ -378,12 +376,14 @@ describe('ConnectMenu', () => {
     );
     expect(biological).not.toHaveAttribute('aria-disabled', 'true');
     expect(biological).toHaveAccessibleDescription(
-      'Choosing “Genetic parent” means “Tom” will no longer be recorded as your biological parent. You will be asked what kind of parent “Tom” is to you instead.',
+      'Choosing Genetic parent means Tom will no longer be recorded as your biological parent. You will be asked what kind of parent Tom is to you instead.',
     );
     await userEvent.click(biological);
     expect(onConnect).not.toHaveBeenCalled();
     expect(
-      await screen.findByText('What kind of parent is “Tom” to you?'),
+      await screen.findByText(
+        shownSentence('What kind of parent is Tom to you?'),
+      ),
     ).toBeInTheDocument();
     await userEvent.click(
       await screen.findByTestId('pedigree-connect-replaced-social'),

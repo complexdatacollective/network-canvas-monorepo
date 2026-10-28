@@ -325,7 +325,7 @@ describe('NodePanel title with a dynamic value', () => {
     );
 
     const heading = screen.getByRole('heading', { level: 3 });
-    expect(heading).toHaveAccessibleName('People Dynamic value: Ada knows');
+    expect(heading).toHaveAccessibleName('People Ada knows');
     const value = heading.querySelector('[data-dynamic-value] bdi');
     expect(value?.textContent).toBe('Ada');
   });
