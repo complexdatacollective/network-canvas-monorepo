@@ -703,6 +703,7 @@ try {
     // ciphertext at least as long as the GCM tag, whose DECODED bytes carry
     // none of the seeded plaintext markers — a wrapper with plaintext (or
     // empty strings) stuffed into ct must not certify.
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs inside page.evaluate, so it cannot live at module scope
     const decodeEnvelope = (v) => {
       if (!v || typeof v.iv !== 'string' || typeof v.ct !== 'string')
         return null;
@@ -722,6 +723,7 @@ try {
     // so a text-like decoded ct is plaintext no matter which field holds
     // it. Shape-specific marker lists provably miss fields (codebook,
     // stageMetadata) whose serializations carry none of the markers.
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs inside page.evaluate, so it cannot live at module scope
     const looksLikeText = (ct) => {
       const head = ct.slice(0, 200);
       let printable = 0;

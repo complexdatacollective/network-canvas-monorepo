@@ -208,7 +208,7 @@ const TimelineStageRow = ({
   // the refocus a keyboard move otherwise loses — belongs to fresco-ui's
   // `useKeyboardReorder`, which `ArrayFieldDragHandle` also consumes. This row
   // hand-rolled its own copy of it.
-  const reorder = useKeyboardReorder({
+  const { ref: reorderControlRef, ...reorder } = useKeyboardReorder({
     index,
     itemCount: stageCount,
     onMove: (targetIndex) => onMove(stage.id, targetIndex),
@@ -229,10 +229,10 @@ const TimelineStageRow = ({
   // reorder hook's own refocus — so this callback feeds both.
   const setOpenControl = useCallback(
     (element: HTMLButtonElement | null) => {
-      reorder.ref.current = element;
+      reorderControlRef.current = element;
       registerOpenControl(stage.id, element);
     },
-    [reorder.ref, registerOpenControl, stage.id],
+    [reorderControlRef, registerOpenControl, stage.id],
   );
 
   const handleRowPointerDown = (event: PointerEvent<HTMLDivElement>) => {

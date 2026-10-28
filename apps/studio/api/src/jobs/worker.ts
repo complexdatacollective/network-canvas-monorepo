@@ -242,6 +242,11 @@ export const returnToQueue = Effect.fnUntraced(function* (
   return returned.length === 1;
 });
 
+const leaseLost = (queue: JobQueueName, jobId: JobId, attempt: number) =>
+  Effect.logWarning(
+    'job lost its lease before its attempt could settle; the row belongs to a later attempt',
+  ).pipe(Effect.annotateLogs({ queue, job_id: jobId, attempt }));
+
 const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   const schema = assertSchemaName(config.schema);
   const registry = new Map<JobQueueName, RegisteredHandler>();
@@ -499,11 +504,6 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     };
     return step;
   });
-
-  const leaseLost = (queue: JobQueueName, jobId: JobId, attempt: number) =>
-    Effect.logWarning(
-      'job lost its lease before its attempt could settle; the row belongs to a later attempt',
-    ).pipe(Effect.annotateLogs({ queue, job_id: jobId, attempt }));
 
   const drainOnce = Effect.fn('JobWorker.drainOnce')(
     function* (queue: JobQueueName) {
@@ -923,6 +923,16 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   return service;
 });
 
+const periodic = <A, E, R>(
+  interval: Duration.Input,
+  effect: Effect.Effect<A, E, R>,
+  onFailure: (cause: Cause.Cause<E>) => Effect.Effect<void>,
+) =>
+  effect.pipe(
+    Effect.catchCause(onFailure),
+    Effect.repeat(Schedule.spaced(interval)),
+  );
+
 /** The stop is added after the forks so it runs before their interruption: scope finalizers run in reverse. */
 const forkBackground = Effect.fnUntraced(function* (
   worker: JobWorker['Service'],
@@ -971,16 +981,6 @@ const forkBackground = Effect.fnUntraced(function* (
             () => drain,
           ),
         ),
-    );
-
-  const periodic = <A, E, R>(
-    interval: Duration.Input,
-    effect: Effect.Effect<A, E, R>,
-    onFailure: (cause: Cause.Cause<E>) => Effect.Effect<void>,
-  ) =>
-    effect.pipe(
-      Effect.catchCause(onFailure),
-      Effect.repeat(Schedule.spaced(interval)),
     );
 
   if (config.listen !== false) {

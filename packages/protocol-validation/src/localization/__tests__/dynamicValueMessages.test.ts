@@ -246,6 +246,20 @@ describe('dynamicMessageParts', () => {
     ]);
   });
 
+  it('takes an exact plural version before the count’s category', () => {
+    const counted =
+      '{count, plural, =0 {Nobody} one {One person} other {# people}}';
+    const of = (count: number) =>
+      dynamicMessageParts(
+        counted,
+        'en',
+        states({ count: { missing: false, count } }),
+      );
+    expect(of(0)).toEqual(['Nobody']);
+    expect(of(1)).toEqual(['One person']);
+    expect(of(3)).toEqual([{ argument: 'count' }, ' people']);
+  });
+
   it('takes a case version, then other', () => {
     const cased = '{kind, select, friend {A friend} other {Someone}}';
     expect(

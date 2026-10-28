@@ -15,11 +15,13 @@ import {
   forwardRef,
   type Ref,
   useCallback,
-  useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
+import { useMergeRefs } from 'react-best-merge-refs';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import {
@@ -33,6 +35,7 @@ import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
 import { useKeyboardReorder } from '../../../dnd/useKeyboardReorder';
+import useTokenRadius from '../../../hooks/useTokenRadius';
 import Surface from '../../../layout/Surface';
 import {
   controlVariants,
@@ -209,7 +212,7 @@ const itemVariants = cva({
 /**
  * Enter and exit animations for the list's rows and its empty state.
  *
- * `initial` is resolved from `hasOpened` (see `hasOpenedRef`): rows that
+ * `initial` is resolved from `hasOpened` (see `ArrayField`): rows that
  * arrive with the field's value are simply there, and only what the researcher
  * makes appear animates in.
  *
@@ -651,6 +654,13 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   ref: Ref<HTMLLIElement>,
 ) {
   const dragControls = useDragControls();
+  // A row morphs into the dialog that edits it through its `layoutId`. Motion
+  // mixes the two ends' radii and leaves the row with the result, so the row
+  // must hold its `rounded-*` value as a number as well, or the morph runs
+  // from (and settles on) square corners.
+  const itemRef = useRef<HTMLLIElement>(null);
+  const itemRadius = useTokenRadius(itemRef);
+  const itemRefs = useMergeRefs({ itemRef, ref });
   // A removed row stays mounted for as long as its exit animation runs. It is
   // not part of the list any more: leaving it in the accessibility tree and in
   // the tab ring means "the row at this index", "the last row" and every query
@@ -697,7 +707,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       as={Reorder.Item}
       noContainer
       series="accent"
-      ref={ref}
+      ref={itemRefs}
+      style={{ borderRadius: itemRadius }}
       // Motion 14.6 makes every Reorder.Item a tab stop for its own
       // grab-and-move keys. Items reorder through their drag handle, so the
       // item itself stays out of the tab order.
@@ -745,6 +756,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
 }
 
 // Generic forwardRef wrapper that preserves the generic type parameter
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- forwardRef erases the generic parameter; this is the same component with its signature restated
 const ArrayFieldItemWrapper = forwardRef(ArrayFieldItemWrapperInner) as <
   T extends Record<string, unknown>,
 >(
@@ -786,27 +798,14 @@ export default function ArrayField<T extends Record<string, unknown>>({
   // renders, which `useArrayFieldItems`' external-value sync depends on.
   const itemValue = isItemList<T>(value) ? value : (EMPTY_ARRAY as T[]);
 
-  // Whether this list has opened: it has once it has rendered rows, or once
-  // the researcher has asked it for a new one.
-  //
-  // Not mount, which is too early — a host form hands the field `[]` on its
-  // first render and the real rows a render later, so a flag flipped by a
-  // mount effect is already `true` when those rows arrive and every one of
-  // them animates in.
-  //
-  // A ref rather than state: it only selects between two variants of an
-  // animation that has not started yet, so no render has to be corrected.
-  const hasOpenedRef = useRef(false);
-  const openList = useCallback(() => {
-    hasOpenedRef.current = true;
-  }, []);
-
   const { confirm } = useDialog();
   const { announce } = useAccessibilityAnnouncements();
   const isInteractionDisabled = (disabled ?? false) || (readOnly ?? false);
   // Read by a delete confirmation when it is ANSWERED; see its `onConfirm`.
   const interactionDisabledRef = useRef(isInteractionDisabled);
-  interactionDisabledRef.current = isInteractionDisabled;
+  useLayoutEffect(() => {
+    interactionDisabledRef.current = isInteractionDisabled;
+  });
 
   const handleCommittedChange = useCallback(
     (nextValue: T[], operation: ArrayFieldOperation<T>): void | boolean => {
@@ -852,65 +851,75 @@ export default function ArrayField<T extends Record<string, unknown>>({
    * remembers which session was open, because by the time focus is returned
    * `editingItem` is already null.
    */
-  const editTriggerElements = useRef(new Map<string, HTMLElement>());
+  const [editTriggerElements] = useState(() => new Map<string, HTMLElement>());
   /**
    * The same register for the control that opens each row's DELETE, so the
    * confirmation can hand focus to the row that takes the removed one's place
    * rather than sending the researcher back out to the add button from the
    * middle of a list.
    */
-  const deleteTriggerElements = useRef(new Map<string, HTMLElement>());
+  const [deleteTriggerElements] = useState(
+    () => new Map<string, HTMLElement>(),
+  );
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const lastEditingRef = useRef<{ internalId: string; isNew: boolean } | null>(
     null,
   );
 
-  if (editingItem) {
-    lastEditingRef.current = {
-      internalId: editingItem._internalId,
-      isNew: isAddingNew,
-    };
-  }
+  useLayoutEffect(() => {
+    if (editingItem) {
+      lastEditingRef.current = {
+        internalId: editingItem._internalId,
+        isNew: isAddingNew,
+      };
+    }
+  });
 
   // Cached per row so the ref identity is stable across renders — a fresh
   // callback each render would make React detach and reattach every row's
   // trigger on every keystroke.
-  const editTriggerCallbacks = useRef(
-    new Map<string, (element: HTMLElement | null) => void>(),
+  const [editTriggerCallbacks] = useState(
+    () => new Map<string, (element: HTMLElement | null) => void>(),
   );
-  const deleteTriggerCallbacks = useRef(
-    new Map<string, (element: HTMLElement | null) => void>(),
+  const [deleteTriggerCallbacks] = useState(
+    () => new Map<string, (element: HTMLElement | null) => void>(),
   );
 
-  const registerEditTrigger = useCallback((internalId: string) => {
-    const cached = editTriggerCallbacks.current.get(internalId);
-    if (cached) return cached;
+  const registerEditTrigger = useCallback(
+    (internalId: string) => {
+      const cached = editTriggerCallbacks.get(internalId);
+      if (cached) return cached;
 
-    const callback = (element: HTMLElement | null) => {
-      if (element) {
-        editTriggerElements.current.set(internalId, element);
-      } else {
-        editTriggerElements.current.delete(internalId);
-      }
-    };
-    editTriggerCallbacks.current.set(internalId, callback);
-    return callback;
-  }, []);
+      const callback = (element: HTMLElement | null) => {
+        if (element) {
+          editTriggerElements.set(internalId, element);
+        } else {
+          editTriggerElements.delete(internalId);
+        }
+      };
+      editTriggerCallbacks.set(internalId, callback);
+      return callback;
+    },
+    [editTriggerCallbacks, editTriggerElements],
+  );
 
-  const registerDeleteTrigger = useCallback((internalId: string) => {
-    const cached = deleteTriggerCallbacks.current.get(internalId);
-    if (cached) return cached;
+  const registerDeleteTrigger = useCallback(
+    (internalId: string) => {
+      const cached = deleteTriggerCallbacks.get(internalId);
+      if (cached) return cached;
 
-    const callback = (element: HTMLElement | null) => {
-      if (element) {
-        deleteTriggerElements.current.set(internalId, element);
-      } else {
-        deleteTriggerElements.current.delete(internalId);
-      }
-    };
-    deleteTriggerCallbacks.current.set(internalId, callback);
-    return callback;
-  }, []);
+      const callback = (element: HTMLElement | null) => {
+        if (element) {
+          deleteTriggerElements.set(internalId, element);
+        } else {
+          deleteTriggerElements.delete(internalId);
+        }
+      };
+      deleteTriggerCallbacks.set(internalId, callback);
+      return callback;
+    },
+    [deleteTriggerCallbacks, deleteTriggerElements],
+  );
 
   // The list's add button, resolved lazily. Handed to every row so an item
   // component running its own delete confirmation can name a surviving focus
@@ -920,7 +929,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const getEditorTrigger = useCallback(() => {
     const session = lastEditingRef.current;
     const rowTrigger = session
-      ? editTriggerElements.current.get(session.internalId)
+      ? editTriggerElements.get(session.internalId)
       : undefined;
     // A row deleted while its editor was open has no trigger to go back to.
     const connectedRowTrigger = rowTrigger?.isConnected ? rowTrigger : null;
@@ -940,10 +949,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
     // committed. `saveEditing` keeps the draft's `_internalId`, so the map
     // lookup above resolves to that freshly mounted control.
     return addButtonRef.current ?? connectedRowTrigger;
-  }, []);
+  }, [editTriggerElements]);
 
+  // The rows as last rendered, or as a reorder preview has since left them.
   const latestItemsRef = useRef(items);
-  latestItemsRef.current = items;
+  useLayoutEffect(() => {
+    latestItemsRef.current = items;
+  });
   const pointerDragRef = useRef<{
     internalId: string;
     from: number | null;
@@ -1080,11 +1092,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
       );
       const neighbour = remaining[Math.min(position, remaining.length - 1)];
       const control = neighbour
-        ? deleteTriggerElements.current.get(neighbour._internalId)
+        ? deleteTriggerElements.get(neighbour._internalId)
         : undefined;
       return control?.isConnected ? control : addButtonRef.current;
     },
-    [],
+    [deleteTriggerElements],
   );
 
   // Handle delete with optional confirmation for non-draft items
@@ -1194,14 +1206,32 @@ export default function ArrayField<T extends Record<string, unknown>>({
     [EditorComponent, items],
   );
 
-  // After every render, not just the first: the render that brings the list
-  // its rows must still see `hasOpenedRef` as `false`.
+  // Whether this list has opened: it has once it has rendered rows, or once
+  // the researcher has asked it for a new one.
+  //
+  // Not mount, which is too early — a host form hands the field `[]` on its
+  // first render and the real rows a render later, so a flag flipped at mount
+  // is already `true` when those rows arrive and every one of them animates
+  // in. The render that brings the list its rows must still see it closed:
+  // the rows it first rendered are remembered, and the list counts as opened
+  // once its rows are anything else.
   const hasRenderableItems = renderableItems.length > 0;
-  useEffect(() => {
-    if (hasRenderableItems) openList();
-  }, [hasRenderableItems, openList]);
+  const [firstRenderedRows, setFirstRenderedRows] = useState(() =>
+    hasRenderableItems ? items : null,
+  );
+  if (firstRenderedRows === null && hasRenderableItems) {
+    setFirstRenderedRows(items);
+  }
+  const [openedByResearcher, setOpenedByResearcher] = useState(false);
+  const hasOpened =
+    openedByResearcher ||
+    (firstRenderedRows !== null && firstRenderedRows !== items);
 
   const id = useId();
+  // The list resizes as rows come and go; Motion keeps its corners true only
+  // for a numeric radius, so its `rounded-*` class's value goes to `style`.
+  const groupRef = useRef<HTMLUListElement>(null);
+  const groupRadius = useTokenRadius(groupRef);
   const isAtCapacity =
     maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
   const effectiveSortable = sortable && !isInteractionDisabled;
@@ -1249,7 +1279,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
           className={arrayFieldVariants({
             state: getInputState(inputStateProps),
           })}
-          style={{ borderRadius: 28 }}
+          ref={groupRef}
+          style={{ borderRadius: groupRadius }}
           role="list"
           layout
           // `role="list"` allows neither `aria-readonly` nor `aria-required`,
@@ -1265,7 +1296,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 layout
                 key="no-items"
                 className="m-10 text-sm text-current/70"
-                custom={hasOpenedRef.current}
+                custom={hasOpened}
                 variants={getItemAnimationProps}
                 initial="initial"
                 animate="animate"
@@ -1288,7 +1319,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   committedIndex={committedIndex}
                   itemCount={items.length}
                   isSortable={effectiveSortable}
-                  hasOpened={hasOpenedRef.current}
+                  hasOpened={hasOpened}
                   onDeleteItem={
                     isInteractionDisabled ? undefined : requestDelete
                   }
@@ -1322,10 +1353,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
             color="primary"
             onClick={() => {
               // The one route by which a row reaches a list that has never
-              // rendered one. Set before the add, so the render it schedules
+              // rendered one. Set with the add, so the render it schedules
               // already sees an opened list.
-              openList();
+              setOpenedByResearcher(true);
               if (immediateAdd) {
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- itemTemplate seeds a new row as a Partial<T>, which the consumer's own item type completes
                 addItem(itemTemplate() as T);
                 announce(
                   intl.formatMessage(messages.addedItem, {
@@ -1335,6 +1367,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 );
                 return;
               }
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- itemTemplate seeds a new row as a Partial<T>, which the consumer's own item type completes
               startAdding(itemTemplate() as T);
             }}
             icon={<PlusIcon />}

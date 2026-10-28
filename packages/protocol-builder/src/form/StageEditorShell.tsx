@@ -507,7 +507,7 @@ function StageEditorFormBody({
   // moving.
   useEffect(() => {
     const form = formRef.current;
-    if (form === null) return;
+    if (form === null) return undefined;
     const observer = new MutationObserver(() => outline.revalidate());
     observer.observe(form, {
       childList: true,

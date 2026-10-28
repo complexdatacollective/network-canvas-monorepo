@@ -1,3 +1,10 @@
+const onWheel = (event: WheelEvent) => {
+  if (!event.cancelable) return;
+  if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+  if (hasHorizontalScrollCapacity(event.target, event.deltaX)) return;
+  event.preventDefault();
+};
+
 // Safari on macOS ignores `overscroll-behavior-x` for its two-finger history
 // swipe (WebKit bug 240183), so the gesture has to be suppressed at the wheel
 // level: cancel horizontal-dominant wheel events unless an ancestor can
@@ -15,12 +22,6 @@ export function initSwipeNavigationGuard(): () => void {
   const isChromium = 'userAgentData' in navigator;
   if (!isMac || isChromium) return () => {};
 
-  const onWheel = (event: WheelEvent) => {
-    if (!event.cancelable) return;
-    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
-    if (hasHorizontalScrollCapacity(event.target, event.deltaX)) return;
-    event.preventDefault();
-  };
   // Wheel listeners default to passive on the document; preventDefault needs
   // an explicitly non-passive one.
   document.addEventListener('wheel', onWheel, { passive: false });

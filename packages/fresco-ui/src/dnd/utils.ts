@@ -7,7 +7,7 @@ export const domHitDetector: HitDetector = (x, y, dropTargets) => {
   const elementsAtPoint = document.elementsFromPoint(x, y);
 
   for (const element of elementsAtPoint) {
-    const zoneId = (element as HTMLElement).dataset?.zoneId;
+    const zoneId = element.getAttribute('data-zone-id');
     if (zoneId) {
       const target = dropTargets.get(zoneId);
       if (target?.canDrop) {
@@ -57,17 +57,14 @@ export function rafThrottle<TArgs extends readonly unknown[], TReturn = void>(
   };
 
   // Add cancel method
-  const throttledWithCancel = throttled as typeof throttled & {
-    cancel: () => void;
-  };
-  throttledWithCancel.cancel = () => {
+  const cancel = () => {
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;
     }
   };
 
-  return throttledWithCancel;
+  return Object.assign(throttled, { cancel });
 }
 
 // Get element bounds with transform support (viewport coordinates)

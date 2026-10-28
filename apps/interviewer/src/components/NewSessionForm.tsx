@@ -28,7 +28,6 @@ import { useLegacyInterviewerOffline } from '~/lib/pwa/legacyInterviewerOffline'
 
 import { legacyProtocolMessages } from './legacyProtocolMessages';
 import { offlineMessages } from './offlineMessages';
-import { useSettleLockForInterviewer8 } from './useSettleLockForInterviewer8';
 
 const messages = defineMessages({
   caseID: {
@@ -181,7 +180,6 @@ export function NewSessionForm({
 }: NewSessionFormProps) {
   const intl = useAppIntl();
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
-  const { settled: lockSettled, settleLock } = useSettleLockForInterviewer8();
   const isOnline = useOnline();
   const interviewer8Offline = useLegacyInterviewerOffline();
 
@@ -241,19 +239,13 @@ export function NewSessionForm({
       onSubmit={async (caseId) => {
         // The enter step every interview takes. A schema 8 interview runs in
         // Interviewer 8, hosted by the interview route, which is handed this
-        // app's unlock, so this is the only time the researcher is asked. Its
-        // lock is this app's to set up, though: settle it first, so leaving
-        // set-up leaves no interview behind; choosing the lock is itself a
-        // fresh authentication. Run before creating the session so a declined
-        // or failed unlock doesn't leave an orphan session behind.
-        const settingUp = schema8 && !lockSettled;
-        if (schema8 && !(await settleLock())) return { success: false };
-        if (!settingUp) {
-          const settings = await getSettings();
-          if (settings.requireUnlockOnEnter) {
-            const result = await requireFreshUnlock();
-            if (!result.ok) return { success: false };
-          }
+        // app's unlock, so this is the only time the researcher is asked. Run
+        // before creating the session so a declined or failed unlock doesn't
+        // leave an orphan session behind.
+        const settings = await getSettings();
+        if (settings.requireUnlockOnEnter) {
+          const result = await requireFreshUnlock();
+          if (!result.ok) return { success: false };
         }
         const session = await createSession({
           protocolHash: protocol.hash,

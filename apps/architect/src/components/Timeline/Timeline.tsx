@@ -1,6 +1,13 @@
 import { Plus } from 'lucide-react';
-import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
-import { createElement, useCallback, useMemo, useRef, useState } from 'react';
+import { motion, Reorder, type Variants } from 'motion/react';
+import {
+  createElement,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -13,6 +20,7 @@ import {
 } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   actionCreators as stageActions,
@@ -137,8 +145,12 @@ const warningDialogText = (warning: {
 
 const Timeline = () => {
   const intl = useAppIntl();
+  // The delete confirmation announces in the language current when it is
+  // confirmed, which may not be the one it was opened in.
   const intlRef = useRef(intl);
-  intlRef.current = intl;
+  useLayoutEffect(() => {
+    intlRef.current = intl;
+  });
   const stages = useSelector(getStageList);
   // `getStageList` maps each stage down to `{id, type, label, hasFilter,
   // hasSkipLogic, skipLogic: {destination}}` for cheap render diffing — the
@@ -152,7 +164,7 @@ const Timeline = () => {
   const protocol = useSelector(getProtocol);
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const isFirstMount = useRunOnce('timeline-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
   const { announce } = useAccessibilityAnnouncements();

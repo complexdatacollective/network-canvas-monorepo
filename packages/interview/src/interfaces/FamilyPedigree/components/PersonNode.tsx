@@ -6,7 +6,7 @@ import {
   type KeyboardEvent,
   type PointerEventHandler,
   type ReactNode,
-  type Ref,
+  useCallback,
   useId,
 } from 'react';
 
@@ -44,8 +44,6 @@ type PersonNodeProps = {
   /** They are shown unavailable but stay reachable (a nomination prompt
    * that cannot apply to them): they are drawn as disabled. */
   unavailable?: boolean;
-  /** Their add menu is showing (focus or the mouse is on them). */
-  menuOpen: boolean;
   /** One of the two people being connected with the connect tool. */
   linking: boolean;
   /** Adopted: drawn within brackets, as pedigree nomenclature has it. */
@@ -64,7 +62,9 @@ type PersonNodeProps = {
   onPointerEnter: PointerEventHandler;
   onPointerLeave: PointerEventHandler;
   onPointerDown: PointerEventHandler;
-  nodeRef?: Ref<HTMLButtonElement>;
+  /** Told the person's symbol element once it is in the page, and `null`
+   * once it has gone. */
+  onNodeElement?: (personId: string, element: HTMLButtonElement | null) => void;
   /** Rendered after the symbol, inside its positioning box (the add menu). */
   children?: ReactNode;
 };
@@ -82,7 +82,6 @@ export default function PersonNode({
   selected,
   disabled = false,
   unavailable,
-  menuOpen,
   linking,
   adopted,
   reproductiveRoles = [],
@@ -94,7 +93,7 @@ export default function PersonNode({
   onPointerEnter,
   onPointerLeave,
   onPointerDown,
-  nodeRef,
+  onNodeElement,
   children,
 }: PersonNodeProps) {
   const intl = useAppIntl();
@@ -102,6 +101,13 @@ export default function PersonNode({
   const adoptedId = useId();
   const missingId = useId();
   const hasRoles = reproductiveRoles.length > 0;
+  // Stable for the person, so the element is reported when it mounts and
+  // unmounts rather than on every render.
+  const personId = person.id;
+  const nodeRef = useCallback(
+    (element: HTMLButtonElement | null) => onNodeElement?.(personId, element),
+    [onNodeElement, personId],
+  );
   // The symbol is named by the name alone, exactly as typed (or the label);
   // what else is known about the person, drawn around the symbol, describes
   // it.
@@ -115,11 +121,7 @@ export default function PersonNode({
 
   return (
     <div
-      className={cx(
-        'relative flex size-full items-center justify-center',
-        // Lift the person whose add menu is showing above their neighbours.
-        menuOpen && 'z-10',
-      )}
+      className="relative flex size-full items-center justify-center"
       data-testid="pedigree-person"
       data-person-id={person.id}
       onFocus={onFocus}

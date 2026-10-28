@@ -199,14 +199,25 @@
         white-space: nowrap;
       }
 
+      /* Reduced motion follows the operating system until the app's
+         AnimationProvider mounts and then that provider's setting, which it
+         puts on <html> as data-reduced-motion when it overrides the system. */
+      /* No cross-fade; loadingScreen.ts removes the loader synchronously too. */
+      :root[data-reduced-motion='always'] #app-loading {
+        transition: none;
+      }
+      :root[data-reduced-motion='always'] .boot-spinner,
+      :root[data-reduced-motion='always'] .boot-spinner__scale,
+      :root[data-reduced-motion='always'] .boot-half--top {
+        animation: none;
+      }
       @media (prefers-reduced-motion: reduce) {
-        #app-loading {
-          /* No cross-fade; main.tsx removes the loader synchronously too. */
+        :root:not([data-reduced-motion='never']) #app-loading {
           transition: none;
         }
-        .boot-spinner,
-        .boot-spinner__scale,
-        .boot-half--top {
+        :root:not([data-reduced-motion='never']) .boot-spinner,
+        :root:not([data-reduced-motion='never']) .boot-spinner__scale,
+        :root:not([data-reduced-motion='never']) .boot-half--top {
           animation: none;
         }
       }

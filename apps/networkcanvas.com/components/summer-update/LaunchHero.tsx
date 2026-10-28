@@ -3,7 +3,6 @@
 import {
   motion,
   useAnimationControls,
-  useReducedMotion,
   useScroll,
   useSpring,
   useTransform,
@@ -12,6 +11,7 @@ import { useTranslations } from 'next-intl';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
 
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
@@ -42,7 +42,7 @@ function renderHeroApps(chunks: ReactNode) {
 }
 
 function HeroBrand({ children }: { children: ReactNode }) {
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
 
   return (
     <span data-homepage-weave-target className="inline-block overflow-visible">
@@ -97,7 +97,7 @@ export function LaunchHero({ children }: { children?: ReactNode }) {
   const t = useTranslations('SummerUpdate.hero');
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const entranceControls = useAnimationControls();
   const { scrollYProgress } = useScroll({
     target: frameRef,

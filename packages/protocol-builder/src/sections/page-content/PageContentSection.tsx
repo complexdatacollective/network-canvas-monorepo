@@ -8,7 +8,7 @@ import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import type { StageType } from '@codaco/protocol-validation';
 
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
-import { withoutAbsentValues } from '../../form/absentValues.ts';
+import { withoutAbsentCollapsed } from '../../form/absentValues.ts';
 import { REQUIRED } from '../../form/requiredField.ts';
 import {
   RowDialog,
@@ -214,9 +214,10 @@ export default function PageContentSection({
         ? {}
         : { expand: (row: RowValues) => expand(protocolContext, row) }),
       normalize: (row) =>
-        withoutAbsentValues(
+        withoutAbsentCollapsed(
           collapse === undefined ? row : collapse(row, stageType),
-        ) as RowValues,
+          row,
+        ),
     }),
     [
       ItemEditor,

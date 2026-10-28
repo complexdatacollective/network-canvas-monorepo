@@ -4,7 +4,6 @@ import type React from 'react';
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -56,8 +55,9 @@ type ResolvedTargets = Record<string, IssueTarget | null>;
  * Only what a row is DRAWN from is compared — whether the field was found at
  * all, what it is called, and the id the row links to. The element itself is
  * not: a re-render that found the same field again is not a change, and the
- * click handler resolves the element afresh anyway. Without this the layout
- * effect below would set state on every commit and loop.
+ * click handler resolves the element afresh anyway. Without this every read
+ * of the page would be a new snapshot, which `useSyncExternalStore` takes for
+ * a change, and the panel would re-render forever.
  */
 const sameTargets = (a: ResolvedTargets, b: ResolvedTargets): boolean => {
   const fields = Object.keys(b);
@@ -70,6 +70,27 @@ const sameTargets = (a: ResolvedTargets, b: ResolvedTargets): boolean => {
       a[field]?.anchorId === b[field]?.anchorId,
   );
 };
+
+/**
+ * Resolves each issue's field on the page, handing back the previous
+ * resolution while it would render the same rows, so repeated reads of an
+ * unchanged page are one snapshot.
+ */
+const createTargetsReader = () => {
+  let resolved: ResolvedTargets = {};
+  return (issues: readonly { field: string | undefined }[]) => {
+    const next: ResolvedTargets = {};
+    for (const { field } of issues) {
+      if (field === undefined) continue;
+      next[field] ??= resolveIssueTarget(field);
+    }
+    if (!sameTargets(resolved, next)) resolved = next;
+    return resolved;
+  };
+};
+
+// The page offers nothing to subscribe to; see `getTargets` for when it is read.
+const subscribeToNothing = () => () => undefined;
 
 export function useIssuesToolbarControl(
   /**
@@ -197,21 +218,20 @@ export function useIssuesToolbarControl(
    * means the first render of a row already carries its label, and the row's
    * `href` can name something that exists.
    *
-   * Re-run on every open as well as on a change of issues: a field inside a
-   * section the researcher has since expanded is nowhere to be found the first
-   * time and named properly the second.
+   * The page is the source, so it is read as an external store: on every
+   * render — which includes every open, so a field inside a section the
+   * researcher has since expanded is nowhere to be found the first time and
+   * named properly the second — and once more by React after the commit that
+   * brings a change of issues, in case that commit changed the fields too.
+   * Nothing notifies of a change to the page itself; the reads at those
+   * moments are what keep the rows current.
    */
-  const [targets, setTargets] = useState<ResolvedTargets>({});
-  useLayoutEffect(() => {
-    const resolved: ResolvedTargets = {};
-    for (const { field } of flatIssues) {
-      if (field === undefined) continue;
-      resolved[field] ??= resolveIssueTarget(field);
-    }
-    setTargets((current) =>
-      sameTargets(current, resolved) ? current : resolved,
-    );
-  }, [flatIssues, isOpen]);
+  const [readTargets] = useState(createTargetsReader);
+  const getTargets = useCallback(
+    () => readTargets(flatIssues),
+    [readTargets, flatIssues],
+  );
+  const targets = useSyncExternalStore(subscribeToNothing, getTargets);
 
   const control = useMemo<React.ReactNode>(() => {
     if (!hasIssues || !submitFailed) return null;

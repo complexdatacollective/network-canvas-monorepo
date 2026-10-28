@@ -165,8 +165,9 @@ export default function GeospatialSearch({
   // Implemented at document level (not via onBlur on the panel <div>) so the panel
   // stays semantically non-interactive.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
     const handleFocusOut = (e: FocusEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a focusout event's relatedTarget is the element gaining focus (a Node) or null; the DOM types it as EventTarget
       const next = e.relatedTarget as Node | null;
       if (!next) return;
       if (buttonRef.current?.contains(next)) return;
@@ -476,6 +477,7 @@ export default function GeospatialSearch({
                   {suggestions.length > 0 ? (
                     <Collection
                       id={listboxId}
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Mapbox's Suggestion is an object type without an index signature; SuggestionItem only adds the Record<string, unknown> that Collection requires
                       items={suggestions as SuggestionItem[]}
                       layout={layout}
                       keyExtractor={keyExtractor}

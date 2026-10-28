@@ -20,7 +20,8 @@ import { getProtocolFileErrorKind } from './protocolFileErrorKind.ts';
  * blames the file.
  */
 export const describeProtocolFileError = (error: unknown): string | null => {
-  switch (getProtocolFileErrorKind(error)) {
+  const kind = getProtocolFileErrorKind(error);
+  switch (kind) {
     case 'notArchive':
       return "This file isn't a Network Canvas protocol. Check that you chose the right file, and that it finished downloading.";
     case 'missingProtocol':
@@ -53,5 +54,11 @@ export const describeProtocolFileError = (error: unknown): string | null => {
       return 'This protocol could not be upgraded to the current version.';
     case null:
       return null;
+    default: {
+      const unhandled: never = kind;
+      throw new Error('Unhandled protocol file error kind', {
+        cause: unhandled,
+      });
+    }
   }
 };

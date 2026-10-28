@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  type CSSProperties,
   forwardRef,
   useCallback,
   useContext,
@@ -13,6 +12,7 @@ import {
 } from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
+import { type CSSVariablesStyle } from './utils/cssVariables';
 import { cx } from './utils/cva';
 import {
   measureHorizontalOverflow,
@@ -23,6 +23,15 @@ type ScrollSnapType = 'mandatory' | 'proximity';
 
 /** The axes along which a scroll region can be scrolled right now. */
 export type ScrollAxes = { x: boolean; y: boolean };
+
+const viewportVariableDefaults: CSSVariablesStyle = {
+  '--scroll-area-overflow-y-start': '0px',
+  '--scroll-area-overflow-y-end': '0px',
+  '--scrollbar-width': '0px',
+  '--scroll-area-overflow-x-start': '0px',
+  '--scroll-area-overflow-x-end': '0px',
+  '--scrollbar-height': '0px',
+};
 
 const NO_SCROLL: ScrollAxes = { x: false, y: false };
 
@@ -209,7 +218,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
     // (validation error lists, faceted filters) scroll like any other.
     useEffect(() => {
       const viewport = viewportRef.current;
-      if (!viewport) return;
+      if (!viewport) return undefined;
 
       // Initial update
       updateScrollVariables();
@@ -337,16 +346,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
             getSnapClasses(),
             viewportClassName,
           )}
-          style={
-            {
-              '--scroll-area-overflow-y-start': '0px',
-              '--scroll-area-overflow-y-end': '0px',
-              '--scrollbar-width': '0px',
-              '--scroll-area-overflow-x-start': '0px',
-              '--scroll-area-overflow-x-end': '0px',
-              '--scrollbar-height': '0px',
-            } as CSSProperties
-          }
+          style={viewportVariableDefaults}
           {...rest}
         >
           <ScrollAxesContext value={publishedAxes}>

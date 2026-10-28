@@ -31,7 +31,7 @@ const unwrapBlockComponents = () => {
       { tagName: 'p' },
       (node: Node, index: number | undefined, parent: Node | undefined) => {
         if (!parent?.children || index === undefined || !node.children) {
-          return;
+          return undefined;
         }
 
         const meaningful = node.children.filter(isMeaningful);
@@ -46,6 +46,8 @@ const unwrapBlockComponents = () => {
           parent.children.splice(index, 1, ...node.children);
           return index;
         }
+
+        return undefined;
       },
     );
   };

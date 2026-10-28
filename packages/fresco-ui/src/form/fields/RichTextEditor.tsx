@@ -81,6 +81,7 @@ import { useEnclosingHeadingLevel } from '../../typography/EnclosingHeadingLevel
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
+import { isRecord } from '../../utils/isRecord';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
@@ -314,12 +315,14 @@ const placedTokenIds = (doc: ProseMirrorNode): string => {
   // A version's text is held in its element's attributes, as JSON.
   const collect = (content: unknown) => {
     if (!Array.isArray(content)) return;
-    for (const node of content as JSONContent[]) {
-      if (node.type === TOKEN_NODE && typeof node.attrs?.id === 'string') {
-        ids.add(node.attrs.id);
+    for (const node of content) {
+      if (!isRecord(node)) continue;
+      const attrs = isRecord(node.attrs) ? node.attrs : undefined;
+      if (node.type === TOKEN_NODE && typeof attrs?.id === 'string') {
+        ids.add(attrs.id);
       }
       collect(node.content);
-      collectVersions(node.attrs?.versions);
+      collectVersions(attrs?.versions);
     }
   };
   const collectVersions = (versions: unknown) => {
@@ -664,9 +667,12 @@ const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
   const parsed = createNodeFromContent(flattened, schema, { slice: false });
 
   // A fragment only comes back from that reader's own empty-content fallback.
-  return isProseMirrorFragment(parsed)
-    ? flattened
-    : (parsed.toJSON() as JSONContent);
+  if (isProseMirrorFragment(parsed)) return flattened;
+
+  // ProseMirror types `toJSON()` as `any`; a node's JSON is the JSONContent
+  // shape by construction.
+  const json: JSONContent = parsed.toJSON();
+  return json;
 };
 
 export type { RichTextInsertMenu, RichTextInsertMenuItem };
@@ -677,6 +683,11 @@ export type {
 export { VERSIONS_NODE };
 
 const swallowKeystroke = () => true;
+
+// `Array.isArray` does not narrow a `readonly` array out of a union.
+const isContentList = (
+  content: JSONContent | readonly JSONContent[],
+): content is readonly JSONContent[] => Array.isArray(content);
 
 /**
  * The two ways a second line reaches a document the schema alone cannot
@@ -720,7 +731,9 @@ const SingleLineInput = Extension.create({
           // round trip is safe in this direction: a pasted slice was parsed
           // with this schema, so everything in it can be read back.
           transformPasted: (slice: Slice) => {
-            const pasted = slice.content.toJSON() as JSONContent[] | null;
+            // ProseMirror types `toJSON()` as `any`; a fragment's JSON is a
+            // list of JSONContent nodes, or null when it is empty.
+            const pasted: JSONContent[] | null = slice.content.toJSON();
             const nodes = oneLineContentOf(pasted, schema).map((node) =>
               schema.nodeFromJSON(node),
             );
@@ -773,6 +786,40 @@ type SharedHistory = Readonly<{
   undo: () => boolean;
   redo: () => boolean;
 }>;
+
+/**
+ * The field editor's history, for the editors of its versions. It is built
+ * before there is a field editor — a version's extensions are made during
+ * render — so it is told which editor that is once the field has one, and
+ * steps whichever editor it was last given.
+ */
+class FieldEditorHistory implements SharedHistory {
+  private field: Editor | null = null;
+
+  attach(field: Editor | null) {
+    this.field = field;
+  }
+
+  readonly undo = () => this.step('undo');
+
+  readonly redo = () => this.step('redo');
+
+  private step(step: 'undo' | 'redo') {
+    const field = this.field;
+    if (field === null || field.isDestroyed) return false;
+    const done = field.commands[step]();
+    // A step that takes away the version the caret was in hands the caret
+    // to the line, once the version's editor has gone.
+    setTimeout(() => {
+      const active = document.activeElement;
+      if (field.isDestroyed) return;
+      if (active === null || active === document.body) {
+        field.commands.focus();
+      }
+    }, 0);
+    return done;
+  }
+}
 
 /** Hands the undo and redo keys to the editor that keeps the history. */
 const createSharedHistoryKeys = (history: SharedHistory) =>
@@ -1207,7 +1254,10 @@ export default function RichTextEditorField({
   // The editor an item from the insert menu was just put into. Closing the
   // menu hands it the caret, so the next key, Undo included, acts on the
   // text the item went into rather than on the button that opened the menu.
-  const pickedIntoRef = useRef<Editor | null>(null);
+  // Forgotten whenever the menu is asked to open, however it was opened —
+  // including an open that lands in the same render as the pick's close, and
+  // so never shows the menu as closed.
+  const [pickedInto, setPickedInto] = useState<Editor | null>(null);
   const onTrigger = useCallback(
     (typedIn: Editor, position: number) => {
       const coords = typedIn.view.coordsAtPos(position);
@@ -1220,10 +1270,10 @@ export default function RichTextEditorField({
           height: coords.bottom - coords.top,
         },
       });
-      pickedIntoRef.current = null;
+      setPickedInto(null);
       setIsInsertMenuOpen(true);
     },
-    [setTriggered, setIsInsertMenuOpen],
+    [setTriggered, setIsInsertMenuOpen, setPickedInto],
   );
   // The version being written, when the caret is in one: the toolbar acts on
   // it rather than on the line around it.
@@ -1270,6 +1320,7 @@ export default function RichTextEditorField({
   );
   const tokens = useMemo(
     (): readonly RichTextEditorToken[] =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tokensKey is the JSON.stringify of the normalised tokens built just above, so it parses back to that same shape
       JSON.parse(tokensKey) as RichTextEditorToken[],
     [tokensKey],
   );
@@ -1288,8 +1339,11 @@ export default function RichTextEditorField({
   const ariaLabelledBy = props['aria-labelledby'];
   const ariaRequired = props['aria-required'];
 
-  onChangeRef.current = onChange;
-  changeModeRef.current = changeMode;
+  // Read by the editor's handlers when they run.
+  useLayoutEffect(() => {
+    onChangeRef.current = onChange;
+    changeModeRef.current = changeMode;
+  });
 
   // Whether the FIELD is unavailable — read-only, or disabled while its form
   // submits. Read by a hook below, so it is worked out before the early
@@ -1410,27 +1464,9 @@ export default function RichTextEditorField({
       onTrigger,
     ],
   );
-  // The field's own editor, once there is one: it keeps the history of every
+  // The field's own editor, once there is one, keeps the history of every
   // edit, those made in a version's own editor included.
-  const fieldEditorRef = useRef<Editor | null>(null);
-  const sharedHistory = useMemo((): SharedHistory => {
-    const inField = (step: 'undo' | 'redo') => () => {
-      const field = fieldEditorRef.current;
-      if (field === null || field.isDestroyed) return false;
-      const done = field.commands[step]();
-      // A step that takes away the version the caret was in hands the caret
-      // to the line, once the version's editor has gone.
-      setTimeout(() => {
-        const active = document.activeElement;
-        if (field.isDestroyed) return;
-        if (active === null || active === document.body) {
-          field.commands.focus();
-        }
-      }, 0);
-      return done;
-    };
-    return { undo: inField('undo'), redo: inField('redo') };
-  }, []);
+  const [sharedHistory] = useState(() => new FieldEditorHistory());
   const emptyVersionText = intl.formatMessage(messages.emptyVersion);
   // What each version of a piece of text is edited with: everything the
   // field's own line can hold, on one line. A version has no history of its
@@ -1492,11 +1528,6 @@ export default function RichTextEditorField({
   // as it lasts, this is the only copy of the researcher's typing there is.
   const unemittedDocumentRef = useRef<JSONContent | null>(null);
   const syncedEditorRef = useRef<Editor | null>(null);
-  // Changing what the field offers rebuilds the editor around a new schema,
-  // and it is rebuilt from what the field holds — which on `changeMode="blur"`
-  // is a whole sentence ahead of `value` by design. Seeding the replacement
-  // from the value instead threw that sentence away mid-edit.
-  const seed = unemittedDocumentRef.current ?? value;
   // Where focus was as the field appeared. The editor takes `autoFocus` a
   // tick after it mounts, and focus that has moved on meanwhile — to a field
   // the researcher clicked, say — is theirs, not the editor's to take back.
@@ -1516,13 +1547,29 @@ export default function RichTextEditorField({
       // over — it fires a tick after the field has painted, and by then the
       // document it would flatten is already empty.
       content:
-        seed === undefined
-          ? seed
+        value === undefined
+          ? value
           : singleLine
-            ? oneLineDocumentOf(seed, editorSchema)
-            : documentInSchema(seed, editorSchema),
+            ? oneLineDocumentOf(value, editorSchema)
+            : documentInSchema(value, editorSchema),
       editable: !disabled && !readOnly,
       autofocus: false,
+      // Changing what the field offers rebuilds the editor around a new
+      // schema, and it is rebuilt from what the field holds — which on
+      // `changeMode="blur"` is a whole sentence ahead of `value` by design.
+      // Seeding the replacement from the value instead threw that sentence
+      // away mid-edit. This runs as each editor is created, against its own
+      // schema and before its document is read, so it swaps in the unemitted
+      // document when there is one.
+      onBeforeCreate: ({ editor: creating }) => {
+        const unemitted = unemittedDocumentRef.current;
+        if (unemitted === null) return;
+        creating.setOptions({
+          content: singleLine
+            ? oneLineDocumentOf(unemitted, creating.schema)
+            : documentInSchema(unemitted, creating.schema),
+        });
+      },
       onCreate: ({ editor: created }) => {
         if (!autoFocus) return;
         const active = document.activeElement;
@@ -1561,7 +1608,9 @@ export default function RichTextEditorField({
     },
     [autoFocus, editorExtensions],
   );
-  fieldEditorRef.current = editor;
+  useLayoutEffect(() => {
+    sharedHistory.attach(editor);
+  }, [sharedHistory, editor]);
 
   const target =
     versionEditor !== null && !versionEditor.isDestroyed
@@ -1808,9 +1857,9 @@ export default function RichTextEditorField({
 
   const insertItem = (item: RichTextInsertMenuItem) => {
     if (item.disabled === true) return;
-    const content = Array.isArray(item.content)
-      ? [...(item.content as readonly JSONContent[])]
-      : (item.content as JSONContent);
+    const content = isContentList(item.content)
+      ? [...item.content]
+      : item.content;
     if (triggered !== null && !triggered.editor.isDestroyed) {
       const { editor: into, position } = triggered;
       // The trigger the menu was opened by is replaced, if it is still there.
@@ -1829,13 +1878,13 @@ export default function RichTextEditorField({
         )
         .run();
       selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
-      pickedIntoRef.current = into;
+      setPickedInto(into);
     } else {
       const { from, to } = actOn.state.selection;
       const sizeBefore = actOn.state.doc.content.size;
       actOn.chain().focus().insertContent(content).run();
       selectInsertedVersions(actOn, from, sizeBefore, to - from);
-      pickedIntoRef.current = actOn;
+      setPickedInto(actOn);
     }
     setTriggered(null);
     setIsInsertMenuOpen(false);
@@ -2276,7 +2325,7 @@ export default function RichTextEditorField({
                     open={isInsertMenuOpen && !isDisabled}
                     onOpenChange={(open) => {
                       setIsInsertMenuOpen(open);
-                      if (open) pickedIntoRef.current = null;
+                      if (open) setPickedInto(null);
                       if (!open) setTriggered(null);
                     }}
                   >
@@ -2324,9 +2373,8 @@ export default function RichTextEditorField({
                         ) {
                           return false;
                         }
-                        const picked = pickedIntoRef.current;
-                        if (picked !== null && !picked.isDestroyed) {
-                          return picked.view.dom;
+                        if (pickedInto !== null && !pickedInto.isDestroyed) {
+                          return pickedInto.view.dom;
                         }
                         return triggered === null
                           ? true

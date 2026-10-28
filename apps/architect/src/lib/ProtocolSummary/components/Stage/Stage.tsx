@@ -21,6 +21,7 @@ import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
+import type { FilterType } from '../Rules';
 import SummaryContext from '../SummaryContext';
 import {
   DefaultLanguageText,
@@ -57,7 +58,7 @@ import RosterPanel from './RosterPanel';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
-import StageWording from './StageWording';
+import StageWording, { type StageWordingKey } from './StageWording';
 const messages = defineMessages({
   networkFiltering: {
     id: 'architect.protocolSummary.stage.stage.networkFiltering',
@@ -97,8 +98,84 @@ const variablesOnStage =
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * The settings of a stage the summary prints. Every stage type holds its own
+ * subset, so each is optional; the summary prints those the stage holds.
+ */
+export type StageConfiguration = {
+  subject?: { type: string; entity: string };
+  filter?: FilterType;
+  skipLogic?: Record<string, unknown>;
+  introductionPanel?: { title: LocalizedString; text?: LocalizedString };
+  dataSource?: string;
+  panelTitle?: LocalizedString;
+  quickAdd?: string;
+  panels?: Panel[];
+  prompts?: PromptType[];
+  form?: { title?: LocalizedString; fields?: FormFieldType[] };
+  behaviours?: Record<string, unknown>;
+  presets?: {
+    id: string;
+    label: LocalizedString;
+    layoutVariable?: string;
+    groupVariable?: string;
+    edges?: { display?: { type: string; label: LocalizedString }[] };
+    highlight?: { variable: string; label: LocalizedString }[];
+  }[];
+  title?: LocalizedString;
+  items?: Item[];
+  interviewScript?: string;
+  content?: LocalizedString;
+  finishedContent?: LocalizedString;
+  mode?: FinishMode;
+  outcome?: FinishOutcome;
+  finishLabel?: LocalizedString;
+  finishConfirmation?: LocalizedString;
+  finishFailed?: LocalizedString;
+  edgeType?: { type: string; entity: string };
+  relationshipTypeVariable?: string;
+  relationshipToEgoVariable?: string;
+  egoSexVariable?: string;
+  nodeSexVariable?: string;
+  nodeIsEgoVariable?: string;
+  scaffoldingStep?: { text: LocalizedString; showQuickStartModal: boolean };
+  nameGenerationStep?: {
+    text: LocalizedString;
+    form: { fields?: { variable: string; prompt: LocalizedString }[] };
+  };
+  prompt?: LocalizedString;
+  nodeConfiguration?: FamilyPedigreeNodeConfiguration;
+  edgeConfiguration?: FamilyPedigreeEdgeConfiguration;
+  completeness?: FamilyPedigreeCompleteness;
+  framing?: FramingSetting;
+  wording?: Record<string, LocalizedString | undefined>;
+  nominationPrompts?: FamilyPedigreeNominationPrompt[];
+  sourceStageId?: string;
+  showAtRiskStatuses?: boolean;
+  diseases?: {
+    id: string;
+    label: LocalizedString;
+    color: string;
+    attribute: string;
+    inheritancePattern: string;
+  }[];
+  explanationText?: LocalizedString;
+  validation?: { minLength?: number; maxLength?: number };
+  mapOptions?: {
+    tokenAssetId?: string;
+    dataSourceAssetId?: string;
+    style?: string;
+    center?: [number, number];
+    initialZoom?: number;
+    color?: string;
+    targetFeatureProperty?: string;
+  };
+  edges?: { subject: { type: string }; label: LocalizedString }[];
+  dynamicValues?: DynamicValues;
+} & Partial<Record<StageWordingKey, LocalizedString>>;
+
 type StageProps = {
-  configuration: Record<string, unknown>;
+  configuration: StageConfiguration;
   id: string;
   label: LocalizedString;
   stageNumber: number;
@@ -133,162 +210,66 @@ const StageContent = ({
         </DualLink>
       );
     });
-  const subject = configuration.subject as
-    | {
-        type: string;
-        entity: string;
-      }
-    | undefined;
-  const filter = configuration.filter as Record<string, unknown> | undefined;
-  const skipLogic = configuration.skipLogic as
-    | Record<string, unknown>
-    | undefined;
-  const introductionPanel = configuration.introductionPanel as
-    | {
-        title: LocalizedString;
-        text?: LocalizedString;
-      }
-    | undefined;
-  const dataSource = configuration.dataSource as string | undefined;
-  const panelTitle = configuration.panelTitle as LocalizedString | undefined;
-  const quickAdd = configuration.quickAdd as string | undefined;
-  const panels = configuration.panels as Panel[] | undefined;
-  const prompts = configuration.prompts as PromptType[] | undefined;
-  const form = configuration.form as
-    | {
-        title?: LocalizedString;
-        fields?: FormFieldType[];
-      }
-    | undefined;
-  const behaviours = configuration.behaviours as
-    | Record<string, unknown>
-    | undefined;
-  const presets = configuration.presets as
-    | {
-        id: string;
-        label: LocalizedString;
-        layoutVariable?: string;
-        groupVariable?: string;
-        edges?: {
-          display?: { type: string; label: LocalizedString }[];
-        };
-        highlight?: { variable: string; label: LocalizedString }[];
-      }[]
-    | undefined;
-  const title = configuration.title as LocalizedString | undefined;
-  const items = configuration.items as Item[] | undefined;
-  const interviewScript = configuration.interviewScript as string | undefined;
-  // FinishSession
-  const content = configuration.content as LocalizedString | undefined;
-  const finishedContent = configuration.finishedContent as
-    | LocalizedString
-    | undefined;
-  const finishMode = configuration.mode as FinishMode | undefined;
-  const outcome = configuration.outcome as FinishOutcome | undefined;
-  const finishing = {
-    finishLabel: configuration.finishLabel as LocalizedString | undefined,
-    finishConfirmation: configuration.finishConfirmation as
-      | LocalizedString
-      | undefined,
-    finishFailed: configuration.finishFailed as LocalizedString | undefined,
-  };
-  // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
-  const edgeType = configuration.edgeType as
-    | {
-        type: string;
-        entity: string;
-      }
-    | undefined;
-  const relationshipTypeVariable = configuration.relationshipTypeVariable as
-    | string
-    | undefined;
-  const relationshipToEgoVariable = configuration.relationshipToEgoVariable as
-    | string
-    | undefined;
-  const egoSexVariable = configuration.egoSexVariable as string | undefined;
-  const nodeSexVariable = configuration.nodeSexVariable as string | undefined;
-  const nodeIsEgoVariable = configuration.nodeIsEgoVariable as
-    | string
-    | undefined;
-  const scaffoldingStep = configuration.scaffoldingStep as
-    | {
-        text: LocalizedString;
-        showQuickStartModal: boolean;
-      }
-    | undefined;
-  const nameGenerationStep = configuration.nameGenerationStep as
-    | {
-        text: LocalizedString;
-        form: {
-          fields?: Array<{
-            variable: string;
-            prompt: LocalizedString;
-          }>;
-        };
-      }
-    | undefined;
-  // FamilyPedigree
+  const {
+    subject,
+    filter,
+    skipLogic,
+    introductionPanel,
+    dataSource,
+    panelTitle,
+    quickAdd,
+    panels,
+    prompts,
+    form,
+    behaviours,
+    presets,
+    title,
+    items,
+    interviewScript,
+    // FinishSession
+    content,
+    finishedContent,
+    mode: finishMode,
+    outcome,
+    finishLabel,
+    finishConfirmation,
+    finishFailed,
+    // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
+    edgeType,
+    relationshipTypeVariable,
+    relationshipToEgoVariable,
+    egoSexVariable,
+    nodeSexVariable,
+    nodeIsEgoVariable,
+    scaffoldingStep,
+    nameGenerationStep,
+    // FamilyPedigree
+    nodeConfiguration,
+    edgeConfiguration,
+    completeness,
+    framing,
+    nominationPrompts,
+    // Anonymisation
+    explanationText,
+    validation,
+    // Geospatial
+    mapOptions,
+  } = configuration;
+  const finishing = { finishLabel, finishConfirmation, finishFailed };
   const pedigreePrompt =
-    type === 'FamilyPedigree'
-      ? ((configuration.prompt as LocalizedString | undefined) ?? null)
-      : null;
-  const nodeConfiguration = configuration.nodeConfiguration as
-    | FamilyPedigreeNodeConfiguration
-    | undefined;
-  const edgeConfiguration = configuration.edgeConfiguration as
-    | FamilyPedigreeEdgeConfiguration
-    | undefined;
-  const completeness = configuration.completeness as
-    | FamilyPedigreeCompleteness
-    | undefined;
-  const framing = configuration.framing as FramingSetting | undefined;
+    type === 'FamilyPedigree' ? (configuration.prompt ?? null) : null;
   // The words the participant sees, which the summary prints beside the rest.
   const pedigreeWording =
-    type === 'FamilyPedigree'
-      ? ((configuration.wording as
-          | Record<string, LocalizedString | undefined>
-          | undefined) ?? null)
-      : null;
-  const nominationPrompts = configuration.nominationPrompts as
-    | FamilyPedigreeNominationPrompt[]
-    | undefined;
+    type === 'FamilyPedigree' ? (configuration.wording ?? null) : null;
   // NarrativePedigree
   const narrativePedigree =
     type === 'NarrativePedigree'
       ? {
-          sourceStageId: String(configuration.sourceStageId ?? ''),
+          sourceStageId: configuration.sourceStageId ?? '',
           showAtRiskStatuses: configuration.showAtRiskStatuses === true,
-          diseases: (configuration.diseases ?? []) as {
-            id: string;
-            label: LocalizedString;
-            color: string;
-            attribute: string;
-            inheritancePattern: string;
-          }[],
+          diseases: configuration.diseases ?? [],
         }
       : null;
-  // Anonymisation
-  const explanationText = configuration.explanationText as
-    | LocalizedString
-    | undefined;
-  const validation = configuration.validation as
-    | {
-        minLength?: number;
-        maxLength?: number;
-      }
-    | undefined;
-  // Geospatial
-  const mapOptions = configuration.mapOptions as
-    | {
-        tokenAssetId?: string;
-        dataSourceAssetId?: string;
-        style?: string;
-        center?: [number, number];
-        initialZoom?: number;
-        color?: string;
-        targetFeatureProperty?: string;
-      }
-    | undefined;
   return (
     <div
       // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
@@ -412,13 +393,7 @@ const StageContent = ({
       <StageWording type={type} configuration={configuration} />
       <Presets presets={presets ?? null} />
       {type === 'NetworkComposer' && (
-        <ComposerEdges
-          edges={
-            (configuration.edges as
-              | { subject: { type: string }; label: LocalizedString }[]
-              | undefined) ?? null
-          }
-        />
+        <ComposerEdges edges={configuration.edges ?? null} />
       )}
       <PageHeading heading={title ?? null} />
       <Items items={items ?? null} />
@@ -476,9 +451,9 @@ const Stage = (props: StageProps) => {
         codebook: protocol.codebook,
         stage: { ...configuration, type },
       }),
-      bindings: (isRecord(configuration.dynamicValues)
+      bindings: isRecord(configuration.dynamicValues)
         ? configuration.dynamicValues
-        : {}) as DynamicValues,
+        : {},
     }),
     [configuration, type, protocol.codebook],
   );

@@ -1660,23 +1660,25 @@ test('readings with no family in them prove nothing about a family', () => {
   ]);
 });
 
+const write = (dir, name, value) => {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    join(dir, name),
+    typeof value === 'string' ? value : `${JSON.stringify(value)}\n`,
+  );
+};
+
+const graph = (hash) =>
+  `<graphml><graph nc:protocolName="migration" nc:codebookHash="${hash}" nc:sessionExportTime="2026-10-01"></graph></graphml>\n`;
+
 // The export diff holds every export file to being identical. The only thing
 // it reconciles is the interview API naming each interview's finish stage and
 // outcome as null — never a value there, and nothing in an export archive.
 test('the export diff reconciles nothing but finish fields added as null', () => {
   const work = mkdtempSync(join(tmpdir(), 'fresco-diff-identity-'));
-  const write = (dir, name, value) => {
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(
-      join(dir, name),
-      typeof value === 'string' ? value : `${JSON.stringify(value)}\n`,
-    );
-  };
   const interview = { id: 'parked', protocolId: 'p1', currentStep: 2 };
   const ego =
     'networkCanvasEgoUUID,networkCanvasSessionID,sessionExported\nego,parked,2026-10-01\n';
-  const graph = (hash) =>
-    `<graphml><graph nc:protocolName="migration" nc:codebookHash="${hash}" nc:sessionExportTime="2026-10-01"></graph></graphml>\n`;
   write(join(work, 'baseline'), 'api-interview-parked.json', {
     data: interview,
   });

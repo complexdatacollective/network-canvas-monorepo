@@ -875,6 +875,10 @@ jobs:
         id: dialog-exits
         continue-on-error: true
         run: pnpm check:dialog-exits
+      - name: Check reduced motion is read through AnimationProvider
+        id: reduced-motion
+        continue-on-error: true
+        run: pnpm check:reduced-motion
       # Studio's ERD and README schema section are generated and committed. The
       # render is CPU-only — no database — so it belongs beside the other
       # artifact checks rather than in the server's vitest lane, where it
@@ -956,6 +960,7 @@ jobs:
           MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
           HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
           DIALOG_EXITS_OUTCOME: ${{ steps.dialog-exits.outcome }}
+          REDUCED_MOTION_OUTCOME: ${{ steps.reduced-motion.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
           STUDIO_RELEASE_OUTCOME: ${{ steps.studio-release.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
@@ -972,6 +977,7 @@ jobs:
             "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
             "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
             "dialog-exits=$DIALOG_EXITS_OUTCOME" \
+            "reduced-motion=$REDUCED_MOTION_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
             "studio-release=$STUDIO_RELEASE_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \

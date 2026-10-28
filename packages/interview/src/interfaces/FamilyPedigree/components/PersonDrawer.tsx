@@ -18,7 +18,7 @@ type PersonDrawerProps = {
   onClosed?: () => void;
   /** Where focus returns when the panel closes. */
   returnFocus: () => HTMLElement | null;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   footer: ReactNode;
   /** The panel itself, to measure how much of the screen it covers. */
@@ -68,8 +68,12 @@ export default function PersonDrawer({
               ) ?? true
             }
             finalFocus={() => returnFocus()}
+            // The shared elevations fall downward, which barely shows along
+            // the edge of a full-height panel; this one falls towards the
+            // family tree, darkened from the background behind the panel.
             className={[
-              'bg-surface-1 publish-colors text-text elevation-high pointer-events-auto absolute inset-0 flex flex-col',
+              'bg-surface-1 publish-colors text-text pointer-events-auto absolute inset-0 flex flex-col',
+              'shadow-[-2px_0_6px_oklch(from_var(--background)_0.05_c_h/0.4),-16px_0_48px_oklch(from_var(--background)_0.05_c_h/0.6)]',
               'transition-transform duration-300 ease-out',
               '[transform:translateX(var(--drawer-swipe-movement-x,0px))]',
               'data-[starting-style]:[transform:translateX(100%)]',
@@ -93,10 +97,12 @@ export default function PersonDrawer({
                 drawer itself stays mounted, so opening it is a change it can
                 animate. The footer's submit button sits within the store. */}
             <FormStoreProvider key={formKey}>
+              {/* Steps slide sideways as they change; clipping the sideways
+                  overflow keeps that slide from showing a scrollbar. */}
               <div
                 ref={initialFocusRef}
                 data-testid="pedigree-person-panel-body"
-                className="min-h-0 flex-1 overflow-y-auto p-6"
+                className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-6"
               >
                 {children}
               </div>

@@ -507,6 +507,17 @@ type LibraryPanelItem = LibraryRowItem;
 type PanelRowProps = RowFields & {
   itemProps: ItemProps;
 };
+// The row itself, then its list, for a dialog the row opened: by the time it
+// closes, the row may have been re-rendered away.
+const captureRowFocus = (row: Element): ResolveMenuFocus => {
+  const element = row instanceof HTMLElement ? row : null;
+  const listbox = row.closest<HTMLElement>('[role="listbox"]');
+  return () => {
+    if (element?.isConnected) return element;
+    if (listbox?.isConnected) return listbox;
+    return null;
+  };
+};
 const PanelRow = ({
   itemProps,
   name,
@@ -532,7 +543,10 @@ const PanelRow = ({
     // protocol because a menu item was activated would undo whatever the
     // researcher actually chose. The menu items stop propagation too; this is
     // the guard that does not depend on every future one remembering to.
-    if (!event.currentTarget.contains(event.target as Node)) return;
+    const target = event.target;
+    if (!(target instanceof Node) || !event.currentTarget.contains(target)) {
+      return;
+    }
     onOpen(captureRowFocus(event.currentTarget));
   };
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -544,17 +558,6 @@ const PanelRow = ({
       event.preventDefault();
       onOpen(captureRowFocus(event.currentTarget));
     }
-  };
-  // The row itself, then its list, for a dialog the row opened: by the time it
-  // closes, the row may have been re-rendered away.
-  const captureRowFocus = (row: Element): ResolveMenuFocus => {
-    const element = row instanceof HTMLElement ? row : null;
-    const listbox = row.closest<HTMLElement>('[role="listbox"]');
-    return () => {
-      if (element?.isConnected) return element;
-      if (listbox?.isConnected) return listbox;
-      return null;
-    };
   };
   // Read while the row is still mounted — after a confirmed delete neither the
   // trigger nor the row is in the document, and `closest` would have nothing to

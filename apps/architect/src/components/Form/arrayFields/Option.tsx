@@ -113,6 +113,7 @@ const messages = defineMessages({
 export type OptionValue = VariableOptions[number];
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RowField takes its control as a component of an open prop bag and hands it the field props at runtime, so the control's concrete props are widened the same way as FrescoInputField above
 const OptionLabelControl = OptionLabelField as ComponentType<
   Record<string, unknown>
 >;

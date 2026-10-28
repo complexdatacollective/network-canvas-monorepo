@@ -6,7 +6,8 @@ import {
   type ReactNode,
   useContext,
   useId,
-  useRef,
+  useLayoutEffect,
+  useState,
 } from 'react';
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
@@ -48,34 +49,79 @@ type FormStoreProviderProps = {
   children: ReactNode;
 };
 
+/**
+ * The formatter and document the form store's getters return. The store is
+ * created once and lives as long as the form, so it cannot close over a
+ * formatter that changes with the language; it reads this instead, which
+ * `FormContextSync` points at the current one after every render.
+ *
+ * The document is read through here for the same reason, and one more: a form
+ * whose document advances while it is open must seed a field mounting
+ * afterwards from what the document holds then.
+ */
+class FormContextSource {
+  intl: IntlShape;
+  initialValues: Record<string, unknown> | undefined;
+
+  constructor(
+    intl: IntlShape,
+    initialValues: Record<string, unknown> | undefined,
+  ) {
+    this.intl = intl;
+    this.initialValues = initialValues;
+  }
+
+  update(intl: IntlShape, initialValues: Record<string, unknown> | undefined) {
+    this.intl = intl;
+    this.initialValues = initialValues;
+  }
+}
+
+/**
+ * Brings the source up to date in a layout effect. Rendered as the provider's
+ * first child, so its effects run before those of any field inside the form:
+ * a field registering in the commit that advanced the document already seeds
+ * from the new one.
+ */
+function FormContextSync({
+  source,
+  intl,
+  initialValues,
+}: {
+  source: FormContextSource;
+  intl: IntlShape;
+  initialValues: Record<string, unknown> | undefined;
+}) {
+  useLayoutEffect(() => {
+    source.update(intl, initialValues);
+  });
+  return null;
+}
+
 const FormStoreProvider = ({
   initialValues,
   children,
 }: FormStoreProviderProps) => {
-  const storeRef = useRef<FormStoreApi>(undefined);
-
-  // The store is created once and lives as long as the form, so it cannot
-  // close over a formatter that changes with the language. It reads this ref
-  // instead, which every render points at the current one.
   const intl = useAppIntl();
-  const intlRef = useRef<IntlShape>(intl);
-  intlRef.current = intl;
-
-  // The document is read through a ref for the same reason, and one more: a
-  // form whose document advances while it is open must seed a field mounting
-  // afterwards from what the document holds then.
-  const initialValuesRef = useRef(initialValues);
-  initialValuesRef.current = initialValues;
-
-  storeRef.current ??= createFormStore({
-    getIntl: () => intlRef.current,
-    getInitialValues: () => initialValuesRef.current,
-  });
+  const [contextSource] = useState(
+    () => new FormContextSource(intl, initialValues),
+  );
+  const [store] = useState<FormStoreApi>(() =>
+    createFormStore({
+      getIntl: () => contextSource.intl,
+      getInitialValues: () => contextSource.initialValues,
+    }),
+  );
 
   const fieldScope = useId();
 
   return (
-    <FormStoreContext.Provider value={storeRef.current}>
+    <FormStoreContext.Provider value={store}>
+      <FormContextSync
+        source={contextSource}
+        intl={intl}
+        initialValues={initialValues}
+      />
       <FormFieldScopeContext.Provider value={fieldScope}>
         {children}
       </FormFieldScopeContext.Provider>

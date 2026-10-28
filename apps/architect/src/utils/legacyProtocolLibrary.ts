@@ -140,6 +140,18 @@ const isAssetOf =
     // (a test's, or one cloned across a worker) is still a Blob.
     (typeof value.data === 'string' || isObject(value.data));
 
+const readAssets = async (
+  database: Dexie,
+  protocolId: string,
+): Promise<StoredAsset[]> => {
+  const rows: unknown[] = await database
+    .table('assets')
+    .where('protocolId')
+    .equals(protocolId)
+    .toArray();
+  return rows.filter(isAssetOf(protocolId));
+};
+
 type LegacyProtocolReader = {
   /**
    * Whether the library exists on this origin yet. False, never a rejection,
@@ -223,18 +235,6 @@ export const createLegacyProtocolReader = (
       opening = null;
     });
     return opening;
-  };
-
-  const readAssets = async (
-    database: Dexie,
-    protocolId: string,
-  ): Promise<StoredAsset[]> => {
-    const rows: unknown[] = await database
-      .table('assets')
-      .where('protocolId')
-      .equals(protocolId)
-      .toArray();
-    return rows.filter(isAssetOf(protocolId));
   };
 
   return {

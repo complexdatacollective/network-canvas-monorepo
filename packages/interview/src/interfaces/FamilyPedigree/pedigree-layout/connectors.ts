@@ -89,6 +89,12 @@ export function computeConnectors(
 const cheapestFirst = (costs: number[]) =>
   costs.map((_, k) => k).toSorted((x, y) => costs[x]! - costs[y]! || x - y);
 
+/** A line's owner and kind, as a key: one line per owner and kind. */
+const lineKeyOf = (owner: LineOwner) => `${ownerKey(owner)}:${owner.kind}`;
+
+const pairKeyOf = (a: number, b: number) =>
+  `${Math.min(a, b)},${Math.max(a, b)}`;
+
 /**
  * The connectors (see `computeConnectors`), and what their routed lines
  * cost the drawing, the cost every line's course is chosen by (see
@@ -177,6 +183,7 @@ export function routePedigree(
   // none given, every couple the layout seats together, as above).
   const recordedPartners: PartnerConnection[] = partnerPairs
     ? [...partnerPairs].map((pairKey) => {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every pair key is built as "a,b" from two person indexes (pedigreeAdapter)
         const [a, b] = pairKey.split(',').map(Number) as [number, number];
         return { partnerIndex1: a, partnerIndex2: b, isActive: true };
       })
@@ -195,8 +202,6 @@ export function routePedigree(
       );
   const owners: ChildLines[] = lineOwnersOf(parents, recordedPartners);
   const descentOwnerOf = (personIndex: number) => owners[personIndex]?.descent;
-  /** A line's owner and kind, as a key: one line per owner and kind. */
-  const lineKeyOf = (owner: LineOwner) => `${ownerKey(owner)}:${owner.kind}`;
 
   // --- Parent group lines (all partner pairs, marked active/inactive) ---
   for (let i = 0; i < maxlev; i++) {
@@ -1160,7 +1165,8 @@ export function routePedigree(
     if (descent && top) {
       return { x: top.x1, y: top.y1, stem: descent.parentLink };
     }
-    const [a, b] = pairKey.split(',').map(Number) as [number, number];
+    const [a, b] = pairKey.split(',').map(Number);
+    if (a === undefined || b === undefined) return undefined;
     const [at, bt] = [placeOf.get(a), placeOf.get(b)];
     if (!at || !bt || at.layer !== bt.layer) return undefined;
     const sideBySide =
@@ -1258,8 +1264,6 @@ export function routePedigree(
       scene.lines.push({ segment: twin.segment, kind: 'other' });
   }
 
-  const pairKeyOf = (a: number, b: number) =>
-    `${Math.min(a, b)},${Math.max(a, b)}`;
   // --- The lines drawn for ties outside each child's line of descent ---
   // One line per owner and kind of tie (see `lineOwnersOf`), for the
   // children it is drawn to: those of a sibship whose line of descent it
@@ -1365,6 +1369,7 @@ export function routePedigree(
     );
   };
   const plans = [...linesTo.values()].flatMap((conn) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a line's owner is one person or a couple, so it names one or two parents
     const [first, second] = conn.owner.parents as [number, number?];
     const singly = (person: number) => {
       const at = nodeLocation.get(person)!;
@@ -2239,6 +2244,9 @@ function groupBy<T, K>(items: T[], keyOf: (item: T) => K): Map<K, T[]> {
   return groups;
 }
 
+const lineSegment = (x1: number, y1: number, x2: number, y2: number) =>
+  ({ type: 'line', x1, y1, x2, y2 }) satisfies LineSegment;
+
 /**
  * The line of descent from a parent (or a couple's descent point) at
  * `parentx`, starting at `startY` (the parent's centre, or the couple's
@@ -2260,23 +2268,21 @@ function buildParentLink(
 ): LineSegment[] {
   const barY = i - legh;
   const parentBottomY = i - 1 + boxh;
-  const line = (x1: number, y1: number, x2: number, y2: number) =>
-    ({ type: 'line', x1, y1, x2, y2 }) satisfies LineSegment;
 
   if (Math.abs(childX - parentx) < 1e-9) {
-    return [line(parentx, startY, parentx, barY)];
+    return [lineSegment(parentx, startY, parentx, barY)];
   }
   if (branch === 0) {
     return [
-      line(parentx, startY, parentx, parentBottomY),
-      line(parentx, parentBottomY, childX, barY),
+      lineSegment(parentx, startY, parentx, parentBottomY),
+      lineSegment(parentx, parentBottomY, childX, barY),
     ];
   }
   const levelY = runY ?? parentBottomY + (barY - parentBottomY) / 2;
   return [
-    line(parentx, startY, parentx, levelY),
-    line(parentx, levelY, childX, levelY),
-    line(childX, levelY, childX, barY),
+    lineSegment(parentx, startY, parentx, levelY),
+    lineSegment(parentx, levelY, childX, levelY),
+    lineSegment(childX, levelY, childX, barY),
   ];
 }
 
@@ -2301,15 +2307,13 @@ function buildCoParentLink(
   const barY = i - legh;
   const parentBottomY = i - 1 + boxh;
   const levelY = runY ?? parentBottomY + (barY - parentBottomY) / 2;
-  const line = (x1: number, y1: number, x2: number, y2: number) =>
-    ({ type: 'line', x1, y1, x2, y2 }) satisfies LineSegment;
   // The level line in pieces between the drops and the line down, so that
   // each meets it at a piece's end.
   const stops = [...new Set([...xs, childX])].toSorted((a, b) => a - b);
   return [
-    ...xs.map((x) => line(x, startY, x, levelY)),
-    ...stops.slice(1).map((x, k) => line(stops[k]!, levelY, x, levelY)),
-    line(childX, levelY, childX, barY),
+    ...xs.map((x) => lineSegment(x, startY, x, levelY)),
+    ...stops.slice(1).map((x, k) => lineSegment(stops[k]!, levelY, x, levelY)),
+    lineSegment(childX, levelY, childX, barY),
   ];
 }
 

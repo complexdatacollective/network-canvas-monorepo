@@ -65,6 +65,17 @@ type PluginConfig = {
   opacityScaleFactor?: number; // multiplier for overall opacity
 };
 
+// Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
+// --scoped-text point at the bare semantic tokens declared by the
+// theme files (`--background`, `--text`, etc.) rather than going
+// through Tailwind's `--color-*` indirection. Tailwind's
+// `api.theme(...)` resolves color tokens to their `--color-*` form
+// regardless of `@theme inline`, so we strip the prefix at plugin
+// emit time. Literal values (oklch(...), currentColor) are
+// unchanged because they don't match the pattern.
+const stripColorPrefix = (value: string) =>
+  value.replace(/var\(--color-/g, 'var(--');
+
 const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
   plugin.withOptions<PluginConfig>(
     (options = {}) =>
@@ -126,17 +137,6 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
             '--published-text': 'var(--scoped-text, currentColor)',
           },
         });
-
-        // Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
-        // --scoped-text point at the bare semantic tokens declared by the
-        // theme files (`--background`, `--text`, etc.) rather than going
-        // through Tailwind's `--color-*` indirection. Tailwind's
-        // `api.theme(...)` resolves color tokens to their `--color-*` form
-        // regardless of `@theme inline`, so we strip the prefix at plugin
-        // emit time. Literal values (oklch(...), currentColor) are
-        // unchanged because they don't match the pattern.
-        const stripColorPrefix = (value: string) =>
-          value.replace(/var\(--color-/g, 'var(--');
 
         // Tailwind types `api.theme` as returning `any`. The backgroundColor,
         // textColor and colors theme keys each resolve to a map of utility

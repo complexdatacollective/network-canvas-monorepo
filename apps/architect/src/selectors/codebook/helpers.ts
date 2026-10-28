@@ -31,6 +31,7 @@ export const getIdsFromCodebook = (codebook: Codebook): string[] => {
       (entityOrEntities && typeof entityOrEntities === 'object')
     ) {
       const ids = flatMap(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ego is handled by the branch above, so what is left is node or edge: a map of type id to definition; TypeScript does not narrow Object.entries' value by its key
         entityOrEntities as Record<string, NodeDefinition | EdgeDefinition>,
         getIdsFromEntity,
       );

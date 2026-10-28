@@ -390,11 +390,20 @@ test('invalid journeys args throw instead of narrowing coverage', async () => {
   );
 });
 
+const okButFailures = async (p, o) =>
+  o.label === 'preflight'
+    ? { ...PREFLIGHT, ok: true, failures: ['manifest invalid'] }
+    : null;
+
+const emptyWorkDir = async (p, o) =>
+  o.label === 'preflight' ? { ...PREFLIGHT, workDir: '' } : null;
+
+const dead = async (p, o) =>
+  o.label === 'preflight'
+    ? { ...PREFLIGHT, ok: false, failures: ['down'] }
+    : null;
+
 test('preflight invariants are enforced in code, not agent self-report', async () => {
-  const okButFailures = async (p, o) =>
-    o.label === 'preflight'
-      ? { ...PREFLIGHT, ok: true, failures: ['manifest invalid'] }
-      : null;
   const inconsistent = await run(okButFailures, undefined);
   assert.equal(inconsistent.verdict, 'BLOCKED');
   assert.ok(inconsistent.summaryMarkdown.includes('manifest invalid'));
@@ -406,17 +415,11 @@ test('preflight invariants are enforced in code, not agent self-report', async (
   assert.equal(staleDeploy.verdict, 'BLOCKED');
   assert.ok(staleDeploy.summaryMarkdown.includes('stale or wrong'));
 
-  const emptyWorkDir = async (p, o) =>
-    o.label === 'preflight' ? { ...PREFLIGHT, workDir: '' } : null;
   assert.equal(
     (await run(emptyWorkDir, { journeys: ['pwa-offline'] })).verdict,
     'BLOCKED',
   );
 
-  const dead = async (p, o) =>
-    o.label === 'preflight'
-      ? { ...PREFLIGHT, ok: false, failures: ['down'] }
-      : null;
   assert.equal((await run(dead, undefined)).verdict, 'BLOCKED');
 });
 
@@ -730,10 +733,11 @@ test('a mid-run redeploy caps the run below certification', async () => {
   assert.ok(res.certificationGaps.some((a) => a.includes('changed mid-run')));
 });
 
+const badFingerprintAgent = async (p, o) =>
+  o.label === 'preflight' ? { ...PREFLIGHT, fingerprint: 'not-hex!' } : null;
+
 test('preflight without a valid fingerprint is blocked', async () => {
-  const agent = async (p, o) =>
-    o.label === 'preflight' ? { ...PREFLIGHT, fingerprint: 'not-hex!' } : null;
-  const res = await run(agent, { journeys: ['pwa-offline'] });
+  const res = await run(badFingerprintAgent, { journeys: ['pwa-offline'] });
   assert.equal(res.verdict, 'BLOCKED');
 });
 
@@ -992,27 +996,34 @@ test('every certification gap caps the verdict', async () => {
   );
 });
 
+const conductOfflineEvidence = (checkpointNumbers) => ({
+  fingerprint: PREFLIGHT.fingerprint,
+  entries: [
+    {
+      journey: 'conduct-offline',
+      exists: true,
+      screenshots: 13,
+      checkpointNumbers,
+    },
+  ],
+});
+
 test('conduct-offline validates like any journey via check captures', async () => {
   const jr = { 'conduct-offline': journey('conduct-offline') };
-  const evidence = (checkpointNumbers) => ({
-    fingerprint: PREFLIGHT.fingerprint,
-    entries: [
-      {
-        journey: 'conduct-offline',
-        exists: true,
-        screenshots: 13,
-        checkpointNumbers,
-      },
-    ],
-  });
-  const ok = await run(makeAgent(jr, {}, evidence([1, 2, 3, 4, 5, 6])), {
-    journeys: ['conduct-offline'],
-  });
+  const ok = await run(
+    makeAgent(jr, {}, conductOfflineEvidence([1, 2, 3, 4, 5, 6])),
+    {
+      journeys: ['conduct-offline'],
+    },
+  );
   assert.equal(ok.verdict, 'PASS');
   // A walker run whose evidence lacks a check capture stays incomplete.
-  const partial = await run(makeAgent(jr, {}, evidence([1, 2, 3, 4, 5])), {
-    journeys: ['conduct-offline'],
-  });
+  const partial = await run(
+    makeAgent(jr, {}, conductOfflineEvidence([1, 2, 3, 4, 5])),
+    {
+      journeys: ['conduct-offline'],
+    },
+  );
   assert.equal(partial.verdict, 'INCOMPLETE');
   assert.ok(partial.certificationGaps.some((a) => a.includes('check(s) #6')));
 });
@@ -1154,17 +1165,19 @@ test('unbindable numbered verdicts are never promoted as discoveries', async () 
   assert.ok(res.certificationGaps.some((a) => a.includes('unbindable')));
 });
 
+const badWorkDir = async (p, o) =>
+  o.label === 'preflight'
+    ? { ...PREFLIGHT, workDir: '/tmp/x\n### INJECT' }
+    : null;
+
+const badRepoRoot = async (p, o) =>
+  o.label === 'preflight' ? { ...PREFLIGHT, repoRoot: 'not-a-path' } : null;
+
 test('malformed preflight paths are blocked', async () => {
-  const badWorkDir = async (p, o) =>
-    o.label === 'preflight'
-      ? { ...PREFLIGHT, workDir: '/tmp/x\n### INJECT' }
-      : null;
   assert.equal(
     (await run(badWorkDir, { journeys: ['pwa-offline'] })).verdict,
     'BLOCKED',
   );
-  const badRepoRoot = async (p, o) =>
-    o.label === 'preflight' ? { ...PREFLIGHT, repoRoot: 'not-a-path' } : null;
   assert.equal(
     (await run(badRepoRoot, { journeys: ['pwa-offline'] })).verdict,
     'BLOCKED',
@@ -1423,6 +1436,12 @@ test('an internally inconsistent audit entry cannot evidence a dismissal', async
   assert.equal(impossible.unverifiedFailures.length, 2);
 });
 
+const pm = (opts) => ({
+  'protocol-management': journey('protocol-management', {
+    checks: mkChecks(9, { skipAt: [6, 7], ...opts }),
+  }),
+});
+
 test('structured skip codes gate schema-skew to hotfix runs', async () => {
   const evidence = {
     fingerprint: PREFLIGHT.fingerprint,
@@ -1436,11 +1455,6 @@ test('structured skip codes gate schema-skew to hotfix runs', async () => {
       },
     ],
   };
-  const pm = (opts) => ({
-    'protocol-management': journey('protocol-management', {
-      checks: mkChecks(9, { skipAt: [6, 7], ...opts }),
-    }),
-  });
   const skew = pm({ skipCodes: { 6: 'schema-skew', 7: 'schema-skew' } });
   // The declared class is what gates — even a paraphrase the old keyword
   // matcher missed ("format version 9 exceeds this build's supported

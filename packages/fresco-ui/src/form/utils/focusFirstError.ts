@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from '../../reducedMotion';
 import { holdsFocus } from '../../utils/finalFocus';
 import { scrollParent } from '../../utils/scrollParent';
 import type { FlattenedErrors } from '../store/types';
@@ -193,6 +194,9 @@ export const resolveFieldErrorTarget = (
   return findOperableControl(container) ?? makeContainerFocusable(container);
 };
 
+const inDocument = () =>
+  Array.from(document.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR));
+
 /**
  * Every field container one form may claim: what its markup contains, plus
  * what carries its store's identity wherever it was drawn. De-duplicated,
@@ -203,11 +207,6 @@ const fieldCandidates = (
   root: ParentNode | null | undefined,
   formId: string | undefined,
 ): HTMLElement[] => {
-  const inDocument = () =>
-    Array.from(
-      document.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR),
-    );
-
   if (!root && formId === undefined) return inDocument();
 
   const found = new Set<HTMLElement>();
@@ -355,7 +354,9 @@ export const focusFirstError = (
     focusableElement.focus({ preventScroll: true });
   }
 
-  const scroller = scrollParent(scrollTarget) as unknown as HTMLElement;
+  const scroller = scrollParent(scrollTarget);
+  // Only an element from another realm (an iframe's) has no scroll parent.
+  if (!scroller) return;
   const scrollStart = scroller.scrollTop;
   const scrollerOffset = Number.parseInt(
     scroller.getBoundingClientRect().top.toString(),
@@ -368,12 +369,8 @@ export const focusFirstError = (
 
   // Subtract 200 to put more of the input in view.
   const scrollEnd = destinationOffset + scrollStart - scrollerOffset - 200;
-  const prefersReducedMotion =
-    ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')
-      .matches ?? false;
-
   scroller.scrollTo({
     top: scrollEnd,
-    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    behavior: prefersReducedMotion(ownerDocument) ? 'auto' : 'smooth',
   });
 };

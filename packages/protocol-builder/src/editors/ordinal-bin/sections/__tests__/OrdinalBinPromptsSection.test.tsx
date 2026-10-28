@@ -306,13 +306,14 @@ describe('the questions an ordinal bin asks', () => {
     const values = within(
       await screen.findByRole('region', { name: 'Choice values' }),
     );
-    // The fixture's attribute has three values, so five is still within what
+    // The fixture's attribute has three values, so six is still within what
     // the screen draws and nothing is said yet.
     await addInlineValue(harness, values, 'Yearly', 4);
     await addInlineValue(harness, values, 'Never', 5);
+    await addInlineValue(harness, values, 'Once', 6);
     expect(screen.queryByText('More bins than fit on one screen')).toBeNull();
 
-    await addInlineValue(harness, values, 'Not any more', 6);
+    await addInlineValue(harness, values, 'Not any more', 7);
 
     expect(
       await screen.findByText('More bins than fit on one screen'),

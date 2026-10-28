@@ -21,7 +21,7 @@ import type {
   FormSubmissionResult,
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
-import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
+import Icon, { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Form as TForm } from '@codaco/protocol-validation';
 import {
@@ -160,9 +160,13 @@ const NodeForm = (props: NodeFormProps) => {
   // and the form does not open at all until the passphrase has been entered.
   const editing = useProtectedFormValues(selectedNode, form.fields, variables);
   const editingLocked = selectedNode !== null && editing.status === 'locked';
+  // Closed during render, so a locked person's form is never shown open; the
+  // host is told once that commits.
+  if (editingLocked && show) {
+    setShow(false);
+  }
   useEffect(() => {
     if (!editingLocked) return;
-    setShow(false);
     onClose();
   }, [editingLocked, onClose]);
 
@@ -251,10 +255,9 @@ const NodeForm = (props: NodeFormProps) => {
               style={{ backgroundColor: 'var(--primary)' }}
             >
               <motion.div className="flex h-full items-center justify-center">
-                <Icon
-                  name={icon as InterviewerIconName}
-                  className={actionIconClass}
-                />
+                {isInterviewerIconName(icon) && (
+                  <Icon name={icon} className={actionIconClass} />
+                )}
               </motion.div>
             </motion.div>
             <motion.div className={actionPlusBadgeVariants()}>

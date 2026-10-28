@@ -41,6 +41,7 @@ type ProtocolManifest = {
   protocols: ProtocolManifestEntry[];
 };
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- bundled manifest JSON from @codaco/protocols: TypeScript widens its string literals (each entry's kind), so it cannot be checked against ProtocolManifest statically; manifest.test.ts covers its entries
 const protocolManifest = protocolManifestJson as ProtocolManifest;
 
 const templateProtocolModules = import.meta.glob<CurrentProtocol>(

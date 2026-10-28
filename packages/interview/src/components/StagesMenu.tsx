@@ -1,8 +1,8 @@
 'use client';
 
 import { EyeOff, LayoutTemplate, RouteOff } from 'lucide-react';
-import { motion, useReducedMotion, type Variants } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, type Variants } from 'motion/react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -10,6 +10,7 @@ import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
@@ -198,7 +199,7 @@ export default function StagesMenu({
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const availabilityMap = useSelector(getStageAvailabilityMap);
   const skipMap = useSelector(getSkipMap);
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = usePrefersReducedMotion() ?? false;
 
   const isHorizontal = orientation === 'horizontal';
 
@@ -269,21 +270,20 @@ export default function StagesMenu({
   // Signal the host once the staggered exit has played out, so the drawer only
   // slides away after the cards are gone. Timings are deterministic tweens on
   // exit, so a single timeout is enough. Keep dependencies to `open` alone: the
-  // count/steps are read from refs so a mid-close filter change can't cancel
-  // (and never re-arm) the pending timeout.
-  const onClosedRef = useRef(onClosed);
-  onClosedRef.current = onClosed;
-  const exitMsRef = useRef(0);
-  exitMsRef.current = reduceMotion
+  // exit time and callback are read through effect events so a mid-close
+  // filter change can't cancel (and never re-arm) the pending timeout.
+  const exitMs = reduceMotion
     ? 0
     : (Math.max(0, count - 1) * steps.exit + EXIT_DURATION + EXIT_BUFFER) *
       1000;
+  const readExitMs = useEffectEvent(() => exitMs);
+  const notifyClosed = useEffectEvent(() => onClosed());
   const prevOpen = useRef(open);
   useEffect(() => {
     const wasOpen = prevOpen.current;
     prevOpen.current = open;
     if (wasOpen && !open) {
-      const id = setTimeout(() => onClosedRef.current(), exitMsRef.current);
+      const id = setTimeout(() => notifyClosed(), readExitMs());
       return () => clearTimeout(id);
     }
     return undefined;

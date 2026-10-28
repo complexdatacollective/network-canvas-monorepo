@@ -4,6 +4,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { getAssetById } from '~/utils/assetUtils';
+import { readGeoJsonFeatureProperties } from '~/utils/protocols/assetTools';
 
 import Table, { type TableColumn } from './Table';
 import withAssetPath from './withAssetPath';
@@ -16,29 +17,19 @@ const messages = defineMessages({
 });
 
 const ROW_LIMIT = 100;
-type GeoJSONFeature = {
-  properties: Record<string, unknown>;
-};
-type GeoJSON = {
-  features: GeoJSONFeature[];
-};
-const EMPTY_GEOJSON: GeoJSON = { features: [] };
-const getGeoJSON = async (assetId: string): Promise<GeoJSON> => {
+type GeoJSONRows = Record<string, unknown>[];
+const EMPTY_ROWS: GeoJSONRows = [];
+const getRows = async (assetId: string): Promise<GeoJSONRows> => {
   const asset = await getAssetById(assetId);
   if (!asset) {
-    return { features: [] };
+    return [];
   }
   const text =
     typeof asset.data === 'string' ? asset.data : await asset.data.text();
-  return JSON.parse(text) as GeoJSON;
+  return readGeoJsonFeatureProperties(text);
 };
-const getRows = (geojson: GeoJSON): Record<string, unknown>[] =>
-  (geojson.features ?? []).map(({ properties }: GeoJSONFeature) => properties);
-const getColumns = (geojson: GeoJSON): TableColumn[] => {
-  const properties = (geojson.features ?? []).map(
-    (feature: GeoJSONFeature) => feature.properties,
-  );
-  const columnNames = Array.from(new Set(properties.flatMap(Object.keys)));
+const getColumns = (rows: GeoJSONRows): TableColumn[] => {
+  const columnNames = Array.from(new Set(rows.flatMap(Object.keys)));
   return columnNames.map((col) => ({
     Header: col,
     accessor: col,
@@ -56,7 +47,7 @@ const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
   // race the read that replaces them.
   const [loaded, setLoaded] = useState<{
     assetId: string;
-    geoJSON: GeoJSON;
+    rows: GeoJSONRows;
   } | null>(null);
   useEffect(() => {
     if (!assetId) {
@@ -64,18 +55,17 @@ const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
     }
     let cancelled = false;
     void (async () => {
-      const geoJSON = await getGeoJSON(assetId);
+      const rows = await getRows(assetId);
       if (!cancelled) {
-        setLoaded({ assetId, geoJSON });
+        setLoaded({ assetId, rows });
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [assetId]);
-  const content = loaded?.assetId === assetId ? loaded.geoJSON : EMPTY_GEOJSON;
-  const allRows = useMemo(() => getRows(content), [content]);
-  const columns = useMemo(() => getColumns(content), [content]);
+  const allRows = loaded?.assetId === assetId ? loaded.rows : EMPTY_ROWS;
+  const columns = useMemo(() => getColumns(allRows), [allRows]);
   const data = useMemo(() => allRows.slice(0, ROW_LIMIT), [allRows]);
   const totalRows = allRows.length;
   const isTruncated = totalRows > ROW_LIMIT;
@@ -93,4 +83,4 @@ const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
     </>
   );
 };
-export default withAssetPath(GeoJSONTable as React.ComponentType<unknown>);
+export default withAssetPath(GeoJSONTable);

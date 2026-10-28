@@ -75,6 +75,22 @@ const inRecordedOrder = <Version extends Readonly<{ key: string }>>(
   ...versions.filter(({ key }) => key !== MISSING_CASE),
 ];
 
+/**
+ * Whether one entry of a versions element's `versions` is a version. The
+ * element is read back from the editor's document, so an entry that is not
+ * shaped like one is left out rather than read from.
+ */
+const isRichTextVersion = (value: unknown): value is RichTextVersion =>
+  typeof value === 'object' &&
+  value !== null &&
+  'key' in value &&
+  typeof value.key === 'string' &&
+  'label' in value &&
+  typeof value.label === 'string' &&
+  'content' in value &&
+  Array.isArray(value.content) &&
+  value.content.every((node) => typeof node === 'object' && node !== null);
+
 const isSwitchMeta = (value: unknown): value is SwitchMeta =>
   typeof value === 'object' &&
   value !== null &&
@@ -365,17 +381,17 @@ const pieceNode = (
   }
   const meta: unknown = attrs.meta;
   if (!isSwitchMeta(meta) || !Array.isArray(attrs.versions)) return undefined;
-  const versions = inRecordedOrder(attrs.versions as RichTextVersion[]).map(
-    (version): MessageVersion => ({
-      key: version.key,
-      nodes: messageNodesOf(
-        lineDocument(version.content),
-        format,
-        true,
-        meta.type === 'plural' ? meta.argument : undefined,
-      ),
-    }),
-  );
+  const versions = inRecordedOrder(
+    attrs.versions.filter(isRichTextVersion),
+  ).map((version): MessageVersion => ({
+    key: version.key,
+    nodes: messageNodesOf(
+      lineDocument(version.content),
+      format,
+      true,
+      meta.type === 'plural' ? meta.argument : undefined,
+    ),
+  }));
   return {
     kind: 'switch',
     argument: meta.argument,

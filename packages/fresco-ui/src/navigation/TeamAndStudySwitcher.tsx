@@ -185,6 +185,19 @@ const ROW_CLASS = cx(
 /** A rule between a list and the rows that follow it. */
 const SEPARATOR_CLASS = 'border-outline my-1.5 border-t';
 
+// The element's own click handler, if it has one, in the shape
+// `composeEventHandlers` takes. Its props are an open record, so what is under
+// `onClick` is checked rather than assumed to be a function.
+const elementClickHandler = (
+  element: ReactElement<Record<string, unknown>>,
+): ((event: unknown) => void) | undefined => {
+  const { onClick } = element.props;
+  if (typeof onClick !== 'function') return undefined;
+  return (event) => {
+    Reflect.apply(onClick, undefined, [event]);
+  };
+};
+
 function markFor(
   item: SwitcherItem,
   renderMark: SwitcherSegment['renderMark'],
@@ -539,9 +552,7 @@ function Segment({
                       className,
                       onClick: composeEventHandlers(
                         () => setOpen(false),
-                        row.render.props.onClick as
-                          | ((event: unknown) => void)
-                          | undefined,
+                        elementClickHandler(row.render),
                       ),
                       children: body,
                     })

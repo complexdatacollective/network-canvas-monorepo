@@ -5,25 +5,28 @@ import {
   MotionConfigContext,
   MotionGlobalConfig,
   useAnimate,
-  useReducedMotion,
 } from 'motion/react';
 import { useContext, useMemo } from 'react';
+
+import { usePrefersReducedMotion } from '../reducedMotion';
 
 type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
 
 /**
- * Returns true when Motion has been configured not to create animations.
+ * Returns true when animations are disabled or motion should be reduced:
+ * by Motion's global or `MotionConfig` skip, by the `AnimationProvider`
+ * preference, or by a `MotionConfig` that forces `reducedMotion="always"` on
+ * a subtree (Motion's components honour that, so their animations would not
+ * run either).
  */
 export function useShouldSkipAnimations(): boolean {
   const { reducedMotion, skipAnimations } = useContext(MotionConfigContext);
-  const userPrefersReducedMotion = useReducedMotion();
-  const shouldReduceMotion =
-    reducedMotion === 'always' ||
-    (reducedMotion !== 'never' && userPrefersReducedMotion);
+  const shouldReduceMotion = usePrefersReducedMotion();
 
   return (
     !!MotionGlobalConfig.skipAnimations ||
     !!skipAnimations ||
+    reducedMotion === 'always' ||
     !!shouldReduceMotion
   );
 }
@@ -69,16 +72,18 @@ export function useSafeAnimate<T extends Element = HTMLDivElement>() {
       flatten: voidFn,
     };
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the noop stands in for Motion's overloaded animate function and returns a handle with the members callers use, which the overloads cannot be checked against
     return ((...args: Parameters<AnimateFn<T>>) => {
       const [elementOrSelector, keyframes] = args;
 
       if (
-        elementOrSelector instanceof Element &&
+        (elementOrSelector instanceof HTMLElement ||
+          elementOrSelector instanceof SVGElement) &&
         keyframes &&
         typeof keyframes === 'object' &&
         !Array.isArray(keyframes)
       ) {
-        const el = elementOrSelector as HTMLElement;
+        const el = elementOrSelector;
         for (const [prop, value] of Object.entries(keyframes)) {
           const finalValue = Array.isArray(value)
             ? value[value.length - 1]

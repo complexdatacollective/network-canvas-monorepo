@@ -6,6 +6,7 @@ import sampleProtocolJson from '@codaco/protocols/sample';
 
 // The Sample Protocol, vendored in `@codaco/protocols` (migrated to the current
 // schema version), so it opens from the bundled app rather than a remote URL.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- bundled JSON from @codaco/protocols: TypeScript widens its literals (schemaVersion to number, type names to string), so it cannot be checked against CurrentProtocol statically; bundled-validation.test.ts validates it against the schema
 export const sampleProtocol = sampleProtocolJson as unknown as CurrentProtocol;
 
 // Vite emits each bundled asset file and gives us its URL. The file name matches
@@ -32,9 +33,13 @@ type ManifestEntry = { id: string; name: string; source?: string };
 // Sample protocol instantiates into the library with its media intact. Called
 // lazily, only when the Sample template is actually opened.
 export const loadSampleAssets = async (): Promise<ExtractedAsset[]> => {
-  const entries = Object.values(
+  const entries: ManifestEntry[] = Object.entries(
     sampleProtocol.assetManifest ?? {},
-  ) as ManifestEntry[];
+  ).map(([key, entry]) => ({
+    id: entry.id ?? key,
+    name: entry.name,
+    source: 'source' in entry ? entry.source : undefined,
+  }));
 
   return Promise.all(
     entries

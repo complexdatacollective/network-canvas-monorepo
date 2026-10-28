@@ -47,12 +47,12 @@ const useEntityProcessors = () => {
 
   // Memoize selector creation to avoid recreating on every render
   const getNodeWithUsage = useMemo(
-    () => makeGetEntityWithUsage(nodeIndex, { entity: 'node' }, intl),
+    () => makeGetEntityWithUsage(nodeIndex, { entity: 'node' as const }, intl),
     [nodeIndex, intl],
   );
 
   const getEdgeWithUsage = useMemo(
-    () => makeGetEntityWithUsage(edgeIndex, { entity: 'edge' }, intl),
+    () => makeGetEntityWithUsage(edgeIndex, { entity: 'edge' as const }, intl),
     [edgeIndex, intl],
   );
 
@@ -65,20 +65,20 @@ const useEntityProcessors = () => {
 
 const processEntityEntries = (
   entries: [string, unknown][],
-  processor: (value: unknown, id: string) => unknown,
+  processor: (value: unknown, id: string) => Omit<EntityWithUsage, 'name'>,
   getName: (value: unknown, id: string) => string,
 ): EntityWithUsage[] => {
   return entries.map(([id, value]) => ({
-    ...(processor(value, id) as EntityWithUsage),
+    ...processor(value, id),
     name: getName(value, id),
   }));
 };
 
 const processNetworkAssets = (
-  networkAssets: Record<string, unknown>,
+  networkAssets: Record<string, Asset>,
 ): AssetWithId[] => {
   return Object.entries(networkAssets).map(([id, asset]) => ({
-    ...(asset as Asset),
+    ...asset,
     id,
   }));
 };
@@ -101,25 +101,28 @@ export const useCodebookData = (codebook: Codebook | null): CodebookData => {
   const networkAssets = useSelector(getNetworkAssets);
   const { nodeProcessor, edgeProcessor } = useEntityProcessors();
 
+  const nodeTypes = codebook?.node;
+  const edgeTypes = codebook?.edge;
+
   // Memoize node processing
   const nodes = useMemo(() => {
-    if (!codebook?.node) return [];
+    if (!nodeTypes) return [];
     return processEntityEntries(
-      Object.entries(codebook.node),
+      Object.entries(nodeTypes),
       nodeProcessor,
-      (_value, id) => codebook.node?.[id]?.name ?? id,
+      (_value, id) => nodeTypes[id]?.name ?? id,
     );
-  }, [codebook?.node, nodeProcessor]);
+  }, [nodeTypes, nodeProcessor]);
 
   // Memoize edge processing
   const edges = useMemo(() => {
-    if (!codebook?.edge) return [];
+    if (!edgeTypes) return [];
     return processEntityEntries(
-      Object.entries(codebook.edge),
+      Object.entries(edgeTypes),
       edgeProcessor,
-      (_value, id) => codebook.edge?.[id]?.name ?? id,
+      (_value, id) => edgeTypes[id]?.name ?? id,
     );
-  }, [codebook?.edge, edgeProcessor]);
+  }, [edgeTypes, edgeProcessor]);
 
   // Memoize network assets processing
   const processedNetworkAssets = useMemo(() => {

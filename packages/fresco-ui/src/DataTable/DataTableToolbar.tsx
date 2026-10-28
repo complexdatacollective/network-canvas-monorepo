@@ -30,6 +30,11 @@ const messages = defineMessages({
   },
 });
 
+// Search boxes write plain strings; anything else in the filter state is not
+// text the box can show.
+const searchValue = (filterValue: unknown) =>
+  typeof filterValue === 'string' ? filterValue : '';
+
 type DataTableToolbarProps<TData extends RowData> = {
   table: Table<DataTableFeatures, TData>;
   filterableColumns?: DataTableFilterableColumn<TData>[];
@@ -71,11 +76,9 @@ export function DataTableToolbar<TData extends RowData>({
                 placeholder={intl.formatMessage(messages.searchPlaceholder, {
                   title: searchCol.title ?? '',
                 })}
-                value={
-                  (table
-                    .getColumn(String(searchCol.id))
-                    ?.getFilterValue() as string) ?? ''
-                }
+                value={searchValue(
+                  table.getColumn(String(searchCol.id))?.getFilterValue(),
+                )}
                 onChange={(value) =>
                   table.getColumn(String(searchCol.id))?.setFilterValue(value)
                 }

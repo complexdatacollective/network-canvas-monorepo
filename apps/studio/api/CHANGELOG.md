@@ -1,5 +1,312 @@
 # @codaco/studio-api
 
+## 1.0.2
+
+### Patch Changes
+
+- An Ordinal Bin prompt in the Studio editor now warns about having too many bins only beyond six, matching the documented guidance, instead of beyond five. A six-point scale no longer raises the warning.
+
+## 1.0.1
+
+### Patch Changes
+
+- The published Studio images build again with the browser source-map upload
+  turned on. The image's build stage lacked the system CA certificates the upload
+  tool needs to reach PostHog over HTTPS, so the release build stopped there.
+
+## 1.0.0
+
+### Major Changes
+
+- Names in a protocol can now be written in any language. In the protocol
+  editor, node types, edge types, attributes and option values can use any
+  script, spaces and punctuation. A name still can't be empty, start or end with
+  a space, or contain tabs, line breaks or other invisible control characters.
+  Protocols are saved as schema 9, the protocol version that allows these names,
+  and the interview preview runs them.
+
+  - The hint under a node or edge type's name suggests names you can type in as
+    they are, such as "Friends" or "Colleagues", and each language suggests
+    names its researchers would naturally use.
+  - A name that would clash with another column in exported data is refused, and
+    the message names the other column. A categorical attribute is exported as
+    one column for each option, and a layout attribute as one column for each
+    coordinate, and no attribute can take the name of a column every export
+    includes. Names that an export would write the same way are refused too,
+    such as "close friend" and "close_friend", which GraphML files both write as
+    "close_friend".
+  - A participant data file (roster) that contains a character exported data
+    can't carry, usually an invisible control character pasted in from another
+    program, is refused when you add it. The message names the row and column,
+    or the line, to fix. The server refuses such a file too, and its refusal
+    carries the problem as structured detail (`code: 'roster-characters'`), so
+    the editor can explain it in your language.
+  - A roster's column headers can be any name an attribute can have, and the
+    messages about headers that can't be used say what is not allowed. A roster
+    with a header that can't be used, or with two headers that are the same name
+    written two ways, such as an accented letter stored as one character in one
+    and as two in the other, is now refused when you add it, rather than being
+    published and then turned away by the interview when a participant reaches
+    it. So is a roster the interview couldn't otherwise load: one that can't be
+    read, has a row with more or fewer cells than its header, has no rows, or
+    holds a value no attribute can take. The server refuses these files too.
+
+### Minor Changes
+
+- Codaco's staging instance now deploys each new Studio release on its own with
+  `auto-update.sh`, run hourly from cron. It finds the newest published `studio@`
+  release, and when `.env` does not already run its images it checks both are
+  signed by the release workflow building that release's commit, records a GitHub
+  deployment, and runs that commit's `upgrade.sh` with its `docker-compose.yml`.
+  `upgrade.sh` gains `--compose`, which installs a release's compose file with its
+  images and restores the previous one on rollback. An upgrade that does not
+  succeed, or a run that dies during one, halts later runs until the operator
+  removes `.auto-update-halted`. docs/operations/staging-auto-update.md describes
+  it.
+- Encrypted attributes are no longer experimental. Protocols keep their
+  `experiments` setting, for features released within a schema version, and
+  the protocol settings section still accepts and keeps it, but
+  `encryptedVariables` is no longer one of its experiments: the settings
+  section refuses it, and an attribute marked as encrypted is always
+  encrypted. A stored schema 8 protocol is upgraded with its
+  experiments included, so attributes it encrypted stay encrypted, and
+  attributes it marked as encrypted without turning the experiment on are
+  unmarked and keep being collected without encryption.
+
+  In the protocol editor, an Anonymisation stage's passphrase lengths now show
+  the minimum that applies: 8 unless the stage sets its own, or the stage's
+  maximum when that is shorter.
+
+  Skip logic, stage filters and panel filters are checked without the
+  participant's passphrase, so they can't compare the answers to an encrypted
+  attribute, but they can still check whether it is answered. When you build
+  one of these rules, the protocol editor offers an encrypted attribute only
+  with "exists" and "does not exist", except in a panel that lists people from
+  an external data file, whose rows are not encrypted. A stored rule that
+  compares one is marked, and can't be saved until it is changed. The editor
+  won't let you encrypt an attribute while one of these rules compares its
+  answers.
+
+- Studio reports unexpected failures to its telemetry destination, once each,
+  while `STUDIO_TELEMETRY` is on. A defect in an RPC or HTTP handler is reported
+  with its request id and team id, and a job that fails for good is reported
+  with its queue and job id. An interrupted request and a typed refusal are never
+  reported. Each report carries the error's type, its stack frames and the
+  installation id, never the error's message. With no OpenTelemetry endpoint set
+  the report is a PostHog Error Tracking event with no person profile, sent with
+  Effect's HTTP client. With an endpoint set it is an error-level log record with
+  `exception.*` attributes. With telemetry off the reporter is never built.
+
+  The public `status` RPC now says whether telemetry is on. The researcher web
+  app, and a participant page whose session says so, catch uncaught errors and
+  unhandled rejections and send the error's type and its frames inside Studio's
+  own bundle to a new same-origin `telemetry.report` RPC, without cookies. The
+  API drops these reports while telemetry is off, refuses any frame that does not
+  name a bundle file, and limits them to 30 a minute per client address
+  (`error_report_address`). Nothing is written to cookies or local storage, and
+  `posthog-js` is no longer part of the Studio bundle. A `studio-web` image
+  built with the BuildKit secrets `posthog_personal_api_key` and
+  `posthog_project_id`, and the build arg `SOURCE_MAPS_TARGET` naming the
+  destination project, uploads the source maps of the bundle it ships to PostHog
+  and deletes them before the image is assembled. Without them nothing is
+  uploaded. The build fails if the build arg and the secrets are not supplied
+  together.
+
+  Exported spans and log records no longer carry an error message, even one that
+  spans several lines, and span events no longer carry the `effect.cause` text.
+
+- A new protocol now starts with a Finish Screen stage, the screen every schema 9
+  interview ends at, carrying Network Canvas's supplied text in English. A
+  protocol created in Studio is therefore valid from the start, where before it
+  had no stages at all and could not be published until one was added by hand.
+
+  The timeline keeps finish stages last, as Architect does. A protocol can end
+  with several, so different routes through the interview can end differently,
+  for example a "completed" ending and an "ineligible" one. A screen added
+  without a position, or at a position past the first finish stage, goes in
+  front of it. A finish stage added without a position goes at the end, and one
+  placed above the first finish stage takes that stage's place, so no other
+  screen is ever left after a finish stage. Finish stages can be reordered among
+  themselves, but not above the first one, and a reorder that would put a
+  screen after a finish stage or leave the interview ending somewhere else is
+  refused. In the editor's outline, the move buttons that would do that are not
+  offered. Any finish stage can be removed except the last one left. Saving a
+  screen as a different kind is refused when it would turn a finish stage into
+  another kind of screen, or another screen into a finish stage.
+
+  Publishing refuses a protocol whose finish stage is missing text it shows in
+  its default language, naming what is missing. A protocol in a language Network
+  Canvas has no closing text for starts that way.
+
+  Development seed data now leaves a completed interview at the finish stage it
+  ended at, as Interviewer and Fresco record it, rather than past the last stage.
+
+  A finished interview now records where it ended: the finish stage the
+  participant confirmed Finish on, and the outcome that stage declares
+  (completed, ineligible or terminated). Before, Studio recorded every finish as
+  completed and kept neither. The participant finish call carries both, and the
+  server records them only when they name one of the protocol's finish stages and
+  the outcome it declares; any other finish is refused and nothing is saved. The
+  session and its frozen snapshot, which exports read, carry both values. A
+  finish sent again after the interview has finished, with any outcome, is
+  answered as already finished and changes nothing.
+
+  The upgrade adds the migration `0005_session_finish`. An interview completed
+  before it keeps no finish stage or outcome, since none was recorded; every
+  interview completed after it must record both.
+
+  Finishing an interview now leaves the participant on the interview's own
+  finished screen, the text its finish stage shows once the interview is
+  finished. Before, Studio replaced the interview with its generic
+  "You've finished this interview" page the moment the finish was recorded, so
+  the protocol's closing text was never shown. The generic page is still shown
+  when a participant opens an interview that was already finished.
+
+- Studio now keeps protocols that are written in more than one language. A
+  protocol declares the languages its text is written in, and every screen name,
+  prompt and label in it is stored as one translation for each of those
+  languages.
+
+  - The protocol editor names each screen in the language you are editing in. A
+    screen with no name in that language is listed under the name a participant
+    would be shown instead, and a screen with no name in any language is listed
+    by its position, such as "Screen 3". A protocol with more than one language
+    has a language menu beside each text field, and choosing a language there
+    switches the whole editor.
+  - A screen added from the outline starts as "Untitled screen" in the
+    protocol's default language. Its other languages are left untranslated, so
+    they show as needing a translation, and a participant reading one sees the
+    fallback rather than English presented as a translation.
+  - Comparing two versions names each screen that was added, removed or changed
+    by its name in the protocol's default language, or in another language that
+    has text when the default has none. Versions saved before protocols could be
+    translated are still described by their plain names.
+  - Editing a version that was saved in an older protocol format now starts a
+    draft that has been upgraded to the current format, with its text written in
+    English. Before, the draft kept the old format and could not
+    be edited.
+  - A protocol created in Studio is written in English (`en`),
+    as a protocol upgraded from an earlier version is, because Studio does not
+    yet ask which language you are writing in. The sample protocol, the demo
+    protocol and the protocols a new instance seeds declare their language, US
+    English.
+  - A protocol's language declaration is saved with its settings, so a draft that
+    declares languages passes the check made before each save.
+
+- Per Alter Form, Per Alter Edge Form, Dyad Census and Tie-Strength Census
+  stages no longer have an introduction panel. In the protocol editor, these
+  stages no longer offer an introduction section; instructions for
+  participants go in an Information stage instead. An Ego Form keeps its
+  introduction section.
+
+  A stored schema 8 protocol is upgraded with each introduction panel turned
+  into an Information stage just before its stage, with the panel's title and
+  text and the stage's skip logic. An Ego Form keeps its panel.
+
+- First-run setup on a self-hosted instance now creates the owner's first team,
+  named after the instance, with the owner as its Owner, so the owner lands in a
+  team instead of on "No team yet". The team, the owner's membership, the claim on
+  the instance and the team's "Team created" activity entry are written together:
+  if any of them fails, setup stays open and can be run again.
+
+  The instance name is trimmed once, so the instance and its first team share
+  exactly the same name.
+
+- Researchers can create a team. "Create a team" in the header's team switcher
+  asks for a name, makes the researcher the new team's owner and opens it. On the
+  managed service any signed-in researcher can create a team; on a self-hosted
+  instance only the instance's owner can, and the entry is not shown to anyone
+  else. Creating a team is recorded in the team's activity log as "Team created",
+  counted as a `team_created` usage event, and limited to five per researcher per
+  hour (`team_create`).
+- Studio no longer lets PostHog store an IP address or a location for anything
+  it sends. Every product event, `$identify`, forwarded participant usability
+  event and error report now sets `$ip` to `0.0.0.0`, which overwrites the
+  sending server's address PostHog would otherwise record, alongside
+  `$geoip_disable: true`.
+
+  The log records operators alert on now carry one of six fixed `alert` codes,
+  at error level: `delivery_uncertain` on an invitation delivery whose outcome is
+  uncertain (including one that ended while its send was in flight, which now
+  logs its own record), `job_dead_lettered` on a job that ended for good (its last attempt failed,
+  its lease expired on its last attempt, which now logs its own record, or its
+  payload does not decode for its queue),
+  `readiness_failing` on a new record each process writes once when its
+  `/readyz` checks turn failing (naming them in `failing_checks`, with an
+  info-level `readiness has recovered` when they pass again), and
+  `schema_mismatch` on the message a deployed process logs while it waits for
+  `migrate`. That message was a warning; the development lane's equivalent still
+  is. Two new records cover what metrics would otherwise alert on, each written
+  once per episode with an info-level record when it clears: `queue_backlog`,
+  when more than 100 jobs have waited on one queue for ten minutes, and
+  `event_loop_lag`, when a process's p99 event-loop delay has stayed above
+  200 ms for five minutes.
+
+  The self-host guide gains a telemetry page: what leaves the machine and to
+  whom, how to turn it off, and how to send logs, traces, metrics and error
+  reports to your own OpenTelemetry store, with an Azure Monitor example through
+  an OpenTelemetry Collector. The requirements page names a configured
+  OpenTelemetry endpoint as an outbound host. Studio's docs also gain a privacy
+  notice, an IT FAQ, and the runbook for Codaco's alerts.
+
+- Studies pinned to a schema 8 protocol version keep running after the upgrade to schema 9. `studio-api migrate` now migrates every such version that a study which isn't closed still uses, and publishes the result as a new version of the same protocol, which records the version it was migrated from. It then moves the study's waves and its in-progress and abandoned interviews onto the new version. Each interview's answers, stage records and resume position are carried across. An interview left on the old finish screen resumes on the finish stage the migration adds, and a tab still open on the old protocol is taken over instead of saving data in the old shape. Completed interviews and closed studies are left as they are. If any version or interview can't be carried across, the upgrade rolls back, the database stays as the previous release left it, and migrate lists each version and interview it couldn't upgrade.
+- A self-hosted instance can now be upgraded with `upgrade.sh`, a script that
+  runs the documented upgrade sequence against the stack: it puts the two new
+  image digests in `.env`, closes the instance, replaces every API replica, the
+  worker and `web`, runs `migrate`, waits for every replica to report its schema
+  ok, and reopens it. When a step fails before `migrate` has changed the
+  database, or `migrate` refuses, it puts the previous images back and reopens
+  the instance on them. When a step fails after `migrate` has changed the
+  database, it leaves the new images in place with maintenance mode on, because
+  the previous release cannot serve that database. Its exit code and last line
+  say which of these happened. It takes no backup: take one before running it.
+  `COMPOSE` names the Compose command when it is not `docker compose`. The
+  self-host guide's Upgrade page describes it.
+- The researcher web app and participant pages now send operational logs to the
+  same telemetry destination as the server, through the api, while
+  `STUDIO_TELEMETRY` is on. The public `status` RPC reports the configured
+  `STUDIO_LOG_LEVEL`, and `participant.session` reports it to an interview page
+  (`null` while telemetry is off), so a page logs at that level and sends nothing
+  while telemetry is off.
+
+  The researcher app logs RPC requests that never reached the server, editor
+  connections that dropped and came back, editing locks that were lost or
+  refused, screens that failed to render, and update checks that failed.
+  Participant pages log only entries from a fixed catalogue: a session that
+  failed to load, an answer save that failed or succeeded only after retrying, a
+  connection lost or restored, an asset that failed to load, and a stage that
+  failed to render. Every entry has a constant message, and its attributes are
+  limited to a stage index, an interface type, a fault code, an attempt count and
+  a duration.
+
+  The api receives these records at `/api/telemetry/researcher/logs` (signed-in
+  researchers) and `/api/telemetry/participant/logs` (a valid participant
+  session), same origin only, with a 64 KiB body bound and two new rate limits:
+  `researcher_log` (60 a minute per researcher) and `participant_log` (30 a minute
+  per participant session). It refuses a whole participant batch that holds any
+  record outside the catalogue or any extra or free-text attribute, drops any
+  researcher record that is not a catalogued entry, drops records below the
+  configured level, and forwards the rest as `service.name = studio-web` with the
+  installation id, the surface and, where it is known, the team.
+
+### Patch Changes
+
+- The reference stack now passes `STUDIO_DEPLOYMENT_MODE` from `.env` to the
+  `api`, `worker` and `migrate` containers. Before, the compose file dropped it,
+  so every deployment from the stack ran as `self-hosted` whatever `.env` said.
+  Leaving it unset still means `self-hosted`; set `STUDIO_DEPLOYMENT_MODE=managed`
+  to run the managed service from the same stack.
+- The api now forwards a participant page's usability events to PostHog only when every event in the batch is in the interview's analytics catalogue and every property decodes to its declared type, with no property the catalogue does not declare. A batch holding any other event, an extra property, free text where a code or number is expected, or a timestamp that is not an ISO 8601 UTC instant is refused whole and nothing in it is forwarded, as the participant log route refuses a batch.
+
+  Of what decodes, the api forwards the event's catalogued codes, numbers and flags. It replaces each entity id with an id derived on the server from the installation, the session and the page's id. It stamps each event with the server's clock, keeping from the page's timestamps only the order and spacing of the batch's events, up to ten minutes apart. It reports an exception's type only when it is a standard JavaScript or DOM error name, and `Error` otherwise. It withholds the interview package version, the protocol digest, a stage crash's component stack, and the identifiers the page reports about itself, which the server sets. The participant contract now declares the `$exception_list` shape and the timestamp a participant page sends.
+
+- A protocol keeps the interview's shared words (its `interfaceText`) when
+  Studio stores and edits it: a new protocol starts with them, and the protocol
+  settings section carries them through every save. A protocol Studio assembles
+  holds the words for what it shows now, so adding a form or a passphrase gives
+  it their words, removing one drops them, and words the researcher changed are
+  kept.
+
 ## 0.3.0
 
 ### Minor Changes

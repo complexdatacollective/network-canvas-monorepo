@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Color",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "Elige el degradado con el que se sombrean los contenedores.",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Degradado de color",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Esta interfaz está diseñada para un máximo de cinco contenedores. Más allá de eso, los contenedores se vuelven difíciles de leer y de usar, lo que resta calidad a los datos.",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Esta interfaz está diseñada para un máximo de seis contenedores. Más allá de eso, los contenedores se vuelven difíciles de leer y de usar, lo que resta calidad a los datos.",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "Introduce la pregunta...",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "Elige el atributo ordinal cuyos valores se muestran como contenedores.",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "Este tipo aún no tiene atributos ordinales. Crea uno para definir la escala.",

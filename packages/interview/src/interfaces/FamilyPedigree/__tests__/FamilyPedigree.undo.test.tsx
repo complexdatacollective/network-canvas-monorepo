@@ -134,7 +134,8 @@ const isDisabled = (button: HTMLElement) =>
   button.getAttribute('aria-disabled') === 'true' ||
   button.hasAttribute('disabled');
 
-/** Opens the mother's details, names her Julie, and saves. */
+/** Opens the mother's details, names her Julie, answers the required gender
+ * identity, and saves. */
 async function nameMother(user: ReturnType<typeof userEvent.setup>) {
   await user.click(personButton('mum'));
   const panel = await screen.findByTestId('pedigree-person-panel');
@@ -142,6 +143,7 @@ async function nameMother(user: ReturnType<typeof userEvent.setup>) {
     within(panel).getByRole('textbox', { name: /^Name/ }),
     'Julie',
   );
+  await user.click(within(panel).getByRole('radio', { name: 'Woman' }));
   await user.click(within(panel).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
     expect(

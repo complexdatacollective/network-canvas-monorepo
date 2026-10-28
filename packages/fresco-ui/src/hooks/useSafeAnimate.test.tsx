@@ -3,6 +3,7 @@ import { MotionConfigContext, MotionGlobalConfig } from 'motion/react';
 import type { PropsWithChildren } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { AnimationProvider } from '../AnimationProvider';
 import { useShouldSkipAnimations } from './useSafeAnimate';
 
 describe('useShouldSkipAnimations', () => {
@@ -48,7 +49,7 @@ describe('useShouldSkipAnimations', () => {
     expect(result.current).toBe(true);
   });
 
-  it('honours forced reduced motion', () => {
+  it('honours a MotionConfig that forces reduced motion on its subtree', () => {
     MotionGlobalConfig.skipAnimations = false;
 
     const wrapper = ({ children }: PropsWithChildren) => (
@@ -62,6 +63,19 @@ describe('useShouldSkipAnimations', () => {
       >
         {children}
       </MotionConfigContext.Provider>
+    );
+    const { result } = renderHook(() => useShouldSkipAnimations(), {
+      wrapper,
+    });
+
+    expect(result.current).toBe(true);
+  });
+
+  it('honours AnimationProvider forcing reduced motion', () => {
+    MotionGlobalConfig.skipAnimations = false;
+
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <AnimationProvider reducedMotion="always">{children}</AnimationProvider>
     );
     const { result } = renderHook(() => useShouldSkipAnimations(), {
       wrapper,

@@ -1,7 +1,7 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import type { LocalizedString } from '@codaco/protocol-validation';
+import type { LocalizedString, Variable } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from './EntityBadge';
@@ -20,7 +20,7 @@ type EntityProps = {
   type?: string;
   entity?: string;
   label?: LocalizedString;
-  variables?: Record<string, unknown>;
+  variables?: Record<string, Variable>;
 };
 const Entity = ({ type, entity, label, variables }: EntityProps) => {
   const intl = useAppIntl();

@@ -16,6 +16,7 @@ import { getCodebook } from '~/selectors/protocol';
 
 import ColorPicker from '../Form/Fields/ColorPicker';
 import getPalette from './getPalette';
+import { isNodeColorSequence, isNodeShape } from './nodeAppearance';
 import type { ShapeMappingDraft } from './shapeMappingTypes';
 import { ShapePickerControl } from './ShapePicker';
 import ShapeVariableMapping, {
@@ -230,16 +231,14 @@ const TypeEditor = ({
               name="shape.default"
               initialValue={initialValues.shape?.default ?? DEFAULT_NODE_SHAPE}
               validation={{ required: true }}
-              nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
+              nodeColor={isNodeColorSequence(nodeColor) ? nodeColor : undefined}
             />
             <ShapeVariableMapping
               variables={initialValues.variables}
               initialMapping={initialValues.shape?.dynamic}
-              nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
+              nodeColor={isNodeColorSequence(nodeColor) ? nodeColor : undefined}
               defaultShape={
-                typeof defaultShape === 'string'
-                  ? (defaultShape as NodeShape)
-                  : undefined
+                isNodeShape(defaultShape) ? defaultShape : undefined
               }
             />
           </Section>

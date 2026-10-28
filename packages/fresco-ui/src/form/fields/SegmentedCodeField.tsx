@@ -356,7 +356,7 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
             aria-describedby={i === 0 ? rest['aria-describedby'] : undefined}
             aria-required={i === 0 ? rest['aria-required'] : undefined}
             onInput={(e) => {
-              const target = e.target as HTMLInputElement;
+              const target = e.currentTarget;
               handleInput(i, target.value);
               target.value = chars[i] ?? '';
             }}

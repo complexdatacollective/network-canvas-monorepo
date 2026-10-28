@@ -17,6 +17,21 @@ import type {
   ReorderEvent,
 } from './types';
 
+const isKey = (value: unknown): value is Key =>
+  typeof value === 'string' || typeof value === 'number';
+
+const isKeySet = (value: unknown): value is Set<Key> =>
+  value instanceof Set && [...value].every(isKey);
+
+// Drag metadata is an open record that any drag source can fill; only a Set of
+// keys is a set of dragged items.
+const readDraggedKeys = (
+  metadata: Record<string, unknown> | undefined,
+): Set<Key> | undefined => {
+  const keys = metadata?.keys;
+  return isKeySet(keys) ? keys : undefined;
+};
+
 /**
  * Creates drag and drop hooks for a Collection component.
  * Returns hooks that can be injected via the dragAndDropHooks prop.
@@ -114,7 +129,8 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
           onDrop: (metadata) => {
             if (!metadata || !onDropRef.current) return;
 
-            const type = (metadata.type as string | undefined) ?? 'unknown';
+            const type =
+              typeof metadata.type === 'string' ? metadata.type : 'unknown';
             onDropRef.current({ type, metadata });
           },
         });
@@ -213,8 +229,8 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
           (metadata?: Record<string, unknown>) => {
             if (!metadata) return;
 
-            const draggedKeys = metadata.keys as Set<Key> | undefined;
-            const draggedKey = metadata.key as Key | undefined;
+            const draggedKeys = readDraggedKeys(metadata);
+            const draggedKey = isKey(metadata.key) ? metadata.key : undefined;
 
             if (!draggedKeys && !draggedKey) return;
 
@@ -281,7 +297,7 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
         // Check if this is the dragged item itself
         const isDraggedItem =
           dragItem?.metadata?.key === key ||
-          (dragItem?.metadata?.keys as Set<Key> | undefined)?.has(key);
+          readDraggedKeys(dragItem?.metadata)?.has(key);
 
         return {
           ...dropProps,
@@ -298,6 +314,7 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
         return (
           <DropIndicator
             key={`${target.key}-${target.position}`}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the hook's public signature types position as string, but callers pass the DropPosition values the collection itself produces
             target={target as DropTarget}
           />
         );

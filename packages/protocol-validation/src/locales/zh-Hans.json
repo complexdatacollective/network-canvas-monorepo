@@ -36,6 +36,7 @@
   "protocolValidation.migrationNotes.schema8.contradictoryRules": "相互矛盾的验证规则会被移除，以便现有协议在新的架构检查下保持有效：颠倒的 `min`/`max` 组合（两者均被移除）；最大值为零的 `required` 文本或分类属性（移除为零的最大值）；超过选项数量的 `minSelected`；指向同一目标的 `sameAs` 和 `differentFrom`（两者均被移除）；任何值都无法满足的比较结构——无法成立的循环、`sameAs` 组内的比较、取值范围不可能重叠的比较（移除比较条件，保留值的上下限）、上下限没有共同值的 `sameAs` 组（移除 `sameAs` 规则）——以及引用不同类型属性的验证规则。计数类规则的值必须为非负数；负值会被移除。",
   "protocolValidation.migrationNotes.schema8.datePickerBounds": "DatePicker 的 `min`/`max` 参数必须是真实日期，且须严格按照选择器的精度书写，`min` 不得晚于 `max`。精度高于选择器精度的值会被截断；其他无效值会被移除。在年或月精度下，上下限必须使用 1000 年或之后的四位数年份——访谈按该精度生成年份选项时不补零，因此更早的、补零的年份永远无法与存储的值匹配；此类上下限会被移除。除 `type`、`min` 或 `max` 以外的任何参数键（例如切换组件后遗留的 RelativeDatePicker `anchor`）也会被移除。",
   "protocolValidation.migrationNotes.schema8.datetimeParameterObject": "日期时间属性的 `parameters` 必须是普通对象；类型错误的值（字符串、数字、列表或 null）会被移除，选择器将恢复默认设置。",
+  "protocolValidation.migrationNotes.schema8.unsupportedParameters": "只有标量属性和日期时间属性可以使用 `parameters`。其他类型属性上的 `parameters` 会被移除；它可能是之前更改该属性的类型或输入控件后遗留下来的。标量属性的 `parameters` 只保留 `minLabel` 和 `maxLabel`，且仅当它们是文本时才保留。标量属性的 `parameters` 中的任何其他键都会被移除；不是普通对象的 `parameters` 值也会被移除。",
   "protocolValidation.migrationNotes.schema8.duplicateFormAttributes": "表单不再允许重复收集同一属性。指向同一属性的两个字段始终共用一个答案——参与者最后填写的那个会覆盖另一个——因此重复的字段从未收集到任何独立的数据。每个属性仅保留第一个字段。",
   "protocolValidation.migrationNotes.schema8.emptyBooleanOptions": "布尔属性的 `options` 现在必须至少提供一个选项。空列表会呈现一个没有任何按钮的控件，参与者永远无法作答；空列表会被移除，使该属性回退到标准的 Yes/No 选项。",
   "protocolValidation.migrationNotes.schema8.familyPedigree": "新界面：“家族谱系”。一个专为遗传疾病监测场景设计的谱系构建界面，支持配置节点类型和关系类型、关系属性，以及可选的疾病/状况提名提示。",

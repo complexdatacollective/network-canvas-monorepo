@@ -10,7 +10,7 @@ import {
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
-import { withoutAbsentValues } from '../../../form/absentValues.ts';
+import { withoutAbsentEntries } from '../../../form/absentValues.ts';
 import {
   RowDialog,
   RowList,
@@ -314,7 +314,7 @@ export default function DiseasesSection() {
       formId: 'disease-editor',
       name: DISEASES_FIELD,
       beforeSave,
-      normalize: (row) => withoutAbsentValues(row) as RowValues,
+      normalize: (row) => withoutAbsentEntries(row),
     }),
     [beforeSave],
   );

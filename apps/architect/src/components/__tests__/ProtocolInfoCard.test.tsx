@@ -39,7 +39,10 @@ vi.mock('motion/react', () => ({
       ...props
     }: MockMotionProps) => <div {...props} />,
   },
-  useReducedMotion: () => true,
+}));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => true,
 }));
 
 const protocol: CurrentProtocol = {

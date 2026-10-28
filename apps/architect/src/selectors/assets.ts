@@ -1,12 +1,12 @@
 import { get } from 'es-toolkit/compat';
 
-import type { RootState } from '~/ducks/modules/root';
+import type { Asset } from '@codaco/protocol-validation';
 import { getNetworkVariables } from '~/utils/protocols/assetTools';
 
-import { getAssetManifest } from './protocol';
-
-export const getAssetPath = (state: RootState, dataSource: string) => {
-  const assetManifest = getAssetManifest(state);
+export const getAssetPath = (
+  assetManifest: Record<string, Asset>,
+  dataSource: string,
+) => {
   const asset = get(assetManifest, dataSource);
 
   if (!asset) {
@@ -22,9 +22,8 @@ export const getAssetPath = (state: RootState, dataSource: string) => {
 };
 
 export const makeGetNetworkAssetVariables =
-  (state: RootState) =>
+  (assetManifest: Record<string, Asset>) =>
   async (dataSource: string, asOptions = false) => {
-    const assetManifest = getAssetManifest(state);
     const asset = get(assetManifest, dataSource);
 
     if (!asset) {

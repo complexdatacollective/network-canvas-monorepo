@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -46,11 +46,13 @@ const Cover = () => {
   const languages = useSummaryLanguages();
   const languageName = useLanguageName();
 
+  // The moment the document was made: read once, when the cover mounts, so a
+  // re-render does not move it.
+  const [createdAt] = useState(() => new Date());
   const lastModifiedFormatted = protocol.lastModified
     ? DateTime.fromISO(protocol.lastModified).toHTTP()
-    : DateTime.now().toHTTP();
-  const date = new Date();
-  const now = intl.formatDate(date, {
+    : DateTime.fromJSDate(createdAt).toHTTP();
+  const now = intl.formatDate(createdAt, {
     year: 'numeric',
     month: 'numeric',
     day: 'numeric',

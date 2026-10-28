@@ -1,6 +1,12 @@
 'use client';
 
-import { type ReactNode, useContext, useEffect, useRef } from 'react';
+import {
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 
 import type { ToastVariant } from '@codaco/fresco-ui/Toast';
 
@@ -38,7 +44,9 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
   const track = useTrack();
 
   const constraintsRef = useRef(constraints);
-  constraintsRef.current = constraints;
+  useLayoutEffect(() => {
+    constraintsRef.current = constraints;
+  });
 
   // Track active constraint toasts: constraint index -> toast ID
   const activeToastsRef = useRef(new Map<number, string>());
@@ -69,7 +77,7 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
 
   // Register the keyed beforeNext handler
   useEffect(() => {
-    if (!hasConstraints) return;
+    if (!hasConstraints) return undefined;
 
     const handler = (direction: Direction, intent: NavigationIntent) => {
       if (intent === 'jump') {

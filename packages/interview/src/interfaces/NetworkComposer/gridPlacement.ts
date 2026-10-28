@@ -36,6 +36,11 @@ const CELLS = COLUMNS * ROWS;
 // so deleting nodes frees their cells for reuse rather than stacking new ones.
 const OCCUPIED_RADIUS = GRID.stepX * 0.5;
 
+const cellAt = (index: number) => ({
+  x: GRID.startX + (index % COLUMNS) * GRID.stepX,
+  y: GRID.startY + Math.floor(index / COLUMNS) * GRID.stepY,
+});
+
 /**
  * The next free grid cell for a new node, scanning the visible grid in reading
  * order and skipping cells already occupied by an existing node. When every
@@ -49,11 +54,6 @@ export function nextGridPosition(occupied: Position[]): Position {
         Math.hypot(node.x - candidate.x, node.y - candidate.y) <
         OCCUPIED_RADIUS,
     );
-
-  const cellAt = (index: number) => ({
-    x: GRID.startX + (index % COLUMNS) * GRID.stepX,
-    y: GRID.startY + Math.floor(index / COLUMNS) * GRID.stepY,
-  });
 
   for (let index = 0; index < CELLS; index++) {
     const cell = cellAt(index);

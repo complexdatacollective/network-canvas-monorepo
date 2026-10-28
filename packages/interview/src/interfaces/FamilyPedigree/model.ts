@@ -676,7 +676,10 @@ export function siblingTie(
   return { half: !sameSet(aParents, bParents), adoptive: true };
 }
 
-export type MissingDetail = 'sexAssignedAtBirth' | { variable: string };
+export type MissingDetail =
+  | 'sexAssignedAtBirth'
+  | 'genderIdentity'
+  | { variable: string };
 
 const isEmpty = (value: VariableValue | undefined) =>
   value === undefined ||
@@ -686,20 +689,23 @@ const isEmpty = (value: VariableValue | undefined) =>
 
 /**
  * The required details not yet given for a person: sex assigned at birth,
- * then every researcher field whose attribute the codebook marks required.
- * A name and gender identity are never missing: a participant may not know
- * either. Anyone left unnamed is given a label from how they are related to
- * the participant when the participant leaves the stage, and anyone whose
- * gender identity is unanswered takes kinship words from sex assigned at
- * birth.
+ * gender identity where the stage asks it (`asksGenderIdentity`), then every
+ * researcher field whose attribute the codebook marks required. Both
+ * questions offer "Don't know". A name is never missing: anyone left unnamed
+ * is given a label from how they are related to the participant when the
+ * participant leaves the stage.
  */
 export function missingDetailsFor(
   person: Person,
   requiredFormVariables: readonly string[],
+  asksGenderIdentity = false,
 ): MissingDetail[] {
   const missing: MissingDetail[] = [];
   if (person.sexAssignedAtBirth === undefined) {
     missing.push('sexAssignedAtBirth');
+  }
+  if (asksGenderIdentity && person.genderIdentity === undefined) {
+    missing.push('genderIdentity');
   }
   for (const variable of requiredFormVariables) {
     if (isEmpty(readOwnProperty(person.attributes, variable))) {
@@ -847,6 +853,9 @@ export type PlannedTwin = {
   target: string;
   zygosity: TwinZygosity;
 };
+
+const isPlanned = (linkId: string) =>
+  linkId.startsWith(plannedLinkId(0).slice(0, -1));
 
 /**
  * Everything to create when adding a relative: the new person, any unnamed
@@ -1187,8 +1196,6 @@ export function planAddRelative({
     sexAttribute,
     family,
   );
-  const isPlanned = (linkId: string) =>
-    linkId.startsWith(plannedLinkId(0).slice(0, -1));
   const plan: AdditionPlan = {
     people: [
       ...people.filter(
@@ -1418,6 +1425,9 @@ function zygosityThrough(ab: TwinZygosity, bc: TwinZygosity): TwinZygosity {
   return ab === 'fraternal' || bc === 'fraternal' ? 'fraternal' : 'unknown';
 }
 
+const bornTo = (kind: FamilyLinkKind) =>
+  kind === 'biological' || kind === 'donor' || kind === 'surrogate';
+
 /**
  * Whether one of two siblings was adopted by a parent they share and the
  * other was born to them: someone adopted by a family was born to someone
@@ -1426,8 +1436,6 @@ function zygosityThrough(ab: TwinZygosity, bc: TwinZygosity): TwinZygosity {
  * of, since a step-parent's tie says nothing about the other's birth.
  */
 export function adoptedApart(family: Family, a: string, b: string): boolean {
-  const bornTo = (kind: FamilyLinkKind) =>
-    kind === 'biological' || kind === 'donor' || kind === 'surrogate';
   const kindsFrom = (personId: string) =>
     new Map(
       parentLinksOf(family, personId).map((link) => [link.source, link.kind]),
@@ -2354,12 +2362,13 @@ function keepWithinGeneticLimit(
   const plannedSex = new Map(
     people.map((planned) => {
       const value = readOwnProperty(planned.details, sexAttribute);
-      return [planned.id, Array.isArray(value) ? value[0] : value] as const;
+      const sex = Array.isArray(value) ? value[0] : value;
+      return [planned.id, typeof sex === 'string' ? sex : undefined] as const;
     }),
   );
   const sexOf = (id: string) =>
     plannedSex.has(id)
-      ? (plannedSex.get(id) as string | undefined)
+      ? plannedSex.get(id)
       : family.byId.get(id)?.sexAssignedAtBirth;
   const geneticSexes = new Map<string, (string | undefined)[]>();
   const sexesOf = (childId: string) => {

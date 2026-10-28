@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import type { EverythingBarEntry } from './everythingBarMerge';
 import {
@@ -179,8 +185,11 @@ export function useEverythingBarRecents({
   storageKey: string;
   limit?: number;
 }) {
+  // The latest providers, for the resolution and for recording activations.
   const providersRef = useRef(providers);
-  providersRef.current = providers;
+  useLayoutEffect(() => {
+    providersRef.current = providers;
+  });
   // Recents are resolved BY the providers, so a provider swap invalidates a
   // resolution exactly as it invalidates a search: the rows on screen were
   // answered by sources that no longer exist, under permissions that may no

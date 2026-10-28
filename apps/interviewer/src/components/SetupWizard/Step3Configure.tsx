@@ -36,13 +36,11 @@ const messages = defineMessages({
   },
 });
 
-const WIZARD_METHODS: WizardSelectedMethod[] = [
-  'biometric',
-  'pin',
-  'passphrase',
-];
+type ConfigurableMethod = Exclude<WizardSelectedMethod, 'none'>;
 
-function asSelectedMethod(v: unknown): WizardSelectedMethod | null {
+const WIZARD_METHODS: ConfigurableMethod[] = ['biometric', 'pin', 'passphrase'];
+
+function asSelectedMethod(v: unknown): ConfigurableMethod | null {
   return WIZARD_METHODS.find((m) => m === v) ?? null;
 }
 
@@ -75,6 +73,10 @@ export default function Step3Configure({
       return <Step3PinConfigure />;
     case 'passphrase':
       return <Step3PassphraseConfigure />;
+    default: {
+      const unhandled: never = method;
+      throw new Error('Unhandled wizard method', { cause: unhandled });
+    }
   }
 }
 

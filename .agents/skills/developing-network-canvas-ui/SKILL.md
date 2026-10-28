@@ -99,7 +99,7 @@ Tone rules apply to participant-facing surfaces. Accessibility and international
 ## Interaction and motion
 
 - Animate with `motion/react` and the shared `MotionSpring` presets instead of ad hoc durations and easing.
-- Respect reduced motion. Use `useSafeAnimate` for JavaScript-driven animation and gate optional flourishes with `useReducedMotion()`.
+- Respect reduced motion. Use `useSafeAnimate` for JavaScript-driven animation and gate optional flourishes with `usePrefersReducedMotion()` from `@codaco/fresco-ui/reducedMotion` (never Motion's `useReducedMotion`, which ignores `AnimationProvider`'s `reducedMotion` setting). The `motion-reduce:` / `motion-safe:` variants follow the same setting.
 - Give drag interactions an approximately 5px threshold, set `touchAction: 'none'` where appropriate, and provide generous hit targets.
 - Base orientation-dependent layout on aspect ratio rather than assuming a square viewport.
 

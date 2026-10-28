@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useState } from 'react';
 
 import { CollectionStoreContext } from './contexts';
 import {
@@ -45,34 +45,27 @@ export function CollectionProvider<T>({
   seed,
   children,
 }: CollectionProviderProps<T>) {
-  const storeRef = useRef<CollectionStoreApi<T> | null>(null);
-  const keyExtractorRef = useRef(keyExtractor);
-  const textValueExtractorRef = useRef(textValueExtractor);
-
-  // Update refs when functions change
-  keyExtractorRef.current = keyExtractor;
-  textValueExtractorRef.current = textValueExtractor;
-
   // Create the store once, seeded so the first render — including server and
   // static output — already contains the items, in their initial sort order,
   // instead of the empty state.
-  storeRef.current ??= createSeededCollectionStore(
-    items,
-    keyExtractor,
-    textValueExtractor,
-    seed,
+  const [store] = useState(() =>
+    createSeededCollectionStore(items, keyExtractor, textValueExtractor, seed),
   );
+
+  // Reads the latest extractors without making them effect dependencies.
+  const syncItems = useEffectEvent((nextItems: T[]) => {
+    store.getState().setItems(nextItems, keyExtractor, textValueExtractor);
+  });
 
   // Update items when they change
   useEffect(() => {
-    storeRef.current
-      ?.getState()
-      .setItems(items, keyExtractorRef.current, textValueExtractorRef.current);
+    syncItems(items);
   }, [items]);
 
   return (
     <CollectionStoreContext.Provider
-      value={storeRef.current as CollectionStoreApi<unknown>}
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the context type erases the item type so one context serves every Provider<T>
+      value={store as CollectionStoreApi<unknown>}
     >
       {children}
     </CollectionStoreContext.Provider>

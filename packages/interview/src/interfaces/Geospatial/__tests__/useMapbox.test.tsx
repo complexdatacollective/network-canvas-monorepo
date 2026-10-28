@@ -708,3 +708,96 @@ describe('useMapbox highlighted area', () => {
     ]);
   });
 });
+
+describe('useMapbox readiness', () => {
+  // The layer colours are resolved through a canvas, which jsdom lacks.
+  beforeEach(() => {
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null);
+    return () => getContext.mockRestore();
+  });
+
+  function ReadinessHarness({
+    mapOptions,
+  }: {
+    mapOptions: ExtendedMapOptions;
+  }) {
+    const { mapContainerRef, map, isStageReady } = useMapbox({
+      mapOptions,
+      dataSourceAssetId: null,
+      dataSourceUrl: null,
+      onSelectionChange: ignoreSelection,
+    });
+    return (
+      <div
+        data-testid="map"
+        ref={mapContainerRef}
+        data-has-map={String((map as unknown) === mapInstance)}
+        data-ready={String(isStageReady)}
+      />
+    );
+  }
+
+  const state = (element: HTMLElement) => ({
+    hasMap: element.dataset.hasMap,
+    ready: element.dataset.ready,
+  });
+
+  it('hands over the map once it has loaded, and is ready once it is idle', () => {
+    const { getByTestId } = renderInEnglish(
+      <ReadinessHarness mapOptions={baseMapOptions} />,
+    );
+    expect(state(getByTestId('map'))).toEqual({
+      hasMap: 'false',
+      ready: 'false',
+    });
+
+    act(() => {
+      mapEvents.fire('load');
+    });
+    expect(state(getByTestId('map'))).toEqual({
+      hasMap: 'true',
+      ready: 'false',
+    });
+
+    act(() => {
+      mapEvents.fire('idle');
+    });
+    expect(state(getByTestId('map'))).toEqual({
+      hasMap: 'true',
+      ready: 'true',
+    });
+  });
+
+  it('starts again from nothing when the map is rebuilt', () => {
+    const { getByTestId, rerender } = renderInEnglish(
+      <ReadinessHarness mapOptions={baseMapOptions} />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+      mapEvents.fire('idle');
+    });
+    expect(state(getByTestId('map')).ready).toBe('true');
+
+    rerender(
+      <ReadinessHarness
+        mapOptions={{ ...baseMapOptions, targetFeatureProperty: 'name' }}
+      />,
+    );
+    expect(MapConstructor).toHaveBeenCalledTimes(2);
+    expect(state(getByTestId('map'))).toEqual({
+      hasMap: 'false',
+      ready: 'false',
+    });
+
+    act(() => {
+      mapEvents.fire('load');
+      mapEvents.fire('idle');
+    });
+    expect(state(getByTestId('map'))).toEqual({
+      hasMap: 'true',
+      ready: 'true',
+    });
+  });
+});

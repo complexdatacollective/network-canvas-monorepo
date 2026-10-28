@@ -34,7 +34,10 @@ them.
 - **When you end a turn** (main agent and subagents alike) the packages you
   changed and their dependents are typechecked through turbo (cached, so
   unchanged packages cost nothing; a turn that changed nothing is skipped);
-  failures come back as an instruction to fix them before finishing.
+  failures come back as an instruction to fix them before finishing. Turbo
+  runs two packages at a time, and typechecks from all worktrees take turns
+  through a lock in the git common directory, so a stop may wait for another
+  session's check.
 - **On commit** `lint-staged` formats and lints the staged files and blocks
   the commit on lint errors.
 - **On push** `knip` runs once and blocks the push on unused files, exports,

@@ -11,7 +11,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
+import Icon, { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
   labelVariants,
@@ -192,6 +192,10 @@ export default function QuickAddField({
     successfulSubmissionCount,
   ]);
 
+  // The stored value is verbatim, so it is shown only if it is text.
+  const typedText =
+    typeof fieldProps.value === 'string' ? fieldProps.value : undefined;
+
   const handleChange = useCallback(
     (value: string | undefined) => {
       fieldProps.onChange(value);
@@ -252,7 +256,7 @@ export default function QuickAddField({
     // Typing resets the timer.
     if (!checked || submissionCount > 0) {
       setShowTooltip(false);
-      return;
+      return undefined;
     }
 
     setShowTooltip(false);
@@ -295,7 +299,7 @@ export default function QuickAddField({
                       data-testid="quick-add-input"
                       {...fieldProps}
                       className="w-full"
-                      value={fieldProps.value as string}
+                      value={typedText}
                       onChange={handleChange}
                       onBlur={handleBlur}
                     />
@@ -379,7 +383,7 @@ export default function QuickAddField({
                       nodeShape === 'diamond' && 'scale-[1.176] -rotate-45',
                     )}
                   >
-                    {fieldProps.value ? (
+                    {typedText ? (
                       // This live preview has no fit ladder, so it opts into
                       // emergency breaking to keep the input inside the shape
                       // while it is being typed.
@@ -388,7 +392,7 @@ export default function QuickAddField({
                           className: 'wrap-anywhere',
                         })}
                       >
-                        {truncateNodeLabel(fieldProps.value as string)}
+                        {truncateNodeLabel(typedText)}
                       </span>
                     ) : (
                       <div className="flex items-center gap-1.5">
@@ -416,10 +420,9 @@ export default function QuickAddField({
                     exit={{ y: '100%' }}
                     className="flex h-full items-center justify-center"
                   >
-                    <Icon
-                      name={icon as InterviewerIconName}
-                      className={actionIconClass}
-                    />
+                    {isInterviewerIconName(icon) && (
+                      <Icon name={icon} className={actionIconClass} />
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

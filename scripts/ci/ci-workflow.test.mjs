@@ -3215,6 +3215,14 @@ test('every production build that uploads source maps gets the credentials', () 
   }
 });
 
+const scriptBody = (command) => {
+  const script = /^pnpm (?:run )?([\w:-]+)$/.exec(command)?.[1];
+  assert.ok(script, `"${command}" is not a pnpm script call`);
+  const body = frescoPackage.scripts[script];
+  assert.ok(body, `apps/fresco/package.json has no "${script}" script`);
+  return body;
+};
+
 test('a Fresco preview on Netlify migrates only its own database', () => {
   // Deploy previews used to read the production DATABASE_URL and run the
   // production build. A preview of the schema-9 branch that ran
@@ -3239,14 +3247,6 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     const command = /^command\s*=\s*"([^"]*)"\s*$/.exec(line);
     if (command && section) commands.set(section, command[1]);
   }
-
-  const scriptBody = (command) => {
-    const script = /^pnpm (?:run )?([\w:-]+)$/.exec(command)?.[1];
-    assert.ok(script, `"${command}" is not a pnpm script call`);
-    const body = frescoPackage.scripts[script];
-    assert.ok(body, `apps/fresco/package.json has no "${script}" script`);
-    return body;
-  };
 
   assert.match(
     scriptBody(commands.get('build')),

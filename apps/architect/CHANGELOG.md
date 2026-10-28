@@ -1,5 +1,18 @@
 # @codaco/architect
 
+## 8.5.1
+
+### Bug fixes
+
+- Option labels show their formatting again. The option rows of a variable's choices, the read-only options table, and the shape picked for each value showed a label's markdown and escape codes (`**Regularly**`, `&lt;3`, `Don&#39;t know`) instead of the formatted label, and a screen reader read the shape picker's name the same way.
+
+### Interview changes (seen in Preview)
+
+These fixes to the interview are shared with Interviewer and Fresco.
+
+- Network Composer's group names, in the Groups list and on the group buttons for selected people, show their formatting instead of their markdown.
+- A screen reader now reads a toggle button option, and the chosen point on a Likert scale, by its label as shown rather than by its markdown.
+
 ## 8.5.0
 
 ### New features

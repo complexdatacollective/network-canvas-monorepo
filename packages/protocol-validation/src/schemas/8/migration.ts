@@ -51,10 +51,11 @@ const VALID_ORDINAL_PROMPT_COLORS = new Set<unknown>(OrdinalColorSequence);
 // silently recoloured.
 const LEGACY_NODE_COLOR_POSITION = /^node-color-seq-(9|10)$/;
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
-  typeof value === 'object' && value !== null
-    ? (value as Record<string, unknown>)
-    : null;
+  isObject(value) ? value : null;
 
 // String-keyed views of the per-type rule and control records, so migration
 // steps (which read raw, untyped v7 JSON) can index them with a plain string
@@ -309,6 +310,28 @@ const normalizeRelativeDatePickerParameters = (
   }
 };
 
+/**
+ * Normalises a scalar variable's `parameters` in place to the record its
+ * strictObject schema member accepts: only `minLabel`/`maxLabel`, each a
+ * string. A value that is not a plain record is removed.
+ */
+const normalizeScalarParameters = (variable: Record<string, unknown>): void => {
+  if (!('parameters' in variable)) return;
+  const parameters = asRecord(variable.parameters);
+  if (!parameters || Array.isArray(parameters)) {
+    delete variable.parameters;
+    return;
+  }
+  for (const key of Object.keys(parameters)) {
+    if (
+      (key !== 'minLabel' && key !== 'maxLabel') ||
+      typeof parameters[key] !== 'string'
+    ) {
+      delete parameters[key];
+    }
+  }
+};
+
 // Raw-JSON equivalent of validation-helpers.ts's `getVariablesForSubject`,
 // used by migration steps that run on unparsed v7 input rather than a typed
 // Codebook.
@@ -426,6 +449,7 @@ const migrationV7toV8 = createMigration({
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
 - A datetime codebook attribute's RelativeDatePicker \`anchor\` must be a real date inside the native input's year range of 0001–9999, and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
 - A datetime attribute's \`parameters\` must be a plain object; a wrong-typed value (a string, number, list, or null) is removed, reverting the picker to its defaults.
+- Only scalar and datetime attributes take \`parameters\`. On an attribute of any other type, \`parameters\` is removed; it can be left over from an earlier change to the attribute's type or input control. A scalar attribute's \`parameters\` keeps only \`minLabel\` and \`maxLabel\`, and only when they are text. Any other key in a scalar attribute's \`parameters\` is removed, as is a \`parameters\` value that is not a plain object.
 - Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the attribute's type (e.g. \`minValue\` on a text attribute, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the attribute required, preserving the old implied-required behaviour. Layout attributes take no validation at all; theirs is removed.
 - An attribute's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout attributes, which have no control, have it removed.
 - Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean attribute's option entry that is not a labelled true/false choice is removed; if no entries remain the attribute falls back to the standard Yes/No choices.
@@ -440,12 +464,8 @@ const migrationV7toV8 = createMigration({
         // Remove deprecated 'displayVariable' property from node and edge entity definitions
         paths: ['codebook.node.*', 'codebook.edge.*'],
         fn: <V>(entityDefinition: V) => {
-          if (
-            typeof entityDefinition === 'object' &&
-            entityDefinition !== null
-          ) {
-            const typedEntity = entityDefinition as Record<string, unknown>;
-            delete typedEntity.displayVariable;
+          if (isObject(entityDefinition)) {
+            delete entityDefinition.displayVariable;
           }
           return entityDefinition;
         },
@@ -466,13 +486,11 @@ const migrationV7toV8 = createMigration({
           'codebook.ego.variables',
         ],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
+          if (!isObject(variables)) return variables;
 
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
-            if (typeof variable === 'object' && variable !== null) {
-              const typedVariable = variable as Record<string, unknown>;
+          for (const variable of Object.values(variables)) {
+            const typedVariable = asRecord(variable);
+            if (typedVariable) {
               if (typedVariable.type !== 'boolean') continue;
               // A malformed entry (non-boolean value, non-string label, or a
               // wrong-typed `negative` flag) fails v8's boolean options
@@ -512,14 +530,12 @@ const migrationV7toV8 = createMigration({
         // protocols so they validate.
         paths: ['codebook.ego.variables'],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
-            if (typeof variable !== 'object' || variable === null) continue;
-            const validation = (variable as Record<string, unknown>).validation;
-            if (typeof validation === 'object' && validation !== null) {
-              delete (validation as Record<string, unknown>).unique;
+          if (!isObject(variables)) return variables;
+          for (const variable of Object.values(variables)) {
+            if (!isObject(variable)) continue;
+            const validation = variable.validation;
+            if (isObject(validation)) {
+              delete validation.unique;
             }
           }
           return variables;
@@ -682,16 +698,13 @@ const migrationV7toV8 = createMigration({
           'codebook.ego.variables',
         ],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
-            if (typeof variable !== 'object' || variable === null) continue;
-            const typedVariable = variable as Record<string, unknown>;
+          if (!isObject(variables)) return variables;
+          for (const variable of Object.values(variables)) {
+            const typedVariable = asRecord(variable);
+            if (!typedVariable) continue;
             if (typedVariable.type !== 'ordinal') continue;
-            const validation = typedVariable.validation;
-            if (typeof validation === 'object' && validation !== null) {
-              const typedValidation = validation as Record<string, unknown>;
+            const typedValidation = asRecord(typedVariable.validation);
+            if (typedValidation) {
               // `minSelected` implied the field was required in older protocols.
               // The later min*->required step runs after this strip and so will
               // not see minSelected once removed, so preserve that coupling here.
@@ -719,12 +732,10 @@ const migrationV7toV8 = createMigration({
           'codebook.ego.variables',
         ],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
-            if (typeof variable !== 'object' || variable === null) continue;
-            const typedVariable = variable as Record<string, unknown>;
+          if (!isObject(variables)) return variables;
+          for (const variable of Object.values(variables)) {
+            const typedVariable = asRecord(variable);
+            if (!typedVariable) continue;
             if (
               typedVariable.type !== 'ordinal' &&
               typedVariable.type !== 'categorical'
@@ -734,8 +745,8 @@ const migrationV7toV8 = createMigration({
             const options = typedVariable.options;
             if (!Array.isArray(options)) continue;
             for (const option of options) {
-              if (typeof option !== 'object' || option === null) continue;
-              const typedOption = option as Record<string, unknown>;
+              const typedOption = asRecord(option);
+              if (!typedOption) continue;
               if (typeof typedOption.value === 'boolean') {
                 typedOption.value = typedOption.value ? 'true' : 'false';
               } else if (
@@ -762,12 +773,10 @@ const migrationV7toV8 = createMigration({
         // every non-text node variable.
         paths: ['codebook.node.*.variables'],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
-            if (typeof variable !== 'object' || variable === null) continue;
-            const typedVariable = variable as Record<string, unknown>;
+          if (!isObject(variables)) return variables;
+          for (const variable of Object.values(variables)) {
+            const typedVariable = asRecord(variable);
+            if (!typedVariable) continue;
             if (typedVariable.type !== 'text') {
               delete typedVariable.encrypted;
             }
@@ -780,12 +789,10 @@ const migrationV7toV8 = createMigration({
         // regardless of variable type.
         paths: ['codebook.edge.*.variables', 'codebook.ego.variables'],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
-            if (typeof variable === 'object' && variable !== null) {
-              delete (variable as Record<string, unknown>).encrypted;
+          if (!isObject(variables)) return variables;
+          for (const variable of Object.values(variables)) {
+            if (isObject(variable)) {
+              delete variable.encrypted;
             }
           }
           return variables;
@@ -796,8 +803,8 @@ const migrationV7toV8 = createMigration({
         // title-less form variant rejects it. Delete it from those stages.
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           const formStageTypes = new Set([
             'EgoForm',
             'AlterForm',
@@ -806,10 +813,9 @@ const migrationV7toV8 = createMigration({
           if (
             typeof typedStage.type === 'string' &&
             formStageTypes.has(typedStage.type) &&
-            typeof typedStage.form === 'object' &&
-            typedStage.form !== null
+            isObject(typedStage.form)
           ) {
-            delete (typedStage.form as Record<string, unknown>).title;
+            delete typedStage.form.title;
           }
           return stage;
         },
@@ -817,8 +823,8 @@ const migrationV7toV8 = createMigration({
       {
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           if (typedStage.type !== 'NameGenerator') return stage;
           const form = asRecord(typedStage.form);
           if (!form) return stage;
@@ -841,8 +847,8 @@ const migrationV7toV8 = createMigration({
       {
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           if (typedStage.type !== 'Information') return stage;
           if (
             typeof typedStage.title !== 'string' ||
@@ -864,8 +870,8 @@ const migrationV7toV8 = createMigration({
         // other authored value, else a default.
         paths: ['stages[].prompts[]'],
         fn: <V>(prompt: V) => {
-          if (typeof prompt !== 'object' || prompt === null) return prompt;
-          const typedPrompt = prompt as Record<string, unknown>;
+          const typedPrompt = asRecord(prompt);
+          if (!typedPrompt) return prompt;
           if (
             typeof typedPrompt.otherVariable !== 'string' ||
             !typedPrompt.otherVariable
@@ -898,8 +904,8 @@ const migrationV7toV8 = createMigration({
         // the orphaned properties; drop them all.
         paths: ['stages[].prompts[]'],
         fn: <V>(prompt: V) => {
-          if (typeof prompt !== 'object' || prompt === null) return prompt;
-          const typedPrompt = prompt as Record<string, unknown>;
+          const typedPrompt = asRecord(prompt);
+          if (!typedPrompt) return prompt;
           if (
             typeof typedPrompt.otherVariable !== 'string' ||
             !typedPrompt.otherVariable
@@ -916,13 +922,13 @@ const migrationV7toV8 = createMigration({
       {
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           if (typedStage.type !== 'OrdinalBin') return stage;
           if (!Array.isArray(typedStage.prompts)) return stage;
           for (const prompt of typedStage.prompts) {
-            if (typeof prompt !== 'object' || prompt === null) continue;
-            const typedPrompt = prompt as Record<string, unknown>;
+            const typedPrompt = asRecord(prompt);
+            if (!typedPrompt) continue;
             if (
               'color' in typedPrompt &&
               !VALID_ORDINAL_PROMPT_COLORS.has(typedPrompt.color)
@@ -939,8 +945,8 @@ const migrationV7toV8 = createMigration({
       {
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           if (
             typedStage.type !== 'Sociogram' &&
             typedStage.type !== 'Narrative' &&
@@ -1139,13 +1145,13 @@ const migrationV7toV8 = createMigration({
         // no negativeLabel key) are never given a stray one.
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           if (typedStage.type !== 'TieStrengthCensus') return stage;
           if (!Array.isArray(typedStage.prompts)) return stage;
           for (const prompt of typedStage.prompts) {
-            if (typeof prompt !== 'object' || prompt === null) continue;
-            const typedPrompt = prompt as Record<string, unknown>;
+            const typedPrompt = asRecord(prompt);
+            if (!typedPrompt) continue;
             if (
               typeof typedPrompt.negativeLabel !== 'string' ||
               typedPrompt.negativeLabel.length === 0
@@ -1162,19 +1168,16 @@ const migrationV7toV8 = createMigration({
         // minNodes must not be negative.
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           if (
             typedStage.type !== 'NameGenerator' &&
             typedStage.type !== 'NameGeneratorQuickAdd'
           ) {
             return stage;
           }
-          const behaviours = typedStage.behaviours;
-          if (typeof behaviours !== 'object' || behaviours === null) {
-            return stage;
-          }
-          const typedBehaviours = behaviours as Record<string, unknown>;
+          const typedBehaviours = asRecord(typedStage.behaviours);
+          if (!typedBehaviours) return stage;
           const { minNodes, maxNodes } = typedBehaviours;
           if (typeof maxNodes === 'number' && maxNodes < 1) {
             delete typedBehaviours.maxNodes;
@@ -1200,18 +1203,12 @@ const migrationV7toV8 = createMigration({
         // the highlight block.
         paths: ['stages[].prompts[]'],
         fn: <V>(prompt: V) => {
-          if (typeof prompt !== 'object' || prompt === null) return prompt;
-          const typedPrompt = prompt as Record<string, unknown>;
-          const edges = typedPrompt.edges;
-          const highlight = typedPrompt.highlight;
-          const edgeCreate =
-            typeof edges === 'object' && edges !== null
-              ? (edges as Record<string, unknown>).create
-              : undefined;
-          const allowHighlighting =
-            typeof highlight === 'object' && highlight !== null
-              ? (highlight as Record<string, unknown>).allowHighlighting
-              : undefined;
+          const typedPrompt = asRecord(prompt);
+          if (!typedPrompt) return prompt;
+          const edgeCreate = asRecord(typedPrompt.edges)?.create;
+          const allowHighlighting = asRecord(
+            typedPrompt.highlight,
+          )?.allowHighlighting;
           if (edgeCreate && allowHighlighting) {
             delete typedPrompt.highlight;
           }
@@ -1221,8 +1218,8 @@ const migrationV7toV8 = createMigration({
       {
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           if (typedStage.type !== 'Sociogram') return stage;
           if (!Array.isArray(typedStage.prompts)) return stage;
           for (const prompt of typedStage.prompts) {
@@ -1251,8 +1248,8 @@ const migrationV7toV8 = createMigration({
         // from text items (which have no sizing treatment).
         paths: ['stages[].items[]'],
         fn: <V>(item: V) => {
-          if (typeof item !== 'object' || item === null) return item;
-          const typedItem = item as Record<string, unknown>;
+          const typedItem = asRecord(item);
+          if (!typedItem) return item;
           if (typedItem.type === 'text') {
             delete typedItem.size;
             return item;
@@ -1301,38 +1298,28 @@ const migrationV7toV8 = createMigration({
         // skipLogic block.
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
 
-          const hasEmptyRules = (filter: unknown): boolean =>
-            typeof filter === 'object' &&
-            filter !== null &&
-            Array.isArray((filter as Record<string, unknown>).rules) &&
-            ((filter as Record<string, unknown>).rules as unknown[]).length ===
-              0;
+          const hasEmptyRules = (filter: unknown): boolean => {
+            const rules = asRecord(filter)?.rules;
+            return Array.isArray(rules) && rules.length === 0;
+          };
 
           if (hasEmptyRules(typedStage.filter)) {
             delete typedStage.filter;
           }
 
-          if (
-            typeof typedStage.skipLogic === 'object' &&
-            typedStage.skipLogic !== null &&
-            hasEmptyRules(
-              (typedStage.skipLogic as Record<string, unknown>).filter,
-            )
-          ) {
+          const skipLogic = asRecord(typedStage.skipLogic);
+          if (skipLogic && hasEmptyRules(skipLogic.filter)) {
             delete typedStage.skipLogic;
           }
 
           if (Array.isArray(typedStage.panels)) {
             for (const panel of typedStage.panels) {
-              if (
-                typeof panel === 'object' &&
-                panel !== null &&
-                hasEmptyRules((panel as Record<string, unknown>).filter)
-              ) {
-                delete (panel as Record<string, unknown>).filter;
+              const typedPanel = asRecord(panel);
+              if (typedPanel && hasEmptyRules(typedPanel.filter)) {
+                delete typedPanel.filter;
               }
             }
           }
@@ -1373,6 +1360,7 @@ const migrationV7toV8 = createMigration({
           'stages[].filter.rules[].type',
         ],
         fn: <V>(filterType: V) => {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the traversal's callback is generic over the value at this path, which is the rule `type` string being renamed
           if (filterType === 'alter') return 'node' as V;
           return filterType;
         },
@@ -1389,12 +1377,11 @@ const migrationV7toV8 = createMigration({
           'stages[].filter.rules[]',
         ],
         fn: <V>(rule: V): V => {
-          if (typeof rule !== 'object' || rule === null) return rule;
-          const typedRule = rule as Record<string, unknown>;
+          const typedRule = asRecord(rule);
+          if (!typedRule) return rule;
           const options = typedRule.options;
-          if (typeof options !== 'object' || options === null) return rule;
-
-          const typedOptions = options as Record<string, unknown>;
+          const typedOptions = asRecord(options);
+          if (!typedOptions) return rule;
           const { attribute, operator, value } = typedOptions;
 
           if (
@@ -1414,6 +1401,7 @@ const migrationV7toV8 = createMigration({
             return rule;
           }
 
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- generic over the rule value at this path; the copy keeps every field of the rule it replaces
           return {
             ...typedRule,
             options: { ...typedOptions, value: [value] },
@@ -1425,7 +1413,8 @@ const migrationV7toV8 = createMigration({
         // V7 was lax so some protocols stored filter on stages like NameGenerator; v8 is strict.
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           const stagesWithoutFilter = new Set([
             'NameGenerator',
             'NameGeneratorQuickAdd',
@@ -1435,7 +1424,6 @@ const migrationV7toV8 = createMigration({
             'EgoForm',
             'FamilyPedigree',
           ]);
-          const typedStage = stage as Record<string, unknown>;
           if (
             typeof typedStage.type === 'string' &&
             stagesWithoutFilter.has(typedStage.type)
@@ -1474,11 +1462,8 @@ const migrationV7toV8 = createMigration({
         // Rename 'iconVariant' to 'icon' and add 'shape' to node definitions
         paths: ['codebook.node.*'],
         fn: <V>(entityDefinition: V) => {
-          if (
-            typeof entityDefinition === 'object' &&
-            entityDefinition !== null
-          ) {
-            const typedEntity = entityDefinition as Record<string, unknown>;
+          const typedEntity = asRecord(entityDefinition);
+          if (typedEntity) {
             if ('iconVariant' in typedEntity) {
               typedEntity.icon = typedEntity.iconVariant;
               delete typedEntity.iconVariant;
@@ -1492,8 +1477,8 @@ const migrationV7toV8 = createMigration({
         // Remove unused 'loop' flag from Information stage items
         paths: ['stages[].items[]'],
         fn: <V>(item: V) => {
-          if (typeof item === 'object' && item !== null) {
-            delete (item as Record<string, unknown>).loop;
+          if (isObject(item)) {
+            delete item.loop;
           }
           return item;
         },
@@ -1502,8 +1487,8 @@ const migrationV7toV8 = createMigration({
         // Remove unused 'loop' flag from video/audio assets in the manifest
         paths: ['assetManifest.*'],
         fn: <V>(asset: V) => {
-          if (typeof asset === 'object' && asset !== null) {
-            delete (asset as Record<string, unknown>).loop;
+          if (isObject(asset)) {
+            delete asset.loop;
           }
           return asset;
         },
@@ -1533,7 +1518,7 @@ const migrationV7toV8 = createMigration({
           'codebook.ego.variables',
         ],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
+          if (!isObject(variables)) return variables;
           const floors = {
             minLength: 0,
             maxLength: 0,
@@ -1542,9 +1527,7 @@ const migrationV7toV8 = createMigration({
             minSelected: 0,
             maxSelected: 0,
           } as const;
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
+          for (const variable of Object.values(variables)) {
             const validation = asRecord(asRecord(variable)?.validation);
             if (!validation) continue;
             for (const [rule, floor] of Object.entries(floors)) {
@@ -1574,16 +1557,11 @@ const migrationV7toV8 = createMigration({
           'codebook.ego.variables',
         ],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
+          if (!isObject(variables)) return variables;
 
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
-            if (typeof variable !== 'object' || variable === null) continue;
-            const validation = (variable as Record<string, unknown>).validation;
-            if (typeof validation !== 'object' || validation === null) continue;
-
-            const typedValidation = validation as Record<string, unknown>;
+          for (const variable of Object.values(variables)) {
+            const typedValidation = asRecord(asRecord(variable)?.validation);
+            if (!typedValidation) continue;
             const hasMinValidator =
               'minValue' in typedValidation ||
               'minLength' in typedValidation ||
@@ -1641,11 +1619,9 @@ const migrationV7toV8 = createMigration({
           'codebook.ego.variables',
         ],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
+          if (!isObject(variables)) return variables;
 
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
+          for (const variable of Object.values(variables)) {
             const typedVariable = asRecord(variable);
             if (typedVariable?.type !== 'scalar') continue;
 
@@ -1676,14 +1652,23 @@ const migrationV7toV8 = createMigration({
           'codebook.ego.variables',
         ],
         fn: <V>(variables: V) => {
-          if (!variables || typeof variables !== 'object') return variables;
-          for (const variable of Object.values(
-            variables as Record<string, unknown>,
-          )) {
+          if (!isObject(variables)) return variables;
+          for (const variable of Object.values(variables)) {
             const typedVariable = asRecord(variable);
             if (!typedVariable) continue;
 
-            if (typedVariable.type !== 'datetime') continue;
+            // Only scalar and datetime variables take `parameters`. Architect
+            // Classic kept the record when a variable's type or control
+            // changed, and every other v8 member is a strictObject, so a
+            // leftover record blocked the whole protocol from importing.
+            if (typedVariable.type === 'scalar') {
+              normalizeScalarParameters(typedVariable);
+              continue;
+            }
+            if (typedVariable.type !== 'datetime') {
+              delete typedVariable.parameters;
+              continue;
+            }
             // A `parameters` value that is not a plain record (a string,
             // number, array, or null from a hand-edit) fails both v8
             // parameters strictObjects outright; delete it so the picker
@@ -1833,8 +1818,8 @@ const migrationV7toV8 = createMigration({
         // keep their hand-authored static positions without any backfill.)
         paths: ['stages[]'],
         fn: <V>(stage: V) => {
-          if (typeof stage !== 'object' || stage === null) return stage;
-          const typedStage = stage as Record<string, unknown>;
+          const typedStage = asRecord(stage);
+          if (!typedStage) return stage;
           if (
             typedStage.type !== 'Sociogram' &&
             typedStage.type !== 'Narrative'
@@ -1926,9 +1911,13 @@ const migrationV7toV8 = createMigration({
         // in, and they are kept so that later migrations can read them.
         paths: [''],
         fn: <V>(protocol: V) => {
-          const { experiments } = protocol as Record<string, unknown>;
+          const document: Record<string, unknown> = isObject(protocol)
+            ? protocol
+            : {};
+          const { experiments } = document;
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the traversal's callback is generic over the value at this path; the root document stays the document it was
           return {
-            ...(protocol as Record<string, unknown>),
+            ...document,
             schemaVersion: 8 as const,
             experiments:
               typeof experiments === 'object' &&
@@ -2001,6 +1990,7 @@ const migrationV7toV8 = createMigration({
       });
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a step builds its output without parsing it; migrateProtocol validates the result against the full schema 8
     return result as ProtocolDocument<8>;
   },
   // Dropping a form stage with no fields moves every later stage up. The

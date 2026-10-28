@@ -3,8 +3,8 @@
   - button "Alex"
   - button "Sam"
   - status:
-    - 'heading "Do Dynamic value: Alex and Dynamic value: Sam know each other?" [level=2]'
-  - 'radiogroup "Alex and Sam Do Dynamic value: Alex and Dynamic value: Sam know each other?"':
+    - 'heading "Do Alex and Sam know each other?" [level=2]'
+  - 'radiogroup "Alex and Sam Do Alex and Sam know each other?"':
     - radio "Yes"
     - radio "No"
   - navigation:

@@ -22,6 +22,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -203,8 +204,10 @@ function VersionEditor({
   const writtenRef = useRef<readonly JSONContent[] | null>(null);
   const onChangeRef = useRef(onChange);
   const onEscapeRef = useRef(onEscape);
-  onChangeRef.current = onChange;
-  onEscapeRef.current = onEscape;
+  useLayoutEffect(() => {
+    onChangeRef.current = onChange;
+    onEscapeRef.current = onEscape;
+  });
 
   const extensions = nested?.extensions;
   const schema = useMemo(
@@ -317,8 +320,11 @@ function VersionsView({
     () => versionsAttributesOf(node.attrs),
     [node.attrs],
   );
+  // Read by a version's change, which can arrive before the next render.
   const latest = useRef(attributes);
-  latest.current = attributes;
+  useLayoutEffect(() => {
+    latest.current = attributes;
+  });
   const nested = useContext(NestedEditingContext);
   const active = nested?.active ?? true;
   const versionsId = useId();
@@ -331,19 +337,26 @@ function VersionsView({
   // the line, which can move the line's selection off it.
   const [folded, setFolded] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
-  useEffect(() => {
+  // Followed as they change, while rendering. A field that is not active as
+  // the element mounts folds it at once.
+  const [wasSelected, setWasSelected] = useState(selected);
+  const [wasActive, setWasActive] = useState(true);
+  if (selected !== wasSelected) {
+    setWasSelected(selected);
     if (!selected) setFolded(false);
-  }, [selected]);
-  useEffect(() => {
-    if (active) return;
-    setFolded(true);
-    setFocusWithin(false);
-  }, [active]);
+  }
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (!active) {
+      setFolded(true);
+      setFocusWithin(false);
+    }
+  }
   const expanded = (selected || focusWithin) && !folded;
 
   useEffect(() => {
     const element = wrapperRef.current;
-    if (element === null) return;
+    if (element === null) return undefined;
     const expand = () => setFolded(false);
     const collapse = () => setFolded(true);
     element.addEventListener(EXPAND_EVENT, expand);
@@ -470,6 +483,21 @@ const selectedElement = (editor: Editor): HTMLElement | null => {
     : null;
 };
 
+// Enter or Space on a folded element opens it; on an open one, moves into its
+// first version.
+const openOrEnter = ({ editor }: { editor: Editor }) => {
+  const element = selectedElement(editor);
+  if (element === null) return false;
+  if (!element.hasAttribute('data-expanded')) {
+    element.dispatchEvent(new Event(EXPAND_EVENT));
+    return true;
+  }
+  const first = element.querySelector<HTMLElement>('[role="textbox"]');
+  if (first === null) return false;
+  first.focus();
+  return true;
+};
+
 /**
  * Versions of a piece of text, held in the line as one element. The caret
  * steps over it in the line around it, and it is selected, moved, copied and
@@ -550,21 +578,6 @@ export const VersionsNode = TiptapNode.create({
   },
 
   addKeyboardShortcuts() {
-    // Enter or Space on a folded element opens it; on an open one, moves
-    // into its first version.
-    const openOrEnter = ({ editor }: { editor: Editor }) => {
-      const element = selectedElement(editor);
-      if (element === null) return false;
-      if (!element.hasAttribute('data-expanded')) {
-        element.dispatchEvent(new Event(EXPAND_EVENT));
-        return true;
-      }
-      const first = element.querySelector<HTMLElement>('[role="textbox"]');
-      if (first === null) return false;
-      first.focus();
-      return true;
-    };
-
     return {
       Enter: openOrEnter,
       Space: openOrEnter,

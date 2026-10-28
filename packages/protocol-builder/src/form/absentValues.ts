@@ -23,9 +23,42 @@ import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 export function withoutAbsentValues(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(withoutAbsentValues);
   if (typeof value !== 'object' || value === null) return value;
+  return cleanedEntries(Object.entries(value));
+}
 
+/**
+ * `withoutAbsentValues` for a value known to be a dictionary, such as a row,
+ * so the answer is one too.
+ */
+export function withoutAbsentEntries(
+  row: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  return cleanedEntries(Object.entries(row));
+}
+
+/**
+ * A row after a family's `collapse` has had its say, cleaned by the shared rule.
+ *
+ * A `collapse` is written to take and return anything, and every one returns a
+ * value that is not a row untouched, so the row going in is the row coming out.
+ * Should one hand back something else, there is no row in it to clean, and the
+ * row it was given is cleaned instead.
+ */
+export function withoutAbsentCollapsed(
+  collapsed: unknown,
+  row: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  return withoutAbsentEntries(isDictionary(collapsed) ? collapsed : row);
+}
+
+const isDictionary = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+function cleanedEntries(
+  entries: readonly (readonly [string, unknown])[],
+): Record<string, unknown> {
   const kept: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value)) {
+  for (const [key, entry] of entries) {
     const cleaned = withoutAbsentValues(entry);
     if (isAbsentValue(cleaned)) continue;
     kept[key] = cleaned;

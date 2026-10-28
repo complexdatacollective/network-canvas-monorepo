@@ -1,15 +1,19 @@
 'use client';
 
 import { MotionConfig, MotionGlobalConfig } from 'motion/react';
-import type { ComponentProps, ReactNode } from 'react';
+import { type ReactNode, useContext, useMemo } from 'react';
+
+import {
+  ReducedMotionContext,
+  type ReducedMotionSetting,
+  useReducedMotionRootAttribute,
+} from './reducedMotion';
 
 declare global {
   // Base UI checks this flag before waiting for CSS animations to finish.
   // eslint-disable-next-line no-var
   var BASE_UI_ANIMATIONS_DISABLED: boolean;
 }
-
-type ReducedMotion = ComponentProps<typeof MotionConfig>['reducedMotion'];
 
 export type AnimationProviderProps = {
   children: ReactNode;
@@ -26,8 +30,15 @@ export type AnimationProviderProps = {
    * detection in each preview.
    */
   disableAnimationsForAutomation?: boolean;
-  /** How Motion should respond to the user's reduced-motion preference. */
-  reducedMotion?: ReducedMotion;
+  /**
+   * Whether to reduce motion: `user` (the default) follows the operating
+   * system's preference, `always` and `never` override it. Motion components,
+   * `usePrefersReducedMotion`, `prefersReducedMotion`, the `motion-reduce:` /
+   * `motion-safe:` variants and the global reduced-motion CSS all follow it.
+   * It applies to the whole document, so only the outermost provider's value
+   * counts; a nested provider inherits it and ignores its own.
+   */
+  reducedMotion?: ReducedMotionSetting;
 };
 
 function isAutomatedVisualHost(): boolean {
@@ -45,7 +56,9 @@ function isAutomatedVisualHost(): boolean {
  * Coordinates the animation controls used by Fresco applications.
  *
  * Motion owns JavaScript-driven animation while Base UI waits for CSS
- * animations before completing popup transitions. Automated hosts need both
+ * animations before completing popup transitions. The provider also owns the
+ * reduced-motion decision for everything beneath it, Motion or not (see
+ * `./reducedMotion`). Automated hosts need both
  * systems disabled together; setting only one still leaves timing-dependent
  * work behind.
  */
@@ -69,16 +82,24 @@ export function AnimationProvider({
   // that shares its `layoutId` still crossfades in, at an opacity an a11y
   // check reads as failed contrast.
   if (animationsDisabled) {
+    // oxlint-disable-next-line react/immutability -- must be set while rendering, before descendants mount (see above); an effect runs too late
     globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
+    // oxlint-disable-next-line react/immutability -- must be set while rendering, before descendants mount (see above); an effect runs too late
     MotionGlobalConfig.skipAnimations = true;
   }
 
+  // One reduced-motion policy per document, decided by the outermost provider
+  // (see `ReducedMotionContext`): a nested provider inherits it.
+  const enclosing = useContext(ReducedMotionContext);
+  const setting = enclosing.provided ? enclosing.setting : reducedMotion;
+  const scope = useMemo(() => ({ setting, provided: true }), [setting]);
+  useReducedMotionRootAttribute(setting, !enclosing.provided);
+
   return (
-    <MotionConfig
-      reducedMotion={reducedMotion}
-      skipAnimations={animationsDisabled}
-    >
-      {children}
-    </MotionConfig>
+    <ReducedMotionContext.Provider value={scope}>
+      <MotionConfig reducedMotion={setting} skipAnimations={animationsDisabled}>
+        {children}
+      </MotionConfig>
+    </ReducedMotionContext.Provider>
   );
 }

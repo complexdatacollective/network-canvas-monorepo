@@ -81,6 +81,7 @@ export const PedigreeSnapshotDocument = forwardRef<
   //  • --dim-blend: the surface dimmed nodes/edges recede into. On screen this
   //    is the dark interview background; here it is the white paper, so dimmed
   //    pieces fade toward white instead of muddying toward navy.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- @types/react does not type custom properties
   const snapshotVars = {
     '--np-label-color': '#111827',
     '--dim-blend': '#ffffff',

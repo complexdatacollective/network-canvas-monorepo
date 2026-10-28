@@ -147,7 +147,7 @@
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Couleur",
   "protocolBuilder.censusPrompts.ordinalBinColorRequired": "Choisissez le dégradé selon lequel les cases sont colorées.",
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Dégradé de couleurs",
-  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Cette interface est conçue pour cinq cases au maximum. Au-delà, les cases deviennent difficiles à lire et il devient difficile d’y déposer des nœuds, ce qui nuit à la qualité des données.",
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": "Cette interface est conçue pour six cases au maximum. Au-delà, les cases deviennent difficiles à lire et il devient difficile d’y déposer des nœuds, ce qui nuit à la qualité des données.",
   "protocolBuilder.censusPrompts.ordinalBinPlaceholder": "Saisissez votre consigne…",
   "protocolBuilder.censusPrompts.ordinalBinScaleDescription": "Choisissez l’attribut ordinal dont les valeurs sont affichées sous forme de cases.",
   "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": "Ce type n’a encore aucun attribut ordinal. Créez-en un pour définir l’échelle.",

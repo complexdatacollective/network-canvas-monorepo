@@ -8,17 +8,34 @@ import {
   NodeColorSequence,
 } from '@codaco/protocol-validation';
 
-export const getNextCategoryColor = (
+export function getNextCategoryColor(
   protocol: CurrentProtocol,
-  entity: 'node' | 'edge',
-) => {
+  entity: 'node',
+): NodeColor;
+export function getNextCategoryColor(
+  protocol: CurrentProtocol,
+  entity: 'edge' | 'ego',
+): EdgeColor;
+export function getNextCategoryColor(
+  protocol: CurrentProtocol,
+  entity: 'node' | 'edge' | 'ego',
+): NodeColor | EdgeColor;
+export function getNextCategoryColor(
+  protocol: CurrentProtocol,
+  entity: 'node' | 'edge' | 'ego',
+): NodeColor | EdgeColor {
+  // Number of existing types, wrapped around when it exceeds the palette size.
+  const typeCount = size(get(protocol, ['codebook', entity], {}));
+
   if (entity === 'node') {
-    const typeCount = size(get(protocol, ['codebook', entity], {})); // number of existing node types
-    const nextNumber = (typeCount % NodeColorSequence.length) + 1; // wrap around if exceeding palette size
-    return NodeColorSequence[nextNumber - 1] as NodeColor;
+    return (
+      NodeColorSequence[typeCount % NodeColorSequence.length] ??
+      NodeColorSequence[0]
+    );
   }
 
-  const typeCount = size(get(protocol, ['codebook', entity], {})); // number of existing edge types
-  const nextNumber = (typeCount % EdgeColorSequence.length) + 1;
-  return EdgeColorSequence[nextNumber - 1] as EdgeColor;
-};
+  return (
+    EdgeColorSequence[typeCount % EdgeColorSequence.length] ??
+    EdgeColorSequence[0]
+  );
+}

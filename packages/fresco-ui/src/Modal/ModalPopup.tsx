@@ -9,9 +9,16 @@ import {
   usePresence,
   type VariantLabels,
 } from 'motion/react';
-import { type ComponentProps, useEffect, useId, useRef } from 'react';
+import {
+  type ComponentProps,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 
 import { useSafeAnimate } from '../hooks/useSafeAnimate';
+import useTokenRadius from '../hooks/useTokenRadius';
 import {
   holdsFocus,
   isUsableFinalFocusTarget,
@@ -111,6 +118,10 @@ export default function ModalPopup({
     : {};
 
   const [scope, animate] = useSafeAnimate();
+  // A shared-element morph resizes the popup out of its trigger, and Motion
+  // keeps the corners true through that only for a numeric radius, so the
+  // popup's `rounded-*` class is also handed to `style`.
+  const tokenRadius = useTokenRadius(scope);
 
   const [isPresent, safeToRemove] = usePresence(!usesDeclarativeAnimation);
 
@@ -123,10 +134,14 @@ export default function ModalPopup({
    * re-render — and an app that re-renders more often than the exit's ~0.3s
    * duration would then never reach `safeToRemove()`, leaving the popup
    * mounted (and animating) forever. Reading it through a ref keeps the effect
-   * keyed on `isPresent` alone, so the exit runs exactly once.
+   * keyed on `isPresent` alone, so the exit runs exactly once. The ref is
+   * brought up to date in a layout effect, which runs before the passive
+   * animation effect of the same commit.
    */
   const safeToRemoveRef = useRef(safeToRemove);
-  safeToRemoveRef.current = safeToRemove;
+  useLayoutEffect(() => {
+    safeToRemoveRef.current = safeToRemove;
+  });
 
   useEffect(() => {
     if (usesDeclarativeAnimation) {
@@ -252,7 +267,7 @@ export default function ModalPopup({
           className={className}
           {...props}
           {...animation}
-          style={style}
+          style={hasLayoutId ? { borderRadius: tokenRadius, ...style } : style}
         />
       }
     >

@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
@@ -49,12 +49,15 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   // Records the direction of the navigation that crosses a prompt boundary so
   // the prompt change can seed the focal node: forward entry starts at the
   // first focal node, backward entry resumes at the last (#668).
-  const crossingDirection = useRef<'forwards' | 'backwards'>('forwards');
+  const [crossingDirection, setCrossingDirection] = useState<
+    'forwards' | 'backwards'
+  >('forwards');
 
   // The ScrollArea viewport uses overflow-auto which clips nodes during
   // layoutId animations across the Surface boundary. Temporarily switch to
   // overflow-visible while the animation is in flight, then restore scrolling.
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  // A prompt's people animate in as it opens, the first one included.
+  const [isTransitioning, setIsTransitioning] = useState(true);
 
   const dispatch = useAppDispatch();
 
@@ -82,13 +85,15 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 
   const [step, setStep] = useState({ prompt: promptIndex, index: 0 });
   // Seeded in the render that changes the prompt, so that no render shows the
-  // new prompt's people at the step reached on the previous one.
+  // new prompt's people at the step reached on the previous one. The crossing
+  // it records is used up, and the new prompt's people animate in.
   if (step.prompt !== promptIndex) {
     setStep({
       prompt: promptIndex,
-      index:
-        crossingDirection.current === 'backwards' ? Math.max(lastStep, 0) : 0,
+      index: crossingDirection === 'backwards' ? Math.max(lastStep, 0) : 0,
     });
+    setCrossingDirection('forwards');
+    setIsTransitioning(true);
   }
   const currentStep = step.index;
 
@@ -123,7 +128,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
    */
   useBeforeNext((direction, intent) => {
     if (intent === 'jump') {
-      crossingDirection.current = direction;
+      setCrossingDirection(direction);
       return true;
     }
 
@@ -137,7 +142,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
         return false;
       }
 
-      crossingDirection.current = 'forwards';
+      setCrossingDirection('forwards');
       return true;
     }
 
@@ -148,22 +153,17 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
         return false;
       }
 
-      crossingDirection.current = 'backwards';
+      setCrossingDirection('backwards');
       return true;
     }
 
     return true;
   });
 
-  useEffect(() => {
-    crossingDirection.current = 'forwards';
-    setIsTransitioning(true);
-  }, [promptIndex]);
-
   // Fallback: restore overflow after animation duration in case
   // onLayoutAnimationComplete doesn't fire (e.g. no layout change).
   useEffect(() => {
-    if (!isTransitioning) return;
+    if (!isTransitioning) return undefined;
     const timer = setTimeout(() => setIsTransitioning(false), 800);
     return () => clearTimeout(timer);
   }, [isTransitioning]);

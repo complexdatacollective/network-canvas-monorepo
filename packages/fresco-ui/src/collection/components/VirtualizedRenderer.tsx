@@ -84,7 +84,7 @@ function VirtualizedRendererComponent<T>({
 
   // Track container width with ResizeObserver (batched to RAF for performance)
   useLayoutEffect(() => {
-    if (!scrollElement) return;
+    if (!scrollElement) return undefined;
 
     let rafId: number | null = null;
     let pendingWidth: number | null = null;
@@ -295,6 +295,7 @@ function VirtualizedRendererComponent<T>({
  * further up the tree changing identity) do not trigger reconciliation of
  * all visible virtual items.
  */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- memo() erases the component's generic parameter; this is the same component with it restored
 export const VirtualizedRenderer = memo(
   VirtualizedRendererComponent,
 ) as typeof VirtualizedRendererComponent;

@@ -2,6 +2,8 @@
 
 import { type CSSProperties, useEffect, useMemo, useRef } from 'react';
 
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+
 import { defaultGradients } from '../BackgroundBlobs/BackgroundBlobs';
 import { clampFrameDelta } from '../frameDelta';
 
@@ -177,6 +179,7 @@ const BackgroundLights = ({
 }: BackgroundLightsProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const reduceMotion = usePrefersReducedMotion() === true;
 
   // large → big/slow, small → small/fast, matching BackgroundBlobs' layers.
   const lights = useMemo(
@@ -248,11 +251,7 @@ const BackgroundLights = ({
     });
     resizeObserver.observe(container);
 
-    const prefersReducedMotion =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion) {
+    if (reduceMotion) {
       return () => resizeObserver.disconnect();
     }
 
@@ -284,7 +283,7 @@ const BackgroundLights = ({
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
     };
-  }, [lights]);
+  }, [lights, reduceMotion]);
 
   return (
     <div

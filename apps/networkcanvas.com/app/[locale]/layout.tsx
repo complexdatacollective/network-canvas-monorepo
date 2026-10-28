@@ -38,6 +38,9 @@ type LocaleMetadataProps = {
   params: Promise<{ locale: string }>;
 };
 
+// Runs in <head>, before React and so before AnimationProvider can exist: the
+// operating system is the only preference there is to read yet, and the site
+// never overrides it. scripts/buildtime/check-reduced-motion.mjs allows it.
 const entranceMotionScript = `document.documentElement.dataset.entranceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'enabled';`;
 
 export const generateStaticParams = getStaticLocaleParams;

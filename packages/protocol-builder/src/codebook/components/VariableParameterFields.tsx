@@ -153,16 +153,15 @@ export const parameterFieldMessages = defineMessages({
 const DatePickerControl = DatePickerField as ComponentType<
   Record<string, unknown>
 >;
-// Cast like the three around it, and for the same reason: `UnconnectedField`'s
+// Cast like the ones around it, and for the same reason: `UnconnectedField`'s
 // component constraint erases the concrete prop shape. The two branches of
 // `boundControl` below also have to agree on one component type.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- both `boundControl` branches share this one component type and pass exactly the props CoarseDateBound declares
 const CoarseDateBoundControl = CoarseDateBound as ComponentType<
   Record<string, unknown>
 >;
 const InputControl = InputField as ComponentType<Record<string, unknown>>;
-const SelectControl = NativeSelectField as ComponentType<
-  Record<string, unknown>
->;
+const SelectControl = NativeSelectField;
 
 // Where a scale's end labels sit in a form field's row.
 const MIN_LABEL_PATH = ['parameters', 'minLabel'];

@@ -30,28 +30,37 @@ const FamilyTreeVariables = ({
     return null;
   }
 
-  const rows = [
-    relationshipTypeVariable && [
+  const rows: [string, React.ReactNode][] = [];
+  if (relationshipTypeVariable) {
+    rows.push([
       intl.formatMessage(summaryMessages.relationshipType),
       <Variable key="rel-type" id={relationshipTypeVariable} />,
-    ],
-    relationshipToEgoVariable && [
+    ]);
+  }
+  if (relationshipToEgoVariable) {
+    rows.push([
       intl.formatMessage(summaryMessages.relationshipToEgo),
       <Variable key="rel-ego" id={relationshipToEgoVariable} />,
-    ],
-    egoSexVariable && [
+    ]);
+  }
+  if (egoSexVariable) {
+    rows.push([
       intl.formatMessage(summaryMessages.egoSexAttribute),
       <Variable key="ego-sex" id={egoSexVariable} />,
-    ],
-    nodeSexVariable && [
+    ]);
+  }
+  if (nodeSexVariable) {
+    rows.push([
       intl.formatMessage(summaryMessages.nodeSexAttribute),
       <Variable key="node-sex" id={nodeSexVariable} />,
-    ],
-    nodeIsEgoVariable && [
+    ]);
+  }
+  if (nodeIsEgoVariable) {
+    rows.push([
       intl.formatMessage(summaryMessages.nodeIsEgo),
       <Variable key="is-ego" id={nodeIsEgoVariable} />,
-    ],
-  ].filter(Boolean) as [string, React.ReactNode][];
+    ]);
+  }
 
   return <MiniTable rotated rows={rows} />;
 };

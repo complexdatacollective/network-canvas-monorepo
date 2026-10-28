@@ -102,10 +102,11 @@ global.ResizeObserver = ResizeObserverMock;
 
 // jsdom doesn't implement Element.scrollTo — polyfill as a no-op so code
 // that calls scrollTo after navigation/resets doesn't throw under tests.
+function scrollTo() {
+  // no-op
+}
 if (typeof Element.prototype.scrollTo !== 'function') {
-  Element.prototype.scrollTo = function scrollTo() {
-    // no-op
-  };
+  Element.prototype.scrollTo = scrollTo;
 }
 
 // Pin the default locale for Intl.DateTimeFormat. Node's runtime default
@@ -128,6 +129,7 @@ class PinnedDateTimeFormat extends OriginalDateTimeFormat {
 // unknown as typeof Worker` below — `Intl.DateTimeFormat`'s type includes a
 // call-without-`new` signature that ES classes can't express directly.
 Intl.DateTimeFormat =
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test stub: tests only construct it with `new`
   PinnedDateTimeFormat as unknown as typeof Intl.DateTimeFormat;
 
 // Mock offsetWidth and offsetHeight on HTMLElement for immediate container width detection

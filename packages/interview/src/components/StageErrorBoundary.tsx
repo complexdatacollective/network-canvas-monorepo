@@ -28,10 +28,9 @@ function formatDebugInfo(error: Error): string {
   return error.stack ? `${heading}\n\n${error.stack}` : heading;
 }
 
-// The protocol may word this message itself, as markdown, so a researcher can
-// format it and link to where participants can get help (see
-// `InterfaceTextOverlay`). The catalog's wording is plain text, which reads
-// the same rendered as markdown.
+// The message is markdown, a heading and paragraphs. The protocol may word it
+// itself, so a researcher can format it and link to where participants can
+// get help (see `InterfaceTextOverlay`).
 function TaskErrorDescription() {
   const intl = useAppIntl();
   return (
@@ -78,7 +77,7 @@ class StageErrorBoundaryInner extends Component<
     if (error) {
       return (
         <Surface noContainer className="mx-auto h-fit max-w-2xl grow-0">
-          <div className="flex items-center gap-6">
+          <div className="flex items-start gap-6">
             <div className="flex items-center justify-center">
               <Icon name="error" />
             </div>

@@ -60,6 +60,7 @@
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./PresentationalText": "./src/PresentationalText.ts",
     "./ProgressBar": "./src/ProgressBar.tsx",
+    "./reducedMotion": "./src/reducedMotion.ts",
     "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
@@ -170,10 +171,10 @@
     "./hooks/useFitText": "./src/hooks/useFitText.ts",
     "./hooks/useHasHydrated": "./src/hooks/useHasHydrated.ts",
     "./hooks/useNodeInteractions": "./src/hooks/useNodeInteractions.ts",
-    "./hooks/usePrevious": "./src/hooks/usePrevious.ts",
     "./hooks/useResizablePanel": "./src/hooks/useResizablePanel.ts",
     "./hooks/useSafeAnimate": "./src/hooks/useSafeAnimate.ts",
     "./hooks/useSafeLocalStorage": "./src/hooks/useSafeLocalStorage.tsx",
+    "./hooks/useTokenRadius": "./src/hooks/useTokenRadius.ts",
     "./layout/AppArea": "./src/layout/AppArea.tsx",
     "./layout/AppFrame": "./src/layout/AppFrame.tsx",
     "./layout/ResponsiveContainer": "./src/layout/ResponsiveContainer.tsx",
@@ -387,6 +388,10 @@
       "./ProgressBar": {
         "types": "./dist/ProgressBar.d.ts",
         "default": "./dist/ProgressBar.js"
+      },
+      "./reducedMotion": {
+        "types": "./dist/reducedMotion.d.ts",
+        "default": "./dist/reducedMotion.js"
       },
       "./ProtocolCard": {
         "types": "./dist/ProtocolCard.d.ts",
@@ -828,10 +833,6 @@
         "types": "./dist/hooks/useNodeInteractions.d.ts",
         "default": "./dist/hooks/useNodeInteractions.js"
       },
-      "./hooks/usePrevious": {
-        "types": "./dist/hooks/usePrevious.d.ts",
-        "default": "./dist/hooks/usePrevious.js"
-      },
       "./hooks/useResizablePanel": {
         "types": "./dist/hooks/useResizablePanel.d.ts",
         "default": "./dist/hooks/useResizablePanel.js"
@@ -843,6 +844,10 @@
       "./hooks/useSafeLocalStorage": {
         "types": "./dist/hooks/useSafeLocalStorage.d.ts",
         "default": "./dist/hooks/useSafeLocalStorage.js"
+      },
+      "./hooks/useTokenRadius": {
+        "types": "./dist/hooks/useTokenRadius.d.ts",
+        "default": "./dist/hooks/useTokenRadius.js"
       },
       "./layout/AppArea": {
         "types": "./dist/layout/AppArea.d.ts",

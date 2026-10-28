@@ -33,6 +33,10 @@ export function entryKey(entry: DeckEntry): string {
       return `slot:${entry.pending.label}`;
     case 'import':
       return 'import';
+    default: {
+      const unhandled: never = entry;
+      throw new Error('Unhandled deck entry', { cause: unhandled });
+    }
   }
 }
 
@@ -48,6 +52,10 @@ function entryName(entry: Exclude<DeckEntry, { kind: 'import' }>): string {
       return DEVELOPMENT_PROTOCOL.name;
     case 'pending':
       return entry.pending.label;
+    default: {
+      const unhandled: never = entry;
+      throw new Error('Unhandled deck entry', { cause: unhandled });
+    }
   }
 }
 

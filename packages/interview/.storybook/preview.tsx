@@ -57,6 +57,25 @@ const ThemedDocsContainer = ({
   </ThemedRegion>
 );
 
+/**
+ * The Motion toolbar control: follow the system's reduced-motion setting, or
+ * override it either way. It reaches everything animated through Motion or
+ * checked with `useShouldSkipAnimations`, but not CSS written for the
+ * `prefers-reduced-motion` media query, nor code that reads that query
+ * itself; only the system setting (or the browser's emulation of it) changes
+ * those.
+ */
+const REDUCED_MOTION = {
+  user: 'Motion: system',
+  always: 'Motion: reduced',
+  never: 'Motion: full',
+} as const;
+
+type ReducedMotion = keyof typeof REDUCED_MOTION;
+
+const isReducedMotion = (value: unknown): value is ReducedMotion =>
+  typeof value === 'string' && Object.hasOwn(REDUCED_MOTION, value);
+
 export default definePreview({
   addons: [addonDocs(), addonA11y(), addonVitest()],
   parameters: {
@@ -76,15 +95,38 @@ export default definePreview({
       test: 'todo',
     },
   },
+  globalTypes: {
+    reducedMotion: {
+      name: 'Motion',
+      description: 'Reduced motion: follow the system setting, or override it',
+      toolbar: {
+        icon: 'accessibility',
+        items: Object.entries(REDUCED_MOTION).map(([value, title]) => ({
+          value,
+          title,
+        })),
+        dynamicTitle: true,
+      },
+    },
+  },
+  initialGlobals: {
+    reducedMotion: 'user' satisfies ReducedMotion,
+  },
   decorators: [
-    (Story) => (
+    (Story, { globals }) => (
       <StrictMode>
         {/*
          * Required by Base UI's portal-based dialogs/popovers:
          * https://base-ui.com/react/overview/quick-start#portals
          */}
         <ThemedRegion theme="interview" className="root h-full">
-          <Providers>
+          <Providers
+            reducedMotion={
+              isReducedMotion(globals.reducedMotion)
+                ? globals.reducedMotion
+                : 'user'
+            }
+          >
             <Story />
           </Providers>
         </ThemedRegion>

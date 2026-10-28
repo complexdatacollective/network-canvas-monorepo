@@ -5,6 +5,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { type Gamete, gameteLookup, inferGametes } from './gametes';
+import { withKinshipBreaks } from './kinshipBreaks';
 import { type Family, type Person, siblingTie } from './model';
 import type { PedigreeWords } from './pedigreeWords';
 
@@ -413,6 +414,8 @@ function stepTerm(
     case 'partner':
       return step.current ? 'partner' : 'formerPartner';
   }
+  const unhandled: never = step;
+  throw new Error('Unhandled step', { cause: unhandled });
 }
 
 // Kinship beyond the immediate family follows descent: a step through a
@@ -449,6 +452,10 @@ const isStepOrInLawStep = (
       return true;
     case 'partner':
       return step.current;
+    default: {
+      const unhandled: never = step;
+      throw new Error('Unhandled step', { cause: unhandled });
+    }
   }
 };
 
@@ -778,11 +785,15 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
 
 /**
  * A kinship word as participant-facing text, from the one vocabulary that
- * holds every such word (`relativeTerm`). Used for the add menu, the framing
+ * holds every such word (`relativeTerm`), with the places it may break
+ * inside a symbol (`withKinshipBreaks`). Used for the add menu, the framing
  * options and anyone with no other label, which is shown as "Relative".
  */
 export function formatRelativeTerm(term: string, words: PedigreeWords): string {
-  return words.text(words.wording.relativeTerm, { term });
+  return withKinshipBreaks(
+    words.text(words.wording.relativeTerm, { term }),
+    words.locale,
+  );
 }
 
 /** Languages that capitalise every noun, kinship words included, wherever
@@ -879,5 +890,9 @@ export function formatPersonLabel(
     }
     case 'unconnected':
       return formatRelativeTerm('other', words);
+    default: {
+      const unhandled: never = label;
+      throw new Error('Unhandled person label', { cause: unhandled });
+    }
   }
 }

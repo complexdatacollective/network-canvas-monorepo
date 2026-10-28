@@ -949,9 +949,6 @@ try {
     const s = sessions[0];
     if (!s?.network) return { found: false };
     const nodes = s.network.nodes ?? [];
-    const isBytes = (v) =>
-      Array.isArray(v) &&
-      v.every((b) => Number.isInteger(b) && b >= 0 && b <= 255);
     return {
       found: true,
       sessionCount: sessions.length,
@@ -966,14 +963,22 @@ try {
         .filter((n) => n.type === 'person')
         .map((n) => {
           const a = n.attributes ?? {};
-          const iv = n._secureAttributes?.name?.iv;
+          const [nameData, nameIv] = [
+            a.name,
+            n._secureAttributes?.name?.iv,
+          ].map((v) =>
+            Array.isArray(v) &&
+            v.every((b) => Number.isInteger(b) && b >= 0 && b <= 255)
+              ? v
+              : null,
+          );
           return {
             uid: n._uid,
-            nameIsCiphertext: isBytes(a.name) && a.name.length === 48,
-            nameIv12: isBytes(iv) && iv.length === 12,
+            nameIsCiphertext: nameData !== null && nameData.length === 48,
+            nameIv12: nameIv !== null && nameIv.length === 12,
             // The raw stored ciphertext and IV, decrypted below.
-            nameData: isBytes(a.name) ? a.name : null,
-            nameIv: isBytes(iv) ? iv : null,
+            nameData,
+            nameIv,
             secureKeys: Object.keys(n._secureAttributes ?? {}),
             layout:
               a.layout &&

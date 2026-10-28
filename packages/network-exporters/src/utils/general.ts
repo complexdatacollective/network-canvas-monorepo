@@ -15,22 +15,21 @@ const EXTENSIONS = {
   csv: '.csv',
 } as const;
 
+const FORMAT_EXTENSIONS = {
+  graphml: EXTENSIONS.graphml,
+  adjacencyMatrix: EXTENSIONS.csv,
+  edgeList: EXTENSIONS.csv,
+  attributeList: EXTENSIONS.csv,
+  ego: EXTENSIONS.csv,
+} as const satisfies Record<ExportFormat, string>;
+
 /**
  * Provide the appropriate file extension for the export type
  * @param  {string} formatterType one of the `format`s
  * @return {string}
  */
-export const getFileExtension = (formatterType: ExportFormat) => {
-  switch (formatterType) {
-    case 'graphml':
-      return EXTENSIONS.graphml;
-    case 'adjacencyMatrix':
-    case 'edgeList':
-    case 'attributeList':
-    case 'ego':
-      return EXTENSIONS.csv;
-  }
-};
+export const getFileExtension = (formatterType: ExportFormat) =>
+  FORMAT_EXTENSIONS[formatterType];
 
 /**
  * Generate a filename prefix based on the session in the format:

@@ -17,10 +17,14 @@
       - text: Egg or sperm donor
       - radio "Surrogate"
       - text: Surrogate
-    - text: Did the new parent carry them - matrix check
+    - text: Did the new parent carry them - matrix check Required
     - radiogroup "Did the new parent carry them - matrix check":
       - radio "Yes"
+      - text: "Yes"
       - radio "No" [checked]
+      - text: "No"
+      - radio "Don’t know"
+      - text: Don’t know
     - text: Partner of a parent - matrix check
     - radiogroup "Partner of a parent - matrix check":
       - radio "Julie"

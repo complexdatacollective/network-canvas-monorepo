@@ -2,7 +2,7 @@
 
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
-import { AnimatePresence, useReducedMotion } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -12,6 +12,7 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
 import type { ActivationSource } from '@codaco/fresco-ui/Node';
 import OptionLabel from '@codaco/fresco-ui/OptionLabel';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
@@ -92,12 +93,23 @@ type DrawerEditor = {
 
 const NO_ATTRIBUTES: DrawerEditor['attributes'] = {};
 
+const sameEditor = (a: DrawerEditor, b: DrawerEditor) =>
+  a.kind === b.kind &&
+  a.entityId === b.entityId &&
+  a.title === b.title &&
+  a.form === b.form &&
+  a.subject.entity === b.subject.entity &&
+  a.subject.type === b.subject.type &&
+  a.attributes === b.attributes &&
+  a.unavailable === b.unavailable &&
+  a.passphraseStatus === b.passphraseStatus;
+
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const intl = useAppIntl();
   const { stage } = stageProps;
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const resolve = useResolveLocalizedString();
   const drawConnectionText = useOptionalLocalizedText(
     stage.tooltips.drawConnection,
@@ -243,14 +255,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     if (writesEncrypted) requirePassphrase();
   }, [writesEncrypted, requirePassphrase]);
 
-  const canvasStoreRef = useRef(createCanvasStore());
-  const canvasStore = canvasStoreRef.current;
-
-  const composerStoreRef = useRef(createComposerStore());
-  const composerStore = composerStoreRef.current;
-
-  const undoStoreRef = useRef(createUndoStore());
-  const undoStore = undoStoreRef.current;
+  const [canvasStore] = useState(() => createCanvasStore());
+  const [composerStore] = useState(() => createComposerStore());
+  const [undoStore] = useState(() => createUndoStore());
 
   const actions = useComposerActions({
     subjectType: stage.subject.type,
@@ -437,11 +444,12 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
       const inFormField =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT';
+        target instanceof Element &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT');
 
       const isUndo =
         (e.metaKey || e.ctrlKey) &&
@@ -686,12 +694,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   })();
 
   // Retain the last editor so its contents stay rendered through the drawer's
-  // slide-out animation after the selection clears.
-  const lastEditorRef = useRef(currentEditor);
-  useEffect(() => {
-    if (currentEditor !== null) lastEditorRef.current = currentEditor;
-  }, [currentEditor]);
-  const editor = currentEditor ?? lastEditorRef.current;
+  // slide-out animation after the selection clears. It is rebuilt on every
+  // render, so it is retained again only when it shows something different.
+  const [lastEditor, setLastEditor] = useState(currentEditor);
+  if (
+    currentEditor !== null &&
+    (lastEditor === null || !sameEditor(lastEditor, currentEditor))
+  ) {
+    setLastEditor(currentEditor);
+  }
+  const editor = currentEditor ?? lastEditor;
 
   return (
     // tabIndex makes the div focusable so keydown events reach it.

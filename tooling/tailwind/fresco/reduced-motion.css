@@ -1,0 +1,49 @@
+/* Reduced motion follows `AnimationProvider` (@codaco/fresco-ui), not the
+   operating system directly. The provider sets `data-reduced-motion` on the
+   document root to `always` or `never` when it overrides the system
+   preference, and leaves it off when it follows it (its default, and the only
+   state a page without a provider is ever in). These redefine Tailwind's
+   built-in `motion-reduce:` and `motion-safe:` so existing class names honour
+   the override; the selectors sit inside `:where()` so the variants add no
+   specificity, exactly like the media-query-only built-ins they replace. */
+@custom-variant motion-reduce {
+  :where(:root[data-reduced-motion='always']) & {
+    @slot;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :where(:root:not([data-reduced-motion='never'])) & {
+      @slot;
+    }
+  }
+}
+@custom-variant motion-safe {
+  :where(:root[data-reduced-motion='never']) & {
+    @slot;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    :where(:root:not([data-reduced-motion='always'])) & {
+      @slot;
+    }
+  }
+}
+
+/* Spelled out rather than through `@variant motion-reduce`, whose `&` would
+   wrap this selector list in `:is()`, where pseudo-elements are invalid. */
+:where(:root[data-reduced-motion='always']) *,
+:where(:root[data-reduced-motion='always']) *::before,
+:where(:root[data-reduced-motion='always']) *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(:root:not([data-reduced-motion='never'])) *,
+  :where(:root:not([data-reduced-motion='never'])) *::before,
+  :where(:root:not([data-reduced-motion='never'])) *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+}

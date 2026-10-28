@@ -7,6 +7,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -104,7 +105,8 @@ export function useDragSource(
   // Read when they are needed — a drag starting, an announcement — rather
   // than captured by the handlers: hosts rebuild metadata and previews on
   // every render, and handlers depending on them would make `dragProps` new
-  // on every render too.
+  // on every render too. Updated in a layout effect, before anything can
+  // start a drag.
   const latestRef = useRef({
     type,
     metadata,
@@ -112,7 +114,15 @@ export function useDragSource(
     preview,
     dragThreshold,
   });
-  latestRef.current = { type, metadata, announcedName, preview, dragThreshold };
+  useLayoutEffect(() => {
+    latestRef.current = {
+      type,
+      metadata,
+      announcedName,
+      preview,
+      dragThreshold,
+    };
+  });
 
   const { announce } = useAccessibilityAnnouncements();
   const intl = useAppIntl();
@@ -139,7 +149,7 @@ export function useDragSource(
   const setActiveDropTarget = useDndStore((state) => state.setActiveDropTarget);
   const endDrag = useDndStore((state) => state.endDrag);
 
-  const updatePosition = useRef(rafThrottle(updateDragPosition)).current;
+  const [updatePosition] = useState(() => rafThrottle(updateDragPosition));
 
   const createPreview = useCallback(
     (element: HTMLElement | null): ReactNode => {
@@ -151,6 +161,7 @@ export function useDragSource(
       const rect = element.getBoundingClientRect();
       const computedStyle = window.getComputedStyle(element);
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- cloneNode returns Node; deep-cloning an HTMLElement yields an HTMLElement
       const clonedElement = element.cloneNode(true) as HTMLElement;
       clonedElement.style.pointerEvents = 'none';
 
@@ -267,83 +278,87 @@ export function useDragSource(
 
   // The gesture's listeners are attached once, at pointerdown, and outlive
   // renders; they call through these refs so they always run the latest
-  // handlers (and see the latest drag mode).
+  // handlers (and see the latest drag mode). A layout effect installs each
+  // render's handlers, before any event or passive effect can call them.
   const moveRef = useRef<(event: PointerEvent) => void>(() => {});
-  moveRef.current = (e: PointerEvent) => {
-    e.preventDefault();
-
-    // Check if we have a pending drag that hasn't met the threshold yet
-    const pending = pendingDragRef.current;
-    if (pending && dragMode === 'none') {
-      const dx = e.clientX - pending.startPosition.x;
-      const dy = e.clientY - pending.startPosition.y;
-
-      // Movement the scroll region owns stays pending: the browser cancels
-      // the sequence once it starts scrolling.
-      if (
-        Math.hypot(dx, dy) >= latestRef.current.dragThreshold &&
-        claimsMove(dx, dy)
-      ) {
-        initializeDrag(pending.element, pending.startPosition, 'pointer');
-        pendingDragRef.current = null;
-      }
-      return;
-    }
-
-    // Normal drag position update
-    updatePosition(e.clientX, e.clientY);
-  };
-
-  /**
-   * Ends the pointer gesture however it ended: released (`drop`), cancelled
-   * by the browser, or interrupted from outside its own pointer sequence — a
-   * window switch, the source being disabled — which nothing else would end.
-   */
   const settleRef = useRef<(drop: boolean) => void>(() => {});
-  settleRef.current = (drop: boolean) => {
-    const gesture = gestureRef.current;
-    if (!gesture) return;
-    gestureRef.current = null;
-    gesture.detach();
-    endScrollAware();
-    if (gesture.element.hasPointerCapture(gesture.pointerId)) {
-      gesture.element.releasePointerCapture(gesture.pointerId);
-    }
+  useLayoutEffect(() => {
+    moveRef.current = (e: PointerEvent) => {
+      e.preventDefault();
 
-    // A press that never became a drag: let the click through for selection
-    if (pendingDragRef.current) {
-      pendingDragRef.current = null;
-      return;
-    }
+      // Check if we have a pending drag that hasn't met the threshold yet
+      const pending = pendingDragRef.current;
+      if (pending && dragMode === 'none') {
+        const dx = e.clientX - pending.startPosition.x;
+        const dy = e.clientY - pending.startPosition.y;
 
-    // Suppress the click event that follows pointer up after a real drag.
-    // This prevents selection from triggering after drag-and-drop. A
-    // cancelled or interrupted gesture is followed by no click.
-    if (drop) {
-      const cleanup = () => {
-        document.removeEventListener('click', suppressClick, true);
-      };
-      const suppressClick = (clickEvent: MouseEvent) => {
-        clickEvent.stopPropagation();
-        clickEvent.preventDefault();
-        cleanup();
-      };
-      document.addEventListener('click', suppressClick, true);
+        // Movement the scroll region owns stays pending: the browser cancels
+        // the sequence once it starts scrolling.
+        if (
+          Math.hypot(dx, dy) >= latestRef.current.dragThreshold &&
+          claimsMove(dx, dy)
+        ) {
+          initializeDrag(pending.element, pending.startPosition, 'pointer');
+          pendingDragRef.current = null;
+        }
+        return;
+      }
 
-      // Safety cleanup: when pointer capture caused significant movement
-      // (a real drag), the browser won't synthesize a click event, leaving
-      // the listener to swallow the user's next intentional click. Remove
-      // it after the current event cycle — any synthetic click from this
-      // pointer-up sequence fires synchronously before setTimeout(0).
-      setTimeout(cleanup, 0);
-    }
+      // Normal drag position update
+      updatePosition(e.clientX, e.clientY);
+    };
 
-    finishDrag(drop);
-  };
+    /**
+     * Ends the pointer gesture however it ended: released (`drop`), cancelled
+     * by the browser, or interrupted from outside its own pointer sequence — a
+     * window switch, the source being disabled — which nothing else would end.
+     */
+    settleRef.current = (drop: boolean) => {
+      const gesture = gestureRef.current;
+      if (!gesture) return;
+      gestureRef.current = null;
+      gesture.detach();
+      endScrollAware();
+      if (gesture.element.hasPointerCapture(gesture.pointerId)) {
+        gesture.element.releasePointerCapture(gesture.pointerId);
+      }
+
+      // A press that never became a drag: let the click through for selection
+      if (pendingDragRef.current) {
+        pendingDragRef.current = null;
+        return;
+      }
+
+      // Suppress the click event that follows pointer up after a real drag.
+      // This prevents selection from triggering after drag-and-drop. A
+      // cancelled or interrupted gesture is followed by no click.
+      if (drop) {
+        const cleanup = () => {
+          document.removeEventListener('click', suppressClick, true);
+        };
+        const suppressClick = (clickEvent: MouseEvent) => {
+          clickEvent.stopPropagation();
+          clickEvent.preventDefault();
+          cleanup();
+        };
+        document.addEventListener('click', suppressClick, true);
+
+        // Safety cleanup: when pointer capture caused significant movement
+        // (a real drag), the browser won't synthesize a click event, leaving
+        // the listener to swallow the user's next intentional click. Remove
+        // it after the current event cycle — any synthetic click from this
+        // pointer-up sequence fires synchronously before setTimeout(0).
+        setTimeout(cleanup, 0);
+      }
+
+      finishDrag(drop);
+    };
+  });
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (disabled || e.button !== 0) return;
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handler is attached to the draggable HTMLElement; React types currentTarget as Element
       const element = e.currentTarget as HTMLElement;
       // A second finger landing while the first still holds the element is
       // not a new gesture.
@@ -530,9 +545,11 @@ export function useDragSource(
       if (isCtrlD || isAltSpace) {
         e.preventDefault();
         e.stopPropagation();
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handler is attached to the draggable HTMLElement; React types currentTarget as Element
         startKeyboardDrag(e.currentTarget as HTMLElement);
       } else if (e.key === 'Enter') {
         // Trigger click for selection - role="button" elements need this
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handler is attached to the draggable HTMLElement; React types currentTarget as Element
         (e.currentTarget as HTMLElement).click();
       }
     },

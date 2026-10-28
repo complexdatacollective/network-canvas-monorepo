@@ -41,6 +41,13 @@ const graphicVariants = cva({
   defaultVariants: { size: 'default' },
 });
 
+const edgeIconStyle = (
+  color: ColorReference,
+): React.CSSProperties & Record<`--${string}`, string> => ({
+  '--icon-tone-primary': resolveProtocolColor(color, { dark: true }),
+  '--icon-tone-secondary': resolveProtocolColor(color),
+});
+
 const renderIcon = (
   entity: string,
   color?: ColorReference,
@@ -55,6 +62,7 @@ const renderIcon = (
         <Node
           presentational
           label=""
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the validated codebook only holds node colours for a node type, though ColorReference also spans the edge and variable palettes
           color={color as NodeColorSequence | undefined}
           shape={shape}
           size={nodeSizeMap[size]}
@@ -65,16 +73,7 @@ const renderIcon = (
         <Icon
           name="links"
           className={edgeSizeMap[size]}
-          style={
-            color
-              ? ({
-                  '--icon-tone-primary': resolveProtocolColor(color, {
-                    dark: true,
-                  }),
-                  '--icon-tone-secondary': resolveProtocolColor(color),
-                } as React.CSSProperties)
-              : undefined
-          }
+          style={color ? edgeIconStyle(color) : undefined}
         />
       );
     case 'asset':

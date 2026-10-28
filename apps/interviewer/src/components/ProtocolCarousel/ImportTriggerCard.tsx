@@ -8,7 +8,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { ExternalLink } from '../ExternalLink';
-import { CARD_RADIUS_PX, cardBase, cardHeadingSizeClass } from './cardStyles';
+import { cardBase, cardHeadingSizeClass } from './cardStyles';
 
 const messages = defineMessages({
   chooseANetcanvasProtocolFile: {
@@ -73,11 +73,10 @@ export function ImportTriggerCard({
   const intl = useAppIntl();
   const importHeading = intl.formatMessage(messages.importAProtocol);
   const rootProps = getRootProps({
-    // Match the protocol card's radius so the visual footprint (and
-    // therefore perceived size) is identical.
-    style: { borderRadius: CARD_RADIUS_PX },
     className: cx(
-      'text-text/80 effect-shadow-xl @container relative h-full w-full border-[3px] border-dashed transition-colors duration-180',
+      // `rounded` is the protocol card's radius, so the visual footprint (and
+      // therefore perceived size) is identical.
+      'text-text/80 effect-shadow-xl @container relative h-full w-full rounded border-[3px] border-dashed transition-colors duration-180',
       isDragActive
         ? 'border-sea-green bg-[color-mix(in_oklab,oklch(var(--sea-green))_20%,var(--surface))]'
         : 'border-outline bg-surface/50',

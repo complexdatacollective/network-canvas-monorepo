@@ -1,11 +1,12 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { surfaceVariants } from '../../../layout/Surface';
 import { usePortalContainer } from '../../../PortalContainer';
+import { usePrefersReducedMotion } from '../../../reducedMotion';
 import { cx } from '../../../utils/cva';
 
 // A transient value bubble that rides the slider thumb while the control is
@@ -25,7 +26,7 @@ export default function ScaleValuePopover({
   children: ReactNode;
 }) {
   const container = usePortalContainer();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const positionerRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {

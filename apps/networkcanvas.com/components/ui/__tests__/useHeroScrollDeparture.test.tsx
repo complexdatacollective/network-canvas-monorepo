@@ -24,10 +24,13 @@ const motion = vi.hoisted(() => {
 });
 
 vi.mock('motion/react', () => ({
-  useReducedMotion: () => motion.reducedMotion,
   useScroll: motion.useScroll,
   useSpring: motion.useSpring,
   useTransform: motion.useTransform,
+}));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motion.reducedMotion,
 }));
 
 function HeroDepartureFixture() {

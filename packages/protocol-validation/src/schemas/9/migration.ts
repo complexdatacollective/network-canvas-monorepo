@@ -1197,8 +1197,13 @@ const addSuppliedStageText = (
       let container: Record<string, unknown> = stage;
       for (const key of path.slice(0, -1)) {
         const next = container[key];
-        if (!isRecord(next)) container[key] = {};
-        container = container[key] as Record<string, unknown>;
+        if (isRecord(next)) {
+          container = next;
+        } else {
+          const created: Record<string, unknown> = {};
+          container[key] = created;
+          container = created;
+        }
       }
       const last = path.at(-1);
       if (last !== undefined) container[last] = value;

@@ -15,6 +15,8 @@ import type { CanvasStoreApi } from './useCanvasStore';
 
 // Hulls are coloured by option position, so an option's value is all a hull
 // reads from it.
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 type GroupOption = Pick<VariableOption, 'value'>;
 
 type ConvexHullLayerProps = {
@@ -121,7 +123,7 @@ export default function ConvexHullLayer({
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) return undefined;
 
     // Clean up previous elements
     for (const el of elementsRef.current) {
@@ -136,15 +138,11 @@ export default function ConvexHullLayer({
     );
     groupsRef.current = groups;
 
-    const svgNS = svg.namespaceURI;
     const elementMap = new Map<VariableOptionValue, SVGElement>();
 
     for (const [value, group] of groups) {
       // Create a polygon for each group (will be updated to circle/ellipse as needed)
-      const el = document.createElementNS(
-        svgNS,
-        'polygon',
-      ) as SVGPolygonElement;
+      const el = document.createElementNS(SVG_NS, 'polygon');
       el.setAttribute('fill', `var(--cat-${group.colorIndex})`);
       el.setAttribute('stroke', `var(--cat-${group.colorIndex})`);
       el.setAttribute('opacity', '0.45');

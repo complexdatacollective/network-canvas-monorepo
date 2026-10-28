@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 /**
  * Managed properties added to array items for internal tracking.
@@ -46,9 +46,11 @@ type _ManagedPropertyKeysAreExhaustive = AssertNever<
 export const stripManagedProperties = <T extends Record<string, unknown>>(
   item: Partial<WithItemProperties<T>> | undefined,
 ): T => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an empty object is the T with no fields set; T is generic, so TypeScript cannot show {} satisfies it
   if (!item) return {} as T;
   const value: Record<string, unknown> = { ...item };
   for (const key of MANAGED_PROPERTY_KEYS) delete value[key];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- item minus the managed keys is the consumer's T; deleting keys from a Record cannot be tracked in the type
   return value as T;
 };
 
@@ -366,7 +368,7 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
   config?: UseArrayFieldItemsConfig<T>,
 ): UseArrayFieldItemsReturn<T> {
   // WeakMap ties internal ID lifespan to the original object for GC
-  const idMapRef = useRef<WeakMap<T, string>>(new WeakMap());
+  const [idMap] = useState(() => new WeakMap<T, string>());
 
   // Resolve an ID already associated with an item without creating one.
   const getKnownInternalId = useCallback(
@@ -379,9 +381,9 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
         }
       }
 
-      return idMapRef.current.get(item);
+      return idMap.get(item);
     },
-    [config],
+    [config, idMap],
   );
 
   // Helper to get or create an internal ID for an item
@@ -391,10 +393,10 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
       if (knownId) return knownId;
 
       const internalId = crypto.randomUUID();
-      idMapRef.current.set(item, internalId);
+      idMap.set(item, internalId);
       return internalId;
     },
-    [getKnownInternalId],
+    [getKnownInternalId, idMap],
   );
 
   // Combined state for atomic updates (prevents animation flickering)
@@ -405,7 +407,15 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
     })),
     editingId: null,
   }));
+  // The state and value as of the latest commit, for handlers that run before
+  // the next render. `replaceState` also writes the ref, so handlers called in
+  // the same tick see each other's updates.
   const stateRef = useRef(state);
+  const valueRef = useRef(value);
+  useLayoutEffect(() => {
+    stateRef.current = state;
+    valueRef.current = value;
+  });
   const replaceState = useCallback((nextState: ItemsState<T>) => {
     stateRef.current = nextState;
     setState(nextState);
@@ -437,7 +447,7 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
       const newConfirmed: WithItemProperties<T>[] = nextValue.map(
         (item, index) => {
           const internalId = internalIds[index]!;
-          idMapRef.current.set(item, internalId);
+          idMap.set(item, internalId);
           return { ...item, _internalId: internalId };
         },
       );
@@ -457,16 +467,16 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
         editingId: editingStillExists ? currentState.editingId : null,
       };
     },
-    [getKnownInternalId],
+    [getKnownInternalId, idMap],
   );
 
   const { items, editingId } = state;
 
   // Sync with external value changes
-  const prevValueRef = useRef(value);
-  if (value !== prevValueRef.current) {
-    prevValueRef.current = value;
-    replaceState(stateForValue(value, stateRef.current));
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
+    setState(stateForValue(value, state));
   }
 
   // Map internal IDs to their position in the committed value. Derived from
@@ -511,7 +521,7 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
         .map((item) => {
           const stripped = stripManagedProperties<T>(item);
           // Preserve the ID mapping for the stripped object so it's found on next render
-          idMapRef.current.set(stripped, item._internalId);
+          idMap.set(stripped, item._internalId);
           return stripped;
         });
 
@@ -540,10 +550,10 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
       // asking: left alone, a row an add put on screen stays there belonging
       // to no list, and every later edit of it is refused too.
       if (onChange?.(confirmedItems, described) === false) {
-        replaceState(stateForValue(prevValueRef.current, stateRef.current));
+        replaceState(stateForValue(valueRef.current, stateRef.current));
       }
     },
-    [onChange, replaceState, stateForValue],
+    [onChange, replaceState, stateForValue, idMap],
   );
 
   // Start adding a new item (creates draft and sets editing state)

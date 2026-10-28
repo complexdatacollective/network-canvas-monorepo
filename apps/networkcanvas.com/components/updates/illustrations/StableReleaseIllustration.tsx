@@ -467,6 +467,8 @@ function NamePill({ name, x, k }: { name: string; x: number; k: number }) {
   );
 }
 
+const scaleOf = (k: number) => Math.max(0.001, k);
+
 export function StableReleaseIllustration() {
   const { ref, time } = useIllustrationClock(STILL_TIME);
   const clipPrefix = `stable-${useId().replace(/[^\w-]/g, '')}`;
@@ -487,7 +489,6 @@ export function StableReleaseIllustration() {
   const pills = DEVICE_STARTS.map(
     (start) => backOut(segment(t, start + 0.3, 0.4)) * (1 - out),
   );
-  const scaleOf = (k: number) => Math.max(0.001, k);
   const tabletBob = bobOf(2, 6);
 
   const badgeIn = segment(t, BADGE_START, 0.4);

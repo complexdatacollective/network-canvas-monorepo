@@ -49,10 +49,11 @@
         "ignoreRestSiblings": true
       }
     ],
+    "typescript/consistent-return": "error",
     "typescript/no-explicit-any": "warn",
     "typescript/no-non-null-assertion": "off",
     "typescript/no-unnecessary-type-assertion": "off",
-    "typescript/no-unsafe-type-assertion": "warn",
+    "typescript/no-unsafe-type-assertion": "error",
     "typescript/no-useless-empty-export": "off",
     "typescript/switch-exhaustiveness-check": "warn",
     "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
@@ -67,6 +68,7 @@
     "typescript/restrict-template-expressions": "warn",
     "typescript/no-implied-eval": "warn",
     "typescript/no-base-to-string": "warn",
+    "unicorn/consistent-function-scoping": "error",
     "unicorn/no-thenable": "warn",
     "unicorn/require-post-message-target-origin": "off",
 
@@ -76,7 +78,31 @@
     "import/no-unassigned-import": "off",
     "import/default": "off",
 
-    "promise/no-callback-in-promise": "warn"
+    "promise/no-callback-in-promise": "warn",
+
+    // Reduced motion is decided once, by AnimationProvider (fresco-ui), which
+    // follows the operating system unless a host overrides it. Motion's own
+    // hook bypasses that decision. `scripts/buildtime/check-reduced-motion.mjs`
+    // covers what an import rule cannot see: `matchMedia` and CSS media
+    // queries. A config that sets `no-restricted-imports` for its own files
+    // replaces this list, so it repeats these entries.
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "motion/react",
+            "importNames": ["useReducedMotion"],
+            "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+          },
+          {
+            "name": "framer-motion",
+            "importNames": ["useReducedMotion"],
+            "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+          }
+        ]
+      }
+    ]
   },
   "overrides": [
     {
@@ -153,6 +179,18 @@
         "**/e2e/**"
       ],
       "rules": { "typescript/no-floating-promises": "off" }
+    },
+    {
+      // The Studio server is written as Effect generators, which end a
+      // failing path with `return yield* new SomeError()` (Effect's own
+      // guidance, so TypeScript knows execution stops there) and let the
+      // success path fall off the end. consistent-return reads that as a
+      // function returning a value on one path and nothing on another, and
+      // the only rewrites it accepts return the last effect's value or add
+      // dead code. TypeScript still checks every path of a function with a
+      // declared return type.
+      "files": ["apps/studio/api/**"],
+      "rules": { "typescript/consistent-return": "off" }
     },
     {
       // Message-descriptor hygiene, wherever descriptors are authored. A
@@ -239,6 +277,16 @@
               {
                 "name": "process",
                 "message": "Use the `process` global here. Importing it hides `process.env` from the no-process-env rule that keeps src/env.ts the only environment boundary."
+              },
+              {
+                "name": "motion/react",
+                "importNames": ["useReducedMotion"],
+                "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+              },
+              {
+                "name": "framer-motion",
+                "importNames": ["useReducedMotion"],
+                "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
               }
             ]
           }

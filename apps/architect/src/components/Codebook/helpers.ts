@@ -251,9 +251,11 @@ export const sortByLabel = (
  * @param {Record<string, unknown>} mergeProps Props to merge with the result
  * @returns {function} Function that can be used in map operations
  */
-export const makeGetEntityWithUsage = (
+export const makeGetEntityWithUsage = <
+  MergeProps extends Record<string, unknown>,
+>(
   index: Record<string, unknown>,
-  mergeProps: Record<string, unknown>,
+  mergeProps: MergeProps,
   intl: IntlShape = defaultIntl,
 ) =>
   createSelector(
@@ -307,6 +309,13 @@ type EntityProperties = {
   variables: Record<string, VariableWithUsage>;
 };
 
+// Type guard to check if entityType has name and color (nodes and edges do, ego does not)
+const hasNameAndColor = (
+  def: NodeDefinition | EdgeDefinition | EgoDefinition,
+): def is NodeDefinition | EdgeDefinition => {
+  return 'name' in def && 'color' in def;
+};
+
 /**
  * Returns entity meta data for use in the codebook.
  * @param {*} state
@@ -323,13 +332,6 @@ export const getEntityProperties = (
   if (!entityType) {
     return null;
   }
-
-  // Type guard to check if entityType has name and color (nodes and edges do, ego does not)
-  const hasNameAndColor = (
-    def: NodeDefinition | EdgeDefinition | EgoDefinition,
-  ): def is NodeDefinition | EdgeDefinition => {
-    return 'name' in def && 'color' in def;
-  };
 
   const isEgo = entity === 'ego';
   const variables = entityType.variables;

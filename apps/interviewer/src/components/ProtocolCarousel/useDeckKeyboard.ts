@@ -32,7 +32,7 @@ export function useDeckKeyboard({
   onActivate,
 }: DeckKeyboardOptions) {
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         if (isEditableTarget(event.target)) return;

@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getAssetById } from '~/utils/assetUtils';
 
-import { getGeoJsonVariables } from '../assetTools';
+import {
+  getGeoJsonVariables,
+  readGeoJsonFeatureProperties,
+} from '../assetTools';
 
 vi.mock('~/utils/assetUtils', () => ({
   getAssetById: vi.fn(),
@@ -61,5 +64,41 @@ describe('getGeoJsonVariables', () => {
     );
 
     await expect(getGeoJsonVariables('asset-3')).resolves.toEqual([]);
+  });
+});
+
+describe('readGeoJsonFeatureProperties', () => {
+  it('returns the properties of every feature that has them', () => {
+    const text = JSON.stringify({
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { name: 'A' } },
+        { type: 'Feature' },
+        { type: 'Feature', properties: null },
+        { type: 'Feature', properties: { name: 'B', code: '02' } },
+      ],
+    });
+
+    expect(readGeoJsonFeatureProperties(text)).toEqual([
+      { name: 'A' },
+      { name: 'B', code: '02' },
+    ]);
+  });
+
+  it.each([
+    ['a file with no features', { type: 'FeatureCollection' }],
+    ['features that are not a list', { features: { type: 'Feature' } }],
+    ['a file that is not an object', [1, 2, 3]],
+    ['null', null],
+  ])('returns no rows for %s', (_label, geoJson) => {
+    expect(readGeoJsonFeatureProperties(JSON.stringify(geoJson))).toEqual([]);
+  });
+
+  it('skips entries of the feature list that are not objects', () => {
+    const text = JSON.stringify({
+      features: [null, 'x', { properties: { name: 'A' } }],
+    });
+
+    expect(readGeoJsonFeatureProperties(text)).toEqual([{ name: 'A' }]);
   });
 });

@@ -183,14 +183,25 @@
         }
       }
 
+      /* Reduced motion follows the operating system until the app's
+         AnimationProvider mounts and then that provider's setting, which it
+         puts on <html> as data-reduced-motion when it overrides the system. */
+      /* No spin, no split, and no fade-out — the loader hides instantly. */
+      :root[data-reduced-motion='always'] .boot-spinner,
+      :root[data-reduced-motion='always'] .boot-spinner__scale,
+      :root[data-reduced-motion='always'] .boot-half--top {
+        animation: none;
+      }
+      :root[data-reduced-motion='always'] #boot-loader {
+        transition: none;
+      }
       @media (prefers-reduced-motion: reduce) {
-        /* No spin, no split, and no fade-out — the loader hides instantly. */
-        .boot-spinner,
-        .boot-spinner__scale,
-        .boot-half--top {
+        :root:not([data-reduced-motion='never']) .boot-spinner,
+        :root:not([data-reduced-motion='never']) .boot-spinner__scale,
+        :root:not([data-reduced-motion='never']) .boot-half--top {
           animation: none;
         }
-        #boot-loader {
+        :root:not([data-reduced-motion='never']) #boot-loader {
           transition: none;
         }
       }

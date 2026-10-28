@@ -27,11 +27,15 @@ type AnalyticsListenerArgs = {
   tracker: Tracker;
 };
 
+const idsOf = (entities: readonly { _uid: string }[]) =>
+  new Set(entities.map((entity) => entity[entityPrimaryKeyProperty]));
+
 export function createAnalyticsListenerMiddleware({
   tracker,
 }: AnalyticsListenerArgs) {
   const analyticsListenerMiddleware = createListenerMiddleware();
   const startAppListening =
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Redux Toolkit's documented way to type startListening for this store
     analyticsListenerMiddleware.startListening as TypedStartListening<
       RootState,
       AppDispatch
@@ -114,8 +118,6 @@ export function createAnalyticsListenerMiddleware({
       const before = listenerApi.getOriginalState().session.network;
       const after = listenerApi.getState().session.network;
       const { codebook } = listenerApi.getState().protocol;
-      const idsOf = (entities: readonly { _uid: string }[]) =>
-        new Set(entities.map((entity) => entity[entityPrimaryKeyProperty]));
       const nodesBefore = idsOf(before?.nodes ?? []);
       const nodesAfter = idsOf(after?.nodes ?? []);
       const edgesBefore = idsOf(before?.edges ?? []);

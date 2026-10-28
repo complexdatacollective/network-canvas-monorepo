@@ -1,5 +1,4 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { compose } from '@reduxjs/toolkit';
 import { useEffect, useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -70,11 +69,10 @@ const Network = ({
     const result = networkReader(assetName, assetId);
     if (result) {
       void (async () => {
-        const networkData: unknown = await result;
+        const data = await result;
         if (cancelled) {
           return;
         }
-        const data = networkData as Partial<NetworkType> | undefined;
         setLoaded({
           assetId,
           assetName,
@@ -112,8 +110,4 @@ const Network = ({
     </>
   );
 };
-export default compose(withAssetPath)(
-  Network as unknown as React.ComponentType<unknown>,
-) as unknown as React.ComponentType<{
-  id: string;
-}>;
+export default withAssetPath(Network);

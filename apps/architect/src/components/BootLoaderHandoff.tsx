@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+import { prefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+
 // Matches the boot loader's opacity transition in index.html (400ms), plus a
 // buffer for the removal fallback below.
 const BOOT_LOADER_FADE_MS = 400;
@@ -11,11 +13,7 @@ const dismissBootLoader = () => {
   // backstop, so bail if it's already gone or already fading.
   if (!loader || loader.classList.contains('boot-loader--hidden')) return;
 
-  const prefersReducedMotion = window.matchMedia(
-    '(prefers-reduced-motion: reduce)',
-  ).matches;
-
-  if (prefersReducedMotion) {
+  if (prefersReducedMotion(loader)) {
     loader.remove();
     return;
   }

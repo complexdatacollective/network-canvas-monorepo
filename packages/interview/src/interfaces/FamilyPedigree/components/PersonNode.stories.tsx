@@ -33,7 +33,6 @@ const meta: Meta<typeof PersonNode> = {
     color: 'node-color-seq-1',
     shape: 'diamond',
     selected: false,
-    menuOpen: false,
     linking: false,
     adopted: true,
     hasMissingDetails: true,

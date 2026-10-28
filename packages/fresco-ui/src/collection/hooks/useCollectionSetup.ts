@@ -82,7 +82,7 @@ export function useCollectionSetup<T>(
   // the ResizeObserver to disconnect/reconnect on every width change.
   useEffect(() => {
     const element = containerRef?.current;
-    if (!element) return;
+    if (!element) return undefined;
 
     // Get initial width immediately
     const initialWidth = element.offsetWidth;
@@ -131,35 +131,32 @@ export function useCollectionSetup<T>(
     [options.disabledKeys],
   );
 
-  // Update layout with current items and container width for spatial navigation
-  // This populates layoutInfos so SpatialKeyboardDelegate can use item positions
-  useMemo(() => {
-    if (containerWidth === undefined || containerWidth <= 0) return;
-
-    // Build items map and ordered keys from collection
-    // Collection nodes are already Node<T> objects with all required properties
-    const items = new Map<Key, Node<unknown>>();
-    const orderedKeys: Key[] = [];
-    for (const node of collection) {
-      items.set(node.key, node as Node<unknown>);
-      orderedKeys.push(node.key);
-    }
-
-    options.layout.setItems(items, orderedKeys);
-    options.layout.update({ containerWidth });
-  }, [options.layout, collection, containerWidth]);
-
   // Create keyboard delegate for navigation using layout-specific implementation
   // Pass containerWidth so GridLayout can calculate the correct column count
-  const keyboardDelegate = useMemo(
-    () =>
-      options.layout.getKeyboardDelegate(
-        collection,
-        disabledKeysSet,
-        containerWidth,
-      ),
-    [options.layout, collection, disabledKeysSet, containerWidth],
-  );
+  const keyboardDelegate = useMemo(() => {
+    // First update the layout with the current items and container width for
+    // spatial navigation. This populates layoutInfos so SpatialKeyboardDelegate
+    // can use item positions, and the renderers below read the same layout.
+    if (containerWidth !== undefined && containerWidth > 0) {
+      // Build items map and ordered keys from collection
+      // Collection nodes are already Node<T> objects with all required properties
+      const items = new Map<Key, Node<unknown>>();
+      const orderedKeys: Key[] = [];
+      for (const node of collection) {
+        items.set(node.key, node as Node<unknown>);
+        orderedKeys.push(node.key);
+      }
+
+      options.layout.setItems(items, orderedKeys);
+      options.layout.update({ containerWidth });
+    }
+
+    return options.layout.getKeyboardDelegate(
+      collection,
+      disabledKeysSet,
+      containerWidth,
+    );
+  }, [options.layout, collection, disabledKeysSet, containerWidth]);
 
   // Setup keyboard navigation
   const { collectionProps } = useSelectableCollection({

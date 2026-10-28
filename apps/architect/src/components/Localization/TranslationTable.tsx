@@ -263,6 +263,9 @@ type ShownGroup = {
 
 const NAME_SEPARATOR = ' › ';
 
+const isMissingIn = (row: ShownRow, locale: LocaleTag) =>
+  !Object.hasOwn(row.row.value, locale);
+
 const renderMuted = (chunks: ReactNode[]) => (
   <span className="text-current/70">{chunks}</span>
 );
@@ -369,7 +372,7 @@ const useGroupHeadingHeights = () => {
 
   return useCallback(
     (heading: HTMLTableCellElement | null) => {
-      if (!heading) return;
+      if (!heading) return undefined;
       observer.observe(heading);
       return () => observer.unobserve(heading);
     },
@@ -403,7 +406,7 @@ const useColumnHeadingWidths = () => {
 
   return useCallback(
     (contents: HTMLDivElement | null) => {
-      if (!contents) return;
+      if (!contents) return undefined;
       observer.observe(contents);
       return () => observer.unobserve(contents);
     },
@@ -485,8 +488,12 @@ const TranslationTable = ({
   const refusedCommit = useRefusedNestedCommit();
   const { isSubmitting } = useFormMeta();
   // The refused save waiting for its first invalid cell to be on screen.
-  const [unfocusedErrors, setUnfocusedErrors] =
-    useState<FlattenedErrors | null>(null);
+  // Each refusal is its own object, so a repeated refusal with the same errors
+  // still asks for focus; the layout effect below handles each request once.
+  const [unfocusedErrors, setUnfocusedErrors] = useState<{
+    errors: FlattenedErrors;
+  } | null>(null);
+  const focusedErrors = useRef<typeof unfocusedErrors>(null);
 
   // A cell Save refused is brought into view, whatever hid it, before it is
   // given focus: its row is kept past the search and filter, and its
@@ -508,13 +515,14 @@ const TranslationTable = ({
         return next;
       });
     }
-    setUnfocusedErrors(errors);
+    setUnfocusedErrors({ errors });
   };
 
   useLayoutEffect(() => {
     if (unfocusedErrors === null) return;
-    focusFirstError(unfocusedErrors, tableRef.current, formScope);
-    setUnfocusedErrors(null);
+    if (focusedErrors.current === unfocusedErrors) return;
+    focusedErrors.current = unfocusedErrors;
+    focusFirstError(unfocusedErrors.errors, tableRef.current, formScope);
   }, [unfocusedErrors, formScope]);
 
   const { formProps, formErrors } = useForm({
@@ -563,8 +571,6 @@ const TranslationTable = ({
       row.name,
       ...visible.map((locale) => translationText(row.row.value, locale)),
     ].some((text) => text.toLocaleLowerCase(intl.locale).includes(needle));
-  const isMissingIn = (row: ShownRow, locale: LocaleTag) =>
-    !Object.hasOwn(row.row.value, locale);
   const passesFilter = (row: ShownRow) => {
     switch (filter.kind) {
       case 'all':
@@ -573,6 +579,10 @@ const TranslationTable = ({
         return visible.some((locale) => isMissingIn(row, locale));
       case 'language':
         return isMissingIn(row, filter.locale);
+      default: {
+        const unhandled: never = filter;
+        throw new Error('Unhandled missing filter', { cause: unhandled });
+      }
     }
   };
 
@@ -674,7 +684,16 @@ const TranslationTable = ({
   };
 
   const tableStyle: TableStyle = { '--translation-columns': visible.length };
-  let rowIndex = -1;
+  // Rows are numbered across groups, so arrow keys move between them; each
+  // group's numbering starts where the previous group's ended.
+  const numberedGroups: ((typeof shownGroups)[number] & {
+    firstRow: number;
+  })[] = [];
+  let nextRow = 0;
+  for (const group of shownGroups) {
+    numberedGroups.push({ ...group, firstRow: nextRow });
+    nextRow += group.rows.length;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -916,7 +935,7 @@ const TranslationTable = ({
             </tr>
           </tbody>
         )}
-        {shownGroups.map((group, groupIndex) => {
+        {numberedGroups.map((group, groupIndex) => {
           const groupId = `${baseId}-group-${groupIndex}`;
           return (
             <tbody
@@ -938,9 +957,8 @@ const TranslationTable = ({
                   </div>
                 </th>
               </tr>
-              {group.rows.map((row) => {
-                rowIndex += 1;
-                const currentRow = rowIndex;
+              {group.rows.map((row, rowPosition) => {
+                const currentRow = group.firstRow + rowPosition;
                 const rowId = `${groupId}-row-${currentRow}`;
                 return (
                   <tr

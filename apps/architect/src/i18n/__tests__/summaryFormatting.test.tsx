@@ -58,7 +58,7 @@ it('reorders both printed attribute surfaces after a locale change without chang
     stages: ['authored-stage'],
   }));
   const variables = Object.fromEntries(
-    index.map(({ id, name }) => [id, { name, type: 'text' }]),
+    index.map(({ id, name }) => [id, { name, type: 'text' as const }]),
   );
   const original = structuredClone({ index, variables });
   const { container } = render(

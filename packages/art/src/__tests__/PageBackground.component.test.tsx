@@ -134,7 +134,6 @@ vi.mock('motion/react', () => ({
       return <div {...props} />;
     },
   },
-  useReducedMotion: () => motionState.reduced,
   useScroll: () => ({
     scrollY: motionState.scrollY,
     scrollYProgress: motionState.scrollYProgress,
@@ -156,6 +155,10 @@ vi.mock('motion/react', () => ({
     ),
   useMotionTemplate: () => 'none',
   animate: animateMock,
+}));
+
+vi.mock('@codaco/fresco-ui/reducedMotion', () => ({
+  usePrefersReducedMotion: () => motionState.reduced,
 }));
 
 vi.mock('@codaco/art/NetworkWeaveBackground', () => ({

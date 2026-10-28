@@ -17,8 +17,9 @@ version: 2
 # falls inside the cooldown of only some of them (storybook 10.6.3, Oct 2026:
 # @storybook/addon-docs shipped 80 minutes after the rest).
 #
-# Security (CVE) updates are not version updates: they still open one PR per
-# advisory, immediately.
+# Security (CVE) updates are not version updates and open immediately, outside
+# the weekly PR. The npm entry's `security` group collects them into one PR of
+# their own rather than one per advisory.
 multi-ecosystem-groups:
   dependencies:
     schedule:
@@ -57,6 +58,18 @@ updates:
     ignore:
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
+      # pnpm-workspace.yaml's overrides hold axe-core below 4.13, so Dependabot
+      # cannot move it and fails the run on it every week. Lift this with that
+      # override.
+      - dependency-name: 'axe-core'
+        versions: ['>=4.13.0']
+    # Security updates do not join the weekly group: each advisory otherwise
+    # opens its own PR the day it lands. This collects every open npm security
+    # update into one PR instead.
+    groups:
+      security:
+        applies-to: 'security-updates'
+        patterns: ['*']
 
   - package-ecosystem: 'github-actions'
     directory: '/'

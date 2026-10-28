@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef } from 'react';
+import { createElement, useEffect, useLayoutEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -84,14 +84,17 @@ const NestedDraftReclaimDialog = () => {
   const pending = blocked && nestedEditorOpen;
 
   // Read at the moment they are used, so a changed identity cannot restart the
-  // effect and stack a second dialog on the first.
+  // effect and stack a second dialog on the first. Refreshed in a layout
+  // effect, which runs before the passive effect below reads it.
   const latest = useRef({ closeDialog, openDialog });
-  latest.current = { closeDialog, openDialog };
+  useLayoutEffect(() => {
+    latest.current = { closeDialog, openDialog };
+  });
 
   const openDialogId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!pending) return;
+    if (!pending) return undefined;
     let cancelled = false;
 
     const ask = async () => {

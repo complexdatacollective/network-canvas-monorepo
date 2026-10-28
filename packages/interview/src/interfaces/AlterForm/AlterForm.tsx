@@ -88,6 +88,7 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
         form={stage.form}
         moveForward={moveForward}
         renderHeader={renderHeader}
+        headerPlacement="start"
         form_kind="alter"
       />
     </motion.div>

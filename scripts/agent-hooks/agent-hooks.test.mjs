@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'vitest';
 
 import {
+  acquireLock,
   changeFingerprint,
   changedFiles,
   classifyGateCommand,
@@ -36,8 +37,10 @@ import {
   parsePorcelainZ,
   parseTypecheckOutput,
   previousPackageNames,
+  reclaimStaleLock,
   resolveRepoRoot,
   splitSegments,
+  typecheckLockPath,
   stripEmbeddedText,
   takeCommandStart,
   updateState,
@@ -49,6 +52,14 @@ const repoRoot = path.resolve(
   '..',
   '..',
 );
+
+const isPackagesOrWorkersDir = (dir) =>
+  /^\/repo\/(packages|workers)\/[^/]+$/.test(dir);
+const isPackagesChildDir = (dir) => /^\/repo\/packages\/[^/]+$/.test(dir);
+const isInterviewDir = (dir) => dir === '/repo/packages/interview';
+const readNoPackage = () => null;
+const insideAppsOrPackages = (dir) => /\/(apps|packages)\/[^/]+/.test(dir);
+const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
 
 test('extracts the edited path from Claude Code Edit/Write/MultiEdit/NotebookEdit events', () => {
   const root = '/repo';
@@ -193,8 +204,6 @@ test('maps changed files to workspace packages with a typecheck script', () => {
     },
   };
   const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
-  const isWorkspaceDir = (dir) =>
-    /^\/repo\/(packages|workers)\/[^/]+$/.test(dir);
   const result = packagesForFiles(
     [
       '/repo/packages/interview/src/deep/nested/File.tsx',
@@ -203,7 +212,7 @@ test('maps changed files to workspace packages with a typecheck script', () => {
       '/repo/docs/guide.md',
     ],
     '/repo',
-    { readPackage, isWorkspaceDir },
+    { readPackage, isWorkspaceDir: isPackagesOrWorkersDir },
   );
   assert.deepEqual(result, {
     packages: ['@codaco/interview'],
@@ -228,20 +237,22 @@ test('the script option selects packages by a different manifest script', () => 
     },
   };
   const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
-  const isWorkspaceDir = (dir) => /^\/repo\/packages\/[^/]+$/.test(dir);
   const files = [
     '/repo/packages/a/src/x.ts',
     '/repo/packages/b/src/y.ts',
     '/repo/packages/c/src/z.ts',
   ];
   assert.deepEqual(
-    packagesForFiles(files, '/repo', { readPackage, isWorkspaceDir }).packages,
+    packagesForFiles(files, '/repo', {
+      readPackage,
+      isWorkspaceDir: isPackagesChildDir,
+    }).packages,
     ['a', 'b'],
   );
   assert.deepEqual(
     packagesForFiles(files, '/repo', {
       readPackage,
-      isWorkspaceDir,
+      isWorkspaceDir: isPackagesChildDir,
       script: 'test',
     }).packages,
     ['a', 'c'],
@@ -249,21 +260,21 @@ test('the script option selects packages by a different manifest script', () => 
 });
 
 test('a change to shared TypeScript configuration selects every package', () => {
-  const readPackage = () => null;
   for (const file of [
     '/repo/pnpm-lock.yaml',
     '/repo/package.json',
     '/repo/turbo.json',
   ]) {
     assert.equal(
-      packagesForFiles([file], '/repo', { readPackage }).all,
+      packagesForFiles([file], '/repo', { readPackage: readNoPackage }).all,
       true,
       file,
     );
   }
   assert.equal(
-    packagesForFiles(['/repo/apps/x/package.json'], '/repo', { readPackage })
-      .all,
+    packagesForFiles(['/repo/apps/x/package.json'], '/repo', {
+      readPackage: readNoPackage,
+    }).all,
     false,
   );
 });
@@ -480,8 +491,7 @@ test('option values are not counted as formatter or linter file targets', () => 
 });
 
 test('gate commands run from inside a workspace package are package-scoped', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+/.test(dir);
-  const options = { root: '/repo', packageDir };
+  const options = { root: '/repo', packageDir: insideAppsOrPackages };
   assert.equal(
     classifyGateCommand('cd apps/interviewer && pnpm typecheck', options),
     null,
@@ -569,17 +579,16 @@ test('nested manifests that are not workspace packages are climbed past', () => 
     },
   };
   const readPackage = (manifestPath) => manifests[manifestPath] ?? null;
-  const isWorkspaceDir = (dir) => dir === '/repo/packages/interview';
   const found = packageForFile(
     '/repo/packages/interview/e2e/specs/x.spec.ts',
     '/repo',
-    { readPackage, isWorkspaceDir },
+    { readPackage, isWorkspaceDir: isInterviewDir },
   );
   assert.equal(found?.manifest.name, '@codaco/interview');
   const result = packagesForFiles(
     ['/repo/packages/interview/e2e/specs/x.spec.ts'],
     '/repo',
-    { readPackage, isWorkspaceDir },
+    { readPackage, isWorkspaceDir: isInterviewDir },
   );
   assert.deepEqual(result.seeds, ['@codaco/interview']);
 });
@@ -812,7 +821,6 @@ test('ensureKnipInputs reports the generated inputs present in this tree', () =>
 });
 
 test('pnpm directory options decide whether a gate run is package-scoped', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   const options = { root: '/repo', packageDir };
   assert.equal(
     classifyGateCommand('pnpm -C . lint', options)?.kind,
@@ -877,7 +885,6 @@ test('quoted separators do not start a new command segment', () => {
 });
 
 test('subshells, brace groups, shell -c scripts and wrappers are classified', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   const options = { root: '/repo', packageDir };
   for (const refused of [
     '(pnpm lint)',
@@ -950,7 +957,6 @@ test('updateState fails fast instead of spinning when the lock cannot be created
 });
 
 test('pnpm scope flags count only before the script name; -w returns to the root', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   const options = { root: '/repo', packageDir };
   assert.equal(
     classifyGateCommand('pnpm lint --filter foo')?.kind,
@@ -1030,7 +1036,6 @@ test('backslash line continuations are joined before classification', () => {
 });
 
 test('root-wide filter selectors from the repository root are whole-tree runs', () => {
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   const options = { root: '/repo', packageDir, cwd: '/repo' };
   assert.equal(
     classifyGateCommand('pnpm --filter . typecheck', options)?.kind,
@@ -1098,7 +1103,6 @@ test('only single-package filter selectors scope a run from the repository root'
     true,
     'inside a package `.` is that package',
   );
-  const packageDir = (dir) => /\/(apps|packages)\/[^/]+$/.test(dir);
   assert.equal(
     classifyGateCommand('pnpm --filter "./**" typecheck', {
       root: '/repo',
@@ -1139,4 +1143,121 @@ test('a held lock is waited out until it turns stale rather than written past', 
     elapsed >= 9_000 && elapsed < 25_000,
     `waited for the stale lock (${elapsed} ms)`,
   );
+});
+
+test('the typecheck lock is exclusive until released', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const release = acquireLock(lock, { waitMs: 0 });
+  assert.ok(release);
+  assert.equal(acquireLock(lock, { waitMs: 300, pollMs: 50 }), null);
+  release();
+  const again = acquireLock(lock, { waitMs: 0 });
+  assert.ok(again);
+  again();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('a typecheck lock whose owner has exited is reclaimed', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const child = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+  mkdirSync(lock);
+  writeFileSync(
+    path.join(lock, 'owner.json'),
+    JSON.stringify({ pid: child.pid, token: 'dead', started: Date.now() }),
+  );
+  const release = acquireLock(lock, { waitMs: 0 });
+  assert.ok(release);
+  release();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('releasing a lock that was reclaimed by another owner leaves it alone', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const release = acquireLock(lock, { waitMs: 0 });
+  writeFileSync(
+    path.join(lock, 'owner.json'),
+    JSON.stringify({ pid: process.pid, token: 'other', started: Date.now() }),
+  );
+  release();
+  assert.equal(acquireLock(lock, { waitMs: 0 }), null);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+const gitIn = (args, cwd) => {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+};
+
+test('every worktree of a checkout shares one typecheck lock', () => {
+  const dir = realpathSync(
+    mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-')),
+  );
+  const main = path.join(dir, 'main');
+  const other = path.join(dir, 'other');
+  mkdirSync(main);
+  gitIn(['init', '-q'], main);
+  gitIn(
+    [
+      '-c',
+      'user.name=t',
+      '-c',
+      'user.email=t@t',
+      'commit',
+      '-q',
+      '--allow-empty',
+      '-m',
+      'init',
+    ],
+    main,
+  );
+  gitIn(['worktree', 'add', '-q', other], main);
+  assert.equal(typecheckLockPath(main), typecheckLockPath(other));
+  assert.equal(
+    typecheckLockPath(main),
+    path.join(main, '.git', 'agent-hooks', 'typecheck.lock'),
+  );
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('a stale judgement does not reclaim a lock that changed owner since', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const child = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+  const owner = (pid, token) =>
+    writeFileSync(
+      path.join(lock, 'owner.json'),
+      JSON.stringify({ pid, token, started: Date.now() }),
+    );
+  mkdirSync(lock);
+  // Another waiter reclaimed the dead owner's lock and acquired it; this
+  // waiter's earlier judgement named the dead owner, so it must not remove
+  // the new one.
+  owner(process.pid, 'fresh');
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), false);
+  assert.equal(
+    JSON.parse(readFileSync(path.join(lock, 'owner.json'), 'utf8')).token,
+    'fresh',
+  );
+  // While the dead owner still holds it, the same judgement reclaims it.
+  owner(child.pid, 'dead');
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), true);
+  assert.equal(acquireLock(lock, { waitMs: 0 }) !== null, true);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('a reclaim already in progress is left to its owner', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-lock-'));
+  const lock = path.join(dir, 'typecheck.lock');
+  const child = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+  mkdirSync(lock);
+  writeFileSync(
+    path.join(lock, 'owner.json'),
+    JSON.stringify({ pid: child.pid, token: 'dead', started: Date.now() }),
+  );
+  mkdirSync(`${lock}.reclaim`);
+  assert.equal(reclaimStaleLock(lock, 'dead', 60_000), false);
+  rmSync(dir, { recursive: true, force: true });
 });

@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from 'motion/react';
+import { motion, useScroll, useTransform } from 'motion/react';
 import {
   Children,
   type ComponentProps,
@@ -16,6 +11,7 @@ import {
 } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 type RevealDirection = 'left' | 'right' | 'up' | 'zoom';
 
@@ -80,7 +76,7 @@ function ScrollLinkedReveal({
   // `useHasHydrated()` is what keeps the preference out of the server markup:
   // it is `false` for the server render and the first client render alike, so
   // both agree on the plain `style` before the preference is ever consulted.
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
   const { scrollYProgress } = useScroll({
@@ -157,7 +153,7 @@ function InViewReveal({
     <motion.div
       // Nothing here consults the reduced-motion preference, and nothing may:
       // motion resolves `initial` into an inline style in the server markup,
-      // and the server cannot know the preference (`useReducedMotion()` answers
+      // and the server cannot know the preference (`usePrefersReducedMotion()` answers
       // `null` there and `true`/`false` on the client), so any prop that fed
       // off it would make this component a hydration mismatch for every visitor
       // who prefers reduced motion.

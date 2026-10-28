@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreApi } from 'zustand';
 
@@ -193,6 +193,68 @@ describe('NodeDrawer', () => {
     );
 
     await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'true'));
+  });
+
+  it('stays collapsed when a host re-renders it with a new expansion handler', async () => {
+    const nodes = ['a', 'b'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    function ControlledHost() {
+      const [expanded, setExpanded] = useState(true);
+      // A fresh handler every render, as an inline arrow in a host is.
+      return (
+        <DndStoreProvider>
+          <NodeDrawer
+            nodes={nodes}
+            draggable={false}
+            selectedNodeId="a"
+            expanded={expanded}
+            onExpandedChange={(next) => setExpanded(next)}
+          />
+        </DndStoreProvider>
+      );
+    }
+    render(<ControlledHost />);
+    const tab = screen.getByRole('button', { name: /collapse drawer/i });
+
+    // Collapsing re-renders the host, handing the drawer a new handler. The
+    // selection has not changed, so nothing reopens the drawer.
+    fireEvent.click(tab);
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'false'));
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    expect(tab).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('collapses when emptied and expands again when people arrive', async () => {
+    const people = ['a', 'b'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    const onExpandedChange = vi.fn();
+    const drawer = (nodes: NcNode[]) => (
+      <DndStoreProvider>
+        <NodeDrawer
+          nodes={nodes}
+          draggable={false}
+          expanded
+          onExpandedChange={onExpandedChange}
+        />
+      </DndStoreProvider>
+    );
+    const { rerender } = render(drawer(people));
+    expect(onExpandedChange).not.toHaveBeenCalled();
+
+    rerender(drawer([]));
+    expect(onExpandedChange).toHaveBeenCalledExactlyOnceWith(false);
+
+    rerender(drawer(people));
+    expect(onExpandedChange).toHaveBeenCalledTimes(2);
+    expect(onExpandedChange).toHaveBeenLastCalledWith(true);
   });
 
   it('scrolls a newly selected person into view along the row', async () => {

@@ -434,9 +434,7 @@ const NO_OPTIONS: VariablePickerOption[] = [];
 const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
 >;
-const SelectControl = NativeSelectField as ComponentType<
-  Record<string, unknown>
->;
+const SelectControl = NativeSelectField;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -1632,13 +1630,10 @@ type AttributeControl = Readonly<{
    * allows, or — while one is being invented — every control a form can
    * offer, grouped by the kind each group collects.
    */
-  options: readonly Readonly<
+  options: (
     | { value: string; label: string }
-    | {
-        label: string;
-        options: readonly Readonly<{ value: string; label: string }>[];
-      }
-  >[];
+    | { label: string; options: { value: string; label: string }[] }
+  )[];
   /**
    * What the control is an answer about: the chosen attribute, or the
    * invention itself. An invention stays one binding however often the

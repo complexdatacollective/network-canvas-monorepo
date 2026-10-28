@@ -10,6 +10,7 @@ import { statSync } from 'node:fs';
 import path from 'node:path';
 
 import {
+  acquireLock,
   binPath,
   changeFingerprint,
   changedFiles,
@@ -28,11 +29,16 @@ import {
   shouldSkip,
   signature,
   truncateLines,
+  typecheckLockPath,
   updateState,
   workspacePackages,
 } from './lib.mjs';
 
 const manual = process.argv.includes('--manual');
+const TYPECHECK_CONCURRENCY = 2;
+// Waiting for the lock plus the 280 s typecheck must fit inside the hook
+// timeout (600 s in .claude/settings.json and .codex/hooks.json).
+const LOCK_WAIT_MS = 300_000;
 // Manual runs have no event: the checkout is the one the command runs in,
 // whatever a project-dir variable inherited from the harness points at.
 const input = manual ? { cwd: process.cwd() } : readHookInput();
@@ -46,6 +52,7 @@ if (changed.length === 0) {
 
 const relative = (file) => path.relative(root, file);
 const problems = [];
+const notices = [];
 
 const fingerprint = changeFingerprint(root, changed);
 const state = readState(root);
@@ -70,18 +77,49 @@ if (!all && seeds.length === 0) {
     'Typecheck could not run: node_modules/.bin/turbo is missing (dependencies not installed).',
   );
 } else {
-  const args = ['run', 'typecheck', '--continue', '--output-logs=errors-only'];
+  // Two packages at a time, and one typecheck at a time across every
+  // worktree: each tsc holds up to a gigabyte or more, and a fleet of agents
+  // ending turns together otherwise starts dozens of them at once.
+  const args = [
+    'run',
+    'typecheck',
+    '--continue',
+    '--output-logs=errors-only',
+    `--concurrency=${TYPECHECK_CONCURRENCY}`,
+  ];
   if (!all) for (const name of seeds) args.push(`--filter=...${name}`);
-  const result = run(turbo, args, {
-    cwd: root,
-    env: {
-      TURBO_UI: 'stream',
-      TURBO_TELEMETRY_DISABLED: '1',
-      TURBO_NO_UPDATE_NOTIFIER: '1',
-    },
-    timeoutMs: 280_000,
-  });
-  if (result.error) {
+  let release = null;
+  let lockError = null;
+  try {
+    release = acquireLock(typecheckLockPath(root), { waitMs: LOCK_WAIT_MS });
+  } catch (error) {
+    lockError = error;
+  }
+  const result = release
+    ? run(turbo, args, {
+        cwd: root,
+        env: {
+          TURBO_UI: 'stream',
+          TURBO_TELEMETRY_DISABLED: '1',
+          TURBO_NO_UPDATE_NOTIFIER: '1',
+        },
+        timeoutMs: 280_000,
+      })
+    : null;
+  release?.();
+  if (lockError) {
+    problems.push(
+      `Typecheck could not run: the typecheck lock failed (${lockError.message}).`,
+    );
+  } else if (!result) {
+    const skipped = `Typecheck skipped: another worktree's typecheck held the lock for ${LOCK_WAIT_MS / 1000} s.`;
+    // At a turn end this is not a problem in the agent's changes, so it does
+    // not block the stop; `checked` stays false, so the next turn end checks
+    // this state again. `agent:check` is asked for a verdict, so there an
+    // unchecked typecheck is a failure, never an OK.
+    if (manual) problems.push(skipped);
+    else notices.push(skipped);
+  } else if (result.error) {
     problems.push(`Typecheck did not finish: ${result.error.message}`);
   } else {
     checked = true;
@@ -171,6 +209,10 @@ if (problems.length === 0) {
     delete current[key];
     if (!manual && checked) current.lastClean = fingerprint;
   });
+  if (notices.length > 0) {
+    if (manual) console.log(notices.join('\n'));
+    else emit({ systemMessage: notices.join('\n') });
+  }
   if (manual)
     console.log(
       `agent:check: OK (${changed.length} changed files, packages: ${all ? 'all' : seeds.join(', ') || 'none'}).`,

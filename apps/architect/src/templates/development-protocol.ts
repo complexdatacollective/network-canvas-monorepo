@@ -12,6 +12,7 @@ import developmentProtocolJson from '@codaco/protocols/development';
 // among them) into the production build, which scripts/assert-pwa-build.mjs
 // refuses.
 export const developmentProtocol =
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- bundled JSON from @codaco/protocols: TypeScript widens its literals (schemaVersion to number, type names to string), so it cannot be checked against CurrentProtocol statically; bundled-validation.test.ts validates it against the schema
   developmentProtocolJson as unknown as CurrentProtocol;
 
 // Vite emits each bundled asset file and gives us its URL. The file name matches
@@ -39,11 +40,13 @@ type ManifestEntry = { id: string; name: string; source?: string };
 // Development protocol instantiates into the library with its media intact.
 // Called lazily, only when the Development template is actually opened.
 export const loadDevelopmentAssets = async (): Promise<ExtractedAsset[]> => {
-  const entries = (
-    Object.entries(developmentProtocol.assetManifest ?? {}) as Array<
-      [string, ManifestEntry]
-    >
-  ).map(([id, entry]) => ({ ...entry, id }));
+  const entries: ManifestEntry[] = Object.entries(
+    developmentProtocol.assetManifest ?? {},
+  ).map(([id, entry]) => ({
+    id,
+    name: entry.name,
+    source: 'source' in entry ? entry.source : undefined,
+  }));
 
   return Promise.all(
     entries

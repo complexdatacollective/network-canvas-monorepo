@@ -4,7 +4,6 @@ import {
   useEffect,
   useEffectEvent,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useLocation, useRoute, useSearch } from 'wouter';
@@ -45,7 +44,6 @@ import {
 } from '@codaco/protocol-validation';
 import { Interviewer8Frame } from '~/components/Interviewer8Frame';
 import { offlineMessages } from '~/components/offlineMessages';
-import { useSettleLockForInterviewer8 } from '~/components/useSettleLockForInterviewer8';
 import { interviewerLocales } from '~/i18n/locales';
 import { browserLanguages } from '~/i18n/preference';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -223,7 +221,7 @@ type LoadState =
       initialStageOverrideIndex?: number;
     };
 
-// What this route writes for one interview: see `writeStatesRef`.
+// What this route writes for one interview: see `writeStates`.
 type SessionWriteState = {
   synced: Pick<StoredSession, 'network' | 'stageMetadata'>;
   currentStep: number;
@@ -308,7 +306,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // one slot that write would be made against the next interview's protocol
   // and step, and would leave the previous interview's network for the next
   // interview's step change to write into it.
-  const writeStatesRef = useRef(new Map<string, SessionWriteState>());
+  //
+  // One map for the life of the route, read and written only by the load,
+  // sync and step handlers — nothing renders from it.
+  const [writeStates] = useState(() => new Map<string, SessionWriteState>());
 
   // A history-back (browser button or a swipe gesture the CSS/wheel guards
   // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
@@ -336,14 +337,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   //
   // The way in is the one a schema 9 interview takes, so the researcher
   // unlocks once, here, and Interviewer 8 never shows its own lock screen on
-  // the way in: the lock is set up first when the device has none (only this
-  // app can set it up, and leaving set-up goes home), then this route's own
-  // enter step-up when requireUnlockOnEnter is set. The frame is then handed
-  // this app's key and told whether that step was satisfied.
+  // the way in: this route's own enter step-up runs when requireUnlockOnEnter
+  // is set. The frame is then handed this app's key (none on a device with no
+  // lock, where both apps keep rows in plaintext) and told whether that step
+  // was satisfied.
   //
-  // An effect event, not a load-effect dependency: settling the lock changes
-  // the auth state it reads, and re-running the load must not follow from it.
-  const { settled: lockSettled, settleLock } = useSettleLockForInterviewer8();
+  // An effect event, not a load-effect dependency: re-running the load would
+  // re-host an interview already in progress.
   const hostInInterviewer8 = useEffectEvent(
     async (
       header: { protocolHash: string; finishedAt: string | null },
@@ -351,18 +351,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     ): Promise<boolean> => {
       const interviewer = getBundledLegacyInterviewer();
       if (!interviewer) return false;
-      const settingUp = !lockSettled;
-      const settled = await settleLock();
-      // Choosing the lock just now was a fresh authentication: it stands in
-      // for the enter step. Recorded before the active check, because set-up
-      // changes the auth state and re-runs this load, and that run must not
-      // ask again.
-      if (settled && settingUp) setAuthorizedInterviewId(sessionId);
-      if (!isActive()) return true;
-      if (!settled) {
-        goHome();
-        return true;
-      }
       const settings = await getSettings();
       if (!isActive()) return true;
       const alreadyAuthorized = getAuthorizedInterviewId() === sessionId;
@@ -594,7 +582,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           ? (lastAvailableStage ?? 0)
           : session.currentStep;
       setCurrentStep(initialStep);
-      writeStatesRef.current.set(sessionId, {
+      writeStates.set(sessionId, {
         synced: {
           network: session.network,
           stageMetadata: session.stageMetadata,
@@ -639,6 +627,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     setAuthorizedInterviewId,
     reviewRequested,
     isLiveRoute,
+    writeStates,
   ]);
 
   const reviewMode = state.kind === 'ready' && state.reviewMode;
@@ -678,7 +667,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             `Sync for interview ${id} reached the handler for ${ownerId}`,
           );
         }
-        const writeState = writeStatesRef.current.get(id);
+        const writeState = writeStates.get(id);
         if (!writeState) {
           throw new Error(`Sync for interview ${id} arrived before it loaded`);
         }
@@ -694,7 +683,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       },
       { waitMs: SYNC_BATCH_MS },
     );
-  }, [sessionId]);
+  }, [sessionId, writeStates]);
 
   // Once this resolves the Shell shows its completed state in place; the
   // route stays where it is. The finish confirmation cannot be dismissed while
@@ -725,7 +714,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const handleStepChange = useCallback<StepChangeHandler>(
     (step, meta) => {
       setCurrentStep(step);
-      const writeState = writeStatesRef.current.get(sessionId);
+      const writeState = writeStates.get(sessionId);
       if (!writeState) return;
       writeState.currentStep = step;
       if (readOnly) return;
@@ -738,7 +727,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         resumeStageOverrideIndex: undefined,
       });
     },
-    [readOnly, sessionId],
+    [readOnly, sessionId, writeStates],
   );
 
   if (state.kind === 'hosted') {

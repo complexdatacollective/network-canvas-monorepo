@@ -12,16 +12,21 @@ export function scrollParent(
     const style = getComputedStyle(current);
     const overflow = style.overflow + style.overflowY + style.overflowX;
 
-    if (regex.test(overflow)) {
-      return current as HTMLElement | SVGElement;
+    if (
+      regex.test(overflow) &&
+      (current instanceof HTMLElement || current instanceof SVGElement)
+    ) {
+      return current;
     }
 
     current = current.parentNode;
   }
 
   if (typeof document !== 'undefined') {
-    return (document.scrollingElement ??
-      document.documentElement) as HTMLElement;
+    const scrollingElement = document.scrollingElement;
+    return scrollingElement instanceof HTMLElement
+      ? scrollingElement
+      : document.documentElement;
   }
 
   return null;

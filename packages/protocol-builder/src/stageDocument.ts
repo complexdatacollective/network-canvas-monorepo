@@ -148,6 +148,7 @@ export function withMissingSuppliedStageText<
     const last = path.at(-1);
     if (last !== undefined) container[last] = { ...value };
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is a copy of `stage` that only gains the supplied-text containers, so it still has T's shape
   return next as T;
 }
 
@@ -161,11 +162,8 @@ function removeAt(
     delete root[key];
     return;
   }
-  const child = root[key];
-  if (typeof child !== 'object' || child === null || Array.isArray(child)) {
-    return;
-  }
-  const container = child as Record<string, unknown>;
+  const container = root[key];
+  if (!isDictionary(container)) return;
   removeAt(container, rest);
   if (Object.keys(container).length === 0) delete root[key];
 }

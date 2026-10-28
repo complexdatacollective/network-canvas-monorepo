@@ -215,12 +215,16 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(english).toContainText('English');
   await expect(english.getByText('Default', { exact: true })).toBeVisible();
   await expect(english).toContainText('19 of 19 strings translated');
-  // With nothing to translate into, there is no translation table.
+  // The translation table is there even with nothing to translate into: it
+  // is where the protocol's own words for the interface are edited.
   const openTable = page.getByRole('link', {
     name: 'Open translation table',
     exact: true,
   });
-  await expect(openTable).toHaveCount(0);
+  await expect(openTable).toHaveAttribute(
+    'href',
+    '/protocol/localization?table=open',
+  );
   // Nor is there a choice of default.
   const defaultLanguage = page.getByRole('combobox', {
     name: 'Default language',
@@ -619,8 +623,9 @@ test('changes the protocol’s languages from the language chooser stage, and th
   await removeLanguage(page, 'French');
   await expect(stageLanguageRow(page, 'fr')).toHaveCount(0);
   await expect(name).toHaveValue('Pick a language');
-  // With one language left, there is nothing to translate into.
-  await expect(openTable).toHaveCount(0);
+  // With one language left the table stays, for the protocol's own words for
+  // the interface.
+  await expect(openTable).toBeVisible();
   await page.getByRole('button', { name: 'Finished Editing' }).click();
   await page.waitForURL(/\/protocol$/);
 

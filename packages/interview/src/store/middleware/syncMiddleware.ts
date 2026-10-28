@@ -54,6 +54,9 @@ export const createSyncMiddleware = ({
   middleware: Middleware<Record<string, never>, SyncMiddlewareState>;
   flush: (options?: { unloading?: boolean }) => Promise<boolean>;
 } => {
+  // The empty object stands for "nothing synced yet": it is only ever compared
+  // with `sessionChanged`, never read as a snapshot.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- placeholder only compared by sessionChanged, never read as a snapshot
   let lastSyncedState = {} as SessionSnapshot;
   let storeRef: { getState: () => SyncMiddlewareState } | null = null;
   // Several offers can be outstanding at once, and a host that coalesces them
@@ -66,6 +69,7 @@ export const createSyncMiddleware = ({
   // `lastSyncedState`, which is the newest one known to be durable — the gap
   // between them is what stops a completing write from re-offering state some
   // other write already has in hand.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- placeholder only compared by sessionChanged, never read as a snapshot
   let lastOfferedState = {} as SessionSnapshot;
 
   // Being durable is not enough on its own to skip a write: a write already on

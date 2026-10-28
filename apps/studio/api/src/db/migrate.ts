@@ -202,17 +202,18 @@ type Change = {
   readonly after: string | undefined;
 };
 
+const entries = (list: string) =>
+  new Map(
+    list === ''
+      ? []
+      : list.split('\n').map((line) => {
+          const tab = line.lastIndexOf('\t');
+          return [line.slice(0, tab), line.slice(tab + 1)] as const;
+        }),
+  );
+
 /** Two of `SessionState`'s line lists, as what was added, removed or changed. */
 const changesBetween = (before: string, after: string): readonly Change[] => {
-  const entries = (list: string) =>
-    new Map(
-      list === ''
-        ? []
-        : list.split('\n').map((line) => {
-            const tab = line.lastIndexOf('\t');
-            return [line.slice(0, tab), line.slice(tab + 1)] as const;
-          }),
-    );
   const was = entries(before);
   const is = entries(after);
   return [...new Set([...was.keys(), ...is.keys()])]

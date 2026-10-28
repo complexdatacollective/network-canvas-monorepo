@@ -209,7 +209,7 @@ const formatDate = (value: unknown, locale: string): string => {
       : typeof value === 'number'
         ? new Date(value)
         : instant && calendarDate(instant[1] ?? '', instant[2], instant[3])
-          ? new Date(value as string)
+          ? new Date(instant.input)
           : undefined;
   if (date === undefined || Number.isNaN(date.getTime())) return String(value);
   return dateFormat(locale, { dateStyle: 'long' }).format(date);

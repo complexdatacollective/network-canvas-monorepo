@@ -1,8 +1,13 @@
 'use client';
 
-import { get } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
-import { type ComponentProps, useEffect, useId, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
@@ -176,17 +181,14 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const pairs = useStageSelector(getNodePairs);
   const hasPairs = pairs.length > 0;
 
-  const edgeVariableOptions = (
-    edgeVariable
-      ? get(codebook, [
-          'edge',
-          createEdge,
-          'variables',
-          edgeVariable,
-          'options',
-        ])
-      : []
-  ) as VariableOptions;
+  const edgeVariableDefinition = edgeVariable
+    ? codebook.edge?.[createEdge]?.variables?.[edgeVariable]
+    : undefined;
+  const edgeVariableOptions: VariableOptions =
+    edgeVariableDefinition?.type === 'ordinal' ||
+    edgeVariableDefinition?.type === 'categorical'
+      ? edgeVariableDefinition.options
+      : [];
 
   // Collision-free decline sentinel: must never equal a real option value, so a
   // legitimate option valued e.g. '__none__' is treated as data, not decline.
@@ -320,9 +322,8 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     return false;
   });
 
-  // Auto-advance
-  const moveForwardRef = useRef(moveForward);
-  moveForwardRef.current = moveForward;
+  // Auto-advance, through the latest moveForward
+  const advanceToNext = useEffectEvent(() => moveForward());
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -331,7 +332,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       const advance = () => {
         setIsTouched(false);
         setIsChanged(false);
-        moveForwardRef.current();
+        advanceToNext();
       };
 
       if (!isChanged || shouldSkipAnimations) {

@@ -241,19 +241,31 @@ export default function LocaleSwitcher({
       listRef.current?.focus();
     }
   };
-  useEffect(() => {
+  // Followed while rendering: each change of the host's state, or of whether
+  // a choice is awaiting its outcome, shows that state afresh. Null until the
+  // first render, which shows the state the switcher mounts with.
+  const [shownFor, setShownFor] = useState<{
+    saveState: LocaleSwitcherSaveState;
+    awaiting: boolean;
+  } | null>(null);
+  if (
+    shownFor === null ||
+    shownFor.saveState !== saveState ||
+    shownFor.awaiting !== awaiting
+  ) {
+    setShownFor({ saveState, awaiting });
     if (saveState === 'idle') {
       setNotice(null);
-      return;
+    } else {
+      setNotice((current) => ({
+        state: saveState,
+        key: (current?.key ?? 0) + 1,
+      }));
+      if (saveState !== 'saving' && awaiting) setAwaiting(false);
     }
-    setNotice((current) => ({
-      state: saveState,
-      key: (current?.key ?? 0) + 1,
-    }));
-    if (saveState !== 'saving') setAwaiting(false);
-  }, [saveState, awaiting]);
+  }
   useEffect(() => {
-    if (notice?.state !== 'saved') return;
+    if (notice?.state !== 'saved') return undefined;
     const timer = setTimeout(() => setNotice(null), SAVED_NOTICE_MS);
     return () => clearTimeout(timer);
   }, [notice]);
@@ -402,6 +414,7 @@ export default function LocaleSwitcher({
                     // not line up with InputField's own prop types but are the
                     // right thing at runtime (same cast as ComboboxField).
                     const inputFieldProps =
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Base UI's input render props are native input props that InputField accepts at runtime; only the declared types differ
                       renderProps as unknown as ComponentPropsWithRef<
                         typeof InputField
                       >;

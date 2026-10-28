@@ -105,6 +105,7 @@ function NodePanel(props: NodePanelProps) {
     (metadata: DragMetadata | undefined) => {
       if (!metadata) return false;
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged node plus its itemType, set by the Node drag source (fresco-ui types it as a record)
       const node = metadata as NcNode & { itemType?: string };
 
       // Only accept nodes from the main panel

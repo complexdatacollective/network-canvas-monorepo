@@ -1,7 +1,6 @@
 import {
   AnimatePresence,
   motion,
-  useReducedMotion,
   type Transition,
   type Variants,
 } from 'motion/react';
@@ -18,6 +17,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
 import { cx } from '~/utils/cva';
 const defaultMessages = defineMessages({
@@ -168,7 +168,7 @@ const ActionToolbar = ({
     providedLeadingAriaLabel ??
     intl.formatMessage(defaultMessages.leadingAriaLabel);
   const hasLeadingActions = leadingActions !== undefined;
-  const shouldReduceMotion = useReducedMotion() ?? false;
+  const shouldReduceMotion = usePrefersReducedMotion() ?? false;
   const toolbarTransition = shouldReduceMotion
     ? { duration: 0 }
     : toolbarEnterExitSpring;

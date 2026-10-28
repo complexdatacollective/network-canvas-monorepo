@@ -1,11 +1,11 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { useId } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { SiteLink } from '~/components/ui/SiteLink';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
@@ -74,9 +74,9 @@ export function NewsTicker({
 }: {
   newsItems: readonly NewsItemRecord[];
 }) {
-  const prefersReducedMotion = useReducedMotion() === true;
+  const prefersReducedMotion = usePrefersReducedMotion() === true;
   // The branch below chooses between two different element trees, so it must
-  // not depend on the preference until after hydration: `useReducedMotion()`
+  // not depend on the preference until after hydration: `usePrefersReducedMotion()`
   // answers `null` on the server (motion learns the preference from
   // `matchMedia`, which the server cannot read) and `true` on a client that
   // prefers reduced motion. Reading it during the first client render made the

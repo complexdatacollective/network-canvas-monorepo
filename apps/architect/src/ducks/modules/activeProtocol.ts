@@ -168,12 +168,14 @@ const activeProtocolSlice = createSlice({
             action.type.startsWith('assetManifest/');
       if (shouldHandleAssetManifest) {
         const currentAssetManifest = state.assetManifest
-          ? (current(state.assetManifest) as Parameters<
+          ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- current() returns a plain copy of the draft; the sub-reducer's state type differs from it only by Immer's WritableDraft wrapper
+            (current(state.assetManifest) as Parameters<
               typeof assetManifest
             >[0])
           : undefined;
         const newAssetManifest = assetManifest(currentAssetManifest, action);
         if (newAssetManifest !== currentAssetManifest) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the sub-reducer returns the same manifest shape the draft holds, which TypeScript sees only as Immer's WritableDraft wrapper of it
           state.assetManifest = newAssetManifest as typeof state.assetManifest;
         }
       }
@@ -185,6 +187,7 @@ const activeProtocolSlice = createSlice({
           state.codebook = newCodebook;
         }
       }
+      return undefined;
     });
   },
 });

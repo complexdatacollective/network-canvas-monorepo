@@ -21,6 +21,8 @@ import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 
+const CAT_COLOR_INDEXES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
 const toggleButtonGroupOwnVariants = cva({
   base: 'w-full flex-wrap items-start justify-center',
 });
@@ -135,6 +137,10 @@ type ToggleButtonGroupProps = CreateFormFieldProps<
 > &
   VariantProps<typeof toggleButtonGroupComposedVariants>;
 
+const getCatColorIndex = (index: number) => {
+  return CAT_COLOR_INDEXES[index % 10] ?? 1;
+};
+
 export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
   const {
     id,
@@ -166,10 +172,6 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
   const isControlled = value !== undefined;
   const suppliedValues = isControlled ? value : (defaultValue ?? []);
   const currentValues = Array.isArray(suppliedValues) ? suppliedValues : [];
-
-  const getCatColorIndex = (index: number) => {
-    return ((index % 10) + 1) as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-  };
 
   return (
     <fieldset

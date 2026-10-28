@@ -1612,6 +1612,7 @@ const ProtocolSchema = z
           if ('rules' in obj && Array.isArray(obj.rules)) {
             const rules = obj.rules as unknown[];
             const duplicateNestedRuleId = findDuplicateId(
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every `rules` array reached here is a filter rule list, which the filter schema requires to carry string ids
               rules as { id: string }[],
             );
             if (duplicateNestedRuleId) {

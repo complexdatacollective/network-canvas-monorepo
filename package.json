@@ -16,6 +16,7 @@
     "check:dialog-exits": "node scripts/buildtime/check-dialog-exit-animations.mjs",
     "check:hydration-flag": "node scripts/buildtime/check-hydration-flag.mjs",
     "check:mapbox-tokens": "node scripts/buildtime/check-mapbox-tokens.mjs",
+    "check:reduced-motion": "node scripts/buildtime/check-reduced-motion.mjs",
     "verify:publish-exports": "node scripts/release/verify-publish-exports.mjs",
     "lint": "oxlint && oxfmt --check .",
     "lint:fix": "oxlint --fix --quiet && oxfmt .",
@@ -65,5 +66,5 @@
       "oxfmt --no-error-on-unmatched-pattern"
     ]
   },
-  "packageManager": "pnpm@11.20.0+sha512.9a6f330a95b66446ea088faf1521405a8a01f07fde7124cc9958dfed52d4bb436737e65b08f85f37b46fcba375092558ac51262b816844b22f63406ed166bfee"
+  "packageManager": "pnpm@11.28.6+sha512.55d90390c3b39042f1505a2697789f0256c6d95bb28bdd7cb731af1887c9f2629ef581acb9f4e4ec772024c8203c2aed22a03299b97103fdcf32668e905d0024"
 }

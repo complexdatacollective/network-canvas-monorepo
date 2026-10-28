@@ -1,12 +1,8 @@
 'use client';
 
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useSpring,
-  useTransform,
-} from 'motion/react';
+import { motion, useScroll, useSpring, useTransform } from 'motion/react';
+
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 const springSettings = [
   { stiffness: 220, damping: 34, mass: 0.28 },
@@ -23,7 +19,7 @@ const signalClasses = [
 ] as const;
 
 export function ScrollSignalProgress() {
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion();
   const { scrollYProgress } = useScroll();
   const coralProgress = useSpring(scrollYProgress, springSettings[0]);
   const serpentProgress = useSpring(scrollYProgress, springSettings[1]);

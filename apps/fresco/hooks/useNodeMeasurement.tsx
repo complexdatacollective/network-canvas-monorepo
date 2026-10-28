@@ -50,7 +50,7 @@ export function useNodeMeasurement({
 
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
-    if (!wrapper) return;
+    if (!wrapper) return undefined;
 
     const applyDimensions = (width: number, height: number) => {
       setDimensions((prev) => {

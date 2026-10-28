@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { startTransition, useState } from 'react';
+import { startTransition, useLayoutEffect, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -39,7 +39,9 @@ const switchLocale: { current: (locale: string) => void } = {
 // message that is already showing.
 function ShellLanguage() {
   const [locale, setLocale] = useState('en');
-  switchLocale.current = setLocale;
+  useLayoutEffect(() => {
+    switchLocale.current = setLocale;
+  }, []);
   return (
     <AppI18nProvider
       locale={locale}

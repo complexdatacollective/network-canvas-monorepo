@@ -108,7 +108,7 @@ export default function Section({
   const [open, setOpen] = useState(toggleable ? defaultOpen : true);
   const [isChangePending, setIsChangePending] = useState(false);
   const changePending = useRef(false);
-  const discardOnUnmount = useRef(false);
+  const discardOnUnmountRef = useRef(false);
   const formStore = useContext(FormStoreContext);
   const formRestoreVersion = useSyncExternalStore(
     formStore?.subscribe ?? subscribeToNothing,
@@ -128,7 +128,7 @@ export default function Section({
     )
       return;
     previousFormRestoreVersion.current = formRestoreVersion;
-    discardOnUnmount.current = false;
+    discardOnUnmountRef.current = false;
     setOpen(defaultOpen);
   }, [defaultOpen, formRestoreVersion, toggleable]);
 
@@ -146,7 +146,7 @@ export default function Section({
             : await requestedChange;
         if (!permitted) return;
 
-        discardOnUnmount.current = !nextOpen;
+        discardOnUnmountRef.current = !nextOpen;
         setOpen(nextOpen);
       } finally {
         changePending.current = false;
@@ -225,7 +225,9 @@ export default function Section({
 
         <Collapsible.Panel className="h-(--collapsible-panel-height) overflow-hidden border-t border-current/10 opacity-100 transition-[height,opacity] duration-200 data-ending-style:h-0 data-ending-style:opacity-0 data-starting-style:h-0 data-starting-style:opacity-0">
           {open && (
-            <FieldUnmountPolicyProvider discardOnUnmount={discardOnUnmount}>
+            <FieldUnmountPolicyProvider
+              discardOnUnmountRef={discardOnUnmountRef}
+            >
               <fieldset
                 disabled={disabled}
                 className="m-0 min-w-0 border-0 px-8 py-6 disabled:opacity-60"

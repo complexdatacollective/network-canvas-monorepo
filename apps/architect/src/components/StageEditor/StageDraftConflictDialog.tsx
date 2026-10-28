@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef } from 'react';
+import { createElement, useEffect, useLayoutEffect, useRef } from 'react';
 import { useStore } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 import { useLocation } from 'wouter';
@@ -123,7 +123,8 @@ const StageDraftConflictDialog = ({
 
   // Everything the ask needs, read at the moment it is used. Depending on these
   // directly would restart the effect whenever one changed identity, which
-  // means a second dialog stacked on the first.
+  // means a second dialog stacked on the first. Refreshed in a layout effect,
+  // which runs before the passive effect below reads it.
   const latest = useRef({
     closeDialog,
     dispatch,
@@ -133,20 +134,22 @@ const StageDraftConflictDialog = ({
     setLocation,
     stageId,
   });
-  latest.current = {
-    closeDialog,
-    dispatch,
-    insertAtIndex,
-    openDialog,
-    reduxStore,
-    setLocation,
-    stageId,
-  };
+  useLayoutEffect(() => {
+    latest.current = {
+      closeDialog,
+      dispatch,
+      insertAtIndex,
+      openDialog,
+      reduxStore,
+      setLocation,
+      stageId,
+    };
+  });
 
   const openDialogId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!stageConflictPending) return;
+    if (!stageConflictPending) return undefined;
     // `useNestedEditorOpen` reads its snapshot during render, so an editor that
     // registers in the same commit as this mount is still invisible to it when
     // this effect runs — and `ask` opens its dialog synchronously, before the
@@ -154,7 +157,7 @@ const StageDraftConflictDialog = ({
     // registry decides. Returning here is not a dead end: that re-render is
     // already scheduled, and the close that eventually resolves the editor
     // flips `stageConflictPending` back on and re-runs this.
-    if (hasOpenNestedEditor()) return;
+    if (hasOpenNestedEditor()) return undefined;
     let cancelled = false;
 
     // The protocol as it stands in this tab, with the draft applied: the

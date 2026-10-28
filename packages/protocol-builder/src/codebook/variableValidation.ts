@@ -13,6 +13,7 @@ import {
   type ValidationContradiction,
   type ValidationName,
   type VariableType,
+  VariableTypes,
 } from '@codaco/protocol-validation';
 import {
   validationContradictionMessages,
@@ -322,6 +323,9 @@ export const formatCommitted = (value: unknown): string => {
 export const isValidationMap = (value: unknown): value is ValidationMap =>
   isRecord(value);
 
+const hasTypeValidations = (type: string): type is VariableType =>
+  Object.hasOwn(VARIABLE_TYPE_VALIDATIONS, type);
+
 /**
  * The rules that survive a change of kind of answer, and the ones that do not.
  *
@@ -349,11 +353,10 @@ export const rulesSurvivingTypeChange = <TValue>(
   validation: Readonly<Record<string, TValue>>,
   nextType: VariableType | string,
 ): Readonly<{ kept: Record<string, TValue>; dropped: string[] }> => {
-  const accepted: Readonly<Record<string, unknown>> = Object.hasOwn(
-    VARIABLE_TYPE_VALIDATIONS,
+  const accepted: Readonly<Record<string, unknown>> = hasTypeValidations(
     nextType,
   )
-    ? VARIABLE_TYPE_VALIDATIONS[nextType as VariableType]
+    ? VARIABLE_TYPE_VALIDATIONS[nextType]
     : {};
   const kept: Record<string, TValue> = {};
   const dropped: string[] = [];
@@ -562,6 +565,14 @@ const baselineContradictions = (
   return contradictions;
 };
 
+// `MessageErrorValues` allows more shapes than a LIST item does, so the
+// name is typed as what the list takes: the researcher's own word, or a
+// reference to a descriptor the reader's own locale resolves.
+type NameValue = string | Readonly<{ messageError: string }>;
+const unnamed = (): NameValue => ({
+  messageError: createMessageError(messages.thisAttribute),
+});
+
 /**
  * What a contradiction between rules says to the researcher who caused it.
  *
@@ -589,13 +600,6 @@ const describeDraftContradiction = (
   // field so far. Everything else is named from the codebook.
   const draftId =
     draft.currentVariableId || draftVariableId(draft.allVariables);
-  // `MessageErrorValues` allows more shapes than a LIST item does, so the
-  // name is typed as what the list takes: the researcher's own word, or a
-  // reference to a descriptor the reader's own locale resolves.
-  type NameValue = string | Readonly<{ messageError: string }>;
-  const unnamed = (): NameValue => ({
-    messageError: createMessageError(messages.thisAttribute),
-  });
   const nameOf = (id: string): NameValue => {
     if (id === draftId && !Object.hasOwn(draft.allVariables, draftId)) {
       const authored = draft.draftVariableName;
@@ -1254,16 +1258,12 @@ const findResolvedViewDraftContradictions = (
 export const variableTypeForComponent = (
   component: string,
 ): VariableType | undefined => {
-  // The table is declared `satisfies Record<VariableType, …>`, so its keys are
-  // exactly the kinds of answer; `Object.entries` widens them to `string` for
-  // want of a type, not for want of the fact. Said here so a caller that has
-  // to name a kind — creating an attribute from the control alone — does not
-  // have to re-ask whether the answer is one.
-  const table = Object.entries(VARIABLE_TYPE_COMPONENTS) as readonly (readonly [
-    VariableType,
-    readonly string[],
-  ])[];
-  for (const [variableType, components] of table) {
+  // `VariableTypes` names every kind of answer, which is the table's own key
+  // set (it is declared `satisfies Record<VariableType, …>`), so walking it
+  // gives each kind its type without widening the table's keys to `string`.
+  for (const variableType of Object.values(VariableTypes)) {
+    const components: readonly string[] =
+      VARIABLE_TYPE_COMPONENTS[variableType];
     if (components.some((candidate) => candidate === component)) {
       return variableType;
     }

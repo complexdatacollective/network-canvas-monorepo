@@ -80,10 +80,9 @@ export const shapeWithPedigreeSymbols = (
   shape: unknown,
   mapping: ShapeMappingDraft | undefined,
 ): Record<string, unknown> => {
-  const current =
-    typeof shape === 'object' && shape !== null && !Array.isArray(shape)
-      ? (structuredClone(shape) as Record<string, unknown>)
-      : {};
+  const current: Record<string, unknown> = isRecord(shape)
+    ? structuredClone(shape)
+    : {};
   const { dynamic: _replaced, ...rest } = current;
   return mapping === undefined
     ? rest

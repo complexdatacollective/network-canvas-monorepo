@@ -19,6 +19,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { parseObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
+import { prefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 import { messages } from './messages';
 
@@ -157,18 +158,20 @@ const bringIntoView = (next: Element) => {
   const top = viewTopFor(scroller, next);
   if (box.top >= top && box.bottom <= view.bottom) return;
 
-  const reduceMotion =
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   scroller.scrollTo({
     top: scroller.scrollTop + box.top - top - LEAD_IN,
-    behavior: reduceMotion ? 'auto' : 'smooth',
+    behavior: prefersReducedMotion(scroller) ? 'auto' : 'smooth',
   });
 };
 
 const STEP_SELECTOR = '[data-question-step]';
 
-/** How long a chosen answer shows before the next step replaces it. */
-const STEP_DELAY = 350;
+/** How long a chosen answer shows before the next step replaces it: long
+ * enough to see the answer taken before the questions slide away. */
+const STEP_DELAY = 650;
+
+/** How long a chosen answer shows before the form moves on from itself. */
+const COMPLETE_DELAY = 350;
 
 /** How far a step slides as it leaves or comes in, in pixels. */
 const STEP_SLIDE = 40;
@@ -314,6 +317,9 @@ export default function QuestionFlow({
   const saving = useRef(false);
   const advanceTimer = useRef<number | undefined>(undefined);
   const completeTimer = useRef<number | undefined>(undefined);
+  /** Counts the options chosen, so only the latest choice decides what
+   * follows it. */
+  const latestChoice = useRef(0);
   const completed = useRef(onComplete);
   useLayoutEffect(() => {
     completed.current = onComplete;
@@ -337,7 +343,7 @@ export default function QuestionFlow({
   // Only the current step shows; the others stay in the form, hidden, so
   // their answers are kept and saved with the rest.
   useEffect(() => {
-    if (!stepped) return;
+    if (!stepped) return undefined;
     steps.forEach((element, at) => {
       if (!(element instanceof HTMLElement)) return;
       element.hidden = at !== index;
@@ -345,7 +351,11 @@ export default function QuestionFlow({
     });
     shownIndex.current = index;
     shownStep.current = step;
-    if (step) setState(stateOf(step, read));
+    if (!step) return undefined;
+    // The step button's label follows the step now shown, read from its
+    // answers once they have painted, as with every other answer.
+    const frame = requestAnimationFrame(() => setState(stateOf(step, read)));
+    return () => cancelAnimationFrame(frame);
   }, [stepped, steps, index, step, read]);
 
   // Moving on, the step shown leaves to the left and the next comes in from
@@ -355,8 +365,8 @@ export default function QuestionFlow({
     const from = direction.current;
     direction.current = 0;
     if (!stepped || from === 0 || !(step instanceof HTMLElement)) return;
-    step.style.opacity = '0';
-    step.style.transform = slid(from * STEP_SLIDE);
+    step.style.setProperty('opacity', '0');
+    step.style.setProperty('transform', slid(from * STEP_SLIDE));
     void animate(
       step,
       { opacity: [0, 1], transform: [slid(from * STEP_SLIDE), slid(0)] },
@@ -408,7 +418,7 @@ export default function QuestionFlow({
   // The steps change as answers bring questions in or take them away, and
   // the step button's label with every answer.
   useEffect(() => {
-    if (!root || !stepped) return;
+    if (!root || !stepped) return undefined;
     let frame = 0;
     const schedule = () => {
       cancelAnimationFrame(frame);
@@ -503,7 +513,7 @@ export default function QuestionFlow({
   // A chosen option moves the form on, once the answer has rendered along
   // with any question it brings in.
   useEffect(() => {
-    if (!root) return;
+    if (!root) return undefined;
     const onClick = (event: MouseEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -515,7 +525,13 @@ export default function QuestionFlow({
       // as when going back to review a step, does not move the form on.
       const changedAnswer = !isUnanswered(field, read);
       if (changedAnswer) window.clearTimeout(completeTimer.current);
+      latestChoice.current += 1;
+      const choice = latestChoice.current;
       requestAnimationFrame(() => {
+        // A choice made before this frame, a changed answer included,
+        // supersedes this one: its decision is made from newer answers, and
+        // clearing the timers cannot stop one this frame has not yet set.
+        if (choice !== latestChoice.current) return;
         if (!field.isConnected || isUnanswered(field, read)) return;
         const [next] = waitingAfter(root, field, read);
         if (next) {
@@ -559,7 +575,7 @@ export default function QuestionFlow({
             if (root.isConnected && isComplete(root, read)) {
               completed.current?.();
             }
-          }, STEP_DELAY);
+          }, COMPLETE_DELAY);
         }
       });
     };
@@ -576,7 +592,7 @@ export default function QuestionFlow({
   );
 
   useEffect(() => {
-    if (!root || !focusFirst) return;
+    if (!root || !focusFirst) return undefined;
     // Once the fields have registered their answers with the form.
     const frame = requestAnimationFrame(() => {
       const field =

@@ -574,18 +574,6 @@ export function SettingsDialog({
     total: 0,
   });
 
-  const reload = useCallback(async () => {
-    const [s, e, persisted] = await Promise.all([
-      getSettings(),
-      estimateStorage(),
-      isStoragePersisted(),
-    ]);
-    setSettings(s);
-    setStorage(e);
-    setStoragePersisted(persisted);
-    setInstallationId(getInstallationId());
-  }, []);
-
   // Monotonic guard: the open-effect and the synthetic-tab effect can both call
   // reloadSynthetic concurrently, so an earlier (e.g. empty, pre-import-commit)
   // listProtocols() could otherwise resolve last and clobber a newer result.
@@ -633,9 +621,20 @@ export function SettingsDialog({
   // tool and the state it writes is the response landing.
   useEffect(() => {
     if (!open) return;
-    void reload();
+    const load = async () => {
+      const [s, e, persisted] = await Promise.all([
+        getSettings(),
+        estimateStorage(),
+        isStoragePersisted(),
+      ]);
+      setSettings(s);
+      setStorage(e);
+      setStoragePersisted(persisted);
+      setInstallationId(getInstallationId());
+    };
+    void load();
     void reloadSyntheticWithFeedback();
-  }, [open, reload, reloadSyntheticWithFeedback]);
+  }, [open, reloadSyntheticWithFeedback]);
 
   // Re-query protocols whenever the Synthetic tab is (re)selected, so a protocol
   // imported moments before Settings opened — its DB write lands ~0.6-2.1s after

@@ -4,6 +4,7 @@ import type {
   LocalizedString,
   PedigreeParentKind,
   PedigreeSexAssignedAtBirth,
+  Variable,
 } from '@codaco/protocol-validation';
 
 import type { PedigreeConfig } from './model';
@@ -18,21 +19,21 @@ export type OwnedOptionLabels = Readonly<{
 }>;
 
 const labelsOf = (
-  definition: { type: string; options?: unknown } | undefined,
+  definition: Variable | undefined,
   resolve: (value: LocalizedString) => string,
 ): Record<string, string> => {
   if (definition?.type !== 'categorical' || !Array.isArray(definition.options))
     return {};
   const labels: Record<string, string> = {};
-  for (const option of definition.options as readonly {
-    value: unknown;
-    label: LocalizedString;
-  }[]) {
+  for (const option of definition.options) {
     if (typeof option.value === 'string')
       labels[option.value] = resolve(option.label);
   }
   return labels;
 };
+
+const label = (labels: Record<string, string>, value: string) =>
+  labels[value] ?? value;
 
 /**
  * The labels the codebook gives the stage's sex assigned at birth and
@@ -55,8 +56,6 @@ export const ownedOptionLabels = (
     codebook.edge?.[config.relationshipType]?.variables?.[config.kindAttribute],
     resolve,
   );
-  const label = (labels: Record<string, string>, value: string) =>
-    labels[value] ?? value;
   return {
     sexAssignedAtBirth: {
       female: label(sex, 'female'),
@@ -92,5 +91,9 @@ export const childKindWording = (
       return wording.childKindDonor;
     case 'surrogate':
       return wording.childKindSurrogate;
+    default: {
+      const unhandled: never = kind;
+      throw new Error('Unhandled parent kind', { cause: unhandled });
+    }
   }
 };

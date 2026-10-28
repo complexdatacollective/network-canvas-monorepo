@@ -45,5 +45,6 @@ export const getAssetReferenceDescriptor = (
 ): AssetReferenceDescriptor | undefined => {
   const meta = schema.meta();
   const descriptor = meta?.[ASSET_REFERENCE];
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod metadata is untyped; this key is written only by assetReference() above, always with an AssetReferenceDescriptor
   return descriptor as AssetReferenceDescriptor | undefined;
 };

@@ -1,12 +1,7 @@
-import Rules from '../Rules';
-
-type FilterType = {
-  join?: string;
-  rules: Array<{ type: string; options: Record<string, unknown> }>;
-};
+import Rules, { type FilterType } from '../Rules';
 
 type FilterProps = {
-  filter: Record<string, unknown>;
+  filter: FilterType;
 };
 
 const Filter = ({ filter }: FilterProps) => {
@@ -14,7 +9,7 @@ const Filter = ({ filter }: FilterProps) => {
     return null;
   }
 
-  return <Rules filter={filter as FilterType} />;
+  return <Rules filter={filter} />;
 };
 
 export default Filter;

@@ -45,16 +45,17 @@ export function useStaggerAnimation(
   const hasAnimatedRef = useRef(false);
   const prevAnimationKeyRef = useRef(animationKey);
 
-  // Reset hasAnimatedRef when animationKey changes so the stagger re-runs
-  if (
-    animationKey !== prevAnimationKeyRef.current &&
-    prevAnimationKeyRef.current !== undefined
-  ) {
-    hasAnimatedRef.current = false;
-    prevAnimationKeyRef.current = animationKey;
-  }
-
   useEffect(() => {
+    // Reset hasAnimatedRef when animationKey changes so the stagger re-runs.
+    // This effect re-runs on every key change, so it sees each one.
+    if (
+      animationKey !== prevAnimationKeyRef.current &&
+      prevAnimationKeyRef.current !== undefined
+    ) {
+      hasAnimatedRef.current = false;
+      prevAnimationKeyRef.current = animationKey;
+    }
+
     if (!enabled || hasAnimatedRef.current || itemCount === 0) {
       return;
     }
@@ -83,6 +84,17 @@ export function useStaggerAnimation(
 
     void runAnimation();
   }, [animate, enabled, itemCount, animationKey]);
+
+  // useAnimate stops the scope's animations when the mount ends, so the
+  // entrance has not played for the next mount. StrictMode ends and restarts
+  // every new mount, which would otherwise leave the items on the first
+  // keyframe, invisible.
+  useEffect(
+    () => () => {
+      hasAnimatedRef.current = false;
+    },
+    [],
+  );
 
   return scope;
 }

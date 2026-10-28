@@ -1,7 +1,9 @@
 'use client';
 
-import { useAnimationFrame, useInView, useReducedMotion } from 'motion/react';
+import { useAnimationFrame, useInView } from 'motion/react';
 import { useRef, useState } from 'react';
+
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 export const TAU = Math.PI * 2;
 export const outline = 'stroke-navy-taupe';
@@ -21,7 +23,7 @@ export const inCubic = (x: number) => x * x * x;
 
 export function useIllustrationClock(stillTime: number) {
   const ref = useRef<SVGSVGElement>(null);
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const inView = useInView(ref, { amount: 0.2 });
   const [time, setTime] = useState(stillTime);
 

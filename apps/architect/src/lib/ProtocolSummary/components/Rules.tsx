@@ -33,16 +33,16 @@ const Join = ({ value = '' }: JoinProps) => {
   );
 };
 
-type FilterType = {
+export type FilterType = {
   join?: string;
   rules: Array<{
     type: string;
     options: Record<string, unknown>;
   }>;
-} | null;
+};
 
 type RulesProps = {
-  filter?: FilterType;
+  filter?: FilterType | null;
 };
 
 const Rules = ({ filter = null }: RulesProps) => {

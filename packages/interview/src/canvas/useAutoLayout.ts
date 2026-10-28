@@ -62,6 +62,18 @@ type SimNode = {
   groupKeys?: ReturnType<typeof getGroupKeys>;
 };
 
+/** Whether a node the worker reports has an id and a place to put it. */
+const isPlacedSimNode = (node: unknown): node is SimNode =>
+  typeof node === 'object' &&
+  node !== null &&
+  'nodeId' in node &&
+  typeof node.nodeId === 'string' &&
+  node.nodeId !== '' &&
+  'x' in node &&
+  typeof node.x === 'number' &&
+  'y' in node &&
+  typeof node.y === 'number';
+
 type MockLayout = 'identity' | 'grid';
 type RunMode = 'once' | 'continuous';
 
@@ -212,11 +224,11 @@ export function useAutoLayout({
   }, [store, nodeRadius]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     // Defer until the canvas has been measured: seeding against a 0-size canvas
     // would map every node to the origin. The dims subscription re-runs this
     // effect once real dimensions arrive (and again on each resize).
-    if (!hasUsableDimensions(dimensions)) return;
+    if (!hasUsableDimensions(dimensions)) return undefined;
 
     const dims = dimensions;
     // nodeRadius is 0 until the off-screen measurement lands; fall back to the
@@ -243,15 +255,21 @@ export function useAutoLayout({
     workerRef.current = worker;
 
     worker.onmessage = (event: MessageEvent) => {
-      const { type: msgType, nodes: simNodes } = event.data as {
-        type: string;
-        nodes: SimNode[];
-      };
+      const message: unknown = event.data;
+      if (
+        typeof message !== 'object' ||
+        message === null ||
+        !('type' in message) ||
+        !('nodes' in message) ||
+        (message.type !== 'tick' && message.type !== 'end') ||
+        !Array.isArray(message.nodes)
+      ) {
+        return;
+      }
+      const msgType = message.type;
 
-      if (msgType !== 'tick' && msgType !== 'end') return;
-
-      const entries: [string, { x: number; y: number }][] = simNodes
-        .filter((n) => n.nodeId)
+      const entries: [string, { x: number; y: number }][] = message.nodes
+        .filter(isPlacedSimNode)
         .map((n) => [n.nodeId, fromSim(n, dims)]);
       store.getState().setBatchPositions(entries);
       setIsRunning(msgType === 'tick');

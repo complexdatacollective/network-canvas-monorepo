@@ -43,7 +43,7 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/agent-hooks/stop-check.mjs",
-            "timeout": 300,
+            "timeout": 600,
             "statusMessage": "Typechecking changed packages and running knip"
           }
         ]
@@ -55,7 +55,7 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/agent-hooks/stop-check.mjs",
-            "timeout": 300,
+            "timeout": 600,
             "statusMessage": "Typechecking changed packages and running knip"
           }
         ]

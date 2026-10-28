@@ -10,6 +10,8 @@ import Node, {
 } from '@codaco/fresco-ui/Node';
 import { type ConfigMessage, formatConfig } from '~/i18n/formatConfig';
 import { cx } from '~/utils/cva';
+
+import { isNodeShape } from './nodeAppearance';
 const remainingMessages = defineMessages({
   selectShape: {
     id: 'architect.remaining.typeEditor.shapePicker.selectShape',
@@ -44,16 +46,13 @@ export const SHAPES: Array<{ value: NodeShape; label: ConfigMessage }> = [
   { value: 'diamond', label: configMessages.diamond },
 ];
 
-const isNodeShape = (value: unknown): value is NodeShape =>
-  SHAPES.some((shape) => shape.value === value);
-
 type ShapePickerProps = CreateFormFieldProps<
   NodeShape,
   'fieldset',
   {
     /** Compact swatches for an inline mapping row (no labels, no chrome). */
     small?: boolean;
-    nodeColor?: string;
+    nodeColor?: NodeColorSequence;
     /** Only reaches the control through `UnconnectedField`; `Field` strips
      * validation props and signals the same thing via `aria-required`. */
     required?: boolean;
@@ -135,7 +134,7 @@ export const ShapePickerControl = ({
                 value1: shape.label,
               })}
               shape={shape.value}
-              color={nodeColor as NodeColorSequence}
+              color={nodeColor}
               size={nodeSize}
               selected={state.checked}
             />
