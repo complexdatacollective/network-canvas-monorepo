@@ -37,7 +37,7 @@ import type { Direction } from '../../types';
  * hold of them. The form is never joined to two people at once.
  */
 const MOTION = {
-  /** How far a person travels along the edge they are joined to, in px. */
+  /** How far a person arriving travels along the edge they join, in px. */
   shift: 56,
   /** How far answers rise or settle as they go and come, in px. */
   lift: 12,
@@ -49,9 +49,15 @@ const MOTION = {
    * their answers are laid out, hidden, until just before they appear.
    */
   resize: { duration: 0.4, ease: [0.65, 0, 0.35, 1] },
-  /** A person leaving or arriving is at this size at the far end. */
+  /** A person arriving starts at this size. */
   personScale: 0.7,
-  personOut: { delay: 0.2, duration: 0.22, ease: [0.55, 0, 1, 0.45] },
+  /** A person leaving shrinks to `scale` where they are as they fade. */
+  personOut: {
+    scale: 0.5,
+    delay: 0.2,
+    duration: 0.22,
+    ease: [0.55, 0, 1, 0.45],
+  },
   personIn: {
     delay: 0.34,
     stiffness: 320,
@@ -155,15 +161,16 @@ const personVariants: Variants = {
             },
           },
         },
-  leave: ({ along, axis, reduced }: ChangeStyle) =>
-    reduced
-      ? { opacity: 0, transition: { duration: REDUCED.out, ease: 'linear' } }
-      : {
-          ...offset(axis, -MOTION.shift * along),
-          scale: MOTION.personScale,
-          opacity: 0,
-          transition: MOTION.personOut,
-        },
+  leave: ({ reduced }: ChangeStyle) => {
+    if (reduced) {
+      return {
+        opacity: 0,
+        transition: { duration: REDUCED.out, ease: 'linear' },
+      };
+    }
+    const { scale, ...transition } = MOTION.personOut;
+    return { scale, opacity: 0, transition };
+  },
 };
 
 const answersVariants: Variants = {
@@ -416,9 +423,9 @@ type JoinedSlidesProps = {
  * While the stage is wider than it is tall the person sits beside the form,
  * on the reading-start side, in the middle of the form's height (of the
  * stage's, while the form is too tall to fit); otherwise above it, in the
- * middle of its width. The person stays in view as the form scrolls, and
- * moves along the edge they are joined to, in the direction of the Next
- * button.
+ * middle of its width. The person stays in view as the form scrolls. The
+ * next person arrives along the edge they join, from the direction of the
+ * Next button, as the last one shrinks away where they were.
  */
 export default function JoinedSlides({
   index,
