@@ -623,11 +623,22 @@ export default function JoinedSlides({
       changing = false;
       finishWhenStill();
     };
+    // Cut short, when the motion setting changes or the form goes, the
+    // change is settled at once: the effect that runs next sees this person
+    // already shown and starts nothing that would settle it.
+    const settleNow = () => {
+      resizing?.();
+      resizing = undefined;
+      finish();
+    };
     const viewport = scrollAreaRef.current;
     if (skip) {
       if (viewport) viewport.scrollTop = 0;
       const frame = requestAnimationFrame(finish);
-      return () => cancelAnimationFrame(frame);
+      return () => {
+        cancelAnimationFrame(frame);
+        settleNow();
+      };
     }
 
     const timers: number[] = [];
@@ -672,8 +683,7 @@ export default function JoinedSlides({
     return () => {
       for (const timer of timers) window.clearTimeout(timer);
       for (const stop of stops) stop();
-      observer?.disconnect();
-      resizing?.();
+      settleNow();
       join.set(1);
       cardHeight.set('auto');
     };
