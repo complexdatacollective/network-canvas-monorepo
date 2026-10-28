@@ -44,6 +44,11 @@ const MOTION = {
   answersOut: { duration: 0.18, ease: [0.4, 0, 1, 1] },
   release: { delay: 0.06, duration: 0.22, ease: [0.65, 0, 0.35, 1] },
   scrollToTop: { duration: 0.52, ease: [0.65, 0, 0.35, 1] },
+  /**
+   * The card takes the next person's height while it is empty: from when
+   * their answers are laid out, hidden, until just before they appear.
+   */
+  resize: { duration: 0.4, ease: [0.65, 0, 0.35, 1] },
   /** A person leaving or arriving is at this size at the far end. */
   personScale: 0.7,
   personOut: { delay: 0.2, duration: 0.22, ease: [0.55, 0, 1, 0.45] },
@@ -511,12 +516,50 @@ export default function JoinedSlides({
   const shrink = useTransform(scrollY, [0, 150], [1, 0.75]);
   const joinFade = useTransform(scrollY, [0, 12], [1, 0]);
 
+  // The card follows its answers' height, except while moving between people:
+  // then it holds the height it had and eases to the next person's, since
+  // their questions can be worded for them and so run longer or shorter.
+  const answersRef = useRef<HTMLDivElement>(null);
+  const cardHeight = useMotionValue<number | 'auto'>('auto');
+  const cardOverflow = useTransform(() =>
+    cardHeight.get() === 'auto' ? 'visible' : 'clip',
+  );
+
   const shown = useRef(index);
   useEffect(() => {
     if (shown.current === index) return undefined;
     shown.current = index;
 
+    let changing = true;
+    let resizing: (() => void) | undefined;
+    // Back to following the answers once the change is over and the card
+    // has finished resizing.
+    const followAnswers = () => {
+      if (!changing && !resizing) cardHeight.set('auto');
+    };
+    let observer: ResizeObserver | undefined;
+    const answers = answersRef.current;
+    if (answers && !skip && !reduced) {
+      cardHeight.set(answers.offsetHeight);
+      observer = new ResizeObserver(() => {
+        const to = answers.offsetHeight;
+        if (to === cardHeight.get()) return;
+        resizing?.();
+        resizing = animate(cardHeight, to, {
+          ...MOTION.resize,
+          onComplete: () => {
+            resizing = undefined;
+            followAnswers();
+          },
+        }).stop;
+      });
+      observer.observe(answers);
+    }
+
     const finish = () => {
+      changing = false;
+      observer?.disconnect();
+      followAnswers();
       setLiveIndex(index);
       settled.current();
     };
@@ -569,9 +612,12 @@ export default function JoinedSlides({
     return () => {
       for (const timer of timers) window.clearTimeout(timer);
       for (const stop of stops) stop();
+      observer?.disconnect();
+      resizing?.();
       join.set(1);
+      cardHeight.set('auto');
     };
-  }, [index, skip, reduced, join]);
+  }, [index, skip, reduced, join, cardHeight]);
 
   // The join is drawn towards +x, then turned to face the card.
   const facing = landscape ? (rtl ? 'scale(-1 1)' : '') : 'rotate(90)';
@@ -658,11 +704,15 @@ export default function JoinedSlides({
           spacing="lg"
           shadow="lg"
         >
-          <AnimatePresence mode="wait" initial={false} custom={change}>
-            <Answers key={index} live={live} change={change} skip={skip}>
-              {renderAnswers(index, scrollAreaRef, live)}
-            </Answers>
-          </AnimatePresence>
+          <motion.div style={{ height: cardHeight, overflow: cardOverflow }}>
+            <div ref={answersRef}>
+              <AnimatePresence mode="wait" initial={false} custom={change}>
+                <Answers key={index} live={live} change={change} skip={skip}>
+                  {renderAnswers(index, scrollAreaRef, live)}
+                </Answers>
+              </AnimatePresence>
+            </div>
+          </motion.div>
         </Surface>
       </div>
     </ScrollArea>

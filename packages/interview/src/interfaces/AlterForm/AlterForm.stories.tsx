@@ -143,6 +143,135 @@ export const ManyFields: Story = {
   },
 };
 
+/**
+ * Three people, the middle one family. The questions name each person and
+ * are worded at greater length for family, so the form is taller for them.
+ * The text is given by locale so that its message syntax is kept, as a
+ * protocol writes it.
+ */
+function buildWordedPerPersonInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({ name: 'name', type: 'text' });
+  const family = person.addVariable({ name: 'family', type: 'boolean' });
+  const closeness = person.addVariable({
+    name: 'closeness',
+    type: 'ordinal',
+    component: 'LikertScale',
+    options: [
+      { label: 'Not at all close', value: 1 },
+      { label: 'Not very close', value: 2 },
+      { label: 'Somewhat close', value: 3 },
+      { label: 'Very close', value: 4 },
+      { label: 'Extremely close', value: 5 },
+    ],
+  });
+
+  interview.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
+
+  const stage = interview.addStage('AlterForm', {
+    label: 'Alter Form (Worded per person)',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.stageEntry.dynamicValues = {
+    name: { path: `node.${name.id}` },
+    family: { path: `node.${family.id}`, cases: { yes: true } },
+  };
+  stage.addFormField({
+    component: 'Number',
+    prompt: { 'en-US': 'How old is {name}?' },
+  });
+  stage.addFormField({
+    variable: closeness.id,
+    component: 'LikertScale',
+    prompt: {
+      'en-US':
+        '{family, select, yes {{name} is part of your family. Leaving aside any sense of duty you feel because you are related, how close do you feel to {name} today?} other {How close are you to {name}?}}',
+    },
+  });
+  stage.addFormField({
+    component: 'TextArea',
+    prompt: {
+      'en-US':
+        '{family, select, yes {Tell us about the place {name} has in your family.} other {How did you meet {name}?}}',
+    },
+    hint: {
+      'en-US':
+        '{family, select, yes {Family ties can be complicated. Mention anything you think matters: history you share, caring for one another, living apart, or disagreements. Write as much or as little as you like.} other {A sentence is enough.}}',
+    },
+  });
+
+  interview.addManualNode(stage.id, person.id, 'alex', {
+    [name.id]: 'Alex',
+    [family.id]: false,
+  });
+  interview.addManualNode(stage.id, person.id, 'rosalind', {
+    [name.id]: 'Rosalind',
+    [family.id]: true,
+  });
+  interview.addManualNode(stage.id, person.id, 'sam', {
+    [name.id]: 'Sam',
+    [family.id]: false,
+  });
+
+  interview.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return interview;
+}
+
+const WordedPerPersonWrapper = () => {
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(
+        buildWordedPerPersonInterview().getInterviewPayload({
+          currentStep: 1,
+        }),
+      ),
+    [],
+  );
+  return (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+};
+
+/**
+ * The questions are piped with each person's name, and worded at greater
+ * length for family. Moving between people, the form eases to the next
+ * person's height before their questions appear.
+ */
+export const WordedPerPerson: Story = {
+  render: () => <WordedPerPersonWrapper />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole(
+        'spinbutton',
+        { name: /How old is .*Alex/ },
+        { timeout: 10_000 },
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByText('A sentence is enough.', { exact: false }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await expect(
+      await canvas.findByRole('spinbutton', { name: /How old is .*Rosalind/ }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByText(/Family ties can be complicated/),
+    ).toBeInTheDocument();
+  },
+};
+
 function buildValidatedInterview() {
   const interview = new SyntheticInterview();
   const nodeType = interview.addNodeType({ name: 'Person' });
