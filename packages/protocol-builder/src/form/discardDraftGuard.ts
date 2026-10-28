@@ -1,8 +1,16 @@
-import { useCallback } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+
+import { DialogDraftRegistrarContext } from './dialogDraftRegistrar.ts';
 
 /**
  * Filed under `dialogForm`, the area that owns the dialog this guard is the
@@ -51,6 +59,12 @@ export type DiscardDraftGuardOptions = Readonly<{
    * researcher has said to discard it. */
   onClose: () => void;
   /**
+   * Whether the dialog is open, and so whether the host is told about its
+   * draft (`DialogDraftRegistrarContext`). For a dialog that stays mounted
+   * while closed; one mounted only while open leaves it out.
+   */
+  open?: boolean;
+  /**
    * Refuses every dismissal while true — a save in flight, whose outcome the
    * dialog is about to show.
    */
@@ -77,10 +91,23 @@ export type DiscardDraftGuardOptions = Readonly<{
 export function useDiscardDraftGuard({
   hasDraft,
   onClose,
+  open = true,
   blocked = false,
 }: DiscardDraftGuardOptions): () => void {
   const intl = useAppIntl();
   const { confirm } = useDialog();
+  const registerDraft = useContext(DialogDraftRegistrarContext);
+
+  // Read through a ref, so a caller handing a fresh closure every render does
+  // not re-register on each one.
+  const hasDraftRef = useRef(hasDraft);
+  useLayoutEffect(() => {
+    hasDraftRef.current = hasDraft;
+  });
+  useEffect(() => {
+    if (!open || registerDraft === undefined) return undefined;
+    return registerDraft(() => hasDraftRef.current());
+  }, [open, registerDraft]);
 
   return useCallback(() => {
     if (blocked) return;

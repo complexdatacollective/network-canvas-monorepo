@@ -386,6 +386,7 @@ function DialogFormBody({
   const requestClose = useDiscardDraftGuard({
     hasDraft: isDirty,
     onClose,
+    open,
     blocked: isSubmitting,
   });
 

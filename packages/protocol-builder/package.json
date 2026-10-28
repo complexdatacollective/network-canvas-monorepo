@@ -38,6 +38,7 @@
     "./fields/StageNameField": "./src/fields/StageNameField.tsx",
     "./fields/StageNameInput": "./src/fields/StageNameInput.tsx",
     "./form/RevealWhenChosen": "./src/form/RevealWhenChosen.tsx",
+    "./form/dialogDraftRegistrar": "./src/form/dialogDraftRegistrar.ts",
     "./form/stageEditorContext": "./src/form/stageEditorContext.ts",
     "./form/stageSections": "./src/form/stageSections.ts",
     "./interfaces/StageTypeImage": "./src/interfaces/StageTypeImage.tsx",
