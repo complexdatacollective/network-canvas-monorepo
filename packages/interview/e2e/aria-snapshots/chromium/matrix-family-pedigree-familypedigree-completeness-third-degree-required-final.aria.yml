@@ -27,15 +27,24 @@
     - dialog:
       - region /Family tree \d+% complete\. Show what’s still needed\./:
         - list:
+          - listitem: "Done: Add your biological parents"
+          - listitem: "Done: Add your biological brothers and sisters, or say you have none"
+          - listitem: "Done: Add your biological children, or say you have none"
+          - listitem: "Done: Add biological parents for Julie"
+          - listitem: "Done: Add biological brothers and sisters for Julie, or say they have none"
+          - listitem: "Done: Add biological parents for Rob"
+          - listitem: "Done: Add biological brothers and sisters for Rob, or say they have none"
           - listitem:
-            - button "Add biological children for “Bea”, or say they have none"
-            - button "“Bea” has no biological children"
+            - button "Add biological children for Bea, or say they have none"
+            - button "Bea has no biological children"
+          - listitem: "Done: Add biological parents for Leo"
           - listitem:
-            - button "Add biological children for “Leo”, or say they have none"
-            - button "“Leo” has no biological children"
+            - button "Add biological children for Leo, or say they have none"
+            - button "Leo has no biological children"
           - listitem:
-            - button "Add biological children for “May”, or say they have none"
-            - button "“May” has no biological children"
+            - button "Add biological children for May, or say they have none"
+            - button "May has no biological children"
+          - listitem: Add required details for all family members
   - toolbar "View controls":
     - button "Zoom out"
     - button "Zoom in"

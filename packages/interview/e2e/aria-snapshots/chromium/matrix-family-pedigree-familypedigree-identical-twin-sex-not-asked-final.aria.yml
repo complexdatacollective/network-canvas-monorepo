@@ -7,7 +7,7 @@
     - button "Close"
     - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
     - textbox "Name (optional)": Ben
-    - text: Gender identity
+    - text: Gender identity Required
     - radiogroup "Gender identity":
       - radio "Woman"
       - text: Woman
@@ -33,8 +33,8 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: How would you define “Julie”’s relationship to “Ben”?
-    - radiogroup "How would you define “Julie”’s relationship to “Ben”?":
+    - text: What kind of parent is Julie to Ben?
+    - radiogroup "What kind of parent is Julie to Ben?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"
@@ -45,8 +45,8 @@
       - text: Egg or sperm donor
       - radio "Surrogate"
       - text: Surrogate
-    - text: How would you define “Rob”’s relationship to “Ben”? “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
-    - radiogroup "How would you define “Rob”’s relationship to “Ben”?":
+    - text: What kind of parent is Rob to Ben? Surrogate is unavailable because Rob is recorded as Male at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+    - radiogroup "What kind of parent is Rob to Ben?":
       - radio "Biological parent" [checked]
       - text: Biological parent
       - radio "Adoptive parent"
@@ -56,15 +56,15 @@
       - radio "Egg or sperm donor"
       - text: Egg or sperm donor
       - radio "Surrogate" [disabled]
-      - text: Surrogate “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+      - text: Surrogate Surrogate is unavailable because Rob is recorded as Male at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
     - text: Who carried the pregnancy?
     - radiogroup "Who carried the pregnancy?":
       - radio "Julie" [checked]
       - text: Julie
       - radio "Someone else, or I don’t know"
       - text: Someone else, or I don’t know
-    - text: Are any of these siblings twins with “Ben”? Include triplets and other multiple births.
-    - group "Are any of these siblings twins with “Ben”?":
+    - text: Are any of these siblings twins with Ben? Include triplets and other multiple births.
+    - group "Are any of these siblings twins with Ben?":
       - checkbox "You" [checked]
       - text: You
     - button "Delete"

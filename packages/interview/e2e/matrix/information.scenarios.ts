@@ -479,7 +479,7 @@ export const informationScenarios: InterfaceScenarios = {
         await expect(
           page.getByRole('heading', {
             level: 1,
-            name: `Welcome, Dynamic value: ${hostile}`,
+            name: `Welcome, ${hostile}`,
           }),
         ).toBeVisible();
         // Only the researcher's own emphasis renders; the value stays text.

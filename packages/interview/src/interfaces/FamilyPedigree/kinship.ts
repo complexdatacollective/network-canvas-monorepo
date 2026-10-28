@@ -5,6 +5,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { type Gamete, gameteLookup, inferGametes } from './gametes';
+import { withKinshipBreaks } from './kinshipBreaks';
 import { type Family, type Person, siblingTie } from './model';
 import type { PedigreeWords } from './pedigreeWords';
 
@@ -778,11 +779,15 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
 
 /**
  * A kinship word as participant-facing text, from the one vocabulary that
- * holds every such word (`relativeTerm`). Used for the add menu, the framing
+ * holds every such word (`relativeTerm`), with the places it may break
+ * inside a symbol (`withKinshipBreaks`). Used for the add menu, the framing
  * options and anyone with no other label, which is shown as "Relative".
  */
 export function formatRelativeTerm(term: string, words: PedigreeWords): string {
-  return words.text(words.wording.relativeTerm, { term });
+  return withKinshipBreaks(
+    words.text(words.wording.relativeTerm, { term }),
+    words.locale,
+  );
 }
 
 /** Languages that capitalise every noun, kinship words included, wherever

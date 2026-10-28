@@ -15,9 +15,10 @@ import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.5;
 // The most a fit (Show the whole family, and every reset of the view) zooms
-// in, well below what the participant can zoom in to themselves: a small
-// family is shown a fifth larger than its natural size, no larger.
-const FIT_MAX_SCALE = 1.2;
+// in: people are never drawn larger than their natural size unless the
+// participant zooms in themselves. A small family is shown at its natural
+// size, and a large one zoomed out as far as it must be to fit.
+const FIT_MAX_SCALE = 1;
 // How much of the family stays on screen, at least, however far it is
 // dragged away.
 const KEEP_VISIBLE = 120;
@@ -259,9 +260,9 @@ export type PanZoom = {
   zoomBy: (exponent: number, focus?: ZoomFocus) => void;
   /** Puts the middle of an element of the content in the middle of the
    * viewport, inside the given insets, at the zoom that fits it there: as
-   * large as fits, up to a fifth larger than its natural size, and no less than the least zoom. An
-   * element too large to fit even then is still centred, and runs past the
-   * edges. The view it heads for. */
+   * large as fits, up to its natural size, and no less than the least zoom.
+   * An element too large to fit even then is still centred, and runs past
+   * the edges. The view it heads for. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,

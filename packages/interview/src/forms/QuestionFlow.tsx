@@ -166,8 +166,12 @@ const bringIntoView = (next: Element) => {
 
 const STEP_SELECTOR = '[data-question-step]';
 
-/** How long a chosen answer shows before the next step replaces it. */
-const STEP_DELAY = 350;
+/** How long a chosen answer shows before the next step replaces it: long
+ * enough to see the answer taken before the questions slide away. */
+const STEP_DELAY = 650;
+
+/** How long a chosen answer shows before the form moves on from itself. */
+const COMPLETE_DELAY = 350;
 
 /** How far a step slides as it leaves or comes in, in pixels. */
 const STEP_SLIDE = 40;
@@ -571,7 +575,7 @@ export default function QuestionFlow({
             if (root.isConnected && isComplete(root, read)) {
               completed.current?.();
             }
-          }, STEP_DELAY);
+          }, COMPLETE_DELAY);
         }
       });
     };

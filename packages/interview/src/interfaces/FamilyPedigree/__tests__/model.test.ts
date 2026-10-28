@@ -370,9 +370,14 @@ describe('missingDetailsFor', () => {
     ]);
   });
 
-  test('gender identity is never missing, even when the stage asks it', () => {
+  // Josh, 27 Oct 2026: gender identity is a required detail where the
+  // stage asks it.
+  test('gender identity is missing only when the stage asks it', () => {
     const family = readFamily([person('a', { sex: ['male'] })], [], config);
     expect(family.byId.get('a')!.genderIdentity).toBeUndefined();
+    expect(missingDetailsFor(family.byId.get('a')!, [], true)).toEqual([
+      'genderIdentity',
+    ]);
     expect(missingDetailsFor(family.byId.get('a')!, [])).toEqual([]);
   });
 
