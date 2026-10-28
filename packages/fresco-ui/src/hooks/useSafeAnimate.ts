@@ -13,15 +13,20 @@ import { usePrefersReducedMotion } from '../reducedMotion';
 type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
 
 /**
- * Returns true when animations are disabled or motion should be reduced.
+ * Returns true when animations are disabled or motion should be reduced:
+ * by Motion's global or `MotionConfig` skip, by the `AnimationProvider`
+ * preference, or by a `MotionConfig` that forces `reducedMotion="always"` on
+ * a subtree (Motion's components honour that, so their animations would not
+ * run either).
  */
 export function useShouldSkipAnimations(): boolean {
-  const { skipAnimations } = useContext(MotionConfigContext);
+  const { reducedMotion, skipAnimations } = useContext(MotionConfigContext);
   const shouldReduceMotion = usePrefersReducedMotion();
 
   return (
     !!MotionGlobalConfig.skipAnimations ||
     !!skipAnimations ||
+    reducedMotion === 'always' ||
     !!shouldReduceMotion
   );
 }

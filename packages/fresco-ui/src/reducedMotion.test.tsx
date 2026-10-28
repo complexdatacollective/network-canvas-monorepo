@@ -1,6 +1,6 @@
 import { act, render, renderHook } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AnimationProvider } from './AnimationProvider';
 import {
@@ -97,14 +97,32 @@ describe('usePrefersReducedMotion', () => {
     );
   });
 
-  it('takes the nearest provider’s setting', () => {
+  // CSS can only read one setting for the whole document, so React agrees with
+  // it: the outermost provider decides, and a nested one cannot contradict it.
+  it.each(['always', 'never'] as const)(
+    'takes the outermost provider’s setting when it is "%s"',
+    (outer) => {
+      emulateSystem('reduce');
+      const inner = outer === 'always' ? 'never' : 'always';
+      const { result } = renderHook(() => usePrefersReducedMotion(), {
+        wrapper: ({ children }: PropsWithChildren) => (
+          <AnimationProvider reducedMotion={outer}>
+            <AnimationProvider reducedMotion={inner}>
+              {children}
+            </AnimationProvider>
+          </AnimationProvider>
+        ),
+      });
+      expect(result.current).toBe(outer === 'always');
+    },
+  );
+
+  it('lets a nested default provider inherit an override', () => {
     emulateSystem('no-preference');
     const { result } = renderHook(() => usePrefersReducedMotion(), {
       wrapper: ({ children }: PropsWithChildren) => (
-        <AnimationProvider reducedMotion="never">
-          <AnimationProvider reducedMotion="always">
-            {children}
-          </AnimationProvider>
+        <AnimationProvider reducedMotion="always">
+          <AnimationProvider disableAnimations>{children}</AnimationProvider>
         </AnimationProvider>
       ),
     });
@@ -139,7 +157,7 @@ describe('the document-root attribute', () => {
     expect(rootSetting()).toBeNull();
   });
 
-  it('takes the innermost provider, then the next one out once it unmounts', () => {
+  it('belongs to the outermost provider, whatever a nested one says', () => {
     function Tree({ inner }: { inner: boolean }) {
       return (
         <AnimationProvider reducedMotion="never">
@@ -150,7 +168,7 @@ describe('the document-root attribute', () => {
       );
     }
     const { rerender, unmount } = render(<Tree inner />);
-    expect(rootSetting()).toBe('always');
+    expect(rootSetting()).toBe('never');
 
     rerender(<Tree inner={false} />);
     expect(rootSetting()).toBe('never');
@@ -182,6 +200,34 @@ describe('prefersReducedMotion', () => {
       never.unmount();
     },
   );
+
+  it('answers false without a DOM instead of throwing', () => {
+    vi.stubGlobal('document', undefined);
+    vi.stubGlobal('Document', undefined);
+    try {
+      expect(prefersReducedMotion()).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('reads the document a node belongs to, even another window’s', () => {
+    emulateSystem('no-preference');
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+    const frameDocument = frame.contentDocument!;
+    try {
+      frameDocument.documentElement.setAttribute(
+        REDUCED_MOTION_ATTRIBUTE,
+        'always',
+      );
+      expect(prefersReducedMotion(frameDocument)).toBe(true);
+      expect(prefersReducedMotion(frameDocument.body)).toBe(true);
+      expect(prefersReducedMotion(document)).toBe(false);
+    } finally {
+      frame.remove();
+    }
+  });
 
   it('follows the system without an overriding provider', () => {
     emulateSystem('reduce');

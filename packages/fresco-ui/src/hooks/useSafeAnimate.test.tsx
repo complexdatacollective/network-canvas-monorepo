@@ -49,7 +49,29 @@ describe('useShouldSkipAnimations', () => {
     expect(result.current).toBe(true);
   });
 
-  it('honours forced reduced motion', () => {
+  it('honours a MotionConfig that forces reduced motion on its subtree', () => {
+    MotionGlobalConfig.skipAnimations = false;
+
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <MotionConfigContext.Provider
+        value={{
+          transformPagePoint: (point) => point,
+          isStatic: false,
+          reducedMotion: 'always',
+          skipAnimations: false,
+        }}
+      >
+        {children}
+      </MotionConfigContext.Provider>
+    );
+    const { result } = renderHook(() => useShouldSkipAnimations(), {
+      wrapper,
+    });
+
+    expect(result.current).toBe(true);
+  });
+
+  it('honours AnimationProvider forcing reduced motion', () => {
     MotionGlobalConfig.skipAnimations = false;
 
     const wrapper = ({ children }: PropsWithChildren) => (

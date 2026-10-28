@@ -35,6 +35,8 @@ export type AnimationProviderProps = {
    * system's preference, `always` and `never` override it. Motion components,
    * `usePrefersReducedMotion`, `prefersReducedMotion`, the `motion-reduce:` /
    * `motion-safe:` variants and the global reduced-motion CSS all follow it.
+   * It applies to the whole document, so only the outermost provider's value
+   * counts; a nested provider inherits it and ignores its own.
    */
   reducedMotion?: ReducedMotionSetting;
 };
@@ -86,19 +88,16 @@ export function AnimationProvider({
     MotionGlobalConfig.skipAnimations = true;
   }
 
-  const { depth: parentDepth } = useContext(ReducedMotionContext);
-  const scope = useMemo(
-    () => ({ setting: reducedMotion, depth: parentDepth + 1 }),
-    [reducedMotion, parentDepth],
-  );
-  useReducedMotionRootAttribute(scope);
+  // One reduced-motion policy per document, decided by the outermost provider
+  // (see `ReducedMotionContext`): a nested provider inherits it.
+  const enclosing = useContext(ReducedMotionContext);
+  const setting = enclosing.provided ? enclosing.setting : reducedMotion;
+  const scope = useMemo(() => ({ setting, provided: true }), [setting]);
+  useReducedMotionRootAttribute(setting, !enclosing.provided);
 
   return (
     <ReducedMotionContext.Provider value={scope}>
-      <MotionConfig
-        reducedMotion={reducedMotion}
-        skipAnimations={animationsDisabled}
-      >
+      <MotionConfig reducedMotion={setting} skipAnimations={animationsDisabled}>
         {children}
       </MotionConfig>
     </ReducedMotionContext.Provider>

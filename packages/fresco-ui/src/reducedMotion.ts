@@ -14,8 +14,8 @@ import { createContext, useContext, useLayoutEffect } from 'react';
 export type ReducedMotionSetting = 'user' | 'always' | 'never';
 
 /**
- * Set on the document root by `AnimationProvider` while its setting is
- * `always` or `never`, and absent while it follows the operating system. CSS
+ * Set on the document root by the outermost `AnimationProvider` while its
+ * setting is `always` or `never`, and absent while it follows the operating system. CSS
  * (the `motion-reduce:` / `motion-safe:` variants and the global reduced-motion
  * rule in `@codaco/tailwind-config`) and code outside React read it. It sits on
  * the root rather than on a wrapper element so that popups portalled to
@@ -27,23 +27,28 @@ const SYSTEM_QUERY = '(prefers-reduced-motion: reduce)';
 
 type ReducedMotionScope = {
   setting: ReducedMotionSetting;
-  /** How many `AnimationProvider`s enclose this one, so the nearest wins. */
-  depth: number;
+  /** Whether an `AnimationProvider` encloses this point in the tree. */
+  provided: boolean;
 };
 
 /**
  * Provided by `AnimationProvider`. Without one the setting is `user`, so code
  * rendered outside a provider follows the operating system, as it always has.
+ *
+ * The setting is one policy for the whole document, decided by the outermost
+ * provider: CSS can only read it from the document root, so React has to
+ * agree with that. A provider nested inside another inherits the enclosing
+ * setting and ignores its own `reducedMotion`.
  */
 export const ReducedMotionContext = createContext<ReducedMotionScope>({
   setting: 'user',
-  depth: 0,
+  provided: false,
 });
 
 /**
- * Whether to reduce motion, as the nearest `AnimationProvider` resolves it. Use
- * this instead of Motion's `useReducedMotion`, which reads only the operating
- * system and so ignores a provider set to `always` or `never`.
+ * Whether to reduce motion, as the enclosing `AnimationProvider` resolves it.
+ * Use this instead of Motion's `useReducedMotion`, which reads only the
+ * operating system and so ignores a provider set to `always` or `never`.
  *
  * Under `user` it returns exactly what Motion's hook does, `null` included:
  * the operating system's answer is unknown during a server render, so a server
@@ -59,16 +64,27 @@ export function usePrefersReducedMotion(): boolean | null {
   return system;
 }
 
+// `nodeType` rather than `instanceof Document`: the global is absent without a
+// DOM, and a document from another window (an iframe's) is not an instance of
+// this window's `Document`.
+const DOCUMENT_NODE = 9;
+const isDocument = (node: Node): node is Document =>
+  node.nodeType === DOCUMENT_NODE;
+
 /**
  * Whether to reduce motion, for code outside React (event handlers, scroll
  * helpers, imperative animation loops). Reads the attribute `AnimationProvider`
- * puts on the document root, then falls back to the operating system.
+ * puts on the root of `node`'s document, then falls back to that document's
+ * window's system preference. Without a DOM it answers `false`.
  */
 export function prefersReducedMotion(node?: Node | null): boolean {
-  const ownerDocument =
-    node?.ownerDocument ??
-    (node instanceof Document ? node : undefined) ??
-    (typeof document === 'undefined' ? undefined : document);
+  const ownerDocument = node
+    ? isDocument(node)
+      ? node
+      : node.ownerDocument
+    : typeof document === 'undefined'
+      ? null
+      : document;
   if (!ownerDocument) return false;
 
   const setting = ownerDocument.documentElement.getAttribute(
@@ -83,40 +99,40 @@ export function prefersReducedMotion(node?: Node | null): boolean {
     : false;
 }
 
-type RootClaim = ReducedMotionScope;
-
-// Every mounted provider's claim on the root attribute. Usually there is one;
-// a Storybook docs page mounts a provider per story, and a provider may nest
-// inside another, where the innermost one wins as it does for the context.
-const rootClaims = new Map<Document, RootClaim[]>();
+// The outermost providers mounted in each document, most recent last. Usually
+// there is one. A Storybook docs page mounts one per story, all with the same
+// setting; were they to differ, the most recently mounted would own the
+// attribute, since separate React roots cannot see one another's context.
+const rootClaims = new Map<Document, { setting: ReducedMotionSetting }[]>();
 
 function applyRootClaims(ownerDocument: Document) {
-  let winner: RootClaim | undefined;
-  for (const claim of rootClaims.get(ownerDocument) ?? []) {
-    if (!winner || claim.depth >= winner.depth) winner = claim;
-  }
+  const claims = rootClaims.get(ownerDocument) ?? [];
+  const setting = claims.at(-1)?.setting ?? 'user';
 
   const root = ownerDocument.documentElement;
-  const setting = winner?.setting ?? 'user';
   if (setting === 'user') root.removeAttribute(REDUCED_MOTION_ATTRIBUTE);
   else root.setAttribute(REDUCED_MOTION_ATTRIBUTE, setting);
 }
 
 /**
- * Mirrors a provider's setting onto the document root for as long as it is
- * mounted. A layout effect, so the attribute is in place before the first
- * paint that CSS keyed off it affects.
+ * Mirrors the outermost provider's setting onto the document root for as long
+ * as it is mounted; a nested provider (`owner` false) leaves it alone. A layout
+ * effect, so the attribute is in place before the first paint that CSS keyed
+ * off it affects.
  */
-export function useReducedMotionRootAttribute({
-  setting,
-  depth,
-}: ReducedMotionScope) {
+export function useReducedMotionRootAttribute(
+  setting: ReducedMotionSetting,
+  owner: boolean,
+) {
   useLayoutEffect(() => {
+    if (!owner) return undefined;
+
     const ownerDocument = document;
-    const claim: RootClaim = { setting, depth };
-    const claims = rootClaims.get(ownerDocument) ?? [];
-    claims.push(claim);
-    rootClaims.set(ownerDocument, claims);
+    const claim = { setting };
+    rootClaims.set(ownerDocument, [
+      ...(rootClaims.get(ownerDocument) ?? []),
+      claim,
+    ]);
     applyRootClaims(ownerDocument);
 
     return () => {
@@ -127,5 +143,5 @@ export function useReducedMotionRootAttribute({
       else rootClaims.delete(ownerDocument);
       applyRootClaims(ownerDocument);
     };
-  }, [setting, depth]);
+  }, [setting, owner]);
 }
