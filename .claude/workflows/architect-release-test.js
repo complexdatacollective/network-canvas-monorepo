@@ -1160,11 +1160,16 @@ ${sampleSourceNote}
    which codebook entries
    already exist from earlier stages and which this stage introduces. Do not
    describe internal ids or JSON keys; describe what a person sets.
-   A setting the file leaves out takes the app's default, which is not
-   always off: say to leave that control as the editor presents it, never
-   that it is off or empty. A concentric-circles background without a skew
-   setting, for example, is skewed, and its "Skew circle sizes" switch
-   shows on.
+   A setting the file leaves out takes the interview's default, which is
+   not always off, and a new stage's editor may start that control at a
+   different value. So for each omitted setting that a stage's editor
+   offers a control for, find what the interview does without it (in
+   packages/interview/src at ${sampleRef}) and tell the builders to set the
+   control to that value explicitly. For example, a concentric-circles
+   background without a skew setting is skewed, but a new Sociogram or
+   Narrative stage starts with "Skew circle sizes" off. Likewise, a stage
+   without an automatic layout setting keeps its nodes where they are
+   placed, but a new Narrative stage starts with "Automatic layout" on.
    weight: 1 for an Information stage, 2 for a stage that reuses existing
    codebook entries, 3 for one that introduces new codebook entries or has
    several prompts.
