@@ -54,6 +54,7 @@
     "./naming/useAutoStageName": "./src/naming/useAutoStageName.ts",
     "./naming/useStageName": "./src/naming/useStageName.ts",
     "./naming/useStageNameField": "./src/naming/useStageNameField.ts",
+    "./naming/useStandingStageNameProposal": "./src/naming/useStandingStageNameProposal.ts",
     "./ProtocolBuilder": "./src/ProtocolBuilder.tsx",
     "./protocol-context": "./src/protocol-context.ts",
     "./resources/components/ResourceBrowserDialog": "./src/resources/components/ResourceBrowserDialog.tsx",

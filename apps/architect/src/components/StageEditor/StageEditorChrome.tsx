@@ -12,6 +12,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
 import { useProtocolLocalization } from '@codaco/protocol-builder/localization/ProtocolLocalization';
+import { useStandingStageNameProposal } from '@codaco/protocol-builder/naming/useStandingStageNameProposal';
 import type {
   StageProblemsStore,
   StageSectionsStore,
@@ -206,6 +207,7 @@ function StageDraftPublisher() {
   const { liveDraft, storeApi, identity } = useStageEditorForm();
   const { committedFields, access } = useStageEdit();
   const localization = useProtocolLocalization();
+  const { withoutProposal } = useStandingStageNameProposal();
   const editing = access === 'editing';
 
   useEffect(() => {
@@ -217,7 +219,9 @@ function StageDraftPublisher() {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the draft is a plain record that may not satisfy the stage schema mid-edit; every reader validates the protocol built from it (validateProtocol) before relying on it
         stageDocument(identity, draft, localization) as unknown as Stage,
         committedFields,
-        draft,
+        // Compared without a name the editor proposed and nobody has touched:
+        // that is not work the researcher would lose by leaving.
+        withoutProposal(draft, committedFields),
         editing,
       );
     };
@@ -227,7 +231,15 @@ function StageDraftPublisher() {
       unsubscribe();
       closeStageDraft();
     };
-  }, [committedFields, editing, identity, liveDraft, localization, storeApi]);
+  }, [
+    committedFields,
+    editing,
+    identity,
+    liveDraft,
+    localization,
+    storeApi,
+    withoutProposal,
+  ]);
 
   return null;
 }

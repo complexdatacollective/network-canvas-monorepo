@@ -1,4 +1,10 @@
-import type { ChangeEvent, FocusEvent, KeyboardEvent } from 'react';
+import {
+  type ChangeEvent,
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  useRef,
+} from 'react';
 
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -46,6 +52,12 @@ type HeadingInputProps = {
   'onChange'?: (value: string) => void;
   /** Blur hook for auto-naming; the form's own blur handling is on the container. */
   'onFieldBlur'?: () => void;
+  /**
+   * Asked as the control gains focus: whether to select the whole name, so
+   * that typing replaces it rather than landing inside it. For a name nobody
+   * chose — `useStandingStageNameProposal().isStanding`.
+   */
+  'selectOnFocus'?: () => boolean;
   'placeholder'?: string;
   /**
    * Hard cap on typed characters. Not `maxLength`: that name belongs to
@@ -100,6 +112,7 @@ const StageNameInput = ({
   value = '',
   onChange,
   onFieldBlur,
+  selectOnFocus,
   placeholder,
   characterLimit,
   disabled = false,
@@ -119,6 +132,32 @@ const StageNameInput = ({
 
   const handleBlur = (_event: FocusEvent<HTMLTextAreaElement>) => {
     onFieldBlur?.();
+  };
+
+  // Selecting on focus is what makes typing replace a proposed name rather
+  // than land inside it. In Safari the mouseup ending the click that focused
+  // the control puts the caret where the pointer is, undoing that selection,
+  // so that one mouseup is swallowed. Only when the press is what focused the
+  // control: a later click into a focused name places the caret as ever.
+  const pressFocusing = useRef(false);
+  const keepSelectionOnMouseUp = useRef(false);
+
+  const handleMouseDown = (event: MouseEvent<HTMLTextAreaElement>) => {
+    const control = event.currentTarget;
+    pressFocusing.current = control.ownerDocument.activeElement !== control;
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLTextAreaElement>) => {
+    const selecting = selectOnFocus?.() ?? false;
+    if (selecting) event.currentTarget.select();
+    keepSelectionOnMouseUp.current = selecting && pressFocusing.current;
+    pressFocusing.current = false;
+  };
+
+  const handleMouseUp = (event: MouseEvent<HTMLTextAreaElement>) => {
+    if (!keepSelectionOnMouseUp.current) return;
+    keepSelectionOnMouseUp.current = false;
+    event.preventDefault();
   };
 
   return (
@@ -150,6 +189,9 @@ const StageNameInput = ({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
+        onFocus={handleFocus}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
         rows={1}
         // The value is one line and Enter never adds another; without this a
         // screen reader describes an Enter that does not exist.
