@@ -36,7 +36,7 @@ const PROBE_ROUTES = Layer.mergeAll(
   HttpRouter.add('GET', '/dying', Effect.die(new Error('broken'))),
 ).pipe(Layer.provideMerge(HttpSpanLive));
 
-const serverSpans = (
+const recordedSpans = (
   telemetry: Layer.Layer<never>,
   path = `/probe/42?${SEEDS.query}`,
   routes:
@@ -81,8 +81,13 @@ const serverSpans = (
       );
     }).pipe(Effect.provide(Served));
     yield* Effect.sleep('20 millis');
-    return spans.filter((span) => span.kind === 'server');
+    return spans;
   });
+
+const serverSpans = (...args: Parameters<typeof recordedSpans>) =>
+  Effect.map(recordedSpans(...args), (spans) =>
+    spans.filter((span) => span.kind === 'server'),
+  );
 
 const attributeText = (span: Tracer.NativeSpan): string =>
   JSON.stringify([...span.attributes]);
@@ -96,6 +101,7 @@ describe('the span a request records', () => {
         expect(spans).toHaveLength(1);
         const [span] = spans;
         expect(span?.parent._tag).toBe('None');
+        expect(span?.sampled).toBe(true);
         expect(span?.traceId).not.toBe('0af7651916cd43dd8448eb211c80319c');
         expect(Object.fromEntries(span?.attributes ?? [])).toEqual({
           'http.request.method': 'GET',
@@ -121,20 +127,27 @@ describe('the span a request records', () => {
       }),
   );
 
-  it.live('is recorded the same way by the worker health listener', () =>
-    Effect.gen(function* () {
-      const spans = yield* serverSpans(
-        ServerTelemetryLive,
-        '/healthz',
-        WorkerHealthRoutes({}),
-      );
-      expect(spans).toHaveLength(1);
-      expect(Object.fromEntries(spans[0]?.attributes ?? [])).toEqual({
-        'http.request.method': 'GET',
-        'http.route': '/healthz',
-        'http.response.status_code': 200,
-      });
-    }),
+  it.live.each(['/healthz', '/readyz?verbose'])(
+    'is not sampled for the probe %s, nor is anything its checks record',
+    (path) =>
+      Effect.gen(function* () {
+        const spans = yield* recordedSpans(
+          ServerTelemetryLive,
+          path,
+          WorkerHealthRoutes({
+            database: Effect.as(
+              Effect.withSpan(Effect.void, 'db.readiness.alive'),
+              'ok',
+            ),
+          }),
+        );
+        const server = spans.filter((span) => span.kind === 'server');
+        expect(server).toHaveLength(1);
+        expect(server[0]?.attributes.get('http.response.status_code')).toBe(
+          200,
+        );
+        expect(spans.filter((span) => span.sampled)).toEqual([]);
+      }),
   );
 
   it.live(
