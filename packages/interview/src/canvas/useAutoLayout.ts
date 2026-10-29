@@ -148,11 +148,8 @@ export function useAutoLayout({
   const nodeIndexByIdRef = useRef<Map<string, number>>(new Map());
   // Nodes in the last seed, so a node added later is laid out as new even when
   // its host gave it a starting position.
-  const seededIdsRef = useRef<Set<string>>(new Set());
   const [isRunning, setIsRunning] = useState(false);
   const [simulationEnabled, setSimulationEnabled] = useState(true);
-  const simulationEnabledRef = useRef(simulationEnabled);
-  simulationEnabledRef.current = simulationEnabled;
   const frameRef = useRef<number | null>(null);
 
   // Keep refs updated so the effect can read latest values without re-running.
@@ -243,7 +240,7 @@ export function useAutoLayout({
 
   useEffect(() => {
     if (!enabled) {
-      seededIdsRef.current = new Set();
+      nodeIndexByIdRef.current = new Map();
       return undefined;
     }
     // Defer until the canvas has been measured: seeding against a 0-size canvas
@@ -275,6 +272,11 @@ export function useAutoLayout({
       : createAutoLayoutWorker();
     workerRef.current = worker;
 
+    const cancelPlayback = () => {
+      animationRef.current?.stop();
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    };
+
     worker.onmessage = (event: MessageEvent) => {
       const message: unknown = event.data;
       if (
@@ -292,28 +294,7 @@ export function useAutoLayout({
       const entries: [string, { x: number; y: number }][] = message.nodes
         .filter(isPlacedSimNode)
         .map((n) => [n.nodeId, fromSim(n, dims)]);
-      // The worker's recorded settle, one flat [x0, y0, x1, y1, ...] array per
-      // frame in the order of message.nodes, turned into a path per node.
-      const frames: unknown[] =
-        'frames' in message && Array.isArray(message.frames)
-          ? message.frames
-          : [];
-      const paths = new Map<string, { x: number; y: number }[]>();
-      message.nodes.forEach((node: unknown, index: number) => {
-        if (!isPlacedSimNode(node)) return;
-        const path = frames.flatMap((frame) => {
-          if (!Array.isArray(frame)) return [];
-          const [x, y] = [frame[index * 2], frame[index * 2 + 1]];
-          return typeof x === 'number' && typeof y === 'number'
-            ? [fromSim({ x, y }, dims)]
-            : [];
-        });
-        if (path.length === frames.length && path.length > 1) {
-          paths.set(node.nodeId, path);
-        }
-      });
-      animationRef.current?.stop();
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      cancelPlayback();
 
       if (msgType === 'tick') {
         store.getState().setBatchPositions(entries);
@@ -344,17 +325,37 @@ export function useAutoLayout({
           Math.abs(start.y - to.y) > MOVED_THRESHOLD
         );
       });
-      const paused = runMode === 'continuous' && !simulationEnabledRef.current;
-      if (isE2E || !moved || paused) {
+
+      // The worker's recorded settle, one flat [x0, y0, x1, y1, ...] array per
+      // frame in the order of message.nodes, turned into a path per node. Only
+      // a settled layout carries frames; a pause, a drag's end and the e2e
+      // mock do not.
+      const frames: unknown[] =
+        'frames' in message && Array.isArray(message.frames)
+          ? message.frames
+          : [];
+      const paths = new Map<string, { x: number; y: number }[]>();
+      message.nodes.forEach((node: unknown, index: number) => {
+        if (!isPlacedSimNode(node)) return;
+        const path = frames.flatMap((frame) => {
+          if (!Array.isArray(frame)) return [];
+          const [x, y] = [frame[index * 2], frame[index * 2 + 1]];
+          return typeof x === 'number' && typeof y === 'number'
+            ? [fromSim({ x, y }, dims)]
+            : [];
+        });
+        if (path.length > 1) paths.set(node.nodeId, path);
+      });
+
+      if (!moved || paths.size === 0 || skipAnimationsRef.current) {
         store.getState().setBatchPositions(entries);
-        setIsRunning(false);
-        return;
-      }
-      if (skipAnimationsRef.current) {
-        store.getState().setBatchPositions(entries);
-        // Still report the run, a frame later so the start is observed.
-        setIsRunning(true);
-        frameRef.current = requestAnimationFrame(() => setIsRunning(false));
+        // A run skipped for reduced motion is still reported, a frame later
+        // so its start is observed.
+        const report = moved && paths.size > 0;
+        setIsRunning(report);
+        if (report) {
+          frameRef.current = requestAnimationFrame(() => setIsRunning(false));
+        }
         return;
       }
 
@@ -400,7 +401,7 @@ export function useAutoLayout({
     // worker's cohesion force can bucket nodes.
     const currentNodes = nodesRef.current;
     const { positions } = store.getState();
-    const previousIds = seededIdsRef.current;
+    const previousIds = nodeIndexByIdRef.current;
     const nodesChanged =
       previousIds.size > 0 &&
       (previousIds.size !== currentNodes.length ||
@@ -428,7 +429,6 @@ export function useAutoLayout({
       simNodes.map((simNode, index) => [simNode.nodeId, index]),
     );
     nodeIndexByIdRef.current = indexById;
-    seededIdsRef.current = new Set(indexById.keys());
     const simLinks: SimLink[] = [];
     for (const edge of edgesRef.current) {
       const source = indexById.get(edge[edgeSourceProperty]);
@@ -463,8 +463,7 @@ export function useAutoLayout({
     }
 
     return () => {
-      animationRef.current?.stop();
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      cancelPlayback();
       setIsRunning(false);
       worker.terminate();
       workerRef.current = null;

@@ -432,6 +432,30 @@ describe('autoLayout worker', () => {
     );
   });
 
+  it('ends a held drag once, when the live layout settles', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    posted = [];
+    const nodeId = capturedSim!.nodes()[0]!.nodeId!;
+    handleMessage({ type: 'update_node', nodeId, node: { fx: 0.2, fy: 0.2 } });
+
+    // Mirror d3's timer step: tick, emit 'tick', then stop and emit 'end'
+    // once alpha falls below alphaMin.
+    const sim = capturedSim!;
+    sim.stop();
+    for (let i = 0; i < 2000; i += 1) {
+      sim.tick();
+      sim.on('tick')!.call(sim);
+      if (sim.alpha() < sim.alphaMin()) {
+        sim.on('end')!.call(sim);
+        break;
+      }
+    }
+
+    expect(posted.filter((m) => m.type === 'tick').length).toBeGreaterThan(0);
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
   it('pins a node on update_node {fx,fy} and releases it on {fx:null,fy:null}', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
 

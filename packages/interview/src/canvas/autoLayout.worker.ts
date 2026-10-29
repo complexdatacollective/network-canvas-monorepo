@@ -413,12 +413,7 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
 
 // Holds placed nodes near where they are now, so a change re-settles the
 // layout without reshuffling it.
-const setAnchors = (sim: Simulation<SimNode, undefined>, enabled: boolean) => {
-  if (!enabled) {
-    sim.force('anchorX', null);
-    sim.force('anchorY', null);
-    return;
-  }
+const setAnchors = (sim: Simulation<SimNode, undefined>) => {
   for (const node of sim.nodes()) {
     node.anchorX = node.x;
     node.anchorY = node.y;
@@ -595,6 +590,11 @@ const layoutScore = (nodes: SimNode[]) => {
   return crossings * 3 + throughNodes * 5 + (gap < 0.4 ? (0.4 - gap) * 10 : 0);
 };
 
+const isSettled = (sim: Simulation<SimNode, undefined>) =>
+  sim.alpha() < options.alphaMin ||
+  (sim.alpha() < EARLY_STOP_ALPHA_CEILING &&
+    maxNodeSpeed(sim.nodes()) < EARLY_STOP_MAX_SPEED);
+
 // Runs the simulation to rest, returning each tick's positions as flat
 // [x0, y0, x1, y1, ...] arrays.
 const settle = (sim: Simulation<SimNode, undefined>) => {
@@ -602,13 +602,7 @@ const settle = (sim: Simulation<SimNode, undefined>) => {
   for (let tick = 0; tick < MAX_TICKS; tick += 1) {
     sim.tick();
     frames.push(sim.nodes().flatMap((node) => [node.x ?? 0, node.y ?? 0]));
-    if (
-      sim.alpha() < options.alphaMin ||
-      (sim.alpha() < EARLY_STOP_ALPHA_CEILING &&
-        maxNodeSpeed(sim.nodes()) < EARLY_STOP_MAX_SPEED)
-    ) {
-      break;
-    }
+    if (isSettled(sim)) break;
   }
   return frames;
 };
@@ -719,19 +713,12 @@ const createSimulation = (nodes: SimNode[]) => {
 
   // Only a drag runs on the d3 timer; every other run settles synchronously.
   sim.on('tick', () => {
-    const simNodes = sim.nodes();
-    postMessage({ type: 'tick', nodes: simNodes });
-    if (
-      running &&
-      sim.alpha() < EARLY_STOP_ALPHA_CEILING &&
-      maxNodeSpeed(simNodes) < EARLY_STOP_MAX_SPEED
-    ) {
-      running = false;
-      sim.stop();
-      postMessage({ type: 'end', nodes: simNodes });
-    }
+    postMessage({ type: 'tick', nodes: sim.nodes() });
+    // Dropping alpha below alphaMin makes d3 stop the timer and fire 'end'.
+    if (isSettled(sim)) sim.alpha(0);
   });
   sim.on('end', () => {
+    running = false;
     postMessage({ type: 'end', nodes: sim.nodes() });
   });
   return sim;
@@ -753,6 +740,18 @@ const runToEnd = (alpha: number) => {
   simulation.stop();
   simulation.alpha(alpha);
   finish(settle(simulation));
+};
+
+// Settles a change while holding everyone near where they are now.
+const resettle = () => {
+  setAnchors(simulation);
+  runToEnd(REHEAT_ALPHA);
+};
+
+// A change made while paused is settled, anchored, once the user resumes.
+const markPending = () => {
+  needsLayout = true;
+  incrementalChange = true;
 };
 
 // A layout built from scratch keeps the best of several runs.
@@ -821,10 +820,10 @@ export function handleMessage(data: Message) {
       if (nodes.length > 0 && unplaced === nodes.length) {
         layoutFromScratch();
       } else if (unplaced > 0 || incrementalChange) {
-        setAnchors(simulation, true);
-        runToEnd(REHEAT_ALPHA);
+        resettle();
       } else {
-        setAnchors(simulation, false);
+        simulation.force('anchorX', null);
+        simulation.force('anchorY', null);
         runToEnd(options.startAlpha);
       }
       break;
@@ -842,8 +841,7 @@ export function handleMessage(data: Message) {
       if (!simulation) return;
       console.debug('autolayout-worker:reheat');
       paused = false;
-      setAnchors(simulation, true);
-      runToEnd(REHEAT_ALPHA);
+      resettle();
       break;
     }
     case 'update_links': {
@@ -855,14 +853,8 @@ export function handleMessage(data: Message) {
       // Which nodes are linked changes the ring and centering forces too.
       registerForces(simulation);
 
-      // A sim the user paused stays paused until they resume.
-      if (paused) {
-        needsLayout = true;
-        incrementalChange = true;
-      } else {
-        setAnchors(simulation, true);
-        runToEnd(REHEAT_ALPHA);
-      }
+      if (paused) markPending();
+      else resettle();
       break;
     }
     case 'update_node': {
@@ -886,19 +878,17 @@ export function handleMessage(data: Message) {
       simulation.force('link', makeLinkForce());
 
       if (paused) {
-        needsLayout = true;
-        incrementalChange = true;
+        markPending();
         break;
       }
       if (data.node.fx != null || data.node.fy != null) {
         // While a node is held the layout runs live around it.
-        if (!running) setAnchors(simulation, true);
+        if (!running) setAnchors(simulation);
         running = true;
         simulation.alpha(REHEAT_ALPHA).restart();
       } else {
         // Anchor at the release position, not where the drag began.
-        setAnchors(simulation, true);
-        runToEnd(Math.max(simulation.alpha(), REHEAT_ALPHA));
+        resettle();
       }
       break;
     }
