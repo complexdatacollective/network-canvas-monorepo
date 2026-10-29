@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fresco Deployment Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..1000&family=Inclusive+Sans:wght@300..700&display=swap" rel="stylesheet">
+<style>
+/* Layout: a 1920×1080 canvas scaled into a 16:9 stage, a route-style timeline and transport beneath.
+   Values are Fresco's palette (tooling/tailwind/shared/colors.css), the interview theme
+   (themes/interview.css), and the computed styles of the fresco-ui components they imitate.
+   The page is deliberately dark-only, like Fresco's interview theme. */
+:root {
+  --neon-coral: oklch(0.5733 0.2584 11.57);
+  --mustard: oklch(0.81 0.17 86.39);
+  --sea-green: oklch(0.7 0.2 171.52);
+  --cyber-grape: oklch(0.3 0.09 281);
+  --sea-serpent: oklch(0.7383 0.13 217.55);
+  --purple-pizazz: oklch(0.6249 0.288 320.46);
+  --paradise-pink: oklch(0.6586 0.253 359.2);
+  --cerulean-blue: oklch(0.5824 0.229 260.09);
+  --neon-carrot: oklch(0.7487 0.161 62.61);
+  --tomato: oklch(0.5599 0.25 23.69);
+  --charcoal: oklch(0.3 0.02 210);
+  --navy-taupe: oklch(0.28 0.09 281);
+  --rich-black: oklch(0.02 0.09 281);
+  --platinum: oklch(0.9593 0.009 281);
+  --platinum-dark: oklch(0.9093 0.009 281);
+  --white: oklch(1 0 0);
+
+  --background: var(--navy-taupe);
+  --text: var(--white);
+  --surface: oklch(0.33 0.095 281);
+  --surface-1: oklch(0.37 0.09 281);
+  --surface-2: oklch(0.41 0.09 281);
+  --primary: var(--sea-green);
+  --neutral: var(--platinum);
+  --neutral-contrast: var(--charcoal);
+  --warning: oklch(0.8492 0.2766 49);
+  --warning-contrast: oklab(0.2995 0.0423 0.0486);
+  --success: var(--sea-green);
+  --info: var(--cerulean-blue);
+  --outline: oklch(1 0 0 / 0.2);
+  --link: var(--sea-green);
+  --popover: var(--white);
+  --popover-text: var(--cyber-grape);
+  --popover-border: oklch(0.923 0.015 290);
+  --light-primary: oklch(0.1 0.4 290);
+
+  /* fresco-ui elevation utilities */
+  --shadow: oklch(0.1 0.2 290.184);
+  --elevation-low: 0 0.5px 0.5px 0 oklch(from var(--shadow) l c h / 0.17), 0 2px 1.7px -1.2px oklch(from var(--shadow) l c h / 0.17), 0 7.5px 6.3px -2.5px oklch(from var(--shadow) l c h / 0.17);
+  --elevation-medium: 0 0.5px 0.5px 0 oklch(from var(--shadow) l c h / 0.205), 0 3.3px 3.2px -1.2px oklch(from var(--shadow) l c h / 0.205), 0 13.5px 12.9px -2.5px oklch(from var(--shadow) l c h / 0.205);
+  --elevation-high: 0 0.5px 0.5px 0 oklch(from var(--shadow) l c h / 0.24), 0 6px 6px -1.2px oklch(from var(--shadow) l c h / 0.24), 0 24px 24px -2.5px oklch(from var(--shadow) l c h / 0.24);
+  --shadow-md: 0 6px 10px -2px oklch(from var(--shadow) l c h / 0.14), 0 3px 6px -3px oklch(from var(--shadow) l c h / 0.22);
+
+  --heading: "Nunito", system-ui, sans-serif;
+  --body: "Inclusive Sans", system-ui, sans-serif;
+  --mono: ui-monospace, Menlo, Monaco, "Fira Code", monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { background: var(--background); color: var(--text); }
+body { font-family: var(--body); font-size: 16px; line-height: 1.7; }
+.ic { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 3px solid var(--sea-serpent); outline-offset: 3px; }
+
+.page {
+  max-width: 1240px; margin: 0 auto; display: grid; gap: 20px; padding-block: 32px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  container-type: inline-size;
+}
+/* Embedded in the documentation's dialog: the dialog carries the title, and the
+   stage shrinks so the timeline and controls stay on screen. */
+.embed body { margin: 0; }
+.embed .head { display: none; }
+.embed .page { padding-block: 8px 16px; max-width: min(1240px, calc((100dvh - 230px) * 16 / 9 + 32px)); }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+.head h1 { margin: 0; font-family: var(--heading); font-weight: 700; font-size: 30px; line-height: 1.2; }
+.head a { color: var(--link); font-weight: 600; }
+
+/* ---------- fresco-ui imitations (page scale: 16px root) ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 24px; border: 0; border-radius: 9999px;
+  font: 700 16px/1.7 var(--heading); letter-spacing: 0.025em; white-space: nowrap; cursor: pointer;
+  background: var(--neutral); color: var(--neutral-contrast); box-shadow: var(--elevation-low);
+  transition: background-color .15s, color .15s, box-shadow .15s, translate .15s;
+}
+.btn:active { translate: 0 2px; box-shadow: none; }
+.btn .ic { font-size: 1em; }
+.btn.primary { background: var(--primary); color: var(--white); }
+.btn.lg { height: 64px; padding: 0 32px; font-size: 20px; gap: 12px; }
+.btn.sm { height: 36px; padding: 0 16px; font-size: 14px; }
+.btn.text { background: transparent; color: currentColor; box-shadow: none; }
+.btn.text:hover { background: var(--text); color: var(--background); }
+.btn.outline { background: transparent; color: currentColor; box-shadow: inset 0 0 0 2px currentColor; }
+.btn.outline:hover { background: var(--text); color: var(--background); }
+.btn.icon { width: 48px; padding: 0; }
+.btn.icon .ic { font-size: 20px; }
+.kbd {
+  display: inline-flex; padding: 2px 6px; border-radius: 4px; font: 500 12.6px/1 var(--mono); letter-spacing: 0.03em;
+  background: oklch(1 0 0 / 0.05); border: 1px solid oklch(1 0 0 / 0.15); box-shadow: 0 1px 0 1px oklch(1 0 0 / 0.1);
+}
+.tip {
+  position: absolute; z-index: 30; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%) scale(.96); opacity: 0; pointer-events: none;
+  padding: 12px 20px; border-radius: 24px; border: 2px solid var(--popover-border); background: var(--popover); color: var(--popover-text);
+  box-shadow: var(--shadow-md); font: 400 14px/1.6 var(--body); letter-spacing: 0.02em; white-space: nowrap; transition: opacity .15s, transform .25s cubic-bezier(.3,1.4,.5,1);
+}
+.tip::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 14px; height: 14px; background: var(--popover); border-right: 2px solid var(--popover-border); border-bottom: 2px solid var(--popover-border); transform: translateX(-50%) rotate(45deg); border-radius: 0 0 3px 0; }
+.tip b { display: block; font-weight: 700; }
+.station:hover .tip, .station:focus-visible .tip { opacity: 1; transform: translateX(-50%) scale(1); }
+
+/* ---------- stage ---------- */
+.stage { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 28px; background: var(--background); box-shadow: var(--elevation-high); }
+.canvas { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; font-family: var(--heading); font-size: 22px; line-height: 1.7; color: var(--text); }
+#blobs { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.3; }
+.scrim { position: absolute; inset: 0; background: oklch(from var(--background) l c h / 0.55); }
+.scene { position: absolute; inset: 0; opacity: 0; visibility: hidden; }
+
+/* fresco-ui imitations at canvas scale (22px root) */
+.c-badge { display: inline-flex; align-items: center; gap: 11px; padding: 8px 16.5px; border-radius: 9999px; border: 1px solid transparent; background: var(--bc); color: var(--rich-black); font: 600 19.6px/1.8 var(--heading); letter-spacing: 0.02em; white-space: nowrap; }
+.c-badge.outline { background: transparent; color: var(--text); border-color: currentColor; }
+.c-badge .ic { font-size: 22px; }
+.c-btn { display: inline-flex; align-items: center; justify-content: center; gap: 16.5px; height: 88px; padding: 0 44px; border: 0; border-radius: 52.8px; font: 700 27.5px/1.5 var(--heading); letter-spacing: 0.025em; white-space: nowrap; background: var(--neutral); color: var(--neutral-contrast); box-shadow: var(--elevation-low); cursor: pointer; }
+.c-btn.primary { background: var(--primary); color: var(--white); }
+.c-btn.dark { background: var(--light-primary); color: var(--white); }
+.c-btn.md { height: 66px; padding: 0 33px; font-size: 22px; }
+.card { background: var(--surface); color: var(--text); border-radius: 35.2px; box-shadow: var(--elevation-medium); }
+.disc { display: grid; place-items: center; border-radius: 50%; background: var(--dc); color: var(--rich-black); flex: none; }
+.disc .ic { width: 50%; height: 50%; }
+.eyebrow { margin: 0; font: 700 17.4px/1.25 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.pips { display: flex; gap: 11px; }
+.pips i { width: 11px; height: 11px; border-radius: 50%; border: 1px solid currentColor; }
+.pips i.on { background: oklch(1 0 0 / 0.3); }
+.alert { display: flex; align-items: flex-start; gap: 22px; padding: 22px 33px; border-radius: 35.2px; background: var(--warning); color: var(--warning-contrast); box-shadow: var(--elevation-medium); font: 400 22px/1.6 var(--heading); }
+.alert svg { width: 56px; height: 50px; flex: none; }
+.progress { position: relative; height: 26px; border-radius: 9999px; overflow: hidden; background: color-mix(in oklch, currentColor 10%, transparent); }
+.progress i { position: absolute; inset: 0; border-radius: inherit; background: var(--info); transform-origin: left; }
+.spinner { --cs: 9px; position: relative; width: calc(var(--cs) * 3); height: calc(var(--cs) * 3); margin: var(--cs); rotate: 45deg; animation: spin-box 1.8s ease-in-out infinite; flex: none; }
+.spinner.sm { --cs: 11px; }
+.spinner > i { position: absolute; }
+.spinner > i::before, .spinner > i::after { content: ""; display: block; width: calc(var(--cs) * 2); height: var(--cs); border-radius: calc(var(--cs) * 2) calc(var(--cs) * 2) 0 0; }
+.spinner > i::before { background: var(--c2); translate: 50% 0; animation: spin-half 1.8s cubic-bezier(.4,0,.2,1) infinite; }
+.spinner > i::after { background: var(--c); rotate: 180deg; position: relative; top: -1px; }
+.spinner > i:nth-child(1) { top: calc(var(--cs) * -1); left: 0; --c: var(--sea-serpent); --c2: oklch(from var(--sea-serpent) calc(l - .05) c h); }
+.spinner > i:nth-child(2) { top: 0; left: calc(var(--cs) * 2); rotate: 90deg; --c: var(--mustard); --c2: oklch(from var(--mustard) calc(l - .05) c h); }
+.spinner > i:nth-child(3) { top: var(--cs); left: calc(var(--cs) * -1); rotate: -90deg; --c: var(--neon-coral); --c2: oklch(from var(--neon-coral) calc(l - .05) c h); }
+.spinner > i:nth-child(4) { top: calc(var(--cs) * 2); left: var(--cs); rotate: -180deg; --c: var(--sea-green); --c2: oklch(from var(--sea-green) calc(l - .05) c h); }
+@keyframes spin-box { 0% { rotate: 45deg; scale: 1; } 20% { scale: .8; } 57% { rotate: 405deg; scale: 1; } 100% { rotate: 405deg; } }
+@keyframes spin-half { 0%, 100% { translate: 50% 0; } 50% { translate: 0 0; } }
+
+/* copy column */
+.copy { position: absolute; left: 110px; top: 0; width: 540px; height: 1080px; display: flex; flex-direction: column; justify-content: center; gap: 26px; }
+.where { display: flex; align-items: center; gap: 18px; }
+.where > div { display: grid; gap: 8px; }
+.copy h2 { margin: 0; font: 700 57.2px/1.05 var(--heading); text-wrap: balance; }
+.copy .act { margin: 0; font: 600 28.6px/1.375 var(--body); text-wrap: pretty; }
+.copy .why { margin: 0; padding-left: 18px; border-left: 4px solid var(--outline); font: 400 23.1px/1.45 var(--body); opacity: .75; text-wrap: pretty; }
+
+/* screenshot frame */
+.frame { position: absolute; background: var(--white); border-radius: 35.2px; overflow: hidden; box-shadow: var(--elevation-high); }
+.bar { height: 44px; display: flex; align-items: center; gap: 9px; padding: 0 18px; background: var(--platinum); }
+.bar i { width: 13px; height: 13px; border-radius: 50%; }
+.bar i:nth-child(1) { background: var(--neon-coral); } .bar i:nth-child(2) { background: var(--mustard); } .bar i:nth-child(3) { background: var(--sea-green); }
+.bar span { margin-left: 12px; flex: 1; height: 28px; padding: 0 16px; border-radius: 9999px; background: var(--white); color: var(--cyber-grape); font: 15px/28px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.view { position: absolute; inset: 44px 0 0 0; overflow: hidden; }
+.zoom { position: absolute; inset: 0; }
+.zoom img { display: block; width: 100%; height: 100%; }
+.cursor { position: absolute; width: 0; height: 0; }
+.cursor svg { position: absolute; left: -3px; top: -3px; width: 46px; height: 62px; overflow: visible; }
+.cursor .arrow { fill: var(--cc, var(--sea-serpent)); stroke: var(--rich-black); stroke-width: 4; stroke-linejoin: round; }
+.cursor .tag { fill: var(--cc, var(--sea-serpent)); stroke: var(--rich-black); stroke-width: 3; }
+.cursor text { font: 800 12px var(--heading); fill: var(--rich-black); }
+.click { position: absolute; width: 68px; height: 68px; border-radius: 50%; border: 5px solid var(--cc); opacity: 0; }
+.ground { position: absolute; height: 24px; margin-top: -6px; border-radius: 50%; background: oklch(from var(--rich-black) l c h / 0.4); transform-origin: center; }
+.sparkle { position: absolute; width: 32px; height: 32px; margin: -16px 0 0 -16px; fill: var(--white); pointer-events: none; overflow: visible; }
+.wire-dots { fill: none; stroke: oklch(1 0 0 / 0.5); stroke-width: 5; stroke-dasharray: 2 14; stroke-linecap: round; }
+@keyframes reach { 0% { scale: .5; } 60% { scale: 1.2; } 100% { scale: 1; } }
+.station.reached:not(.active) { animation: reach .5s linear; }
+.callout { position: absolute; width: 0; height: 0; opacity: 0; }
+.callout span { position: absolute; left: 0; display: flex; align-items: center; gap: 10px; padding: 9px 20px; border-radius: 9999px; white-space: nowrap; background: var(--cyber-grape); color: var(--white); font: 700 22px/1.4 var(--heading); box-shadow: var(--elevation-high), inset 0 0 0 3px var(--cc); }
+.callout span .ic { font-size: 22px; }
+
+/* services flow */
+.wire-label { position: absolute; z-index: 4; transform: translate(-50%, -50%); padding: 4px 14px; border-radius: 9999px; background: var(--background); border: 2px solid var(--outline); font: 700 18px/1.4 var(--heading); white-space: nowrap; opacity: 0; }
+.appwrap { display: grid; gap: 16px; }
+.applabel { display: flex; align-items: center; gap: 14px; font: 900 28px/1 var(--heading); white-space: nowrap; }
+.svc { box-sizing: border-box; }
+.rows { width: 100%; }
+.applabel .c-badge { font-size: 17px; padding: 4px 14px; }
+
+.svc { position: absolute; display: grid; gap: 16px; padding: 26px; }
+.svc .top { display: flex; align-items: center; gap: 18px; }
+.svc strong { display: block; font: 900 30px/1.15 var(--heading); }
+.svc small { display: block; font: 400 21px/1.35 var(--body); opacity: .75; }
+.wire { fill: none; stroke: var(--outline); stroke-width: 5; stroke-linecap: round; }
+.chip { position: absolute; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 9px 18px; border-radius: 9999px; background: var(--cc); color: var(--rich-black); font: 800 22px/1.3 var(--heading); white-space: nowrap; transform: translate(-50%, -50%); box-shadow: var(--elevation-high); opacity: 0; }
+.chip .ic { font-size: 24px; }
+.state { position: relative; height: 54px; }
+.state > * { position: absolute; left: 0; top: 0; }
+.rows { display: grid; gap: 9px; }
+.rows i { height: 16px; border-radius: 9999px; background: var(--sea-green); transform-origin: left; }
+.files { display: flex; gap: 12px; }
+.files span { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: var(--surface-1); color: var(--neon-carrot); font-size: 30px; }
+
+/* misc scenes */
+.center { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; gap: 30px; }
+.center h1 { margin: 0; font: 700 99px/1 var(--heading); letter-spacing: -0.02em; }
+.center h2 { margin: 0; font: 700 77px/1.05 var(--heading); }
+.center p { margin: 0; max-width: 40ch; font: 400 35px/1.45 var(--body); opacity: .8; }
+.appicon { width: 176px; height: 176px; border-radius: 44px; box-shadow: var(--elevation-high); }
+.list { position: absolute; display: grid; gap: 22px; }
+.row-card { display: flex; align-items: center; gap: 24px; padding: 24px 32px; }
+.row-card .grow { flex: 1; font: 800 30px/1.3 var(--heading); }
+.row-card .note { font: 400 21px/1.3 var(--body); opacity: .75; }
+.row-card.fork { outline: 4px dashed var(--neon-carrot); }
+.row-card.fork .note { opacity: 1; color: var(--neon-carrot); font: 800 19px/1 var(--heading); letter-spacing: .12em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+.editor { position: absolute; background: var(--rich-black); border-radius: 35.2px; overflow: hidden; box-shadow: var(--elevation-high); }
+.editor header { display: flex; align-items: center; gap: 9px; height: 56px; padding: 0 26px; background: var(--surface); font: 17px var(--mono); }
+.editor header i { width: 13px; height: 13px; border-radius: 50%; background: var(--surface-2); }
+.editor header em { margin-left: 12px; font-style: normal; opacity: .7; }
+.editor pre { margin: 0; padding: 36px; font: 22px/1.65 var(--mono); color: var(--platinum); white-space: pre-wrap; word-break: break-all; }
+.editor .k { color: var(--sea-green); }
+.editor .c, .editor .l3 { color: oklch(from var(--platinum) l c h / 0.45); }
+.hash { display: inline-block; overflow: hidden; vertical-align: top; max-width: 2ch; }
+.ring { position: absolute; width: 60px; height: 60px; border-radius: 50%; border: 5px solid var(--neon-coral); opacity: 0; }
+.lightpanel { position: absolute; background: var(--white); color: var(--cyber-grape); border-radius: 35.2px; box-shadow: var(--elevation-high); }
+.import { display: grid; gap: 22px; padding: 36px; box-sizing: border-box; }
+.import h3, .form h3 { margin: 0; font: 900 30px/1.2 var(--heading); }
+.import .box { min-height: 170px; padding: 16px 18px; border: 4px solid var(--sea-green); border-radius: 22px; font: 18px/1.7 var(--mono); min-width: 0; }
+.import .box div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tickbox { display: flex; align-items: center; gap: 14px; font: 600 24px/1 var(--body); }
+.tickbox i { position: relative; width: 34px; height: 34px; border-radius: 9px; border: 4px solid var(--platinum-dark); }
+.tickbox i b { position: absolute; inset: -4px; display: grid; place-items: center; border-radius: 9px; background: var(--sea-green); color: var(--white); font-size: 24px; opacity: 0; }
+.sel { border-radius: 6px; }
+.form { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 34px; padding: 46px 50px; }
+.form h3 { grid-column: 1 / -1; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.field label { font: 800 21px/1.2 var(--heading); }
+.field div { height: 58px; padding: 0 22px; border: 2px solid var(--platinum-dark); border-radius: 9999px; font: 20px/54px var(--mono); white-space: nowrap; overflow: hidden; }
+.field div span { display: inline-block; overflow: hidden; vertical-align: top; max-width: 0; }
+.form .actions { grid-column: 1 / -1; position: relative; display: flex; align-items: center; gap: 26px; height: 88px; }
+.form .actions > span:not(.c-btn) { position: absolute; left: 340px; display: flex; align-items: center; gap: 14px; font: 700 24px/1 var(--heading); opacity: 0; }
+.clock { position: absolute; }
+.clock svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.clock .face { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.clock strong { font: 900 132px/1 var(--heading); }
+.clock span { font: 700 21px/1.6 var(--heading); letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+.steps { position: absolute; display: grid; gap: 24px; }
+.steps div { display: flex; align-items: center; gap: 20px; font: 800 33px/1.2 var(--heading); }
+.steps .disc { font: 900 24px/1 var(--heading); }
+.fence { position: absolute; border: 4px dashed var(--sea-green); border-radius: 56px; }
+.fence .pill { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 28px; border-radius: 9999px; background: var(--sea-green); color: var(--rich-black); font: 900 26px/1.5 var(--heading); white-space: nowrap; }
+.fence .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 64px 48px 48px; }
+.acct { display: flex; align-items: center; gap: 18px; padding: 28px; font: 900 28px/1 var(--heading); }
+
+/* overlay */
+.overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; background: oklch(from var(--background) l c h / 0.75); backdrop-filter: blur(2px); }
+.overlay small { font: 600 14px/1.4 var(--body); }
+
+/* ---------- route timeline ---------- */
+.route { position: relative; height: 112px; margin: 0 24px; user-select: none; }
+.route:has(input:focus-visible) { outline: 3px solid var(--sea-serpent); outline-offset: 6px; border-radius: 12px; }
+.route .track { position: absolute; left: 32px; right: 32px; top: 0; height: 70px; cursor: pointer; }
+.route .track > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.traveller { position: absolute; z-index: 5; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--white); box-shadow: var(--elevation-high); pointer-events: none; }
+.traveller::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--white); opacity: 0; }
+.playing .traveller::after { animation: ping 1.2s ease-out infinite; }
+@keyframes ping { from { transform: scale(1); opacity: .6; } to { transform: scale(2.4); opacity: 0; } }
+.station { position: absolute; z-index: 10; top: 34px; width: 40px; height: 40px; margin: -20px 0 0 -20px; display: grid; place-items: center; border-radius: 50%; border: 4px solid var(--surface-1); background: var(--surface); color: var(--text); cursor: pointer; padding: 0; transition: background-color .2s, border-color .2s, scale .3s cubic-bezier(.3,1.5,.5,1); }
+.station .ic { font-size: 16px; }
+.station.reached { background: var(--sc); border-color: var(--sc); color: var(--rich-black); }
+.station.active { scale: 1.25; }
+.route .names { position: absolute; left: 32px; right: 32px; top: 72px; }
+.route .names span { position: absolute; transform: translateX(-50%); font: 700 12px/1 var(--body); white-space: nowrap; opacity: .6; }
+.route .names span.active { opacity: 1; }
+@container (max-width: 760px) {
+  .route { margin: 0 12px; }
+  .route .track { left: 12px; right: 12px; }
+  .station { width: 24px; height: 24px; margin: -12px 0 0 -12px; border-width: 2px; }
+  .station .ic { font-size: 12px; }
+  .route .names { display: none; }
+}
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.controls .group { display: flex; align-items: center; gap: 8px; }
+.time { font-size: 14px; font-variant-numeric: tabular-nums; opacity: .75; }
+.hint { display: flex; align-items: center; gap: 8px; font-size: 14px; opacity: .75; }
+.right { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.path { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.path .ic { color: var(--neon-carrot); }
+.caption { display: none; gap: 4px; padding: 16px; border-radius: 28px; background: var(--surface); }
+.caption { border-left: 6px solid var(--cc, var(--outline)); }
+.caption .ey { font: 700 12px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--cc); }
+.caption strong { font: 900 19px/1.3 var(--heading); }
+.caption .w { font-size: 14px; opacity: .75; }
+.caption .warn { font-size: 14px; font-weight: 600; color: var(--warning); }
+@container (max-width: 760px) { .caption { display: grid; } .hint { display: none; } }
+@media (prefers-reduced-motion: reduce) { .spinner, .spinner > i::before, .playing .traveller::after { animation: none; } }
+</style>
+
+<div class="page">
+  <div class="head">
+    <h1>Deploying Fresco</h1>
+    <a href="https://documentation.networkcanvas.com/en/collect-data/fresco/guide" target="_blank" rel="noopener">Read the full deployment guide ↗</a>
+  </div>
+  <div class="stage" id="stage">
+    <div class="canvas" id="canvas">
+      <canvas id="blobs" width="1920" height="1080" aria-hidden="true"></canvas>
+      <div class="scrim"></div>
+    </div>
+    <div class="overlay" id="overlay">
+      <button type="button" class="btn primary lg" id="start"></button>
+      <small id="overlayNote"></small>
+    </div>
+  </div>
+  <div class="caption" id="caption"></div>
+  <div class="route" id="route">
+    <input id="scrub" class="sr" type="range" min="0" step="1" value="0" aria-label="Seek">
+    <div class="track" id="track"></div>
+    <div class="names" id="names"></div>
+  </div>
+  <div class="controls">
+    <div class="group">
+      <button type="button" class="btn text icon" id="prev" aria-label="Previous step"></button>
+      <button type="button" class="btn primary icon" id="play" aria-label="Play"></button>
+      <button type="button" class="btn text icon" id="next" aria-label="Next step"></button>
+    </div>
+    <span class="time" id="time"></span>
+    <span class="hint"><span class="kbd">Space</span> play or pause <span class="kbd">←</span><span class="kbd">→</span> steps</span>
+    <div class="right">
+      <a class="btn text sm" id="guideLink" target="_blank" rel="noopener"></a>
+    </div>
+  </div>
+  <p class="sr" id="live" aria-live="polite"></p>
+</div>
+
+<script>
+// Icons are lucide's own SVG nodes, from the lucide-react version the monorepo uses.
+const ICONS = {"sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\"/><path d=\"M20 2v4\"/><path d=\"M22 4h-4\"/><circle cx=\"4\" cy=\"20\" r=\"2\"/>","flag":"<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\"/>","git-fork":"<circle cx=\"12\" cy=\"18\" r=\"3\"/><circle cx=\"6\" cy=\"6\" r=\"3\"/><circle cx=\"18\" cy=\"6\" r=\"3\"/><path d=\"M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9\"/><path d=\"M12 12v3\"/>","database":"<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5V19A9 3 0 0 0 21 19V5\"/><path d=\"M3 12A9 3 0 0 0 21 12\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/>","key-round":"<path d=\"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z\"/><circle cx=\"16.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","hard-drive":"<path d=\"M10 16h.01\"/><path d=\"M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/><path d=\"M21.946 12.013H2.054\"/><path d=\"M6 16h.01\"/>","code-xml":"<path d=\"m18 16 4-4-4-4\"/><path d=\"m6 8-4 4 4 4\"/><path d=\"m14.5 4-5 16\"/>","check":"<path d=\"M20 6 9 17l-5-5\"/>","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><path d=\"M16 3.128a4 4 0 0 1 0 7.744\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/>","image":"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" ry=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\"/>","file-headphone":"<path d=\"M4 6.835V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-.343\"/><path d=\"M14 2v5a1 1 0 0 0 1 1h5\"/><path d=\"M2 19a2 2 0 0 1 4 0v1a2 2 0 0 1-4 0v-4a6 6 0 0 1 12 0v4a2 2 0 0 1-4 0v-1a2 2 0 0 1 4 0\"/>","lock":"<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\"/><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"/>","x":"<path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/>","mouse-pointer-2":"<path d=\"M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z\"/>","server":"<rect width=\"20\" height=\"8\" x=\"2\" y=\"2\" rx=\"2\" ry=\"2\"/><rect width=\"20\" height=\"8\" x=\"2\" y=\"14\" rx=\"2\" ry=\"2\"/><line x1=\"6\" x2=\"6.01\" y1=\"6\" y2=\"6\"/><line x1=\"6\" x2=\"6.01\" y1=\"18\" y2=\"18\"/>","shield-check":"<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/><path d=\"m9 12 2 2 4-4\"/>","user-plus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\"/><line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\"/>","link-2":"<path d=\"M9 17H7A5 5 0 0 1 7 7h2\"/><path d=\"M15 7h2a5 5 0 1 1 0 10h-2\"/><line x1=\"8\" x2=\"16\" y1=\"12\" y2=\"12\"/>","table-2":"<path d=\"M3 9h18\"/><path d=\"M9 3v18\"/><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/>","play":"<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\"/>","pause":"<rect x=\"14\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/><rect x=\"5\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/>","skip-back":"<path d=\"M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432z\"/><path d=\"M3 20V4\"/>","skip-forward":"<path d=\"M21 4v16\"/><path d=\"M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>","split":"<path d=\"M16 3h5v5\"/><path d=\"M8 3H3v5\"/><path d=\"M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3\"/><path d=\"m15 9 6-6\"/>","arrow-up-right":"<path d=\"M7 7h10v10\"/><path d=\"M7 17 17 7\"/>","video":"<path d=\"m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5\"/><rect x=\"2\" y=\"6\" width=\"14\" height=\"12\" rx=\"2\"/>","hammer":"<path d=\"m15 12-9.373 9.373a1 1 0 0 1-3.001-3L12 9\"/><path d=\"m18 15 4-4\"/><path d=\"m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172v-.344a2 2 0 0 0-.586-1.414l-1.657-1.657A6 6 0 0 0 12.516 3H9l1.243 1.243A6 6 0 0 1 12 8.485V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5\"/>"};
+const icon = (name) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+// fresco-ui's illustrated warning icon (icons/warning.svg.react.tsx), as Alert renders it.
+const WARNING_ICON = `<svg viewBox="0 0 180 160" aria-hidden="true" style="--a:var(--warning);--d:color-mix(in oklab,var(--warning) 70%,black)"><circle fill="var(--platinum)" cx="90" cy="17.5" r="17.5"/><circle fill="var(--platinum)" cx="17.5" cy="142.5" r="17.5"/><circle fill="var(--platinum-dark)" cx="162.5" cy="142.5" r="17.5"/><path fill="var(--platinum)" d="M1.84 134.68L74.19 10h31.56l72.41 124.68H1.84z"/><path fill="var(--platinum-dark)" d="M78 134.68l63.36-63.36 36.8 63.36H78z"/><path fill="var(--platinum)" d="M17.5 126.68h145V160h-145z"/><circle fill="var(--a)" cx="84.29" cy="99.31" r="3"/><circle fill="var(--a)" cx="95.71" cy="99.31" r="3"/><circle fill="var(--d)" cx="79.93" cy="48.69" r="3"/><circle fill="var(--d)" cx="100.07" cy="48.69" r="3"/><path fill="var(--a)" d="M84.29 96.31h11.42v6H84.29z"/><path fill="var(--d)" d="M79.93 45.69h20.15v6H79.93z"/><path fill="var(--d)" d="M76.93 48.69l4.36 50.62h17.42l4.36-50.62H76.93z"/><path fill="var(--a)" d="M80.03 84.75l1.26 14.56h17.42l3.13-36.37-21.81 21.81z"/><path fill="var(--platinum-dark)" d="M162.5 126.68H86L52.64 160H162.5v-33.32z"/><circle fill="var(--d)" cx="90" cy="122.68" r="12"/><path fill="var(--a)" d="M81.51 131.17a12 12 0 0 0 17-17z"/></svg>`;
+const SPINNER = '<span class="spinner"><i></i><i></i><i></i><i></i></span>';
+
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const GUIDE = "https://documentation.networkcanvas.com/en/collect-data/fresco/guide";
+const params = new URLSearchParams(location.search);
+const EMBED = params.has("embed");
+document.documentElement.classList.toggle("embed", EMBED);
+const canvas = document.getElementById("canvas");
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const pos = (e, l, t, w, h) => { e.style.position = "absolute"; e.style.left = l + "px"; e.style.top = t + "px"; if (w != null) e.style.width = w + "px"; if (h != null) e.style.height = h + "px"; return e; };
+
+// ---------- script ----------
+const CHAPTERS = [
+  { id: "overview", title: "Overview", short: "Overview", c: "var(--platinum)", icon: "sparkles" },
+  { id: "fork", title: "Fork Fresco", short: "Fork", c: "var(--sea-serpent)", icon: "git-fork", anchor: "create-a-fork-of-fresco" },
+  { id: "database", title: "Create a database", short: "Database", c: "var(--sea-green)", icon: "database", anchor: "create-a-database" },
+  { id: "netlify", title: "Deploy on Netlify", short: "Deploy", c: "var(--mustard)", icon: "globe", anchor: "create-a-project-on-netlify" },
+  { id: "setup", title: "Set up Fresco", short: "Set up", c: "var(--paradise-pink)", icon: "key-round", anchor: "configuration-and-setup" },
+  { id: "storage", title: "Configure storage", short: "Storage", c: "var(--neon-carrot)", icon: "hard-drive", anchor: "create-a-storage-bucket-using-uploadthing" },
+  { id: "finish", title: "Finish setup", short: "Finish", c: "var(--purple-pizazz)", icon: "flag", anchor: "finish-setup" },
+];
+const chapterOf = (id) => CHAPTERS.find((c) => c.id === id);
+// Scenes that match a narrower section of the guide than their chapter does.
+const SCENE_ANCHOR = { account: "create-a-user-account", protocol: "upload-a-protocol" };
+const anchorOf = (s) => SCENE_ANCHOR[s.id] ?? chapterOf(s.chapter).anchor;
+const SERVICE = {
+  github: { name: "GitHub", icon: "git-fork", c: "var(--sea-serpent)" },
+  netlify: { name: "Netlify", icon: "globe", c: "var(--mustard)" },
+  neon: { name: "Neon", icon: "database", c: "var(--sea-green)" },
+  storage: { name: "UploadThing", icon: "hard-drive", c: "var(--neon-carrot)" },
+  people: { name: "Participants", icon: "users", c: "var(--purple-pizazz)" },
+};
+
+const f = (x, y, zoom, label) => ({ x, y, zoom, label });
+const shot = (id, chapter, dur, img, [w, h], url, focus, copy) => ({ id, kind: "shot", chapter, dur, shot: { img, ar: w / h, url, focus }, ...copy });
+
+const PRE = [
+  { id: "title", kind: "title", chapter: "overview", dur: 6.5, title: "Deploy your own Fresco", act: "This walkthrough follows the deployment guide step by step.", why: "Set aside about an hour so you can finish in one sitting." },
+  { id: "deploy", kind: "deploy", chapter: "overview", dur: 10, title: "Netlify turns your fork into your app", act: "Netlify takes the code in your GitHub fork, builds it, and hosts your own Fresco at its own web address.", why: "GitHub and Netlify are only involved in deploying. Participants never see them." },
+  { id: "runtime", kind: "runtime", chapter: "overview", dur: 12, title: "How your study runs", act: "Participants take interviews in your Fresco app.", why: "Their data and interview responses are saved in your Neon database. Protocol assets, such as images, audio and video, are kept in storage." },
+  { id: "own", kind: "own", chapter: "overview", dur: 8, title: "You own every piece", act: "Each service runs in an account you control.", why: "That keeps your data yours, and makes you responsible for its security and upkeep." },
+  { id: "road", kind: "road", chapter: "overview", dur: 8.5, title: "Five steps to a live study", act: "Everything fits on free tiers.", why: "Storage uses UploadThing, the option the guide recommends." },
+  shot("fork-button", "fork", 7, "github-fork1", [2566, 1332], "github.com/complexdatacollective/Fresco", [f(78, 20, 2.2, "Fork")],
+    { title: "Fork the Fresco repository", act: "Sign in to GitHub, open the Fresco repository and click Fork.", why: "Netlify builds your instance from this copy, so it has to live in your account." }),
+  shot("fork-create", "fork", 8.5, "github-fork2", [2866, 1628], "github.com/complexdatacollective/Fresco/fork", [f(39, 40, 2, "Repository name"), f(70, 81, 2, "Create fork")],
+    { title: "Name your instance", act: "Use your study or project name, keep “Copy the main branch only” checked, then click Create fork.", why: "The repository name becomes your instance name." }),
+  shot("neon-create", "database", 6.5, "neon-db-1", [1733, 1053], "console.neon.tech", [f(53, 34, 2, "Create project")],
+    { title: "Create a Neon project", act: "Log in to Neon with GitHub and click Create project.", why: "This database stores your study, participants and every response." }),
+  { id: "region", kind: "region", chapter: "database", dur: 8, title: "Name it and pick a region", act: "Give the database a name and choose AWS US East 2 (Ohio).", why: "It matches Netlify's free-tier region, so the app and database talk faster." },
+  shot("neon-connect", "database", 6.5, "neon-db-3", [1715, 1051], "console.neon.tech", [f(29, 35, 2.2, "Connect")],
+    { title: "Open the connection details", act: "On the project dashboard, under “Connect to your database”, click Connect.", why: "These connection strings are how Fresco reaches the database." }),
+  shot("neon-copy", "database", 8, "neon-db-4", [749, 566], "console.neon.tech", [f(14, 49, 1.7, "Prisma · .env"), f(12, 86, 1.7, "Copy snippet")],
+    { title: "Copy the snippet", act: "Choose Prisma, open the .env tab, then click Copy snippet. Paste it into a notes app.", why: "You'll paste it into Netlify in a few minutes." }),
+  { id: "snippet", kind: "snippet", chapter: "database", dur: 10, title: "Uncomment the unpooled URL", act: "In your notes, delete the # in front of DATABASE_URL_UNPOOLED.", why: "Neon comments that line out, but Fresco needs both connection strings.", warn: "Make this edit before you copy the text into Netlify." },
+  shot("netlify-github", "netlify", 7, "netlify-1", [1730, 1055], "app.netlify.com/start", [f(19, 29, 2.2, "GitHub")],
+    { title: "Import from GitHub", act: "Start a new Netlify project, choose GitHub, authorize access, then pick your fork.", why: "Linking the fork lets Netlify build Fresco from it." }),
+  shot("netlify-env", "netlify", 7, "netlify-3", [1731, 1052], "app.netlify.com/start/deploy", [f(28, 72, 2, "Import from a .env file")],
+    { title: "Add your variables", act: "Name the project, scroll down, open Add environment variables and choose Import from a .env file.", why: "The project name becomes your default URL." }),
+  { id: "transfer", kind: "transfer", chapter: "netlify", dur: 10, title: "Paste them as secrets", act: "Paste everything from your notes into the box, tick Contains secret values, then click Deploy.", why: "Environment variables are how Fresco finds its database." },
+  { id: "build", kind: "build", chapter: "netlify", dur: 8, title: "Netlify builds Fresco", act: "Wait while Netlify builds your instance. It takes 2–5 minutes.", why: "The 2-hour setup window starts once the deploy finishes." },
+  shot("netlify-url", "netlify", 6.5, "netlify-5", [1737, 1058], "app.netlify.com/projects/your-study", [f(38, 14, 2.4, "Your URL")],
+    { title: "Open your new URL", act: "When the deploy finishes, click the URL shown in green under the project name.", why: "This is your Fresco instance. Participants will use the same address." }),
+  { id: "timer", kind: "timer", chapter: "setup", dur: 8.5, title: "You have 2 hours to finish setup", act: "Complete the setup wizard within two hours of deploying.", why: "The time limit protects a new deployment until it has an administrator.", warn: "If the time runs out, the configuration expires and you'll need to reset the database." },
+  shot("account", "setup", 8.5, "fresco1", [1500, 860], "your-study.netlify.app/setup", [f(62, 52, 1.35, "Passkey or password")],
+    { title: "Create the first account", act: "Pick a username, then sign in with a passkey or a strong password.", warn: "There is no email password reset. Keep your credentials safe and add a second administrator later." }),
+  { id: "storage", kind: "storage", chapter: "storage", dur: 8, title: "Store protocol files with UploadThing", act: "Fresco keeps protocol assets, such as images, audio and video, in UploadThing.", why: "It's the simplest option and the one the guide recommends: create an account, generate a token and paste it into Fresco." },
+];
+const STORAGE_STEPS = [
+    shot("ut-start", "storage", 6.5, "uploadthing1", [1313, 693], "uploadthing.com", [f(44, 80, 2, "Get started")], { title: "Sign up for UploadThing", act: "Go to uploadthing.com, click Get started and sign in with GitHub.", why: "Your UploadThing account is private to you." }),
+    shot("ut-app", "storage", 6, "uploadthing4", [1332, 789], "uploadthing.com/dashboard", [f(89, 17, 2.2, "Create a new app")], { title: "Create an app", act: "From your dashboard, click Create a new app." }),
+    shot("ut-name", "storage", 7, "uploadthing5", [528, 515], "uploadthing.com/dashboard/new", [f(50, 33, 1.5, "App name"), f(66, 87, 1.5, "Create App")], { title: "Name it", act: "Give the app a name and click Create App. Leave the region as it is." }),
+    shot("ut-token", "storage", 6.5, "uploadthing6", [1283, 349], "uploadthing.com/dashboard/api-keys", [f(92, 77, 1.6, "Copy")], { title: "Copy your token", act: "Open API Keys in the sidebar and copy the UPLOADTHING_TOKEN.", why: "The token lets Fresco upload to your app and nobody else's." }),
+    shot("ut-paste", "storage", 8, "fresco2", [1500, 860], "your-study.netlify.app/setup", [f(58, 74, 1.7, "UPLOADTHING_TOKEN"), f(38, 86, 1.7, "Save and continue")], { title: "Paste it into Fresco", act: "Keep UploadThing selected, paste the token and click Save and continue." }),
+];
+
+const POST = [
+  shot("protocol", "finish", 6.5, "fresco3", [1500, 860], "your-study.netlify.app/setup", [f(62, 55, 1.3, "Upload protocol")], { title: "Upload a protocol", act: "Optional here. You can also add protocols later from the Protocols page." }),
+  shot("dashboard", "finish", 6.5, "fresco4", [1500, 860], "your-study.netlify.app/setup", [f(62, 62, 1.3, "Go to the dashboard!")], { title: "Go to the dashboard", act: "The last step links to the documentation. Click Go to the dashboard!" }),
+  { id: "outro", kind: "outro", chapter: "finish", dur: 9.5, title: "Your Fresco is live", act: "Add participants, turn on anonymous recruitment if you need it, and optionally set a custom domain." },
+];
+
+// ---------- scene building ----------
+// Each scene records its animations against its own local clock; the player
+// sets their currentTime from the global clock while the scene is on stage.
+let current = null;
+const EASE = "cubic-bezier(.22,.8,.24,1)";
+const SPRING = "cubic-bezier(.3,1.45,.5,1)";
+function a(target, keyframes, at, dur, { easing = EASE, fill = "both", iterations = 1 } = {}) {
+  const x = target.animate(keyframes, { delay: at * 1000, duration: dur * 1000, fill, easing, iterations });
+  x.pause();
+  current.anims.push(x);
+  return x;
+}
+// Motion borrowed from the networkcanvas.com updates illustrations
+// (components/updates/illustrations): a back-out overshoot on everything that
+// arrives, sampled into keyframes so the clock can scrub it exactly.
+const backOut = (x) => (x <= 0 ? 0 : 1 + 2.8 * Math.pow(x - 1, 3) + 1.8 * Math.pow(x - 1, 2));
+const inCubic = (x) => x * x * x;
+const sampled = (fn, n = 18) => Array.from({ length: n + 1 }, (_, i) => ({ ...fn(i / n), offset: i / n }));
+const boing = (t, at, d, frame) => a(t, sampled((x) => frame(backOut(x), x)), at, d, { easing: "linear" });
+const rise = (t, at, d = 0.6, dy = 24) => boing(t, at, d, (k, x) => ({ opacity: Math.min(1, x * 3), transform: `translateY(${dy * (1 - k)}px)` }));
+const slide = (t, at, dx = 40) => boing(t, at, 0.6, (k, x) => ({ opacity: Math.min(1, x * 3), transform: `translateX(${dx * (1 - k)}px)` }));
+const pop = (t, at, from = 0.4) => boing(t, at, 0.5, (k, x) => ({ opacity: Math.min(1, x * 4), transform: `scale(${from + (1 - from) * k})` }));
+// A sticker that drops onto the scene, lands with a squash and settles.
+const stamp = (t, at, angle = -8) => a(t, sampled((x) => {
+  const drop = inCubic(Math.min(1, x / 0.45));
+  const pulse = Math.sin(Math.PI * Math.max(0, Math.min(1, (x - 0.45) / 0.55)));
+  const k = 1 + 1.6 * (1 - drop);
+  return { opacity: Math.min(1, x / 0.12), transform: `rotate(${angle - 22 * (1 - drop)}deg) scale(${k * (1 + 0.1 * pulse)}, ${k * (1 - 0.14 * pulse)})` };
+}, 24), at, 0.7, { easing: "linear" });
+// Settled objects keep breathing.
+const bob = (t, at, phase = 0) => { if (!reduce) a(t, [{ translate: "0 0" }, { translate: "0 -6px" }, { translate: "0 0" }], at + phase, 2.6, { easing: "ease-in-out", iterations: Infinity }); };
+// A soft shadow on the ground under an object, sized once fonts have laid it out.
+const LAYOUT = [];
+const ground = (node, target, at) => {
+  const g = el("div", "ground");
+  node.prepend(g);
+  LAYOUT.push(() => { const w = target.offsetWidth * 0.8; g.style.left = target.offsetLeft + target.offsetWidth * 0.1 + "px"; g.style.top = target.offsetTop + target.offsetHeight + 18 + "px"; g.style.width = w + "px"; });
+  boing(g, at, 0.5, (k, x) => ({ opacity: Math.min(1, x * 3), transform: `scaleX(${Math.max(0.001, k)})` }));
+};
+const SPARKLE = "M0 -16 Q2 -2 16 0 Q2 2 0 16 Q-2 2 -16 0 Q-2 -2 0 -16 Z";
+function sparkles(node, cx, cy, at, spread = 120) {
+  [[-1, -0.6, 1], [1, -0.85, 0.7], [1.1, 0.55, 0.9], [-0.85, 0.8, 0.6], [0.15, -1.2, 0.55]].forEach(([dx, dy, size], i) => {
+    const sp = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    sp.setAttribute("viewBox", "-16 -16 32 32");
+    sp.setAttribute("class", "sparkle");
+    sp.innerHTML = `<path d="${SPARKLE}"/>`;
+    sp.style.left = cx + dx * spread + "px"; sp.style.top = cy + dy * spread * 0.7 + "px";
+    node.append(sp);
+    boing(sp, at + i * 0.07, 0.5, (k, x) => ({ opacity: Math.min(1, x * 3), transform: `scale(${size * k})` }));
+    if (!reduce) a(sp, [{ scale: 0.6, opacity: 0.4 }, { scale: 1, opacity: 1 }, { scale: 0.6, opacity: 0.4 }], at + 0.5 + i * 0.35, 2.4, { easing: "ease-in-out", iterations: Infinity });
+  });
+}
+// The updates illustrations' multiplayer cursor: an outlined arrow with a name tag.
+const cursorMarkup = (color, name = "You") => `<svg viewBox="-3 -3 46 62" aria-hidden="true" style="--cc:${color}"><rect class="tag" x="18" y="34" width="${name.length * 8 + 18}" height="22" rx="11"/><text x="27" y="49">${name}</text><path class="arrow" d="M0 0 L0 30 L8 23 L14 36 L21 33 L15 21 L26 21 Z"/></svg>`;
+const fade = (t, at, d = 0.35) => a(t, [{ opacity: 0 }, { opacity: 1 }], at, d, { easing: "linear" });
+const out = (t, at, d = 0.3) => a(t, [{ opacity: 1 }, { opacity: 0 }], at, d, { easing: "linear", fill: "forwards" });
+const window_ = (t, from, to) => a(t, [{ opacity: 0, offset: 0 }, { opacity: 1, offset: 0.25 / (to - from + 0.25) }, { opacity: 1, offset: (to - from) / (to - from + 0.25) }, { opacity: 0, offset: 1 }], from, to - from + 0.25, { easing: "linear" });
+const disc = (name, color, size) => `<span class="disc" style="--dc:${color};width:${size}px;height:${size}px">${icon(name)}</span>`;
+const badge = (text, color, ic) => `<span class="c-badge" style="--bc:${color}">${ic ? icon(ic) : ""}${text}</span>`;
+
+function scene(s) {
+  const node = el("section", "scene");
+  canvas.appendChild(node);
+  s.node = node;
+  return node;
+}
+
+function copy(s, node) {
+  const ch = chapterOf(s.chapter);
+  const n = CHAPTERS.indexOf(ch);
+  const c = el("div", "copy");
+  const where = el("div", "where", `${disc(ch.icon, ch.c, 56)}<div><p class="eyebrow" style="color:${ch.c}">${n > 0 ? `Step ${n} · ${ch.title}` : ch.title}</p>${
+    s.count > 1 ? `<span class="pips">${Array.from({ length: s.count }, (_, i) => `<i class="${i === s.index ? "on" : ""}"></i>`).join("")}</span>` : ""}</div>`);
+  const h = el("h2", "", s.title);
+  const act = el("p", "act", s.act);
+  c.append(where, h, act);
+  rise(where, 0.15); rise(h, 0.3); rise(act, 0.5);
+  if (s.why) { const w = el("p", "why", s.why); c.append(w); rise(w, 1.1); }
+  if (s.warn) { const w = el("div", "alert", WARNING_ICON + `<span>${s.warn}</span>`); w.setAttribute("role", "status"); c.append(w); rise(w, 1.8); }
+  node.append(c);
+}
+
+const STAGE = { left: 700, width: 1140, height: 940 };
+const offset = (p, z) => { const lim = (50 * (z - 1)) / z; return Math.max(-lim, Math.min(lim, 50 - p)) * z; };
+const cam = (x, y, z) => `translate(${offset(x, z)}%, ${offset(y, z)}%) scale(${z})`;
+
+// Shared pieces for the two "how it fits together" scenes.
+function flowKit(node) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 1920 1080"); svg.setAttribute("width", 1920); svg.setAttribute("height", 1080);
+  svg.style.cssText = "position:absolute;inset:0";
+  node.append(svg);
+  // Horizontal-ish links bend sideways; vertical ones bend up and down.
+  const curve = (A, B) => {
+    if (Math.abs(B[1] - A[1]) > Math.abs(B[0] - A[0])) { const my = (A[1] + B[1]) / 2; return [A, [A[0], my], [B[0], my], B]; }
+    const mx = (A[0] + B[0]) / 2; return [A, [mx, A[1]], [mx, B[1]], B];
+  };
+  const bez = (p, t) => { const u = 1 - t; return [0, 1].map((k) => u * u * u * p[0][k] + 3 * u * u * t * p[1][k] + 3 * u * t * t * p[2][k] + t * t * t * p[3][k]); };
+  return {
+    card(id, l, t, w, sub, extra) {
+      const v = SERVICE[id];
+      const e = pos(el("div", "card svc", `<div class="top">${disc(v.icon, v.c, 68)}<div><strong>${v.name}</strong><small>${sub}</small></div></div>${extra}`), l, t, w);
+      node.append(e);
+      return e;
+    },
+    app(l, t, w, withUrl = true) {
+      const h = w * (860 / 1500) + 44;
+      const e = pos(el("div", "appwrap", `<span class="applabel">${disc("globe", "var(--mustard)", 40)}<b>Your Fresco app</b>${withUrl ? '<span class="c-badge outline">your-study.netlify.app</span>' : ""}</span><div class="frame" style="position:relative;width:${w}px;height:${h}px"><div class="bar"><i></i><i></i><i></i><span>your-study.netlify.app/dashboard/participants</span></div><div class="view"><img src="/assets/img/fresco-images/participants-page.png" alt="" style="display:block;width:100%"></div></div>`), l, t - 64, w);
+      node.append(e);
+      return e;
+    },
+    wire(A, B, at, label) {
+      const c = curve(A, B);
+      const d = `M${c[0]} C${c[1]} ${c[2]} ${c[3]}`;
+      const id = `wire-${Math.random().toString(36).slice(2)}`;
+      svg.insertAdjacentHTML("beforeend", `<mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1080"><path d="${d}" fill="none" stroke="white" stroke-width="16" stroke-linecap="round" pathLength="1" stroke-dasharray="1"/></mask><path class="wire-dots" d="${d}" mask="url(#${id})"/>`);
+      a(svg.querySelector(`#${id} path`), [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], at, 0.7, { easing: "ease-in-out" });
+      // The dots march along the link at 40px a second.
+      if (!reduce) a(svg.lastElementChild, [{ strokeDashoffset: 0 }, { strokeDashoffset: -32 }], at, 0.8, { easing: "linear", iterations: Infinity });
+      if (label) {
+        const [x, y] = bez(c, 0.5);
+        const l = el("span", "wire-label", label);
+        l.style.left = x + "px"; l.style.top = y + "px";
+        node.append(l);
+        boing(l, at + 0.5, 0.5, (k, x) => ({ opacity: Math.min(1, x * 3), transform: `translate(-50%, -50%) scale(${0.4 + 0.6 * k})` }));
+      }
+    },
+    travel(A, B, at, label, ic, color) {
+      if (reduce) return;
+      const chip = el("div", "chip", icon(ic) + label);
+      chip.style.setProperty("--cc", color);
+      node.append(chip);
+      const c = curve(A, B);
+      const kf = Array.from({ length: 25 }, (_, i) => {
+        const t = i / 24; const [x, y] = bez(c, t);
+        const k = t < 0.2 ? backOut(t / 0.2) : t > 0.85 ? 1 - inCubic((t - 0.85) / 0.15) : 1;
+        return { left: x + "px", top: y + "px", opacity: t > 0.97 ? 0 : 1, transform: `translate(-50%, -50%) scale(${Math.max(0.001, k)})`, offset: t };
+      });
+      a(chip, kf, at, 1.1, { easing: "ease-in-out" });
+    },
+  };
+}
+
+const BUILD = {
+  title(s) {
+    const node = scene(s);
+    const c = el("div", "center", `
+      <img class="appicon" src="fresco-icon.png" alt="">
+      <p class="eyebrow">Network Canvas · Deployment guide</p>
+      <h1>Deploy your own Fresco</h1>
+      <p>Run Network Canvas interviews in the web browser, on infrastructure you control.</p>`);
+    node.append(c);
+    const k = [...c.children];
+    pop(k[0], 0.1, 0.3); rise(k[1], 0.4); rise(k[2], 0.6); rise(k[3], 0.9);
+    sparkles(node, 960, 250, 0.5, 170); bob(k[0], 1.0);
+  },
+
+  // How the instance gets built: fork → Netlify build → your app.
+  deploy(s) {
+    const node = scene(s);
+    copy(s, node);
+    const F = flowKit(node);
+    const gh = F.card("github", 680, 150, 400, "Your fork of the code", `<div>${badge("your-study/Fresco", "var(--sea-serpent)", "code-xml")}</div>`);
+    const nt = F.card("netlify", 1180, 150, 400, "Builds and hosts your app",
+      `<div class="state"><span class="c-badge outline">Waiting</span><span style="display:flex;align-items:center;gap:12px"><span class="c-badge outline">Building</span>${SPINNER}</span>${badge("Live", "var(--sea-green)", "check")}</div>`);
+    const app = F.app(1000, 500, 760);
+    pop(gh, 0.5); pop(nt, 1.0);
+    F.wire([1080, 240], [1180, 240], 1.5);
+    F.travel([1080, 240], [1180, 240], 1.9, "code", "code-xml", SERVICE.github.c);
+    const [waiting, building, live] = nt.querySelector(".state").children;
+    out(waiting, 2.7, 0.2); a(building, [{ opacity: 0 }, { opacity: 1 }], 2.7, 0.2); out(building, 5.0, 0.2); stamp(live, 5.0);
+    sparkles(node, 1380, 250, 5.2, 250);
+    F.wire([1380, 312], [1380, 424], 5.3);
+    F.travel([1380, 312], [1380, 424], 5.5, "deploy", "globe", SERVICE.netlify.c);
+    pop(app, 6.2, 0.6);
+    ground(node, gh, 0.5); ground(node, nt, 1.0); ground(node, app, 6.2);
+    sparkles(node, 1380, 720, 6.6, 420);
+    bob(gh, 2.0); bob(nt, 6.0, 0.6); bob(app, 7.0, 1.2);
+  },
+
+  // How a study runs: participants use the app; data and assets live elsewhere.
+  runtime(s) {
+    const node = scene(s);
+    copy(s, node);
+    const F = flowKit(node);
+    const app = F.app(760, 260, 460, false);
+    const pp = F.card("people", 840, 740, 320, "Take interviews in a browser", "");
+    const nn = F.card("neon", 1440, 140, 360, "Participant data and interview responses", `<div class="rows"><i></i><i></i><i></i></div>`);
+    const st = F.card("storage", 1440, 600, 360, "Protocol assets: images, audio and video", `<div class="files"><span>${icon("image")}</span><span>${icon("file-headphone")}</span><span>${icon("video")}</span></div>`);
+    const P = { pp: [990, 740], appB: [990, 568], appR1: [1220, 360], nn: [1440, 250], appR2: [1220, 480], st: [1440, 700] };
+
+    pop(app, 0.4, 0.6);
+    pop(pp, 1.0);
+    ground(node, app, 0.4); ground(node, pp, 1.0); ground(node, nn, 3.0); ground(node, st, 6.6);
+    bob(app, 1.5); bob(pp, 2.5, 0.5);
+    F.wire(P.pp, P.appB, 1.5, "interviews");
+    F.travel(P.pp, P.appB, 2.0, "interview", "users", SERVICE.people.c);
+
+    pop(nn, 3.0); bob(nn, 4.0, 0.9);
+    F.wire(P.appR1, P.nn, 3.4, "participant data");
+    nn.querySelectorAll(".rows i").forEach((r, i) => {
+      F.travel(P.appR1, P.nn, 3.8 + i * 0.7, "responses", "table-2", SERVICE.neon.c);
+      boing(r, 4.8 + i * 0.7, 0.5, (k, x) => ({ opacity: Math.min(1, x * 3), transform: `scaleX(${Math.max(0.001, k)})` }));
+    });
+
+    pop(st, 6.6); bob(st, 7.6, 1.3);
+    F.wire(P.st, P.appR2, 7.0, "protocol assets");
+    F.travel(P.st, P.appR2, 7.5, "image", "image", SERVICE.storage.c);
+    F.travel(P.st, P.appR2, 8.2, "audio", "file-headphone", SERVICE.storage.c);
+    F.travel(P.appB, P.pp, 8.9, "shown in the interview", "image", SERVICE.storage.c);
+    sparkles(node, 1000, 800, 9.9, 170);
+  },
+
+  own(s) {
+    const node = scene(s);
+    copy(s, node);
+    const f = pos(el("div", "fence", `<span class="pill">${icon("lock")}Your accounts</span><div class="grid">${
+      ["github", "netlify", "neon", "storage"].map((id) => `<div class="card acct">${disc(SERVICE[id].icon, SERVICE[id].c, 60)}${SERVICE[id].name}</div>`).join("")}</div>`), 720, 356, 700);
+    node.append(f);
+    fade(f, 0.6, 0.5);
+    f.querySelectorAll(".acct").forEach((x, i) => rise(x, 1.1 + i * 0.2, 0.6, 16));
+    const o = pos(el("div", "", `${disc("x", "var(--neon-coral)", 110)}<p style="margin:0;font:700 28px/1.35 var(--heading)">The Network Canvas team has no access to your deployment.</p>`), 1480, 416, 360);
+    o.style.cssText += ";display:grid;justify-items:center;gap:24px;text-align:center";
+    o.querySelector(".disc").style.color = "var(--white)";
+    node.append(o);
+    rise(o.querySelector("p"), 3.3);
+    stamp(o.querySelector(".disc"), 3.0, -12);
+  },
+
+  road(s) {
+    const node = scene(s);
+    copy(s, node);
+    const notes = ["Your own copy of the code", "PostgreSQL, free tier", "Builds in 2–5 minutes", "Within 2 hours of deploying", "Managed by UploadThing"];
+    const l = pos(el("div", "list", CHAPTERS.slice(1, 6).map((c, i) =>
+      `<div class="card row-card">${disc(c.icon, c.c, 64)}<span class="grow">${i + 1}. ${c.title}</span><span class="note">${notes[i]}</span></div>`).join("")), 720, 110, 1100);
+    node.append(l);
+    s.layout = () => { l.style.top = (1080 - l.offsetHeight) / 2 + "px"; };
+    [...l.children].forEach((x, i) => slide(x, 0.8 + i * 0.35));
+  },
+
+  shot(s) {
+    const node = scene(s);
+    copy(s, node);
+    const BAR = 44;
+    let w = STAGE.width, h = w / s.shot.ar + BAR;
+    if (h > STAGE.height) { h = STAGE.height; w = (h - BAR) * s.shot.ar; }
+    const fr = pos(el("div", "frame", `<div class="bar"><i></i><i></i><i></i><span>${s.shot.url}</span></div><div class="view"><div class="zoom"><img src="/assets/img/fresco-images/${s.shot.img}.png" alt=""></div></div>`),
+      STAGE.left + (STAGE.width - w) / 2, (1080 - h) / 2, w, h);
+    node.append(fr);
+    pop(fr, 0.1, 0.85); ground(node, fr, 0.1);
+    const view = fr.querySelector(".view"), zoom = fr.querySelector(".zoom");
+    const intro = 1.4, slot = (s.dur - intro - 0.3) / s.shot.focus.length;
+    const kf = [{ transform: cam(50, 50, 1), offset: 0 }, { transform: cam(50, 50, 1), offset: intro / s.dur }];
+    const ck = [{ left: "74%", top: "92%", transform: "scale(1)", opacity: 0, offset: 0 }, { left: "74%", top: "92%", transform: "scale(1)", opacity: 0, offset: (intro - 0.3) / s.dur }, { left: "74%", top: "92%", transform: "scale(1)", opacity: 1, offset: intro / s.dur }];
+    const color = chapterOf(s.chapter).c;
+    const cur = el("div", "cursor", cursorMarkup(color));
+    if (!reduce) zoom.append(cur);
+    s.shot.focus.forEach((p, i) => {
+      const t0 = intro + i * slot, arrive = t0 + slot * 0.45, leave = t0 + slot - 0.01;
+      kf.push({ transform: cam(p.x, p.y, p.zoom), offset: arrive / s.dur }, { transform: cam(p.x, p.y, p.zoom), offset: leave / s.dur });
+      ck.push({ left: p.x + "%", top: p.y + "%", transform: `scale(${1 / p.zoom})`, opacity: 1, offset: arrive / s.dur }, { left: p.x + "%", top: p.y + "%", transform: `scale(${1 / p.zoom})`, opacity: 1, offset: leave / s.dur });
+      // The label sits beside where the control lands once the camera has zoomed.
+      const fx = reduce ? p.x : 50 + (p.x - 50) * p.zoom + offset(p.x, p.zoom);
+      const fy = reduce ? p.y : 50 + (p.y - 50) * p.zoom + offset(p.y, p.zoom);
+      const below = fy < 40;
+      const call = el("div", "callout", `<span style="--cc:${color};transform:translate(-50%, ${below ? "64px" : "calc(-100% - 54px)"})">${icon("mouse-pointer-2")}${p.label}</span>`);
+      call.style.left = fx + "%"; call.style.top = fy + "%";
+      view.append(call);
+      if (reduce) fade(call, 1.2); else window_(call, arrive + 0.2, leave);
+      if (!reduce) {
+        const ring = el("div", "click");
+        ring.style.cssText = `left:${p.x}%;top:${p.y}%;--cc:${color}`;
+        zoom.append(ring);
+        a(ring, [{ opacity: 1, transform: `translate(-50%,-50%) scale(${0.25 / p.zoom})` }, { opacity: 0, transform: `translate(-50%,-50%) scale(${1.3 / p.zoom})` }], arrive + 0.1, 0.55, { easing: "ease-out", fill: "none" });
+      }
+    });
+    if (!reduce) {
+      a(zoom, kf.map((k) => ({ ...k, easing: "cubic-bezier(.45,0,.25,1)" })), 0, s.dur, { easing: "linear" });
+      a(cur, ck.map((k) => ({ ...k, easing: "cubic-bezier(.45,0,.25,1)" })), 0, s.dur, { easing: "linear" });
+    }
+  },
+
+  region(s) {
+    const node = scene(s);
+    copy(s, node);
+    const place = (id, label, where) => `<div class="card" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px;text-align:center">${disc(SERVICE[id].icon, SERVICE[id].c, 96)}<strong style="font:900 33px/1.15 var(--heading)">${label}</strong><span class="c-badge outline">${icon("map-pin")}${where}</span></div>`;
+    const r = pos(el("div", "", place("neon", "Neon database", "US East 2 (Ohio)") + `<div style="position:relative;width:190px;height:8px;margin:0 16px"><i class="line" style="position:absolute;inset:0;border-radius:4px;background:var(--sea-green);transform-origin:left"></i><i class="blip" style="position:absolute;top:-8px;width:24px;height:24px;border-radius:50%;background:var(--white);opacity:0"></i></div>` + place("netlify", "Netlify free tier", "US East (Ohio)")), 720, 280, 1100);
+    r.style.cssText += ";display:flex;align-items:center";
+    node.append(r);
+    const [p1, link, p2] = r.children;
+    pop(p1, 0.8); pop(p2, 1.4); bob(p1, 1.8); bob(p2, 2.4, 0.7);
+    a(link.querySelector(".line"), [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], 2.2, 0.7);
+    if (!reduce) { const b = link.querySelector(".blip"); fade(b, 2.9, 0.2); a(b, [{ left: "0px" }, { left: "166px" }], 2.9, 0.6, { easing: "ease-in-out", iterations: Infinity }); }
+    const note = pos(el("div", "", "Same region, shorter trip between app and database"), 720, 780, 1100);
+    note.style.cssText += ";text-align:center;font:800 33px/1.3 var(--heading)";
+    node.append(note);
+    rise(note, 3.2);
+  },
+
+  snippet(s) {
+    const node = scene(s);
+    copy(s, node);
+    const ed = pos(el("div", "editor", `<header><i></i><i></i><i></i><em>fresco-env.txt</em></header><pre><span class="k">DATABASE_URL</span>="postgresql://neondb_owner:••••••••@ep-wispy-thunder-aduy7cf8-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require"
+<span class="c"># uncomment next line if you use Prisma &lt;5.10</span>
+<span class="l3"><span class="hash"># </span><span class="k">DATABASE_URL_UNPOOLED</span>="postgresql://neondb_owner:••••••••@ep-wispy-thunder-aduy7cf8.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require"</span></pre>`), 700, 230, 1120);
+    node.append(ed);
+    rise(ed, 0.2, 0.7, 40);
+    const ring = el("div", "ring");
+    ed.append(ring);
+    s.layout = () => { const hsh = ed.querySelector(".hash"); ring.style.left = hsh.offsetLeft - 18 + "px"; ring.style.top = hsh.offsetTop - 12 + "px"; };
+    pop(ring, 1.9, 1.8);
+    out(ring, 3.9);
+    const tag = pos(el("div", "", badge("Delete this #", "var(--neon-coral)")), 700, 160);
+    node.append(tag);
+    stamp(tag, 2.4, -6); out(tag, 3.9);
+    a(ed.querySelector(".hash"), [{ maxWidth: "2ch", opacity: 1 }, { maxWidth: "0ch", opacity: 0 }], 3.7, 0.4);
+    a(ed.querySelector(".l3"), [{ color: "oklch(from var(--platinum) l c h / 0.45)" }, { color: "var(--platinum)" }], 3.9, 0.4);
+    const ok = pos(el("div", "", badge("Ready to paste into Netlify", "var(--sea-green)", "check")), 700, 700);
+    node.append(ok);
+    stamp(ok, 4.6, -4);
+    sparkles(node, 880, 725, 4.9, 170);
+  },
+
+  transfer(s) {
+    const node = scene(s);
+    copy(s, node);
+    const lines = ['DATABASE_URL="postgresql://…-pooler…"', "# uncomment next line if you use Prisma &lt;5.10", 'DATABASE_URL_UNPOOLED="postgresql://…"'];
+    const notes = pos(el("div", "editor", `<header><i></i><i></i><i></i><em>fresco-env.txt</em></header><pre style="font-size:16px;padding:24px">${lines.map((l) => `<span class="sel">${l}</span>`).join("\n")}</pre>`), 680, 290, 520);
+    node.append(notes);
+    rise(notes, 0.3);
+    notes.querySelectorAll(".sel").forEach((x, i) => a(x, [{ background: "transparent", color: "var(--platinum)" }, { background: "var(--info)", color: "var(--white)" }], 1.2 + i * 0.12, 0.2));
+    const paste = pos(el("div", "", badge("Paste", "var(--mustard)")), 1150, 470);
+    node.append(paste);
+    stamp(paste, 1.8, -10);
+    const imp = pos(el("div", "lightpanel import", `<h3>Import environment variables</h3><div class="box">${lines.map((l) => `<div>${l}</div>`).join("")}</div><div class="tickbox"><i><b>${icon("check")}</b></i>Contains secret values</div><div><span class="c-btn md dark">Deploy your-study</span></div>`), 1250, 270, 610);
+    node.append(imp);
+    rise(imp, 0.6);
+    imp.querySelectorAll(".box div").forEach((x, i) => rise(x, 2.4 + i * 0.25, 0.4, -8));
+    pop(imp.querySelector(".tickbox b"), 4.0, 0.4);
+    a(imp.querySelector(".c-btn"), [{ transform: "scale(1)" }, { transform: "scale(1.08)" }, { transform: "scale(1)" }], 5.6, 0.6);
+    if (!reduce) {
+      const cur = el("div", "cursor", cursorMarkup("var(--mustard)"));
+      cur.style.cssText = "left:0;top:0";
+      imp.append(cur);
+      a(cur, [
+        { transform: "translate(460px,470px)", opacity: 0, offset: 0 }, { transform: "translate(460px,470px)", opacity: 1, offset: 0.33 },
+        { transform: "translate(52px,322px)", opacity: 1, offset: 0.43 }, { transform: "translate(52px,322px)", opacity: 1, offset: 0.52 },
+        { transform: "translate(150px,410px)", opacity: 1, offset: 0.6 }, { transform: "translate(150px,410px)", opacity: 1, offset: 1 },
+      ], 0, 9, { easing: "ease-in-out" });
+    }
+  },
+
+  build(s) {
+    const node = scene(s);
+    copy(s, node);
+    const steps = ["Cloning your Fresco fork", "Installing dependencies", "Building Fresco", "Deploying"];
+    const span = s.dur - 2.8;
+    const c = pos(el("div", "card", `
+      <div style="display:flex;align-items:center;gap:14px;font:24px var(--mono);opacity:.75">${icon("globe")}your-study.netlify.app</div>
+      <div style="position:relative;height:70px;font:900 52px/70px var(--heading)"><span class="busy" style="position:absolute;display:flex;align-items:center;gap:20px">${SPINNER.replace("spinner", "spinner sm")}Building</span><span class="done" style="position:absolute;color:var(--success)">Published</span></div>
+      <div class="progress"><i></i></div>
+      <div class="log" style="display:grid;gap:12px;font:21px var(--mono)">${steps.map((x) => `<div style="display:flex;align-items:center;gap:12px"><span style="color:var(--success);font-size:24px">${icon("check")}</span>${x}</div>`).join("")}</div>`), 760, 220, 960);
+    c.style.cssText += ";display:grid;gap:32px;padding:52px;box-sizing:border-box";
+    s.layout = () => { c.style.top = (1080 - c.offsetHeight) / 2 + "px"; };
+    node.append(c);
+    rise(c, 0.2, 0.7, 40);
+    const bar = c.querySelector(".progress i");
+    a(bar, [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], 0.9, span, { easing: "cubic-bezier(.4,.1,.3,1)" });
+    a(bar, [{ background: "var(--info)" }, { background: "var(--sea-green)" }], 0.9 + span, 0.3, { fill: "forwards" });
+    c.querySelectorAll(".log > div").forEach((x, i) => rise(x, 1.2 + i * (span / steps.length), 0.4, 8));
+    out(c.querySelector(".busy"), 0.9 + span, 0.2);
+    stamp(c.querySelector(".done"), 1.0 + span, -5);
+    sparkles(node, 960, 400, 1.3 + span, 140);
+  },
+
+  timer(s) {
+    const node = scene(s);
+    copy(s, node);
+    const R = 250, C = 2 * Math.PI * R;
+    const k = pos(el("div", "clock", `<svg viewBox="0 0 560 560" aria-hidden="true"><circle cx="280" cy="280" r="${R}" fill="none" stroke="var(--surface-1)" stroke-width="28"/><circle class="arc" cx="280" cy="280" r="${R}" fill="none" stroke="var(--paradise-pink)" stroke-width="28" stroke-linecap="round" stroke-dasharray="${C}"/></svg><div class="face"><strong>2:00</strong><span>hours to configure</span></div>`), 740, 200, 560, 560);
+    node.append(k);
+    pop(k, 0.3, 0.3); ground(node, k, 0.3); bob(k, 1.5);
+    const arc = k.querySelector(".arc");
+    a(arc, [{ strokeDashoffset: C }, { strokeDashoffset: 0 }], 0.6, 1.2);
+    a(arc, [{ strokeDashoffset: 0 }, { strokeDashoffset: C * 0.3 }], 2, s.dur - 2.4, { easing: "linear", fill: "forwards" });
+    const st = pos(el("div", "steps", ["Create account", "Configure storage", "Upload protocol", "Documentation"].map((t, i) =>
+      `<div><span class="disc" style="--dc:var(--paradise-pink);width:56px;height:56px">${i + 1}</span>${t}</div>`).join("")), 1350, 300);
+    node.append(st);
+    [...st.children].forEach((x, i) => slide(x, 2.2 + i * 0.35, -20));
+  },
+
+  storage(s) {
+    const node = scene(s);
+    copy(s, node);
+    const ut = pos(el("div", "card", `<div style="display:flex;align-items:center;gap:20px">${disc("hard-drive", "var(--neon-carrot)", 84)}<div><strong style="display:block;font:900 40px/1.1 var(--heading)">UploadThing</strong><span style="font:400 22px/1.4 var(--body);opacity:.75">Your protocol files, in your own account</span></div></div><div class="files" style="gap:16px"></div>`), 1020, 400);
+    ut.style.cssText += ";display:grid;gap:28px;padding:40px 48px 40px 40px;width:max-content";
+    node.append(ut);
+    pop(ut, 0.6, 0.6); ground(node, ut, 0.6); bob(ut, 1.6);
+    const rec = pos(el("div", "", badge("Recommended", "var(--sea-green)", "check")), 1520, 360);
+    node.append(rec);
+    stamp(rec, 1.4, 8);
+    // Protocol assets drop into the account one by one.
+    const files = ut.querySelector(".files");
+    [["image", "Images"], ["file-headphone", "Audio"], ["video", "Video"]].forEach(([ic, label], i) => {
+      const f = el("span", "", icon(ic));
+      f.style.cssText = "width:76px;height:76px;font-size:36px";
+      files.append(f);
+      boing(f, 2.4 + i * 0.45, 0.6, (k, x) => ({ opacity: Math.min(1, x * 3), transform: `translateY(${-140 * (1 - k)}px) scale(${0.5 + 0.5 * k})` }));
+    });
+    const note = pos(el("div", "", '<span class="c-badge outline">Up to 256 MB per protocol file</span>'), 1020, 740);
+    s.layout = () => {
+      const cx = 1300, l = cx - ut.offsetWidth / 2;
+      ut.style.left = l + "px"; ut.style.top = 540 - ut.offsetHeight / 2 - 40 + "px";
+      rec.style.left = l + ut.offsetWidth - 150 + "px"; rec.style.top = ut.offsetTop - 30 + "px";
+      note.style.left = cx - note.offsetWidth / 2 + "px"; note.style.top = ut.offsetTop + ut.offsetHeight + 70 + "px";
+    };
+    node.append(note);
+    rise(note, 4.2);
+    sparkles(node, 1300, 520, 4.0, 340);
+  },
+
+  outro(s) {
+    const node = scene(s);
+    const nexts = [["user-plus", "Add participants", "One at a time, or import a CSV from the Participants page.", "var(--sea-green)"], ["link-2", "Anonymous recruitment", "Let people join from a URL. Turn it on in Settings.", "var(--sea-serpent)"], ["globe", "Custom domain", "Optional. Set it up in Netlify's domain management.", "var(--mustard)"]];
+    const c = el("div", "center", `<img class="appicon" src="fresco-icon.png" alt="" style="width:124px;height:124px;border-radius:32px"><h2>Your Fresco instance is ready</h2><div style="display:grid;grid-template-columns:repeat(3,440px);gap:28px">${nexts.map(([ic, t, d, col]) =>
+      `<div class="card" style="display:flex;flex-direction:column;gap:16px;padding:34px;text-align:left">${disc(ic, col, 60)}<strong style="font:900 30px/1.2 var(--heading)">${t}</strong><span style="font:400 21px/1.45 var(--body);opacity:.75">${d}</span></div>`).join("")}</div><span style="font:20px var(--mono);opacity:.7">documentation.networkcanvas.com/en/collect-data/fresco/guide</span>`);
+    node.append(c);
+    const k = [...c.children];
+    pop(k[0], 0.1, 0.3); rise(k[1], 0.35); [...k[2].children].forEach((x, i) => { pop(x, 0.9 + i * 0.3); bob(x, 2.2, i * 0.5); }); rise(k[3], 2.4);
+    sparkles(node, 960, 220, 0.6, 220);
+  },
+};
+
+const ALL = [...PRE, ...STORAGE_STEPS, ...POST];
+for (const s of ALL) {
+  const peers = ALL.filter((x) => x.chapter === s.chapter);
+  s.count = peers.length; s.index = peers.indexOf(s);
+  current = s; s.anims = []; BUILD[s.kind](s);
+}
+current = null;
+
+// ---------- ambient blobs (after @codaco/art BackgroundBlobs) ----------
+const GRADIENTS = [["rgb(237,0,140)", "rgb(226,33,91)"], ["#00c9ff", "#92fe9d"], ["#fc466b", "#3f5efb"], ["#d53369", "#daae51"], ["#3f2b96", "#a8c0ff"], ["rgb(0, 201, 162)", "rgb(0, 160, 129)"], ["rgb(107, 114, 236)", "rgb(58, 58, 117)"], ["rgb(242, 183, 0)", "rgb(247,137,30)"], ["rgb(15, 178, 226)", "rgb(15, 112, 255)"]];
+(() => {
+  const cv = document.getElementById("blobs"), ctx = cv.getContext("2d");
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const blobs = [[3, 2], [2, 3], [1, 3]].flatMap(([layer, n]) => Array.from({ length: n }, () => {
+    const size = layer === 3 ? rnd(700, 900) : layer === 2 ? rnd(300, 450) : rnd(110, 170);
+    const ang = rnd(0, Math.PI * 2), sp = (layer === 1 ? rnd(30, 60) : layer === 2 ? rnd(8, 20) : 6);
+    return { size, x: rnd(-size / 2, 1920 - size / 2), y: rnd(-size / 2, 1080 - size / 2), vx: Math.sin(ang) * sp, vy: Math.cos(ang) * sp, g: GRADIENTS[Math.floor(rnd(0, GRADIENTS.length))], ph: Array.from({ length: 7 }, () => rnd(0, 6.28)), sp2: rnd(0.3, 0.6) };
+  }));
+  let last = performance.now();
+  const draw = (now) => {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    ctx.clearRect(0, 0, 1920, 1080);
+    for (const b of blobs) {
+      if (!reduce) { b.x += b.vx * dt; b.y += b.vy * dt; }
+      if (b.x < -b.size) b.x = 1920 - b.size / 2; else if (b.x > 1920) b.x = -b.size / 2;
+      if (b.y < -b.size) b.y = 1080 - b.size / 2; else if (b.y > 1080) b.y = -b.size / 2;
+      const r = b.size / 2, cx = b.x + r, cy = b.y + r, t = now / 1000;
+      const pts = b.ph.map((p, i) => { const ang = (i / b.ph.length) * Math.PI * 2; const rr = r * (0.82 + 0.14 * Math.sin(t * b.sp2 + p)); return [cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr]; });
+      const grad = ctx.createLinearGradient(b.x, b.y, b.x + b.size, b.y + b.size);
+      grad.addColorStop(0, b.g[0]); grad.addColorStop(1, b.g[1]);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      pts.forEach((p, i) => { const n = pts[(i + 1) % pts.length]; const m = [(p[0] + n[0]) / 2, (p[1] + n[1]) / 2]; if (i === 0) { const pv = pts[pts.length - 1]; ctx.moveTo((pv[0] + p[0]) / 2, (pv[1] + p[1]) / 2); } ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]); });
+      ctx.fill();
+    }
+    if (!reduce) requestAnimationFrame(draw);
+  };
+  requestAnimationFrame(draw);
+})();
+
+// ---------- player ----------
+const $ = (id) => document.getElementById(id);
+const stage = $("stage"), overlay = $("overlay"), scrub = $("scrub"), track = $("track"), names = $("names"), route = $("route");
+const fmt = (x) => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}`;
+$("prev").innerHTML = icon("skip-back"); $("next").innerHTML = icon("skip-forward");
+$("start").innerHTML = icon("play") + "Watch the walkthrough";
+
+let seq = [], chapters = [], TOTAL = 0;
+let t = 0, playing = false, started = false, last = 0, shown = null, previous = null;
+const FADE = 0.45;
+
+function sequence() {
+  seq = ALL;
+  let c = 0;
+  for (const s of seq) { s.start = c; c += s.dur; s.end = c; }
+  TOTAL = c;
+  chapters = CHAPTERS.map((ch) => { const it = seq.filter((s) => s.chapter === ch.id); return { ...ch, start: it[0].start, end: it.at(-1).end }; });
+  scrub.max = Math.floor(TOTAL);
+  buildRoute();
+}
+
+// The timeline is the route a deployment takes: a station per chapter, evenly
+// spaced whatever the chapter's length, so position is mapped per chapter.
+const W = 1000, MID = 34;
+const xAt = (c, i) => (i / chapters.length) * W;
+function posOf(x) {
+  const i = chapters.findIndex((c) => x < c.end), k = i < 0 ? chapters.length - 1 : i, c = chapters[k];
+  return ((k + Math.max(0, Math.min(1, (x - c.start) / (c.end - c.start)))) / chapters.length) * W;
+}
+function timeOf(f) {
+  const k = Math.min(chapters.length - 1, Math.max(0, Math.floor(f * chapters.length))), c = chapters[k];
+  return c.start + (f * chapters.length - k) * (c.end - c.start);
+}
+let routeState = null;
+function buildRoute() {
+  const main = `M0 ${MID} L${W} ${MID}`;
+  const n = chapters.length;
+  const stops = chapters.map((c, i) => `<stop offset="${i / n}" style="stop-color:${c.c}"/><stop offset="${(i + 1) / n}" style="stop-color:${c.c}"/>`).join("");
+  track.innerHTML = `
+    <svg viewBox="0 0 ${W} 68" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="rp" x1="0" x2="${W}" gradientUnits="userSpaceOnUse">${stops}</linearGradient><clipPath id="rc"><rect id="reveal" x="0" y="-20" height="110" width="0"/></clipPath></defs>
+      <g fill="none" stroke="var(--surface-1)" stroke-width="8" stroke-linecap="round"><path d="${main}" vector-effect="non-scaling-stroke"/></g>
+      <g clip-path="url(#rc)" fill="none" stroke="url(#rp)" stroke-width="8" stroke-linecap="round"><path d="${main}" vector-effect="non-scaling-stroke"/></g>
+    </svg>
+    <span class="traveller" id="traveller"></span>
+    ${chapters.map((c) => `<button type="button" class="station" data-ch="${c.id}" style="left:${(xAt(c, chapters.indexOf(c)) / W) * 100}%;--sc:${c.c}" aria-label="${c.title}, ${fmt(c.start)}">${icon(c.icon)}<span class="tip" role="tooltip"><b>${c.title}</b>${fmt(c.start)}</span></button>`).join("")}`;
+  names.innerHTML = chapters.map((c, i) => `<span data-ch="${c.id}" style="left:${(xAt(c, i) / W) * 100}%">${c.short}</span>`).join("");
+  track.querySelectorAll(".station").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); const c = chapters.find((x) => x.id === b.dataset.ch); seekTo(c.start + 0.01); play(); }));
+  routeState = { reveal: track.querySelector("#reveal"), traveller: track.querySelector("#traveller"), stations: [...track.querySelectorAll(".station")], names: [...names.children] };
+}
+track.addEventListener("pointerdown", (e) => { if (e.target.closest(".station")) return; const b = track.getBoundingClientRect(); seekTo(timeOf((e.clientX - b.left) / b.width)); });
+
+const sceneAt = (x) => seq.find((s) => x < s.end) ?? seq.at(-1);
+function show(s, opacity) {
+  s.node.style.visibility = "visible"; s.node.style.opacity = opacity;
+  const local = started ? t - s.start : 3;
+  for (const x of s.anims) x.currentTime = Math.max(0, Math.min(local, s.dur - 0.001)) * 1000;
+}
+const hide = (s) => { if (s) { s.node.style.visibility = "hidden"; s.node.style.opacity = 0; } };
+
+function render() {
+  const s = sceneAt(t);
+  if (s !== shown) {
+    previous = started ? shown : null;
+    for (const o of ALL) if (o !== s && o !== previous) hide(o);
+    shown = s;
+    announce(s);
+  }
+  const into = t - s.start;
+  if (previous && into < FADE && seq.includes(previous)) { previous.node.style.zIndex = 0; show(previous, 1); }
+  else if (previous) { hide(previous); previous = null; }
+  s.node.style.zIndex = 1;
+  show(s, previous ? Math.min(1, into / FADE) : 1);
+  s.node.style.transform = previous ? `scale(${1.02 - 0.02 * Math.min(1, into / FADE)})` : "";
+
+  const x = posOf(t);
+  routeState.reveal.setAttribute("width", x);
+  routeState.traveller.style.left = (x / W) * 100 + "%";
+  routeState.traveller.style.top = MID + "px";
+  routeState.stations.forEach((b) => {
+    const c = chapters.find((ch) => ch.id === b.dataset.ch);
+    b.classList.toggle("reached", t >= c.start);
+    b.classList.toggle("active", s.chapter === c.id);
+    b.toggleAttribute("aria-current", s.chapter === c.id);
+  });
+  routeState.names.forEach((n) => n.classList.toggle("active", n.dataset.ch === s.chapter));
+  scrub.value = Math.floor(t);
+  scrub.setAttribute("aria-valuetext", `${fmt(t)} of ${fmt(TOTAL)}, ${s.title}`);
+  $("time").textContent = `${fmt(t)} / ${fmt(TOTAL)}`;
+}
+
+function announce(s) {
+  const ch = chapterOf(s.chapter);
+  const cap = $("caption");
+  cap.style.setProperty("--cc", ch.c);
+  cap.innerHTML = `<span class="ey">${ch.title}</span><strong>${s.title}</strong><span>${s.act}</span>${s.why ? `<span class="w">${s.why}</span>` : ""}${s.warn ? `<span class="warn">${s.warn}</span>` : ""}`;
+  $("live").textContent = `${ch.title}. ${s.title}. ${s.act} ${s.why ?? ""} ${s.warn ?? ""}`;
+  const anchor = anchorOf(s);
+  const g = $("guideLink");
+  g.hidden = !anchor;
+  if (anchor) { g.href = `${GUIDE}#${anchor}`; g.innerHTML = EMBED ? "Read this step in the guide" : `This step in the guide${icon("arrow-up-right")}`; }
+}
+
+function sync() {
+  const ended = t >= TOTAL;
+  const p = $("play");
+  p.innerHTML = icon(playing ? "pause" : ended ? "rotate-ccw" : "play");
+  p.setAttribute("aria-label", playing ? "Pause" : ended ? "Replay" : "Play");
+  overlay.hidden = started;
+  $("overlayNote").textContent = `${fmt(TOTAL)} · follows the deployment guide`;
+  route.classList.toggle("playing", playing);
+  // The canvas is presentational; the controls below it carry the meaning.
+  canvas.setAttribute("aria-hidden", "true");
+  canvas.inert = true;
+}
+
+function play() { if (t >= TOTAL) t = 0; started = true; playing = true; last = performance.now(); render(); sync(); }
+function pause() { playing = false; sync(); }
+function toggle() { playing ? pause() : play(); }
+function seekTo(x) { started = true; t = Math.max(0, Math.min(TOTAL, x)); render(); sync(); }
+function step(dir) {
+  const s = sceneAt(t), i = seq.indexOf(s);
+  if (dir < 0 && t - s.start > 1.5) seekTo(s.start + 0.01);
+  else seekTo(seq[Math.max(0, Math.min(seq.length - 1, i + dir))].start + 0.01);
+}
+
+function loop(now) {
+  if (playing) {
+    let next = t + (now - last) / 1000;
+    if (next >= TOTAL) { next = TOTAL; playing = false; }
+    t = next;
+    render();
+    if (!playing) sync();
+  }
+  last = now;
+  requestAnimationFrame(loop);
+}
+
+$("start").addEventListener("click", play);
+$("play").addEventListener("click", toggle);
+$("prev").addEventListener("click", () => step(-1));
+$("next").addEventListener("click", () => step(1));
+scrub.addEventListener("input", () => seekTo(Number(scrub.value)));
+document.addEventListener("keydown", (e) => {
+  // Keys pressed in here never reach the page around the frame, so Escape is passed on to close its dialog.
+  if (EMBED && e.key === "Escape") parent.postMessage({ type: "fresco-walkthrough:close" }, location.origin);
+  if (e.target.closest && e.target.closest("button, input, a")) return;
+  if (e.code === "Space") { e.preventDefault(); toggle(); }
+  if (e.code === "ArrowRight") step(1);
+  if (e.code === "ArrowLeft") step(-1);
+});
+
+const fit = () => { canvas.style.transform = `scale(${stage.clientWidth / 1920})`; };
+new ResizeObserver(fit).observe(stage);
+fit();
+// Inside the documentation the guide link hands its section back to the page around it.
+if (EMBED) $("guideLink").addEventListener("click", (e) => {
+  e.preventDefault();
+  parent.postMessage({ type: "fresco-walkthrough:section", anchor: anchorOf(sceneAt(t)) }, location.origin);
+});
+sequence();
+render();
+sync();
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { ALL.forEach((s) => s.layout && s.layout()); LAYOUT.forEach((fn) => fn());
+  // #chapter=<id> opens at that chapter; ?autoplay starts playing straight away.
+  const ch = chapters.find((c) => c.id === new URLSearchParams(location.hash.slice(1)).get("chapter"));
+  if (ch) seekTo(ch.start + 0.01);
+  if (params.has("autoplay")) { play(); $("play").focus(); }
+  requestAnimationFrame(loop);
+});
+</script>

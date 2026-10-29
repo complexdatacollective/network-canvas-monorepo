@@ -56,6 +56,7 @@ import {
   GoodPractice,
 } from '~/components/customComponents/BestPractices';
 import CoordinateClassificationExample from '~/components/customComponents/CoordinateClassificationExample';
+import DeploymentWalkthrough from '~/components/customComponents/DeploymentWalkthrough';
 import ImageFullWidth from '~/components/customComponents/ImageFullWidth';
 import {
   InterfaceMeta,
@@ -335,6 +336,9 @@ const createMarkdownComponents = (docSlug?: string) => ({
   ),
   goodpractice: (props: { children: ReactNode }) => <GoodPractice {...props} />,
   badpractice: (props: { children: ReactNode }) => <BadPractice {...props} />,
+  deploymentwalkthrough: (props: { chapter?: string }) => (
+    <DeploymentWalkthrough {...props} />
+  ),
   videoiframe: (props: { src: string; title: string }) => (
     <VideoIFrame {...props} />
   ),

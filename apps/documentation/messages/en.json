@@ -105,5 +105,12 @@
   },
   "DocPage": {
     "docAvailableTxt": "This document is also available in"
+  },
+  "DeploymentWalkthrough": {
+    "watch": "Watch the deployment walkthrough",
+    "description": "A four-minute animated tour of every step in this guide, from forking Fresco to uploading your first protocol.",
+    "watchStep": "Watch this step",
+    "title": "Fresco deployment walkthrough",
+    "frameTitle": "Animated walkthrough of deploying Fresco"
   }
 }
