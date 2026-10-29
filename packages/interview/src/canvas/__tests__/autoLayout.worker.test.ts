@@ -33,6 +33,9 @@ type SimNode = {
   vy?: number;
   fx?: number | null;
   fy?: number | null;
+  placed?: boolean;
+  anchorX?: number;
+  anchorY?: number;
   groupKeys?: VariableOptionValue[];
 };
 type SimLink = SimulationLinkDatum<SimNode>;
@@ -117,6 +120,14 @@ const TWO_GROUPS: SimNode[] = [
   { nodeId: 'b3', x: 0.6, y: -0.44, groupKeys: ['B'] },
 ];
 
+// Links the four-node fixtures so they are centred rather than sent to the
+// ring for unlinked nodes.
+const CHAIN: SimLink[] = [
+  { source: 0, target: 1 },
+  { source: 1, target: 2 },
+  { source: 2, target: 3 },
+];
+
 const cloneNodes = (nodes: SimNode[]): SimNode[] =>
   nodes.map((node) => ({ ...node, groupKeys: node.groupKeys?.slice() }));
 
@@ -171,9 +182,11 @@ describe('autoLayout worker', () => {
     expect(sim.alphaMin()).toBe(0.025);
     expect(charge).toBeTruthy();
     expect(charge.strength()(nodes[0]!, 0, nodes)).toBeCloseTo(
-      (-0.006 * 10) / nodes.length,
+      -0.004 * Math.sqrt(10 / nodes.length),
     );
-    expect(biasX.strength()(nodes[0]!, 0, nodes)).toBe(0.13);
+    expect(biasX.strength()(nodes[0]!, 0, nodes)).toBeCloseTo(
+      0.13 / (simWidth * simWidth),
+    );
     expect(biasX.x()(nodes[0]!, 0, nodes)).toBeCloseTo(simWidth * 0.5);
     expect(biasY.strength()(nodes[0]!, 0, nodes)).toBe(0.13);
     expect(biasY.y()(nodes[0]!, 0, nodes)).toBe(0.5);
@@ -213,12 +226,241 @@ describe('autoLayout worker', () => {
     expect(groupBAfter).toBeLessThan(groupBBefore);
   });
 
-  it('starts with the canonical hot alpha', () => {
-    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+  it('settles synchronously on start, posting one end and no ticks', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      options: { collideRadius: SIM_COLLIDE_RADIUS },
+    });
 
     handleMessage({ type: 'start' });
 
-    expect(capturedSim!.alpha()).toBe(1);
+    expect(posted.map((m) => m.type)).toEqual(['end']);
+    const maxSpeed = Math.max(
+      ...capturedSim!.nodes().map((n) => Math.hypot(n.vx ?? 0, n.vy ?? 0)),
+    );
+    expect(maxSpeed).toBeLessThan(0.01);
+  });
+
+  it('does not lay out again when update_links repeats the current links', () => {
+    const links: SimLink[] = [{ source: 0, target: 1 }];
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      links: links.map((link) => ({ ...link })),
+    });
+    handleMessage({ type: 'start' });
+    handleMessage({
+      type: 'update_links',
+      links: links.map((link) => ({ ...link })),
+    });
+
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
+  it('stays paused when initialized paused, until started', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS),
+      paused: true,
+    });
+    handleMessage({ type: 'update_links', links: [{ source: 0, target: 3 }] });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.5, fy: 0.7 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: null, fy: null },
+    });
+
+    expect(posted.some((m) => m.type === 'end')).toBe(false);
+
+    handleMessage({ type: 'start' });
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      'a link change',
+      () =>
+        handleMessage({
+          type: 'update_links',
+          links: [{ source: 0, target: 3 }],
+        }),
+    ],
+    [
+      'a drag',
+      () => {
+        const nodeId = capturedSim!.nodes()[0]!.nodeId!;
+        handleMessage({
+          type: 'update_node',
+          nodeId,
+          node: { fx: 0.2, fy: 0.2 },
+        });
+        handleMessage({
+          type: 'update_node',
+          nodeId,
+          node: { fx: null, fy: null },
+        });
+      },
+    ],
+  ])('resumes %s made while paused as an anchored re-settle', (_, change) => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    handleMessage({ type: 'stop' });
+    change();
+
+    handleMessage({ type: 'start' });
+
+    expect(capturedSim!.force('anchorX')).toBeTruthy();
+    expect(capturedSim!.force('anchorY')).toBeTruthy();
+  });
+
+  it('settles anchored after the node set changes', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: cloneNodes(TWO_GROUPS).slice(1),
+      incremental: true,
+    });
+    handleMessage({ type: 'start' });
+
+    expect(capturedSim!.force('anchorX')).toBeTruthy();
+    expect(capturedSim!.force('anchorY')).toBeTruthy();
+  });
+
+  it('keeps people round and central until the first link exists', () => {
+    const SIM_WIDTH = 1600 / HEIGHT;
+    const nodes: SimNode[] = Array.from({ length: 8 }, (_, i) => ({
+      nodeId: `n${i}`,
+      x: 0.2 + i * 0.15,
+      y: 0.5,
+    }));
+    handleMessage({
+      type: 'initialize',
+      nodes,
+      options: { simWidth: SIM_WIDTH, simHeight: 1, boundsInset: 0.08 },
+    });
+
+    const sim = capturedSim!;
+    const biasX = sim.force('biasX') as ForceX<SimNode>;
+    const biasY = sim.force('biasY') as ForceY<SimNode>;
+    expect(biasX.strength()(sim.nodes()[0]!, 0, sim.nodes())).toBe(0.13);
+    expect(biasY.strength()(sim.nodes()[0]!, 0, sim.nodes())).toBe(0.13);
+
+    handleMessage({ type: 'update_links', links: [{ source: 0, target: 1 }] });
+    // With a link, an unlinked node leaves the centre for the ring.
+    const linkedBiasY = sim.force('biasY') as ForceY<SimNode>;
+    expect(linkedBiasY.strength()(sim.nodes()[5]!, 5, sim.nodes())).toBe(0);
+  });
+
+  it('ignores a repeated start once the layout has settled', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    handleMessage({ type: 'start' });
+
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
+  });
+
+  it('lays out unplaced nodes from scratch, keeping unlinked nodes on an oval ring', () => {
+    const SIM_WIDTH = 1600 / HEIGHT;
+    const nodes: SimNode[] = Array.from({ length: 10 }, (_, i) => ({
+      nodeId: `n${i}`,
+      x: SIM_WIDTH / 2,
+      y: 0.5,
+      placed: false,
+    }));
+    handleMessage({
+      type: 'initialize',
+      nodes,
+      links: [
+        { source: 0, target: 1 },
+        { source: 1, target: 2 },
+      ],
+      options: {
+        collideRadius: SIM_COLLIDE_RADIUS,
+        boundsInset: 0.08,
+        simWidth: SIM_WIDTH,
+        simHeight: 1,
+      },
+    });
+    handleMessage({ type: 'start' });
+
+    const end = posted.find((m) => m.type === 'end')!;
+    expect(minPairwiseDistance(end.nodes)).toBeGreaterThan(
+      2 * SIM_COLLIDE_RADIUS * 0.96,
+    );
+    const centre = { x: SIM_WIDTH / 2, y: 0.5 };
+    const radii = end.nodes
+      .filter((n) => !['n0', 'n1', 'n2'].includes(n.nodeId!))
+      .map((n) => Math.hypot((n.x ?? 0) - centre.x, (n.y ?? 0) - centre.y));
+    for (const radius of radii) {
+      expect(radius).toBeGreaterThan(0.2);
+      expect(radius).toBeLessThan(SIM_WIDTH / 2 - 0.08);
+    }
+  });
+
+  it('sends the settle as frames that start with nobody overlapping and end at rest', () => {
+    const nodes: SimNode[] = Array.from({ length: 12 }, (_, i) => ({
+      nodeId: `n${i}`,
+      x: 0.8,
+      y: 0.5,
+      placed: false,
+    }));
+    handleMessage({
+      type: 'initialize',
+      nodes,
+      links: [
+        { source: 0, target: 1 },
+        { source: 1, target: 2 },
+      ],
+      options: {
+        collideRadius: SIM_COLLIDE_RADIUS,
+        simWidth: 1.6,
+        simHeight: 1,
+      },
+    });
+    handleMessage({ type: 'start' });
+
+    const end = posted.find((m) => m.type === 'end')! as PostedMessage & {
+      frames: number[][];
+    };
+    expect(end.frames.length).toBeGreaterThan(1);
+    expect(end.frames.length).toBeLessThanOrEqual(61);
+    const asNodes = (frame: number[]) =>
+      end.nodes.map((_, i) => ({ x: frame[i * 2], y: frame[i * 2 + 1] }));
+    expect(minPairwiseDistance(asNodes(end.frames[0]!))).toBeGreaterThan(
+      (2 * 48 * 0.95) / HEIGHT,
+    );
+    expect(asNodes(end.frames.at(-1)!)).toEqual(
+      end.nodes.map(({ x, y }) => ({ x, y })),
+    );
+  });
+
+  it('ends a held drag once, when the live layout settles', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    posted = [];
+    const nodeId = capturedSim!.nodes()[0]!.nodeId!;
+    handleMessage({ type: 'update_node', nodeId, node: { fx: 0.2, fy: 0.2 } });
+
+    // Mirror d3's timer step: tick, emit 'tick', then stop and emit 'end'
+    // once alpha falls below alphaMin.
+    const sim = capturedSim!;
+    sim.stop();
+    for (let i = 0; i < 2000; i += 1) {
+      sim.tick();
+      sim.on('tick')!.call(sim);
+      if (sim.alpha() < sim.alphaMin()) {
+        sim.on('end')!.call(sim);
+        break;
+      }
+    }
+
+    expect(posted.filter((m) => m.type === 'tick').length).toBeGreaterThan(0);
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
   });
 
   it('pins a node on update_node {fx,fy} and releases it on {fx:null,fy:null}', () => {
@@ -243,9 +485,33 @@ describe('autoLayout worker', () => {
     const released = capturedSim!.nodes().find((n) => n.nodeId === 'a1');
     expect(released?.fx).toBeNull();
     expect(released?.fy).toBeNull();
-    // Snap-on-clear: x/y inherit the previously fixed coordinates.
-    expect(released?.x).toBe(0.5);
-    expect(released?.y).toBe(0.7);
+    // Releasing settles the layout and reports it.
+    expect(posted.at(-1)?.type).toBe('end');
+  });
+
+  it('anchors a released node where it was dropped, not where the drag began', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.5, fy: 0.7 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: 0.9, fy: 0.3 },
+    });
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: null, fy: null },
+    });
+
+    const released = capturedSim!.nodes().find((n) => n.nodeId === 'a1');
+    expect(released?.anchorX).toBe(0.9);
+    expect(released?.anchorY).toBe(0.3);
   });
 
   it('emits an end message on stop', () => {
@@ -271,12 +537,10 @@ describe('autoLayout worker', () => {
     expect(capturedSim!.force('link')).toBeTruthy();
     expect(capturedSim!.alpha()).toBe(alphaWhilePaused);
 
-    // Settled but not paused: adding links must reheat (alpha rises back above
-    // the alphaMin floor) so the new edge re-runs the layout.
+    // Settled but not paused: adding links re-runs the layout and reports it.
     handleMessage({ type: 'start' });
-    capturedSim!.stop(); // halt the d3 timer; advance alpha by manual ticks only
-    tickManually(600);
-    const alphaSettled = capturedSim!.alpha();
+    const endsBefore = posted.filter((m) => m.type === 'end').length;
+    const before = capturedSim!.nodes().map((n) => ({ x: n.x, y: n.y }));
     handleMessage({
       type: 'update_links',
       links: [
@@ -285,8 +549,10 @@ describe('autoLayout worker', () => {
       ],
     });
     expect(capturedSim!.force('link')).toBeTruthy();
-    expect(capturedSim!.alpha()).toBeGreaterThan(alphaSettled);
-    expect(capturedSim!.alpha()).toBeGreaterThan(capturedSim!.alphaMin());
+    expect(posted.filter((m) => m.type === 'end')).toHaveLength(endsBefore + 1);
+    expect(capturedSim!.nodes().map((n) => ({ x: n.x, y: n.y }))).not.toEqual(
+      before,
+    );
   });
 
   it('is deterministic: same seed and messages produce identical positions', () => {
@@ -360,6 +626,7 @@ describe('autoLayout worker', () => {
     handleMessage({
       type: 'initialize',
       nodes,
+      links: CHAIN,
       options: {
         collideRadius: SIM_COLLIDE_RADIUS,
         simHeight: 1,
@@ -400,6 +667,7 @@ describe('autoLayout worker', () => {
     handleMessage({
       type: 'initialize',
       nodes,
+      links: CHAIN,
       options: {
         collideRadius: SIM_COLLIDE_RADIUS,
         simWidth: SIM_WIDTH,
@@ -422,46 +690,7 @@ describe('autoLayout worker', () => {
     }
   });
 
-  it('stops early once every node speed falls below the threshold', () => {
-    // The velocity-based early stop posts 'end' once the layout has cooled past
-    // the alpha ceiling AND the max per-node speed drops below the threshold,
-    // cutting the long low-alpha tail. Drive the worker's REAL tick handler (not
-    // the manual replay) so the early-stop branch runs: stop the d3 timer, then
-    // dispatch tick events ourselves until 'end' is posted.
-    handleMessage({
-      type: 'initialize',
-      nodes: cloneNodes(TWO_GROUPS),
-      options: { collideRadius: SIM_COLLIDE_RADIUS },
-    });
-    handleMessage({ type: 'start' });
-
-    const sim = capturedSim!;
-    sim.stop(); // halt the d3 timer; we drive ticks manually below
-
-    // Retrieve the worker's registered tick listener (the early-stop logic lives
-    // there) so we can invoke it after each manual tick, exactly as the d3 timer
-    // would, without the timer's async scheduling.
-    const onTick = sim.on('tick');
-    expect(onTick).toBeTypeOf('function');
-
-    let endPosted = false;
-    // Tick until the worker's tick handler posts 'end' via the early stop, or we
-    // exhaust a generous budget (the layout settles well within this).
-    for (let i = 0; i < 600 && !endPosted; i += 1) {
-      sim.tick();
-      onTick!.call(sim);
-      endPosted = posted.some((m) => m.type === 'end');
-    }
-
-    expect(endPosted).toBe(true);
-    // The simulation actually settled: max per-node speed is tiny at the stop.
-    const maxSpeed = Math.max(
-      ...sim.nodes().map((n) => Math.hypot(n.vx ?? 0, n.vy ?? 0)),
-    );
-    expect(maxSpeed).toBeLessThan(0.01);
-  });
-
-  it('only ever posts {type, nodes} payloads with no persistence-shaped fields', () => {
+  it('only ever posts {type, nodes} payloads, plus playback frames on end, with no persistence-shaped fields', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });
     tickManually(20);
@@ -469,7 +698,11 @@ describe('autoLayout worker', () => {
 
     expect(posted.length).toBeGreaterThan(0);
     for (const message of posted) {
-      expect(Object.keys(message).toSorted()).toEqual(['nodes', 'type']);
+      expect(Object.keys(message).toSorted()).toEqual(
+        message.type === 'end' && 'frames' in message
+          ? ['frames', 'nodes', 'type']
+          : ['nodes', 'type'],
+      );
       expect(['tick', 'end']).toContain(message.type);
       expect(Array.isArray(message.nodes)).toBe(true);
       for (const node of message.nodes) {

@@ -22,8 +22,10 @@
 // before they reach the store. The collision radius derives from `nodeRadius`,
 // which the caller measures off-screen with `useNodeMeasurement` so it tracks the
 // live node size.
+import { type AnimationPlaybackControls, animate } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import {
   edgeSourceProperty,
   edgeTargetProperty,
@@ -59,8 +61,14 @@ type SimNode = {
   y: number;
   fx?: number | null;
   fy?: number | null;
+  placed: boolean;
   groupKeys?: ReturnType<typeof getGroupKeys>;
 };
+
+const SETTLE_ANIMATION_SECONDS = 1.2;
+const CANVAS_CENTRE = { x: 0.5, y: 0.5 };
+// Normalized distance below which a settled node counts as not having moved.
+const MOVED_THRESHOLD = 0.002;
 
 /** Whether a node the worker reports has an id and a place to put it. */
 const isPlacedSimNode = (node: unknown): node is SimNode =>
@@ -131,11 +139,18 @@ export function useAutoLayout({
 }: UseAutoLayoutOptions): UseAutoLayoutResult {
   const { isE2E } = useContractFlags();
   const workerRef = useRef<Worker | null>(null);
+  const animationRef = useRef<AnimationPlaybackControls | null>(null);
+  const skipAnimations = useShouldSkipAnimations();
+  const skipAnimationsRef = useRef(skipAnimations);
+  skipAnimationsRef.current = skipAnimations;
   // The seeded node→index map, captured so continuous-mode link updates resolve
-  // edge endpoints against the same indices the worker was initialized with.
+  // edge endpoints against the same indices the worker was initialized with,
+  // and so a node added later is laid out as new even when its host gave it a
+  // starting position.
   const nodeIndexByIdRef = useRef<Map<string, number>>(new Map());
   const [isRunning, setIsRunning] = useState(false);
   const [simulationEnabled, setSimulationEnabled] = useState(true);
+  const frameRef = useRef<number | null>(null);
 
   // Keep refs updated so the effect can read latest values without re-running.
   const nodesRef = useRef(nodes);
@@ -224,7 +239,10 @@ export function useAutoLayout({
   }, [store, nodeRadius]);
 
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled) {
+      nodeIndexByIdRef.current = new Map();
+      return undefined;
+    }
     // Defer until the canvas has been measured: seeding against a 0-size canvas
     // would map every node to the origin. The dims subscription re-runs this
     // effect once real dimensions arrive (and again on each resize).
@@ -254,6 +272,11 @@ export function useAutoLayout({
       : createAutoLayoutWorker();
     workerRef.current = worker;
 
+    const cancelPlayback = () => {
+      animationRef.current?.stop();
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    };
+
     worker.onmessage = (event: MessageEvent) => {
       const message: unknown = event.data;
       if (
@@ -271,20 +294,106 @@ export function useAutoLayout({
       const entries: [string, { x: number; y: number }][] = message.nodes
         .filter(isPlacedSimNode)
         .map((n) => [n.nodeId, fromSim(n, dims)]);
-      store.getState().setBatchPositions(entries);
-      setIsRunning(msgType === 'tick');
+      cancelPlayback();
+
+      if (msgType === 'tick') {
+        store.getState().setBatchPositions(entries);
+        setIsRunning(true);
+        return;
+      }
 
       // Persist on settle ONLY when persistence was constructed (persist:true +
-      // dispatch). Unreachable in the read-only (Narrative) configuration.
-      if (msgType === 'end' && persistArgs) {
+      // dispatch). Unreachable in the read-only (Narrative) configuration. The
+      // settled positions are saved before they are animated into place.
+      if (persistArgs) {
         store
           .getState()
           .syncToRedux(
             persistArgs.dispatch,
             layoutVariable,
             persistArgs.currentStep,
+            new Map(entries),
           );
       }
+
+      const from = store.getState().positions;
+      const moved = entries.some(([nodeId, to]) => {
+        const start = from.get(nodeId);
+        return (
+          !start ||
+          Math.abs(start.x - to.x) > MOVED_THRESHOLD ||
+          Math.abs(start.y - to.y) > MOVED_THRESHOLD
+        );
+      });
+
+      // The worker's recorded settle, one flat [x0, y0, x1, y1, ...] array per
+      // frame in the order of message.nodes, turned into a path per node. Only
+      // a settled layout carries frames; a pause, a drag's end and the e2e
+      // mock do not.
+      const frames: unknown[] =
+        'frames' in message && Array.isArray(message.frames)
+          ? message.frames
+          : [];
+      const paths = new Map<string, { x: number; y: number }[]>();
+      message.nodes.forEach((node: unknown, index: number) => {
+        if (!isPlacedSimNode(node)) return;
+        const path = frames.flatMap((frame) => {
+          if (!Array.isArray(frame)) return [];
+          const [x, y] = [frame[index * 2], frame[index * 2 + 1]];
+          return typeof x === 'number' && typeof y === 'number'
+            ? [fromSim({ x, y }, dims)]
+            : [];
+        });
+        if (path.length > 1) paths.set(node.nodeId, path);
+      });
+
+      if (!moved || paths.size === 0 || skipAnimationsRef.current) {
+        store.getState().setBatchPositions(entries);
+        // A run skipped for reduced motion is still reported, a frame later
+        // so its start is observed.
+        const report = moved && paths.size > 0;
+        setIsRunning(report);
+        if (report) {
+          frameRef.current = requestAnimationFrame(() => setIsRunning(false));
+        }
+        return;
+      }
+
+      setIsRunning(true);
+      // Each node follows its recorded path; the gap between where it is on
+      // screen and the path's first frame fades out as the animation runs.
+      animationRef.current = animate(0, 1, {
+        duration: SETTLE_ANIMATION_SECONDS,
+        ease: [0.33, 1, 0.68, 1],
+        onUpdate: (progress) => {
+          store.getState().setBatchPositions(
+            entries.map(([nodeId, to]) => {
+              const path = paths.get(nodeId) ?? [to];
+              const step = progress * (path.length - 1);
+              const index = Math.min(path.length - 1, Math.floor(step));
+              const a = path[index]!;
+              const b = path[Math.min(path.length - 1, index + 1)]!;
+              const first = path[0]!;
+              const start = from.get(nodeId) ?? first;
+              const u = step - index;
+              return [
+                nodeId,
+                {
+                  x:
+                    a.x +
+                    (b.x - a.x) * u +
+                    (start.x - first.x) * (1 - progress),
+                  y:
+                    a.y +
+                    (b.y - a.y) * u +
+                    (start.y - first.y) * (1 - progress),
+                },
+              ];
+            }),
+          );
+        },
+        onComplete: () => setIsRunning(false),
+      });
     };
 
     // Seed from the positions the store already holds, converting each
@@ -292,14 +401,24 @@ export function useAutoLayout({
     // worker's cohesion force can bucket nodes.
     const currentNodes = nodesRef.current;
     const { positions } = store.getState();
+    const previousIds = nodeIndexByIdRef.current;
+    const nodesChanged =
+      previousIds.size > 0 &&
+      (previousIds.size !== currentNodes.length ||
+        currentNodes.some(
+          (node) => !previousIds.has(node[entityPrimaryKeyProperty]),
+        ));
     const simNodes: SimNode[] = currentNodes.map((node) => {
       const nodeId = node[entityPrimaryKeyProperty];
-      const pos = positions.get(nodeId) ?? { x: 0.5, y: 0.5 };
-      const sim = toSim(pos, dims);
+      const pos = positions.get(nodeId);
+      const sim = toSim(pos ?? CANVAS_CENTRE, dims);
       return {
         nodeId,
         x: sim.x,
         y: sim.y,
+        placed:
+          pos !== undefined &&
+          (previousIds.size === 0 || previousIds.has(nodeId)),
         groupKeys: getGroupKeys(node, groupVariable),
       };
     });
@@ -322,6 +441,8 @@ export function useAutoLayout({
       type: 'initialize',
       nodes: simNodes,
       links: simLinks,
+      paused: runMode === 'continuous' && !simulationEnabled,
+      incremental: nodesChanged,
       options: {
         collideRadius,
         boundsInset,
@@ -342,6 +463,8 @@ export function useAutoLayout({
     }
 
     return () => {
+      cancelPlayback();
+      setIsRunning(false);
       worker.terminate();
       workerRef.current = null;
     };

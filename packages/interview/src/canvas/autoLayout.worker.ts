@@ -30,7 +30,11 @@ import {
 import type { VariableOptionValue } from '@codaco/protocol-validation';
 
 import { forceGroupCohesion } from './forceGroupCohesion';
-import { collideRadiusForNode, FALLBACK_NODE_RADIUS } from './layoutGeometry';
+import {
+  collideRadiusForNode,
+  EDGE_GAP_RATIO,
+  FALLBACK_NODE_RADIUS,
+} from './layoutGeometry';
 
 type AutoLayoutOptions = {
   alphaDecay: number;
@@ -77,7 +81,7 @@ const DEFAULT_OPTIONS: AutoLayoutOptions = {
   velocityDecay: 0.3,
   // Screen-normalized repulsion spreads disconnected nodes while collision
   // guarantees the minimum gap and optional cohesion clusters grouped nodes.
-  charge: -0.006,
+  charge: -0.004,
   // collideRadius is a SIM-SPACE center-to-center half-distance (px collide
   // radius / canvas height): two nodes cannot settle closer than 2 *
   // collideRadius. The hook always overrides this with the live measured value;
@@ -133,9 +137,29 @@ const EARLY_STOP_MAX_SPEED = 0.0008;
 // Displacement-proportional, so scale-invariant across canvas sizes.
 const GROUP_COHESION_STRENGTH = 0.1;
 
+// Nodes with no links and no group sit on an oval ring instead of being
+// centred among the connected nodes.
+const RING_RADIUS = 0.78;
+const RING_ROUNDNESS = 0.5;
+const RING_STRENGTH = 0.4;
+const SEED_CIRCLE_RADIUS = 0.6;
+const ANCHOR_STRENGTH = 0.08;
+const REHEAT_ALPHA = 0.3;
+const LAYOUT_ATTEMPTS = 4;
+// Above this many links scoring attempts costs too much, so one attempt is used.
+const MAX_SCORED_LINKS = 1000;
+const ATTEMPT_JITTER = 0.1;
+const MAX_TICKS = 1000;
+const PLAYBACK_FRAMES = 60;
+const PLAYBACK_MAX_OVERLAP = 0.05;
+
 type SimNode = SimulationNodeDatum & {
   nodeId?: string;
   groupKeys?: VariableOptionValue[];
+  // false when the node has no stored position yet; the worker seeds it.
+  placed?: boolean;
+  anchorX?: number;
+  anchorY?: number;
 };
 
 // Link endpoints arrive as INDICES into the seeded node array (d3 forceLink's
@@ -218,17 +242,45 @@ const maxNodeSpeed = (nodes: SimNode[]): number => {
 // meaningfully moved.
 const EARLY_STOP_ALPHA_CEILING = 0.3;
 
-// Reference node count for the size-independent charge normalisation. The
-// per-node repulsion is scaled by CHARGE_NORM_NODES / N for ALL N (see
-// registerForces), so the summed outward force a node feels — and therefore the
-// settled spread and its balance against the centering force — is the same
-// regardless of network size. A fixed per-node charge would instead make that
-// summed force grow ~linearly with N, so larger networks would spread further
-// (and pin to the bounds) than small ones; that size-dependent behaviour is
-// exactly what this removes. At N = CHARGE_NORM_NODES the supplied `charge` is
-// used unscaled, so the only thing this constant fixes is the absolute spread,
-// which is set by the product `charge * CHARGE_NORM_NODES`.
+// Reference node count for the charge normalisation. The per-node repulsion is
+// scaled by sqrt(CHARGE_NORM_NODES / N), so the summed outward force grows with
+// sqrt(N): larger networks take more of the canvas instead of packing tighter,
+// without growing so fast that they pin to the bounds.
 const CHARGE_NORM_NODES = 10;
+
+const seededRandom = (seed: number) => {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+};
+
+const linkEndpoints = (): [number, number][] =>
+  links.flatMap((link) =>
+    typeof link.source === 'number' && typeof link.target === 'number'
+      ? [[link.source, link.target] as [number, number]]
+      : [],
+  );
+
+const linkedIndices = () => new Set(linkEndpoints().flat());
+
+const isIsolated = (node: SimNode, index: number, linked: Set<number>) =>
+  !linked.has(index) && !node.groupKeys?.length;
+
+const ringAxes = () => {
+  const { simWidth, simHeight, boundsInset } = options;
+  if (simWidth <= 0 || simHeight <= 0) return null;
+  const halfX = simWidth / 2 - boundsInset;
+  const halfY = simHeight / 2 - boundsInset;
+  const round = Math.min(halfX, halfY);
+  return {
+    cx: simWidth / 2,
+    cy: simHeight / 2,
+    ax: RING_RADIUS * (halfX + (round - halfX) * RING_ROUNDNESS),
+    ay: RING_RADIUS * (halfY + (round - halfY) * RING_ROUNDNESS),
+  };
+};
 
 const cloneLinks = (ls: SimLink[]): SimLink[] =>
   ls.map((link) => ({ ...link }));
@@ -239,15 +291,19 @@ const makeLinkForce = () =>
     .strength(options.linkStrength);
 
 const registerForces = (sim: Simulation<SimNode, undefined>) => {
+  const linked = linkedIndices();
+  // Until the first link exists nobody goes to the ring and the composition
+  // stays round, so people with no ties yet form one central cluster.
+  const anyLinks = linked.size > 0;
+  const isolated = (node: SimNode, index: number) =>
+    anyLinks && isIsolated(node, index, linked);
   if (options.charge !== 0) {
-    // Scale by CHARGE_NORM_NODES / N for every N so the layout's spread is
-    // independent of network size (see CHARGE_NORM_NODES). Guard against an
-    // empty seed so the divisor is never 0.
+    // Guard against an empty seed so the divisor is never 0.
     const nodeCount = Math.max(sim.nodes().length, 1);
     sim.force(
       'charge',
       forceManyBody().strength(
-        (options.charge * CHARGE_NORM_NODES) / nodeCount,
+        options.charge * Math.sqrt(CHARGE_NORM_NODES / nodeCount),
       ),
     );
   } else {
@@ -307,11 +363,18 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   // Horizontal positioning toward a target across the sim width (center by
   // default), keeping the layout centred. Inert unless a positive
   // strength and a resolvable target (sim width) are both supplied.
+  // Once there are links, the horizontal pull on a non-square canvas is
+  // divided by aspect² so the composition takes the canvas shape.
   if (options.biasXStrength > 0 && options.simWidth > 0) {
+    const aspect =
+      options.simHeight > 0 ? options.simWidth / options.simHeight : 1;
+    const strength = anyLinks
+      ? options.biasXStrength / (aspect * aspect)
+      : options.biasXStrength;
     sim.force(
       'biasX',
       forceX<SimNode>(options.simWidth * options.biasXFraction).strength(
-        options.biasXStrength,
+        (node, index) => (isolated(node, index) ? 0 : strength),
       ),
     );
   } else {
@@ -324,12 +387,282 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
     sim.force(
       'biasY',
       forceY<SimNode>(options.simHeight * options.biasYFraction).strength(
-        options.biasYStrength,
+        (node, index) => (isolated(node, index) ? 0 : options.biasYStrength),
       ),
     );
   } else {
     sim.force('biasY', null);
   }
+  const ring = ringAxes();
+  if (ring) {
+    sim.force('ring', (alpha: number) => {
+      sim.nodes().forEach((node, index) => {
+        if (!isolated(node, index)) return;
+        if (node.x == null || node.y == null) return;
+        const dx = node.x - ring.cx;
+        const dy = node.y - ring.cy;
+        const scale = Math.hypot(dx / ring.ax, dy / ring.ay) || 1e-6;
+        node.vx = (node.vx ?? 0) + (dx / scale - dx) * RING_STRENGTH * alpha;
+        node.vy = (node.vy ?? 0) + (dy / scale - dy) * RING_STRENGTH * alpha;
+      });
+    });
+  } else {
+    sim.force('ring', null);
+  }
+};
+
+// Holds placed nodes near where they are now, so a change re-settles the
+// layout without reshuffling it.
+const setAnchors = (sim: Simulation<SimNode, undefined>) => {
+  for (const node of sim.nodes()) {
+    node.anchorX = node.x;
+    node.anchorY = node.y;
+  }
+  const strength = (node: SimNode) =>
+    node.placed === false ? 0 : ANCHOR_STRENGTH;
+  sim.force(
+    'anchorX',
+    forceX<SimNode>((node) => node.anchorX ?? 0).strength(strength),
+  );
+  sim.force(
+    'anchorY',
+    forceY<SimNode>((node) => node.anchorY ?? 0).strength(strength),
+  );
+};
+
+const neighbourIndices = (count: number) => {
+  const neighbours: number[][] = Array.from({ length: count }, () => []);
+  for (const [source, target] of linkEndpoints()) {
+    neighbours[source]?.push(target);
+    neighbours[target]?.push(source);
+  }
+  return neighbours;
+};
+
+// Node indices ordered so each connected component is contiguous.
+const componentOrder = (count: number) => {
+  const neighbours = neighbourIndices(count);
+  const starts = [...neighbours.keys()].toSorted(
+    (a, b) => neighbours[b]!.length - neighbours[a]!.length,
+  );
+  const order: number[] = [];
+  const seen = new Set<number>();
+  for (const start of starts) {
+    if (seen.has(start)) continue;
+    seen.add(start);
+    const queue = [start];
+    while (queue.length > 0) {
+      const index = queue.shift()!;
+      order.push(index);
+      for (const next of neighbours[index]!) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return order;
+};
+
+// A fresh layout starts on a circle grouped by component. A node added to an
+// existing layout starts beside its placed neighbours, or in the emptiest spot
+// on the ring.
+const seedUnplaced = (nodes: SimNode[]) => {
+  const ring = ringAxes();
+  if (!ring || !nodes.some((node) => node.placed === false)) return;
+
+  if (nodes.every((node) => node.placed === false)) {
+    const positions = new Map(
+      componentOrder(nodes.length).map((index, position) => [index, position]),
+    );
+    nodes.forEach((node, index) => {
+      const angle = (2 * Math.PI * (positions.get(index) ?? 0)) / nodes.length;
+      node.x =
+        ring.cx +
+        SEED_CIRCLE_RADIUS * (ring.cx - options.boundsInset) * Math.cos(angle);
+      node.y =
+        ring.cy +
+        SEED_CIRCLE_RADIUS * (ring.cy - options.boundsInset) * Math.sin(angle);
+    });
+    return;
+  }
+
+  const random = seededRandom(1);
+  const neighbours = neighbourIndices(nodes.length);
+  nodes.forEach((node, index) => {
+    if (node.placed !== false) return;
+    const placedNeighbours = neighbours[index]!.map(
+      (neighbour) => nodes[neighbour]!,
+    ).filter((neighbour) => neighbour.placed !== false);
+    if (placedNeighbours.length > 0) {
+      const count = placedNeighbours.length;
+      node.x =
+        placedNeighbours.reduce((sum, n) => sum + (n.x ?? 0), 0) / count +
+        (random() - 0.5) * options.collideRadius;
+      node.y =
+        placedNeighbours.reduce((sum, n) => sum + (n.y ?? 0), 0) / count +
+        (random() - 0.5) * options.collideRadius;
+      return;
+    }
+    let emptiest = 0;
+    for (let step = 0; step < 36; step += 1) {
+      const angle = (2 * Math.PI * step) / 36;
+      const x = ring.cx + ring.ax * Math.cos(angle);
+      const y = ring.cy + ring.ay * Math.sin(angle);
+      const nearest = Math.min(
+        ...nodes
+          .filter((other) => other !== node)
+          .map((other) => Math.hypot((other.x ?? 0) - x, (other.y ?? 0) - y)),
+      );
+      if (nearest > emptiest) {
+        emptiest = nearest;
+        node.x = x;
+        node.y = y;
+      }
+    }
+  });
+};
+
+const segmentsCross = (a: SimNode, b: SimNode, c: SimNode, d: SimNode) => {
+  const side = (p: SimNode, q: SimNode, r: SimNode) =>
+    ((q.x ?? 0) - (p.x ?? 0)) * ((r.y ?? 0) - (p.y ?? 0)) -
+    ((q.y ?? 0) - (p.y ?? 0)) * ((r.x ?? 0) - (p.x ?? 0));
+  return side(c, d, a) * side(c, d, b) < 0 && side(a, b, c) * side(a, b, d) < 0;
+};
+
+const distanceToSegment = (p: SimNode, a: SimNode, b: SimNode) => {
+  const ax = a.x ?? 0;
+  const ay = a.y ?? 0;
+  const dx = (b.x ?? 0) - ax;
+  const dy = (b.y ?? 0) - ay;
+  const lengthSquared = dx * dx + dy * dy;
+  const t = lengthSquared
+    ? Math.max(
+        0,
+        Math.min(
+          1,
+          (((p.x ?? 0) - ax) * dx + ((p.y ?? 0) - ay) * dy) / lengthSquared,
+        ),
+      )
+    : 0;
+  return Math.hypot((p.x ?? 0) - (ax + t * dx), (p.y ?? 0) - (ay + t * dy));
+};
+
+// Lower is better: edge crossings, edges passing through nodes, and unlinked
+// nodes crowded closer than the collision gap.
+const layoutScore = (nodes: SimNode[]) => {
+  const radius = options.collideRadius / (1 + EDGE_GAP_RATIO);
+  const edges = linkEndpoints();
+  const linkedPairs = new Set(
+    edges.map(([a, b]) => `${Math.min(a, b)}-${Math.max(a, b)}`),
+  );
+  let crossings = 0;
+  let throughNodes = 0;
+  let closest = Infinity;
+  edges.forEach(([a, b], i) => {
+    for (let j = i + 1; j < edges.length; j += 1) {
+      const [c, d] = edges[j]!;
+      if (a === c || a === d || b === c || b === d) continue;
+      if (segmentsCross(nodes[a]!, nodes[b]!, nodes[c]!, nodes[d]!))
+        crossings += 1;
+    }
+    nodes.forEach((node, index) => {
+      if (index === a || index === b) return;
+      if (distanceToSegment(node, nodes[a]!, nodes[b]!) < radius * 1.05) {
+        throughNodes += 1;
+      }
+    });
+  });
+  nodes.forEach((node, i) => {
+    for (let j = i + 1; j < nodes.length; j += 1) {
+      if (linkedPairs.has(`${i}-${j}`)) continue;
+      const other = nodes[j]!;
+      closest = Math.min(
+        closest,
+        Math.hypot(
+          (node.x ?? 0) - (other.x ?? 0),
+          (node.y ?? 0) - (other.y ?? 0),
+        ),
+      );
+    }
+  });
+  const gap = (closest - 2 * radius) / (2 * radius);
+  return crossings * 3 + throughNodes * 5 + (gap < 0.4 ? (0.4 - gap) * 10 : 0);
+};
+
+const isSettled = (sim: Simulation<SimNode, undefined>) =>
+  sim.alpha() < options.alphaMin ||
+  (sim.alpha() < EARLY_STOP_ALPHA_CEILING &&
+    maxNodeSpeed(sim.nodes()) < EARLY_STOP_MAX_SPEED);
+
+// Runs the simulation to rest, returning each tick's positions as flat
+// [x0, y0, x1, y1, ...] arrays.
+const settle = (sim: Simulation<SimNode, undefined>) => {
+  const frames: number[][] = [];
+  for (let tick = 0; tick < MAX_TICKS; tick += 1) {
+    sim.tick();
+    frames.push(sim.nodes().flatMap((node) => [node.x ?? 0, node.y ?? 0]));
+    if (isSettled(sim)) break;
+  }
+  return frames;
+};
+
+const worstOverlap = (frame: number[]) => {
+  const diameter = (2 * options.collideRadius) / (1 + EDGE_GAP_RATIO);
+  let worst = 0;
+  for (let i = 0; i < frame.length; i += 2) {
+    for (let j = i + 2; j < frame.length; j += 2) {
+      const distance = Math.hypot(
+        frame[i]! - frame[j]!,
+        frame[i + 1]! - frame[j + 1]!,
+      );
+      worst = Math.max(worst, diameter - distance);
+    }
+  }
+  return worst / diameter;
+};
+
+// The part of a settle worth showing: from the first tick where people no
+// longer sit on top of each other, sampled at even steps of movement so the
+// barely moving tail does not take up the animation.
+const playbackFrames = (frames: number[][]) => {
+  let first = 0;
+  while (
+    first < frames.length - 1 &&
+    worstOverlap(frames[first]!) > PLAYBACK_MAX_OVERLAP
+  ) {
+    first += 1;
+  }
+  const kept = frames.slice(first);
+  const travelled = [0];
+  for (let f = 1; f < kept.length; f += 1) {
+    const [previous, current] = [kept[f - 1]!, kept[f]!];
+    let distance = 0;
+    for (let i = 0; i < current.length; i += 2) {
+      distance += Math.hypot(
+        current[i]! - previous[i]!,
+        current[i + 1]! - previous[i + 1]!,
+      );
+    }
+    travelled.push(travelled[f - 1]! + distance);
+  }
+  const total = travelled.at(-1) ?? 0;
+  if (total === 0) return [];
+  // A single early tick can cover several samples' worth of movement, so
+  // samples are interpolated between ticks rather than snapped to one.
+  const sampled: number[][] = [];
+  let f = 1;
+  for (let step = 0; step <= PLAYBACK_FRAMES; step += 1) {
+    const target = (total * step) / PLAYBACK_FRAMES;
+    while (f < kept.length - 1 && travelled[f]! < target) f += 1;
+    const [before, after] = [kept[f - 1]!, kept[f]!];
+    const span = travelled[f]! - travelled[f - 1]!;
+    const u = span > 0 ? (target - travelled[f - 1]!) / span : 1;
+    sampled.push(
+      u >= 1 ? after : before.map((v, i) => v + (after[i]! - v) * u),
+    );
+  }
+  return sampled;
 };
 
 type InitializeMessage = {
@@ -337,6 +670,10 @@ type InitializeMessage = {
   nodes: SimNode[];
   links?: SimLink[];
   options?: Partial<AutoLayoutRuntimeOptions>;
+  // A worker replaced while the user has the layout paused stays paused.
+  paused?: boolean;
+  // The node set changed since the previous initialize (an add or a delete).
+  incremental?: boolean;
 };
 
 type StopMessage = { type: 'stop' };
@@ -362,6 +699,93 @@ type Message =
   | UpdateLinksMessage
   | UpdateNodeMessage;
 
+let needsLayout = false;
+// A change to the nodes or links, settled anchored rather than from scratch.
+let incrementalChange = false;
+
+const createSimulation = (nodes: SimNode[]) => {
+  const sim = forceSimulation(nodes);
+  sim.velocityDecay(options.velocityDecay);
+  sim.alphaDecay(options.alphaDecay);
+  sim.alphaMin(options.alphaMin);
+  registerForces(sim);
+  sim.alpha(0).stop();
+
+  // Only a drag runs on the d3 timer; every other run settles synchronously.
+  sim.on('tick', () => {
+    postMessage({ type: 'tick', nodes: sim.nodes() });
+    // Dropping alpha below alphaMin makes d3 stop the timer and fire 'end'.
+    if (isSettled(sim)) sim.alpha(0);
+  });
+  sim.on('end', () => {
+    running = false;
+    postMessage({ type: 'end', nodes: sim.nodes() });
+  });
+  return sim;
+};
+
+const finish = (frames: number[][]) => {
+  running = false;
+  needsLayout = false;
+  incrementalChange = false;
+  for (const node of simulation.nodes()) node.placed = true;
+  postMessage({
+    type: 'end',
+    nodes: simulation.nodes(),
+    frames: playbackFrames(frames),
+  });
+};
+
+const runToEnd = (alpha: number) => {
+  simulation.stop();
+  simulation.alpha(alpha);
+  finish(settle(simulation));
+};
+
+// Settles a change while holding everyone near where they are now.
+const resettle = () => {
+  setAnchors(simulation);
+  runToEnd(REHEAT_ALPHA);
+};
+
+// A change made while paused is settled, anchored, once the user resumes.
+const markPending = () => {
+  needsLayout = true;
+  incrementalChange = true;
+};
+
+// A layout built from scratch keeps the best of several runs.
+const layoutFromScratch = () => {
+  const seed = simulation.nodes();
+  const attempts = links.length > MAX_SCORED_LINKS ? 1 : LAYOUT_ATTEMPTS;
+  let bestScore = Infinity;
+  let bestFrames: number[][] = [];
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    // Each attempt after the first starts from a jittered copy of the seed so
+    // the attempts explore different arrangements.
+    const random = seededRandom(attempt + 1);
+    const jitter = () =>
+      attempt === 0 ? 0 : (random() - 0.5) * 2 * ATTEMPT_JITTER;
+    const candidate = createSimulation(
+      seed.map((node) => ({
+        ...node,
+        x: (node.x ?? 0) + jitter(),
+        y: (node.y ?? 0) + jitter(),
+      })),
+    );
+    candidate.randomSource(random);
+    candidate.alpha(options.startAlpha);
+    const frames = settle(candidate);
+    const score = attempts === 1 ? 0 : layoutScore(candidate.nodes());
+    if (score < bestScore) {
+      bestScore = score;
+      bestFrames = frames;
+      simulation = candidate;
+    }
+  }
+  finish(bestFrames);
+};
+
 export function handleMessage(data: Message) {
   switch (data.type) {
     case 'initialize': {
@@ -376,50 +800,32 @@ export function handleMessage(data: Message) {
       }
       links = data.links ?? [];
 
-      simulation = forceSimulation(data.nodes);
-      simulation.velocityDecay(options.velocityDecay);
-      simulation.alphaDecay(options.alphaDecay);
-      simulation.alphaMin(options.alphaMin);
-      registerForces(simulation);
-
-      // Seed only; the explicit `start` message begins the canonical anneal.
-      simulation.alpha(0).stop();
+      seedUnplaced(data.nodes);
+      simulation = createSimulation(data.nodes);
       running = false;
-      paused = false;
-
-      simulation.on('tick', () => {
-        const simNodes = simulation.nodes();
-        postMessage({ type: 'tick', nodes: simNodes });
-
-        // Velocity-based early stop (FIX 2): once the layout has cooled past the
-        // alpha ceiling, stop as soon as every node's speed drops below the
-        // threshold rather than grinding out the long low-alpha tail. d3's stop()
-        // does NOT dispatch 'end', so post the settled positions explicitly.
-        if (
-          running &&
-          simulation.alpha() < EARLY_STOP_ALPHA_CEILING &&
-          maxNodeSpeed(simNodes) < EARLY_STOP_MAX_SPEED
-        ) {
-          running = false;
-          simulation.stop();
-          postMessage({ type: 'end', nodes: simNodes });
-        }
-      });
-
-      simulation.on('end', () => {
-        console.debug('autolayout-worker:end');
-        postMessage({ type: 'end', nodes: simulation.nodes() });
-      });
+      paused = data.paused ?? false;
+      needsLayout = true;
+      incrementalChange = data.incremental ?? false;
       break;
     }
     case 'start': {
       if (!simulation) return;
       console.debug('autolayout-worker:start');
-      running = true;
+      const resuming = paused;
       paused = false;
-      // The canonical hot start lets every interface escape local minima before
-      // the shared slow cooldown settles the layout.
-      simulation.alpha(options.startAlpha).restart();
+      if (!needsLayout && !resuming) return;
+
+      const nodes = simulation.nodes();
+      const unplaced = nodes.filter((node) => node.placed === false).length;
+      if (nodes.length > 0 && unplaced === nodes.length) {
+        layoutFromScratch();
+      } else if (unplaced > 0 || incrementalChange) {
+        resettle();
+      } else {
+        simulation.force('anchorX', null);
+        simulation.force('anchorY', null);
+        runToEnd(options.startAlpha);
+      }
       break;
     }
     case 'stop': {
@@ -434,54 +840,46 @@ export function handleMessage(data: Message) {
     case 'reheat': {
       if (!simulation) return;
       console.debug('autolayout-worker:reheat');
-      running = true;
       paused = false;
-      simulation.alpha(0.3).restart();
+      resettle();
       break;
     }
     case 'update_links': {
       if (!simulation) return;
 
+      const endpoints = JSON.stringify(linkEndpoints());
       links = data.links;
-      // forceLink resolved its endpoints to the seeded node objects; re-register
-      // with fresh index-based links so it resolves against the current nodes.
-      simulation.force('link', makeLinkForce());
+      if (JSON.stringify(linkEndpoints()) === endpoints) break;
+      // Which nodes are linked changes the ring and centering forces too.
+      registerForces(simulation);
 
-      // Reheat unless the user has paused the layout: an edge change after a
-      // natural settle should re-settle the graph, but must NOT resurrect a
-      // sim the user explicitly toggled off (it stays paused until they resume).
-      if (!paused) {
-        running = true;
-        simulation.alpha(0.3).restart();
-      }
+      if (paused) markPending();
+      else resettle();
       break;
     }
     case 'update_node': {
       if (!simulation) return;
 
-      const nodes = simulation.nodes().map((node) => {
-        if (node.nodeId !== data.nodeId) return node;
-        // When clearing fx/fy, snap x/y to the fixed position to prevent
-        // a flicker as the node jumps from fx/fy to its drifted internal x/y.
-        const patched = { ...data.node };
-        if (patched.fx === null && node.fx != null) patched.x = node.fx;
-        if (patched.fy === null && node.fy != null) patched.y = node.fy;
-        return { ...node, ...patched };
-      });
+      const node = simulation.nodes().find((n) => n.nodeId === data.nodeId);
+      if (!node) return;
+      // When clearing fx/fy, snap x/y to the fixed position to prevent a
+      // flicker as the node jumps from fx/fy to its drifted internal x/y.
+      if (data.node.fx === null && node.fx != null) node.x = node.fx;
+      if (data.node.fy === null && node.fy != null) node.y = node.fy;
+      Object.assign(node, data.node);
 
-      // Re-setting nodes re-runs each force's initialize, rebuilding the
-      // groupKeys-derived buckets (the spread above preserves groupKeys).
-      simulation.nodes(nodes);
-      // forceLink resolved its endpoints to the previous node objects, which the
-      // spread above replaced; re-register so it resolves the new identities.
-      simulation.force('link', makeLinkForce());
-
-      // Reheat unless paused, so dragging a node re-triggers the layout even
-      // after it has settled (the "drag doesn't retrigger the layout" bug); a
-      // sim the user paused stays put.
-      if (!paused) {
+      if (paused) {
+        markPending();
+        break;
+      }
+      if (data.node.fx != null || data.node.fy != null) {
+        // While a node is held the layout runs live around it.
+        if (!running) setAnchors(simulation);
         running = true;
-        simulation.alpha(0.3).restart();
+        simulation.alpha(REHEAT_ALPHA).restart();
+      } else {
+        // Anchor at the release position, not where the drag began.
+        resettle();
       }
       break;
     }
