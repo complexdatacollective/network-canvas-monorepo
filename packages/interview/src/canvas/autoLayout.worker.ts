@@ -860,22 +860,13 @@ export function handleMessage(data: Message) {
     case 'update_node': {
       if (!simulation) return;
 
-      const nodes = simulation.nodes().map((node) => {
-        if (node.nodeId !== data.nodeId) return node;
-        // When clearing fx/fy, snap x/y to the fixed position to prevent
-        // a flicker as the node jumps from fx/fy to its drifted internal x/y.
-        const patched = { ...data.node };
-        if (patched.fx === null && node.fx != null) patched.x = node.fx;
-        if (patched.fy === null && node.fy != null) patched.y = node.fy;
-        return { ...node, ...patched };
-      });
-
-      // Re-setting nodes re-runs each force's initialize, rebuilding the
-      // groupKeys-derived buckets (the spread above preserves groupKeys).
-      simulation.nodes(nodes);
-      // forceLink resolved its endpoints to the previous node objects, which the
-      // spread above replaced; re-register so it resolves the new identities.
-      simulation.force('link', makeLinkForce());
+      const node = simulation.nodes().find((n) => n.nodeId === data.nodeId);
+      if (!node) return;
+      // When clearing fx/fy, snap x/y to the fixed position to prevent a
+      // flicker as the node jumps from fx/fy to its drifted internal x/y.
+      if (data.node.fx === null && node.fx != null) node.x = node.fx;
+      if (data.node.fy === null && node.fy != null) node.y = node.fy;
+      Object.assign(node, data.node);
 
       if (paused) {
         markPending();
