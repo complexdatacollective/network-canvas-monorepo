@@ -282,29 +282,36 @@ describe('autoLayout worker', () => {
     expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
   });
 
-  it('resumes a link change made while paused as an anchored re-settle', () => {
+  it.each([
+    [
+      'a link change',
+      () =>
+        handleMessage({
+          type: 'update_links',
+          links: [{ source: 0, target: 3 }],
+        }),
+    ],
+    [
+      'a drag',
+      () => {
+        const nodeId = capturedSim!.nodes()[0]!.nodeId!;
+        handleMessage({
+          type: 'update_node',
+          nodeId,
+          node: { fx: 0.2, fy: 0.2 },
+        });
+        handleMessage({
+          type: 'update_node',
+          nodeId,
+          node: { fx: null, fy: null },
+        });
+      },
+    ],
+  ])('resumes %s made while paused as an anchored re-settle', (_, change) => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });
     handleMessage({ type: 'stop' });
-    handleMessage({ type: 'update_links', links: [{ source: 0, target: 3 }] });
-
-    handleMessage({ type: 'start' });
-
-    expect(capturedSim!.force('anchorX')).toBeTruthy();
-    expect(capturedSim!.force('anchorY')).toBeTruthy();
-  });
-
-  it('resumes a drag made while paused as an anchored re-settle', () => {
-    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
-    handleMessage({ type: 'start' });
-    handleMessage({ type: 'stop' });
-    const nodeId = capturedSim!.nodes()[0]!.nodeId!;
-    handleMessage({ type: 'update_node', nodeId, node: { fx: 0.2, fy: 0.2 } });
-    handleMessage({
-      type: 'update_node',
-      nodeId,
-      node: { fx: null, fy: null },
-    });
+    change();
 
     handleMessage({ type: 'start' });
 

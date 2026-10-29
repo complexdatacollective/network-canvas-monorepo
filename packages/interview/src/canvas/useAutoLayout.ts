@@ -144,10 +144,10 @@ export function useAutoLayout({
   const skipAnimationsRef = useRef(skipAnimations);
   skipAnimationsRef.current = skipAnimations;
   // The seeded node→index map, captured so continuous-mode link updates resolve
-  // edge endpoints against the same indices the worker was initialized with.
+  // edge endpoints against the same indices the worker was initialized with,
+  // and so a node added later is laid out as new even when its host gave it a
+  // starting position.
   const nodeIndexByIdRef = useRef<Map<string, number>>(new Map());
-  // Nodes in the last seed, so a node added later is laid out as new even when
-  // its host gave it a starting position.
   const [isRunning, setIsRunning] = useState(false);
   const [simulationEnabled, setSimulationEnabled] = useState(true);
   const frameRef = useRef<number | null>(null);
