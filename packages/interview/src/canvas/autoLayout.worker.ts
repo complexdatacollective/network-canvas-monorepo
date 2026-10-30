@@ -379,10 +379,8 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   // the target spacing stays consistent with the collision guarantee. Registered
   // even with no links (an empty forceLink is inert).
   sim.force('link', makeLinkForce());
-  // Each connected component, a lone node included, is pulled toward the
-  // centre as a whole, so the pull moves components without squeezing them
-  // into each other. Once there are links, the horizontal pull on a non-square
-  // canvas is divided by aspect² so the composition takes the canvas shape.
+  // Once there are links, the horizontal pull on a non-square canvas is
+  // divided by aspect² so the composition takes the canvas shape.
   const members = new Map<number, number[]>();
   components.forEach((component, index) => {
     members.set(component, [...(members.get(component) ?? []), index]);
@@ -416,7 +414,6 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
       }
     }
   });
-  // Nodes in different components keep an extra gap between them.
   const reach = (2 + COMPONENT_GAP) * nodeRadius();
   sim.force('componentGap', () => {
     const nodes = sim.nodes();
@@ -576,7 +573,6 @@ const distanceToSegment = (p: SimNode, a: SimNode, b: SimNode) => {
   return Math.hypot((p.x ?? 0) - (ax + t * dx), (p.y ?? 0) - (ay + t * dy));
 };
 
-// Edge crossings and edges passing through nodes, with the nodes involved.
 const layoutProblems = (nodes: SimNode[]) => {
   const radius = nodeRadius();
   const edges = linkEndpoints();
@@ -629,8 +625,6 @@ const layoutScore = (nodes: SimNode[]) => {
   return crossings * 3 + throughNodes * 5 + (gap < 0.4 ? (0.4 - gap) * 10 : 0);
 };
 
-// Swaps pairs of nodes, at least one of them on a crossing or an edge, when
-// that lowers the score.
 const untangle = (nodes: SimNode[]) => {
   const { involved } = layoutProblems(nodes);
   let best = layoutScore(nodes);
@@ -661,8 +655,6 @@ const untangle = (nodes: SimNode[]) => {
   return swapped;
 };
 
-// The collision force is soft, so pairs still closer than the minimum gap
-// after settling are pushed apart exactly.
 const separate = (nodes: SimNode[]) => {
   const floor = 2 * options.collideRadius;
   const inset = options.boundsInset;
