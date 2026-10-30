@@ -1,4 +1,4 @@
-import { Route, Switch } from 'wouter';
+import { Redirect, Route, Switch } from 'wouter';
 
 import AssetsPage from '~/components/pages/AssetsPage';
 import CodebookPage from '~/components/pages/CodebookPage';
@@ -39,6 +39,10 @@ const ProtocolRoutes = () => (
       </ProjectLayout>
     </Route>
     <Route path="/protocol/stage/:stageId" component={StageEditorPage} />
+    {/* An editor address with no page here (a removed page such as
+        /protocol/experiments, or an old bookmark) would leave the editor
+        blank, so open the protocol's main page instead. */}
+    <Redirect to="/protocol" replace />
   </Switch>
 );
 
