@@ -10,7 +10,7 @@ Every kind of stage now has one colour and one icon, the same in every app. Stag
 
 - The protocol timeline on the start screen draws each stage in its new colour and icon. Information stages are a lighter grey instead of charcoal.
 - Each stage in that timeline now carries the name of the interface it really uses, under a title that says what happens on the stage. Previously some stages showed the wrong type, such as a Sociogram labelled "Connections". The stage labels also have more padding and tighter, clearer type.
-- The reminder that a `.netcanvas` file can be dropped anywhere on the start screen now sits inside the "Open existing protocol" button, so the Recent and Templates panel has more room. Both start-screen buttons have bolder icons, and the open button no longer has a border.
+- The reminder that a `.netcanvas` file can be dropped anywhere on the start screen now sits inside the "Open existing protocol" button, so the Recent and Templates panel has more room. The two start-screen buttons now split the width of that panel equally, with bolder icons, and the open button no longer has a border.
 
 **Tailwind config (`@codaco/tailwind-config`)**
 

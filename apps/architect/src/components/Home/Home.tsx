@@ -429,16 +429,25 @@ const Home = () => {
                   </Paragraph>
                 </div>
 
-                {/* Both buttons grow with the open button's second line, and
-                    the row stretches them to one height. */}
-                <div className="flex w-full flex-col items-start gap-3 @min-md:flex-row @min-md:flex-wrap @min-md:items-stretch">
+                {/* Two equal columns spanning the library panel's width, which
+                    stack when either would be too narrow. The row stretches both
+                    buttons to the height of the open button and its drop hint;
+                    labels wrap rather than truncate in longer languages. Each
+                    icon sits inline at the start of its label, so it stays
+                    beside the first word when the label wraps. */}
+                <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-3">
                   <Button
                     color="primary"
                     onClick={() => setShowNewDialog(true)}
-                    className="h-auto min-h-12 gap-3 @min-xl:min-h-16 @min-xl:text-lg"
+                    className="h-auto min-h-12 py-3 @min-xl:min-h-16 @min-xl:text-lg"
                   >
-                    <FilePlus strokeWidth={2.5} />
-                    {intl.formatMessage(messages.createANewProtocol)}
+                    <span className="text-balance whitespace-normal">
+                      <FilePlus
+                        strokeWidth={2.5}
+                        className="me-3 inline h-[1em] w-auto align-[-0.125em]"
+                      />
+                      {intl.formatMessage(messages.createANewProtocol)}
+                    </span>
                   </Button>
                   {/* The drop hint describes the button rather than naming it,
                       so it is hidden from the name and read as the description. */}
@@ -447,24 +456,24 @@ const Home = () => {
                     variant="glass"
                     onClick={openFileDialog}
                     aria-describedby={dropHintId}
-                    className="h-auto min-h-12 items-start gap-3 border-transparent py-3 @min-xl:min-h-16 @min-xl:text-lg"
+                    className="h-auto min-h-12 flex-col gap-1 border-transparent py-3 @min-xl:min-h-16 @min-xl:text-lg"
                   >
-                    <FolderOpen
-                      strokeWidth={2.5}
-                      className="mt-[calc((1lh-1em)/2)]"
-                    />
-                    <span className="flex w-min min-w-0 flex-col items-start text-left">
+                    <span className="text-balance whitespace-normal">
+                      <FolderOpen
+                        strokeWidth={2.5}
+                        className="me-3 inline h-[1em] w-auto align-[-0.125em]"
+                      />
                       {intl.formatMessage(messages.openExistingProtocol)}
-                      <span
-                        id={dropHintId}
-                        aria-hidden
-                        className="font-body text-xs leading-snug font-normal tracking-normal text-balance whitespace-normal opacity-75"
-                      >
-                        {intl.formatMessage(
-                          messages.orDropANetcanvasFileAnywhere,
-                          { code: renderCode },
-                        )}
-                      </span>
+                    </span>
+                    <span
+                      id={dropHintId}
+                      aria-hidden
+                      className="font-body text-xs leading-snug font-normal tracking-normal text-balance whitespace-normal opacity-75"
+                    >
+                      {intl.formatMessage(
+                        messages.orDropANetcanvasFileAnywhere,
+                        { code: renderCode },
+                      )}
                     </span>
                   </Button>
                 </div>
