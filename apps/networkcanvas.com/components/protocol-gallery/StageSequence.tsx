@@ -1,12 +1,8 @@
 import { useTranslations } from 'next-intl';
-import { createElement } from 'react';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { StageBar } from '@codaco/fresco-ui/stages/StageBar';
-import {
-  stageTypeColorStyle,
-  stageTypeIcon,
-} from '@codaco/fresco-ui/stages/stageTypes';
+import { StageTypeBadge } from '@codaco/fresco-ui/stages/StageTypeBadge';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { ProtocolStage } from '~/lib/protocolStages';
@@ -22,7 +18,6 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
       <StageBar stages={stages} className="mt-2" />
       <ol className="@container mt-4 space-y-2">
         {stages.map((stage, index) => {
-          const { color, contrast } = stageTypeColorStyle(stage.type);
           return (
             <Surface
               as="li"
@@ -35,15 +30,7 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
               <span className="font-monospace text-text/50">
                 {String(index + 1).padStart(2, '0')}
               </span>
-              <span
-                aria-hidden
-                className="flex size-6 items-center justify-center rounded-full"
-                style={{ backgroundColor: color, color: contrast }}
-              >
-                {createElement(stageTypeIcon(stage.type), {
-                  className: 'size-3.5',
-                })}
-              </span>
+              <StageTypeBadge type={stage.type} size="sm" />
               {/* Narrow rails cannot fit the label beside a nowrap type name, so
                 the two stack until the row is wide enough for both. */}
               <div className="flex min-w-0 flex-col @lg:contents">

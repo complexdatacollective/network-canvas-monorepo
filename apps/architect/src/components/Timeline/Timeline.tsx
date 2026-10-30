@@ -21,6 +21,7 @@ import {
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+import { stageColorStyle } from '@codaco/fresco-ui/stages/stageTypes';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   actionCreators as stageActions,
@@ -42,7 +43,7 @@ import {
   getFinishStageReorderWarning,
 } from './finishStageGuards';
 import InsertButton from './InsertButton';
-import { timelineRowGrid } from './rowLayout';
+import { spineAxis, timelineRowGrid } from './rowLayout';
 import {
   getSkipDestinationDeleteWarning,
   getSkipDestinationReorderGuard,
@@ -490,12 +491,19 @@ const Timeline = () => {
             (`e2e/pageobjects/timeline.ts`), and it is the only way in: the line
             is decorative, so it has no text, no role and no accessible name to
             be addressed by. Every visual property it does have — absolute,
-            half-way across, one unit wide — is what `responsive.spec.ts`
+            on the stops' axis, one unit wide — is what `responsive.spec.ts`
             measures the badges against, which disqualifies all of it from also
-            being what locates it. */}
+            being what locates it.
+
+            The rows and insertion points draw each stage's stretch over it in
+            that stage's colour, so the bare line only shows above the first
+            stage and below the last. */}
         <motion.div
           data-testid="timeline-spine"
-          className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-1 -translate-x-1/2"
+          className={cx(
+            'bg-text/15 pointer-events-none absolute top-0 h-[calc(100%-1.25rem)] w-4',
+            spineAxis,
+          )}
           initial={animate ? { clipPath: 'inset(0 0 100% 0)' } : false}
           animate={{ clipPath: 'inset(0 0 0% 0)' }}
           transition={{ delay: 0.5, duration: 1.4, ease: 'easeOut' }}
@@ -537,39 +545,49 @@ const Timeline = () => {
               group and click-to-open: inside it, pressing the insertion point
               would start a stage drag and hovering it would light up the stage
               below. */}
-          {orderedStages.map((stage, index) => (
-            <li
-              key={stage.id}
-              // `display: grid` takes this element out of `list-item`, and an
-              // `li` that is not a list item is not guaranteed to keep the
-              // `listitem` role. Stated explicitly so the count the parent
-              // advertises is actually backed by items.
-              // oxlint-disable-next-line jsx-a11y/no-redundant-roles
-              role="listitem"
-              className="grid w-full grid-cols-1 justify-items-center gap-1"
-            >
-              <InsertButton
-                position={index + 1}
-                nextStageName={
-                  stage.label || intl.formatMessage(finalMessages.untitledStage)
-                }
-                onClick={() => handleInsertStage(index)}
-                variants={timelineInsertVariants}
-              />
-              <TimelineStageRow
-                stage={stage}
-                deleteBlockedReason={deleteBlockedReason(stage.id)}
-                index={index}
-                stageCount={orderedStages.length}
-                onOpen={handleEditStage}
-                onMove={handleKeyboardMove}
-                onDelete={handleDeleteStage}
-                onDragCommit={handleReorderCommit}
-                registerOpenControl={registerOpenControl}
-                variants={timelineStageVariants}
-              />
-            </li>
-          ))}
+          {orderedStages.map((stage, index) => {
+            const previousType = orderedStages[index - 1]?.type;
+            return (
+              <li
+                key={stage.id}
+                // `display: grid` takes this element out of `list-item`, and an
+                // `li` that is not a list item is not guaranteed to keep the
+                // `listitem` role. Stated explicitly so the count the parent
+                // advertises is actually backed by items.
+                // oxlint-disable-next-line jsx-a11y/no-redundant-roles
+                role="listitem"
+                className="grid w-full grid-cols-1 justify-items-center gap-1"
+              >
+                <InsertButton
+                  position={index + 1}
+                  nextStageName={
+                    stage.label ||
+                    intl.formatMessage(finalMessages.untitledStage)
+                  }
+                  segmentColor={
+                    previousType === undefined
+                      ? 'transparent'
+                      : stageColorStyle(previousType).color
+                  }
+                  onClick={() => handleInsertStage(index)}
+                  variants={timelineInsertVariants}
+                />
+                <TimelineStageRow
+                  stage={stage}
+                  previousType={previousType}
+                  deleteBlockedReason={deleteBlockedReason(stage.id)}
+                  index={index}
+                  stageCount={orderedStages.length}
+                  onOpen={handleEditStage}
+                  onMove={handleKeyboardMove}
+                  onDelete={handleDeleteStage}
+                  onDragCommit={handleReorderCommit}
+                  registerOpenControl={registerOpenControl}
+                  variants={timelineStageVariants}
+                />
+              </li>
+            );
+          })}
         </Reorder.Group>
 
         {/* Outside the list. Appending a stage is an action ON the timeline, not
@@ -599,7 +617,7 @@ const Timeline = () => {
           <div />
           <div
             className={cx(
-              'bg-action text-primary-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110',
+              'bg-action text-primary-contrast flex h-10 w-10 items-center justify-center justify-self-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110',
               readOnly && 'opacity-50',
             )}
           >

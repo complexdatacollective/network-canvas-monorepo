@@ -1,6 +1,6 @@
 'use client';
 
-import { EyeOff, LayoutTemplate, RouteOff } from 'lucide-react';
+import { EyeOff, RouteOff } from 'lucide-react';
 import { motion, type Variants } from 'motion/react';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -11,12 +11,11 @@ import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/C
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+import { StageTypeBadge } from '@codaco/fresco-ui/stages/StageTypeBadge';
+import { stageColorStyle } from '@codaco/fresco-ui/stages/stageTypes';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { type CSSVariablesStyle } from '@codaco/fresco-ui/utils/cssVariables';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import InterfacePicture from '@codaco/interface-images/InterfacePicture';
-import manifest, {
-  type InterfaceType,
-} from '@codaco/interface-images/manifest';
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
@@ -61,9 +60,6 @@ type StageItem = {
 // when the menu opens (the collection then focuses the current stage).
 export const STAGES_MENU_LIST_ID = 'stages-menu-list';
 
-const isInterfaceType = (type: string): type is InterfaceType =>
-  Object.hasOwn(manifest, type);
-
 const keyExtractor = (item: StageItem) => item.id;
 const textValueExtractor = (item: StageItem) => item.label;
 
@@ -73,7 +69,7 @@ const FILTER_MIN_QUERY_LENGTH = 2;
 // than being re-sorted by match quality.
 const FILTER_FUSE_OPTIONS = { includeScore: false };
 // Horizontal cards sit in a spaced row; the timeline segments bridge the gap
-// (half of `gap-6` = `-start-3` / `-end-3`) so the line stays continuous.
+// (half of `gap-6` = `-inset-x-3`) so the line stays continuous.
 const HORIZONTAL_GAP = 6;
 
 // Timeline (line + numbered nodes) reveals as a directional "wipe"; the stage
@@ -249,6 +245,17 @@ export default function StagesMenu({
     return map;
   }, [visibleItems]);
 
+  // Each stage's stretch of line takes the previous visible stage's colour up
+  // to its stop, as on the start screen's timeline.
+  const previousTypeById = useMemo(() => {
+    const map = new Map<string, string>();
+    visibleItems.forEach((item, index) => {
+      const previous = visibleItems[index - 1];
+      if (previous) map.set(item.id, previous.type);
+    });
+    return map;
+  }, [visibleItems]);
+
   const firstId = visibleItems.at(0)?.id;
   const lastId = visibleItems.at(-1)?.id;
   const count = visibleItems.length;
@@ -325,35 +332,21 @@ export default function StagesMenu({
   const renderItem = (item: StageItem, itemProps: ItemProps) => {
     const isFirst = item.id === firstId;
     const isLast = item.id === lastId;
-    const isOnly = isFirst && isLast;
     const custom = positionById.get(item.id) ?? item.index;
+    const previousType = previousTypeById.get(item.id);
 
-    const picture = isInterfaceType(item.type) ? (
-      <InterfacePicture
-        type={item.type}
-        ratio="4:3"
-        sizes={isHorizontal ? '8rem' : '6rem'}
-        alt=""
-        className="size-full object-cover"
-      />
-    ) : (
-      <span className="flex size-full items-center justify-center bg-black/20">
-        <LayoutTemplate className="size-6 opacity-40" />
-      </span>
-    );
-
-    const node = (
-      <motion.span
-        aria-hidden
-        variants={variants.node}
-        custom={custom}
-        initial={animate}
-        animate={animate}
-        className="bg-neon-coral relative flex size-8 items-center justify-center rounded-full text-xs font-bold text-white tabular-nums"
-      >
-        {item.position}
-      </motion.span>
-    );
+    // This stage's stretch of the line: the previous stage's colour up to the
+    // stop, this stage's after it. The ends of the list leave their outer
+    // half empty.
+    const segmentStyle: CSSVariablesStyle = {
+      '--segment-before':
+        isFirst || previousType === undefined
+          ? 'transparent'
+          : stageColorStyle(previousType).color,
+      '--segment-after': isLast
+        ? 'transparent'
+        : stageColorStyle(item.type).color,
+    };
 
     const availabilityStatus =
       item.availability.kind === 'available'
@@ -364,6 +357,59 @@ export default function StagesMenu({
     const AvailabilityIcon =
       item.availability.kind === 'bypassed' ? RouteOff : EyeOff;
 
+    const line = (
+      <motion.span
+        aria-hidden
+        variants={variants.line}
+        custom={custom}
+        initial={animate}
+        animate={animate}
+        style={segmentStyle}
+        className={cx(
+          'pointer-events-none absolute from-(--segment-before) from-50% to-(--segment-after) to-50%',
+          isHorizontal
+            ? '-inset-x-3 top-1/2 h-2.5 origin-left -translate-y-1/2 bg-linear-to-r rtl:origin-right rtl:bg-linear-to-l'
+            : 'inset-y-0 inset-s-1/2 w-2.5 origin-top -translate-x-1/2 bg-linear-to-b rtl:translate-x-1/2',
+        )}
+      />
+    );
+
+    const stop = (
+      <motion.span
+        aria-hidden
+        variants={variants.node}
+        custom={custom}
+        initial={animate}
+        animate={animate}
+        className="relative flex"
+      >
+        <StageTypeBadge
+          type={item.type}
+          size="lg"
+          ringed
+          className={cx(item.isUnavailable && 'opacity-60')}
+        />
+        {item.isUnavailable && (
+          <span className="bg-cerulean-blue elevation-low absolute -inset-e-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full text-white">
+            <AvailabilityIcon className="size-3.5" />
+          </span>
+        )}
+      </motion.span>
+    );
+
+    const number = (
+      <span
+        aria-hidden
+        className="font-monospace text-text/60 text-xs tracking-widest tabular-nums"
+      >
+        {item.position}
+      </span>
+    );
+
+    // The label sits on a card, as on the start screen's timeline, and the
+    // card carries the current, hovered and focused states. The interface's
+    // name is left off: it is the researcher's vocabulary, not the
+    // participant's.
     const label = (
       <motion.span
         variants={variants.content}
@@ -371,45 +417,19 @@ export default function StagesMenu({
         initial={animate}
         animate={animate}
         className={cx(
-          'flex flex-col gap-1 text-sm leading-tight font-bold wrap-break-word',
-          isHorizontal ? 'items-center text-center' : 'min-w-0 flex-1',
+          'font-heading flex min-w-0 flex-col gap-1 rounded-[1.75rem] bg-white/8 px-5 py-3 text-base leading-tight font-extrabold wrap-break-word',
+          'group-hover:bg-accent group-hover:text-accent-contrast group-data-focused:bg-accent group-data-focused:text-accent-contrast',
+          'group-data-selected:bg-primary group-data-selected:text-primary-contrast',
+          isHorizontal ? 'w-full items-center text-center' : 'flex-1',
         )}
       >
         <span className={isHorizontal ? 'line-clamp-2' : undefined}>
           {item.label}
         </span>
         {availabilityStatus && (
-          <span className="text-text/75 flex items-center gap-1 text-xs font-medium">
+          <span className="font-body flex items-center gap-1 text-xs font-medium opacity-75">
             <AvailabilityIcon className="size-3.5 shrink-0" aria-hidden />
             <span>{availabilityStatus}</span>
-          </span>
-        )}
-      </motion.span>
-    );
-
-    const image = (
-      <motion.span
-        variants={variants.content}
-        custom={custom}
-        initial={animate}
-        animate={animate}
-        className={cx(
-          // Hover/selected lift the preview via brightness + a soft inset ring
-          // rather than a transform, so the continuous timeline never shifts.
-          // `transition` is scoped off `transform` so it can't fight motion's y.
-          'relative block shrink-0 overflow-hidden rounded-xs ring-1 ring-white/0 transition-[filter,box-shadow] duration-200 ring-inset [&>picture]:block [&>picture]:size-full',
-          'group-hover:ring-white/25 group-hover:brightness-115',
-          'group-data-selected:ring-white/30 group-data-selected:brightness-110',
-          isHorizontal ? 'aspect-4/3 w-full' : 'aspect-4/3 w-24',
-        )}
-      >
-        {picture}
-        {item.isUnavailable && (
-          <span
-            aria-hidden
-            className="bg-cerulean-blue elevation-low absolute inset-e-1 top-1 flex size-6 items-center justify-center rounded-full text-white"
-          >
-            <AvailabilityIcon className="size-3.5" />
           </span>
         )}
       </motion.span>
@@ -426,12 +446,9 @@ export default function StagesMenu({
           initial={animate}
           animate={animate}
           className={cx(
-            // No horizontal padding on the button itself: the timeline band is
-            // full width so adjacent cards' segments meet with no gap. The
-            // image/label get their own padding via the inner wrapper.
-            'group focusable hover:elevation-medium relative flex w-36 cursor-pointer flex-col items-center gap-3 rounded-sm py-4 text-center transition-[color,background-color,box-shadow] duration-200',
-            'data-selected:bg-primary data-selected:text-primary-contrast',
-            'hover:bg-accent data-focused:bg-accent',
+            // No horizontal padding on the button itself: the line runs the
+            // full width so adjacent cards' stretches meet with no gap.
+            'group focusable relative flex w-40 cursor-pointer flex-col items-center gap-2 rounded-sm py-3 text-center',
             // Edge spacing lives on the first/last card so it survives the
             // horizontal scroll — a scroll container's own end padding is
             // dropped from the scrollable area, flushing the last card to the
@@ -440,30 +457,12 @@ export default function StagesMenu({
             isLast && 'me-6',
           )}
         >
-          <span className="relative flex h-8 w-full items-center justify-center">
-            <motion.span
-              aria-hidden
-              variants={variants.line}
-              custom={custom}
-              initial={animate}
-              animate={animate}
-              className={cx(
-                'bg-neon-coral pointer-events-none absolute top-1/2 h-1 origin-left -translate-y-1/2 rtl:origin-right',
-                isOnly
-                  ? 'hidden'
-                  : isFirst
-                    ? 'inset-s-1/2 -inset-e-3'
-                    : isLast
-                      ? '-inset-s-3 inset-e-1/2'
-                      : '-inset-x-3',
-              )}
-            />
-            {node}
+          {number}
+          <span className="relative flex w-full items-center justify-center py-1">
+            {line}
+            {stop}
           </span>
-          <span className="flex w-full flex-col items-center gap-3 px-3">
-            {image}
-            {label}
-          </span>
+          <span className="flex w-full px-2">{label}</span>
         </motion.button>
       );
     }
@@ -477,32 +476,16 @@ export default function StagesMenu({
         custom={custom}
         initial={animate}
         animate={animate}
-        className={cx(
-          'group focusable hover:elevation-medium relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start transition-[color,background-color,box-shadow] duration-200',
-          'data-selected:bg-primary data-selected:text-primary-contrast',
-          'hover:bg-accent data-focused:bg-accent',
-        )}
+        className="group focusable relative flex w-full cursor-pointer items-center gap-3 px-4 text-start"
       >
-        <motion.span
-          aria-hidden
-          variants={variants.line}
-          custom={custom}
-          initial={animate}
-          animate={animate}
-          className={cx(
-            'bg-neon-coral pointer-events-none absolute inset-s-8 w-1 origin-top -translate-x-1/2 rtl:translate-x-1/2',
-            isOnly
-              ? 'hidden'
-              : isFirst
-                ? 'top-1/2 bottom-0'
-                : isLast
-                  ? 'top-0 bottom-1/2'
-                  : 'inset-y-0',
-          )}
-        />
-        {node}
-        {image}
-        {label}
+        <span className="w-6 shrink-0 text-end">{number}</span>
+        {/* The stop's column runs the row's full height, so the line inside
+            it meets the next row's with no gap. */}
+        <span className="relative flex shrink-0 items-center self-stretch py-4">
+          {line}
+          {stop}
+        </span>
+        <span className="flex min-w-0 flex-1 py-2">{label}</span>
       </motion.button>
     );
   };

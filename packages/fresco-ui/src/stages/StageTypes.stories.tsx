@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { createElement } from 'react';
 import { expect, within } from 'storybook/test';
 
 import type { StageType } from '@codaco/protocol-validation';
@@ -9,7 +8,8 @@ import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 import { StageBar } from './StageBar';
-import { STAGE_TYPES, stageTypeColorStyle, stageTypeIcon } from './stageTypes';
+import { StageTypeBadge } from './StageTypeBadge';
+import { STAGE_TYPES } from './stageTypes';
 
 const meta = {
   title: 'Design System/Stage Types',
@@ -28,7 +28,15 @@ The colours are theme tokens in \`@codaco/tailwind-config/interfaces.css\`
 \`--interface-<token>-contrast\`, aliased for Tailwind as
 \`--color-interface-<token>\` and \`--color-interface-<token>-contrast\`.
 
+\`StageTypeBadge\` draws a stage type's icon on a disc of its colour, in four
+sizes. \`ringed\` adds a white ring, for dark pages and for stops on a
+timeline. For other uses, \`stageTypeColorStyle\` and \`stageTypeIcon\` return
+the colours and the icon. \`stageColorStyle\` and \`stageIcon\` take any stage's
+\`type\` as read from a protocol, and give one this build does not know a
+neutral grey and a generic icon, as the badge does.
+
 \`\`\`tsx
+import { StageTypeBadge } from '@codaco/fresco-ui/stages/StageTypeBadge';
 import {
   STAGE_TYPES,
   isStageType,
@@ -36,12 +44,7 @@ import {
   stageTypeIcon,
 } from '@codaco/fresco-ui/stages/stageTypes';
 
-const { color, contrast } = stageTypeColorStyle(stage.type);
-const StageIcon = stageTypeIcon(stage.type);
-
-<span style={{ backgroundColor: color, color: contrast }}>
-  <StageIcon aria-hidden />
-</span>
+<StageTypeBadge type={stage.type} size="xl" ringed />
 \`\`\`
 
 \`STAGE_TYPES\` maps each stage type to its token and icon, keyed by the
@@ -131,34 +134,6 @@ const GROUPS: StageTypeGroup[] = [
 
 const ALL_TYPES = Object.keys(STAGE_TYPES) as StageType[];
 
-function StageTypeBadge({
-  type,
-  size = 'md',
-  className,
-}: {
-  type: StageType;
-  size?: 'sm' | 'md';
-  className?: string;
-}) {
-  const { color, contrast } = stageTypeColorStyle(type);
-  return (
-    <span
-      aria-hidden
-      data-testid={`badge-${type}`}
-      className={cx(
-        'flex shrink-0 items-center justify-center rounded-full',
-        size === 'md' ? 'size-10' : 'size-6',
-        className,
-      )}
-      style={{ backgroundColor: color, color: contrast }}
-    >
-      {createElement(stageTypeIcon(type), {
-        className: size === 'md' ? 'size-5' : 'size-3.5',
-      })}
-    </span>
-  );
-}
-
 export const AllStageTypes: Story = {
   render: () => (
     <div className="space-y-8">
@@ -173,7 +148,7 @@ export const AllStageTypes: Story = {
           <ul className="tablet-portrait:grid-cols-2 grid gap-x-8 gap-y-3">
             {group.types.map((type) => (
               <li key={type} className="flex items-center gap-3">
-                <StageTypeBadge type={type} />
+                <StageTypeBadge type={type} data-testid={`badge-${type}`} />
                 <span className="flex min-w-0 flex-col">
                   <span className="font-monospace text-sm">{type}</span>
                   <span className="font-monospace text-text/70 text-xs break-all">
@@ -216,11 +191,7 @@ function BadgeRow({ ringed }: { ringed?: boolean }) {
   return (
     <div className="flex flex-wrap gap-2">
       {ALL_TYPES.map((type) => (
-        <StageTypeBadge
-          key={type}
-          type={type}
-          className={cx(ringed && 'ring-2 ring-white')}
-        />
+        <StageTypeBadge key={type} type={type} ringed={ringed} />
       ))}
     </div>
   );
@@ -305,6 +276,38 @@ export const InAStageSequence: Story = {
           </li>
         ))}
       </ol>
+    </div>
+  ),
+};
+
+const BADGE_SIZES = ['sm', 'md', 'lg', 'xl'] as const;
+
+/**
+ * `StageTypeBadge` at each size, plain and ringed. The ringed extra-large badge
+ * is the stop on Architect's timelines; the ringed large one is the stop in
+ * the interview's stage menu, on the navy interview theme. A stage type this
+ * build does not know is drawn in a neutral grey.
+ */
+export const BadgeSizes: Story = {
+  render: () => (
+    <div className="grid gap-4">
+      <div className="bg-platinum text-text flex flex-wrap items-center gap-6 rounded-lg p-6">
+        {BADGE_SIZES.map((size) => (
+          <StageTypeBadge key={size} type="Sociogram" size={size} />
+        ))}
+        {BADGE_SIZES.map((size) => (
+          <StageTypeBadge key={size} type="Sociogram" size={size} ringed />
+        ))}
+        <StageTypeBadge type="FutureInterface" size="xl" ringed />
+      </div>
+      <ThemedRegion
+        theme="interview"
+        className="bg-background text-text flex flex-wrap items-center gap-6 rounded-lg p-6"
+      >
+        {BADGE_SIZES.map((size) => (
+          <StageTypeBadge key={size} type="NameGenerator" size={size} ringed />
+        ))}
+      </ThemedRegion>
     </div>
   ),
 };

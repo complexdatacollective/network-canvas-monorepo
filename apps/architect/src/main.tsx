@@ -81,18 +81,14 @@ pruneExpiredHandoffs().catch((error: unknown) => {
 
 // During idle time, once the start screen is up, fetch what opening a protocol
 // needs: the protocol editor, which is loaded apart from the start screen (see
-// Routes) so the start screen need not wait for it, and the stage thumbnails
-// the timeline and stage editor render. Offline use does not depend on this —
-// the service worker precaches every chunk — and a failed fetch is tried again
-// when the editor is opened. When running as an installed PWA, also warm the
+// Routes) so the start screen need not wait for it. Offline use does not
+// depend on this — the service worker precaches every chunk — and a failed
+// fetch is tried again when the editor is opened. When running as an installed PWA, also warm the
 // service-worker cache with the bundled template/Sample assets so those
 // protocols can be installed offline. (A browser tab registers no service
 // worker, so the warm is skipped there.)
 const warmCaches = () => {
   loadProtocolRoutes().catch(() => undefined);
-  import('./images/timeline')
-    .then(({ preloadTimelineImages }) => preloadTimelineImages())
-    .catch(() => undefined);
   if (isRunningAsInstalledPwa()) {
     void warmBundledTemplateAssets();
   }

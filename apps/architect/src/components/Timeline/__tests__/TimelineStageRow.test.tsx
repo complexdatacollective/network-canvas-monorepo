@@ -39,6 +39,7 @@ const renderRow = (
   index: number,
   handlers: Handlers = {},
   readOnly = false,
+  previousType?: string,
 ) => {
   const stage = stages[index]!;
   return render(
@@ -47,6 +48,7 @@ const renderRow = (
         <li>
           <TimelineStageRow
             stage={stage}
+            previousType={previousType}
             index={index}
             stageCount={stages.length}
             onOpen={handlers.onOpen ?? vi.fn()}
@@ -79,6 +81,35 @@ describe('TimelineStageRow', () => {
     expect(
       screen.getByRole('heading', { level: 4, name: 'Consent' }),
     ).toBeInTheDocument();
+  });
+
+  it('captions the stage label with the interface it uses', () => {
+    renderRow(0);
+
+    const heading = screen.getByRole('heading', { level: 4, name: 'Consent' });
+    expect(heading.parentElement).toHaveTextContent(
+      `Consent${INTERFACE_NAMES.Information}`,
+    );
+  });
+
+  /**
+   * As on the start screen's timeline, the line between two stops takes the
+   * colour of the stop above it, and the first stop has nothing above it.
+   */
+  it("runs its stretch of spine from the previous stage's colour to its own", () => {
+    const stretch = (container: HTMLElement) =>
+      [...container.querySelectorAll<HTMLElement>('[aria-hidden]')].find(
+        (element) => element.style.background.includes('linear-gradient'),
+      )?.style.background;
+
+    const { container: second } = renderRow(1, {}, false, 'Sociogram');
+    // Above the stop, then below it.
+    expect(stretch(second)).toMatch(
+      /var\(--interface-sociogram\) 50%.*var\(--interface-information\) 50%/,
+    );
+
+    const { container: first } = renderRow(0);
+    expect(stretch(first)).toContain('transparent 50%');
   });
 
   it('opens the stage from a real button, so Enter and Space activate it', () => {

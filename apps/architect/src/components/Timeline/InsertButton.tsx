@@ -6,7 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { cx } from '~/utils/cva';
 
-import { timelineRowGrid } from './rowLayout';
+import { spineAxis, timelineRowGrid } from './rowLayout';
 const messages = defineMessages({
   addStageHereBeforeStage: {
     id: 'architect.timeline.insertButton.addStageHereBeforeStage',
@@ -26,6 +26,11 @@ type InsertButtonProps = {
   position: number;
   /** The stage this insertion point sits above. */
   nextStageName: string;
+  /**
+   * The spine's colour here: the stage above's, or `transparent` above the
+   * first stage, where the bare spine shows.
+   */
+  segmentColor: string;
   onClick: () => void;
   variants?: Variants;
 };
@@ -47,6 +52,7 @@ type InsertButtonProps = {
 const InsertButton = ({
   position,
   nextStageName,
+  segmentColor,
   onClick,
   variants,
 }: InsertButtonProps) => {
@@ -55,7 +61,7 @@ const InsertButton = ({
   return (
     <motion.button
       type="button"
-      // Read-only keeps the resting dot, so the spine and every row stay where
+      // Read-only keeps the resting tick, so the spine and every row stay where
       // they are, but there is nothing to reveal: dropping `group` is what
       // silences the hover styling on the children, and the point is hidden
       // from assistive technology rather than announced once per stage as a
@@ -68,18 +74,33 @@ const InsertButton = ({
       })}
       className={cx(
         timelineRowGrid,
-        'focusable px-4 py-1',
+        'focusable relative px-4 py-1',
         !readOnly && 'group cursor-pointer',
       )}
       onClick={onClick}
       variants={variants}
     >
+      {/* The stretch of spine this point sits on, run 4px into the gaps on
+          both sides so it meets the rows above and below without a seam. At
+          rest the point is a short tick across it, as between the start
+          screen's stops; hover and focus grow the add control from it. */}
+      <span
+        aria-hidden
+        className={cx('pointer-events-none absolute -inset-y-1 w-4', spineAxis)}
+        style={{ backgroundColor: segmentColor }}
+      />
       <div />
-      <div className="bg-timeline text-primary-contrast group-hover:bg-action group-focus-visible:bg-action flex h-10 w-10 scale-40 items-center justify-center rounded-full transition-all duration-300 ease-in-out group-hover:scale-110 group-focus-visible:scale-110">
-        <Plus
-          className="h-6 w-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
-          strokeWidth={2.5}
+      <div className="relative flex h-10 w-10 items-center justify-center justify-self-center">
+        <span
+          aria-hidden
+          className="bg-text/25 absolute h-0.5 w-6 rounded-full group-hover:opacity-0 group-focus-visible:opacity-0"
         />
+        <span className="bg-action text-primary-contrast flex size-full scale-0 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110 group-focus-visible:scale-110">
+          <Plus
+            className="h-6 w-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+            strokeWidth={2.5}
+          />
+        </span>
       </div>
       <span className="justify-self-start text-lg font-semibold opacity-0 transition-all group-hover:font-bold group-hover:opacity-100 group-focus-visible:opacity-100">
         {intl.formatMessage(messages.addStageHere)}
