@@ -429,37 +429,31 @@ for (const viewport of VIEWPORTS) {
     });
     await gotoProtocol(architectPage);
 
-    // The card, not its list item: the list item also spans the insertion
-    // point above the card, and it is the card's own grid that puts the badge
-    // on the spine.
     const timeline = new Timeline(architectPage);
-    const row = timeline.stageCards().first();
-    const badge = timeline.stageBadges().first();
     const spine = timeline.spine();
-    await expect(row).toBeVisible();
-    await expect(badge).toBeVisible();
+    await expect(timeline.stageBadges().first()).toBeVisible();
     await expect(spine).toBeAttached();
 
-    // The spine is one absolutely-positioned line at `left-1/2` of the
-    // timeline wrapper. Each row's numbered badge only lands on it because the
-    // row's flanking grid tracks are `minmax(0, 1fr)` — equal by construction
-    // at every width, with no content floor to push one side wider. A bare
-    // `1fr` would let a long label or the trailing action cluster drift the
-    // badge off the line, which no pixel-free assertion but this one notices.
-    const [rowBox, badgeBox, spineBox] = await Promise.all([
-      row.boundingBox(),
-      badge.boundingBox(),
-      spine.boundingBox(),
-    ]);
-    if (!rowBox || !badgeBox || !spineBox) {
-      throw new Error('timeline row, badge or spine has no box');
-    }
+    // The spine is one absolutely-positioned line, and each row's grid puts
+    // its stop on it: centred between two `minmax(0, 1fr)` tracks on a wide
+    // timeline, after a fixed number track on a narrow one. Every stop is
+    // measured, not the first, because a long label or the trailing action
+    // cluster is what would push one off the line — a bare `1fr` track would
+    // let one — and only some rows carry those. Retried, because rows grow in
+    // from their own centres on entry, which moves a stop that sits off it.
     const centre = (box: { x: number; width: number }) => box.x + box.width / 2;
-
-    expect(Math.abs(centre(badgeBox) - centre(rowBox))).toBeLessThanOrEqual(1);
-    expect(Math.abs(centre(badgeBox) - centre(spineBox))).toBeLessThanOrEqual(
-      1,
-    );
+    await expect(async () => {
+      const spineBox = await spine.boundingBox();
+      if (!spineBox) throw new Error('the timeline spine has no box');
+      const offsets: number[] = [];
+      for (const badge of await timeline.stageBadges().all()) {
+        const badgeBox = await badge.boundingBox();
+        if (!badgeBox) throw new Error('a stage stop has no box');
+        offsets.push(Math.abs(centre(badgeBox) - centre(spineBox)));
+      }
+      expect(offsets.length).toBeGreaterThan(1);
+      expect(Math.max(...offsets)).toBeLessThanOrEqual(1);
+    }).toPass();
   });
 
   test(`stage editors fit a ${viewport.name} viewport`, async ({

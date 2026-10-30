@@ -48,58 +48,6 @@ const inlineWorkerPlugin = (): Plugin => ({
 // predicate to recognise the package's own files regardless of OS separator.
 const pkgRoot = __dirname.replace(/\\/g, '/');
 
-// `@codaco/interface-images` is a private, source-only workspace package (raw
-// TSX + generated `.webp` screenshots, never published to npm). It is consumed
-// only here — by the stage-navigation menu — so it must be BUNDLED into this
-// package's `dist` rather than externalized as a runtime dependency. Posix-
-// normalized for the same cross-platform reason as `pkgRoot` above.
-const interfaceImagesRoot = resolve(__dirname, '../interface-images').replace(
-  /\\/g,
-  '/',
-);
-
-// Emit the bundled interface-images screenshots as separate hashed files rather
-// than base64 data URIs. Vite's lib mode force-inlines every asset — `shouldInline`
-// returns `true` for `build.lib` before it ever consults `assetsInlineLimit`, so
-// no build setting can override it — which would fold the ~4.5 MB of `.webp` into
-// `dist/index.js`. The one per-asset escape that still wins is the `?no-inline`
-// query, so tag the manifest's `new URL('./assets/*.webp', import.meta.url)`
-// references with it (pre-transform, before Vite resolves the asset URLs). Vite
-// strips the query from the emitted reference, so consumers still resolve clean
-// `./assets/<name>-<hash>.webp` URLs and the images load on demand.
-const interfaceImagesNoInlinePlugin = (): Plugin => ({
-  name: 'interview-interface-images-no-inline',
-  enforce: 'pre',
-  transform(code, id) {
-    const p = id.replace(/\\/g, '/');
-    if (!p.startsWith(`${interfaceImagesRoot}/`)) return null;
-    if (!code.includes('import.meta.url')) return null;
-    const tagged = code.replace(
-      /(new URL\((['"])[^'"]+?\.webp)\2/g,
-      '$1?no-inline$2',
-    );
-    return tagged === code ? null : { code: tagged, map: null };
-  },
-  // With a relative `base`, Vite emits the asset reference as a bare
-  // `new URL("assets/…", import.meta.url)`. That resolves correctly for
-  // esm/Vite consumers, but webpack (Next.js) treats a `new URL()` request
-  // without a `./` prefix as a bare module request and fails to resolve it.
-  // Re-add the explicit `./` so the emitted references are the canonical,
-  // bundler-portable `new URL("./assets/…", import.meta.url)` form. Done in
-  // `generateBundle` because Vite only resolves the asset-URL placeholders into
-  // their final `new URL("assets/…")` text after the `renderChunk` phase.
-  generateBundle(_options, bundle) {
-    for (const file of Object.values(bundle)) {
-      if (file.type === 'chunk' && file.code.includes('new URL("assets/')) {
-        file.code = file.code.replaceAll(
-          'new URL("assets/',
-          'new URL("./assets/',
-        );
-      }
-    }
-  },
-});
-
 // `'use client'` is a module-level directive, so bundling drops it: rolldown
 // concatenates the modules that declare it into a chunk and nothing survives at
 // the top. @codaco/fresco-ui keeps its directives only because it builds with
@@ -194,7 +142,6 @@ const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
 export default defineConfig({
   plugins: [
     isLibraryBuild && appI18n(),
-    interfaceImagesNoInlinePlugin(),
     inlineWorkerPlugin(),
     isLibraryBuild && clientDirective.plugin,
     react(),
@@ -277,27 +224,9 @@ export default defineConfig({
         if (p.startsWith(`${pkgRoot}/`) && !p.includes('/node_modules/')) {
           return false; // a resolved file inside this package → bundle
         }
-        // Bundle the private, source-only interface-images package (its bare
-        // specifier and its resolved source/asset files) so this package ships
-        // self-contained — it has no publishable npm version to depend on.
-        if (
-          p === '@codaco/interface-images' ||
-          p.startsWith('@codaco/interface-images/')
-        ) {
-          return false;
-        }
-        if (
-          p.startsWith(`${interfaceImagesRoot}/`) &&
-          !p.includes('/node_modules/')
-        ) {
-          return false;
-        }
         return true; // bare specifier / other workspace package / node_modules
       },
       output: {
-        // Emit the interface-images screenshots into `dist/assets/` with a
-        // content hash, keeping them namespaced and cache-friendly.
-        assetFileNames: 'assets/[name]-[hash][extname]',
         // Re-declare the client boundary that bundling erased — see
         // `createClientDirective` above.
         banner: (chunk) => clientDirective.banner(chunk.moduleIds),

@@ -7,6 +7,7 @@ import {
   KeyRound,
   Languages,
   LayoutGrid,
+  LayoutTemplate,
   type LucideIcon,
   MapPinned,
   Network,
@@ -103,4 +104,29 @@ export function stageTypeColorStyle(type: StageType): ThemeColorStyle {
  */
 export function stageTypeIcon(type: StageType): LucideIcon {
   return STAGE_TYPES[type].icon;
+}
+
+// A stage type this build does not know — a newer protocol can name one — is
+// drawn in a neutral grey with a generic icon rather than given a colour that
+// claims it belongs to a group.
+const UNKNOWN_STAGE_TYPE_COLORS: ThemeColorStyle = {
+  color: 'oklch(var(--charcoal))',
+  contrast: 'oklch(var(--white))',
+};
+
+/**
+ * `stageTypeColorStyle` for any stage's `type`, including one this build does
+ * not know, which gets a neutral grey. For drawing a stage that is already in
+ * a protocol, where leaving it out is not an option.
+ */
+export function stageColorStyle(type: string): ThemeColorStyle {
+  return isStageType(type)
+    ? stageTypeColorStyle(type)
+    : UNKNOWN_STAGE_TYPE_COLORS;
+}
+
+/** `stageTypeIcon` for any stage's `type`, with a generic icon for one this
+ * build does not know. */
+export function stageIcon(type: string): LucideIcon {
+  return isStageType(type) ? stageTypeIcon(type) : LayoutTemplate;
 }

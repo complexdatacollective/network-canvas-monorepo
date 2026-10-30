@@ -13,20 +13,21 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import { useKeyboardReorder } from '@codaco/fresco-ui/dnd/useKeyboardReorder';
+import { StageTypeBadge } from '@codaco/fresco-ui/stages/StageTypeBadge';
+import { stageColorStyle } from '@codaco/fresco-ui/stages/stageTypes';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
-import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { cx } from '~/utils/cva';
 
-import { timelineRowGrid } from './rowLayout';
+import { segmentBackground, spineAxis, timelineRowGrid } from './rowLayout';
+import StageLabelCard from './StageLabelCard';
 const chromeMessages = defineMessages({
   editStage: {
     id: 'architect.chrome.timeline.timelineStageRow.editStage',
@@ -98,6 +99,11 @@ export type TimelineRowStage = {
 
 type TimelineStageRowProps = {
   stage: TimelineRowStage;
+  /**
+   * The type of the stage before this one, whose colour the spine keeps down
+   * to this stage's stop. Absent for the first stage.
+   */
+  previousType?: string;
   index: number;
   stageCount: number;
   onOpen: (stageId: string) => void;
@@ -136,10 +142,10 @@ type TimelineStageRowProps = {
  * and is a `<div>` now — and previously carried nothing but `tabIndex={0}` and
  * an `onClick`:
  *
- * - the thumbnail is a real `<button>`, so Enter and Space open the editor,
- *   while ArrowUp/ArrowDown provide the keyboard reorder path;
- * - the whole row — including its thumbnail and text — remains the pointer
- *   drag surface, without a separate grip control;
+ * - the stage's stop on the spine is a real `<button>`, so Enter and Space
+ *   open the editor, while ArrowUp/ArrowDown provide the keyboard reorder path;
+ * - the whole row — including its stop and label — remains the pointer drag
+ *   surface, without a separate grip control;
  * - the delete control sits in the row's own grid instead of 10rem outside it.
  *
  * The stage label stays a real `<h4>` SIBLING of the open button rather than
@@ -147,9 +153,15 @@ type TimelineStageRowProps = {
  * ARIA marks a button's children presentational, which would delete
  * heading-by-heading navigation over the stage list — the only structural way
  * to skim a long protocol.
+ *
+ * On a wide timeline labels alternate sides of the spine, as on the start
+ * screen's timeline; on a narrow one every label sits after its stop. The DOM
+ * order — number, stop, label, delete — stays the same in every row, and the
+ * grid places each piece, so tab order never flips from row to row.
  */
 const TimelineStageRow = ({
   stage,
+  previousType,
   index,
   stageCount,
   onOpen,
@@ -181,9 +193,9 @@ const TimelineStageRow = ({
   const stageName =
     stage.label || intl.formatMessage(finalMessages.untitledStage);
   const position = index + 1;
-  // The row's thumbnail is what tells a sighted researcher which interface a
-  // stage uses; naming the open control after it too keeps a screen-reader
-  // researcher level with them. `undefined` for a stage type this build does
+  // The stop's icon and the label's caption tell a sighted researcher which
+  // interface a stage uses; naming the open control after it too keeps a
+  // screen-reader researcher level with them. `undefined` for a stage type this build does
   // not know — an imported protocol can carry one — in which case the label
   // says what it can rather than inventing a name.
   const interfaceName = interfaceDisplayName(stage.type, intl);
@@ -193,6 +205,7 @@ const TimelineStageRow = ({
   const withoutInterface = readOnly
     ? chromeMessages.viewStageWithoutInterface
     : chromeMessages.editStage76e56;
+  const labelLeft = index % 2 === 1;
   const openControlLabel = interfaceName
     ? intl.formatMessage(withInterface, {
         position: position,
@@ -296,6 +309,34 @@ const TimelineStageRow = ({
         }
       }}
     >
+      {/* This stage's stretch of the spine: the previous stage's colour down
+          to the stop, its own below. It runs 4px past the row into the gap so
+          the next insertion point picks up without a seam. */}
+      <span
+        aria-hidden
+        className={cx(
+          'pointer-events-none absolute top-0 -bottom-1 w-4',
+          spineAxis,
+        )}
+        style={{
+          background: segmentBackground(
+            previousType === undefined
+              ? 'transparent'
+              : stageColorStyle(previousType).color,
+            stageColorStyle(stage.type).color,
+          ),
+        }}
+      />
+      <span
+        aria-hidden
+        className={cx(
+          'font-monospace text-text/60 col-start-1 row-start-1 justify-self-end text-xs tracking-widest',
+          labelLeft &&
+            '@min-[40rem]:col-start-3 @min-[40rem]:justify-self-start',
+        )}
+      >
+        {String(position).padStart(2, '0')}
+      </span>
       <button
         type="button"
         ref={setOpenControl}
@@ -303,43 +344,41 @@ const TimelineStageRow = ({
         aria-keyshortcuts={readOnly ? undefined : reorder['aria-keyshortcuts']}
         onClick={handleOpenFromButton}
         onKeyDown={readOnly ? undefined : reorder.onKeyDown}
-        className="focusable block w-full max-w-44 justify-self-end"
+        className="focusable relative col-start-2 row-start-1 rounded-full"
       >
-        <StageTypeImage
+        {/* Position badge. The `data-testid` pairs with the spine's
+            (`Timeline.tsx`): `responsive.spec.ts` measures each badge's centre
+            against the line, so the line's colour cannot be what locates it.
+            The position beside it is not an alternative either: addressing
+            by it would encode the ordering the reorder tests change. */}
+        <StageTypeBadge
+          data-testid="timeline-stage-badge"
           type={stage.type}
-          alt=""
-          ratio="4:3"
-          sizes="14rem"
-          className="border-navy-taupe bg-navy-taupe pointer-events-none w-full rounded-sm border-4 shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
+          size="xl"
+          ringed
+          className="pointer-events-none transition-transform duration-300 ease-in-out select-none group-hover:scale-110"
         />
       </button>
-      {/* Position badge. The `data-testid` pairs with the spine's
-          (`Timeline.tsx`): `responsive.spec.ts` measures each badge's centre
-          against the line, so the `bg-timeline` token that used to locate it
-          is one of the things under measurement — and it is shared with the
-          line itself, which is why the old locator needed a structural walk to
-          scope past it. The number inside is not an alternative: it is the
-          stage's position, so addressing by it would encode the ordering the
-          reorder tests change. */}
       <div
-        data-testid="timeline-stage-badge"
-        className="bg-timeline text-timeline-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110"
+        className={cx(
+          // The column fills its track and aligns its content, rather than
+          // shrinking to the content with `justify-self`: a track-wide column
+          // lets the card shrink below its longest word, which then breaks,
+          // where a content-sized one would push the row past a phone's edge.
+          'col-start-3 row-start-1 flex min-w-0 items-center justify-start gap-2',
+          labelLeft && '@min-[40rem]:col-start-1 @min-[40rem]:flex-row-reverse',
+        )}
       >
-        {position}
-      </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="min-w-0 flex-1 basis-40">
-          <Heading
-            level="h4"
-            margin="none"
-            className="my-2 wrap-break-word transition-all group-hover:font-bold"
-          >
-            {/* Preserve the height of an empty authored heading. */}
-            {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
-            {stage.label || '\u00A0'}
-          </Heading>
+        <StageLabelCard
+          type={stage.type}
+          // Preserve the height of an empty authored heading.
+          // oxlint-disable-next-line formatjs/no-literal-string-in-jsx
+          title={stage.label || '\u00A0'}
+          caption={interfaceName ?? stage.type}
+          className="group-hover:bg-white/70 @max-[40rem]:px-5 @max-[40rem]:py-3"
+        >
           {(stage.hasFilter || stage.hasSkipLogic) && (
-            <div className="mt-1 flex items-center gap-1">
+            <div className="mt-2 flex items-center gap-1">
               {stage.hasFilter && (
                 <img
                   src={filterIcon}
@@ -358,7 +397,7 @@ const TimelineStageRow = ({
               )}
             </div>
           )}
-        </div>
+        </StageLabelCard>
         <div className="flex shrink-0 items-center gap-1">
           {/* An unavailable delete stays focusable (aria-disabled rather than
               disabled), so its reason reaches keyboard and pointer users as a

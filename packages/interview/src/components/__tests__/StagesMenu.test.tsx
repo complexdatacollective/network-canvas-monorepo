@@ -154,3 +154,75 @@ describe('StagesMenu screen names', () => {
     expect(screen.getByText('Thank you').closest('[lang], [dir]')).toBeNull();
   });
 });
+
+describe('StagesMenu timeline', () => {
+  const stages = [
+    {
+      id: 'welcome',
+      type: 'Information',
+      label: { en: 'Welcome' },
+      items: [],
+    },
+    {
+      id: 'about-you',
+      type: 'EgoForm',
+      label: { en: 'About you' },
+      form: { fields: [] },
+    },
+    {
+      id: 'thanks',
+      type: 'Information',
+      label: { en: 'Thanks' },
+      items: [],
+    },
+  ];
+
+  /** The line behind each option, in screen order. */
+  const lineStretches = () =>
+    screen
+      .getAllByRole('option')
+      .map(
+        (option) =>
+          [...option.querySelectorAll<HTMLElement>('[aria-hidden]')].find(
+            (element) => element.style.getPropertyValue('--segment-before'),
+          )?.style,
+      );
+
+  /**
+   * As on the start screen's timeline, the line between two stops takes the
+   * colour of the stop before it, and nothing runs past either end.
+   */
+  it("runs each stage's stretch of line from the previous stage's colour to its own", () => {
+    renderMenu({ stages });
+
+    const [first, second, last] = lineStretches();
+    expect(first?.getPropertyValue('--segment-before')).toBe('transparent');
+    expect(first?.getPropertyValue('--segment-after')).toBe(
+      'var(--interface-information)',
+    );
+    expect(second?.getPropertyValue('--segment-before')).toBe(
+      'var(--interface-information)',
+    );
+    expect(second?.getPropertyValue('--segment-after')).toBe(
+      'var(--interface-ego-form)',
+    );
+    expect(last?.getPropertyValue('--segment-before')).toBe(
+      'var(--interface-ego-form)',
+    );
+    expect(last?.getPropertyValue('--segment-after')).toBe('transparent');
+  });
+
+  /**
+   * The interface's name is the researcher's vocabulary. Each option is named
+   * by the screen's label alone, as the participant reads it.
+   */
+  it('names each screen by its label, without its interface', () => {
+    renderMenu({ stages });
+
+    const [welcome, aboutYou, thanks] = screen.getAllByRole('option');
+    expect(welcome).toHaveAccessibleName('Welcome');
+    expect(aboutYou).toHaveAccessibleName('About you');
+    expect(thanks).toHaveAccessibleName('Thanks');
+    expect(screen.queryByText(/ego form/i)).toBeNull();
+  });
+});

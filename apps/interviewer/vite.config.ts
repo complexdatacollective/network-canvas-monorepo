@@ -170,13 +170,8 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
           // bundle's retained precache (including between same-version dev
           // deploys and while offline).
           cacheId: pwaCacheId,
-          // The menu's responsive stage previews are not requested until an
-          // interview is already open. Precache every 4:3 candidate so a
-          // freshly installed app can render the menu on its first offline
-          // interview, regardless of which width Safari selects from srcset.
           globPatterns: [
             '**/*.{js,css,html}',
-            '**/*.4x3.*.webp',
             // Home and onboarding render the header mark. The page that
             // installs the worker is not controlled by it, so its request never
             // fills the runtime image cache, and the first offline launch
@@ -291,9 +286,11 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
               // skipWaiting activation advances every already-controlled tab,
               // including an interview that deliberately did not request the
               // update. If its old bundle later requests an old lazy chunk or
-              // responsive stage preview, the new worker can read that exact
-              // content-hashed URL from the retained precache. Stable HTML and
-              // image URLs such as index.html and PWA icons stay excluded.
+              // responsive stage preview (bundles that drew the stage menu
+              // with screenshots precached them), the new worker can read that
+              // exact content-hashed URL from the retained precache. Stable
+              // HTML and image URLs such as index.html and PWA icons stay
+              // excluded.
               urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin &&
                 url.pathname.startsWith('/assets/') &&

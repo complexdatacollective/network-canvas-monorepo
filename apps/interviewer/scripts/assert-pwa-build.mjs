@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Post-build assertion: a production PWA build must emit the SW + manifest +
-// icons, every critical chunk (the interview engine, the entry), every
-// lazily loaded locale chunk, and every responsive stage-preview image must be
-// precached. A missing critical asset breaks either the offline boot, an
-// offline language switch, or the first offline opening of the menu.
+// icons, and every critical chunk (the interview engine, the entry) and every
+// lazily loaded locale chunk must be precached. A missing critical asset breaks
+// either the offline boot or an offline language switch. No stage-preview
+// image may be in the build: the stage menu draws stage-type icons, and an
+// image something started importing again would not be precached.
 // Chunks loaded on demand (each UI language, the bundled sample protocol, the
 // synthetic data generator and its faker dependency) must stay out of the
 // initial load. The Development protocol, offered only in `vite dev`, must not
@@ -196,8 +197,10 @@ const stagePreviewAssets = assetFiles.filter((f) =>
   /\.4x3\.\d+-.*\.webp$/.test(f),
 );
 
-if (stagePreviewAssets.length === 0) {
-  fail('no 4:3 stage-preview assets found');
+if (stagePreviewAssets.length > 0) {
+  fail(
+    `stage-preview image(s) in the build, which nothing precaches: ${stagePreviewAssets.join(', ')}`,
+  );
 }
 
 // Fonts are left to the runtime cache. The hashed header mark (Home's and
@@ -229,15 +232,6 @@ const missingMarks = headerMarks
 if (missingMarks.length > 0) {
   fail(
     `the header mark is not precached, so it breaks on the first offline launch: ${missingMarks.join(', ')}`,
-  );
-}
-
-const missingStagePreviewAssets = stagePreviewAssets.filter(
-  (f) => !precached.has(`assets/${f}`),
-);
-if (missingStagePreviewAssets.length > 0) {
-  fail(
-    `stage-preview asset(s) excluded from precache: ${missingStagePreviewAssets.join(', ')}`,
   );
 }
 
@@ -607,5 +601,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );

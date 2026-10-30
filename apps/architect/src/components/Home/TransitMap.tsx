@@ -1,16 +1,14 @@
 import { motion } from 'motion/react';
-import { createElement, useState } from 'react';
+import { useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
-import {
-  stageTypeColorStyle,
-  stageTypeIcon,
-} from '@codaco/fresco-ui/stages/stageTypes';
-import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import { StageTypeBadge } from '@codaco/fresco-ui/stages/StageTypeBadge';
+import { stageTypeColorStyle } from '@codaco/fresco-ui/stages/stageTypes';
 import type { StageType } from '@codaco/protocol-validation';
 
+import StageLabelCard from '../Timeline/StageLabelCard';
 import { type TimelineStop } from './timelineScript';
 
 const messages = defineMessages({
@@ -29,10 +27,9 @@ const DESIGN_H = 820;
 const STATION_X = DESIGN_W / 2;
 const STATION_GAP = 140;
 const ANCHOR_Y = DESIGN_H * 0.65;
+// The extra-large ringed badge: a 56-unit disc inside an 8-unit white ring.
 const STATION_R = 36;
-const STATION_INNER_R = 28;
 const HALO_R = 60;
-const ICON_SIZE = 26;
 const LINE_STROKE = 16;
 const LABEL_W = 260;
 const LABEL_EDGE_GAP = 20;
@@ -47,17 +44,8 @@ const VISIBLE_WINDOW = 7;
 // then progressively older above).
 const INITIAL_BLOOM_STAGGER_S = 0.12;
 
-const ICON_STROKE = 2.75;
-
 function timelineColor(type: StageType) {
   return stageTypeColorStyle(type).color;
-}
-
-// Several stage colours fall below AA as caption text on the page, so the
-// caption keeps the hue but moves 35% toward the ink contrast-color() picks for
-// the page, as Badge does.
-function captionColor(color: string) {
-  return `color-mix(in oklab, ${color}, contrast-color(var(--background)) 35%)`;
 }
 
 type TransitMapProps = {
@@ -237,7 +225,7 @@ function Station({
 }: StationProps) {
   // Stage colours are CSS custom properties, which SVG presentation
   // attributes do not resolve — they have to be set as style properties.
-  const { color, contrast } = stageTypeColorStyle(type);
+  const { color } = stageTypeColorStyle(type);
   const shouldEntry = entryDelay !== undefined;
   const baseDelay = entryDelay ?? 0;
   const stationSpring = {
@@ -285,16 +273,17 @@ function Station({
             }}
           />
         )}
-        <circle cx={x} cy={y} r={STATION_R} fill="#fff" />
-        <circle cx={x} cy={y} r={STATION_INNER_R} style={{ fill: color }} />
-        {createElement(stageTypeIcon(type), {
-          x: x - ICON_SIZE / 2,
-          y: y - ICON_SIZE / 2,
-          width: ICON_SIZE,
-          height: ICON_SIZE,
-          strokeWidth: ICON_STROKE,
-          style: { color: contrast },
-        })}
+        <foreignObject
+          x={x - STATION_R}
+          y={y - STATION_R}
+          width={STATION_R * 2}
+          height={STATION_R * 2}
+          overflow="visible"
+        >
+          <div className="flex size-full items-center justify-center">
+            <StageTypeBadge type={type} size="xl" ringed />
+          </div>
+        </foreignObject>
       </motion.g>
 
       {/* Label pill: slide in from its outer side */}
@@ -318,33 +307,13 @@ function Station({
             className="flex h-full w-full items-center"
             style={{ justifyContent: labelLeft ? 'flex-end' : 'flex-start' }}
           >
-            <div
-              className="min-w-0 rounded-[40px] bg-white/40 px-8 py-4 shadow-[0_8px_20px_rgba(22,21,43,0.10)]"
+            <StageLabelCard
+              type={type}
+              title={label}
+              caption={sub}
+              titleRender={<div />}
               style={{ maxWidth: LABEL_W - 20 }}
-            >
-              <div
-                className={headingVariants({
-                  level: 'h3',
-                  margin: 'none',
-                  className:
-                    'text-[19px] leading-[1.1] font-extrabold text-balance text-[hsl(240_35%_17%)]',
-                })}
-              >
-                {label}
-              </div>
-              <div
-                className={headingVariants({
-                  level: 'label',
-                  variant: 'all-caps',
-                  margin: 'none',
-                  className:
-                    'pt-2.5 text-[12px] leading-[1.2] font-bold tracking-[0.16em] text-balance',
-                })}
-                style={{ color: captionColor(color) }}
-              >
-                {sub}
-              </div>
-            </div>
+            />
           </div>
         </foreignObject>
       </motion.g>

@@ -193,6 +193,7 @@
     "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./stages/StageBar": "./src/stages/StageBar.tsx",
+    "./stages/StageTypeBadge": "./src/stages/StageTypeBadge.tsx",
     "./stages/stageTypes": "./src/stages/stageTypes.ts",
     "./storybook-support/awaitPassiveEffects": "./src/storybook-support/awaitPassiveEffects.ts",
     "./storybook-support/colorContrast": "./src/storybook-support/colorContrast.ts",
@@ -208,6 +209,7 @@
     "./utils/NoSSRWrapper": "./src/utils/NoSSRWrapper.tsx",
     "./utils/ariaIdReferences": "./src/utils/ariaIdReferences.ts",
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
+    "./utils/cssVariables": "./src/utils/cssVariables.ts",
     "./utils/cva": "./src/utils/cva.ts",
     "./utils/finalFocus": "./src/utils/finalFocus.ts",
     "./utils/foldText": "./src/utils/foldText.ts"
@@ -922,6 +924,10 @@
         "types": "./dist/stages/StageBar.d.ts",
         "default": "./dist/stages/StageBar.js"
       },
+      "./stages/StageTypeBadge": {
+        "types": "./dist/stages/StageTypeBadge.d.ts",
+        "default": "./dist/stages/StageTypeBadge.js"
+      },
       "./stages/stageTypes": {
         "types": "./dist/stages/stageTypes.d.ts",
         "default": "./dist/stages/stageTypes.js"
@@ -978,6 +984,10 @@
       "./utils/composeEventHandlers": {
         "types": "./dist/utils/composeEventHandlers.d.ts",
         "default": "./dist/utils/composeEventHandlers.js"
+      },
+      "./utils/cssVariables": {
+        "types": "./dist/utils/cssVariables.d.ts",
+        "default": "./dist/utils/cssVariables.js"
       },
       "./utils/cva": {
         "types": "./dist/utils/cva.d.ts",

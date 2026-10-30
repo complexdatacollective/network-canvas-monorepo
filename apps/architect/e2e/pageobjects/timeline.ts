@@ -62,12 +62,12 @@ export class Timeline {
   }
 
   /**
-   * The timeline's painted spine: the absolutely-positioned line the numbered
-   * badges must sit on.
+   * The timeline's painted spine: the absolutely-positioned line the stages'
+   * stops must sit on.
    *
    * A named seam stamped on it in Timeline.tsx, because the spine is
    * decorative and so offers nothing else to address it by: no text, no role,
-   * no accessible name. Everything it does have — absolute, half-way across,
+   * no accessible name. Everything it does have — absolute, on the stops' axis,
    * one unit wide — is what the geometry assertions measure, so none of it may
    * also be what finds it. The seam replaces a structural walk
    * (`div:has(> ul…) > .bg-timeline`) whose whole job was to scope past the
@@ -78,8 +78,8 @@ export class Timeline {
   }
 
   /**
-   * Each stage card's numbered badge, in timeline order — the disc carrying
-   * the position number.
+   * Each stage card's stop, in timeline order — the disc carrying the stage
+   * type's icon.
    *
    * A named seam stamped in TimelineStageRow.tsx, for the same reason as the
    * spine: the `bg-timeline` token this used to match is shared with the line
@@ -92,7 +92,7 @@ export class Timeline {
     return this.stageCards().getByTestId('timeline-stage-badge');
   }
 
-  /** The row's own "open the stage editor" control (the thumbnail). */
+  /** The row's own "open the stage editor" control (the stop). */
   openControl(label: string): Locator {
     return this.stageRowByLabel(label).getByRole('button', {
       name: 'Edit stage',

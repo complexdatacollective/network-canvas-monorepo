@@ -548,8 +548,8 @@ pnpm exec turbo run build --filter=@codaco/interviewer
 The app's `build` command runs Vite and then `scripts/assert-pwa-build.mjs`, which
 fails the build if the service worker, manifest, or icons are missing from
 `dist/`, or if a critical JS chunk (the interview engine, mapbox-gl, the entry
-point) or responsive stage-preview image got silently dropped from the Workbox
-precache manifest, or if any of the dev-only Development protocol (its JSON or
+point) got silently dropped from the Workbox precache manifest, or if a
+stage-preview image or any of the dev-only Development protocol (its JSON or
 media, matched by content) is in `dist/`. A deploy that passes this assertion is
 one that will actually boot and render the interview menu offline; treat an
 assertion failure as a hard release blocker, not a warning to route around.

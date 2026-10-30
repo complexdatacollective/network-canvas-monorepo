@@ -26,7 +26,6 @@
     "@codaco/art": "workspace:^",
     "@codaco/effect-query": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
-    "@codaco/interface-images": "workspace:^",
     "@codaco/interview": "workspace:^",
     "@codaco/protocol-builder": "workspace:^",
     "@codaco/protocol-builder-core": "workspace:^",

@@ -9,6 +9,8 @@ import type { StageType } from '@codaco/protocol-validation';
 import {
   isStageType,
   STAGE_TYPES,
+  stageColorStyle,
+  stageIcon,
   stageTypeColorStyle,
   stageTypeIcon,
 } from './stageTypes';
@@ -92,5 +94,23 @@ describe('STAGE_TYPES', () => {
 
   it('resolves a stage type to its icon component', () => {
     expect(stageTypeIcon('Sociogram')).toBe(STAGE_TYPES.Sociogram.icon);
+  });
+});
+
+describe('stageColorStyle and stageIcon', () => {
+  it('give a known stage type its own colours and icon', () => {
+    expect(stageColorStyle('Sociogram')).toEqual(
+      stageTypeColorStyle('Sociogram'),
+    );
+    expect(stageIcon('Sociogram')).toBe(STAGE_TYPES.Sociogram.icon);
+  });
+
+  it('give a stage type this build does not know a neutral grey and an icon no stage type uses', () => {
+    expect(stageColorStyle('FutureInterface')).toEqual({
+      color: 'oklch(var(--charcoal))',
+      contrast: 'oklch(var(--white))',
+    });
+    const icons = new Set(Object.values(STAGE_TYPES).map(({ icon }) => icon));
+    expect(icons.has(stageIcon('FutureInterface'))).toBe(false);
   });
 });

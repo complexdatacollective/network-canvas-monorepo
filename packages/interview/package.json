@@ -106,7 +106,6 @@
     "@chromatic-com/storybook": "catalog:",
     "@codaco/development-protocol": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
-    "@codaco/interface-images": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
