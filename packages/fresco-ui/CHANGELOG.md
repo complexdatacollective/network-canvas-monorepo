@@ -1,5 +1,499 @@
 # @codaco/fresco-ui
 
+## 9.0.0
+
+### Major Changes
+
+- 1769104: Form fields can show text written in a language other than the page's.
+
+  A new `@codaco/fresco-ui/PresentationalText` module exports the
+  `PresentationalText` type: a plain string, or `{ text, lang, dir }` for text in
+  another language. Field labels and hints, and option labels in `Boolean`,
+  `CheckboxGroup`, `Combobox`, `LikertScale`, `RadioGroup`, `RadioMatrixField`,
+  `RichSelectGroup`, `Select`, `ToggleButtonGroup` and `VisualAnalogScale`,
+  accept it. The element that shows the text gets its `lang` and `dir`, so
+  browsers and screen readers pronounce, hyphenate and lay it out correctly,
+  while filtering, keys and `aria-label` use the bare text. In
+  `RichSelectGroup`, a label or description written in the other direction stays
+  beside its indicator. `isPresentationalText`, `presentationalTextValue` and
+  `presentationalTextProps` help components handle both forms. The Language
+  Chooser stage type has a colour and icon.
+
+  `Combobox`, `Select` and `IconPicker` fields no longer grow wider than the
+  space they are given when the text they show is long. The text is cut off with
+  an ellipsis instead of running past the edge of its dialog.
+
+  `ProgressBar` takes a `tone` of `neutral` (the default, unchanged) or `info`.
+  An `info` bar fills its unfinished progress with the info colour, so a bar
+  under way reads apart from both an empty track and a complete bar.
+
+  **Breaking:** `SelectOption.lang` is removed. Pass a label in another language
+  as `{ text, lang, dir }` instead, as `LocaleSelect` now does.
+
+- 6956edc: Removed the `usePrevious` hook (`@codaco/fresco-ui/hooks/usePrevious`). Nothing in the design system used it any more; if you need a previous value, keep it in your own component's state.
+- db8a2af: The interview shows less built-in text, and some of it reads more
+  consistently:
+
+  - In Family Pedigree, the answers to the sex assigned at birth question and
+    the kinds of parent a participant chooses from now show the labels the
+    protocol's codebook gives them, so a researcher can reword and translate
+    them like any other protocol text. The choice of a biological parent who
+    carried the pregnancy uses the protocol's label for a biological parent.
+    Since participants choose from these answers, none of their labels may be
+    blank. Architect fills those labels in for each of the protocol's
+    languages that Network Canvas has wording for, when the attribute is
+    created and when a language is added, and gives a default language it has
+    no wording for the English labels. The supplied English label for a donor
+    is now "Egg or sperm donor".
+  - When a researcher changes the language a protocol's text is recorded as,
+    or chooses another default language, text Network Canvas supplies and the
+    researcher has not changed (the finish screen's text and the Family
+    Pedigree answer labels) becomes the supplied text for the language chosen,
+    so a protocol upgraded as English and corrected to German reads the German
+    text.
+  - The button that confirms finishing the interview says "Finish", like the
+    button that opens the confirmation.
+  - Several buttons and messages now use one wording instead of two: "Pause
+    automatic layout" and "Resume automatic layout" on the Sociogram, "Enter
+    your passphrase" in Family Pedigree, "Zoom in" and "Zoom out", "Nothing
+    matched your search term." on the Geospatial search, and the same Cancel,
+    Save, Back, No and loading text the rest of the interview uses.
+  - The debug-information button no longer repeats its own label as a tooltip.
+  - A stage name made only of spaces is no longer valid, so the interview never
+    needs a name of its own for an unnamed stage.
+  - `ResizableFlexPanel` breakpoints no longer take a `label`, which nothing
+    read. A caller that passes one must remove it.
+
+- ad201b2: Every kind of stage now has one colour and one icon, the same in every app. Stages that do similar work share a colour family: naming people in coral reds, describing them in blues, sorting them in oranges, mapping in teal, finding ties in purples, reflecting in sea greens, and the screens that collect no network data in greys. Every colour carries a white icon at the WCAG AA contrast ratio of 4.5:1. Eight interfaces get new icons drawn in Lucide's style: Ego Form, Per Alter Form, Per Alter Edge Form, Sociogram, Network Composer, Narrative, Dyad Census and Tie-Strength Census.
+
+  **Architect**
+
+  - The protocol timeline on the start screen draws each stage in its new colour and icon. Information stages are a lighter grey instead of charcoal.
+  - Each stage in that timeline now carries the name of the interface it really uses, under a title that says what happens on the stage. Previously some stages showed the wrong type, such as a Sociogram labelled "Connections". The stage labels also have more padding and tighter, clearer type.
+
+  **Tailwind config (`@codaco/tailwind-config`)**
+
+  - Adds `interfaces.css`, which `fresco.css` loads, with `--interface-<stage-type>` and `--interface-<stage-type>-contrast` tokens for each stage type and `--color-interface-*` aliases for Tailwind utilities. An app that keeps its own theme instead of `fresco.css` imports `colors.css` and then `interfaces.css`.
+
+  **Fresco UI (`@codaco/fresco-ui`)**
+
+  - **Breaking:** `STAGE_TYPES` in `stages/stageTypes` replaces `STAGE_TYPE_COLORS` and `STAGE_TYPE_ICONS`, mapping each stage type to its colour token and icon. `stageTypeColorStyle` now returns the stage type's `--interface-*` tokens instead of a palette colour, and `stageTypeIcon` returns the new icons. `StageBar` draws its segments in the new colours.
+
+### Minor Changes
+
+- c210bce: `DropdownMenuContent` takes an `anchor` to open beside an element other than
+  its trigger, and a controlled `DropdownMenu` now shows its content whenever
+  `open` is true, including when the caller opens it without a trigger.
+- 9c1aeff: Architect can put values the interview fills in into participant text: for
+  example the participant's name, a person's answer, the two people a census
+  asks about, or today's date. Each text that accepts values has a syringe
+  button in its toolbar, "Inject piped text from interview metadata or a
+  network attribute", with a searchable menu that lists only the values
+  available where that text sits. Typing `{` opens the same menu. A value that
+  can be missing goes in with a version for when it is known and one for when
+  it is not; in the editor it shows as its pill, and while it is selected its
+  versions take the pill's place, one to a line, with the known version first.
+  A version can be left empty, so that nothing is shown in that case; an empty
+  version says "Shows nothing" in the editor. Inserting, removing and editing
+  values can be undone and redone like any other edit. A choice or yes/no value
+  can give the text one version for each answer, each on its own line; a yes/no value shows as words only once both of
+  its answers have labels, so until then the menu lists it greyed out with a
+  hint to add them (a Toggle, which has no labels, points to the
+  different-wording entry instead). A number can give it a version for each plural form
+  of the language. Values show as pills in the stage editors, the translation
+  table and the protocol summary. A translation that leaves out a value is
+  flagged with the value's name, and neither the table nor the stage editor
+  will save it. Text that
+  shows values a field cannot edit is shown as it is, with a note saying why.
+
+  - `@codaco/fresco-ui`'s rich text editor opens its insert menu from an icon
+    button (a syringe icon, named and tipped by the menu's label), and every
+    placeholder pill, in the editor and in `TokenPill`, opens with the same
+    icon, held on one line with the label's first word, and names its value in
+    bold body type wherever it is shown; in the editor a pill shows a pointer. The editor accepts an insert menu (`RichTextInsertMenu`,
+    whose items can be `disabled` with a description saying why), inline value
+    pills, and a versions element for text with one version per case. The
+    versions element shows as a pill (its optional `summary`, or its `label`)
+    and, while it is selected (clicked, reached with the keyboard, or just
+    inserted), shows its versions in the pill's place, one to a row in the
+    order given, an empty one with a muted "Shows nothing" hint that is not
+    saved. Enter or Space opens it, Escape folds it, and leaving the field
+    folds it. A version's edits belong to the field's undo history, undone and
+    redone from the version or the line around it, and choosing from the menu
+    hands the caret back to the text. The editor keeps its history when a host
+    passes the same placeholders in another order.
+  - `@codaco/protocol-validation` exports `messageStructure` and
+    `printMessageStructure`, which turn an ICU message into the tree of
+    versions the editor shows and back, and `pluralValueExamples`, the plural
+    categories a number answer can reach in a language, fractions included.
+    It also exports `collectLocalizedStringsFromSchema`, which finds the
+    localized strings of any value against the schema given, such as one
+    stage against `stageSchema`.
+
+- 7002c7c: The interview shows a stage's dynamic values in its text. A prompt, form question, introduction, Information screen or finish screen reads the version of its message that the values choose, with each value written in the interview's language: dates in full, numbers and lists as the language writes them, and a categorical or yes/no value as its option's label. Values are read live, so a form question changes as the participant answers an earlier question on the same form (on a Family Pedigree form, also the name, gender identity and sex questions above it), and a correction made earlier shows at once. A form adding a person on a Name Generator prompt already has the attributes the prompt gives them.
+
+  - Each filled-in value is tinted with the primary colour, so participants can tell it was filled in for them. Screen readers read it as part of the sentence. The value is isolated for bidirectional text.
+  - A value is only ever text. Markdown, HTML or message syntax in a participant's answer is shown as typed. It never becomes formatting, a link or an image, and it is never sent to analytics or written to the console.
+  - A Dyad or Tie Strength Census prompt can show the two nodes it asks about, a one-to-many census prompt its focal node, and a Geospatial prompt the node being placed. The question a Categorical Bin asks about a node put in its "other" bin can show that node.
+  - Each of those nodes, a form's node and the two nodes an edge form's edge joins can be shown by the label the interview draws on them, which on a form follows the answers as they are given. On a Family Pedigree form, that is the label the family tree draws: the typed name, "You" for the participant, or the word for how an unnamed relative is related, in the stage's wording and framing, as saving the answers will draw it.
+  - A Geospatial or one-to-many census stage reached with nobody to ask about, such as a preview of it, shows no prompt, as a Dyad or Tie Strength Census with no pairs already did, instead of a question naming nobody.
+  - `@codaco/fresco-ui`'s `RenderMarkdown` exports its default rehype plugins (`DEFAULT_MARKDOWN_REHYPE_PLUGINS`) and its default label elements (`ALLOWED_MARKDOWN_LABEL_TAGS`) so that a caller can extend them. It also exports `getMarkdownAttributeValues`, which lists the attribute values (link destinations and titles, image sources and text) a piece of markdown produces.
+  - `SyntheticInterview` stages can carry `dynamicValues`.
+  - `ProtocolField` takes a `label` to show in place of the field's authored label, as it already took a `hint`. Architect's form field preview uses it to show a question that holds values.
+
+- 43ffe6f: The words a participant reads in an interview now come from the protocol,
+  in the protocol's language, wherever the protocol can hold them, and the
+  interview shows less text of its own.
+
+  **Stage settings.** Text a participant sees on one kind of stage is now a
+  setting of that stage, which researchers can change and translate. Network
+  Canvas fills each one with its starting wording in every protocol language it
+  has wording for (English, German, Spanish, French, Italian, Dutch, Brazilian
+  Portuguese, and Simplified and Traditional Chinese):
+
+  - Finish screen: the finish button, its confirmation question, the finished
+    notice and the message shown if finishing fails.
+  - Name generators: the minimum and maximum notices, the quick-add hint, the
+    message for an external list that could not load, the roster's "nothing
+    left to add" notice, and its search label and no-match text.
+  - Geospatial: the offline notice, the message for a map that cannot be shown,
+    the label for a place outside the selectable areas, and the search label,
+    no-match and search-failed texts.
+  - Network Composer, Narrative, Sociogram and Narrative Pedigree: the name box
+    placeholder, panel headings, the tools' tooltips, and the Narrative
+    Pedigree's key, its condition menu's "Select a condition" choice, snapshot
+    button and snapshot headings.
+  - Family Pedigree: every word of drawing, connecting and adding to the family,
+    as the stage's `wording`, including the name question and the checklist of
+    family members still needed.
+
+  A setting shown only under some configuration, such as the layout tooltips
+  while automatic layout is on, is held only while that configuration is on:
+  Architect fills it in with the starting wording when the configuration is
+  switched on and removes it when it is switched off, so a protocol never asks
+  for text its participants cannot see to be translated. Upgrading a protocol
+  from schema 8 gives each stage the wording it has always shown. Several
+  settings read differently when they are about the participant and when they
+  are about someone else, or show a name or a number; Architect's stage editor,
+  translation table and protocol summary show each version separately, named,
+  with placeholders as named pills. A translation must show each placeholder
+  in the versions where Network Canvas's English shows it, so a translation
+  cannot drop a person's name or a count by accident. A version for a plural
+  form that only one number takes, such as English "one", may leave the number
+  out. Architect marks the placeholders a version still needs, and names the
+  missing placeholder and its version in the error.
+
+  **Interface text.** The text several stages share is the protocol's
+  `interfaceText`, translated in the translation table like the rest of the
+  protocol, in six groups: interview navigation (Back, Continue, Exit interview
+  and its explanation); buttons (Cancel, Done and Delete, and Yes and No when a
+  stage shows a form); messages (the screen and item errors, and one error
+  message that also stands in for a form that could not be submitted); the
+  passphrase prompt; the discard-changes question and explanation, held with
+  forms; and validation messages, one for each answer check, held only for the
+  checks the protocol uses. The Yes answer is also the discard dialog's confirm
+  button. The interview shows this text in the protocol's language; its own
+  words, such as the language chooser, still follow the participant's browser.
+
+  **Less built-in text.** Headings, labels and messages that repeated what the
+  screen already showed were removed: for example the pedigree checklist's
+  heading, the condition key's "What the symbols mean", the dyad censuses'
+  "Select all that apply", and the separate passphrase confirmations, now one.
+  Canvas tools are icon buttons with tooltips, and drawer toggles show the
+  number of people still to place.
+
+  For developers: `@codaco/app-i18n` adds `AppIntlOverlay`, which lays a set of
+  messages over a catalog in a chosen locale; `@codaco/fresco-ui`'s rich text
+  editor takes a `tokens` prop to insert placeholders, each of which may be
+  marked `required`, the new `TokenPill` subpath draws a placeholder the same
+  way in text that is only read (`TokenPill`, `TokenizedText`), `Table` takes a
+  `scrollerClassName` for its scrolling element, and a dialog's busy
+  confirm button is announced through a status region;
+  `@codaco/protocol-validation` adds `missingSuppliedStageText`,
+  `inapplicableStageSettings`, `suppliedStageSettingApplies`,
+  `messageVariants`, `composeMessage`, `findMessageArgumentProblem`,
+  `findMissingPlacement` and `requiredArgumentsOf`, and a declared `text` or
+  `plural` argument may list the versions it is `required` in; and
+  `SyntheticInterview.addStage` takes a stage's own `wording`.
+
+- c058462: The screen that ends an interview is now part of the protocol. Researchers can
+  write what participants read before and after they finish, translate it like
+  the rest of the protocol, and choose how an interview that ends there is
+  recorded: completed, ineligible, or ended early. That outcome is saved with each
+  interview and exported. A finish stage either waits for participants to confirm
+  or finishes the interview as soon as they reach it, and a protocol can end with
+  several, such as a separate ending for participants who are not eligible.
+
+  **Protocols (`@codaco/protocol-validation`)**
+
+  - Schema 9 adds the `FinishSession` stage type, with a stage name, a `mode`
+    of `confirmation` or `automatic`, the closing screen's Markdown (`content`,
+    heading included, shown only in `confirmation` mode), the finished screen's
+    Markdown (`finishedContent`), the Finish button label, confirmation question
+    and failure message, and an `outcome` of `completed`, `ineligible` or
+    `terminated`. It has no skip logic.
+  - Every schema 9 protocol must end with a finish stage, and may end with
+    several. Validation refuses a protocol with no stages, one whose last stage
+    is not a finish stage, and any other stage after the first finish stage.
+    `findTimelineStructureProblems` reports the same problems for a list of
+    stages without validating the stages themselves.
+  - The v8 to v9 migration appends a finish stage in `confirmation` mode, with
+    id `finish` (or the next free `finish-2`, `finish-3`, …), outcome
+    `completed`, and the text the interview has always shown there, in English under the protocol's default
+    language. Its notes say so. A recorded interview that was on the old
+    finish screen resumes on the new finish stage. Run again over a document
+    already in schema 9 form, it keeps a finish stage the document already ends
+    at, and gives one that has none the supplied text in the document's own
+    languages.
+  - A finish stage's name and text may have no translation at all while a
+    protocol is being written, so a protocol in a language Network Canvas has no
+    closing text for starts without any. `validateProtocol` still refuses a
+    protocol whose finish stage has no finished text, or no closing text in
+    `confirmation` mode, in its default language, with the issue code `finish_stage_text_missing`
+    (`FINISH_STAGE_TEXT_MISSING`) naming what is missing. An editor passes
+    `{ draft: true }` to allow it while the protocol is written.
+    `findFinishStageTextProblems` reports the same problem without validating.
+    Text made only of spaces or invisible characters counts as missing, and a
+    translation of a finish stage's name or text that is given at all
+    must not be blank, in any language and in a draft too.
+  - `createDefaultFinishSessionStage`, `defaultFinishSessionText`,
+    `defaultFinishSessionFields`, `hasDefaultFinishSessionText` and
+    `withDefaultFinishSessionTranslation` supply that text in English, German,
+    Spanish, French, Hungarian, Italian, Dutch, Brazilian Portuguese, and
+    Simplified and Traditional Chinese.
+
+  **Interview runtime (`@codaco/interview`)**
+
+  - In `confirmation` mode the finish stage shows its closing text and a Finish
+    button, which asks participants to confirm; once the interview is finished
+    it shows the finished text. If finishing fails, the closing text comes back
+    with an error toast. Participants can go back until they finish.
+  - In `automatic` mode the interview finishes as soon as the stage is shown,
+    and participants then see the finished text. They can't go back. If
+    finishing fails they see the error with a button to try again.
+  - No finish stage lets participants move forward. Finishing records which
+    finish stage the interview ended at and its outcome.
+  - **Breaking:** `onFinish` is now called as
+    `onFinish(interviewId, { stageId, outcome }, signal)`. Hosts store both
+    values and pass `finishStageId` back in `SessionPayload` when they reopen the
+    interview.
+  - A finished interview opens in its completed state: the finished text of
+    the finish stage it ended at, with no way back into the interview. A host can add its own actions to it with
+    the new `completedActions` prop. Review mode stops before the finish stage,
+    and the stages menu no longer lists finish stages. A review of a protocol
+    with nothing before its finish stage shows that stage's text read-only,
+    with an **Exit review** button when the host passes `onExit`.
+  - A host that lets a finished interview be changed passes the new
+    `openFinishedAsActive` Shell prop. The interview then opens at its stages
+    rather than in its completed state.
+  - A finish stage with no text, which only an Architect preview of a protocol
+    still being written can have, shows the Finish button alone.
+  - `generateNetwork` leaves a completed synthetic interview on the finish
+    stage its route reached, rather than one step past the last stage, and
+    Fresco and Interviewer record that stage and its outcome.
+  - Progress is 100% on every finish stage, not only the last one.
+  - Skip logic that skips to the finish goes to the first finish stage after the
+    stage that owns the rule. Skip logic can also name a later finish stage.
+
+  **Exports (`@codaco/network-exporters`, `@codaco/shared-consts`)**
+
+  - Each interview's outcome is exported: CSV ego files have a
+    `networkCanvasFinishOutcome` column after `COMMIT_HASH`, and
+    GraphML graphs an `nc:finishOutcome` attribute. **Breaking:**
+    `InterviewExportInput` requires `finishOutcome`; pass `null` for an interview with no recorded
+    outcome, whose CSV cell is then empty and whose GraphML attribute is left
+    out. A variable exported under the column's name is renamed
+    `networkCanvasFinishOutcome_2`, with a `'column-renamed'` warning.
+
+  **Architect**
+
+  - A new protocol starts with a finish stage, in each of its languages that
+    Network Canvas has text for. The Finish Screen has its own editor, for its
+    mode, closing and finished text, and outcome. More Finish Screens can be
+    added from the New Stage chooser, and a skip rule can end the interview at
+    any of them.
+  - A protocol whose finish stage is missing text in its default
+    language — a new protocol in a language Network Canvas has no text for, or
+    text a researcher cleared — can be edited, saved and reopened, but not
+    downloaded. The stage list says so, with a link to the finish stage's
+    editor, and every download is refused with the same explanation.
+  - Finish stages stay together at the end of the timeline: they can be
+    reordered among themselves, but dragging one above the first finish stage,
+    or another stage below it, stops at that point. A protocol's only finish
+    stage can't be deleted. New stages are added before the finish stages.
+  - Adding a language fills in the finish stage's text in that language while
+    it is still the text Network Canvas supplied.
+  - Finishing a preview shows the interview's completed state, with a button to
+    start the preview again. The protocol summary prints the finish stage.
+
+  **Interviewer**
+
+  - A finished interview shows its completed state, with an **Exit** button. The
+    outcome and finish stage are saved with the session (encrypted when the
+    vault is on) and exported.
+
+  **Fresco**
+
+  - The `/interview/finished` page is gone: a finished interview's link shows
+    its completed state, including to a participant who returns to it. That
+    page is sent without the interview's answers or the protocol's resources,
+    and nothing on it is saved back to the interview.
+  - With **Freeze Completed Interviews** off, a researcher who opens a finished
+    interview can still change it, as before. With it on, they see the completed
+    state.
+  - Each interview's finish stage and outcome are stored and exported, and
+    included in the interview API. Interviews finished before this upgrade have
+    no outcome.
+  - The finish request must name a finish stage of the interview's protocol and
+    its outcome.
+  - The cookie that limits a participant to one interview per protocol now holds
+    the finished interview's id. The browser no longer lets scripts read it, and
+    it is sent only over HTTPS when the session cookie is (in production, unless
+    `COOKIE_SECURE` says otherwise).
+  - The dashboard's progress counts the finish stage as a stage.
+
+- bec9b59: Add `OptionLabel` and `optionLabelText` (`@codaco/fresco-ui/OptionLabel`), the shared way to show an option label: the component renders its markdown, and the helper gives the same label as plain text for an accessible name or other attribute. Every Fresco UI option field now renders its labels through them.
+
+  Screen readers now read a toggle-button option and the chosen value of a Likert scale as the words shown, rather than as their markdown or escaped characters.
+
+- 729c670: Form options can explain why they are unavailable, form errors survive
+  re-renders, and long node labels break more readably.
+
+  - `BooleanField` and `RadioGroupField` options take a `description`, read as
+    that option's accessible description (for example, why it is unavailable).
+    `BooleanField` options can be disabled one at a time. A `BooleanField` keeps
+    a keyboard tab stop when its chosen answer becomes unavailable.
+  - `useField` compares `initialValue` by content, so a field given a fresh but
+    equal array or object on every render no longer re-registers and keeps its
+    validation error after a failed submit.
+  - `Node` labels ignore soft hyphens on the rungs above the label fit floor, and
+    at the floor break long words at syllable points with at least three letters
+    either side, instead of stranding a single letter. The label's text and
+    accessible name are unchanged.
+
+- 6d1307c: A `Section`'s `description` can hold block content, such as paragraphs and a
+  list. A string is still shown as one paragraph; a description made of elements
+  is laid out as given, in an element that can contain them, and still describes
+  the section.
+- 0cd3a3e: `TeamAndStudySwitcher`'s `action` now also accepts a list of rows, shown under
+  the list in the order given. A single row works as before. The row type is
+  exported as `SwitcherAction`, and a row can bring its own `icon` in place of the
+  dashed "+" tile. Choosing a command row now returns focus to the switcher before
+  the command runs, so a dialog it opens hands focus back to the switcher when it
+  closes instead of losing it.
+- 21ea84b: `Dialog` and `DialogPopup` take a new `viewport` size, which fills the whole
+  viewport less a narrow margin with no width or height cap, for tools such as
+  large tables whose content is wider and taller than any screen. Like every
+  size, it fills a narrow container edge to edge.
+- 362070b: Numbers, lists, coordinates and alphabetical order inside an interview now
+  follow the language the participant is reading the protocol in, even when the
+  interface itself is in another language. A participant reading a protocol in
+  German sees `1.234,5`, a list as "a, b und c", and names sorted by German
+  rules, rather than English formats and the browser's default order. Form
+  fields in the interview follow it too: a date picker names its months, and a
+  scale writes its value, in the protocol's language. Sentences the interface
+  speaks, such as validation messages, stay in the interface language.
+
+  On a roster card, an empty value or empty list now reads "No value" in the
+  interface language (translated for every interface language) instead of a bare
+  dash, and numbers, lists and locations are formatted for the protocol language.
+
+  `@codaco/fresco-ui`: `Collection` takes a `sortLocale` prop (and
+  `createCollectionSorter` a `locale` argument) to choose the language text is
+  ordered in. Without it, `Collection` orders text in the interface language
+  instead of the browser's default. `ContentLocaleProvider`
+  (`@codaco/fresco-ui/form/ContentLocale`) names the language form fields write
+  their values in; without one they use the interface language.
+
+- 5dda5bb: The tab on the drawer of people still to place (on bin stages and the
+  sociogram) no longer shows a count, which repeated what the drawer already
+  shows. Its chevron is larger and the tab stays easy to tap. Screen readers
+  still hear how many people are left. When the sociogram's drawer is open and
+  empty, a short looping animation of a pointer bringing a person down into a drop
+  zone replaces the arrow icon; it holds still when reduced motion is on. On
+  bin stages where people are placed by tapping, the drawer stays open and has
+  no tab, so the person being placed is always in view.
+
+  `@codaco/fresco-ui` adds `NodeDropAnimation`, a decorative loop of a pointer
+  bringing a node down into a drop zone, for empty drop targets.
+
+- 92cf293: Reduced motion now follows `AnimationProvider`'s `reducedMotion` setting everywhere, not only in Motion components. `@codaco/fresco-ui/reducedMotion` adds `usePrefersReducedMotion()` (use it instead of Motion's `useReducedMotion()`, which reads only the operating system) and `prefersReducedMotion(node)` for code outside React. The provider marks the document root with `data-reduced-motion` when it overrides the system, and `@codaco/tailwind-config`'s `motion-reduce:` / `motion-safe:` variants and its global reduced-motion rule follow that mark. With the default setting nothing changes: motion follows the operating system's preference as before.
+- 7b38b84: When you create a protocol from a template, its suggested name is now selected, including after you click into it, so typing replaces the name instead of landing in the middle of it. fresco-ui gains a `useSelectOnFocus` hook that Architect's stage names and protocol names share.
+- 332df6a: Rounded corners now always come from the theme's radius tokens, including on elements that animate their size. The segmented toolbar is a full pill at every screen size, so its ends match its round buttons on large screens too, and its corners stay round while tools appear and disappear. Lists of items in forms, the expanded category in the categorical bin interface, and dialogs that open out of a list row keep the theme's corner radius throughout their animations.
+
+  `@codaco/fresco-ui` adds `useTokenRadius` (`@codaco/fresco-ui/hooks/useTokenRadius`), which reads the radius an element's `rounded-*` class resolves to so it can be passed to a Motion component's `style.borderRadius`. `ModalPopup` applies it itself for a `layoutId` morph.
+
+### Patch Changes
+
+- 5669fa1: Menu, select and combobox items now have a small gap between them, so a run of checked or selected items no longer merges into one block.
+- 38bbefa: A `Field`'s `label` and `hint` accept any React node whatever its control. The field shows them itself and never passes them to the control, so a control's own `label` prop (such as `BooleanField`'s) no longer narrows what the field accepts.
+- 552956e: `Alert` and `AppUpdateIndicator` no longer bring every Lucide icon into the
+  bundle of the screen that shows them.
+- 151e511: Form fields and collection search work with option values and property names
+  that contain any characters.
+
+  - `CheckboxGroup`, `RadioGroup` and `RadioMatrixField` number their option and
+    row element IDs by position, instead of building them from the option value
+    or row ID. A value or row ID that contains a space no longer produces an
+    invalid element ID, which broke the `aria-labelledby` link between a
+    `RadioMatrixField` row and its heading.
+  - Collection search passes property paths to Fuse as arrays rather than joining
+    them with `.`, so a property whose name contains a dot is searched as one key.
+
+- ca97000: `DropdownMenuRadioItem` shows its default tick only on the checked item. Every
+  item still keeps the tick's space, so the labels stay aligned. An item given
+  its own `icon` (such as a sort direction or a theme) always shows it, and the
+  checked item is marked by its highlight.
+- 7050d25: `ModalPopup`'s `style` prop no longer accepts a function, which was never
+  applied. Only a style object works. `textFilterFn` now matches an object cell
+  against its JSON text, instead of against `[object Object]`.
+- 66b2226: In a right-to-left layout, the left and right arrow keys in a horizontal list
+  or a grid collection now move to the item on that side of the screen. Before,
+  they moved to the previous and next item, which a right-to-left layout places
+  on the opposite sides. Collections whose keyboard handling measures where items
+  sit are unchanged. A dialog's leading footer button now keeps its gap from the
+  others in a right-to-left dialog too.
+- 7225b5c: A collection's items now play their fade-in under React's StrictMode. Before,
+  StrictMode's second mount skipped it, and with Motion 14 that left the items
+  at opacity 0, so a list in a development build looked empty.
+- 90ddb32: `SubmitButton` now always shows its spinner and stays disabled while its form
+  submits. Before, a caller's own `icon` replaced the spinner, and
+  `disabled={false}` let the form be submitted a second time during the first
+  submission.
+- b42f631: Making the last line of a rich text field a heading no longer leaves an empty line under it. Press Enter at the end of the heading to carry on writing below it.
+- 9483e9e: Inline fields (label beside a toggle) now sit on one row once their container
+  is 28rem wide, down from 32rem. In Architect, the "Style “true”/“false” as
+  negative" switch in a yes/no attribute's answers now fits beside its label.
+- 630410b: `@codaco/protocol-validation` now exports the version 9 protocol schema as a named value, `ProtocolSchemaV9`, alongside the type of the same name. In `@codaco/fresco-ui`, the `options` prop of `RichSelectGroup` and `ToggleButtonGroup` is now optional, which matches how both components already behaved: without options they render an empty group.
+- c34db26: Node labels are easier to read. The node colors are adjusted, most of them darker, so their white labels stand out: all eight node colors now meet the WCAG AA contrast ratio of 4.5:1 for text, and the lighter half of each node stands out at 3:1 against the interview background. Nodes keep their two-tone diagonal.
+
+  The node colors in the default and interview themes (`--node-1` to `--node-8`) are now derived from the brand colors rather than equal to them. The brand color Neon Coral is slightly lighter and less saturated, and Mustard, Neon Carrot, Sea Serpent, Kiwi and Paradise Pink shift in hue, so edge, ordinal and categorical colors, the destructive and warning colors, the loading spinner, Background Creator's color swatches, and generated background patterns built from them change color slightly too.
+
+  In Architect, a read-only shape picker now tells assistive technology that its shapes are unavailable, matching the read-only type picker.
+
+- 72b189a: In the Family Pedigree, twins share one carrier: answering who carried one twin answers it for the other, and the add-child and add-sibling forms now require "Who carried the pregnancy?" to be answered. Continue on a step with a required question left unanswered now shows the same error Save does, instead of doing nothing visible. When participants add a partner, "Are they still together?" names the person ("Are they still together with “Dina”?"). Two people recorded as female and male at birth are not offered as identical twins. Questions no longer put a possessive after a quoted name ("Are they a twin of “Cara”?" instead of "Are they “Cara”’s twin?"). A new sibling who would not share the person who carried someone cannot be their twin. When editing someone's twins, a twin recorded with a different sex at birth from another twin already answered identical cannot be identical too, since all of them would then be identical. Editing someone no longer offers as their twin a sibling someone else carried, and adding a sibling checks "Yes, identical twins" against the sex at birth of every twin identical to the person. Whoever is recorded as carrying one twin counts as having carried them all, so adding or connecting a parent cannot record someone else as carrying another twin. When someone recorded as male at birth cannot be a surrogate, the hint gives only that reason, not also who else carried the pregnancy. Adding a parent asks whether they carried the pregnancy only once their kind of parent is chosen. `validateField` in `@codaco/fresco-ui`'s form store takes a `showErrors` option that marks the field touched so its error shows.
+- 8470005: The interface previews in Architect's timeline and stage picker show the current interview interfaces again: the bins and sociogram show the new node drawer tab, the Family Pedigree shows its new toolbar, and the language chooser and Ego Form show their current layout. Previews no longer show a keyboard focus ring on a control the interface focuses when it opens.
+
+  The active sort button on a roster name generator is coloured again. It had taken the interview theme's white selected colour, which looked the same as the inactive buttons.
+
+- 18f0696: The rich text editor's headings now sit below the heading of the section the editor is in, so a screen reader's outline no longer jumps back to the top at a heading in the text.
+- 01189fd: Clearer German, Spanish, French, Italian, Dutch, Brazilian Portuguese and
+  Chinese wording for the schema 9 text. Every translation added since the last
+  release was checked by blind back-translation and adversarial review, and
+  fixed where it read differently from the English: participant messages now
+  use the polite form throughout in Chinese, the pedigree uses the same words
+  for relatives in the editor as in the interview, and several labels no longer
+  read two ways.
+- b4bc4c1: Relative times such as "just now" and "5 minutes ago" now change at the moment they stop being true. They could stay out of date for up to a minute, because the clock ticked once a minute from when the time was first shown.
+
+  A collection whose list appears after the component first renders now measures its width, so arrow keys move through a grid by row and column as they do in any other collection.
+
+- a7ca9c1: When a value's versions are open in a text field, a version that wraps onto more lines now stays inside its dashed box in Safari, and each version's label sits level with the version's first line.
+- Updated dependencies ([0aee4be](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0aee4be0be8a8efe379ea249b47b6ca754702d21), [9fdb4ff](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9fdb4ff704487d4178d6ad5470e5440c056ebd55), [15155f3](https://github.com/complexdatacollective/network-canvas-monorepo/commit/15155f30295aadbf41691556a7251685b392ee52), [4de3f45](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4de3f45c1ecc06799211c41c1d72cee8fce7aa10), [7d8e136](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7d8e13644eaf7da31b7c2192c4faad0b7104bc10), [8b35658](https://github.com/complexdatacollective/network-canvas-monorepo/commit/8b35658a427674b37ae8fada8c4f38f6b0689b16), [8884dec](https://github.com/complexdatacollective/network-canvas-monorepo/commit/8884dec06e921f61be7ea36b5c1c81384c302d82), [716e3d7](https://github.com/complexdatacollective/network-canvas-monorepo/commit/716e3d75854022d1becf9d207eb2b159ead8185a), [dfcee00](https://github.com/complexdatacollective/network-canvas-monorepo/commit/dfcee00beb5a93d6e8ef0bea602d266091c6c5d7), [9c1aeff](https://github.com/complexdatacollective/network-canvas-monorepo/commit/9c1aeff40eca424c3ed29d3f98ff6b6b4e1a4c74), [e749c06](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e749c06db7d8ee60d34a06d232ebbe33b4a38ba0), [2ff161c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2ff161cd71741a8405cef57ac08aa5b5b8ac9fd0), [2729855](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2729855a94c6a71f68283236ddb3c5810f1b6638), [43ffe6f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/43ffe6f1680658ff475ed51bc924557f282afbd8), [c058462](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c0584624345133246137fb4effff9920fce288ff), [1432069](https://github.com/complexdatacollective/network-canvas-monorepo/commit/14320697db5c21da818bd474ab18737d7b22d36a), [db8a2af](https://github.com/complexdatacollective/network-canvas-monorepo/commit/db8a2afe52bcd4eebf3240b0aab2fee13a33a77a), [2408129](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2408129ceb43de2d91a0365e966cffa462afc6d0), [7fa80c2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7fa80c26ae731b2919033c33299eea5f7785695a), [630410b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/630410bedccb59e3ea94d866a3234a98abd3a78c), [1d2b623](https://github.com/complexdatacollective/network-canvas-monorepo/commit/1d2b623e77327a01bd2e1462d288ecab5b82c23d), [e31a3c9](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e31a3c97a48d8c10c6b788957c68a5d4073a7512), [ab9a884](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ab9a884c73208b942a19c2e032b079e8b3f6ae98), [f8bf0c3](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f8bf0c3baec102c837f3a50e79ea7ad71e7c62ad), [0e9243e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0e9243e5bd375df66f625ae1c94b62c891def082), [0336cf4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0336cf4696df7e3c6f8bbd4a7416cf87f9a46676), [6cc9d9d](https://github.com/complexdatacollective/network-canvas-monorepo/commit/6cc9d9de66924da47480cbf3405ac84cd16cc367), [72b189a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/72b189ae35ec66ae2cafb99ff0fe47686c72ace8), [151e511](https://github.com/complexdatacollective/network-canvas-monorepo/commit/151e511823d3cf083db2d2bb8e98c740cb9c657d), [43acfe0](https://github.com/complexdatacollective/network-canvas-monorepo/commit/43acfe075af1876a75051b288b72fc728a2ee0c4), [08d76d8](https://github.com/complexdatacollective/network-canvas-monorepo/commit/08d76d8da691c536eecbb252b7f1960a79321216), [7bc3d43](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7bc3d437143887b29bdafe5d880fa4a251416621), [c68530b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c68530b55e361f0276f08155f7fbef70c3422883), [40ff4e9](https://github.com/complexdatacollective/network-canvas-monorepo/commit/40ff4e93fbd889bddf42d094e2c3a063c5955816), [2e44834](https://github.com/complexdatacollective/network-canvas-monorepo/commit/2e448345e3221e75a5f5d6c445049279bfd2b606), [01189fd](https://github.com/complexdatacollective/network-canvas-monorepo/commit/01189fdde1a68bb8d6e53bf1e855917c39a06b21), [069c9d0](https://github.com/complexdatacollective/network-canvas-monorepo/commit/069c9d0dad52cd17743bbb7e0ac748a9bc113c0b), [3810333](https://github.com/complexdatacollective/network-canvas-monorepo/commit/38103337561800dd4e57f96dff9c589047bd862e), [cad7309](https://github.com/complexdatacollective/network-canvas-monorepo/commit/cad7309fa78cb2609416f1f445fdc4ad8ffcf226), [20cd773](https://github.com/complexdatacollective/network-canvas-monorepo/commit/20cd773b0ef51a9a8bcf4896205216e9a6f68727))
+  - @codaco/protocol-validation@16.0.0
+  - @codaco/app-i18n@0.4.0
+  - @codaco/shared-consts@7.0.0
+
 ## 8.1.0
 
 ### Minor Changes
