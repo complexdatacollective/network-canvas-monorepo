@@ -1,12 +1,8 @@
 import {
-  BookOpen,
   ChartNoAxesColumnIncreasing,
   Dna,
-  FileUser,
   Flag,
-  GitCompare,
   GitFork,
-  IdCard,
   Info,
   KeyRound,
   Languages,
@@ -14,75 +10,69 @@ import {
   type LucideIcon,
   MapPinned,
   Network,
-  Share2,
-  Spline,
   UserRoundPlus,
   Users,
   UserSearch,
-  VectorSquare,
-  Weight,
 } from 'lucide-react';
 
 import type { StageType } from '@codaco/protocol-validation';
 
+import type { ThemeColorStyle } from '../styles/palette';
 import {
-  type PaletteColor,
-  paletteColorStyles,
-  type ThemeColorStyle,
-} from '../styles/palette';
+  AlterEdgeFormIcon,
+  AlterFormIcon,
+  DyadCensusIcon,
+  EgoFormIcon,
+  NarrativeIcon,
+  NetworkComposerIcon,
+  SociogramIcon,
+  TieStrengthCensusIcon,
+} from './stageTypeIcons';
 
-export const STAGE_TYPE_COLORS: Record<StageType, PaletteColor> = {
-  NameGenerator: 'sea-green',
-  NameGeneratorQuickAdd: 'kiwi',
-  NameGeneratorRoster: 'sea-green-dark',
-  EgoForm: 'cerulean-blue',
-  AlterForm: 'slate-blue',
-  AlterEdgeForm: 'slate-blue-dark',
-  Sociogram: 'neon-coral',
-  NetworkComposer: 'tomato',
-  TieStrengthCensus: 'paradise-pink',
-  OneToManyDyadCensus: 'barbie-pink-dark',
-  DyadCensus: 'barbie-pink',
-  OrdinalBin: 'mustard',
-  CategoricalBin: 'neon-carrot',
-  FamilyPedigree: 'purple-pizazz',
-  NarrativePedigree: 'purple-pizazz-dark',
-  Narrative: 'neon-coral-dark',
-  Geospatial: 'sea-serpent',
-  Information: 'platinum-dark',
-  Anonymisation: 'cyber-grape',
-  LanguageChooser: 'charcoal',
-  FinishSession: 'navy-taupe',
+type StageTypeDefinition = {
+  /**
+   * The stage type's token in `@codaco/tailwind-config/interfaces.css`, which
+   * defines `--interface-<token>` (background) and `--interface-<token>-contrast`
+   * (the icon and any text drawn on it).
+   */
+  token: string;
+  icon: LucideIcon;
 };
 
 /**
- * One Lucide icon per interface, chosen for what the interface *does* rather
- * than what it is called, and — where Network Canvas already drew that
- * interface its own icon — for the closest silhouette to it, so the set still
- * reads as Network Canvas in a family the rest of the app already uses.
+ * Every stage type's colour token and icon, in the order the stage groups
+ * read: naming, describing, grouping, mapping, connecting, reflecting and
+ * screens. Keyed by the protocol schema's stage union, so a new stage type
+ * cannot ship without both.
  */
-export const STAGE_TYPE_ICONS: Record<StageType, LucideIcon> = {
-  NameGenerator: Users,
-  NameGeneratorQuickAdd: UserRoundPlus,
-  NameGeneratorRoster: UserSearch,
-  EgoForm: IdCard,
-  AlterForm: FileUser,
-  AlterEdgeForm: Spline,
-  Sociogram: Share2,
-  NetworkComposer: VectorSquare,
-  TieStrengthCensus: Weight,
-  OneToManyDyadCensus: GitFork,
-  DyadCensus: GitCompare,
-  OrdinalBin: ChartNoAxesColumnIncreasing,
-  CategoricalBin: LayoutGrid,
-  FamilyPedigree: Network,
-  NarrativePedigree: Dna,
-  Narrative: BookOpen,
-  Geospatial: MapPinned,
-  Information: Info,
-  Anonymisation: KeyRound,
-  LanguageChooser: Languages,
-  FinishSession: Flag,
+export const STAGE_TYPES: Record<StageType, StageTypeDefinition> = {
+  NameGenerator: { token: 'name-generator', icon: Users },
+  NameGeneratorQuickAdd: {
+    token: 'name-generator-quick-add',
+    icon: UserRoundPlus,
+  },
+  NameGeneratorRoster: { token: 'name-generator-roster', icon: UserSearch },
+  NetworkComposer: { token: 'network-composer', icon: NetworkComposerIcon },
+  FamilyPedigree: { token: 'family-pedigree', icon: Network },
+  EgoForm: { token: 'ego-form', icon: EgoFormIcon },
+  AlterForm: { token: 'alter-form', icon: AlterFormIcon },
+  AlterEdgeForm: { token: 'alter-edge-form', icon: AlterEdgeFormIcon },
+  CategoricalBin: { token: 'categorical-bin', icon: LayoutGrid },
+  OrdinalBin: { token: 'ordinal-bin', icon: ChartNoAxesColumnIncreasing },
+  Geospatial: { token: 'geospatial', icon: MapPinned },
+  Sociogram: { token: 'sociogram', icon: SociogramIcon },
+  DyadCensus: { token: 'dyad-census', icon: DyadCensusIcon },
+  OneToManyDyadCensus: { token: 'one-to-many-dyad-census', icon: GitFork },
+  TieStrengthCensus: {
+    token: 'tie-strength-census',
+    icon: TieStrengthCensusIcon,
+  },
+  Narrative: { token: 'narrative', icon: NarrativeIcon },
+  NarrativePedigree: { token: 'narrative-pedigree', icon: Dna },
+  Information: { token: 'information', icon: Info },
+  LanguageChooser: { token: 'language-chooser', icon: Languages },
+  Anonymisation: { token: 'anonymisation', icon: KeyRound },
+  FinishSession: { token: 'finish-session', icon: Flag },
 };
 
 /**
@@ -91,14 +81,20 @@ export const STAGE_TYPE_ICONS: Record<StageType, LucideIcon> = {
  * should reject it rather than draw it.
  */
 export function isStageType(type: string): type is StageType {
-  return Object.hasOwn(STAGE_TYPE_COLORS, type);
+  return Object.hasOwn(STAGE_TYPES, type);
 }
 
 /**
- * The stage type's colour as CSS variable references, for inline styling.
+ * The stage type's background and foreground as CSS variable references, for
+ * inline styling. They read the bare `--interface-*` variables, whose values
+ * are the same in every theme.
  */
 export function stageTypeColorStyle(type: StageType): ThemeColorStyle {
-  return paletteColorStyles[STAGE_TYPE_COLORS[type]];
+  const { token } = STAGE_TYPES[type];
+  return {
+    color: `var(--interface-${token})`,
+    contrast: `var(--interface-${token}-contrast)`,
+  };
 }
 
 /**
@@ -106,5 +102,5 @@ export function stageTypeColorStyle(type: StageType): ThemeColorStyle {
  * named in text, so render it with `aria-hidden`.
  */
 export function stageTypeIcon(type: StageType): LucideIcon {
-  return STAGE_TYPE_ICONS[type];
+  return STAGE_TYPES[type].icon;
 }
