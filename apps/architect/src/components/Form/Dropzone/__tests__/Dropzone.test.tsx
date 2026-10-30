@@ -62,10 +62,14 @@ describe('Dropzone', () => {
       // where the five seconds start.
       await act(async () => {});
 
-      act(() => vi.advanceTimersByTime(4000));
+      act(() => {
+        vi.advanceTimersByTime(4000);
+      });
       expect(dropzone).toHaveAttribute('aria-describedby', alert.id);
 
-      act(() => vi.advanceTimersByTime(1500));
+      act(() => {
+        vi.advanceTimersByTime(1500);
+      });
       expect(dropzone).not.toHaveAttribute('aria-describedby');
       // The message then animates out.
       await waitFor(() =>

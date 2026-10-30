@@ -138,10 +138,14 @@ describe('TimeAgo', () => {
       const element = screen.getByTestId('time-ago');
       expect(element).toHaveTextContent('just now');
 
-      act(() => vi.advanceTimersByTime(10_000));
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
       expect(element).toHaveTextContent('1 minute ago');
 
-      act(() => vi.advanceTimersByTime(MINUTE_MS));
+      act(() => {
+        vi.advanceTimersByTime(MINUTE_MS);
+      });
       expect(element).toHaveTextContent('2 minutes ago');
     } finally {
       vi.useRealTimers();
@@ -160,7 +164,9 @@ describe('TimeAgo', () => {
       rerender(<TimeAgo date={new Date(Date.now() - 20_000)} />);
       expect(element).toHaveTextContent('just now');
 
-      act(() => vi.advanceTimersByTime(40_000));
+      act(() => {
+        vi.advanceTimersByTime(40_000);
+      });
       expect(element).toHaveTextContent('1 minute ago');
     } finally {
       vi.useRealTimers();
