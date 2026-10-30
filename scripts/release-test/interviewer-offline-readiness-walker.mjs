@@ -324,6 +324,9 @@ const activeProtocol = () =>
 // "Go to card N" dots.
 async function activateProtocol(name) {
   const dots = page.getByRole('button', { name: /^Go to card \d+$/ });
+  // The deck mounts its pagination after the home view's settings trigger,
+  // so a count taken at once can read 0: wait for the dots first.
+  await expect(dots.first()).toBeVisible({ timeout: 20_000 });
   const count = await dots.count();
   for (let n = 1; n <= count; n += 1) {
     await page
