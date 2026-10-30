@@ -28,7 +28,9 @@
           "name": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
-          "validation": { "required": true },
+          "validation": {
+            "required": true
+          },
           "options": [
             {
               "label": {
@@ -158,11 +160,19 @@
               "value": 1
             },
             {
-              "label": { "en-US": "Not well", "es": "Mal", "hu": "Nem jól" },
+              "label": {
+                "en-US": "Not well",
+                "es": "Mal",
+                "hu": "Nem jól"
+              },
               "value": 2
             },
             {
-              "label": { "en-US": "Well", "es": "Bien", "hu": "Jól" },
+              "label": {
+                "en-US": "Well",
+                "es": "Bien",
+                "hu": "Jól"
+              },
               "value": 3
             },
             {
@@ -276,7 +286,11 @@
                 "value": "family"
               },
               {
-                "label": { "en-US": "Friend", "es": "Amistad", "hu": "Barát" },
+                "label": {
+                  "en-US": "Friend",
+                  "es": "Amistad",
+                  "hu": "Barát"
+                },
                 "value": "friend"
               },
               {
@@ -296,7 +310,11 @@
                 "value": "community_member"
               },
               {
-                "label": { "en-US": "Other", "es": "Otro", "hu": "Egyéb" },
+                "label": {
+                  "en-US": "Other",
+                  "es": "Otro",
+                  "hu": "Egyéb"
+                },
                 "value": "other"
               }
             ]
@@ -434,7 +452,11 @@
                 "value": "online"
               },
               {
-                "label": { "en-US": "Other", "es": "Otro", "hu": "Egyéb" },
+                "label": {
+                  "en-US": "Other",
+                  "es": "Otro",
+                  "hu": "Egyéb"
+                },
                 "value": "other"
               }
             ]
@@ -445,11 +467,19 @@
             "component": "Boolean",
             "options": [
               {
-                "label": { "en-US": "Yes", "es": "Sí", "hu": "Igen" },
+                "label": {
+                  "en-US": "Yes",
+                  "es": "Sí",
+                  "hu": "Igen"
+                },
                 "value": true
               },
               {
-                "label": { "en-US": "No", "es": "No", "hu": "Nem" },
+                "label": {
+                  "en-US": "No",
+                  "es": "No",
+                  "hu": "Nem"
+                },
                 "value": false
               }
             ]
@@ -590,7 +620,11 @@
     {
       "id": "language-chooser",
       "type": "LanguageChooser",
-      "label": { "en-US": "Language", "es": "Idioma", "hu": "Nyelv" },
+      "label": {
+        "en-US": "Language",
+        "es": "Idioma",
+        "hu": "Nyelv"
+      },
       "title": {
         "en-US": "Choose a language",
         "es": "Elige un idioma",
@@ -632,7 +666,11 @@
     },
     {
       "id": "ego-form-background",
-      "dynamicValues": { "arrivalYear": { "path": "ego.arrival_year" } },
+      "dynamicValues": {
+        "arrivalYear": {
+          "path": "ego.arrival_year"
+        }
+      },
       "type": "EgoForm",
       "label": {
         "en-US": "Your background and migration history",
@@ -654,7 +692,10 @@
             }
           ]
         },
-        "destination": { "type": "stage", "stageId": "finish-declined" }
+        "destination": {
+          "type": "stage",
+          "stageId": "finish-declined"
+        }
       },
       "introductionPanel": {
         "title": {
@@ -894,7 +935,11 @@
     },
     {
       "id": "alter-attributes",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "type": "AlterForm",
       "label": {
         "en-US": "About each person",
@@ -974,7 +1019,11 @@
     },
     {
       "id": "geospatial-map",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "offlineNotice": {
         "en-US": "You are offline — the map will not load until you reconnect.",
         "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte.",
@@ -1310,45 +1359,55 @@
       },
       "exitFailed": {
         "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.",
-        "es": "No se pudieron guardar tus respuestas, así que la entrevista no se ha cerrado. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio."
+        "es": "No se pudieron guardar tus respuestas, así que la entrevista no se ha cerrado. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.",
+        "hu": "A válaszait nem sikerült menteni, ezért az interjú nem zárult le. Kérjük, próbálja újra. Ha a probléma továbbra is fennáll, forduljon a kutatás szervezőjéhez."
       }
     },
     "interviewer": {
       "exitReview": {
         "en-US": "Exit review",
-        "es": "Salir de la revisión"
+        "es": "Salir de la revisión",
+        "hu": "Kilépés az áttekintésből"
       },
       "exitReviewTitle": {
         "en-US": "Exit this review?",
-        "es": "¿Salir de esta revisión?"
+        "es": "¿Salir de esta revisión?",
+        "hu": "Kilép az áttekintésből?"
       },
       "exitReviewDescription": {
         "en-US": "Changes made during this review will not be saved.",
-        "es": "Los cambios realizados durante esta revisión no se guardarán."
+        "es": "Los cambios realizados durante esta revisión no se guardarán.",
+        "hu": "Az áttekintés során végzett változtatások nem kerülnek mentésre."
       },
       "hiddenScreen": {
         "en-US": "Hidden by answers",
-        "es": "Oculta por las respuestas"
+        "es": "Oculta por las respuestas",
+        "hu": "A válaszok alapján elrejtve"
       },
       "outsidePath": {
         "en-US": "Outside current path",
-        "es": "Fuera del recorrido actual"
+        "es": "Fuera del recorrido actual",
+        "hu": "Kívül esik a jelenlegi útvonalon"
       },
       "showScreenTitle": {
         "en-US": "Show this screen?",
-        "es": "¿Mostrar esta pantalla?"
+        "es": "¿Mostrar esta pantalla?",
+        "hu": "Megjeleníti ezt a képernyőt?"
       },
       "hiddenScreenDescription": {
         "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?",
-        "es": "Esta pantalla está oculta según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+        "es": "Esta pantalla está oculta según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?",
+        "hu": "Ez a képernyő az eddigi válaszok alapján rejtett. Mégis meg szeretné jeleníteni?"
       },
       "outsidePathDescription": {
         "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?",
-        "es": "Esta pantalla queda fuera del recorrido actual de la entrevista según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+        "es": "Esta pantalla queda fuera del recorrido actual de la entrevista según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?",
+        "hu": "Ez a képernyő az eddigi válaszok alapján kívül esik az interjú jelenlegi útvonalán. Mégis meg szeretné jeleníteni?"
       },
       "showScreen": {
         "en-US": "Show screen",
-        "es": "Mostrar pantalla"
+        "es": "Mostrar pantalla",
+        "hu": "Képernyő megjelenítése"
       }
     },
     "buttons": {
@@ -1389,11 +1448,13 @@
       },
       "copy": {
         "en-US": "Copy",
-        "es": "Copiar"
+        "es": "Copiar",
+        "hu": "Másolás"
       },
       "copied": {
         "en-US": "Copied",
-        "es": "Copiado"
+        "es": "Copiado",
+        "hu": "Másolva"
       }
     },
     "messages": {
@@ -1414,21 +1475,25 @@
       },
       "loading": {
         "en-US": "Loading…",
-        "es": "Cargando…"
+        "es": "Cargando…",
+        "hu": "Betöltés…"
       },
       "unnamed": {
         "en-US": "Unnamed",
-        "es": "Sin nombre"
+        "es": "Sin nombre",
+        "hu": "Névtelen"
       }
     },
     "search": {
       "searchLabel": {
         "en-US": "Search",
-        "es": "Buscar"
+        "es": "Buscar",
+        "hu": "Keresés"
       },
       "searchNoMatch": {
         "en-US": "Nothing matched your search term.",
-        "es": "No hay resultados que coincidan con tu búsqueda."
+        "es": "No hay resultados que coincidan con tu búsqueda.",
+        "hu": "Nincs a keresésnek megfelelő találat."
       }
     },
     "forms": {
@@ -1483,13 +1548,15 @@
     "categoricalBin": {
       "placeHere": {
         "en-US": "Place here",
-        "es": "Colocar aquí"
+        "es": "Colocar aquí",
+        "hu": "Helyezze ide"
       }
     },
     "egoForm": {
       "scrollForQuestions": {
         "en-US": "Scroll to see more questions",
-        "es": "Desplázate para ver más preguntas"
+        "es": "Desplázate para ver más preguntas",
+        "hu": "Görgessen a további kérdések megtekintéséhez"
       }
     }
   }
