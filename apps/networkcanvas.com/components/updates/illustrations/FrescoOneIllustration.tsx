@@ -2,16 +2,18 @@
 
 import { useId } from 'react';
 
-import { cx } from '@codaco/fresco-ui/utils/cva';
-
+import { AppTile } from '@codaco/art/illustration/AppTile';
+import { Badge } from '@codaco/art/illustration/Badge';
 import {
   backOut,
+  grow,
   inCubic,
   outline,
   segment,
   TAU,
   useIllustrationClock,
-} from './illustrationMotion';
+} from '@codaco/art/illustration/motion';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 const LOOP = 8.8;
 const STILL_TIME = 7.3;
@@ -110,8 +112,6 @@ const screens = {
 } as const;
 
 const ease = (x: number) => x * x * (3 - 2 * x);
-
-const grow = (k: number) => Math.max(0.001, k);
 
 const cubic = (
   p0: Point,
@@ -556,41 +556,10 @@ export function FrescoOneIllustration() {
       <g
         transform={`translate(${SERVER_X} ${TILE_Y + Math.sin((TAU * t) / 2.7) * 3 * tile}) scale(${grow(tile)})`}
       >
-        <clipPath id={`${clipPrefix}-tile`}>
-          <rect
-            x={-TILE / 2}
-            y={-TILE / 2}
-            width={TILE}
-            height={TILE}
-            rx={24}
-          />
-        </clipPath>
-        <rect
-          x={-TILE / 2}
-          y={-TILE / 2}
-          width={TILE}
-          height={TILE}
-          rx={24}
-          className="fill-white"
-        />
-        <image
+        <AppTile
           href="/images/summer-2026/fresco-icon.png"
-          x={-TILE / 2}
-          y={-TILE / 2}
-          width={TILE}
-          height={TILE}
-          clipPath={`url(#${clipPrefix}-tile)`}
-          preserveAspectRatio="xMidYMid slice"
-        />
-        <rect
-          x={-TILE / 2}
-          y={-TILE / 2}
-          width={TILE}
-          height={TILE}
-          rx={24}
-          fill="none"
-          className={outline}
-          strokeWidth={6}
+          size={TILE}
+          clipId={`${clipPrefix}-tile`}
         />
       </g>
       <circle
@@ -672,20 +641,17 @@ export function FrescoOneIllustration() {
       <g
         transform={`translate(${SERVER_X + 84} 84) rotate(${-12 + bob * 4}) scale(${grow(badge)})`}
       >
-        <circle
-          r={46}
-          className={cx('fill-mustard', outline)}
-          strokeWidth={6}
-        />
-        <text
-          y={14}
-          textAnchor="middle"
-          fontSize={40}
-          fontWeight={900}
-          className="fill-navy-taupe"
-        >
-          1.0
-        </text>
+        <Badge r={46}>
+          <text
+            y={14}
+            textAnchor="middle"
+            fontSize={40}
+            fontWeight={900}
+            className="fill-navy-taupe"
+          >
+            1.0
+          </text>
+        </Badge>
       </g>
       <g
         transform={`translate(${cardPos[0]} ${cardPos[1] + cardBob}) scale(${grow(cardScale * 1.35)}) rotate(${-8 * (1 - travel)})`}

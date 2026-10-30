@@ -105,7 +105,9 @@
       "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
     },
     "apps/documentation": {
-      "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
+      "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"],
+      // The walkthrough capture scripts encode their clips with a system ffmpeg.
+      "ignoreBinaries": ["ffmpeg"]
     },
     // Ported from apps/fresco/knip.config.ts, which knip does not read in
     // monorepo mode. That file (and fresco's .github tooling) still ships to the

@@ -16,7 +16,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate-redirects": "tsx ./scripts/validate-redirects.ts",
-    "test-redirects": "tsx ./scripts/test-redirects.ts"
+    "test-redirects": "tsx ./scripts/test-redirects.ts",
+    "capture:fresco-deployment": "tsx ./walkthroughs/fresco-deployment/capture.ts"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
@@ -50,6 +51,7 @@
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@microflash/rehype-figure": "^2.1.4",
+    "@playwright/test": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@tailwindcss/typography": "catalog:",
     "@testing-library/jest-dom": "catalog:",
