@@ -396,7 +396,6 @@ function Station({
           height={20}
         >
           <div
-            // oxlint-disable-next-line tailwindcss/no-conflicting-classes -- text-[12px] is a font size; Fresco's elevation plugin also copies it into --scoped-text, where the colour class wins
             className="font-monospace text-[12px] tracking-widest text-[hsl(220_4%_44%)]"
             style={{ textAlign: labelLeft ? 'left' : 'right' }}
           >

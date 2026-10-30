@@ -11,13 +11,15 @@ import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 // `cqi` resolves against `.catbin-item`. The ceilings are the type scale's own
 // fluid sizes, topping out at the `text-lg` these labels have always used and
 // never going above it; the floor is `text-xs`, readable at arm's length on a
-// tablet.
+// tablet. Every rung sets only the font size: `text-xs` would also bring the
+// scale's letter spacing, and the bare variable in `calc()` reads as a length
+// to the elevation plugin, which would otherwise copy it as a colour.
 const CIRCLE_RUNGS = [
   'text-[length:clamp(var(--text-xs),11cqi,var(--text-lg))] leading-tight',
   'text-[length:clamp(var(--text-xs),9cqi,var(--text-base))] leading-tight',
   'text-[length:clamp(var(--text-xs),7cqi,var(--text-sm))] leading-tight',
   'text-[length:clamp(var(--text-xs),5.5cqi,var(--text-sm))] leading-[1.15]',
-  'text-[length:var(--text-xs)] leading-[1.15]',
+  'text-[length:calc(var(--text-xs))] leading-[1.15]',
 ] as const;
 
 // An ordinal header is wide and short, so its width says nothing about how much
