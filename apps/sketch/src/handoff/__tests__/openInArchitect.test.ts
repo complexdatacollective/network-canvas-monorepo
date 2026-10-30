@@ -133,6 +133,7 @@ describe('openInArchitect', () => {
     let settled = false;
     void outcome.then(() => {
       settled = true;
+      return undefined;
     });
     await Promise.resolve();
     expect(settled).toBe(false);

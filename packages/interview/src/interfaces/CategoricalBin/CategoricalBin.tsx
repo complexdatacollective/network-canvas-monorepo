@@ -329,6 +329,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   // resolved once and would otherwise name the lock for as long as it is open.
   const readNodeLabel = async (node: NcNode) => {
     const source = readNodeLabelSource(node, stageVariables);
+    // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
     const scope = getDecryptionScope(store.getState);
     if (source.status === 'encrypted' && scope) {
       await decryptInScope(scope, source.value);
@@ -347,6 +348,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
       otherVariable,
       stageVariables,
     );
+    // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
     const scope = getDecryptionScope(store.getState);
     if (encrypted?.status !== 'encrypted' || !scope) return undefined;
     const outcome = await decryptInScope(scope, encrypted.value);

@@ -95,13 +95,17 @@ function readStoredNodeCount(
     ({ id, dbName }) =>
       new Promise<number | null>((resolve, reject) => {
         const req = indexedDB.open(dbName);
-        req.onerror = () => reject(new Error('indexedDB.open failed'));
+        req.addEventListener('error', () =>
+          reject(new Error('indexedDB.open failed')),
+        );
         req.onsuccess = () => {
           const get = req.result
             .transaction('sessions', 'readonly')
             .objectStore('sessions')
             .get(id);
-          get.onerror = () => reject(new Error('sessions.get failed'));
+          get.addEventListener('error', () =>
+            reject(new Error('sessions.get failed')),
+          );
           get.onsuccess = () => {
             const row = get.result as
               | { network?: { nodes?: unknown[] } }
@@ -136,13 +140,17 @@ function readStoredFinish(
     ({ id, dbName }) =>
       new Promise<StoredFinish | null>((resolve, reject) => {
         const req = indexedDB.open(dbName);
-        req.onerror = () => reject(new Error('indexedDB.open failed'));
+        req.addEventListener('error', () =>
+          reject(new Error('indexedDB.open failed')),
+        );
         req.onsuccess = () => {
           const get = req.result
             .transaction('sessions', 'readonly')
             .objectStore('sessions')
             .get(id);
-          get.onerror = () => reject(new Error('sessions.get failed'));
+          get.addEventListener('error', () =>
+            reject(new Error('sessions.get failed')),
+          );
           get.onsuccess = () => {
             const row = get.result as
               | {
@@ -302,9 +310,9 @@ test.describe('conducting an interview', () => {
                       (get.result as { currentStep?: number } | undefined)
                         ?.currentStep ?? null,
                     );
-                  get.onerror = () => resolve(null);
+                  get.addEventListener('error', () => resolve(null));
                 };
-                req.onerror = () => resolve(null);
+                req.addEventListener('error', () => resolve(null));
               }),
             { id: sessionId, dbName: DB_NAME },
           ),

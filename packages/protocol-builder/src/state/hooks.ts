@@ -343,13 +343,13 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           if (wanted.current !== id && result.lock === 'held') {
             void attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
           }
-          return;
+          return undefined;
         }
         if (released.current) {
           // Acquired after unmount: hand it straight back rather than holding a
           // lock no editor is behind.
           void attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
-          return;
+          return undefined;
         }
         try {
           // Written only once this acquire is known to be the one this editor
@@ -381,6 +381,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         } catch (error: unknown) {
           setHandlerFault({ error });
         }
+        return undefined;
       },
       // The acquire's own rejection, as the second argument rather than a
       // `then` chained after the success handler: chained, it would also catch

@@ -14,6 +14,7 @@ import { protocolUtilitiesCatalogLoaders } from '../../../locales/catalogs.ts';
 import { formatConstraintConflictReason } from '../../../messages.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import { CONTENT_STAGE_TYPES } from '../../contentStages.ts';
+import { describeValue } from '../describeValue.ts';
 import { SyntheticDataConstraintError } from '../error.ts';
 import { analyseFeasibility } from '../feasibility.ts';
 import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace.ts';
@@ -1459,7 +1460,9 @@ describe('a value a prompt fixes and a roster row carries', () => {
       });
       const flags = network.nodes
         .map((node) => node[entityAttributesProperty].flagged)
-        .toSorted((left, right) => String(left).localeCompare(String(right)));
+        .toSorted((left, right) =>
+          describeValue(left).localeCompare(describeValue(right)),
+        );
 
       expect(flags, `seed ${seed}`).toEqual([false, true]);
     }

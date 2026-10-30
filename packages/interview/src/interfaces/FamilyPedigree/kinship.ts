@@ -387,6 +387,8 @@ function stepTerm(
           return 'donorConceivedChild';
         case 'surrogate':
           return 'surrogacyChild';
+        case 'adoptive':
+        case 'biological':
         default:
           return pick(gender, {
             woman: 'daughter',

@@ -39,9 +39,10 @@ const trackLaunchRead = (
   emit();
   void read()
     .then((files) => {
-      if (files.length === 0) return;
+      if (files.length === 0) return undefined;
       pendingFiles = [...pendingFiles, ...files];
       emit();
+      return undefined;
     })
     .catch((error: unknown) => {
       reportError(error, { operation });

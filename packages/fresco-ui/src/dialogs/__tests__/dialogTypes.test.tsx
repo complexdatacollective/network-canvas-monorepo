@@ -111,6 +111,7 @@ describe('DialogProvider', () => {
           })
           .then((r) => {
             dialogResult = r;
+            return undefined;
           });
       });
 

@@ -26,7 +26,11 @@ import {
 } from '@codaco/studio-contract/schema/participant';
 
 import { createAppRouter } from '../../router.tsx';
-import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
+import {
+  installFetchStub,
+  requestBodyText,
+  requestUrl,
+} from '../../test/fetchStub.ts';
 import {
   installParticipantHarness,
   type ParticipantHandlers,
@@ -516,7 +520,7 @@ const answerStatusAndLogs: typeof globalThis.fetch = async (input, init) => {
   if (new URL(requestUrl(input), window.location.href).pathname === LOG_PATH) {
     return new Response(null, { status: 204 });
   }
-  const request = String(init?.body ?? '').split('\n')[0] ?? '';
+  const request = requestBodyText(init).split('\n')[0] ?? '';
   const { id } = Schema.decodeUnknownSync(
     Schema.fromJsonString(
       Schema.Struct({ id: Schema.Union([Schema.String, Schema.Number]) }),
@@ -561,8 +565,8 @@ describe('participant logs', () => {
     expect(new Headers(init?.headers).get(PARTICIPANT_SESSION_HEADER)).toBe(
       SESSION,
     );
-    expect(String(init?.body)).toContain('Participant connection lost');
-    expect(String(init?.body)).toContain('"stringValue":"Information"');
+    expect(requestBodyText(init)).toContain('Participant connection lost');
+    expect(requestBodyText(init)).toContain('"stringValue":"Information"');
     window.dispatchEvent(new Event('online'));
   });
 
@@ -591,8 +595,8 @@ describe('participant logs', () => {
       timeout: 3000,
     });
     const [[, init]] = logPosts() as [Parameters<typeof globalThis.fetch>];
-    expect(String(init?.body)).toContain('Asset failed to load');
-    expect(String(init?.body)).toContain('"stringValue":"media"');
+    expect(requestBodyText(init)).toContain('Asset failed to load');
+    expect(requestBodyText(init)).toContain('"stringValue":"media"');
   });
 
   it('sends nothing when the session has telemetry off', async () => {
@@ -631,7 +635,7 @@ describe('participant logs', () => {
     expect(new Headers(init?.headers).get(PARTICIPANT_SESSION_HEADER)).toBe(
       SESSION,
     );
-    expect(String(init?.body)).toContain('Interview session failed to load');
-    expect(String(init?.body)).toContain('"stringValue":"session_ended"');
+    expect(requestBodyText(init)).toContain('Interview session failed to load');
+    expect(requestBodyText(init)).toContain('"stringValue":"session_ended"');
   });
 });

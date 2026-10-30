@@ -384,7 +384,7 @@ function readDatabase() {
     const db = await new Promise((res, rej) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
+      req.addEventListener('error', () => rej(req.error));
     });
     const all = (store) =>
       new Promise((res, rej) => {
@@ -393,7 +393,7 @@ function readDatabase() {
           .objectStore(store)
           .getAll();
         rq.onsuccess = () => res(rq.result);
-        rq.onerror = () => rej(rq.error);
+        rq.addEventListener('error', () => rej(rq.error));
       });
     const [protocols, sessions] = [
       await all('protocols'),

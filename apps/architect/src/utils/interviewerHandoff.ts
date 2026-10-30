@@ -127,6 +127,7 @@ export function deliverToInterviewer(
       (value) => {
         bundled = value;
         sendWhenBothArrive();
+        return undefined;
       },
       () => finish('not-reached'),
     );

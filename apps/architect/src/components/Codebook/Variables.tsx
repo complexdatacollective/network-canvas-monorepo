@@ -287,6 +287,6 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
 };
 
 const normalizeSortValue = (value: unknown) =>
-  typeof value === 'string' ? value.toUpperCase() : String(value ?? '');
+  typeof value === 'string' ? value.toUpperCase() : '';
 
 export default Variables;

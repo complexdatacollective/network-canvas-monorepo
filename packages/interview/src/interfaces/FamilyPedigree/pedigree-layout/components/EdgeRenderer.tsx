@@ -220,6 +220,7 @@ function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
     case 'biological':
     // 'partner' is never an auxiliary connector, but the relationship-type
     // union admits it; fall back to a solid line.
+    case 'partner':
     default:
       return { strokeWidth: EDGE_WIDTH };
   }

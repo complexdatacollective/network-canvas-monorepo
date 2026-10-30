@@ -69,10 +69,15 @@ export const humanise = (id: string) => {
   return s ? s[0]!.toUpperCase() + s.slice(1) : s;
 };
 
+const graphemeSegmenter = new Intl.Segmenter('en', {
+  granularity: 'grapheme',
+});
+
+const segmentGraphemes = (s: string) =>
+  Array.from(graphemeSegmenter.segment(s), (x) => x.segment);
+
 export const graphemes = (s: string, max: number) => {
-  const seg = [
-    ...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(s.trim()),
-  ].map((x) => x.segment);
+  const seg = segmentGraphemes(s.trim());
   return seg.length <= max
     ? seg.join('')
     : `${seg
@@ -175,7 +180,7 @@ export const variableFor = (
       const likert =
         a.options.length >= 3 &&
         a.options.length <= 7 &&
-        a.options.every((o) => [...o].length <= 24);
+        a.options.every((o) => segmentGraphemes(o).length <= 24);
       Object.assign(v, {
         type: 'ordinal',
         component: likert ? 'LikertScale' : 'RadioGroup',
@@ -372,7 +377,15 @@ export const resolveCondition = (
         return { ...base, operator: 'EXCLUDES', value: o.value };
       return notFor('choice', 'includes / excludes');
     }
-    default:
+    case 'date':
+    case 'location':
+    case 'month_year':
+    case 'slider':
+    case 'year':
       return `only answered / not_answered can test a ${a.kind} attribute.`;
+    default: {
+      const unhandled: never = a.kind;
+      throw new Error('Unhandled attribute kind', { cause: unhandled });
+    }
   }
 };

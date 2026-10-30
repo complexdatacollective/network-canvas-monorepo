@@ -125,6 +125,7 @@ export const FittedNames = ({ names }: { names: readonly string[] }) => {
     // field, so measure again once they load.
     void document.fonts?.ready.then(() => {
       if (!cancelled) fit();
+      return undefined;
     });
     const observer = new ResizeObserver(fit);
     observer.observe(box);

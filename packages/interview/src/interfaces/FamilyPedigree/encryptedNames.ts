@@ -95,6 +95,7 @@ export function useDecryptedNames({
   /** Every name among these nodes that can be decrypted, once it is. */
   const decryptAll = useCallback(
     async (latest: readonly NcNode[]) => {
+      // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
       const scope = getDecryptionScope(store.getState);
       const latestNames = storedEncryptedNames(
         latest,

@@ -73,7 +73,7 @@ export async function readRawRows(table: string): Promise<unknown[]> {
   const idb = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB_NAME);
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.addEventListener('error', () => reject(request.error));
   });
   try {
     return await new Promise<unknown[]>((resolve, reject) => {
@@ -82,7 +82,7 @@ export async function readRawRows(table: string): Promise<unknown[]> {
         .objectStore(table)
         .getAll();
       request.onsuccess = () => resolve(request.result as unknown[]);
-      request.onerror = () => reject(request.error);
+      request.addEventListener('error', () => reject(request.error));
     });
   } finally {
     idb.close();
@@ -205,7 +205,7 @@ export async function fingerprintDatabase(
   const idb = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(name);
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.addEventListener('error', () => reject(request.error));
   });
   try {
     const storeNames = Array.from(idb.objectStoreNames).toSorted();
@@ -217,7 +217,7 @@ export async function fingerprintDatabase(
       const rows = await new Promise<unknown[]>((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => resolve(request.result as unknown[]);
-        request.onerror = () => reject(request.error);
+        request.addEventListener('error', () => reject(request.error));
       });
       stores[storeName] = {
         keyPath: store.keyPath,

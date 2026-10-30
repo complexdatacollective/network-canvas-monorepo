@@ -204,11 +204,11 @@ beforeEach(() => {
 describe('the header language switcher', () => {
   it('is in the header of every app screen, and the account area no longer has a language screen', async () => {
     const { router } = renderAt('/team/team-a');
-    await expect(
-      screen.findByRole('combobox', {
+    expect(
+      await screen.findByRole('combobox', {
         name: 'Interface language: Automatic (English)',
       }),
-    ).resolves.toBeInTheDocument();
+    ).toBeInTheDocument();
 
     await act(async () => {
       await router.navigate({ to: '/account' });

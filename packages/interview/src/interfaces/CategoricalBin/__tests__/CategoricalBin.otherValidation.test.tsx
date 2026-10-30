@@ -521,7 +521,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
 
   it('removes the mutually exclusive category value when placing a node in Other', async () => {
     const { store, getDndStore } = renderCategoricalBin(undefined);
-    await store.dispatch({
+    store.dispatch({
       type: 'NETWORK/UPDATE_NODE/fulfilled',
       payload: {
         nodeId: 'node-1',
@@ -548,7 +548,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
 
   it('removes the Other value when placing a node in a regular bin', async () => {
     const { store, getDndStore } = renderCategoricalBin(undefined);
-    await store.dispatch({
+    store.dispatch({
       type: 'NETWORK/UPDATE_NODE/fulfilled',
       payload: {
         nodeId: 'node-1',

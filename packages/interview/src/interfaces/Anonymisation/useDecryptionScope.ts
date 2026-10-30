@@ -19,6 +19,7 @@ export function useDecryptionScope() {
   const store = useStore<RootState>();
   // Subscribed so that a component re-renders when the key in force changes.
   useSelector(getEncryptionKeyId);
+  // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
   return getDecryptionScope(store.getState);
 }
 
@@ -43,11 +44,11 @@ export function useDecryptedScope(
     if (!scope || decrypted) return undefined;
 
     let current = true;
-    void Promise.all(values.map((value) => decryptInScope(scope, value))).then(
-      () => {
-        if (current) rerender();
-      },
-    );
+    const rerenderWhenDecrypted = async () => {
+      await Promise.all(values.map((value) => decryptInScope(scope, value)));
+      if (current) rerender();
+    };
+    void rerenderWhenDecrypted();
     return () => {
       current = false;
     };
@@ -112,10 +113,12 @@ export function useDecryptedOutcomes(
     if (values.length - pending.length !== settled) rerender();
 
     let live = true;
+    const rerenderWhenDecrypted = async (value: EncryptedValue) => {
+      await decryptInScope(scope, value);
+      if (live) rerender();
+    };
     for (const value of pending) {
-      void decryptInScope(scope, value).then(() => {
-        if (live) rerender();
-      });
+      void rerenderWhenDecrypted(value);
     }
     return () => {
       live = false;

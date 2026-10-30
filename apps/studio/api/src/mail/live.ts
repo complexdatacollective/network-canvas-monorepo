@@ -12,8 +12,13 @@ export const MailerLive: Layer.Layer<Mailer, never, Environment> = Layer.unwrap(
         return MailerSmtp({ url: mail.url, from: mail.from });
       case 'console':
         return Mailer.layerConsole;
-      default:
+      case 'refuse':
+      case undefined:
         return Mailer.layerRefuse;
+      default: {
+        const unhandled: never = mail;
+        throw new Error('Unhandled mail transport', { cause: unhandled });
+      }
     }
   }),
 );

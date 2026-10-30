@@ -46,18 +46,25 @@ export default function useFormReadyToContinue(hasScrolledToBottom: boolean) {
     let current = true;
     const { fields, getFormValues } = storeApi.getState();
     const formValues = getFormValues();
-    void Promise.all(
-      Array.from(fields.values(), (field) =>
-        field.validation
-          ? validateFieldValue(field.value, field.validation, formValues).then(
-              (result) => result.success,
-              () => false,
-            )
-          : true,
-      ),
-    ).then((results) => {
+    const check = async () => {
+      const results = await Promise.all(
+        Array.from(fields.values(), async (field) => {
+          if (!field.validation) return true;
+          try {
+            const result = await validateFieldValue(
+              field.value,
+              field.validation,
+              formValues,
+            );
+            return result.success;
+          } catch {
+            return false;
+          }
+        }),
+      );
       if (current) setAnswersPass(results.every(Boolean));
-    });
+    };
+    void check();
     return () => {
       current = false;
     };

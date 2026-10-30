@@ -15,6 +15,7 @@ import Network from '~/components/Assets/Network';
 import Video from '~/components/Assets/Video';
 import withAssetMeta from '~/components/Assets/withAssetMeta';
 import withAssetPath from '~/components/Assets/withAssetPath';
+import { reportError } from '~/utils/reportError';
 const messages = defineMessages({
   closePreview: {
     id: 'architect.assetBrowser.preview.closePreview',
@@ -59,6 +60,7 @@ const AssetPreview = ({ id, type }: { id: string; type?: string }) => {
       return <GeoJSON id={id} />;
     case 'apikey':
       return <APIKey id={id} />;
+    case undefined:
     default:
       return (
         <Paragraph>
@@ -92,7 +94,9 @@ const Preview = ({
   }, [onDownload, assetPath, meta]);
   const handleCopyKey = useCallback(() => {
     if (meta.value) {
-      navigator.clipboard.writeText(meta.value);
+      void navigator.clipboard.writeText(meta.value).catch((error: unknown) => {
+        reportError(error, { operation: 'copy-api-key' });
+      });
     }
   }, [meta.value]);
   return (

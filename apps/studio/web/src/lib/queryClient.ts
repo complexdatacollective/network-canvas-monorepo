@@ -9,15 +9,22 @@ const MAINTENANCE_RETRY_MS = 30_000;
 const RETRY_FLOOR_MS = 1_000;
 
 export function retryRefusals(failureCount: number, error: unknown): boolean {
-  switch (refusalOf(error)?.kind) {
+  const kind = refusalOf(error)?.kind;
+  switch (kind) {
     case 'maintenance':
       return true;
     case 'unauthorized':
     case 'forbidden':
     case 'notFound':
       return false;
-    default:
+    case 'rateLimited':
+    case 'transport':
+    case undefined:
       return failureCount < MAX_RETRIES;
+    default: {
+      const unhandled: never = kind;
+      throw new Error('Unhandled refusal kind', { cause: unhandled });
+    }
   }
 }
 

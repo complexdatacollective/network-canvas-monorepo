@@ -442,7 +442,7 @@ export const layerNotifiedWorker = (listen: boolean) =>
     listen,
   });
 
-export function payloadFor(queue: JobQueueName): JobPayload<JobQueueName> {
+export function payloadFor(queue: JobQueueName) {
   if (queue === 'sign-in-email') {
     return {
       email: Redacted.make('researcher@example.org'),

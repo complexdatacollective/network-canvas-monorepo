@@ -147,26 +147,25 @@ function LocaleSession({
       setSaveState('saving');
       pending.current = true;
       const generation = ++sequence.current;
-      queue.current = queue.current
-        .catch(() => undefined)
-        .then(async () => {
+      const save = async () => {
+        if (!mounted.current || generation !== sequence.current) return;
+        try {
+          const result = await updateLocale(preference, initial.userId);
           if (!mounted.current || generation !== sequence.current) return;
-          try {
-            const result = await updateLocale(preference, initial.userId);
-            if (!mounted.current || generation !== sequence.current) return;
-            if (!result.success)
-              throw new Error('Locale preference was not saved');
-            pending.current = false;
-            setSaveState('saved');
-            router.refresh();
-          } catch {
-            if (!mounted.current || generation !== sequence.current) return;
-            // The choice stays applied for this visit; the switcher offers a
-            // retry that sends it again.
-            pending.current = false;
-            setSaveState('failed');
-          }
-        });
+          if (!result.success)
+            throw new Error('Locale preference was not saved');
+          pending.current = false;
+          setSaveState('saved');
+          router.refresh();
+        } catch {
+          if (!mounted.current || generation !== sequence.current) return;
+          // The choice stays applied for this visit; the switcher offers a
+          // retry that sends it again.
+          pending.current = false;
+          setSaveState('failed');
+        }
+      };
+      queue.current = queue.current.catch(() => undefined).then(save);
     },
     [initial.userId, router],
   );

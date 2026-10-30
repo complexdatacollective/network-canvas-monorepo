@@ -1,4 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import {
+  type BoundFunctions,
+  type queries,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { expect } from 'vitest';
 
 import type { StageType } from '@codaco/protocol-validation';
@@ -59,7 +65,9 @@ export const stageNameInput = (): HTMLInputElement =>
  * reach back into the row while the picker's window is up names the element it
  * captured rather than asking the screen for "the dialog".
  */
-export type RowDialog = ReturnType<typeof within> & { element: HTMLElement };
+export type RowDialog = BoundFunctions<typeof queries> & {
+  element: HTMLElement;
+};
 
 const rowDialog = (element: HTMLElement): RowDialog =>
   Object.assign(within(element), { element });
@@ -310,6 +318,10 @@ const patchReplacing = (
       return { node: { [subject.typeId]: definition } };
     case 'codebookEdge':
       return { edge: { [subject.typeId]: definition } };
+    case 'assets':
+    case 'settings':
+    case 'stage':
+    case 'stageOrder':
     default:
       throw new Error(`"${subject.kind}" is not a codebook subject.`);
   }
