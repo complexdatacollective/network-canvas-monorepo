@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { egoFormStageEditor } from '../../../editors/ego-form/EgoFormStageEditor.ts';
+import { familyPedigreeStageEditor } from '../../../editors/family-pedigree/FamilyPedigreeStageEditor.ts';
+import type { StageEditorRegistry } from '../../../stage-editor-contract.ts';
+import type { FixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 
 const FIXTURE_LANGUAGE = 'en-US';
@@ -14,13 +17,16 @@ const SUPPLIED_HINT = 'Scroll to see more questions';
 const mountEgoForm = () =>
   renderStageEditor({ stageId: 'ego-form-1', registry: egoFormStageEditor });
 
-/** The ego form, with the first write it sends held until `release`. */
-const mountEgoFormWithHeldWrite = () => {
+/** A stage editor, with the first write it sends held until `release`. */
+const mountWithHeldWrite = (
+  stageId: FixtureStageId,
+  registry: Partial<StageEditorRegistry>,
+) => {
   const first = Promise.withResolvers<void>();
   let held = true;
   const harness = renderStageEditor({
-    stageId: 'ego-form-1',
-    registry: egoFormStageEditor,
+    stageId,
+    registry,
     adapter: (host) =>
       host.adapterWith({
         Submit: (input) =>
@@ -38,14 +44,25 @@ const mountEgoFormWithHeldWrite = () => {
   return { harness, release: () => first.resolve() };
 };
 
-/** The ego form's shared hint as the protocol holds it. */
-const heldHint = (harness: ReturnType<typeof mountEgoForm>): unknown => {
+const mountEgoFormWithHeldWrite = () =>
+  mountWithHeldWrite('ego-form-1', egoFormStageEditor);
+
+/** One shared word as the protocol holds it. */
+const heldWord = (
+  harness: ReturnType<typeof mountEgoForm>,
+  group: string,
+  key: string,
+): unknown => {
   const settings = harness.protocolSections()[SETTINGS];
   const interfaceText = settings?.interfaceText as
     | Readonly<Record<string, Readonly<Record<string, unknown>>>>
     | undefined;
-  return interfaceText?.egoForm?.scrollForQuestions;
+  return interfaceText?.[group]?.[key];
 };
+
+/** The ego form's shared hint as the protocol holds it. */
+const heldHint = (harness: ReturnType<typeof mountEgoForm>): unknown =>
+  heldWord(harness, 'egoForm', 'scrollForQuestions');
 
 /**
  * The words every stage of a kind shares, edited where the stage is: a stage
@@ -170,5 +187,50 @@ describe('a stage whose only built-in wording is shared', () => {
       expect(section).toHaveAttribute('aria-checked', 'false'),
     );
     expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT });
+  });
+});
+
+describe('a stage whose shared wording comes in several groups', () => {
+  it('keeps both of two shared words written one straight after the other', async () => {
+    const { harness, release } = mountWithHeldWrite(
+      'family-pedigree-1',
+      familyPedigreeStageEditor,
+    );
+    const section = await screen.findByRole('switch', {
+      name: 'Customize built-in wording',
+    });
+    if (section.getAttribute('aria-checked') !== 'true') {
+      await harness.user.click(section);
+    }
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Shared by every stage of this kind',
+      }),
+    );
+    const wholeFamily = await screen.findByRole('textbox', {
+      name: 'Whole family button',
+    });
+    const pointer = await screen.findByRole('textbox', {
+      name: 'Select tool explanation',
+    });
+    await waitFor(() => expect(wholeFamily).not.toHaveAttribute('readonly'));
+
+    // The two words belong to different groups, so each is written on its
+    // own; the first word's write is held on its way while the second is left.
+    await harness.user.clear(wholeFamily);
+    await harness.user.type(wholeFamily, 'Everyone');
+    await harness.user.clear(pointer);
+    await harness.user.type(pointer, 'Choose a relative');
+    await harness.user.tab();
+    release();
+
+    await waitFor(() => {
+      expect(heldWord(harness, 'familyTreeView', 'showWholeFamily')).toEqual({
+        [FIXTURE_LANGUAGE]: 'Everyone',
+      });
+      expect(
+        heldWord(harness, 'familyPedigree', 'pointerToolDescription'),
+      ).toEqual({ [FIXTURE_LANGUAGE]: 'Choose a relative' });
+    });
   });
 });

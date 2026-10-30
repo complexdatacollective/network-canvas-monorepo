@@ -121,6 +121,10 @@ export function useSharedWordingWrites(
   const write = useWriteSharedWording();
   const state = useRef({
     pending: new Set<Promise<unknown>>(),
+    // Each write reads the settings it rewrites, so one waits for the write
+    // before it: two on their way at once would each read the settings
+    // without the other's words, and the later would put the earlier's back.
+    last: Promise.resolve() as Promise<unknown>,
     // Applied since the protocol last showed the shared words: the protocol
     // holds them, but the words this section was given may not show them yet.
     applied: [] as InterfaceTextUpdate[],
@@ -137,7 +141,8 @@ export function useSharedWordingWrites(
       write: (updates) => {
         const current = state.current;
         if (current.held) return Promise.resolve(undefined);
-        const outcome = write(updates);
+        const outcome = current.last.then(() => write(updates));
+        current.last = outcome.catch(() => undefined);
         const tracked = outcome
           .then((result) =>
             result.status === 'applied'
