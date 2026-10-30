@@ -420,12 +420,9 @@ export default function QuickAddField({
                     exit={{ y: '100%' }}
                     className="flex h-full items-center justify-center"
                   >
+                    {/* The icon's title is the button's only name. */}
                     {isInterviewerIconName(icon) && (
-                      <Icon
-                        name={icon}
-                        className={actionIconClass}
-                        aria-hidden
-                      />
+                      <Icon name={icon} className={actionIconClass} />
                     )}
                   </motion.div>
                 )}

@@ -122,7 +122,7 @@ async function storedResearch(page: Page) {
 test.describe('a Spanish browser', () => {
   test.use({ locale: 'es' });
 
-  test('shows the interview in the protocol’s language and its built-in names in Spanish whatever the app language, preserving authored content and data', async ({
+  test('shows the interview in the protocol’s language whatever the browser and app languages, preserving authored content and data', async ({
     page,
     protocol,
     interviewNav,
@@ -132,14 +132,14 @@ test.describe('a Spanish browser', () => {
     await interviewNav.startNewSession('Caso Á-17');
     // The interview carries the protocol's language (it declares only en-US),
     // and so does every word it shows, its own words included, which the
-    // protocol holds. Only the built-in accessible names of icon controls,
-    // never shown, follow the browser.
+    // protocol holds. The accessible names of icon controls, never shown, are
+    // English for now.
     const interview = page.locator('main[data-theme-interview]');
     await expect(interview).toHaveAttribute('lang', 'en-US');
     await expect(interview).toHaveAttribute('dir', 'ltr');
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(
-      page.getByRole('button', { name: 'Configuración', exact: true }),
+      interview.getByRole('button', { name: 'Settings', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText('Thanks for taking part.', { exact: true }),
@@ -180,7 +180,7 @@ test.describe('a Spanish browser', () => {
     await expect(interview).toHaveAttribute('dir', 'ltr');
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
     await expect(
-      page.getByRole('button', { name: 'Configuración', exact: true }),
+      interview.getByRole('button', { name: 'Settings', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText('Thanks for taking part.', { exact: true }),
@@ -208,7 +208,7 @@ test.describe('a Spanish browser', () => {
     expect((await storedResearch(page)).sessions).toHaveLength(1);
   });
 
-  test("an open finish confirmation is shown in the interview's language, not the app's, without finishing or changing responses", async ({
+  test("an open finish confirmation is shown in the interview's language, not the browser's, without finishing or changing responses", async ({
     page,
     protocol,
     interviewNav,
@@ -242,13 +242,13 @@ test.describe('a Spanish browser', () => {
       'Are you sure you want to finish the interview?',
     );
     // Interviewer supplies this description, yet it follows the interview's
-    // language rather than Interviewer's own.
+    // language, English, rather than the Spanish browser.
     const description = confirmation.getByText(
-      'Al finalizar, se cierra esta entrevista. Si es necesario hacer cambios, la persona responsable de la investigación puede volver a marcarla como sin finalizar más adelante.',
+      'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
       { exact: true },
     );
     await expect(description).toBeVisible();
-    await expect(description).toHaveAttribute('lang', 'es');
+    await expect(description).toHaveAttribute('lang', 'en');
     await expect(description).toHaveAttribute('dir', 'ltr');
     await expect(
       confirmation.getByRole('button', {
@@ -306,7 +306,7 @@ test.describe('the language chooser stage', () => {
     ).toBeVisible();
     await expect(interview).toHaveAttribute('lang', 'es');
     await expect(
-      page.getByRole('button', { name: 'Configuración', exact: true }),
+      interview.getByRole('button', { name: 'Settings', exact: true }),
     ).toBeVisible();
     // The participant's choice never changes Interviewer's own language.
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
