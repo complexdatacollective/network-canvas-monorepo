@@ -1,5 +1,6 @@
 import plugin from 'tailwindcss/plugin';
 
+import { scopedColor } from '../scopedColor.js';
 import { type Elevation, generateShadowLayers } from './jwc.js';
 
 /**
@@ -64,17 +65,6 @@ type PluginConfig = {
   resolution?: number; // 0-1, affects detail level of shadow layers
   opacityScaleFactor?: number; // multiplier for overall opacity
 };
-
-// Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
-// --scoped-text point at the bare semantic tokens declared by the
-// theme files (`--background`, `--text`, etc.) rather than going
-// through Tailwind's `--color-*` indirection. Tailwind's
-// `api.theme(...)` resolves color tokens to their `--color-*` form
-// regardless of `@theme inline`, so we strip the prefix at plugin
-// emit time. Literal values (oklch(...), currentColor) are
-// unchanged because they don't match the pattern.
-const stripColorPrefix = (value: string) =>
-  value.replace(/var\(--color-/g, 'var(--');
 
 const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
   plugin.withOptions<PluginConfig>(
@@ -150,11 +140,13 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
         // `modifiers: 'any'` ensures alpha-modified classes like `bg-primary/90`
         // still set --scoped-bg. Shadow derivation uses the solid color, so the
         // alpha on the visible background is intentionally discarded here.
+        // `scopedColor` skips values that are not colours (`bg-[length:200%_100%]`).
         api.matchUtilities(
           {
-            bg: (value) => ({
-              '--scoped-bg': stripColorPrefix(value),
-            }),
+            bg: (value) => {
+              const color = scopedColor(value);
+              return color === null ? {} : { '--scoped-bg': color };
+            },
           },
           {
             values: colorValues('backgroundColor'),
@@ -164,9 +156,10 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
 
         api.matchUtilities(
           {
-            text: (value) => ({
-              '--scoped-text': stripColorPrefix(value),
-            }),
+            text: (value) => {
+              const color = scopedColor(value);
+              return color === null ? {} : { '--scoped-text': color };
+            },
           },
           {
             values: colorValues('textColor'),

@@ -17,7 +17,7 @@ const CIRCLE_RUNGS = [
   'text-[length:clamp(var(--text-xs),9cqi,var(--text-base))] leading-tight',
   'text-[length:clamp(var(--text-xs),7cqi,var(--text-sm))] leading-tight',
   'text-[length:clamp(var(--text-xs),5.5cqi,var(--text-sm))] leading-[1.15]',
-  'text-[length:var(--text-xs)] leading-[1.15]',
+  'text-xs leading-[1.15]',
 ] as const;
 
 // An ordinal header is wide and short, so its width says nothing about how much

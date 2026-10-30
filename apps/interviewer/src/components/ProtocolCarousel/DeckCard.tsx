@@ -611,7 +611,6 @@ export function DeckCard(props: DeckCardProps) {
                           }
                           variant="outline"
                           color="dynamic"
-                          // oxlint-disable-next-line tailwindcss/no-conflicting-classes -- text-[max(16px,4cqi)] is a font size; Fresco's elevation plugin also copies it into --scoped-text, where text-platinum's colour wins
                           className="bg-rich-black/60 text-platinum size-[max(40px,10cqi)] border text-[max(16px,4cqi)]"
                           onClick={(event) => {
                             event.stopPropagation();

@@ -213,7 +213,7 @@ describe('server-safe components', () => {
     );
     expect(markup).toContain('group/link');
     expect(markup).toContain(
-      'group-hover/link:bg-[length:var(--link-underline-active,100%_2px)]',
+      'group-hover/link:bg-size-[var(--link-underline-active,100%_2px)]',
     );
   });
 

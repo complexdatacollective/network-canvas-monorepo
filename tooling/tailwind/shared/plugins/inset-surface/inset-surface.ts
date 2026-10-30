@@ -1,5 +1,7 @@
 import plugin from 'tailwindcss/plugin';
 
+import { scopedColor } from '../scopedColor.js';
+
 /**
  * Tailwind plugin that adds an `inset-surface` utility for creating
  * background-color-adaptive inset (pressed-in) shadows.
@@ -32,23 +34,13 @@ import plugin from 'tailwindcss/plugin';
  * 0.1 alpha floor and need a stronger fixed shadow to read as recessed.
  */
 
-// Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
-// --scoped-text point at the bare semantic tokens declared by the
-// theme files (`--background`, `--text`, etc.) rather than going
-// through Tailwind's `--color-*` indirection. Tailwind's
-// `api.theme(...)` resolves color tokens to their `--color-*` form
-// regardless of `@theme inline`, so we strip the prefix at plugin
-// emit time. Literal values (oklch(...), currentColor) are
-// unchanged because they don't match the pattern.
-const stripColorPrefix = (value: string) =>
-  value.replace(/var\(--color-/g, 'var(--');
-
 const insetSurfacePlugin: ReturnType<typeof plugin> = plugin((api) => {
   api.matchUtilities(
     {
-      bg: (value) => ({
-        '--inset-bg': stripColorPrefix(value),
-      }),
+      bg: (value) => {
+        const color = scopedColor(value);
+        return color === null ? {} : { '--inset-bg': color };
+      },
     },
     {
       values: api.theme?.('backgroundColor') ?? api.theme?.('colors') ?? {},
