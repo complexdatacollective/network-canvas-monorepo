@@ -318,6 +318,7 @@ export function DataViewToolbar({
           aria-label={intl.formatMessage(messages.searchCaseIDOrProtocol2)}
           // `control-glass` applies the blur/border/shadow, but InputField paints
           // its own opaque `bg-input`; force the translucent glass fill over it.
+          // oxlint-disable-next-line tailwindcss/no-conflicting-classes -- the rule sees bg-surface/50! as a copy of control-glass's fill; the ! is what beats InputField's bg-input
           className="control-glass border-outline bg-surface/50! h-12 min-w-[260px]"
         />
       </motion.div>

@@ -402,7 +402,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         // than a child so neither button sits inside the other.
         <button
           type="button"
-          className="focusable absolute inset-0 cursor-pointer rounded-full outline-(--cat-color) focus-visible:-outline-offset-6 aria-disabled:cursor-default"
+          className="focusable absolute inset-0 cursor-pointer rounded-full [--focus-color:var(--cat-color)] focus-visible:-outline-offset-6 aria-disabled:cursor-default"
           onClick={(e) => {
             e.stopPropagation();
             void handleSelect();

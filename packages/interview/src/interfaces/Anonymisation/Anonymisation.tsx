@@ -145,7 +145,8 @@ function AnonymisationInner(props: AnonymisationProps) {
     <>
       <EncryptionBackground thresholdPosition={unlocked ? 20 : 100} />
       <ScrollArea className="m-0 size-full">
-        <div className="interface mx-auto min-h-full max-w-[80ch] flex-col">
+        {/* oxlint-disable-next-line tailwindcss/no-conflicting-classes -- min-h-full deliberately overrides the interface utility's min-h-0, so the stage fills the scroll area */}
+        <div className="interface mx-auto min-h-full max-w-[80ch]">
           <MotionSurface
             noContainer
             spacing="lg"

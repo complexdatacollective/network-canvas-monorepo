@@ -270,7 +270,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
 
   return (
     <>
-      <div className="interface min-h-0" ref={interfaceRef}>
+      <div className="interface" ref={interfaceRef}>
         <Prompts />
         {panels ? (
           <ResizableFlexPanel
