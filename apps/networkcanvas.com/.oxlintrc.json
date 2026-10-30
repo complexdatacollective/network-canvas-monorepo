@@ -1,10 +1,12 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
   "plugins": ["nextjs"],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": ["../../tooling/oxlint/tailwindcss.mjs"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "apps/networkcanvas.com/app/globals.css"
+      "entryPoint": "apps/networkcanvas.com/app/globals.css",
+      "variablePatterns": ["[a-z](?:Class|ClassNames?|Classes)$"],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
   "rules": {

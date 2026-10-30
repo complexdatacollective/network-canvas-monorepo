@@ -4,7 +4,7 @@
     "../../tooling/oxlint/react.json",
     "../../tooling/oxlint/classic.json"
   ],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": ["../../tooling/oxlint/tailwindcss.mjs"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "tooling/tailwind/fresco/fresco.css"
