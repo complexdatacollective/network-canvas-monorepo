@@ -628,8 +628,10 @@ with made-up people and answers; while it is off, the interview starts empty.
    handing it a protocol, it shows its "This preview has ended" message.
    Close that tab and select the editor's tab.
 5. "editor-intact": Confirm the stage editor still works: its "Stage name"
-   field and prompts are present and "Preview", "Finished Editing" and
-   "Cancel" respond.
+   field and prompts are present and "Preview" and "Cancel" respond.
+   "Finished Editing" appears only once the stage has a change, so type a
+   character at the end of "Stage name", confirm "Finished Editing" appears,
+   and do not press it: the next step discards that change.
 6. "cleanup": Leave the editor with "Cancel" (discarding if asked), then
    delete your protocol from the start screen.`,
   },
@@ -714,6 +716,11 @@ the researcher to translate, and the app warns about what is missing. In the
 "Translation table" dialog each language is a column of editable cells; a
 cell with no translation says "Not translated yet." and shows what
 participants see instead.
+Architect names languages in the browser's own language and region, so the
+protocol's starting language may be listed as "English", "British English"
+or another regional English. Below, "English" means that starting language
+by its role, whatever its row is called, and "Remove English" means that
+row's Remove control.
 1. "create": Create your protocol, keeping the one language the creation
    dialog offers (English). Open the "Languages" page and confirm English is
    the only language, marked "Default", with its "Remove English" control
