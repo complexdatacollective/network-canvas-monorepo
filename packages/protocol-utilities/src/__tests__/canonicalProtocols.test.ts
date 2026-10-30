@@ -16,6 +16,7 @@ const protocolsRoot = path.resolve(import.meta.dirname, '../../../protocols');
 const MIGRATION_FIXTURES = new Set([
   path.join('e2e', 'fresco-release-test', 'protocol.json'),
   path.join('e2e', 'fresco-release-test-migration', 'protocol.json'),
+  path.join('e2e', 'release-smoke-schema8', 'protocol.json'),
 ]);
 
 const sources = readdirSync(protocolsRoot, {

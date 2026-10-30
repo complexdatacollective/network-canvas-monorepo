@@ -211,8 +211,10 @@ const isRoughlyEqual = (left: unknown, right: unknown) => {
  * option values `1` and `"1"` both export to the column `variable_1`), and
  * case-insensitively, like the rest of the editors' duplicate checks.
  */
+const nameText = (value: unknown) => normalizeCodebookName(String(value));
+
 export const nameComparisonKey = (value: unknown) =>
-  normalizeForComparison(normalizeCodebookName(String(value)));
+  normalizeForComparison(nameText(value));
 
 export function createValidations(intl: IntlShape = defaultIntl) {
   const required =
@@ -397,7 +399,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
         return messageWithDefault(
           message,
           intl.formatMessage(messages.valueIsAlreadyInUse, {
-            value: normalizeCodebookName(String(value)),
+            value: nameText(value),
           }),
         );
       }
@@ -519,11 +521,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
     (value) => {
       try {
         const regexp = new RegExp(
-          value instanceof RegExp || typeof value === 'string'
-            ? value
-            : value === undefined
-              ? ''
-              : String(value),
+          value instanceof RegExp || typeof value === 'string' ? value : '',
         );
         if (isRegExp(regexp)) {
           return undefined;

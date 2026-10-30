@@ -24,6 +24,7 @@ import {
   type ComparatorEdge,
   resolveGenerationOrder,
 } from './dependencyOrder.ts';
+import { describeValue } from './describeValue.ts';
 import {
   nodeCountFor,
   unwrittenNodeVariables,
@@ -618,7 +619,7 @@ function analyseEntity(
           );
         }
         carriers.set(key, carrier);
-        fixedDisplay.set(key, String(value));
+        fixedDisplay.set(key, describeValue(value));
       }
       fixedByGroup.set(group, carriers);
     }
@@ -716,7 +717,9 @@ function analyseEntity(
     if (brokenReported.has(key)) continue;
     brokenReported.add(key);
 
-    const fixedTo = broken.values.map((value) => String(value)).join(' and ');
+    const fixedTo = broken.values
+      .map((value) => describeValue(value))
+      .join(' and ');
     report(
       broken.variableIds,
       [broken.rule, 'additionalAttributes'],
@@ -1029,7 +1032,7 @@ function analyseEntity(
         const value = assignment[id];
         if (value === null || value === undefined) continue;
         if (!inComponent.has(groupOf.get(id) ?? id)) continue;
-        stated.push(`"${variable.entry.name}" to ${String(value)}`);
+        stated.push(`"${variable.entry.name}" to ${describeValue(value)}`);
       }
       return stated;
     };

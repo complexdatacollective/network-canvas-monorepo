@@ -1102,7 +1102,10 @@ function buildMapErrorOverlayScenario(): ScenarioDefinition {
       // across the client-side navigation to the Geospatial stage.
       await page.evaluate(() => {
         const proto = HTMLCanvasElement.prototype;
-        const original = proto.getContext;
+        const original: typeof proto.getContext = Reflect.get(
+          proto,
+          'getContext',
+        );
         Object.defineProperty(proto, 'getContext', {
           configurable: true,
           writable: true,

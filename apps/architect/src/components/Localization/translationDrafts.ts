@@ -338,7 +338,7 @@ export const useTranslationDraft = ({
       validation: cellValidation(
         row.path,
         cellLocale,
-        appStore.getState,
+        () => appStore.getState(),
         () => words.current,
       ),
     });

@@ -72,7 +72,7 @@ function canBreakBefore(letters: readonly string[], index: number): boolean {
  */
 export function withLabelBreakPoints(label: string): string {
   return label.replace(/[\p{Script=Latin}\u00AD]+/gu, (word) => {
-    const letters = [...word];
+    const letters = Array.from(word);
     if (letters.length < MIN_WORD || word.includes(SOFT_HYPHEN)) {
       return word;
     }

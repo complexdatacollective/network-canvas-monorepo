@@ -17,6 +17,7 @@ import { ValueGenerator } from '../../../ValueGenerator.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import type { GenerationContext } from '../../context.ts';
 import { buildEntityConstraints } from '../buildConstraints.ts';
+import { describeValue } from '../describeValue.ts';
 import { SyntheticDataConstraintError } from '../error.ts';
 import {
   completionCheckFor,
@@ -91,7 +92,7 @@ function allWithin(
 ): boolean {
   return Object.values(attributes).every((value) =>
     typeof min === 'string' && typeof max === 'string'
-      ? String(value) >= min && String(value) <= max
+      ? describeValue(value) >= min && describeValue(value) <= max
       : Number(value) >= Number(min) && Number(value) <= Number(max),
   );
 }
@@ -123,8 +124,8 @@ describe('generateEntityAttributes', () => {
       1,
     );
 
-    expect(String(first.name)).toMatch(/^\p{Lu}/u);
-    expect(String(second.name)).toMatch(/^\p{Lu}/u);
+    expect(describeValue(first.name)).toMatch(/^\p{Lu}/u);
+    expect(describeValue(second.name)).toMatch(/^\p{Lu}/u);
     expect(first.name).not.toBe(second.name);
   });
 
@@ -153,8 +154,8 @@ describe('generateEntityAttributes', () => {
       0,
     );
 
-    expect(String(attributes.preferredName)).toMatch(/^\p{Lu}/u);
-    expect(String(attributes.legalName)).toMatch(/^\p{Lu}/u);
+    expect(describeValue(attributes.preferredName)).toMatch(/^\p{Lu}/u);
+    expect(describeValue(attributes.legalName)).toMatch(/^\p{Lu}/u);
     expect(attributes.preferredName).not.toBe(attributes.legalName);
   });
 
@@ -1247,8 +1248,8 @@ describe('generateEntityAttributes', () => {
         entity,
         500,
         (attrs) =>
-          String(attrs.diagnosed) > String(attrs.born) &&
-          String(attrs.died) > String(attrs.diagnosed) &&
+          describeValue(attrs.diagnosed) > describeValue(attrs.born) &&
+          describeValue(attrs.died) > describeValue(attrs.diagnosed) &&
           allWithin(attrs, '2020-01-01', '2020-01-05'),
       ),
     ).toEqual([]);
@@ -1284,7 +1285,7 @@ describe('generateEntityAttributes', () => {
         entity,
         500,
         (attrs) =>
-          String(attrs.finish) > String(attrs.start) &&
+          describeValue(attrs.finish) > describeValue(attrs.start) &&
           allWithin(attrs, '2026-01', '2026-06'),
       ),
     ).toEqual([]);
@@ -1314,8 +1315,8 @@ describe('generateEntityAttributes', () => {
 
     expect(
       breaches(entity, 500, (attrs) => {
-        const start = String(attrs.start);
-        const finish = String(attrs.finish);
+        const start = describeValue(attrs.start);
+        const finish = describeValue(attrs.finish);
         return (
           // Each value written in its own picker's units. The comparison was
           // once folded at the wrong resolution, which left `finish` holding a
@@ -1823,7 +1824,7 @@ describe('generateEntityAttributes', () => {
         index,
       );
       expect(Number(attrs.b)).toBeGreaterThan(Number(attrs.a));
-      const key = `${String(attrs.a)}|${String(attrs.b)}`;
+      const key = `${describeValue(attrs.a)}|${describeValue(attrs.b)}`;
       seen.set(key, (seen.get(key) ?? 0) + 1);
     }
 

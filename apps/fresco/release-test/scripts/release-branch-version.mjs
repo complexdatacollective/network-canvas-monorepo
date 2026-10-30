@@ -343,27 +343,28 @@ try {
       );
     if (tags.has(version))
       fail(`${RELEASE_TAG_PREFIX}${version} is already released`);
-    const newest = [...tags.keys()]
+    const stableTags = [...tags.keys()]
       .map((tag) => ({ tag, parsed: parseStable(tag) }))
-      .filter(({ parsed: p }) => p)
-      .reduce(
-        (top, entry) =>
-          !top || compareStable(entry.parsed, top.parsed) > 0 ? entry : top,
-        null,
-      );
+      .filter(({ parsed: p }) => p);
+    const newest =
+      stableTags.length > 0
+        ? stableTags.reduce((top, entry) =>
+            compareStable(entry.parsed, top.parsed) > 0 ? entry : top,
+          )
+        : null;
     if (newest && compareStable(parsed, newest.parsed) <= 0)
       fail(
-        `the release branch carries Fresco ${version}, which is not newer than the released ${RELEASE_TAG_PREFIX}${newest.tag} - a hotfix has released past it; merge the hotfix branch into ${MAIN}, then rerun once the Version Packages PR regenerates`,
+        `the release branch carries Fresco ${version}, which is not newer than the released ${RELEASE_TAG_PREFIX}${String(newest.tag)} - a hotfix has released past it; merge the hotfix branch into ${MAIN}, then rerun once the Version Packages PR regenerates`,
       );
     if (newest) {
       const released = tags.get(newest.tag);
       if (!commitAt(released))
         fail(
-          `${RELEASE_TAG_PREFIX}${newest.tag} (${released.slice(0, 12)}) is not in this clone - fetch origin --tags and rerun`,
+          `${RELEASE_TAG_PREFIX}${String(newest.tag)} (${released.slice(0, 12)}) is not in this clone - fetch origin --tags and rerun`,
         );
       if (!isAncestor(released, head))
         fail(
-          `the release branch does not contain the released ${RELEASE_TAG_PREFIX}${newest.tag}, so the release lane would refuse to deploy it - merge the hotfix branch into ${MAIN}, then rerun once the Version Packages PR regenerates`,
+          `the release branch does not contain the released ${RELEASE_TAG_PREFIX}${String(newest.tag)}, so the release lane would refuse to deploy it - merge the hotfix branch into ${MAIN}, then rerun once the Version Packages PR regenerates`,
         );
     }
   }

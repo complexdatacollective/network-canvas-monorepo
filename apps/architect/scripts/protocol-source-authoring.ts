@@ -498,6 +498,22 @@ const sendJson = (
   response.end(JSON.stringify(body));
 };
 
+const handleSourceSave = async (
+  repoRoot: string,
+  request: IncomingMessage,
+  response: ServerResponse,
+) => {
+  try {
+    const body = await readJsonBody(request);
+    sendJson(response, await saveProtocolSource(repoRoot, body));
+  } catch (error) {
+    sendJson(response, {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
 export const createProtocolSourceAuthoringPlugin = ({
   repoRoot,
   enabled,
@@ -512,44 +528,35 @@ export const createProtocolSourceAuthoringPlugin = ({
       return;
     }
 
-    server.middlewares.use(
-      PROTOCOL_SOURCE_ENDPOINT,
-      async (request, response) => {
-        if (request.method !== 'POST') {
-          response.statusCode = 405;
-          response.setHeader('Content-Type', 'application/json');
-          response.end(
-            JSON.stringify({
-              ok: false,
-              error: 'Method not allowed.',
-            } satisfies SourceSaveResponse),
-          );
-          return;
-        }
-
-        if (!isAuthorizedSourceSaveRequest(request)) {
-          sendJson(
-            response,
-            {
-              ok: false,
-              error: 'Source-save request is not authorized.',
-            },
-            403,
-          );
-          return;
-        }
-
-        try {
-          const body = await readJsonBody(request);
-          sendJson(response, await saveProtocolSource(repoRoot, body));
-        } catch (error) {
-          sendJson(response, {
+    server.middlewares.use(PROTOCOL_SOURCE_ENDPOINT, (request, response) => {
+      if (request.method !== 'POST') {
+        response.statusCode = 405;
+        response.setHeader('Content-Type', 'application/json');
+        response.end(
+          JSON.stringify({
             ok: false,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      },
-    );
+            error: 'Method not allowed.',
+          } satisfies SourceSaveResponse),
+        );
+        return;
+      }
+
+      if (!isAuthorizedSourceSaveRequest(request)) {
+        sendJson(
+          response,
+          {
+            ok: false,
+            error: 'Source-save request is not authorized.',
+          },
+          403,
+        );
+        return;
+      }
+
+      handleSourceSave(repoRoot, request, response).catch((error: unknown) => {
+        response.destroy(error instanceof Error ? error : undefined);
+      });
+    });
   },
 });
 

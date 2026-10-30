@@ -64,7 +64,7 @@ export async function seedProtocol(
         new Promise<IDBDatabase>((resolve, reject) => {
           const req = indexedDB.open(dbName);
           req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
+          req.addEventListener('error', () => reject(req.error));
         });
       // A versionless open that wins the race with Dexie's first open would
       // CREATE an empty version-1 DB with no object stores, and the
@@ -91,7 +91,7 @@ export async function seedProtocol(
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(['protocols', 'assets'], 'readwrite');
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        tx.addEventListener('error', () => reject(tx.error));
         // A reseed with the same storageId must not leave asset rows from a
         // previous seed behind: a stale Blob could satisfy a later fixture
         // that forgot to declare the asset, masking missing fixture data.
@@ -199,13 +199,13 @@ export async function seedLegacyProtocols(
           assets.createIndex('protocolId', 'protocolId');
         };
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.addEventListener('error', () => reject(req.error));
         req.onblocked = () => reject(new Error(`${dbName} open blocked`));
       });
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(['protocols', 'assets'], 'readwrite');
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        tx.addEventListener('error', () => reject(tx.error));
         for (const { id, protocol, assets, updatedAt } of seeds) {
           tx.objectStore('protocols').put({
             id,

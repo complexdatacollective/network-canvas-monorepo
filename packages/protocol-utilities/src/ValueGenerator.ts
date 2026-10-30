@@ -130,6 +130,12 @@ export class ValueGenerator {
         return '';
       case 'categorical':
         return [];
+      case 'number':
+      case 'scalar':
+      case 'ordinal':
+      case 'datetime':
+      case 'layout':
+      case 'location':
       default:
         return undefined;
     }

@@ -38,16 +38,19 @@ export const useUnresolvedAssetIds = (): ReadonlySet<string> => {
   useEffect(() => {
     let cancelled = false;
 
-    void getUnresolvedAssetIds(assetManifest, protocolId ?? undefined).then(
-      (ids) => {
-        if (cancelled) return;
-        // A new empty Set every time would re-render every card on every
-        // manifest edit, for the common case of nothing being missing.
-        setUnresolved((current) =>
-          ids.length === 0 && current.size === 0 ? current : new Set(ids),
-        );
-      },
-    );
+    const load = async () => {
+      const ids = await getUnresolvedAssetIds(
+        assetManifest,
+        protocolId ?? undefined,
+      );
+      if (cancelled) return;
+      // A new empty Set every time would re-render every card on every
+      // manifest edit, for the common case of nothing being missing.
+      setUnresolved((current) =>
+        ids.length === 0 && current.size === 0 ? current : new Set(ids),
+      );
+    };
+    void load();
 
     return () => {
       cancelled = true;

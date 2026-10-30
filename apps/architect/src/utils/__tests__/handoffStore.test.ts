@@ -21,14 +21,14 @@ const deleteHandoffDb = () =>
   new Promise<void>((resolve, reject) => {
     const request = indexedDB.deleteDatabase(HANDOFF_DB_NAME);
     request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    request.addEventListener('error', () => reject(request.error));
   });
 
 const openRaw = () =>
   new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(HANDOFF_DB_NAME);
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.addEventListener('error', () => reject(request.error));
   });
 
 const readAllRaw = async (): Promise<unknown[]> => {
@@ -40,7 +40,7 @@ const readAllRaw = async (): Promise<unknown[]> => {
         .objectStore('handoffs')
         .getAll();
       request.onsuccess = () => resolve(request.result as unknown[]);
-      request.onerror = () => reject(request.error);
+      request.addEventListener('error', () => reject(request.error));
     });
   } finally {
     db.close();
@@ -54,7 +54,7 @@ const putRaw = async (record: Record<string, unknown>): Promise<void> => {
       const transaction = db.transaction('handoffs', 'readwrite');
       transaction.objectStore('handoffs').put(record);
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
+      transaction.addEventListener('error', () => reject(transaction.error));
     });
   } finally {
     db.close();

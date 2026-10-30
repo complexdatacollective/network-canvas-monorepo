@@ -18,8 +18,14 @@ export function objectStoreFor(
       return ObjectStoreS3.make(env.s3);
     case 'azure-blob':
       return ObjectStoreAzureBlob.make(env.azureBlob);
-    default:
+    case undefined:
       return ObjectStore.absent;
+    default: {
+      const unhandled: never = env;
+      throw new Error('Unhandled object store provider', {
+        cause: unhandled,
+      });
+    }
   }
 }
 

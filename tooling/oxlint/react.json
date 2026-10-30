@@ -16,6 +16,7 @@
     "react/capitalized-calls": "error",
     "react/no-unsafe": "warn",
     "react/no-find-dom-node": "warn",
+    "react/iframe-missing-sandbox": "error",
 
     "jsx-a11y/alt-text": ["warn", { "elements": ["img"], "img": ["Image"] }],
     "jsx-a11y/aria-props": "warn",

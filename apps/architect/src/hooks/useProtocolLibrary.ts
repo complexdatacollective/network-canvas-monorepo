@@ -90,6 +90,7 @@ export function useProtocolLibrary(): {
       if (document.visibilityState === 'hidden') return;
       void legacyLibraryExists().then((exists) => {
         if (exists && active) setLegacySubscription((count) => count + 1);
+        return undefined;
       });
     };
     window.addEventListener('focus', recheck);

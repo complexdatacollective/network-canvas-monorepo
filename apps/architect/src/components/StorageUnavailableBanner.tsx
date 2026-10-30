@@ -108,9 +108,9 @@ const StorageUnavailableBanner = () => {
                       },
                     },
                   });
-                  return;
+                  return undefined;
                 }
-                if (result.status !== 'unresolved-assets') return;
+                if (result.status !== 'unresolved-assets') return undefined;
                 void openDialog({
                   type: 'acknowledge',
                   intent: 'destructive',
@@ -131,6 +131,7 @@ const StorageUnavailableBanner = () => {
                     },
                   },
                 });
+                return undefined;
               })
               .catch(() => {
                 void openDialog({

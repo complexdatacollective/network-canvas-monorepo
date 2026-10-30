@@ -174,6 +174,9 @@ export default function PersonSymbolsControl({
         return intl.formatMessage(messages.symbolsNotMapped, {
           shape: state.defaultShape,
         });
+      case 'sexAssignedAtBirth':
+      case 'genderIdentity':
+      case 'genderIdentityOutOfDate':
       default: {
         const stored: unknown = definition?.shape.default;
         return intl.formatMessage(messages.symbolsNotMapped, {

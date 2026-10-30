@@ -945,13 +945,13 @@ try {
     const db = await new Promise((res, rej) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
+      req.addEventListener('error', () => rej(req.error));
     });
     const sessions = await new Promise((res, rej) => {
       const tx = db.transaction('sessions', 'readonly');
       const rq = tx.objectStore('sessions').getAll();
       rq.onsuccess = () => res(rq.result);
-      rq.onerror = () => rej(rq.error);
+      rq.addEventListener('error', () => rej(rq.error));
     });
     db.close();
     const s = sessions[0];

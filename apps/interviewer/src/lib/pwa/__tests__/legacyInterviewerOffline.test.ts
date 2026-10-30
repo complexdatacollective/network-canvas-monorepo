@@ -30,7 +30,6 @@ const stubRegistration = (
     Promise.resolve(registration ? [registration] : []),
   );
   vi.stubGlobal('navigator', {
-    ...navigator,
     serviceWorker: { getRegistrations },
   });
   return getRegistrations;
@@ -153,7 +152,6 @@ describe('legacyInterviewerOffline', () => {
 
   it('is not ready when the browser cannot say', async () => {
     vi.stubGlobal('navigator', {
-      ...navigator,
       serviceWorker: {
         getRegistrations: () => Promise.reject(new Error('insecure context')),
       },

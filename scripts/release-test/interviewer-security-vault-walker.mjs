@@ -365,14 +365,14 @@ const rawStoreCounts = () =>
     const db = await new Promise((res, rej) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
+      req.addEventListener('error', () => rej(req.error));
     });
     const count = (store) =>
       new Promise((res, rej) => {
         const tx = db.transaction(store, 'readonly');
         const rq = tx.objectStore(store).count();
         rq.onsuccess = () => res(rq.result);
-        rq.onerror = () => rej(rq.error);
+        rq.addEventListener('error', () => rej(rq.error));
       });
     const out = {
       protocols: await count('protocols'),
@@ -431,13 +431,13 @@ try {
           const db = await new Promise((res, rej) => {
             const rq = indexedDB.open(dbName);
             rq.onsuccess = () => res(rq.result);
-            rq.onerror = () => rej(rq.error);
+            rq.addEventListener('error', () => rej(rq.error));
           });
           const rows = await new Promise((res, rej) => {
             const tx = db.transaction('sessions', 'readonly');
             const rq = tx.objectStore('sessions').getAll();
             rq.onsuccess = () => res(rq.result);
-            rq.onerror = () => rej(rq.error);
+            rq.addEventListener('error', () => rej(rq.error));
           });
           db.close();
           return JSON.stringify(rows);
@@ -557,13 +557,13 @@ try {
       const db = await new Promise((res, rej) => {
         const req = indexedDB.open(dbName);
         req.onsuccess = () => res(req.result);
-        req.onerror = () => rej(req.error);
+        req.addEventListener('error', () => rej(req.error));
       });
       const n = await new Promise((res, rej) => {
         const tx = db.transaction('sessions', 'readonly');
         const rq = tx.objectStore('sessions').count();
         rq.onsuccess = () => res(rq.result);
-        rq.onerror = () => rej(rq.error);
+        rq.addEventListener('error', () => rej(rq.error));
       });
       db.close();
       return n;
@@ -690,14 +690,14 @@ try {
     const db = await new Promise((res, rej) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
+      req.addEventListener('error', () => rej(req.error));
     });
     const readAll = (store) =>
       new Promise((res, rej) => {
         const tx = db.transaction(store, 'readonly');
         const req = tx.objectStore(store).getAll();
         req.onsuccess = () => res(req.result);
-        req.onerror = () => rej(req.error);
+        req.addEventListener('error', () => rej(req.error));
       });
     // A real envelope is base64 with an AES-GCM-shaped IV (12 bytes) and a
     // ciphertext at least as long as the GCM tag, whose DECODED bytes carry

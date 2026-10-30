@@ -67,6 +67,7 @@ function WriteOptions({
                   `refused: ${readMessage(answer.message)}`
                 : answer.status,
             );
+            return undefined;
           });
         }}
       >

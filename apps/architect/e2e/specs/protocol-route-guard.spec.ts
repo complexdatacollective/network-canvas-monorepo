@@ -36,7 +36,7 @@ async function readProtocolIds(page: Page): Promise<string[]> {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.addEventListener('error', () => reject(req.error));
     });
     if (!db.objectStoreNames.contains('protocols')) {
       db.close();
@@ -48,7 +48,7 @@ async function readProtocolIds(page: Page): Promise<string[]> {
         .objectStore('protocols')
         .getAllKeys();
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.addEventListener('error', () => reject(req.error));
     });
     db.close();
     return keys.map(String);

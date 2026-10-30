@@ -466,6 +466,7 @@ export default function AttributePill({
       } else {
         setClosing(false);
       }
+      return undefined;
     });
     setClosing(true);
   };

@@ -1355,6 +1355,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
         void published.reached.then(() => {
           announced = true;
           published.release();
+          return undefined;
         });
         a.time.advance(RECONNECT_GRACE_MS);
         try {

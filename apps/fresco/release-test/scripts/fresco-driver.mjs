@@ -60,7 +60,7 @@ export const ADMIN_PASSWORD = 'Fresco-Release-Test-1!';
 export async function launch({
   relayTo = null,
   locale = 'en-US',
-  lane: laneName = null,
+  lane: laneName = '',
 } = {}) {
   // A browser pointed at a lane with analytics ENABLED and no mapping would
   // send that lane's events to the real relay. Refused rather than warned:

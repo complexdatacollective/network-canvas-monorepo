@@ -475,11 +475,12 @@ describe('syncMiddleware flush', () => {
     // eventually either way, but by then the caller has already been told it
     // was safe to exit.
     let offeredWhenFlushResolved = false;
-    const flushed = flush().then(() => {
+    const flushed = (async () => {
+      await flush();
       offeredWhenFlushResolved = onSyncMock.mock.calls.some(
         (call) => (call[1] as { lastUpdated: string }).lastUpdated === durable,
       );
-    });
+    })();
     await settle();
     resolveFirst();
     await flushed;

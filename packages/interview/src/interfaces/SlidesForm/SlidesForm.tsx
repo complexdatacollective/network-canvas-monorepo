@@ -372,7 +372,7 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
 );
 
 export default function SlidesForm({
-  items = [],
+  items,
   subject,
   updateItem,
   moveForward,

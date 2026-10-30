@@ -180,6 +180,24 @@ export function resolveStageQualifier(
       );
     case 'FinishSession':
       return resolveFinishQualifier(stage.outcome, stage.mode);
+    case 'AlterEdgeForm':
+    case 'AlterForm':
+    case 'Anonymisation':
+    case 'CategoricalBin':
+    case 'DyadCensus':
+    case 'EgoForm':
+    case 'FamilyPedigree':
+    case 'Geospatial':
+    case 'LanguageChooser':
+    case 'NameGeneratorRoster':
+    case 'Narrative':
+    case 'NarrativePedigree':
+    case 'NetworkComposer':
+    case 'OneToManyDyadCensus':
+    case 'OrdinalBin':
+    case 'Sociogram':
+    case 'TieStrengthCensus':
+    case undefined:
     default:
       return null;
   }

@@ -1386,6 +1386,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       let ended = false;
       void channel.ended.then(() => {
         ended = true;
+        return undefined;
       });
       try {
         const before = charged.length;

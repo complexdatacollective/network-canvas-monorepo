@@ -144,8 +144,20 @@ const clientErrorFault = (error: RpcClientError.RpcClientError): FaultCode => {
       return reason.kind === 'TransportError' ? 'transport' : 'http_error';
     case 'RpcClientDefect':
       return 'unknown';
-    default:
+    case 'SocketOpenError':
+    case 'SocketUpgradeError':
+    case 'SocketReadError':
+    case 'SocketWriteError':
+    case 'SocketCloseError':
+    case 'WorkerSpawnError':
+    case 'WorkerSendError':
+    case 'WorkerReceiveError':
+    case 'WorkerUnknownError':
       return 'transport';
+    default: {
+      const unhandled: never = reason;
+      throw new Error('Unhandled RpcClientError reason', { cause: unhandled });
+    }
   }
 };
 

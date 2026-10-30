@@ -110,13 +110,14 @@ export default function App() {
     }
     const bootstrapSlug = params.get('bootstrap');
     if (bootstrapSlug) {
-      autoBootstrap(bootstrapSlug).then((id) => {
+      void (async () => {
+        const id = await autoBootstrap(bootstrapSlug);
         if (id) {
           window.history.replaceState(null, '', `?interviewId=${id}&step=0`);
           setActiveId(id);
           setCurrentStep(0);
         }
-      });
+      })();
     }
   }, []);
 

@@ -209,8 +209,17 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
           ),
         );
         break;
-      default:
+      case 'bins':
+      case 'geospatial':
+      case 'narrative':
+      case 'relationshipCensus':
+      case 'sociogram':
         slot('none: return ""', 'none: return ""');
+        break;
+      default: {
+        const unhandled: never = s;
+        throw new Error('Unhandled stage kind', { cause: unhandled });
+      }
     }
     if ('prompts' in s)
       s.prompts.forEach((p, i) =>

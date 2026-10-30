@@ -450,13 +450,15 @@ function PreviewValidity({
         if (!cancelled) onSettled(false);
         return;
       }
-      void validateProtocol(wip, { draft: true })
-        .then((result) => {
+      const settle = async () => {
+        try {
+          const result = await validateProtocol(wip, { draft: true });
           if (!cancelled) onSettled(result.success);
-        })
-        .catch(() => {
+        } catch {
           if (!cancelled) onSettled(false);
-        });
+        }
+      };
+      void settle();
     }, VALIDATION_DEBOUNCE_MS);
 
     return () => {
