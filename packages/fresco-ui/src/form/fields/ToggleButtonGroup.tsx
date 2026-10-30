@@ -247,7 +247,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
             <OptionLabel
               label={option.label}
               render={
-                <span className="relative z-10 line-clamp-3 max-w-full overflow-hidden leading-tight text-balance" />
+                <span className="relative z-10 line-clamp-3 max-w-full leading-tight text-balance" />
               }
             />
           </BaseCheckbox.Root>

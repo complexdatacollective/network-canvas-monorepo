@@ -114,7 +114,7 @@ const DataCard = ({
         // oxlint-disable-next-line tailwindcss/no-unknown-classes -- NameGeneratorRoster's drag-cursor selector hook
         'card group relative flex h-full flex-col overflow-hidden rounded',
         'bg-platinum text-charcoal',
-        'focusable outline-white',
+        'focusable [--focus-color:var(--color-white)]',
         className,
       )}
       aria-label={label}

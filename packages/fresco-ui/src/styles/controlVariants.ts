@@ -67,7 +67,7 @@ const sliderThumbOwnVariants = cva({
     // Appearance
     'block rounded-full',
     // focusable-within: the nested <input type="range"> receives focus, not the div
-    'focusable-within outline-primary',
+    'focusable-within [--focus-color:var(--primary)]',
     'transition-colors duration-200',
   ),
   variants: {

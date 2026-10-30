@@ -838,7 +838,8 @@ export default function NarrativePedigreeView({
   );
 
   return (
-    <div className="interface relative flex h-full w-full flex-col p-0">
+    // oxlint-disable-next-line tailwindcss/no-conflicting-classes -- p-0 deliberately overrides the interface utility's padding; the pedigree canvas runs edge to edge
+    <div className="interface h-full p-0">
       {measurementContainer}
 
       {/* Off-screen printable document, mounted only while a snapshot is being
