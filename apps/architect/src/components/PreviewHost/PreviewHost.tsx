@@ -327,6 +327,7 @@ export function PreviewHost() {
       window.removeEventListener('message', onMessage);
       clearTimeout(timeoutId);
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `retryNonce` is bumped by Try again to run the handshake afresh; its value is not needed
   }, [retryNonce]);
   // Nothing in a preview is saved, so there is no finish to record. Once this
   // resolves the interview shows its completed state, as it would for a

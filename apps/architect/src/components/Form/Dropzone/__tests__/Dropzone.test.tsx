@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -39,6 +45,35 @@ describe('Dropzone', () => {
       /does not support these extensions: \.txt\. Supported extensions: \.json\./i,
     );
     expect(dropzone).toHaveAttribute('aria-describedby', alert.id);
+  });
+
+  it('clears a rejection five seconds after it is shown', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(<Dropzone accepts={['.json']} onDrop={vi.fn()} />);
+      const dropzone = screen.getByRole('button', { name: 'Upload file' });
+
+      dropFile(
+        dropzone,
+        new File(['text'], 'notes.txt', { type: 'text/plain' }),
+      );
+      const alert = await screen.findByRole('alert');
+      // The rejection rendered outside act(); let its effects run, which is
+      // where the five seconds start.
+      await act(async () => {});
+
+      act(() => vi.advanceTimersByTime(4000));
+      expect(dropzone).toHaveAttribute('aria-describedby', alert.id);
+
+      act(() => vi.advanceTimersByTime(1500));
+      expect(dropzone).not.toHaveAttribute('aria-describedby');
+      // The message then animates out.
+      await waitFor(() =>
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('exposes busy state and reports import failures', async () => {

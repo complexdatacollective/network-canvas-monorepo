@@ -573,6 +573,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
     return () => {
       active = false;
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a change of security mode is the trigger to read durability again, as above; its value is not needed
   }, [mode]);
 
   return (

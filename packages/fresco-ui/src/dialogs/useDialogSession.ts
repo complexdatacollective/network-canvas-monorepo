@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 /**
  * One opening of a dialog whose CONTENT is the thing being edited, plus
@@ -49,21 +49,30 @@ export type DialogSessionControls<T> = {
 export function useDialogSession<T>(): DialogSessionControls<T> {
   const [session, setSession] = useState<DialogSession<T> | null>(null);
 
-  return {
-    session,
-    openSession: (next) => setSession({ ...next, open: true }),
-    closeSession: () =>
+  // Stable, so an effect that opens or closes the dialog can list them
+  // without re-running on every render.
+  const openSession = useCallback(
+    (next: T) => setSession({ ...next, open: true }),
+    [],
+  );
+  const closeSession = useCallback(
+    () =>
       setSession((current) =>
         current === null ? null : { ...current, open: false },
       ),
-    /**
-     * Guarded on the session still being CLOSED, so that this can only ever
-     * drop the session it was reporting on. Reopening during an exit cancels
-     * that exit rather than completing it, so the guard is not reachable
-     * today — it is here because "drop whatever is open" would be wrong the
-     * moment that stopped being true.
-     */
-    onSessionExited: () =>
-      setSession((current) => (current?.open === false ? null : current)),
-  };
+    [],
+  );
+  /**
+   * Guarded on the session still being CLOSED, so that this can only ever
+   * drop the session it was reporting on. Reopening during an exit cancels
+   * that exit rather than completing it, so the guard is not reachable
+   * today — it is here because "drop whatever is open" would be wrong the
+   * moment that stopped being true.
+   */
+  const onSessionExited = useCallback(
+    () => setSession((current) => (current?.open === false ? null : current)),
+    [],
+  );
+
+  return { session, openSession, closeSession, onSessionExited };
 }

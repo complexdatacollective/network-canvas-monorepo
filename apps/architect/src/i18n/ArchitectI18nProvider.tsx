@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 
@@ -37,9 +38,16 @@ type LocalePreference = {
 
 const PreferenceContext = createContext<LocalePreference | null>(null);
 
+// The browser's languages, which decide the automatic entry, announce a change
+// with `languagechange`.
+const subscribeToLanguageChange = (onChange: () => void) => {
+  window.addEventListener('languagechange', onChange);
+  return () => window.removeEventListener('languagechange', onChange);
+};
+const readAutomaticLocale = () => resolveDeviceLocale(null);
+
 export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState(readLocalePreference);
-  const [browserRevision, setBrowserRevision] = useState(0);
   const [saveState, setSaveState] =
     useState<LocalePreference['saveState']>('idle');
 
@@ -60,33 +68,28 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const languageChanged = () =>
-      setBrowserRevision((revision) => revision + 1);
     const preferenceChanged = (event: StorageEvent) => {
       if (event.key !== ARCHITECT_LOCALE_KEY && event.key !== null) return;
       setPreference(readLocalePreference());
       setSaveState('idle');
     };
-    window.addEventListener('languagechange', languageChanged);
     window.addEventListener('storage', preferenceChanged);
     return () => {
-      window.removeEventListener('languagechange', languageChanged);
       window.removeEventListener('storage', preferenceChanged);
     };
   }, []);
 
-  const { locale, automaticLocale } = useMemo(() => {
-    // The event revision invalidates browser negotiation only; explicit
-    // preferences still win, including the non-persisted development locale.
-    void browserRevision;
-    return {
-      locale:
-        import.meta.env.DEV && preference === PSEUDO_LOCALE
-          ? PSEUDO_LOCALE
-          : resolveDeviceLocale(preference),
-      automaticLocale: resolveDeviceLocale(null),
-    };
-  }, [preference, browserRevision]);
+  const automaticLocale = useSyncExternalStore(
+    subscribeToLanguageChange,
+    readAutomaticLocale,
+  );
+  // A change of browser language re-renders through `automaticLocale`, and
+  // only matters here when no preference decides the language; explicit
+  // preferences still win, including the non-persisted development locale.
+  const locale =
+    import.meta.env.DEV && preference === PSEUDO_LOCALE
+      ? PSEUDO_LOCALE
+      : resolveDeviceLocale(preference);
   const value = useMemo(
     () => ({ preference, automaticLocale, saveState, setLocale }),
     [preference, automaticLocale, saveState, setLocale],

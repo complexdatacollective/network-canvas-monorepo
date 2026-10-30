@@ -51,6 +51,56 @@ import { useStageSelector } from './useStageSelector';
 const allStored = async (writes: Promise<boolean> | undefined) =>
   (await writes) ?? true;
 
+/**
+ * Runs one navigation attempt with the navigation controls held disabled, and
+ * gives them back however the attempt ends.
+ */
+const whileNavigating = async (
+  setNavigating: (navigating: boolean) => void,
+  attempt: () => Promise<void>,
+) => {
+  setNavigating(true);
+  try {
+    await attempt();
+  } finally {
+    setNavigating(false);
+  }
+};
+
+/**
+ * Before navigation is allowed, we iterate all registered beforeNext handlers
+ * in insertion order. If any returns false, navigation is blocked. If any
+ * returns 'FORCE' (and none returned false), the prompt boundary is skipped.
+ */
+const canNavigate = async (
+  handlers: ReadonlyMap<string, BeforeNextFunction>,
+  direction: Direction,
+  intent: NavigationIntent,
+) => {
+  if (handlers.size === 0) {
+    return true;
+  }
+
+  let hasForce = false;
+  for (const fn of handlers.values()) {
+    const result = await fn(direction, intent);
+
+    invariant(
+      result === true || result === false || result === 'FORCE',
+      `beforeNextFunction must return a boolean or the string 'FORCE'`,
+    );
+
+    if (result === false) {
+      return false;
+    }
+    if (result === 'FORCE') {
+      hasForce = true;
+    }
+  }
+
+  return hasForce ? 'FORCE' : true;
+};
+
 type CurrentInterfaceProps = Omit<StageProps, 'stage'> & {
   stage: ReturnType<typeof getCurrentStage>;
 };
@@ -196,51 +246,20 @@ export default function useInterviewNavigation(
     [],
   ) as RegisterBeforeNext;
 
-  /**
-   * Before navigation is allowed, we iterate all registered beforeNext handlers
-   * in insertion order. If any returns false, navigation is blocked. If any
-   * returns 'FORCE' (and none returned false), the prompt boundary is skipped.
-   */
-  const canNavigate = async (
-    direction: Direction,
-    intent: NavigationIntent,
-  ) => {
-    const handlers = beforeNextHandlers.current;
-    if (handlers.size === 0) {
-      return true;
-    }
-
-    let hasForce = false;
-    for (const fn of handlers.values()) {
-      const result = await fn(direction, intent);
-
-      invariant(
-        result === true || result === false || result === 'FORCE',
-        `beforeNextFunction must return a boolean or the string 'FORCE'`,
-      );
-
-      if (result === false) {
-        return false;
-      }
-      if (result === 'FORCE') {
-        hasForce = true;
-      }
-    }
-
-    return hasForce ? 'FORCE' : true;
-  };
-
   const moveForward = useCallback(async () => {
     if (blocksForward) return;
-    setForceNavigationDisabled(true);
     setHasAttemptedStageNavigation(true);
 
-    try {
+    await whileNavigating(setForceNavigationDisabled, async () => {
       if (!(await allStored(writesSettled()))) {
         setReviewBoundaryReached(false);
         return;
       }
-      const stageAllowsNavigation = await canNavigate('forwards', 'step');
+      const stageAllowsNavigation = await canNavigate(
+        beforeNextHandlers.current,
+        'forwards',
+        'step',
+      );
 
       if (!stageAllowsNavigation) {
         setReviewBoundaryReached(false);
@@ -276,9 +295,7 @@ export default function useInterviewNavigation(
       setForcedStep(null);
 
       setStep(nextStep, meta);
-    } finally {
-      setForceNavigationDisabled(false);
-    }
+    });
   }, [
     blocksForward,
     dispatch,
@@ -295,15 +312,18 @@ export default function useInterviewNavigation(
 
   const moveBackward = useCallback(async () => {
     if (blocksBackward) return;
-    setForceNavigationDisabled(true);
     setHasAttemptedStageNavigation(true);
 
-    try {
+    await whileNavigating(setForceNavigationDisabled, async () => {
       if (!(await allStored(writesSettled()))) {
         setReviewBoundaryReached(false);
         return;
       }
-      const stageAllowsNavigation = await canNavigate('backwards', 'step');
+      const stageAllowsNavigation = await canNavigate(
+        beforeNextHandlers.current,
+        'backwards',
+        'step',
+      );
 
       if (!stageAllowsNavigation) {
         setReviewBoundaryReached(false);
@@ -333,9 +353,7 @@ export default function useInterviewNavigation(
       registerBeforeNext(null);
       setForcedStep(null);
       setStep(previousStep, meta);
-    } finally {
-      setForceNavigationDisabled(false);
-    }
+    });
   }, [
     blocksBackward,
     setStep,
@@ -362,11 +380,10 @@ export default function useInterviewNavigation(
       if (blocksForward && targetIndex > currentStep) return;
       if (blocksBackward && targetIndex < currentStep) return;
 
-      setForceNavigationDisabled(true);
       setHasAttemptedStageNavigation(true);
       const writesUnderWay = writesSettled();
 
-      try {
+      await whileNavigating(setForceNavigationDisabled, async () => {
         const direction: Direction =
           targetIndex > currentStep ? 'forwards' : 'backwards';
 
@@ -385,7 +402,11 @@ export default function useInterviewNavigation(
         }
 
         if (!(await allStored(writesUnderWay))) return;
-        const stageAllowsNavigation = await canNavigate(direction, 'jump');
+        const stageAllowsNavigation = await canNavigate(
+          beforeNextHandlers.current,
+          direction,
+          'jump',
+        );
         if (!stageAllowsNavigation) {
           return;
         }
@@ -413,9 +434,7 @@ export default function useInterviewNavigation(
         setProgress(meta.progress);
         registerBeforeNext(null);
         setStep(targetIndex, meta);
-      } finally {
-        setForceNavigationDisabled(false);
-      }
+      });
     },
     [
       blocksBackward,

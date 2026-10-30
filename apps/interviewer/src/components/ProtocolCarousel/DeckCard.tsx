@@ -338,6 +338,7 @@ function useCardTextBudget({
       mutations.disconnect();
     };
   }, [
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- what the card shows decides which rows are mounted, so each change re-measures and observes the rows afresh; the values themselves are read from the DOM
     name,
     description,
     schemaVersion,

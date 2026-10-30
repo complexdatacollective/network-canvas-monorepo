@@ -163,11 +163,11 @@ function buildInterview(args: StoryArgs): {
 }
 
 const NameGeneratorStoryWrapper = (args: StoryArgs) => {
+  // Keyed on what the args say rather than on the props object, which is new
+  // on every render, so the interview is rebuilt only when a control changes.
   const configKey = JSON.stringify(args);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { interview, demoStageStep } = useMemo(
-    () => buildInterview(args),
+    () => buildInterview(JSON.parse(configKey) as StoryArgs),
     [configKey],
   );
   const rawPayload = useMemo(

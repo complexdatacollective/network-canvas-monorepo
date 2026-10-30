@@ -39,6 +39,7 @@ export const useSingleFlight = <TArgs extends unknown[]>(
         inFlight.current = false;
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- every listed value is read; the rule cannot follow a try/finally and reports each dependency of one as unused
     [operation],
   );
 };

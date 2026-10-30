@@ -205,7 +205,7 @@ export default function TwoFactorSettings({
           description={intl.formatMessage(
             messages.enterYourCurrentAuthenticatorCodeOrA,
           )}
-          footer={(heldOpen) => (
+          renderFooter={(heldOpen) => (
             <>
               <Button onClick={() => setShowDisable(false)} disabled={heldOpen}>
                 {intl.formatMessage(commonMessages.cancel)}
@@ -249,7 +249,7 @@ export default function TwoFactorSettings({
           description={intl.formatMessage(
             messages.enterYourCurrentAuthenticatorCodeToGenerate,
           )}
-          footer={(heldOpen) => (
+          renderFooter={(heldOpen) => (
             <>
               <Button
                 onClick={() => setShowRegenerateVerify(false)}

@@ -61,6 +61,7 @@ export default function useFormReadyToContinue(hasScrolledToBottom: boolean) {
     return () => {
       current = false;
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the answers are the re-run trigger; the check reads them, with their rules, from the store
   }, [storeApi, fieldValues]);
 
   return (

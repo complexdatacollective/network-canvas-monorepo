@@ -1,7 +1,7 @@
 'use client';
 
 import { Menu } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 
 import { IconButton } from '../Button';
 import NavDrawer from '../navigation/NavDrawer';
@@ -121,8 +121,6 @@ const AppArea = ({
   className,
 }: AppAreaProps) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const sidebarRef = useRef<HTMLElement>(null);
-  const hasNavigation = navigation !== undefined;
 
   /**
    * The drawer must not outlive the width that called for it.
@@ -140,9 +138,10 @@ const AppArea = ({
    * presentation, which measures 0×0, and any other size means it is on screen.
    * Stated as an invariant rather than as an edge — whenever the sidebar is
    * showing, the drawer is closed — so it holds however the area got there.
+   * A ref callback, so the observer follows the sidebar itself as it mounts
+   * and unmounts with `navigation`.
    */
-  useEffect(() => {
-    const sidebar = sidebarRef.current;
+  const sidebarRef = useCallback((sidebar: HTMLElement | null) => {
     if (!sidebar) return undefined;
 
     // The sidebar's own realm, for the reason fresco-ui takes an
@@ -157,7 +156,7 @@ const AppArea = ({
     });
     observer.observe(sidebar);
     return () => observer.disconnect();
-  }, [hasNavigation]);
+  }, []);
 
   if (!navigation) {
     return (

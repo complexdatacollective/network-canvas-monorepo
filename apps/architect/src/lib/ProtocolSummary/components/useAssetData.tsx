@@ -46,7 +46,7 @@ const useAssetData = (id: string) => {
         ),
       );
     });
-  }, [data, data?.type, getNetworkAssetVariables, id]);
+  }, [data, getNetworkAssetVariables, id]);
 
   useEffect(() => {
     let isMounted = true;

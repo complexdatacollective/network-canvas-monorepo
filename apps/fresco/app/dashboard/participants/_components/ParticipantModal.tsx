@@ -204,7 +204,7 @@ function ParticipantModal({
             ? intl.formatMessage(messages.copyEditParticipant)
             : intl.formatMessage(messages.copyAddParticipant)
         }
-        footer={(heldOpen) => (
+        renderFooter={(heldOpen) => (
           <>
             <Button
               type="button"
