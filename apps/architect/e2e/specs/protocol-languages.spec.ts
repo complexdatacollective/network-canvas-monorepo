@@ -566,7 +566,7 @@ test('changes the protocol’s languages from the language chooser stage, and th
   const name = page.getByRole('textbox', { name: 'Stage name' });
   await expect(name).toHaveValue(CHOOSER_LABEL.en);
 
-  // The Languages page's own list, with its way to the translation table.
+  // The Languages page's own list, without its way to the translation table.
   const languages = page.getByRole('region', {
     name: 'Languages',
     exact: true,
@@ -576,11 +576,15 @@ test('changes the protocol’s languages from the language chooser stage, and th
     /^French/,
     /^Spanish/,
   ]);
-  const openTable = languages.getByRole('link', {
-    name: 'Open translation table',
-    exact: true,
-  });
-  await expect(openTable).toBeVisible();
+  await expect(
+    languages.getByRole('link', {
+      name: 'Open translation table',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    languages.getByRole('button', { name: /^Edit .* translations$/ }),
+  ).toHaveCount(0);
 
   // Removing a language from a stage that has not been touched leaves nothing
   // to save, and nothing to be asked about on the way out.
@@ -608,24 +612,9 @@ test('changes the protocol’s languages from the language chooser stage, and th
     page.getByRole('button', { name: 'Finished Editing' }),
   ).toBeVisible();
 
-  // Going to the translation table leaves the stage, so its unsaved changes
-  // are confirmed first.
-  await openTable.click();
-  const discard = page.getByRole('dialog', {
-    name: 'Discard unsaved stage changes?',
-  });
-  await expect(discard).toBeVisible();
-  await discard.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(discard).toBeHidden();
-  await expect(page).toHaveURL(/\/protocol\/stage\/choose-language$/);
-  await expect(name).toHaveValue('Pick a language');
-
   await removeLanguage(page, 'French');
   await expect(stageLanguageRow(page, 'fr')).toHaveCount(0);
   await expect(name).toHaveValue('Pick a language');
-  // With one language left the table stays, for the protocol's own words for
-  // the interface.
-  await expect(openTable).toBeVisible();
   await page.getByRole('button', { name: 'Finished Editing' }).click();
   await page.waitForURL(/\/protocol$/);
 
