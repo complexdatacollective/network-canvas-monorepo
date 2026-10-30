@@ -1,5 +1,5 @@
 import { isEqual } from 'es-toolkit';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {
   type InterfaceTextUpdate,
@@ -88,6 +88,95 @@ export function useWriteSharedWording(): (
   const write = useSettingsSectionWrite();
   return useCallback(
     (updates) => write((document) => withUpdates(document, updates)),
+    [write],
+  );
+}
+
+/**
+ * The shared words one wording section writes, held so that switching it off
+ * can wait for them. A word is written as its field is left, so pressing the
+ * switch straight after typing starts a write that is still on its way when
+ * the section decides what to reset: without waiting, it would decide from
+ * the words the protocol held before, and the write would land after the
+ * reset, leaving the researcher's wording behind a section that says Network
+ * Canvas's.
+ */
+export type SharedWordingWrites = Readonly<{
+  /** Writes `updates`, or nothing (undefined) while the section is closing. */
+  write: (
+    updates: readonly InterfaceTextUpdate[],
+  ) => Promise<CodebookWriteOutcome | undefined>;
+  /**
+   * Holds back further writes, waits for those on their way, and gives the
+   * shared words as they now stand, with what those writes applied.
+   */
+  settle: () => Promise<readonly SharedWordingGroup[]>;
+  /** Lets writes through again: the section stayed on, or opened again. */
+  resume: () => void;
+}>;
+
+export function useSharedWordingWrites(
+  shared: readonly SharedWordingGroup[],
+): SharedWordingWrites {
+  const write = useWriteSharedWording();
+  const state = useRef({
+    pending: new Set<Promise<unknown>>(),
+    // Applied since the protocol last showed the shared words: the protocol
+    // holds them, but the words this section was given may not show them yet.
+    applied: [] as InterfaceTextUpdate[],
+    held: false,
+    shared,
+  });
+  useEffect(() => {
+    state.current.shared = shared;
+    state.current.applied = [];
+  }, [shared]);
+
+  return useMemo(
+    () => ({
+      write: (updates) => {
+        const current = state.current;
+        if (current.held) return Promise.resolve(undefined);
+        const outcome = write(updates);
+        const tracked = outcome
+          .then((result) =>
+            result.status === 'applied'
+              ? current.applied.push(...updates)
+              : undefined,
+          )
+          .finally(() => current.pending.delete(tracked));
+        current.pending.add(tracked);
+        return outcome;
+      },
+      settle: async () => {
+        const current = state.current;
+        current.held = true;
+        while (current.pending.size > 0) {
+          await Promise.allSettled(current.pending);
+        }
+        const applied = new Map(
+          current.applied.map(
+            (update) =>
+              [`${update.group}.${update.key}`, update.value] as const,
+          ),
+        );
+        return current.shared.map(({ group, entries }) => ({
+          group,
+          entries: entries.map(
+            ([key, held]) =>
+              [
+                key,
+                applied.has(`${group}.${key}`)
+                  ? applied.get(`${group}.${key}`)
+                  : held,
+              ] as const,
+          ),
+        }));
+      },
+      resume: () => {
+        state.current.held = false;
+      },
+    }),
     [write],
   );
 }

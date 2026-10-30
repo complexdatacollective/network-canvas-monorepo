@@ -1,4 +1,5 @@
 import { screen, waitFor } from '@testing-library/react';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -12,6 +13,30 @@ const SUPPLIED_HINT = 'Scroll to see more questions';
 
 const mountEgoForm = () =>
   renderStageEditor({ stageId: 'ego-form-1', registry: egoFormStageEditor });
+
+/** The ego form, with the first write it sends held until `release`. */
+const mountEgoFormWithHeldWrite = () => {
+  const first = Promise.withResolvers<void>();
+  let held = true;
+  const harness = renderStageEditor({
+    stageId: 'ego-form-1',
+    registry: egoFormStageEditor,
+    adapter: (host) =>
+      host.adapterWith({
+        Submit: (input) =>
+          Effect.flatMap(
+            Effect.promise(async () => {
+              if (held) {
+                held = false;
+                await first.promise;
+              }
+            }),
+            () => host.handle.Submit(input),
+          ),
+      }),
+  });
+  return { harness, release: () => first.resolve() };
+};
 
 /** The ego form's shared hint as the protocol holds it. */
 const heldHint = (harness: ReturnType<typeof mountEgoForm>): unknown => {
@@ -116,5 +141,34 @@ describe('a stage whose only built-in wording is shared', () => {
       expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT }),
     );
     expect(section).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('waits for a shared word still being written before switching off, and resets it', async () => {
+    const { harness, release } = mountEgoFormWithHeldWrite();
+    const section = await screen.findByRole('switch', {
+      name: 'Customize built-in wording',
+    });
+    await harness.user.click(section);
+    const hint = await screen.findByRole('textbox', {
+      name: 'More questions hint',
+    });
+    await waitFor(() => expect(hint).not.toHaveAttribute('readonly'));
+    await harness.user.clear(hint);
+    await harness.user.type(hint, 'More questions below');
+
+    // Leaving the field for the switch starts the write, which is still on
+    // its way when the switch is pressed.
+    await harness.user.click(section);
+    release();
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Use Network Canvas’s wording',
+      }),
+    );
+    await waitFor(() =>
+      expect(section).toHaveAttribute('aria-checked', 'false'),
+    );
+    expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT });
   });
 });

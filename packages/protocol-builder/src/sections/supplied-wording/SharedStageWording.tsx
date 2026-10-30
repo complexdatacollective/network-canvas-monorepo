@@ -21,9 +21,9 @@ import {
   nameInterfaceTextGroup,
 } from '../../localization/interfaceTextNames.ts';
 import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
-import {
-  type SharedWordingGroup,
-  useWriteSharedWording,
+import type {
+  SharedWordingGroup,
+  SharedWordingWrites,
 } from './sharedWordingState.ts';
 
 const messages = defineMessages({
@@ -60,13 +60,20 @@ const problemOf = (
  *
  * The protocol holds them once for all those stages, so they are not part of
  * the stage: a change is written to the protocol as the researcher leaves the
- * group it is in (see `useWriteSharedWording`), and is not undone by
+ * group it is in (through the section's `writes`), and is not undone by
  * discarding the stage's own changes.
  */
 export default function SharedStageWording({
   groups,
-}: Readonly<{ groups: readonly SharedWordingGroup[] }>) {
+  writes,
+}: Readonly<{
+  groups: readonly SharedWordingGroup[];
+  writes: SharedWordingWrites;
+}>) {
   const intl = useAppIntl();
+  // Shown only while the section is on, so showing them again means the
+  // section was switched back on after closing held its writes back.
+  useEffect(() => writes.resume(), [writes]);
   return (
     <>
       <Paragraph>{intl.formatMessage(messages.sharedNote)}</Paragraph>
@@ -75,6 +82,7 @@ export default function SharedStageWording({
           key={group.group}
           group={group}
           named={groups.length > 1}
+          writes={writes}
         />
       ))}
     </>
@@ -84,11 +92,15 @@ export default function SharedStageWording({
 function SharedWordingGroupFields({
   group: { group, entries },
   named,
-}: Readonly<{ group: SharedWordingGroup; named: boolean }>) {
+  writes,
+}: Readonly<{
+  group: SharedWordingGroup;
+  named: boolean;
+  writes: SharedWordingWrites;
+}>) {
   const intl = useAppIntl();
   const { readOnly } = useStageEditorForm();
   const localization = useProtocolLocalization();
-  const write = useWriteSharedWording();
   const headingId = useId();
 
   // What the researcher has typed and the protocol does not hold yet, by
@@ -128,7 +140,9 @@ function SharedWordingGroupFields({
         : [{ group, key, value }];
     });
     if (updates.length === 0) return;
-    const outcome = await write(updates);
+    const outcome = await writes.write(updates);
+    // Held back: the section is closing and resets these words itself.
+    if (outcome === undefined) return;
     setRefusals((current) => {
       const next = new Map(current);
       for (const { key } of updates) {
@@ -137,7 +151,7 @@ function SharedWordingGroupFields({
       }
       return next;
     });
-  }, [group, intl, localization, readOnly, write]);
+  }, [group, intl, localization, readOnly, writes]);
 
   // Leaving the editor with focus still in a field writes what it holds.
   const flushOnLeave = useRef(flush);

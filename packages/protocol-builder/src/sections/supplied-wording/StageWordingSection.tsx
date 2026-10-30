@@ -34,7 +34,9 @@ import SharedStageWording from './SharedStageWording.tsx';
 import {
   sharedWordingChanges,
   type SharedWordingGroup,
+  type SharedWordingWrites,
   useSharedStageWording,
+  useSharedWordingWrites,
   useWriteSharedWording,
 } from './sharedWordingState.ts';
 import { stageWordingMessages as messages } from './stageWordingMessages.ts';
@@ -82,6 +84,7 @@ export default function StageWordingSection({
   const supplied = useSuppliedStageWording(stageType);
   const shared = useSharedStageWording(stageType);
   const writeShared = useWriteSharedWording();
+  const sharedWrites = useSharedWordingWrites(shared);
 
   const differsFromSupplied = useCallback(
     (read: (path: string) => unknown) =>
@@ -115,7 +118,17 @@ export default function StageWordingSection({
     if (supplied === undefined || localization === undefined) return false;
     const liveValue = (path: string) =>
       stageAnswerAt(storeApi.getState(), committedFields, path);
-    const sharedChanges = sharedWordingChanges(shared, localization);
+    // A shared word written as its field was left, by the same press that
+    // reached this switch, counts: decided from what it will hold, and not
+    // landing after the reset.
+    const sharedChanges = sharedWordingChanges(
+      await sharedWrites.settle(),
+      localization,
+    );
+    const stayOn = () => {
+      sharedWrites.resume();
+      return false;
+    };
     if (differsFromSupplied(liveValue) || sharedChanges.length > 0) {
       const confirmed = await confirm({
         title: intl.formatMessage(messages.switchOffTitle),
@@ -129,7 +142,7 @@ export default function StageWordingSection({
         intent: 'warning',
         onConfirm: () => undefined,
       });
-      if (confirmed !== true) return false;
+      if (confirmed !== true) return stayOn();
     }
 
     // The shared words first, since they are written at once and can be
@@ -138,7 +151,7 @@ export default function StageWordingSection({
       const outcome = await writeShared(sharedChanges);
       if (outcome.status !== 'applied') {
         reportRefusedWrite(outcome.message);
-        return false;
+        return stayOn();
       }
     }
 
@@ -158,7 +171,7 @@ export default function StageWordingSection({
         value,
       })),
     );
-    if (refused) return false;
+    if (refused) return stayOn();
     const { fields, dormantValues } = storeApi.getState();
     for (const { path, value } of resets) {
       if (!fields.has(path) && !dormantValues.has(path)) continue;
@@ -174,7 +187,7 @@ export default function StageWordingSection({
     localization,
     paths,
     reportRefusedWrite,
-    shared,
+    sharedWrites,
     storeApi,
     supplied,
     writeShared,
@@ -194,9 +207,9 @@ export default function StageWordingSection({
       {shared.length === 0 ? (
         children
       ) : paths.length === 0 ? (
-        <SharedStageWording groups={shared} />
+        <SharedStageWording groups={shared} writes={sharedWrites} />
       ) : (
-        <WordingParts paths={paths} shared={shared}>
+        <WordingParts paths={paths} shared={shared} writes={sharedWrites}>
           {children}
         </WordingParts>
       )}
@@ -222,10 +235,12 @@ const refusesSetting = (issuePath: readonly PropertyKey[], path: string) =>
 function WordingParts({
   paths,
   shared,
+  writes,
   children,
 }: Readonly<{
   paths: readonly string[];
   shared: readonly SharedWordingGroup[];
+  writes: SharedWordingWrites;
   children: ReactNode;
 }>) {
   const intl = useAppIntl();
@@ -259,7 +274,7 @@ function WordingParts({
     {
       value: SHARED,
       title: messages.sharedHeading,
-      body: <SharedStageWording groups={shared} />,
+      body: <SharedStageWording groups={shared} writes={writes} />,
     },
   ];
 
