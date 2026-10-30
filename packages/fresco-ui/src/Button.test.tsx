@@ -123,7 +123,7 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Disabled action' });
 
     expect(button).toBeDisabled();
-    expect(button).toHaveClass('ui-disabled:[&>span]:bg-[length:0%_2px]!');
+    expect(button).toHaveClass('ui-disabled:[&>span]:bg-size-[0%_2px]!');
   });
 
   it('excludes aria-disabled buttons from hover and press styling', () => {

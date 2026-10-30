@@ -34,7 +34,7 @@
       }
     ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "warn"
+    "tailwindcss/enforce-canonical": "error"
   },
   "overrides": [
     {

@@ -1,10 +1,11 @@
 {
   // The classic apps (architect-classic, interviewer-classic) are frozen
-  // schema 7 codebases: they take fixes, not modernisation. Every rule the
-  // shared configs hold at "warn" is switched off here, so their warnings do
-  // not bury the ones worth acting on elsewhere. Rules at "error" still run.
-  // Extend this after the shared configs; a new "warn" rule added to
-  // `.oxlintrc.json` or `react.json` needs an "off" entry here too.
+  // schema 7 codebases: they take fixes, not modernisation. The rules the
+  // rest of the repo was cleaned up to satisfy are switched off here, because
+  // the classic apps were never brought up to them. Correctness rules and
+  // the other errors not listed here still run. Extend this after the shared
+  // configs; a rule added to or raised in `.oxlintrc.json` or `react.json`
+  // needs an "off" entry here unless the classic apps already pass it.
   "categories": {
     "suspicious": "off"
   },

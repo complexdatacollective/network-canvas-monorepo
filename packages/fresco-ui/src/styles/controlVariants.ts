@@ -451,7 +451,7 @@ export const nativeSelectVariants = cva({
     'appearance-none border-none bg-transparent bg-none p-0 outline-none focus:ring-0',
     'disabled:bg-transparent', // Prevent browser default disabled background from overriding wrapper
     'bg-no-repeat',
-    'bg-[length:1.2em_1.2em]',
+    'bg-size-[1.2em_1.2em]',
     // The chevron belongs at the inline end, on the same edge as the padding
     // that reserves room for it. `background-position` has no logical
     // keywords, so that edge is two physical declarations rather than one
