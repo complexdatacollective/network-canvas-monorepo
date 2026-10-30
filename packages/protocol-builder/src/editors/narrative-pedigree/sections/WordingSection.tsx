@@ -114,8 +114,6 @@ export default function WordingSection() {
   return (
     <StageWordingSection
       stageType={STAGE_TYPE}
-      title={intl.formatMessage(messages.wordingTitle)}
-      description={intl.formatMessage(messages.wordingDescription)}
       paths={[...shown, ...SNAPSHOT_TITLES].map((setting) => setting.path)}
     >
       {supplied !== undefined && (

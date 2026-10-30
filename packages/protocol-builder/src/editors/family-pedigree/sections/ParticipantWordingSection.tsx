@@ -50,7 +50,6 @@ import {
   type WordingGate,
   type WordingGroup,
 } from './participantWordingSettings.ts';
-import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
   COMPLETENESS_PATH,
   NODE_CONFIGURATION_PATHS,
@@ -194,12 +193,7 @@ export default function ParticipantWordingSection() {
   );
 
   return (
-    <StageWordingSection
-      stageType="FamilyPedigree"
-      title={intl.formatMessage(messages.wordingTitle)}
-      description={intl.formatMessage(messages.wordingDescription)}
-      paths={paths}
-    >
+    <StageWordingSection stageType="FamilyPedigree" paths={paths}>
       {supplied !== undefined && (
         <WordingGroups
           openGroups={openGroups}

@@ -26,19 +26,6 @@ type NameGeneratorType =
   | 'NameGeneratorRoster';
 
 export const nameGeneratorWordingMessages = defineMessages({
-  title: {
-    id: 'protocolBuilder.nameGeneratorWording.title',
-    defaultMessage: 'Messages',
-    description:
-      'Heading of the section holding the words a name generator shows a participant about its limits, a roster’s list and its quick-add field. A name generator is a stage that asks the participant to name people.',
-  },
-  description: {
-    id: 'protocolBuilder.nameGeneratorWording.description',
-    defaultMessage:
-      'These start with wording Network Canvas supplies, which you can change. Each one appears only where its limit, panel or field is part of this stage.',
-    description:
-      'Description of the messages section of a name generator. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has.',
-  },
   minNoticeLabel: {
     id: 'protocolBuilder.nameGeneratorWording.minNoticeLabel',
     defaultMessage: 'Minimum not reached',
@@ -132,12 +119,7 @@ function NameGeneratorWordingSection({
   ];
 
   return (
-    <StageWordingSection
-      stageType={stageType}
-      title={intl.formatMessage(nameGeneratorWordingMessages.title)}
-      description={intl.formatMessage(nameGeneratorWordingMessages.description)}
-      paths={paths}
-    >
+    <StageWordingSection stageType={stageType} paths={paths}>
       {supplied !== undefined && (
         <>
           {hasMinimum && (

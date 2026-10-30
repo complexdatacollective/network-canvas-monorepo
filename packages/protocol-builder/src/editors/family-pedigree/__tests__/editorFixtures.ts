@@ -48,14 +48,31 @@ export async function openWordingGroup(
   // The section starts switched off over a single language's supplied
   // wording; its groups are on screen once it is on.
   const section = await screen.findByRole('switch', {
-    name: 'Participant wording',
+    name: 'Customize built-in wording',
   });
   if (section.getAttribute('aria-checked') !== 'true') {
     await harness.user.click(section);
   }
+  await openStageWordingPart(harness);
   const trigger = await screen.findByRole('button', { name });
   await harness.user.click(trigger);
   await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+}
+
+/**
+ * Opens the part of the wording section holding the stage's own groups. The
+ * protocol holds wording every pedigree shares, so the section splits into
+ * the stage's own words and the shared ones, each a part that starts closed.
+ */
+export async function openStageWordingPart(
+  harness: Readonly<{ user: UserEvent }>,
+): Promise<void> {
+  const part = await screen.findByRole('button', {
+    name: 'Specific to this stage',
+  });
+  if (part.getAttribute('aria-expanded') !== 'true') {
+    await harness.user.click(part);
+  }
 }
 
 /** What each group of the participant wording is called on screen. */

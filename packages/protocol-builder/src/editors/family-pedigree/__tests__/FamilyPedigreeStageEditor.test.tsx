@@ -32,6 +32,7 @@ import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
 import { newNominationPromptId } from '../sections/NominationPromptsSection.tsx';
 import {
   familyPedigreeEditor,
+  openStageWordingPart,
   openWordingGroup,
   CHECKLIST_WORDING_GROUP_TITLE,
   PARTICIPANT_WORDING_GROUP_TITLES,
@@ -60,7 +61,7 @@ const SECTIONS = [
   'Wording',
   'Additional person fields',
   'Completeness',
-  'Participant wording',
+  'Customize built-in wording',
   'Nomination prompts',
   'Skip logic',
   'Interviewer guidance',
@@ -1135,6 +1136,7 @@ describe('the completeness requirement', () => {
     addFamilyMemberVariables(harness, {
       relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
     });
+    await openStageWordingPart(harness);
     await screen.findByRole('button', { name: 'Drawing the family' });
     expect(
       screen.queryByRole('button', { name: CHECKLIST_WORDING_GROUP_TITLE }),
@@ -1169,6 +1171,7 @@ describe('the completeness requirement', () => {
 
     await switchOn(harness);
     await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+    await openStageWordingPart(harness);
     expect(
       await screen.findByRole('button', {
         name: CHECKLIST_WORDING_GROUP_TITLE,
@@ -1661,6 +1664,7 @@ describe('the participant wording', () => {
   it('opens with every group closed and none of their fields on screen', async () => {
     const harness = openFixture();
     await harness.opened();
+    await openStageWordingPart(harness);
 
     for (const name of PARTICIPANT_WORDING_GROUP_TITLES) {
       expect(await group(name)).toHaveAttribute('aria-expanded', 'false');
@@ -1845,13 +1849,19 @@ describe('the participant wording', () => {
       editor: familyPedigreeEditor,
     });
     await harness.opened();
-    const trigger = await group('Connecting people');
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    // The stage's own part of the section, and the group inside it, start
+    // closed, and both open over the refusal.
+    const part = await group('Specific to this stage');
+    expect(part).toHaveAttribute('aria-expanded', 'false');
 
     expect(await harness.submit()).toBeNull();
 
-    await waitFor(() =>
-      expect(trigger).toHaveAttribute('aria-expanded', 'true'),
+    await waitFor(() => expect(part).toHaveAttribute('aria-expanded', 'true'));
+    await waitFor(async () =>
+      expect(await group('Connecting people')).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      ),
     );
     expect(
       await screen.findByText('Connect question', { selector: FIELD_LABEL }),

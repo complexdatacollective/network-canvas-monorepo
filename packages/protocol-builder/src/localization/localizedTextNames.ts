@@ -32,6 +32,7 @@ import { nameGeneratorWordingMessages } from '../sections/name-generator-wording
 import { pageContentMessages } from '../sections/page-content/PageContentSection.tsx';
 import { nodePanelsMessages } from '../sections/panels/NodePanelsSection.tsx';
 import { promptsSectionMessages } from '../sections/PromptsSection.tsx';
+import { stageWordingMessages } from '../sections/supplied-wording/stageWordingMessages.ts';
 import { isStageType } from '../stage-types.ts';
 import {
   nameInterfaceText,
@@ -302,16 +303,10 @@ const contentItemRules = (
 const PAGE_CONTENT: Step = [0, words(pageContentMessages.pageTitle)];
 const FINISH_SCREEN: Step = [0, words(finishSessionMessages.closingTitle)];
 const FINISHED_SCREEN: Step = [0, words(finishSessionMessages.finishedTitle)];
-const FINISHING: Step = [0, words(finishSessionMessages.finishingTitle)];
-const NAME_GENERATOR_WORDING: Step = [
-  0,
-  words(nameGeneratorWordingMessages.title),
-];
-const GEOSPATIAL_WORDING: Step = [0, words(geospatialWordingMessages.title)];
-const LANGUAGE_CHOOSER_WORDING: Step = [
-  0,
-  words(languageChooserMessages.wordingTitle),
-];
+const FINISHING: Step = [0, words(stageWordingMessages.title)];
+const NAME_GENERATOR_WORDING: Step = [0, words(stageWordingMessages.title)];
+const GEOSPATIAL_WORDING: Step = [0, words(stageWordingMessages.title)];
+const LANGUAGE_CHOOSER_WORDING: Step = [0, words(stageWordingMessages.title)];
 
 /** The limit and panel words a name generator stage holds, by setting. */
 const NAME_GENERATOR_LIMIT_RULES: readonly Rule[] = [
@@ -378,10 +373,10 @@ const PEDIGREE_PERSON_FIELD: Step = [
 ];
 
 /**
- * The Participant wording section: the whole section, then the group a
+ * The Customize built-in wording section: the whole section, then the group a
  * setting sits in, then its label.
  */
-const PEDIGREE_WORDING: Step = [0, words(familyPedigreeMessages.wordingTitle)];
+const PEDIGREE_WORDING: Step = [0, words(stageWordingMessages.title)];
 const PEDIGREE_WORDING_DRAWING: Step = [
   1,
   words(familyPedigreeMessages.wordingDrawingTitle),
@@ -396,7 +391,7 @@ const PEDIGREE_WORDING_ADDING: Step = [
 ];
 /**
  * The checklist's words, which `completeness` holds beside its settings and
- * the Participant wording section shows.
+ * the Customize built-in wording section shows.
  */
 const PEDIGREE_WORDING_CHECKLIST: Step = [
   1,
@@ -467,32 +462,32 @@ const settingRule = (
 const COMPOSER_WORDING = [
   settingRule(
     'addNamePlaceholder',
-    composerMessages.wordingTitle,
+    stageWordingMessages.title,
     composerMessages.addNamePlaceholderLabel,
   ),
   settingRule(
     'overtakenEditNotice',
-    composerMessages.wordingTitle,
+    stageWordingMessages.title,
     composerMessages.overtakenEditNoticeLabel,
   ),
   settingRule(
     'groupsHeading',
-    composerMessages.wordingTitle,
+    stageWordingMessages.title,
     composerMessages.groupsHeadingLabel,
   ),
   settingRule(
     'tooltips.addPerson',
-    composerMessages.wordingTitle,
+    stageWordingMessages.title,
     composerMessages.addNodeTooltipLabel,
   ),
   settingRule(
     'tooltips.automaticLayout',
-    composerMessages.wordingTitle,
+    stageWordingMessages.title,
     composerMessages.automaticLayoutTooltipLabel,
   ),
   settingRule(
     'tooltips.drawConnection',
-    composerMessages.wordingTitle,
+    stageWordingMessages.title,
     composerMessages.drawConnectionTooltipLabel,
   ),
 ];
@@ -500,42 +495,42 @@ const COMPOSER_WORDING = [
 const NARRATIVE_WORDING = [
   settingRule(
     'attributesHeading',
-    narrativeWordingMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativeWordingMessages.attributesHeadingLabel,
   ),
   settingRule(
     'linksHeading',
-    narrativeWordingMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativeWordingMessages.linksHeadingLabel,
   ),
   settingRule(
     'groupsHeading',
-    narrativeWordingMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativeWordingMessages.groupsHeadingLabel,
   ),
   settingRule(
     'tooltips.enableDrawing',
-    narrativeWordingMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativeWordingMessages.enableDrawingTooltipLabel,
   ),
   settingRule(
     'tooltips.disableDrawing',
-    narrativeWordingMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativeWordingMessages.disableDrawingTooltipLabel,
   ),
   settingRule(
     'tooltips.freezeAnnotations',
-    narrativeWordingMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativeWordingMessages.freezeAnnotationsTooltipLabel,
   ),
   settingRule(
     'tooltips.unfreezeAnnotations',
-    narrativeWordingMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativeWordingMessages.unfreezeAnnotationsTooltipLabel,
   ),
   settingRule(
     'tooltips.resetAnnotations',
-    narrativeWordingMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativeWordingMessages.resetAnnotationsTooltipLabel,
   ),
 ];
@@ -543,62 +538,62 @@ const NARRATIVE_WORDING = [
 const NARRATIVE_PEDIGREE_WORDING = [
   settingRule(
     'keyHeading',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.keyHeadingLabel,
   ),
   settingRule(
     'saveSnapshot',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.saveSnapshotButtonLabel,
   ),
   settingRule(
     'tooltips.clearFocus',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.clearFocusTooltipLabel,
   ),
   settingRule(
     'conditionText.selectCondition',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.selectConditionLabel,
   ),
   settingRule(
     'conditionText.notation.affected',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.affectedNotationLabel,
   ),
   settingRule(
     'conditionText.notation.obligateAffected',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.obligateAffectedNotationLabel,
   ),
   settingRule(
     'conditionText.notation.obligateCarrier',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.obligateCarrierNotationLabel,
   ),
   settingRule(
     'conditionText.notation.atRiskAffected',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.atRiskAffectedNotationLabel,
   ),
   settingRule(
     'conditionText.notation.atRiskCarrier',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.atRiskCarrierNotationLabel,
   ),
   settingRule(
     'conditionText.notation.unknown',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.unknownNotationLabel,
   ),
   settingRule(
     'conditionText.snapshotCondition',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.snapshotConditionLabel,
   ),
   settingRule(
     'conditionText.snapshotInheritance',
-    narrativePedigreeMessages.wordingTitle,
+    stageWordingMessages.title,
     narrativePedigreeMessages.snapshotInheritanceLabel,
   ),
 ];

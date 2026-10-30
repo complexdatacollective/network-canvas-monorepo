@@ -1,10 +1,14 @@
-import { screen, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
+import {
+  openWordingGroup,
+  type PARTICIPANT_WORDING_GROUP_TITLES,
+  shimMarkdownEditorMeasurement,
+} from '../family-pedigree/__tests__/editorFixtures.ts';
 import { familyPedigreeStageEditor } from '../family-pedigree/FamilyPedigreeStageEditor.ts';
 import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.ts';
 
@@ -25,7 +29,7 @@ type SectionListEditorCase = Readonly<{
    */
   ownedKeys: readonly string[];
   /** A group of settings whose fields are on screen only while it is open. */
-  openGroup?: string;
+  openGroup?: (typeof PARTICIPANT_WORDING_GROUP_TITLES)[number];
 }>;
 
 /**
@@ -48,7 +52,6 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Prompt collection',
       'Side panels',
       'Nomination limits',
-      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -68,7 +71,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Wording',
       'Additional person fields',
       'Completeness',
-      'Participant wording',
+      'Customize built-in wording',
       'Nomination prompts',
       'Skip logic',
       'Interviewer guidance',
@@ -132,9 +135,7 @@ describe('the family editors written as section lists', () => {
       // A group of settings that mounts its fields only while it is open is
       // opened, so the key it edits is on screen.
       if (openGroup !== undefined) {
-        await harness.user.click(
-          await screen.findByRole('button', { name: openGroup }),
-        );
+        await openWordingGroup(harness, openGroup);
       }
       await waitFor(() => expect(harness.ownedKeys()).toEqual([...ownedKeys]));
       await harness.roundTrip({ unowned: [] });

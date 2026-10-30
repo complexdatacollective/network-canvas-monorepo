@@ -187,13 +187,80 @@ const builderRefusal = (error: unknown): CodebookWriteOutcome => {
 };
 
 /**
- * Rewrites one existing codebook section under its own lock.
+ * Rewrites one existing section under its own lock.
  *
  * `next` is handed the document the host holds at the moment the lock is
- * taken, so a draft is laid over the codebook as it stands rather than over
+ * taken, so a draft is laid over the section as it stands rather than over
  * whatever the editor read when it opened. It may refuse the draft by
- * throwing, and that refusal is the researcher's.
+ * throwing, and that refusal is the researcher's. `whenMissing` answers for a
+ * section the protocol does not hold yet, when the caller can bring it into
+ * being.
  */
+async function rewriteSection(
+  { adapter, protocolId }: Pick<CreateDeps, 'adapter' | 'protocolId'>,
+  id: ProtocolSectionId,
+  next: (authoritativeDocument: SectionDoc) => SectionDoc,
+  whenMissing?: () => Promise<CodebookWriteOutcome>,
+): Promise<CodebookWriteOutcome> {
+  const acquired = await attempt(adapter, 'AcquireLock', {
+    protocolId,
+    sectionId: id,
+  });
+  if (!acquired.isSuccess) {
+    if (
+      whenMissing !== undefined &&
+      acquired.refusal?._tag === 'SectionNotFound'
+    ) {
+      return whenMissing();
+    }
+    if (acquired.refusal === undefined) {
+      // An acquire with no refusal on it never reached an answer: the
+      // socket dropped, and the host may well have granted the lock before
+      // it did. Studio's lease is renewed for as long as the tab is there,
+      // so a lock nobody knows about is one the section's collaborators
+      // wait out until the tab closes. Best effort, like every other
+      // release: a host that will not take it leaves nothing to act on.
+      await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
+    }
+    return refused(protocolRefusal(acquired.refusal));
+  }
+  if (acquired.data.lock === 'readOnly') {
+    return refused(heldRefusal(acquired.data.holder));
+  }
+
+  try {
+    let document: SectionDoc;
+    try {
+      document = next(Redacted.value(acquired.data.document));
+    } catch (error: unknown) {
+      return builderRefusal(error);
+    }
+
+    const submitted = await attempt(adapter, 'Submit', {
+      protocolId,
+      requestId: nextRequestId(),
+      sectionId: id,
+      document: Redacted.make(document),
+      revision: acquired.data.revision,
+    });
+    if (submitted.isSuccess) return { status: 'applied', sectionId: id };
+    const { refusal } = submitted;
+    if (refusal?._tag === 'NotLockHolder') {
+      return refused(heldRefusal(refusal.holder));
+    }
+    if (refusal?._tag === 'SectionsLocked') {
+      return refused(blockedRefusal(refusal.blocked));
+    }
+    if (refusal?._tag === 'InvalidShape') {
+      return refused({ kind: 'invalidShape' });
+    }
+    return refused(protocolRefusal(refusal));
+  } finally {
+    await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
+  }
+}
+
+/** Rewrites one existing codebook section under its own lock (see `rewriteSection`). */
 export function useCodebookSectionWrite(): (
   subject: CodebookSubject,
   next: (authoritativeDocument: SectionDoc) => SectionDoc,
@@ -205,76 +272,45 @@ export function useCodebookSectionWrite(): (
   const egoKey = useKeptRequestId();
 
   return useCallback(
-    async (subject, next) => {
-      const id = sectionIdForCodebookSubject(subject);
-      const acquired = await attempt(adapter, 'AcquireLock', {
-        protocolId,
-        sectionId: id,
-      });
-      if (!acquired.isSuccess) {
+    (subject, next) =>
+      rewriteSection(
+        { adapter, protocolId },
+        sectionIdForCodebookSubject(subject),
+        next,
         // The participant's own attributes are the one part of the codebook a
         // protocol need not have yet: a researcher who has asked the
         // participant nothing has no section to lock, and the first attribute
         // is what brings it into being. `create` mints it and serialises the
         // call, so the write that adds the attribute is also the write that
         // creates the section — there is no empty section to write first.
-        if (
-          subject.entity === 'ego' &&
-          acquired.refusal?._tag === 'SectionNotFound'
-        ) {
-          return createEgoCodebook(
-            { adapter, queryClient, protocolId },
-            egoKey,
-            next,
-          );
-        }
-        if (acquired.refusal === undefined) {
-          // An acquire with no refusal on it never reached an answer: the
-          // socket dropped, and the host may well have granted the lock before
-          // it did. Studio's lease is renewed for as long as the tab is there,
-          // so a lock nobody knows about is one the section's collaborators
-          // wait out until the tab closes. Best effort, like every other
-          // release: a host that will not take it leaves nothing to act on.
-          await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
-        }
-        return refused(protocolRefusal(acquired.refusal));
-      }
-      if (acquired.data.lock === 'readOnly') {
-        return refused(heldRefusal(acquired.data.holder));
-      }
-
-      try {
-        let document: SectionDoc;
-        try {
-          document = next(Redacted.value(acquired.data.document));
-        } catch (error: unknown) {
-          return builderRefusal(error);
-        }
-
-        const submitted = await attempt(adapter, 'Submit', {
-          protocolId,
-          requestId: nextRequestId(),
-          sectionId: id,
-          document: Redacted.make(document),
-          revision: acquired.data.revision,
-        });
-        if (submitted.isSuccess) return { status: 'applied', sectionId: id };
-        const { refusal } = submitted;
-        if (refusal?._tag === 'NotLockHolder') {
-          return refused(heldRefusal(refusal.holder));
-        }
-        if (refusal?._tag === 'SectionsLocked') {
-          return refused(blockedRefusal(refusal.blocked));
-        }
-        if (refusal?._tag === 'InvalidShape') {
-          return refused({ kind: 'invalidShape' });
-        }
-        return refused(protocolRefusal(refusal));
-      } finally {
-        await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
-      }
-    },
+        subject.entity === 'ego'
+          ? () =>
+              createEgoCodebook(
+                { adapter, queryClient, protocolId },
+                egoKey,
+                next,
+              )
+          : undefined,
+      ),
     [adapter, egoKey, protocolId, queryClient],
+  );
+}
+
+const SETTINGS = sectionId({ kind: 'settings' });
+
+/**
+ * Rewrites the protocol's settings under their own lock, from a stage editor
+ * changing something every stage shares, such as the interview's shared
+ * words (see `SharedStageWording`). Made at once rather than with the stage's
+ * save, like a codebook change made from a stage.
+ */
+export function useSettingsSectionWrite(): (
+  next: (authoritativeDocument: SectionDoc) => SectionDoc,
+) => Promise<CodebookWriteOutcome> {
+  const { adapter, protocolId } = useProtocolBuilderContext();
+  return useCallback(
+    (next) => rewriteSection({ adapter, protocolId }, SETTINGS, next),
+    [adapter, protocolId],
   );
 }
 

@@ -350,19 +350,6 @@ export const composerMessages = defineMessages({
     description:
       'Shown in place of the list of questions about one kind of connection while it holds none.',
   },
-  wordingTitle: {
-    id: 'protocolBuilder.networkCanvas.composerWordingTitle',
-    defaultMessage: 'Words on the canvas',
-    description:
-      'Heading of the section holding the words a participant reads while building the network on a composer canvas. Also names the section in the editor outline and to assistive technology.',
-  },
-  wordingDescription: {
-    id: 'protocolBuilder.networkCanvas.composerWordingDescription',
-    defaultMessage:
-      'The name box, the warning shown when an undo or redo changed an answer being edited, and the labels of the canvas tools. These start with wording Network Canvas supplies, which you can change.',
-    description:
-      'Description of the words section of a composer canvas. A composer is the canvas where the participant builds their network.',
-  },
   addNamePlaceholderLabel: {
     id: 'protocolBuilder.networkCanvas.composerAddNamePlaceholderLabel',
     defaultMessage: 'Name box placeholder',

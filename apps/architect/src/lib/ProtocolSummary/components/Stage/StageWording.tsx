@@ -3,6 +3,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { geospatialWordingMessages } from '@codaco/protocol-builder/editors/geospatial/geospatialWording';
 import { binBehavioursMessages } from '@codaco/protocol-builder/sections/bin-behaviours/binBehavioursMessages';
 import { nameGeneratorWordingMessages } from '@codaco/protocol-builder/sections/name-generator-wording/nameGeneratorWording';
+import { stageWordingMessages } from '@codaco/protocol-builder/sections/supplied-wording/stageWordingMessages';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
 import MiniTable from '../MiniTable';
@@ -74,9 +75,7 @@ const StageWording = ({ type, configuration }: StageWordingProps) => {
     return null;
   }
   return (
-    <SectionFrame
-      title={intl.formatMessage(nameGeneratorWordingMessages.title)}
-    >
+    <SectionFrame title={intl.formatMessage(stageWordingMessages.title)}>
       <MiniTable rotated rows={rows} />
     </SectionFrame>
   );

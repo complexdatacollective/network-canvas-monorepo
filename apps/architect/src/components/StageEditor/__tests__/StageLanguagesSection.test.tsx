@@ -195,7 +195,7 @@ describe('the language chooser’s languages in Architect', () => {
     ).not.toBeInTheDocument();
     // The sections the package's own editor has, besides its list.
     expect(
-      screen.getByRole('heading', { name: 'Participant wording' }),
+      screen.getByRole('heading', { name: 'Customize built-in wording' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Heading' })).toHaveValue(
       'Choose a language',

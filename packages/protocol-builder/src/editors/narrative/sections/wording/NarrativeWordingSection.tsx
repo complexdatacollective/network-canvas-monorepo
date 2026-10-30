@@ -1,4 +1,3 @@
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { suppliedStageSettingApplies } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
@@ -72,7 +71,6 @@ const DRAWING_TOOLTIPS: readonly WordingSetting[] = [
  * decide which are asked.
  */
 export default function NarrativeWordingSection() {
-  const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
   const supplied = useSuppliedStageWording(STAGE_TYPE);
   const stage = {
@@ -88,8 +86,6 @@ export default function NarrativeWordingSection() {
   return (
     <StageWordingSection
       stageType={STAGE_TYPE}
-      title={intl.formatMessage(messages.wordingTitle)}
-      description={intl.formatMessage(messages.wordingDescription)}
       paths={shown.map((setting) => setting.path)}
     >
       {supplied !== undefined &&

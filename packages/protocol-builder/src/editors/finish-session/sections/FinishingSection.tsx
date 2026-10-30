@@ -6,7 +6,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 
 import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
 import { finishSessionMessages } from './finishSessionMessages.ts';
 import { useFinishMode } from './useFinishMode.ts';
 
@@ -29,9 +29,10 @@ const isUnfinished = (value: unknown): boolean => {
 
 /**
  * The words a participant sees while finishing the interview: the button, the
- * question it asks, and what it says when ending fails. Each is required, and
- * starts with wording Network Canvas supplies in each of the protocol's
- * languages that it has.
+ * question it asks, and what it says when ending fails, in the stage's
+ * "Customize built-in wording" section. Each is required, and starts with
+ * wording Network Canvas supplies in each of the protocol's languages that it
+ * has.
  *
  * Only a stage that asks participants to confirm asks the question, so that
  * field is absent in automatic mode, unless it was left blank: the stage still
@@ -55,11 +56,13 @@ export default function FinishingSection() {
     finishMode === 'confirmation' || needsRepair || keptToRepair;
 
   return (
-    <BuilderSection
-      title={intl.formatMessage(finishSessionMessages.finishingTitle)}
-      description={intl.formatMessage(
-        finishSessionMessages.finishingDescription,
-      )}
+    <StageWordingSection
+      stageType="FinishSession"
+      paths={
+        asksToConfirm
+          ? [FINISH_LABEL_FIELD, FINISH_CONFIRMATION_FIELD, FINISH_FAILED_FIELD]
+          : [FINISH_LABEL_FIELD, FINISH_FAILED_FIELD]
+      }
     >
       <Field<typeof LocalizedInputField>
         name={FINISH_LABEL_FIELD}
@@ -85,6 +88,6 @@ export default function FinishingSection() {
         wraps
         required={REQUIRED}
       />
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

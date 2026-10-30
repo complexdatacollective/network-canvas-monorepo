@@ -38,7 +38,7 @@ describe('Protocol Summary canvas wording', () => {
       tooltips: { addPerson: { en: 'Add a person' } },
     });
 
-    expect(screen.getByText('Words on the canvas')).toBeInTheDocument();
+    expect(screen.getByText('Customize built-in wording')).toBeInTheDocument();
     expect(
       within(rowFor('Name box placeholder')).getByText('Type a name'),
     ).toBeInTheDocument();

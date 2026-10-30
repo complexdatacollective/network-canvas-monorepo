@@ -134,7 +134,7 @@ describe('the editor for the stage where a participant chooses a language', () =
     const user = userEvent.setup();
     // Off over the supplied wording of a single language.
     await user.click(
-      await screen.findByRole('switch', { name: 'Participant wording' }),
+      await screen.findByRole('switch', { name: 'Customize built-in wording' }),
     );
     // Editable once the editing language is known.
     await waitFor(() =>

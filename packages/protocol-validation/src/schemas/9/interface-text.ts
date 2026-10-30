@@ -558,6 +558,23 @@ const suppliedValue = (
   return value;
 };
 
+/**
+ * Network Canvas's wording for one interface text in the languages `localization`
+ * declares, as a protocol is given it (see `interfaceTextFor`); undefined for
+ * an entry that does not exist.
+ */
+export const suppliedInterfaceText = (
+  group: string,
+  key: string,
+  localization: LocalizationDeclaration,
+): LocalizedString | undefined => {
+  if (!isGroupName(group)) return undefined;
+  const entries: Readonly<Record<string, InterfaceTextEntry | undefined>> =
+    INTERFACE_TEXT_GROUPS[group].entries;
+  const entry = entries[key];
+  return entry === undefined ? undefined : suppliedValue(entry, localization);
+};
+
 const heldText = (protocol: ProtocolDocument): InterfaceText =>
   isRecord(protocol.interfaceText)
     ? (protocol.interfaceText as InterfaceText)

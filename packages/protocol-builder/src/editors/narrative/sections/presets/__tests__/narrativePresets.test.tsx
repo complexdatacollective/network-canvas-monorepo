@@ -44,7 +44,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(harness.outline()).toEqual([
       { title: 'Visualization presets', state: 'Finished' },
       { title: 'Narrative behaviors', state: 'Finished' },
-      { title: 'Words on the canvas', state: 'Switched off' },
+      { title: 'Customize built-in wording', state: 'Switched off' },
     ]);
     expect(screen.getByText('Default layout')).toBeInTheDocument();
   });

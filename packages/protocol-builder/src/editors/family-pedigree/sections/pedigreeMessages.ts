@@ -1591,18 +1591,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the hint explaining that both parents cannot be a new child’s genetic parents because they are recorded with the same sex at birth.',
   },
-  wordingTitle: {
-    id: 'protocolBuilder.pedigree.wording.title',
-    defaultMessage: 'Participant wording',
-    description:
-      'Heading of the section holding the words the participant sees on this stage.',
-  },
-  wordingDescription: {
-    id: 'protocolBuilder.pedigree.wording.description',
-    defaultMessage:
-      'The words the interface shows the participant while they draw their family, in the order they meet them. Each starts with Network Canvas’s wording in each language the protocol has, and you can change it.',
-    description: 'Description of the participant wording section.',
-  },
   wordingDrawingTitle: {
     id: 'protocolBuilder.pedigree.wording.drawingTitle',
     defaultMessage: 'Drawing the family',

@@ -1,18 +1,6 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 
 export const narrativeWordingMessages = defineMessages({
-  wordingTitle: {
-    id: 'protocolBuilder.narrative.wordingTitle',
-    defaultMessage: 'Words on the canvas',
-    description:
-      'Heading of the section holding the words a participant reads on a narrative canvas: the headings of its panels and the labels of its tools. Also names the section in the editor outline and to assistive technology.',
-  },
-  wordingDescription: {
-    id: 'protocolBuilder.narrative.wordingDescription',
-    defaultMessage:
-      'The headings of the highlight, link and group panels, and the labels of the drawing tools. These start with wording Network Canvas supplies, which you can change.',
-    description: 'Description of the words section of a narrative canvas.',
-  },
   attributesHeadingLabel: {
     id: 'protocolBuilder.narrative.attributesHeadingLabel',
     defaultMessage: 'Attributes heading',

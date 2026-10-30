@@ -1,121 +1,206 @@
-import { createElement } from 'react';
+import { isEqual } from 'es-toolkit';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  headingTagBelow,
-  useEnclosingHeadingLevel,
-} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   interfaceTextArguments,
-  type STAGE_TYPE_INTERFACE_TEXT,
+  type LocalizedString,
 } from '@codaco/protocol-validation';
 
-import { LocalizedMessageVersionsSummary } from '../../fields/LocalizedMessageField.tsx';
+import LocalizedMessageField, {
+  localizedMessageProblemText,
+} from '../../fields/LocalizedMessageField.tsx';
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
   nameInterfaceText,
   nameInterfaceTextGroup,
 } from '../../localization/interfaceTextNames.ts';
-import { useEditingLanguage } from '../../localization/ProtocolLocalization.tsx';
-import { useProtocolContext } from '../../state/protocolContext.ts';
+import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
+import {
+  type SharedWordingGroup,
+  useWriteSharedWording,
+} from './sharedWordingState.ts';
 
 const messages = defineMessages({
-  sharedHeading: {
-    id: 'protocolBuilder.stageWording.sharedHeading',
-    defaultMessage: 'Shared by every stage of this kind',
-    description:
-      'Heading, inside a stage’s Wording section, above the words that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, for all those stages.',
-  },
-  sharedDescription: {
-    id: 'protocolBuilder.stageWording.sharedDescription',
+  sharedNote: {
+    id: 'protocolBuilder.stageWording.sharedNote',
     defaultMessage:
-      'These words are the same on every stage of this kind. Change or translate them in the protocol’s translations.',
+      'These words appear on every stage of this kind. Changes to them are saved straight away.',
     description:
-      'Explains the words listed under the heading “Shared by every stage of this kind” in a stage’s Wording section: they are shown here but not edited here, because the protocol holds them once for every such stage; the researcher edits them in the protocol’s translations table.',
-  },
-  noTranslation: {
-    id: 'protocolBuilder.stageWording.noTranslation',
-    defaultMessage: 'Not translated yet',
-    description:
-      'Shown in place of a shared word of the interview, in a stage’s Wording section, when the protocol holds no text for it in the language the researcher is editing in.',
+      'Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, so changing one changes it on all those stages, and the change is saved as soon as the researcher leaves the field rather than when they save the stage.',
   },
 });
 
 /**
- * The words every stage of a kind shows alike, as the protocol holds them in
- * the editing language. Shown, not edited: the protocol holds them once, and
- * changing them here would change every other such stage too, so they are
- * edited with the rest of the protocol's translations. Rendered inside the
- * section, so its heading counts from the section's own.
+ * Why a shared word cannot be saved as it reads, or undefined when it can:
+ * every one the protocol holds needs words in its default language, and one
+ * that shows values has to show them as its setting allows.
+ */
+const problemOf = (
+  group: string,
+  key: string,
+  value: LocalizedString,
+  defaultLocale: string,
+  intl: IntlShape,
+): string | undefined => {
+  if ((value[defaultLocale] ?? '').trim() === '') return REQUIRED;
+  const declaration = interfaceTextArguments(group, key);
+  return declaration === undefined
+    ? undefined
+    : localizedMessageProblemText(value, declaration, intl);
+};
+
+/**
+ * The words every stage of a kind shows alike, edited where the stage is.
+ *
+ * The protocol holds them once for all those stages, so they are not part of
+ * the stage: a change is written to the protocol as the researcher leaves the
+ * group it is in (see `useWriteSharedWording`), and is not undone by
+ * discarding the stage's own changes.
  */
 export default function SharedStageWording({
   groups,
-}: Readonly<{ groups: (typeof STAGE_TYPE_INTERFACE_TEXT)[string] }>) {
+}: Readonly<{ groups: readonly SharedWordingGroup[] }>) {
   const intl = useAppIntl();
-  const { interfaceText } = useProtocolContext();
-  const { locale } = useEditingLanguage();
-  const headingTag = headingTagBelow(useEnclosingHeadingLevel() ?? 'h3');
-  const asCounted =
-    headingTag === 'h4' ? {} : { render: createElement(headingTag) };
+  return (
+    <>
+      <Paragraph>{intl.formatMessage(messages.sharedNote)}</Paragraph>
+      {groups.map((group) => (
+        <SharedWordingGroupFields
+          key={group.group}
+          group={group}
+          named={groups.length > 1}
+        />
+      ))}
+    </>
+  );
+}
 
-  const held = groups.flatMap((group) => {
-    const entries = Object.entries(interfaceText?.[group] ?? {});
-    return entries.length === 0 ? [] : [{ group, entries }];
-  });
-  if (held.length === 0) return null;
+function SharedWordingGroupFields({
+  group: { group, entries },
+  named,
+}: Readonly<{ group: SharedWordingGroup; named: boolean }>) {
+  const intl = useAppIntl();
+  const { readOnly } = useStageEditorForm();
+  const localization = useProtocolLocalization();
+  const write = useWriteSharedWording();
+  const headingId = useId();
+
+  // What the researcher has typed and the protocol does not hold yet, by
+  // entry, and why the protocol would not take it.
+  const [drafts, setDrafts] = useState<ReadonlyMap<string, LocalizedString>>(
+    () => new Map(),
+  );
+  const [refusals, setRefusals] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
+  const latest = useRef({ drafts, entries });
+  latest.current = { drafts, entries };
+
+  // A draft the protocol has caught up with is the protocol's again, so a
+  // collaborator's later change is shown rather than hidden behind it.
+  useEffect(() => {
+    setDrafts((current) => {
+      const caughtUp = [...current].filter(([key, value]) =>
+        isEqual(entries.find(([held]) => held === key)?.[1], value),
+      );
+      if (caughtUp.length === 0) return current;
+      const next = new Map(current);
+      for (const [key] of caughtUp) next.delete(key);
+      return next;
+    });
+  }, [entries]);
+
+  const flush = useCallback(async () => {
+    if (localization === undefined || readOnly) return;
+    const { drafts: pending, entries: held } = latest.current;
+    const updates = [...pending].flatMap(([key, value]) => {
+      const current = held.find(([heldKey]) => heldKey === key)?.[1];
+      return isEqual(current, value) ||
+        problemOf(group, key, value, localization.defaultLocale, intl) !==
+          undefined
+        ? []
+        : [{ group, key, value }];
+    });
+    if (updates.length === 0) return;
+    const outcome = await write(updates);
+    setRefusals((current) => {
+      const next = new Map(current);
+      for (const { key } of updates) {
+        if (outcome.status === 'applied') next.delete(key);
+        else next.set(key, outcome.message);
+      }
+      return next;
+    });
+  }, [group, intl, localization, readOnly, write]);
+
+  // Leaving the editor with focus still in a field writes what it holds.
+  const flushOnLeave = useRef(flush);
+  flushOnLeave.current = flush;
+  useEffect(() => () => void flushOnLeave.current(), []);
+
+  if (localization === undefined) return null;
 
   return (
-    <div className="mt-8">
-      <Heading level="h4" {...asCounted}>
-        {intl.formatMessage(messages.sharedHeading)}
-      </Heading>
-      <Paragraph>{intl.formatMessage(messages.sharedDescription)}</Paragraph>
-      {held.map(({ group, entries }) => (
-        <section
-          key={group}
-          aria-label={nameInterfaceTextGroup(intl, group)}
-          className="not-last:mb-6"
-        >
-          {held.length > 1 && (
-            <p className="mb-2 text-sm font-semibold">
-              {nameInterfaceTextGroup(intl, group)}
-            </p>
-          )}
-          <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-x-6 gap-y-2 text-sm">
-            {entries.map(([key, value]) => {
-              const text = locale === undefined ? undefined : value?.[locale];
-              const declaration = interfaceTextArguments(group, key);
-              return (
-                <div key={key} className="contents">
-                  <dt className="font-semibold">
-                    {nameInterfaceText(intl, key)}
-                  </dt>
-                  {text === undefined || text === '' ? (
-                    <dd className="text-current/70 italic">
-                      {intl.formatMessage(messages.noTranslation)}
-                    </dd>
-                  ) : (
-                    <dd lang={locale}>
-                      {declaration === undefined || locale === undefined ? (
-                        text
-                      ) : (
-                        // Its placeholders as the pills the editor draws.
-                        <LocalizedMessageVersionsSummary
-                          message={text}
-                          declaration={declaration}
-                          locale={locale}
-                        />
-                      )}
-                    </dd>
-                  )}
-                </div>
-              );
-            })}
-          </dl>
-        </section>
-      ))}
-    </div>
+    <section
+      aria-label={named ? undefined : nameInterfaceTextGroup(intl, group)}
+      aria-labelledby={named ? headingId : undefined}
+      className="not-last:mb-8"
+      // The change is written as focus leaves a field, not on every
+      // keystroke: each write is a revision of the protocol.
+      onBlur={() => void flush()}
+    >
+      {named && (
+        <p id={headingId} className="mb-4 font-semibold">
+          {nameInterfaceTextGroup(intl, group)}
+        </p>
+      )}
+      {entries.map(([key, held]) => {
+        const value = drafts.get(key) ?? held;
+        const drafted = drafts.get(key);
+        const problem =
+          drafted === undefined
+            ? undefined
+            : problemOf(group, key, drafted, localization.defaultLocale, intl);
+        const refusal = refusals.get(key);
+        const errors = [problem, refusal].filter(
+          (error): error is string => error !== undefined,
+        );
+        const onChange = (next: LocalizedString | undefined) => {
+          setDrafts((current) => new Map(current).set(key, next ?? {}));
+        };
+        const declaration = interfaceTextArguments(group, key);
+        const common = {
+          name: `interfaceText.${group}.${key}`,
+          label: nameInterfaceText(intl, key),
+          value,
+          onChange,
+          readOnly,
+          required: true,
+          errors,
+          showErrors: errors.length > 0,
+        };
+        return declaration === undefined ? (
+          <UnconnectedField<typeof LocalizedInputField>
+            key={key}
+            {...common}
+            component={LocalizedInputField}
+            wraps
+          />
+        ) : (
+          <UnconnectedField<typeof LocalizedMessageField>
+            key={key}
+            {...common}
+            component={LocalizedMessageField}
+            arguments={declaration}
+          />
+        );
+      })}
+    </section>
   );
 }

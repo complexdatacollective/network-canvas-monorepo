@@ -1,5 +1,3 @@
-import { useAppIntl } from '@codaco/app-i18n/react';
-
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { WordingRow, type WordingSetting } from '../../../form/WordingRow.tsx';
 import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
@@ -23,17 +21,11 @@ const PATHS = [HEADING.path];
  * it changes as they choose.
  */
 export default function LanguageChooserWordingSection() {
-  const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
   const supplied = useSuppliedStageWording('LanguageChooser');
 
   return (
-    <StageWordingSection
-      stageType="LanguageChooser"
-      title={intl.formatMessage(messages.wordingTitle)}
-      description={intl.formatMessage(messages.wordingDescription)}
-      paths={PATHS}
-    >
+    <StageWordingSection stageType="LanguageChooser" paths={PATHS}>
       {supplied !== undefined && (
         <WordingRow
           setting={HEADING}

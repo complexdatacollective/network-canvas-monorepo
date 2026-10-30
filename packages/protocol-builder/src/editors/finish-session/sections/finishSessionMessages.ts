@@ -93,19 +93,6 @@ export const finishSessionMessages = defineMessages({
     description:
       'Label of the field holding the text, heading included, a participant reads once the interview has finished.',
   },
-  finishingTitle: {
-    id: 'protocolBuilder.finishSession.finishingTitle',
-    defaultMessage: 'Finishing the interview',
-    description:
-      'Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, and the message when finishing fails.',
-  },
-  finishingDescription: {
-    id: 'protocolBuilder.finishSession.finishingDescription',
-    defaultMessage:
-      'These start with wording Network Canvas supplies, which you can change.',
-    description:
-      'Description of the finishing section. Each field starts with supplied wording in each of the protocol’s languages that Network Canvas has it in.',
-  },
   finishLabelLabel: {
     id: 'protocolBuilder.finishSession.finishLabelLabel',
     defaultMessage: 'Finish button',

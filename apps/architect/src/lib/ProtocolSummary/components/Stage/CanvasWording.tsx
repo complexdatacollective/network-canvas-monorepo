@@ -3,6 +3,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { narrativePedigreeMessages } from '@codaco/protocol-builder/editors/narrative-pedigree/narrativePedigreeMessages';
 import { narrativeWordingMessages } from '@codaco/protocol-builder/editors/narrative/narrativeWordingMessages';
 import { composerMessages } from '@codaco/protocol-builder/editors/network-composer/composerMessages';
+import { stageWordingMessages } from '@codaco/protocol-builder/sections/supplied-wording/stageWordingMessages';
 import {
   type LocalizedString,
   suppliedStageSettingApplies,
@@ -31,10 +32,10 @@ const wording = (
 
 /**
  * The stage types whose words Network Canvas supplies, with the settings the
- * editor's Words on the canvas section offers, in the editor's order.
+ * editor's Customize built-in wording section offers, in the editor's order.
  */
 const WORDING: Partial<Record<string, WordingSpec>> = {
-  NetworkComposer: wording(composerMessages.wordingTitle, [
+  NetworkComposer: wording(stageWordingMessages.title, [
     {
       path: 'addNamePlaceholder',
       label: composerMessages.addNamePlaceholderLabel,
@@ -54,7 +55,7 @@ const WORDING: Partial<Record<string, WordingSpec>> = {
       label: composerMessages.drawConnectionTooltipLabel,
     },
   ]),
-  Narrative: wording(narrativeWordingMessages.wordingTitle, [
+  Narrative: wording(stageWordingMessages.title, [
     {
       path: 'attributesHeading',
       label: narrativeWordingMessages.attributesHeadingLabel,
@@ -85,7 +86,7 @@ const WORDING: Partial<Record<string, WordingSpec>> = {
       label: narrativeWordingMessages.resetAnnotationsTooltipLabel,
     },
   ]),
-  NarrativePedigree: wording(narrativePedigreeMessages.wordingTitle, [
+  NarrativePedigree: wording(stageWordingMessages.title, [
     { path: 'keyHeading', label: narrativePedigreeMessages.keyHeadingLabel },
     {
       path: 'saveSnapshot',

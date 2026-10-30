@@ -462,18 +462,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Body of the message refusing a confirmed change of source pedigree whose chosen stage is no longer offered. Addressed to the researcher authoring the protocol, and it says what did NOT happen: the change was not applied and the disease mappings beside it were not thrown away.',
   },
-  wordingTitle: {
-    id: 'protocolBuilder.narrativePedigree.wordingTitle',
-    defaultMessage: 'Words on the pedigree',
-    description:
-      'Heading of the section holding the words a participant reads on a narrative pedigree: its key, its condition panel, its tooltips and its snapshot titles. Also names the section in the editor outline and to assistive technology.',
-  },
-  wordingDescription: {
-    id: 'protocolBuilder.narrativePedigree.wordingDescription',
-    defaultMessage:
-      'The key, the condition panel, the tooltips and the snapshot titles. These start with wording Network Canvas supplies, which you can change.',
-    description: 'Description of the words section of a narrative pedigree.',
-  },
   keyHeadingLabel: {
     id: 'protocolBuilder.narrativePedigree.keyHeadingLabel',
     defaultMessage: 'Key heading',

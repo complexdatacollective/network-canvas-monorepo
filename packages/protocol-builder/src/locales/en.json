@@ -1839,14 +1839,6 @@
     "defaultMessage": "Finished screen",
     "description": "Heading of the section where a researcher writes what a participant reads once the interview has finished."
   },
-  "protocolBuilder.finishSession.finishingDescription": {
-    "defaultMessage": "These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the finishing section. Each field starts with supplied wording in each of the protocol’s languages that Network Canvas has it in."
-  },
-  "protocolBuilder.finishSession.finishingTitle": {
-    "defaultMessage": "Finishing the interview",
-    "description": "Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, and the message when finishing fails."
-  },
   "protocolBuilder.finishSession.modeAutomatic": {
     "defaultMessage": "Finish automatically",
     "description": "Option: the interview finishes as soon as participants reach this screen, with no closing screen, button or question."
@@ -2463,10 +2455,6 @@
     "defaultMessage": "Starting zoom must be between {min, number} and {max, number}.",
     "description": "Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22. A zoom between two whole numbers is ordinary — a map panned into place hands back a fraction — so only the ends are named."
   },
-  "protocolBuilder.geospatialWording.description": {
-    "defaultMessage": "These start with wording Network Canvas supplies, which you can change. The search messages appear only when the map has a search.",
-    "description": "Description of the messages section of a map. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
-  },
   "protocolBuilder.geospatialWording.offlineHint": {
     "defaultMessage": "Shown while the device is offline, because the map cannot load without a connection.",
     "description": "Guidance under the field holding the offline message of a map."
@@ -2490,10 +2478,6 @@
   "protocolBuilder.geospatialWording.searchFailedLabel": {
     "defaultMessage": "Search failed",
     "description": "Label of the field holding the message shown when a map search could not run."
-  },
-  "protocolBuilder.geospatialWording.title": {
-    "defaultMessage": "Messages",
-    "description": "Heading of the section holding the words a map shows a participant: when it is offline, when it cannot be drawn, its outside-areas button, and its search. A map is a Geospatial stage."
   },
   "protocolBuilder.geospatialWording.unavailableHint": {
     "defaultMessage": "Shown in place of the map when it cannot be drawn, and says what to try.",
@@ -2658,14 +2642,6 @@
   "protocolBuilder.languageChooser.singleLanguage": {
     "defaultMessage": "This protocol is written in one language, so participants will see it as their only choice.",
     "description": "Shown under the list of languages when the protocol has only one language, so this stage offers participants a single option."
-  },
-  "protocolBuilder.languageChooser.wordingDescription": {
-    "defaultMessage": "This starts with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the wording section of the language-choosing stage. Its heading starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
-  },
-  "protocolBuilder.languageChooser.wordingTitle": {
-    "defaultMessage": "Participant wording",
-    "description": "Heading of the section holding the words a participant reads on the stage where they choose the language of their interview."
   },
   "protocolBuilder.localization.defaultLanguage": {
     "defaultMessage": "Default",
@@ -3207,10 +3183,6 @@
     "defaultMessage": "Everything added",
     "description": "Label of the field holding the message shown when every person on a roster has already been added."
   },
-  "protocolBuilder.nameGeneratorWording.description": {
-    "defaultMessage": "These start with wording Network Canvas supplies, which you can change. Each one appears only where its limit, panel or field is part of this stage.",
-    "description": "Description of the messages section of a name generator. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
-  },
   "protocolBuilder.nameGeneratorWording.maxNoticeHint": {
     "defaultMessage": "Shown once the participant has named the most people this stage allows.",
     "description": "Guidance under the field holding the message shown when the stage’s maximum number of people has been named."
@@ -3234,10 +3206,6 @@
   "protocolBuilder.nameGeneratorWording.quickAddHintLabel": {
     "defaultMessage": "Quick-add hint",
     "description": "Label of the field holding the line shown beside the quick-add name field, telling the participant how to finish."
-  },
-  "protocolBuilder.nameGeneratorWording.title": {
-    "defaultMessage": "Messages",
-    "description": "Heading of the section holding the words a name generator shows a participant about its limits, a roster’s list and its quick-add field. A name generator is a stage that asks the participant to name people."
   },
   "protocolBuilder.narrative.attributesHeadingHint": {
     "defaultMessage": "Shown only when a preset highlights members.",
@@ -3286,14 +3254,6 @@
   "protocolBuilder.narrative.unfreezeAnnotationsTooltipLabel": {
     "defaultMessage": "Unfreeze annotations tooltip",
     "description": "Label of the setting holding the tooltip of the tool that lets the drawn annotations move again."
-  },
-  "protocolBuilder.narrative.wordingDescription": {
-    "defaultMessage": "The headings of the highlight, link and group panels, and the labels of the drawing tools. These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the words section of a narrative canvas."
-  },
-  "protocolBuilder.narrative.wordingTitle": {
-    "defaultMessage": "Words on the canvas",
-    "description": "Heading of the section holding the words a participant reads on a narrative canvas: the headings of its panels and the labels of its tools. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.narrativePedigree.affectedNotationLabel": {
     "defaultMessage": "Has this condition",
@@ -3627,14 +3587,6 @@
     "defaultMessage": "Not known",
     "description": "Label of the setting holding the key entry for a person whose status for the selected condition is not known."
   },
-  "protocolBuilder.narrativePedigree.wordingDescription": {
-    "defaultMessage": "The key, the condition panel, the tooltips and the snapshot titles. These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the words section of a narrative pedigree."
-  },
-  "protocolBuilder.narrativePedigree.wordingTitle": {
-    "defaultMessage": "Words on the pedigree",
-    "description": "Heading of the section holding the words a participant reads on a narrative pedigree: its key, its condition panel, its tooltips and its snapshot titles. Also names the section in the editor outline and to assistive technology."
-  },
   "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
     "defaultMessage": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
     "description": "Description of the automatic-layout sub-section of a network composer. A force-directed layout is a simulation that spreads members of the network out on the canvas."
@@ -3830,14 +3782,6 @@
   "protocolBuilder.networkCanvas.composerOvertakenEditNoticeLabel": {
     "defaultMessage": "Warning about an overtaken edit",
     "description": "Label of the setting holding the warning a participant sees when an undo or redo has changed an answer they were editing, so their edit has not been saved."
-  },
-  "protocolBuilder.networkCanvas.composerWordingDescription": {
-    "defaultMessage": "The name box, the warning shown when an undo or redo changed an answer being edited, and the labels of the canvas tools. These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the words section of a composer canvas. A composer is the canvas where the participant builds their network."
-  },
-  "protocolBuilder.networkCanvas.composerWordingTitle": {
-    "defaultMessage": "Words on the canvas",
-    "description": "Heading of the section holding the words a participant reads while building the network on a composer canvas. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
     "defaultMessage": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
@@ -5615,10 +5559,6 @@
     "defaultMessage": "Connecting people",
     "description": "Heading of the group of words shown while the participant connects and removes people."
   },
-  "protocolBuilder.pedigree.wording.description": {
-    "defaultMessage": "The words the interface shows the participant while they draw their family, in the order they meet them. Each starts with Network Canvas’s wording in each language the protocol has, and you can change it.",
-    "description": "Description of the participant wording section."
-  },
   "protocolBuilder.pedigree.wording.disconnectConfirmDescription": {
     "defaultMessage": "Remove connection explanation",
     "description": "Label of the explanation that both people stay in the family tree when a connection is removed."
@@ -5818,10 +5758,6 @@
   "protocolBuilder.pedigree.wording.stillTogetherLabel": {
     "defaultMessage": "Still together question",
     "description": "Label of the question asking whether a partnership is still ongoing."
-  },
-  "protocolBuilder.pedigree.wording.title": {
-    "defaultMessage": "Participant wording",
-    "description": "Heading of the section holding the words the participant sees on this stage."
   },
   "protocolBuilder.pedigree.wording.twinZygosityLabel": {
     "defaultMessage": "Identical twins question",
@@ -7623,25 +7559,21 @@
     "defaultMessage": "Preview of {interfaceName}",
     "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
   },
-  "protocolBuilder.stageWording.defaultWhenOff": {
-    "defaultMessage": "Switch this off to use Network Canvas’s wording in every language.",
-    "description": "Follows the description of a stage’s Wording section, which can be switched off. Says what switching it off does: the stage then shows the wording Network Canvas supplies, in each of the protocol’s languages, instead of wording the researcher wrote."
-  },
-  "protocolBuilder.stageWording.noTranslation": {
-    "defaultMessage": "Not translated yet",
-    "description": "Shown in place of a shared word of the interview, in a stage’s Wording section, when the protocol holds no text for it in the language the researcher is editing in."
-  },
-  "protocolBuilder.stageWording.sharedDescription": {
-    "defaultMessage": "These words are the same on every stage of this kind. Change or translate them in the protocol’s translations.",
-    "description": "Explains the words listed under the heading “Shared by every stage of this kind” in a stage’s Wording section: they are shown here but not edited here, because the protocol holds them once for every such stage; the researcher edits them in the protocol’s translations table."
+  "protocolBuilder.stageWording.description": {
+    "defaultMessage": "Optionally edit the wording for interface elements used by this stage type. Default wording is provided for built-in languages.",
+    "description": "Explains the stage editor section titled “Customize built-in wording”. Interface elements are the buttons, hints and messages the participant sees on the stage. Built-in languages are the languages Network Canvas itself supplies this wording in; for other languages the researcher writes it."
   },
   "protocolBuilder.stageWording.sharedHeading": {
     "defaultMessage": "Shared by every stage of this kind",
-    "description": "Heading, inside a stage’s Wording section, above the words that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, for all those stages."
+    "description": "Heading of the part of a stage’s “Customize built-in wording” section holding the words every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage, opened and closed by clicking it. The protocol holds them once, for all those stages."
   },
-  "protocolBuilder.stageWording.sharedTitle": {
-    "defaultMessage": "Participant wording",
-    "description": "Heading of the stage editor section listing the words every stage of this type shows a participant alike, for a stage type that has no wording of its own to edit. Matches the Participant wording section of the other stage types."
+  "protocolBuilder.stageWording.sharedNote": {
+    "defaultMessage": "These words appear on every stage of this kind. Changes to them are saved straight away.",
+    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, so changing one changes it on all those stages, and the change is saved as soon as the researcher leaves the field rather than when they save the stage."
+  },
+  "protocolBuilder.stageWording.specificHeading": {
+    "defaultMessage": "Specific to this stage",
+    "description": "Heading of the part of a stage’s “Customize built-in wording” section holding the words only this stage shows, opened and closed by clicking it. Shown beside the part headed “Shared by every stage of this kind”."
   },
   "protocolBuilder.stageWording.switchOffConfirm": {
     "defaultMessage": "Use Network Canvas’s wording",
@@ -7651,9 +7583,17 @@
     "defaultMessage": "The wording you changed in this section goes back to Network Canvas’s wording, in every language.",
     "description": "Body of the dialog asking a researcher to confirm switching off a stage’s Wording section. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages."
   },
+  "protocolBuilder.stageWording.switchOffSharedDescription": {
+    "defaultMessage": "The wording you changed in this section goes back to Network Canvas’s wording, in every language. That includes the wording shared by every stage of this kind, which changes on all of those stages straight away.",
+    "description": "Body of the dialog asking a researcher to confirm switching off a stage’s “Customize built-in wording” section when they changed some of the words every stage of the same type shares. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages; the shared words change on every such stage, and at once rather than when the stage is saved."
+  },
   "protocolBuilder.stageWording.switchOffTitle": {
     "defaultMessage": "Use Network Canvas’s wording?",
     "description": "Title of the dialog asking a researcher to confirm switching off a stage’s Wording section after they changed some of its wording."
+  },
+  "protocolBuilder.stageWording.title": {
+    "defaultMessage": "Customize built-in wording",
+    "description": "Title of the stage editor section, found on every stage type that has any, where the researcher can change the words Network Canvas supplies for the interface a participant uses on that stage, such as button labels, hints and messages. It can be switched on and off."
   },
   "protocolBuilder.subjectSection.edgeChangeConfirm": {
     "defaultMessage": "Change the edge type",

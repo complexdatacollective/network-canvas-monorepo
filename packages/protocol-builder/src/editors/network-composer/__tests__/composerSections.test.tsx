@@ -2843,7 +2843,7 @@ describe('the groups a network composer divides its decisions into', () => {
       'Node configuration',
       'Editable attributes',
       'Edge configuration',
-      'Words on the canvas',
+      'Customize built-in wording',
     ]);
   });
 

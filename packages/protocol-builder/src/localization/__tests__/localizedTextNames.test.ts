@@ -547,7 +547,7 @@ describe('nameLocalizedText', () => {
         'noneButton',
       ]),
     ).toEqual([
-      { key: '[]', label: 'Participant wording' },
+      { key: '[]', label: 'Customize built-in wording' },
       { key: '["completeness"]', label: 'Completeness checklist' },
       {
         key: '["completeness","itemText","siblings","noneButton"]',

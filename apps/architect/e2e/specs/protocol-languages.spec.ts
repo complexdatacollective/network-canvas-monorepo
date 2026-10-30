@@ -42,9 +42,9 @@ const STAGE_TEXT_ROWS = [
  */
 const ALL_TEXT_ROWS = [
   ...STAGE_TEXT_ROWS,
-  'Finishing the interview › Finish button',
-  'Finishing the interview › Confirmation question',
-  'Finishing the interview › If finishing fails',
+  'Customize built-in wording › Finish button',
+  'Customize built-in wording › Confirmation question',
+  'Customize built-in wording › If finishing fails',
   'Interview navigation › Exit button',
   'Interview navigation › Exit explanation',
   'Interview navigation › Back button',

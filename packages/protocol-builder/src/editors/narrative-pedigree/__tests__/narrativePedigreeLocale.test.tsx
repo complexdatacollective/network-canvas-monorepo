@@ -56,7 +56,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
       'Origen de la genealogía',
       'Asignaciones de enfermedades',
       'Estados de riesgo',
-      'Textos de la genealogía',
+      'Personalizar la redacción predeterminada',
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ]);
