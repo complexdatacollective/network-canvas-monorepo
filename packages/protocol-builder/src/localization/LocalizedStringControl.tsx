@@ -5,9 +5,9 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { FieldValueProps } from '@codaco/fresco-ui/form/Field/types';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
-import { EditingLanguageSwitcher } from '../localization/EditingLanguageSwitcher.tsx';
-import { languageMessages } from '../localization/languageNames.ts';
-import { useLanguageNaming } from '../localization/LanguageNaming.tsx';
+import { EditingLanguageSwitcher } from './EditingLanguageSwitcher.tsx';
+import { languageMessages } from './languageNames.ts';
+import { useLanguageNaming } from './LanguageNaming.tsx';
 import {
   fallbackDependsOnBrowser,
   localeDirection,
@@ -16,8 +16,8 @@ import {
   translationText,
   withMessage,
   withTranslation,
-} from '../localization/localizedText.ts';
-import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
+} from './localizedText.ts';
+import { useEditingLanguage } from './ProtocolLocalization.tsx';
 
 /** One translation, as the text control under the language menu edits it. */
 export type TranslationControl = Readonly<{

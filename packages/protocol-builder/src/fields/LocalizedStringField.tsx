@@ -10,11 +10,11 @@ import {
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
-import DynamicTextField from './DynamicTextField.tsx';
 import {
   LocalizedStringField,
   type UntranslatedNoteOption,
-} from './LocalizedStringControl.tsx';
+} from '../localization/LocalizedStringControl.tsx';
+import DynamicTextField from './DynamicTextField.tsx';
 import OptionLabelField from './OptionLabelField.tsx';
 import RichTextField from './RichTextField.tsx';
 import WrappingTextField from './WrappingTextField.tsx';
