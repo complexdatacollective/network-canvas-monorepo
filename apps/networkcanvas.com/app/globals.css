@@ -14,6 +14,8 @@
 @source '../node_modules/@codaco/fresco-ui/src/**/*.{ts,tsx}';
 /* The interview Shell (protocol gallery preview) is consumed from source too. */
 @source '../node_modules/@codaco/interview/src/**/*.{ts,tsx}';
+/* So are the illustration pieces shared with the docs walkthroughs. */
+@source '../node_modules/@codaco/art/src/**/*.{ts,tsx}';
 
 /* The Fresco theme resets the text scale; re-add the slightly-smaller-than
    -base size used for secondary and meta copy. */

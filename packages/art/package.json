@@ -6,7 +6,14 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./NetworkWeaveBackground": "./src/NetworkWeaveBackground/NetworkWeaveBackground.tsx"
+    "./NetworkWeaveBackground": "./src/NetworkWeaveBackground/NetworkWeaveBackground.tsx",
+    "./illustration/AppTile": "./src/illustration/AppTile.tsx",
+    "./illustration/Badge": "./src/illustration/Badge.tsx",
+    "./illustration/BrowserWindow": "./src/illustration/BrowserWindow.tsx",
+    "./illustration/Cursor": "./src/illustration/Cursor.tsx",
+    "./illustration/DottedPath": "./src/illustration/DottedPath.tsx",
+    "./illustration/motion": "./src/illustration/motion.ts",
+    "./illustration/Confetti": "./src/illustration/Confetti.tsx"
   },
   "scripts": {
     "build-storybook": "storybook build",

@@ -2,7 +2,20 @@
 
 import { useId } from 'react';
 
-import { cx } from '@codaco/fresco-ui/utils/cva';
+import { AppTile, appTileLabelWidth } from '@codaco/art/illustration/AppTile';
+import { Badge } from '@codaco/art/illustration/Badge';
+import {
+  BrowserWindow,
+  browserContent,
+} from '@codaco/art/illustration/BrowserWindow';
+import { DottedPath } from '@codaco/art/illustration/DottedPath';
+import {
+  backOut,
+  inCubic,
+  segment,
+  TAU,
+  useIllustrationClock,
+} from '@codaco/art/illustration/motion';
 
 import {
   ArchitectScene,
@@ -10,14 +23,6 @@ import {
   HomeScene,
   InterviewerScene,
 } from './AppWindowScenes';
-import {
-  backOut,
-  inCubic,
-  outline,
-  segment,
-  TAU,
-  useIllustrationClock,
-} from './illustrationMotion';
 
 const apps = [
   {
@@ -48,25 +53,16 @@ const STILL_TIME = 5.8;
 
 const TILE_X = 100;
 const TILE = 96;
-const HALF = TILE / 2;
-const LABEL_X = HALF + 16;
+const LABEL_X = TILE / 2 + 16;
 
 // The browser window. The scenes are drawn for a 484 × 194 content area at
 // (423, 243); they are scaled to fill this window's content area instead.
 const WINDOW = { x: 440, y: 60, width: 710, height: 336 } as const;
-const BAR_Y = WINDOW.y + 50;
-const CONTENT = {
-  x: WINDOW.x + 3,
-  y: BAR_Y + 3,
-  right: WINDOW.x + WINDOW.width - 3,
-  bottom: WINDOW.y + WINDOW.height - 3,
-} as const;
+const CONTENT = browserContent(WINDOW);
 const SCENE_SCALE = (CONTENT.right - CONTENT.x) / 484;
 const WINDOW_MID_Y = (CONTENT.y + CONTENT.bottom) / 2;
 
 const scenes = [ArchitectScene, InterviewerScene, FrescoScene] as const;
-
-const labelWidth = (name: string) => name.length * 10.5 + 36;
 
 export function NextGenerationIllustration() {
   const { ref, time } = useIllustrationClock(STILL_TIME);
@@ -88,7 +84,6 @@ export function NextGenerationIllustration() {
     const y = app.y + Math.sin((TAU * t) / 2.7 + index) * 3 * k;
     return {
       ...app,
-      labelWidth: labelWidth(app.name),
       opacity: 1 - 0.45 * dim,
       transform: `translate(${TILE_X + nudge} ${y}) scale(${Math.max(
         0.001,
@@ -107,7 +102,7 @@ export function NextGenerationIllustration() {
 
   const active = current >= 0 ? apps[current] : undefined;
   const linkStart = active
-    ? TILE_X + LABEL_X + labelWidth(active.name) + 14
+    ? TILE_X + LABEL_X + appTileLabelWidth(active.name) + 14
     : 0;
   const linkEnd = WINDOW.x - 14;
   const linkMid = (linkStart + linkEnd) / 2;
@@ -129,14 +124,9 @@ export function NextGenerationIllustration() {
       />
       {active ? (
         <g opacity={linkOpacity}>
-          <path
+          <DottedPath
             d={`M${linkStart} ${active.y} C${linkMid} ${active.y} ${linkMid} ${WINDOW_MID_Y} ${linkEnd} ${WINDOW_MID_Y}`}
-            fill="none"
-            className="stroke-navy-taupe/40"
-            strokeWidth={5}
-            strokeDasharray="2 14"
-            strokeDashoffset={-time * 40}
-            strokeLinecap="round"
+            time={time}
           />
           <circle
             cx={linkEnd}
@@ -146,60 +136,7 @@ export function NextGenerationIllustration() {
           />
         </g>
       ) : null}
-      <rect
-        x={WINDOW.x}
-        y={WINDOW.y}
-        width={WINDOW.width}
-        height={WINDOW.height}
-        rx={26}
-        className={cx('fill-white', outline)}
-        strokeWidth={6}
-      />
-      <path
-        d={`M${CONTENT.x} ${BAR_Y} L${CONTENT.right} ${BAR_Y}`}
-        className={outline}
-        strokeWidth={5}
-      />
-      {['fill-neon-coral', 'fill-mustard', 'fill-sea-green'].map(
-        (fill, index) => (
-          <circle
-            key={fill}
-            cx={WINDOW.x + 30 + index * 22}
-            cy={WINDOW.y + 25}
-            r={7}
-            className={fill}
-          />
-        ),
-      )}
-      <rect
-        x={WINDOW.x + 106}
-        y={WINDOW.y + 12}
-        width={360}
-        height={26}
-        rx={13}
-        className="fill-navy-taupe/10"
-      />
-      <text
-        x={WINDOW.x + 122}
-        y={WINDOW.y + 30}
-        fontSize={15}
-        fontWeight={800}
-        className="fill-navy-taupe/75"
-      >
-        {url}
-      </text>
-      <clipPath id={`${clipPrefix}-window`}>
-        <path
-          d={`M${CONTENT.x} ${CONTENT.y} H${CONTENT.right} V${
-            CONTENT.bottom - 23
-          } Q${CONTENT.right} ${CONTENT.bottom} ${CONTENT.right - 23} ${
-            CONTENT.bottom
-          } H${CONTENT.x + 23} Q${CONTENT.x} ${CONTENT.bottom} ${CONTENT.x} ${
-            CONTENT.bottom - 23
-          } Z`}
-        />
-      </clipPath>
-      <g clipPath={`url(#${clipPrefix}-window)`}>
+      <BrowserWindow frame={WINDOW} url={url} clipId={`${clipPrefix}-window`}>
         <g
           transform={`translate(${CONTENT.x} ${CONTENT.y}) scale(${SCENE_SCALE}) translate(-423 -243)`}
         >
@@ -214,63 +151,17 @@ export function NextGenerationIllustration() {
             </g>
           ) : null}
         </g>
-      </g>
-      {tiles.map((tile, index) => {
-        const clipId = `${clipPrefix}-${index}`;
-        return (
-          <g key={tile.name} transform={tile.transform} opacity={tile.opacity}>
-            <clipPath id={clipId}>
-              <rect x={-HALF} y={-HALF} width={TILE} height={TILE} rx={24} />
-            </clipPath>
-            <rect
-              x={-HALF}
-              y={-HALF}
-              width={TILE}
-              height={TILE}
-              rx={24}
-              className="fill-white"
-            />
-            <image
-              href={tile.icon}
-              x={-HALF}
-              y={-HALF}
-              width={TILE}
-              height={TILE}
-              clipPath={`url(#${clipId})`}
-              preserveAspectRatio="xMidYMid slice"
-            />
-            <rect
-              x={-HALF}
-              y={-HALF}
-              width={TILE}
-              height={TILE}
-              rx={24}
-              fill="none"
-              className={outline}
-              strokeWidth={6}
-            />
-            <rect
-              x={LABEL_X}
-              y={-19}
-              width={tile.labelWidth}
-              height={38}
-              rx={19}
-              className={cx('fill-white', outline)}
-              strokeWidth={4}
-            />
-            <text
-              x={LABEL_X + tile.labelWidth / 2}
-              y={6.5}
-              textAnchor="middle"
-              fontSize={18}
-              fontWeight={900}
-              className="fill-navy-taupe"
-            >
-              {tile.name}
-            </text>
-          </g>
-        );
-      })}
+      </BrowserWindow>
+      {tiles.map((tile, index) => (
+        <g key={tile.name} transform={tile.transform} opacity={tile.opacity}>
+          <AppTile
+            href={tile.icon}
+            size={TILE}
+            clipId={`${clipPrefix}-${index}`}
+            label={tile.name}
+          />
+        </g>
+      ))}
       <g
         transform={`translate(${WINDOW.x + WINDOW.width - 10} ${
           WINDOW.y + 10
@@ -279,30 +170,27 @@ export function NextGenerationIllustration() {
           badge,
         )})`}
       >
-        <circle
-          r={54}
-          className={cx('fill-mustard', outline)}
-          strokeWidth={6}
-        />
-        <text
-          y={-12}
-          textAnchor="middle"
-          fontSize={14}
-          fontWeight={900}
-          letterSpacing={2}
-          className="fill-navy-taupe"
-        >
-          SCHEMA
-        </text>
-        <text
-          y={34}
-          textAnchor="middle"
-          fontSize={44}
-          fontWeight={900}
-          className="fill-navy-taupe"
-        >
-          8
-        </text>
+        <Badge r={54}>
+          <text
+            y={-12}
+            textAnchor="middle"
+            fontSize={14}
+            fontWeight={900}
+            letterSpacing={2}
+            className="fill-navy-taupe"
+          >
+            SCHEMA
+          </text>
+          <text
+            y={34}
+            textAnchor="middle"
+            fontSize={44}
+            fontWeight={900}
+            className="fill-navy-taupe"
+          >
+            8
+          </text>
+        </Badge>
       </g>
     </svg>
   );

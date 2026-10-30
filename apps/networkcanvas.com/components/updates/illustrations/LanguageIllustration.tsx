@@ -2,9 +2,12 @@
 
 import { useLocale } from 'next-intl';
 
+import {
+  outline,
+  TAU,
+  useIllustrationClock,
+} from '@codaco/art/illustration/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-
-import { outline, TAU, useIllustrationClock } from './illustrationMotion';
 
 // A greeting for each of the site's languages. The viewer's own greeting
 // starts at the front of the orbit.
