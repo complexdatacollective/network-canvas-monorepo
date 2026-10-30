@@ -1,14 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
 
@@ -31,7 +23,10 @@ const SIDEWAYS = {
   place_formatted: 'Chicago, Illinois',
 };
 
-const mockSuggest = vi.fn<(query: string) => Promise<SuggestResult>>();
+const mockSuggest =
+  vi.fn<
+    (query: string, options?: { language?: string }) => Promise<SuggestResult>
+  >();
 const mockRetrieve = vi.fn<
   () => Promise<{
     features: { geometry: { type: string; coordinates: number[] } }[];
@@ -55,9 +50,11 @@ vi.mock('es-toolkit', async (importOriginal) => ({
 
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
-import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../../__tests__/TestProtocolLocalization';
 import GeospatialSearch from '../GeospatialSearch';
 
 // jsdom has neither, and fresco-ui's Collection/ScrollArea construct both on
@@ -118,14 +115,6 @@ const openAndSearch = async (
   return input;
 };
 
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
-
 describe('GeospatialSearch', () => {
   beforeEach(() => {
     vi.stubGlobal('ResizeObserver', MockResizeObserver);
@@ -144,9 +133,15 @@ describe('GeospatialSearch', () => {
   });
 
   describe('live built-in locale', () => {
+    const bilingual = { defaultLocale: 'en', locales: ['en', 'es'] };
+    const interfaceText = suppliedInterfaceText(bilingual);
     const localizedTree = (locale: string) => (
-      <InterviewI18nProvider requestedLocale={locale}>
-        <TestProtocolLocalization>
+      <InterviewI18nProvider>
+        <TestProtocolLocalization
+          localization={bilingual}
+          locale={locale}
+          interfaceText={interfaceText}
+        >
           <GeospatialSearch
             accessToken="test-token"
             map={mockMap}
@@ -156,7 +151,8 @@ describe('GeospatialSearch', () => {
       </InterviewI18nProvider>
     );
 
-    it('keeps a pending place selection and announces its outcome in the current language', async () => {
+    // What it announces is read by screen readers only, so it stays English.
+    it('keeps a pending place selection across a change of language, and announces its outcome', async () => {
       let completeRetrieve: (
         value: Awaited<ReturnType<typeof mockRetrieve>>,
       ) => void = () => {
@@ -176,8 +172,8 @@ describe('GeospatialSearch', () => {
       await user.click(options[0]!);
       expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
-      view.rerender(localizedTree('es-MX'));
-      expect(screen.getByRole('button', { name: 'Buscar ubicación' })).toBe(
+      view.rerender(localizedTree('es'));
+      expect(screen.getByRole('button', { name: 'Search location' })).toBe(
         toggle,
       );
       completeRetrieve({
@@ -185,9 +181,7 @@ describe('GeospatialSearch', () => {
       });
       const status = screen.getByTestId('geospatial-search-status');
       await waitFor(() =>
-        expect(status.textContent).toBe(
-          'El mapa se ha desplazado a Sidetrack.',
-        ),
+        expect(status.textContent).toBe('Map moved to Sidetrack.'),
       );
       expect(flyTo).toHaveBeenCalledExactlyOnceWith({
         center: [-87.6, 41.9],
@@ -195,12 +189,12 @@ describe('GeospatialSearch', () => {
       });
       expect(mockRetrieve).toHaveBeenCalledTimes(1);
 
-      view.rerender(localizedTree('en-GB'));
+      view.rerender(localizedTree('en'));
       expect(status.textContent).toBe('Map moved to Sidetrack.');
       expect(flyTo).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps the stage’s own failure wording while retaining the existing query and search outcome', async () => {
+    it('keeps the stage’s own failure wording and the query across a change of language', async () => {
       mockSuggest.mockRejectedValue(new Error('offline'));
       const user = userEvent.setup();
       const view = render(localizedTree('en'));
@@ -215,23 +209,24 @@ describe('GeospatialSearch', () => {
           'Search could not be completed. Try again in a moment.',
         ),
       );
-      const searchCount = mockSuggest.mock.calls.length;
 
-      // The stage's words belong to the protocol, not the browser's language,
-      // so a change of language leaves them as the stage holds them. The
-      // search box's own label is interface text, which the interview words
-      // in its language where the protocol holds none.
+      // The stage's words are the protocol's, held here in English only, so a
+      // change of language leaves them in English. The search box's own label
+      // is the protocol's interface text, which it holds in Spanish too.
       view.rerender(localizedTree('es'));
       expect(screen.getByRole('combobox')).toBe(input);
       expect(input).toHaveValue('Sidetrack');
       expect(input).toHaveAttribute('placeholder', 'Buscar');
+      // Search Box is asked again, in the new language, and fails again.
+      await waitFor(() =>
+        expect(
+          screen.getByRole('listbox', { name: 'Search suggestions' }),
+        ).toHaveTextContent('Search could not be completed.'),
+      );
       expect(status.textContent).toBe(
         'Search could not be completed. Try again in a moment.',
       );
-      expect(
-        screen.getByRole('listbox', { name: 'Sugerencias de búsqueda' }),
-      ).toHaveTextContent('Search could not be completed.');
-      expect(mockSuggest).toHaveBeenCalledTimes(searchCount);
+      expect(mockSuggest.mock.lastCall?.[1]?.language).toBe('es');
       expect(flyTo).not.toHaveBeenCalled();
     });
   });

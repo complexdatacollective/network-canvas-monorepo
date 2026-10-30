@@ -14,7 +14,7 @@ import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
-import BuilderSection from '../BuilderSection.tsx';
+import StageWordingSection from '../supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -26,19 +26,6 @@ type NameGeneratorType =
   | 'NameGeneratorRoster';
 
 export const nameGeneratorWordingMessages = defineMessages({
-  title: {
-    id: 'protocolBuilder.nameGeneratorWording.title',
-    defaultMessage: 'Messages',
-    description:
-      'Heading of the section holding the words a name generator shows a participant about its limits, a roster’s list and its quick-add field. A name generator is a stage that asks the participant to name people.',
-  },
-  description: {
-    id: 'protocolBuilder.nameGeneratorWording.description',
-    defaultMessage:
-      'These start with wording Network Canvas supplies, which you can change. Each one appears only where its limit, panel or field is part of this stage.',
-    description:
-      'Description of the messages section of a name generator. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has.',
-  },
   minNoticeLabel: {
     id: 'protocolBuilder.nameGeneratorWording.minNoticeLabel',
     defaultMessage: 'Minimum not reached',
@@ -48,9 +35,9 @@ export const nameGeneratorWordingMessages = defineMessages({
   minNoticeHint: {
     id: 'protocolBuilder.nameGeneratorWording.minNoticeHint',
     defaultMessage:
-      'Shown when the participant tries to continue before naming the fewest people this stage asks for.',
+      'Shown when the participant tries to continue before adding as many nodes as this stage asks for.',
     description:
-      'Guidance under the field holding the message shown when the participant has not yet named the stage’s minimum number of people.',
+      'Hint under the setting holding the minimum not reached message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },
   maxNoticeLabel: {
     id: 'protocolBuilder.nameGeneratorWording.maxNoticeLabel',
@@ -61,9 +48,9 @@ export const nameGeneratorWordingMessages = defineMessages({
   maxNoticeHint: {
     id: 'protocolBuilder.nameGeneratorWording.maxNoticeHint',
     defaultMessage:
-      'Shown once the participant has named the most people this stage allows.',
+      'Shown once the participant has added as many nodes as this stage allows.',
     description:
-      'Guidance under the field holding the message shown when the stage’s maximum number of people has been named.',
+      'Hint under the setting holding the maximum reached message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },
   quickAddHintLabel: {
     id: 'protocolBuilder.nameGeneratorWording.quickAddHintLabel',
@@ -74,9 +61,9 @@ export const nameGeneratorWordingMessages = defineMessages({
   quickAddHintHint: {
     id: 'protocolBuilder.nameGeneratorWording.quickAddHintHint',
     defaultMessage:
-      'Shown beside the name field, saying how to finish adding a person.',
+      'Shown beside the quick-add box, telling the participant how to finish adding a node.',
     description:
-      'Guidance under the field holding the line shown beside the quick-add name field.',
+      'Hint under the setting holding the quick-add hint, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },
   allAddedLabel: {
     id: 'protocolBuilder.nameGeneratorWording.allAddedLabel',
@@ -87,9 +74,9 @@ export const nameGeneratorWordingMessages = defineMessages({
   allAddedHint: {
     id: 'protocolBuilder.nameGeneratorWording.allAddedHint',
     defaultMessage:
-      'Shown in the list of people to add when there is nothing left to add from it.',
+      'Shown in the roster list once everything in it has been added.',
     description:
-      'Guidance under the field holding the message shown when there is nothing left to add from a roster.',
+      'Hint under the setting holding the everything added message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },
 });
 
@@ -124,11 +111,15 @@ function NameGeneratorWordingSection({
   const hasMinimum = typeof minNodes === 'number' && minNodes > 0;
   const hasMaximum = typeof maxNodes === 'number';
 
+  const paths = [
+    ...(hasMinimum ? ['minNodesNotice'] : []),
+    ...(hasMaximum ? ['maxNodesNotice'] : []),
+    ...(stageType === 'NameGeneratorQuickAdd' ? ['quickAddHint'] : []),
+    ...(stageType === 'NameGeneratorRoster' ? ['allAddedNotice'] : []),
+  ];
+
   return (
-    <BuilderSection
-      title={intl.formatMessage(nameGeneratorWordingMessages.title)}
-      description={intl.formatMessage(nameGeneratorWordingMessages.description)}
-    >
+    <StageWordingSection stageType={stageType} paths={paths}>
       {supplied !== undefined && (
         <>
           {hasMinimum && (
@@ -210,6 +201,6 @@ function NameGeneratorWordingSection({
           )}
         </>
       )}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

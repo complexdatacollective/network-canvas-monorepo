@@ -35,7 +35,6 @@ import {
   type DynamicValueSources,
   resolveDynamicText,
 } from '../dynamicValues/resolveDynamicText';
-import { useSettledLocalePreference } from '../i18n/InterviewI18nProvider';
 import { contentFormatFor, resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
@@ -84,9 +83,13 @@ function assertOptionsMatchDeclaration(
 }
 
 /**
- * Decides which protocol language the interview shows: the participant's
- * stated preference when there is one, otherwise the first of the browser's
- * languages the protocol declares, otherwise the protocol's default. Without a
+ * Decides which language the interview shows, for all of its text, from the
+ * languages the protocol declares: the participant's stated preference when
+ * there is one (made on a Language Chooser stage, or stated by the host),
+ * otherwise the first of the browser's languages the protocol declares,
+ * otherwise the protocol's default. This is the interview's only language
+ * negotiation: the protocol's interface text stands in for the interview's
+ * built-in messages (see `InterfaceTextOverlay`). Without a
  * stated preference the choice is made afresh on every load. A text with no
  * translation in that language falls back to the browser's other languages,
  * then to the protocol's default (see `resolveLocalizedString`).
@@ -111,29 +114,22 @@ export function ProtocolLocalizationProvider({
   onLocalePreferenceChange: (locale: LocaleTag) => void;
   children: ReactNode;
 }) {
-  const intl = useAppIntl();
-  const options = useMemo(() => {
-    assertOptionsMatchDeclaration(localization, localeOptions);
-    return sortByLanguageName(
-      localeOptions,
-      (option) => option.label,
-      intl.locale,
-    );
-  }, [localization, localeOptions, intl.locale]);
-
-  // A stated preference is passed as the only request, so a preference the
-  // protocol no longer matches yields its default rather than a browser
-  // language. It applies once the built-in text has changed with it, so the
-  // two change language together.
-  const settledPreference = useSettledLocalePreference(localePreference);
+  // The interview's one language negotiation. A stated preference is passed
+  // as the only request, so a preference the protocol no longer matches
+  // yields its default rather than a browser language.
   const locale = useMemo(
     () =>
       selectProtocolLocale(
-        settledPreference === null ? requestedLocales : [settledPreference],
+        localePreference === null ? requestedLocales : [localePreference],
         localization,
       ),
-    [settledPreference, requestedLocales, localization],
+    [localePreference, requestedLocales, localization],
   );
+
+  const options = useMemo(() => {
+    assertOptionsMatchDeclaration(localization, localeOptions);
+    return sortByLanguageName(localeOptions, (option) => option.label, locale);
+  }, [localization, localeOptions, locale]);
 
   // A stated preference only chooses the interview language: the browser's
   // languages still come next for text that has no translation in it.
@@ -187,10 +183,10 @@ export function ProtocolLocalizationProvider({
 }
 
 /**
- * The protocol language the interview shows, its presentation metadata, every
+ * The language the interview shows, its presentation metadata, every
  * declared locale's metadata in alphabetical order of its name, collated for
- * the interface language, and a setter that records the participant's stated
- * preference.
+ * the interview's language, and a setter that records the participant's
+ * stated preference.
  */
 export function useProtocolLocale(): Readonly<{
   locale: LocaleTag;
@@ -210,11 +206,10 @@ export function useProtocolLocale(): Readonly<{
  * The language the protocol's own values are written for, to format and
  * alphabetise them in: the protocol language the interview shows. Participant
  * and protocol data sit among the protocol's text, so a participant reading
- * Hungarian gets Hungarian number formats and Hungarian alphabetical order even
- * when the interface falls back to English for want of a Hungarian catalog.
+ * Hungarian gets Hungarian number formats and Hungarian alphabetical order.
  * The form fields inside the interview follow it too (see
- * `ContentLocaleProvider`); sentences the interface itself speaks stay in the
- * interface language.
+ * `ContentLocaleProvider`); only the built-in text screen readers read stays
+ * in English.
  *
  * Outside a `ProtocolLocalizationProvider` (a component shown on its own) it is
  * the interface language.
@@ -223,6 +218,22 @@ export function useContentLocale(): string {
   const interfaceLocale = useAppIntl().locale;
   const protocolLocale = useContext(ProtocolLocalizationContext)?.locale;
   return resolveContentLocale(protocolLocale, interfaceLocale);
+}
+
+/**
+ * The language the interview shows, best fitted to the languages a host
+ * translates its own text into, for host text shown inside the Shell: a
+ * protocol in es-MX gets a host's es. `fallback` when none fits.
+ */
+export function useContentLocaleIn<const T extends string>(
+  supported: readonly T[],
+  fallback: T,
+): T {
+  const fitted = selectProtocolLocale([useContentLocale()], {
+    locales: supported,
+    defaultLocale: fallback,
+  });
+  return supported.find((locale) => locale === fitted) ?? fallback;
 }
 
 /**

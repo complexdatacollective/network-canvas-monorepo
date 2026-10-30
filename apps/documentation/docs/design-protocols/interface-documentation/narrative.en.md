@@ -56,9 +56,9 @@ Three stage-level behaviors change how participants can interact with the canvas
 
 <AppOnly app="current">
 
-### Words on the canvas
+### Customize built-in wording
 
-The **Words on the canvas** section of the stage editor holds the headings of the panels and the tooltips of the tools. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A setting is in the section only while the part of the stage it belongs to is switched on, and it is removed when you switch that part off.
+The **Customize built-in wording** section of the stage editor holds the headings of the panels and the tooltips of the tools. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A setting is in the section only while the part of the stage it belongs to is switched on, and it is removed when you switch that part off.
 
 - **Attributes**, **Links** and **Groups** headings, which are there when a preset highlights attributes, shows links or groups nodes.
 - **Drawing tooltips** for enabling and disabling drawing and for freezing, unfreezing and resetting annotations, which are there when **Free-draw** is on.

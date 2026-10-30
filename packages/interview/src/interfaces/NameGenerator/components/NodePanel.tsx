@@ -169,7 +169,7 @@ function NodePanel(props: NodePanelProps) {
         </div>
       ) : isExternalData && status.state === 'error' ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <Icon name="warning" />
+          <Icon name="warning" aria-hidden />
           <Heading level="h4" className="sr-only">
             <AppMessage message={interfaceMessages.errorHeading} />
           </Heading>

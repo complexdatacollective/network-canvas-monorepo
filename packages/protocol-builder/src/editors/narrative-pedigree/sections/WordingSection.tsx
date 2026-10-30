@@ -17,7 +17,7 @@ import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { WordingRow, type WordingSetting } from '../../../form/WordingRow.tsx';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -28,38 +28,55 @@ const STAGE_TYPE = 'NarrativePedigree';
 
 /** The words that are not messages with placeholders: each is plain text. */
 const TEXT: readonly WordingSetting[] = [
-  { path: 'keyHeading', label: messages.keyHeadingLabel },
-  { path: 'saveSnapshot', label: messages.saveSnapshotButtonLabel },
-  { path: 'tooltips.clearFocus', label: messages.clearFocusTooltipLabel },
+  {
+    path: 'keyHeading',
+    label: messages.keyHeadingLabel,
+    hint: messages.keyHeadingHint,
+  },
+  {
+    path: 'saveSnapshot',
+    label: messages.saveSnapshotButtonLabel,
+    hint: messages.saveSnapshotHint,
+  },
+  {
+    path: 'tooltips.clearFocus',
+    label: messages.clearFocusTooltipLabel,
+    hint: messages.clearFocusTooltipHint,
+  },
   {
     path: 'conditionText.selectCondition',
     label: messages.selectConditionLabel,
+    hint: messages.selectConditionHint,
   },
   {
     path: 'conditionText.notation.affected',
     label: messages.affectedNotationLabel,
+    hint: messages.affectedNotationHint,
   },
   {
     path: 'conditionText.notation.obligateAffected',
     label: messages.obligateAffectedNotationLabel,
+    hint: messages.obligateAffectedNotationHint,
   },
   {
     path: 'conditionText.notation.obligateCarrier',
     label: messages.obligateCarrierNotationLabel,
+    hint: messages.obligateCarrierNotationHint,
   },
   {
     path: 'conditionText.notation.atRiskAffected',
     label: messages.atRiskAffectedNotationLabel,
-    hint: messages.atRiskHint,
+    hint: messages.atRiskAffectedNotationHint,
   },
   {
     path: 'conditionText.notation.atRiskCarrier',
     label: messages.atRiskCarrierNotationLabel,
-    hint: messages.atRiskHint,
+    hint: messages.atRiskCarrierNotationHint,
   },
   {
     path: 'conditionText.notation.unknown',
     label: messages.unknownNotationLabel,
+    hint: messages.unknownNotationHint,
   },
 ];
 
@@ -107,16 +124,18 @@ export default function WordingSection() {
     [intl],
   );
 
+  const shown = TEXT.filter((setting) =>
+    suppliedStageSettingApplies(stage, setting.path.split('.')),
+  );
+
   return (
-    <BuilderSection
-      title={intl.formatMessage(messages.wordingTitle)}
-      description={intl.formatMessage(messages.wordingDescription)}
+    <StageWordingSection
+      stageType={STAGE_TYPE}
+      paths={[...shown, ...SNAPSHOT_TITLES].map((setting) => setting.path)}
     >
       {supplied !== undefined && (
         <>
-          {TEXT.filter((setting) =>
-            suppliedStageSettingApplies(stage, setting.path.split('.')),
-          ).map((setting) => (
+          {shown.map((setting) => (
             <WordingRow
               key={setting.path}
               setting={setting}
@@ -146,6 +165,6 @@ export default function WordingSection() {
           ))}
         </>
       )}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

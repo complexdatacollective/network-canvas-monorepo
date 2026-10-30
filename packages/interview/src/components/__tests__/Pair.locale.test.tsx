@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   entityAttributesProperty,
@@ -7,7 +7,6 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import Pair from '../Pair';
 
@@ -25,51 +24,34 @@ const person = (id: string, name?: string): NcNode => ({
   type: 'person',
 });
 
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
-
+// The pair's name is read only by screen readers, and screen reader text
+// stays in English whatever language the interview shows.
 describe('pair accessibility language', () => {
-  it('uses locale-aware conjunctions while preserving both literal names on a live change', () => {
+  it('names the pair in English, keeping both literal names', () => {
     const first = person('a', 'Ana');
     const second = person('b', 'Irene <literal>');
     const before = structuredClone([first, second]);
-    const pair = (
-      <section role="group" aria-labelledby="pair-name">
-        <Pair
-          fromNode={first}
-          toNode={second}
-          edgeColor="edge-color-seq-1"
-          labelId="pair-name"
-        />
-      </section>
-    );
-    const view = render(
-      <InterviewI18nProvider requestedLocale="en">
-        {pair}
+    render(
+      <InterviewI18nProvider>
+        <section role="group" aria-labelledby="pair-name">
+          <Pair
+            fromNode={first}
+            toNode={second}
+            edgeColor="edge-color-seq-1"
+            labelId="pair-name"
+          />
+        </section>
       </InterviewI18nProvider>,
     );
-    const group = screen.getByRole('group', {
-      name: 'Ana and Irene <literal>',
-    });
-    view.rerender(
-      <InterviewI18nProvider requestedLocale="es-MX">
-        {pair}
-      </InterviewI18nProvider>,
-    );
-    expect(screen.getByRole('group', { name: 'Ana e Irene <literal>' })).toBe(
-      group,
-    );
+    expect(
+      screen.getByRole('group', { name: 'Ana and Irene <literal>' }),
+    ).toBeInTheDocument();
     expect([first, second]).toEqual(before);
   });
 
-  it('translates only missing-name fallbacks', () => {
+  it('names nodes without a name by their place in the pair', () => {
     render(
-      <InterviewI18nProvider requestedLocale="es">
+      <InterviewI18nProvider>
         <section role="group" aria-labelledby="pair-name">
           <Pair
             fromNode={person('a')}
@@ -81,7 +63,7 @@ describe('pair accessibility language', () => {
       </InterviewI18nProvider>,
     );
     expect(
-      screen.getByRole('group', { name: 'Primer elemento y segundo elemento' }),
+      screen.getByRole('group', { name: 'First item and second item' }),
     ).toBeInTheDocument();
   });
 });

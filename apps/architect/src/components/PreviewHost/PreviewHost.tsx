@@ -16,7 +16,6 @@ import {
   Shell,
   type SyncHandler,
 } from '@codaco/interview';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { currentProtocolToPayload } from '@codaco/interview/contract';
 import {
   type ConstraintConflict,
@@ -240,13 +239,6 @@ export function PreviewHost() {
   // by a language chooser stage. Requested languages cannot override one, so
   // from then on the toolbar's choice is stated to the interview instead.
   const [preferenceHeld, setPreferenceHeld] = useState(false);
-  // The interview's messages load during the handshake and the synthetic
-  // network build, rather than once the Shell mounts, in the language the
-  // Shell will negotiate from the same inputs. A failure here is retried by
-  // the Shell itself.
-  useEffect(() => {
-    loadInterviewCatalog(browserLanguages, statedLocale).catch(() => undefined);
-  }, [browserLanguages, statedLocale]);
   useEffect(() => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- lib.dom types window.opener as any; it is a WindowProxy or null, possibly cross-origin, so instanceof Window cannot check it
     const opener = window.opener as Window | null;

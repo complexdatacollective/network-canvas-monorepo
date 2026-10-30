@@ -6,7 +6,7 @@ import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -14,19 +14,6 @@ import {
 import type { StageSection } from '../../defineStageEditor.tsx';
 
 export const geospatialWordingMessages = defineMessages({
-  title: {
-    id: 'protocolBuilder.geospatialWording.title',
-    defaultMessage: 'Messages',
-    description:
-      'Heading of the section holding the words a map shows a participant: when it is offline, when it cannot be drawn, its outside-areas button, and its search. A map is a Geospatial stage.',
-  },
-  description: {
-    id: 'protocolBuilder.geospatialWording.description',
-    defaultMessage:
-      'These start with wording Network Canvas supplies, which you can change. The search messages appear only when the map has a search.',
-    description:
-      'Description of the messages section of a map. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has.',
-  },
   offlineLabel: {
     id: 'protocolBuilder.geospatialWording.offlineLabel',
     defaultMessage: 'Offline',
@@ -81,6 +68,9 @@ export const geospatialWordingMessages = defineMessages({
   },
 });
 
+/** The settings the section shows whatever the map's configuration. */
+const ALWAYS_SHOWN = ['offlineNotice', 'mapUnavailable', 'outsideAreasLabel'];
+
 /** Whether the map has a search box, which its search messages are for. */
 const ALLOW_SEARCH = 'mapOptions.allowSearch';
 
@@ -100,9 +90,9 @@ function GeospatialWordingSection() {
   const allowSearch = useStageValue(ALLOW_SEARCH) === true;
 
   return (
-    <BuilderSection
-      title={intl.formatMessage(geospatialWordingMessages.title)}
-      description={intl.formatMessage(geospatialWordingMessages.description)}
+    <StageWordingSection
+      stageType="Geospatial"
+      paths={allowSearch ? [...ALWAYS_SHOWN, 'searchFailed'] : ALWAYS_SHOWN}
     >
       {supplied !== undefined && (
         <>
@@ -171,6 +161,6 @@ function GeospatialWordingSection() {
           )}
         </>
       )}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

@@ -1,4 +1,3 @@
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { suppliedStageSettingApplies } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
@@ -7,7 +6,7 @@ import {
   WordingRow,
   type WordingSetting,
 } from '../../../../form/WordingRow.tsx';
-import BuilderSection from '../../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -40,27 +39,27 @@ const DRAWING_TOOLTIPS: readonly WordingSetting[] = [
   {
     path: 'tooltips.enableDrawing',
     label: messages.enableDrawingTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.enableDrawingTooltipHint,
   },
   {
     path: 'tooltips.disableDrawing',
     label: messages.disableDrawingTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.disableDrawingTooltipHint,
   },
   {
     path: 'tooltips.freezeAnnotations',
     label: messages.freezeAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.freezeAnnotationsTooltipHint,
   },
   {
     path: 'tooltips.unfreezeAnnotations',
     label: messages.unfreezeAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.unfreezeAnnotationsTooltipHint,
   },
   {
     path: 'tooltips.resetAnnotations',
     label: messages.resetAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.resetAnnotationsTooltipHint,
   },
 ];
 
@@ -72,7 +71,6 @@ const DRAWING_TOOLTIPS: readonly WordingSetting[] = [
  * decide which are asked.
  */
 export default function NarrativeWordingSection() {
-  const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
   const supplied = useSuppliedStageWording(STAGE_TYPE);
   const stage = {
@@ -81,27 +79,27 @@ export default function NarrativeWordingSection() {
     behaviours: useStageValue('behaviours'),
   };
 
+  const shown = [...HEADINGS, ...DRAWING_TOOLTIPS].filter((setting) =>
+    suppliedStageSettingApplies(stage, setting.path.split('.')),
+  );
+
   return (
-    <BuilderSection
-      title={intl.formatMessage(messages.wordingTitle)}
-      description={intl.formatMessage(messages.wordingDescription)}
+    <StageWordingSection
+      stageType={STAGE_TYPE}
+      paths={shown.map((setting) => setting.path)}
     >
       {supplied !== undefined &&
-        [...HEADINGS, ...DRAWING_TOOLTIPS]
-          .filter((setting) =>
-            suppliedStageSettingApplies(stage, setting.path.split('.')),
-          )
-          .map((setting) => (
-            <WordingRow
-              key={setting.path}
-              setting={setting}
-              initialValue={startingWording(
-                committedFields,
-                setting.path,
-                supplied,
-              )}
-            />
-          ))}
-    </BuilderSection>
+        shown.map((setting) => (
+          <WordingRow
+            key={setting.path}
+            setting={setting}
+            initialValue={startingWording(
+              committedFields,
+              setting.path,
+              supplied,
+            )}
+          />
+        ))}
+    </StageWordingSection>
   );
 }

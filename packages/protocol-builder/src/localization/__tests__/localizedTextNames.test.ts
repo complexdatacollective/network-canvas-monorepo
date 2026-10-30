@@ -537,7 +537,7 @@ describe('nameLocalizedText', () => {
     ]);
   });
 
-  it('names the words of a pedigree’s list by the group they sit in', () => {
+  it('names the words of a pedigree’s list by the section they sit in', () => {
     expect(
       name([
         ...stageAt('FamilyPedigree'),
@@ -547,8 +547,7 @@ describe('nameLocalizedText', () => {
         'noneButton',
       ]),
     ).toEqual([
-      { key: '[]', label: 'Participant wording' },
-      { key: '["completeness"]', label: 'Completeness checklist' },
+      { key: '[]', label: 'Customize built-in wording' },
       {
         key: '["completeness","itemText","siblings","noneButton"]',
         label: 'No brothers or sisters button',

@@ -100,7 +100,9 @@ const useItems = (props: NameGeneratorRosterProps) => {
         node,
         sequentialNumber,
         placeholder: (number) =>
-          intl.formatMessage(runtimeMessages.unnamedNumbered, { number }),
+          intl.formatMessage(runtimeMessages.unnamedNumbered, {
+            count: number,
+          }),
       }),
     [codebookVariables, intl],
   );

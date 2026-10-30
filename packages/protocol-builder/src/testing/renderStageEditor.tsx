@@ -1305,8 +1305,13 @@ function collectDifferences(
 function readOwnedKeys(harness: HTMLElement | null): string[] {
   if (harness === null) return [];
   const keys = new Set<string>();
-  for (const field of harness.querySelectorAll('[data-field-path]')) {
-    const registeredName = field.getAttribute('data-field-path');
+  // A switched-off optional section names the fields it shows when on.
+  for (const field of harness.querySelectorAll(
+    '[data-field-path], [data-owned-field-path]',
+  )) {
+    const registeredName =
+      field.getAttribute('data-field-path') ??
+      field.getAttribute('data-owned-field-path');
     if (registeredName === null || registeredName === '') continue;
     // Parsed rather than split on a dot: a protocol-authored key may contain
     // one, and `["prompt text"]` is a single name with a space in it.

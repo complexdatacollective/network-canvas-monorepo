@@ -1,10 +1,9 @@
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { suppliedStageSettingApplies } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { WordingRow, type WordingSetting } from '../../../form/WordingRow.tsx';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -18,10 +17,12 @@ const WORDS: readonly WordingSetting[] = [
   {
     path: 'addNamePlaceholder',
     label: messages.addNamePlaceholderLabel,
+    hint: messages.addNamePlaceholderHint,
   },
   {
     path: 'overtakenEditNotice',
     label: messages.overtakenEditNoticeLabel,
+    hint: messages.overtakenEditNoticeHint,
     wraps: true,
   },
   {
@@ -32,10 +33,12 @@ const WORDS: readonly WordingSetting[] = [
   {
     path: 'tooltips.addPerson',
     label: messages.addNodeTooltipLabel,
+    hint: messages.addNodeTooltipHint,
   },
   {
     path: 'tooltips.automaticLayout',
     label: messages.automaticLayoutTooltipLabel,
+    hint: messages.automaticLayoutTooltipHint,
   },
   {
     path: 'tooltips.drawConnection',
@@ -53,7 +56,6 @@ const WORDS: readonly WordingSetting[] = [
  * protocol require them.
  */
 export default function ComposerWordingSection() {
-  const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
   const supplied = useSuppliedStageWording(STAGE_TYPE);
   const stage = {
@@ -62,15 +64,17 @@ export default function ComposerWordingSection() {
     edges: useStageValue('edges'),
   };
 
+  const shown = WORDS.filter((setting) =>
+    suppliedStageSettingApplies(stage, setting.path.split('.')),
+  );
+
   return (
-    <BuilderSection
-      title={intl.formatMessage(messages.wordingTitle)}
-      description={intl.formatMessage(messages.wordingDescription)}
+    <StageWordingSection
+      stageType={STAGE_TYPE}
+      paths={shown.map((setting) => setting.path)}
     >
       {supplied !== undefined &&
-        WORDS.filter((setting) =>
-          suppliedStageSettingApplies(stage, setting.path.split('.')),
-        ).map((setting) => (
+        shown.map((setting) => (
           <WordingRow
             key={setting.path}
             setting={setting}
@@ -81,6 +85,6 @@ export default function ComposerWordingSection() {
             )}
           />
         ))}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

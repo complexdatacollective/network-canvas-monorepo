@@ -8,8 +8,7 @@
     - option "Collin Leffler"
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
-  - button "Add a person":
-    - img "Add a person"
+  - button "Add a person"
   - navigation:
     - button "Settings"
     - button "Previous Step"

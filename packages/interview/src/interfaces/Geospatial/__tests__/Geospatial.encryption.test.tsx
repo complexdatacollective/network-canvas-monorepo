@@ -154,7 +154,7 @@ async function renderGeospatial({
           trackWrite={store.trackWrite}
         >
           <TestProtocolLocalization>
-            <InterviewI18nProvider requestedLocale="en">
+            <InterviewI18nProvider>
               <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
                 <StageDynamicValues stage={stageUnderTest}>
                   <GeospatialInterface

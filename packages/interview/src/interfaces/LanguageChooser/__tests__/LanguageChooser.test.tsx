@@ -22,7 +22,6 @@ import {
 } from '@codaco/shared-consts';
 
 import type { InterviewPayload, SyncHandler } from '../../../contract/types';
-import { interviewCatalogSource } from '../../../i18n/catalog';
 import Shell from '../../../Shell';
 
 vi.mock('../../../hooks/useMediaQuery', () => ({ default: () => false }));
@@ -46,10 +45,6 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
-
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so the Shell renders in Spanish without waiting.
-beforeAll(() => interviewCatalogSource.load('es'));
 
 beforeAll(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);
@@ -351,9 +346,11 @@ describe('LanguageChooser', () => {
     expect(liveStore().getState().session.network).toEqual(networkBefore);
     expect(onSync).not.toHaveBeenCalled();
 
-    const siguiente = screen.getByRole('button', { name: 'Siguiente paso' });
-    expect(siguiente).toBeEnabled();
-    await user.click(siguiente);
+    // The same button: its name is screen reader text, which stays in
+    // English.
+    expect(screen.getByRole('button', { name: 'Next Step' })).toBe(next);
+    expect(next).toBeEnabled();
+    await user.click(next);
 
     expect(
       await screen.findByRole('heading', { name: 'Stage after' }),

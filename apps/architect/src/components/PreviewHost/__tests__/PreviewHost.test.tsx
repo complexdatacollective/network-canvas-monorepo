@@ -24,6 +24,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
   getLastAvailableAuthoredStageIndex,
   InterviewI18nProvider,
+  ProtocolLocalizationProvider,
 } from '@codaco/interview';
 import {
   DEFAULT_SYNTHETIC_SEED,
@@ -60,18 +61,26 @@ vi.mock('@codaco/interview', async () => {
       shellMock(props);
       return (
         <div data-testid="shell-mounted">
-          <actual.InterviewI18nProvider
-            requestedLocale={props.requestedLocales}
-          >
-            <span data-testid="shell-finish-description">
-              {props.finishConfirmationDescription}
-            </span>
-            {props.completedActions?.map((action, index) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <button key={index} onClick={action.onAction}>
-                {action.label}
-              </button>
-            ))}
+          {/* The language the interview negotiates from the protocol's
+              languages, as the Shell does. */}
+          <actual.InterviewI18nProvider>
+            <actual.ProtocolLocalizationProvider
+              localization={props.payload.protocol.localization}
+              localeOptions={props.payload.session.localeOptions}
+              requestedLocales={props.requestedLocales}
+              localePreference={props.statedLocale ?? null}
+              onLocalePreferenceChange={() => undefined}
+            >
+              <span data-testid="shell-finish-description">
+                {props.finishConfirmationDescription}
+              </span>
+              {props.completedActions?.map((action, index) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <button key={index} onClick={action.onAction}>
+                  {action.label}
+                </button>
+              ))}
+            </actual.ProtocolLocalizationProvider>
           </actual.InterviewI18nProvider>
         </div>
       );
@@ -110,6 +119,7 @@ function QueuePreviewConfirmation({
 }
 
 const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
+const ENGLISH_AND_SPANISH = { defaultLocale: 'en', locales: ['en', 'es'] };
 
 function makeProtocol(localization = ENGLISH_ONLY) {
   const text = (value: string) =>
@@ -1079,7 +1089,10 @@ describe('PreviewHost', () => {
         .mockReturnValue(['es-MX']);
       try {
         render(<PreviewHost />);
-        postPayload(openerStub, makePayload());
+        postPayload(
+          openerStub,
+          makePayload({ protocol: makeProtocol(ENGLISH_AND_SPANISH) }),
+        );
         await screen.findByTestId('shell-mounted');
         expect(lastShellProps().completedActions).toHaveLength(1);
         const spanish = createAppIntl({
@@ -1092,7 +1105,6 @@ describe('PreviewHost', () => {
             'Visible text in components / PreviewHost / PreviewHost.',
         });
         expect(spanish).not.toBe('Start the preview again');
-        // The Shell changes language once its own Spanish catalog has loaded.
         expect(
           await screen.findByRole('button', { name: spanish }),
         ).toBeInTheDocument();
@@ -1115,6 +1127,7 @@ describe('PreviewHost', () => {
     });
 
     it('asks the interview for the browser’s languages, never Architect’s, and words the preview copy in the interview’s language', async () => {
+      // The protocol is in Spanish too, so the interview shows Spanish.
       const languages = vi
         .spyOn(navigator, 'languages', 'get')
         .mockReturnValue(['es-MX', 'en-US']);
@@ -1125,7 +1138,10 @@ describe('PreviewHost', () => {
             <PreviewHost />
           </ArchitectI18nProvider>,
         );
-        postPayload(openerStub, makePayload());
+        postPayload(
+          openerStub,
+          makePayload({ protocol: makeProtocol(ENGLISH_AND_SPANISH) }),
+        );
         await screen.findByTestId('shell-mounted');
         const initialPayload = lastShellProps().payload;
         expect(lastShellProps().requestedLocales).toEqual(['es-MX', 'en-US']);
@@ -1152,11 +1168,8 @@ describe('PreviewHost', () => {
         expect(screen.getByTestId('shell-finish-description')).toBe(
           description,
         );
-        // The Shell changes language once its own Spanish catalog has loaded.
-        await waitFor(() =>
-          expect(description).toHaveTextContent(
-            'Esto es una vista previa, así que no se guarda nada.',
-          ),
+        expect(description).toHaveTextContent(
+          'Esto es una vista previa, así que no se guarda nada.',
         );
       } finally {
         languages.mockRestore();
@@ -1164,7 +1177,7 @@ describe('PreviewHost', () => {
       }
     });
 
-    it('keeps the actual queued preview confirmation subscribed to its independent interface language', async () => {
+    it('keeps the actual queued preview confirmation subscribed to the language the interview shows', async () => {
       const preview = render(<PreviewHost />);
       postPayload(openerStub, makePayload());
       await screen.findByTestId('shell-mounted');
@@ -1176,13 +1189,23 @@ describe('PreviewHost', () => {
       const finish = vi.fn();
       const content = (locale: string) => (
         <AppI18nProvider locale="en-GB" locales={architectProductionLocales}>
-          <InterviewI18nProvider requestedLocale={locale}>
-            <DialogProvider>
-              <QueuePreviewConfirmation
-                description={description}
-                onConfirm={finish}
-              />
-            </DialogProvider>
+          <InterviewI18nProvider>
+            <ProtocolLocalizationProvider
+              localization={ENGLISH_AND_SPANISH}
+              localeOptions={ENGLISH_AND_SPANISH.locales.map((tag) =>
+                getLocaleMetadata(tag),
+              )}
+              requestedLocales={[locale]}
+              localePreference={null}
+              onLocalePreferenceChange={() => undefined}
+            >
+              <DialogProvider>
+                <QueuePreviewConfirmation
+                  description={description}
+                  onConfirm={finish}
+                />
+              </DialogProvider>
+            </ProtocolLocalizationProvider>
           </InterviewI18nProvider>
         </AppI18nProvider>
       );
@@ -1196,7 +1219,7 @@ describe('PreviewHost', () => {
       );
       queued.rerender(content('es-MX'));
       expect(screen.getByRole('dialog')).toBe(dialog);
-      // Each switch lands once the interview's own catalog for it has loaded.
+      // Each switch lands once Architect's catalog for it has loaded.
       await waitFor(() =>
         expect(dialog).toHaveTextContent(
           'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',

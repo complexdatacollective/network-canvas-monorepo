@@ -66,7 +66,7 @@ describe('An automatic finish stage', () => {
     const store = createStore(payload, { onSync: () => Promise.resolve() });
     render(
       <AnimationProvider disableAnimations reducedMotion="always">
-        <InterviewI18nProvider requestedLocale="en">
+        <InterviewI18nProvider>
           <ProtocolLocalizationProvider
             localization={payload.protocol.localization}
             localeOptions={payload.session.localeOptions}

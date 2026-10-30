@@ -29,36 +29,34 @@ export function shimMarkdownEditorMeasurement(): void {
 }
 
 /**
- * Opens one group of the participant wording, whose fields are on screen only
- * while their group is open.
- *
- * A whole-stage round trip opens one group rather than all of them: any one
- * puts a field on screen that edits the stage's `wording`, the closed groups'
- * settings come back as the stage holds them, and mounting every group's
- * dozens of rich-text editors is what made those tests time out. Each group's
- * own fields are round-tripped by a test of their own
- * (`FamilyPedigreeStageEditor.test.tsx`, "the participant wording").
+ * Switches the built-in wording on and opens the stage's own part of it,
+ * whose fields are on screen only while it is open. The protocol holds
+ * wording every pedigree shares, so the section splits into the stage's own
+ * words and the shared ones, each a part that starts closed.
  */
-export async function openWordingGroup(
+export async function openStageWording(
   harness: Readonly<{ user: UserEvent }>,
-  name:
-    | (typeof PARTICIPANT_WORDING_GROUP_TITLES)[number]
-    | typeof CHECKLIST_WORDING_GROUP_TITLE = 'Drawing the family',
 ): Promise<void> {
-  const trigger = await screen.findByRole('button', { name });
-  await harness.user.click(trigger);
-  await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+  // The section starts switched off over a single language's supplied
+  // wording; its parts are on screen once it is on.
+  const section = await screen.findByRole('switch', {
+    name: 'Customize built-in wording',
+  });
+  if (section.getAttribute('aria-checked') !== 'true') {
+    await harness.user.click(section);
+  }
+  await openStageWordingPart(harness);
 }
 
-/** What each group of the participant wording is called on screen. */
-export const PARTICIPANT_WORDING_GROUP_TITLES = [
-  'Drawing the family',
-  'Connecting people',
-  'Adding a family member',
-] as const;
-
-/**
- * The group of the participant wording holding the checklist's words, on
- * screen only while the stage has a completeness requirement.
- */
-export const CHECKLIST_WORDING_GROUP_TITLE = 'Completeness checklist';
+/** Opens the part of the wording section holding the stage's own words. */
+async function openStageWordingPart(
+  harness: Readonly<{ user: UserEvent }>,
+): Promise<void> {
+  const part = await screen.findByRole('button', {
+    name: 'Specific to this stage',
+  });
+  if (part.getAttribute('aria-expanded') !== 'true') {
+    await harness.user.click(part);
+  }
+  await waitFor(() => expect(part).toHaveAttribute('aria-expanded', 'true'));
+}

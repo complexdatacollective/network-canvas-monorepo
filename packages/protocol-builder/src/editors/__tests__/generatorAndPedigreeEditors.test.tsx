@@ -1,10 +1,13 @@
-import { screen, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
+import {
+  openStageWording,
+  shimMarkdownEditorMeasurement,
+} from '../family-pedigree/__tests__/editorFixtures.ts';
 import { familyPedigreeStageEditor } from '../family-pedigree/FamilyPedigreeStageEditor.ts';
 import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.ts';
 
@@ -19,13 +22,14 @@ type SectionListEditorCase = Readonly<{
   /** The outline a researcher reads down the side of the stage, in order. */
   sections: readonly string[];
   /**
-   * The top-level stage keys those sections have a field for, once the group
-   * named by `openGroup` is open, and `dynamicValues`, which every stage
-   * editor registers for the values its text may show.
+   * The top-level stage keys those sections have a field for, once the
+   * stage's own wording is open where `opensWording` says so, and
+   * `dynamicValues`, which every stage editor registers for the values its
+   * text may show.
    */
   ownedKeys: readonly string[];
-  /** A group of settings whose fields are on screen only while it is open. */
-  openGroup?: string;
+  /** Set where the stage's own wording mounts its fields only while open. */
+  opensWording?: true;
 }>;
 
 /**
@@ -48,7 +52,6 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Prompt collection',
       'Side panels',
       'Nomination limits',
-      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -68,12 +71,12 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Wording',
       'Additional person fields',
       'Completeness',
-      'Participant wording',
+      'Customize built-in wording',
       'Nomination prompts',
       'Skip logic',
       'Interviewer guidance',
     ],
-    openGroup: 'Drawing the family',
+    opensWording: true,
     ownedKeys: [
       'dynamicValues',
       'edgeConfiguration',
@@ -126,15 +129,13 @@ describe('the family editors written as section lists', () => {
    */
   it.each(SECTION_LIST_EDITORS)(
     '$interfaceName saves the stage it opened, losing nothing',
-    async ({ stageId, editor, ownedKeys, openGroup }) => {
+    async ({ stageId, editor, ownedKeys, opensWording }) => {
       const harness = renderStageEditor({ stageId, registry: editor });
 
-      // A group of settings that mounts its fields only while it is open is
-      // opened, so the key it edits is on screen.
-      if (openGroup !== undefined) {
-        await harness.user.click(
-          await screen.findByRole('button', { name: openGroup }),
-        );
+      // Wording that mounts its fields only while it is open is opened, so
+      // the key it edits is on screen.
+      if (opensWording === true) {
+        await openStageWording(harness);
       }
       await waitFor(() => expect(harness.ownedKeys()).toEqual([...ownedKeys]));
       await harness.roundTrip({ unowned: [] });

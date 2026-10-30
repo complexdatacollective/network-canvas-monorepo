@@ -78,7 +78,7 @@ import useItems, { type UseItemElement } from './useItems';
 
 const ErrorMessage = () => (
   <div className="flex flex-1 flex-col items-center justify-center gap-2">
-    <Icon name="warning" />
+    <Icon name="warning" aria-hidden />
     <Heading level="h2" className="sr-only">
       <AppMessage message={interfaceMessages.errorHeading} />
     </Heading>

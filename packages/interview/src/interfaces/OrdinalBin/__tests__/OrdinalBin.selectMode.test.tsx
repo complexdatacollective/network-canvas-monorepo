@@ -245,7 +245,7 @@ function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
   let dndStore: StoreApi<DndStore> | null = null;
 
   const view = render(
-    <InterviewI18nProvider requestedLocale="en">
+    <InterviewI18nProvider>
       <TestProtocolLocalization>
         <Provider store={store}>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
@@ -517,7 +517,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     });
     const focal = person('a', 'Ann');
     const focus = (promptId: string) => (
-      <InterviewI18nProvider requestedLocale="en">
+      <InterviewI18nProvider>
         <TestProtocolLocalization>
           <Provider store={store}>
             <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>

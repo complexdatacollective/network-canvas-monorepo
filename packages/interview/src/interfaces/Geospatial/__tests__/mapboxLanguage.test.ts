@@ -69,40 +69,34 @@ describe('getMapLanguage', () => {
 
 describe('getSearchLanguage', () => {
   it('uses the protocol language when Search Box lists it', () => {
-    expect(getSearchLanguage('hu', 'en')).toBe('hu');
-    expect(getSearchLanguage('pt-BR', 'en')).toBe('pt');
-    expect(getSearchLanguage('es-MX', 'de')).toBe('es');
+    expect(getSearchLanguage('hu')).toBe('hu');
+    expect(getSearchLanguage('pt-BR')).toBe('pt');
+    expect(getSearchLanguage('es-MX')).toBe('es');
   });
 
   it('does not keep a Chinese script, which Search Box does not list', () => {
-    expect(getSearchLanguage('zh-Hans', 'en')).toBe('en');
-    expect(getSearchLanguage('zh-TW', 'fr')).toBe('fr');
+    expect(getSearchLanguage('zh-Hans')).toBe('en');
+    expect(getSearchLanguage('zh-TW')).toBe('en');
   });
 
   it.each(['ko', 'ar', 'he', 'th', 'vi'])(
     'does not use %s, which the map lists but Search Box does not',
     (protocolLocale) => {
-      expect(getSearchLanguage(protocolLocale, 'it')).toBe('it');
+      expect(getSearchLanguage(protocolLocale)).toBe('en');
     },
   );
 
   it('has no Tagalog or Filipino results, which Search Box does not list', () => {
-    expect(getSearchLanguage('fil', 'de')).toBe('de');
+    expect(getSearchLanguage('fil')).toBe('en');
   });
 
-  it('falls back to the interface language when the protocol language is unsupported', () => {
-    expect(getSearchLanguage('sw', 'de')).toBe('de');
-    expect(getSearchLanguage('und', 'nl')).toBe('nl');
-    expect(getSearchLanguage('ko', 'pt-BR')).toBe('pt');
+  it('falls back to English when the protocol language is unsupported', () => {
+    expect(getSearchLanguage('sw')).toBe('en');
+    expect(getSearchLanguage('zh-Hant')).toBe('en');
+    expect(getSearchLanguage('und')).toBe('en');
   });
 
-  it('falls back to English when neither language is supported', () => {
-    expect(getSearchLanguage('sw', 'zh-Hans')).toBe('en');
-    expect(getSearchLanguage('ko', 'zh-Hant')).toBe('en');
-    expect(getSearchLanguage('und', 'not a tag')).toBe('en');
-  });
-
-  it('prefers a supported protocol language over a supported interface language', () => {
-    expect(getSearchLanguage('hu', 'de')).toBe('hu');
+  it('uses a supported protocol language', () => {
+    expect(getSearchLanguage('hu')).toBe('hu');
   });
 });

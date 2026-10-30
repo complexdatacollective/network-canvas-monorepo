@@ -1015,6 +1015,38 @@
       },
       "continue": {
         "en-US": "Continue"
+      },
+      "exitFailed": {
+        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en-US": "Show screen"
       }
     },
     "buttons": {
@@ -1033,11 +1065,20 @@
       "no": {
         "en-US": "No"
       },
+      "save": {
+        "en-US": "Save"
+      },
       "pauseLayout": {
         "en-US": "Pause automatic layout"
       },
       "resumeLayout": {
         "en-US": "Resume automatic layout"
+      },
+      "copy": {
+        "en-US": "Copy"
+      },
+      "copied": {
+        "en-US": "Copied"
       }
     },
     "messages": {
@@ -1049,6 +1090,20 @@
       },
       "error": {
         "en-US": "An error occurred."
+      },
+      "loading": {
+        "en-US": "Loading…"
+      },
+      "unnamed": {
+        "en-US": "Unnamed"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
       }
     },
     "passphrase": {
@@ -1081,6 +1136,12 @@
       },
       "passphraseAccepted": {
         "en-US": "Passphrase accepted! Click \"Next\" to continue."
+      },
+      "checkingPassphrase": {
+        "en-US": "Checking your passphrase…"
+      },
+      "passwordPlaceholder": {
+        "en-US": "Enter password"
       }
     },
     "forms": {
@@ -1115,6 +1176,16 @@
       },
       "sameAs": {
         "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
+      }
+    },
+    "categoricalBin": {
+      "placeHere": {
+        "en-US": "Place here"
+      }
+    },
+    "egoForm": {
+      "scrollForQuestions": {
+        "en-US": "Scroll to see more questions"
       }
     }
   }

@@ -1815,13 +1815,25 @@
     "defaultMessage": "Closing screen",
     "description": "Heading of the section where a researcher writes what a participant reads before finishing the interview."
   },
+  "protocolBuilder.finishSession.finishConfirmationHint": {
+    "defaultMessage": "Question asked after the participant presses the finish button, before the interview ends. Only used when the stage asks participants to confirm.",
+    "description": "Hint under the setting holding the confirmation question, in the Customize built-in wording section of the Finish stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.finishSession.finishConfirmationLabel": {
     "defaultMessage": "Confirmation question",
     "description": "Label of the field holding the question a participant is asked before the interview ends."
   },
+  "protocolBuilder.finishSession.finishFailedHint": {
+    "defaultMessage": "Shown when the interview could not be ended, so the participant can try again.",
+    "description": "Hint under the setting holding the message shown when finishing fails, in the Customize built-in wording section of the Finish stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.finishSession.finishFailedLabel": {
     "defaultMessage": "If finishing fails",
     "description": "Label of the field holding the message a participant sees when the interview could not be ended."
+  },
+  "protocolBuilder.finishSession.finishLabelHint": {
+    "defaultMessage": "Button the participant presses to end the interview.",
+    "description": "Hint under the setting holding the words on the finish button, in the Customize built-in wording section of the Finish stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.finishSession.finishLabelLabel": {
     "defaultMessage": "Finish button",
@@ -1838,14 +1850,6 @@
   "protocolBuilder.finishSession.finishedTitle": {
     "defaultMessage": "Finished screen",
     "description": "Heading of the section where a researcher writes what a participant reads once the interview has finished."
-  },
-  "protocolBuilder.finishSession.finishingDescription": {
-    "defaultMessage": "These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the finishing section. Each field starts with supplied wording in each of the protocol’s languages that Network Canvas has it in."
-  },
-  "protocolBuilder.finishSession.finishingTitle": {
-    "defaultMessage": "Finishing the interview",
-    "description": "Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, and the message when finishing fails."
   },
   "protocolBuilder.finishSession.modeAutomatic": {
     "defaultMessage": "Finish automatically",
@@ -2463,10 +2467,6 @@
     "defaultMessage": "Starting zoom must be between {min, number} and {max, number}.",
     "description": "Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22. A zoom between two whole numbers is ordinary — a map panned into place hands back a fraction — so only the ends are named."
   },
-  "protocolBuilder.geospatialWording.description": {
-    "defaultMessage": "These start with wording Network Canvas supplies, which you can change. The search messages appear only when the map has a search.",
-    "description": "Description of the messages section of a map. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
-  },
   "protocolBuilder.geospatialWording.offlineHint": {
     "defaultMessage": "Shown while the device is offline, because the map cannot load without a connection.",
     "description": "Guidance under the field holding the offline message of a map."
@@ -2490,10 +2490,6 @@
   "protocolBuilder.geospatialWording.searchFailedLabel": {
     "defaultMessage": "Search failed",
     "description": "Label of the field holding the message shown when a map search could not run."
-  },
-  "protocolBuilder.geospatialWording.title": {
-    "defaultMessage": "Messages",
-    "description": "Heading of the section holding the words a map shows a participant: when it is offline, when it cannot be drawn, its outside-areas button, and its search. A map is a Geospatial stage."
   },
   "protocolBuilder.geospatialWording.unavailableHint": {
     "defaultMessage": "Shown in place of the map when it cannot be drawn, and says what to try.",
@@ -2658,14 +2654,6 @@
   "protocolBuilder.languageChooser.singleLanguage": {
     "defaultMessage": "This protocol is written in one language, so participants will see it as their only choice.",
     "description": "Shown under the list of languages when the protocol has only one language, so this stage offers participants a single option."
-  },
-  "protocolBuilder.languageChooser.wordingDescription": {
-    "defaultMessage": "This starts with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the wording section of the language-choosing stage. Its heading starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
-  },
-  "protocolBuilder.languageChooser.wordingTitle": {
-    "defaultMessage": "Participant wording",
-    "description": "Heading of the section holding the words a participant reads on the stage where they choose the language of their interview."
   },
   "protocolBuilder.localization.defaultLanguage": {
     "defaultMessage": "Default",
@@ -3120,11 +3108,79 @@
     "description": "Names one field of a form where a text is listed without its translation, used when the field records no attribute the codebook names. position is the field’s place in the form, counting from one."
   },
   "protocolBuilder.localizedTextNames.interfaceTextGroup": {
-    "defaultMessage": "{group, select, navigation {Interview navigation} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} other {{group}}}",
-    "description": "Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, the labels of its buttons, its error messages, those of a search box, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules."
+    "defaultMessage": "{group, select, navigation {Interview navigation} interviewer {Interviewer controls} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} familyTreeView {Family tree view} familyPedigree {Family Pedigree} categoricalBin {Categorical Bin} quickAdd {Name Generator (quick add)} roster {Name Generator for Roster Data} networkComposer {Network Composer} egoForm {Ego Form} other {{group}}}",
+    "description": "Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, those only an interviewer uses (leaving a review, showing a hidden screen), the labels of its buttons, its error messages, those of a search box, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules. The rest are named for the kind of stage whose every stage shows them: familyTreeView is the controls for viewing a family tree, shared by the Family Pedigree and Narrative Pedigree stages; the others are the stage types Family Pedigree, Categorical Bin, Name Generator (quick add), Name Generator for Roster Data, Network Composer and Ego Form, named as the stage type menu names them."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.addNamePlaceholder": {
+    "defaultMessage": "Placeholder in the quick-add box where the participant types a name, shown until they start typing.",
+    "description": "Hint under the setting holding the name box placeholder, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.connectToolDescription": {
+    "defaultMessage": "Tooltip text for the connect tool in the family tree toolbar.",
+    "description": "Hint under the setting holding the connect tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.connection": {
+    "defaultMessage": "Title shown when the participant selects an edge of a type this stage does not draw, such as one from an earlier stage.",
+    "description": "Hint under the setting holding the connection label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.disconnectToolDescription": {
+    "defaultMessage": "Tooltip text for the disconnect tool in the family tree toolbar.",
+    "description": "Hint under the setting holding the disconnect tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.dropToRemove": {
+    "defaultMessage": "Shown over the roster list while the participant drags an added node back to remove it.",
+    "description": "Hint under the setting holding the drop to remove message, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.framingControlDescription": {
+    "defaultMessage": "Tooltip text for the control that changes the words used for family members. Only used when participants choose the words.",
+    "description": "Hint under the setting holding the relationship words explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.placeHere": {
+    "defaultMessage": "Button on each bin that places the selected node in it, when the participant taps a node and then a bin.",
+    "description": "Hint under the setting holding the place here label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.pointerToolDescription": {
+    "defaultMessage": "Tooltip text for the pointer tool in the family tree toolbar.",
+    "description": "Hint under the setting holding the select tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.redoDescription": {
+    "defaultMessage": "Tooltip text for the redo button in the family tree toolbar.",
+    "description": "Hint under the setting holding the redo explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.scrollForQuestions": {
+    "defaultMessage": "Read by screen readers on the arrow that shows there are more questions below.",
+    "description": "Hint under the setting holding the more questions hint, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.showWholeFamily": {
+    "defaultMessage": "Name of the toolbar button that fits the whole family tree on the screen. Shown in its tooltip.",
+    "description": "Hint under the setting holding the whole family button, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.showWholeFamilyDescription": {
+    "defaultMessage": "Tooltip text for the button that fits the whole family tree on the screen.",
+    "description": "Hint under the setting holding the whole family explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.trackerAllDetails": {
+    "defaultMessage": "Last item in the completeness checklist, asking for the required details of every family member.",
+    "description": "Hint under the setting holding the all details checklist item, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.undoDescription": {
+    "defaultMessage": "Tooltip text for the undo button in the family tree toolbar.",
+    "description": "Hint under the setting holding the undo explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.unnamedNumbered": {
+    "defaultMessage": "Label for a roster item that has no name. The number tells unnamed items apart.",
+    "description": "Hint under the setting holding the numbered unnamed label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.zoomInDescription": {
+    "defaultMessage": "Tooltip text for the zoom in button on the family tree.",
+    "description": "Hint under the setting holding the zoom in explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.zoomOutDescription": {
+    "defaultMessage": "Tooltip text for the zoom out button on the family tree.",
+    "description": "Hint under the setting holding the zoom out explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextName": {
-    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} other {{key}}}",
+    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} copy {Copy button} copied {Copied message} loading {Loading message} unnamed {Unnamed label} exitFailed {Exit failed message} exitReview {Exit review button} exitReviewTitle {Exit review question} exitReviewDescription {Exit review explanation} hiddenScreen {Hidden screen label} outsidePath {Outside path label} showScreenTitle {Show screen question} hiddenScreenDescription {Hidden screen explanation} outsidePathDescription {Outside path explanation} showScreen {Show screen button} checkingPassphrase {Checking passphrase message} passwordPlaceholder {Passphrase field hint} zoomOut {Zoom out button} zoomOutDescription {Zoom out explanation} zoomIn {Zoom in button} zoomInDescription {Zoom in explanation} showWholeFamily {Whole family button} showWholeFamilyDescription {Whole family explanation} pointerToolDescription {Select tool explanation} connectToolDescription {Connect tool explanation} disconnectToolDescription {Disconnect tool explanation} framingControlDescription {Relationship words explanation} undo {Undo button} undoDescription {Undo explanation} redo {Redo button} redoDescription {Redo explanation} skip {Skip button} trackerAllDetails {All details checklist item} placeHere {Place here label} unnamedNumbered {Numbered unnamed label} dropToRemove {Drop to remove message} connection {Connection label} scrollForQuestions {More questions hint} addNamePlaceholder {Name box placeholder} other {{key}}}",
     "description": "Names one of the words the interview itself shows, where it is listed for translation: a button, a field label or a message, by what it is for. key says which."
   },
   "protocolBuilder.localizedTextNames.itemPosition": {
@@ -3200,108 +3256,120 @@
     "description": "Refusal shown when a researcher saves a name-generator prompt with no question in it."
   },
   "protocolBuilder.nameGeneratorWording.allAddedHint": {
-    "defaultMessage": "Shown in the list of people to add when there is nothing left to add from it.",
-    "description": "Guidance under the field holding the message shown when there is nothing left to add from a roster."
+    "defaultMessage": "Shown in the roster list once everything in it has been added.",
+    "description": "Hint under the setting holding the everything added message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.nameGeneratorWording.allAddedLabel": {
     "defaultMessage": "Everything added",
     "description": "Label of the field holding the message shown when every person on a roster has already been added."
   },
-  "protocolBuilder.nameGeneratorWording.description": {
-    "defaultMessage": "These start with wording Network Canvas supplies, which you can change. Each one appears only where its limit, panel or field is part of this stage.",
-    "description": "Description of the messages section of a name generator. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
-  },
   "protocolBuilder.nameGeneratorWording.maxNoticeHint": {
-    "defaultMessage": "Shown once the participant has named the most people this stage allows.",
-    "description": "Guidance under the field holding the message shown when the stage’s maximum number of people has been named."
+    "defaultMessage": "Shown once the participant has added as many nodes as this stage allows.",
+    "description": "Hint under the setting holding the maximum reached message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.nameGeneratorWording.maxNoticeLabel": {
     "defaultMessage": "Maximum reached",
     "description": "Label of the field holding the message shown once the participant has named the most people this stage allows."
   },
   "protocolBuilder.nameGeneratorWording.minNoticeHint": {
-    "defaultMessage": "Shown when the participant tries to continue before naming the fewest people this stage asks for.",
-    "description": "Guidance under the field holding the message shown when the participant has not yet named the stage’s minimum number of people."
+    "defaultMessage": "Shown when the participant tries to continue before adding as many nodes as this stage asks for.",
+    "description": "Hint under the setting holding the minimum not reached message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.nameGeneratorWording.minNoticeLabel": {
     "defaultMessage": "Minimum not reached",
     "description": "Label of the field holding the message shown when the participant tries to continue having named fewer people than the stage’s minimum."
   },
   "protocolBuilder.nameGeneratorWording.quickAddHintHint": {
-    "defaultMessage": "Shown beside the name field, saying how to finish adding a person.",
-    "description": "Guidance under the field holding the line shown beside the quick-add name field."
+    "defaultMessage": "Shown beside the quick-add box, telling the participant how to finish adding a node.",
+    "description": "Hint under the setting holding the quick-add hint, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.nameGeneratorWording.quickAddHintLabel": {
     "defaultMessage": "Quick-add hint",
     "description": "Label of the field holding the line shown beside the quick-add name field, telling the participant how to finish."
   },
-  "protocolBuilder.nameGeneratorWording.title": {
-    "defaultMessage": "Messages",
-    "description": "Heading of the section holding the words a name generator shows a participant about its limits, a roster’s list and its quick-add field. A name generator is a stage that asks the participant to name people."
-  },
   "protocolBuilder.narrative.attributesHeadingHint": {
-    "defaultMessage": "Shown only when a preset highlights members.",
-    "description": "Hint under the attributes heading setting, saying when the setting is used."
+    "defaultMessage": "Heading of the panel that lists what the current preset highlights. Only used when a preset highlights nodes.",
+    "description": "Hint under the setting holding the attributes heading, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
   },
   "protocolBuilder.narrative.attributesHeadingLabel": {
     "defaultMessage": "Attributes heading",
     "description": "Label of the setting holding the heading of the panel that lists what a preset highlights."
   },
+  "protocolBuilder.narrative.disableDrawingTooltipHint": {
+    "defaultMessage": "Tooltip for the button that stops drawing on the canvas. Only used when the stage allows drawing.",
+    "description": "Hint under the setting holding the disable drawing tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
+  },
   "protocolBuilder.narrative.disableDrawingTooltipLabel": {
     "defaultMessage": "Disable drawing tooltip",
     "description": "Label of the setting holding the tooltip of the tool that turns drawing off."
   },
-  "protocolBuilder.narrative.drawingTooltipHint": {
-    "defaultMessage": "Shown only when drawing is turned on.",
-    "description": "Hint under the drawing tooltip settings, saying when they are used."
+  "protocolBuilder.narrative.enableDrawingTooltipHint": {
+    "defaultMessage": "Tooltip for the button that lets the participant draw on the canvas. Only used when the stage allows drawing.",
+    "description": "Hint under the setting holding the enable drawing tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
   },
   "protocolBuilder.narrative.enableDrawingTooltipLabel": {
     "defaultMessage": "Enable drawing tooltip",
     "description": "Label of the setting holding the tooltip of the tool that turns drawing on."
+  },
+  "protocolBuilder.narrative.freezeAnnotationsTooltipHint": {
+    "defaultMessage": "Tooltip for the button that keeps drawings in place. Only used when the stage allows drawing.",
+    "description": "Hint under the setting holding the freeze annotations tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
   },
   "protocolBuilder.narrative.freezeAnnotationsTooltipLabel": {
     "defaultMessage": "Freeze annotations tooltip",
     "description": "Label of the setting holding the tooltip of the tool that freezes the drawn annotations in place."
   },
   "protocolBuilder.narrative.groupsHeadingHint": {
-    "defaultMessage": "Shown only when a preset groups members.",
-    "description": "Hint under the groups heading setting, saying when the setting is used."
+    "defaultMessage": "Heading of the panel that lists the groups the current preset shows. Only used when a preset groups nodes.",
+    "description": "Hint under the setting holding the groups heading, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
   },
   "protocolBuilder.narrative.groupsHeadingLabel": {
     "defaultMessage": "Groups heading",
     "description": "Label of the setting holding the heading of the panel that lists the groups a preset shows."
   },
   "protocolBuilder.narrative.linksHeadingHint": {
-    "defaultMessage": "Shown only when a preset shows connections.",
-    "description": "Hint under the links heading setting, saying when the setting is used."
+    "defaultMessage": "Heading of the panel that lists the edges the current preset shows. Only used when a preset shows edges.",
+    "description": "Hint under the setting holding the links heading, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
   },
   "protocolBuilder.narrative.linksHeadingLabel": {
     "defaultMessage": "Links heading",
     "description": "Label of the setting holding the heading of the panel that lists the connections a preset shows."
   },
+  "protocolBuilder.narrative.resetAnnotationsTooltipHint": {
+    "defaultMessage": "Tooltip for the button that removes all drawings. Only used when the stage allows drawing.",
+    "description": "Hint under the setting holding the reset annotations tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
+  },
   "protocolBuilder.narrative.resetAnnotationsTooltipLabel": {
     "defaultMessage": "Reset annotations tooltip",
     "description": "Label of the setting holding the tooltip of the tool that removes every drawn annotation."
+  },
+  "protocolBuilder.narrative.unfreezeAnnotationsTooltipHint": {
+    "defaultMessage": "Tooltip for the button that lets drawings move again. Only used when the stage allows drawing.",
+    "description": "Hint under the setting holding the unfreeze annotations tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
   },
   "protocolBuilder.narrative.unfreezeAnnotationsTooltipLabel": {
     "defaultMessage": "Unfreeze annotations tooltip",
     "description": "Label of the setting holding the tooltip of the tool that lets the drawn annotations move again."
   },
-  "protocolBuilder.narrative.wordingDescription": {
-    "defaultMessage": "The headings of the highlight, link and group panels, and the labels of the drawing tools. These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the words section of a narrative canvas."
-  },
-  "protocolBuilder.narrative.wordingTitle": {
-    "defaultMessage": "Words on the canvas",
-    "description": "Heading of the section holding the words a participant reads on a narrative canvas: the headings of its panels and the labels of its tools. Also names the section in the editor outline and to assistive technology."
+  "protocolBuilder.narrativePedigree.affectedNotationHint": {
+    "defaultMessage": "Key entry for family members who have the selected condition.",
+    "description": "Hint under the setting holding the key entry for having the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
   },
   "protocolBuilder.narrativePedigree.affectedNotationLabel": {
     "defaultMessage": "Has this condition",
     "description": "Label of the setting holding the key entry for a person who has the selected condition."
   },
+  "protocolBuilder.narrativePedigree.atRiskAffectedNotationHint": {
+    "defaultMessage": "Key entry for family members who may develop the selected condition. Only used when the pedigree shows at-risk statuses.",
+    "description": "Hint under the setting holding the key entry for possibly developing the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
+  },
   "protocolBuilder.narrativePedigree.atRiskAffectedNotationLabel": {
     "defaultMessage": "May develop this condition",
     "description": "Label of the setting holding the key entry for a person who may develop the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.atRiskCarrierNotationHint": {
+    "defaultMessage": "Key entry for family members who may carry the selected condition. Only used when the pedigree shows at-risk statuses.",
+    "description": "Hint under the setting holding the key entry for possibly carrying the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
   },
   "protocolBuilder.narrativePedigree.atRiskCarrierNotationLabel": {
     "defaultMessage": "May carry this condition",
@@ -3314,10 +3382,6 @@
   "protocolBuilder.narrativePedigree.atRiskFieldLabel": {
     "defaultMessage": "Show possible (at-risk) statuses",
     "description": "Label of the switch turning inferred risk on. The bracketed words name what these are called on the family tree itself."
-  },
-  "protocolBuilder.narrativePedigree.atRiskHint": {
-    "defaultMessage": "Shown only when the pedigree shows at-risk statuses.",
-    "description": "Hint under the at-risk key settings, saying when they are used."
   },
   "protocolBuilder.narrativePedigree.atRiskHowConstrained": {
     "defaultMessage": "Two rules constrain how risk travels through a family. Only <em>biological</em> and <em>donor</em> relationships pass conditions on; social, adoptive, surrogate and partner links do not. And where a person’s biological sex is not known, sex-linked inheritance through that person is left uncertain rather than guessed.",
@@ -3346,6 +3410,10 @@
   "protocolBuilder.narrativePedigree.atRiskWhyOffHeading": {
     "defaultMessage": "Why this is off by default",
     "description": "Heading over the paragraph explaining why inferred risk is not shown unless a researcher asks for it."
+  },
+  "protocolBuilder.narrativePedigree.clearFocusTooltipHint": {
+    "defaultMessage": "Tooltip for the button that clears the selected family member.",
+    "description": "Hint under the setting holding the clear focus tooltip, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
   },
   "protocolBuilder.narrativePedigree.clearFocusTooltipLabel": {
     "defaultMessage": "Clear focus tooltip",
@@ -3519,13 +3587,25 @@
     "defaultMessage": "Y-linked",
     "description": "One choice in the inheritance-pattern list: a condition carried on the Y chromosome. Standard clinical genetics terminology; \"Y\" is the chromosome’s letter and is not translated."
   },
+  "protocolBuilder.narrativePedigree.keyHeadingHint": {
+    "defaultMessage": "Heading of the key that explains the symbols on the pedigree.",
+    "description": "Hint under the setting holding the key heading, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
+  },
   "protocolBuilder.narrativePedigree.keyHeadingLabel": {
     "defaultMessage": "Key heading",
     "description": "Label of the setting holding the heading of the key that explains the symbols on the pedigree."
   },
+  "protocolBuilder.narrativePedigree.obligateAffectedNotationHint": {
+    "defaultMessage": "Key entry for family members who will develop the selected condition.",
+    "description": "Hint under the setting holding the key entry for developing the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
+  },
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": {
     "defaultMessage": "Will develop this condition",
     "description": "Label of the setting holding the key entry for a person who will develop the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.obligateCarrierNotationHint": {
+    "defaultMessage": "Key entry for family members who carry the selected condition.",
+    "description": "Hint under the setting holding the key entry for carrying the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
   },
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": {
     "defaultMessage": "Carries this condition",
@@ -3535,21 +3615,29 @@
     "defaultMessage": "Save snapshot button",
     "description": "Label of the setting holding the text of the button, below the key, that saves an image of the pedigree."
   },
+  "protocolBuilder.narrativePedigree.saveSnapshotHint": {
+    "defaultMessage": "Button below the key that saves an image of the pedigree.",
+    "description": "Hint under the setting holding the save snapshot button, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
+  },
+  "protocolBuilder.narrativePedigree.selectConditionHint": {
+    "defaultMessage": "Shown in the condition menu when no condition is chosen. Also the menu option for showing no condition.",
+    "description": "Hint under the setting holding the select a condition option, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
+  },
   "protocolBuilder.narrativePedigree.selectConditionLabel": {
     "defaultMessage": "“Select a condition” option",
     "description": "Label of the setting holding the text the participant's condition menu shows while no condition is chosen, which is also the menu's choice for showing none."
   },
   "protocolBuilder.narrativePedigree.snapshotConditionHint": {
-    "defaultMessage": "The pedigree title and the condition name are filled in where the two placeholders are.",
-    "description": "Hint under the snapshot title setting for one condition, explaining the placeholders."
+    "defaultMessage": "Title of a saved image of one condition. The pedigree title and the condition name fill the placeholders.",
+    "description": "Hint under the setting holding the snapshot title for a condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
   },
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": {
     "defaultMessage": "Snapshot title for a condition",
     "description": "Label of the setting holding the title of a saved image of one condition."
   },
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": {
-    "defaultMessage": "The pedigree title, the condition name and the name of the person are filled in where the three placeholders are.",
-    "description": "Hint under the snapshot title setting for inheritance, explaining the placeholders."
+    "defaultMessage": "Title of a saved image of how a condition is inherited. The pedigree title, the condition name and the family member’s name fill the placeholders.",
+    "description": "Hint under the setting holding the snapshot title for inheritance, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
   },
   "protocolBuilder.narrativePedigree.snapshotInheritanceLabel": {
     "defaultMessage": "Snapshot title for inheritance",
@@ -3623,17 +3711,13 @@
     "defaultMessage": "{stageName} — this stage can no longer be used",
     "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
   },
+  "protocolBuilder.narrativePedigree.unknownNotationHint": {
+    "defaultMessage": "Key entry for family members whose status for the selected condition is not known.",
+    "description": "Hint under the setting holding the key entry for an unknown status, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
+  },
   "protocolBuilder.narrativePedigree.unknownNotationLabel": {
     "defaultMessage": "Not known",
     "description": "Label of the setting holding the key entry for a person whose status for the selected condition is not known."
-  },
-  "protocolBuilder.narrativePedigree.wordingDescription": {
-    "defaultMessage": "The key, the condition panel, the tooltips and the snapshot titles. These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the words section of a narrative pedigree."
-  },
-  "protocolBuilder.narrativePedigree.wordingTitle": {
-    "defaultMessage": "Words on the pedigree",
-    "description": "Heading of the section holding the words a participant reads on a narrative pedigree: its key, its condition panel, its tooltips and its snapshot titles. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
     "defaultMessage": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
@@ -3711,13 +3795,25 @@
     "defaultMessage": "Narrative behaviors",
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
   },
+  "protocolBuilder.networkCanvas.composerAddNamePlaceholderHint": {
+    "defaultMessage": "Placeholder in the box for adding a node by name, shown until the participant starts typing.",
+    "description": "Hint under the setting holding the placeholder of the box for adding a node, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.networkCanvas.composerAddNamePlaceholderLabel": {
     "defaultMessage": "Name box placeholder",
     "description": "Label of the setting holding the placeholder shown in the box for adding a member to the network, until a name is typed."
   },
+  "protocolBuilder.networkCanvas.composerAddNodeTooltipHint": {
+    "defaultMessage": "Tooltip for the tool that adds a node to the canvas.",
+    "description": "Hint under the setting holding the add node tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.networkCanvas.composerAddNodeTooltipLabel": {
     "defaultMessage": "Add node tooltip",
     "description": "Label of the setting holding the tooltip of the tool that adds a member to the network."
+  },
+  "protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipHint": {
+    "defaultMessage": "Tooltip for the automatic layout tool.",
+    "description": "Hint under the setting holding the automatic layout tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipLabel": {
     "defaultMessage": "Automatic layout tooltip",
@@ -3728,8 +3824,8 @@
     "description": "Button that creates an attribute holding a position in the codebook and uses it for this stage."
   },
   "protocolBuilder.networkCanvas.composerDrawConnectionTooltipHint": {
-    "defaultMessage": "Shown only when the canvas has connection types.",
-    "description": "Hint under the draw connection tooltip setting, saying when the setting is used."
+    "defaultMessage": "Tooltip for the tool that draws an edge between two nodes. Only used when the canvas has edge types.",
+    "description": "Hint under the setting holding the draw connection tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.networkCanvas.composerDrawConnectionTooltipLabel": {
     "defaultMessage": "Draw connection tooltip",
@@ -3800,8 +3896,8 @@
     "description": "How a row of a network composer’s connection list reads before a kind of connection has been chosen for it."
   },
   "protocolBuilder.networkCanvas.composerGroupsHeadingHint": {
-    "defaultMessage": "Shown only when the canvas groups members.",
-    "description": "Hint under the groups heading setting, saying when the setting is used."
+    "defaultMessage": "Name of the groups tool, and heading of the groups in the key. Only used when the canvas groups nodes.",
+    "description": "Hint under the setting holding the groups heading, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.networkCanvas.composerGroupsHeadingLabel": {
     "defaultMessage": "Groups heading",
@@ -3827,17 +3923,13 @@
     "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
   },
+  "protocolBuilder.networkCanvas.composerOvertakenEditNoticeHint": {
+    "defaultMessage": "Warning shown when an undo or redo changes an answer the participant is editing, so their edit is not saved.",
+    "description": "Hint under the setting holding the warning about an overtaken edit, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.networkCanvas.composerOvertakenEditNoticeLabel": {
     "defaultMessage": "Warning about an overtaken edit",
     "description": "Label of the setting holding the warning a participant sees when an undo or redo has changed an answer they were editing, so their edit has not been saved."
-  },
-  "protocolBuilder.networkCanvas.composerWordingDescription": {
-    "defaultMessage": "The name box, the warning shown when an undo or redo changed an answer being edited, and the labels of the canvas tools. These start with wording Network Canvas supplies, which you can change.",
-    "description": "Description of the words section of a composer canvas. A composer is the canvas where the participant builds their network."
-  },
-  "protocolBuilder.networkCanvas.composerWordingTitle": {
-    "defaultMessage": "Words on the canvas",
-    "description": "Heading of the section holding the words a participant reads while building the network on a composer canvas. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
     "defaultMessage": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
@@ -5503,10 +5595,6 @@
     "defaultMessage": "Name",
     "description": "Name of the placeholder, inserted into a list item or question, that shows the family member’s name."
   },
-  "protocolBuilder.pedigree.trackerRecommendedNoteHint": {
-    "defaultMessage": "Shown under the checklist when completeness is recommended, not required.",
-    "description": "Guidance under the continuing-anyway note box. Recommended and Required are the two choices, made earlier in the editor, for whether participants may continue with an incomplete family."
-  },
   "protocolBuilder.pedigree.trackerRecommendedNoteLabel": {
     "defaultMessage": "Note about continuing anyway",
     "description": "Label of the box holding the note that tells participants they may continue without completing the checklist."
@@ -5518,14 +5606,6 @@
   "protocolBuilder.pedigree.trackerSiblingsQuestionLabel": {
     "defaultMessage": "Brothers and sisters question in the side panel",
     "description": "Label of the box holding the question the side panel asks about a person’s brothers and sisters while they are still needed. The side panel is where the participant describes a family member."
-  },
-  "protocolBuilder.pedigree.trackerTextTitle": {
-    "defaultMessage": "Completeness checklist",
-    "description": "Heading of a group in the participant wording section, shown only when the stage has a completeness requirement. It holds the words of the checklist that shows participants who and what is still missing from their family, and the side panel’s questions about brothers, sisters and children."
-  },
-  "protocolBuilder.pedigree.wording.addingTitle": {
-    "defaultMessage": "Adding a family member",
-    "description": "Heading of the group of words shown in the side panel for a family member the participant adds or edits."
   },
   "protocolBuilder.pedigree.wording.alsoParentOfLabel": {
     "defaultMessage": "Also parent of question",
@@ -5587,10 +5667,6 @@
     "defaultMessage": "Child carried as a surrogate option",
     "description": "Label of the option for a child the person carried as a surrogate."
   },
-  "protocolBuilder.pedigree.wording.choosesFramingHint": {
-    "defaultMessage": "Shown only when participants choose the words used for family members.",
-    "description": "Hint on the wording settings that are shown only when participants choose the words used for family members."
-  },
   "protocolBuilder.pedigree.wording.connectHint": {
     "defaultMessage": "Connect hint",
     "description": "Label of the hint shown while the participant chooses the first person to connect."
@@ -5610,14 +5686,6 @@
   "protocolBuilder.pedigree.wording.connectTool": {
     "defaultMessage": "Connect tool button",
     "description": "Label of the button that connects two people on the family tree."
-  },
-  "protocolBuilder.pedigree.wording.connectingTitle": {
-    "defaultMessage": "Connecting people",
-    "description": "Heading of the group of words shown while the participant connects and removes people."
-  },
-  "protocolBuilder.pedigree.wording.description": {
-    "defaultMessage": "The words the interface shows the participant while they draw their family, in the order they meet them. Each starts with Network Canvas’s wording in each language the protocol has, and you can change it.",
-    "description": "Description of the participant wording section."
   },
   "protocolBuilder.pedigree.wording.disconnectConfirmDescription": {
     "defaultMessage": "Remove connection explanation",
@@ -5643,10 +5711,6 @@
     "defaultMessage": "Connection that would leave someone out",
     "description": "Label of the warning that removing a connection would leave people outside the family tree."
   },
-  "protocolBuilder.pedigree.wording.drawingTitle": {
-    "defaultMessage": "Drawing the family",
-    "description": "Heading of the group of words shown while the participant draws their family on the canvas."
-  },
   "protocolBuilder.pedigree.wording.framingChoiceDescription": {
     "defaultMessage": "Wording question explanation",
     "description": "Label of the explanation under the question asking which words to use for family members."
@@ -5658,10 +5722,6 @@
   "protocolBuilder.pedigree.wording.framingControlLabel": {
     "defaultMessage": "Wording control label",
     "description": "Label of the control that lets the participant change the words used for family members."
-  },
-  "protocolBuilder.pedigree.wording.genderIdentityHint": {
-    "defaultMessage": "Shown only when the interface asks about gender identity.",
-    "description": "Hint on the gender identity wording setting, which is shown only when the interface asks about gender identity."
   },
   "protocolBuilder.pedigree.wording.genderIdentityLabel": {
     "defaultMessage": "Gender identity question",
@@ -5819,10 +5879,6 @@
     "defaultMessage": "Still together question",
     "description": "Label of the question asking whether a partnership is still ongoing."
   },
-  "protocolBuilder.pedigree.wording.title": {
-    "defaultMessage": "Participant wording",
-    "description": "Heading of the section holding the words the participant sees on this stage."
-  },
   "protocolBuilder.pedigree.wording.twinZygosityLabel": {
     "defaultMessage": "Identical twins question",
     "description": "Label of the question asking whether two twins are identical."
@@ -5874,6 +5930,366 @@
   "protocolBuilder.pedigree.wording.zygosityIdentical": {
     "defaultMessage": "Identical option",
     "description": "Label of the option that two twins are identical."
+  },
+  "protocolBuilder.pedigree.wordingHint.alsoParentOfLabel": {
+    "defaultMessage": "Question asking whether a new parent is also the parent of the family member’s siblings.",
+    "description": "Hint under the setting holding the also parent of question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.biologicalParentBoth": {
+    "defaultMessage": "Answer that both parents are the child’s biological parents. Their names are filled in.",
+    "description": "Hint under the setting holding the both biological parents answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.biologicalParentHint": {
+    "defaultMessage": "Hint under the question about the child’s biological parent.",
+    "description": "Hint under the setting holding the biological parent hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.biologicalParentLabel": {
+    "defaultMessage": "Question asking which parent is the child’s biological parent.",
+    "description": "Hint under the setting holding the biological parent question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.carriedSiblingsPregnancyLabel": {
+    "defaultMessage": "Question asking whether a parent carried the pregnancy of each new sibling.",
+    "description": "Hint under the setting holding the siblings’ pregnancy question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.carrierLabel": {
+    "defaultMessage": "Question asking who carried the pregnancy.",
+    "description": "Hint under the setting holding the carrier question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.carrierReplaced": {
+    "defaultMessage": "Note explaining that choosing this answer replaces the family member recorded as having carried the pregnancy.",
+    "description": "Hint under the setting holding the note on a new answer about carrying, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.carrierUnknown": {
+    "defaultMessage": "Answer to the question about who carried the pregnancy, for someone else or for not knowing.",
+    "description": "Hint under the setting holding the other or unknown carrier answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.changeWouldCutOff": {
+    "defaultMessage": "Warning shown when a change would leave family members outside the family tree. The change is not made.",
+    "description": "Hint under the setting holding the warning about a change that would leave someone out, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childKindAdoptive": {
+    "defaultMessage": "Answer for an adopted child.",
+    "description": "Hint under the setting holding the adopted child answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childKindBiological": {
+    "defaultMessage": "Answer for a biological child.",
+    "description": "Hint under the setting holding the biological child answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childKindDonor": {
+    "defaultMessage": "Answer for a child conceived with an egg or sperm the family member donated.",
+    "description": "Hint under the setting holding the child from a donation answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childKindLabel": {
+    "defaultMessage": "Question asking what kind of child a new child is.",
+    "description": "Hint under the setting holding the kind of child question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childKindSocial": {
+    "defaultMessage": "Answer for a step-child or other child the family member raises.",
+    "description": "Hint under the setting holding the step or other raised child answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childKindSurrogate": {
+    "defaultMessage": "Answer for a child the family member carried as a surrogate.",
+    "description": "Hint under the setting holding the child carried as a surrogate answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childrenListItem": {
+    "defaultMessage": "Item in the completeness checklist asking for a family member’s biological children, or an answer that they have none.",
+    "description": "Hint under the setting holding the children item, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childrenNoneButton": {
+    "defaultMessage": "Button under the children checklist item, for answering that the family member has no biological children.",
+    "description": "Hint under the setting holding the no children button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.childrenQuestion": {
+    "defaultMessage": "Question in the side panel about a family member’s biological children, asked while the checklist still needs them.",
+    "description": "Hint under the setting holding the children question in the side panel, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.connectHint": {
+    "defaultMessage": "Instruction shown on the family tree while the connect tool is in use.",
+    "description": "Hint under the setting holding the connect hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.connectParent": {
+    "defaultMessage": "Sentence describing a parent connection between the two family members being connected.",
+    "description": "Hint under the setting holding the parent connection sentence, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.connectPartners": {
+    "defaultMessage": "Sentence describing a current or past partnership between the two family members being connected.",
+    "description": "Hint under the setting holding the partner connection sentence, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.connectQuestion": {
+    "defaultMessage": "Question asking how the two family members being connected are related.",
+    "description": "Hint under the setting holding the connect question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.connectTool": {
+    "defaultMessage": "Name of the toolbar tool for connecting two family members. Shown in its tooltip.",
+    "description": "Hint under the setting holding the connect tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.detailsListItem": {
+    "defaultMessage": "Item in the completeness checklist saying details are still missing for a family member, such as their sex assigned at birth.",
+    "description": "Hint under the setting holding the missing details item, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.disconnectConfirmDescription": {
+    "defaultMessage": "Explanation under the question about removing a connection.",
+    "description": "Hint under the setting holding the explanation under the remove connection question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.disconnectConfirmTitle": {
+    "defaultMessage": "Question asked before a connection between two family members is removed.",
+    "description": "Hint under the setting holding the remove connection question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.disconnectHint": {
+    "defaultMessage": "Instruction shown on the family tree while the disconnect tool is in use.",
+    "description": "Hint under the setting holding the disconnect hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.disconnectStandIn": {
+    "defaultMessage": "Shown when a connection cannot be removed because an unnamed parent stands in for a parent who has not been added yet.",
+    "description": "Hint under the setting holding the stand-in parent connection notice, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.disconnectTool": {
+    "defaultMessage": "Name of the toolbar tool for removing a connection. Shown in its tooltip.",
+    "description": "Hint under the setting holding the disconnect tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.disconnectWouldCutOff": {
+    "defaultMessage": "Warning shown when removing a connection would leave family members outside the family tree. The connection is not removed.",
+    "description": "Hint under the setting holding the warning about a connection that would leave someone out, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.framingChoiceDescription": {
+    "defaultMessage": "Explanation under the question about which words to use. Only used when participants choose the words.",
+    "description": "Hint under the setting holding the explanation under the wording question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.framingChoiceTitle": {
+    "defaultMessage": "Question asking the participant which words to use for family members. Only used when participants choose the words.",
+    "description": "Hint under the setting holding the wording question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.framingControlLabel": {
+    "defaultMessage": "Label of the control for changing the words used for family members. Only used when participants choose the words.",
+    "description": "Hint under the setting holding the wording control label, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.genderIdentityLabel": {
+    "defaultMessage": "Label of the gender identity question in the side panel. Only used when the stage asks about gender identity.",
+    "description": "Hint under the setting holding the gender identity question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.generatedLabelOf": {
+    "defaultMessage": "Label shown for a family member who has no name, saying how they are related to the participant or to another family member.",
+    "description": "Hint under the setting holding the label for a relative, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.geneticParentReplaced": {
+    "defaultMessage": "Note explaining that choosing a genetic kind of parent replaces the biological parent already recorded with the same sex at birth.",
+    "description": "Hint under the setting holding the note on a new genetic parent, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.identicalTwinSharesParents": {
+    "defaultMessage": "Note explaining that recording twins as identical records the same biological parents and donors for both.",
+    "description": "Hint under the setting holding the note on identical twins, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.otherParentBiologicalLabel": {
+    "defaultMessage": "Yes or no question asking whether the other parent of a new step-child or adopted child is their biological parent.",
+    "description": "Hint under the setting holding the question asking whether the other parent is biological, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.otherParentLabel": {
+    "defaultMessage": "Question asking who the child’s other parent is.",
+    "description": "Hint under the setting holding the other parent question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.otherParentNone": {
+    "defaultMessage": "Answer that the child has no other parent.",
+    "description": "Hint under the setting holding the no other parent answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.otherParentUnknown": {
+    "defaultMessage": "Answer for an other parent who is not on the family tree yet.",
+    "description": "Hint under the setting holding the other parent not shown answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.panelTitle": {
+    "defaultMessage": "Title of the side panel for adding or editing a family member.",
+    "description": "Hint under the setting holding the panel title, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.parentCarriedLabel": {
+    "defaultMessage": "Question asking whether a parent carried the pregnancy.",
+    "description": "Hint under the setting holding the carried the pregnancy question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.parentKindCarrier": {
+    "defaultMessage": "Answer for a parent who carried the pregnancy. The kind of parent is filled in.",
+    "description": "Hint under the setting holding the answer for a parent who carried the pregnancy, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.parentKindLabel": {
+    "defaultMessage": "Question in the side panel asking what kind of parent a new parent is.",
+    "description": "Hint under the setting holding the kind of parent question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.parentLinkKindLabel": {
+    "defaultMessage": "Question asking what kind of parent one family member is to another.",
+    "description": "Hint under the setting holding the kind of relationship question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.parentPartnerLabel": {
+    "defaultMessage": "Question asking whether a new parent is the partner of another parent.",
+    "description": "Hint under the setting holding the parent partner question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.parentsListItem": {
+    "defaultMessage": "Item in the completeness checklist asking for a family member’s biological parents.",
+    "description": "Hint under the setting holding the missing parents item, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.placeholderParentsNote": {
+    "defaultMessage": "Note shown when adding a sibling, explaining the unnamed parents that are added and which one the sibling shares.",
+    "description": "Hint under the setting holding the note about added parents, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.pointerTool": {
+    "defaultMessage": "Name of the toolbar tool for selecting a family member to edit them or add relatives. Shown in its tooltip.",
+    "description": "Hint under the setting holding the pointer tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.recommendedNote": {
+    "defaultMessage": "Note under the checklist saying the participant can continue without finishing it. Only used when completeness is recommended, not required.",
+    "description": "Hint under the setting holding the note about continuing anyway, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.relativeTerm": {
+    "defaultMessage": "Words for each kind of relative, such as Mother or Egg parent. Used in the labels of family members who have no name.",
+    "description": "Hint under the setting holding the relative terms, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.removeConfirmDescription": {
+    "defaultMessage": "Explanation under the question about removing a family member, saying what else is removed with them.",
+    "description": "Hint under the setting holding the explanation under the remove question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.removeConfirmTitle": {
+    "defaultMessage": "Question asked before a family member is removed.",
+    "description": "Hint under the setting holding the remove question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sexAssignedAtBirthLabel": {
+    "defaultMessage": "Label of the sex assigned at birth question in the side panel.",
+    "description": "Hint under the setting holding the sex assigned at birth question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sexChangeClearsCoParentSex": {
+    "defaultMessage": "Note explaining that saving this sex at birth clears the same answer for the other genetic parent of their children.",
+    "description": "Hint under the setting holding the note on a new sex at birth answer clearing the other parent’s, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sexChangeEndsCarrying": {
+    "defaultMessage": "Note explaining that saving this sex at birth means the family member is no longer recorded as having carried their children.",
+    "description": "Hint under the setting holding the note on a new sex at birth answer ending carrying, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sharedDonorsLabel": {
+    "defaultMessage": "Question asking which donors a new sibling shares, and the surrogate if one is recorded. Used when the family member’s only parents are donors.",
+    "description": "Hint under the setting holding the shared donors question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sharedParentCountBoth": {
+    "defaultMessage": "Answer that a new sibling shares both parents.",
+    "description": "Hint under the setting holding the both shared parents answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sharedParentCountLabel": {
+    "defaultMessage": "Question asking which parents a new sibling shares.",
+    "description": "Hint under the setting holding the shared parents question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sharedParentEggOnly": {
+    "defaultMessage": "Answer that a new sibling shares only one parent. The kind of parent is filled in.",
+    "description": "Hint under the setting holding the one shared parent answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sharedParentsNotSibling": {
+    "defaultMessage": "Error shown when the parents chosen for a new sibling do not make them a sibling, such as only a step parent.",
+    "description": "Hint under the setting holding the error about shared parents that do not make a sibling, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.sharedSurrogateLabel": {
+    "defaultMessage": "Question asking whether the surrogate who carried a family member also carried a new sibling. Used when no parents are recorded yet.",
+    "description": "Hint under the setting holding the shared surrogate question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingBiologicalParentLabel": {
+    "defaultMessage": "Question asking which shared parent is a new sibling’s biological parent, when only one of them can be.",
+    "description": "Hint under the setting holding the sibling’s biological parent question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingKindLabel": {
+    "defaultMessage": "Question asking how a new sibling is related to the parents they share.",
+    "description": "Hint under the setting holding the question about siblings’ shared parents, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingOtherBiologicalParentLabel": {
+    "defaultMessage": "Question asking which shared parent is a new sibling’s other biological parent, when more than one could be.",
+    "description": "Hint under the setting holding the sibling’s other biological parent question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingTwinFraternal": {
+    "defaultMessage": "Answer that a new sibling is a fraternal twin.",
+    "description": "Hint under the setting holding the fraternal twin answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingTwinHint": {
+    "defaultMessage": "Hint under the question asking whether a new sibling is a twin.",
+    "description": "Hint under the setting holding the twin question hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingTwinIdentical": {
+    "defaultMessage": "Answer that a new sibling is an identical twin.",
+    "description": "Hint under the setting holding the identical twin answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingTwinLabel": {
+    "defaultMessage": "Question asking whether a new sibling is a twin.",
+    "description": "Hint under the setting holding the twin question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingTwinNo": {
+    "defaultMessage": "Answer that a new sibling is not a twin.",
+    "description": "Hint under the setting holding the not a twin answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingTwinUnknown": {
+    "defaultMessage": "Answer that a new sibling is a twin, without knowing whether they are identical.",
+    "description": "Hint under the setting holding the twin, not known if identical, answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingsListItem": {
+    "defaultMessage": "Item in the completeness checklist asking for a family member’s biological siblings, or an answer that they have none.",
+    "description": "Hint under the setting holding the brothers and sisters item, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingsNoneButton": {
+    "defaultMessage": "Button under the siblings checklist item, for answering that the family member has no biological siblings.",
+    "description": "Hint under the setting holding the no brothers or sisters button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.siblingsQuestion": {
+    "defaultMessage": "Question in the side panel about a family member’s biological siblings, asked while the checklist still needs them.",
+    "description": "Hint under the setting holding the brothers and sisters question in the side panel, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.standInPlaceTaken": {
+    "defaultMessage": "Hint under the also parent of question when a new parent takes the place of an unnamed parent. It names the siblings who become their children too.",
+    "description": "Hint under the setting holding the hint about taking an unnamed parent’s place, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.stillTogetherLabel": {
+    "defaultMessage": "Question in the side panel asking whether two partners are still together.",
+    "description": "Hint under the setting holding the still together question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.twinZygosityLabel": {
+    "defaultMessage": "Question asking whether two twins are identical.",
+    "description": "Hint under the setting holding the identical twins question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.twinsHint": {
+    "defaultMessage": "Hint under the question about which siblings are twins.",
+    "description": "Hint under the setting holding the twins hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.twinsLabel": {
+    "defaultMessage": "Question in the side panel asking which siblings are twins of the family member.",
+    "description": "Hint under the setting holding the twins question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.unavailableAncestor": {
+    "defaultMessage": "Reason shown under a choice that would make a family member a parent of their own ancestor.",
+    "description": "Hint under the setting holding the unavailable-choice reason about an ancestor, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.unavailableBothSameSex": {
+    "defaultMessage": "Shown under the answers when both parents cannot be a new child’s genetic parents, because they have the same sex at birth.",
+    "description": "Hint under the setting holding the hint about both parents having the same sex at birth, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.unavailableCannotCarry": {
+    "defaultMessage": "Shown under the answers when some are unavailable because the family member’s sex at birth means they cannot have carried a pregnancy.",
+    "description": "Hint under the setting holding the hint about not being able to have carried, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.unavailableCarried": {
+    "defaultMessage": "Shown under the answers when a sex at birth is unavailable because the family member is recorded as having carried a pregnancy.",
+    "description": "Hint under the setting holding the hint about having carried a child, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.unavailableCarrierRecorded": {
+    "defaultMessage": "Shown under the answers when some are unavailable because someone else is recorded as having carried the pregnancy.",
+    "description": "Hint under the setting holding the hint about someone else having carried, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.unavailableGeneticParentsFull": {
+    "defaultMessage": "Shown under the answers when some are unavailable because the child already has two genetic parents recorded.",
+    "description": "Hint under the setting holding the hint about two genetic parents, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.unavailableSameSexGeneticParent": {
+    "defaultMessage": "Shown under the answers when some are unavailable because the child’s other genetic parent has the same sex at birth.",
+    "description": "Hint under the setting holding the hint about the other genetic parent’s sex at birth, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.you": {
+    "defaultMessage": "Shown instead of a name wherever the participant appears in the family tree.",
+    "description": "Hint under the setting holding the participant’s own name, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.zygosityFraternal": {
+    "defaultMessage": "Answer that two twins are fraternal.",
+    "description": "Hint under the setting holding the fraternal answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
+  },
+  "protocolBuilder.pedigree.wordingHint.zygosityIdentical": {
+    "defaultMessage": "Answer that two twins are identical.",
+    "description": "Hint under the setting holding the identical answer, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.promptAttribute.lockedOptions": {
     "defaultMessage": "These values are set by the interface that uses this attribute, so they cannot be changed here.",
@@ -7622,6 +8038,42 @@
   "protocolBuilder.stageTypeImage.preview": {
     "defaultMessage": "Preview of {interfaceName}",
     "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
+  },
+  "protocolBuilder.stageWording.description": {
+    "defaultMessage": "Optionally edit the wording for interface elements used by this stage type. Default wording is provided for built-in languages.",
+    "description": "Explains the stage editor section titled “Customize built-in wording”. Interface elements are the buttons, hints and messages the participant sees on the stage. Built-in languages are the languages Network Canvas itself supplies this wording in; for other languages the researcher writes it."
+  },
+  "protocolBuilder.stageWording.sharedHeading": {
+    "defaultMessage": "Shared by every stage of this kind",
+    "description": "Heading of the part of a stage’s “Customize built-in wording” section holding the words every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage, opened and closed by clicking it. The protocol holds them once, for all those stages."
+  },
+  "protocolBuilder.stageWording.sharedNote": {
+    "defaultMessage": "These words appear on every stage of this kind. Changes to them are saved straight away.",
+    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, so changing one changes it on all those stages, and the change is saved as soon as the researcher leaves the field rather than when they save the stage."
+  },
+  "protocolBuilder.stageWording.specificHeading": {
+    "defaultMessage": "Specific to this stage",
+    "description": "Heading of the part of a stage’s “Customize built-in wording” section holding the words only this stage shows, opened and closed by clicking it. Shown beside the part headed “Shared by every stage of this kind”."
+  },
+  "protocolBuilder.stageWording.switchOffConfirm": {
+    "defaultMessage": "Use Network Canvas’s wording",
+    "description": "Confirm button of the dialog that switches off a stage’s Wording section and puts back the wording Network Canvas supplies."
+  },
+  "protocolBuilder.stageWording.switchOffDescription": {
+    "defaultMessage": "The wording you changed in this section goes back to Network Canvas’s wording, in every language.",
+    "description": "Body of the dialog asking a researcher to confirm switching off a stage’s Wording section. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages."
+  },
+  "protocolBuilder.stageWording.switchOffSharedDescription": {
+    "defaultMessage": "The wording you changed in this section goes back to Network Canvas’s wording, in every language. That includes the wording shared by every stage of this kind, which changes on all of those stages straight away.",
+    "description": "Body of the dialog asking a researcher to confirm switching off a stage’s “Customize built-in wording” section when they changed some of the words every stage of the same type shares. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages; the shared words change on every such stage, and at once rather than when the stage is saved."
+  },
+  "protocolBuilder.stageWording.switchOffTitle": {
+    "defaultMessage": "Use Network Canvas’s wording?",
+    "description": "Title of the dialog asking a researcher to confirm switching off a stage’s Wording section after they changed some of its wording."
+  },
+  "protocolBuilder.stageWording.title": {
+    "defaultMessage": "Customize built-in wording",
+    "description": "Title of the stage editor section, found on every stage type that has any, where the researcher can change the words Network Canvas supplies for the interface a participant uses on that stage, such as button labels, hints and messages. It can be switched on and off."
   },
   "protocolBuilder.subjectSection.edgeChangeConfirm": {
     "defaultMessage": "Change the edge type",

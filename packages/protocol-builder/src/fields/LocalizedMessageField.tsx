@@ -196,23 +196,40 @@ export function localizedMessageValidation(
   return {
     schema: z.unknown().check(
       z.superRefine((value, ctx) => {
-        for (const [locale, message] of Object.entries(
-          asLocalizedString(value) ?? {},
-        )) {
-          const problem = localizedMessageProblem(message, declaration, locale);
-          if (problem !== undefined) {
-            ctx.addIssue({
-              code: 'custom',
-              input: value,
-              message: problemText(problem, message, declaration, locale, intl),
-              path: [],
-            });
-            return;
-          }
+        const problem = localizedMessageProblemText(value, declaration, intl);
+        if (problem !== undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            input: value,
+            message: problem,
+            path: [],
+          });
         }
       }),
     ),
   };
+}
+
+/**
+ * Why a localized message cannot be saved, in words, for the first of its
+ * translations that cannot; undefined when every one can. The rule
+ * `localizedMessageValidation` holds a field to, for a control that is not a
+ * form's field.
+ */
+export function localizedMessageProblemText(
+  value: unknown,
+  declaration: MessageArguments,
+  intl: IntlShape,
+): string | undefined {
+  for (const [locale, message] of Object.entries(
+    asLocalizedString(value) ?? {},
+  )) {
+    const problem = localizedMessageProblem(message, declaration, locale);
+    if (problem !== undefined) {
+      return problemText(problem, message, declaration, locale, intl);
+    }
+  }
+  return undefined;
 }
 
 /**

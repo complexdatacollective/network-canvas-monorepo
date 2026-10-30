@@ -1,9 +1,11 @@
 import { render, screen } from '@testing-library/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
-import { TestProtocolLocalization } from '../__tests__/TestProtocolLocalization';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../__tests__/TestProtocolLocalization';
 import useItems from './useItems';
 
 const { sourceNodes, typeDefinition } = vi.hoisted(() => ({
@@ -59,20 +61,22 @@ function RosterLabels() {
   );
 }
 
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
+const bilingual = { defaultLocale: 'en', locales: ['en', 'es'] };
+// What every roster shows alike, as the protocol words it.
+const interfaceText = suppliedInterfaceText(bilingual, [
+  { type: 'NameGeneratorRoster' },
+]);
 
 describe('roster memoized fallback labels', () => {
   it('words the fallback label in the interview language, and leaves the roster data unchanged', () => {
     const before = structuredClone(sourceNodes);
     const tree = (locale: string) => (
-      <InterviewI18nProvider requestedLocale={locale}>
-        <TestProtocolLocalization>
+      <InterviewI18nProvider>
+        <TestProtocolLocalization
+          localization={bilingual}
+          locale={locale}
+          interfaceText={interfaceText}
+        >
           <RosterLabels />
         </TestProtocolLocalization>
       </InterviewI18nProvider>
@@ -86,7 +90,7 @@ describe('roster memoized fallback labels', () => {
       screen.getAllByRole('listitem').map((item) => item.textContent),
     ).toEqual(['Sin nombre 1', 'Zoë Álvarez']);
     expect(sourceNodes).toEqual(before);
-    rerender(tree('en-GB'));
+    rerender(tree('en'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
     ).toEqual(['Unnamed 1', 'Zoë Álvarez']);

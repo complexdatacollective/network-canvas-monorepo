@@ -128,7 +128,7 @@ async function renderRoster(
   }
 
   render(
-    <InterviewI18nProvider requestedLocale="en">
+    <InterviewI18nProvider>
       <Provider store={store}>
         <TestProtocolLocalization>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>

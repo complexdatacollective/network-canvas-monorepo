@@ -4,13 +4,22 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
+import type { MessageArguments } from '../../localization/messageArguments.ts';
 import {
   BUTTONS_INTERFACE_TEXT,
+  CATEGORICAL_BIN_INTERFACE_TEXT,
+  EGO_FORM_INTERFACE_TEXT,
+  FAMILY_PEDIGREE_INTERFACE_TEXT,
+  FAMILY_TREE_VIEW_INTERFACE_TEXT,
   FORMS_INTERFACE_TEXT,
   type InterfaceTextEntry,
+  INTERVIEWER_INTERFACE_TEXT,
   MESSAGES_INTERFACE_TEXT,
   NAVIGATION_INTERFACE_TEXT,
+  NETWORK_COMPOSER_INTERFACE_TEXT,
   PASSPHRASE_INTERFACE_TEXT,
+  QUICK_ADD_INTERFACE_TEXT,
+  ROSTER_INTERFACE_TEXT,
   SEARCH_INTERFACE_TEXT,
   VALIDATION_INTERFACE_TEXT,
 } from './interface-text-wording.ts';
@@ -20,11 +29,7 @@ import {
   localizedString,
   nonBlankText,
 } from './localized-string.ts';
-import {
-  hasExternalPanels,
-  hasMapSearch,
-  hasRosterSearch,
-} from './stage-wording/conditions.ts';
+import { hasExternalPanels } from './stage-wording/conditions.ts';
 import { behaviourIsOn } from './stage-wording/configuration.ts';
 import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
@@ -35,20 +40,30 @@ import {
 
 /**
  * The interface text a protocol holds: the words the interview shows that
- * belong to no one stage, in the protocol's own languages, so a participant
- * reads them in the language of the interview whatever languages Network
- * Canvas ships. Text that belongs to one kind of stage is that stage's
- * setting instead; text several kinds of stage show alike, such as Save, a
- * search box and the automatic layout toggle, is interface text.
+ * are not one stage's own, in the protocol's own languages. Every word a
+ * participant reads comes from the protocol, in the one language the
+ * interview negotiates from the protocol's languages: the interview's
+ * built-in text is English only, and what the protocol holds here stands in
+ * for it. (Text only screen readers read stays in English.)
  *
- * A protocol holds only the text it can show: the `navigation` group always,
- * the `buttons` and `messages` groups always but for the entries only some
- * stages show (Yes and No with forms, Save and Don't know on a Family
- * Pedigree), each other group only while the protocol uses what it is for,
- * and of the validation group only the messages of the rules it uses (see
- * `INTERFACE_TEXT_GROUPS`). Architect writes and removes the groups as the
- * protocol changes, with the wording Network Canvas supplies, and the
- * researcher may change and translate them like any other text.
+ * Text several kinds of stage show alike, such as Save, a search box and the
+ * automatic layout toggle, is interface text; so are the controls only an
+ * interviewer uses, such as leaving a review or showing a screen the answers
+ * have hidden, since the interview is in one language whoever is reading it.
+ * So is the text every stage of one kind shows alike, such as a Family
+ * Pedigree's tool descriptions, in a group named for that kind of stage,
+ * which its stage editor's Wording section shows as shared by every such
+ * stage. Text one stage words for itself is that stage's setting instead.
+ *
+ * A protocol holds only the text it can show: the `navigation`,
+ * `interviewer` and `search` groups always, the `buttons` and `messages`
+ * groups always but for the entries only some stages show (Yes and No with
+ * forms, Don't know on a Family Pedigree), each other group only while the
+ * protocol uses what it is for, and of the validation group only the
+ * messages of the rules it uses (see `INTERFACE_TEXT_GROUPS`). Architect
+ * writes and removes the groups as the protocol changes, with the wording
+ * Network Canvas supplies, and the researcher may change and translate them
+ * like any other text.
  */
 
 type ProtocolDocument = Readonly<{
@@ -294,24 +309,32 @@ const showsExternalData = (stage: Readonly<Record<string, unknown>>) =>
   (ofType('NameGenerator', 'NameGeneratorQuickAdd')(stage) &&
     hasExternalPanels(stage));
 
-/** A roster with a search, or a map with a search box. */
-const showsSearch = (stage: Readonly<Record<string, unknown>>) =>
-  (ofType('NameGeneratorRoster')(stage) && hasRosterSearch(stage)) ||
-  (ofType('Geospatial')(stage) && hasMapSearch(stage));
-
 /**
- * Which buttons the protocol shows: Cancel, Done and Delete always, Yes and
- * No with a form, Save and Don't know on a Family Pedigree, and the layout
- * toggle on a canvas whose automatic layout is on.
+ * Which buttons the protocol shows: Cancel, Done, Delete and those that copy
+ * a screen error's details always, Yes and No with a form, Save on a Family
+ * Pedigree and in a Categorical Bin's dialog, Don't know, Undo, Redo and Skip
+ * on a Family Pedigree, zooming on either pedigree, and the layout toggle on
+ * a canvas whose automatic layout is on. A button any stage may come to show,
+ * such as Undo or Zoom in, is worded once here rather than by each kind of
+ * stage that shows it.
  */
 const buttonsUsed = (protocol: ProtocolDocument): ReadonlySet<string> =>
   new Set([
     'cancel',
     'done',
     'delete',
+    'copy',
+    'copied',
     ...(usesForms(protocol) ? ['yes', 'no'] : []),
+    ...(hasStage(protocol, ofType('FamilyPedigree')) ||
+    hasStage(protocol, asksInAFormDialog)
+      ? ['save']
+      : []),
     ...(hasStage(protocol, ofType('FamilyPedigree'))
-      ? ['save', 'dontKnow']
+      ? ['dontKnow', 'undo', 'redo', 'skip']
+      : []),
+    ...(hasStage(protocol, ofType('FamilyPedigree', 'NarrativePedigree'))
+      ? ['zoomIn', 'zoomOut']
       : []),
     ...(hasStage(protocol, showsLayoutToggle)
       ? ['pauseLayout', 'resumeLayout']
@@ -319,14 +342,17 @@ const buttonsUsed = (protocol: ProtocolDocument): ReadonlySet<string> =>
   ]);
 
 /**
- * Which messages the protocol shows: the errors any interview may show, and
- * the external data error on a stage that loads people from a file.
+ * Which messages the protocol shows: the errors and the loading notice any
+ * interview may show, the name of someone left unnamed, and the external
+ * data error on a stage that loads people from a file.
  */
 const messagesUsed = (protocol: ProtocolDocument): ReadonlySet<string> =>
   new Set([
     'stageError',
     'itemUnavailable',
     'error',
+    'loading',
+    'unnamed',
     ...(hasStage(protocol, showsExternalData) ? ['externalDataError'] : []),
   ]);
 
@@ -336,6 +362,7 @@ const messagesUsed = (protocol: ProtocolDocument): ReadonlySet<string> =>
  */
 const INTERFACE_TEXT_GROUPS = {
   navigation: { entries: NAVIGATION_INTERFACE_TEXT, usedBy: () => true },
+  interviewer: { entries: INTERVIEWER_INTERFACE_TEXT, usedBy: () => true },
   buttons: {
     entries: BUTTONS_INTERFACE_TEXT,
     usedBy: () => true,
@@ -346,10 +373,8 @@ const INTERFACE_TEXT_GROUPS = {
     usedBy: () => true,
     entriesUsedBy: messagesUsed,
   },
-  search: {
-    entries: SEARCH_INTERFACE_TEXT,
-    usedBy: (protocol) => hasStage(protocol, showsSearch),
-  },
+  // The interview's list of screens can always be searched.
+  search: { entries: SEARCH_INTERFACE_TEXT, usedBy: () => true },
   passphrase: { entries: PASSPHRASE_INTERFACE_TEXT, usedBy: usesPassphrase },
   forms: { entries: FORMS_INTERFACE_TEXT, usedBy: usesForms },
   validation: {
@@ -357,7 +382,54 @@ const INTERFACE_TEXT_GROUPS = {
     usedBy: (protocol) => validationMessagesUsed(protocol).size > 0,
     entriesUsedBy: validationMessagesUsed,
   },
+  // Shared by every stage of one kind (see `STAGE_TYPE_INTERFACE_TEXT`).
+  familyTreeView: {
+    entries: FAMILY_TREE_VIEW_INTERFACE_TEXT,
+    usedBy: (protocol) =>
+      hasStage(protocol, ofType('FamilyPedigree', 'NarrativePedigree')),
+  },
+  familyPedigree: {
+    entries: FAMILY_PEDIGREE_INTERFACE_TEXT,
+    usedBy: (protocol) => hasStage(protocol, ofType('FamilyPedigree')),
+  },
+  categoricalBin: {
+    entries: CATEGORICAL_BIN_INTERFACE_TEXT,
+    usedBy: (protocol) => hasStage(protocol, ofType('CategoricalBin')),
+  },
+  quickAdd: {
+    entries: QUICK_ADD_INTERFACE_TEXT,
+    usedBy: (protocol) => hasStage(protocol, ofType('NameGeneratorQuickAdd')),
+  },
+  roster: {
+    entries: ROSTER_INTERFACE_TEXT,
+    usedBy: (protocol) => hasStage(protocol, ofType('NameGeneratorRoster')),
+  },
+  networkComposer: {
+    entries: NETWORK_COMPOSER_INTERFACE_TEXT,
+    usedBy: (protocol) => hasStage(protocol, ofType('NetworkComposer')),
+  },
+  egoForm: {
+    entries: EGO_FORM_INTERFACE_TEXT,
+    usedBy: (protocol) => hasStage(protocol, ofType('EgoForm')),
+  },
 } as const satisfies Readonly<Record<string, InterfaceTextGroup>>;
+
+/**
+ * The interface text groups every stage of a kind shares, by stage type: what
+ * a stage editor's Wording section shows as shared by every stage of its
+ * kind.
+ */
+export const STAGE_TYPE_INTERFACE_TEXT: Readonly<
+  Record<string, readonly GroupName[]>
+> = {
+  FamilyPedigree: ['familyPedigree', 'familyTreeView'],
+  NarrativePedigree: ['familyTreeView'],
+  CategoricalBin: ['categoricalBin'],
+  NameGeneratorQuickAdd: ['quickAdd'],
+  NameGeneratorRoster: ['roster'],
+  NetworkComposer: ['networkComposer'],
+  EgoForm: ['egoForm'],
+};
 
 type GroupName = keyof typeof INTERFACE_TEXT_GROUPS;
 
@@ -393,12 +465,20 @@ const partialGroupSchema = (
 
 export const InterfaceTextSchema = z.strictObject({
   navigation: groupSchema(NAVIGATION_INTERFACE_TEXT).optional(),
+  interviewer: groupSchema(INTERVIEWER_INTERFACE_TEXT).optional(),
   buttons: partialGroupSchema(BUTTONS_INTERFACE_TEXT).optional(),
   messages: partialGroupSchema(MESSAGES_INTERFACE_TEXT).optional(),
   search: groupSchema(SEARCH_INTERFACE_TEXT).optional(),
   passphrase: groupSchema(PASSPHRASE_INTERFACE_TEXT).optional(),
   forms: groupSchema(FORMS_INTERFACE_TEXT).optional(),
   validation: partialGroupSchema(VALIDATION_INTERFACE_TEXT).optional(),
+  familyTreeView: groupSchema(FAMILY_TREE_VIEW_INTERFACE_TEXT).optional(),
+  familyPedigree: groupSchema(FAMILY_PEDIGREE_INTERFACE_TEXT).optional(),
+  categoricalBin: groupSchema(CATEGORICAL_BIN_INTERFACE_TEXT).optional(),
+  quickAdd: groupSchema(QUICK_ADD_INTERFACE_TEXT).optional(),
+  roster: groupSchema(ROSTER_INTERFACE_TEXT).optional(),
+  networkComposer: groupSchema(NETWORK_COMPOSER_INTERFACE_TEXT).optional(),
+  egoForm: groupSchema(EGO_FORM_INTERFACE_TEXT).optional(),
 });
 
 /**
@@ -410,6 +490,26 @@ export type InterfaceText = Readonly<
     Record<GroupName, Readonly<Record<string, LocalizedString | undefined>>>
   >
 >;
+
+const isGroupName = (group: string): group is GroupName =>
+  Object.hasOwn(INTERFACE_TEXT_GROUPS, group);
+
+/** The arguments one interface text may use, when it takes any. */
+export const interfaceTextArguments = (
+  group: string,
+  key: string,
+): MessageArguments | undefined => {
+  if (!isGroupName(group)) return undefined;
+  const entries: Readonly<Record<string, InterfaceTextEntry | undefined>> =
+    INTERFACE_TEXT_GROUPS[group].entries;
+  return entries[key]?.arguments;
+};
+
+/** Every interface text entry Network Canvas supplies wording for. */
+export const INTERFACE_TEXT_WORDING: readonly InterfaceTextEntry[] =
+  GROUP_NAMES.flatMap((group) =>
+    Object.values<InterfaceTextEntry>(INTERFACE_TEXT_GROUPS[group].entries),
+  );
 
 /**
  * Where the protocol holds each interface text, and the messages of the
@@ -456,6 +556,23 @@ const suppliedValue = (
     if (text !== undefined) value[locale] = text;
   }
   return value;
+};
+
+/**
+ * Network Canvas's wording for one interface text in the languages `localization`
+ * declares, as a protocol is given it (see `interfaceTextFor`); undefined for
+ * an entry that does not exist.
+ */
+export const suppliedInterfaceText = (
+  group: string,
+  key: string,
+  localization: LocalizationDeclaration,
+): LocalizedString | undefined => {
+  if (!isGroupName(group)) return undefined;
+  const entries: Readonly<Record<string, InterfaceTextEntry | undefined>> =
+    INTERFACE_TEXT_GROUPS[group].entries;
+  const entry = entries[key];
+  return entry === undefined ? undefined : suppliedValue(entry, localization);
 };
 
 const heldText = (protocol: ProtocolDocument): InterfaceText =>

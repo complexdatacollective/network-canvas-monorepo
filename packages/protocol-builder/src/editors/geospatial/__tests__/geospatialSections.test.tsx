@@ -165,7 +165,7 @@ describe('the map a geospatial stage shows', () => {
       'Prompt collection',
       'Map appearance',
       'Map starting position',
-      'Messages',
+      'Customize built-in wording',
     ]);
   });
 
