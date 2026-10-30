@@ -72,7 +72,7 @@ type AutoLayoutRuntimeOptions = Pick<
 // measured value divided by the canvas height.
 const FALLBACK_SIM_COLLIDE_RADIUS =
   collideRadiusForNode(FALLBACK_NODE_RADIUS) / 800;
-const LINK_DISTANCE_COLLIDE_RATIO = 1.9;
+const LINK_DISTANCE_COLLIDE_RATIO = 1.8;
 
 const DEFAULT_OPTIONS: AutoLayoutOptions = {
   // A hot start and slow 500-tick cooldown let a layout built from scratch
@@ -81,7 +81,7 @@ const DEFAULT_OPTIONS: AutoLayoutOptions = {
   velocityDecay: 0.3,
   // Screen-normalized repulsion spreads disconnected nodes while collision
   // guarantees the minimum gap and optional cohesion clusters grouped nodes.
-  charge: -0.004,
+  charge: -0.006,
   // collideRadius is a SIM-SPACE center-to-center half-distance (px collide
   // radius / canvas height): two nodes cannot settle closer than 2 *
   // collideRadius. The hook always overrides this with the live measured value;
@@ -99,13 +99,13 @@ const DEFAULT_OPTIONS: AutoLayoutOptions = {
   // Firm enough that connected nodes reach the collision floor during the anneal
   // and stay pressed there against charge, giving connected pairs a visibly
   // tighter spacing than the charge-spread unconnected pairs.
-  linkStrength: 0.5,
+  linkStrength: 1,
   // Symmetric horizontal and vertical positioning forces keep every interface's
   // composition centered. Fractions are targets within the simulation extents.
   biasXFraction: 0.5,
-  biasXStrength: 0.13,
+  biasXStrength: 0.35,
   biasYFraction: 0.5,
-  biasYStrength: 0.13,
+  biasYStrength: 0.35,
   // Hard inset (sim units) from each edge that confines node CENTERS, applied as
   // a post-collision bounds force. The hook supplies the value matching the
   // store's drag/placement clamp (px inset / canvas height) so the clamp
@@ -137,11 +137,15 @@ const EARLY_STOP_MAX_SPEED = 0.0008;
 // Displacement-proportional, so scale-invariant across canvas sizes.
 const GROUP_COHESION_STRENGTH = 0.1;
 
-// Nodes with no links and no group sit on an oval ring instead of being
-// centred among the connected nodes.
+// A new node with no placed neighbours starts in the emptiest spot on this
+// oval ring.
 const RING_RADIUS = 0.78;
 const RING_ROUNDNESS = 0.5;
-const RING_STRENGTH = 0.4;
+const LINK_ITERATIONS = 3;
+const COMPONENT_GAP = 2;
+const COMPONENT_GAP_STRENGTH = 0.25;
+const GAP_PASSES = 100;
+const UNTANGLE_ALPHA = 0.1;
 const SEED_CIRCLE_RADIUS = 0.6;
 const ANCHOR_STRENGTH = 0.08;
 const REHEAT_ALPHA = 0.3;
@@ -263,11 +267,6 @@ const linkEndpoints = (): [number, number][] =>
       : [],
   );
 
-const linkedIndices = () => new Set(linkEndpoints().flat());
-
-const isIsolated = (node: SimNode, index: number, linked: Set<number>) =>
-  !linked.has(index) && !node.groupKeys?.length;
-
 const ringAxes = () => {
   const { simWidth, simHeight, boundsInset } = options;
   if (simWidth <= 0 || simHeight <= 0) return null;
@@ -288,15 +287,35 @@ const cloneLinks = (ls: SimLink[]): SimLink[] =>
 const makeLinkForce = () =>
   forceLink<SimNode, SimLink>(cloneLinks(links))
     .distance(options.linkDistance)
-    .strength(options.linkStrength);
+    .strength(options.linkStrength)
+    .iterations(LINK_ITERATIONS);
+
+const nodeRadius = () => options.collideRadius / (1 + EDGE_GAP_RATIO);
+
+const componentIds = (count: number) => {
+  const neighbours = neighbourIndices(count);
+  const ids = Array.from({ length: count }, () => -1);
+  let next = 0;
+  for (let start = 0; start < count; start += 1) {
+    if (ids[start] !== -1) continue;
+    ids[start] = next;
+    const queue = [start];
+    while (queue.length > 0) {
+      for (const neighbour of neighbours[queue.shift()!]!) {
+        if (ids[neighbour] !== -1) continue;
+        ids[neighbour] = next;
+        queue.push(neighbour);
+      }
+    }
+    next += 1;
+  }
+  return ids;
+};
 
 const registerForces = (sim: Simulation<SimNode, undefined>) => {
-  const linked = linkedIndices();
-  // Until the first link exists nobody goes to the ring and the composition
-  // stays round, so people with no ties yet form one central cluster.
-  const anyLinks = linked.size > 0;
-  const isolated = (node: SimNode, index: number) =>
-    anyLinks && isIsolated(node, index, linked);
+  // Until the first link exists the composition stays round.
+  const anyLinks = links.length > 0;
+  const components = componentIds(sim.nodes().length);
   if (options.charge !== 0) {
     // Guard against an empty seed so the divisor is never 0.
     const nodeCount = Math.max(sim.nodes().length, 1);
@@ -360,55 +379,64 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   // the target spacing stays consistent with the collision guarantee. Registered
   // even with no links (an empty forceLink is inert).
   sim.force('link', makeLinkForce());
-  // Horizontal positioning toward a target across the sim width (center by
-  // default), keeping the layout centred. Inert unless a positive
-  // strength and a resolvable target (sim width) are both supplied.
-  // Once there are links, the horizontal pull on a non-square canvas is
-  // divided by aspect² so the composition takes the canvas shape.
-  if (options.biasXStrength > 0 && options.simWidth > 0) {
-    const aspect =
-      options.simHeight > 0 ? options.simWidth / options.simHeight : 1;
-    const strength = anyLinks
-      ? options.biasXStrength / (aspect * aspect)
-      : options.biasXStrength;
-    sim.force(
-      'biasX',
-      forceX<SimNode>(options.simWidth * options.biasXFraction).strength(
-        (node, index) => (isolated(node, index) ? 0 : strength),
-      ),
-    );
-  } else {
-    sim.force('biasX', null);
-  }
-  // Vertical positioning toward a target across the sim height (center by
-  // default). Inert unless a positive strength and a resolvable target are both
-  // supplied.
-  if (options.biasYStrength > 0 && options.simHeight > 0) {
-    sim.force(
-      'biasY',
-      forceY<SimNode>(options.simHeight * options.biasYFraction).strength(
-        (node, index) => (isolated(node, index) ? 0 : options.biasYStrength),
-      ),
-    );
-  } else {
-    sim.force('biasY', null);
-  }
-  const ring = ringAxes();
-  if (ring) {
-    sim.force('ring', (alpha: number) => {
-      sim.nodes().forEach((node, index) => {
-        if (!isolated(node, index)) return;
-        if (node.x == null || node.y == null) return;
-        const dx = node.x - ring.cx;
-        const dy = node.y - ring.cy;
-        const scale = Math.hypot(dx / ring.ax, dy / ring.ay) || 1e-6;
-        node.vx = (node.vx ?? 0) + (dx / scale - dx) * RING_STRENGTH * alpha;
-        node.vy = (node.vy ?? 0) + (dy / scale - dy) * RING_STRENGTH * alpha;
-      });
-    });
-  } else {
-    sim.force('ring', null);
-  }
+  // Each connected component, a lone node included, is pulled toward the
+  // centre as a whole, so the pull moves components without squeezing them
+  // into each other. Once there are links, the horizontal pull on a non-square
+  // canvas is divided by aspect² so the composition takes the canvas shape.
+  const members = new Map<number, number[]>();
+  components.forEach((component, index) => {
+    members.set(component, [...(members.get(component) ?? []), index]);
+  });
+  const aspect =
+    options.simHeight > 0 ? options.simWidth / options.simHeight : 1;
+  const strengthX =
+    options.simWidth > 0
+      ? anyLinks
+        ? options.biasXStrength / (aspect * aspect)
+        : options.biasXStrength
+      : 0;
+  const strengthY = options.simHeight > 0 ? options.biasYStrength : 0;
+  const targetX = options.simWidth * options.biasXFraction;
+  const targetY = options.simHeight * options.biasYFraction;
+  sim.force('centre', (alpha: number) => {
+    const nodes = sim.nodes();
+    for (const indices of members.values()) {
+      let x = 0;
+      let y = 0;
+      for (const index of indices) {
+        x += nodes[index]!.x ?? 0;
+        y += nodes[index]!.y ?? 0;
+      }
+      const vx = (targetX - x / indices.length) * strengthX * alpha;
+      const vy = (targetY - y / indices.length) * strengthY * alpha;
+      for (const index of indices) {
+        const node = nodes[index]!;
+        node.vx = (node.vx ?? 0) + vx;
+        node.vy = (node.vy ?? 0) + vy;
+      }
+    }
+  });
+  // Nodes in different components keep an extra gap between them.
+  const reach = (2 + COMPONENT_GAP) * nodeRadius();
+  sim.force('componentGap', () => {
+    const nodes = sim.nodes();
+    for (let i = 0; i < nodes.length; i += 1) {
+      for (let j = i + 1; j < nodes.length; j += 1) {
+        if (components[i] === components[j]) continue;
+        const a = nodes[i]!;
+        const b = nodes[j]!;
+        const dx = (b.x ?? 0) + (b.vx ?? 0) - (a.x ?? 0) - (a.vx ?? 0);
+        const dy = (b.y ?? 0) + (b.vy ?? 0) - (a.y ?? 0) - (a.vy ?? 0);
+        const distance = Math.hypot(dx, dy) || 1e-6;
+        if (distance >= reach) continue;
+        const push = ((reach - distance) / distance) * COMPONENT_GAP_STRENGTH;
+        a.vx = (a.vx ?? 0) - dx * push;
+        a.vy = (a.vy ?? 0) - dy * push;
+        b.vx = (b.vx ?? 0) + dx * push;
+        b.vy = (b.vy ?? 0) + dy * push;
+      }
+    }
+  });
 };
 
 // Holds placed nodes near where they are now, so a change re-settles the
@@ -548,31 +576,42 @@ const distanceToSegment = (p: SimNode, a: SimNode, b: SimNode) => {
   return Math.hypot((p.x ?? 0) - (ax + t * dx), (p.y ?? 0) - (ay + t * dy));
 };
 
-// Lower is better: edge crossings, edges passing through nodes, and unlinked
-// nodes crowded closer than the collision gap.
-const layoutScore = (nodes: SimNode[]) => {
-  const radius = options.collideRadius / (1 + EDGE_GAP_RATIO);
+// Edge crossings and edges passing through nodes, with the nodes involved.
+const layoutProblems = (nodes: SimNode[]) => {
+  const radius = nodeRadius();
   const edges = linkEndpoints();
-  const linkedPairs = new Set(
-    edges.map(([a, b]) => `${Math.min(a, b)}-${Math.max(a, b)}`),
-  );
+  const involved = new Set<number>();
   let crossings = 0;
   let throughNodes = 0;
-  let closest = Infinity;
   edges.forEach(([a, b], i) => {
     for (let j = i + 1; j < edges.length; j += 1) {
       const [c, d] = edges[j]!;
       if (a === c || a === d || b === c || b === d) continue;
-      if (segmentsCross(nodes[a]!, nodes[b]!, nodes[c]!, nodes[d]!))
+      if (segmentsCross(nodes[a]!, nodes[b]!, nodes[c]!, nodes[d]!)) {
         crossings += 1;
+        for (const index of [a, b, c, d]) involved.add(index);
+      }
     }
     nodes.forEach((node, index) => {
       if (index === a || index === b) return;
       if (distanceToSegment(node, nodes[a]!, nodes[b]!) < radius * 1.05) {
         throughNodes += 1;
+        involved.add(index);
       }
     });
   });
+  return { crossings, throughNodes, involved };
+};
+
+// Lower is better: edge crossings, edges passing through nodes, and unlinked
+// nodes crowded closer than the collision gap.
+const layoutScore = (nodes: SimNode[]) => {
+  const radius = nodeRadius();
+  const linkedPairs = new Set(
+    linkEndpoints().map(([a, b]) => `${Math.min(a, b)}-${Math.max(a, b)}`),
+  );
+  const { crossings, throughNodes } = layoutProblems(nodes);
+  let closest = Infinity;
   nodes.forEach((node, i) => {
     for (let j = i + 1; j < nodes.length; j += 1) {
       if (linkedPairs.has(`${i}-${j}`)) continue;
@@ -588,6 +627,88 @@ const layoutScore = (nodes: SimNode[]) => {
   });
   const gap = (closest - 2 * radius) / (2 * radius);
   return crossings * 3 + throughNodes * 5 + (gap < 0.4 ? (0.4 - gap) * 10 : 0);
+};
+
+// Swaps pairs of nodes, at least one of them on a crossing or an edge, when
+// that lowers the score.
+const untangle = (nodes: SimNode[]) => {
+  const { involved } = layoutProblems(nodes);
+  let best = layoutScore(nodes);
+  let swapped = false;
+  const swap = (a: SimNode, b: SimNode) => {
+    [a.x, b.x] = [b.x, a.x];
+    [a.y, b.y] = [b.y, a.y];
+  };
+  for (let i = 0; i < nodes.length; i += 1) {
+    for (let j = i + 1; j < nodes.length; j += 1) {
+      if (!involved.has(i) && !involved.has(j)) continue;
+      swap(nodes[i]!, nodes[j]!);
+      const score = layoutScore(nodes);
+      if (score < best - 1e-9) {
+        best = score;
+        swapped = true;
+      } else {
+        swap(nodes[i]!, nodes[j]!);
+      }
+    }
+  }
+  if (swapped) {
+    for (const node of nodes) {
+      node.vx = 0;
+      node.vy = 0;
+    }
+  }
+  return swapped;
+};
+
+// The collision force is soft, so pairs still closer than the minimum gap
+// after settling are pushed apart exactly.
+const separate = (nodes: SimNode[]) => {
+  const floor = 2 * options.collideRadius;
+  const inset = options.boundsInset;
+  const bounded = inset > 0 && options.simWidth > 0 && options.simHeight > 0;
+  for (let pass = 0; pass < GAP_PASSES; pass += 1) {
+    let moved = false;
+    for (let i = 0; i < nodes.length; i += 1) {
+      for (let j = i + 1; j < nodes.length; j += 1) {
+        const a = nodes[i]!;
+        const b = nodes[j]!;
+        const aFixed = a.fx != null;
+        const bFixed = b.fx != null;
+        if (aFixed && bFixed) continue;
+        let dx = (b.x ?? 0) - (a.x ?? 0);
+        let dy = (b.y ?? 0) - (a.y ?? 0);
+        let distance = Math.hypot(dx, dy);
+        if (distance >= floor - 1e-9) continue;
+        if (distance < 1e-9) {
+          dx = 1e-6;
+          dy = 0;
+          distance = 1e-6;
+        }
+        const share = (floor - distance) / distance;
+        const aShare = aFixed ? 0 : bFixed ? 1 : 0.5;
+        a.x = (a.x ?? 0) - dx * share * aShare;
+        a.y = (a.y ?? 0) - dy * share * aShare;
+        b.x = (b.x ?? 0) + dx * share * (1 - aShare);
+        b.y = (b.y ?? 0) + dy * share * (1 - aShare);
+        moved = true;
+      }
+    }
+    if (bounded) {
+      for (const node of nodes) {
+        if (node.fx != null) continue;
+        node.x = Math.min(
+          options.simWidth - inset,
+          Math.max(inset, node.x ?? 0),
+        );
+        node.y = Math.min(
+          options.simHeight - inset,
+          Math.max(inset, node.y ?? 0),
+        );
+      }
+    }
+    if (!moved) break;
+  }
 };
 
 const isSettled = (sim: Simulation<SimNode, undefined>) =>
@@ -725,6 +846,8 @@ const createSimulation = (nodes: SimNode[]) => {
 };
 
 const finish = (frames: number[][]) => {
+  separate(simulation.nodes());
+  frames.push(simulation.nodes().flatMap((node) => [node.x ?? 0, node.y ?? 0]));
   running = false;
   needsLayout = false;
   incrementalChange = false;
@@ -782,6 +905,10 @@ const layoutFromScratch = () => {
       bestFrames = frames;
       simulation = candidate;
     }
+  }
+  if (links.length <= MAX_SCORED_LINKS && untangle(simulation.nodes())) {
+    simulation.alpha(UNTANGLE_ALPHA);
+    bestFrames.push(...settle(simulation));
   }
   finish(bestFrames);
 };
@@ -850,7 +977,7 @@ export function handleMessage(data: Message) {
       const endpoints = JSON.stringify(linkEndpoints());
       links = data.links;
       if (JSON.stringify(linkEndpoints()) === endpoints) break;
-      // Which nodes are linked changes the ring and centering forces too.
+      // Which nodes are linked changes the centering and gap forces too.
       registerForces(simulation);
 
       if (paused) markPending();

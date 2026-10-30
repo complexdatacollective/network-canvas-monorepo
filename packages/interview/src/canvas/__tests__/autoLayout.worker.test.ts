@@ -1,8 +1,6 @@
 import type {
   ForceLink,
   ForceManyBody,
-  ForceX,
-  ForceY,
   Simulation,
   SimulationLinkDatum,
 } from 'd3-force';
@@ -120,13 +118,20 @@ const TWO_GROUPS: SimNode[] = [
   { nodeId: 'b3', x: 0.6, y: -0.44, groupKeys: ['B'] },
 ];
 
-// Links the four-node fixtures so they are centred rather than sent to the
-// ring for unlinked nodes.
+// Links the four-node fixtures into one component, pulled to the centre as a
+// whole.
 const CHAIN: SimLink[] = [
   { source: 0, target: 1 },
   { source: 1, target: 2 },
   { source: 2, target: 3 },
 ];
+
+const SCRATCH_OPTIONS = {
+  collideRadius: SIM_COLLIDE_RADIUS,
+  boundsInset: 64 / HEIGHT,
+  simWidth: 1600 / HEIGHT,
+  simHeight: 1,
+};
 
 const cloneNodes = (nodes: SimNode[]): SimNode[] =>
   nodes.map((node) => ({ ...node, groupKeys: node.groupKeys?.slice() }));
@@ -172,8 +177,6 @@ describe('autoLayout worker', () => {
     const sim = capturedSim!;
     const nodes = sim.nodes();
     const charge = sim.force('charge') as ForceManyBody<SimNode>;
-    const biasX = sim.force('biasX') as ForceX<SimNode>;
-    const biasY = sim.force('biasY') as ForceY<SimNode>;
     const link = sim.force('link') as ForceLink<SimNode, SimLink>;
     const liveLinks = link.links();
 
@@ -182,18 +185,15 @@ describe('autoLayout worker', () => {
     expect(sim.alphaMin()).toBe(0.025);
     expect(charge).toBeTruthy();
     expect(charge.strength()(nodes[0]!, 0, nodes)).toBeCloseTo(
-      -0.004 * Math.sqrt(10 / nodes.length),
+      -0.006 * Math.sqrt(10 / nodes.length),
     );
-    expect(biasX.strength()(nodes[0]!, 0, nodes)).toBeCloseTo(
-      0.13 / (simWidth * simWidth),
-    );
-    expect(biasX.x()(nodes[0]!, 0, nodes)).toBeCloseTo(simWidth * 0.5);
-    expect(biasY.strength()(nodes[0]!, 0, nodes)).toBe(0.13);
-    expect(biasY.y()(nodes[0]!, 0, nodes)).toBe(0.5);
+    expect(sim.force('centre')).toBeTruthy();
+    expect(sim.force('componentGap')).toBeTruthy();
     expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
-      1.9 * (collideRadiusForNode(48) / 800),
+      1.8 * (collideRadiusForNode(48) / 800),
     );
-    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(0.5);
+    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(1);
+    expect(link.iterations()).toBe(3);
   });
 
   it('pulls same-group nodes closer together after start', () => {
@@ -331,29 +331,36 @@ describe('autoLayout worker', () => {
     expect(capturedSim!.force('anchorY')).toBeTruthy();
   });
 
-  it('keeps people round and central until the first link exists', () => {
-    const SIM_WIDTH = 1600 / HEIGHT;
-    const nodes: SimNode[] = Array.from({ length: 8 }, (_, i) => ({
-      nodeId: `n${i}`,
-      x: 0.2 + i * 0.15,
-      y: 0.5,
-    }));
-    handleMessage({
-      type: 'initialize',
-      nodes,
-      options: { simWidth: SIM_WIDTH, simHeight: 1, boundsInset: 0.08 },
-    });
+  it('keeps people round until the first link exists, then takes the canvas shape', () => {
+    const spread = (links: SimLink[]) => {
+      posted = [];
+      handleMessage({
+        type: 'initialize',
+        nodes: Array.from({ length: 8 }, (_, i) => ({
+          nodeId: `n${i}`,
+          x: 0.8,
+          y: 0.5,
+          placed: false,
+        })),
+        links,
+        options: SCRATCH_OPTIONS,
+      });
+      handleMessage({ type: 'start' });
+      const end = posted.find((m) => m.type === 'end')!;
+      const xs = end.nodes.map((n) => n.x ?? 0);
+      const ys = end.nodes.map((n) => n.y ?? 0);
+      return {
+        x: Math.max(...xs) - Math.min(...xs),
+        y: Math.max(...ys) - Math.min(...ys),
+      };
+    };
 
-    const sim = capturedSim!;
-    const biasX = sim.force('biasX') as ForceX<SimNode>;
-    const biasY = sim.force('biasY') as ForceY<SimNode>;
-    expect(biasX.strength()(sim.nodes()[0]!, 0, sim.nodes())).toBe(0.13);
-    expect(biasY.strength()(sim.nodes()[0]!, 0, sim.nodes())).toBe(0.13);
+    const round = spread([]);
+    expect(round.x / round.y).toBeLessThan(1.3);
+    expect(round.y / round.x).toBeLessThan(1.3);
 
-    handleMessage({ type: 'update_links', links: [{ source: 0, target: 1 }] });
-    // With a link, an unlinked node leaves the centre for the ring.
-    const linkedBiasY = sim.force('biasY') as ForceY<SimNode>;
-    expect(linkedBiasY.strength()(sim.nodes()[5]!, 5, sim.nodes())).toBe(0);
+    const wide = spread([{ source: 0, target: 1 }]);
+    expect(wide.x).toBeGreaterThan(2 * wide.y);
   });
 
   it('ignores a repeated start once the layout has settled', () => {
@@ -364,42 +371,110 @@ describe('autoLayout worker', () => {
     expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
   });
 
-  it('lays out unplaced nodes from scratch, keeping unlinked nodes on an oval ring', () => {
-    const SIM_WIDTH = 1600 / HEIGHT;
-    const nodes: SimNode[] = Array.from({ length: 10 }, (_, i) => ({
-      nodeId: `n${i}`,
-      x: SIM_WIDTH / 2,
-      y: 0.5,
-      placed: false,
-    }));
+  it('lays out from scratch with the exact minimum gap and separate components kept apart', () => {
+    const component = [0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 7, 8];
     handleMessage({
       type: 'initialize',
-      nodes,
+      nodes: component.map((_, i) => ({
+        nodeId: `n${i}`,
+        x: 0.8,
+        y: 0.5,
+        placed: false,
+      })),
       links: [
         { source: 0, target: 1 },
-        { source: 1, target: 2 },
+        { source: 2, target: 3 },
+        { source: 4, target: 5 },
+        { source: 6, target: 7 },
+        { source: 7, target: 8 },
+        { source: 8, target: 6 },
+        { source: 9, target: 10 },
+        { source: 10, target: 11 },
+        { source: 12, target: 13 },
+        { source: 13, target: 14 },
+        { source: 14, target: 15 },
+        { source: 15, target: 12 },
       ],
+      options: SCRATCH_OPTIONS,
+    });
+    handleMessage({ type: 'start' });
+
+    const end = posted.find((m) => m.type === 'end')!;
+    const radius = 48 / HEIGHT;
+    let closest = Infinity;
+    let closestBetweenTied = Infinity;
+    end.nodes.forEach((a, i) => {
+      end.nodes.forEach((b, j) => {
+        if (j <= i) return;
+        const distance = Math.hypot(
+          (a.x ?? 0) - (b.x ?? 0),
+          (a.y ?? 0) - (b.y ?? 0),
+        );
+        closest = Math.min(closest, distance);
+        if (
+          component[i] !== component[j] &&
+          component[i]! < 6 &&
+          component[j]! < 6
+        ) {
+          closestBetweenTied = Math.min(closestBetweenTied, distance);
+        }
+      });
+    });
+    expect(closest).toBeGreaterThanOrEqual(2 * SIM_COLLIDE_RADIUS - 1e-9);
+    expect((closestBetweenTied - 2 * radius) / radius).toBeGreaterThan(1.4);
+  });
+
+  it('untangles the best layout from scratch', () => {
+    const edges = [
+      [0, 1],
+      [0, 4],
+      [0, 5],
+      [0, 7],
+      [0, 8],
+      [1, 4],
+      [1, 6],
+      [1, 7],
+      [2, 4],
+      [2, 6],
+      [3, 5],
+      [4, 8],
+      [6, 7],
+    ] as const;
+    handleMessage({
+      type: 'initialize',
+      nodes: Array.from({ length: 9 }, (_, i) => ({
+        nodeId: `n${i}`,
+        x: 0.8,
+        y: 0.5,
+        placed: false,
+      })),
+      links: edges.map(([source, target]) => ({ source, target })),
       options: {
-        collideRadius: SIM_COLLIDE_RADIUS,
-        boundsInset: 0.08,
-        simWidth: SIM_WIDTH,
+        collideRadius: (48 * 1.5) / HEIGHT,
+        boundsInset: 64 / HEIGHT,
+        simWidth: 1.6,
         simHeight: 1,
       },
     });
     handleMessage({ type: 'start' });
 
-    const end = posted.find((m) => m.type === 'end')!;
-    expect(minPairwiseDistance(end.nodes)).toBeGreaterThan(
-      2 * SIM_COLLIDE_RADIUS * 0.96,
-    );
-    const centre = { x: SIM_WIDTH / 2, y: 0.5 };
-    const radii = end.nodes
-      .filter((n) => !['n0', 'n1', 'n2'].includes(n.nodeId!))
-      .map((n) => Math.hypot((n.x ?? 0) - centre.x, (n.y ?? 0) - centre.y));
-    for (const radius of radii) {
-      expect(radius).toBeGreaterThan(0.2);
-      expect(radius).toBeLessThan(SIM_WIDTH / 2 - 0.08);
-    }
+    const nodes = posted.find((m) => m.type === 'end')!.nodes;
+    const side = (p: SimNode, q: SimNode, r: SimNode) =>
+      ((q.x ?? 0) - (p.x ?? 0)) * ((r.y ?? 0) - (p.y ?? 0)) -
+      ((q.y ?? 0) - (p.y ?? 0)) * ((r.x ?? 0) - (p.x ?? 0));
+    let crossings = 0;
+    edges.forEach(([a, b], i) => {
+      for (const [c, d] of edges.slice(i + 1)) {
+        if (a === c || a === d || b === c || b === d) continue;
+        const [p, q, r, t] = [nodes[a]!, nodes[b]!, nodes[c]!, nodes[d]!];
+        if (
+          side(r, t, p) * side(r, t, q) < 0 &&
+          side(p, q, r) * side(p, q, t) < 0
+        )
+          crossings += 1;
+      }
+    });
+    expect(crossings).toBe(0);
   });
 
   it('sends the settle as frames that start with nobody overlapping and end at rest', () => {
@@ -594,7 +669,7 @@ describe('autoLayout worker', () => {
     const link = capturedSim!.force('link') as ForceLink<SimNode, SimLink>;
     const liveLinks = link.links();
     expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
-      1.9 * SIM_COLLIDE_RADIUS,
+      1.8 * SIM_COLLIDE_RADIUS,
     );
     handleMessage({ type: 'start' });
     tickManually(300);
