@@ -10,8 +10,9 @@ description: Run the agent-driven release smoke test of the deployed Architect d
 The saved workflow `.claude/workflows/architect-release-test.js` drives the
 deployed Architect dev site (https://architect.networkcanvas.dev, which
 tracks `main`) through a release-tester checklist using browser agents in
-the in-app Browser pane, has agents rebuild the entire sample protocol
-through Architect's own UI in a Playwright browser, and returns a structured
+the in-app Browser pane and, for checks that need tabs the app opens or a
+file chooser, a Playwright browser, where agents also rebuild the entire
+sample protocol through Architect's own UI, and returns a structured
 verdict. Release gates
 consume the result's `promotable` field — true only for a full-coverage
 pass with the expected version pinned and matched. This skill is the
@@ -38,27 +39,46 @@ manual pass.)
 | `--unpinned`       | —                | skip both pins; the run cannot be promotable            |
 
 Slice keys: `protocol-lifecycle`, `stages-and-timeline`,
-`codebook-and-summary`, `stage-preview`, `localization`, `dynamic-values`,
+`codebook-and-summary`, `stage-preview`, `localization`,
+`language-management`, `send-to-interviewer`, `dynamic-values`,
 `finish-stages`, `bins-and-encryption`, `templates-and-upgrade`,
-`sample-protocol-build`. Reachability always runs.
+`legacy-editors`, `sample-protocol-build`. Reachability always runs.
 
-**The schema 9 slices** author what schema 9 added, in the Browser pane:
+**Two browsers.** Most slices run in the Browser pane, one at a time. The
+pane refuses the tabs the app opens itself and cannot answer a file chooser,
+so the slices that need either run in the Playwright browser instead:
+`stage-preview`, `language-management`, `send-to-interviewer`,
+`dynamic-values` and `legacy-editors`, followed there by the sample build.
+The two lanes run side by side. In Playwright a preview must render: a
+refused popup is a failure, not a pass.
 
-- `localization` — adds a second language on the Languages page, translates a
-  text in the translation table, sees the "Participants can’t choose a
-  language" note, and clears it by adding a Language Chooser stage.
-- `dynamic-values` — creates an ego attribute, inserts it and "Today’s date"
-  into an Information stage through the insert ("piped text") menu, checks the
-  menu's groups, the "If known" / "If not known" versions and the folded pill,
-  that they persist, and previews the stage.
-- `finish-stages` — the finish stage every protocol starts with, its
+**The schema 9 slices** author what schema 9 added:
+
+- `localization` (pane) — adds a second language on the Languages page,
+  translates a text in the translation table, sees the "Participants can’t
+  choose a language" note, and clears it by adding a Language Chooser stage.
+- `language-management` (Playwright) — adds French and Polish together:
+  French arrives fully translated with Network Canvas's own wording (the
+  finish stage's name, closing and finished text, its buttons), Polish, which
+  Network Canvas is not written in, arrives untranslated. Then the "Not
+  everything is translated yet" note and its link, writing and editing a
+  translation, making Polish the default (its Remove control refused, the
+  "This protocol can’t be downloaded yet" warning and refused download while
+  the finish stage has no Polish text), removing Polish, and previewing the
+  finish stage in French with the preview's language select.
+- `dynamic-values` (Playwright) — creates an ego attribute, inserts it and
+  "Today’s date" into an Information stage through the insert ("piped text")
+  menu, checks the menu's groups, the "If known" / "If not known" versions and
+  the folded pill, that they persist, and that the preview shows the filled-in
+  text.
+- `finish-stages` (pane) — the finish stage every protocol starts with, its
   confirmation and automatic modes, a second finish stage, the reorder rule
   (finish stages swap among themselves, never rise above another stage) and
   the refusal to delete the last one.
-- `bins-and-encryption` — a Categorical Bin with tap to place and the
+- `bins-and-encryption` (pane) — a Categorical Bin with tap to place and the
   completion gate, and an Anonymisation stage that encrypts a text attribute
   with no experiment to enable, its explanation led by a Heading 1.
-- `templates-and-upgrade` — opens the CEGRM template (Family Pedigree,
+- `templates-and-upgrade` (pane) — opens the CEGRM template (Family Pedigree,
   Narrative Pedigree, two finish stages), edits its pedigree, confirms no form
   or census editor offers an introduction panel, and opens a schema 8
   protocol, which must arrive upgraded (its introduction panel an Information
@@ -67,8 +87,32 @@ Slice keys: `protocol-lifecycle`, `stages-and-timeline`,
   script the workflow writes (`legacyUpgradeScript`), as Fresco's release test
   does for uploads.
 
-The interview's own E2E suites cover how these features render to
-participants; a preview popup the pane refuses leaves that unobserved here.
+**The other Playwright slices:**
+
+- `stage-preview` — previews a stage of the Sample Protocol template with
+  "Start preview with example data" on (made-up people fill the name
+  generator) and off (it starts empty), and checks the bare `/preview/`
+  route.
+- `send-to-interviewer` — sends a protocol to the Interviewer this
+  deployment pairs with (production with production, every other deployment
+  with interviewer.networkcanvas.dev), checks Interviewer imports it, then
+  deletes it there.
+- `legacy-editors` — keeps older-schema protocols unchanged in their own
+  editors. A planning agent reads `apps/architect/legacy-architect.json` and
+  the current schema at `sampleRef`; for each bundled editor (`v8` today) it
+  packs the sample protocol of the Architect release that editor bundles,
+  which is a protocol of that schema. An agent opens it with "Keep editing as
+  schema N", checks it lands unchanged in the editor at `/vN/` whose
+  `build-info.json` commit is that release's, finds it in this app's library
+  with a "Schema N" badge, and reopens it there. Every schema from 8 up to
+  the one before the current schema must have an editor, so when Architect
+  writes schema 10 and bundles Architect 9 the slice covers schema 8 and 9
+  with no change here, and a missing editor blocks the run. Architect offers
+  no Delete for those protocols, so they stay in the Playwright profile.
+
+The interview's own E2E suites cover how these features render in a real
+interview; this test checks what a researcher sees in Architect and its
+preview.
 
 **The sample-protocol build** is the core end-user check. An analyst agent
 reads `packages/protocols/sample` at `sampleRef` (the commit the deployment
@@ -136,21 +180,26 @@ Invoke the Workflow tool with
 `{ name: 'architect-release-test', args: { url?, slices?, expectVersion?, expectCommit?, sampleRef? } }`
 (or `scriptPath: '.claude/workflows/architect-release-test.js'`). Notes:
 
-- A full run takes as long as the sample-protocol build — expect a couple
-  of hours. The Browser-pane slices run sequentially by design (the pane's
+- A full run takes as long as the Playwright lane — expect a couple of
+  hours. The Browser-pane slices run sequentially by design (the pane's
   tabs share one origin profile and Architect stores protocols in
-  IndexedDB) while the build runs alongside them in its own Playwright
-  browser. Never start two runs concurrently.
+  IndexedDB) while the Playwright slices, the older-schema editors and then
+  the build run one at a time alongside them in the Playwright browser.
+  Never start two runs concurrently.
 - The run is read-only for real data. Every protocol it creates is named by
   the workflow under one run tag (`RT <slice> <tag>`, `RT sample <tag>`,
   `RT verify <tag> <n>`, logged at the start), and a separate clean-up agent
   deletes it by that name whenever the agent that made it may not have, so
-  a crashed agent cannot strand test data. Anything a clean-up agent could
-  not confirm deleted is listed in `notes` under `cleanup`.
+  a crashed agent cannot strand test data. That includes the copy
+  `send-to-interviewer` sends to Interviewer. Anything a clean-up agent could
+  not confirm deleted is listed in `notes` under `cleanup`. The exception is
+  `RT legacy <tag> schema N`: Architect cannot delete an older-schema
+  protocol, so it stays in the Playwright profile.
 - The build's files (extracted specification, renamed uploads, exported
   `.netcanvas`) stay under the git-ignored `.playwright-mcp/architect-sample-*`
-  directory named in `sampleBuild.workDir`, for inspection; delete it when
-  done. Playwright can only upload from inside the repository, which is why
+  directory named in `sampleBuild.workDir`, and the older-schema protocol
+  files under `.playwright-mcp/architect-legacy-*`, for inspection; delete
+  them when done. Playwright can only upload from inside the repository, which is why
   it lives there.
 - Commit-pinned runs re-fetch `/build-info.json` after all other phases: a
   deployment that changed mid-run holds the verdict at `blocked`, because
