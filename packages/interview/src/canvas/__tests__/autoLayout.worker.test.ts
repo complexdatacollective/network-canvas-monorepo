@@ -319,6 +319,19 @@ describe('autoLayout worker', () => {
     expect(capturedSim!.force('anchorY')).toBeTruthy();
   });
 
+  it('does not lay out again when resumed with nothing changed', () => {
+    handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
+    handleMessage({ type: 'start' });
+    const settled = capturedSim!.nodes().map(({ x, y }) => ({ x, y }));
+    handleMessage({ type: 'stop' });
+    posted = [];
+
+    handleMessage({ type: 'start' });
+
+    expect(posted).toEqual([]);
+    expect(capturedSim!.nodes().map(({ x, y }) => ({ x, y }))).toEqual(settled);
+  });
+
   it('settles anchored after the node set changes', () => {
     handleMessage({
       type: 'initialize',
@@ -475,6 +488,18 @@ describe('autoLayout worker', () => {
       }
     });
     expect(crossings).toBe(0);
+
+    const { frames } = posted.find((m) => m.type === 'end') as unknown as {
+      frames: number[][];
+    };
+    const diameter = (2 * 48) / HEIGHT;
+    for (const frame of frames) {
+      const frameNodes = Array.from({ length: 9 }, (_, i) => ({
+        x: frame[2 * i],
+        y: frame[2 * i + 1],
+      }));
+      expect(minPairwiseDistance(frameNodes)).toBeGreaterThan(diameter * 0.95);
+    }
   });
 
   it('sends the settle as frames that start with nobody overlapping and end at rest', () => {

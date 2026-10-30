@@ -152,6 +152,7 @@ const REHEAT_ALPHA = 0.3;
 const LAYOUT_ATTEMPTS = 4;
 // Above this many links scoring attempts costs too much, so one attempt is used.
 const MAX_SCORED_LINKS = 1000;
+const UNTANGLE_BUDGET = 5_000_000;
 const ATTEMPT_JITTER = 0.1;
 const MAX_TICKS = 1000;
 const PLAYBACK_FRAMES = 60;
@@ -626,9 +627,13 @@ const layoutScore = (nodes: SimNode[]) => {
 };
 
 const untangle = (nodes: SimNode[]) => {
+  const swaps: [number, number][] = [];
+  const edges = links.length;
+  const scoreCost = edges * edges + edges * nodes.length + nodes.length ** 2;
+  let checks = Math.floor(UNTANGLE_BUDGET / scoreCost);
+  if (checks === 0) return swaps;
   const { involved } = layoutProblems(nodes);
   let best = layoutScore(nodes);
-  let swapped = false;
   const swap = (a: SimNode, b: SimNode) => {
     [a.x, b.x] = [b.x, a.x];
     [a.y, b.y] = [b.y, a.y];
@@ -636,23 +641,25 @@ const untangle = (nodes: SimNode[]) => {
   for (let i = 0; i < nodes.length; i += 1) {
     for (let j = i + 1; j < nodes.length; j += 1) {
       if (!involved.has(i) && !involved.has(j)) continue;
+      if (checks === 0) break;
+      checks -= 1;
       swap(nodes[i]!, nodes[j]!);
       const score = layoutScore(nodes);
       if (score < best - 1e-9) {
         best = score;
-        swapped = true;
+        swaps.push([i, j]);
       } else {
         swap(nodes[i]!, nodes[j]!);
       }
     }
   }
-  if (swapped) {
+  if (swaps.length > 0) {
     for (const node of nodes) {
       node.vx = 0;
       node.vy = 0;
     }
   }
-  return swapped;
+  return swaps;
 };
 
 const separate = (nodes: SimNode[]) => {
@@ -898,7 +905,17 @@ const layoutFromScratch = () => {
       simulation = candidate;
     }
   }
-  if (links.length <= MAX_SCORED_LINKS && untangle(simulation.nodes())) {
+  const swaps = untangle(simulation.nodes());
+  if (swaps.length > 0) {
+    for (const frame of bestFrames) {
+      for (const [i, j] of swaps) {
+        [frame[2 * i], frame[2 * j]] = [frame[2 * j]!, frame[2 * i]!];
+        [frame[2 * i + 1], frame[2 * j + 1]] = [
+          frame[2 * j + 1]!,
+          frame[2 * i + 1]!,
+        ];
+      }
+    }
     simulation.alpha(UNTANGLE_ALPHA);
     bestFrames.push(...settle(simulation));
   }
@@ -930,9 +947,8 @@ export function handleMessage(data: Message) {
     case 'start': {
       if (!simulation) return;
       console.debug('autolayout-worker:start');
-      const resuming = paused;
       paused = false;
-      if (!needsLayout && !resuming) return;
+      if (!needsLayout) return;
 
       const nodes = simulation.nodes();
       const unplaced = nodes.filter((node) => node.placed === false).length;
