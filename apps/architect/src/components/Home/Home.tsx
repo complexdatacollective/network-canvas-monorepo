@@ -1,12 +1,5 @@
-import {
-  BookOpen,
-  CodeXml,
-  FilePlus,
-  FolderOpen,
-  Upload,
-  Users,
-} from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { BookOpen, CodeXml, FilePlus, FolderOpen, Users } from 'lucide-react';
+import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
 import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -119,7 +112,8 @@ const messages = defineMessages({
     id: 'architect.home.home.orDropANetcanvasFileAnywhere',
     defaultMessage:
       'Or drop a <code>.netcanvas</code> file anywhere on this page',
-    description: 'Visible text in components / Home / Home.',
+    description:
+      'Second, smaller line inside the "Open existing protocol" button on the Architect start screen, telling researchers they can also drag a protocol file onto the page. <code> wraps the file extension, which stays untranslated.',
   },
 });
 
@@ -146,6 +140,7 @@ const Home = () => {
   const { openDialog } = useDialog();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const dropHintId = useId();
   const [pendingTemplate, setPendingTemplate] = useState<{
     protocol: CurrentProtocol;
     defaultName: string;
@@ -434,32 +429,45 @@ const Home = () => {
                   </Paragraph>
                 </div>
 
-                <div className="flex w-full flex-col items-start gap-3 @min-md:flex-row @min-md:flex-nowrap">
+                {/* Both buttons grow with the open button's second line, and
+                    the row stretches them to one height. */}
+                <div className="flex w-full flex-col items-start gap-3 @min-md:flex-row @min-md:flex-wrap @min-md:items-stretch">
                   <Button
                     color="primary"
                     onClick={() => setShowNewDialog(true)}
-                    className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
+                    className="h-auto min-h-12 gap-3 @min-xl:min-h-16 @min-xl:text-lg"
                   >
-                    <FilePlus />
+                    <FilePlus strokeWidth={2.5} />
                     {intl.formatMessage(messages.createANewProtocol)}
                   </Button>
+                  {/* The drop hint describes the button rather than naming it,
+                      so it is hidden from the name and read as the description. */}
                   <Button
                     color="default"
                     variant="glass"
                     onClick={openFileDialog}
-                    className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
+                    aria-describedby={dropHintId}
+                    className="h-auto min-h-12 items-start gap-3 border-transparent py-3 @min-xl:min-h-16 @min-xl:text-lg"
                   >
-                    <FolderOpen />
-                    {intl.formatMessage(messages.openExistingProtocol)}
+                    <FolderOpen
+                      strokeWidth={2.5}
+                      className="mt-[calc((1lh-1em)/2)]"
+                    />
+                    <span className="flex w-min min-w-0 flex-col items-start text-left">
+                      {intl.formatMessage(messages.openExistingProtocol)}
+                      <span
+                        id={dropHintId}
+                        aria-hidden
+                        className="font-body text-xs leading-snug font-normal tracking-normal text-balance whitespace-normal opacity-75"
+                      >
+                        {intl.formatMessage(
+                          messages.orDropANetcanvasFileAnywhere,
+                          { code: renderCode },
+                        )}
+                      </span>
+                    </span>
                   </Button>
                 </div>
-
-                <Paragraph className="hint my-0 hidden items-center gap-1.5 [@container_(height>760px)]:flex">
-                  <Upload className="h-3.5 w-3.5" />
-                  {intl.formatMessage(messages.orDropANetcanvasFileAnywhere, {
-                    code: renderCode,
-                  })}
-                </Paragraph>
               </div>
 
               <LibraryPanel

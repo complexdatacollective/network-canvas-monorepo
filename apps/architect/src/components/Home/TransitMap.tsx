@@ -34,7 +34,7 @@ const STATION_INNER_R = 28;
 const HALO_R = 60;
 const ICON_SIZE = 26;
 const LINE_STROKE = 16;
-const LABEL_W = 240;
+const LABEL_W = 260;
 const LABEL_EDGE_GAP = 20;
 const INDEX_EDGE_GAP = 10;
 const INDEX_W = 36;
@@ -319,7 +319,7 @@ function Station({
             style={{ justifyContent: labelLeft ? 'flex-end' : 'flex-start' }}
           >
             <div
-              className="min-w-0 rounded-full bg-white/40 px-6 py-3 shadow-[0_8px_20px_rgba(22,21,43,0.10)]"
+              className="min-w-0 rounded-[40px] bg-white/40 px-8 py-4 shadow-[0_8px_20px_rgba(22,21,43,0.10)]"
               style={{ maxWidth: LABEL_W - 20 }}
             >
               <div
@@ -327,7 +327,7 @@ function Station({
                   level: 'h3',
                   margin: 'none',
                   className:
-                    'truncate text-[19px] leading-tight font-extrabold tracking-tight text-[hsl(240_35%_17%)]',
+                    'text-[19px] leading-[1.1] font-extrabold text-balance text-[hsl(240_35%_17%)]',
                 })}
               >
                 {label}
@@ -338,7 +338,7 @@ function Station({
                   variant: 'all-caps',
                   margin: 'none',
                   className:
-                    'mt-0.75 text-[12px] leading-none font-bold tracking-[0.16em]',
+                    'pt-2.5 text-[12px] leading-[1.2] font-bold tracking-[0.16em] text-balance',
                 })}
                 style={{ color: captionColor(color) }}
               >
