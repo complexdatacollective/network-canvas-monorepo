@@ -37,7 +37,9 @@ import { scopedColor } from '../scopedColor.js';
 const insetSurfacePlugin: ReturnType<typeof plugin> = plugin((api) => {
   api.matchUtilities(
     {
-      bg: (value) => {
+      // The return type is named because the inferred one gives the empty
+      // branch an optional `undefined` property, which Tailwind rejects.
+      bg: (value): Record<string, string> => {
         const color = scopedColor(value);
         return color === null ? {} : { '--inset-bg': color };
       },

@@ -141,9 +141,12 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
         // still set --scoped-bg. Shadow derivation uses the solid color, so the
         // alpha on the visible background is intentionally discarded here.
         // `scopedColor` skips values that are not colours (`bg-[length:200%_100%]`).
+        // The callbacks name their return type because the inferred one gives
+        // the empty branch an optional `undefined` property, which Tailwind's
+        // CSS-in-JS type rejects.
         api.matchUtilities(
           {
-            bg: (value) => {
+            bg: (value): Record<string, string> => {
               const color = scopedColor(value);
               return color === null ? {} : { '--scoped-bg': color };
             },
@@ -156,7 +159,7 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
 
         api.matchUtilities(
           {
-            text: (value) => {
+            text: (value): Record<string, string> => {
               const color = scopedColor(value);
               return color === null ? {} : { '--scoped-text': color };
             },
