@@ -615,6 +615,26 @@ try {
     `on a first visit, before the download, the status read ${JSON.stringify(firstStatus)} (it must not claim "${READY_CHIP}" yet)`,
   );
 
+  // Sample this profile's download from the first visit on, alongside the
+  // worker-blocked check below, so no percentage goes unobserved.
+  const progress = [];
+  const readyStarted = Date.now();
+  const offlineDownload = (async () => {
+    for (;;) {
+      const text = (await statusChip().innerText()).trim();
+      if (progress.at(-1) !== text) progress.push(text);
+      if (text === READY_CHIP) return;
+      if (Date.now() - readyStarted > 240_000)
+        throw new Error(
+          `status never read "${READY_CHIP}" within 240 s: ${JSON.stringify(progress)}`,
+        );
+      await page.waitForTimeout(500);
+    }
+  })();
+  // Awaited below; this only keeps an early failure elsewhere from also
+  // surfacing as an unhandled rejection.
+  offlineDownload.catch(() => {});
+
   // A browser that cannot install the service worker can never be ready:
   // watch a second, worker-blocked profile while this one downloads.
   {
@@ -637,22 +657,14 @@ try {
     await blocked.close();
   }
 
-  const progress = [];
-  const readyStarted = Date.now();
-  for (;;) {
-    const text = (await statusChip().innerText()).trim();
-    if (progress.at(-1) !== text) progress.push(text);
-    if (text === READY_CHIP) break;
-    if (Date.now() - readyStarted > 240_000)
-      throw new Error(
-        `status never read "${READY_CHIP}" within 240 s: ${JSON.stringify(progress)}`,
-      );
-    await page.waitForTimeout(1000);
-  }
+  await offlineDownload;
   const percents = progress
     .map((t) => /(\d+)\s?%/.exec(t)?.[1])
     .filter(Boolean)
     .map(Number);
+  // An unobserved download proves nothing: at least one percentage must
+  // have been shown, and none may go backwards.
+  const observed = percents.length > 0;
   const monotonic = percents.every((p, i) => i === 0 || p >= percents[i - 1]);
   await statusChip().click();
   const popover = page.getByText(READY_HELP, { exact: true });
@@ -669,8 +681,12 @@ try {
   );
   record(
     'status-ready',
-    monotonic && explained && setting.status === 'Ready' && controlled,
-    `status went ${JSON.stringify(progress)} in ${Math.round((Date.now() - readyStarted) / 1000)} s (download percentages never went backwards: ${monotonic}); its explanation read "${READY_HELP}": ${explained}; Settings → Offline use read ${JSON.stringify(setting.status)}; page controlled by the service worker after a reload: ${controlled}`,
+    observed &&
+      monotonic &&
+      explained &&
+      setting.status === 'Ready' &&
+      controlled,
+    `status went ${JSON.stringify(progress)} in ${Math.round((Date.now() - readyStarted) / 1000)} s (${percents.length} download percentages observed, never going backwards: ${observed && monotonic}); its explanation read "${READY_HELP}": ${explained}; Settings → Offline use read ${JSON.stringify(setting.status)}; page controlled by the service worker after a reload: ${controlled}`,
   );
 
   // Phase 2 (offline): every route boots from the precache, and the app
