@@ -1,5 +1,44 @@
 # networkcanvas.com
 
+## 0.8.0
+
+### Minor Changes
+
+- In the protocol gallery, each stage in a protocol's stage list now shows its stage type's icon in a coloured badge, and the stage bars on gallery cards use the stage colours Architect now uses.
+- Protocol previews in the gallery now run schema 9 protocols, the protocol
+  version that lets names be written in any language and text be translated, and
+  upgrade older gallery protocols to it before they open. A translated protocol
+  opens in the first of your browser's languages that it offers, and its
+  language chooser stage lets you switch. Stage lists show stage names in the
+  protocol's default language. A protocol made with a newer version of
+  Network Canvas than the preview can run now says so, instead of being reported
+  as invalid with an offer to try again.
+
+  The schema note on the Get Started app cards now says the browser-based
+  Architect, Interviewer and Fresco use schema 9.
+
+### Patch Changes
+
+- The brand colors Mustard, Neon Carrot, Sea Serpent, Kiwi and Paradise Pink shift slightly in hue, and Neon Coral becomes slightly lighter and less saturated, following the shared color palette used across Network Canvas. Mustard leans toward amber, Neon Carrot toward red, and Sea Serpent toward blue, so the accents, illustrations and highlights on the site's update pages look a little different.
+- Menu, select and combobox items now have a small gap between them, so a run of checked or selected items no longer merges into one block.
+- The protocol gallery names the new Finish Screen stage, the screen that ends
+  an interview, in every language the website is available in. A gallery
+  protocol's preview now ends at that stage, which the protocol carries in the
+  updated protocol format.
+
+  Finishing a preview now shows the finished text of the protocol's own Finish
+  Screen, with buttons to start the preview again or go back
+  to the protocol, in place of the website's separate "Preview finished" screen.
+  Those buttons are labelled in the interview's language, like the rest of the
+  finished screen, and follow it when it changes.
+
+- Protocol gallery previews show schema 9 stages without introduction panels.
+  Forms and censuses open on their first question, and a gallery protocol
+  upgraded from schema 8 shows each former introduction panel, other than an
+  Ego Form's, as an Information stage just before its stage.
+- Clearer translations of the protocol gallery's stage names and the Get Started
+  page's note on schema versions, after blind back-translation and review.
+
 ## 0.7.0
 
 ### Minor Changes
