@@ -37,7 +37,7 @@ const messages = defineMessages({
     description:
       'Researcher-facing interviews / ExportOptionsView: CSV is a widely used format for storing network data, but this wider compatibility comes at the expense of robustness. I',
   },
-  useScreenLayoutCoordinates: {
+  screenLayoutCoordinatesLabel: {
     id: 'fresco.interviews.ExportOptionsView.useScreenLayoutCoordinates',
     defaultMessage: 'Use Screen Layout Coordinates',
     description:
@@ -164,7 +164,7 @@ const ExportOptionsView = ({
       <div className={sectionClasses}>
         <div>
           <Heading level="h4" variant="all-caps">
-            {intl.formatMessage(messages.useScreenLayoutCoordinates)}
+            {intl.formatMessage(messages.screenLayoutCoordinatesLabel)}
           </Heading>
           <Paragraph intent="smallText">
             {intl.formatMessage(
@@ -174,7 +174,9 @@ const ExportOptionsView = ({
         </div>
         <div>
           <Switch
-            aria-label={intl.formatMessage(messages.useScreenLayoutCoordinates)}
+            aria-label={intl.formatMessage(
+              messages.screenLayoutCoordinatesLabel,
+            )}
             value={exportOptions.globalOptions.useScreenLayoutCoordinates}
             onChange={(v) => handleScreenLayoutCoordinatesSwitch(v ?? false)}
           />

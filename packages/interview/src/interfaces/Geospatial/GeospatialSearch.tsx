@@ -142,6 +142,7 @@ export default function GeospatialSearch({
   // it would say is about a map the participant has left.
   useEffect(() => {
     selectionGenerationRef.current += 1;
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new `resetKey` is the event this marks; its value is not needed
   }, [resetKey]);
 
   const closeSearch = useCallback(() => {

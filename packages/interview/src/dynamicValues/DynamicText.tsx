@@ -1,6 +1,13 @@
 'use client';
 
-import { type ComponentProps, Fragment, type ReactNode, useMemo } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  Fragment,
+  type ReactNode,
+  useContext,
+  useMemo,
+} from 'react';
 
 import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
@@ -132,6 +139,30 @@ const rehypeDynamicValues = () => (tree: unknown) => {
   if (isHastNode(tree)) replaceMarkers(tree);
 };
 
+/** The values a `DynamicMarkdown` shows, by the index its markers carry. */
+const DynamicValuesContext = createContext<readonly string[]>([]);
+
+/**
+ * A span in resolved markdown: the value its marker names, or its contents.
+ * Declared once rather than built with the values, so a change of value
+ * updates the text in place instead of remounting it.
+ */
+function DynamicValueSpan({
+  node,
+  children,
+}: {
+  node?: { properties?: Record<string, unknown> };
+  children?: ReactNode;
+}) {
+  const values = useContext(DynamicValuesContext);
+  const index = node?.properties?.[VALUE_INDEX_PROPERTY];
+  const value = typeof index === 'string' ? values[Number(index)] : undefined;
+  // Any other span is unwrapped, as it was before spans were allowed.
+  return value === undefined ? <>{children}</> : <DynamicValue text={value} />;
+}
+
+const DYNAMIC_MARKDOWN_COMPONENTS = { span: DynamicValueSpan };
+
 type MarkdownOptions = Omit<
   ComponentProps<typeof RenderMarkdown>,
   'children' | 'components' | 'rehypePlugins'
@@ -161,40 +192,22 @@ export function DynamicMarkdown({
     return { markdown: text, values: shown };
   }, [parts]);
 
-  const components = useMemo(
-    () => ({
-      span: ({
-        node,
-        children,
-      }: {
-        node?: { properties?: Record<string, unknown> };
-        children?: ReactNode;
-      }) => {
-        const index = node?.properties?.[VALUE_INDEX_PROPERTY];
-        const value =
-          typeof index === 'string' ? values[Number(index)] : undefined;
-        // Any other span is unwrapped, as it was before spans were allowed.
-        return value === undefined ? (
-          <>{children}</>
-        ) : (
-          <DynamicValue text={value} />
-        );
-      },
-    }),
-    [values],
-  );
-
   return (
-    <RenderMarkdown
-      {...markdownOptions}
-      allowedElements={[
-        ...(allowedElements ?? ALLOWED_MARKDOWN_LABEL_TAGS),
-        'span',
-      ]}
-      rehypePlugins={[...DEFAULT_MARKDOWN_REHYPE_PLUGINS, rehypeDynamicValues]}
-      components={components}
-    >
-      {markdown}
-    </RenderMarkdown>
+    <DynamicValuesContext.Provider value={values}>
+      <RenderMarkdown
+        {...markdownOptions}
+        allowedElements={[
+          ...(allowedElements ?? ALLOWED_MARKDOWN_LABEL_TAGS),
+          'span',
+        ]}
+        rehypePlugins={[
+          ...DEFAULT_MARKDOWN_REHYPE_PLUGINS,
+          rehypeDynamicValues,
+        ]}
+        components={DYNAMIC_MARKDOWN_COMPONENTS}
+      >
+        {markdown}
+      </RenderMarkdown>
+    </DynamicValuesContext.Provider>
   );
 }

@@ -2,7 +2,7 @@
 
 import { type Row, type RowSelectionState } from '@tanstack/react-table';
 import { FileUp } from 'lucide-react';
-import { use, useMemo, useState, useTransition } from 'react';
+import { use, useCallback, useMemo, useState, useTransition } from 'react';
 import { SuperJSON } from 'superjson';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -159,16 +159,15 @@ const ParticipantsTableInner = ({
     [allParticipants],
   );
 
-  const openDeleteDialog = (
-    ids: string[],
-    haveInterviews: boolean,
-    haveUnexported: boolean,
-  ) => {
-    setDeleteIds(ids);
-    setDeleteHaveInterviews(haveInterviews);
-    setDeleteHaveUnexported(haveUnexported);
-    setShowDeleteModal(true);
-  };
+  const openDeleteDialog = useCallback(
+    (ids: string[], haveInterviews: boolean, haveUnexported: boolean) => {
+      setDeleteIds(ids);
+      setDeleteHaveInterviews(haveInterviews);
+      setDeleteHaveUnexported(haveUnexported);
+      setShowDeleteModal(true);
+    },
+    [],
+  );
 
   const handleDeleteSingle = useMemo(
     () => (participant: ParticipantRow) => {
@@ -178,7 +177,7 @@ const ParticipantsTableInner = ({
         participant.interviews.some((interview) => !interview.exportTime),
       );
     },
-    [],
+    [openDeleteDialog],
   );
 
   const columns = useMemo<DataTableColumnDef<ParticipantRow>[]>(

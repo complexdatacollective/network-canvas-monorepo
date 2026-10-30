@@ -56,22 +56,18 @@ function RaiseWarningToasts({
   const intl = useAppIntl();
   const { add } = useToast();
 
-  return (
-    <Button
-      onClick={() => {
-        for (const group of formatExportWarnings(intl, warnings)) {
-          add({
-            title: group.title,
-            description: <ExportWarningToastContent group={group} />,
-            icon: <TriangleAlert className="size-5" aria-hidden />,
-            timeout: 0,
-          });
-        }
-      }}
-    >
-      Finish export
-    </Button>
-  );
+  const raiseToasts = () => {
+    for (const group of formatExportWarnings(intl, warnings)) {
+      add({
+        title: group.title,
+        description: <ExportWarningToastContent group={group} />,
+        icon: <TriangleAlert className="size-5" aria-hidden />,
+        timeout: 0,
+      });
+    }
+  };
+
+  return <Button onClick={raiseToasts}>Finish export</Button>;
 }
 
 const meta: Meta<typeof RaiseWarningToasts> = {

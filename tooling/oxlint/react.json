@@ -6,6 +6,14 @@
     "react/jsx-no-target-blank": "off",
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "error",
+    // The React Compiler's dependency and component checks (#2388). Where a
+    // dependency is deliberately a re-run trigger, or the rule cannot follow
+    // the code (a `try/finally`), the site carries a disable comment saying so.
+    "react/exhaustive-effect-dependencies": "error",
+    "react/memo-dependencies": "error",
+    "react/no-unstable-nested-components": "error",
+    "react/hooks": "error",
+    "react/capitalized-calls": "error",
     "react/no-unsafe": "warn",
     "react/no-find-dom-node": "warn",
     "react/iframe-missing-sandbox": "error",

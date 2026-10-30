@@ -153,6 +153,7 @@ export const useSummaryFits = (
     observer.observe(title);
     observer.observe(summaryText);
     return () => observer.disconnect();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `hasSummary` says when the summary text mounts or unmounts, which the refs alone never re-run this for
   }, [contentRef, titleRef, summaryTextRef, hasSummary]);
 
   return fits;

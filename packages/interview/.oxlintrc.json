@@ -12,7 +12,6 @@
     "formatjs/no-invalid-icu": "error",
     "formatjs/enforce-placeholders": "error",
     "formatjs/no-multiple-whitespaces": "error",
-    "react/exhaustive-deps": "warn",
     "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-duplicate-classes": "error",
     // `focusable` sets its transition only under :focus-visible, a more

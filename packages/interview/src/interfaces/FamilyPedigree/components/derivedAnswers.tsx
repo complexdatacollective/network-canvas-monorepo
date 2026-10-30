@@ -224,6 +224,7 @@ export function useDerivedAnswer<Answer extends FieldValue>({
   const valueKey = answerKey(value);
   const startingKey = answerKey(startingAnswer);
   const keptKey = answerKey(withoutUnavailable(value, isAvailable));
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- keyed on what the answers are, not on their arrays, which are new each render; the effect event reads the latest
   useEffect(() => settle(), [name, valueKey, startingKey, keptKey]);
 
   return {

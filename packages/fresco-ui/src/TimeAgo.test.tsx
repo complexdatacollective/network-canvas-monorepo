@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Profiler } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createCatalogSource,
@@ -12,6 +12,7 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { frescoUiCatalogLoaders } from './locales/catalogs';
 import TimeAgo from './TimeAgo';
 
+const MINUTE_MS = 60000;
 const DAY_MS = 86400000;
 
 const catalogs = createCatalogSource(frescoUiCatalogLoaders);
@@ -128,5 +129,47 @@ describe('TimeAgo', () => {
 
     await user.click(element);
     expect(element).toHaveTextContent('2 days ago');
+  });
+
+  it('moves on from "just now" the moment a minute has passed', () => {
+    vi.useFakeTimers();
+    try {
+      render(<TimeAgo date={new Date(Date.now() - 50_000)} />);
+      const element = screen.getByTestId('time-ago');
+      expect(element).toHaveTextContent('just now');
+
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(element).toHaveTextContent('1 minute ago');
+
+      act(() => {
+        vi.advanceTimersByTime(MINUTE_MS);
+      });
+      expect(element).toHaveTextContent('2 minutes ago');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps time from a new date, not the one it mounted with', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <TimeAgo date={new Date(Date.now() - 5 * MINUTE_MS)} />,
+      );
+      const element = screen.getByTestId('time-ago');
+      expect(element).toHaveTextContent('5 minutes ago');
+
+      rerender(<TimeAgo date={new Date(Date.now() - 20_000)} />);
+      expect(element).toHaveTextContent('just now');
+
+      act(() => {
+        vi.advanceTimersByTime(40_000);
+      });
+      expect(element).toHaveTextContent('1 minute ago');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

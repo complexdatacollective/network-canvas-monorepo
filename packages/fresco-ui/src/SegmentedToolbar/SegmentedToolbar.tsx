@@ -345,9 +345,13 @@ function useHorizontalOverflow(
     if (lane.scrollLeft !== target) lane.scrollLeft = target;
   }, [enabled, anchorsToEnd]);
 
+  // Re-run when the segments change: adding or removing one changes how far
+  // the lane scrolls without resizing the lane, so the observer below never
+  // hears of it.
   React.useLayoutEffect(() => {
     settleLane();
     publishOverflow();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `children` is the re-run trigger described above, read through the DOM rather than in the effect
   }, [settleLane, publishOverflow, children]);
 
   React.useEffect(() => {

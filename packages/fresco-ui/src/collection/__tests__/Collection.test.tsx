@@ -806,6 +806,56 @@ describe('Collection', () => {
     });
   });
 
+  describe('a collection whose elements are drawn later', () => {
+    // A caller's render prop can leave the elements out at first (a tab not
+    // yet open, data still loading). The container's width still has to be
+    // measured once it appears, or a grid navigates as a single column.
+    function LateCollection() {
+      const [shown, setShown] = useState(false);
+      const layout = useMemo(
+        () => new GridLayout<Item>({ minItemWidth: 250, gap: 2 }),
+        [],
+      );
+      return (
+        <>
+          <button type="button" onClick={() => setShown(true)}>
+            Show
+          </button>
+          <Collection
+            items={testItems}
+            keyExtractor={(item) => item.id}
+            textValueExtractor={(item) => item.name}
+            layout={layout}
+            selectionMode="single"
+            aria-label="Late collection"
+            renderItem={(item, itemProps) => (
+              <div {...itemProps} data-testid={`item-${item.id}`}>
+                {item.name}
+              </div>
+            )}
+          >
+            {(CollectionElements) => (shown ? CollectionElements : null)}
+          </Collection>
+        </>
+      );
+    }
+
+    it('navigates its grid by row once the elements appear', async () => {
+      const user = userEvent.setup();
+      render(<LateCollection />);
+
+      await user.click(screen.getByRole('button', { name: 'Show' }));
+      await user.click(screen.getByTestId('item-1'));
+      // With 3 columns at the mocked 800px width, down from item 1 is item 4.
+      await user.keyboard('{ArrowDown}');
+      await waitFor(() =>
+        expect(screen.getByTestId('item-4').getAttribute('data-focused')).toBe(
+          'true',
+        ),
+      );
+    });
+  });
+
   describe('uncontrolled selection', () => {
     it('should work with defaultSelectedKeys', () => {
       const layout = new ListLayout<Item>({ gap: 2 });

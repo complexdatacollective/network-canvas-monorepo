@@ -35,7 +35,6 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { useTrack } from '../../analytics/useTrack';
 import { buildProtocolFieldErrors } from '../../forms/buildProtocolFieldErrors';
-import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useFormReadyToContinue from '../../forms/useFormReadyToContinue';
 import useProtocolForm from '../../forms/useProtocolForm';
@@ -105,7 +104,7 @@ const EgoFormInner = (props: EgoFormProps) => {
   const {
     fieldComponents,
     withFormValues,
-    coerceValues,
+    toAttributePatch,
     componentByVariable,
     variableByFieldPath,
   } = useProtocolForm({
@@ -200,13 +199,7 @@ const EgoFormInner = (props: EgoFormProps) => {
 
   const handleSubmitForm: FormSubmitHandler = useCallback(
     async (formData: Record<string, FieldValue>) => {
-      const coerced = coerceValues(formData);
-      const stageFieldIds = form.fields.map((f) => f.variable);
-      const patchResult = formValuesToAttributePatch(
-        coerced,
-        stageFieldIds,
-        egoAttributes,
-      );
+      const patchResult = toAttributePatch(formData);
 
       if (!patchResult.success) {
         return {
@@ -219,7 +212,7 @@ const EgoFormInner = (props: EgoFormProps) => {
       track('form_submitted', { form_kind: 'ego' });
       return { success: true };
     },
-    [coerceValues, dispatch, form.fields, track],
+    [dispatch, toAttributePatch, track],
   );
 
   const isReady = useFormReadyToContinue(hasScrolledToBottom);

@@ -55,8 +55,7 @@ export const useUnresolvedAssetIds = (): ReadonlySet<string> => {
     return () => {
       cancelled = true;
     };
-    // `storeVersion` is a dependency, not a value this reads: a write to the
-    // store can change the answer without changing the manifest.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `storeVersion` is a dependency, not a value this reads: a write to the store can change the answer without changing the manifest
   }, [assetManifest, protocolId, storeVersion]);
 
   return unresolved;

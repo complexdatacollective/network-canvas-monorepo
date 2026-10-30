@@ -46,7 +46,12 @@
     "typescript/switch-exhaustiveness-check": "off",
     "typescript/unbound-method": "off",
 
+    "react/capitalized-calls": "off",
     "react/exhaustive-deps": "off",
+    "react/exhaustive-effect-dependencies": "off",
+    "react/hooks": "off",
+    "react/memo-dependencies": "off",
+    "react/no-unstable-nested-components": "off",
     "react/error-boundaries": "off",
     "react/globals": "off",
     "react/iframe-missing-sandbox": "off",

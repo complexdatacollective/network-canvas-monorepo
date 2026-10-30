@@ -48,7 +48,7 @@ const useAssetData = (id: string) => {
       );
     };
     void loadVariables();
-  }, [data, data?.type, getNetworkAssetVariables, id]);
+  }, [data, getNetworkAssetVariables, id]);
 
   useEffect(() => {
     let isMounted = true;

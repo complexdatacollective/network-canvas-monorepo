@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
@@ -54,6 +54,13 @@ function StageTitleInTheRoute({
     }),
   );
 
+  // Above the form element and inside its provider, which is the pair a stage
+  // title needs.
+  const renderHeader = useCallback(
+    () => <StageTitle {...(position === undefined ? {} : { position })} />,
+    [position],
+  );
+
   return (
     <div className="h-full overflow-y-auto pb-32">
       {/* The route's own heading, which the title's `h2` counts from. */}
@@ -80,13 +87,7 @@ function StageTitleInTheRoute({
                         : { sectionId: STAGE_SECTION }
                     }
                     formId="stage-form"
-                    // Above the form element and inside its provider, which
-                    // is the pair a stage title needs.
-                    header={() => (
-                      <StageTitle
-                        {...(position === undefined ? {} : { position })}
-                      />
-                    )}
+                    header={renderHeader}
                   />
                 </EnclosingHeadingLevel>
               </ProtocolBuilder>

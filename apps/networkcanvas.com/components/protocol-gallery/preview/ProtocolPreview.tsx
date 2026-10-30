@@ -189,6 +189,7 @@ export function ProtocolPreview({
     return () => {
       cancelled = true;
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `attempt` is bumped by Try again to load the wave afresh; its value is not needed
   }, [wave, attempt]);
 
   const onRequestAsset = useCallback(async (assetId: string) => {
